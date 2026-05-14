@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports';
+export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant';
 
 export interface ActiveWidget {
   id: string;
@@ -33,6 +33,8 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   aiChatFull: { width: 600, height: 750 },
   settings: { width: 600, height: 700 },
   meckanoReports: { width: 900, height: 750 },
+  googleDrive: { width: 800, height: 600 },
+  googleAssistant: { width: 500, height: 650 },
 };
 
 export function useWindowManager() {

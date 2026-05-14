@@ -48,7 +48,8 @@ export const authOptions: NextAuthOptions = {
             authorization: {
               params: {
                 prompt: "select_account",
-                access_type: "online",
+                access_type: "offline",
+                scope: "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/assistant-sdk-prototype",
               },
             },
           }),

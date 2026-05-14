@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Volume2, Loader2, Sparkles } from 'lucide-react';
-import { useGeminiLive } from '@/hooks/useGeminiLive';
+import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
+import { useWindowManager } from '@/hooks/use-window-manager';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface OmnibarProps {
@@ -24,20 +26,52 @@ export default function Omnibar({
   searchResults = [],
   onSelectResult
 }: OmnibarProps) {
+  const { data: session } = useSession();
+  const { openWidget } = useWindowManager();
   const [input, setInput] = useState('');
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'error'>('idle');
 
-  const geminiLive = useGeminiLive({
-    apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
-    onStatusChange: (s) => {
-      if (s === 'connected') setVoiceStatus('listening');
-      else if (s === 'connecting') setVoiceStatus('connecting');
-      else if (s === 'error') setVoiceStatus('error');
-      else setVoiceStatus('idle');
+  const geminiLive = useGeminiLiveAudio({
+    enabled: !!session?.user,
+    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant.",
+    onToolCall: async (name, args) => {
+      if (name === 'execute_os_command') {
+        openWidget(args.action);
+        return "Success";
+      }
+      if (name === 'google_assistant_command') {
+        try {
+          const res = await fetch('/api/os/google-assistant/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: args.query })
+          });
+          const data = await res.json();
+          return data.fulfillmentText || "Success";
+        } catch (err) {
+          console.error("Google Assistant Tool Error:", err);
+          return "Error executing Google Assistant command";
+        }
+      }
     },
-    onSpeechStart: () => setVoiceStatus('speaking'),
-    onSpeechEnd: () => setVoiceStatus('listening')
+    onError: (err) => {
+      console.error("Gemini Live Error:", err);
+      setVoiceStatus('error');
+    }
   });
+
+  useEffect(() => {
+    if (geminiLive.state === 'connecting') setVoiceStatus('connecting');
+    else if (geminiLive.state === 'streaming') {
+      // In useGeminiLiveAudio, streaming means it's active. 
+      // We can check statusText to see if it's responding or listening.
+      if (geminiLive.statusText.includes('משיב')) setVoiceStatus('speaking');
+      else setVoiceStatus('listening');
+    }
+    else if (geminiLive.state === 'ready') setVoiceStatus('listening');
+    else if (geminiLive.state === 'error') setVoiceStatus('error');
+    else setVoiceStatus('idle');
+  }, [geminiLive.state, geminiLive.statusText]);
 
   const handleInputChange = (val: string) => {
     setInput(val);
@@ -128,7 +162,7 @@ export default function Omnibar({
           {/* Voice Assistant Toggle */}
           <button
             type="button"
-            onClick={() => geminiLive.toggleListening()}
+            onClick={() => geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start()}
             className={`p-2 rounded-lg transition-all flex items-center justify-center ${
               voiceStatus === 'listening' || voiceStatus === 'speaking'
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40'

@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
-import { useGeminiLive } from '@/hooks/useGeminiLive';
+import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
+import { useSession } from 'next-auth/react';
+import { useWindowManager } from '@/hooks/use-window-manager';
 
 interface Message {
   id: string;
@@ -33,6 +35,8 @@ interface Message {
 }
 
 export default function AiChatFullWidget() {
+  const { data: session } = useSession();
+  const { openWidget } = useWindowManager();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,37 +44,79 @@ export default function AiChatFullWidget() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [liveSettings, setLiveSettings] = useState({
-    apiKey: '',
-    voice: 'Aoide',
-    model: 'models/gemini-1.5-flash-8b-exp-0924'
+    voice: 'Aoede' as const,
+    model: 'gemini-3.1-flash-live-preview'
   });
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const {
-    isConnected,
-    isListening,
-    isSpeaking,
-    error: liveError,
-    connect,
-    disconnect,
-    toggleListening
-  } = useGeminiLive({
-    apiKey: liveSettings.apiKey || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
-    voice: liveSettings.voice,
-    model: liveSettings.model,
-    onStatusChange: (status) => {
-      if (status === 'error') toast.error('שגיאה בחיבור Gemini Live');
+  const geminiLive = useGeminiLiveAudio({
+    enabled: isLiveMode && !!session?.user,
+    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant.",
+    settings: {
+      voiceName: liveSettings.voice,
+      temperature: 0.7,
+      silenceDurationMs: 1100,
+      prefixPaddingMs: 350,
+      inputTranscription: true,
+      outputTranscription: true,
+      responseMode: "audio",
+    },
+    onUserTranscript: (text, finished) => {
+      if (finished) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'user',
+          content: text,
+          timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        }]);
+      }
+    },
+    onModelTranscript: (text, finished) => {
+      if (finished) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: text,
+          timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        }]);
+      }
+    },
+    onToolCall: async (name, args) => {
+      if (name === 'execute_os_command') {
+        openWidget(args.action);
+        return "Success";
+      }
+      if (name === 'google_assistant_command') {
+        try {
+          const res = await fetch('/api/os/google-assistant/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: args.query })
+          });
+          const data = await res.json();
+          return data.fulfillmentText || "Success";
+        } catch (err) {
+          console.error("Google Assistant Tool Error:", err);
+          return "Error executing Google Assistant command";
+        }
+      }
+    },
+    onError: (err) => {
+      console.error("Gemini Live Error:", err);
+      toast.error('שגיאה בחיבור Gemini Live');
     }
   });
 
+  const { isLiveActive, isListening, isSpeaking, start, stop } = geminiLive;
+
   useEffect(() => {
-    if (isLiveMode && !isConnected && liveSettings.apiKey) {
-      connect();
-    } else if (!isLiveMode && isConnected) {
-      disconnect();
+    if (isLiveMode && !isLiveActive) {
+      start();
+    } else if (!isLiveMode && isLiveActive) {
+      stop();
     }
-  }, [isLiveMode, isConnected, connect, disconnect, liveSettings.apiKey]);
+  }, [isLiveMode, isLiveActive, start, stop]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -185,25 +231,17 @@ export default function AiChatFullWidget() {
 
               <div className="space-y-6 mb-8">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">מפתח API (אופציונלי)</label>
-                  <input 
-                    type="password"
-                    placeholder="הכנס מפתח API של Google"
-                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/50 text-slate-900 dark:text-slate-200"
-                    value={liveSettings.apiKey}
-                    onChange={(e) => setLiveSettings({...liveSettings, apiKey: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">קול העוזר</label>
                   <select 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/50 appearance-none text-slate-900 dark:text-slate-200"
                     value={liveSettings.voice}
-                    onChange={(e) => setLiveSettings({...liveSettings, voice: e.target.value})}
+                    onChange={(e) => setLiveSettings({...liveSettings, voice: e.target.value as any})}
                   >
-                    <option value="Aoide">Aoide (נקבה)</option>
+                    <option value="Aoede">Aoede (נקבה)</option>
                     <option value="Charon">Charon (זכר)</option>
                     <option value="Puck">Puck (נייטרלי)</option>
+                    <option value="Kore">Kore (נקבה - ברירת מחדל)</option>
+                    <option value="Fenrir">Fenrir (זכר עוצמתי)</option>
                   </select>
                 </div>
               </div>
@@ -212,7 +250,7 @@ export default function AiChatFullWidget() {
                 onClick={() => {
                   setShowSettings(false);
                   toast.success('הגדרות נשמרו');
-                  if (isConnected) disconnect();
+                  if (isLiveActive) stop();
                 }}
                 className="w-full h-12 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
               >
@@ -238,9 +276,9 @@ export default function AiChatFullWidget() {
             </button>
             {isLiveMode && (
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                <div className={`w-2 h-2 rounded-full ${isLiveActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                 <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-                  {isConnected ? 'מחובר' : 'מתחבר...'}
+                  {isLiveActive ? 'מחובר' : 'מתחבר...'}
                 </span>
               </div>
             )}
@@ -276,9 +314,9 @@ export default function AiChatFullWidget() {
                 {isListening ? 'דבר בחופשיות' : 'לחץ על המיקרופון כדי להתחיל'}
               </p>
               
-              {!isListening && isConnected && (
+              {!isListening && isLiveActive && (
                 <button 
-                  onClick={toggleListening}
+                  onClick={start}
                   className="mt-8 px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-2xl shadow-xl shadow-purple-900/20 transition-all transform hover:scale-105 active:scale-95"
                 >
                   התחל לדבר

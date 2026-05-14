@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, BarChart3, Users, ScanLine, Sparkles, Package, FilePlus, FileText } from 'lucide-react';
+import { Bot, BarChart3, Users, ScanLine, Sparkles, Package, FilePlus, FileText, HardDrive } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import AdaptiveWidgetShell from '@/components/os/AdaptiveWidgetShell';
 import ProjectWidget from '@/components/os/ProjectWidget';
@@ -21,6 +21,8 @@ import AiScannerWidget from '@/components/os/widgets/AiScannerWidget';
 import AiChatFullWidget from '@/components/os/widgets/AiChatFullWidget';
 import SettingsWidget from '@/components/os/widgets/SettingsWidget';
 import MeckanoReportsWidget from '@/components/os/widgets/MeckanoReportsWidget';
+import GoogleDriveWidget from '@/components/os/widgets/GoogleDriveWidget';
+import GoogleAssistantWidget from '@/components/os/widgets/GoogleAssistantWidget';
 
 import { ActiveWidget, WidgetType } from '@/hooks/use-window-manager';
 
@@ -52,6 +54,8 @@ const widgetTitles: Record<WidgetType, string> = {
   settings: 'הגדרות מערכת',
   meckanoReports: 'מחולל דוחות Meckano',
   quoteGen: 'מחולל הצעות מחיר',
+  googleDrive: 'Google Drive',
+  googleAssistant: 'Google Assistant',
 };
 
 export default function OSWorkspace({
@@ -128,64 +132,74 @@ export default function OSWorkspace({
               מערכת BSD-YBM-OS מוכנה לעבודה. בחר פעולה מהירה או השתמש בעוזר הקולי ב-Omnibar.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-3xl pointer-events-auto px-4 md:px-0">
-              <button onClick={() => openWidget('projectBoard')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                  <BarChart3 size={24} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-3xl pointer-events-auto px-4 md:px-0">
+              <button onClick={() => openWidget('projectBoard')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                  <BarChart3 size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">לוח פרויקטים</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">ניהול משימות וסטטוס</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">לוח פרויקטים</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">ניהול משימות</div>
                 </div>
               </button>
 
-              <button onClick={() => openWidget('crmTable')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                  <Users size={24} />
+              <button onClick={() => openWidget('crmTable')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                  <Users size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">ניהול לקוחות</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">מאגר CRM מתקדם</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">ניהול לקוחות</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">מאגר CRM</div>
                 </div>
               </button>
 
-              <button onClick={() => openWidget('erpArchive')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                  <Package size={24} />
+              <button onClick={() => openWidget('erpArchive')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                  <Package size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">ארכיון ERP</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">ניהול קבצים ומסמכים</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">ארכיון ERP</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">ניהול קבצים</div>
                 </div>
               </button>
 
-              <button onClick={() => openWidget('docCreator')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                  <FilePlus size={24} />
+              <button onClick={() => openWidget('docCreator')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                  <FilePlus size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">הפקת מסמכים</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">הצעות וחשבוניות</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">הפקת מסמכים</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">הצעות וחשבוניות</div>
                 </div>
               </button>
 
-              <button onClick={() => openWidget('aiScanner')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
-                  <ScanLine size={24} />
+              <button onClick={() => openWidget('aiScanner')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform">
+                  <ScanLine size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">סריקת AI</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">פענוח מסמכים חכם</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">סריקת AI</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">פענוח חכם</div>
                 </div>
               </button>
 
-              <button onClick={() => openWidget('aiChatFull')} className="flex items-center gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-right group shadow-sm dark:shadow-none">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                  <Sparkles size={24} />
+              <button onClick={() => openWidget('aiChatFull')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                  <Sparkles size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <div className="font-bold text-[color:var(--foreground-main)] text-sm">צ&apos;אט AI מלא</div>
-                  <div className="text-[10px] text-[color:var(--foreground-muted)]">עוזר אישי לניהול</div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">צ&apos;אט AI מלא</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">עוזר אישי</div>
+                </div>
+              </button>
+
+              <button onClick={() => openWidget('googleDrive')} className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4 p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--surface-card)]/80 transition-all text-center md:text-right group shadow-sm dark:shadow-none">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                  <HardDrive size={20} className="md:w-6 md:h-6" />
+                </div>
+                <div>
+                  <div className="font-bold text-[color:var(--foreground-main)] text-xs md:text-sm">Google Drive</div>
+                  <div className="text-[9px] md:text-[10px] text-[color:var(--foreground-muted)]">ניהול קבצים בענן</div>
                 </div>
               </button>
             </div>
@@ -228,6 +242,8 @@ export default function OSWorkspace({
             {widget.type === 'aiChatFull' && <AiChatFullWidget />}
             {widget.type === 'settings' && <SettingsWidget />}
             {widget.type === 'meckanoReports' && <MeckanoReportsWidget />}
+            {widget.type === 'googleDrive' && <GoogleDriveWidget />}
+            {widget.type === 'googleAssistant' && <GoogleAssistantWidget />}
           </AdaptiveWidgetShell>
         ))}
       </div>

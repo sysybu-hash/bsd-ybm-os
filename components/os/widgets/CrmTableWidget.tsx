@@ -151,9 +151,15 @@ export default function CrmTableWidget() {
     try {
       setLoading(true);
       const res = await fetch('/api/data?type=clients');
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error('שגיאת שרת (תגובה לא תקינה)');
+      }
+
       if (!res.ok || !Array.isArray(data)) {
-        throw new Error(data.error || 'Failed to fetch');
+        throw new Error(data?.error || data?.details || 'נכשלה משיכת נתונים');
       }
       // Transform data if needed or use as is
       setClients(data.map((c: any) => ({
@@ -162,9 +168,9 @@ export default function CrmTableWidget() {
         lastContact: c.lastContact || c.updatedAt || c.createdAt || new Date().toISOString(),
         totalProjects: c.totalProjects || 0
       })));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('שגיאה בטעינת לקוחות');
+      toast.error(err.message || 'שגיאה בטעינת לקוחות');
     } finally {
       setLoading(false);
     }

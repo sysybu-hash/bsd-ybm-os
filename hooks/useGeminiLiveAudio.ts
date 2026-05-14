@@ -30,6 +30,7 @@ type GeminiLiveOptions = {
   settings?: GeminiLiveVoiceSettings;
   onUserTranscript?: (text: string, finished: boolean) => void;
   onModelTranscript?: (text: string, finished: boolean) => void;
+  onToolCall?: (name: string, args: any) => Promise<any> | any;
   onError?: (message: string) => void;
 };
 
@@ -105,6 +106,7 @@ export function useGeminiLiveAudio({
   settings = DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
   onUserTranscript,
   onModelTranscript,
+  onToolCall,
   onError,
 }: GeminiLiveOptions) {
   const [state, setState] = useState<GeminiLiveState>("idle");
@@ -223,8 +225,27 @@ export function useGeminiLiveAudio({
         setState("ready");
         setStatusText("Gemini Live מוכן לשאלה הבאה.");
       }
+
+      if ("toolCall" in message && message.toolCall) {
+        const toolCalls = (message.toolCall as any).functionCalls || [];
+        for (const call of toolCalls) {
+          if (onToolCall) {
+            const result = await onToolCall(call.name, call.args);
+            if (webSocketRef.current?.readyState === WebSocket.OPEN) {
+              webSocketRef.current.send(JSON.stringify({
+                tool_response: {
+                  function_responses: [{
+                    name: call.name,
+                    response: { result: result || "Success" }
+                  }]
+                }
+              }));
+            }
+          }
+        }
+      }
     },
-    [onModelTranscript, onUserTranscript],
+    [onModelTranscript, onUserTranscript, onToolCall],
   );
 
   const start = useCallback(async () => {
@@ -312,6 +333,39 @@ export function useGeminiLiveAudio({
               },
             },
             systemInstruction: { parts: [{ text: systemInstruction }] },
+            tools: [{
+              function_declarations: [
+                {
+                  name: "execute_os_command",
+                  description: "מפעיל פקודות במערכת ההפעלה כמו פתיחת ווידג'טים",
+                  parameters: {
+                    type: "OBJECT",
+                    properties: {
+                      action: {
+                        type: "STRING",
+                        enum: ["crm", "meckanoReports", "projectBoard", "aiScanner", "erpArchive", "docCreator", "settings", "googleDrive"],
+                        description: "הווידג'ט לפתיחה"
+                      }
+                    },
+                    required: ["action"]
+                  }
+                },
+                {
+                  name: "google_assistant_command",
+                  description: "שולח פקודה ל-Google Assistant (למשל: הדלק אורות, מה מזג האוויר)",
+                  parameters: {
+                    type: "OBJECT",
+                    properties: {
+                      query: {
+                        type: "STRING",
+                        description: "הפקודה לביצוע"
+                      }
+                    },
+                    required: ["query"]
+                  }
+                }
+              ]
+            }],
             ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
             ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
             realtimeInputConfig: {
@@ -389,6 +443,8 @@ export function useGeminiLiveAudio({
     model,
     lastTranscript,
     isLiveActive: state === "connecting" || state === "ready" || state === "streaming",
+    isListening: state === "streaming" && !statusText.includes("משיב"),
+    isSpeaking: state === "streaming" && statusText.includes("משיב"),
     start,
     stop,
   };

@@ -146,14 +146,30 @@ export async function GET(request: Request) {
     }
 
     if (type === 'clients' || type === 'crm') {
-      const clients = await prisma.contact.findMany();
-      return NextResponse.json(clients);
+      try {
+        const session = await getServerSession(authOptions);
+        const organizationId = session?.user?.organizationId;
+        
+        const clients = await prisma.contact.findMany({
+          where: organizationId ? { organizationId } : {},
+          orderBy: { createdAt: 'desc' },
+          take: 100 // Limit for performance
+        });
+        return NextResponse.json(clients || []);
+      } catch (dbErr: any) {
+        console.error("CRM Fetch Error:", dbErr);
+        // Return empty array instead of 500 if it's just a query issue
+        return NextResponse.json([], { status: 200 });
+      }
     }
 
     return NextResponse.json({ error: 'Not Found' }, { status: 404 });
-  } catch (error) {
-    console.error("DB GET Error:", error);
-    return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
+  } catch (error: any) {
+    console.error("DB GET Error [type=" + type + "]:", error);
+    return NextResponse.json({ 
+      error: 'Database query failed', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
