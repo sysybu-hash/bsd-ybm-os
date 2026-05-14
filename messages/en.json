@@ -1,4 +1,11 @@
 {
+  "siteErrors": {
+    "errorTitle": "Something went wrong",
+    "errorBody": "An unexpected error occurred. Please try refreshing the page or return home.",
+    "retry": "Try again",
+    "home": "Back to Home",
+    "login": "Sign In"
+  },
   "brand": {
     "name": "BSD-YBM",
     "tagline": "Operating System"

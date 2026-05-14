@@ -185,8 +185,8 @@ export default function DocumentCreatorWidget() {
     doc.text(reverseHebrew(`תאריך: ${new Date().toLocaleDateString('he-IL')}`), 190, 60, { align: 'right' });
 
     const tableData = items.map(item => [
-      `₪${(item.quantity * item.price).toLocaleString()}`,
-      `₪${item.price.toLocaleString()}`,
+      `₪${((item.quantity || 0) * (item.price || 0)).toLocaleString()}`,
+      `₪${(item.price || 0).toLocaleString()}`,
       item.quantity.toString(),
       reverseHebrew(item.description),
     ]);
@@ -200,7 +200,7 @@ export default function DocumentCreatorWidget() {
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
-    doc.text(reverseHebrew(`סה"כ לתשלום: ₪${calculateSubtotal().toLocaleString()}`), 190, finalY + 20, { align: 'right' });
+    doc.text(reverseHebrew(`סה"כ לתשלום: ₪${(calculateSubtotal() || 0).toLocaleString()}`), 190, finalY + 20, { align: 'right' });
 
     doc.save(`${docType}_${generatedDoc.documentNumber || 'draft'}.pdf`);
     toast.success('PDF הורד בהצלחה');
@@ -260,7 +260,7 @@ export default function DocumentCreatorWidget() {
         </div>
         <div className="text-left">
           <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest block mb-1">סה&quot;כ לתשלום</span>
-          <span className={`text-2xl font-black ${docType === 'quote' ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>₪{calculateSubtotal().toLocaleString()}</span>
+          <span className={`text-2xl font-black ${docType === 'quote' ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>₪{(calculateSubtotal() || 0).toLocaleString()}</span>
         </div>
       </div>
 

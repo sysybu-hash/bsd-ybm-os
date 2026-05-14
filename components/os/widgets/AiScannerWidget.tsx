@@ -182,7 +182,7 @@ export default function AiScannerWidget() {
               <div className="text-xs font-bold text-[color:var(--foreground-main)] truncate mb-1">{item.fileName}</div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] text-[color:var(--foreground-muted)] font-bold uppercase">{item.vendor}</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">₪{item.amount.toLocaleString()}</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">₪{(item.amount || 0).toLocaleString()}</span>
               </div>
             </div>
           ))}

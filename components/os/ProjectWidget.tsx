@@ -158,7 +158,7 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
     );
   }
 
-  if (!data) {
+  if (!data || 'error' in data) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-white dark:bg-slate-950 p-8 text-center">
         <AlertCircle className="w-12 h-12 text-rose-500 mb-4 opacity-50" />
@@ -232,11 +232,11 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-sm dark:shadow-none">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">תקציב פרויקט</span>
-                <div className="text-2xl font-black text-slate-900 dark:text-white">₪{data.budget.toLocaleString()}</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white">₪{(data.budget || 0).toLocaleString()}</div>
               </div>
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-2xl p-4 shadow-sm dark:shadow-none">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">הוצאות מצטברות</span>
-                <div className="text-2xl font-black text-rose-600 dark:text-rose-400">₪{data.expenses.toLocaleString()}</div>
+                <div className="text-2xl font-black text-rose-600 dark:text-rose-400">₪{(data.expenses || 0).toLocaleString()}</div>
               </div>
             </div>
             
@@ -264,7 +264,7 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
                     <span className="text-slate-900 dark:text-slate-200 font-bold">{exp.vendor || 'ספק לא ידוע'}</span>
                     <span className="text-slate-400 dark:text-slate-500 text-[10px] mt-0.5">{exp.date ? new Date(exp.date).toLocaleDateString('he-IL') : 'תאריך לא ידוע'}</span>
                   </div>
-                  <div className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">₪{exp.amount.toLocaleString()}</div>
+                  <div className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">₪{(exp.amount || 0).toLocaleString()}</div>
                 </div>
               ))}
               {(!data.expensesList || data.expensesList.length === 0) && (

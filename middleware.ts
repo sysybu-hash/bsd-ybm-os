@@ -5,6 +5,15 @@ import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import { COOKIE_LOCALE } from "@/lib/i18n/config";
 import { negotiateLocale } from "@/lib/i18n/negotiate";
 
+/** Vercel / Auth.js מגדירים לעיתים רק AUTH_URL — NextAuth v4 מצפה ל-NEXTAUTH_URL */
+if (!process.env.NEXTAUTH_URL && process.env.AUTH_URL) {
+  process.env.NEXTAUTH_URL = process.env.AUTH_URL;
+}
+/** פריוויו ב-Vercel: לרוב אין NEXTAUTH_URL קבוע — VERCEL_URL מזוהה אוטומטית */
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 function hasAuthenticatedToken(token: NextRequestWithAuth["nextauth"]["token"]): boolean {
   if (!token) return false;
   const id = typeof token.id === "string" ? token.id.trim() : "";

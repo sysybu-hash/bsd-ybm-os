@@ -152,6 +152,9 @@ export default function CrmTableWidget() {
       setLoading(true);
       const res = await fetch('/api/data?type=clients');
       const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) {
+        throw new Error(data.error || 'Failed to fetch');
+      }
       // Transform data if needed or use as is
       setClients(data.map((c: any) => ({
         ...c,

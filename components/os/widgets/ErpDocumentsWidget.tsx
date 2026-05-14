@@ -247,7 +247,7 @@ export default function ErpDocumentsWidget() {
                 <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex flex-col items-end shadow-sm dark:shadow-none">
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">סה&quot;כ מסמך</span>
                   <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                    ₪{selectedDoc.lineItems?.reduce((sum, item) => sum + (item.lineTotal || 0), 0).toLocaleString()}
+                    ₪{(selectedDoc.lineItems?.reduce((sum, item) => sum + (item.lineTotal || 0), 0) || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -347,11 +347,11 @@ export default function ErpDocumentsWidget() {
                             onChange={(e) => setEditValues({ ...editValues, unitPrice: parseFloat(e.target.value) || 0 })}
                           />
                         ) : (
-                          <span className="text-sm text-[color:var(--foreground-muted)]">₪{item.unitPrice?.toLocaleString()}</span>
+                          <span className="text-sm text-[color:var(--foreground-muted)]">₪{(item.unitPrice || 0).toLocaleString()}</span>
                         )}
                       </td>
                       <td className="py-4 pl-4 text-left font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                        ₪{((editingLineId === item.id ? (editValues.unitPrice || 0) * (editValues.quantity || 0) : item.lineTotal) || 0).toLocaleString()}
+                        ₪{(((editingLineId === item.id ? (editValues.unitPrice || 0) * (editValues.quantity || 0) : item.lineTotal) || 0)).toLocaleString()}
                       </td>
                       <td className="py-4 text-center">
                         <div className="flex justify-center gap-2">
