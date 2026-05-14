@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/financial-insights",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/analyze-queue/process",
+      "schedule": "15 6 * * *"
+    }
+  ]
+}

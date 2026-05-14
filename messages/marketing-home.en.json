@@ -1,0 +1,150 @@
+{
+  "marketingHome": {
+    "nav": {
+      "product": "Product",
+      "workflows": "Workflows",
+      "solutions": "Solutions",
+      "pricing": "Pricing",
+      "about": "About",
+      "contact": "Contact"
+    },
+    "header": { "tagline": "Intelligent operations for professional businesses" },
+    "hero": {
+      "kicker": "BSD-YBM v2",
+      "title": "One system that organizes your work, documents and decisions.",
+      "subtitle": "BSD-YBM connects CRM, documents, billing, control and AI in one workspace built for professional businesses.",
+      "ctaRegister": "Create account",
+      "ctaDemo": "View demo"
+    },
+    "features": [
+      { "title": "CRM that moves work forward", "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools." },
+      { "title": "Billing & business documents", "body": "Invoices, collections, subscriptions and cash flow inside the same workspace." },
+      { "title": "AI inside the workflow", "body": "Not a detached chat—AI works inside clients, documents, control and decisions." }
+    ],
+    "mock": {
+      "attentionLabel": "Management attention",
+      "attentionTitle": "3 items need action today",
+      "boardKicker": "Operational Intelligence",
+      "boardTitle": "Live operations board",
+      "boardBadge": "Healthy activity",
+      "suggestLabel": "System suggestion",
+      "suggestTitle": "7 documents identified and ready to auto-assign",
+      "suggestBody": "The system detected clients, amounts and statuses and suggests the next step for each item.",
+      "financeLabel": "Financial control",
+      "stats": [
+        { "label": "Open collections", "value": "₪48,200" },
+        { "label": "Invoices this week", "value": "32" },
+        { "label": "Urgent tasks", "value": "11" },
+        { "label": "New inquiries", "value": "19" }
+      ]
+    },
+    "modulesSection": {
+      "label": "One product, clear work layers",
+      "title": "Every module serves the process—not a standalone screen.",
+      "body": "BSD-YBM doesn't sell a feature list. It builds a flow: intake, processing, action, collections and control."
+    },
+    "modules": [
+      { "title": "Smart documents", "body": "Scan, extract, classify and create documents from real business activity." },
+      { "title": "Operational control", "body": "Tasks, follow-ups, internal processes and action items in one clear place." },
+      { "title": "Management insights", "body": "A live picture of revenue, load, exceptions and opportunities—without detached reports." },
+      { "title": "Unified AI layer", "body": "Suggested actions, drafts, analysis and answers in your organization's context." }
+    ],
+    "workflow": {
+      "label": "Live workflow",
+      "title": "What happens the moment new information enters the system?",
+      "lead": "Instead of a team gluing processes manually, BSD-YBM connects data, suggests action, and records everything in real time.",
+      "stepSub": "The next work layer updates automatically so the team always sees what changed and what should happen now.",
+      "steps": [
+        "A client or document enters the system",
+        "BSD-YBM detects context, tasks and risks",
+        "The system updates CRM, documents and billing",
+        "The team gets a live picture and a suggested next action"
+      ]
+    },
+    "industries": {
+      "label": "Industry fit",
+      "title": "Built for real operational load.",
+      "body": "Offices, clinics, contractors and service businesses need a system that works with documents, clients and money—not just lists.",
+      "tags": ["Law firms", "Accountants", "Contractors", "Clinics", "Real estate", "Service businesses"]
+    },
+    "why": {
+      "label": "Why it works",
+      "title": "The system thinks like an operations environment—not a pile of screens.",
+      "rows": [
+        { "title": "Single source of truth", "body": "Clients, documents, tasks, billing and insights share one operational picture." },
+        { "title": "One language", "body": "The team doesn't learn five different tools to move work forward." },
+        { "title": "Contextual AI", "body": "Recommendations come from your business data—not a generic prompt." }
+      ]
+    },
+    "proofPoints": [
+      "Fewer duplicates across CRM, documents and billing",
+      "Less manual admin for the team",
+      "Fewer missed tasks and collections",
+      "More decisions from one clear picture"
+    ],
+    "plans": {
+      "label": "Plans & signup",
+      "title": "A clear path for every stage—with direct signup.",
+      "body": "Each tier is wired to signup, scan quotas and in-product subscription management. Start free, pick a plan, or talk to us for larger rollouts.",
+      "featured": "Popular",
+      "joinPrefix": "Join "
+    },
+    "cta": {
+      "label": "Ready to work differently?",
+      "title": "Move from scattered tools to one command center.",
+      "body": "Start with an account, connect the flows that matter, and get a workspace that fits your complexity.",
+      "primary": "Start now",
+      "secondary": "Talk to us"
+    },
+    "footer": {
+      "brand": "BSD-YBM",
+      "lead": "An intelligent operations system that connects clients, documents, billing, management control and AI in one workspace."
+    },
+    "editorial": {
+      "nav": {
+        "about": "About",
+        "projects": "Projects",
+        "services": "Services",
+        "blog": "Insights",
+        "contact": "Contact"
+      },
+      "heroEyebrow": "BSD-YBM · AI Solutions",
+      "heroTitle": "The future of construction",
+      "heroLead": "One OS connecting site, office, clients and documents — CRM and ERP with a modular AI layer, built for construction and trades.",
+      "heroCta": "Book a demo",
+      "heroSecondaryCta": "Create account",
+      "projectsSectionTitle": "Projects",
+      "projectCardCta": "Details",
+      "projectCards": [
+        { "title": "Sites & projects" },
+        { "title": "Documents & vendors" },
+        { "title": "Billing & collections" },
+        { "title": "Field operations" },
+        { "title": "Insights & decisions" },
+        { "title": "Automation & AI" }
+      ],
+      "quotesSectionTitle": "What teams say",
+      "quotes": [
+        {
+          "body": "Fewer duplicates across CRM, documents and billing — we finally see the same number in one place.",
+          "role": "Operations lead, contractor"
+        },
+        {
+          "body": "The team doesn’t need five tools just to move the week forward.",
+          "role": "Project manager"
+        },
+        {
+          "body": "Recommendations come from our data, not a generic chat.",
+          "role": "CFO"
+        }
+      ],
+      "featuredTitle": "Featured capabilities",
+      "featuredLead": "Product layers connect clients, documents and money — one picture per project, from proposal to supplier invoice.",
+      "featuredCta": "Product overview",
+      "footerProductTitle": "Product",
+      "footerCompanyTitle": "Company",
+      "footerLegalTitle": "Legal",
+      "footerContactBlurb": "Want a demo or enterprise rollout? Let’s talk."
+    }
+  }
+}

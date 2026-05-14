@@ -1,0 +1,41 @@
+{
+  "siteFooter": {
+    "lead": "AI-powered management for better productivity and financial control.",
+    "navSystem": "Product",
+    "navInfo": "Information",
+    "linkErp": "ERP",
+    "linkCrm": "CRM",
+    "linkLegal": "Legal documents",
+    "linkTerms": "Terms of use",
+    "linkPrivacy": "Privacy",
+    "linkGdpr": "GDPR / data protection",
+    "linkTutorial": "Animated tutorial",
+    "copyright": "All rights reserved",
+    "credit": "Yohanan Bokshen — BSD-YBM"
+  },
+  "commandPalette": {
+    "openSearchAria": "Open quick search",
+    "searchHintDesktop": "Quick search, jump between screens and common actions",
+    "searchShort": "Search",
+    "closeAria": "Close quick search",
+    "dialogAria": "Quick search",
+    "placeholder": "Search a screen, action, or workspace",
+    "emptyTitle": "No results",
+    "emptyHint": "Try searching by screen name, workflow, or tool.",
+    "badgeHere": "Here",
+    "openAction": "Open",
+    "footerHint": "Cross-app search: main screens, deep tools, and admin.",
+    "enterToOpen": "Enter to open"
+  },
+  "siteErrors": {
+    "errorTitle": "Something went wrong while loading",
+    "errorBody": "Try again or go back home. If it persists, refresh the page.",
+    "retry": "Try again",
+    "home": "Home",
+    "login": "Sign in",
+    "workspace": "Workspace",
+    "notFoundCode": "404",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The link may be wrong or the page moved. You can go home, open the workspace, or sign in."
+  }
+}

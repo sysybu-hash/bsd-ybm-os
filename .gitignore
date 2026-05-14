@@ -1,0 +1,60 @@
+.env.vercel.pull
+.env.vercel.production
+.env.vprod
+
+# תלות ובנייה
+node_modules/
+.next/
+
+# סביבה — לא לעלות ל־Git (כולל סודות)
+.env
+.env.local
+.env*.local
+!.env.example
+
+# לוגים ופלט בנייה
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# מערכת הפעלה
+.DS_Store
+Thumbs.db
+
+# זמני
+*.tmp
+*.temp
+.cache/
+
+# TypeScript
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# נכסי Gemini בשורש — העתק לפריסה ב־public/landing-hero-title-art.png
+/Gemini_Generated_Image_*.png
+
+.vercel
+
+# עותקי עבודה מקומיים של כלי AI (לא חלק מהריפו)
+.claude/
+
+# תוכניות Cursor מקומיות
+.cursor/plans/
+
+# Playwright
+test-results/
+playwright-report/
+
+.env*.local
+
+.vercel
+.env*.local

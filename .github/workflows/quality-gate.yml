@@ -1,0 +1,55 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bsd_ybm_ci
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/bsd_ybm_ci
+      GOOGLE_GENERATIVE_AI_API_KEY: ci-placeholder-gemini-key-0000000000
+      GEMINI_API_KEY: ci-placeholder-gemini-key-0000000000
+      NEXTAUTH_SECRET: ci-nextauth-secret-for-build-only
+      NEXTAUTH_URL: http://127.0.0.1:3330
+      AUTH_URL: http://127.0.0.1:3330
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3330
+      PLAYWRIGHT_DEV_PORT: "3330"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+      - name: Production build
+        run: npm run build
+
+      - name: Browser quality gate
+        run: npm run test:e2e:quality

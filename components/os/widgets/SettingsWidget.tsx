@@ -1,0 +1,247 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { 
+  Settings, 
+  Building2, 
+  Hash, 
+  Mail, 
+  Save, 
+  Image as ImageIcon, 
+  Upload,
+  CheckCircle2,
+  Loader2,
+  ShieldCheck,
+  Globe
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+export default function SettingsWidget() {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState({
+    name: '',
+    taxId: '',
+    email: '',
+    website: '',
+    logoSvg: ''
+  });
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/organization');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      
+      const branding = data.tenantSiteBrandingJson || {};
+      
+      setSettings({
+        name: data.name || '',
+        taxId: data.taxId || '',
+        email: data.paypalMerchantEmail || '', // Using paypalMerchantEmail as a placeholder for business email
+        website: data.tenantPublicDomain || '',
+        logoSvg: branding.logoSvg || ''
+      });
+    } catch (err) {
+      toast.error('שגיאה בטעינת הגדרות');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'image/svg+xml' && !file.type.startsWith('image/')) {
+      toast.error('אנא בחר קובץ תמונה (רצוי SVG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setSettings({ ...settings, logoSvg: base64 });
+      toast.success('לוגו נטען בהצלחה');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: settings.name,
+          taxId: settings.taxId,
+          tenantSiteBrandingJson: {
+            logoSvg: settings.logoSvg
+          }
+        })
+      });
+      
+      if (!res.ok) throw new Error();
+      toast.success('ההגדרות נשמרו בהצלחה');
+    } catch (err) {
+      toast.error('שגיאה בשמירת ההגדרות');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-transparent">
+        <Loader2 className="animate-spin text-indigo-500" size={32} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+      {/* Header */}
+      <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-[color:var(--foreground-muted)]">
+            <Settings size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">הגדרות מערכת</h2>
+            <p className="text-xs text-[color:var(--foreground-muted)]">ניהול פרטי העסק, לוגו והתראות גלובליות</p>
+          </div>
+        </div>
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+        >
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          שמור שינויים
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+        <div className="max-w-2xl mx-auto space-y-10">
+          
+          {/* Business Profile */}
+          <section>
+            <div className="flex items-center gap-2 mb-6">
+              <Building2 size={18} className="text-indigo-500" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">פרופיל עסקי</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שם העסק / חברה</label>
+                <div className="relative">
+                  <Building2 className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
+                  <input 
+                    value={settings.name}
+                    onChange={(e) => setSettings({...settings, name: e.target.value})}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                    placeholder="לדוגמה: BSD-YBM פתרונות תשתית"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">ח&quot;פ / עוסק מורשה</label>
+                <div className="relative">
+                  <Hash className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
+                  <input 
+                    value={settings.taxId}
+                    onChange={(e) => setSettings({...settings, taxId: e.target.value})}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                    placeholder="מספר זיהוי מס"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל למשלוח התראות</label>
+                <div className="relative">
+                  <Mail className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
+                  <input 
+                    value={settings.email}
+                    onChange={(e) => setSettings({...settings, email: e.target.value})}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                    placeholder="your@email.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אתר אינטרנט</label>
+                <div className="relative">
+                  <Globe className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
+                  <input 
+                    value={settings.website}
+                    onChange={(e) => setSettings({...settings, website: e.target.value})}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                    placeholder="www.example.com"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Logo & Branding */}
+          <section>
+            <div className="flex items-center gap-2 mb-6">
+              <ImageIcon size={18} className="text-emerald-500" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">מיתוג ולוגו</h3>
+            </div>
+
+            <div className="bg-[color:var(--background-main)]/30 border-2 border-dashed border-[color:var(--border-main)] rounded-[2rem] p-10 flex flex-col items-center text-center">
+              <div className="w-24 h-24 bg-[color:var(--surface-card)]/50 rounded-3xl border border-[color:var(--border-main)] flex items-center justify-center mb-4 shadow-xl overflow-hidden relative">
+                {settings.logoSvg ? (
+                  <Image src={settings.logoSvg} alt="Business Logo" fill className="object-contain p-2" unoptimized />
+                ) : (
+                  <ImageIcon size={40} className="text-[color:var(--foreground-muted)] opacity-30" />
+                )}
+              </div>
+              <h4 className="font-bold text-[color:var(--foreground-main)] mb-1">העלאת לוגו העסק</h4>
+              <p className="text-xs text-[color:var(--foreground-muted)] mb-6 max-w-xs">מומלץ להשתמש בפורמט SVG לקבלת איכות מקסימלית בכל חלקי המערכת והמסמכים</p>
+              
+              <div className="flex gap-3">
+                <label className="px-4 py-2 bg-[color:var(--surface-card)]/50 dark:bg-white/10 border border-[color:var(--border-main)] rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-main)] transition-all cursor-pointer">
+                  <Upload size={14} /> בחר קובץ
+                  <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                </label>
+                <button 
+                  onClick={() => setSettings({ ...settings, logoSvg: '' })}
+                  className="px-4 py-2 text-rose-500 text-xs font-bold hover:bg-rose-500/5 rounded-xl transition-all"
+                >
+                  הסר לוגו
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Security & System */}
+          <section className="pt-6 border-t border-[color:var(--border-main)]/30">
+            <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6 flex items-start gap-4">
+              <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">אבטחת נתונים</h4>
+                <p className="text-xs text-indigo-700/60 dark:text-indigo-400/60 leading-relaxed">
+                  הגדרות אלו מסונכרנות ישירות לטבלת ה-Organization ב-PostgreSQL. הן משפיעות על כותרות החשבוניות, הצעות המחיר והתראות המערכת הנשלחות ללקוחות.
+                </p>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  );
+}

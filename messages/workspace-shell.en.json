@@ -1,0 +1,309 @@
+{
+  "workspaceNav": {
+    "skipToMain": "Skip to main content",
+    "logoSubtitle": "Workspace",
+    "sectionDailyWork": "Daily work",
+    "sectionMoreNav": "More navigation",
+    "signOut": "Sign out",
+    "signOutAria": "Sign out",
+    "advancedShort": "Advanced",
+    "primaryNavAria": "Primary workspace navigation",
+    "items": {
+      "home": {
+        "label": "Dashboard",
+        "summary": "Quick overview — KPIs, recent activity, and quick actions."
+      },
+      "scan": {
+        "label": "AI hub",
+        "summary": "Scanning, source notebook, in-org document decode, and issuance generators in one screen."
+      },
+      "crm": {
+        "label": "Clients",
+        "summary": "Manage {clients}, projects, and quotes in one place."
+      },
+      "erp": {
+        "label": "Documents",
+        "summary": "Scans, expenses, finances, and {records} organized."
+      },
+      "operations": {
+        "label": "Operations",
+        "summary": "Employee attendance, field work, and team processes."
+      },
+      "settings": {
+        "label": "Settings",
+        "summary": "Organization, trade, team, and billing settings."
+      }
+    },
+    "utility": {
+      "help": {
+        "label": "Help",
+        "summary": "A short guide, clear workflow, and shortcuts to main screens."
+      },
+      "business": {
+        "label": "Business hub",
+        "summary": "Cross-view of clients, documents, pricing, and operations."
+      },
+      "intelligence": {
+        "label": "Intelligence",
+        "summary": "Executive AI, cross-cutting insights, and decision tracking."
+      },
+      "admin": {
+        "label": "Admin",
+        "summary": "OS control, broadcasts, subscriptions, and operator health."
+      },
+      "success": {
+        "label": "Success",
+        "summary": "Confirm your path and move quickly to the next step."
+      }
+    },
+    "advanced": {
+      "label": "Advanced tools",
+      "summary": "Central access to deep tools, bridges, and advanced systems."
+    },
+    "advancedPage": {
+      "kicker": "Advanced tools",
+      "title": "BSD-YBM’s deep tools are organized here without cluttering your daily workspace.",
+      "subtitle": "The default is the `/app` environment, but when you need deeper control, advanced analysis, or expert tools, everything is grouped in one clear place.",
+      "backCta": "Back to Workspace v2"
+    },
+    "advancedCards": {
+      "onboarding": {
+        "title": "Smart onboarding",
+        "body": "A setup wizard that turns your organization’s state into clear steps: trade, connections, subscription, portal, and documents."
+      },
+      "automations": {
+        "title": "Automation Center",
+        "body": "One hub for automations, recommended scripts, and flows tied to documents, billing, and clients."
+      },
+      "portal": {
+        "title": "Client Portal",
+        "body": "Manage the public portal, domain, document sharing, and what clients see outside the internal app."
+      },
+      "inbox": {
+        "title": "Advanced control center",
+        "body": "Monitoring, control, and deep workflows for ops and management teams."
+      },
+      "clients": {
+        "title": "Advanced CRM",
+        "body": "Full CRM tools when you need deeper control, reports, and power features."
+      },
+      "ai": {
+        "title": "Advanced AI Hub",
+        "body": "AI tabs, scanners, and deeper analytics for advanced work."
+      },
+      "settings": {
+        "title": "Advanced settings",
+        "body": "The full settings center for areas that need finer control over org and integrations."
+      },
+      "operations": {
+        "title": "Advanced operations",
+        "body": "Workflows, team deep tools, and processes across departments or systems."
+      },
+      "meckano": {
+        "title": "Meckano",
+        "body": "The dedicated field module stays here as an advanced workspace for entitled subscribers only."
+      }
+    }
+  },
+  "workspaceHome": {
+    "greeting": "Hello, {name}",
+    "subtitle": "Your business command center — clients and finance, deciphered by AI.",
+    "dashboardEyebrow": "Dashboard",
+    "dailyWorkTitle": "Daily work",
+    "dualAxisAria": "Two business axes — clients and finance",
+    "aiNarrative": {
+      "aria": "AI summary for today",
+      "eyebrow": "Live AI insight",
+      "eyebrowShort": "AI detected",
+      "open": "Ask the AI",
+      "empty": "All quiet. No anomalies, delays, or opportunities detected today.",
+      "pendingInvoices": "{count} invoices pending collection, totaling {amount}.",
+      "collectionRate": "Your current collection rate is {rate}%.",
+      "clientsActive": "{count} active clients in your network."
+    },
+    "cashForecast": {
+      "eyebrow": "Cash forecast",
+      "cta": "Details",
+      "expectedWeek": "Expected this week"
+    },
+    "documents": {
+      "eyebrow": "Documents scanned",
+      "cta": "Go to documents",
+      "processed": "processed by AI"
+    },
+    "docTypes": {
+      "invoice": "Invoices",
+      "receipt": "Receipts",
+      "other": "Other"
+    },
+    "projects": {
+      "activeHint": "active now"
+    },
+    "utility": {
+      "settings": {
+        "title": "Settings",
+        "hint": "Profession, org, billing",
+        "progress": "completed",
+        "percentLabel": "{pct}% org profile"
+      },
+      "automations": {
+        "title": "Automations",
+        "hint": "AI-powered rules",
+        "active": "active",
+        "integrationsCount": "{count} cloud links"
+      },
+      "inbox": {
+        "title": "Inbox",
+        "hint": "Awaiting decision",
+        "pending": "open"
+      },
+      "help": {
+        "title": "Help",
+        "hint": "Guides & support",
+        "aiHint": "AI can help"
+      }
+    },
+    "quickActions": {
+      "issue": "Invoice",
+      "addClient": "Client",
+      "addProject": "Project",
+      "askAi": "Ask AI",
+      "erp": "ERP",
+      "scan": "AI hub",
+      "billing": "Billing",
+      "admin": "Admin"
+    },
+    "axisClients": {
+      "eyebrow": "Clients axis",
+      "title": "The people behind the numbers",
+      "all": "All clients",
+      "empty": "No clients yet",
+      "addFirst": "Add first client",
+      "addClient": "New client",
+      "activeLabel": "active clients",
+      "latest": "Latest clients"
+    },
+    "axisFinance": {
+      "eyebrow": "Finance axis",
+      "title": "Cash flow & what the business produces",
+      "all": "All finance",
+      "empty": "No financial documents yet",
+      "totalInvoiced": "Invoiced this month",
+      "totalPaid": "Collected",
+      "pending": "Pending",
+      "collectionRate": "Collection rate",
+      "issue": "Issue document",
+      "target": "Target {amount}",
+      "trendVsPrev": "vs last month {sign}{pct}%",
+      "trendNeutral": "No month-over-month"
+    },
+    "stats": {
+      "activeProjects": "Active projects",
+      "activeClients": "Active clients",
+      "billingVolume": "Billing volume (invoices)"
+    },
+    "recentActivity": {
+      "title": "Recent documents & activity",
+      "subtitle": "Updates from issued documents in your organization.",
+      "empty": "No issued documents yet — start from Documents.",
+      "linkAll": "All documents",
+      "colClient": "Client",
+      "colType": "Type",
+      "colStatus": "Status",
+      "colDate": "Date",
+      "colTotal": "Amount"
+    },
+    "docType": {
+      "INVOICE": "Tax invoice",
+      "RECEIPT": "Receipt",
+      "INVOICE_RECEIPT": "Invoice-receipt",
+      "CREDIT_NOTE": "Credit note"
+    },
+    "docStatus": {
+      "PENDING": "Pending",
+      "PAID": "Paid",
+      "CANCELLED": "Cancelled"
+    },
+    "eyebrow": "Dashboard",
+    "startHere": {
+      "eyebrow": "Start here",
+      "title": "Three links",
+      "subtitle": "Everything else lives in the menu.",
+      "navHint": "More areas in the workspace menu.",
+      "actions": {
+        "documents": "Create document",
+        "clients": "Add client",
+        "projects": "Create project"
+      },
+      "cards": {
+        "documents": {
+          "title": "Documents",
+          "body": "Scanning and your document file."
+        },
+        "clients": {
+          "title": "Clients",
+          "body": "Pipeline and contacts."
+        },
+        "inbox": {
+          "title": "Inbox",
+          "body": "What needs a decision."
+        },
+        "projects": {
+          "title": "Projects",
+          "body": "List and link to clients."
+        },
+        "finance": {
+          "title": "Finance",
+          "body": "Cash flow, collections, ERP."
+        },
+        "operations": {
+          "title": "Operations",
+          "body": "Processes and field."
+        },
+        "ai": {
+          "title": "AI",
+          "body": "Insights and intelligence."
+        },
+        "settings": {
+          "title": "Settings",
+          "body": "Trade, org, and preferences."
+        }
+      }
+    },
+    "advancedCta": "Advanced",
+    "metricLinks": {
+      "documents": "View documents",
+      "clients": "Manage clients",
+      "projects": "See projects",
+      "finance": "See finance"
+    },
+    "metricTrends": {
+      "noneYet": "None yet",
+      "documentsTotal": "{count} total",
+      "clientsMonthly": "+{count} this month",
+      "projectsActive": "{count} active",
+      "financeFresh": "+8.5% new"
+    },
+    "footerHint": "Set your trade in settings. Upload documents from the documents screen.",
+    "footer": {
+      "onboarding": "Setup",
+      "automations": "Automations",
+      "portal": "Portal",
+      "settings": "Settings",
+      "admin": "Admin"
+    }
+  },
+  "workspaceShell": {
+    "refreshingOverlay": "Refreshing workspace…",
+    "topBar": {
+      "searchAria": "Search",
+      "localeAria": "Interface language",
+      "notificationsAria": "Notifications",
+      "profileAria": "Profile"
+    }
+  },
+  "settingsHub": {
+    "sidebarEyebrow": "Settings",
+    "sidebarTitle": "Organization, billing & operations"
+  }
+}

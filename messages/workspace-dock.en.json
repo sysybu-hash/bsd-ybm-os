@@ -1,0 +1,135 @@
+{
+  "workspaceDock": {
+    "loadingScanner": "Loading advanced scan panel...",
+    "welcome": "Hi {name}, I’m the new BSD-YBM AI layer. We’re on {section}, tailored for {industry}. I can help analyze {documents}, draft tasks, voice replies, and quick access to the scan panel.",
+    "guestName": "there",
+    "contextualUserNoOrg": "I’m on {section}. My field is {industry}. {request}",
+    "contextualOrgBlock": "Current screen: {section}.\nShort description: {summary}\nField: {industry}.\nKey terms: {clients}, {documents}, {records}.\nProfessional templates: {templates}.\nUser request: {request}",
+    "errors": {
+      "aiLayerFailed": "The AI layer couldn’t respond right now.",
+      "noUsefulReply": "No useful answer was returned from the AI.",
+      "generic": "Something went wrong with the AI layer."
+    },
+    "quickPrompts": {
+      "inbox": [
+        "Summarize what’s urgent to handle today.",
+        "Build a 30‑minute work plan.",
+        "Where is the bottleneck in the inbox?"
+      ],
+      "clients": {
+        "0": "Which {clients} need immediate follow‑up?",
+        "1": "Draft a follow‑up for a client who hasn’t replied.",
+        "2": "Which clients are stuck without a final document?"
+      },
+      "documents": {
+        "0": "Which {records} should we scan first?",
+        "withTemplate": "Draft a frame for {template}.",
+        "noTemplate": "Which document should we issue now?",
+        "2": "Check which documents are missing filing."
+      },
+      "billing": [
+        "Which payments are at risk this week?",
+        "Where are open documents without collection?",
+        "Give me a short cash‑flow snapshot."
+      ],
+      "operations": [
+        "Where is operational load highest right now?",
+        "Which task should we automate first?",
+        "Give me a short throughput status."
+      ],
+      "settings": [
+        "What should I reset for my trade?",
+        "Check whether my menus fit my trade.",
+        "How do I strengthen the AI layer for the team?"
+      ],
+      "default": {
+        "0": "Give me a short business snapshot.",
+        "1": "What should we improve on {section}?",
+        "2": "Prepare a work plan for today."
+      }
+    },
+    "dock": {
+      "accessibility": "Accessibility bar",
+      "assistant": "AI assistant",
+      "assistantUnified": "AI — assistant & scan",
+      "voice": "Voice commands",
+      "scanner": "Advanced scan panel"
+    },
+    "assistant": {
+      "panelAria": "AI assistant",
+      "title": "New AI bubble",
+      "subtitle": "Connected to {section} and {industry}.",
+      "closeAria": "Close AI assistant",
+      "contextLabel": "Current context",
+      "readAloudStop": "Stop",
+      "readAloud": "Read aloud",
+      "voiceReplyBadge": "Voice reply",
+      "thinking": "AI is working on a reply...",
+      "goVoiceAria": "Voice input",
+      "openScannerAria": "Open scan panel",
+      "messageLabel": "Message to the AI assistant",
+      "placeholder": "Write what you need: analysis, drafting, answer, workflow, or starting a process...",
+      "footerHint": "Based on the current screen, trade, and your organization data.",
+      "send": "Send to AI",
+      "tabChat": "Chat",
+      "tabVoice": "Voice",
+      "voiceInlineHint": "Record or edit — then send to the AI like in chat."
+    },
+    "voice": {
+      "panelAria": "Full voice experience",
+      "title": "Full voice experience",
+      "subtitle": "Record, transcribe, send to AI, and read replies aloud.",
+      "closeAria": "Close voice experience",
+      "micReady": "Microphone is ready",
+      "micUnsupported": "This browser doesn’t support speech recognition",
+      "micReadyHint": "Use live recording, edit the transcript, and send straight to AI.",
+      "micFallbackHint": "You can still paste text manually and use read‑aloud.",
+      "recordStopAria": "Stop recording",
+      "recordStartAria": "Start recording",
+      "autoSendTitle": "Auto send",
+      "autoSendHint": "When transcription finishes, it sends immediately to AI.",
+      "readRepliesTitle": "Read replies",
+      "readRepliesHint": "Read the last reply aloud or stop playback.",
+      "autoSpeakHint": "Auto read replies when a voice command is sent.",
+      "liveTitle": "Live transcription",
+      "liveHint": "You can edit text before sending.",
+      "recordingNow": "Recording now",
+      "voicePlaceholder": "Transcript appears here… e.g. open my documents, check what’s urgent, or draft a professional approval.",
+      "clear": "Clear",
+      "goBubble": "Go to AI bubble",
+      "sendAsVoice": "Send as voice command",
+      "lastReplyTitle": "Last AI reply",
+      "readLastAria": "Read last reply aloud"
+    },
+    "scanner": {
+      "panelAria": "Advanced scan panel",
+      "title": "Advanced scan panel",
+      "subtitle": "Synced with {industry}, available from every `/app`, and flows straight to documents and billing.",
+      "toDocuments": "To documents",
+      "toFullScanBoard": "Full scan board (ERP)",
+      "closeAria": "Close scan panel",
+      "needOrgTitle": "Scan panel is available after connecting an organization",
+      "needOrgBody": "An active organization ID is required to connect scanning to AI, documents, and issuance."
+    },
+    "scannerWizard": {
+      "navAria": "Scan wizard steps",
+      "stepAria": "Step {current} of {total}: {label}",
+      "next": "Next",
+      "back": "Back",
+      "nextAria": "Next step in scan wizard",
+      "backAria": "Previous step in scan wizard",
+      "runHint": "Run a scan and wait for it to finish to continue to results.",
+      "steps": {
+        "files": "Files",
+        "engines": "Engines & settings",
+        "crm": "CRM link",
+        "run": "Run",
+        "results": "Results & save"
+      }
+    },
+    "sectionMeta": {
+      "clientsSummary": "Manage {clients} with a direct link to {documents}.",
+      "documentsSummary": "Scan, control, and produce {records} for {industry}."
+    }
+  }
+}

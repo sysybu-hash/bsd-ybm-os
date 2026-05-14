@@ -1,0 +1,38 @@
+{
+  "brandBriefPage": {
+    "metaTitle": "Brand brief",
+    "metaDescription": "BSD-YBM AI Solutions — construction management with CRM, ERP, and modular AI. The boulevard that connects everyone.",
+    "eyebrow": "Brand brief",
+    "title": "BSD-YBM — AI Solutions",
+    "description": "The boulevard that connects everyone",
+    "heroAlt": "Illustration: a digital boulevard linking construction sites with an AI layer",
+    "intro": "BSD-YBM is operations software built for construction and trades: one place where customer relationships (CRM), processes and money (ERP), and an AI layer work together — not separate tools patched with spreadsheets.",
+    "pathTitle": "The path",
+    "pathBody": "The product follows a real workflow: capture information from site and office, process documents and invoices, run tasks and clients, and get a live picture with recommendations — AI embedded in screens and decisions, not a side chatbot.",
+    "pillarsTitle": "Three layers, one system",
+    "pillars": {
+      "crm": {
+        "title": "CRM tied to the job",
+        "body": "Clients, sites, statuses, and tasks — in the language of contractors and trades, not generic sales CRM."
+      },
+      "erp": {
+        "title": "ERP for cash and operations",
+        "body": "Invoices, collections, spend, and commitments — linked to the project and the documents that feed the numbers."
+      },
+      "ai": {
+        "title": "AI as depth",
+        "body": "Summaries, detection, next steps, and context — for your organization, trade, and data."
+      }
+    },
+    "modularTitle": "Modular by sub-domain",
+    "modularBody": "Construction is diverse: development, general contractors, trades, and supervision need different wording and flows. BSD-YBM stays one frame — tuned to your workflow and specialty so the product speaks your language.",
+    "visualCrmTitle": "From CRM to ERP — not two islands",
+    "visualCrmBody": "People, contracts, and money meet in one data layer: fewer duplicates, clearer control of what actually happens on the job.",
+    "visualDocsTitle": "Documents as workflow",
+    "visualDocsBody": "Intake, control, and extraction — so documents feed CRM, billing, and management, instead of dying in a folder.",
+    "meshAriaLabel": "Abstract background: connected modules",
+    "ctaProduct": "Product overview",
+    "ctaStart": "Get started",
+    "footnote": "This page summarizes product intent and brand for teams, investors, and partners — it does not replace the live app experience at `/app`."
+  }
+}

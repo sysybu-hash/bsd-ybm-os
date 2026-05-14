@@ -1,0 +1,41 @@
+{
+  "siteFooter": {
+    "lead": "מערכת ניהול חכמה מבוססת AI לשיפור פריון העבודה וניהול פיננסי מתקדם.",
+    "navSystem": "מערכת",
+    "navInfo": "מידע",
+    "linkErp": "ניהול ERP",
+    "linkCrm": "ניהול CRM",
+    "linkLegal": "מסמכים משפטיים",
+    "linkTerms": "תנאי שימוש",
+    "linkPrivacy": "פרטיות",
+    "linkGdpr": "GDPR / הגנת מידע",
+    "linkTutorial": "הדרכה מונפשת",
+    "copyright": "כל הזכויות שמורות",
+    "credit": "יוחנן בוקשפן - BSD-YBM"
+  },
+  "commandPalette": {
+    "openSearchAria": "פתיחת חיפוש מהיר",
+    "searchHintDesktop": "חיפוש מהיר, מעבר בין מסכים ופעולות נפוצות",
+    "searchShort": "חיפוש",
+    "closeAria": "סגירת חיפוש מהיר",
+    "dialogAria": "חיפוש מהיר",
+    "placeholder": "חפש מסך, פעולה או אזור עבודה",
+    "emptyTitle": "לא נמצאו תוצאות",
+    "emptyHint": "נסה לחפש לפי שם מסך, תהליך או כלי.",
+    "badgeHere": "כאן",
+    "openAction": "פתח",
+    "footerHint": "חיפוש חוצה מערכת: מסכים ראשיים, מסכי עומק וכלי ניהול.",
+    "enterToOpen": "Enter לפתיחה"
+  },
+  "siteErrors": {
+    "errorTitle": "אירעה תקלה בטעינה",
+    "errorBody": "נסו שוב או חזרו לדף הבית. אם הבעיה נמשכת, רעננו את הדף.",
+    "retry": "לנסות שוב",
+    "home": "דף הבית",
+    "login": "התחברות",
+    "workspace": "מרחב העבודה",
+    "notFoundCode": "404",
+    "notFoundTitle": "העמוד לא נמצא",
+    "notFoundBody": "הקישור שגוי או שהתוכן הועבר. אפשר לחזור לדף הבית, למרחב העבודה או להתחברות."
+  }
+}

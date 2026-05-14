@@ -1,0 +1,35 @@
+# סנכרון סכמת Prisma ל-Neon — רץ על שרתי GitHub (עוקף חסימת פורט 5432 במחשב מקומי).
+#
+# הגדרה חד-פעמית ב-GitHub → Repo → Settings → Secrets and variables → Actions:
+#   DATABASE_URL  — מחרוזת Neon עם pooler (כמו ב-Vercel)
+#   DIRECT_URL    — מחרוזת Neon ישירה (בלי pooler), כמו ב-.env.local
+#
+# הרצה: Actions → "Neon Prisma DB Push" → Run workflow
+
+name: Neon Prisma DB Push
+
+on:
+  workflow_dispatch:
+
+jobs:
+  db-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma db push

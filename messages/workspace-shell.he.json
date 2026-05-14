@@ -1,0 +1,309 @@
+{
+  "workspaceNav": {
+    "skipToMain": "דלג לתוכן הראשי",
+    "logoSubtitle": "מרחב עבודה",
+    "sectionDailyWork": "עבודה יומית",
+    "sectionMoreNav": "ניווט נוסף",
+    "signOut": "יציאה",
+    "signOutAria": "יציאה",
+    "advancedShort": "מתקדם",
+    "primaryNavAria": "ניווט ראשי במרחב העבודה",
+    "items": {
+      "home": {
+        "label": "ראשי",
+        "summary": "סקירה מהירה של הארגון — KPIs, פעילות אחרונה ופעולות מהירות."
+      },
+      "scan": {
+        "label": "מרכז AI",
+        "summary": "סריקה, מחברת מקורות, פענוח מסמכים בארגון ומחוללי הפקה — במסך אחד."
+      },
+      "crm": {
+        "label": "לקוחות",
+        "summary": "ניהול {clients}, פרויקטים והצעות מחיר במקום אחד."
+      },
+      "erp": {
+        "label": "מסמכים",
+        "summary": "סריקות, הוצאות, פיננסים ו-{records} מאורגנים."
+      },
+      "operations": {
+        "label": "תפעול",
+        "summary": "נוכחות עובדים, שטח ותהליכי צוות."
+      },
+      "settings": {
+        "label": "הגדרות",
+        "summary": "הגדרות ארגון, מקצוע, צוות וחיוב."
+      }
+    },
+    "utility": {
+      "help": {
+        "label": "עזרה",
+        "summary": "מדריך קצר, סדר עבודה ברור וקיצורי דרך למסכים המרכזיים."
+      },
+      "business": {
+        "label": "מרחב עסקי",
+        "summary": "תמונה רוחבית של לקוחות, מסמכים, תמחור ותפעול עסקי."
+      },
+      "intelligence": {
+        "label": "Intelligence",
+        "summary": "Executive AI, תובנות רוחביות ומעקב אחרי החלטות ניהוליות."
+      },
+      "admin": {
+        "label": "Admin",
+        "summary": "בקרת המערכת, שידורים, מנויים ותמונת מצב למפעילי BSD-YBM-OS."
+      },
+      "success": {
+        "label": "הצלחה",
+        "summary": "אישור מסלול והמשך מהיר לצעד הבא במערכת."
+      }
+    },
+    "advanced": {
+      "label": "כלים מתקדמים",
+      "summary": "גישה מרוכזת לכלי עומק, גשרים ומערכות מתקדמות."
+    },
+    "advancedPage": {
+      "kicker": "כלים מתקדמים",
+      "title": "כלי העומק של BSD-YBM מרוכזים כאן בצורה מסודרת, בלי להעמיס על סביבת העבודה היומיומית.",
+      "subtitle": "ברירת המחדל של המערכת היא סביבת `/app`, אבל כשצריך שליטה עמוקה יותר, ניתוח מתקדם או כלי מומחה, כל אזורי העומק זמינים כאן במרחב ברור ומרוכז.",
+      "backCta": "חזרה ל-Workspace v2"
+    },
+    "advancedCards": {
+      "onboarding": {
+        "title": "Onboarding חכם",
+        "body": "אשף התארגנות שמתרגם את מצב הארגון לצעדים ברורים: מקצוע, חיבורים, מנוי, פורטל ומסמכים."
+      },
+      "automations": {
+        "title": "Automation Center",
+        "body": "מרכז אחד לבניית אוטומציות, תסריטים מומלצים וקישור ישיר לזרימות עבודה של מסמכים, גבייה ולקוחות."
+      },
+      "portal": {
+        "title": "Client Portal",
+        "body": "ניהול הפורטל הציבורי, דומיין, שיתוף מסמכים ומעקב אחרי מה שהלקוח רואה מחוץ למערכת הפנימית."
+      },
+      "inbox": {
+        "title": "מרכז בקרה מתקדם",
+        "body": "כלי ניטור, בקרה ותהליכי עומק שעוזרים לצוותי ניהול ותפעול לטפל במקרים מורכבים."
+      },
+      "clients": {
+        "title": "CRM מתקדם",
+        "body": "כלי CRM מלאים למצבים שבהם צריך שליטה עמוקה יותר, דוחות וכלי עומק."
+      },
+      "ai": {
+        "title": "AI Hub מתקדם",
+        "body": "לשוניות AI, סורקים וכלי עומק אנליטיים שמיועדים לעבודה מתקדמת יותר."
+      },
+      "settings": {
+        "title": "הגדרות מתקדמות",
+        "body": "מרכז ההגדרות המלא לאזורים שדורשים שליטה מפורטת יותר בארגון ובאינטגרציות."
+      },
+      "operations": {
+        "title": "תפעול מתקדם",
+        "body": "Workflows, כלי עומק לצוות ותהליכים שחוצים כמה מחלקות או כמה מערכות יחד."
+      },
+      "meckano": {
+        "title": "Meckano",
+        "body": "מודול השטח הייעודי נשאר כאן כמרחב עבודה מתקדם למנוי המורשה בלבד."
+      }
+    }
+  },
+  "workspaceHome": {
+    "greeting": "שלום, {name}",
+    "subtitle": "המרכז השקט של העסק שלך — לקוחות וכספים מפוענחים על ידי AI.",
+    "dashboardEyebrow": "דשבורד",
+    "dailyWorkTitle": "עבודה יומית",
+    "dualAxisAria": "שני צירי הארגון — לקוחות וכספים",
+    "aiNarrative": {
+      "aria": "סיכום AI ליום הנוכחי",
+      "eyebrow": "תובנה חיה של AI",
+      "eyebrowShort": "AI זיהה",
+      "open": "שאל את ה-AI",
+      "empty": "הכל שקט. לא זיהיתי חריגות, עיכובים או הזדמנויות מיוחדות היום.",
+      "pendingInvoices": "{count} חשבוניות ממתינות לגבייה, סה\"כ {amount}.",
+      "collectionRate": "שיעור הגבייה שלך כרגע {rate}%.",
+      "clientsActive": "{count} לקוחות פעילים ברשת שלך."
+    },
+    "cashForecast": {
+      "eyebrow": "תזרים צפוי",
+      "cta": "פירוט",
+      "expectedWeek": "צפוי השבוע"
+    },
+    "documents": {
+      "eyebrow": "מסמכים סרוקים",
+      "cta": "מעבר למסמכים",
+      "processed": "עובדו ע\"י AI"
+    },
+    "docTypes": {
+      "invoice": "חשבוניות",
+      "receipt": "קבלות",
+      "other": "אחר"
+    },
+    "projects": {
+      "activeHint": "פעילים כרגע"
+    },
+    "utility": {
+      "settings": {
+        "title": "הגדרות",
+        "hint": "מקצוע, ארגון, חיוב",
+        "progress": "הושלם",
+        "percentLabel": "{pct}% פרופיל ארגון"
+      },
+      "automations": {
+        "title": "אוטומציות",
+        "hint": "כללים שה-AI מפעיל",
+        "active": "פעילות",
+        "integrationsCount": "{count} חיבורי ענן"
+      },
+      "inbox": {
+        "title": "תיבת עבודה",
+        "hint": "ממתין להחלטה",
+        "pending": "פתוחים"
+      },
+      "help": {
+        "title": "עזרה",
+        "hint": "מדריכים ותמיכה",
+        "aiHint": "AI עוזר"
+      }
+    },
+    "quickActions": {
+      "issue": "חשבונית",
+      "addClient": "לקוח",
+      "addProject": "פרויקט",
+      "askAi": "שאל AI",
+      "erp": "ERP",
+      "scan": "מרכז AI",
+      "billing": "חיוב",
+      "admin": "ניהול"
+    },
+    "axisClients": {
+      "eyebrow": "ציר לקוחות",
+      "title": "אנשים מאחורי המספרים",
+      "all": "לכל הלקוחות",
+      "empty": "עדיין אין לקוחות במערכת",
+      "addFirst": "הוסף לקוח ראשון",
+      "addClient": "לקוח חדש",
+      "activeLabel": "לקוחות פעילים",
+      "latest": "לקוחות אחרונים"
+    },
+    "axisFinance": {
+      "eyebrow": "ציר כספים",
+      "title": "תזרים ומה שהארגון מייצר",
+      "all": "לכל הכספים",
+      "empty": "עדיין אין מסמכים פיננסיים",
+      "totalInvoiced": "חויב החודש",
+      "totalPaid": "נגבה",
+      "pending": "ממתין",
+      "collectionRate": "שיעור גבייה",
+      "issue": "הנפק מסמך",
+      "target": "Target {amount}",
+      "trendVsPrev": "מול חודש קודם {sign}{pct}%",
+      "trendNeutral": "אין השוואת חודש"
+    },
+    "stats": {
+      "activeProjects": "פרויקטים פעילים",
+      "activeClients": "לקוחות פעילים",
+      "billingVolume": "מחזור חיוב (חשבוניות)"
+    },
+    "recentActivity": {
+      "title": "מסמכים ופעילות אחרונה",
+      "subtitle": "עדכונים מהמסמכים המונפקים בארגון.",
+      "empty": "עדיין אין מסמכים מונפקים — התחילו ממסך המסמכים.",
+      "linkAll": "לכל המסמכים",
+      "colClient": "לקוח",
+      "colType": "סוג",
+      "colStatus": "סטטוס",
+      "colDate": "תאריך",
+      "colTotal": "סכום"
+    },
+    "docType": {
+      "INVOICE": "חשבונית",
+      "RECEIPT": "קבלה",
+      "INVOICE_RECEIPT": "חשבונית מס קבלה",
+      "CREDIT_NOTE": "זיכוי"
+    },
+    "docStatus": {
+      "PENDING": "ממתין",
+      "PAID": "שולם",
+      "CANCELLED": "בוטל"
+    },
+    "eyebrow": "דשבורד",
+    "startHere": {
+      "eyebrow": "מתחילים כאן",
+      "title": "שלושה קישורים",
+      "subtitle": "שאר האזורים בתפריט מימין.",
+      "navHint": "עוד אזורים בתפריט העבודה.",
+      "actions": {
+        "documents": "צור מסמך",
+        "clients": "הוסף לקוח",
+        "projects": "צור פרויקט"
+      },
+      "cards": {
+        "documents": {
+          "title": "מסמכים",
+          "body": "סריקה ותיק מסמכים."
+        },
+        "clients": {
+          "title": "לקוחות",
+          "body": "צנרת ואנשי קשר."
+        },
+        "inbox": {
+          "title": "תיבת עבודה",
+          "body": "מה ממתין להחלטה."
+        },
+        "projects": {
+          "title": "פרויקטים",
+          "body": "רשימה ושיוך ללקוחות."
+        },
+        "finance": {
+          "title": "כספים",
+          "body": "תזרים, גבייה ו-ERP."
+        },
+        "operations": {
+          "title": "תפעול",
+          "body": "תהליכים ושטח."
+        },
+        "ai": {
+          "title": "AI",
+          "body": "תובנות ומודיעין."
+        },
+        "settings": {
+          "title": "הגדרות",
+          "body": "מקצוע, ארגון והתאמות."
+        }
+      }
+    },
+    "advancedCta": "מתקדם",
+    "metricLinks": {
+      "documents": "צפה במסמכים",
+      "clients": "ניהול לקוחות",
+      "projects": "ראה פרויקטים",
+      "finance": "ראה כספים"
+    },
+    "metricTrends": {
+      "noneYet": "אין עדיין",
+      "documentsTotal": "{count} סה\"כ",
+      "clientsMonthly": "+{count} מחודש",
+      "projectsActive": "{count} פעילים",
+      "financeFresh": "+8.5% חדש"
+    },
+    "footerHint": "התאימו מקצוע בהגדרות. העלו מסמכים ממסך המסמכים.",
+    "footer": {
+      "onboarding": "התאמה",
+      "automations": "אוטומציות",
+      "portal": "פורטל",
+      "settings": "הגדרות",
+      "admin": "ניהול"
+    }
+  },
+  "workspaceShell": {
+    "refreshingOverlay": "מעדכן את מרחב העבודה…",
+    "topBar": {
+      "searchAria": "חיפוש",
+      "localeAria": "שפת ממשק",
+      "notificationsAria": "התראות",
+      "profileAria": "פרופיל"
+    }
+  },
+  "settingsHub": {
+    "sidebarEyebrow": "הגדרות",
+    "sidebarTitle": "ארגון, מנויים ותפעול"
+  }
+}

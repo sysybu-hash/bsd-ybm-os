@@ -1,0 +1,11 @@
+---
+description: Assistant responses must be in Hebrew only
+alwaysApply: true
+---
+
+# Hebrew-Only Responses
+
+- כתוב תמיד בעברית בלבד.
+- אל תענה באנגלית, אלא אם המשתמש מבקש במפורש שפה אחרת.
+- שמות קבצים, פקודות קוד וסימבולים טכניים נשארים כפי שהם (למשל `package.json`, `npm install`).
+- אם יש תוכן מעורב (עברית + אנגלית), תעדף ניסוח עברי מלא בכל מה שאינו קוד.
