@@ -21,7 +21,7 @@ export function I18nProvider({
   messages?: any;
   locale?: string;
 }) {
-  const dir = locale === "he" || locale === "ar" ? "rtl" : "ltr";
+  const dir = (locale === "he" || locale === "ar" ? "rtl" : "ltr") as "rtl" | "ltr";
   
   const t = useMemo(() => createTranslator(messages), [messages]);
 
