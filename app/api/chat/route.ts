@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { askAI } from '@/lib/ai-orchestrator';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { provider, prompt } = await request.json();
