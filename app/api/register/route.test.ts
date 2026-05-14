@@ -1,48 +1,57 @@
-const mockPrisma = {
-  user: {
-    findFirst: jest.fn(),
-  },
-  organization: {
-    create: jest.fn(),
-    findUnique: jest.fn(),
-  },
-  organizationInvite: {
-    findUnique: jest.fn(),
-    update: jest.fn(),
-  },
-  subscriptionInvitation: {
-    findUnique: jest.fn(),
-    update: jest.fn(),
-  },
-  $transaction: jest.fn(),
-};
+import { NextResponse } from "next/server";
+import { POST } from "@/app/api/register/route";
+import { prisma } from "@/lib/prisma";
+import { sendRegistrationWelcomeEmail } from "@/lib/mail";
+import { trialEndsAtFromNow } from "@/lib/trial";
 
-const mockSendRegistrationWelcomeEmail = jest.fn().mockResolvedValue(undefined);
-const mockTrialEndsAtFromNow = jest.fn(() => new Date("2026-05-12T00:00:00.000Z"));
-
+// Mock dependencies
 jest.mock("next/server", () => ({
   NextResponse: {
-    json: (body: unknown, init?: { status?: number }) => ({
+    json: jest.fn((body, init) => ({
       status: init?.status ?? 200,
       json: async () => body,
-    }),
+    })),
   },
 }));
 
 jest.mock("@/lib/prisma", () => ({
-  prisma: mockPrisma,
+  prisma: {
+    user: {
+      findFirst: jest.fn(),
+    },
+    organization: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    organizationInvite: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    subscriptionInvitation: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    $transaction: jest.fn((cb) => cb({
+      user: { findFirst: jest.fn() },
+      organization: { create: jest.fn(), findUnique: jest.fn() },
+      organizationInvite: { findUnique: jest.fn(), update: jest.fn() },
+      subscriptionInvitation: { findUnique: jest.fn(), update: jest.fn() },
+    })),
+  },
 }));
 
 jest.mock("@/lib/mail", () => ({
-  sendRegistrationWelcomeEmail: (...args: unknown[]) =>
-    mockSendRegistrationWelcomeEmail(...args),
+  sendRegistrationWelcomeEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/lib/trial", () => ({
-  trialEndsAtFromNow: () => mockTrialEndsAtFromNow(),
+  trialEndsAtFromNow: jest.fn(() => new Date("2026-05-12T00:00:00.000Z")),
 }));
 
-import { POST } from "@/app/api/register/route";
+// Helper to cast mocks
+const mockPrisma = prisma as any;
+const mockSendRegistrationWelcomeEmail = sendRegistrationWelcomeEmail as jest.Mock;
+const mockTrialEndsAtFromNow = trialEndsAtFromNow as jest.Mock;
 
 function createMockRequest(body: Record<string, unknown>) {
   return {
@@ -58,7 +67,7 @@ describe("POST /api/register", () => {
     mockPrisma.organization.findUnique.mockResolvedValue({ subscriptionTier: "FREE" });
     mockPrisma.organizationInvite.findUnique.mockResolvedValue(null);
     mockPrisma.subscriptionInvitation.findUnique.mockResolvedValue(null);
-    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => unknown) => cb(mockPrisma));
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
   });
 
   test("rejects invalid email before hitting the database", async () => {
@@ -70,7 +79,8 @@ describe("POST /api/register", () => {
     );
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
+    const data = await response.json();
+    expect(data).toMatchObject({
       error: expect.any(String),
     });
     expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
