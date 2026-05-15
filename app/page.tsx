@@ -23,7 +23,7 @@ type SearchResult = {
 };
 
 export default function OmniCanvas() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState<OSNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -51,10 +51,19 @@ export default function OmniCanvas() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || !session?.user?.id) {
+      return;
+    }
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch("/api/data?type=notifications");
+        const res = await fetch("/api/data?type=notifications", {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (res.ok) {
           const data = await res.json();
           setNotifications(Array.isArray(data) ? data : []);
@@ -64,10 +73,10 @@ export default function OmniCanvas() {
       }
     };
 
-    fetchNotifications();
+    void fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionStatus, session?.user?.id]);
 
   useEffect(() => {
     if (hasHydrated && session && widgets.length === 0 && isFirstTime && !hasOpenedDefaults) {
@@ -222,6 +231,7 @@ export default function OmniCanvas() {
         await fetch("/api/data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ type: "mark-notification-read", id }),
         });
       } catch (err) {
@@ -232,8 +242,21 @@ export default function OmniCanvas() {
     }
   };
 
-  if (!mounted) return null;
-  if (!session) return <LandingPage onLogin={() => void signIn("google", { callbackUrl: "/" })} />;
+  if (!mounted || sessionStatus === "loading") {
+    return (
+      <div
+        className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
+        dir="rtl"
+      >
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" aria-hidden />
+        <p className="mt-4 text-sm font-semibold">טוען סביבת עבודה…</p>
+      </div>
+    );
+  }
+
+  if (sessionStatus === "unauthenticated" || !session) {
+    return <LandingPage onLogin={() => void signIn("google", { callbackUrl: "/" })} />;
+  }
 
   return (
     <main className="quiet-shell fixed inset-0 overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir="rtl">

@@ -57,7 +57,7 @@ export default function Omnibar({
   }, []);
 
   const geminiLive = useGeminiLiveAudio({
-    enabled: !!session?.user,
+    enabled: Boolean(session?.user?.id && session?.user?.organizationId),
     settings: geminiVoiceSettings,
     systemInstruction:
       "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית קצרה, מקצועית ועניינית. הווידג׳טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
@@ -148,7 +148,11 @@ export default function Omnibar({
                       animate={{
                         height: voiceStatus === "speaking" ? [4, height, 4] : [3, Math.max(6, height / 2), 3],
                       }}
-                      transition={{ repeat: Infinity, duration: 0.65 + (i % 4) * 0.08, ease: "easeInOut" }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 0.65 + (i % 4) * 0.08,
+                        ease: [0.42, 0, 0.58, 1] as const,
+                      }}
                       className={`w-1 rounded-full ${voiceStatus === "speaking" ? "bg-indigo-500" : "bg-emerald-500/60"}`}
                     />
                   ))}

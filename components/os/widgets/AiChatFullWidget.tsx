@@ -53,7 +53,7 @@ export default function AiChatFullWidget() {
   }, []);
 
   const geminiLive = useGeminiLiveAudio({
-    enabled: isLiveMode && !!session?.user,
+    enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
     systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
     settings: geminiVoiceSettings,
     onUserTranscript: (text, finished) => {

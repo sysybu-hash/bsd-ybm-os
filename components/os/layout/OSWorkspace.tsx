@@ -81,6 +81,7 @@ export default function OSWorkspace({
   updateZoom,
 }: OSWorkspaceProps) {
   const { data: session } = useSession();
+  const workspaceBoundsRef = React.useRef<HTMLDivElement>(null);
   const [greeting, setGreeting] = React.useState("שלום");
   const userName = session?.user?.name?.split(" ")[0] || "משתמש";
 
@@ -108,7 +109,7 @@ export default function OSWorkspace({
   }, []);
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div ref={workspaceBoundsRef} className="relative flex min-h-0 flex-1 overflow-hidden">
       <AnimatePresence mode="wait">
         {hasHydrated && widgets.length === 0 && (
           <motion.section
@@ -173,6 +174,7 @@ export default function OSWorkspace({
             onResize={(s) => updateWidgetSize(widget.id, s)}
             onMaximize={() => toggleMaximize(widget.id)}
             onZoomChange={(delta) => updateZoom(widget.id, delta)}
+            workspaceBoundsRef={workspaceBoundsRef}
           >
             {widget.type === "project" && <ProjectWidget projectName={String(widget.liveData?.name || "Search")} />}
             {widget.type === "crm" && <CrmWidget />}

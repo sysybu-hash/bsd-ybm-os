@@ -39,6 +39,7 @@ type TokenResponse = {
   token?: string;
   model?: string;
   error?: string;
+  code?: string;
 };
 
 type LiveResponse =
@@ -252,7 +253,7 @@ export function useGeminiLiveAudio({
   const start = useCallback(async () => {
     if (!enabled) {
       setState("fallback");
-      setStatusText("Gemini Live זמין רק אחרי התחברות לארגון.");
+      setStatusText("Gemini Live זמין אחרי התחברות ושיוך לארגון.");
       return false;
     }
 
@@ -268,9 +269,23 @@ export function useGeminiLiveAudio({
     setStatusText("מכין Gemini Live מאובטח...");
 
     try {
-      const tokenResponse = await fetch("/api/ai/gemini-live/session", { method: "POST" });
-      const tokenData = (await tokenResponse.json()) as TokenResponse;
+      const tokenResponse = await fetch("/api/ai/gemini-live/session", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
+      const tokenData = (await tokenResponse.json().catch(() => ({}))) as TokenResponse;
       if (!tokenResponse.ok || !tokenData.token) {
+        if (tokenResponse.status === 403) {
+          throw new Error(
+            tokenData.error ?? "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
+          );
+        }
+        if (tokenResponse.status === 401) {
+          throw new Error(
+            tokenData.error ?? "פג תוקף ההתחברות. התנתק והתחבר שוב כדי להשתמש בעוזר הקולי.",
+          );
+        }
         throw new Error(tokenData.error ?? "לא התקבל token עבור Gemini Live");
       }
 

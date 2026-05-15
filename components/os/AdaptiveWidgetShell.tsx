@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 
+type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
 interface ShellProps {
   id: string;
   title: string;
@@ -15,6 +17,8 @@ interface ShellProps {
   onResize?: (size: { width: number; height: number }) => void;
   onMaximize?: () => void;
   onZoomChange?: (delta: number) => void;
+  /** אזור העבודה (מתחת לכותרת, מעל ה־Omnibar) — גבולות גרירה/גודל יחושבו ממנו */
+  workspaceBoundsRef?: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 }
 
@@ -35,6 +39,7 @@ export default function AdaptiveWidgetShell({
   onResize,
   onMaximize,
   onZoomChange,
+  workspaceBoundsRef,
   children,
 }: ShellProps) {
   const getViewportSize = () => ({
@@ -42,23 +47,36 @@ export default function AdaptiveWidgetShell({
     height: typeof window !== "undefined" ? window.innerHeight : 800,
   });
 
+  const getWorkspaceSize = useCallback(() => {
+    const el = workspaceBoundsRef?.current;
+    if (el) {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) {
+        return { width: w, height: h };
+      }
+    }
+    const v = getViewportSize();
+    return { width: Math.max(320, v.width - 24), height: Math.max(400, v.height - 130) };
+  }, [workspaceBoundsRef]);
+
   const getInitialPosition = () => {
     if (initialOffset) return initialOffset;
-    const viewport = getViewportSize();
-    const width = Math.min(size.width, viewport.width - 32);
-    const height = Math.min(size.height, viewport.height - 150);
+    const ws = getWorkspaceSize();
+    const width = Math.min(size.width, Math.max(MIN_WIDTH, ws.width - 16));
+    const height = Math.min(size.height, Math.max(MIN_HEIGHT, ws.height - 16));
     return {
-      x: Math.max(16, viewport.width / 2 - width / 2),
-      y: Math.max(80, viewport.height / 2 - height / 2),
+      x: Math.max(0, ws.width / 2 - width / 2),
+      y: Math.max(0, ws.height / 2 - height / 2),
     };
   };
 
   const [position, setPosition] = useState(getInitialPosition);
   const [currentSize, setCurrentSize] = useState(() => {
-    const viewport = getViewportSize();
+    const ws = getWorkspaceSize();
     return {
-      width: Math.min(size.width, viewport.width - 32),
-      height: Math.min(size.height, viewport.height - 150),
+      width: Math.min(size.width, Math.max(MIN_WIDTH, ws.width - 16)),
+      height: Math.min(size.height, Math.max(MIN_HEIGHT, ws.height - 16)),
     };
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -68,7 +86,15 @@ export default function AdaptiveWidgetShell({
   const positionRef = useRef(position);
   const sizeRef = useRef(currentSize);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
-  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: size.width, height: size.height });
+  const resizeStartRef = useRef({
+    mouseX: 0,
+    mouseY: 0,
+    width: size.width,
+    height: size.height,
+    left: 0,
+    top: 0,
+    dir: "se" as ResizeHandle,
+  });
 
   useEffect(() => {
     positionRef.current = position;
@@ -85,18 +111,104 @@ export default function AdaptiveWidgetShell({
     return () => window.removeEventListener("resize", syncViewport);
   }, []);
 
+  const clampToWorkspace = useCallback(
+    (pos: { x: number; y: number }, dim: { width: number; height: number }) => {
+      const ws = getWorkspaceSize();
+      const maxX = Math.max(0, ws.width - dim.width);
+      const maxY = Math.max(0, ws.height - dim.height);
+      return {
+        x: Math.max(0, Math.min(pos.x, maxX)),
+        y: Math.max(0, Math.min(pos.y, maxY)),
+      };
+    },
+    [getWorkspaceSize],
+  );
+
   const moveWindow = useCallback((clientX: number, clientY: number) => {
     const { mouseX, mouseY, x, y } = dragStartRef.current;
-    setPosition({ x: x + clientX - mouseX, y: y + clientY - mouseY });
-  }, []);
+    const next = { x: x + clientX - mouseX, y: y + clientY - mouseY };
+    setPosition(clampToWorkspace(next, sizeRef.current));
+  }, [clampToWorkspace]);
 
-  const resizeWindow = useCallback((clientX: number, clientY: number) => {
-    const { mouseX, mouseY, width, height } = resizeStartRef.current;
-    setCurrentSize({
-      width: Math.max(MIN_WIDTH, width + clientX - mouseX),
-      height: Math.max(MIN_HEIGHT, height + clientY - mouseY),
-    });
-  }, []);
+  const resizeWindow = useCallback(
+    (clientX: number, clientY: number) => {
+      const { mouseX, mouseY, width: sw, height: sh, left: sl, top: st, dir } = resizeStartRef.current;
+      const dx = clientX - mouseX;
+      const dy = clientY - mouseY;
+
+      let newW = sw;
+      let newH = sh;
+      let newL = sl;
+      let newT = st;
+
+      switch (dir) {
+        case "se":
+          newW = sw + dx;
+          newH = sh + dy;
+          break;
+        case "s":
+          newH = sh + dy;
+          break;
+        case "e":
+          newW = sw + dx;
+          break;
+        case "nw":
+          newW = sw - dx;
+          newH = sh - dy;
+          newL = sl + dx;
+          newT = st + dy;
+          break;
+        case "n":
+          newH = sh - dy;
+          newT = st + dy;
+          break;
+        case "w":
+          newW = sw - dx;
+          newL = sl + dx;
+          break;
+        case "ne":
+          newW = sw + dx;
+          newH = sh - dy;
+          newT = st + dy;
+          break;
+        case "sw":
+          newW = sw - dx;
+          newH = sh + dy;
+          newL = sl + dx;
+          break;
+        default:
+          break;
+      }
+
+      newW = Math.max(MIN_WIDTH, newW);
+      newH = Math.max(MIN_HEIGHT, newH);
+
+      const wsInner = getWorkspaceSize();
+      newW = Math.min(newW, wsInner.width);
+      newH = Math.min(newH, wsInner.height);
+
+      if (dir === "nw" || dir === "w" || dir === "sw") {
+        newL = sl + sw - newW;
+      }
+      if (dir === "nw" || dir === "n" || dir === "ne") {
+        newT = st + sh - newH;
+      }
+
+      const clamped = clampToWorkspace({ x: newL, y: newT }, { width: newW, height: newH });
+      if (clamped.x !== newL) {
+        newW = Math.max(MIN_WIDTH, newW - (newL - clamped.x));
+        newL = clamped.x;
+      }
+      if (clamped.y !== newT) {
+        newH = Math.max(MIN_HEIGHT, newH - (newT - clamped.y));
+        newT = clamped.y;
+      }
+
+      setPosition({ x: newL, y: newT });
+      setCurrentSize({ width: newW, height: newH });
+    },
+    [clampToWorkspace, getWorkspaceSize],
+  );
 
   useEffect(() => {
     if (!isDragging && !isResizing) return;
@@ -108,11 +220,17 @@ export default function AdaptiveWidgetShell({
     const handleUp = () => {
       if (isDragging) {
         setIsDragging(false);
-        onPositionChange?.(positionRef.current);
+        onPositionChange?.(clampToWorkspace(positionRef.current, sizeRef.current));
       }
       if (isResizing) {
         setIsResizing(false);
-        onResize?.(sizeRef.current);
+        const dim = sizeRef.current;
+        const pos = clampToWorkspace(positionRef.current, dim);
+        if (pos.x !== positionRef.current.x || pos.y !== positionRef.current.y) {
+          setPosition(pos);
+        }
+        onResize?.(dim);
+        onPositionChange?.(pos);
       }
     };
 
@@ -122,12 +240,29 @@ export default function AdaptiveWidgetShell({
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize]);
+  }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize, clampToWorkspace]);
 
-  const viewport = getViewportSize();
+  const ws = getWorkspaceSize();
   const mobileOrMaximized = isMobile || isMaximized;
-  const clampedLeft = Math.max(12, Math.min(position.x, viewport.width - currentSize.width - 12));
-  const clampedTop = Math.max(76, Math.min(position.y, viewport.height - currentSize.height - 12));
+  const clamped = clampToWorkspace(position, currentSize);
+  const clampedLeft = mobileOrMaximized ? 0 : clamped.x;
+  const clampedTop = mobileOrMaximized ? 0 : clamped.y;
+
+  const startResize = (e: React.MouseEvent, dir: ResizeHandle) => {
+    if (mobileOrMaximized) return;
+    e.stopPropagation();
+    e.preventDefault();
+    resizeStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      width: currentSize.width,
+      height: currentSize.height,
+      left: position.x,
+      top: position.y,
+      dir,
+    };
+    setIsResizing(true);
+  };
 
   return (
     <section
@@ -139,8 +274,8 @@ export default function AdaptiveWidgetShell({
       style={{
         width: mobileOrMaximized ? "100%" : `${currentSize.width}px`,
         height: mobileOrMaximized ? "100%" : `${currentSize.height}px`,
-        maxWidth: mobileOrMaximized ? "100%" : "calc(100vw - 24px)",
-        maxHeight: mobileOrMaximized ? "100%" : "calc(100dvh - 130px)",
+        maxWidth: mobileOrMaximized ? "100%" : `${ws.width}px`,
+        maxHeight: mobileOrMaximized ? "100%" : `${ws.height}px`,
         left: mobileOrMaximized ? 0 : `${clampedLeft}px`,
         top: mobileOrMaximized ? 0 : `${clampedTop}px`,
         zIndex: mobileOrMaximized ? 2000 : zIndex,
@@ -160,10 +295,20 @@ export default function AdaptiveWidgetShell({
         }`}
       >
         <div className="flex items-center gap-1.5">
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-600" aria-label={`סגור ${title}`}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-600"
+            aria-label={`סגור ${title}`}
+          >
             <X size={15} aria-hidden />
           </button>
-          <button type="button" onClick={onMaximize} className="hidden h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)] md:flex" aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}>
+          <button
+            type="button"
+            onClick={onMaximize}
+            className="hidden h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)] md:flex"
+            aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}
+          >
             {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
           </button>
         </div>
@@ -171,33 +316,99 @@ export default function AdaptiveWidgetShell({
         <h2 className="truncate px-3 text-xs font-black tracking-[0.12em] text-[color:var(--foreground-main)]">{title}</h2>
 
         <div className="hidden items-center gap-1 md:flex">
-          <button type="button" onClick={() => onZoomChange?.(-0.1)} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]" aria-label={`הקטן זום ב-${title}`}>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(-0.1)}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]"
+            aria-label={`הקטן זום ב-${title}`}
+          >
             <ZoomOut size={14} aria-hidden />
           </button>
           <span className="w-10 text-center text-[10px] font-black text-[color:var(--foreground-muted)]">{Math.round(zoom * 100)}%</span>
-          <button type="button" onClick={() => onZoomChange?.(0.1)} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]" aria-label={`הגדל זום ב-${title}`}>
+          <button
+            type="button"
+            onClick={() => onZoomChange?.(0.1)}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]"
+            aria-label={`הגדל זום ב-${title}`}
+          >
             <ZoomIn size={14} aria-hidden />
           </button>
         </div>
       </header>
 
-      <div className="custom-scrollbar h-full w-full flex-1 overflow-auto bg-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] md:pb-0" style={{ transform: `scale(${zoom})`, transformOrigin: "top right" }}>
+      <div
+        className="custom-scrollbar h-full w-full flex-1 overflow-auto bg-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] md:pb-0"
+        style={{ transform: `scale(${zoom})`, transformOrigin: "top right" }}
+      >
         {children}
       </div>
 
       {!mobileOrMaximized && (
-        <div
-          onMouseDown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width: currentSize.width, height: currentSize.height };
-            setIsResizing(true);
-          }}
-          className="absolute bottom-0 right-0 flex h-8 w-8 cursor-nwse-resize items-end justify-end p-1"
-          aria-hidden
-        >
-          <div className="h-3 w-3 border-b-2 border-r-2 border-[color:var(--foreground-muted)]" />
-        </div>
+        <>
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "n")}
+            className="absolute left-3 right-3 top-0 z-[5] h-2 cursor-ns-resize border-0 bg-transparent p-0"
+            style={{ cursor: "ns-resize" }}
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "s")}
+            className="absolute bottom-0 left-3 right-3 z-[5] h-2 cursor-ns-resize border-0 bg-transparent p-0"
+            style={{ cursor: "ns-resize" }}
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "e")}
+            className="absolute right-0 top-10 z-[5] w-2 cursor-ew-resize border-0 bg-transparent p-0"
+            style={{ cursor: "ew-resize" }}
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "w")}
+            className="absolute left-0 top-10 z-[5] w-2 cursor-ew-resize border-0 bg-transparent p-0"
+            style={{ cursor: "ew-resize" }}
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "nw")}
+            className="absolute left-0 top-0 z-[6] h-4 w-4 cursor-nwse-resize border-0 bg-transparent p-0"
+            style={{ cursor: "nwse-resize" }}
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "ne")}
+            className="absolute right-0 top-0 z-[6] h-4 w-4 cursor-nesw-resize border-0 bg-transparent p-0"
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "sw")}
+            className="absolute bottom-0 left-0 z-[6] h-4 w-4 cursor-nesw-resize border-0 bg-transparent p-0"
+          />
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            onMouseDown={(e) => startResize(e, "se")}
+            className="absolute bottom-0 right-0 z-[6] flex h-6 w-6 cursor-nwse-resize items-end justify-end border-0 bg-transparent p-1"
+          >
+            <div className="pointer-events-none h-3 w-3 border-b-2 border-r-2 border-[color:var(--foreground-muted)] opacity-70" />
+          </button>
+        </>
       )}
     </section>
   );
