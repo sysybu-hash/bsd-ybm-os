@@ -2,12 +2,12 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { BrainCircuit, BarChart3, Fingerprint, Layers, ChevronLeft, Mic } from "lucide-react";
 
 export default function LandingPage({ onLogin }: { onLogin: () => void }) {
   const router = useRouter();
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -15,9 +15,13 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: [0, 0, 0.2, 1] as const },
+    },
   };
 
   return (
