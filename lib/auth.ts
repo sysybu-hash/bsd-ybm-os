@@ -49,7 +49,8 @@ export const authOptions: NextAuthOptions = {
               params: {
                 prompt: "select_account",
                 access_type: "offline",
-                scope: "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/assistant-sdk-prototype",
+                /** בלי assistant-sdk-prototype — scope ניסיוני שגרם ל־500 במסך ההסכמה של Google */
+                scope: "openid email profile https://www.googleapis.com/auth/drive.file",
               },
             },
           }),

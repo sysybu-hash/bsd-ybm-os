@@ -164,7 +164,7 @@ export default function AiScannerWidget() {
     <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
       {/* History Sidebar */}
       <div className="w-full md:w-72 border-b md:border-b-0 md:border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col h-1/3 md:h-auto">
-        <div className="p-6 border-b border-[color:var(--border-main)]">
+        <div className="p-4 md:p-6 border-b border-[color:var(--border-main)]">
           <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
             <History size={18} />
             <span className="font-black text-xs uppercase tracking-widest">היסטוריית סריקות</span>
@@ -191,7 +191,7 @@ export default function AiScannerWidget() {
 
       {/* Main Scanner Area */}
       <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto custom-scrollbar">
-        <div className="flex items-center gap-4 mb-12">
+        <div className="flex items-center gap-4 mb-6 md:mb-12">
           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-lg shadow-orange-900/10">
             <ScanLine size={28} />
           </div>
@@ -243,6 +243,7 @@ export default function AiScannerWidget() {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 font-bold">₪</span>
                     <input 
                       type="number"
+                      inputMode="decimal"
                       value={pendingAnalysis.amount}
                       onChange={(e) => setPendingAnalysis({...pendingAnalysis, amount: parseFloat(e.target.value)})}
                       className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl px-4 py-3 pl-10 text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:ring-1 focus:ring-orange-500/50"

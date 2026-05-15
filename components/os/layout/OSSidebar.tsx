@@ -1,20 +1,22 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  BarChart3, 
-  Users, 
-  Package, 
-  FilePlus, 
-  ScanLine, 
-  Sparkles,
-  Settings,
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  BarChart3,
+  FilePlus,
+  FileText,
   HelpCircle,
-  FileText
-} from 'lucide-react';
-import { WidgetType } from '@/hooks/use-window-manager';
+  LayoutDashboard,
+  Package,
+  ScanLine,
+  Settings,
+  Sparkles,
+  Users,
+  Library,
+} from "lucide-react";
+import { WidgetType } from "@/hooks/use-window-manager";
+import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 
 interface OSSidebarProps {
   openWidget: (type: WidgetType) => void;
@@ -23,78 +25,78 @@ interface OSSidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', icon: LayoutDashboard, label: 'דאשבורד', type: 'dashboard' as WidgetType, color: 'text-blue-400' },
-  { id: 'project', icon: BarChart3, label: 'פרויקטים', type: 'project' as WidgetType, color: 'text-indigo-400' },
-  { id: 'crm', icon: Users, label: 'לקוחות', type: 'crm' as WidgetType, color: 'text-emerald-400' },
-  { id: 'erp', icon: Package, label: 'ארכיון ERP', type: 'erp' as WidgetType, color: 'text-amber-400' },
-  { id: 'docCreator', icon: FilePlus, label: 'מסמכים', type: 'docCreator' as WidgetType, color: 'text-rose-400' },
-  { id: 'aiScanner', icon: ScanLine, label: 'סורק AI', type: 'aiScanner' as WidgetType, color: 'text-orange-400' },
-  { id: 'aiChat', icon: Sparkles, label: 'צ\'אט AI', type: 'aiChatFull' as WidgetType, color: 'text-purple-400' },
-  { id: 'meckanoReports', icon: FileText, label: 'דוחות מקאנו', type: 'meckanoReports' as WidgetType, color: 'text-indigo-400' },
+  { id: "dashboard", icon: LayoutDashboard, label: "דאשבורד", type: "dashboard" as WidgetType },
+  { id: "projectBoard", icon: BarChart3, label: "פרויקטים", type: "projectBoard" as WidgetType },
+  { id: "crmTable", icon: Users, label: "לקוחות", type: "crmTable" as WidgetType },
+  { id: "erpArchive", icon: Package, label: "ארכיון ERP", type: "erpArchive" as WidgetType },
+  { id: "docCreator", icon: FilePlus, label: "מסמכים", type: "docCreator" as WidgetType },
+  { id: "aiScanner", icon: ScanLine, label: "סורק AI", type: "aiScanner" as WidgetType },
+  { id: "aiChatFull", icon: Sparkles, label: "צ׳אט AI", type: "aiChatFull" as WidgetType },
+  { id: "meckanoReports", icon: FileText, label: "דוחות Meckano", type: "meckanoReports" as WidgetType },
+  { id: "notebookLM", icon: Library, label: "NotebookLM", type: "notebookLM" as WidgetType },
 ];
 
 export default function OSSidebar({ openWidget, isOpen = false, closeSidebar }: OSSidebarProps) {
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-[1150] backdrop-blur-sm"
-          onClick={closeSidebar}
-        />
+        <button type="button" className="fixed inset-0 z-[1150] hidden bg-slate-950/45 backdrop-blur-[2px] md:block" onClick={closeSidebar} aria-label="סגור ניווט" />
       )}
-      
-      <motion.aside 
-        initial={{ x: 100, opacity: 0 }}
-        animate={{ 
-          x: 0, 
-          opacity: 1,
-        }}
-        className={`fixed z-[1200] transition-transform duration-300 backdrop-blur-xl shadow-2xl bg-[color:var(--glass-bg)] border-[color:var(--border-main)]
-          /* Mobile: Bottom Bar */
-          bottom-0 left-0 right-0 w-full h-auto flex flex-row items-center py-3 px-4 border-t
-          ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
-          
-          /* Desktop: Right Sidebar */
-          md:translate-y-0 md:right-6 md:top-24 md:bottom-32 md:w-16 md:flex-col md:py-6 md:border md:rounded-2xl md:left-auto md:h-auto
-        `}
+
+      <motion.aside
+        initial={{ x: 24, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-transform duration-200 md:flex
+          bottom-0 left-0 right-0 h-auto w-full items-stretch border-t px-3 py-2
+          ${isOpen ? "translate-y-0" : "translate-y-0"}
+          md:bottom-28 md:left-auto md:right-5 md:top-24 md:w-14 md:rounded-lg md:border md:px-2 md:py-4`}
+        aria-label="ניווט סביבת עבודה"
       >
-        <div className="flex-1 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar w-full items-center justify-around md:justify-start">
+        <div className="flex w-full flex-1 items-center justify-around gap-1 overflow-x-auto md:flex-col md:justify-start md:gap-2 md:overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}
+              type="button"
               onClick={() => openWidget(item.type)}
-              className="group relative flex-shrink-0 w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-xl hover:bg-[color:var(--foreground-muted)]/10 transition-all"
+              className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
               title={item.label}
+              aria-label={item.label}
             >
-              <item.icon size={20} className={`${item.color} group-hover:scale-110 transition-transform`} />
-              
-              {/* Tooltip */}
-              <div className="hidden md:block absolute right-14 px-2 py-1 bg-[color:var(--background-main)] border border-[color:var(--border-main)] rounded text-[10px] font-bold text-[color:var(--foreground-main)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass(item.type)}`}
+              >
+                <item.icon size={19} aria-hidden />
+              </span>
+              <span className="pointer-events-none absolute right-14 z-50 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
                 {item.label}
-              </div>
+              </span>
             </button>
           ))}
         </div>
 
-        <div className="flex flex-row md:flex-col gap-4 border-r md:border-r-0 md:border-t border-[color:var(--border-main)]/30 pr-4 md:pr-0 md:pt-6 ml-4 md:ml-0 md:mt-4 items-center">
-          <button 
-            onClick={() => openWidget('settings')}
-            className="group relative flex-shrink-0 w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-xl hover:bg-[color:var(--foreground-muted)]/10 transition-all text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+        <div className="ml-2 flex items-center gap-1 border-r border-[color:var(--border-main)] pr-2 md:ml-0 md:mt-3 md:flex-col md:border-r-0 md:border-t md:pr-0 md:pt-3">
+          <button
+            type="button"
+            onClick={() => openWidget("settings")}
+            className="group flex h-11 w-11 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
+            aria-label="הגדרות"
+            title="הגדרות"
           >
-            <Settings size={20} />
-            <div className="hidden md:block absolute right-14 px-2 py-1 bg-[color:var(--background-main)] border border-[color:var(--border-main)] rounded text-[10px] font-bold text-[color:var(--foreground-main)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-              הגדרות
-            </div>
+            <span className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass("settings")}`}>
+              <Settings size={19} aria-hidden />
+            </span>
           </button>
-          <button 
-            onClick={() => openWidget('aiChatFull')}
-            className="group relative flex-shrink-0 w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-xl hover:bg-[color:var(--foreground-muted)]/10 transition-all text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+          <button
+            type="button"
+            onClick={() => openWidget("aiChatFull")}
+            className="group flex h-11 w-11 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
+            aria-label="עזרה"
+            title="עזרה"
           >
-            <HelpCircle size={20} />
-            <div className="hidden md:block absolute right-14 px-2 py-1 bg-[color:var(--background-main)] border border-[color:var(--border-main)] rounded text-[10px] font-bold text-[color:var(--foreground-main)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-              עזרה
-            </div>
+            <span className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${helpIconChipClass}`}>
+              <HelpCircle size={19} aria-hidden />
+            </span>
           </button>
         </div>
       </motion.aside>

@@ -17,15 +17,16 @@ import {
   Mic,
   MicOff,
   Volume2,
-  VolumeX,
-  Save,
-  X
+  VolumeX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
-import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
+import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from '@/hooks/useGeminiLiveAudio';
+import type { GeminiLiveVoiceSettings } from '@/hooks/useGeminiLiveAudio';
 import { useSession } from 'next-auth/react';
 import { useWindowManager } from '@/hooks/use-window-manager';
+import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
+import GeminiLiveSettingsSheet from '@/components/os/GeminiLiveSettingsSheet';
 
 interface Message {
   id: string;
@@ -42,26 +43,19 @@ export default function AiChatFullWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'claude'>('gemini');
   const [isLiveMode, setIsLiveMode] = useState(false);
+  const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
-  const [liveSettings, setLiveSettings] = useState({
-    voice: 'Aoede' as const,
-    model: 'gemini-3.1-flash-live-preview'
-  });
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
+  }, []);
+
   const geminiLive = useGeminiLiveAudio({
     enabled: isLiveMode && !!session?.user,
-    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant.",
-    settings: {
-      voiceName: liveSettings.voice,
-      temperature: 0.7,
-      silenceDurationMs: 1100,
-      prefixPaddingMs: 350,
-      inputTranscription: true,
-      outputTranscription: true,
-      responseMode: "audio",
-    },
+    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
+    settings: geminiVoiceSettings,
     onUserTranscript: (text, finished) => {
       if (finished) {
         setMessages(prev => [...prev, {
@@ -216,50 +210,6 @@ export default function AiChatFullWidget() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col relative">
-        {/* Gemini Live Settings Overlay */}
-        {showSettings && (
-          <div className="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                  <Settings2 className="text-purple-600 dark:text-purple-400" size={24} /> הגדרות Gemini Live
-                </h3>
-                <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-500 transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-6 mb-8">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">קול העוזר</label>
-                  <select 
-                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500/50 appearance-none text-slate-900 dark:text-slate-200"
-                    value={liveSettings.voice}
-                    onChange={(e) => setLiveSettings({...liveSettings, voice: e.target.value as any})}
-                  >
-                    <option value="Aoede">Aoede (נקבה)</option>
-                    <option value="Charon">Charon (זכר)</option>
-                    <option value="Puck">Puck (נייטרלי)</option>
-                    <option value="Kore">Kore (נקבה - ברירת מחדל)</option>
-                    <option value="Fenrir">Fenrir (זכר עוצמתי)</option>
-                  </select>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => {
-                  setShowSettings(false);
-                  toast.success('הגדרות נשמרו');
-                  if (isLiveActive) stop();
-                }}
-                className="w-full h-12 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
-              >
-                <Save size={18} /> שמור הגדרות
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Chat Header with Live Toggle */}
         <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -406,6 +356,14 @@ export default function AiChatFullWidget() {
           </div>
         </div>
       </div>
+
+      <GeminiLiveSettingsSheet
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        value={geminiVoiceSettings}
+        onChange={setGeminiVoiceSettings}
+        isLiveActive={isLiveActive}
+      />
     </div>
   );
 }

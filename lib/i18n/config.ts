@@ -6,7 +6,7 @@ export const PRIMARY_UI_LOCALES = ["he", "en", "ru"] as const;
 
 export type AppLocale = (typeof PRIMARY_UI_LOCALES)[number];
 
-export const DEFAULT_LOCALE: AppLocale = "en";
+export const DEFAULT_LOCALE: AppLocale = "he";
 
 export const COOKIE_LOCALE = "bsd-locale";
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bsd-ybm-os-v2';
+const CACHE_NAME = 'bsd-ybm-os-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',

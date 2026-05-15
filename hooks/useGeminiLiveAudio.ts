@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 
 type GeminiLiveState = "idle" | "connecting" | "ready" | "streaming" | "fallback" | "error";
 
@@ -307,10 +308,11 @@ export function useGeminiLiveAudio({
 
       socket.onmessage = (event) => {
         void handleLiveMessage(event).catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : String(error);
+          const raw = error instanceof Error ? error.message : String(error);
+          const friendly = formatGeminiLiveUserMessage(raw);
           setState("error");
-          setStatusText(message);
-          onError?.(message);
+          setStatusText(friendly);
+          onError?.(friendly);
         });
       };
       socket.onclose = () => {
@@ -343,7 +345,7 @@ export function useGeminiLiveAudio({
                     properties: {
                       action: {
                         type: "STRING",
-                        enum: ["crm", "meckanoReports", "projectBoard", "aiScanner", "erpArchive", "docCreator", "settings", "googleDrive"],
+                        enum: ["crm", "meckanoReports", "projectBoard", "aiScanner", "erpArchive", "docCreator", "settings", "googleDrive", "notebookLM"],
                         description: "הווידג'ט לפתיחה"
                       }
                     },
@@ -418,10 +420,11 @@ export function useGeminiLiveAudio({
       return true;
     } catch (error) {
       cleanup();
-      const message = error instanceof Error ? error.message : String(error);
+      const raw = error instanceof Error ? error.message : String(error);
+      const friendly = formatGeminiLiveUserMessage(raw);
       setState("fallback");
-      setStatusText("Gemini Live לא זמין כרגע. עובר למצב תאימות.");
-      onError?.(message);
+      setStatusText(friendly);
+      onError?.(friendly);
       return false;
     }
   }, [cleanup, enabled, handleLiveMessage, model, onError, settings, state, systemInstruction]);

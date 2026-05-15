@@ -18,33 +18,35 @@ export default async function NotFound() {
 
   return (
     <div
-      className="mx-auto flex min-h-[50vh] max-w-lg flex-col justify-center gap-6 px-6 py-16 text-center"
+      className="flex min-h-dvh flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]"
       dir={dir}
     >
-      <p className="text-sm font-bold uppercase tracking-widest text-slate-500">
-        {t("siteErrors.notFoundCode")}
-      </p>
-      <h1 className="text-3xl font-black text-slate-900">{t("siteErrors.notFoundTitle")}</h1>
-      <p className="leading-relaxed text-slate-600">{t("siteErrors.notFoundBody")}</p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <Link
-          href="/"
-          className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
-        >
-          {t("siteErrors.home")}
-        </Link>
-        <Link
-          href="/app"
-          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-        >
-          {t("siteErrors.workspace")}
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
-        >
-          {t("siteErrors.login")}
-        </Link>
+      <div className="mx-auto flex min-h-[50vh] w-full max-w-lg flex-1 flex-col justify-center gap-6 px-6 py-16 text-center">
+        <p className="text-sm font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
+          {t("siteErrors.notFoundCode")}
+        </p>
+        <h1 className="text-3xl font-black text-[color:var(--foreground-main)]">{t("siteErrors.notFoundTitle")}</h1>
+        <p className="leading-relaxed text-[color:var(--foreground-muted)]">{t("siteErrors.notFoundBody")}</p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/"
+            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-500"
+          >
+            {t("siteErrors.home")}
+          </Link>
+          <Link
+            href="/app"
+            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-5 py-3 text-sm font-bold text-[color:var(--foreground-main)] transition hover:bg-[color:var(--surface-soft)]"
+          >
+            {t("siteErrors.workspace")}
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-5 py-3 text-sm font-bold text-[color:var(--foreground-main)] transition hover:bg-[color:var(--surface-soft)]"
+          >
+            {t("siteErrors.login")}
+          </Link>
+        </div>
       </div>
     </div>
   );

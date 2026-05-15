@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant';
+export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant' | 'notebookLM';
 
 export interface ActiveWidget {
   id: string;
   type: WidgetType;
-  liveData: any;
+  liveData: Record<string, unknown> | null;
   position: { x: number; y: number };
   zIndex: number;
   size: { width: number; height: number };
@@ -15,7 +15,7 @@ export interface ActiveWidget {
   zoom?: number;
 }
 
-const STORAGE_KEY = 'bsd_ybm_layout_final_v2';
+const STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
 
 const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }> = {
   project: { width: 800, height: 600 },
@@ -35,6 +35,7 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   meckanoReports: { width: 900, height: 750 },
   googleDrive: { width: 800, height: 600 },
   googleAssistant: { width: 500, height: 650 },
+  notebookLM: { width: 720, height: 620 },
 };
 
 export function useWindowManager() {
@@ -50,8 +51,9 @@ export function useWindowManager() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          setWidgets(parsed);
-          const maxZ = Math.max(...parsed.map((w: any) => w.zIndex || 100), 100);
+          const restored = parsed.filter((w) => w && typeof w.id === 'string' && typeof w.type === 'string') as ActiveWidget[];
+          setWidgets(restored);
+          const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
           nextZIndexRef.current = maxZ + 1;
           setIsFirstTime(false);
         }
@@ -73,7 +75,7 @@ export function useWindowManager() {
     }
   }, [widgets, hasHydrated]);
 
-  const openWidget = useCallback((type: WidgetType, data: any = null) => {
+  const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null) => {
     const id = `${type}-${Date.now()}`;
     const nextZ = nextZIndexRef.current + 1;
     nextZIndexRef.current = nextZ;
@@ -81,13 +83,17 @@ export function useWindowManager() {
     const size = DEFAULT_WIDGET_SIZES[type] || { width: 750, height: 550 };
     
     // מרכוז החלון
-    const x = typeof window !== 'undefined' ? (window.innerWidth / 2 - size.width / 2) : 100;
-    const y = typeof window !== 'undefined' ? (window.innerHeight / 2 - size.height / 2) : 100;
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const width = Math.min(size.width, Math.max(360, viewportWidth - 32));
+    const height = Math.min(size.height, Math.max(320, viewportHeight - 140));
+    const x = viewportWidth / 2 - width / 2;
+    const y = viewportHeight / 2 - height / 2;
 
     setWidgets(prev => [...prev, {
       id, type, liveData: data,
       position: { x: x + (prev.length * 20), y: y + (prev.length * 20) }, // Offset slightly for stack
-      size,
+      size: { width, height },
       zIndex: nextZ,
       zoom: 1
     }]);

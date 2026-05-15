@@ -9,6 +9,7 @@ import {
   jsonUnauthorized,
 } from "@/lib/api-json";
 import { isGeminiConfigured } from "@/lib/ai-providers";
+import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { GEMINI_LIVE_NATIVE_AUDIO_MODEL } from "@/lib/gemini-model";
 
@@ -83,7 +84,14 @@ export async function POST() {
     });
   } catch (error) {
     console.error("api/ai/gemini-live/session:", error);
-    const message = error instanceof Error ? error.message : "שגיאת שרת.";
+    const message = error instanceof Error ? error.message : String(error);
+    const blob = `${message} ${JSON.stringify(error)}`;
+    if (/API_KEY_INVALID|API key expired|renew the api key|invalid api key/i.test(blob)) {
+      return jsonServiceUnavailable(
+        formatGeminiLiveUserMessage(blob),
+        "gemini_api_key_invalid",
+      );
+    }
     return jsonServerError(message.slice(0, 500));
   }
 }

@@ -2,6 +2,14 @@
 
 import React from 'react';
 import Omnibar from '@/components/os/Omnibar';
+import type { WidgetType } from '@/hooks/use-window-manager';
+
+type SearchResult = {
+  type: 'project' | 'contact';
+  name: string;
+  taxId?: string;
+  relevance?: number;
+};
 
 interface OSDockProps {
   systemMessage: string;
@@ -9,8 +17,9 @@ interface OSDockProps {
   apiLatency: number | null;
   isBusy: boolean;
   onSearchPreview?: (query: string) => void;
-  searchResults?: any[];
-  onSelectResult?: (result: any) => void;
+  searchResults?: SearchResult[];
+  onSelectResult?: (result: SearchResult) => void;
+  openWorkspaceWidget: (type: WidgetType) => void;
 }
 
 export default function OSDock({
@@ -20,10 +29,11 @@ export default function OSDock({
   isBusy,
   onSearchPreview,
   searchResults,
-  onSelectResult
+  onSelectResult,
+  openWorkspaceWidget,
 }: OSDockProps) {
   return (
-    <footer className="relative px-4 md:px-8 pb-6 md:pb-12 z-[1100] pointer-events-auto">
+    <footer className="relative z-[1100] hidden pointer-events-auto md:block px-4 pb-5 md:px-8 md:pb-8">
       <div className="max-w-3xl mx-auto">
         <Omnibar 
           status="ready" 
@@ -34,6 +44,7 @@ export default function OSDock({
           onSearchPreview={onSearchPreview}
           searchResults={searchResults}
           onSelectResult={onSelectResult}
+          openWorkspaceWidget={openWorkspaceWidget}
         />
       </div>
     </footer>

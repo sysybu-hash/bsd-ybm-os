@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Maximize2, Minimize2, ZoomIn, ZoomOut, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 interface ShellProps {
   id: string;
@@ -18,30 +18,57 @@ interface ShellProps {
   children: React.ReactNode;
 }
 
+const MIN_WIDTH = 420;
+const MIN_HEIGHT = 320;
+
 export default function AdaptiveWidgetShell({
-  id, title, onClose, initialOffset, size = { width: 600, height: 450 },
-  zIndex = 10, isMaximized = false, zoom = 1, onFocus, onPositionChange, onResize, onMaximize, onZoomChange, children,
+  id,
+  title,
+  onClose,
+  initialOffset,
+  size = { width: 600, height: 450 },
+  zIndex = 10,
+  isMaximized = false,
+  zoom = 1,
+  onFocus,
+  onPositionChange,
+  onResize,
+  onMaximize,
+  onZoomChange,
+  children,
 }: ShellProps) {
-  const getCenter = () => {
-    if (typeof window === 'undefined') return { x: 100, y: 100 };
-    const w = Math.min(size.width, window.innerWidth - 32);
-    const h = Math.min(size.height, window.innerHeight - 150);
+  const getViewportSize = () => ({
+    width: typeof window !== "undefined" ? window.innerWidth : 1280,
+    height: typeof window !== "undefined" ? window.innerHeight : 800,
+  });
+
+  const getInitialPosition = () => {
+    if (initialOffset) return initialOffset;
+    const viewport = getViewportSize();
+    const width = Math.min(size.width, viewport.width - 32);
+    const height = Math.min(size.height, viewport.height - 150);
     return {
-      x: Math.max(16, window.innerWidth / 2 - w / 2),
-      y: Math.max(80, window.innerHeight / 2 - h / 2)
+      x: Math.max(16, viewport.width / 2 - width / 2),
+      y: Math.max(80, viewport.height / 2 - height / 2),
     };
   };
 
-  const [position, setPosition] = useState(initialOffset || getCenter());
-  const [currentSize, setCurrentSize] = useState({
-    width: typeof window !== 'undefined' ? Math.min(size.width, window.innerWidth - 32) : size.width,
-    height: typeof window !== 'undefined' ? Math.min(size.height, window.innerHeight - 150) : size.height
+  const [position, setPosition] = useState(getInitialPosition);
+  const [currentSize, setCurrentSize] = useState(() => {
+    const viewport = getViewportSize();
+    return {
+      width: Math.min(size.width, viewport.width - 32),
+      height: Math.min(size.height, viewport.height - 150),
+    };
   });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const positionRef = useRef(position);
   const sizeRef = useRef(currentSize);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
+  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: size.width, height: size.height });
 
   useEffect(() => {
     positionRef.current = position;
@@ -50,9 +77,13 @@ export default function AdaptiveWidgetShell({
   useEffect(() => {
     sizeRef.current = currentSize;
   }, [currentSize]);
-  
-  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
-  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: size.width, height: size.height });
+
+  useEffect(() => {
+    const syncViewport = () => setIsMobile(window.innerWidth < 768);
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   const moveWindow = useCallback((clientX: number, clientY: number) => {
     const { mouseX, mouseY, x, y } = dragStartRef.current;
@@ -61,119 +92,113 @@ export default function AdaptiveWidgetShell({
 
   const resizeWindow = useCallback((clientX: number, clientY: number) => {
     const { mouseX, mouseY, width, height } = resizeStartRef.current;
-    setCurrentSize({ 
-      width: Math.max(400, width + clientX - mouseX), 
-      height: Math.max(300, height + clientY - mouseY) 
+    setCurrentSize({
+      width: Math.max(MIN_WIDTH, width + clientX - mouseX),
+      height: Math.max(MIN_HEIGHT, height + clientY - mouseY),
     });
   }, []);
 
   useEffect(() => {
     if (!isDragging && !isResizing) return;
+
     const handleMove = (e: MouseEvent) => {
       if (isDragging) moveWindow(e.clientX, e.clientY);
-      else if (isResizing) resizeWindow(e.clientX, e.clientY);
+      if (isResizing) resizeWindow(e.clientX, e.clientY);
     };
     const handleUp = () => {
-      if (isDragging) { 
-        setIsDragging(false); 
-        onPositionChange?.(positionRef.current); 
+      if (isDragging) {
+        setIsDragging(false);
+        onPositionChange?.(positionRef.current);
       }
-      if (isResizing) { 
-        setIsResizing(false); 
-        onResize?.(sizeRef.current); 
+      if (isResizing) {
+        setIsResizing(false);
+        onResize?.(sizeRef.current);
       }
     };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
-    return () => { 
-      window.removeEventListener('mousemove', handleMove); 
-      window.removeEventListener('mouseup', handleUp); 
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
     };
   }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize]);
 
+  const viewport = getViewportSize();
+  const mobileOrMaximized = isMobile || isMaximized;
+  const clampedLeft = Math.max(12, Math.min(position.x, viewport.width - currentSize.width - 12));
+  const clampedTop = Math.max(76, Math.min(position.y, viewport.height - currentSize.height - 12));
+
   return (
-    <div
+    <section
+      id={id}
       onMouseDown={onFocus}
-      className={`absolute widget-content-area border border-[color:var(--border-main)] shadow-2xl rounded-2xl overflow-hidden flex flex-col pointer-events-auto transition-all duration-300 bg-[color:var(--glass-bg)] backdrop-blur-2xl ${isMaximized ? 'inset-0 !w-full !h-full !left-0 !top-0 z-[2000] rounded-none' : ''}`}
+      className={`workspace-window pointer-events-auto absolute flex flex-col overflow-hidden transition-all duration-200 ${
+        mobileOrMaximized ? "inset-0 !h-full !w-full !rounded-none" : ""
+      }`}
       style={{
-        width: isMaximized ? '100%' : `${currentSize.width}px`, 
-        height: isMaximized ? '100%' : `${currentSize.height}px`,
-        maxWidth: isMaximized ? '100%' : 'calc(100vw - 32px)',
-        maxHeight: isMaximized ? '100%' : 'calc(100dvh - 150px)',
-        left: isMaximized ? '0' : `${Math.max(16, Math.min(position.x, typeof window !== 'undefined' ? window.innerWidth - currentSize.width - 16 : position.x))}px`, 
-        top: isMaximized ? '0' : `${Math.max(80, Math.min(position.y, typeof window !== 'undefined' ? window.innerHeight - currentSize.height - 16 : position.y))}px`, 
-        zIndex: isMaximized ? 2000 : zIndex,
+        width: mobileOrMaximized ? "100%" : `${currentSize.width}px`,
+        height: mobileOrMaximized ? "100%" : `${currentSize.height}px`,
+        maxWidth: mobileOrMaximized ? "100%" : "calc(100vw - 24px)",
+        maxHeight: mobileOrMaximized ? "100%" : "calc(100dvh - 130px)",
+        left: mobileOrMaximized ? 0 : `${clampedLeft}px`,
+        top: mobileOrMaximized ? 0 : `${clampedTop}px`,
+        zIndex: mobileOrMaximized ? 2000 : zIndex,
       }}
       dir="rtl"
+      aria-label={title}
     >
-      <div
-        onMouseDown={(e) => { 
-          if (isMaximized) return;
-          e.preventDefault(); 
-          dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y }; 
-          setIsDragging(true); 
+      <header
+        onMouseDown={(e) => {
+          if (mobileOrMaximized) return;
+          e.preventDefault();
+          dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
+          setIsDragging(true);
         }}
-        className={`flex justify-between items-center px-4 py-3 bg-[color:var(--background-main)]/50 border-b border-[color:var(--border-main)]/30 select-none ${isMaximized ? 'cursor-default' : 'cursor-move'}`}
+        className={`flex items-center justify-between border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 ${
+          mobileOrMaximized ? "cursor-default" : "cursor-move"
+        }`}
       >
-        <div className="flex gap-1.5 items-center">
-            <div className="w-3 h-3 rounded-full bg-red-500/50" />
-            <div className="w-3 h-3 rounded-full bg-amber-500/50" />
-            <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
-            
-            <div className="w-px h-4 bg-[color:var(--border-main)] mx-2" />
-            
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={() => onZoomChange?.(-0.1)}
-                className="p-1 hover:bg-white/10 rounded text-[color:var(--foreground-muted)] transition-colors"
-                title="Zoom Out"
-              >
-                <ZoomOut size={12} />
-              </button>
-              <span className="text-[9px] font-bold text-[color:var(--foreground-muted)] w-8 text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button 
-                onClick={() => onZoomChange?.(0.1)}
-                className="p-1 hover:bg-white/10 rounded text-[color:var(--foreground-muted)] transition-colors"
-                title="Zoom In"
-              >
-                <ZoomIn size={12} />
-              </button>
-            </div>
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-600" aria-label={`סגור ${title}`}>
+            <X size={15} aria-hidden />
+          </button>
+          <button type="button" onClick={onMaximize} className="hidden h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)] md:flex" aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}>
+            {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
+          </button>
         </div>
 
-        <span className="text-[color:var(--foreground-main)] text-xs font-bold uppercase tracking-widest opacity-80">{title}</span>
-        
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={onMaximize}
-            className="p-1.5 hover:bg-white/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-colors"
-          >
-            {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        <h2 className="truncate px-3 text-xs font-black tracking-[0.12em] text-[color:var(--foreground-main)]">{title}</h2>
+
+        <div className="hidden items-center gap-1 md:flex">
+          <button type="button" onClick={() => onZoomChange?.(-0.1)} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]" aria-label={`הקטן זום ב-${title}`}>
+            <ZoomOut size={14} aria-hidden />
           </button>
-          <button onClick={onClose} className="p-1.5 hover:bg-rose-500/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-rose-500 transition-colors">
-            <X size={14} />
+          <span className="w-10 text-center text-[10px] font-black text-[color:var(--foreground-muted)]">{Math.round(zoom * 100)}%</span>
+          <button type="button" onClick={() => onZoomChange?.(0.1)} className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]" aria-label={`הגדל זום ב-${title}`}>
+            <ZoomIn size={14} aria-hidden />
           </button>
         </div>
-      </div>
-      
-      {/* הוספנו w-full ו-h-full כדי שהתוכן יתפרס */}
-      <div 
-        className="flex-1 overflow-auto w-full h-full custom-scrollbar bg-transparent text-[color:var(--foreground-main)]"
-        style={{ transform: `scale(${zoom})`, transformOrigin: 'top right' }}
-      >
+      </header>
+
+      <div className="custom-scrollbar h-full w-full flex-1 overflow-auto bg-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] md:pb-0" style={{ transform: `scale(${zoom})`, transformOrigin: "top right" }}>
         {children}
       </div>
 
-      {!isMaximized && (
+      {!mobileOrMaximized && (
         <div
-          onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width: currentSize.width, height: currentSize.height }; setIsResizing(true); }}
-          className="absolute right-0 bottom-0 w-8 h-8 cursor-nwse-resize flex items-end justify-end p-1 group"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            resizeStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, width: currentSize.width, height: currentSize.height };
+            setIsResizing(true);
+          }}
+          className="absolute bottom-0 right-0 flex h-8 w-8 cursor-nwse-resize items-end justify-end p-1"
+          aria-hidden
         >
-          <div className="w-3 h-3 border-r-2 border-b-2 border-slate-600 group-hover:border-emerald-500 transition-colors" />
+          <div className="h-3 w-3 border-b-2 border-r-2 border-[color:var(--foreground-muted)]" />
         </div>
       )}
-    </div>
+    </section>
   );
 }

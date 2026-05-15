@@ -59,7 +59,7 @@ export default function DashboardWidget() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-transparent p-8">
+      <div className="flex flex-col items-center justify-center h-full bg-transparent p-4 md:p-8">
         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-[color:var(--foreground-muted)] text-sm animate-pulse">מסנכרן נתונים פיננסיים...</p>
       </div>
@@ -70,10 +70,10 @@ export default function DashboardWidget() {
   const formatCurrency = (num: number) => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(num);
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-6 overflow-y-auto custom-scrollbar gap-8" dir="rtl">
+    <div className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8" dir="rtl">
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">סה&quot;כ הכנסות</span>
           <div className="flex items-end gap-2">
@@ -82,7 +82,7 @@ export default function DashboardWidget() {
           </div>
         </div>
 
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
+        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-rose-500/10 transition-colors" />
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">הוצאות מצטברות</span>
           <div className="flex items-end gap-2">
@@ -91,13 +91,13 @@ export default function DashboardWidget() {
           </div>
         </div>
 
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
+        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-500/10 transition-colors" />
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">רווח תפעולי</span>
           <div className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(netProfit)}</div>
         </div>
 
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
+        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">פרויקטים פעילים</span>
           <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export default function DashboardWidget() {
 
       {/* AI Insight Section */}
       {stats.aiInsight && (
-        <div className="bg-emerald-500/[0.03] border border-emerald-500/20 p-5 rounded-[2rem] flex items-start gap-4">
+        <div className="bg-emerald-500/[0.03] border border-emerald-500/20 p-4 md:p-5 rounded-[2rem] flex flex-col sm:flex-row items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-lg shadow-emerald-500/5">
             <Sparkles size={22} />
           </div>
@@ -121,13 +121,13 @@ export default function DashboardWidget() {
       )}
 
       {/* Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Expense Summary Chart */}
-        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-6 shadow-sm dark:shadow-none">
+        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
           <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
             <TrendingUp size={16} className="text-emerald-500 dark:text-emerald-400" /> סיכום הוצאות חודשי
           </h3>
-          <div className="h-48 w-full">
+          <div className="h-48 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.analytics.monthlyExpenses}>
                 <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#ffffff05" : "#00000005"} vertical={false} />
@@ -145,7 +145,7 @@ export default function DashboardWidget() {
         </div>
 
         {/* Document Status Breakdown */}
-        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-6 shadow-sm dark:shadow-none">
+        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
           <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
             <Activity size={16} className="text-indigo-500 dark:text-indigo-400" /> סטטוס הצעות מחיר
           </h3>
@@ -176,15 +176,15 @@ export default function DashboardWidget() {
       </div>
 
       {/* Cashflow Forecasting Chart */}
-      <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-8 flex flex-col shadow-sm dark:shadow-none">
-        <div className="flex justify-between items-center mb-8">
+      <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-8 flex flex-col shadow-sm dark:shadow-none min-w-0">
+        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6 md:mb-8">
           <div>
             <h3 className="text-lg font-bold text-[color:var(--foreground-main)] flex items-center gap-2">
               <Activity className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> תחזית תזרים מזומנים חכמה
             </h3>
             <p className="text-xs text-[color:var(--foreground-muted)] mt-1 uppercase tracking-wider">ניתוח היסטורי + תחזית רבעונית קדימה</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3 md:gap-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-indigo-500" />
               <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase">ביצוע בפועל</span>
@@ -196,7 +196,7 @@ export default function DashboardWidget() {
           </div>
         </div>
 
-        <div className="h-64 w-full">
+        <div className="h-64 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>

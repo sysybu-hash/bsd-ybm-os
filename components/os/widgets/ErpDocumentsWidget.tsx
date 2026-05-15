@@ -291,8 +291,8 @@ export default function ErpDocumentsWidget() {
             </div>
 
             {/* Line Items Table */}
-            <div className="flex-1 overflow-auto custom-scrollbar p-6">
-              <div className="overflow-x-auto">
+            <div className="flex-1 min-w-0 overflow-auto custom-scrollbar p-4 md:p-6">
+              <div className="overflow-x-auto min-w-0">
                 <table className="w-full border-collapse min-w-[600px]">
                 <thead>
                   <tr className="text-right text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest border-b border-[color:var(--border-main)]/30">
@@ -330,6 +330,7 @@ export default function ErpDocumentsWidget() {
                         {editingLineId === item.id ? (
                           <input
                             type="number"
+                            inputMode="decimal"
                             className="w-16 bg-[color:var(--surface-card)]/50 border border-emerald-500/50 rounded px-2 py-1 text-sm text-center focus:outline-none text-[color:var(--foreground-main)] shadow-sm dark:shadow-none"
                             value={editValues.quantity ?? ''}
                             onChange={(e) => setEditValues({ ...editValues, quantity: parseFloat(e.target.value) || 0 })}
@@ -342,6 +343,7 @@ export default function ErpDocumentsWidget() {
                         {editingLineId === item.id ? (
                           <input
                             type="number"
+                            inputMode="decimal"
                             className="w-24 bg-[color:var(--surface-card)]/50 border border-emerald-500/50 rounded px-2 py-1 text-sm text-center focus:outline-none text-[color:var(--foreground-main)] shadow-sm dark:shadow-none"
                             value={editValues.unitPrice ?? ''}
                             onChange={(e) => setEditValues({ ...editValues, unitPrice: parseFloat(e.target.value) || 0 })}

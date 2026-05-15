@@ -66,7 +66,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
   ];
 
   return (
-    <div className="relative h-full overflow-hidden bg-transparent p-6 text-[color:var(--foreground-main)]" dir="rtl">
+    <div className="relative h-full overflow-hidden bg-transparent p-3 md:p-6 text-[color:var(--foreground-main)]" dir="rtl">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-emerald-600/60 dark:via-emerald-300/60 to-transparent" />
 
       <div className="relative z-10 flex h-full flex-col gap-5">
@@ -112,7 +112,8 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
             </div>
           </div>
 
-          <div className="flex h-36 items-end justify-between gap-3 border-b border-[color:var(--border-main)]/30 pb-3" dir="ltr">
+          <div className="min-w-0 overflow-x-auto pb-1">
+          <div className="flex h-36 min-w-[520px] items-end justify-between gap-3 border-b border-[color:var(--border-main)]/30 pb-3" dir="ltr">
             {cashflow.trend.map((item) => {
               const isSelected = selectedPoint?.month === item.month;
 
@@ -140,6 +141,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
                 </button>
               );
             })}
+          </div>
           </div>
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">

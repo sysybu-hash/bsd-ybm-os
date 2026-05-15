@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import SessionProvider from "@/components/os/system/SessionProvider";
-import Themer from "@/components/os/system/Themer";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
@@ -46,9 +45,9 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   /** מקלדת צפה: התאמת גובה תוכן (Chrome/Android ועוד) */
   interactiveWidget: "resizes-content",
-  colorScheme: "light",
+  colorScheme: "dark light",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#E8E2D6" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
     { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
   ],
 };
@@ -80,7 +79,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className={`${heebo.className} min-h-screen bg-brand-background font-sans text-text-primary antialiased`}
+        className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <SessionProvider session={session}>

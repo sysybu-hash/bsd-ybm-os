@@ -1,50 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Volume2, Loader2, Sparkles } from 'lucide-react';
-import { useGeminiLiveAudio } from '@/hooks/useGeminiLiveAudio';
-import { useWindowManager } from '@/hooks/use-window-manager';
-import { useSession } from 'next-auth/react';
-import { motion, AnimatePresence } from 'framer-motion';
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { Loader2, Mic, Send, Settings, SlidersHorizontal, Volume2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
+import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
+import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
+import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
+import type { WidgetType } from "@/hooks/use-window-manager";
+import OmnibarQuickSettingsSheet from "@/components/os/OmnibarQuickSettingsSheet";
+import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
+
+type SearchResult = {
+  type: "project" | "contact";
+  name: string;
+  taxId?: string;
+  relevance?: number;
+};
 
 interface OmnibarProps {
   onCommand: (cmd: string) => void | Promise<void>;
   apiLatency?: number | null;
   isBusy?: boolean;
-  status?: 'ready' | 'fetching' | 'error';
+  status?: "ready" | "fetching" | "error";
   message?: string;
   onSearchPreview?: (query: string) => void;
-  searchResults?: any[];
-  onSelectResult?: (result: any) => void;
+  searchResults?: SearchResult[];
+  onSelectResult?: (result: SearchResult) => void;
+  openWorkspaceWidget: (type: WidgetType) => void;
 }
 
-export default function Omnibar({ 
-  onCommand, 
-  apiLatency, 
-  isBusy = false, 
-  status = 'ready', 
-  message = '',
+const visualizerHeights = [10, 16, 8, 22, 14, 18, 9, 20, 12, 24, 11, 19, 15, 21, 8, 17];
+
+export default function Omnibar({
+  onCommand,
+  apiLatency,
+  isBusy = false,
+  status = "ready",
+  message = "",
   onSearchPreview,
   searchResults = [],
-  onSelectResult
+  onSelectResult,
+  openWorkspaceWidget,
 }: OmnibarProps) {
   const { data: session } = useSession();
-  const { openWidget } = useWindowManager();
-  const [input, setInput] = useState('');
-  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'connecting' | 'listening' | 'speaking' | 'error'>('idle');
+  const [input, setInput] = useState("");
+  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
+  const [geminiLiveSettingsOpen, setGeminiLiveSettingsOpen] = useState(false);
+  const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
+  const [voiceStatus, setVoiceStatus] = useState<"idle" | "connecting" | "listening" | "speaking" | "error">("idle");
+
+  useEffect(() => {
+    setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
+  }, []);
 
   const geminiLive = useGeminiLiveAudio({
     enabled: !!session?.user,
-    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant.",
+    settings: geminiVoiceSettings,
+    systemInstruction:
+      "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית קצרה, מקצועית ועניינית. הווידג׳טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
     onToolCall: async (name, args) => {
-      if (name === 'execute_os_command') {
-        openWidget(args.action);
+      if (name === "execute_os_command") {
+        openWorkspaceWidget(args.action as WidgetType);
         return "Success";
       }
-      if (name === 'google_assistant_command') {
+      if (name === "google_assistant_command") {
         try {
-          const res = await fetch('/api/os/google-assistant/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: args.query })
+          const res = await fetch("/api/os/google-assistant/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: args.query }),
           });
           const data = await res.json();
           return data.fulfillmentText || "Success";
@@ -55,177 +82,217 @@ export default function Omnibar({
       }
     },
     onError: (err) => {
-      console.error("Gemini Live Error:", err);
-      setVoiceStatus('error');
-    }
+      const friendly = formatGeminiLiveUserMessage(err);
+      toast.error(friendly);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Gemini Live:", err);
+      }
+      setVoiceStatus("error");
+    },
   });
 
   useEffect(() => {
-    if (geminiLive.state === 'connecting') setVoiceStatus('connecting');
-    else if (geminiLive.state === 'streaming') {
-      // In useGeminiLiveAudio, streaming means it's active. 
-      // We can check statusText to see if it's responding or listening.
-      if (geminiLive.statusText.includes('משיב')) setVoiceStatus('speaking');
-      else setVoiceStatus('listening');
-    }
-    else if (geminiLive.state === 'ready') setVoiceStatus('listening');
-    else if (geminiLive.state === 'error') setVoiceStatus('error');
-    else setVoiceStatus('idle');
+    if (geminiLive.state === "connecting") setVoiceStatus("connecting");
+    else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.statusText.includes("משיב") ? "speaking" : "listening");
+    else if (geminiLive.state === "ready") setVoiceStatus("listening");
+    else if (geminiLive.state === "error") setVoiceStatus("error");
+    else setVoiceStatus("idle");
   }, [geminiLive.state, geminiLive.statusText]);
+
+  const statusLabel = useMemo(() => {
+    if (voiceStatus === "connecting") return "AI מתחבר";
+    if (voiceStatus === "listening") return "AI מאזין";
+    if (voiceStatus === "speaking") return "AI משיב";
+    if (isBusy) return "מעבד";
+    if (typeof apiLatency === "number") return `${Math.round(apiLatency)}ms`;
+    return status === "error" ? "שגיאה" : "מוכן";
+  }, [apiLatency, isBusy, status, voiceStatus]);
+
+  const voiceActive = voiceStatus === "listening" || voiceStatus === "speaking";
 
   const handleInputChange = (val: string) => {
     setInput(val);
-    if (onSearchPreview) {
-      onSearchPreview(val);
-    }
+    onSearchPreview?.(val);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      await onCommand(input);
-      setInput('');
-    }
+    const value = input.trim();
+    if (!value) return;
+    await onCommand(value);
+    setInput("");
   };
 
-  const statusLabel = isBusy
-    ? 'Analyzing'
-    : typeof apiLatency === 'number'
-      ? `${Math.round(apiLatency)}ms`
-      : 'Ready';
-
   return (
-    <div className="w-full px-0 md:px-4 z-50" dir="rtl">
+    <div className="relative z-50 w-full px-0 md:px-4" dir="rtl">
       <form onSubmit={handleSubmit} className="relative">
-        {/* Voice Visualizer Overlay */}
-        <AnimatePresence>
-          {(voiceStatus === 'listening' || voiceStatus === 'speaking') && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute inset-0 -z-10 rounded-xl overflow-hidden"
-            >
-              <div className={`absolute inset-0 transition-colors duration-500 ${
-                voiceStatus === 'speaking' ? 'bg-indigo-500/10' : 'bg-emerald-500/5'
-              }`} />
-              <div className="absolute bottom-0 left-0 right-0 h-1 flex items-end justify-center gap-1 px-4">
-                {[...Array(20)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{ 
-                      height: voiceStatus === 'speaking' 
-                        ? [4, Math.random() * 24 + 8, 4] 
-                        : [2, Math.random() * 8 + 2, 2] 
-                    }}
-                    transition={{ 
-                      repeat: Infinity, 
-                      duration: 0.5 + Math.random() * 0.5,
-                      ease: "easeInOut"
-                    }}
-                    className={`w-1 rounded-full ${
-                      voiceStatus === 'speaking' ? 'bg-indigo-500' : 'bg-emerald-500/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="hidden md:flex absolute right-4 top-1/2 z-10 -translate-y-1/2 items-center gap-2 rounded-full border border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 px-3 py-1 text-[10px] text-[color:var(--foreground-muted)] backdrop-blur-md">
-          <span className={`h-1.5 w-1.5 rounded-full ${
-            voiceStatus !== 'idle' ? 'animate-pulse bg-indigo-500' :
-            isBusy ? 'animate-pulse bg-amber-400' : 
-            status === 'error' ? 'bg-rose-500' : 
-            'bg-emerald-500'
-          }`} />
-          <span dir="ltr">
-            {voiceStatus === 'connecting' ? 'AI Connecting...' :
-             voiceStatus === 'listening' ? 'AI Listening...' :
-             voiceStatus === 'speaking' ? 'AI Speaking...' :
-             `OS ${statusLabel}`}
-          </span>
-        </div>
-
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => handleInputChange(e.target.value)}
-          placeholder={voiceStatus !== 'idle' ? 'העוזר הקולי פעיל... דבר אליו' : 'הקלד פקודה (למשל: &quot;פרויקט הרצליה&quot;)...'}
-          className={`w-full bg-[color:var(--background-main)]/40 border border-[color:var(--border-main)] text-[color:var(--foreground-main)] rounded-xl px-4 md:px-6 py-3.5 pr-4 md:pr-32 pl-24 md:pl-28 backdrop-blur-md shadow-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm placeholder:text-[color:var(--foreground-muted)] opacity-80 ${
-            voiceStatus !== 'idle' ? 'ring-2 ring-indigo-500/20' : ''
-          }`}
-        />
-
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {/* Voice Assistant Toggle */}
-          <button
-            type="button"
-            onClick={() => geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start()}
-            className={`p-2 rounded-lg transition-all flex items-center justify-center ${
-              voiceStatus === 'listening' || voiceStatus === 'speaking'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40'
-                : 'bg-[color:var(--surface-card)]/50 text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] border border-[color:var(--border-main)]'
-            }`}
-            title={voiceStatus !== 'idle' ? 'כבה עוזר קולי' : 'הפעל עוזר קולי'}
-          >
-            {voiceStatus === 'connecting' ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : voiceStatus === 'speaking' ? (
-              <Volume2 size={18} className="animate-pulse" />
-            ) : voiceStatus === 'listening' ? (
-              <Mic size={18} className="animate-pulse" />
-            ) : (
-              <Mic size={18} />
+        <div
+          className={`relative flex min-h-[3.25rem] w-full items-stretch overflow-hidden rounded-[var(--radius-md)] border shadow-md transition-shadow ${
+            voiceActive
+              ? "border-indigo-400/50 ring-2 ring-indigo-500/25"
+              : "border-[color:var(--border-main)]"
+          } bg-[color:var(--surface-card)]`}
+        >
+          <AnimatePresence>
+            {voiceActive && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit] bg-indigo-500/[0.06]"
+              >
+                <div className="absolute bottom-0 left-0 right-0 flex h-7 items-end justify-center gap-1 px-4">
+                  {visualizerHeights.map((height, i) => (
+                    <motion.div
+                      key={`${height}-${i}`}
+                      animate={{
+                        height: voiceStatus === "speaking" ? [4, height, 4] : [3, Math.max(6, height / 2), 3],
+                      }}
+                      transition={{ repeat: Infinity, duration: 0.65 + (i % 4) * 0.08, ease: "easeInOut" }}
+                      className={`w-1 rounded-full ${voiceStatus === "speaking" ? "bg-indigo-500" : "bg-emerald-500/60"}`}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             )}
-          </button>
+          </AnimatePresence>
 
-          <button 
-            type="submit" 
-            className="bg-indigo-600/80 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg transition-all text-xs font-bold shadow-lg shadow-indigo-500/20"
-          >
-            שלח
-          </button>
+          <div className="relative z-10 flex shrink-0 items-center gap-1.5 border-[color:var(--border-main)]/30 py-2 pl-2 pr-1 sm:gap-2 sm:pl-3 sm:pr-2">
+            <button
+              type="button"
+              onClick={() => setQuickSettingsOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-amber-300"
+              title="הגדרות תצוגה ונגישות"
+              aria-label="הגדרות תצוגה ונגישות"
+              aria-expanded={quickSettingsOpen}
+              aria-haspopup="dialog"
+            >
+              <Settings size={18} aria-hidden />
+            </button>
+            <div className="flex max-w-[5.5rem] items-center gap-1.5 rounded-md border border-[color:var(--border-main)] bg-[color:var(--background-main)]/60 px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] sm:max-w-[10rem] sm:gap-2 sm:px-2.5">
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                  voiceStatus !== "idle"
+                    ? "animate-pulse bg-indigo-500"
+                    : isBusy
+                      ? "animate-pulse bg-amber-400"
+                      : status === "error"
+                        ? "bg-rose-500"
+                        : "bg-emerald-500"
+                }`}
+              />
+              <span className="min-w-0 truncate sm:whitespace-normal">{statusLabel}</span>
+            </div>
+          </div>
+
+          <div className="relative z-10 min-w-0 flex-1 flex items-center">
+            <label className="sr-only" htmlFor="omnibar-command">
+              פקודת מערכת
+            </label>
+            <input
+              id="omnibar-command"
+              type="text"
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              placeholder={voiceStatus !== "idle" ? "העוזר הקולי פעיל..." : "הקלד פקודה, לדוגמה: לקוחות, סריקה, פרויקט הרצליה"}
+              className="h-full w-full min-w-0 border-0 bg-transparent px-2 py-3 text-sm font-medium text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-none outline-none ring-0 focus:ring-0 md:px-3"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="relative z-10 flex shrink-0 items-center gap-1.5 py-2 pr-2 pl-1 sm:gap-2 sm:pr-3 sm:pl-2">
+            <button
+              type="button"
+              onClick={() => setGeminiLiveSettingsOpen(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-indigo-300"
+              title="הגדרות עוזר קולי (Gemini Live)"
+              aria-label="הגדרות עוזר קולי Gemini Live"
+              aria-expanded={geminiLiveSettingsOpen}
+              aria-haspopup="dialog"
+            >
+              <SlidersHorizontal size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => (geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start())}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition ${
+                voiceStatus === "listening" || voiceStatus === "speaking"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+              }`}
+              title={voiceStatus !== "idle" ? "כבה עוזר קולי" : "הפעל עוזר קולי"}
+              aria-label={voiceStatus !== "idle" ? "כבה עוזר קולי" : "הפעל עוזר קולי"}
+              aria-pressed={voiceStatus !== "idle"}
+            >
+              {voiceStatus === "connecting" ? (
+                <Loader2 size={18} className="animate-spin" aria-hidden />
+              ) : voiceStatus === "speaking" ? (
+                <Volume2 size={18} aria-hidden />
+              ) : (
+                <Mic size={18} aria-hidden />
+              )}
+            </button>
+
+            <button type="submit" className="quiet-button quiet-button-primary h-10 shrink-0 px-3 text-xs" aria-label="שלח פקודה">
+              <Send size={15} aria-hidden />
+              <span className="hidden sm:inline">שלח</span>
+            </button>
+          </div>
         </div>
       </form>
 
-      {/* Search Preview Results */}
       {searchResults.length > 0 && input.trim() && (
-        <div className="absolute bottom-full mb-3 w-[calc(100%-2rem)] bg-[color:var(--glass-bg)] border border-[color:var(--border-main)] rounded-2xl overflow-hidden backdrop-blur-xl shadow-2xl">
+        <div className="absolute bottom-full mb-3 w-[calc(100%-2rem)] overflow-hidden rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg">
           {searchResults.map((result, idx) => (
             <button
-              key={idx}
+              key={`${result.type}-${result.name}-${idx}`}
+              type="button"
               onClick={() => {
-                if (onSelectResult) onSelectResult(result);
-                setInput('');
+                onSelectResult?.(result);
+                setInput("");
               }}
-              className="w-full flex items-center justify-between p-4 hover:bg-[color:var(--foreground-muted)]/5 border-b border-[color:var(--border-main)]/30 last:border-0 transition-colors text-right"
+              className="flex w-full items-center justify-between border-b border-[color:var(--border-main)]/50 p-3 text-right transition last:border-0 hover:bg-[color:var(--surface-soft)]"
             >
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  result.type === 'contact' ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                }`}>
-                  <span className="text-[10px] font-bold uppercase">{result.type === 'contact' ? 'CRM' : 'PRJ'}</span>
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-md text-[10px] font-black ${
+                    result.type === "contact" ? "bg-indigo-500/15 text-indigo-200" : "bg-emerald-500/15 text-emerald-300"
+                  }`}
+                >
+                  {result.type === "contact" ? "CRM" : "PRJ"}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[color:var(--foreground-main)]">{result.name}</div>
-                  {result.taxId && <div className="text-[10px] text-[color:var(--foreground-muted)]">ח&quot;פ: {result.taxId}</div>}
+                  <div className="text-xs font-black text-[color:var(--foreground-main)]">{result.name}</div>
+                  {result.taxId && <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">ח״פ: {result.taxId}</div>}
                 </div>
               </div>
-              <div className="text-[10px] text-[color:var(--foreground-muted)] font-mono opacity-70">
-                {Math.round(result.relevance * 100)}% Match
-              </div>
+              {typeof result.relevance === "number" && (
+                <div className="text-[10px] font-mono text-[color:var(--foreground-muted)]">{Math.round(result.relevance * 100)}%</div>
+              )}
             </button>
           ))}
         </div>
       )}
 
       {message ? (
-        <div className="mt-3 rounded-xl bg-[color:var(--background-main)]/60 border border-[color:var(--border-main)] px-4 py-2 text-[11px] text-[color:var(--foreground-muted)] shadow-xl backdrop-blur-md text-center">
+        <div className="mx-auto mt-2 max-w-2xl rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-2 text-center text-[11px] font-semibold text-[color:var(--foreground-muted)] shadow-sm">
           {message}
         </div>
       ) : null}
+
+      <OmnibarQuickSettingsSheet
+        open={quickSettingsOpen}
+        onClose={() => setQuickSettingsOpen(false)}
+        onOpenFullOsSettings={() => openWorkspaceWidget("settings")}
+      />
+
+      <GeminiLiveSettingsSheet
+        open={geminiLiveSettingsOpen}
+        onClose={() => setGeminiLiveSettingsOpen(false)}
+        value={geminiVoiceSettings}
+        onChange={setGeminiVoiceSettings}
+        isLiveActive={geminiLive.isLiveActive}
+      />
     </div>
   );
 }

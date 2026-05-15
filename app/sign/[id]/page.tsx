@@ -181,7 +181,7 @@ export default function SigningPage() {
               </button>
             </div>
             
-            <div className="bg-white rounded-2xl overflow-hidden h-48 border-2 border-white/10 shadow-inner">
+            <div className="overflow-hidden rounded-2xl border-2 border-white/10 bg-[color:var(--surface-card)] shadow-inner h-48">
               <SignatureCanvas 
                 ref={sigCanvas}
                 penColor="#0f172a"

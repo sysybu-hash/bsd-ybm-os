@@ -254,7 +254,7 @@ export default function CrmTableWidget() {
       </div>
 
       {/* Kanban Board / Table Area */}
-      <div className="flex-1 overflow-auto custom-scrollbar relative">
+      <div className="flex-1 min-w-0 overflow-auto custom-scrollbar relative">
         {isAddingClient && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
             <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
@@ -441,8 +441,8 @@ export default function CrmTableWidget() {
 
                     <section>
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">היסטוריה פיננסית (כרטסת)</h4>
-                      <div className="bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-hidden">
-                        <table className="w-full text-right text-xs">
+                      <div className="bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-x-auto min-w-0">
+                        <table className="w-full min-w-[480px] text-right text-xs">
                           <thead>
                             <tr className="bg-slate-100 dark:bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
                               <th className="px-6 py-3">תאריך</th>
@@ -469,7 +469,7 @@ export default function CrmTableWidget() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-w-0">
           <table className="w-full border-collapse min-w-[800px]">
           <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
             <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">

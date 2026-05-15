@@ -252,6 +252,7 @@ export default function ProjectBoardWidget() {
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">תקציב (₪)</label>
                     <input 
                       type="number"
+                      inputMode="decimal"
                       className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-slate-900 dark:text-slate-200"
                       value={newProject.budget}
                       onChange={(e) => setNewProject({...newProject, budget: parseFloat(e.target.value)})}
@@ -315,6 +316,7 @@ export default function ProjectBoardWidget() {
                       <span className="text-[10px] font-bold text-[color:var(--foreground-muted)]">₪</span>
                       <input 
                         type="number"
+                        inputMode="decimal"
                         defaultValue={task.budget}
                         onBlur={(e) => updateTaskBudget(task.id, parseFloat(e.target.value))}
                         className="w-16 bg-transparent border-none text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold focus:ring-0 p-0 text-left"
