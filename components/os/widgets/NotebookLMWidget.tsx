@@ -16,11 +16,16 @@ import {
   Play,
   Save,
   Send,
+  Square,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import ItemActions from "@/components/os/ItemActions";
-import { useSpeechServices } from "@/hooks/useSpeechServices";
+import {
+  useNotebookSpeechPlayback,
+  useNotebookSpeechSettingsState,
+} from "@/hooks/useNotebookSpeechPlayback";
+import NotebookSpeechSettingsPanel from "@/components/os/widgets/NotebookSpeechSettingsPanel";
 
 const DRAFT_KEY = "notebooklm-draft-v1";
 
@@ -107,7 +112,18 @@ export default function NotebookLMWidget() {
   });
 
   const isLoading = status === "submitted" || status === "streaming";
-  const { speak, isSpeaking } = useSpeechServices(() => undefined);
+  const { settings: speechSettings, setSettings: setSpeechSettings } = useNotebookSpeechSettingsState();
+  const {
+    play: playSpeech,
+    pause: pauseSpeech,
+    resume: resumeSpeech,
+    stop: stopSpeech,
+    isPlaying,
+    isPaused,
+    progress,
+  } = useNotebookSpeechPlayback(speechSettings);
+
+  useEffect(() => () => stopSpeech(), [stopSpeech]);
 
   const [input, setInput] = useState("");
 
@@ -384,7 +400,7 @@ export default function NotebookLMWidget() {
         return;
       }
       setAudioScript(data.scriptText);
-      speak(data.scriptText);
+      playSpeech(data.scriptText);
     } catch {
       toast.error("יצירת סקירה נכשלה");
     } finally {
@@ -542,22 +558,78 @@ export default function NotebookLMWidget() {
         </div>
 
         {audioScript ? (
-          <div className="border-b border-[color:var(--border-main)] bg-indigo-500/5 px-4 py-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <motion.div className="space-y-3 border-b border-[color:var(--border-main)] bg-indigo-500/5 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-300">סקירה קולית</span>
-              <button
-                type="button"
-                onClick={() => (isSpeaking ? window.speechSynthesis.cancel() : speak(audioScript))}
-                className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2 py-1 text-[10px] font-bold text-white"
-              >
-                {isSpeaking ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {isSpeaking ? "עצור" : "השמע"}
-              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {!isPlaying && !isPaused ? (
+                  <button
+                    type="button"
+                    onClick={() => playSpeech(audioScript)}
+                    className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-indigo-500"
+                  >
+                    <Play className="h-3 w-3" aria-hidden />
+                    השמע
+                  </button>
+                ) : null}
+                {isPlaying ? (
+                  <button
+                    type="button"
+                    onClick={pauseSpeech}
+                    className="flex items-center gap-1 rounded-lg border border-indigo-500/40 bg-indigo-500/15 px-2.5 py-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-200"
+                  >
+                    <Pause className="h-3 w-3" aria-hidden />
+                    השהה
+                  </button>
+                ) : null}
+                {isPaused ? (
+                  <button
+                    type="button"
+                    onClick={resumeSpeech}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-emerald-500"
+                  >
+                    <Play className="h-3 w-3" aria-hidden />
+                    המשך
+                  </button>
+                ) : null}
+                {isPlaying || isPaused ? (
+                  <button
+                    type="button"
+                    onClick={stopSpeech}
+                    className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-1 text-[10px] font-bold text-[color:var(--foreground-main)]"
+                  >
+                    <Square className="h-3 w-3" aria-hidden />
+                    עצור
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <p className="max-h-24 overflow-y-auto text-xs leading-relaxed text-[color:var(--foreground-muted)] whitespace-pre-wrap">
+
+            {(isPlaying || isPaused) && audioScript.length > 0 ? (
+              <div className="space-y-1">
+                <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--surface-soft)]">
+                  <div
+                    className="h-full rounded-full bg-indigo-500 transition-[width] duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">
+                  {isPaused ? "מושהה" : "מנגן"} · {progress}%
+                </p>
+              </div>
+            ) : null}
+
+            <NotebookSpeechSettingsPanel
+              settings={speechSettings}
+              onChange={setSpeechSettings}
+              onPreview={() => playSpeech("שלום, כך נשמעת הסקירה הקולית שלך במחברת BSD-YBM.")}
+              previewSnippet="שלום, כך נשמעת הסקירה הקולית שלך במחברת BSD-YBM."
+            />
+
+            <p className="max-h-24 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap text-[color:var(--foreground-muted)]">
               {audioScript}
             </p>
-          </div>
+          </motion.div>
         ) : null}
 
         <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-4">

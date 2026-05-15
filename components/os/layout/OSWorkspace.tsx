@@ -111,7 +111,7 @@ export default function OSWorkspace({
   }, []);
 
   return (
-    <div ref={workspaceBoundsRef} className="relative flex min-h-0 min-h-[min(100%,100dvh)] flex-1 shrink-0 overflow-hidden">
+    <div ref={workspaceBoundsRef} className="relative flex min-h-0 flex-1 overflow-hidden">
       <AnimatePresence mode="wait">
         {hasHydrated && widgets.length === 0 && (
           <motion.section

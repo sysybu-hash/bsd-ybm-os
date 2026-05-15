@@ -379,7 +379,7 @@ export default function OmniCanvas() {
         closeSidebar={() => setIsSidebarOpen(false)}
       />
 
-      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:pb-0">
+      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:pb-[10.5rem]">
         <OSWorkspace
           widgets={widgets}
           hasHydrated={hasHydrated}
@@ -391,18 +391,18 @@ export default function OmniCanvas() {
           toggleMaximize={toggleMaximize}
           updateZoom={updateZoom}
         />
-
-        <OSDock
-          systemMessage={systemMessage}
-          onCommand={handleCommand}
-          apiLatency={apiLatency}
-          isBusy={isBusy}
-          onSearchPreview={handleSearchPreview}
-          searchResults={searchResults}
-          onSelectResult={handleSelectResult}
-          openWorkspaceWidget={openWidget}
-        />
       </div>
+
+      <OSDock
+        systemMessage={systemMessage}
+        onCommand={handleCommand}
+        apiLatency={apiLatency}
+        isBusy={isBusy}
+        onSearchPreview={handleSearchPreview}
+        searchResults={searchResults}
+        onSelectResult={handleSelectResult}
+        openWorkspaceWidget={openWidget}
+      />
 
       <div className="md:hidden">
         <MobileBottomNav openWidget={openWidget} onOpenOmnibar={() => setMobileOmnibarOpen(true)} />

@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
-import Omnibar from '@/components/os/Omnibar';
-import type { WidgetType } from '@/hooks/use-window-manager';
+import React from "react";
+import Omnibar from "@/components/os/Omnibar";
+import type { WidgetType } from "@/hooks/use-window-manager";
 
 type SearchResult = {
-  type: 'project' | 'contact';
+  type: "project" | "contact";
   name: string;
   taxId?: string;
   relevance?: number;
@@ -33,14 +33,14 @@ export default function OSDock({
   openWorkspaceWidget,
 }: OSDockProps) {
   return (
-    <footer className="relative z-[1100] hidden pointer-events-auto md:block px-4 pb-5 md:px-8 md:pb-8">
-      <div className="max-w-3xl mx-auto">
-        <Omnibar 
-          status="ready" 
-          message={systemMessage} 
-          onCommand={onCommand} 
-          apiLatency={apiLatency} 
-          isBusy={isBusy} 
+    <footer className="pointer-events-none fixed inset-x-0 bottom-0 z-[1100] hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:block md:px-8">
+      <div className="pointer-events-auto mx-auto max-w-3xl">
+        <Omnibar
+          status="ready"
+          message={systemMessage}
+          onCommand={onCommand}
+          apiLatency={apiLatency}
+          isBusy={isBusy}
           onSearchPreview={onSearchPreview}
           searchResults={searchResults}
           onSelectResult={onSelectResult}
