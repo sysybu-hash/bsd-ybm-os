@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 import { 
   Settings, 
   Building2, 
@@ -10,16 +11,25 @@ import {
   Save, 
   Image as ImageIcon, 
   Upload,
-  CheckCircle2,
   Loader2,
   ShieldCheck,
-  Globe
+  Globe,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const ASSIGN_ROLES = [
+  { value: 'EMPLOYEE', label: 'עובד' },
+  { value: 'PROJECT_MGR', label: 'מנהל פרויקטים' },
+  { value: 'CLIENT', label: 'לקוח' },
+  { value: 'ORG_ADMIN', label: 'מנהל ארגון' },
+] as const;
+
 export default function SettingsWidget() {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [settings, setSettings] = useState({
     name: '',
     taxId: '',
@@ -28,22 +38,40 @@ export default function SettingsWidget() {
     logoSvg: ''
   });
 
+  const [assignEmail, setAssignEmail] = useState('');
+  const [assignRole, setAssignRole] = useState<string>('EMPLOYEE');
+  const [assigning, setAssigning] = useState(false);
+
+  const isSuper = session?.user?.role === 'SUPER_ADMIN';
+  const isOrgAdmin = session?.user?.role === 'ORG_ADMIN';
+  const assignTargetOrgId = isOrgAdmin
+    ? (session?.user?.organizationId ?? '')
+    : isSuper
+      ? (session?.user?.organizationId ?? organizationId ?? '')
+      : '';
+
+  const showAssignPanel =
+    (isOrgAdmin || isSuper) && assignTargetOrgId.length > 0;
+
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/organization');
+      const res = await fetch('/api/organization', { credentials: 'include' });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      
+      if (typeof data.id === 'string') {
+        setOrganizationId(data.id);
+      }
+
       const branding = data.tenantSiteBrandingJson || {};
-      
+
       setSettings({
         name: data.name || '',
         taxId: data.taxId || '',
-        email: data.paypalMerchantEmail || '', // Using paypalMerchantEmail as a placeholder for business email
+        email: data.paypalMerchantEmail || '',
         website: data.tenantPublicDomain || '',
         logoSvg: branding.logoSvg || ''
       });
@@ -77,6 +105,7 @@ export default function SettingsWidget() {
     try {
       const res = await fetch('/api/organization', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: settings.name,
@@ -93,6 +122,46 @@ export default function SettingsWidget() {
       toast.error('שגיאה בשמירת ההגדרות');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAssignUser = async () => {
+    const email = assignEmail.trim().toLowerCase();
+    if (!email) {
+      toast.error('הזן אימייל של משתמש שכבר התחבר לפחות פעם אחת');
+      return;
+    }
+    if (!assignTargetOrgId) {
+      toast.error('לא נמצא מזהה ארגון לשיוך');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      const res = await fetch('/api/assign-user', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          organizationId: assignTargetOrgId,
+          role: assignRole,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean };
+
+      if (!res.ok) {
+        throw new Error(data.error || 'שגיאה בשיוך');
+      }
+
+      toast.success('המשתמש שויך לארגון בהצלחה', {
+        description: 'כדי ש־Gemini Live והרשאות יתעדכנו מיד — מומלץ שהמשתמש יצא ויכנס שוב למערכת.',
+      });
+      setAssignEmail('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'שגיאה בשיוך משתמש');
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -224,6 +293,58 @@ export default function SettingsWidget() {
               </div>
             </div>
           </section>
+
+          {showAssignPanel && (
+            <section className="pt-6 border-t border-[color:var(--border-main)]/30">
+              <div className="flex items-center gap-2 mb-6">
+                <UserPlus size={18} className="text-amber-500" />
+                <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                  שיוך משתמשים לארגון
+                </h3>
+              </div>
+              <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
+                משתמש חייב להתחבר עם Google לפחות פעם אחת לפני השיוך. אחרי השיוך — יציאה והתחברות מחדש מעדכנות את העוזר הקולי (Gemini Live) והרשאות API.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div className="space-y-2 md:col-span-1">
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל משתמש</label>
+                  <input
+                    type="email"
+                    value={assignEmail}
+                    onChange={(e) => setAssignEmail(e.target.value)}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                    placeholder="user@example.com"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">תפקיד בארגון</label>
+                  <select
+                    value={assignRole}
+                    onChange={(e) => setAssignRole(e.target.value)}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                  >
+                    {ASSIGN_ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => void handleAssignUser()}
+                    disabled={assigning}
+                    className="w-full md:w-auto bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    {assigning ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
+                    שייך לארגון
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Security & System */}
           <section className="pt-6 border-t border-[color:var(--border-main)]/30">
