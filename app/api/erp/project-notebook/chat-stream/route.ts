@@ -15,6 +15,7 @@ import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { loadRecentBillOfQuantitiesContext } from "@/lib/load-recent-bill-of-quantities-context";
+import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { getTradeSpecializedPrompt } from "@/lib/trade-specialized-prompt";
 
 export const maxDuration = 120;
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     const specializedPrompt = getTradeSpecializedPrompt(trade);
     const boqContext = await loadRecentBillOfQuantitiesContext(orgId);
 
-    let systemPrompt = `${specializedPrompt}
+    let systemPrompt = withAssistantTemporalContext(`${specializedPrompt}
 
 אתה מומחה פיננסי והנדסי המלווה את הפרויקט "${project.name}".
 איש קשר/לקוח (ראשון): ${clientName}.
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
 
 התנהגות:
 - ענה תמיד בעברית מקצועית, קצרה ועניינית.
-- השתמש במונחים ההנדסיים המתאימים להתמחות הארגון (לפי ההנחיות למעלה).`;
+- השתמש במונחים ההנדסיים המתאימים להתמחות הארגון (לפי ההנחיות למעלה).`);
 
     if (boqContext) {
       systemPrompt += `\n\n--- הקשר כמויות (BOQ) אחרונים בארגון (מסמכים סרוקים) ---\n${boqContext.slice(0, 12_000)}`;

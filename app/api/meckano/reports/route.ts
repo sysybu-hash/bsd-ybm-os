@@ -1,22 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { MECKANO_SUBSCRIBER_EMAIL } from '@/lib/meckano-access';
+import { meckanoFetch } from '@/lib/meckano-fetch';
+import { requireMeckanoSession } from '@/lib/meckano-route-auth';
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const userEmail = session?.user?.email;
-
-    // Security Check
-    if (!userEmail || userEmail.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
-      return NextResponse.json({ error: 'אין לך הרשאה לגשת לדוחות אלו' }, { status: 403 });
-    }
-
-    const apiKey = process.env.MECKANO_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Meckano API Key is not configured' }, { status: 500 });
-    }
+    const auth = await requireMeckanoSession(session);
+    if ('error' in auth) return auth.error;
+    const apiKey = auth.apiKey;
 
     const body = await request.json();
     const { startDate, endDate, employeeId, projectId, locationId } = body;
@@ -26,9 +19,7 @@ export async function POST(request: Request) {
     const endTs = Math.floor(new Date(endDate).getTime() / 1000);
 
     // 1. Fetch Employees to map userId to userName
-    const employeesRes = await fetch('https://app.meckano.co.il/rest/users', {
-      headers: { 'key': apiKey }
-    });
+    const employeesRes = await meckanoFetch('users', apiKey);
     const employeesData = await employeesRes.json();
     const employeesMap = new Map();
     if (employeesData.status && employeesData.data) {
@@ -38,15 +29,11 @@ export async function POST(request: Request) {
     }
 
     // 2. Fetch Task Entries (with project info)
-    const taskEntriesRes = await fetch(`https://app.meckano.co.il/rest/task-entry?start=${startTs}&end=${endTs}`, {
-      headers: { 'key': apiKey }
-    });
+    const taskEntriesRes = await meckanoFetch(`task-entry?start=${startTs}&end=${endTs}`, apiKey);
     const taskEntriesData = await taskEntriesRes.json();
 
     // 3. Fetch General Time Entries (Total attendance)
-    const timeEntriesRes = await fetch(`https://app.meckano.co.il/rest/time-entry?start=${startTs}&end=${endTs}`, {
-      headers: { 'key': apiKey }
-    });
+    const timeEntriesRes = await meckanoFetch(`time-entry?start=${startTs}&end=${endTs}`, apiKey);
     const timeEntriesData = await timeEntriesRes.json();
     
     if (!taskEntriesData.status && !timeEntriesData.status) {

@@ -1,50 +1,37 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { MECKANO_SUBSCRIBER_EMAIL } from '@/lib/meckano-access';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { meckanoFetch } from "@/lib/meckano-fetch";
+import { requireMeckanoSession } from "@/lib/meckano-route-auth";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    const userEmail = session?.user?.email;
+    const auth = await requireMeckanoSession(session);
+    if ("error" in auth) return auth.error;
 
-    // Security Check
-    if (!userEmail || userEmail.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
-      return NextResponse.json({ error: 'אין לך הרשאה לגשת לנתונים אלו' }, { status: 403 });
-    }
-
-    const apiKey = process.env.MECKANO_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Meckano API Key is not configured' }, { status: 500 });
-    }
-
-    const response = await fetch('https://app.meckano.co.il/rest/tasks', {
-      method: 'GET',
-      headers: {
-        'key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      }
-    });
-
+    const response = await meckanoFetch("tasks", auth.apiKey);
     const data = await response.json();
-    
+
     if (!data.status) {
-      return NextResponse.json({ error: data.message || 'Meckano API error', details: data }, { status: 400 });
+      return NextResponse.json(
+        { error: data.message || "Meckano API error", details: data },
+        { status: 400 },
+      );
     }
 
-    // Map Meckano tasks to projects for the UI
-    const projects = data.data.map((task: any) => ({
+    const projects = data.data.map((task: Record<string, unknown>) => ({
       id: task.id,
-      name: task.description || task.comment || `Project ${task.id}`
+      name: (task.description as string) || (task.comment as string) || `Project ${task.id}`,
     }));
 
-    return NextResponse.json({ 
-      success: true, 
-      projects 
-    });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, projects });
+  } catch (error: unknown) {
     console.error("Meckano Projects Error:", error);
-    return NextResponse.json({ error: 'Failed to fetch Meckano projects', details: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "Failed to fetch Meckano projects", details: message },
+      { status: 500 },
+    );
   }
 }

@@ -8,6 +8,11 @@ import { toast } from "sonner";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
 import { saveGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
+import {
+  GEMINI_VOICE_OPTIONS,
+  SPEECH_STYLE_OPTIONS,
+  voiceForSpeechStyle,
+} from "@/lib/gemini-live-voice-catalog";
 
 export type GeminiLiveSettingsSheetProps = {
   open: boolean;
@@ -137,18 +142,44 @@ export default function GeminiLiveSettingsSheet({ open, onClose, value, onChange
 
               <div className="space-y-4">
                 <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">סגנון דיבור</label>
+                  <select
+                    value={draft.speechStyle ?? "masculine"}
+                    onChange={(e) => {
+                      const speechStyle = e.target.value as GeminiLiveVoiceSettings["speechStyle"];
+                      setDraft({
+                        ...draft,
+                        speechStyle,
+                        voiceName: voiceForSpeechStyle(speechStyle),
+                      });
+                    }}
+                    className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2.5 text-sm font-bold text-[color:var(--foreground-main)]"
+                  >
+                    {SPEECH_STYLE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.labelHe}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">קול</label>
                   <select
                     value={draft.voiceName}
                     onChange={(e) => setDraft({ ...draft, voiceName: e.target.value as GeminiLiveVoiceSettings["voiceName"] })}
                     className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2.5 text-sm font-bold text-[color:var(--foreground-main)]"
                   >
-                    <option value="Kore">Kore</option>
-                    <option value="Aoede">Aoede</option>
-                    <option value="Puck">Puck</option>
-                    <option value="Charon">Charon</option>
-                    <option value="Fenrir">Fenrir</option>
+                    {GEMINI_VOICE_OPTIONS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.labelHe}
+                      </option>
+                    ))}
                   </select>
+                  <p className="mt-1 text-[10px] font-semibold text-[color:var(--foreground-muted)]">
+                    {GEMINI_VOICE_OPTIONS.find((v) => v.id === draft.voiceName)?.descriptionHe ??
+                      "בחר קול לעוזר הקולי"}
+                  </p>
                 </div>
 
                 <div>

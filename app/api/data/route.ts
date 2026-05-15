@@ -141,7 +141,9 @@ export async function GET(request: Request) {
         title: n.title,
         message: n.body,
         severity: n.title.includes('נחתם') ? 'success' : 'info',
-        createdAt: n.createdAt.toISOString()
+        createdAt: n.createdAt.toISOString(),
+        linkType: n.linkType ?? null,
+        targetId: n.targetId ?? null,
       })));
     }
 

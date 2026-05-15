@@ -1,3 +1,4 @@
+import { getAssistantNowDisplayHe, withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import {
   LOCALE_AI_LANGUAGE_NAMES,
   normalizeLocale,
@@ -10,7 +11,9 @@ export const DOCUMENT_JSON_SCHEMA_VERSION = 4;
 export function getDocumentJsonInstruction(locale: string): string {
   const loc = normalizeLocale(locale) as AppLocale;
   const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "English";
+  const nowHe = getAssistantNowDisplayHe();
   return `You are a Senior Construction Engineer & Quantity Surveyor (כמי"ס) analyzing documents for BSD-YBM (Israeli construction: sites, civil, MEP, finishes).
+Server reference date/time (for interpreting "today" in user questions, not document dates): ${nowHe}.
 
 MISSION:
 - Scan ALL pages/sheets of the document (every viewport, sheet index, and continuation).
@@ -67,5 +70,6 @@ RULES:
 export function getAiChatSystemPrefix(contextJson: string, locale: string): string {
   const loc = normalizeLocale(locale) as AppLocale;
   const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "English";
-  return `You are the BSD-YBM assistant for Israeli construction-sector organizations (contracting, sites, and allied trades such as electrical, plumbing, HVAC, finishing). Use the context JSON (industry, constructionTrade, documents). Answer clearly and concisely in ${lang}. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
+  const core = `You are the BSD-YBM assistant for Israeli construction-sector organizations (contracting, sites, and allied trades such as electrical, plumbing, HVAC, finishing). Use the context JSON (industry, constructionTrade, documents). Answer clearly and concisely in ${lang}. When time or "today" matters, use the current date from the temporal block above. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
+  return withAssistantTemporalContext(core);
 }

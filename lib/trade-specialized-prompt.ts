@@ -1,3 +1,4 @@
+import { getAssistantNowDisplayHe } from "@/lib/ai/assistant-temporal-context";
 import { normalizeConstructionTrade, type ConstructionTradeId } from "@/lib/construction-trades";
 
 /**
@@ -22,7 +23,7 @@ const TRADE_INSTRUCTIONS: Partial<Record<ConstructionTradeId, string>> = {
 
 export function getTradeSpecializedPrompt(tradeRaw: string | null | undefined): string {
   const trade = normalizeConstructionTrade(tradeRaw) as ConstructionTradeId;
-  const baseInstruction = "אתה עוזר הנדסי בכיר במערכת BSD-YBM.";
+  const baseInstruction = `אתה עוזר הנדסי בכיר במערכת BSD-YBM. תאריך התייחסות: ${getAssistantNowDisplayHe()}.`;
   const extra = TRADE_INSTRUCTIONS[trade];
   if (!extra?.trim()) {
     return `${baseInstruction}\nהתאם את התשובות לשפה מקצועית בענף הבנייה והתשתיות בישראל.`;

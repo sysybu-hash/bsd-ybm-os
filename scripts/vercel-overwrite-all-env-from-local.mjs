@@ -1,5 +1,5 @@
 /**
- * מחיקה מלאה של משתני Vercel (production, preview, development) ואז דחיפה מ־.env.local.
+ * מחיקה מלאה של משתני Vercel (production, preview, development) ואז דחיפה מ־.env + .env.local + עקיפות פרודקשן.
  *
  * GOOGLE_DOCUMENT_AI_CREDENTIALS (JSON עם private_key ו-\\n):
  * - נקראים דרך dotenv.parse (תקן dotenv) כדי לפרש מרכאות ובריחים נכון.
@@ -16,18 +16,47 @@ import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { homedir } from "node:os";
+import { platform } from "node:os";
 import { performance } from "node:perf_hooks";
 import dotenv from "dotenv";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const envPath = resolve(root, ".env.local");
+const envBasePath = resolve(root, ".env");
+const envLocalPath = resolve(root, ".env.local");
 
 const SKIP_KEYS = new Set(["VERCEL_OIDC_TOKEN"]);
+/** לא נדחף ל-Vercel — legacy / לא בשימוש / מפתח לא תקף */
+const EXCLUDE_KEYS = new Set([
+  "NEXT_PUBLIC_GEMINI_API_KEY",
+  "TENANT_OS_HOSTS",
+  "TENANT_FALLBACK_REDIRECT",
+  "NEXT_PUBLIC_USE_API_AUTH",
+  "NEXT_PUBLIC_ADMIN_EMAILS",
+  "GROQ_API_KEY",
+]);
+const NEVER_SENSITIVE = new Set([
+  "NEXTAUTH_URL",
+  "AUTH_URL",
+  "GOOGLE_CLIENT_ID",
+  "NEXT_PUBLIC_SITE_URL",
+]);
 const ENVIRONMENTS = ["production", "preview", "development"];
-const DELAY_MS = 400;
-const PRODUCTION_NEXTAUTH_URL = "https://bsd-ybm.co.il";
+const DELAY_MS = 550;
+const PRODUCTION_SITE_URL = "https://bsd-ybm.co.il";
+
+/** ערכים לפרודקשן / Preview / Development ב-Vercel (לא localhost). */
+const PRODUCTION_OVERRIDES = {
+  NEXT_PUBLIC_SITE_URL: PRODUCTION_SITE_URL,
+  NEXT_PUBLIC_API_URL: `${PRODUCTION_SITE_URL}/api`,
+  NEXTAUTH_URL: PRODUCTION_SITE_URL,
+  AUTH_URL: PRODUCTION_SITE_URL,
+  PAYPAL_ENV: "live",
+  GEMINI_MODEL: "gemini-2.5-flash",
+  GEMINI_NOTEBOOKLM_MODEL: "gemini-2.5-flash",
+  CRM_ANALYSIS_GEMINI_MODEL: "gemini-2.5-flash",
+  PREMIUM_GEMINI_MODEL: "gemini-2.5-pro",
+};
 
 const JSON_CREDENTIAL_KEYS = new Set([
   "GOOGLE_DOCUMENT_AI_CREDENTIALS",
@@ -41,40 +70,29 @@ function sleepSync(ms) {
   }
 }
 
-function loadProjectLink() {
-  const p = join(root, ".vercel", "project.json");
-  if (!existsSync(p)) {
-    throw new Error("חסר .vercel/project.json — הריצו vercel link מהשורש.");
-  }
-  return JSON.parse(readFileSync(p, "utf8"));
-}
-
-function getVercelToken() {
-  const t = process.env.VERCEL_TOKEN?.trim();
-  if (t) return t;
-  const authPath = join(homedir(), ".vercel", "auth.json");
-  if (existsSync(authPath)) {
-    const j = JSON.parse(readFileSync(authPath, "utf8"));
-    if (j.token?.trim()) return j.token.trim();
-  }
-  throw new Error("חסר VERCEL_TOKEN או קובץ התחברות (~/.vercel/auth.json). הריצו vercel login.");
-}
-
-/** מפתחות ציבוריים בלבד — plain; כל השאר encrypted ב-API */
-function vercelApiValueType(key) {
-  return key.startsWith("NEXT_PUBLIC_") ? "plain" : "encrypted";
-}
-
-function loadEnvLocalPairs() {
-  if (!existsSync(envPath)) {
-    console.error("חסר קובץ .env.local");
+function loadMergedEnvPairs() {
+  if (!existsSync(envBasePath) && !existsSync(envLocalPath)) {
+    console.error("חסרים קבצי .env ו/או .env.local");
     process.exit(1);
   }
-  const raw = readFileSync(envPath);
-  const parsed = dotenv.parse(raw);
+  const merged = {};
+  if (existsSync(envBasePath)) {
+    Object.assign(merged, dotenv.parse(readFileSync(envBasePath, "utf8")));
+  }
+  if (existsSync(envLocalPath)) {
+    const local = dotenv.parse(readFileSync(envLocalPath, "utf8"));
+    const geminiFromBase = merged.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+    Object.assign(merged, local);
+    if (geminiFromBase) {
+      merged.GOOGLE_GENERATIVE_AI_API_KEY = geminiFromBase;
+    }
+  }
+  for (const [key, val] of Object.entries(PRODUCTION_OVERRIDES)) {
+    merged[key] = val;
+  }
   const pairs = [];
-  for (const [key, val] of Object.entries(parsed)) {
-    if (!key || SKIP_KEYS.has(key)) continue;
+  for (const [key, val] of Object.entries(merged)) {
+    if (!key || SKIP_KEYS.has(key) || EXCLUDE_KEYS.has(key)) continue;
     if (val == null || String(val).length === 0) continue;
     pairs.push({ key, val: String(val) });
   }
@@ -97,51 +115,38 @@ function validateCredentialJson(pairs) {
   }
 }
 
-/**
- * Vercel REST API v10 — upsert; Preview עם gitBranch: null לכל ענפי ה-Preview.
- */
-async function upsertEnvViaApi(key, val, environment) {
-  const { projectId, orgId } = loadProjectLink();
-  const token = getVercelToken();
-  const type = vercelApiValueType(key);
+function isSensitiveKey(key) {
+  return !key.startsWith("NEXT_PUBLIC_") && !NEVER_SENSITIVE.has(key);
+}
 
-  const body = {
-    key,
-    value: val,
-    type,
-    target: [environment],
-  };
-  if (environment === "preview") {
-    body.gitBranch = null;
+/** דחיפה דרך Vercel CLI (עובד עם vercel login ב-Windows). */
+function pushOneCli(key, val, environment, gitBranch) {
+  const args = ["vercel", "env", "add", key, environment];
+  if (gitBranch) args.push(gitBranch);
+  args.push("--yes", "--force", "--non-interactive");
+  if (environment === "development" && isSensitiveKey(key)) {
+    return { ok: true, msg: "דילוג — sensitive לא נתמך ב-development" };
   }
+  if (isSensitiveKey(key)) args.push("--sensitive");
+  args.push("--value", val);
 
-  const qs = new URLSearchParams({
-    teamId: orgId,
-    upsert: "true",
-  });
-  const url = `https://api.vercel.com/v10/projects/${encodeURIComponent(projectId)}/env?${qs}`;
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+  const r = spawnSync("npx", args, {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024,
+    shell: platform() === "win32",
   });
 
-  const text = await res.text();
-  if (!res.ok) {
-    let detail = text.slice(0, 800);
-    try {
-      const j = JSON.parse(text);
-      if (j.error?.message) detail = j.error.message;
-    } catch {
-      /* keep text */
-    }
-    throw new Error(`${res.status} ${detail}`);
+  const out = `${r.stdout || ""}${r.stderr || ""}`;
+  if (/git_branch_required/.test(out) && environment === "preview" && !gitBranch) {
+    return pushOneCli(key, val, environment, "*");
   }
-  return text;
+  const ok =
+    r.status === 0 ||
+    /Overridden|Added Environment Variable|Environment Variables configured/i.test(
+      out,
+    );
+  return { ok, msg: out.trim().slice(-800) };
 }
 
 function runWipe() {
@@ -152,11 +157,15 @@ function runWipe() {
   return r.status === 0;
 }
 
-async function main() {
+function main() {
   const skipWipe = process.argv.includes("--skip-wipe");
 
-  const pairs = loadEnvLocalPairs();
+  const pairs = loadMergedEnvPairs();
   validateCredentialJson(pairs);
+
+  console.log(
+    `מקור: ${existsSync(envBasePath) ? ".env" : ""}${existsSync(envBasePath) && existsSync(envLocalPath) ? " + " : ""}${existsSync(envLocalPath) ? ".env.local" : ""} + עקיפות פרודקשן (SITE_URL, PAYPAL live).\n`,
+  );
 
   if (!skipWipe) {
     console.log("שלב 1/2 — מחיקת כל משתני הפרויקט ב-Vercel (למעט OIDC)…\n");
@@ -164,16 +173,13 @@ async function main() {
       console.error("מחיקה נכשלה.");
       process.exit(1);
     }
-    console.log("\nשלב 2/2 — דחיפה מ-.env.local (REST API)…\n");
+    console.log("\nשלב 2/2 — דחיפה ל-Vercel (CLI)…\n");
   } else {
-    console.log("דחיפה בלבד (--skip-wipe), REST API…\n");
+    console.log("דחיפה בלבד (--skip-wipe), Vercel CLI…\n");
   }
 
   const byKey = Object.fromEntries(pairs.map((p) => [p.key, p.val]));
-  const authUrl =
-    byKey.AUTH_URL ||
-    byKey.NEXT_PUBLIC_SITE_URL ||
-    PRODUCTION_NEXTAUTH_URL;
+  const authUrl = PRODUCTION_SITE_URL;
 
   const filtered = pairs.filter((p) => p.key !== "NEXTAUTH_URL");
 
@@ -184,33 +190,30 @@ async function main() {
   let ok = 0;
   let fail = 0;
 
-  async function run(key, val, env) {
-    try {
-      await upsertEnvViaApi(key, val, env);
+  function run(key, val, env) {
+    const { ok: success, msg } = pushOneCli(key, val, env, undefined);
+    if (!success) {
+      console.error(`[שגיאה] ${key} (${env})\n${msg}`);
+      fail++;
+    } else {
       console.log(`[ok] ${key} → ${env}`);
       ok++;
-    } catch (e) {
-      console.error(`[שגיאה] ${key} (${env})\n${e instanceof Error ? e.message : e}`);
-      fail++;
     }
     sleepSync(DELAY_MS);
   }
 
   for (const { key, val } of filtered) {
     for (const env of ENVIRONMENTS) {
-      await run(key, val, env);
+      run(key, val, env);
     }
   }
 
   for (const env of ENVIRONMENTS) {
-    await run("NEXTAUTH_URL", authUrl.replace(/\/$/, ""), env);
+    run("NEXTAUTH_URL", authUrl.replace(/\/$/, ""), env);
   }
 
   console.log(`\nסיום: ${ok} הצלחות, ${fail} כשלונות`);
   process.exit(fail > 0 ? 1 : 0);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main();

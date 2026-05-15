@@ -1,17 +1,21 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, LogOut, Moon, Settings, Sun, Zap } from "lucide-react";
+import { Bell, LayoutGrid, LogOut, Settings, Zap } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { useTheme } from "next-themes";
 import Image from "next/image";
 import { WidgetType } from "@/hooks/use-window-manager";
+import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
+import ThemeToggle from "@/components/os/system/ThemeToggle";
 
 interface OSHeaderProps {
   openWidget?: (type: WidgetType) => void;
   notificationsCount: number;
   isNotificationsOpen: boolean;
   toggleNotifications: () => void;
+  bellButtonRef?: React.Ref<HTMLButtonElement>;
+  isCleanDashboard?: boolean;
+  onToggleWorkState?: () => void;
 }
 
 export default function OSHeader({
@@ -19,9 +23,11 @@ export default function OSHeader({
   notificationsCount,
   isNotificationsOpen,
   toggleNotifications,
+  bellButtonRef,
+  isCleanDashboard = false,
+  onToggleWorkState,
 }: OSHeaderProps) {
   const { data: session } = useSession();
-  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const userName = session?.user?.name || "משתמש מערכת";
@@ -54,6 +60,7 @@ export default function OSHeader({
         {mounted && (
           <>
             <button
+              ref={bellButtonRef}
               type="button"
               onClick={toggleNotifications}
               className={`relative flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition ${
@@ -73,15 +80,26 @@ export default function OSHeader({
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="quiet-button flex min-h-11 min-w-11 items-center justify-center p-0 text-[color:var(--foreground-muted)]"
-              title="שינוי ערכת נושא"
-              aria-label="שינוי ערכת נושא"
-            >
-              {theme === "dark" ? <Sun size={15} aria-hidden /> : <Moon size={15} aria-hidden />}
-            </button>
+            {onToggleWorkState ? (
+              <button
+                type="button"
+                onClick={onToggleWorkState}
+                className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg border transition ${
+                  isCleanDashboard
+                    ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+                    : "border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+                }`}
+                title={isCleanDashboard ? "חזור למצב עבודה" : "דשבורד נקי"}
+                aria-label={isCleanDashboard ? "חזור למצב עבודה" : "דשבורד נקי"}
+                aria-pressed={isCleanDashboard}
+              >
+                <LayoutGrid size={15} aria-hidden />
+              </button>
+            ) : null}
+
+            <LocaleSwitcher compact />
+
+            <ThemeToggle />
           </>
         )}
 

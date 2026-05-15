@@ -10,11 +10,14 @@ import {
   jsonUnauthorized,
 } from "@/lib/api-json";
 import { isGeminiConfigured } from "@/lib/ai-providers";
+import { GEMINI_NOTEBOOKLM_DEFAULT_MODEL } from "@/lib/gemini-model";
+import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
 
-const MODEL = process.env.GEMINI_NOTEBOOKLM_MODEL?.trim() || "gemini-1.5-flash";
+const MODEL =
+  process.env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
 const REQUESTS_PER_HOUR = 80;
 
 export async function POST(req: Request) {
@@ -56,14 +59,14 @@ export async function POST(req: Request) {
       .map((s: { name?: string; content?: string }, i: number) => `מקור ${i + 1} (${s.name ?? "ללא שם"}):\n${s.content ?? ""}\n`)
       .join("\n");
 
-    const systemPrompt = `
-      אתה עוזר מחקר חכם ומתקדם במערכת ההפעלה BSD-YBM OS.
-      עליך לענות על שאלות המשתמש *אך ורק* על בסיס מקורות הידע הבאים שסופקו לך. 
-      אם התשובה לא נמצאת במקורות, ציין זאת במפורש. ענה בעברית מקצועית וברורה.
-      
-      מקורות ידע זמינים:
-      ${sourcesContext}
-    `;
+    const systemPrompt = withAssistantTemporalContext(`
+אתה עוזר מחקר חכם במערכת BSD-YBM OS.
+ענה על שאלות המשתמש *אך ורק* על בסיס מקורות הידע שסופקו למטה.
+אם התשובה לא במקורות — ציין במפורש. ענה בעברית מקצועית וברורה.
+
+מקורות ידע זמינים:
+${sourcesContext}
+`);
 
     const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
       const { id: _id, ...rest } = m;

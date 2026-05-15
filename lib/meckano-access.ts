@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isAdmin } from "@/lib/is-admin";
 
 export const MECKANO_SUBSCRIBER_EMAIL = "jbuildgca@gmail.com";
 export const MECKANO_ACCESS_ERROR = `Meckano זמין רק למנוי ${MECKANO_SUBSCRIBER_EMAIL}.`;
@@ -38,6 +39,10 @@ export async function isMeckanoEnabledForOrganization(organizationId: string | n
 }
 
 export async function canAccessMeckano(session: SessionLike) {
+  if (isAdmin(session?.user?.email)) {
+    return true;
+  }
+
   const organizationId = session?.user?.organizationId ?? null;
   if (!organizationId) {
     return false;

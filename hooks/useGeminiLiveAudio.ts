@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
+import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
 type GeminiLiveState = "idle" | "connecting" | "ready" | "streaming" | "fallback" | "error";
 
 export type GeminiLiveVoiceSettings = {
   voiceName: "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede";
+  speechStyle: "masculine" | "feminine" | "neutral";
   temperature: number;
   silenceDurationMs: number;
   prefixPaddingMs: number;
@@ -16,7 +18,8 @@ export type GeminiLiveVoiceSettings = {
 };
 
 export const DEFAULT_GEMINI_LIVE_VOICE_SETTINGS: GeminiLiveVoiceSettings = {
-  voiceName: "Kore",
+  voiceName: "Charon",
+  speechStyle: "masculine",
   temperature: 0.7,
   silenceDurationMs: 1100,
   prefixPaddingMs: 350,
@@ -113,7 +116,7 @@ export function useGeminiLiveAudio({
 }: GeminiLiveOptions) {
   const [state, setState] = useState<GeminiLiveState>("idle");
   const [statusText, setStatusText] = useState("Gemini Live מוכן להפעלה");
-  const [model, setModel] = useState("gemini-3.1-flash-live-preview");
+  const [model, setModel] = useState("gemini-2.5-flash-native-audio-latest");
   const [lastTranscript, setLastTranscript] = useState("");
 
   const webSocketRef = useRef<WebSocket | null>(null);
@@ -350,39 +353,7 @@ export function useGeminiLiveAudio({
               },
             },
             systemInstruction: { parts: [{ text: systemInstruction }] },
-            tools: [{
-              function_declarations: [
-                {
-                  name: "execute_os_command",
-                  description: "מפעיל פקודות במערכת ההפעלה כמו פתיחת ווידג'טים",
-                  parameters: {
-                    type: "OBJECT",
-                    properties: {
-                      action: {
-                        type: "STRING",
-                        enum: ["crm", "meckanoReports", "projectBoard", "aiScanner", "erpArchive", "docCreator", "settings", "googleDrive", "notebookLM"],
-                        description: "הווידג'ט לפתיחה"
-                      }
-                    },
-                    required: ["action"]
-                  }
-                },
-                {
-                  name: "google_assistant_command",
-                  description: "שולח פקודה ל-Google Assistant (למשל: הדלק אורות, מה מזג האוויר)",
-                  parameters: {
-                    type: "OBJECT",
-                    properties: {
-                      query: {
-                        type: "STRING",
-                        description: "הפקודה לביצוע"
-                      }
-                    },
-                    required: ["query"]
-                  }
-                }
-              ]
-            }],
+            tools: [{ function_declarations: getOsAssistantLiveToolDeclarations() }],
             ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
             ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
             realtimeInputConfig: {

@@ -11,19 +11,45 @@ import {
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { GEMINI_LIVE_NATIVE_AUDIO_MODEL } from "@/lib/gemini-model";
+import { getGeminiApiKey } from "@/lib/gemini-api-key";
+import {
+  GEMINI_LIVE_MODEL_FALLBACK_CHAIN,
+  isGeminiApiKeyError,
+  isLikelyGeminiModelUnavailable,
+} from "@/lib/gemini-model";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const REQUESTS_PER_HOUR = 80;
 
-function getGeminiApiKey(): string {
-  return (
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-    process.env.GEMINI_API_KEY?.trim() ||
-    ""
-  );
+async function createLiveAuthToken(client: GoogleGenAI, model: string) {
+  const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const newSessionExpireTime = new Date(Date.now() + 60 * 1000).toISOString();
+
+  const token = await client.authTokens.create({
+    config: {
+      uses: 1,
+      expireTime,
+      newSessionExpireTime,
+      liveConnectConstraints: {
+        model,
+        config: {
+          sessionResumption: {},
+          temperature: 0.7,
+          responseModalities: [Modality.AUDIO],
+        },
+      },
+      httpOptions: { apiVersion: "v1alpha" },
+    },
+  });
+
+  return {
+    token: token.name,
+    model,
+    expiresAt: expireTime,
+    newSessionExpiresAt: newSessionExpireTime,
+  };
 }
 
 export async function POST() {
@@ -56,37 +82,33 @@ export async function POST() {
     }
 
     const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-    const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    const newSessionExpireTime = new Date(Date.now() + 60 * 1000).toISOString();
+    let lastError: unknown;
 
-    const token = await client.authTokens.create({
-      config: {
-        uses: 1,
-        expireTime,
-        newSessionExpireTime,
-        liveConnectConstraints: {
-          model: GEMINI_LIVE_NATIVE_AUDIO_MODEL,
-          config: {
-            sessionResumption: {},
-            temperature: 0.7,
-            responseModalities: [Modality.AUDIO],
-          },
-        },
-        httpOptions: { apiVersion: "v1alpha" },
-      },
-    });
+    for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
+      try {
+        return Response.json(await createLiveAuthToken(client, model));
+      } catch (error) {
+        lastError = error;
+        const blob = `${error instanceof Error ? error.message : String(error)} ${JSON.stringify(error)}`;
+        if (isGeminiApiKeyError(error)) {
+          return jsonServiceUnavailable(
+            formatGeminiLiveUserMessage(blob),
+            "gemini_api_key_invalid",
+          );
+        }
+        if (!isLikelyGeminiModelUnavailable(error)) {
+          throw error;
+        }
+        console.warn(`[gemini-live] model ${model} unavailable, trying next`);
+      }
+    }
 
-    return Response.json({
-      token: token.name,
-      model: GEMINI_LIVE_NATIVE_AUDIO_MODEL,
-      expiresAt: expireTime,
-      newSessionExpiresAt: newSessionExpireTime,
-    });
+    throw lastError ?? new Error("כל מודלי Gemini Live נכשלו");
   } catch (error) {
     console.error("api/ai/gemini-live/session:", error);
     const message = error instanceof Error ? error.message : String(error);
     const blob = `${message} ${JSON.stringify(error)}`;
-    if (/API_KEY_INVALID|API key expired|renew the api key|invalid api key/i.test(blob)) {
+    if (isGeminiApiKeyError(error)) {
       return jsonServiceUnavailable(
         formatGeminiLiveUserMessage(blob),
         "gemini_api_key_invalid",

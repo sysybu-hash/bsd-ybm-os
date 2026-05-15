@@ -11,10 +11,13 @@ import { AccessibilitySettingsBootstrap } from "@/components/os/system/Accessibi
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
-import { buildRootMetadata } from "@/lib/site-metadata";
+import { buildLocalizedMetadata } from "@/lib/site-metadata";
 import AppToaster from "@/components/os/system/AppToaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import Script from "next/script";
+import StructuredDataScript from "@/components/seo/StructuredDataScript";
+import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
+import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -30,7 +33,22 @@ const assistant = Assistant({
   variable: "--font-assistant",
 });
 
-export const metadata: Metadata = buildRootMetadata();
+export async function generateMetadata(): Promise<Metadata> {
+  const jar = await cookies();
+  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
+  const base = buildLocalizedMetadata(locale);
+  return {
+    ...base,
+    title: {
+      default: base.title as string,
+      template: "%s | BSD-YBM-OS",
+    },
+    manifest: "/manifest.json",
+    formatDetection: { email: false, address: false, telephone: false },
+    appleWebApp: { capable: true, statusBarStyle: "default", title: "BSD-YBM-OS" },
+    icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
+  };
+}
 
 /** סשן משתמש — חייב להתעדכן בכל בקשה; אחרת RSC עלול להציג משתמש קודם ב-SessionProvider */
 export const dynamic = "force-dynamic";
@@ -100,8 +118,11 @@ export default async function RootLayout({
                 tabIndex={-1}
                 className="app-visual-effects-root min-h-app outline-none focus:outline-none"
               >
+                <StructuredDataScript />
                 <AccessibilitySettingsBootstrap />
                 {children}
+                <CookieConsentBanner />
+                <AccessibilityToolbar />
                 <AppToaster />
                 <Script id="pwa-ios" strategy="afterInteractive">
                   {`

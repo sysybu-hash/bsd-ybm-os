@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant' | 'notebookLM';
+export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant' | 'notebookLM' | 'accessibility';
 
 export interface ActiveWidget {
   id: string;
@@ -16,6 +16,7 @@ export interface ActiveWidget {
 }
 
 const STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
+const SNAPSHOT_KEY = 'bsd_ybm_layout_snapshot_session';
 
 const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }> = {
   project: { width: 800, height: 600 },
@@ -36,12 +37,14 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   googleDrive: { width: 800, height: 600 },
   googleAssistant: { width: 500, height: 650 },
   notebookLM: { width: 720, height: 620 },
+  accessibility: { width: 420, height: 560 },
 };
 
 export function useWindowManager() {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [isCleanDashboard, setIsCleanDashboard] = useState(false);
   const nextZIndexRef = useRef(100);
 
   // Persistence: Load
@@ -130,6 +133,42 @@ export function useWindowManager() {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
+  const enterCleanDashboard = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(widgets));
+    }
+    setWidgets([]);
+    setIsCleanDashboard(true);
+  }, [widgets]);
+
+  const restoreWorkSnapshot = useCallback(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      const raw = sessionStorage.getItem(SNAPSHOT_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as ActiveWidget[];
+          if (Array.isArray(parsed)) {
+            setWidgets(parsed.filter((w) => w && typeof w.id === 'string'));
+            const maxZ = Math.max(...parsed.map((w) => w.zIndex || 100), 100);
+            nextZIndexRef.current = maxZ + 1;
+          }
+        } catch (e) {
+          console.warn('Snapshot restore failed:', e);
+        }
+        sessionStorage.removeItem(SNAPSHOT_KEY);
+      }
+    }
+    setIsCleanDashboard(false);
+  }, []);
+
+  const toggleWorkState = useCallback(() => {
+    if (isCleanDashboard) {
+      restoreWorkSnapshot();
+    } else {
+      enterCleanDashboard();
+    }
+  }, [isCleanDashboard, enterCleanDashboard, restoreWorkSnapshot]);
+
   return {
     widgets,
     hasHydrated,
@@ -141,6 +180,8 @@ export function useWindowManager() {
     toggleMaximize,
     updateZoom,
     clearLayout,
-    isFirstTime
+    isFirstTime,
+    isCleanDashboard,
+    toggleWorkState,
   };
 }

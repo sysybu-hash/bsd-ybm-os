@@ -1,26 +1,37 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
-import { 
-  ScanLine, 
-  Upload, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ScanLine,
+  Upload,
+  FileText,
+  CheckCircle2,
+  Loader2,
   History,
   ArrowRight,
   Bot,
   Zap,
-  Trash2,
   Save,
   X,
   Building2,
   Hash,
   Calendar,
-  DollarSign
-} from 'lucide-react';
-import { toast } from 'sonner';
+  DollarSign,
+  Settings2,
+} from "lucide-react";
+import { Group, Panel, Separator } from "react-resizable-panels";
+import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import ItemActions from "@/components/os/ItemActions";
+import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
+import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
+
+type EngineMeta = {
+  configured: { documentAI: boolean; gemini: boolean; openai: boolean };
+  gemini?: { primaryLabel?: string };
+  openai?: { defaultModelId?: string };
+};
 
 interface DocumentAnalysis {
   amount: number;
@@ -31,7 +42,8 @@ interface DocumentAnalysis {
   summary: string;
   date?: string;
   documentId?: string;
-  rawAiData?: any; // Store original AI data for feedback loop
+  rawAiData?: Record<string, unknown>;
+  v5?: ScanExtractionV5;
 }
 
 interface ScanHistoryItem {
@@ -40,313 +52,441 @@ interface ScanHistoryItem {
   vendor: string;
   amount: number;
   date: string;
-  status: 'success' | 'warning' | 'error';
+  status: "success" | "warning" | "error";
+}
+
+const ENGINE_MODES: { id: TriEngineRunMode; labelKey: string; fallback: string }[] = [
+  { id: "AUTO", labelKey: "scanner.modeAuto", fallback: "אוטומטי" },
+  { id: "MULTI_PARALLEL", labelKey: "scanner.modeMulti", fallback: "ריבוי מנועים" },
+  { id: "SINGLE_GEMINI", labelKey: "scanner.modeGemini", fallback: "Gemini" },
+  { id: "SINGLE_OPENAI", labelKey: "scanner.modeOpenai", fallback: "OpenAI" },
+  { id: "SINGLE_DOCUMENT_AI", labelKey: "scanner.modeDocAi", fallback: "Document AI" },
+];
+
+function mapV5ToAnalysis(v5: ScanExtractionV5, aiData?: Record<string, unknown>): DocumentAnalysis {
+  const meta = v5.documentMetadata;
+  return {
+    amount: Number(v5.total ?? 0),
+    vendor: v5.vendor || "לא צוין",
+    taxId: v5.taxId ?? undefined,
+    projectSuggestion: meta?.project ?? meta?.client ?? "",
+    confidence: 0.92,
+    summary: v5.summary || v5.docType,
+    date: v5.date ?? meta?.documentDate ?? new Date().toISOString().split("T")[0],
+    rawAiData: aiData ?? (v5 as unknown as Record<string, unknown>),
+    v5,
+  };
+}
+
+async function readNdjsonStream(
+  res: Response,
+  onLine: (obj: Record<string, unknown>) => void,
+): Promise<void> {
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No body");
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      try {
+        onLine(JSON.parse(t) as Record<string, unknown>);
+      } catch {
+        /* skip malformed */
+      }
+    }
+  }
+  const tail = buf.trim();
+  if (tail) {
+    try {
+      onLine(JSON.parse(tail) as Record<string, unknown>);
+    } catch {
+      /* */
+    }
+  }
+}
+
+function telemetryLabel(t: TriEngineTelemetry | null): string {
+  if (!t) return "—";
+  const parts: string[] = [];
+  if (t.documentAI?.phase && t.documentAI.phase !== "idle") parts.push(`DocAI: ${t.documentAI.phase}`);
+  if (t.gemini?.phase && t.gemini.phase !== "idle") parts.push(`Gemini: ${t.gemini.phase}`);
+  if (t.gpt?.phase && t.gpt.phase !== "idle") parts.push(`GPT: ${t.gpt.phase}`);
+  return parts.length ? parts.join(" · ") : "—";
 }
 
 export default function AiScannerWidget() {
+  const { t } = useI18n();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [engineMeta, setEngineMeta] = useState<EngineMeta | null>(null);
+  const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
+  const [telemetry, setTelemetry] = useState<TriEngineTelemetry | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [resultJson, setResultJson] = useState<string>("");
   const [pendingAnalysis, setPendingAnalysis] = useState<DocumentAnalysis | null>(null);
-  const [history, setHistory] = useState<ScanHistoryItem[]>([
-    { id: '1', fileName: 'חשבונית_חומרים_101.pdf', vendor: 'ספק חומרים', amount: 4500, date: '2026-05-12', status: 'success' },
-    { id: '2', fileName: 'קבלה_ציוד_עבודה.jpg', vendor: 'חנות כלי עבודה', amount: 1250, date: '2026-05-10', status: 'success' },
-    { id: '3', fileName: 'הזמנת_עבודה_תשתית.pdf', vendor: 'קבלן משנה', amount: 8900, date: '2026-05-08', status: 'warning' },
-  ]);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
 
-  const onDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
+  const tr = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v !== key ? v : fallback;
+    },
+    [t],
+  );
 
-    await processFile(file);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/scan/engine-meta");
+        if (res.ok && !cancelled) setEngineMeta((await res.json()) as EngineMeta);
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const activeEngineLabel = useMemo(() => {
+    if (!engineMeta) return tr("scanner.processing", "מעבד…");
+    if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
+    if (engineRunMode === "SINGLE_OPENAI") return engineMeta.openai?.defaultModelId ?? "OpenAI";
+    if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
+    if (engineRunMode === "MULTI_PARALLEL") return tr("scanner.modeMulti", "ריבוי מנועים");
+    return tr("scanner.modeAuto", "אוטומטי");
+  }, [engineMeta, engineRunMode, tr]);
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
     setPendingAnalysis(null);
-    toast.info(`מתחיל ניתוח AI עבור ${file.name}...`);
+    setResultJson("");
+    setTelemetry(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (file.type.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
+    else setPreviewUrl(null);
+
+    toast.info(`${tr("scanner.processing", "מעבד…")} ${file.name}`);
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
+      formData.append("scanMode", "INVOICE_FINANCIAL");
+      formData.append("persist", "false");
+      formData.append("engineRunMode", engineRunMode);
 
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
+      const res = await fetch("/api/scan/tri-engine/stream", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(String((err as { error?: string }).error ?? res.status));
+      }
+
+      let finalV5: ScanExtractionV5 | null = null;
+      let finalAi: Record<string, unknown> | undefined;
+
+      await readNdjsonStream(res, (obj) => {
+        if (obj.type === "telemetry" && obj.telemetry) {
+          setTelemetry(obj.telemetry as TriEngineTelemetry);
+        }
+        if (obj.type === "partial_v5" && obj.v5) {
+          finalV5 = obj.v5 as ScanExtractionV5;
+          setResultJson(JSON.stringify(obj.v5, null, 2));
+        }
+        if (obj.type === "done" && obj.ok) {
+          if (obj.aiData) finalAi = obj.aiData as Record<string, unknown>;
+          if (obj.aiData && typeof obj.aiData === "object") {
+            const nested = (obj.aiData as { v5?: ScanExtractionV5 }).v5;
+            if (nested) finalV5 = nested;
+          }
+        }
+        if (obj.type === "error" || (obj.error && !obj.ok)) {
+          throw new Error(String(obj.error ?? "Scan failed"));
+        }
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setPendingAnalysis({
-          ...data.analysis,
-          date: data.analysis.date || new Date().toISOString().split('T')[0],
-          documentId: data.notification?.payload?.documentId,
-          rawAiData: data.analysis // Save original for corrections
-        });
-        toast.success('המסמך נותח! אנא אשר את הנתונים.');
+      if (finalV5) {
+        const analysis = mapV5ToAnalysis(finalV5, finalAi);
+        setPendingAnalysis(analysis);
+        setResultJson(JSON.stringify(finalV5, null, 2));
+        toast.success(tr("scanner.results", "תוצאות פענוח"));
       } else {
-        throw new Error('Analysis failed');
+        throw new Error("No extraction result");
       }
-    } catch (error) {
-      toast.error('שגיאה בניתוח המסמך');
+    } catch {
+      toast.error(tr("scanner.processing", "שגיאה בניתוח"));
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const onDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) await processFile(file);
+    },
+    [engineRunMode],
+  );
+
   const confirmAnalysis = async () => {
     if (!pendingAnalysis) return;
-    
-    // Check for corrections
-    const isCorrected = 
-      pendingAnalysis.vendor !== pendingAnalysis.rawAiData?.vendor ||
-      pendingAnalysis.amount !== pendingAnalysis.rawAiData?.amount ||
-      pendingAnalysis.taxId !== pendingAnalysis.rawAiData?.taxId ||
-      pendingAnalysis.date !== pendingAnalysis.rawAiData?.date;
+    const raw = pendingAnalysis.rawAiData as DocumentAnalysis | undefined;
+    const isCorrected =
+      raw &&
+      (pendingAnalysis.vendor !== raw.vendor ||
+        pendingAnalysis.amount !== raw.amount ||
+        pendingAnalysis.taxId !== raw.taxId ||
+        pendingAnalysis.date !== raw.date);
 
-    if (isCorrected) {
+    if (isCorrected && pendingAnalysis.documentId) {
       try {
-        await fetch('/api/ai/corrections', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch("/api/ai/corrections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             documentId: pendingAnalysis.documentId,
-            originalAiData: pendingAnalysis.rawAiData,
+            originalAiData: raw,
             correctedData: {
               vendor: pendingAnalysis.vendor,
               amount: pendingAnalysis.amount,
               taxId: pendingAnalysis.taxId,
-              date: pendingAnalysis.date
+              date: pendingAnalysis.date,
             },
-            correctionSource: 'USER_MANUAL'
-          })
+            correctionSource: "USER_MANUAL",
+          }),
         });
-      } catch (err) {
-        console.error("Failed to save AI correction", err);
+      } catch {
+        /* */
       }
     }
 
-    // Save to expenses table
     try {
-      await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: 'confirm-expense',
+          type: "confirm-expense",
           amount: pendingAnalysis.amount,
           vendor: pendingAnalysis.vendor,
           taxId: pendingAnalysis.taxId,
           date: pendingAnalysis.date,
-          projectName: pendingAnalysis.projectSuggestion
-        })
+          projectName: pendingAnalysis.projectSuggestion,
+        }),
       });
-    } catch (err) {
-      console.error("Failed to confirm expense", err);
+    } catch {
+      /* */
     }
 
-    const newItem: ScanHistoryItem = {
-      id: Date.now().toString(),
-      fileName: 'סריקה חדשה',
-      vendor: pendingAnalysis.vendor,
-      amount: pendingAnalysis.amount,
-      date: pendingAnalysis.date || new Date().toISOString().split('T')[0],
-      status: 'success'
-    };
-    
-    setHistory(prev => [newItem, ...prev]);
+    setHistory((prev) => [
+      {
+        id: Date.now().toString(),
+        fileName: tr("scanner.results", "סריקה"),
+        vendor: pendingAnalysis.vendor,
+        amount: pendingAnalysis.amount,
+        date: pendingAnalysis.date || new Date().toISOString().split("T")[0],
+        status: "success",
+      },
+      ...prev,
+    ]);
     setPendingAnalysis(null);
-    toast.success('ההוצאה נשמרה במערכת!');
+    toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
-      {/* History Sidebar */}
-      <div className="w-full md:w-72 border-b md:border-b-0 md:border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col h-1/3 md:h-auto">
-        <div className="p-4 md:p-6 border-b border-[color:var(--border-main)]">
+    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir="rtl">
+      <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-l">
+        <div className="border-b border-[color:var(--border-main)] p-3">
           <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-            <History size={18} />
-            <span className="font-black text-xs uppercase tracking-widest">היסטוריית סריקות</span>
+            <History size={16} />
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              {tr("scanner.historyTitle", "היסטוריה")}
+            </span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-          {history.map(item => (
-            <div key={item.id} className="p-3 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl hover:bg-[color:var(--surface-card)]/80 transition-all cursor-pointer group shadow-sm dark:shadow-none">
-              <div className="flex justify-between items-start mb-2">
-                <div className={`p-1.5 rounded-lg ${item.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                  <FileText size={14} />
-                </div>
-                <span className="text-[10px] font-mono text-[color:var(--foreground-muted)] opacity-70">{item.date}</span>
+        <div className="custom-scrollbar flex-1 overflow-y-auto p-2 space-y-2">
+          {history.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-2"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[10px] font-bold">{item.vendor}</div>
+                <div className="text-[10px] font-mono text-emerald-600">₪{(item.amount || 0).toLocaleString()}</div>
               </div>
-              <div className="text-xs font-bold text-[color:var(--foreground-main)] truncate mb-1">{item.fileName}</div>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-[color:var(--foreground-muted)] font-bold uppercase">{item.vendor}</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black">₪{(item.amount || 0).toLocaleString()}</span>
-              </div>
+              <ItemActions onDelete={() => setHistory((prev) => prev.filter((h) => h.id !== item.id))} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Main Scanner Area */}
-      <div className="flex-1 flex flex-col p-4 md:p-8 overflow-y-auto custom-scrollbar">
-        <div className="flex items-center gap-4 mb-6 md:mb-12">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-lg shadow-orange-900/10">
-            <ScanLine size={28} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] p-3">
+          <div className="flex items-center gap-3">
+            <ScanLine className="text-orange-500" size={22} />
+            <div>
+              <h2 className="text-sm font-black">{t("scanner.title")}</h2>
+              <p className="text-[10px] text-[color:var(--foreground-muted)]">{t("scanner.subtitle")}</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-[color:var(--foreground-main)] tracking-tight">סורק חשבוניות AI</h2>
-            <p className="text-sm text-[color:var(--foreground-muted)] font-medium">מנוע פענוח מסמכים מבוסס Vision ו-LLM</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Settings2 size={14} className="text-[color:var(--foreground-muted)]" aria-hidden />
+            <select
+              value={engineRunMode}
+              onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
+              className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
+              aria-label={tr("scanner.configAi", "מנועים")}
+            >
+              {ENGINE_MODES.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.id === "SINGLE_DOCUMENT_AI" && !engineMeta?.configured.documentAI}>
+                  {tr(m.labelKey, m.fallback)}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
         {pendingAnalysis ? (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="w-full max-w-xl bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] rounded-[2.5rem] p-8 backdrop-blur-xl shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-[color:var(--foreground-main)] flex items-center gap-3">
-                  <CheckCircle2 className="text-emerald-600 dark:text-emerald-400" size={24} /> אישור נתוני סריקה
+          <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
+            <div className="mx-auto max-w-xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="text-emerald-500" size={20} />
+                  {tr("scanner.results", "אישור")}
                 </h3>
-                <button onClick={() => setPendingAnalysis(null)} className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-full text-[color:var(--foreground-muted)] transition-all">
-                  <X size={20} />
+                <button type="button" onClick={() => setPendingAnalysis(null)} className="rounded-lg p-1 hover:bg-black/5">
+                  <X size={18} />
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-10">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-2">
-                    <Building2 size={12} /> שם ספק
-                  </label>
-                  <input 
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
+                  <Building2 size={10} className="inline" /> ספק
+                  <input
                     value={pendingAnalysis.vendor}
-                    onChange={(e) => setPendingAnalysis({...pendingAnalysis, vendor: e.target.value})}
-                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50 text-[color:var(--foreground-main)]"
+                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, vendor: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-2">
-                    <Hash size={12} /> ח&quot;פ / ע.מ
-                  </label>
-                  <input 
-                    value={pendingAnalysis.taxId || ''}
-                    onChange={(e) => setPendingAnalysis({...pendingAnalysis, taxId: e.target.value})}
-                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50 text-[color:var(--foreground-main)]"
-                    placeholder="לא זוהה"
+                </label>
+                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
+                  <Hash size={10} className="inline" /> ח&quot;פ
+                  <input
+                    value={pendingAnalysis.taxId || ""}
+                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, taxId: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-2">
-                    <DollarSign size={12} /> סכום כולל מע&quot;מ
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 font-bold">₪</span>
-                    <input 
-                      type="number"
-                      inputMode="decimal"
-                      value={pendingAnalysis.amount}
-                      onChange={(e) => setPendingAnalysis({...pendingAnalysis, amount: parseFloat(e.target.value)})}
-                      className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl px-4 py-3 pl-10 text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:ring-1 focus:ring-orange-500/50"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-2">
-                    <Calendar size={12} /> תאריך מסמך
-                  </label>
-                  <input 
+                </label>
+                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
+                  <DollarSign size={10} className="inline" /> סכום
+                  <input
+                    type="number"
+                    value={pendingAnalysis.amount}
+                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, amount: parseFloat(e.target.value) || 0 })}
+                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-mono"
+                  />
+                </label>
+                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
+                  <Calendar size={10} className="inline" /> תאריך
+                  <input
                     type="date"
                     value={pendingAnalysis.date}
-                    onChange={(e) => setPendingAnalysis({...pendingAnalysis, date: e.target.value})}
-                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50 text-[color:var(--foreground-main)]"
+                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, date: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
                   />
-                </div>
+                </label>
               </div>
-
-              <div className="flex gap-4">
-                <button 
-                  onClick={confirmAnalysis}
-                  className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-emerald-900/20 transition-all flex items-center justify-center gap-3"
-                >
-                  <Save size={20} /> אשר ושמור הוצאה
-                </button>
-                <button 
-                  onClick={() => setPendingAnalysis(null)}
-                  className="px-6 h-14 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] text-[color:var(--foreground-main)] font-bold rounded-2xl transition-all"
-                >
-                  בטל
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={confirmAnalysis}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-black text-white"
+              >
+                <Save size={18} /> {tr("scanner.confirmExpense", "אשר ושמור")}
+              </button>
             </div>
           </div>
         ) : (
-          <div 
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-[2.5rem] transition-all duration-300 ${
-              isDragging ? 'border-orange-500/50 bg-orange-500/5 scale-[0.99]' : 'border-[color:var(--border-main)] bg-[color:var(--background-main)]/30'
-            }`}
-          >
-            {isProcessing ? (
-              <div className="flex flex-col items-center gap-6">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full border-4 border-orange-500/10 border-t-orange-500 animate-spin" />
-                  <Bot className="absolute inset-0 m-auto text-orange-600 dark:text-orange-400" size={32} />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">מנתח נתונים...</h3>
-                  <p className="text-[color:var(--foreground-muted)] text-sm">מחלץ פריטים, ספקים וסכומים מהמסמך</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-8 text-center max-w-sm">
-                <div className="w-24 h-24 rounded-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] flex items-center justify-center relative group">
-                  <div className="absolute inset-0 rounded-full bg-orange-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <Upload size={40} className="text-[color:var(--foreground-muted)] group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-3">גרור חשבונית לכאן</h3>
-                  <p className="text-[color:var(--foreground-muted)] text-sm leading-relaxed">תומך ב-PDF, JPG, PNG. המערכת תזהה אוטומטית את הספק ותשייך לפרויקט המתאים.</p>
-                </div>
-                <button 
-                  onClick={() => (document.querySelector('#file-upload') as HTMLInputElement)?.click()}
-                  className="px-8 py-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-2xl text-sm font-bold text-[color:var(--foreground-main)] transition-all flex items-center gap-3 shadow-sm dark:shadow-none"
-                >
-                  בחר קובץ מהמחשב <ArrowRight size={16} />
-                </button>
-                <input 
-                  id="file-upload" 
-                  type="file" 
-                  className="hidden" 
+          <Group orientation="horizontal" className="min-h-0 flex-1">
+            <Panel defaultSize={48} minSize={28} className="flex min-h-0 flex-col">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={onDrop}
+                className={`m-3 flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition ${
+                  isDragging ? "border-orange-500/50 bg-orange-500/5" : "border-[color:var(--border-main)]"
+                }`}
+              >
+                {isProcessing ? (
+                  <Loader2 className="animate-spin text-orange-500" size={40} />
+                ) : (
+                  <>
+                    <Upload size={36} className="mb-3 text-[color:var(--foreground-muted)]" />
+                    <p className="px-4 text-center text-xs font-bold">{t("scanner.drop")}</p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-4 flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold"
+                    >
+                      {tr("scanner.drop", "בחר קובץ")} <ArrowRight size={14} />
+                    </button>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.csv,.json,.xml"
                   onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
                 />
+                {previewUrl ? (
+                  <img src={previewUrl} alt={tr("scanner.preview", "תצוגה")} className="mt-4 max-h-32 rounded-lg object-contain" />
+                ) : null}
               </div>
-            )}
-          </div>
+            </Panel>
+            <Separator className="w-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40" />
+            <Panel defaultSize={52} minSize={28} className="flex min-h-0 flex-col p-3">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                {t("scanner.results")}
+              </p>
+              <p className="mb-2 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                {tr("scanner.telemetry", "טלמטריה")}: {telemetryLabel(telemetry)}
+              </p>
+              <pre className="custom-scrollbar flex-1 overflow-auto rounded-xl border border-[color:var(--border-main)] bg-black/20 p-3 text-[10px] leading-relaxed">
+                {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
+              </pre>
+            </Panel>
+          </Group>
         )}
 
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-          <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] rounded-2xl p-5 flex items-center gap-4 shadow-sm dark:shadow-none">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400"><Zap size={20} /></div>
-            <div>
-              <div className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">מהירות עיבוד</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">~2.4 שניות</div>
-            </div>
+        <div className="grid grid-cols-3 gap-2 border-t border-[color:var(--border-main)] p-2">
+          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+            <Zap size={14} className="mx-auto text-blue-500" />
+            <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">{tr("scanner.engineActive", "מנוע")}</div>
+            <div className="text-[10px] font-black truncate">{activeEngineLabel}</div>
           </div>
-          <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] rounded-2xl p-5 flex items-center gap-4 shadow-sm dark:shadow-none">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><CheckCircle2 size={20} /></div>
-            <div>
-              <div className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">דיוק זיהוי</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">98.2%</div>
-            </div>
+          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+            <Bot size={14} className="mx-auto text-purple-500" />
+            <div className="text-[9px] font-bold">{engineMeta?.configured.gemini ? "Gemini ✓" : "—"}</div>
           </div>
-          <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] rounded-2xl p-5 flex items-center gap-4 shadow-sm dark:shadow-none">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400"><Bot size={20} /></div>
-            <div>
-              <div className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">מנוע פעיל</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">Gemini 1.5 Flash</div>
-            </div>
+          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+            <FileText size={14} className="mx-auto text-emerald-500" />
+            <div className="text-[9px] font-bold">{engineMeta?.configured.openai ? "OpenAI ✓" : "—"}</div>
           </div>
         </div>
       </div>

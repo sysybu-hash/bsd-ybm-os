@@ -1,9 +1,11 @@
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
+import { voiceForSpeechStyle } from "@/lib/gemini-live-voice-catalog";
 
 export const GEMINI_LIVE_VOICE_STORAGE_KEY = "bsd:gemini-live-voice";
 
 const VOICE_NAMES: GeminiLiveVoiceSettings["voiceName"][] = ["Puck", "Charon", "Kore", "Fenrir", "Aoede"];
+const SPEECH_STYLES: GeminiLiveVoiceSettings["speechStyle"][] = ["masculine", "feminine", "neutral"];
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -13,12 +15,20 @@ function isVoiceName(v: string): v is GeminiLiveVoiceSettings["voiceName"] {
   return (VOICE_NAMES as string[]).includes(v);
 }
 
+function isSpeechStyle(v: string): v is GeminiLiveVoiceSettings["speechStyle"] {
+  return (SPEECH_STYLES as string[]).includes(v);
+}
+
 export function normalizeGeminiLiveVoiceSettings(raw: unknown): GeminiLiveVoiceSettings {
   const base = { ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS };
   if (!raw || typeof raw !== "object") return base;
   const o = raw as Record<string, unknown>;
 
+  if (typeof o.speechStyle === "string" && isSpeechStyle(o.speechStyle)) {
+    base.speechStyle = o.speechStyle;
+  }
   if (typeof o.voiceName === "string" && isVoiceName(o.voiceName)) base.voiceName = o.voiceName;
+  else if (base.speechStyle) base.voiceName = voiceForSpeechStyle(base.speechStyle);
   if (typeof o.temperature === "number" && Number.isFinite(o.temperature)) {
     base.temperature = clamp(o.temperature, 0, 1.5);
   }

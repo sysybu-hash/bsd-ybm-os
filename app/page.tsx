@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { MECKANO_SUBSCRIBER_EMAIL } from "@/lib/meckano-access";
@@ -34,6 +34,7 @@ export default function OmniCanvas() {
   const [hasOpenedDefaults, setHasOpenedDefaults] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [mobileOmnibarOpen, setMobileOmnibarOpen] = useState(false);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     widgets,
@@ -47,6 +48,8 @@ export default function OmniCanvas() {
     updateZoom,
     clearLayout,
     isFirstTime,
+    isCleanDashboard,
+    toggleWorkState,
   } = useWindowManager();
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function OmniCanvas() {
   }, [sessionStatus, session?.user?.id]);
 
   useEffect(() => {
-    if (hasHydrated && session && widgets.length === 0 && isFirstTime && !hasOpenedDefaults) {
+    if (hasHydrated && session && widgets.length === 0 && isFirstTime && !hasOpenedDefaults && !isCleanDashboard) {
       setHasOpenedDefaults(true);
       const timer = setTimeout(() => {
         openWidget("dashboard");
@@ -87,7 +90,7 @@ export default function OmniCanvas() {
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [hasHydrated, session, widgets.length, openWidget, hasOpenedDefaults, isFirstTime]);
+  }, [hasHydrated, session, widgets.length, openWidget, hasOpenedDefaults, isFirstTime, isCleanDashboard]);
 
   const handleSearchPreview = async (query: string) => {
     if (query.trim().length < 2) {
@@ -189,6 +192,43 @@ export default function OmniCanvas() {
         openWidget("aiChatFull", { provider: "gemini", prompt: cmd.slice(1).trim() });
         setSystemMessage("צ׳אט AI מלא נפתח");
       } else {
+        const interpretRes = await fetch("/api/os/assistant/interpret", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ message: cmd }),
+        });
+
+        if (interpretRes.ok) {
+          const data = (await interpretRes.json()) as {
+            reply?: string;
+            openWidgets?: string[];
+            searchQuery?: string | null;
+          };
+
+          for (const w of data.openWidgets ?? []) {
+            openWidget(w as Parameters<typeof openWidget>[0]);
+          }
+
+          const searchQ = data.searchQuery?.trim() || "";
+          if (searchQ) {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(searchQ)}`);
+            const searchData = await res.json();
+            const results: SearchResult[] = Array.isArray(searchData.results) ? searchData.results : [];
+            if (results.length > 0) {
+              const top = results[0];
+              if (top.type === "project") {
+                openWidget("project", { name: top.name });
+              } else {
+                openWidget("crmTable");
+              }
+            }
+          }
+
+          setSystemMessage(data.reply?.trim() || "בוצע.");
+          return;
+        }
+
         const res = await fetch(`/api/search?q=${encodeURIComponent(cmd)}`);
         const data = await res.json();
         const results: SearchResult[] = Array.isArray(data.results) ? data.results : [];
@@ -203,8 +243,8 @@ export default function OmniCanvas() {
             setSystemMessage(`נמצא לקוח: ${top.name}`);
           }
         } else {
-          openWidget("project", { name: cmd });
-          setSystemMessage(`מחפש מידע על: ${cmd}`);
+          openWidget("aiChatFull", { prompt: cmd });
+          setSystemMessage("פותח צ'אט AI עם הבקשה שלך");
         }
       }
     } catch (err) {
@@ -220,25 +260,83 @@ export default function OmniCanvas() {
     setMobileOmnibarOpen(false);
   };
 
+  const markNotificationRead = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await fetch("/api/user/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids: [id] }),
+      });
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const handleClearAllNotifications = async () => {
+    try {
+      await fetch("/api/user/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ all: true }),
+      });
+      setNotifications([]);
+    } catch (err) {
+      console.error("Failed to clear notifications", err);
+      toast.error("לא ניתן לנקות את ההתראות");
+    }
+  };
+
+  const handleNotificationNavigate = async (notification: OSNotification) => {
+    const linkType = notification.linkType ?? "general";
+    const targetId = notification.targetId;
+
+    switch (linkType) {
+      case "project":
+      case "projectBoard":
+        openWidget("projectBoard", targetId ? { projectId: targetId } : null);
+        break;
+      case "erp":
+        openWidget("erp", targetId ? { documentId: targetId } : null);
+        break;
+      case "aiScanner":
+      case "scan":
+        openWidget("aiScanner", targetId ? { documentId: targetId } : null);
+        break;
+      case "expense":
+        openWidget("aiScanner");
+        break;
+      default:
+        break;
+    }
+
+    await markNotificationRead(notification.id);
+    setIsNotificationsOpen(false);
+  };
+
   const handleNotificationAction = async (action: OSNotificationAction) => {
     if (action.action === "dismiss") {
       const id = action.payload?.id;
       if (!id) return;
-
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-
-      try {
-        await fetch("/api/data", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ type: "mark-notification-read", id }),
-        });
-      } catch (err) {
-        console.error("Failed to mark notification as read", err);
-      }
+      await markNotificationRead(id);
     } else if (action.action === "viewProject") {
       openWidget("project", { name: action.payload?.query });
+      setIsNotificationsOpen(false);
+    } else if (action.action === "openErp") {
+      openWidget("erp");
+      setIsNotificationsOpen(false);
+    } else if (action.action === "openScanner") {
+      openWidget("aiScanner");
+      setIsNotificationsOpen(false);
+    } else if (action.action === "whatsapp") {
+      const phone = action.payload?.phone;
+      if (phone) {
+        window.open(`https://wa.me/${phone.replace(/\D/g, "")}`, "_blank", "noopener,noreferrer");
+      }
+    } else if (action.action === "confirmExpense") {
+      /* handled inside NotificationCenter */
     }
   };
 
@@ -268,6 +366,9 @@ export default function OmniCanvas() {
         notificationsCount={notifications.length}
         isNotificationsOpen={isNotificationsOpen}
         toggleNotifications={() => setIsNotificationsOpen((open) => !open)}
+        bellButtonRef={bellButtonRef}
+        isCleanDashboard={isCleanDashboard}
+        onToggleWorkState={toggleWorkState}
       />
       <OSSidebar
         openWidget={(type) => {
@@ -278,7 +379,7 @@ export default function OmniCanvas() {
         closeSidebar={() => setIsSidebarOpen(false)}
       />
 
-      <div className="absolute inset-0 z-10 flex flex-col pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:pb-0">
         <OSWorkspace
           widgets={widgets}
           hasHydrated={hasHydrated}
@@ -322,8 +423,11 @@ export default function OmniCanvas() {
       <NotificationCenter
         notifications={notifications}
         onAction={handleNotificationAction}
-        isCollapsed={!isNotificationsOpen}
-        setIsCollapsed={(collapsed) => setIsNotificationsOpen(!collapsed)}
+        onNotificationClick={handleNotificationNavigate}
+        onClearAll={handleClearAllNotifications}
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        anchorRef={bellButtonRef}
         confirmExpense={async () => undefined}
       />
       <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />

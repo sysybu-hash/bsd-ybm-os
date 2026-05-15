@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 
 type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -268,8 +269,8 @@ export default function AdaptiveWidgetShell({
     <section
       id={id}
       onMouseDown={onFocus}
-      className={`workspace-window pointer-events-auto absolute flex flex-col overflow-hidden transition-all duration-200 ${
-        mobileOrMaximized ? "inset-0 !h-full !w-full !rounded-none" : ""
+      className={`workspace-window pointer-events-auto absolute flex flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
+        mobileOrMaximized ? "inset-0 !h-full !w-full !rounded-none !shadow-none" : ""
       }`}
       style={{
         width: mobileOrMaximized ? "100%" : `${currentSize.width}px`,
@@ -278,7 +279,7 @@ export default function AdaptiveWidgetShell({
         maxHeight: mobileOrMaximized ? "100%" : `${ws.height}px`,
         left: mobileOrMaximized ? 0 : `${clampedLeft}px`,
         top: mobileOrMaximized ? 0 : `${clampedTop}px`,
-        zIndex: mobileOrMaximized ? 2000 : zIndex,
+        zIndex: mobileOrMaximized ? 1300 : zIndex,
       }}
       dir="rtl"
       aria-label={title}
@@ -290,49 +291,53 @@ export default function AdaptiveWidgetShell({
           dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
           setIsDragging(true);
         }}
-        className={`flex items-center justify-between border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 ${
+        className={`workspace-window-header flex items-center justify-between gap-2 px-3 py-2.5 ${
           mobileOrMaximized ? "cursor-default" : "cursor-move"
         }`}
       >
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-600"
-            aria-label={`סגור ${title}`}
-          >
-            <X size={15} aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={onMaximize}
-            className="hidden h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)] md:flex"
-            aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}
-          >
-            {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
-          </button>
-        </div>
+        <div className="min-w-[2rem] flex-1" aria-hidden />
 
-        <h2 className="truncate px-3 text-xs font-black tracking-[0.12em] text-[color:var(--foreground-main)]">{title}</h2>
+        <h2 className="max-w-[min(42%,14rem)] truncate rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/70 px-3 py-1 text-center text-[11px] font-black tracking-[0.14em] text-[color:var(--foreground-main)] shadow-xs">
+          {title}
+        </h2>
 
-        <div className="hidden items-center gap-1 md:flex">
-          <button
-            type="button"
-            onClick={() => onZoomChange?.(-0.1)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]"
-            aria-label={`הקטן זום ב-${title}`}
-          >
-            <ZoomOut size={14} aria-hidden />
-          </button>
-          <span className="w-10 text-center text-[10px] font-black text-[color:var(--foreground-muted)]">{Math.round(zoom * 100)}%</span>
-          <button
-            type="button"
-            onClick={() => onZoomChange?.(0.1)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-card)] hover:text-[color:var(--foreground-main)]"
-            aria-label={`הגדל זום ב-${title}`}
-          >
-            <ZoomIn size={14} aria-hidden />
-          </button>
+        <div className="flex flex-1 items-center justify-end gap-1.5">
+          <LocaleSwitcher compact />
+          <div className="workspace-chrome-toolbar">
+            <button
+              type="button"
+              onClick={() => onZoomChange?.(-0.1)}
+              className="workspace-chrome-btn hidden md:inline-flex"
+              aria-label={`הקטן זום ב-${title}`}
+            >
+              <ZoomOut size={14} aria-hidden />
+            </button>
+            <span className="workspace-chrome-zoom hidden md:inline">{Math.round(zoom * 100)}%</span>
+            <button
+              type="button"
+              onClick={() => onZoomChange?.(0.1)}
+              className="workspace-chrome-btn"
+              aria-label={`הגדל זום ב-${title}`}
+            >
+              <ZoomIn size={14} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={onMaximize}
+              className="workspace-chrome-btn hidden md:inline-flex"
+              aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}
+            >
+              {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="workspace-chrome-btn workspace-chrome-btn--danger"
+              aria-label={`סגור ${title}`}
+            >
+              <X size={15} aria-hidden />
+            </button>
+          </div>
         </div>
       </header>
 

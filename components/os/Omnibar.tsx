@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
+import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import type { WidgetType } from "@/hooks/use-window-manager";
@@ -29,7 +30,7 @@ interface OmnibarProps {
   onSearchPreview?: (query: string) => void;
   searchResults?: SearchResult[];
   onSelectResult?: (result: SearchResult) => void;
-  openWorkspaceWidget: (type: WidgetType) => void;
+  openWorkspaceWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 }
 
 const visualizerHeights = [10, 16, 8, 22, 14, 18, 9, 20, 12, 24, 11, 19, 15, 21, 8, 17];
@@ -56,31 +57,15 @@ export default function Omnibar({
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
   }, []);
 
+  const osAssistant = useOsAssistant({
+    openWidget: (type, data) => openWorkspaceWidget(type, data ?? null),
+  });
+
   const geminiLive = useGeminiLiveAudio({
     enabled: Boolean(session?.user?.id && session?.user?.organizationId),
     settings: geminiVoiceSettings,
-    systemInstruction:
-      "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית קצרה, מקצועית ועניינית. הווידג׳טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
-    onToolCall: async (name, args) => {
-      if (name === "execute_os_command") {
-        openWorkspaceWidget(args.action as WidgetType);
-        return "Success";
-      }
-      if (name === "google_assistant_command") {
-        try {
-          const res = await fetch("/api/os/google-assistant/query", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: args.query }),
-          });
-          const data = await res.json();
-          return data.fulfillmentText || "Success";
-        } catch (err) {
-          console.error("Google Assistant Tool Error:", err);
-          return "Error executing Google Assistant command";
-        }
-      }
-    },
+    systemInstruction: osAssistant.systemInstructionVoice,
+    onToolCall: osAssistant.onToolCall,
     onError: (err) => {
       const friendly = formatGeminiLiveUserMessage(err);
       toast.error(friendly);

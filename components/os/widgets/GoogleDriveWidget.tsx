@@ -35,19 +35,30 @@ export default function GoogleDriveWidget() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFolderId, setCurrentFolderId] = useState('root');
   const [folderPath, setFolderPath] = useState<{id: string, name: string}[]>([{id: 'root', name: 'My Drive'}]);
+  const [driveError, setDriveError] = useState<string | null>(null);
+  const [reauthUrl, setReauthUrl] = useState<string | null>(null);
 
   const fetchFiles = async (folderId: string = 'root') => {
     setLoading(true);
+    setDriveError(null);
+    setReauthUrl(null);
     try {
       const res = await fetch(`/api/os/google-drive/files?folderId=${folderId}`);
       const data = await res.json();
       if (res.ok) {
-        setFiles(data.files);
+        setFiles(data.files ?? []);
       } else {
-        throw new Error(data.error);
+        const msg = typeof data.error === 'string' ? data.error : 'שגיאה בטעינת קבצים';
+        setDriveError(msg);
+        if (typeof data.reauthUrl === 'string') {
+          setReauthUrl(data.reauthUrl);
+        }
+        throw new Error(msg);
       }
-    } catch (error: any) {
-      toast.error('שגיאה בטעינת קבצים: ' + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'שגיאה בטעינת קבצים';
+      if (!driveError) setDriveError(message);
+      toast.error('שגיאה בטעינת קבצים: ' + message);
     } finally {
       setLoading(false);
     }
@@ -138,7 +149,19 @@ export default function GoogleDriveWidget() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {loading ? (
+        {driveError && !loading ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
+            <p className="text-sm font-bold text-rose-500 max-w-md leading-relaxed">{driveError}</p>
+            {reauthUrl ? (
+              <a
+                href={reauthUrl}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-lg transition-all"
+              >
+                התחברות מחדש עם Google
+              </a>
+            ) : null}
+          </div>
+        ) : loading ? (
           <div className="h-full flex flex-col items-center justify-center opacity-40">
             <Loader2 size={40} className="text-blue-600 animate-spin mb-4" />
             <p className="text-sm font-bold uppercase tracking-widest">טוען קבצים...</p>
@@ -196,9 +219,9 @@ export default function GoogleDriveWidget() {
           <span>•</span>
           <span>עודכן לאחרונה: {new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
-        <div className="flex items-center gap-1 text-emerald-500">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          מחובר ל-Google
+        <div className={`flex items-center gap-1 ${driveError ? "text-rose-500" : "text-emerald-500"}`}>
+          <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${driveError ? "bg-rose-500" : "bg-emerald-500"}`} />
+          {driveError ? "נדרש חיבור Google" : "מחובר ל-Google"}
         </div>
       </div>
     </div>

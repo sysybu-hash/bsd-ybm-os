@@ -24,7 +24,13 @@ function loadMergedEnvPairs() {
     Object.assign(merged, dotenv.parse(readFileSync(envBasePath, "utf8")));
   }
   if (existsSync(envLocalPath)) {
-    Object.assign(merged, dotenv.parse(readFileSync(envLocalPath, "utf8")));
+    const local = dotenv.parse(readFileSync(envLocalPath, "utf8"));
+    /** מפתח Gemini: .env הוא מקור האמת לפרודקשן — לא לדרוס במפתח מקומי ישן */
+    const geminiFromBase = merged.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+    Object.assign(merged, local);
+    if (geminiFromBase) {
+      merged.GOOGLE_GENERATIVE_AI_API_KEY = geminiFromBase;
+    }
   }
   const out = [];
   for (const [key, val] of Object.entries(merged)) {
@@ -92,10 +98,28 @@ function parseOnlyArg() {
 }
 
 function resolveValueForOnlyKey(key, byKey) {
-  if (key === "NEXTAUTH_URL" || key === "AUTH_URL") {
-    const fromFile = byKey.AUTH_URL || byKey.NEXT_PUBLIC_SITE_URL;
-    if (fromFile && String(fromFile).trim()) {
-      return String(fromFile).trim().replace(/\/$/, "");
+  if (
+    key === "GEMINI_MODEL" ||
+    key === "GEMINI_NOTEBOOKLM_MODEL" ||
+    key === "CRM_ANALYSIS_GEMINI_MODEL" ||
+    key === "PREMIUM_GEMINI_MODEL"
+  ) {
+    const defaults = {
+      GEMINI_MODEL: "gemini-2.5-flash",
+      GEMINI_NOTEBOOKLM_MODEL: "gemini-2.5-flash",
+      CRM_ANALYSIS_GEMINI_MODEL: "gemini-2.5-flash",
+      PREMIUM_GEMINI_MODEL: "gemini-2.5-pro",
+    };
+    return defaults[key];
+  }
+  if (
+    key === "NEXTAUTH_URL" ||
+    key === "AUTH_URL" ||
+    key === "NEXT_PUBLIC_SITE_URL" ||
+    key === "NEXT_PUBLIC_API_URL"
+  ) {
+    if (key === "NEXT_PUBLIC_API_URL") {
+      return `${PRODUCTION_NEXTAUTH_URL.replace(/\/$/, "")}/api`;
     }
     return PRODUCTION_NEXTAUTH_URL.replace(/\/$/, "");
   }
@@ -115,6 +139,14 @@ function resolveValueForOnlyKey(key, byKey) {
         "חסר GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY ב-.env / .env.local",
       );
       process.exit(1);
+    }
+    return v;
+  }
+  if (key === "GEMINI_API_KEY") {
+    const v = byKey.GEMINI_API_KEY || byKey.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!v) {
+      console.warn(`[דילוג] ${key} — לא מוגדר מקומית`);
+      return null;
     }
     return v;
   }
@@ -161,6 +193,7 @@ function main() {
     );
     for (const key of onlyKeys) {
       const val = resolveValueForOnlyKey(key, byKey);
+      if (val == null) continue;
       for (const env of ENVIRONMENTS) {
         run(key, val, env);
       }

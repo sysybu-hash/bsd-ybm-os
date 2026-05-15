@@ -22,6 +22,7 @@ import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import GoogleAssistantWidget from "@/components/os/widgets/GoogleAssistantWidget";
 import NotebookLMWidget from "@/components/os/widgets/NotebookLMWidget";
+import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 
@@ -56,6 +57,7 @@ const widgetTitles: Record<WidgetType, string> = {
   googleDrive: "Google Drive",
   googleAssistant: "Google Assistant",
   notebookLM: "NotebookLM",
+  accessibility: "נגישות",
 };
 
 const quickActions = [
@@ -109,7 +111,7 @@ export default function OSWorkspace({
   }, []);
 
   return (
-    <div ref={workspaceBoundsRef} className="relative flex min-h-0 flex-1 overflow-hidden">
+    <div ref={workspaceBoundsRef} className="relative flex min-h-0 min-h-[min(100%,100dvh)] flex-1 shrink-0 overflow-hidden">
       <AnimatePresence mode="wait">
         {hasHydrated && widgets.length === 0 && (
           <motion.section
@@ -117,7 +119,7 @@ export default function OSWorkspace({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="absolute inset-0 flex flex-col items-center justify-center p-6"
+            className="absolute inset-0 flex min-h-0 flex-col items-center justify-start overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] p-4 pb-8 pt-6 md:justify-center md:overflow-visible md:p-6"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
               <Bot size={28} className="text-indigo-400" aria-hidden />
@@ -198,6 +200,7 @@ export default function OSWorkspace({
             {widget.type === "googleDrive" && <GoogleDriveWidget />}
             {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
             {widget.type === "notebookLM" && <NotebookLMWidget />}
+            {widget.type === "accessibility" && <AccessibilityWidget />}
           </AdaptiveWidgetShell>
         ))}
       </div>

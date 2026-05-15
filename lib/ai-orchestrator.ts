@@ -32,7 +32,7 @@ function getGroq() {
 export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', prompt: string, imageBase64?: string) {
   switch (provider) {
     case 'gemini': {
-      const model = getGenAI().getGenerativeModel({ model: process.env.CRM_ANALYSIS_GEMINI_MODEL || 'gemini-1.5-flash' });
+      const model = getGenAI().getGenerativeModel({ model: process.env.CRM_ANALYSIS_GEMINI_MODEL || 'gemini-2.5-flash' });
       const result = await model.generateContent(
         imageBase64 ? [prompt, { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }] : [prompt],
       );

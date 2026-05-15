@@ -243,7 +243,32 @@
     "noPreview": "אין תצוגה מקדימה",
     "results": "תוצאות פענוח",
     "source": "ספק / מקור",
-    "document": "סוג מסמך"
+    "document": "סוג מסמך",
+    "modeAuto": "אוטומטי",
+    "modeMulti": "ריבוי מנועים",
+    "modeGemini": "Gemini בלבד",
+    "modeOpenai": "OpenAI בלבד",
+    "modeDocAi": "Document AI",
+    "telemetry": "סטטוס מנועים",
+    "confirmExpense": "אשר ושמור הוצאה",
+    "historyTitle": "היסטוריית סריקות",
+    "engineActive": "מנוע פעיל"
+  },
+  "accessibility": {
+    "toolbar": "נגישות",
+    "brandColor": "צבע מותג",
+    "fontScale": "גודל טקסט",
+    "fontDefault": "רגיל",
+    "fontLarge": "גדול",
+    "fontXlarge": "גדול מאוד",
+    "highContrast": "ניגודיות גבוהה",
+    "bigCursor": "סמן גדול",
+    "grayscale": "גווני אפור",
+    "reducedMotion": "צמצום תנועה",
+    "focusRing": "מסגרת מיקוד",
+    "lineSpacing": "ריווח שורות",
+    "save": "שמור",
+    "saved": "העדפות נגישות נשמרו"
   },
   "aiHub": {
     "title": "מרכז AI וסריקה",

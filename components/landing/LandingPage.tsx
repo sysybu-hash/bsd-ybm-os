@@ -4,6 +4,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { motion, type Variants } from "framer-motion";
 import { BrainCircuit, BarChart3, Fingerprint, Layers, ChevronLeft, Mic } from "lucide-react";
+import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
+import ThemeToggle from "@/components/os/system/ThemeToggle";
 
 export default function LandingPage({ onLogin }: { onLogin: () => void }) {
   const router = useRouter();
@@ -25,12 +27,12 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 overflow-hidden font-sans" dir="rtl">
+    <div className="min-h-dvh overflow-x-hidden overflow-y-auto bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] [-webkit-overflow-scrolling:touch]" dir="rtl">
       {/* רקע דינמי - Dynamic Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px]" />
-        <div className="absolute top-[40%] left-[30%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-20%] right-[-10%] h-[800px] w-[800px] rounded-full bg-blue-500/20 blur-[120px] dark:bg-blue-600/10" />
+        <div className="absolute bottom-[-20%] left-[-10%] h-[600px] w-[600px] rounded-full bg-emerald-500/15 blur-[120px] dark:bg-emerald-500/10" />
+        <div className="absolute top-[40%] left-[30%] h-[400px] w-[400px] rounded-full bg-purple-500/15 blur-[100px] dark:bg-purple-500/10" />
       </div>
 
       {/* Header */}
@@ -39,17 +41,22 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Layers className="w-5 h-5 text-white" />
           </div>
-          <span className="text-2xl font-black tracking-tight text-white">
-            BSD<span className="text-blue-500">-</span>YBM <span className="text-slate-400 font-medium text-lg">OS</span>
+          <span className="text-2xl font-black tracking-tight text-[color:var(--foreground-main)]">
+            BSD<span className="text-blue-500">-</span>YBM{" "}
+            <span className="text-lg font-medium text-[color:var(--foreground-muted)]">OS</span>
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onLogin}
-          className="px-6 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 transition-all font-medium text-sm text-slate-200"
-        >
-          התחברות למערכת
-        </button>
+        <div className="flex items-center gap-2">
+          <LocaleSwitcher compact />
+          <ThemeToggle variant="landing" />
+          <button
+            type="button"
+            onClick={onLogin}
+            className="rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-6 py-2.5 text-sm font-medium text-[color:var(--foreground-main)] shadow-sm backdrop-blur-md transition-all hover:bg-[color:var(--surface-soft)]"
+          >
+            התחברות למערכת
+          </button>
+        </div>
       </header>
 
       {/* Hero Section */}
@@ -62,7 +69,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
         >
           <motion.div
             variants={itemVariants}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-semibold mb-8"
+            className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400"
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -76,7 +83,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400">העסק שלך.</span>
           </motion.h1>
 
-          <motion.p variants={itemVariants} className="text-xl md:text-2xl text-slate-400 mb-12 max-w-2xl leading-relaxed">
+          <motion.p variants={itemVariants} className="mb-12 max-w-2xl text-xl leading-relaxed text-[color:var(--foreground-muted)] md:text-2xl">
             מרכז בקרה חכם מבוסס בינה מלאכותית. ניהול פרויקטים, כספים ולקוחות באוטומציה מלאה ובעיצוב של שנת 2026.
           </motion.p>
 
@@ -92,7 +99,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
             <button
               type="button"
               onClick={() => router.push("/login")}
-              className="px-8 py-4 rounded-2xl bg-slate-800/50 border border-slate-700 text-slate-300 font-bold text-lg hover:bg-slate-800 transition-all backdrop-blur-sm"
+              className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-8 py-4 text-lg font-bold text-[color:var(--foreground-main)] shadow-sm backdrop-blur-sm transition-all hover:bg-[color:var(--surface-soft)]"
             >
               קבע הדגמה
             </button>
@@ -132,6 +139,24 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
           />
         </motion.div>
       </main>
+
+      <footer className="relative z-10 border-t border-[color:var(--border-main)] px-8 py-8 text-center text-xs text-[color:var(--foreground-muted)]">
+        <nav className="mb-4 flex flex-wrap items-center justify-center gap-4 font-bold">
+          <a href="/about" className="transition-colors hover:text-[color:var(--foreground-main)]">
+            אודות
+          </a>
+          <a href="/privacy" className="transition-colors hover:text-[color:var(--foreground-main)]">
+            פרטיות
+          </a>
+          <a href="/terms" className="transition-colors hover:text-[color:var(--foreground-main)]">
+            תנאים
+          </a>
+          <a href="/legal" className="transition-colors hover:text-[color:var(--foreground-main)]">
+            עוגיות
+          </a>
+        </nav>
+        <p>© {new Date().getFullYear()} BSD-YBM-OS. כל הזכויות שמורות.</p>
+      </footer>
     </div>
   );
 }
@@ -152,11 +177,11 @@ function FeatureCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.8 + delay, duration: 0.5 }}
-      className="p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors backdrop-blur-md"
+      className="rounded-3xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 p-6 backdrop-blur-md transition-colors hover:bg-[color:var(--surface-soft)]"
     >
-      <div className="w-12 h-12 rounded-2xl bg-white/[0.05] flex items-center justify-center mb-6">{icon}</div>
-      <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-slate-400 leading-relaxed text-sm">{description}</p>
+      <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--surface-soft)]">{icon}</div>
+      <h3 className="mb-3 text-xl font-bold text-[color:var(--foreground-main)]">{title}</h3>
+      <p className="text-sm leading-relaxed text-[color:var(--foreground-muted)]">{description}</p>
     </motion.div>
   );
 }

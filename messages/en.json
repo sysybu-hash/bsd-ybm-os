@@ -231,7 +231,32 @@
     "noPreview": "No Preview",
     "results": "Scan Results",
     "source": "Source",
-    "document": "Document Type"
+    "document": "Document Type",
+    "modeAuto": "Automatic",
+    "modeMulti": "Multi-engine",
+    "modeGemini": "Gemini only",
+    "modeOpenai": "OpenAI only",
+    "modeDocAi": "Document AI",
+    "telemetry": "Engine status",
+    "confirmExpense": "Confirm & save expense",
+    "historyTitle": "Scan history",
+    "engineActive": "Active engine"
+  },
+  "accessibility": {
+    "toolbar": "Accessibility",
+    "brandColor": "Brand color",
+    "fontScale": "Text size",
+    "fontDefault": "Default",
+    "fontLarge": "Large",
+    "fontXlarge": "Extra large",
+    "highContrast": "High contrast",
+    "bigCursor": "Large cursor",
+    "grayscale": "Grayscale",
+    "reducedMotion": "Reduce motion",
+    "focusRing": "Focus ring",
+    "lineSpacing": "Line spacing",
+    "save": "Save",
+    "saved": "Accessibility preferences saved"
   },
   "aiHub": {
     "title": "AI & Scanning Hub",

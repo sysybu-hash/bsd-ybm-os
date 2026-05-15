@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from '@/hooks/useGeminiLiveAudio';
 import type { GeminiLiveVoiceSettings } from '@/hooks/useGeminiLiveAudio';
+import { useOsAssistant } from '@/hooks/use-os-assistant';
 import { useSession } from 'next-auth/react';
 import { useWindowManager } from '@/hooks/use-window-manager';
 import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
@@ -52,9 +53,11 @@ export default function AiChatFullWidget() {
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
   }, []);
 
+  const osAssistant = useOsAssistant({ openWidget });
+
   const geminiLive = useGeminiLiveAudio({
     enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
-    systemInstruction: "אתה העוזר הקולי של BSD-YBM OS. דבר בעברית, קצר, מקצועי וענייני. יש לך גישה לכלים לפתיחת ווידג'טים במערכת. הווידג'טים הזמינים: projectBoard, crmTable, erpArchive, docCreator, aiScanner, aiChatFull, settings, meckanoReports, googleDrive, googleAssistant, notebookLM.",
+    systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,
     onUserTranscript: (text, finished) => {
       if (finished) {
@@ -76,26 +79,7 @@ export default function AiChatFullWidget() {
         }]);
       }
     },
-    onToolCall: async (name, args) => {
-      if (name === 'execute_os_command') {
-        openWidget(args.action);
-        return "Success";
-      }
-      if (name === 'google_assistant_command') {
-        try {
-          const res = await fetch('/api/os/google-assistant/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: args.query })
-          });
-          const data = await res.json();
-          return data.fulfillmentText || "Success";
-        } catch (err) {
-          console.error("Google Assistant Tool Error:", err);
-          return "Error executing Google Assistant command";
-        }
-      }
-    },
+    onToolCall: osAssistant.onToolCall,
     onError: (err) => {
       console.error("Gemini Live Error:", err);
       toast.error('שגיאה בחיבור Gemini Live');

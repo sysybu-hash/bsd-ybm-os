@@ -1,20 +1,16 @@
-import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import { COOKIE_LOCALE } from "@/lib/i18n/config";
 import { negotiateLocale } from "@/lib/i18n/negotiate";
+import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
+import { applyNextAuthUrlEnv } from "@/lib/site-url";
 
-/** Vercel / Auth.js מגדירים לעיתים רק AUTH_URL — NextAuth v4 מצפה ל-NEXTAUTH_URL */
-if (!process.env.NEXTAUTH_URL && process.env.AUTH_URL) {
-  process.env.NEXTAUTH_URL = process.env.AUTH_URL;
-}
-/** פריוויו ב-Vercel: לרוב אין NEXTAUTH_URL קבוע — VERCEL_URL מזוהה אוטומטית */
-if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
-  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
-}
+applyNextAuthUrlEnv();
+normalizeNextAuthUrlEnv();
 
-function hasAuthenticatedToken(token: NextRequestWithAuth["nextauth"]["token"]): boolean {
+function hasAuthenticatedJwtPayload(token: Record<string, unknown> | null): boolean {
   if (!token) return false;
   const id = typeof token.id === "string" ? token.id.trim() : "";
   const sub = typeof token.sub === "string" ? token.sub.trim() : "";
@@ -55,72 +51,51 @@ const protectedApiPrefixes = [
   "/api/debug-session",
 ] as const;
 
-const publicPrefixes = [
-  "/login",
-  "/register",
-  "/legal",
-  "/privacy",
-  "/terms",
-  "/tutorial",
-  "/sign/",
-  "/api/auth",
-  "/api/register",
-  "/api/locale",
-  "/api/webhooks/",
-] as const;
+export default async function middleware(request: NextRequest, _event: NextFetchEvent) {
+  normalizeNextAuthUrlEnv();
 
-const authMiddleware = withAuth(
-  function middleware(req) {
-    const { pathname } = req.nextUrl;
-    const token = req.nextauth.token;
-    const protectedApi = protectedApiPrefixes.some((p) => pathname.startsWith(p));
+  const pathname = request.nextUrl.pathname;
+  const protectedApi = protectedApiPrefixes.some((p) => pathname.startsWith(p));
+  const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 
-    if (protectedApi && !hasAuthenticatedToken(token)) {
-      return new NextResponse(
+  if (protectedApi) {
+    if (!secret) {
+      const res = new NextResponse(
+        JSON.stringify({ error: "שרת ללא NEXTAUTH_SECRET.", code: "auth_misconfigured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+      patchLocaleCookie(request, res);
+      return res;
+    }
+    /**
+     * withAuth של next-auth לא מעביר secureCookie ל-getToken — ברירת המחדל תלויה ב-NEXTAUTH_URL.
+     * כאן מאלצים עוגיית __Secure-* כשהבקשה בפועל ב-HTTPS (כולל מאחורי פרוקסי ב-Vercel).
+     */
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const secureCookie =
+      request.nextUrl.protocol === "https:" ||
+      forwardedProto === "https" ||
+      Boolean(process.env.VERCEL);
+
+    const token = (await getToken({
+      req: request,
+      secret,
+      secureCookie,
+    })) as Record<string, unknown> | null;
+
+    if (!hasAuthenticatedJwtPayload(token)) {
+      const res = new NextResponse(
         JSON.stringify({ error: API_MSG_UNAUTHORIZED, code: "unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json" } },
       );
-    }
-
-    return NextResponse.next();
-  },
-  {
-    secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
-    pages: {
-      signIn: "/login",
-    },
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const pathname = req.nextUrl.pathname;
-        const hasUser = hasAuthenticatedToken(token);
-
-        // Public pages and API routes
-        if (publicPrefixes.some((p) => pathname.startsWith(p))) {
-          return true;
-        }
-
-        // Protected command center (OS Root)
-        // We allow "/" to be public because app/page.tsx handles its own landing page logic
-        if (pathname === "/") {
-          return true;
-        }
-
-        return true;
-      },
-    },
-  },
-);
-
-export default function middleware(request: NextRequest, event: NextFetchEvent) {
-  const result = authMiddleware(request as NextRequestWithAuth, event);
-  if (result instanceof Promise) {
-    return result.then((res) => {
-      if (res instanceof NextResponse) patchLocaleCookie(request, res);
+      patchLocaleCookie(request, res);
       return res;
-    });
+    }
   }
-  if (result instanceof NextResponse) patchLocaleCookie(request, result);
-  return result;
+
+  const res = NextResponse.next();
+  patchLocaleCookie(request, res);
+  return res;
 }
 
 export const config = {

@@ -4,10 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { jsonForbidden, jsonNotFound, jsonUnauthorized } from "@/lib/api-json";
 import { getAuthorizedMeckanoOrganizationId, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
 import { prisma } from "@/lib/prisma";
+import { meckanoHeaders, meckanoRestUrl } from "@/lib/meckano-fetch";
 
 export const dynamic = "force-dynamic";
-
-const MECKANO_BASE = "https://app.meckano.co.il/rest";
 
 async function getOrgKey(organizationId: string): Promise<string | null> {
   const org = await prisma.organization.findUnique({
@@ -33,7 +32,7 @@ async function proxyRequest(req: Request, segments: string[]) {
   }
 
   const url = new URL(req.url);
-  const meckanoUrl = `${MECKANO_BASE}/${segments.join("/")}${url.search}`;
+  const meckanoUrl = `${meckanoRestUrl(segments.join("/"))}${url.search}`;
 
   let body: string | undefined;
   let contentType = req.headers.get("content-type") ?? "application/json";
@@ -43,11 +42,7 @@ async function proxyRequest(req: Request, segments: string[]) {
 
   const upstream = await fetch(meckanoUrl, {
     method: req.method,
-    headers: {
-      key: apiKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers: meckanoHeaders(apiKey),
     ...(body ? { body } : {}),
   });
 

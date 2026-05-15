@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
+import type { AppLocale } from "@/lib/i18n/config";
+import {
+  getHreflangAlternates,
+  getLocalizedSeo,
+  getPublicPageSeo,
+  type PublicPageId,
+} from "@/lib/google-publish/seo-content";
 
 export function getCanonicalSiteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.bsd-ybm.co.il";
 }
 
-export function buildRootMetadata(): Metadata {
+function siteBaseUrl(): URL {
   const siteUrl = getCanonicalSiteUrl();
-  const base = new URL(siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl);
+  return new URL(siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl);
+}
 
+function verificationBlocks(): Pick<Metadata, "verification" | "other"> {
   const verification: Metadata["verification"] = {};
   const googleVerification =
     process.env.SITE_VERIFICATION_GOOGLE?.trim() ||
@@ -22,7 +31,6 @@ export function buildRootMetadata(): Metadata {
   const other: Record<string, string> = {};
   const facebookVerification = process.env.SITE_VERIFICATION_FACEBOOK?.trim();
   const pinterestVerification = process.env.SITE_VERIFICATION_PINTEREST?.trim();
-  /** Bing Webmaster Tools — ערך התוכן של מטא־תגית msvalidate.01 */
   const bingVerification = process.env.SITE_VERIFICATION_BING?.trim();
   const customMetaName = process.env.SITE_VERIFICATION_META_NAME?.trim();
   const customMetaContent = process.env.SITE_VERIFICATION_META_CONTENT?.trim();
@@ -32,47 +40,57 @@ export function buildRootMetadata(): Metadata {
   if (bingVerification) other["msvalidate.01"] = bingVerification;
   if (customMetaName && customMetaContent) other[customMetaName] = customMetaContent;
 
-  const robots: Metadata["robots"] =
-    process.env.VERCEL_ENV === "preview"
-      ? { index: false, follow: false, nocache: true }
-      : {
+  return {
+    ...(Object.keys(verification).length ? { verification } : {}),
+    ...(Object.keys(other).length ? { other } : {}),
+  };
+}
+
+function productionRobots(): Metadata["robots"] {
+  return process.env.VERCEL_ENV === "preview"
+    ? { index: false, follow: false, nocache: true }
+    : {
+        index: true,
+        follow: true,
+        googleBot: {
           index: true,
           follow: true,
-          googleBot: {
-            index: true,
-            follow: true,
-            "max-image-preview": "large",
-            "max-snippet": -1,
-            "max-video-preview": -1,
-          },
-        };
+          "max-image-preview": "large",
+          "max-snippet": -1,
+          "max-video-preview": -1,
+        },
+      };
+}
+
+export type LocalizedMetadataOptions = {
+  canonicalPath?: string;
+  page?: PublicPageId;
+};
+
+/** מטא-דאטה לפי locale — דף בית או דף ציבורי (about, privacy, …) */
+export function buildLocalizedMetadata(
+  locale: AppLocale,
+  options: LocalizedMetadataOptions = {},
+): Metadata {
+  const base = siteBaseUrl();
+  const canonicalPath = options.canonicalPath ?? (options.page ? `/${options.page}` : "/");
+  const seo = options.page ? getPublicPageSeo(locale, options.page) : getLocalizedSeo(locale);
+  const verify = verificationBlocks();
 
   return {
     metadataBase: base,
     applicationName: "BSD-YBM-OS",
-    title: {
-      default: "BSD-YBM-OS | מערכת תפעול חכמה לעסקים מקצועיים",
-      template: "%s | BSD-YBM-OS",
-    },
-    description:
-      "BSD-YBM-OS מחברת לקוחות, מסמכים, חיוב, בקרה תפעולית ו-AI בתוך מערכת עבודה אחת לעסקים מקצועיים בישראל.",
-    keywords: [
-      "BSD-YBM-OS",
-      "BSD-YBM",
-      "CRM",
-      "ERP",
-      "AI",
-      "מסמכים חכמים",
-      "חיוב וגבייה",
-      "תפעול עסקי",
-    ],
+    title: seo.title,
+    description: seo.description,
+    keywords: seo.keywords,
     authors: [{ name: "BSD-YBM-OS", url: base.href }],
     openGraph: {
-      title: "BSD-YBM-OS | מערכת תפעול חכמה לעסקים מקצועיים",
-      description:
-        "לקוחות, מסמכים, חיוב, בקרה ו-AI במקום אחד. BSD-YBM-OS בנויה לעסקים שרוצים לנהל עבודה מתוך תמונת מצב אחת.",
-      url: base.href,
+      title: seo.title,
+      description: seo.description,
+      url: new URL(canonicalPath, base).href,
       siteName: "BSD-YBM-OS",
+      locale: seo.ogLocale,
+      alternateLocale: ["he_IL", "en_US", "ru_RU"].filter((l) => l !== seo.ogLocale),
       images: [
         {
           url: "/og-image.png",
@@ -81,21 +99,32 @@ export function buildRootMetadata(): Metadata {
           alt: "BSD-YBM Operating System",
         },
       ],
-      locale: "he_IL",
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "BSD-YBM-OS | מערכת תפעול חכמה לעסקים מקצועיים",
-      description:
-        "לקוחות, מסמכים, חיוב, בקרה ו-AI במקום אחד לעסקים שרוצים שליטה אמיתית על העבודה.",
+      title: seo.title,
+      description: seo.description,
       images: ["/og-image.png"],
     },
-    manifest: "/manifest.json",
     alternates: {
-      canonical: "/",
+      canonical: canonicalPath,
+      languages: getHreflangAlternates(),
     },
-    robots,
+    robots: productionRobots(),
+    ...verify,
+  };
+}
+
+export function buildRootMetadata(): Metadata {
+  const base = buildLocalizedMetadata("he");
+  return {
+    ...base,
+    title: {
+      default: getLocalizedSeo("he").title,
+      template: "%s | BSD-YBM-OS",
+    },
+    manifest: "/manifest.json",
     formatDetection: {
       email: false,
       address: false,
@@ -110,7 +139,5 @@ export function buildRootMetadata(): Metadata {
       icon: "/icon-192.png",
       apple: "/icon-192.png",
     },
-    ...(Object.keys(verification).length ? { verification } : {}),
-    ...(Object.keys(other).length ? { other } : {}),
   };
 }

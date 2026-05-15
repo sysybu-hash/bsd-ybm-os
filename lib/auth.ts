@@ -10,23 +10,23 @@ import { verifyPassword } from "@/lib/password";
 import { isLoginBlockedEmail } from "@/lib/login-blocklist";
 import { isLoginAllowedByAllowlist } from "@/lib/login-allowlist";
 import { sendWelcomeEmail } from "@/lib/mail";
+import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
+import { applyNextAuthUrlEnv } from "@/lib/site-url";
 
-/** Vercel / Auth.js מגדירים לעיתים רק AUTH_URL — NextAuth v4 מצפה ל-NEXTAUTH_URL */
-if (!process.env.NEXTAUTH_URL && process.env.AUTH_URL) {
-  process.env.NEXTAUTH_URL = process.env.AUTH_URL;
-}
-/** פריוויו ב-Vercel: לרוב אין NEXTAUTH_URL קבוע — VERCEL_URL מזוהה אוטומטית */
-if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
-  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
-}
+applyNextAuthUrlEnv();
+normalizeNextAuthUrlEnv();
 
 const googleOAuthConfigured =
   Boolean(process.env.GOOGLE_CLIENT_ID?.trim()) &&
   Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim());
 
+const nextAuthUrlIsHttps = process.env.NEXTAUTH_URL?.trim().toLowerCase().startsWith("https://");
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  /** עוגיית __Secure-* ב-Vercel גם כש-NEXTAUTH_URL בטעות ב-http */
+  useSecureCookies: Boolean(process.env.VERCEL || nextAuthUrlIsHttps),
   session: {
     strategy: "jwt",
   },
@@ -50,7 +50,8 @@ export const authOptions: NextAuthOptions = {
                 prompt: "select_account",
                 access_type: "offline",
                 /** בלי assistant-sdk-prototype — scope ניסיוני שגרם ל־500 במסך ההסכמה של Google */
-                scope: "openid email profile https://www.googleapis.com/auth/drive.file",
+                scope:
+                  "openid email profile https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
               },
             },
           }),

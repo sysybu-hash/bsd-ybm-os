@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, type Content, type Part } from "@google/generative-ai";
+import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 
 /** מודל לצ'אט מחברת פרויקטים — ברירת מחדל: Gemini 3.1 Pro Stable (ניתן לעקוף ב־GEMINI_NOTEBOOK_MODEL). */
@@ -60,8 +61,9 @@ Rules:
 
 function buildSystemInstruction(billOfQuantitiesContext: string | null | undefined): string {
   const trimmed = billOfQuantitiesContext?.trim();
-  if (!trimmed) return SYSTEM_NOTEBOOK_BASE;
-  return `${SYSTEM_NOTEBOOK_BASE}
+  const base = withAssistantTemporalContext(SYSTEM_NOTEBOOK_BASE);
+  if (!trimmed) return base;
+  return `${base}
 
 --- Recent ERP scan — billOfQuantities excerpts (JSON, may be partial) ---
 ${trimmed.slice(0, 48_000)}`;

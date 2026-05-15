@@ -74,6 +74,7 @@ model Organization {
   organizationInvites      OrganizationInvite[]
   productPriceObservations ProductPriceObservation[]
   projects                 Project[]
+  notebooks                Notebook[]
   quotes                   Quote[]
   tasks                    Task[]
   users                    User[]
@@ -188,6 +189,7 @@ model Project {
   meckanoZone    MeckanoZone?    @relation(fields: [meckanoZoneId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tasks          Task[]
+  notebooks      Notebook[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -233,6 +235,7 @@ model User {
   documents          Document[]
   documentScanJobs   DocumentScanJob[]
   inAppNotifications InAppNotification[]
+  notebooks          Notebook[]
   sessions           Session[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
@@ -246,11 +249,67 @@ model InAppNotification {
   title     String
   body      String
   read      Boolean  @default(false)
+  /// סוג ניווט: project | erp | aiScanner | expense | general
+  linkType  String?
+  targetId  String?
+  metadata  Json?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
   @@index([userId, createdAt])
+}
+
+/// מחברת NotebookLM — מקורות, שיחה וסקירה קולית
+model Notebook {
+  id             String                  @id @default(cuid())
+  userId         String
+  organizationId String?
+  projectId      String?
+  title          String
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project        Project?                @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  sources        NotebookSource[]
+  messages       NotebookMessage[]
+  audioOverview  NotebookAudioOverview?
+
+  @@index([userId, updatedAt])
+  @@index([organizationId])
+  @@index([projectId])
+}
+
+model NotebookSource {
+  id         String   @id @default(cuid())
+  notebookId String
+  name       String
+  content    String   @db.Text
+  mimeType   String   @default("application/pdf")
+  sortOrder  Int      @default(0)
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([notebookId, sortOrder])
+}
+
+model NotebookMessage {
+  id         String   @id @default(cuid())
+  notebookId String
+  role       String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+
+  @@index([notebookId, createdAt])
+}
+
+model NotebookAudioOverview {
+  id         String   @id @default(cuid())
+  notebookId String   @unique
+  scriptText String   @db.Text
+  createdAt  DateTime @default(now())
+  notebook   Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
 }
 
 model CloudIntegration {

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldCheck, Zap } from "lucide-react";
+import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 
 export default function LoginPage() {
   const { status } = useSession();
@@ -37,10 +38,13 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[color:var(--background-main)] px-5 py-10 text-[color:var(--foreground-main)]" dir="rtl">
+      <div className="absolute end-5 top-5 z-10 flex items-center gap-2">
+        <LocaleSwitcher compact />
+      </div>
       <button
         type="button"
         onClick={() => router.push("/")}
-        className="absolute right-5 top-5 flex items-center gap-3 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm font-black shadow-sm transition hover:bg-[color:var(--surface-soft)]"
+        className="absolute start-5 top-5 flex items-center gap-3 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm font-black shadow-sm transition hover:bg-[color:var(--surface-soft)]"
         aria-label="חזרה לדף הבית"
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-600 text-white">

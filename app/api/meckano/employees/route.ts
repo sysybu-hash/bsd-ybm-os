@@ -1,54 +1,44 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { MECKANO_SUBSCRIBER_EMAIL } from '@/lib/meckano-access';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { meckanoFetch } from "@/lib/meckano-fetch";
+import { requireMeckanoSession } from "@/lib/meckano-route-auth";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    const userEmail = session?.user?.email;
+    const auth = await requireMeckanoSession(session);
+    if ("error" in auth) return auth.error;
 
-    // Security Check
-    if (!userEmail || userEmail.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
-      return NextResponse.json({ error: 'אין לך הרשאה לגשת לנתונים אלו' }, { status: 403 });
-    }
-
-    const apiKey = process.env.MECKANO_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Meckano API Key is not configured' }, { status: 500 });
-    }
-
-    const response = await fetch('https://app.meckano.co.il/rest/users', {
-      method: 'GET',
-      headers: {
-        'key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      }
-    });
-
+    const response = await meckanoFetch("users", auth.apiKey);
     const data = await response.json();
-    console.log("Meckano Employees Response:", data);
 
     if (!data.status) {
-      return NextResponse.json({ error: data.message || 'Meckano API error', details: data }, { status: 400 });
+      return NextResponse.json(
+        { error: data.message || "Meckano API error", details: data },
+        { status: 400 },
+      );
     }
 
-    // Map Meckano users to a simpler format for the UI
-    const employees = data.data.map((user: any) => ({
+    const employees = data.data.map((user: Record<string, unknown>) => ({
       id: user.id,
-      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.workerTag || user.email,
+      name:
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+        (user.workerTag as string) ||
+        (user.email as string),
       email: user.email,
       phone: user.phone,
-      department: user.department?.name || 'ללא מחלקה'
+      department:
+        (user.department as { name?: string } | undefined)?.name || "ללא מחלקה",
     }));
 
-    return NextResponse.json({ 
-      success: true, 
-      employees 
-    });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, employees });
+  } catch (error: unknown) {
     console.error("Meckano Employees Error:", error);
-    return NextResponse.json({ error: 'Failed to fetch Meckano employees', details: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "Failed to fetch Meckano employees", details: message },
+      { status: 500 },
+    );
   }
 }

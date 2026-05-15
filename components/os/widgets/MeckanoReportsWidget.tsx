@@ -47,6 +47,7 @@ export default function MeckanoReportsWidget() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessAllowed, setAccessAllowed] = useState<boolean | null>(null);
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
@@ -55,29 +56,54 @@ export default function MeckanoReportsWidget() {
     locationId: 'all'
   });
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/meckano/access');
+        const data = await res.json();
+        setAccessAllowed(Boolean(data.allowed));
+        if (!data.allowed && data.message) {
+          setError(data.message);
+        }
+        if (!data.configured) {
+          setError('מפתח MECKANO_API_KEY לא מוגדר בשרת.');
+        }
+      } catch {
+        setAccessAllowed(false);
+        setError('לא ניתן לבדוק הרשאות Meckano');
+      }
+    })();
+  }, []);
+
   const fetchEmployees = React.useCallback(async () => {
+    if (!accessAllowed) return;
     try {
       const res = await fetch('/api/meckano/employees');
       const data = await res.json();
       if (res.ok) {
         setEmployees(data.employees || []);
+      } else if (res.status === 403) {
+        setError(data.error || 'אין הרשאה ל-Meckano');
       }
     } catch (err) {
       console.error("Failed to fetch employees:", err);
     }
-  }, []);
+  }, [accessAllowed]);
 
   const fetchProjects = React.useCallback(async () => {
+    if (!accessAllowed) return;
     try {
       const res = await fetch('/api/meckano/projects');
       const data = await res.json();
       if (res.ok) {
         setProjects(data.projects || []);
+      } else if (res.status === 403) {
+        setError(data.error || 'אין הרשאה ל-Meckano');
       }
     } catch (err) {
       console.error("Failed to fetch projects:", err);
     }
-  }, []);
+  }, [accessAllowed]);
 
   const fetchReports = React.useCallback(async () => {
     setIsLoading(true);
@@ -104,10 +130,11 @@ export default function MeckanoReportsWidget() {
   }, [filters]);
 
   useEffect(() => {
+    if (accessAllowed !== true) return;
     fetchEmployees();
     fetchProjects();
     fetchReports();
-  }, [fetchEmployees, fetchProjects, fetchReports]);
+  }, [accessAllowed, fetchEmployees, fetchProjects, fetchReports]);
 
   const exportToCSV = () => {
     const csv = Papa.unparse(reports);

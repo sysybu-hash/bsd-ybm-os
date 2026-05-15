@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { 
   Settings, 
@@ -26,7 +27,8 @@ const ASSIGN_ROLES = [
 ] as const;
 
 export default function SettingsWidget() {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
@@ -53,13 +55,9 @@ export default function SettingsWidget() {
   const showAssignPanel =
     (isOrgAdmin || isSuper) && assignTargetOrgId.length > 0;
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/organization', { credentials: 'include' });
+      const res = await fetch('/api/organization', { credentials: 'include', cache: 'no-store' });
       if (!res.ok) throw new Error();
       const data = await res.json();
       if (typeof data.id === 'string') {
@@ -80,7 +78,12 @@ export default function SettingsWidget() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (sessionStatus === 'loading') return;
+    void fetchSettings();
+  }, [sessionStatus, session?.user?.id, session?.user?.organizationId, fetchSettings]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -158,6 +161,7 @@ export default function SettingsWidget() {
         description: 'כדי ש־Gemini Live והרשאות יתעדכנו מיד — מומלץ שהמשתמש יצא ויכנס שוב למערכת.',
       });
       setAssignEmail('');
+      router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'שגיאה בשיוך משתמש');
     } finally {

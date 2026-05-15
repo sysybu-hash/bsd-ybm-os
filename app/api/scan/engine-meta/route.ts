@@ -13,8 +13,9 @@ import {
 import { getDocAiProcessorConfigs } from "@/lib/ai-extract-docai";
 import {
   AI_ENGINE_CATALOG_UPDATED_AT,
-  GEMINI_FLAGSHIP_MODEL,
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
+  GEMINI_STABLE_TEXT_MODEL,
+  GEMINI_FLAGSHIP_PREVIEW_MODEL,
   getGeminiModelId,
 } from "@/lib/gemini-model";
 
@@ -33,8 +34,9 @@ function openAiUiLabel(id: string): string {
 }
 
 function geminiUiLabel(id: string): string {
+  if (id === "gemini-2.5-flash-native-audio-latest") return "Gemini 2.5 Live (Native Audio)";
+  if (id === "gemini-3.1-flash-live-preview") return "Gemini 3.1 Live Preview";
   if (id === "gemini-3-flash-preview") return "Gemini 3 Flash Preview";
-  if (id === "gemini-3.1-flash-live-preview") return "Gemini 3.1 Live";
   if (id === "gemini-2.5-pro") return "Gemini 2.5 Pro";
   if (id === "gemini-2.5-flash") return "Gemini 2.5 Flash";
   return id.replace(/^gemini-/, "");
@@ -65,7 +67,8 @@ export async function GET() {
       processors: getDocAiProcessorConfigs(),
     },
     gemini: {
-      flagshipModelId: GEMINI_FLAGSHIP_MODEL,
+      stableTextModelId: GEMINI_STABLE_TEXT_MODEL,
+      previewModelId: GEMINI_FLAGSHIP_PREVIEW_MODEL,
       liveModelId: GEMINI_LIVE_NATIVE_AUDIO_MODEL,
       liveLabel: geminiUiLabel(GEMINI_LIVE_NATIVE_AUDIO_MODEL),
       primaryModelId: geminiPrimaryModelId,
