@@ -1,5 +1,5 @@
 /**
- * דוחף משתנים מ־.env.local ל־Vercel — **production** בלבד.
+ * דוחף משתנים מ־`.env` ואז מ־`.env.local` (המקומי גובר) ל־Vercel — **production** בלבד.
  * אופציה: --only=KEY1,KEY2,... (ערכים מקומיים בלבד, ללא הדפסת סודות).
  */
 import { readFileSync, existsSync } from "node:fs";
@@ -12,9 +12,29 @@ import dotenv from "dotenv";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const envPath = resolve(root, ".env.local");
+const envBasePath = resolve(root, ".env");
+const envLocalPath = resolve(root, ".env.local");
 
 const SKIP_KEYS = new Set(["VERCEL_OIDC_TOKEN"]);
+
+/** טעינה מאוחדת: .env ואחריו .env.local (override). */
+function loadMergedEnvPairs() {
+  const merged = {};
+  if (existsSync(envBasePath)) {
+    Object.assign(merged, dotenv.parse(readFileSync(envBasePath, "utf8")));
+  }
+  if (existsSync(envLocalPath)) {
+    Object.assign(merged, dotenv.parse(readFileSync(envLocalPath, "utf8")));
+  }
+  const out = [];
+  for (const [key, val] of Object.entries(merged)) {
+    if (!key || SKIP_KEYS.has(key)) continue;
+    if (val == null || String(val) === "") continue;
+    out.push({ key, val: String(val) });
+  }
+  return out;
+}
+
 /**
  * רק Production — תואם ל־CLI של Vercel:
  * Preview דורש ציון ענף Git; Development לא מקבל משתני sensitive.
@@ -39,18 +59,6 @@ function sleepSync(ms) {
 
 const shouldUseSensitiveFlag = (key) =>
   !key.startsWith("NEXT_PUBLIC_") && !NEVER_SENSITIVE.has(key);
-
-/** פירוש תקני של .env (כולל JSON / \\n בשורה אחת) */
-function parseDotenv(content) {
-  const parsed = dotenv.parse(Buffer.from(content, "utf8"));
-  const out = [];
-  for (const [key, val] of Object.entries(parsed)) {
-    if (!key || SKIP_KEYS.has(key)) continue;
-    if (val == null || String(val) === "") continue;
-    out.push({ key, val: String(val) });
-  }
-  return out;
-}
 
 function pushOne(key, val, environment) {
   const args = ["vercel", "env", "add", key, environment, "--yes", "--force"];
@@ -94,7 +102,7 @@ function resolveValueForOnlyKey(key, byKey) {
   if (key === "NEXTAUTH_SECRET") {
     const v = byKey.NEXTAUTH_SECRET || byKey.AUTH_SECRET;
     if (!v) {
-      console.error("חסר NEXTAUTH_SECRET או AUTH_SECRET ב-.env.local");
+      console.error("חסר NEXTAUTH_SECRET או AUTH_SECRET ב-.env / .env.local");
       process.exit(1);
     }
     return v;
@@ -104,7 +112,7 @@ function resolveValueForOnlyKey(key, byKey) {
       byKey.GOOGLE_GENERATIVE_AI_API_KEY || byKey.GEMINI_API_KEY;
     if (!v) {
       console.error(
-        "חסר GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY ב-.env.local",
+        "חסר GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY ב-.env / .env.local",
       );
       process.exit(1);
     }
@@ -112,19 +120,23 @@ function resolveValueForOnlyKey(key, byKey) {
   }
   const v = byKey[key];
   if (v == null || v === "") {
-    console.error(`חסר ${key} ב-.env.local`);
+    console.error(`חסר ${key} ב-.env / .env.local`);
     process.exit(1);
   }
   return v;
 }
 
 function main() {
-  if (!existsSync(envPath)) {
-    console.error("חסר קובץ .env.local");
+  if (!existsSync(envBasePath) && !existsSync(envLocalPath)) {
+    console.error("חסרים קבצי .env ו/או .env.local");
     process.exit(1);
   }
 
-  const pairs = parseDotenv(readFileSync(envPath, "utf8"));
+  const pairs = loadMergedEnvPairs();
+  if (pairs.length === 0) {
+    console.error("לא נמצאו משתנים לא ריקים ב-.env / .env.local");
+    process.exit(1);
+  }
   const byKey = Object.fromEntries(pairs.map((p) => [p.key, p.val]));
   const onlyKeys = parseOnlyArg();
 

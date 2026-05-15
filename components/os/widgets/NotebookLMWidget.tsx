@@ -1,298 +1,288 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import {
-  BookOpen,
-  ChevronDown,
-  ExternalLink,
-  Library,
-  Link2,
-  MessageSquare,
-  RefreshCw,
-  RotateCcw,
-  Save,
-  Share2,
-  SlidersHorizontal,
-  Sparkles,
+  AlignLeft,
+  Bot,
+  BrainCircuit,
+  FileText,
+  Loader2,
+  Mic,
+  Send,
+  Upload,
+  X,
 } from "lucide-react";
-import { toast } from "sonner";
-import {
-  defaultNotebookLMSettings,
-  loadNotebookLMSettings,
-  NOTEBOOKLM_APP_URL,
-  type NotebookLMSettings,
-  saveNotebookLMSettings,
-} from "@/lib/notebooklm-settings";
 
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 p-3 transition hover:bg-[color:var(--surface-card)]/70">
-      <span className="min-w-0">
-        <span className="block text-xs font-black text-[color:var(--foreground-main)]">{label}</span>
-        {description ? <span className="mt-0.5 block text-[10px] font-semibold text-[color:var(--foreground-muted)]">{description}</span> : null}
-      </span>
-      <input
-        type="checkbox"
-        className="mt-1 h-4 w-4 shrink-0 rounded border-[color:var(--border-main)] text-amber-600 focus:ring-amber-500/40"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-    </label>
-  );
+type Source = {
+  id: string;
+  name: string;
+  content: string;
+  type: "pdf" | "text";
+};
+
+function textFromMessage(m: UIMessage): string {
+  if (!m.parts?.length) return "";
+  return m.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join("");
 }
 
 export default function NotebookLMWidget() {
-  const [settings, setSettings] = useState<NotebookLMSettings>(defaultNotebookLMSettings);
-  const [hydrated, setHydrated] = useState(false);
+  const [sources, setSources] = useState<Source[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sourcesRef = useRef<Source[]>([]);
+  sourcesRef.current = sources;
 
-  useEffect(() => {
-    setSettings(loadNotebookLMSettings());
-    setHydrated(true);
-  }, []);
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/notebooklm/chat",
+        credentials: "same-origin",
+        prepareSendMessagesRequest: ({ id, messages, body, trigger, messageId }) => ({
+          body: {
+            ...body,
+            id,
+            messages,
+            trigger,
+            messageId,
+            sources: sourcesRef.current.map((s) => ({
+              name: s.name,
+              content: s.content,
+            })),
+          },
+        }),
+      }),
+    [],
+  );
 
-  const persist = useCallback((next: NotebookLMSettings) => {
-    setSettings(next);
-    saveNotebookLMSettings(next);
-  }, []);
+  const { messages, sendMessage, status } = useChat({
+    id: "notebooklm-bsd-ybm-widget",
+    transport,
+  });
 
-  const handleSave = () => {
-    saveNotebookLMSettings(settings);
-    toast.success("הגדרות NotebookLM נשמרו במכשיר זה");
+  const isLoading = status === "submitted" || status === "streaming";
+
+  const [input, setInput] = useState("");
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
   };
 
-  const handleReset = () => {
-    const fresh = defaultNotebookLMSettings();
-    persist(fresh);
-    toast.message("אופסו הגדרות ברירת המחדל");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    const t = input.trim();
+    setInput("");
+    await sendMessage({ text: t });
   };
 
-  if (!hydrated) {
-    return (
-      <div className="flex h-full items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]" dir="rtl">
-        <RefreshCw className="h-8 w-8 animate-spin opacity-40" aria-hidden />
-      </div>
-    );
-  }
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/notebooklm/extract-pdf", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await res.json()) as { text?: string; error?: string };
+
+      if (data.text) {
+        setSources((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            name: file.name,
+            content: data.text as string,
+            type: "pdf",
+          },
+        ]);
+      } else {
+        alert("שגיאה בחילוץ הטקסט: " + (data.error || "שגיאה לא ידועה"));
+      }
+    } catch (error) {
+      console.error("Upload failed", error);
+      alert("שגיאה בהעלאת הקובץ.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeSource = (id: string) => {
+    setSources(sources.filter((s) => s.id !== id));
+  };
+
+  const handleQuickAction = (prompt: string) => {
+    if (sources.length === 0) {
+      alert("אנא הוסף מקורות ידע קודם.");
+      return;
+    }
+    void sendMessage({ text: prompt });
+  };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir="rtl">
-      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 px-3 py-3 backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300 sm:h-11 sm:w-11">
-            <Library size={20} aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-black tracking-wide text-[color:var(--foreground-main)]">NotebookLM</h3>
-            <p className="text-[10px] font-bold text-[color:var(--foreground-muted)]">העדפות מקומיות · פתיחה ב-Google</p>
-          </div>
+    <div
+      className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40 font-sans backdrop-blur-xl md:flex-row"
+      dir="rtl"
+    >
+      <div className="flex w-full flex-col border-white/10 bg-black/20 p-6 md:w-1/3 md:border-l">
+        <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-slate-100">
+          <FileText className="h-5 w-5 text-blue-400" /> מקורות ידע
+        </h2>
+
+        <div
+          className="group relative mb-6 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-slate-600 p-6 text-center transition-all hover:border-blue-500 hover:bg-white/5"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isUploading ? (
+            <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-400" />
+          ) : (
+            <Upload className="mx-auto mb-2 h-8 w-8 text-slate-400 transition-colors group-hover:text-blue-400" />
+          )}
+          <p className="text-sm font-medium text-slate-300">גרור מסמך PDF או לחץ להעלאה</p>
+          <input
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+          />
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-          <a
-            href={NOTEBOOKLM_APP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2.5 text-[11px] font-black text-white shadow-md shadow-amber-900/20 transition hover:bg-amber-500 sm:col-span-1 sm:px-4"
-          >
-            <ExternalLink size={14} aria-hidden />
-            פתח ב-Google
-          </a>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2.5 text-[11px] font-black transition hover:bg-[color:var(--surface-soft)]"
-          >
-            <Save size={14} aria-hidden />
-            שמור
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--border-main)] px-3 py-2.5 text-[11px] font-bold text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-300"
-          >
-            <RotateCcw size={14} aria-hidden />
-            איפוס
-          </button>
+
+        <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-1">
+          <AnimatePresence>
+            {sources.map((source) => (
+              <motion.div
+                key={source.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="group flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="rounded-md bg-blue-500/20 p-2 text-blue-400">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <span className="truncate text-sm font-medium text-slate-200">{source.name}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeSource(source.id)}
+                  className="text-slate-500 transition-colors hover:text-red-400"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </motion.div>
+            ))}
+            {sources.length === 0 && !isUploading && (
+              <div className="mt-10 text-center text-sm text-slate-500">טרם הועלו מקורות מידע לסטודיו.</div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-4">
-        <div className="mx-auto max-w-3xl space-y-5 pb-4">
-          <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 p-3 sm:p-4">
-            <div className="mb-2 flex items-center gap-2 text-[color:var(--foreground-muted)]">
-              <BookOpen size={15} aria-hidden />
-              <h4 className="text-[11px] font-black uppercase tracking-widest">מחברת</h4>
+      <div className="relative flex h-full w-full flex-col md:w-2/3">
+        <div className="flex items-center gap-3 border-b border-white/5 bg-white/[0.02] px-6 py-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 shadow-lg shadow-blue-500/20">
+            <Bot className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-100">סטודיו מחקר AI</h3>
+            <p className="text-xs text-slate-400">{`מופעל ע"י Gemini 1.5 Flash`}</p>
+          </div>
+        </div>
+
+        <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6">
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-slate-500">
+              <Bot className="mb-4 h-16 w-16 opacity-20" />
+              <p>שאל אותי שאלות על המסמכים שהעלית.</p>
             </div>
-            <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">שם (תצוגה ב-OS בלבד)</label>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}>
+                <div
+                  className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "rounded-br-sm bg-blue-600 text-white shadow-md"
+                      : "rounded-bl-sm border border-white/5 bg-white/10 text-slate-200"
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{textFromMessage(m)}</div>
+                </div>
+              </div>
+            ))
+          )}
+          {isLoading && (
+            <div className="flex justify-end">
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-white/5 bg-white/5 p-4">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-emerald-400" />
+                <span
+                  className="h-2 w-2 animate-bounce rounded-full bg-emerald-400"
+                  style={{ animationDelay: "0.2s" }}
+                />
+                <span
+                  className="h-2 w-2 animate-bounce rounded-full bg-emerald-400"
+                  style={{ animationDelay: "0.4s" }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-white/5 bg-black/20 p-4">
+          <div className="custom-scrollbar mb-4 flex gap-2 overflow-x-auto pb-2">
+            <button
+              type="button"
+              onClick={() =>
+                handleQuickAction("צור סקירה קולית דמיונית בין שני מנחי פודקאסט על המסמכים.")
+              }
+              className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-medium text-purple-300 transition-all hover:bg-purple-500/20"
+            >
+              <Mic className="h-3 w-3" /> סקירה קולית
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickAction("סכם את המקורות לתקציר מנהלים בנקודות קצרות וברורות.")}
+              className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs font-medium text-blue-300 transition-all hover:bg-blue-500/20"
+            >
+              <AlignLeft className="h-3 w-3" /> תקציר מנהלים
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickAction("צור מפת חשיבה (רשימה היררכית) של הרעיונות המרכזיים.")}
+              className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-medium text-emerald-300 transition-all hover:bg-emerald-500/20"
+            >
+              <BrainCircuit className="h-3 w-3" /> מפת חשיבה
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="relative flex items-center">
             <input
               type="text"
-              value={settings.notebookTitle}
-              onChange={(e) => persist({ ...settings, notebookTitle: e.target.value })}
-              placeholder="למשל: תקציב 2026..."
-              className="mb-3 w-full min-w-0 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2.5 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              value={input}
+              onChange={handleInputChange}
+              placeholder="הקלד שאלה או פקודה..."
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-3 px-4 pr-12 text-slate-100 placeholder:text-slate-500 transition-colors focus:border-blue-500 focus:outline-none"
+              disabled={isLoading}
             />
-            <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">הערות פנימיות</label>
-            <textarea
-              value={settings.notebookNotes}
-              onChange={(e) => persist({ ...settings, notebookNotes: e.target.value })}
-              rows={3}
-              placeholder="קישורים, הקשר..."
-              className="w-full min-w-0 resize-y rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-            />
-          </section>
-
-          <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 p-3 sm:p-4">
-            <div className="mb-2 flex min-w-0 items-center gap-2 text-[color:var(--foreground-muted)]">
-              <Link2 size={15} aria-hidden />
-              <h4 className="min-w-0 truncate text-[11px] font-black uppercase tracking-widest">סוגי מקורות</h4>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ToggleRow label="PDF" checked={settings.sources.pdf} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, pdf: v } })} />
-              <ToggleRow label="Google Docs" checked={settings.sources.googleDocs} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, googleDocs: v } })} />
-              <ToggleRow label="Google Slides" checked={settings.sources.googleSlides} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, googleSlides: v } })} />
-              <ToggleRow label="אתרים" description="URL" checked={settings.sources.websites} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, websites: v } })} />
-              <ToggleRow label="YouTube" checked={settings.sources.youtube} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, youtube: v } })} />
-              <ToggleRow label="Google Drive" checked={settings.sources.googleDrive} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, googleDrive: v } })} />
-              <ToggleRow label="מאגרי קוד" checked={settings.sources.codeRepos} onChange={(v) => persist({ ...settings, sources: { ...settings.sources, codeRepos: v } })} />
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 p-3 sm:p-4">
-            <div className="mb-2 flex items-center gap-2 text-[color:var(--foreground-muted)]">
-              <Sparkles size={15} aria-hidden />
-              <h4 className="text-[11px] font-black uppercase tracking-widest">Studio</h4>
-            </div>
-            <p className="mb-2 text-[10px] font-semibold leading-relaxed text-[color:var(--foreground-muted)]">תזכורת בעת עבודה; יצירה ב-Google.</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ToggleRow label="סקירה קולית" description="Audio Overview" checked={settings.studio.audioOverview} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, audioOverview: v } })} />
-              <ToggleRow label="סקירה בווידאו" description="Video Overview" checked={settings.studio.videoOverview} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, videoOverview: v } })} />
-              <ToggleRow label="מפת חשיבה" checked={settings.studio.mindMap} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, mindMap: v } })} />
-              <ToggleRow label="דוח מחקר" checked={settings.studio.researchReport} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, researchReport: v } })} />
-              <ToggleRow label="בוחן" checked={settings.studio.quiz} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, quiz: v } })} />
-              <ToggleRow label="כרטיסיות לימוד" checked={settings.studio.flashcards} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, flashcards: v } })} />
-              <ToggleRow label="מסמך תקציר" checked={settings.studio.briefingDoc} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, briefingDoc: v } })} />
-              <ToggleRow label="טבלת נתונים" checked={settings.studio.dataTable} onChange={(v) => persist({ ...settings, studio: { ...settings.studio, dataTable: v } })} />
-            </div>
-          </section>
-
-          <details className="group rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/20 open:bg-[color:var(--surface-card)]/35">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3 text-sm font-black text-[color:var(--foreground-main)] sm:px-4 [&::-webkit-details-marker]:hidden">
-              <span className="flex min-w-0 items-center gap-2">
-                <SlidersHorizontal size={16} className="shrink-0 text-[color:var(--foreground-muted)]" aria-hidden />
-                <span className="truncate">הרחבה: התאמה אישית, צ׳אט ושיתוף</span>
-              </span>
-              <ChevronDown size={18} className="shrink-0 text-[color:var(--foreground-muted)] transition group-open:rotate-180" aria-hidden />
-            </summary>
-            <div className="space-y-4 border-t border-[color:var(--border-main)]/60 px-3 py-4 sm:px-4">
-              <div>
-                <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">הנחיות מותאמות</label>
-                <textarea
-                  value={settings.customInstructions}
-                  onChange={(e) => persist({ ...settings, customInstructions: e.target.value })}
-                  rows={3}
-                  placeholder="למשל: התמקד בנתונים פיננסיים..."
-                  className="w-full min-w-0 resize-y rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500/30"
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">סגנון תשובה</label>
-                  <select
-                    value={settings.responseStyle}
-                    onChange={(e) => persist({ ...settings, responseStyle: e.target.value as NotebookLMSettings["responseStyle"] })}
-                    className="w-full min-w-0 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
-                  >
-                    <option value="sources">מבוסס מקורות</option>
-                    <option value="balanced">מאוזן</option>
-                    <option value="creative">יצירתי יותר</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">אורך תשובה</label>
-                  <select
-                    value={settings.responseLength}
-                    onChange={(e) => persist({ ...settings, responseLength: e.target.value as NotebookLMSettings["responseLength"] })}
-                    className="w-full min-w-0 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
-                  >
-                    <option value="short">קצר</option>
-                    <option value="medium">בינוני</option>
-                    <option value="long">מפורט</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">שפת צ׳אט</label>
-                  <select
-                    value={settings.chatLanguage}
-                    onChange={(e) => persist({ ...settings, chatLanguage: e.target.value as NotebookLMSettings["chatLanguage"] })}
-                    className="w-full min-w-0 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
-                  >
-                    <option value="he">עברית</option>
-                    <option value="en">English</option>
-                    <option value="auto">אוטומטי</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-[color:var(--foreground-muted)]">
-                  <MessageSquare size={15} aria-hidden />
-                  <h4 className="text-[11px] font-black uppercase tracking-widest">צ׳אט עם מקורות</h4>
-                </div>
-                <div className="space-y-2">
-                  <ToggleRow label="עיגון במקורות" checked={settings.sourceGroundingInChat} onChange={(v) => persist({ ...settings, sourceGroundingInChat: v })} />
-                  <ToggleRow label="ציטוטים" checked={settings.showCitations} onChange={(v) => persist({ ...settings, showCitations: v })} />
-                  <ToggleRow label="רענון אחרי שינוי מקורות" checked={settings.autoRefreshSources} onChange={(v) => persist({ ...settings, autoRefreshSources: v })} />
-                </div>
-                <label className="mb-1.5 mt-3 block text-[10px] font-bold text-[color:var(--foreground-muted)]">תזכורת: מקס׳ מקורות (Google)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={settings.maxSourcesReminder}
-                  onChange={(e) => persist({ ...settings, maxSourcesReminder: Math.min(500, Math.max(1, Number(e.target.value) || 50)) })}
-                  className="w-full max-w-xs rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-sm font-mono text-[color:var(--foreground-main)]"
-                />
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center gap-2 text-[color:var(--foreground-muted)]">
-                  <Share2 size={15} aria-hidden />
-                  <h4 className="text-[11px] font-black uppercase tracking-widest">שיתוף</h4>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      { value: "private" as const, label: "פרטי" },
-                      { value: "workspace" as const, label: "צוות / ארגון" },
-                      { value: "link" as const, label: "קישור" },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => persist({ ...settings, shareLevel: opt.value })}
-                      className={`rounded-xl px-3 py-2 text-[11px] font-black transition ${settings.shareLevel === opt.value ? "bg-amber-600 text-white shadow-md" : "border border-[color:var(--border-main)] bg-[color:var(--background-main)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <p className="text-center text-[10px] font-semibold leading-relaxed text-[color:var(--foreground-muted)]">
-            NotebookLM הוא שירות Google. ההגדרות נשמרות מקומית; ליצירת מחברת אמיתית — «פתח ב-Google».
-          </p>
+            <button
+              type="submit"
+              disabled={isLoading || !input}
+              className="absolute right-2 rounded-lg bg-blue-600 p-2 text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Send className="h-4 w-4 rtl:-scale-x-100" />
+            </button>
+          </form>
         </div>
       </div>
     </div>

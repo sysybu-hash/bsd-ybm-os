@@ -61,6 +61,7 @@ const nextConfig = {
     return [];
   },
   transpilePackages: ["react-signature-canvas", "signature_pad"],
+  serverExternalPackages: ["pdf-parse"],
   images: {
     remotePatterns: [
       {
