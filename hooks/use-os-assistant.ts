@@ -6,7 +6,7 @@ import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { handleOsAssistantToolCall, type OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
 const FALLBACK_INSTRUCTION =
-  "אתה העוזר של BSD-YBM OS. ענה בעברית. פתח ווידג'טים לפי בקשה.";
+  "You are the BSD-YBM OS assistant. Reply in the user's interface language. Open widgets when asked using execute_os_command.";
 
 export function useOsAssistant(deps: OsAssistantToolDeps) {
   const { data: session, status } = useSession();

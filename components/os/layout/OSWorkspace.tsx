@@ -23,6 +23,7 @@ import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import GoogleAssistantWidget from "@/components/os/widgets/GoogleAssistantWidget";
 import NotebookLMWidget from "@/components/os/widgets/NotebookLMWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 
@@ -38,38 +39,27 @@ interface OSWorkspaceProps {
   updateZoom: (id: string, delta: number) => void;
 }
 
-const widgetTitles: Record<WidgetType, string> = {
-  project: "פרויקט",
-  cashflow: "תזרים מזומנים",
-  aiChat: "עוזר AI",
-  crm: "ניהול לקוחות CRM",
-  dashboard: "דאשבורד פיננסי",
-  erp: "ארכיון ERP ופריטים",
-  docCreator: "יוצר מסמכים",
-  aiScanner: "סורק חשבוניות AI",
-  projectBoard: "לוח פרויקטים",
-  crmTable: "טבלת לקוחות",
-  erpArchive: "ארכיון קבצי ERP",
-  aiChatFull: "צ׳אט AI מלא",
-  settings: "הגדרות מערכת",
-  meckanoReports: "מחולל דוחות Meckano",
-  quoteGen: "מחולל הצעות מחיר",
-  googleDrive: "Google Drive",
-  googleAssistant: "Google Assistant",
-  notebookLM: "NotebookLM",
-  accessibility: "נגישות",
-};
-
-const quickActions = [
-  { type: "projectBoard" as WidgetType, icon: BarChart3, title: "לוח פרויקטים", subtitle: "ניהול משימות" },
-  { type: "crmTable" as WidgetType, icon: Users, title: "ניהול לקוחות", subtitle: "מאגר CRM" },
-  { type: "erpArchive" as WidgetType, icon: Package, title: "ארכיון ERP", subtitle: "ניהול קבצים" },
-  { type: "docCreator" as WidgetType, icon: FilePlus, title: "הפקת מסמכים", subtitle: "הצעות וחשבוניות" },
-  { type: "aiScanner" as WidgetType, icon: ScanLine, title: "סריקת AI", subtitle: "פענוח מסמכים" },
-  { type: "aiChatFull" as WidgetType, icon: Sparkles, title: "צ׳אט AI", subtitle: "עוזר אישי" },
-  { type: "googleDrive" as WidgetType, icon: HardDrive, title: "Google Drive", subtitle: "קבצים בענן" },
-  { type: "notebookLM" as WidgetType, icon: Library, title: "NotebookLM", subtitle: "מחברת AI" },
+const quickActionTypes: WidgetType[] = [
+  "projectBoard",
+  "crmTable",
+  "erpArchive",
+  "docCreator",
+  "aiScanner",
+  "aiChatFull",
+  "googleDrive",
+  "notebookLM",
 ];
+
+const quickActionIcons = {
+  projectBoard: BarChart3,
+  crmTable: Users,
+  erpArchive: Package,
+  docCreator: FilePlus,
+  aiScanner: ScanLine,
+  aiChatFull: Sparkles,
+  googleDrive: HardDrive,
+  notebookLM: Library,
+} as const;
 
 export default function OSWorkspace({
   widgets,
@@ -82,10 +72,13 @@ export default function OSWorkspace({
   toggleMaximize,
   updateZoom,
 }: OSWorkspaceProps) {
+  const { t, dir } = useI18n();
   const { data: session } = useSession();
   const workspaceBoundsRef = React.useRef<HTMLDivElement>(null);
-  const [greeting, setGreeting] = React.useState("שלום");
-  const userName = session?.user?.name?.split(" ")[0] || "משתמש";
+  const [greetingKey, setGreetingKey] = React.useState("workspaceWidgets.empty.greetingMorning");
+  const userName = session?.user?.name?.split(" ")[0] || t("workspaceWidgets.empty.guestUser");
+
+  const widgetTitle = (type: WidgetType) => t(`workspaceWidgets.titles.${type}`);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -104,14 +97,16 @@ export default function OSWorkspace({
 
   React.useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 5) setGreeting("לילה טוב");
-    else if (hour < 12) setGreeting("בוקר טוב");
-    else if (hour < 18) setGreeting("צהריים טובים");
-    else setGreeting("ערב טוב");
+    if (hour < 5) setGreetingKey("workspaceWidgets.empty.greetingNight");
+    else if (hour < 12) setGreetingKey("workspaceWidgets.empty.greetingMorning");
+    else if (hour < 18) setGreetingKey("workspaceWidgets.empty.greetingNoon");
+    else setGreetingKey("workspaceWidgets.empty.greetingEvening");
   }, []);
 
+  const omnibarName = t("workspaceWidgets.empty.omnibarName");
+
   return (
-    <div ref={workspaceBoundsRef} className="relative flex min-h-0 flex-1 overflow-hidden">
+    <div ref={workspaceBoundsRef} className="relative flex h-full min-h-0 flex-1 overflow-hidden" dir={dir}>
       <AnimatePresence mode="wait">
         {hasHydrated && widgets.length === 0 && (
           <motion.section
@@ -119,52 +114,58 @@ export default function OSWorkspace({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="absolute inset-0 flex min-h-0 flex-col items-center justify-start overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] p-4 pb-8 pt-6 md:justify-center md:overflow-visible md:p-6"
+            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center justify-start overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] p-4 pb-8 pt-6 md:justify-center md:overflow-visible md:p-6"
           >
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
               <Bot size={28} className="text-indigo-400" aria-hidden />
             </div>
 
             <h1 className="mb-3 px-4 text-center text-4xl font-black tracking-normal text-[color:var(--foreground-main)] md:text-6xl">
-              {greeting},{" "}
+              {t(greetingKey)},{" "}
               <span className="bg-gradient-to-l from-emerald-400 to-indigo-400 bg-clip-text text-transparent">{userName}</span>
             </h1>
 
             <p className="mx-auto mb-8 max-w-xl px-4 text-center text-base font-semibold leading-7 text-pretty text-[color:var(--foreground-muted)] md:text-lg">
-              BSD-YBM OS מוכנה לעבודה. בחר פעולה מהירה או הקלד פקודה ב־
-              <span className="whitespace-nowrap">Omnibar</span>.
+              {t("workspaceWidgets.empty.subtitle", { omnibar: omnibarName })}
             </p>
 
             <div className="grid w-full max-w-4xl grid-cols-2 gap-3 px-2 md:grid-cols-4 md:px-0">
-              {quickActions.map((action) => (
-                <button
-                  key={action.type}
-                  type="button"
-                  onClick={() => openWidget(action.type)}
-                  className="quiet-surface group flex min-h-[108px] flex-col items-center justify-center gap-3 p-4 text-center transition"
-                >
-                  <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-lg transition ${widgetIconChipClass(action.type)}`}
+              {quickActionTypes.map((type) => {
+                const Icon = quickActionIcons[type as keyof typeof quickActionIcons];
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => openWidget(type)}
+                    className="quiet-surface group flex min-h-[108px] flex-col items-center justify-center gap-3 p-4 text-center transition"
                   >
-                    <action.icon size={21} aria-hidden />
-                  </div>
-                  <div>
-                    <div className="text-sm font-black text-[color:var(--foreground-main)]">{action.title}</div>
-                    <div className="mt-1 text-[11px] font-semibold text-[color:var(--foreground-muted)]">{action.subtitle}</div>
-                  </div>
-                </button>
-              ))}
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-lg transition ${widgetIconChipClass(type)}`}
+                    >
+                      <Icon size={21} aria-hidden />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-[color:var(--foreground-main)]">
+                        {t(`workspaceWidgets.quickActions.${type}.title`)}
+                      </div>
+                      <div className="mt-1 text-[11px] font-semibold text-[color:var(--foreground-muted)]">
+                        {t(`workspaceWidgets.quickActions.${type}.subtitle`)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </motion.section>
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-0 z-20 pointer-events-none">
+      <div className="pointer-events-none absolute inset-0 z-20">
         {widgets.map((widget) => (
           <AdaptiveWidgetShell
             key={widget.id}
             id={widget.id}
-            title={widgetTitles[widget.type]}
+            title={widgetTitle(widget.type)}
             onClose={() => closeWidget(widget.id)}
             initialOffset={widget.position}
             size={widget.size}

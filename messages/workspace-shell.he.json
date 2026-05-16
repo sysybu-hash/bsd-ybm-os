@@ -302,6 +302,89 @@
       "profileAria": "פרופיל"
     }
   },
+  "workspaceWidgets": {
+    "titles": {
+      "project": "פרויקט",
+      "cashflow": "תזרים מזומנים",
+      "aiChat": "עוזר AI",
+      "crm": "ניהול לקוחות CRM",
+      "dashboard": "דאשבורד פיננסי",
+      "erp": "ארכיון ERP ופריטים",
+      "docCreator": "יוצר מסמכים",
+      "aiScanner": "סורק חשבוניות AI",
+      "projectBoard": "לוח פרויקטים",
+      "crmTable": "טבלת לקוחות",
+      "erpArchive": "ארכיון קבצי ERP",
+      "aiChatFull": "צ׳אט AI מלא",
+      "settings": "הגדרות מערכת",
+      "meckanoReports": "מחולל דוחות Meckano",
+      "quoteGen": "מחולל הצעות מחיר",
+      "googleDrive": "Google Drive",
+      "googleAssistant": "Google Assistant",
+      "notebookLM": "NotebookLM",
+      "accessibility": "נגישות"
+    },
+    "quickActions": {
+      "projectBoard": { "title": "לוח פרויקטים", "subtitle": "ניהול משימות" },
+      "crmTable": { "title": "ניהול לקוחות", "subtitle": "מאגר CRM" },
+      "erpArchive": { "title": "ארכיון ERP", "subtitle": "ניהול קבצים" },
+      "docCreator": { "title": "הפקת מסמכים", "subtitle": "הצעות וחשבוניות" },
+      "aiScanner": { "title": "סריקת AI", "subtitle": "פענוח מסמכים" },
+      "aiChatFull": { "title": "צ׳אט AI", "subtitle": "עוזר אישי" },
+      "googleDrive": { "title": "Google Drive", "subtitle": "קבצים בענן" },
+      "notebookLM": { "title": "NotebookLM", "subtitle": "מחברת AI" }
+    },
+    "empty": {
+      "greetingNight": "לילה טוב",
+      "greetingMorning": "בוקר טוב",
+      "greetingNoon": "צהריים טובים",
+      "greetingEvening": "ערב טוב",
+      "guestUser": "משתמש",
+      "subtitle": "BSD-YBM OS מוכנה לעבודה. בחר פעולה מהירה או הקלד פקודה ב־{omnibar}.",
+      "omnibarName": "Omnibar"
+    },
+    "mobileNav": {
+      "aria": "ניווט מהיר במובייל",
+      "dashboard": "דאשבורד",
+      "aiScanner": "סורק AI",
+      "meckanoReports": "דוחות Meckano",
+      "crmTable": "לקוחות",
+      "omnibarAria": "פתח שורת פקודה וחיפוש"
+    },
+    "sidebar": {
+      "aria": "ניווט סביבת עבודה",
+      "appsAria": "יישומים",
+      "closeAria": "סגור ניווט",
+      "dashboard": "דאשבורד",
+      "projectBoard": "פרויקטים",
+      "crmTable": "לקוחות",
+      "erpArchive": "ארכיון ERP",
+      "docCreator": "מסמכים",
+      "aiScanner": "סורק AI",
+      "aiChatFull": "צ׳אט AI",
+      "meckanoReports": "דוחות Meckano",
+      "notebookLM": "NotebookLM",
+      "settings": "הגדרות",
+      "help": "עזרה"
+    },
+    "page": {
+      "loading": "טוען סביבת עבודה…",
+      "systemReady": "המערכת מוכנה לעבודה",
+      "defaultUser": "משתמש",
+      "cleanDashboard": "דשבורד נקי",
+      "backToWork": "חזור למצב עבודה",
+      "notificationsOpen": "פתח התראות",
+      "settingsOpen": "פתח הגדרות משתמש",
+      "signOut": "יציאה מהמערכת"
+    },
+    "chrome": {
+      "zoomOutAria": "הקטן זום ב-{title}",
+      "zoomInAria": "הגדל זום ב-{title}",
+      "restoreAria": "הקטן {title}",
+      "maximizeAria": "הגדל {title}",
+      "closeAria": "סגור {title}"
+    }
+  },
   "settingsHub": {
     "sidebarEyebrow": "הגדרות",
     "sidebarTitle": "ארגון, מנויים ותפעול"

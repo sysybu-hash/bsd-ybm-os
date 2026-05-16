@@ -6,6 +6,7 @@ import {
   formatUserContextForPrompt,
 } from "@/lib/os-assistant/user-context";
 import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
+import { getServerLocale } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,12 @@ export async function GET() {
     return jsonUnauthorized();
   }
 
+  const locale = await getServerLocale();
+
   return Response.json({
     context: ctx,
     contextText: formatUserContextForPrompt(ctx),
-    systemInstruction: buildOsAssistantSystemInstruction(ctx),
-    systemInstructionVoice: buildOsAssistantSystemInstruction(ctx, { voice: true }),
+    systemInstruction: buildOsAssistantSystemInstruction(ctx, { locale }),
+    systemInstructionVoice: buildOsAssistantSystemInstruction(ctx, { voice: true, locale }),
   });
 }

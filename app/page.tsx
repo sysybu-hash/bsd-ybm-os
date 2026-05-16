@@ -14,6 +14,7 @@ import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import LandingPage from "@/components/landing/LandingPage";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -28,7 +29,8 @@ export default function OmniCanvas() {
   const [notifications, setNotifications] = useState<OSNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
-  const [systemMessage, setSystemMessage] = useState("המערכת מוכנה לעבודה");
+  const { t, dir } = useI18n();
+  const [systemMessage, setSystemMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [hasOpenedDefaults, setHasOpenedDefaults] = useState(false);
@@ -55,6 +57,10 @@ export default function OmniCanvas() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setSystemMessage(t("workspaceWidgets.page.systemReady"));
+  }, [t]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !session?.user?.id) {
@@ -344,10 +350,10 @@ export default function OmniCanvas() {
     return (
       <div
         className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
-        dir="rtl"
+        dir={dir}
       >
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" aria-hidden />
-        <p className="mt-4 text-sm font-semibold">טוען סביבת עבודה…</p>
+        <p className="mt-4 text-sm font-semibold">{t("workspaceWidgets.page.loading")}</p>
       </div>
     );
   }
@@ -357,7 +363,7 @@ export default function OmniCanvas() {
   }
 
   return (
-    <main className="quiet-shell fixed inset-0 overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir="rtl">
+    <main className="quiet-shell fixed inset-0 overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 
@@ -379,7 +385,7 @@ export default function OmniCanvas() {
         closeSidebar={() => setIsSidebarOpen(false)}
       />
 
-      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:pb-[10.5rem]">
+      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-[10.5rem]">
         <OSWorkspace
           widgets={widgets}
           hasHydrated={hasHydrated}

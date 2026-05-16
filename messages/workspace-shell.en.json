@@ -302,6 +302,89 @@
       "profileAria": "Profile"
     }
   },
+  "workspaceWidgets": {
+    "titles": {
+      "project": "Project",
+      "cashflow": "Cash flow",
+      "aiChat": "AI assistant",
+      "crm": "CRM",
+      "dashboard": "Financial dashboard",
+      "erp": "ERP archive & items",
+      "docCreator": "Document creator",
+      "aiScanner": "AI invoice scanner",
+      "projectBoard": "Project board",
+      "crmTable": "Clients table",
+      "erpArchive": "ERP file archive",
+      "aiChatFull": "Full AI chat",
+      "settings": "System settings",
+      "meckanoReports": "Meckano reports",
+      "quoteGen": "Quote generator",
+      "googleDrive": "Google Drive",
+      "googleAssistant": "Google Assistant",
+      "notebookLM": "NotebookLM",
+      "accessibility": "Accessibility"
+    },
+    "quickActions": {
+      "projectBoard": { "title": "Project board", "subtitle": "Task management" },
+      "crmTable": { "title": "Clients", "subtitle": "CRM database" },
+      "erpArchive": { "title": "ERP archive", "subtitle": "File management" },
+      "docCreator": { "title": "Documents", "subtitle": "Quotes & invoices" },
+      "aiScanner": { "title": "AI scan", "subtitle": "Document decode" },
+      "aiChatFull": { "title": "AI chat", "subtitle": "Personal assistant" },
+      "googleDrive": { "title": "Google Drive", "subtitle": "Cloud files" },
+      "notebookLM": { "title": "NotebookLM", "subtitle": "AI notebook" }
+    },
+    "empty": {
+      "greetingNight": "Good night",
+      "greetingMorning": "Good morning",
+      "greetingNoon": "Good afternoon",
+      "greetingEvening": "Good evening",
+      "guestUser": "User",
+      "subtitle": "BSD-YBM OS is ready. Pick a quick action or type a command in the {omnibar}.",
+      "omnibarName": "Omnibar"
+    },
+    "mobileNav": {
+      "aria": "Mobile quick navigation",
+      "dashboard": "Dashboard",
+      "aiScanner": "AI scan",
+      "meckanoReports": "Meckano reports",
+      "crmTable": "Clients",
+      "omnibarAria": "Open command bar and search"
+    },
+    "sidebar": {
+      "aria": "Workspace navigation",
+      "appsAria": "Apps",
+      "closeAria": "Close navigation",
+      "dashboard": "Dashboard",
+      "projectBoard": "Projects",
+      "crmTable": "Clients",
+      "erpArchive": "ERP archive",
+      "docCreator": "Documents",
+      "aiScanner": "AI scan",
+      "aiChatFull": "AI chat",
+      "meckanoReports": "Meckano reports",
+      "notebookLM": "NotebookLM",
+      "settings": "Settings",
+      "help": "Help"
+    },
+    "page": {
+      "loading": "Loading workspace…",
+      "systemReady": "System ready",
+      "defaultUser": "User",
+      "cleanDashboard": "Clean dashboard",
+      "backToWork": "Back to work mode",
+      "notificationsOpen": "Open notifications",
+      "settingsOpen": "Open user settings",
+      "signOut": "Sign out"
+    },
+    "chrome": {
+      "zoomOutAria": "Zoom out in {title}",
+      "zoomInAria": "Zoom in in {title}",
+      "restoreAria": "Restore {title}",
+      "maximizeAria": "Maximize {title}",
+      "closeAria": "Close {title}"
+    }
+  },
   "settingsHub": {
     "sidebarEyebrow": "Settings",
     "sidebarTitle": "Organization, billing & operations"

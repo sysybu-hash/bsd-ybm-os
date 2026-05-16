@@ -100,6 +100,26 @@
       "brand": "BSD-YBM",
       "lead": "An intelligent operations system that connects clients, documents, billing, management control and AI in one workspace."
     },
+    "osLanding": {
+      "signIn": "Sign in",
+      "badge": "v2.0 | Now with Gemini Live integration",
+      "heroTitleLine1": "The operating system for",
+      "heroTitleLine2": "your business.",
+      "heroSubtitle": "An AI-powered command center. Projects, finance and clients on autopilot — designed for 2026.",
+      "ctaStart": "Get started",
+      "ctaDemo": "Book a demo",
+      "features": [
+        { "title": "AI document scanner", "body": "Automatic extraction from invoices with advanced vision, straight into your database." },
+        { "title": "Gemini Live", "body": "A voice assistant to command and navigate the workspace with natural speech." },
+        { "title": "Unified ERP & CRM", "body": "Visual project board, budgets and cash flow under one roof." },
+        { "title": "Digital signature", "body": "Branded quotes sent to clients for fast, secure signing." }
+      ],
+      "footerAbout": "About",
+      "footerPrivacy": "Privacy",
+      "footerTerms": "Terms",
+      "footerCookies": "Cookies",
+      "footerCopyright": "© {year} BSD-YBM-OS. All rights reserved."
+    },
     "editorial": {
       "nav": {
         "about": "About",

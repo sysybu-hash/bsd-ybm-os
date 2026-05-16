@@ -302,6 +302,89 @@
       "profileAria": "Профиль"
     }
   },
+  "workspaceWidgets": {
+    "titles": {
+      "project": "Проект",
+      "cashflow": "Денежный поток",
+      "aiChat": "AI-ассистент",
+      "crm": "CRM",
+      "dashboard": "Финансовая панель",
+      "erp": "Архив ERP и позиции",
+      "docCreator": "Создание документов",
+      "aiScanner": "AI-сканер счетов",
+      "projectBoard": "Доска проектов",
+      "crmTable": "Таблица клиентов",
+      "erpArchive": "Архив файлов ERP",
+      "aiChatFull": "Полный AI-чат",
+      "settings": "Настройки системы",
+      "meckanoReports": "Отчёты Meckano",
+      "quoteGen": "Генератор предложений",
+      "googleDrive": "Google Drive",
+      "googleAssistant": "Google Assistant",
+      "notebookLM": "NotebookLM",
+      "accessibility": "Доступность"
+    },
+    "quickActions": {
+      "projectBoard": { "title": "Доска проектов", "subtitle": "Управление задачами" },
+      "crmTable": { "title": "Клиенты", "subtitle": "База CRM" },
+      "erpArchive": { "title": "Архив ERP", "subtitle": "Управление файлами" },
+      "docCreator": { "title": "Документы", "subtitle": "Счета и КП" },
+      "aiScanner": { "title": "AI-скан", "subtitle": "Распознавание" },
+      "aiChatFull": { "title": "AI-чат", "subtitle": "Личный ассистент" },
+      "googleDrive": { "title": "Google Drive", "subtitle": "Облачные файлы" },
+      "notebookLM": { "title": "NotebookLM", "subtitle": "AI-блокнот" }
+    },
+    "empty": {
+      "greetingNight": "Доброй ночи",
+      "greetingMorning": "Доброе утро",
+      "greetingNoon": "Добрый день",
+      "greetingEvening": "Добрый вечер",
+      "guestUser": "Пользователь",
+      "subtitle": "BSD-YBM OS готова к работе. Выберите действие или введите команду в {omnibar}.",
+      "omnibarName": "Omnibar"
+    },
+    "mobileNav": {
+      "aria": "Быстрая навигация (мобильный)",
+      "dashboard": "Панель",
+      "aiScanner": "AI-скан",
+      "meckanoReports": "Отчёты Meckano",
+      "crmTable": "Клиенты",
+      "omnibarAria": "Открыть командную строку и поиск"
+    },
+    "sidebar": {
+      "aria": "Навигация рабочей области",
+      "appsAria": "Приложения",
+      "closeAria": "Закрыть навигацию",
+      "dashboard": "Панель",
+      "projectBoard": "Проекты",
+      "crmTable": "Клиенты",
+      "erpArchive": "Архив ERP",
+      "docCreator": "Документы",
+      "aiScanner": "AI-скан",
+      "aiChatFull": "AI-чат",
+      "meckanoReports": "Отчёты Meckano",
+      "notebookLM": "NotebookLM",
+      "settings": "Настройки",
+      "help": "Помощь"
+    },
+    "page": {
+      "loading": "Загрузка рабочей области…",
+      "systemReady": "Система готова",
+      "defaultUser": "Пользователь",
+      "cleanDashboard": "Чистая панель",
+      "backToWork": "Вернуться к работе",
+      "notificationsOpen": "Открыть уведомления",
+      "settingsOpen": "Открыть настройки",
+      "signOut": "Выйти"
+    },
+    "chrome": {
+      "zoomOutAria": "Уменьшить масштаб в {title}",
+      "zoomInAria": "Увеличить масштаб в {title}",
+      "restoreAria": "Восстановить {title}",
+      "maximizeAria": "Развернуть {title}",
+      "closeAria": "Закрыть {title}"
+    }
+  },
   "settingsHub": {
     "sidebarEyebrow": "Настройки",
     "sidebarTitle": "Организация, оплата и операции"

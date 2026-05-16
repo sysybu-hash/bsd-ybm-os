@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonUnauthorized } from "@/lib/api-json";
 import { runAiChat, getUserFacingAiErrorMessage } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
+import { LOCALE_AI_LANGUAGE_NAMES, normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 import { buildOsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
 import { normalizeWidgetAction, widgetCatalogForPrompt } from "@/lib/os-assistant/widget-catalog";
@@ -59,23 +60,25 @@ export async function POST(request: Request) {
       return jsonUnauthorized();
     }
 
-    const base = buildOsAssistantSystemInstruction(ctx);
+    const locale = await getServerLocale();
+    const loc = normalizeLocale(locale) as AppLocale;
+    const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
+
+    const base = buildOsAssistantSystemInstruction(ctx, { locale });
     const task = [
       base,
       "",
-      "## משימה",
-      `המשתמש כתב: «${message}»`,
+      "## Task",
+      `User message: «${message}»`,
       "",
-      "החזר JSON בלבד (בלי markdown):",
-      '{"reply":"תשובה בעברית","openWidgets":["widgetId"],"searchQuery":null}',
+      "Return JSON only (no markdown):",
+      `{"reply":"answer in ${lang}","openWidgets":["widgetId"],"searchQuery":null}`,
       "",
-      "ווידג'טים אפשריים:",
-      widgetCatalogForPrompt(),
+      "Available widgets:",
+      widgetCatalogForPrompt(locale),
       "",
-      "בחר openWidgets רק אם צריך לפתוח מסך. searchQuery רק לחיפוש במערכת.",
+      "Set openWidgets only when a screen should open. searchQuery only for in-app search.",
     ].join("\n");
-
-    const locale = await getServerLocale();
     const { text } = await runAiChat("gemini", message, task, locale);
     const parsed = parseInterpretJson(text ?? "");
     if (parsed) {

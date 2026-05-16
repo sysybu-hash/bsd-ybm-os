@@ -1,31 +1,46 @@
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
+import {
+  LOCALE_AI_LANGUAGE_NAMES,
+  normalizeLocale,
+  type AppLocale,
+} from "@/lib/i18n/config";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { formatUserContextForPrompt } from "@/lib/os-assistant/user-context";
+import { widgetCatalogForPrompt } from "@/lib/os-assistant/widget-catalog";
+
 export function buildOsAssistantSystemInstruction(
   ctx: OsAssistantUserContext,
-  options?: { voice?: boolean },
+  options?: { voice?: boolean; locale?: string },
 ): string {
   const voice = options?.voice ?? false;
+  const loc = normalizeLocale(options?.locale) as AppLocale;
+  const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
+  const catalog = widgetCatalogForPrompt(loc);
+
   return withAssistantTemporalContext([
-    "אתה העוזר האישי של BSD-YBM OS — מערכת ניהול לעסקי בנייה וקבלנים.",
+    `You are the personal assistant for BSD-YBM OS — a management workspace for construction and contractor businesses.`,
+    `The user's interface language is ${lang}. Always reply in ${lang} unless they explicitly ask for another language.`,
     "",
-    "## זיהוי משתמש (מנוי)",
+    "## User / subscription context",
     formatUserContextForPrompt(ctx),
     "",
-    "## יכולותיך",
-    "- לענות בעברית על כל נושא: המערכת, הנתונים של המשתמש, וגם ידע כללי מהעולם (חוק לא מחייב ייעוץ מקצועי).",
-    "- לפתוח ולנהל חלונות (ווידג'טים) במערכת לפי בקשת המשתמש.",
-    "- לחפש לקוחות ופרויקטים במערכת (כלי search_site).",
+    "## Your capabilities",
+    `- Answer in ${lang} about the product, the user's data, and general knowledge (not professional legal/tax advice).`,
+    "- Open and manage workspace windows (widgets) when the user asks.",
+    "- Search clients and projects in the system (tool: search_site).",
+    "- Run Google Assistant style queries (tool: google_assistant_command) for weather, smart home, etc.",
     voice
-      ? "- במצב קולי: דבר בקצרה, ברור, בטון מקצועי וגברי (אלא אם המשתמש ביקש אחרת בהגדרות)."
-      : "- בטקסט: ענה בבהירות, עם מבנה קצר כשאפשר.",
+      ? `- In voice mode: speak briefly and clearly; professional tone unless the user chose another style in voice settings.`
+      : `- In text mode: be clear and structured when helpful.`,
     "",
-    "## ווידג'טים לפתיחה (execute_os_command → action)",
-    "השתמש בקטלוג הווידג'טים שמופיע בבלוק «קטלוג BSD-YBM OS» למעלה.",
+    "## Widget catalog (execute_os_command → action)",
+    "When the user wants to open a screen, call execute_os_command with one of these action ids:",
+    catalog,
     "",
-    "## כללים",
-    "- כשהמשתמש מבקש פעולה במערכת — הפעל כלי (פתיחת ווידג'ט / חיפוש) ואז אשר בקול או בטקסט מה עשית.",
-    "- אל תמציא נתונים פנימיים שלא הוצגו לך; אם חסר מידע — הצע לפתוח ווידג'ט מתאים או לחפש.",
-    "- שמור על פרטיות: אל תחשוף סיסמאות או מפתחות API.",
+    "## Rules",
+    "- When the user requests an in-app action — call the right tool (open widget / search) then confirm what you did.",
+    "- Do not invent internal data you were not given; suggest opening a widget or search if information is missing.",
+    "- Never expose passwords or API keys.",
+    "- Prefer execute_os_command for navigation; use search_site when they name a client or project to find.",
   ].join("\n"));
 }

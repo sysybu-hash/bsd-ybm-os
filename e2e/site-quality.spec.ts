@@ -67,8 +67,8 @@ test.describe("Site quality", () => {
 
     await expect(page).toHaveTitle(/BSD-YBM/i);
     await expect(page.getByRole("heading", { level: 1, name: /מערכת ההפעלה/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /התחל לעבוד עכשיו/ })).toBeVisible();
-    await expect(page.getByText("הדור הבא של ניהול תשתיות ובנייה")).toBeVisible();
+    await expect(page.getByRole("button", { name: /התחל לעבוד/ })).toBeVisible();
+    await expect(page.getByText(/Gemini Live/)).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expectNoHorizontalOverflow(page);
   });
@@ -88,7 +88,21 @@ test.describe("Site quality", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: /מערכת ההפעלה/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /התחל לעבוד עכשיו/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /התחל לעבוד/ })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("locale cookie switches landing copy to English", async ({ page, context }) => {
+    await context.addCookies([
+      {
+        name: "bsd-locale",
+        value: "en",
+        url: "http://localhost:3001",
+      },
+    ]);
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: /Get started/i })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
     await expectNoHorizontalOverflow(page);
   });
 

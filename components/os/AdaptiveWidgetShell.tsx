@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -43,6 +44,8 @@ export default function AdaptiveWidgetShell({
   workspaceBoundsRef,
   children,
 }: ShellProps) {
+  const { t, dir } = useI18n();
+
   const getViewportSize = () => ({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
     height: typeof window !== "undefined" ? window.innerHeight : 800,
@@ -125,11 +128,14 @@ export default function AdaptiveWidgetShell({
     [getWorkspaceSize],
   );
 
-  const moveWindow = useCallback((clientX: number, clientY: number) => {
-    const { mouseX, mouseY, x, y } = dragStartRef.current;
-    const next = { x: x + clientX - mouseX, y: y + clientY - mouseY };
-    setPosition(clampToWorkspace(next, sizeRef.current));
-  }, [clampToWorkspace]);
+  const moveWindow = useCallback(
+    (clientX: number, clientY: number) => {
+      const { mouseX, mouseY, x, y } = dragStartRef.current;
+      const next = { x: x + clientX - mouseX, y: y + clientY - mouseY };
+      setPosition(clampToWorkspace(next, sizeRef.current));
+    },
+    [clampToWorkspace],
+  );
 
   const resizeWindow = useCallback(
     (clientX: number, clientY: number) => {
@@ -249,7 +255,7 @@ export default function AdaptiveWidgetShell({
   const clampedLeft = mobileOrMaximized ? 0 : clamped.x;
   const clampedTop = mobileOrMaximized ? 0 : clamped.y;
 
-  const startResize = (e: React.MouseEvent, dir: ResizeHandle) => {
+  const startResize = (e: React.MouseEvent, resizeDir: ResizeHandle) => {
     if (mobileOrMaximized) return;
     e.stopPropagation();
     e.preventDefault();
@@ -260,28 +266,34 @@ export default function AdaptiveWidgetShell({
       height: currentSize.height,
       left: position.x,
       top: position.y,
-      dir,
+      dir: resizeDir,
     };
     setIsResizing(true);
   };
+
+  const chromeTitle = { title };
 
   return (
     <section
       id={id}
       onMouseDown={onFocus}
-      className={`workspace-window pointer-events-auto absolute flex flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
-        mobileOrMaximized ? "inset-0 !h-full !w-full !rounded-none !shadow-none" : ""
+      className={`workspace-window pointer-events-auto flex min-h-0 flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
+        mobileOrMaximized ? "fixed inset-0 z-[1300] !h-[100dvh] !w-full !max-h-[100dvh] !rounded-none !shadow-none md:absolute md:inset-0" : "absolute"
       }`}
-      style={{
-        width: mobileOrMaximized ? "100%" : `${currentSize.width}px`,
-        height: mobileOrMaximized ? "100%" : `${currentSize.height}px`,
-        maxWidth: mobileOrMaximized ? "100%" : `${ws.width}px`,
-        maxHeight: mobileOrMaximized ? "100%" : `${ws.height}px`,
-        left: mobileOrMaximized ? 0 : `${clampedLeft}px`,
-        top: mobileOrMaximized ? 0 : `${clampedTop}px`,
-        zIndex: mobileOrMaximized ? 1300 : zIndex,
-      }}
-      dir="rtl"
+      style={
+        mobileOrMaximized
+          ? undefined
+          : {
+              width: `${currentSize.width}px`,
+              height: `${currentSize.height}px`,
+              maxWidth: `${ws.width}px`,
+              maxHeight: `${ws.height}px`,
+              left: `${clampedLeft}px`,
+              top: `${clampedTop}px`,
+              zIndex,
+            }
+      }
+      dir={dir}
       aria-label={title}
     >
       <header
@@ -291,8 +303,8 @@ export default function AdaptiveWidgetShell({
           dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
           setIsDragging(true);
         }}
-        className={`workspace-window-header flex items-center justify-between gap-2 px-3 py-2.5 ${
-          mobileOrMaximized ? "cursor-default" : "cursor-move"
+        className={`workspace-window-header flex shrink-0 items-center justify-between gap-2 px-3 py-2.5 ${
+          mobileOrMaximized ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]" : "cursor-move"
         }`}
       >
         <div className="min-w-[2rem] flex-1" aria-hidden />
@@ -308,7 +320,7 @@ export default function AdaptiveWidgetShell({
               type="button"
               onClick={() => onZoomChange?.(-0.1)}
               className="workspace-chrome-btn hidden md:inline-flex"
-              aria-label={`הקטן זום ב-${title}`}
+              aria-label={t("workspaceWidgets.chrome.zoomOutAria", chromeTitle)}
             >
               <ZoomOut size={14} aria-hidden />
             </button>
@@ -317,7 +329,7 @@ export default function AdaptiveWidgetShell({
               type="button"
               onClick={() => onZoomChange?.(0.1)}
               className="workspace-chrome-btn"
-              aria-label={`הגדל זום ב-${title}`}
+              aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
             >
               <ZoomIn size={14} aria-hidden />
             </button>
@@ -325,7 +337,11 @@ export default function AdaptiveWidgetShell({
               type="button"
               onClick={onMaximize}
               className="workspace-chrome-btn hidden md:inline-flex"
-              aria-label={isMaximized ? `הקטן ${title}` : `הגדל ${title}`}
+              aria-label={
+                isMaximized
+                  ? t("workspaceWidgets.chrome.restoreAria", chromeTitle)
+                  : t("workspaceWidgets.chrome.maximizeAria", chromeTitle)
+              }
             >
               {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
             </button>
@@ -333,7 +349,7 @@ export default function AdaptiveWidgetShell({
               type="button"
               onClick={onClose}
               className="workspace-chrome-btn workspace-chrome-btn--danger"
-              aria-label={`סגור ${title}`}
+              aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
             >
               <X size={15} aria-hidden />
             </button>
@@ -342,10 +358,14 @@ export default function AdaptiveWidgetShell({
       </header>
 
       <div
-        className="custom-scrollbar h-full w-full flex-1 overflow-auto bg-transparent pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] md:pb-0"
-        style={{ transform: `scale(${zoom})`, transformOrigin: "top right" }}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] [-webkit-overflow-scrolling:touch] md:pb-0"
+        style={
+          mobileOrMaximized
+            ? undefined
+            : { transform: `scale(${zoom})`, transformOrigin: dir === "rtl" ? "top right" : "top left" }
+        }
       >
-        {children}
+        <div className="min-h-full">{children}</div>
       </div>
 
       {!mobileOrMaximized && (

@@ -8,18 +8,18 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "execute_os_command",
       description:
-        "פותח חלון/ווידג'ט במערכת BSD-YBM OS (דאשבורד, CRM, פרויקטים, סריקה, מסמכים, הגדרות וכו')",
+        "Opens a workspace window in BSD-YBM OS (dashboard, CRM, projects, AI scan, documents, settings, etc.). Use when the user asks to open, show, or go to a screen.",
       parameters: {
         type: "OBJECT",
         properties: {
           action: {
             type: "STRING",
             enum: WIDGET_ENUM,
-            description: "מזהה הווידג'ט לפתיחה",
+            description: "Widget id to open",
           },
           payload: {
             type: "OBJECT",
-            description: "נתונים אופציונליים (למשל שם פרויקט)",
+            description: "Optional data (e.g. project name)",
             properties: {
               name: { type: "STRING" },
               prompt: { type: "STRING" },
@@ -31,18 +31,20 @@ export function getOsAssistantLiveToolDeclarations() {
     },
     {
       name: "search_site",
-      description: "מחפש לקוחות ופרויקטים במערכת לפי שם או מילות מפתח",
+      description:
+        "Searches clients and projects in BSD-YBM by name or keywords. Use when the user names a client or project to find.",
       parameters: {
         type: "OBJECT",
         properties: {
-          query: { type: "STRING", description: "מחרוזת חיפוש" },
+          query: { type: "STRING", description: "Search string" },
         },
         required: ["query"],
       },
     },
     {
       name: "google_assistant_command",
-      description: "פקודה ל-Google Assistant (מזג אוויר, בית חכם וכו')",
+      description:
+        "Sends a query to Google Assistant (weather, smart home, general knowledge). Not for in-app navigation.",
       parameters: {
         type: "OBJECT",
         properties: {

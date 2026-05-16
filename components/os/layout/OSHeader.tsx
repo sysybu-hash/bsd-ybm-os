@@ -7,6 +7,7 @@ import Image from "next/image";
 import { WidgetType } from "@/hooks/use-window-manager";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 interface OSHeaderProps {
   openWidget?: (type: WidgetType) => void;
@@ -28,9 +29,10 @@ export default function OSHeader({
   onToggleWorkState,
 }: OSHeaderProps) {
   const { data: session } = useSession();
+  const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
 
-  const userName = session?.user?.name || "משתמש מערכת";
+  const userName = session?.user?.name || t("workspaceWidgets.page.defaultUser");
   const userInitials = userName
     .split(" ")
     .map((part) => part[0])
@@ -51,7 +53,7 @@ export default function OSHeader({
             <div className="text-xs font-black tracking-[0.16em] text-[color:var(--foreground-main)]">
               BSD-YBM <span className="text-indigo-600 dark:text-indigo-400">OS</span>
             </div>
-            <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">סביבת עבודה</div>
+            <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">{t("workspaceNav.logoSubtitle")}</div>
           </div>
         </div>
       </div>
@@ -68,8 +70,8 @@ export default function OSHeader({
                   ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
                   : "border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]"
               }`}
-              title="התראות"
-              aria-label="פתח התראות"
+              title={t("workspaceShell.topBar.notificationsAria")}
+              aria-label={t("workspaceWidgets.page.notificationsOpen")}
               aria-pressed={isNotificationsOpen}
             >
               <Bell size={15} aria-hidden />
@@ -89,8 +91,8 @@ export default function OSHeader({
                     ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
                     : "border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
-                title={isCleanDashboard ? "חזור למצב עבודה" : "דשבורד נקי"}
-                aria-label={isCleanDashboard ? "חזור למצב עבודה" : "דשבורד נקי"}
+                title={isCleanDashboard ? t("workspaceWidgets.page.backToWork") : t("workspaceWidgets.page.cleanDashboard")}
+                aria-label={isCleanDashboard ? t("workspaceWidgets.page.backToWork") : t("workspaceWidgets.page.cleanDashboard")}
                 aria-pressed={isCleanDashboard}
               >
                 <LayoutGrid size={15} aria-hidden />
@@ -108,7 +110,7 @@ export default function OSHeader({
             type="button"
             onClick={() => openWidget?.("settings")}
             className="group flex items-center gap-3 rounded-md py-1 pl-1 pr-2 transition hover:bg-[color:var(--surface-soft)]"
-            aria-label="פתח הגדרות משתמש"
+            aria-label={t("workspaceWidgets.page.settingsOpen")}
           >
             <div className="hidden flex-col items-end md:flex">
               <span className="text-[11px] font-bold leading-tight text-[color:var(--foreground-main)]">{userName}</span>
@@ -135,8 +137,8 @@ export default function OSHeader({
             type="button"
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-600"
-            title="יציאה"
-            aria-label="יציאה מהמערכת"
+            title={t("workspaceNav.signOut")}
+            aria-label={t("workspaceWidgets.page.signOut")}
           >
             <LogOut size={15} aria-hidden />
           </button>
