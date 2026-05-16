@@ -15,6 +15,7 @@ import LandingPage from "@/components/landing/LandingPage";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -29,7 +30,7 @@ export default function OmniCanvas() {
   const [notifications, setNotifications] = useState<OSNotification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
-  const { t, dir } = useI18n();
+  const { t, dir, locale } = useI18n();
   const [systemMessage, setSystemMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -120,22 +121,25 @@ export default function OmniCanvas() {
     setMobileOmnibarOpen(false);
     if (result.type === "project") {
       openWidget("project", { name: result.name });
-      setSystemMessage(`נפתח פרויקט: ${result.name}`);
+      setSystemMessage(t("workspaceWidgets.page.commands.openedProject", { name: result.name }));
       return;
     }
 
     openWidget("crmTable");
-    setSystemMessage(`נפתח לקוח: ${result.name}`);
+    setSystemMessage(t("workspaceWidgets.page.commands.openedClient", { name: result.name }));
   };
 
   const reportMeckanoAttendance = async (action: "in" | "out") => {
     if (session?.user?.email?.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
-      toast.error("אין לך הרשאה לדווח נוכחות במערכת זו");
+      toast.error(t("workspaceWidgets.page.commands.meckanoNoPermission"));
       return;
     }
 
-    const label = action === "in" ? "כניסה" : "יציאה";
-    setSystemMessage(`מדווח ${label} ל-Meckano...`);
+    const label =
+      action === "in"
+        ? t("workspaceWidgets.page.commands.meckanoIn")
+        : t("workspaceWidgets.page.commands.meckanoOut");
+    setSystemMessage(t("workspaceWidgets.page.commands.meckanoReporting", { action: label }));
 
     try {
       const res = await fetch("/api/meckano/clock-in", {
@@ -144,12 +148,12 @@ export default function OmniCanvas() {
         body: JSON.stringify({ action, timestamp: new Date().toISOString() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "הדיווח נכשל");
-      setSystemMessage(data.message || `${label} דווחה`);
-      toast.success(`דיווח ${label} בוצע בהצלחה`);
+      if (!res.ok) throw new Error(data.error || t("workspaceWidgets.page.commands.meckanoFailed"));
+      setSystemMessage(data.message || t("workspaceWidgets.page.commands.meckanoReported", { action: label }));
+      toast.success(t("workspaceWidgets.page.commands.meckanoSuccess", { action: label }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "הדיווח למערכת Meckano נכשל";
-      setSystemMessage("שגיאה בדיווח ל-Meckano");
+      const message = err instanceof Error ? err.message : t("workspaceWidgets.page.commands.meckanoFailed");
+      setSystemMessage(t("workspaceWidgets.page.commands.meckanoError"));
       toast.error(message);
     }
   };
@@ -160,43 +164,43 @@ export default function OmniCanvas() {
 
     setSearchResults([]);
     setIsBusy(true);
-    setSystemMessage("מעבד פקודה...");
+    setSystemMessage(t("workspaceWidgets.page.commands.processing"));
 
     try {
       if (cmd.match(/(דאשבורד|סטטוס|dashboard)/i)) {
         openWidget("dashboard");
-        setSystemMessage("דאשבורד פיננסי נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedDashboard"));
       } else if (cmd.match(/(נקה|clear|reset|אפס|סידור)/i)) {
         clearLayout();
-        setSystemMessage("סידור החלונות אופס");
+        setSystemMessage(t("workspaceWidgets.page.commands.layoutCleared"));
       } else if (cmd.match(/(crm|לקוחות|ניהול לקוחות|פתח לקוחות)/i)) {
         openWidget("crmTable");
-        setSystemMessage("ניהול לקוחות נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedCrm"));
       } else if (cmd.match(/(erp|ארכיון|מסמכים|חשבוניות|סייר)/i)) {
         openWidget("erpArchive");
-        setSystemMessage("ארכיון ERP נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedErp"));
       } else if (cmd.match(/(פרויקטים|לוח|board|tasks|משימות|ניהול פרויקטים)/i)) {
         openWidget("projectBoard");
-        setSystemMessage("לוח פרויקטים נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedProjectBoard"));
       } else if (cmd.match(/(הפק|צור|חדש|מחולל|הצעה|חשבונית|quote|invoice)/i)) {
         openWidget("docCreator");
-        setSystemMessage("מחולל מסמכים נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedDocCreator"));
       } else if (cmd.match(/(סרוק|סריקה|scan|upload|העלה|פענח)/i)) {
         openWidget("aiScanner");
-        setSystemMessage("סורק AI נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedScanner"));
       } else if (cmd.match(/(כניסה|כניסת עובד|clock in|clock-in)/i)) {
         await reportMeckanoAttendance("in");
       } else if (cmd.match(/(יציאה|יציאת עובד|clock out|clock-out)/i)) {
         await reportMeckanoAttendance("out");
       } else if (cmd.match(/(דוחות מקאנו|שעות עובדים|meckano reports|attendance report)/i)) {
         openWidget("meckanoReports");
-        setSystemMessage("מחולל דוחות Meckano נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedMeckanoReports"));
       } else if (cmd.match(/(notebooklm|notebook|מחברת|נוטבוק)/i)) {
         openWidget("notebookLM");
-        setSystemMessage("NotebookLM נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedNotebook"));
       } else if (cmd.startsWith("/")) {
         openWidget("aiChatFull", { provider: "gemini", prompt: cmd.slice(1).trim() });
-        setSystemMessage("צ׳אט AI מלא נפתח");
+        setSystemMessage(t("workspaceWidgets.page.commands.openedAiChat"));
       } else {
         const interpretRes = await fetch("/api/os/assistant/interpret", {
           method: "POST",
@@ -231,7 +235,7 @@ export default function OmniCanvas() {
             }
           }
 
-          setSystemMessage(data.reply?.trim() || "בוצע.");
+          setSystemMessage(data.reply?.trim() || interpretDoneFallback(locale));
           return;
         }
 
@@ -243,19 +247,19 @@ export default function OmniCanvas() {
           const top = results[0];
           if (top.type === "project") {
             openWidget("project", { name: top.name });
-            setSystemMessage(`נמצא פרויקט: ${top.name}`);
+            setSystemMessage(t("workspaceWidgets.page.commands.foundProject", { name: top.name }));
           } else {
             openWidget("crmTable");
-            setSystemMessage(`נמצא לקוח: ${top.name}`);
+            setSystemMessage(t("workspaceWidgets.page.commands.foundClient", { name: top.name }));
           }
         } else {
           openWidget("aiChatFull", { prompt: cmd });
-          setSystemMessage("פותח צ'אט AI עם הבקשה שלך");
+          setSystemMessage(t("workspaceWidgets.page.commands.openingAiChat"));
         }
       }
     } catch (err) {
       console.error("Command Error:", err);
-      setSystemMessage("שגיאה בביצוע הפקודה");
+      setSystemMessage(t("workspaceWidgets.page.commands.commandError"));
     } finally {
       setIsBusy(false);
     }
@@ -291,7 +295,7 @@ export default function OmniCanvas() {
       setNotifications([]);
     } catch (err) {
       console.error("Failed to clear notifications", err);
-      toast.error("לא ניתן לנקות את ההתראות");
+      toast.error(t("workspaceWidgets.page.notifications.clearFailed"));
     }
   };
 
@@ -363,7 +367,7 @@ export default function OmniCanvas() {
   }
 
   return (
-    <main className="quiet-shell fixed inset-0 overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
+    <main className="quiet-shell fixed inset-0 max-w-[100vw] overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 
@@ -385,7 +389,7 @@ export default function OmniCanvas() {
         closeSidebar={() => setIsSidebarOpen(false)}
       />
 
-      <div className="absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden pt-16 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-[10.5rem]">
+      <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)]">
         <OSWorkspace
           widgets={widgets}
           hasHydrated={hasHydrated}

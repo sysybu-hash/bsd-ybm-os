@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { 
   FilePlus, 
@@ -34,6 +35,7 @@ interface DocItem {
 }
 
 export default function DocumentCreatorWidget() {
+  const { dir } = useI18n();
   const [docType, setDocType] = useState<'quote' | 'invoice'>('quote');
   const [orgSettings, setOrgSettings] = useState<any>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -208,7 +210,7 @@ export default function DocumentCreatorWidget() {
 
   if (generatedDoc) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 bg-transparent text-[color:var(--foreground-main)]" dir="rtl">
+      <div className="flex flex-col items-center justify-center h-full p-8 bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
         <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
           <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
         </div>
@@ -245,7 +247,7 @@ export default function DocumentCreatorWidget() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Header */}
       <div className="p-6 border-b border-[color:var(--border-main)] flex justify-between items-center bg-[color:var(--background-main)]/50">
         <div className="flex items-center gap-4">

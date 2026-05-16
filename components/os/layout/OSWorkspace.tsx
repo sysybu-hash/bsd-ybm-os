@@ -120,7 +120,7 @@ export default function OSWorkspace({
               <Bot size={28} className="text-indigo-400" aria-hidden />
             </div>
 
-            <h1 className="mb-3 px-4 text-center text-4xl font-black tracking-normal text-[color:var(--foreground-main)] md:text-6xl">
+            <h1 className="mb-3 px-4 text-center text-3xl font-black tracking-normal text-[color:var(--foreground-main)] sm:text-4xl md:text-6xl">
               {t(greetingKey)},{" "}
               <span className="bg-gradient-to-l from-emerald-400 to-indigo-400 bg-clip-text text-transparent">{userName}</span>
             </h1>
@@ -160,7 +160,9 @@ export default function OSWorkspace({
         )}
       </AnimatePresence>
 
-      <div className="pointer-events-none absolute inset-0 z-20">
+      <div
+        className={`pointer-events-none absolute inset-0 ${widgets.length > 0 ? "z-[900]" : "z-20"}`}
+      >
         {widgets.map((widget) => (
           <AdaptiveWidgetShell
             key={widget.id}

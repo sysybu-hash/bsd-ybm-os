@@ -26,6 +26,13 @@ import ItemActions from "@/components/os/ItemActions";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
+import {
+  buildScanFileAcceptAttribute,
+  inferMimeFromFileName,
+  isSupportedScanMime,
+  MAX_SCAN_FILE_BYTES,
+  SCAN_ACCEPT_SUMMARY,
+} from "@/lib/scan-mime";
 
 type EngineMeta = {
   configured: { documentAI: boolean; gemini: boolean; openai: boolean };
@@ -53,6 +60,22 @@ interface ScanHistoryItem {
   amount: number;
   date: string;
   status: "success" | "warning" | "error";
+}
+
+type QueueStatus = "pending" | "processing" | "done" | "error";
+
+interface QueueItem {
+  id: string;
+  file: File;
+  status: QueueStatus;
+  error?: string;
+}
+
+function formatMsg(template: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce(
+    (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)),
+    template,
+  );
 }
 
 const ENGINE_MODES: { id: TriEngineRunMode; labelKey: string; fallback: string }[] = [
@@ -122,10 +145,15 @@ function telemetryLabel(t: TriEngineTelemetry | null): string {
 }
 
 export default function AiScannerWidget() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [queueProgress, setQueueProgress] = useState<{ current: number; total: number; name: string } | null>(
+    null,
+  );
   const [engineMeta, setEngineMeta] = useState<EngineMeta | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
   const [telemetry, setTelemetry] = useState<TriEngineTelemetry | null>(null);
@@ -172,16 +200,28 @@ export default function AiScannerWidget() {
     return tr("scanner.modeAuto", "אוטומטי");
   }, [engineMeta, engineRunMode, tr]);
 
-  const processFile = async (file: File) => {
-    setIsProcessing(true);
+  const validateScanFile = useCallback(
+    (file: File): string | null => {
+      if (file.size > MAX_SCAN_FILE_BYTES) {
+        return formatMsg(tr("scanner.fileTooLarge", "קובץ גדול מדי: {name}"), { name: file.name });
+      }
+      const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
+      if (!isSupportedScanMime(mime)) {
+        return formatMsg(tr("scanner.unsupportedFile", "לא נתמך: {name}"), { name: file.name });
+      }
+      return null;
+    },
+    [tr],
+  );
+
+  const scanSingleFile = async (file: File): Promise<DocumentAnalysis> => {
     setPendingAnalysis(null);
     setResultJson("");
     setTelemetry(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    if (file.type.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
+    const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
+    if (mime.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
     else setPreviewUrl(null);
-
-    toast.info(`${tr("scanner.processing", "מעבד…")} ${file.name}`);
 
     try {
       const formData = new FormData();
@@ -223,25 +263,99 @@ export default function AiScannerWidget() {
         const analysis = mapV5ToAnalysis(finalV5, finalAi);
         setPendingAnalysis(analysis);
         setResultJson(JSON.stringify(finalV5, null, 2));
-        toast.success(tr("scanner.results", "תוצאות פענוח"));
-      } else {
-        throw new Error("No extraction result");
+        return analysis;
       }
-    } catch {
-      toast.error(tr("scanner.processing", "שגיאה בניתוח"));
-    } finally {
-      setIsProcessing(false);
+      throw new Error("No extraction result");
+    } catch (err) {
+      throw err instanceof Error ? err : new Error(tr("scanner.scanError", "שגיאה בסריקה"));
     }
   };
+
+  const runFileQueue = useCallback(
+    async (files: File[]) => {
+      if (!files.length || isProcessing) return;
+
+      const valid: File[] = [];
+      for (const file of files) {
+        const err = validateScanFile(file);
+        if (err) toast.error(err);
+        else valid.push(file);
+      }
+      if (!valid.length) return;
+
+      const initialQueue: QueueItem[] = valid.map((file) => ({
+        id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        status: "pending",
+      }));
+      setQueue(initialQueue);
+      setIsProcessing(true);
+
+      let ok = 0;
+      let fail = 0;
+
+      for (let i = 0; i < valid.length; i++) {
+        const file = valid[i];
+        const qid = initialQueue[i].id;
+        setQueueProgress({ current: i + 1, total: valid.length, name: file.name });
+        setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "processing" } : q)));
+        toast.info(
+          formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
+            current: i + 1,
+            total: valid.length,
+            name: file.name,
+          }),
+        );
+
+        try {
+          const analysis = await scanSingleFile(file);
+          ok++;
+          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "done" } : q)));
+          setHistory((prev) => [
+            {
+              id: qid,
+              fileName: file.name,
+              vendor: analysis.vendor,
+              amount: analysis.amount,
+              date: analysis.date || new Date().toISOString().split("T")[0],
+              status: "success",
+            },
+            ...prev,
+          ]);
+        } catch (err) {
+          fail++;
+          const msg = err instanceof Error ? err.message : tr("scanner.scanError", "שגיאה");
+          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "error", error: msg } : q)));
+          toast.error(`${file.name}: ${msg}`);
+        }
+      }
+
+      setQueueProgress(null);
+      setIsProcessing(false);
+      toast.success(
+        formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
+      );
+    },
+    [isProcessing, validateScanFile, tr, engineRunMode],
+  );
 
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) await processFile(file);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) await runFileQueue(files);
     },
-    [engineRunMode],
+    [runFileQueue],
+  );
+
+  const onFileInputChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []);
+      e.target.value = "";
+      if (files.length) await runFileQueue(files);
+    },
+    [runFileQueue],
   );
 
   const confirmAnalysis = async () => {
@@ -309,7 +423,7 @@ export default function AiScannerWidget() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir="rtl">
+    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir={dir}>
       <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-l">
         <div className="border-b border-[color:var(--border-main)] p-3">
           <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
@@ -433,27 +547,79 @@ export default function AiScannerWidget() {
                 }`}
               >
                 {isProcessing ? (
-                  <Loader2 className="animate-spin text-orange-500" size={40} />
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="animate-spin text-orange-500" size={40} />
+                    {queueProgress ? (
+                      <p className="px-4 text-center text-[10px] font-bold text-[color:var(--foreground-muted)]">
+                        {formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
+                          current: queueProgress.current,
+                          total: queueProgress.total,
+                          name: queueProgress.name,
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : (
                   <>
                     <Upload size={36} className="mb-3 text-[color:var(--foreground-muted)]" />
                     <p className="px-4 text-center text-xs font-bold">{t("scanner.drop")}</p>
+                    <p className="mt-1 px-4 text-center text-[9px] text-[color:var(--foreground-muted)]">
+                      {tr("scanner.acceptHint", SCAN_ACCEPT_SUMMARY)}
+                    </p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="mt-4 flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold"
                     >
-                      {tr("scanner.drop", "בחר קובץ")} <ArrowRight size={14} />
+                      {tr("scanner.selectFiles", "בחר קבצים")} <ArrowRight size={14} />
                     </button>
+                    {queue.length > 0 ? (
+                      <p className="mt-2 text-[10px] font-bold text-orange-500">
+                        {queue.filter((q) => q.status === "done").length}/{queue.length}{" "}
+                        {tr("scanner.filesQueued", "קבצים בתור")}
+                      </p>
+                    ) : null}
                   </>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   className="hidden"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.csv,.json,.xml"
-                  onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+                  accept={fileAccept}
+                  onChange={onFileInputChange}
                 />
+                {queue.length > 0 && !pendingAnalysis ? (
+                  <ul className="custom-scrollbar mt-3 max-h-28 w-full max-w-sm space-y-1 overflow-y-auto px-4">
+                    {queue.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2 py-1 text-[9px]"
+                      >
+                        <span className="truncate font-bold">{item.file.name}</span>
+                        <span
+                          className={
+                            item.status === "done"
+                              ? "text-emerald-500"
+                              : item.status === "error"
+                                ? "text-red-500"
+                                : item.status === "processing"
+                                  ? "text-orange-500"
+                                  : "text-[color:var(--foreground-muted)]"
+                          }
+                        >
+                          {item.status === "done"
+                            ? tr("scanner.queueStatusDone", "הושלם")
+                            : item.status === "error"
+                              ? tr("scanner.queueStatusError", "שגיאה")
+                              : item.status === "processing"
+                                ? tr("scanner.queueStatusProcessing", "מעבד")
+                                : tr("scanner.queueStatusPending", "ממתין")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 {previewUrl ? (
                   <img src={previewUrl} alt={tr("scanner.preview", "תצוגה")} className="mt-4 max-h-32 rounded-lg object-contain" />
                 ) : null}

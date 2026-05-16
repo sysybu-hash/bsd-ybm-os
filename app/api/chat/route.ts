@@ -5,6 +5,8 @@ import { getUserFacingAiErrorMessage, runAiChat } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
 import { buildOsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
+import { getApiMessage } from "@/lib/i18n/api-messages";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 
 export const dynamic = "force-dynamic";
 
@@ -16,21 +18,22 @@ function mapProvider(raw: unknown): string | undefined {
 }
 
 export async function POST(request: Request) {
+  let locale = "he";
   try {
+    locale = await getServerLocale();
     const body = (await request.json()) as { provider?: string; prompt?: string };
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
     if (!prompt) {
-      return NextResponse.json({ error: "חסרה הודעה" }, { status: 400 });
+      return NextResponse.json({ error: getApiMessage("missing_message", locale) }, { status: 400 });
     }
 
     const session = await getServerSession(authOptions);
     const ctx = await buildOsAssistantUserContext(session);
     const contextJson = ctx
-      ? buildOsAssistantSystemInstruction(ctx)
-      : `אתה העוזר האישי של BSD-YBM OS. ענה בעברית, קצר ומקצועי.`;
+      ? buildOsAssistantSystemInstruction(ctx, { locale })
+      : `You are the BSD-YBM OS assistant. ${aiReplyLanguageRule(locale)}`;
 
-    const locale = await getServerLocale();
     const { text, provider } = await runAiChat(
       mapProvider(body.provider),
       prompt,
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json({
-      reply: text || "לא התקבלה תשובה מהמנוע.",
+      reply: text || getApiMessage("server_error", locale),
       provider,
     });
   } catch (err: unknown) {

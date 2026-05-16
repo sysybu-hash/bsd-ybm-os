@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { localeToSpeechLang } from "@/lib/i18n/speech-locale";
 
 /** תואם Web Speech API — ללא `SpeechRecognitionEvent` בחלק מגרסאות `lib` של TypeScript */
 type SpeechResultLike = { readonly 0: { transcript: string }; isFinal: boolean };
@@ -22,6 +24,8 @@ interface SpeechRecognitionInstance extends EventTarget {
 export function useSpeechServices(
   onTranscriptComplete: (transcript: string) => void,
 ) {
+  const { locale } = useI18n();
+  const speechLang = localeToSpeechLang(locale);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -47,7 +51,7 @@ export function useSpeechServices(
     const recognition = new Ctor();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = "he-IL";
+    recognition.lang = speechLang;
 
     recognition.onresult = (event: SpeechResultEvent) => {
       let currentTranscript = "";
@@ -86,7 +90,7 @@ export function useSpeechServices(
       }
       recognitionRef.current = null;
     };
-  }, []);
+  }, [speechLang]);
 
   const startListening = useCallback(() => {
     setError(null);
@@ -117,13 +121,13 @@ export function useSpeechServices(
     if (!cleanText.trim()) return;
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "he-IL";
+    utterance.lang = speechLang;
     utterance.rate = 1.0;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [speechLang]);
 
   return {
     isListening,

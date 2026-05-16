@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useMemo } from "react";
+import { isRtlLocale } from "@/lib/i18n/config";
 import { createTranslator } from "@/lib/i18n/translate";
 
 type I18nContextType = {
@@ -21,7 +22,7 @@ export function I18nProvider({
   messages?: any;
   locale?: string;
 }) {
-  const dir = (locale === "he" || locale === "ar" ? "rtl" : "ltr") as "rtl" | "ltr";
+  const dir = (isRtlLocale(locale) ? "rtl" : "ltr") as "rtl" | "ltr";
   
   const t = useMemo(() => createTranslator(messages), [messages]);
 

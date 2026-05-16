@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -62,6 +63,7 @@ interface PriceComparison {
 }
 
 export default function ErpDocumentsWidget() {
+  const { dir } = useI18n();
   const { theme } = useTheme();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -171,7 +173,7 @@ export default function ErpDocumentsWidget() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Sidebar - List of Documents */}
       <div className={`w-full md:w-80 border-b md:border-b-0 md:border-l border-[color:var(--border-main)] flex-col bg-[color:var(--background-main)]/50 ${selectedDoc ? 'hidden md:flex' : 'flex flex-1'}`}>
         <div className="p-4 border-b border-[color:var(--border-main)]">

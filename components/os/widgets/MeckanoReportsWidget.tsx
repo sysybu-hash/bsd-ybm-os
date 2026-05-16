@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -42,6 +43,7 @@ interface Project {
 }
 
 export default function MeckanoReportsWidget() {
+  const { dir } = useI18n();
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -181,7 +183,7 @@ export default function MeckanoReportsWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
         <div className="flex items-center gap-3">

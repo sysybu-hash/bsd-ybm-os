@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { runErpProjectNotebookChat, type NotebookChatMessage } from "@/lib/erp-project-notebook";
+import { getServerLocale } from "@/lib/i18n/server";
 
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   try {
@@ -11,10 +12,12 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
     }
 
+    const locale = await getServerLocale();
     const result = await runErpProjectNotebookChat({
       messages,
       sources,
-      billOfQuantitiesContext
+      billOfQuantitiesContext,
+      locale,
     });
 
     return NextResponse.json(result);

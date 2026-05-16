@@ -42,6 +42,19 @@
       "errorEmpty": "Введите email и пароль",
       "errorInvalid": "Неверный email или пароль — или пароль еще не задан."
     },
+    "loginOs": {
+      "backHomeAria": "На главную",
+      "secureBadge": "Доступ только для авторизованных",
+      "heroTitle": "Вход в рабочую область",
+      "heroBody": "Вход через Google открывает рабочую среду, документы, клиентов, проекты и корпоративного AI-ассистента.",
+      "bulletPermissions": "Права по пользователям",
+      "bulletUnified": "Данные организации в одном месте",
+      "bulletLocale": "Интерфейс на иврите, английском или русском с RTL/LTR",
+      "authTitle": "Аутентификация",
+      "authBody": "Используйте Google-аккаунт, одобренный для организации. После входа вы попадёте в рабочую область.",
+      "google": "Войти через Google",
+      "backHome": "На главную"
+    },
     "register": {
       "title": "Создать учетную запись",
       "subtitle": "Присоединяйтесь к Аллее Управления BSD-YBM",
@@ -230,7 +243,22 @@
     "telemetry": "Статус движков",
     "confirmExpense": "Подтвердить и сохранить",
     "historyTitle": "История сканов",
-    "engineActive": "Активный движок"
+    "engineActive": "Активный движок",
+    "selectFiles": "Выбрать файлы",
+    "scanProgress": "Сканирование {current} из {total}: {name}",
+    "scanBatchDone": "Готово: {ok} успешно, {fail} с ошибкой",
+    "unsupportedFile": "Неподдерживаемый тип файла: {name}",
+    "fileTooLarge": "Файл слишком большой (макс. 25 МБ): {name}",
+    "acceptHint": "PDF, Office, изображения, CSV, JSON, XML, HTML, Markdown, RTF",
+    "scanError": "Ошибка сканирования",
+    "queueStatusPending": "В очереди",
+    "queueStatusProcessing": "Обработка",
+    "queueStatusDone": "Готово",
+    "queueStatusError": "Ошибка",
+    "chatInvalid": "Нет корректного запроса к ИИ.",
+    "chatServerError": "Ошибка сервера",
+    "chatNoReply": "Ответ от ИИ не получен.",
+    "chatNetworkError": "Ошибка связи с сервером."
   },
   "accessibility": {
     "toolbar": "Доступность",

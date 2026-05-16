@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 export interface OSNotificationAction {
   label: string;
@@ -57,6 +58,7 @@ export default function NotificationCenter({
   onClose,
   anchorRef,
 }: NotificationCenterProps) {
+  const { t, dir } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingNotificationId, setPendingNotificationId] = useState<string | null>(null);
@@ -127,12 +129,12 @@ export default function NotificationCenter({
 
       showToast("ההוצאה אושרה");
       onAction({
-        label: "סגור",
+        label: t("workspaceWidgets.notificationCenter.close"),
         action: "dismiss",
         payload: { id: notification.id },
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "לא ניתן לאשר";
+      const msg = err instanceof Error ? err.message : t("workspaceWidgets.notificationCenter.confirmFailed");
       showToast(msg);
     } finally {
       setPendingNotificationId(null);
@@ -152,15 +154,19 @@ export default function NotificationCenter({
       <div
         ref={panelRef}
         role="dialog"
-        aria-label="מרכז התראות"
+        aria-label={t("workspaceWidgets.notificationCenter.panelAria")}
         className="fixed z-[1100] flex max-h-[min(70vh,28rem)] flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)] text-[color:var(--foreground-main)] shadow-2xl backdrop-blur-2xl"
         style={{ top: position.top, left: position.left, width: position.width }}
-        dir="rtl"
+        dir={dir}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--border-main)]/30 px-4 py-3">
           <span>
-            <span className="block text-sm font-semibold text-[color:var(--foreground-main)]">מרכז התראות</span>
-            <span className="text-xs text-[color:var(--foreground-muted)]">{notifications.length} פעילות</span>
+            <span className="block text-sm font-semibold text-[color:var(--foreground-main)]">
+              {t("workspaceWidgets.notificationCenter.title")}
+            </span>
+            <span className="text-xs text-[color:var(--foreground-muted)]">
+              {t("workspaceWidgets.notificationCenter.activeCount", { count: String(notifications.length) })}
+            </span>
           </span>
           <div className="flex items-center gap-1">
             {notifications.length > 0 && onClearAll ? (
@@ -168,17 +174,17 @@ export default function NotificationCenter({
                 type="button"
                 onClick={() => void onClearAll()}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-rose-600"
-                title="נקה הכל"
+                title={t("workspaceWidgets.notificationCenter.clearAllTitle")}
               >
                 <Trash2 size={12} aria-hidden />
-                נקה הכל
+                {t("workspaceWidgets.notificationCenter.clearAll")}
               </button>
             ) : null}
             <button
               type="button"
               onClick={onClose}
               className="rounded-lg p-1 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)]"
-              aria-label="סגור התראות"
+              aria-label={t("workspaceWidgets.notificationCenter.closeAria")}
             >
               ×
             </button>
@@ -188,7 +194,7 @@ export default function NotificationCenter({
         <div className="space-y-3 overflow-auto p-3">
           {notifications.length === 0 && (
             <div className="rounded-xl border border-[color:var(--border-main)]/30 bg-[color:var(--background-main)]/30 p-4 text-sm text-[color:var(--foreground-muted)]">
-              אין אירועים קריטיים כרגע.
+              {t("workspaceWidgets.notificationCenter.empty")}
             </div>
           )}
 
@@ -244,7 +250,7 @@ export default function NotificationCenter({
                       }
                       className="rounded-lg bg-[color:var(--foreground-muted)]/20 px-3 py-1.5 text-xs text-[color:var(--foreground-main)] transition-colors hover:bg-[color:var(--foreground-muted)]/30"
                     >
-                      פרטים
+                      {t("workspaceWidgets.notificationCenter.details")}
                     </button>
                     <button
                       type="button"
@@ -252,7 +258,9 @@ export default function NotificationCenter({
                       onClick={() => void handleConfirmExpense(notification)}
                       className="rounded-lg border border-emerald-500/30 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-60"
                     >
-                      {pendingNotificationId === notification.id ? "מאשר…" : "אשר הוצאה"}
+                      {pendingNotificationId === notification.id
+                        ? t("workspaceWidgets.notificationCenter.confirming")
+                        : t("workspaceWidgets.notificationCenter.approveExpense")}
                     </button>
                   </div>
                 ) : null}
@@ -271,7 +279,7 @@ export default function NotificationCenter({
                           onClick={() => void onAction(action)}
                           className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--foreground-muted)]/10 px-3 py-1.5 text-xs font-medium text-[color:var(--foreground-main)] transition-colors hover:bg-[color:var(--foreground-muted)]/20 disabled:cursor-wait disabled:opacity-60"
                         >
-                          {isPending ? "שומר…" : action.label}
+                          {isPending ? t("workspaceWidgets.notificationCenter.saving") : action.label}
                         </button>
                       );
                     })}

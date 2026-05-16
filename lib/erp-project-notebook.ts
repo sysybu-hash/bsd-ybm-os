@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI, type Content, type Part } from "@google/generative-ai";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
+import { normalizeLocale } from "@/lib/i18n/config";
 
 /** מודל לצ'אט מחברת פרויקטים — ברירת מחדל: Gemini 3.1 Pro Stable (ניתן לעקוף ב־GEMINI_NOTEBOOK_MODEL). */
 const NOTEBOOK_DEFAULT_MODEL = "gemini-2.5-flash-lite";
@@ -57,11 +59,18 @@ Rules:
 - When bill-of-quantities (BOQ) JSON from the organization's recent scans is provided, use it as supplementary structured context; if it conflicts with a PDF, prefer the PDF for that detail and note the discrepancy.
 - Site Logs (יומן עבודה): You can generate professional site logs based on the current date, weather (infer if possible), and activities. 
 - Digital Signatures: When providing a document that needs signing, use the placeholder [SIGNATURE_REQUIRED] and mention the recipient should sign using the system signature tool.
-- Respond in the same language as the user's latest message (Hebrew or English).`;
+- ${aiReplyLanguageRule("he")}`;
 
-function buildSystemInstruction(billOfQuantitiesContext: string | null | undefined): string {
+function buildSystemInstruction(
+  billOfQuantitiesContext: string | null | undefined,
+  locale?: string,
+): string {
+  const loc = normalizeLocale(locale);
+  const languageRule = aiReplyLanguageRule(loc);
+  const base = withAssistantTemporalContext(
+    SYSTEM_NOTEBOOK_BASE.replace(aiReplyLanguageRule("he"), languageRule),
+  );
   const trimmed = billOfQuantitiesContext?.trim();
-  const base = withAssistantTemporalContext(SYSTEM_NOTEBOOK_BASE);
   if (!trimmed) return base;
   return `${base}
 
@@ -123,6 +132,7 @@ export async function runErpProjectNotebookChat(params: {
   sources?: NotebookSourcePart[];
   /** הקשר כמותי מהמסמכים הסרוקים בארגון */
   billOfQuantitiesContext?: string | null;
+  locale?: string;
 }): Promise<{ text: string; model: string }> {
   const key = getGeminiKey()?.trim();
   if (!key) {
@@ -151,7 +161,7 @@ export async function runErpProjectNotebookChat(params: {
     try {
       const model = genAI.getGenerativeModel({
         model: modelId,
-        systemInstruction: buildSystemInstruction(billOfQuantitiesContext),
+        systemInstruction: buildSystemInstruction(billOfQuantitiesContext, params.locale),
       });
       const chat = model.startChat({ history });
 

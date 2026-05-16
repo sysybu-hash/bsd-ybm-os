@@ -43,7 +43,7 @@ export default function OSHeader({
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="absolute left-0 right-0 top-0 z-[1000] flex h-16 items-center justify-between border-b border-[color:var(--border-main)] bg-[color:var(--glass-bg)] px-4 shadow-xs backdrop-blur-sm md:px-6">
+    <header className="absolute inset-x-0 top-0 z-[1000] flex min-h-16 max-w-[100vw] items-center justify-between border-b border-[color:var(--border-main)] bg-[color:var(--glass-bg)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))] shadow-xs backdrop-blur-sm md:px-6">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">

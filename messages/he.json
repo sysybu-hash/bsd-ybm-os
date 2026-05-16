@@ -52,6 +52,19 @@
       "errorEmpty": "מלאו אימייל וסיסמה",
       "errorInvalid": "אימייל או סיסמה שגויים — או שאין סיסמה עדיין."
     },
+    "loginOs": {
+      "backHomeAria": "חזרה לדף הבית",
+      "secureBadge": "גישה מאובטחת למורשים בלבד",
+      "heroTitle": "כניסה למערכת העבודה",
+      "heroBody": "התחברות עם Google מאפשרת גישה לסביבת העבודה, למסמכים, ללקוחות, לפרויקטים ולעוזר ה-AI הארגוני.",
+      "bulletPermissions": "ניהול הרשאות לפי משתמש",
+      "bulletUnified": "גישה למידע ארגוני במקום אחד",
+      "bulletLocale": "סביבת עבודה בעברית, אנגלית או רוסית עם RTL/LTR",
+      "authTitle": "הזדהות",
+      "authBody": "השתמש בחשבון Google שאושר לארגון. לאחר ההתחברות תועבר ישירות לסביבת העבודה.",
+      "google": "התחבר עם Google",
+      "backHome": "חזרה לדף הבית"
+    },
     "register": {
       "title": "פתיחת חשבון",
       "subtitle": "דמו ל-30 יום עם 30 סריקות רגילות",
@@ -252,7 +265,22 @@
     "telemetry": "סטטוס מנועים",
     "confirmExpense": "אשר ושמור הוצאה",
     "historyTitle": "היסטוריית סריקות",
-    "engineActive": "מנוע פעיל"
+    "engineActive": "מנוע פעיל",
+    "selectFiles": "בחר קבצים",
+    "scanProgress": "סורק {current} מתוך {total}: {name}",
+    "scanBatchDone": "הושלם: {ok} הצליחו, {fail} נכשלו",
+    "unsupportedFile": "סוג קובץ לא נתמך: {name}",
+    "fileTooLarge": "קובץ גדול מדי (מקס׳ 25MB): {name}",
+    "acceptHint": "PDF, Office, תמונות, CSV, JSON, XML, HTML, Markdown, RTF",
+    "scanError": "שגיאה בסריקה",
+    "queueStatusPending": "ממתין",
+    "queueStatusProcessing": "מעבד",
+    "queueStatusDone": "הושלם",
+    "queueStatusError": "שגיאה",
+    "chatInvalid": "אין בקשת AI תקפה להפעלה.",
+    "chatServerError": "שגיאת שרת",
+    "chatNoReply": "לא התקבלה תגובה מה-AI.",
+    "chatNetworkError": "שגיאה בתקשורת עם השרת."
   },
   "accessibility": {
     "toolbar": "נגישות",

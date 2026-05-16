@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { 
@@ -24,6 +25,7 @@ interface CashflowPoint {
 }
 
 export default function DashboardWidget() {
+  const { dir } = useI18n();
   const { theme } = useTheme();
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -70,7 +72,7 @@ export default function DashboardWidget() {
   const formatCurrency = (num: number) => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(num);
 
   return (
-    <div className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8" dir="rtl">
+    <div className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8" dir={dir}>
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">

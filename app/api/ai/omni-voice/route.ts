@@ -14,25 +14,30 @@ import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { GEMINI_FLAGSHIP_MODEL } from "@/lib/gemini-model";
+import { getServerLocale } from "@/lib/i18n/server";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
+import { getApiMessage } from "@/lib/i18n/api-messages";
 
 export const maxDuration = 90;
 
 const MODEL = process.env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_FLAGSHIP_MODEL;
 const REQUESTS_PER_HOUR = 60;
 
-const SYSTEM_PROMPT = withAssistantTemporalContext(`אתה עוזר קולי אינטליגנטי ומקצועי למערכת ERP של חברת בנייה (BSD-YBM).
-המשתמש מדבר איתך דרך מיקרופון.
+function buildOmniVoiceSystemPrompt(locale: string): string {
+  return withAssistantTemporalContext(`You are an intelligent voice assistant for BSD-YBM, a construction ERP.
+The user speaks via microphone.
 
-חוקי שיחה קולית:
-1. ענה בקצרה, חדה ומקצועית.
-2. דבר בביטחון של מנהל פרויקט בכיר.
-3. התמקד בשורה התחתונה.
-4. ענה בעברית טבעית.
-5. בלי כוכביות, מודגש או כותרות — הטקסט מוקרא בקול.
+Voice conversation rules:
+1. Answer briefly, clearly, and professionally.
+2. Sound like a senior project manager.
+3. Focus on the bottom line.
+4. ${aiReplyLanguageRule(locale)}
+5. No asterisks, bold, or headings — text is read aloud.
 
-יכולות (אל תפרט אלא אם נשאלת): חשבוניות ERP, CRM, נוכחות Meckano.
+Capabilities (do not list unless asked): ERP invoices, CRM, Meckano attendance.
 
-מטרה: תשובות מהירות ומדויקות עם התייחסות לתאריך הנוכחי כשהזמן רלוונטי.`);
+Goal: fast, accurate answers with current date when time is relevant.`);
+}
 
 type OmniBody = {
   messages?: UIMessage[];
@@ -43,37 +48,32 @@ type OmniBody = {
 };
 
 export async function POST(req: Request) {
+  let locale = "he";
   try {
+    locale = await getServerLocale();
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return jsonUnauthorized();
     }
     if (!session.user.organizationId) {
-      return jsonForbidden("העוזר הקולי זמין רק למשתמשים המשויכים לארגון.");
+      return jsonForbidden(getApiMessage("voice_org_only", locale));
     }
 
     if (!isGeminiConfigured()) {
-      return jsonServiceUnavailable(
-        "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
-        "gemini_not_configured",
-      );
+      return jsonServiceUnavailable(getApiMessage("gemini_not_configured", locale), "gemini_not_configured");
     }
 
     const orgId = session.user.organizationId;
     const rateKey = `omni-voice:org:${orgId}`;
     const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
     if (!rl.success) {
-      return jsonTooManyRequests(
-        `הגבלת קצב. נסו שוב אחרי ${rl.resetAt.toISOString()}.`,
-        "rate_limited",
-        { resetAt: rl.resetAt },
-      );
+      return jsonTooManyRequests(getApiMessage("rate_limited", locale), "rate_limited", { resetAt: rl.resetAt });
     }
 
     const body = (await req.json()) as OmniBody;
     const rawMessages = Array.isArray(body.messages) ? body.messages : [];
     if (rawMessages.length === 0) {
-      return jsonBadRequest("חסרות הודעות (messages).", "missing_messages");
+      return jsonBadRequest(getApiMessage("missing_messages", locale), "missing_messages");
     }
 
     const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
@@ -85,14 +85,14 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: google(MODEL),
-      system: SYSTEM_PROMPT,
+      system: buildOmniVoiceSystemPrompt(locale),
       messages: modelMessages,
     });
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("api/ai/omni-voice:", error);
-    const msg = error instanceof Error ? error.message : "שגיאת שרת.";
+    const msg = error instanceof Error ? error.message : getApiMessage("server_error", locale);
     return jsonServerError(msg.slice(0, 500));
   }
 }

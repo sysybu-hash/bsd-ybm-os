@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   BarChart3, 
@@ -53,6 +54,7 @@ interface Message {
 }
 
 export default function ProjectWidget({ projectName }: { projectName: string }) {
+  const { dir } = useI18n();
   const [data, setData] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'expenses' | 'attendance' | 'notebook'>('dashboard');
@@ -169,7 +171,7 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 overflow-hidden" dir="rtl">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-200 overflow-hidden" dir={dir}>
       {/* OS Header Style Area */}
       <div className="px-6 pt-6 pb-4 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-white/10">
         <div className="flex justify-between items-start mb-6">

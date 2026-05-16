@@ -52,6 +52,19 @@
       "errorEmpty": "Enter email and password",
       "errorInvalid": "Invalid email or password — or no password set yet."
     },
+    "loginOs": {
+      "backHomeAria": "Back to home",
+      "secureBadge": "Authorized access only",
+      "heroTitle": "Sign in to the workspace",
+      "heroBody": "Google sign-in unlocks your workspace, documents, clients, projects, and the org AI assistant.",
+      "bulletPermissions": "Per-user permissions",
+      "bulletUnified": "Organization data in one place",
+      "bulletLocale": "Interface in Hebrew, English, or Russian with RTL/LTR",
+      "authTitle": "Authentication",
+      "authBody": "Use the Google account approved for your organization. After sign-in you go straight to the workspace.",
+      "google": "Sign in with Google",
+      "backHome": "Back to home"
+    },
     "register": {
       "title": "Create Account",
       "subtitle": "Join the BSD-YBM Management Avenue",
@@ -240,7 +253,22 @@
     "telemetry": "Engine status",
     "confirmExpense": "Confirm & save expense",
     "historyTitle": "Scan history",
-    "engineActive": "Active engine"
+    "engineActive": "Active engine",
+    "selectFiles": "Select files",
+    "scanProgress": "Scanning {current} of {total}: {name}",
+    "scanBatchDone": "Done: {ok} succeeded, {fail} failed",
+    "unsupportedFile": "Unsupported file type: {name}",
+    "fileTooLarge": "File too large (max 25MB): {name}",
+    "acceptHint": "PDF, Office, images, CSV, JSON, XML, HTML, Markdown, RTF",
+    "scanError": "Scan error",
+    "queueStatusPending": "Pending",
+    "queueStatusProcessing": "Processing",
+    "queueStatusDone": "Done",
+    "queueStatusError": "Error",
+    "chatInvalid": "No valid AI request to run.",
+    "chatServerError": "Server error",
+    "chatNoReply": "No reply from AI.",
+    "chatNetworkError": "Could not reach the server."
   },
   "accessibility": {
     "toolbar": "Accessibility",

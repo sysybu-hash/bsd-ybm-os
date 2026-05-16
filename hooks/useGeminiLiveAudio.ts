@@ -115,7 +115,8 @@ export function useGeminiLiveAudio({
   onError,
 }: GeminiLiveOptions) {
   const [state, setState] = useState<GeminiLiveState>("idle");
-  const [statusText, setStatusText] = useState("Gemini Live מוכן להפעלה");
+  const [statusText, setStatusText] = useState("Gemini Live ready");
+  const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [model, setModel] = useState("gemini-2.5-flash-native-audio-latest");
   const [lastTranscript, setLastTranscript] = useState("");
 
@@ -217,7 +218,8 @@ export function useGeminiLiveAudio({
           const audio = base64PcmToFloat32(part.inlineData.data);
           playbackNodeRef.current?.port.postMessage(audio);
           setState("streaming");
-          setStatusText("Gemini Live משיב בקול...");
+          setIsModelSpeaking(true);
+          setStatusText("Gemini Live speaking");
         }
       }
 
@@ -228,7 +230,8 @@ export function useGeminiLiveAudio({
           onModelTranscript?.(finalText, true);
         }
         setState("ready");
-        setStatusText("Gemini Live מוכן לשאלה הבאה.");
+        setIsModelSpeaking(false);
+        setStatusText("Gemini Live ready for next turn");
       }
 
       if ("toolCall" in message && message.toolCall) {
@@ -418,7 +421,8 @@ export function useGeminiLiveAudio({
   const stop = useCallback(() => {
     cleanup();
     setState("idle");
-    setStatusText("Gemini Live מוכן להפעלה");
+    setIsModelSpeaking(false);
+    setStatusText("Gemini Live ready");
     setLastTranscript("");
     latestModelTextRef.current = "";
     deliveredModelTextRef.current = "";
@@ -432,8 +436,8 @@ export function useGeminiLiveAudio({
     model,
     lastTranscript,
     isLiveActive: state === "connecting" || state === "ready" || state === "streaming",
-    isListening: state === "streaming" && !statusText.includes("משיב"),
-    isSpeaking: state === "streaming" && statusText.includes("משיב"),
+    isListening: state === "streaming" && !isModelSpeaking,
+    isSpeaking: state === "streaming" && isModelSpeaking,
     start,
     stop,
   };

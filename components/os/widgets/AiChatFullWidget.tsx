@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Sparkles, 
@@ -37,6 +38,7 @@ interface Message {
 }
 
 export default function AiChatFullWidget() {
+  const { dir } = useI18n();
   const { data: session } = useSession();
   const { openWidget } = useWindowManager();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -145,7 +147,7 @@ export default function AiChatFullWidget() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Sidebar - Providers & History */}
       <div className="hidden md:flex w-64 border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex-col">
         <div className="p-6 border-b border-[color:var(--border-main)]">

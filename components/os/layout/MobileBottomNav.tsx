@@ -70,7 +70,7 @@ export default function MobileBottomNav({ openWidget, onOpenOmnibar }: MobileBot
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 grid min-h-[56px] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-[100] grid min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
       style={{
         gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr)",
       }}

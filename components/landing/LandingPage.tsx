@@ -44,12 +44,12 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
       dir={dir}
     >
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div className="absolute top-[-20%] right-[-10%] h-[800px] w-[800px] rounded-full bg-blue-500/20 blur-[120px] dark:bg-blue-600/10" />
-        <div className="absolute bottom-[-20%] left-[-10%] h-[600px] w-[600px] rounded-full bg-emerald-500/15 blur-[120px] dark:bg-emerald-500/10" />
-        <div className="absolute top-[40%] left-[30%] h-[400px] w-[400px] rounded-full bg-purple-500/15 blur-[100px] dark:bg-purple-500/10" />
+        <div className="absolute top-[-20%] end-[-10%] h-[min(800px,90vw)] w-[min(800px,90vw)] rounded-full bg-blue-500/20 blur-[120px] dark:bg-blue-600/10" />
+          <div className="absolute bottom-[-20%] start-[-10%] h-[min(600px,80vw)] w-[min(600px,80vw)] rounded-full bg-emerald-500/15 blur-[120px] dark:bg-emerald-500/10" />
+        <div className="absolute top-[40%] start-[30%] h-[min(400px,70vw)] w-[min(400px,70vw)] rounded-full bg-purple-500/15 blur-[100px] dark:bg-purple-500/10" />
       </div>
 
-      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+      <header className="relative z-10 mx-auto flex max-w-7xl min-w-0 items-center justify-between gap-3 px-4 py-5 sm:px-6 md:px-8 md:py-6">
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 shadow-lg shadow-blue-500/20">
             <Layers className="h-5 w-5 text-white" />
@@ -72,7 +72,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-8 pb-32 pt-20">
+      <main className="relative z-10 mx-auto max-w-7xl min-w-0 px-4 pb-24 pt-12 sm:px-6 sm:pb-28 sm:pt-16 md:px-8 md:pb-32 md:pt-20">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -90,7 +90,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
             {t("marketingHome.osLanding.badge")}
           </motion.div>
 
-          <motion.h1 variants={itemVariants} className="mb-8 text-6xl font-black leading-tight tracking-tighter md:text-8xl">
+          <motion.h1 variants={itemVariants} className="mb-8 text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl">
             {t("marketingHome.osLanding.heroTitleLine1")} <br />
             <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               {t("marketingHome.osLanding.heroTitleLine2")}

@@ -5,6 +5,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { jsonBadRequest, jsonUnauthorized } from "@/lib/api-json";
+import { getServerLocale } from "@/lib/i18n/server";
+import { aiJsonOnlyHint } from "@/lib/i18n/ai-locale";
+import { getApiMessage } from "@/lib/i18n/api-messages";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +16,8 @@ export async function POST(req: NextRequest) {
 
     const { query } = await req.json();
     const orgId = session.user.organizationId;
-    if (!orgId) return jsonBadRequest("לא נמצא ארגון במסגרת המשתמש", "no_org");
+    const locale = await getServerLocale();
+    if (!orgId) return jsonBadRequest(getApiMessage("no_org", locale), "no_org");
 
     const apiKey =
       process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
@@ -33,13 +37,13 @@ export async function POST(req: NextRequest) {
     });
 
     const systemPrompt = `
-      אתה מנוע חיפוש סמנטי עבור מערכת CRM.
-      נתונה רשימת לקוחות בפורמט JSON. המשימה שלך היא להחזיר רק את ה-ID של הלקוחות שמתאימים לתיאור של המשתמש.
-      תיאור משתמש: "${query}"
-      
-      חובה להחזיר רק רשימת IDs בפורמט JSON Array של Strings. אל תוסיף הסברים.
-      דוגמה לפורמט: ["id1", "id2"]
-    `;
+You are a semantic search engine for a CRM.
+You receive a JSON list of contacts. Return only the string IDs of contacts matching the user description.
+User query: "${query}"
+
+${aiJsonOnlyHint(locale)}
+Example: ["id1", "id2"]
+`;
 
     const payload = JSON.stringify(
       contacts.map((c) => ({

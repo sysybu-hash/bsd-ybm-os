@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { 
   Package, 
@@ -37,6 +38,7 @@ const initialFiles: FileItem[] = [
 ];
 
 export default function ErpFileArchiveWidget() {
+  const { dir } = useI18n();
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,7 +79,7 @@ export default function ErpFileArchiveWidget() {
   });
 
   return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir="rtl">
+    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Side Navigation */}
       <div className="hidden md:flex w-64 border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex-col">
         <div className="p-6">

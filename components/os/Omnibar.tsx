@@ -13,6 +13,7 @@ import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import OmnibarQuickSettingsSheet from "@/components/os/OmnibarQuickSettingsSheet";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -46,6 +47,7 @@ export default function Omnibar({
   onSelectResult,
   openWorkspaceWidget,
 }: OmnibarProps) {
+  const { t, dir } = useI18n();
   const { data: session } = useSession();
   const [input, setInput] = useState("");
   const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
@@ -78,20 +80,20 @@ export default function Omnibar({
 
   useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
-    else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.statusText.includes("משיב") ? "speaking" : "listening");
+    else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.isSpeaking ? "speaking" : "listening");
     else if (geminiLive.state === "ready") setVoiceStatus("listening");
     else if (geminiLive.state === "error") setVoiceStatus("error");
     else setVoiceStatus("idle");
-  }, [geminiLive.state, geminiLive.statusText]);
+  }, [geminiLive.state, geminiLive.isSpeaking]);
 
   const statusLabel = useMemo(() => {
-    if (voiceStatus === "connecting") return "AI מתחבר";
-    if (voiceStatus === "listening") return "AI מאזין";
-    if (voiceStatus === "speaking") return "AI משיב";
-    if (isBusy) return "מעבד";
+    if (voiceStatus === "connecting") return t("workspaceWidgets.omnibar.voiceConnecting");
+    if (voiceStatus === "listening") return t("workspaceWidgets.omnibar.voiceListening");
+    if (voiceStatus === "speaking") return t("workspaceWidgets.omnibar.voiceSpeaking");
+    if (isBusy) return t("workspaceWidgets.omnibar.processing");
     if (typeof apiLatency === "number") return `${Math.round(apiLatency)}ms`;
-    return status === "error" ? "שגיאה" : "מוכן";
-  }, [apiLatency, isBusy, status, voiceStatus]);
+    return status === "error" ? t("workspaceWidgets.omnibar.error") : t("workspaceWidgets.omnibar.ready");
+  }, [apiLatency, isBusy, status, t, voiceStatus]);
 
   const voiceActive = voiceStatus === "listening" || voiceStatus === "speaking";
 
@@ -109,7 +111,7 @@ export default function Omnibar({
   };
 
   return (
-    <div className="relative z-50 w-full px-0 md:px-4" dir="rtl">
+    <div className="relative z-50 w-full px-0 md:px-4" dir={dir}>
       <form onSubmit={handleSubmit} className="relative">
         <div
           className={`relative flex min-h-[3.25rem] w-full items-stretch overflow-hidden rounded-[var(--radius-md)] border shadow-md transition-shadow ${
@@ -151,8 +153,8 @@ export default function Omnibar({
               type="button"
               onClick={() => setQuickSettingsOpen(true)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-amber-300"
-              title="הגדרות תצוגה ונגישות"
-              aria-label="הגדרות תצוגה ונגישות"
+              title={t("workspaceWidgets.omnibar.displaySettingsTitle")}
+              aria-label={t("workspaceWidgets.omnibar.displaySettingsAria")}
               aria-expanded={quickSettingsOpen}
               aria-haspopup="dialog"
             >
@@ -176,14 +178,18 @@ export default function Omnibar({
 
           <div className="relative z-10 min-w-0 flex-1 flex items-center">
             <label className="sr-only" htmlFor="omnibar-command">
-              פקודת מערכת
+              {t("workspaceWidgets.omnibar.commandLabel")}
             </label>
             <input
               id="omnibar-command"
               type="text"
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
-              placeholder={voiceStatus !== "idle" ? "העוזר הקולי פעיל..." : "הקלד פקודה, לדוגמה: לקוחות, סריקה, פרויקט הרצליה"}
+              placeholder={
+                voiceStatus !== "idle"
+                  ? t("workspaceWidgets.omnibar.placeholderVoice")
+                  : t("workspaceWidgets.omnibar.placeholder")
+              }
               className="h-full w-full min-w-0 border-0 bg-transparent px-2 py-3 text-sm font-medium text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-none outline-none ring-0 focus:ring-0 md:px-3"
               autoComplete="off"
             />
@@ -194,8 +200,8 @@ export default function Omnibar({
               type="button"
               onClick={() => setGeminiLiveSettingsOpen(true)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-indigo-300"
-              title="הגדרות עוזר קולי (Gemini Live)"
-              aria-label="הגדרות עוזר קולי Gemini Live"
+              title={t("workspaceWidgets.omnibar.voiceSettingsTitle")}
+              aria-label={t("workspaceWidgets.omnibar.voiceSettingsAria")}
               aria-expanded={geminiLiveSettingsOpen}
               aria-haspopup="dialog"
             >
@@ -209,8 +215,8 @@ export default function Omnibar({
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
               }`}
-              title={voiceStatus !== "idle" ? "כבה עוזר קולי" : "הפעל עוזר קולי"}
-              aria-label={voiceStatus !== "idle" ? "כבה עוזר קולי" : "הפעל עוזר קולי"}
+              title={voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
+              aria-label={voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
               aria-pressed={voiceStatus !== "idle"}
             >
               {voiceStatus === "connecting" ? (
@@ -222,9 +228,9 @@ export default function Omnibar({
               )}
             </button>
 
-            <button type="submit" className="quiet-button quiet-button-primary h-10 shrink-0 px-3 text-xs" aria-label="שלח פקודה">
+            <button type="submit" className="quiet-button quiet-button-primary h-10 shrink-0 px-3 text-xs" aria-label={t("workspaceWidgets.omnibar.sendAria")}>
               <Send size={15} aria-hidden />
-              <span className="hidden sm:inline">שלח</span>
+              <span className="hidden sm:inline">{t("workspaceWidgets.omnibar.send")}</span>
             </button>
           </div>
         </div>
@@ -252,7 +258,7 @@ export default function Omnibar({
                 </div>
                 <div>
                   <div className="text-xs font-black text-[color:var(--foreground-main)]">{result.name}</div>
-                  {result.taxId && <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">ח״פ: {result.taxId}</div>}
+                  {result.taxId && <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.omnibar.taxId", { id: result.taxId })}</div>}
                 </div>
               </div>
               {typeof result.relevance === "number" && (

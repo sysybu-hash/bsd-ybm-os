@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from 'react';
 import { 
   HardDrive, 
@@ -30,6 +31,7 @@ interface GoogleFile {
 }
 
 export default function GoogleDriveWidget() {
+  const { dir } = useI18n();
   const [files, setFiles] = useState<GoogleFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,7 +96,7 @@ export default function GoogleDriveWidget() {
   const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex flex-col h-full bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir="rtl">
+    <div className="flex flex-col h-full bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       {/* Header */}
       <div className="p-4 border-b border-[color:var(--border-main)] flex items-center justify-between bg-[color:var(--background-main)]/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">

@@ -14,6 +14,7 @@ import {
   type AiProviderId,
 } from "@/lib/ai-providers";
 import { getAiChatSystemPrefix } from "@/lib/i18n/ai-prompts";
+import { getUserFacingAiErrorMessageForLocale } from "@/lib/i18n/ai-locale";
 
 const RETRYABLE_STATUS_CODES = [429, 500, 503, 504];
 /** אחרי Gemini (ברירת מחדל): OpenAI → Anthropic → Groq — תואם שרשראות fallback מרכזיות */
@@ -57,13 +58,14 @@ function isFallbackEligibleProviderError(error: unknown) {
   );
 }
 
-export function getUserFacingAiErrorMessage(error: unknown) {
+export function getUserFacingAiErrorMessage(error: unknown, locale?: string) {
   if (isFallbackEligibleProviderError(error)) {
-    return "שירות ה-AI עמוס כרגע או חסום זמנית באחד הספקים. נסה שוב בעוד רגע.";
+    return getUserFacingAiErrorMessageForLocale(error, locale);
   }
 
   const message = extractErrorMessage(error);
-  return message.slice(0, 400) || "שגיאה זמנית בשירות ה-AI.";
+  if (message.trim()) return message.slice(0, 400);
+  return getUserFacingAiErrorMessageForLocale(error, locale);
 }
 
 async function runWithRetry<T>(task: () => Promise<T>, retries = 2, baseDelayMs = 450): Promise<T> {

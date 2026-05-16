@@ -278,11 +278,13 @@ export default function AdaptiveWidgetShell({
       id={id}
       onMouseDown={onFocus}
       className={`workspace-window pointer-events-auto flex min-h-0 flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
-        mobileOrMaximized ? "fixed inset-0 z-[1300] !h-[100dvh] !w-full !max-h-[100dvh] !rounded-none !shadow-none md:absolute md:inset-0" : "absolute"
+        mobileOrMaximized
+          ? "fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top,0px))] bottom-[var(--mobile-chrome-bottom)] !z-[950] !h-auto !max-h-none !w-full !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!z-auto md:!h-full md:!max-h-full"
+          : "absolute"
       }`}
       style={
         mobileOrMaximized
-          ? undefined
+          ? { zIndex }
           : {
               width: `${currentSize.width}px`,
               height: `${currentSize.height}px`,
@@ -328,7 +330,7 @@ export default function AdaptiveWidgetShell({
             <button
               type="button"
               onClick={() => onZoomChange?.(0.1)}
-              className="workspace-chrome-btn"
+              className="workspace-chrome-btn hidden md:inline-flex"
               aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
             >
               <ZoomIn size={14} aria-hidden />
@@ -348,10 +350,13 @@ export default function AdaptiveWidgetShell({
             <button
               type="button"
               onClick={onClose}
-              className="workspace-chrome-btn workspace-chrome-btn--danger"
+              className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 gap-1 px-2.5 md:min-h-8 md:min-w-8 md:px-0"
               aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
             >
-              <X size={15} aria-hidden />
+              <X size={16} className="shrink-0 md:h-[15px] md:w-[15px]" aria-hidden />
+              <span className="text-[11px] font-black tracking-wide md:hidden">
+                {t("workspaceWidgets.chrome.closeLabel", chromeTitle)}
+              </span>
             </button>
           </div>
         </div>

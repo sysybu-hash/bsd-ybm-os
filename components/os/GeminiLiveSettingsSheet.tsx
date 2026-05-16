@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -53,6 +54,7 @@ function ToggleRow({
 }
 
 export default function GeminiLiveSettingsSheet({ open, onClose, value, onChange, isLiveActive }: GeminiLiveSettingsSheetProps) {
+  const { dir } = useI18n();
   const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState<GeminiLiveVoiceSettings>(value);
 
@@ -112,7 +114,7 @@ export default function GeminiLiveSettingsSheet({ open, onClose, value, onChange
             exit={{ opacity: 0, y: 24 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
             className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[1260] max-h-[min(82dvh,720px)] overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[min(480px,calc(100vw-2rem))] md:-translate-x-1/2 md:-translate-y-1/2"
-            dir="rtl"
+            dir={dir}
           >
             <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
               <div className="flex min-w-0 items-center gap-2">

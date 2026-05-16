@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "@ai-sdk/react";
@@ -66,6 +67,7 @@ function uiMessagesFromStored(
 }
 
 export default function NotebookLMWidget() {
+  const { dir } = useI18n();
   const [sources, setSources] = useState<Source[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [notebookTitle, setNotebookTitle] = useState("מחברת חדשה");
@@ -411,7 +413,7 @@ export default function NotebookLMWidget() {
   return (
     <div
       className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl md:flex-row"
-      dir="rtl"
+      dir={dir}
     >
       <div className="flex w-full flex-col border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:w-1/3 md:border-l">
         <div className="mb-4 space-y-2">

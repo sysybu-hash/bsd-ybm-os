@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState } from 'react';
 import { 
   Mic, 
@@ -23,6 +24,7 @@ interface AssistantCommand {
 }
 
 export default function GoogleAssistantWidget() {
+  const { dir } = useI18n();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<AssistantCommand[]>([]);
@@ -64,7 +66,7 @@ export default function GoogleAssistantWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir="rtl">
+    <div className="flex flex-col h-full bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       {/* Header */}
       <div className="p-4 border-b border-[color:var(--border-main)] flex items-center justify-between bg-[color:var(--background-main)]/50 backdrop-blur-md">
         <div className="flex items-center gap-3">

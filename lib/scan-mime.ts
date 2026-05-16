@@ -9,16 +9,20 @@ export const MAX_SCAN_FILE_BYTES = 25 * 1024 * 1024;
 /** MIME ש-Gemini מקבל בדרך כלל כ-binary inline (בנוסף לתמונות ו-PDF) */
 const GEMINI_FILE_LIKE = new Set([
   PDF,
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // pptx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.oasis.opendocument.text",
   "application/rtf",
   "text/rtf",
   "text/plain",
   "text/csv",
   "text/html",
+  "text/markdown",
   "application/json",
   "application/xml",
   "text/xml",
@@ -31,17 +35,26 @@ const EXT_TO_MIME: [RegExp, string][] = [
   [/\.gif$/i, "image/gif"],
   [/\.webp$/i, "image/webp"],
   [/\.bmp$/i, "image/bmp"],
+  [/\.heic$/i, "image/heic"],
+  [/\.heif$/i, "image/heif"],
+  [/\.tiff?$/i, "image/tiff"],
+  [/\.svg$/i, "image/svg+xml"],
   [/\.docx$/i, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
   [/\.doc$/i, "application/msword"],
   [/\.xlsx$/i, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
   [/\.xls$/i, "application/vnd.ms-excel"],
   [/\.pptx$/i, "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  [/\.ppt$/i, "application/vnd.ms-powerpoint"],
+  [/\.ods$/i, "application/vnd.oasis.opendocument.spreadsheet"],
+  [/\.odt$/i, "application/vnd.oasis.opendocument.text"],
   [/\.csv$/i, "text/csv"],
   [/\.txt$/i, "text/plain"],
   [/\.json$/i, "application/json"],
   [/\.xml$/i, "application/xml"],
   [/\.html?$/i, "text/html"],
   [/\.rtf$/i, "application/rtf"],
+  [/\.md$/i, "text/markdown"],
+  [/\.markdown$/i, "text/markdown"],
 ];
 
 export function inferMimeFromFileName(fileName: string, mimeFromBrowser: string): string {
@@ -69,29 +82,24 @@ export function isDocxMime(mime: string): boolean {
   return mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 
-/** OpenAI / Anthropic במסלול תמונה — תמונות בלבד */
 export function isOpenAiAnthropicVisionMime(mime: string): boolean {
   return IMAGE.test(mime);
 }
 
-/** תמונות + PDF — מסלול סריקה ישיר ל-OpenAI / Anthropic (לא ניתוב ל-Gemini) */
 export function isOpenAiAnthropicScanMime(mime: string): boolean {
   return IMAGE.test(mime) || mime === PDF;
 }
 
-/** אם נדרש פענוח ויזואלי/קובץ כבד — מועדף Gemini */
 export function shouldPreferGeminiForMime(mime: string): boolean {
   if (mime === PDF) return true;
   if (GEMINI_FILE_LIKE.has(mime)) return true;
-  if (isTextLikeMime(mime)) return false; // נטפל בנפרד כטקסט
-  return true;
+  if (isTextLikeMime(mime)) return false;
+  return IMAGE.test(mime);
 }
 
-/** תיאור להצגה ב-UI */
 export const SCAN_ACCEPT_SUMMARY =
-  "PDF, Office (Word/Excel/PowerPoint), תמונות, CSV, JSON, XML, HTML, RTF, טקסט";
+  "PDF, Office (Word/Excel/PowerPoint), OpenDocument, תמונות (JPEG/PNG/HEIC/TIFF/WebP), CSV, JSON, XML, HTML, Markdown, RTF, טקסט";
 
-/** react-dropzone: קבצים נפוצים לסריקה ולגיבוי */
 export const DROPZONE_ACCEPT: Record<string, string[]> = {
   "application/pdf": [".pdf"],
   "image/png": [".png"],
@@ -99,8 +107,13 @@ export const DROPZONE_ACCEPT: Record<string, string[]> = {
   "image/gif": [".gif"],
   "image/webp": [".webp"],
   "image/bmp": [".bmp"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
+  "image/tiff": [".tif", ".tiff"],
+  "image/svg+xml": [".svg"],
   "text/plain": [".txt"],
   "text/csv": [".csv"],
+  "text/markdown": [".md", ".markdown"],
   "application/json": [".json"],
   "application/xml": [".xml"],
   "text/xml": [".xml"],
@@ -112,8 +125,28 @@ export const DROPZONE_ACCEPT: Record<string, string[]> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
   "application/vnd.ms-excel": [".xls"],
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+  "application/vnd.ms-powerpoint": [".ppt"],
+  "application/vnd.oasis.opendocument.spreadsheet": [".ods"],
+  "application/vnd.oasis.opendocument.text": [".odt"],
 };
 
+/** מחרוזת accept ל־<input type="file"> */
+export function buildScanFileAcceptAttribute(): string {
+  const exts = new Set<string>();
+  for (const list of Object.values(DROPZONE_ACCEPT)) {
+    for (const ext of list) exts.add(ext);
+  }
+  return [...exts].sort().join(",");
+}
+
 export function isSupportedScanMime(mime: string): boolean {
-  return IMAGE.test(mime) || Object.prototype.hasOwnProperty.call(DROPZONE_ACCEPT, mime);
+  if (IMAGE.test(mime)) return true;
+  if (Object.prototype.hasOwnProperty.call(DROPZONE_ACCEPT, mime)) return true;
+  if (GEMINI_FILE_LIKE.has(mime)) return true;
+  return false;
+}
+
+export function isSupportedScanFile(file: File): boolean {
+  const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
+  return isSupportedScanMime(mime);
 }

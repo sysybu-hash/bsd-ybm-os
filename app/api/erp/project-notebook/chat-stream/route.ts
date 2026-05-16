@@ -17,6 +17,9 @@ import { prisma } from "@/lib/prisma";
 import { loadRecentBillOfQuantitiesContext } from "@/lib/load-recent-bill-of-quantities-context";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { getTradeSpecializedPrompt } from "@/lib/trade-specialized-prompt";
+import { getServerLocale } from "@/lib/i18n/server";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
+import { getApiMessage } from "@/lib/i18n/api-messages";
 
 export const maxDuration = 120;
 
@@ -33,43 +36,38 @@ type ChatStreamBody = {
 };
 
 export async function POST(req: NextRequest) {
+  let locale = "he";
   try {
+    locale = await getServerLocale();
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return jsonUnauthorized();
     }
 
     if (!isGeminiConfigured()) {
-      return jsonServiceUnavailable(
-        "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
-        "gemini_not_configured",
-      );
+      return jsonServiceUnavailable(getApiMessage("gemini_not_configured", locale), "gemini_not_configured");
     }
 
     const orgId = session.user.organizationId ?? "";
     if (!orgId) {
-      return jsonBadRequest("נדרש ארגון (organizationId) לשיחה לפי פרויקט.", "no_organization");
+      return jsonBadRequest(getApiMessage("no_organization", locale), "no_organization");
     }
 
     const rateKey = `erp-notebook-stream:org:${orgId}`;
     const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
     if (!rl.success) {
-      return jsonTooManyRequests(
-        `הגבלת קצב. נסו שוב אחרי ${rl.resetAt.toISOString()}.`,
-        "rate_limited",
-        { resetAt: rl.resetAt },
-      );
+      return jsonTooManyRequests(getApiMessage("rate_limited", locale), "rate_limited", { resetAt: rl.resetAt });
     }
 
     const body = (await req.json()) as ChatStreamBody;
     const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
     if (!projectId) {
-      return jsonBadRequest("חסר projectId.", "missing_project_id");
+      return jsonBadRequest(getApiMessage("missing_project_id", locale), "missing_project_id");
     }
 
     const rawMessages = Array.isArray(body.messages) ? body.messages : [];
     if (rawMessages.length === 0) {
-      return jsonBadRequest("חסרות הודעות (messages).", "missing_messages");
+      return jsonBadRequest(getApiMessage("missing_messages", locale), "missing_messages");
     }
 
     const project = await prisma.project.findFirst({
@@ -80,26 +78,26 @@ export async function POST(req: NextRequest) {
       },
     });
     if (!project) {
-      return jsonNotFound("הפרויקט לא נמצא או אינו שייך לארגון.", "project_not_found");
+      return jsonNotFound(getApiMessage("project_not_found", locale), "project_not_found");
     }
 
-    const clientName = project.contacts[0]?.name ?? "לא שויך";
+    const clientName = project.contacts[0]?.name ?? getApiMessage("unassigned_client", locale);
     const trade = project.organization?.constructionTrade ?? null;
     const specializedPrompt = getTradeSpecializedPrompt(trade);
     const boqContext = await loadRecentBillOfQuantitiesContext(orgId);
 
     let systemPrompt = withAssistantTemporalContext(`${specializedPrompt}
 
-אתה מומחה פיננסי והנדסי המלווה את הפרויקט "${project.name}".
-איש קשר/לקוח (ראשון): ${clientName}.
-תפקידך לעזור למנהל הפרויקט לנתח הצעות מחיר, לזהות חריגות ולסכם נתונים.
+You are a financial and engineering expert supporting project "${project.name}".
+Primary contact/client: ${clientName}.
+Help the project manager analyze quotes, spot anomalies, and summarize data.
 
-התנהגות:
-- ענה תמיד בעברית מקצועית, קצרה ועניינית.
-- השתמש במונחים ההנדסיים המתאימים להתמחות הארגון (לפי ההנחיות למעלה).`);
+Behavior:
+- ${aiReplyLanguageRule(locale)}
+- Use engineering terms appropriate to the organization's trade (see guidance above).`);
 
     if (boqContext) {
-      systemPrompt += `\n\n--- הקשר כמויות (BOQ) אחרונים בארגון (מסמכים סרוקים) ---\n${boqContext.slice(0, 12_000)}`;
+      systemPrompt += `\n\n--- Recent BOQ context from organization scans ---\n${boqContext.slice(0, 12_000)}`;
     }
 
     const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
@@ -118,8 +116,7 @@ export async function POST(req: NextRequest) {
     return result.toUIMessageStreamResponse();
   } catch (error) {
     console.error("project-notebook chat-stream:", error);
-    const msg =
-      error instanceof Error ? error.message : "מחברת פרויקט — שגיאת שרת.";
+    const msg = error instanceof Error ? error.message : getApiMessage("server_error", locale);
     return jsonServerError(msg.slice(0, 500));
   }
 }

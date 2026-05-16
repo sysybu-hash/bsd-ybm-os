@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { handleOsAssistantToolCall, type OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
@@ -10,6 +11,7 @@ const FALLBACK_INSTRUCTION =
 
 export function useOsAssistant(deps: OsAssistantToolDeps) {
   const { data: session, status } = useSession();
+  const { locale } = useI18n();
   const [context, setContext] = useState<OsAssistantUserContext | null>(null);
   const [systemInstruction, setSystemInstruction] = useState(FALLBACK_INSTRUCTION);
   const [systemInstructionVoice, setSystemInstructionVoice] = useState(FALLBACK_INSTRUCTION);
@@ -48,7 +50,7 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
 
   useEffect(() => {
     if (status === "authenticated") void refresh();
-  }, [status, refresh]);
+  }, [status, refresh, locale]);
 
   const onToolCall = useCallback(
     async (name: string, args: Record<string, unknown>) =>

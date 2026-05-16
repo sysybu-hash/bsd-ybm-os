@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+import { useI18n } from "@/components/os/system/I18nProvider";
 interface TrendPoint {
   month: string;
   revenue: number;
@@ -48,6 +49,7 @@ const isCashflowData = (value: unknown): value is CashflowData => {
 };
 
 export default function CashflowWidget({ data }: { data?: unknown }) {
+  const { dir } = useI18n();
   const cashflow = useMemo(() => (isCashflowData(data) ? data : fallbackData), [data]);
   const [selectedPoint, setSelectedPoint] = useState<TrendPoint | null>(cashflow.trend[cashflow.trend.length - 1] || null);
   const [isLivePulse, setIsLivePulse] = useState(false);
@@ -66,7 +68,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
   ];
 
   return (
-    <div className="relative h-full overflow-hidden bg-transparent p-3 md:p-6 text-[color:var(--foreground-main)]" dir="rtl">
+    <div className="relative h-full overflow-hidden bg-transparent p-3 md:p-6 text-[color:var(--foreground-main)]" dir={dir}>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-emerald-600/60 dark:via-emerald-300/60 to-transparent" />
 
       <div className="relative z-10 flex h-full flex-col gap-5">
