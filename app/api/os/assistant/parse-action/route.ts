@@ -9,14 +9,12 @@ import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
 import { buildParseActionTaskPrompt } from "@/lib/os-automations/prompts";
 import type { ParseActionResponse } from "@/lib/os-automations/types";
-import { parseActionsJson, legacyOpenWidgetsToActions } from "@/lib/os-automations/parse-response";
+import { parseActionsJson } from "@/lib/os-automations/parse-response";
 import { buildOsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-export { legacyOpenWidgetsToActions };
 
 const parseActionBodySchema = z.object({
   message: z.string().min(1),
