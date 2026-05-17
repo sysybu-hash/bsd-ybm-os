@@ -37,6 +37,17 @@ export async function getGoogleOAuth2ClientForUser(userId: string) {
     throw new GoogleOAuthNotLinkedError();
   }
 
+  if (!account.refresh_token) {
+    const expiresAtMs = account.expires_at ? account.expires_at * 1000 : 0;
+    const accessValid =
+      Boolean(account.access_token) && expiresAtMs > Date.now() + 60_000;
+    if (!accessValid) {
+      throw new GoogleOAuthRefreshError(
+        "נדרש חיבור מחדש ל-Google (חסר refresh token). לחצו «חיבור מחדש» בהגדרות או בווידג'ט Drive.",
+      );
+    }
+  }
+
   const oauth2 = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,

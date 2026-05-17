@@ -47,11 +47,11 @@ export const authOptions: NextAuthOptions = {
             allowDangerousEmailAccountLinking: true,
             authorization: {
               params: {
-                prompt: "select_account",
+                prompt: "consent select_account",
                 access_type: "offline",
-                /** בלי assistant-sdk-prototype — scope ניסיוני שגרם ל־500 במסך ההסכמה של Google */
+                include_granted_scopes: "true",
                 scope:
-                  "openid email profile https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+                  "openid email profile https://www.googleapis.com/auth/drive",
               },
             },
           }),

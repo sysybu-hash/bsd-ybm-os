@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   Globe,
   UserPlus,
+  HardDrive,
 } from 'lucide-react';
+import { DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from '@/lib/google-drive-config';
 import { toast } from 'sonner';
 
 const ASSIGN_ROLES = [
@@ -45,6 +47,13 @@ export default function SettingsWidget() {
   const [assignEmail, setAssignEmail] = useState('');
   const [assignRole, setAssignRole] = useState<string>('EMPLOYEE');
   const [assigning, setAssigning] = useState(false);
+  const [driveSettings, setDriveSettings] = useState({
+    driveFolderName: DEFAULT_GOOGLE_DRIVE_FOLDER_NAME,
+    driveSyncEnabled: true,
+    driveFolderId: null as string | null,
+    lastSyncAt: null as string | null,
+  });
+  const [driveSaving, setDriveSaving] = useState(false);
 
   const isSuper = session?.user?.role === 'SUPER_ADMIN';
   const isOrgAdmin = session?.user?.role === 'ORG_ADMIN';
@@ -75,6 +84,23 @@ export default function SettingsWidget() {
         website: data.tenantPublicDomain || '',
         logoSvg: branding.logoSvg || ''
       });
+
+      try {
+        const driveRes = await fetch('/api/os/google-drive/settings', { credentials: 'include', cache: 'no-store' });
+        if (driveRes.ok) {
+          const driveData = await driveRes.json();
+          if (driveData.settings) {
+            setDriveSettings({
+              driveFolderName: driveData.settings.driveFolderName ?? DEFAULT_GOOGLE_DRIVE_FOLDER_NAME,
+              driveSyncEnabled: driveData.settings.driveSyncEnabled ?? true,
+              driveFolderId: driveData.settings.driveFolderId ?? null,
+              lastSyncAt: driveData.settings.lastSyncAt ?? null,
+            });
+          }
+        }
+      } catch {
+        /* Drive לא מחובר */
+      }
     } catch (err) {
       toast.error('שגיאה בטעינת הגדרות');
     } finally {
@@ -127,6 +153,36 @@ export default function SettingsWidget() {
       toast.error('שגיאה בשמירת ההגדרות');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDriveSettings = async () => {
+    setDriveSaving(true);
+    try {
+      const res = await fetch('/api/os/google-drive/settings', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driveFolderName: driveSettings.driveFolderName.trim(),
+          driveSyncEnabled: driveSettings.driveSyncEnabled,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'שגיאה בשמירה');
+      if (data.settings) {
+        setDriveSettings({
+          driveFolderName: data.settings.driveFolderName,
+          driveSyncEnabled: data.settings.driveSyncEnabled,
+          driveFolderId: data.settings.driveFolderId ?? null,
+          lastSyncAt: data.settings.lastSyncAt ?? null,
+        });
+      }
+      toast.success('הגדרות Google Drive נשמרו');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'שגיאה בשמירת הגדרות Drive');
+    } finally {
+      setDriveSaving(false);
     }
   };
 
@@ -300,6 +356,66 @@ export default function SettingsWidget() {
             </div>
           </section>
 
+          <section className="pt-6 border-t border-[color:var(--border-main)]/30">
+            <div className="flex items-center gap-2 mb-6">
+              <HardDrive size={18} className="text-blue-500" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                Google Drive
+              </h3>
+            </div>
+            <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
+              תיקיית ברירת מחדל ב-Drive לסנכרון דו-כיווני עם המערכת. אם אין refresh token — התנתקו והתחברו שוב עם Google (אישור הרשאות מלא).
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שם תיקיית סנכרון</label>
+                <input
+                  value={driveSettings.driveFolderName}
+                  onChange={(e) => setDriveSettings({ ...driveSettings, driveFolderName: e.target.value })}
+                  className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-[color:var(--foreground-main)]"
+                  placeholder={DEFAULT_GOOGLE_DRIVE_FOLDER_NAME}
+                />
+              </div>
+              <div className="flex items-center gap-3 pb-2">
+                <input
+                  id="drive-sync-enabled"
+                  type="checkbox"
+                  checked={driveSettings.driveSyncEnabled}
+                  onChange={(e) => setDriveSettings({ ...driveSettings, driveSyncEnabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-[color:var(--border-main)]"
+                />
+                <label htmlFor="drive-sync-enabled" className="text-sm font-semibold text-[color:var(--foreground-main)]">
+                  סנכרון אוטומטי דו-כיווני
+                </label>
+              </div>
+            </div>
+            {driveSettings.driveFolderId ? (
+              <p className="mt-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                מזהה תיקייה: {driveSettings.driveFolderId}
+                {driveSettings.lastSyncAt
+                  ? ` · סונכרן ${new Date(driveSettings.lastSyncAt).toLocaleString('he-IL')}`
+                  : ''}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void handleSaveDriveSettings()}
+                disabled={driveSaving}
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+              >
+                {driveSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                שמור הגדרות Drive
+              </button>
+              <a
+                href="/api/auth/google-start?callbackUrl=/"
+                className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
+              >
+                חיבור מחדש ל-Google
+              </a>
+            </div>
+          </section>
+
           {showAssignPanel && (
             <section className="pt-6 border-t border-[color:var(--border-main)]/30">
               <div className="flex items-center gap-2 mb-6">
@@ -372,3 +488,4 @@ export default function SettingsWidget() {
     </div>
   );
 }
+

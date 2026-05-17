@@ -14,6 +14,8 @@ export const AUTOMATION_CATALOG: AutomationCatalogEntry[] = [
   { id: "open_widget", labelHe: "פתיחת מסך", labelEn: "Open screen", labelRu: "Открыть экран", keywords: ["פתח", "open", "הצג"] },
   { id: "create_invoice", labelHe: "יצירת חשבונית", labelEn: "Create invoice", labelRu: "Создать счёт", keywords: ["חשבונית", "invoice", "הפק", "צור"] },
   { id: "create_quote", labelHe: "יצירת הצעת מחיר", labelEn: "Create quote", labelRu: "Создать предложение", keywords: ["הצעה", "quote"] },
+  { id: "create_task", labelHe: "הוספת משימה", labelEn: "Create task", labelRu: "Создать задачу", keywords: ["משימה", "task", "הוסף משימה", "todo"] },
+  { id: "create_contact", labelHe: "יצירת לקוח", labelEn: "Create client", labelRu: "Создать клиента", keywords: ["לקוח חדש", "contact", "הוסף לקוח"] },
   { id: "open_scanner", labelHe: "פתיחת סורק", labelEn: "Open scanner", labelRu: "Открыть сканер", keywords: ["סרוק", "סריקה", "scan"] },
   { id: "scan_with_instructions", labelHe: "סריקה עם הנחיות", labelEn: "Scan with instructions", labelRu: "Скан с инструкциями", keywords: ["סרוק עם", "scan with"] },
   { id: "save_scan_to_notebook", labelHe: "שמירת סריקה במחברת", labelEn: "Save scan to notebook", labelRu: "Сохранить скан в блокнот", keywords: ["מחברת", "notebook", "שמור סריקה"] },

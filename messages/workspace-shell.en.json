@@ -429,6 +429,7 @@
       "voiceSettingsAria": "Gemini Live voice settings",
       "voiceOff": "Turn off voice assistant",
       "voiceOn": "Turn on voice assistant",
+      "voiceActionDone": "Action completed in the workspace",
       "send": "Send",
       "sendAria": "Send command",
       "taxId": "ID: {id}",

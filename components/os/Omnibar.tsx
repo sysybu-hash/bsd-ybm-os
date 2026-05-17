@@ -70,7 +70,16 @@ export default function Omnibar({
     enabled: Boolean(session?.user?.id && session?.user?.organizationId),
     settings: geminiVoiceSettings,
     systemInstruction: osAssistant.systemInstructionVoice,
-    onToolCall: osAssistant.onToolCall,
+    onToolCall: async (name, args) => {
+      const result = await osAssistant.onToolCall(name, args);
+      const text = typeof result === "string" ? result : "Success";
+      if (text === "Success") {
+        toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
+      } else if (!text.startsWith("לא ") && !text.startsWith("שגיאה")) {
+        toast.success(text);
+      }
+      return result;
+    },
     onError: (err) => {
       const friendly = formatGeminiLiveUserMessage(err);
       toast.error(friendly);

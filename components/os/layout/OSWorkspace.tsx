@@ -221,7 +221,9 @@ export default function OSWorkspace({
             )}
             {widget.type === "settings" && <SettingsWidget />}
             {widget.type === "meckanoReports" && <MeckanoReportsWidget />}
-            {widget.type === "googleDrive" && <GoogleDriveWidget />}
+            {widget.type === "googleDrive" && (
+              <GoogleDriveWidget openWorkspaceWidget={openWidget} />
+            )}
             {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
             {widget.type === "notebookLM" && <NotebookLMWidget liveData={widget.liveData} />}
             {widget.type === "accessibility" && <AccessibilityWidget />}

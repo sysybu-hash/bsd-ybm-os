@@ -7,33 +7,24 @@ const WIDGET_ENUM = OS_ASSISTANT_WIDGETS.map((w) => w.id);
 export function getOsAssistantLiveToolDeclarations() {
   return [
     {
-      name: "execute_os_command",
+      name: "execute_user_command",
       description:
-        "Opens a workspace window in BSD-YBM OS (dashboard, CRM, projects, AI scan, documents, settings, etc.). Use when the user asks to open, show, or go to a screen.",
+        "PRIMARY tool for any in-app request: create invoice/quote, add task, add client, scan, open screens, clock in/out, or combined requests. Pass the user's exact words in Hebrew. Use when unsure which specific tool to call, or when the request has multiple steps.",
       parameters: {
         type: "OBJECT",
         properties: {
-          action: {
+          message: {
             type: "STRING",
-            enum: WIDGET_ENUM,
-            description: "Widget id to open",
-          },
-          payload: {
-            type: "OBJECT",
-            description: "Optional data (e.g. project name)",
-            properties: {
-              name: { type: "STRING" },
-              prompt: { type: "STRING" },
-            },
+            description: "Full user request in natural language, e.g. 'צור חשבונית ללקוח יוסי על 5000 שקל'",
           },
         },
-        required: ["action"],
+        required: ["message"],
       },
     },
     {
       name: "run_automation",
       description:
-        "Runs a structured automation in BSD-YBM OS: create invoice, open scanner, save scan to notebook, clock in/out, open CRM, etc. Prefer this over execute_os_command when the user wants an action with parameters.",
+        "Runs a specific automation when you know the exact intent. Examples: create_invoice (clientName, amount, lineDescription), create_task (title, projectName), create_contact (name), open_scanner, meckano_clock_in, save_scan_to_notebook.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -44,16 +35,41 @@ export function getOsAssistantLiveToolDeclarations() {
           },
           params: {
             type: "OBJECT",
-            description: "Intent-specific parameters (clientName, amount, userInstruction, etc.)",
+            description:
+              "Intent params: create_invoice → clientName, amount, lineDescription; create_task → title, projectName, priority, dueDate; create_contact → name, email, phone; scan_with_instructions → userInstruction",
           },
         },
         required: ["intent"],
       },
     },
     {
+      name: "execute_os_command",
+      description:
+        "Opens a workspace window only (no create/submit). Use for navigation: dashboard, projectBoard, crmTable, docCreator, aiScanner, etc.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          action: {
+            type: "STRING",
+            enum: WIDGET_ENUM,
+            description: "Widget id to open",
+          },
+          payload: {
+            type: "OBJECT",
+            description: "Optional data (e.g. project name, prompt)",
+            properties: {
+              name: { type: "STRING" },
+              prompt: { type: "STRING" },
+            },
+          },
+        },
+        required: ["action"],
+      },
+    },
+    {
       name: "search_site",
       description:
-        "Searches clients and projects in BSD-YBM by name or keywords. Use when the user names a client or project to find.",
+        "Searches clients and projects by name. Opens the best match. Use before create_invoice if client name is ambiguous.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -65,7 +81,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "google_assistant_command",
       description:
-        "Sends a query to Google Assistant (weather, smart home, general knowledge). Not for in-app navigation.",
+        "External queries only: weather, smart home, general knowledge. NOT for BSD-YBM OS actions.",
       parameters: {
         type: "OBJECT",
         properties: {

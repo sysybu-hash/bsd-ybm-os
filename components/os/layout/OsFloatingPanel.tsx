@@ -141,15 +141,14 @@ export default function OsFloatingPanel({
 
   const chromeTitle = { title };
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";
-  const contentZoomStyle =
-    zoom === 1
-      ? undefined
-      : {
-          transform: `scale(${zoom})`,
-          transformOrigin: zoomOrigin,
-          width: `${100 / zoom}%`,
-          minHeight: `${100 / zoom}%`,
-        };
+  const zoomActive = Math.abs(zoom - 1) > 0.001;
+  const contentZoomStyle = zoomActive
+    ? {
+        transform: `scale(${zoom})`,
+        transformOrigin: zoomOrigin,
+        width: `${100 / zoom}%`,
+      }
+    : undefined;
 
   if (!mounted || typeof document === "undefined") return null;
 
@@ -266,8 +265,15 @@ export default function OsFloatingPanel({
               </div>
             </header>
 
-            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              <div style={contentZoomStyle}>{children}</div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div
+                  className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : "h-full min-h-0"}`}
+                  style={contentZoomStyle}
+                >
+                  {children}
+                </div>
+              </div>
             </div>
 
             {footer ? (

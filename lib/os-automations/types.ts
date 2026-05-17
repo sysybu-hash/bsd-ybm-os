@@ -11,6 +11,9 @@ export type AutomationIntent =
   | "clear_layout"
   | "create_invoice"
   | "create_quote"
+  | "create_task"
+  | "create_contact"
+  | "execute_user_command"
   | "edit_issued_document"
   | "delete_issued_document"
   | "export_document"
@@ -55,6 +58,24 @@ export type InvoiceDraftParams = {
   amount?: number;
   currency?: string;
   docType?: "invoice" | "quote";
+};
+
+export type CreateTaskParams = {
+  title?: string;
+  projectName?: string;
+  project?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  budget?: number;
+};
+
+export type CreateContactParams = {
+  name?: string;
+  clientName?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
 };
 
 export type ScanAutomationParams = {

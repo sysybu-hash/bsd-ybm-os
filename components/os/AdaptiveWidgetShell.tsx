@@ -273,15 +273,14 @@ export default function AdaptiveWidgetShell({
   const chromeTitle = { title };
   const shellRef = useRef<HTMLElement>(null);
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";
-  const contentZoomStyle =
-    zoom === 1
-      ? undefined
-      : {
-          transform: `scale(${zoom})`,
-          transformOrigin: zoomOrigin,
-          width: `${100 / zoom}%`,
-          minHeight: `${100 / zoom}%`,
-        };
+  const zoomActive = Math.abs(zoom - 1) > 0.001;
+  const contentZoomStyle = zoomActive
+    ? {
+        transform: `scale(${zoom})`,
+        transformOrigin: zoomOrigin,
+        width: `${100 / zoom}%`,
+      }
+    : undefined;
 
   useEffect(() => {
     if (!mobileOrMaximized) return;
@@ -401,11 +400,18 @@ export default function AdaptiveWidgetShell({
         </div>
       </header>
 
-      <div
-        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] [-webkit-overflow-scrolling:touch] md:pb-0"
-      >
-        <div className="min-h-full" style={contentZoomStyle}>
-          {children}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
+        <div
+          className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] md:pb-0 ${
+            zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
+          }`}
+        >
+          <div
+            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : "h-full min-h-0"}`}
+            style={contentZoomStyle}
+          >
+            {children}
+          </div>
         </div>
       </div>
 

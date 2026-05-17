@@ -429,6 +429,7 @@
       "voiceSettingsAria": "הגדרות עוזר קולי Gemini Live",
       "voiceOff": "כבה עוזר קולי",
       "voiceOn": "הפעל עוזר קולי",
+      "voiceActionDone": "הפעולה בוצעה במערכת",
       "send": "שלח",
       "sendAria": "שלח פקודה",
       "taxId": "ח״פ: {id}",

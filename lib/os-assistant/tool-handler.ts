@@ -12,6 +12,20 @@ export async function handleOsAssistantToolCall(
   args: Record<string, unknown>,
   deps: OsAssistantToolDeps,
 ): Promise<string> {
+  if (name === "execute_user_command") {
+    const message = typeof args.message === "string" ? args.message.trim() : "";
+    if (!message) return "חסרה פקודה";
+    const runnerDeps = deps as AutomationRunnerDeps;
+    if (!runnerDeps.setSystemMessage) {
+      return "לא ניתן לבצע פקודה מורכבת — חסר הקשר מערכת";
+    }
+    const result = await runAutomationAction(
+      { intent: "execute_user_command", params: { message } },
+      runnerDeps,
+    );
+    return result.message ?? (result.ok ? "Success" : "שגיאה בביצוע הפקודה");
+  }
+
   if (name === "run_automation") {
     const intent = normalizeAutomationIntent(typeof args.intent === "string" ? args.intent : "");
     if (!intent) return `לא נמצא intent: ${String(args.intent)}`;
@@ -24,8 +38,8 @@ export async function handleOsAssistantToolCall(
       deps.openWidget("dashboard");
       return "Success";
     }
-    await runAutomationAction({ intent, params }, runnerDeps);
-    return "Success";
+    const result = await runAutomationAction({ intent, params }, runnerDeps);
+    return result.message ?? (result.ok ? "Success" : "שגיאה בביצוע הפעולה");
   }
 
   if (name === "execute_os_command") {

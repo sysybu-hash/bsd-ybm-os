@@ -61,6 +61,7 @@ model Organization {
   aiCorrections            AICorrection[]
   automations              Automation[]
   cloudIntegrations        CloudIntegration[]
+  driveSyncEntries         DriveSyncEntry[]
   contacts                 Contact[]
   documents                Document[]
   documentLineItems        DocumentLineItem[]
@@ -314,23 +315,52 @@ model NotebookAudioOverview {
 }
 
 model CloudIntegration {
-  id             String        @id @default(cuid())
-  organizationId String
-  provider       CloudProvider
-  displayName    String?
-  accessToken    String?
-  refreshToken   String?
-  tokenExpiresAt DateTime?
-  autoScan       Boolean       @default(false)
-  backupExports  Boolean       @default(false)
-  folderPath     String?
-  lastSyncAt     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  organizationId  String
+  provider        CloudProvider
+  displayName     String?
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  autoScan        Boolean       @default(false)
+  backupExports   Boolean       @default(false)
+  folderPath      String?
+  /// תיקיית עבודה ב-Google Drive (מזהה)
+  driveFolderId   String?
+  /// שם תיקיית ברירת מחדל (למשל BSD-YBM)
+  driveFolderName String?       @default("BSD-YBM")
+  /// סנכרון דו-כיווני אוטומטי
+  driveSyncEnabled Boolean      @default(true)
+  /// Changes API page token
+  driveSyncCursor String?
+  lastSyncAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, provider])
   @@index([organizationId])
+}
+
+/// מראה מטא-דאטה של קבצים בתיקיית העבודה ב-Drive (לסנכרון דו-כיווני)
+model DriveSyncEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  driveFileId    String
+  parentDriveId  String?
+  name           String
+  mimeType       String
+  md5Checksum    String?
+  modifiedTime   DateTime?
+  webViewLink    String?
+  trashed        Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, driveFileId])
+  @@index([organizationId, parentDriveId])
+  @@index([organizationId, trashed])
 }
 
 /// OAuth / NextAuth — נדרש עבור PrismaAdapter (התחברות Google)

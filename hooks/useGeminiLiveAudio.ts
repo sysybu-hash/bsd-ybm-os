@@ -45,26 +45,83 @@ type TokenResponse = {
   code?: string;
 };
 
-type LiveResponse =
-  | { setupComplete?: unknown }
-  | {
-      serverContent?: {
-        interrupted?: boolean;
-        turnComplete?: boolean;
-        inputTranscription?: { text?: string; finished?: boolean };
-        outputTranscription?: { text?: string; finished?: boolean };
-        modelTurn?: {
-          parts?: Array<{
-            text?: string;
-            inlineData?: { data?: string; mimeType?: string };
-          }>;
-        };
-      };
-    }
-  | {
-      toolCall?: unknown;
-      error?: { message?: string };
+type LiveFunctionCall = {
+  id?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+};
+
+type LiveResponse = {
+  setupComplete?: unknown;
+  serverContent?: {
+    interrupted?: boolean;
+    turnComplete?: boolean;
+    inputTranscription?: { text?: string; finished?: boolean };
+    outputTranscription?: { text?: string; finished?: boolean };
+    modelTurn?: {
+      parts?: Array<{
+        text?: string;
+        inlineData?: { data?: string; mimeType?: string };
+        functionCall?: LiveFunctionCall;
+      }>;
     };
+  };
+  toolCall?: { functionCalls?: LiveFunctionCall[] };
+  error?: { message?: string };
+};
+
+function parseFunctionCallArgs(args: unknown): Record<string, unknown> {
+  if (args && typeof args === "object" && !Array.isArray(args)) {
+    return args as Record<string, unknown>;
+  }
+  if (typeof args === "string") {
+    try {
+      const parsed = JSON.parse(args) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return {};
+}
+
+function collectLiveFunctionCalls(message: LiveResponse): LiveFunctionCall[] {
+  const calls: LiveFunctionCall[] = [];
+  const fromToolCall = message.toolCall?.functionCalls;
+  if (Array.isArray(fromToolCall)) {
+    calls.push(...fromToolCall);
+  }
+  const parts = message.serverContent?.modelTurn?.parts ?? [];
+  for (const part of parts) {
+    if (part.functionCall?.name) {
+      calls.push(part.functionCall);
+    }
+  }
+  return calls;
+}
+
+async function executeLiveToolCalls(
+  calls: LiveFunctionCall[],
+  onToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown> | unknown,
+): Promise<Array<{ id?: string; name: string; response: { result: string } }>> {
+  const responses: Array<{ id?: string; name: string; response: { result: string } }> = [];
+  for (const call of calls) {
+    const name = call.name?.trim();
+    if (!name) continue;
+    const args = parseFunctionCallArgs(call.args);
+    const raw = await onToolCall(name, args);
+    const result =
+      typeof raw === "string" ? raw : raw == null ? "Success" : JSON.stringify(raw);
+    responses.push({
+      id: call.id,
+      name,
+      response: { result: result || "Success" },
+    });
+  }
+  return responses;
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -185,7 +242,20 @@ export function useGeminiLiveAudio({
         return;
       }
 
-      const serverContent = "serverContent" in message ? message.serverContent : undefined;
+      const pendingToolCalls = collectLiveFunctionCalls(message);
+      if (pendingToolCalls.length > 0 && onToolCall) {
+        const functionResponses = await executeLiveToolCalls(pendingToolCalls, onToolCall);
+        if (functionResponses.length > 0 && webSocketRef.current?.readyState === WebSocket.OPEN) {
+          webSocketRef.current.send(
+            JSON.stringify({
+              toolResponse: { functionResponses },
+            }),
+          );
+          setStatusText("מבצע פעולה במערכת...");
+        }
+      }
+
+      const serverContent = message.serverContent;
       if (!serverContent) return;
 
       if (serverContent.interrupted) {
@@ -234,24 +304,6 @@ export function useGeminiLiveAudio({
         setStatusText("Gemini Live ready for next turn");
       }
 
-      if ("toolCall" in message && message.toolCall) {
-        const toolCalls = (message.toolCall as any).functionCalls || [];
-        for (const call of toolCalls) {
-          if (onToolCall) {
-            const result = await onToolCall(call.name, call.args);
-            if (webSocketRef.current?.readyState === WebSocket.OPEN) {
-              webSocketRef.current.send(JSON.stringify({
-                tool_response: {
-                  function_responses: [{
-                    name: call.name,
-                    response: { result: result || "Success" }
-                  }]
-                }
-              }));
-            }
-          }
-        }
-      }
     },
     [onModelTranscript, onUserTranscript, onToolCall],
   );
@@ -356,7 +408,7 @@ export function useGeminiLiveAudio({
               },
             },
             systemInstruction: { parts: [{ text: systemInstruction }] },
-            tools: [{ function_declarations: getOsAssistantLiveToolDeclarations() }],
+            tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
             ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
             ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
             realtimeInputConfig: {

@@ -154,6 +154,7 @@ type AiScannerWidgetProps = {
 export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const driveImportDoneRef = useRef<string | null>(null);
   const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -440,6 +441,51 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     },
     [isProcessing, validateScanFile, tr, engineRunMode, userInstruction, telemetry],
   );
+
+  useEffect(() => {
+    const imp = liveData?.driveImportFile;
+    if (!imp || typeof imp !== "object") return;
+    const fileId = (imp as { fileId?: unknown }).fileId;
+    const fileName = (imp as { fileName?: unknown }).fileName;
+    const mimeType = (imp as { mimeType?: unknown }).mimeType;
+    if (typeof fileId !== "string" || typeof fileName !== "string") return;
+    if (driveImportDoneRef.current === fileId) return;
+
+    let cancelled = false;
+    driveImportDoneRef.current = fileId;
+
+    (async () => {
+      toast.info(`מוריד מ-Drive: ${fileName}`);
+      try {
+        const params = new URLSearchParams({
+          fileId,
+          fileName,
+          mimeType: typeof mimeType === "string" ? mimeType : "application/octet-stream",
+        });
+        const res = await fetch(`/api/os/google-drive/download?${params}`, {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error ?? "הורדה מ-Google Drive נכשלה");
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const headerName = res.headers.get("X-Drive-File-Name");
+        const resolvedName = headerName ? decodeURIComponent(headerName) : fileName;
+        const resolvedMime = inferMimeFromFileName(resolvedName, blob.type);
+        const file = new File([blob], resolvedName, { type: resolvedMime });
+        await runFileQueue([file]);
+      } catch (err) {
+        if (driveImportDoneRef.current === fileId) driveImportDoneRef.current = null;
+        toast.error(err instanceof Error ? err.message : "ייבוא מ-Drive נכשל");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [liveData?.driveImportFile, runFileQueue]);
 
   const persistInstruction = (value: string) => {
     setUserInstruction(value);
