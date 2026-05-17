@@ -71,3 +71,45 @@ export async function listOrganizationsForAdminAction(): Promise<
   });
   return orgs;
 }
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  accountStatus: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  createdAt: string;
+};
+
+export async function listUsersForAdminAction(): Promise<AdminUserRow[] | { error: string }> {
+  const s = await requireOSOwner();
+  if (!s) return { error: "אין הרשאה" };
+
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 300,
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      accountStatus: true,
+      organizationId: true,
+      createdAt: true,
+      organization: { select: { name: true } },
+    },
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    accountStatus: u.accountStatus,
+    organizationId: u.organizationId,
+    organizationName: u.organization?.name ?? null,
+    createdAt: u.createdAt.toISOString(),
+  }));
+}

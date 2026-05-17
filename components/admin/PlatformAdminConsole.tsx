@@ -6,11 +6,14 @@ import {
   Activity,
   Bell,
   Loader2,
+  Plus,
   RefreshCw,
   Save,
   Settings2,
   Shield,
+  Trash2,
   UserCheck,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,10 +22,16 @@ import {
 } from "@/app/actions/admin-subscriptions";
 import {
   listPendingRegistrationsAction,
+  listUsersForAdminAction,
+  type AdminUserRow,
   type PendingRegistrationRow,
 } from "@/app/actions/admin-console";
+import { provisionUserAction } from "@/app/actions/admin-subscriptions";
 import {
   manageSubsAdjustScansAction,
+  manageSubsCreateManualUserAction,
+  manageSubsDeleteOrganizationAction,
+  manageSubsDeleteUserByEmailAction,
   manageSubsListOrganizationsAction,
   manageSubsUpdateSubscriptionAction,
 } from "@/app/actions/manage-subscriptions";
@@ -69,6 +78,20 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
   const [savingSettings, setSavingSettings] = useState(false);
   const [approvePlan, setApprovePlan] = useState("DEALER");
   const [approveRole, setApproveRole] = useState("ORG_ADMIN");
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
+  const [createEmail, setCreateEmail] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createOrgName, setCreateOrgName] = useState("");
+  const [createTier, setCreateTier] = useState("FREE");
+  const [createVip, setCreateVip] = useState(false);
+  const [deleteOrgConfirm, setDeleteOrgConfirm] = useState("");
+  const [adminUsers, setAdminUsers] = useState<AdminUserRow[]>([]);
+  const [provisionEmail, setProvisionEmail] = useState("");
+  const [provisionName, setProvisionName] = useState("");
+  const [provisionOrgId, setProvisionOrgId] = useState("");
+  const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
+  const [provisionSendEmail, setProvisionSendEmail] = useState(true);
+  const [busyAction, setBusyAction] = useState(false);
 
   const loadOrgs = useCallback(async () => {
     const data = await manageSubsListOrganizationsAction();
@@ -88,6 +111,15 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     setPending(data);
   }, []);
 
+  const loadUsers = useCallback(async () => {
+    const data = await listUsersForAdminAction();
+    if ("error" in data) {
+      toast.error(data.error);
+      return;
+    }
+    setAdminUsers(data);
+  }, []);
+
   const loadSettings = useCallback(async () => {
     const res = await fetch("/api/admin/platform-settings", { credentials: "include" });
     const data = await res.json();
@@ -101,9 +133,9 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadOrgs(), loadPending(), loadSettings()]);
+    await Promise.all([loadOrgs(), loadPending(), loadUsers(), loadSettings()]);
     setLoading(false);
-  }, [loadOrgs, loadPending, loadSettings]);
+  }, [loadOrgs, loadPending, loadUsers, loadSettings]);
 
   useEffect(() => {
     void refreshAll();
@@ -206,6 +238,121 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     if (tab === "health" && !health) void loadHealth();
   }, [tab, health]);
 
+  useEffect(() => {
+    if (tab === "users" && adminUsers.length === 0) void loadUsers();
+  }, [tab, adminUsers.length, loadUsers]);
+
+  useEffect(() => {
+    if (selectedOrgId && !provisionOrgId) setProvisionOrgId(selectedOrgId);
+  }, [selectedOrgId, provisionOrgId]);
+
+  const handleCreateOrg = async () => {
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", createEmail.trim().toLowerCase());
+      fd.set("name", createName.trim());
+      fd.set("organizationName", createOrgName.trim());
+      fd.set("tier", createTier);
+      if (createVip) fd.set("vip", "on");
+      const r = await manageSubsCreateManualUserAction(fd);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success("מנוי חדש נוצר — פרטי התחברות נשלחו במייל");
+      setShowCreateOrg(false);
+      setCreateEmail("");
+      setCreateName("");
+      setCreateOrgName("");
+      setCreateTier("FREE");
+      setCreateVip(false);
+      await loadOrgs();
+      await loadUsers();
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!selectedOrg) return;
+    if (
+      !window.confirm(
+        `למחוק את הארגון «${selectedOrg.name}» ואת כל המשתמשים והנתונים שלו? פעולה בלתי הפיכה.`,
+      )
+    ) {
+      return;
+    }
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("organizationId", selectedOrg.id);
+      fd.set("confirmation", deleteOrgConfirm.trim());
+      const r = await manageSubsDeleteOrganizationAction(fd);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success("הארגון נמחק");
+      setSelectedOrgId(null);
+      setDeleteOrgConfirm("");
+      await loadOrgs();
+      await loadUsers();
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleDeleteUser = async (email: string) => {
+    if (!window.confirm(`למחוק את המשתמש ${email}?`)) return;
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", email.trim().toLowerCase());
+      const r = await manageSubsDeleteUserByEmailAction(fd);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success("המשתמש נמחק");
+      setUserLookup(null);
+      setUserEmail("");
+      await loadUsers();
+      await loadOrgs();
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleProvisionUser = async () => {
+    const orgId = provisionOrgId || selectedOrgId;
+    if (!orgId) {
+      toast.error("בחרו ארגון");
+      return;
+    }
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", provisionEmail.trim().toLowerCase());
+      fd.set("name", provisionName.trim());
+      fd.set("organizationId", orgId);
+      fd.set("role", provisionRole);
+      fd.set("useGenerated", "on");
+      if (provisionSendEmail) fd.set("sendEmail", "on");
+      const r = await provisionUserAction(fd);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(r.emailed ? "משתמש נוצר — פרטים נשלחו במייל" : "משתמש נוצר");
+      setProvisionEmail("");
+      setProvisionName("");
+      await loadUsers();
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
   const savePlatformSettings = async () => {
     if (!platformConfig) return;
     setSavingSettings(true);
@@ -295,6 +442,74 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
 
       <main className={`flex-1 overflow-y-auto p-4 ${variant === "widget" ? "min-h-0" : ""}`}>
         {tab === "subscriptions" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateOrg((v) => !v)}
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500"
+              >
+                <Plus size={16} />
+                {showCreateOrg ? "סגור טופס" : "מנוי / ארגון חדש"}
+              </button>
+            </div>
+
+            {showCreateOrg ? (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <h3 className="mb-3 text-sm font-black">יצירת ארגון + מנהל ראשון</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <input
+                    type="email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    placeholder="אימייל מנהל *"
+                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  />
+                  <input
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder="שם מלא"
+                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  />
+                  <input
+                    value={createOrgName}
+                    onChange={(e) => setCreateOrgName(e.target.value)}
+                    placeholder="שם ארגון *"
+                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                  />
+                  <select
+                    value={createTier}
+                    onChange={(e) => setCreateTier(e.target.value)}
+                    disabled={createVip}
+                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  >
+                    {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => (
+                      <option key={t} value={t}>
+                        {tierLabelHe(t)}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-2 text-sm font-bold">
+                    <input
+                      type="checkbox"
+                      checked={createVip}
+                      onChange={(e) => setCreateVip(e.target.checked)}
+                    />
+                    VIP (ללא הגבלת סריקות)
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyAction}
+                  onClick={() => void handleCreateOrg()}
+                  className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
+                >
+                  {busyAction ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                  צור מנוי
+                </button>
+              </div>
+            ) : null}
+
           <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
             <div className="overflow-hidden rounded-xl border border-[color:var(--border-main)]">
               <table className="w-full text-sm">
@@ -386,11 +601,30 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   >
                     עדכן יתרות סריקה
                   </button>
+                  <div className="mt-4 border-t border-rose-500/30 pt-4">
+                    <p className="mb-2 text-xs font-bold text-rose-600">מחיקת ארגון (בלתי הפיך)</p>
+                    <input
+                      value={deleteOrgConfirm}
+                      onChange={(e) => setDeleteOrgConfirm(e.target.value)}
+                      placeholder={`הקלידו «${selectedOrg.name}» לאישור`}
+                      className="mb-2 w-full rounded-lg border border-rose-500/40 p-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={busyAction || deleteOrgConfirm.trim() !== selectedOrg.name}
+                      onClick={() => void handleDeleteOrg()}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/50 bg-rose-500/10 py-2 text-sm font-bold text-rose-600 disabled:opacity-40"
+                    >
+                      <Trash2 size={16} />
+                      מחק ארגון
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-[color:var(--foreground-muted)]">בחרו ארגון מהטבלה לעריכה</p>
               )}
             </aside>
+          </div>
           </div>
         )}
 
@@ -454,28 +688,142 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
         )}
 
         {tab === "users" && (
-          <div className="max-w-xl space-y-4">
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="אימייל לחיפוש"
-                className="flex-1 rounded-xl border border-[color:var(--border-main)] p-3 text-sm"
-              />
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <h3 className="mb-3 text-sm font-black">הוספת משתמש לארגון</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="email"
+                  value={provisionEmail}
+                  onChange={(e) => setProvisionEmail(e.target.value)}
+                  placeholder="אימייל *"
+                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                />
+                <input
+                  value={provisionName}
+                  onChange={(e) => setProvisionName(e.target.value)}
+                  placeholder="שם"
+                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                />
+                <select
+                  value={provisionOrgId}
+                  onChange={(e) => setProvisionOrgId(e.target.value)}
+                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                >
+                  <option value="">בחרו ארגון *</option>
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={provisionRole}
+                  onChange={(e) => setProvisionRole(e.target.value)}
+                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                >
+                  <option value="ORG_ADMIN">מנהל ארגון</option>
+                  <option value="PROJECT_MGR">מנהל פרויקטים</option>
+                  <option value="EMPLOYEE">עובד</option>
+                  <option value="CLIENT">לקוח</option>
+                </select>
+                <label className="flex items-center gap-2 text-sm font-bold">
+                  <input
+                    type="checkbox"
+                    checked={provisionSendEmail}
+                    onChange={(e) => setProvisionSendEmail(e.target.checked)}
+                  />
+                  שלח פרטי התחברות במייל
+                </label>
+              </div>
               <button
                 type="button"
-                onClick={() => void handleLookupUser()}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+                disabled={busyAction}
+                onClick={() => void handleProvisionUser()}
+                className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
-                חפש
+                {busyAction ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                הוסף משתמש
               </button>
             </div>
-            {userLookup ? (
-              <pre className="overflow-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-4 text-xs">
-                {JSON.stringify(userLookup, null, 2)}
-              </pre>
-            ) : null}
+
+            <div className="overflow-hidden rounded-xl border border-[color:var(--border-main)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[color:var(--surface-soft)] text-[10px] uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                  <tr>
+                    <th className="p-2 text-start">אימייל</th>
+                    <th className="p-2 text-start">ארגון</th>
+                    <th className="p-2 text-start">תפקיד</th>
+                    <th className="p-2 text-start">סטטוס</th>
+                    <th className="p-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminUsers.map((u) => (
+                    <tr key={u.id} className="border-t border-[color:var(--border-main)]">
+                      <td className="p-2 font-semibold">{u.email}</td>
+                      <td className="p-2 text-xs">{u.organizationName ?? "—"}</td>
+                      <td className="p-2 text-xs">{u.role}</td>
+                      <td className="p-2 text-xs">{u.accountStatus}</td>
+                      <td className="p-2">
+                        <button
+                          type="button"
+                          title="מחק משתמש"
+                          onClick={() => void handleDeleteUser(u.email)}
+                          className="rounded-lg p-1.5 text-rose-500 hover:bg-rose-500/10"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="max-w-xl rounded-xl border border-[color:var(--border-main)] p-4">
+              <p className="mb-2 text-xs font-bold text-[color:var(--foreground-muted)]">חיפוש מהיר</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={userEmail}
+                  onChange={(e) => setUserEmail(e.target.value)}
+                  placeholder="אימייל לחיפוש"
+                  className="flex-1 rounded-xl border border-[color:var(--border-main)] p-3 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleLookupUser()}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+                >
+                  חפש
+                </button>
+              </div>
+              {userLookup &&
+              typeof userLookup === "object" &&
+              "found" in userLookup &&
+              (userLookup as { found: boolean }).found &&
+              "user" in userLookup ? (
+                <div className="mt-3 space-y-2 text-sm">
+                  <p>
+                    <span className="font-bold">{(userLookup as { user: { email: string } }).user.email}</span> ·{" "}
+                    {(userLookup as { user: { role: string } }).user.role}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleDeleteUser((userLookup as { user: { email: string } }).user.email)
+                    }
+                    className="flex items-center gap-2 rounded-lg border border-rose-500/40 px-3 py-1.5 text-xs font-bold text-rose-600"
+                  >
+                    <Trash2 size={14} />
+                    מחק משתמש זה
+                  </button>
+                </div>
+              ) : userLookup && typeof userLookup === "object" && "found" in userLookup ? (
+                <p className="mt-2 text-sm text-[color:var(--foreground-muted)]">משתמש לא נמצא</p>
+              ) : null}
+            </div>
           </div>
         )}
 
