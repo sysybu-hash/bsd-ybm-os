@@ -407,12 +407,15 @@ export default function SettingsWidget() {
                 {driveSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 שמור הגדרות Drive
               </button>
-              <a
-                href="/api/auth/google-start?callbackUrl=/"
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.assign("/api/auth/google-start?callbackUrl=/");
+                }}
                 className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
               >
                 חיבור מחדש ל-Google
-              </a>
+              </button>
             </div>
           </section>
 
