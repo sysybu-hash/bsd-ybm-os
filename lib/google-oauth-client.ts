@@ -43,7 +43,7 @@ export async function getGoogleOAuth2ClientForUser(userId: string) {
       Boolean(account.access_token) && expiresAtMs > Date.now() + 60_000;
     if (!accessValid) {
       throw new GoogleOAuthRefreshError(
-        "נדרש חיבור מחדש ל-Google (חסר refresh token). לחצו «חיבור מחדש» בהגדרות או בווידג'ט Drive.",
+        "נדרש חיבור מחדש ל-Google (חסר refresh token). לחצו «התחברות מחדש» — ייפתח אישור מלא מ-Google.",
       );
     }
   }

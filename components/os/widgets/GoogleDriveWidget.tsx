@@ -145,6 +145,26 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
   }, [initWorkspace]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_reconnected") === "1") {
+      toast.success("חיבור Google עודכן — טוען מחדש את Drive");
+      params.delete("google_reconnected");
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", next);
+      void initWorkspace();
+    } else if (params.get("google_reconnect") === "missing_refresh") {
+      toast.error(
+        "Google לא הנפיק refresh token. הסירו גישה לאפליקציה בחשבון Google (ניהול חשבון → אבטחה → גישה של צד שלישי), ואז לחצו שוב «התחברות מחדש».",
+        { duration: 12_000 },
+      );
+      params.delete("google_reconnect");
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", next);
+    }
+  }, [initWorkspace]);
+
+  useEffect(() => {
     syncIntervalRef.current = setInterval(() => {
       void runSync(true).then((ok) => {
         if (ok) void fetchFiles(currentFolderId);
@@ -356,12 +376,15 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
           <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
             <p className="text-sm font-bold text-rose-500 max-w-md leading-relaxed">{driveError}</p>
             {reauthUrl ? (
-              <a
-                href={reauthUrl}
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.assign(reauthUrl);
+                }}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-lg transition-all"
               >
                 התחברות מחדש עם Google
-              </a>
+              </button>
             ) : null}
           </div>
         ) : loading ? (

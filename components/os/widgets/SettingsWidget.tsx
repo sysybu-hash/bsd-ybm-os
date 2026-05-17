@@ -410,7 +410,7 @@ export default function SettingsWidget() {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.assign("/api/auth/google-start?callbackUrl=/");
+                  window.location.assign("/api/auth/google-reconnect?callbackUrl=/");
                 }}
                 className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
               >

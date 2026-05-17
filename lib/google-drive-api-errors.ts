@@ -3,9 +3,10 @@ import {
   GoogleOAuthNotLinkedError,
   GoogleOAuthRefreshError,
 } from "@/lib/services/google-drive";
+import { buildGoogleReconnectUrl } from "@/lib/google-account-tokens";
 
 export function googleDriveErrorResponse(error: unknown, callbackUrl = "/") {
-  const reauthUrl = `/api/auth/google-start?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const reauthUrl = buildGoogleReconnectUrl(callbackUrl);
 
   if (error instanceof GoogleOAuthNotLinkedError) {
     return NextResponse.json(

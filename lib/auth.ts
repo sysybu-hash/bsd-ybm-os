@@ -12,6 +12,7 @@ import { isLoginAllowedByAllowlist } from "@/lib/login-allowlist";
 import { sendWelcomeEmail } from "@/lib/mail";
 import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
 import { applyNextAuthUrlEnv } from "@/lib/site-url";
+import { persistGoogleOAuthAccountFromNextAuth } from "@/lib/google-account-tokens";
 
 applyNextAuthUrlEnv();
 normalizeNextAuthUrlEnv();
@@ -315,7 +316,15 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      try {
+        if (account?.provider === "google" && user?.id) {
+          await persistGoogleOAuthAccountFromNextAuth(user.id, account);
+        }
+      } catch (e) {
+        console.error("[auth] persist Google tokens", e);
+      }
+
       try {
         const emailRaw = user?.email?.trim();
         if (!emailRaw) return;
