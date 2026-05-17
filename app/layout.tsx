@@ -9,6 +9,7 @@ import SessionProvider from "@/components/os/system/SessionProvider";
 import { CSPostHogProvider } from "@/components/providers/posthog-provider";
 import PostHogIdentify from "@/components/providers/posthog-identify";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
+import { TradeProfileProvider } from "@/components/os/system/TradeProfileProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/load-messages";
@@ -106,6 +107,7 @@ export default async function RootLayout({
             <CSPostHogProvider>
             <PostHogIdentify />
             <I18nProvider locale={locale} messages={messages}>
+              <TradeProfileProvider>
               <a
                 href="#site-main"
                 className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100000] focus:rounded-xl focus:bg-[#1f2937] focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-white"
@@ -150,6 +152,7 @@ export default async function RootLayout({
                   `}
                 </Script>
               </div>
+              </TradeProfileProvider>
             </I18nProvider>
             </CSPostHogProvider>
           </SessionProvider>

@@ -46,6 +46,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
           heading: "עוגיות",
           body: "ניהול העדפות דרך מסך ההסכמה באתר. עוגיות הכרחיות לפעולת המערכת.",
         },
+        {
+          heading: "התחברות Google ו-Google Drive",
+          body: `בהתחברות עם Google אנו מקבלים מזהה, אימייל ושם פרופיל (openid, email, profile). בחיבור אופציונלי ל-Google Drive נדרשת הרשאת ${legalSite.siteName} לגישה לקבצים ותיקיות בחשבון Google שלכם (scope: https://www.googleapis.com/auth/drive) לצורך סנכרון תיקיית עבודה, הצגת קבצים, העלאה ופענוח מסמכים ל-ERP. תוכן קבצים שתבחרו לעיבוד עשוי להישמר בשרתינו. לא נמכור מידע זה לצדדים שלישיים. ביטול: הגדרות במערכת, או https://myaccount.google.com/permissions — פירוט: ${legalSite.publicUrl}/integrations/google. פניות: ${legalSite.contactEmail}.`,
+        },
       ],
     },
     en: {
@@ -69,6 +73,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
           body: `Access, rectification, erasure, restriction, portability, objection — contact ${legalSite.contactEmail}. EU representative: ${legalSite.euRepresentative}`,
         },
         { heading: "Cookies", body: "Manage preferences via the on-site consent banner." },
+        {
+          heading: "Google Sign-In & Google Drive",
+          body: `Sign-in uses openid, email, profile. Optional Drive connection uses https://www.googleapis.com/auth/drive to sync a workspace folder, list/upload files, and decode documents into ERP. Selected file content may be stored on our servers. We do not sell this data. Revoke via app settings or https://myaccount.google.com/permissions. Details: ${legalSite.publicUrl}/integrations/google. Contact: ${legalSite.contactEmail}.`,
+        },
       ],
     },
     ru: {
@@ -92,6 +100,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
           body: `Доступ, исправление, удаление — ${legalSite.contactEmail}. Представитель в ЕС: ${legalSite.euRepresentative}`,
         },
         { heading: "Cookie", body: "Управление через баннер согласия на сайте." },
+        {
+          heading: "Google и Google Drive",
+          body: `Вход: openid, email, profile. Drive: https://www.googleapis.com/auth/drive — синхронизация и документы. Отзыв: настройки приложения или https://myaccount.google.com/permissions. Подробнее: ${legalSite.publicUrl}/integrations/google. ${legalSite.contactEmail}.`,
+        },
       ],
     },
   },

@@ -23,10 +23,10 @@ import { DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from '@/lib/google-drive-config';
 import { toast } from 'sonner';
 
 const ASSIGN_ROLES = [
-  { value: 'EMPLOYEE', label: 'עובד' },
-  { value: 'PROJECT_MGR', label: 'מנהל פרויקטים' },
-  { value: 'CLIENT', label: 'לקוח' },
-  { value: 'ORG_ADMIN', label: 'מנהל ארגון' },
+  { value: 'EMPLOYEE', label: '׳¢׳•׳‘׳“' },
+  { value: 'PROJECT_MGR', label: '׳׳ ׳”׳ ׳₪׳¨׳•׳™׳§׳˜׳™׳' },
+  { value: 'CLIENT', label: '׳׳§׳•׳—' },
+  { value: 'ORG_ADMIN', label: '׳׳ ׳”׳ ׳׳¨׳’׳•׳' },
 ] as const;
 
 export default function SettingsWidget() {
@@ -52,6 +52,9 @@ export default function SettingsWidget() {
     driveSyncEnabled: true,
     driveFolderId: null as string | null,
     lastSyncAt: null as string | null,
+    driveAutoDecodeOnSync: false,
+    driveAutoSaveAfterDecode: false,
+    driveAskBeforeSave: true,
   });
   const [driveSaving, setDriveSaving] = useState(false);
 
@@ -95,14 +98,17 @@ export default function SettingsWidget() {
               driveSyncEnabled: driveData.settings.driveSyncEnabled ?? true,
               driveFolderId: driveData.settings.driveFolderId ?? null,
               lastSyncAt: driveData.settings.lastSyncAt ?? null,
+              driveAutoDecodeOnSync: driveData.settings.driveAutoDecodeOnSync ?? false,
+              driveAutoSaveAfterDecode: driveData.settings.driveAutoSaveAfterDecode ?? false,
+              driveAskBeforeSave: driveData.settings.driveAskBeforeSave ?? true,
             });
           }
         }
       } catch {
-        /* Drive לא מחובר */
+        /* Drive ׳׳ ׳׳—׳•׳‘׳¨ */
       }
     } catch (err) {
-      toast.error('שגיאה בטעינת הגדרות');
+      toast.error('׳©׳’׳™׳׳” ׳‘׳˜׳¢׳™׳ ׳× ׳”׳’׳“׳¨׳•׳×');
     } finally {
       setLoading(false);
     }
@@ -118,7 +124,7 @@ export default function SettingsWidget() {
     if (!file) return;
 
     if (file.type !== 'image/svg+xml' && !file.type.startsWith('image/')) {
-      toast.error('אנא בחר קובץ תמונה (רצוי SVG)');
+      toast.error('׳׳ ׳ ׳‘׳—׳¨ ׳§׳•׳‘׳¥ ׳×׳׳•׳ ׳” (׳¨׳¦׳•׳™ SVG)');
       return;
     }
 
@@ -126,7 +132,7 @@ export default function SettingsWidget() {
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       setSettings({ ...settings, logoSvg: base64 });
-      toast.success('לוגו נטען בהצלחה');
+      toast.success('׳׳•׳’׳• ׳ ׳˜׳¢׳ ׳‘׳”׳¦׳׳—׳”');
     };
     reader.readAsDataURL(file);
   };
@@ -148,9 +154,9 @@ export default function SettingsWidget() {
       });
       
       if (!res.ok) throw new Error();
-      toast.success('ההגדרות נשמרו בהצלחה');
+      toast.success('׳”׳”׳’׳“׳¨׳•׳× ׳ ׳©׳׳¨׳• ׳‘׳”׳¦׳׳—׳”');
     } catch (err) {
-      toast.error('שגיאה בשמירת ההגדרות');
+      toast.error('׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳”׳’׳“׳¨׳•׳×');
     } finally {
       setSaving(false);
     }
@@ -166,21 +172,27 @@ export default function SettingsWidget() {
         body: JSON.stringify({
           driveFolderName: driveSettings.driveFolderName.trim(),
           driveSyncEnabled: driveSettings.driveSyncEnabled,
+          driveAutoDecodeOnSync: driveSettings.driveAutoDecodeOnSync,
+          driveAutoSaveAfterDecode: driveSettings.driveAutoSaveAfterDecode,
+          driveAskBeforeSave: driveSettings.driveAskBeforeSave,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'שגיאה בשמירה');
+      if (!res.ok) throw new Error(data.error ?? '׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳”');
       if (data.settings) {
         setDriveSettings({
           driveFolderName: data.settings.driveFolderName,
           driveSyncEnabled: data.settings.driveSyncEnabled,
           driveFolderId: data.settings.driveFolderId ?? null,
           lastSyncAt: data.settings.lastSyncAt ?? null,
+          driveAutoDecodeOnSync: data.settings.driveAutoDecodeOnSync ?? false,
+          driveAutoSaveAfterDecode: data.settings.driveAutoSaveAfterDecode ?? false,
+          driveAskBeforeSave: data.settings.driveAskBeforeSave ?? true,
         });
       }
-      toast.success('הגדרות Google Drive נשמרו');
+      toast.success('׳”׳’׳“׳¨׳•׳× Google Drive ׳ ׳©׳׳¨׳•');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'שגיאה בשמירת הגדרות Drive');
+      toast.error(e instanceof Error ? e.message : '׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳’׳“׳¨׳•׳× Drive');
     } finally {
       setDriveSaving(false);
     }
@@ -189,11 +201,11 @@ export default function SettingsWidget() {
   const handleAssignUser = async () => {
     const email = assignEmail.trim().toLowerCase();
     if (!email) {
-      toast.error('הזן אימייל של משתמש שכבר התחבר לפחות פעם אחת');
+      toast.error('׳”׳–׳ ׳׳™׳׳™׳™׳ ׳©׳ ׳׳©׳×׳׳© ׳©׳›׳‘׳¨ ׳”׳×׳—׳‘׳¨ ׳׳₪׳—׳•׳× ׳₪׳¢׳ ׳׳—׳×');
       return;
     }
     if (!assignTargetOrgId) {
-      toast.error('לא נמצא מזהה ארגון לשיוך');
+      toast.error('׳׳ ׳ ׳׳¦׳ ׳׳–׳”׳” ׳׳¨׳’׳•׳ ׳׳©׳™׳•׳');
       return;
     }
 
@@ -212,16 +224,16 @@ export default function SettingsWidget() {
       const data = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean };
 
       if (!res.ok) {
-        throw new Error(data.error || 'שגיאה בשיוך');
+        throw new Error(data.error || '׳©׳’׳™׳׳” ׳‘׳©׳™׳•׳');
       }
 
-      toast.success('המשתמש שויך לארגון בהצלחה', {
-        description: 'כדי ש־Gemini Live והרשאות יתעדכנו מיד — מומלץ שהמשתמש יצא ויכנס שוב למערכת.',
+      toast.success('׳”׳׳©׳×׳׳© ׳©׳•׳™׳ ׳׳׳¨׳’׳•׳ ׳‘׳”׳¦׳׳—׳”', {
+        description: '׳›׳“׳™ ׳©ײ¾Gemini Live ׳•׳”׳¨׳©׳׳•׳× ׳™׳×׳¢׳“׳›׳ ׳• ׳׳™׳“ ג€” ׳׳•׳׳׳¥ ׳©׳”׳׳©׳×׳׳© ׳™׳¦׳ ׳•׳™׳›׳ ׳¡ ׳©׳•׳‘ ׳׳׳¢׳¨׳›׳×.',
       });
       setAssignEmail('');
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'שגיאה בשיוך משתמש');
+      toast.error(e instanceof Error ? e.message : '׳©׳’׳™׳׳” ׳‘׳©׳™׳•׳ ׳׳©׳×׳׳©');
     } finally {
       setAssigning(false);
     }
@@ -244,8 +256,8 @@ export default function SettingsWidget() {
             <Settings size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">הגדרות מערכת</h2>
-            <p className="text-xs text-[color:var(--foreground-muted)]">ניהול פרטי העסק, לוגו והתראות גלובליות</p>
+            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">׳”׳’׳“׳¨׳•׳× ׳׳¢׳¨׳›׳×</h2>
+            <p className="text-xs text-[color:var(--foreground-muted)]">׳ ׳™׳”׳•׳ ׳₪׳¨׳˜׳™ ׳”׳¢׳¡׳§, ׳׳•׳’׳• ׳•׳”׳×׳¨׳׳•׳× ׳’׳׳•׳‘׳׳™׳•׳×</p>
           </div>
         </div>
         <button 
@@ -254,7 +266,7 @@ export default function SettingsWidget() {
           className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-          שמור שינויים
+          ׳©׳׳•׳¨ ׳©׳™׳ ׳•׳™׳™׳
         </button>
       </div>
 
@@ -265,38 +277,38 @@ export default function SettingsWidget() {
           <section>
             <div className="flex items-center gap-2 mb-6">
               <Building2 size={18} className="text-indigo-500" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">פרופיל עסקי</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">׳₪׳¨׳•׳₪׳™׳ ׳¢׳¡׳§׳™</h3>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שם העסק / חברה</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳©׳ ׳”׳¢׳¡׳§ / ׳—׳‘׳¨׳”</label>
                 <div className="relative">
                   <Building2 className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
                     value={settings.name}
                     onChange={(e) => setSettings({...settings, name: e.target.value})}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
-                    placeholder="לדוגמה: BSD-YBM פתרונות תשתית"
+                    placeholder="׳׳“׳•׳’׳׳”: BSD-YBM ׳₪׳×׳¨׳•׳ ׳•׳× ׳×׳©׳×׳™׳×"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">ח&quot;פ / עוסק מורשה</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳—&quot;׳₪ / ׳¢׳•׳¡׳§ ׳׳•׳¨׳©׳”</label>
                 <div className="relative">
                   <Hash className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
                     value={settings.taxId}
                     onChange={(e) => setSettings({...settings, taxId: e.target.value})}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
-                    placeholder="מספר זיהוי מס"
+                    placeholder="׳׳¡׳₪׳¨ ׳–׳™׳”׳•׳™ ׳׳¡"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל למשלוח התראות</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳™׳׳™׳™׳ ׳׳׳©׳׳•׳— ׳”׳×׳¨׳׳•׳×</label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
@@ -309,7 +321,7 @@ export default function SettingsWidget() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אתר אינטרנט</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳×׳¨ ׳׳™׳ ׳˜׳¨׳ ׳˜</label>
                 <div className="relative">
                   <Globe className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
@@ -327,7 +339,7 @@ export default function SettingsWidget() {
           <section>
             <div className="flex items-center gap-2 mb-6">
               <ImageIcon size={18} className="text-emerald-500" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">מיתוג ולוגו</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">׳׳™׳×׳•׳’ ׳•׳׳•׳’׳•</h3>
             </div>
 
             <div className="bg-[color:var(--background-main)]/30 border-2 border-dashed border-[color:var(--border-main)] rounded-[2rem] p-10 flex flex-col items-center text-center">
@@ -338,19 +350,19 @@ export default function SettingsWidget() {
                   <ImageIcon size={40} className="text-[color:var(--foreground-muted)] opacity-30" />
                 )}
               </div>
-              <h4 className="font-bold text-[color:var(--foreground-main)] mb-1">העלאת לוגו העסק</h4>
-              <p className="text-xs text-[color:var(--foreground-muted)] mb-6 max-w-xs">מומלץ להשתמש בפורמט SVG לקבלת איכות מקסימלית בכל חלקי המערכת והמסמכים</p>
+              <h4 className="font-bold text-[color:var(--foreground-main)] mb-1">׳”׳¢׳׳׳× ׳׳•׳’׳• ׳”׳¢׳¡׳§</h4>
+              <p className="text-xs text-[color:var(--foreground-muted)] mb-6 max-w-xs">׳׳•׳׳׳¥ ׳׳”׳©׳×׳׳© ׳‘׳₪׳•׳¨׳׳˜ SVG ׳׳§׳‘׳׳× ׳׳™׳›׳•׳× ׳׳§׳¡׳™׳׳׳™׳× ׳‘׳›׳ ׳—׳׳§׳™ ׳”׳׳¢׳¨׳›׳× ׳•׳”׳׳¡׳׳›׳™׳</p>
               
               <div className="flex gap-3">
                 <label className="px-4 py-2 bg-[color:var(--surface-card)]/50 dark:bg-white/10 border border-[color:var(--border-main)] rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-main)] transition-all cursor-pointer">
-                  <Upload size={14} /> בחר קובץ
+                  <Upload size={14} /> ׳‘׳—׳¨ ׳§׳•׳‘׳¥
                   <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
                 </label>
                 <button 
                   onClick={() => setSettings({ ...settings, logoSvg: '' })}
                   className="px-4 py-2 text-rose-500 text-xs font-bold hover:bg-rose-500/5 rounded-xl transition-all"
                 >
-                  הסר לוגו
+                  ׳”׳¡׳¨ ׳׳•׳’׳•
                 </button>
               </div>
             </div>
@@ -364,11 +376,11 @@ export default function SettingsWidget() {
               </h3>
             </div>
             <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
-              תיקיית ברירת מחדל ב-Drive לסנכרון דו-כיווני עם המערכת. אם אין refresh token — התנתקו והתחברו שוב עם Google (אישור הרשאות מלא).
+              ׳×׳™׳§׳™׳™׳× ׳‘׳¨׳™׳¨׳× ׳׳—׳“׳ ׳‘-Drive ׳׳¡׳ ׳›׳¨׳•׳ ׳“׳•-׳›׳™׳•׳•׳ ׳™ ׳¢׳ ׳”׳׳¢׳¨׳›׳×. ׳׳ ׳׳™׳ refresh token ג€” ׳”׳×׳ ׳×׳§׳• ׳•׳”׳×׳—׳‘׳¨׳• ׳©׳•׳‘ ׳¢׳ Google (׳׳™׳©׳•׳¨ ׳”׳¨׳©׳׳•׳× ׳׳׳).
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שם תיקיית סנכרון</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳©׳ ׳×׳™׳§׳™׳™׳× ׳¡׳ ׳›׳¨׳•׳</label>
                 <input
                   value={driveSettings.driveFolderName}
                   onChange={(e) => setDriveSettings({ ...driveSettings, driveFolderName: e.target.value })}
@@ -385,15 +397,50 @@ export default function SettingsWidget() {
                   className="h-4 w-4 rounded border-[color:var(--border-main)]"
                 />
                 <label htmlFor="drive-sync-enabled" className="text-sm font-semibold text-[color:var(--foreground-main)]">
-                  סנכרון אוטומטי דו-כיווני
+                  ׳¡׳ ׳›׳¨׳•׳ ׳׳•׳˜׳•׳׳˜׳™ ׳“׳•-׳›׳™׳•׳•׳ ׳™
                 </label>
               </div>
             </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={driveSettings.driveAutoDecodeOnSync}
+                  onChange={(e) =>
+                    setDriveSettings({ ...driveSettings, driveAutoDecodeOnSync: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-[color:var(--border-main)]"
+                />
+                ׳₪׳¢׳ ׳•׳— ׳׳•׳˜׳•׳׳˜׳™ ׳׳—׳¨׳™ ׳¡׳ ׳›׳¨׳•׳
+              </label>
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={driveSettings.driveAutoSaveAfterDecode}
+                  onChange={(e) =>
+                    setDriveSettings({ ...driveSettings, driveAutoSaveAfterDecode: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-[color:var(--border-main)]"
+                />
+                ׳©׳׳™׳¨׳” ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳¨׳™ ׳₪׳¢׳ ׳•׳—
+              </label>
+              <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={driveSettings.driveAskBeforeSave}
+                  onChange={(e) =>
+                    setDriveSettings({ ...driveSettings, driveAskBeforeSave: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-[color:var(--border-main)]"
+                />
+                ׳©׳׳ ׳׳₪׳ ׳™ ׳©׳׳™׳¨׳”
+              </label>
+            </div>
             {driveSettings.driveFolderId ? (
               <p className="mt-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
-                מזהה תיקייה: {driveSettings.driveFolderId}
+                ׳׳–׳”׳” ׳×׳™׳§׳™׳™׳”: {driveSettings.driveFolderId}
                 {driveSettings.lastSyncAt
-                  ? ` · סונכרן ${new Date(driveSettings.lastSyncAt).toLocaleString('he-IL')}`
+                  ? ` ֲ· ׳¡׳•׳ ׳›׳¨׳ ${new Date(driveSettings.lastSyncAt).toLocaleString('he-IL')}`
                   : ''}
               </p>
             ) : null}
@@ -405,7 +452,7 @@ export default function SettingsWidget() {
                 className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
               >
                 {driveSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                שמור הגדרות Drive
+                ׳©׳׳•׳¨ ׳”׳’׳“׳¨׳•׳× Drive
               </button>
               <button
                 type="button"
@@ -414,7 +461,7 @@ export default function SettingsWidget() {
                 }}
                 className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
               >
-                חיבור מחדש ל-Google
+                ׳—׳™׳‘׳•׳¨ ׳׳—׳“׳© ׳-Google
               </button>
             </div>
           </section>
@@ -424,15 +471,15 @@ export default function SettingsWidget() {
               <div className="flex items-center gap-2 mb-6">
                 <UserPlus size={18} className="text-amber-500" />
                 <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                  שיוך משתמשים לארגון
+                  ׳©׳™׳•׳ ׳׳©׳×׳׳©׳™׳ ׳׳׳¨׳’׳•׳
                 </h3>
               </div>
               <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
-                משתמש חייב להתחבר עם Google לפחות פעם אחת לפני השיוך. אחרי השיוך — יציאה והתחברות מחדש מעדכנות את העוזר הקולי (Gemini Live) והרשאות API.
+                ׳׳©׳×׳׳© ׳—׳™׳™׳‘ ׳׳”׳×׳—׳‘׳¨ ׳¢׳ Google ׳׳₪׳—׳•׳× ׳₪׳¢׳ ׳׳—׳× ׳׳₪׳ ׳™ ׳”׳©׳™׳•׳. ׳׳—׳¨׳™ ׳”׳©׳™׳•׳ ג€” ׳™׳¦׳™׳׳” ׳•׳”׳×׳—׳‘׳¨׳•׳× ׳׳—׳“׳© ׳׳¢׳“׳›׳ ׳•׳× ׳׳× ׳”׳¢׳•׳–׳¨ ׳”׳§׳•׳׳™ (Gemini Live) ׳•׳”׳¨׳©׳׳•׳× API.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div className="space-y-2 md:col-span-1">
-                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל משתמש</label>
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳™׳׳™׳™׳ ׳׳©׳×׳׳©</label>
                   <input
                     type="email"
                     value={assignEmail}
@@ -443,7 +490,7 @@ export default function SettingsWidget() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">תפקיד בארגון</label>
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳×׳₪׳§׳™׳“ ׳‘׳׳¨׳’׳•׳</label>
                   <select
                     value={assignRole}
                     onChange={(e) => setAssignRole(e.target.value)}
@@ -464,7 +511,7 @@ export default function SettingsWidget() {
                     className="w-full md:w-auto bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                   >
                     {assigning ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                    שייך לארגון
+                    ׳©׳™׳™׳ ׳׳׳¨׳’׳•׳
                   </button>
                 </div>
               </div>
@@ -478,9 +525,9 @@ export default function SettingsWidget() {
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">אבטחת נתונים</h4>
+                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">׳׳‘׳˜׳—׳× ׳ ׳×׳•׳ ׳™׳</h4>
                 <p className="text-xs text-indigo-700/60 dark:text-indigo-400/60 leading-relaxed">
-                  הגדרות אלו מסונכרנות ישירות לטבלת ה-Organization ב-PostgreSQL. הן משפיעות על כותרות החשבוניות, הצעות המחיר והתראות המערכת הנשלחות ללקוחות.
+                  ׳”׳’׳“׳¨׳•׳× ׳׳׳• ׳׳¡׳•׳ ׳›׳¨׳ ׳•׳× ׳™׳©׳™׳¨׳•׳× ׳׳˜׳‘׳׳× ׳”-Organization ׳‘-PostgreSQL. ׳”׳ ׳׳©׳₪׳™׳¢׳•׳× ׳¢׳ ׳›׳•׳×׳¨׳•׳× ׳”׳—׳©׳‘׳•׳ ׳™׳•׳×, ׳”׳¦׳¢׳•׳× ׳”׳׳—׳™׳¨ ׳•׳”׳×׳¨׳׳•׳× ׳”׳׳¢׳¨׳›׳× ׳”׳ ׳©׳׳—׳•׳× ׳׳׳§׳•׳—׳•׳×.
                 </p>
               </div>
             </div>
@@ -491,4 +538,5 @@ export default function SettingsWidget() {
     </div>
   );
 }
+
 

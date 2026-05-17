@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -19,6 +19,7 @@ import { logActivity } from "@/lib/activity-log";
 import { sendProvisionCredentialsEmail } from "@/app/actions/send-credentials-email";
 import { sendSubscriptionTierInvitationEmail } from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
+import { normalizeConstructionTrade } from "@/lib/construction-trades";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 
 async function requireSuperAdmin() {
@@ -45,6 +46,7 @@ export async function manageSubsListOrganizationsAction(): Promise<ExecutiveOrgR
     select: {
       id: true,
       name: true,
+      constructionTrade: true,
       subscriptionTier: true,
       subscriptionStatus: true,
       cheapScansRemaining: true,
@@ -63,6 +65,7 @@ export async function manageSubsListOrganizationsAction(): Promise<ExecutiveOrgR
   return orgs.map((o) => ({
     id: o.id,
     name: o.name,
+    constructionTrade: o.constructionTrade,
     subscriptionTier: o.subscriptionTier,
     subscriptionStatus: o.subscriptionStatus,
     cheapScansRemaining: o.cheapScansRemaining,
@@ -133,6 +136,7 @@ export async function manageSubsCreateManualUserAction(
   const tierRaw = String(formData.get("tier") ?? "FREE");
   const vip = formData.get("vip") === "on" || formData.get("vip") === "true";
   const typeRaw = String(formData.get("orgType") ?? "COMPANY").toUpperCase();
+  const constructionTrade = normalizeConstructionTrade(String(formData.get("constructionTrade") ?? ""));
 
   if (!email.includes("@")) return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
   if (organizationName.length < 2) return { ok: false, error: "׳©׳ ׳׳¨׳’׳•׳ ׳§׳¦׳¨ ׳׳“׳™" };
@@ -156,6 +160,7 @@ export async function manageSubsCreateManualUserAction(
         data: {
           name: organizationName,
           type: orgType,
+          constructionTrade,
           subscriptionTier: "CORPORATE",
           subscriptionStatus: "ACTIVE",
           isVip: true,
@@ -180,6 +185,7 @@ export async function manageSubsCreateManualUserAction(
         data: {
           name: organizationName,
           type: orgType,
+          constructionTrade,
           subscriptionTier: tier,
           subscriptionStatus: "ACTIVE",
           isVip: false,
@@ -316,6 +322,7 @@ export async function manageSubsUpdateSubscriptionAction(
   const organizationId = String(formData.get("organizationId") ?? "").trim();
   const tierRaw = String(formData.get("tier") ?? "").trim();
   const statusRaw = String(formData.get("subscriptionStatus") ?? "").trim().toUpperCase();
+  const constructionTradeRaw = String(formData.get("constructionTrade") ?? "").trim();
 
   const tier = parseSubscriptionTier(tierRaw);
   if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
@@ -323,12 +330,20 @@ export async function manageSubsUpdateSubscriptionAction(
   if (!statusRaw) return { ok: false, error: "׳¡׳˜׳˜׳•׳¡ ׳׳ ׳•׳™ ׳—׳¡׳¨" };
 
   try {
+    const data: {
+      subscriptionTier: typeof tier;
+      subscriptionStatus: string;
+      constructionTrade?: string;
+    } = {
+      subscriptionTier: tier,
+      subscriptionStatus: statusRaw,
+    };
+    if (constructionTradeRaw) {
+      data.constructionTrade = normalizeConstructionTrade(constructionTradeRaw);
+    }
     await prisma.organization.update({
       where: { id: organizationId },
-      data: {
-        subscriptionTier: tier,
-        subscriptionStatus: statusRaw,
-      },
+      data,
     });
     if (s.user?.id) {
       await logActivity(s.user.id, organizationId, "SUBSCRIPTION:updated", `tier=${tier};status=${statusRaw}`);

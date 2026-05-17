@@ -17,9 +17,25 @@ import {
   Loader2,
   Library,
   Sparkles,
+  LayoutList,
+  LayoutGrid,
+  Rows3,
+  Table2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { WidgetType } from "@/hooks/use-window-manager";
+import type { DriveDecodeStatus } from "@prisma/client";
+import {
+  type DriveViewMode,
+  loadDriveViewMode,
+  saveDriveViewMode,
+} from "@/lib/google-drive-view-mode";
+import { decodeStatusLabel } from "@/lib/google-drive-decode-routing";
+import GoogleDriveDecodeReviewPanel, {
+  type ReviewEditableItem,
+} from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
 
 interface GoogleFile {
   id: string;
@@ -27,6 +43,11 @@ interface GoogleFile {
   mimeType: string;
   webViewLink: string;
   iconLink: string;
+  modifiedTime?: string | null;
+  decodeStatus?: DriveDecodeStatus | null;
+  decodeError?: string | null;
+  detectedClientName?: string | null;
+  detectedDocType?: string | null;
 }
 
 type WorkspaceInfo = {
@@ -54,6 +75,26 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
   const fileInputRef = useRef<HTMLInputElement>(null);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [actionFileId, setActionFileId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<DriveViewMode>("list");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [decoding, setDecoding] = useState(false);
+  const [autoDecodeOnSync, setAutoDecodeOnSync] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewItems, setReviewItems] = useState<ReviewEditableItem[]>([]);
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  useEffect(() => {
+    setViewMode(loadDriveViewMode());
+  }, []);
+
+  useEffect(() => {
+    void fetch("/api/os/google-drive/settings", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { settings?: { driveAutoDecodeOnSync?: boolean } }) => {
+        if (data.settings?.driveAutoDecodeOnSync) setAutoDecodeOnSync(true);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const runSync = useCallback(async (silent = false) => {
     setSyncing(true);
@@ -192,8 +233,145 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
   };
 
   const handleRefresh = async () => {
-    await runSync(false);
+    const ok = await runSync(false);
     await fetchFiles(currentFolderId);
+    if (ok && autoDecodeOnSync) {
+      const res = await fetch(
+        `/api/os/google-drive/files?folderId=${encodeURIComponent(currentFolderId)}`,
+        { credentials: "include", cache: "no-store" },
+      );
+      const data = await res.json();
+      const pending = (data.files as GoogleFile[] | undefined)?.filter(
+        (f) =>
+          f.mimeType !== "application/vnd.google-apps.folder" &&
+          (!f.decodeStatus || f.decodeStatus === "PENDING" || f.decodeStatus === "FAILED"),
+      );
+      if (pending?.length) {
+        void runDecodeBatch(pending.map((f) => f.id));
+      }
+    }
+  };
+
+  const isFile = (f: GoogleFile) => f.mimeType !== "application/vnd.google-apps.folder";
+
+  const filteredFiles = files.filter((f) =>
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+  const selectableFiles = filteredFiles.filter(isFile);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === selectableFiles.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableFiles.map((f) => f.id)));
+    }
+  };
+
+  const runDecodeBatch = async (fileIds: string[]) => {
+    if (!fileIds.length) return;
+    setDecoding(true);
+    try {
+      const res = await fetch("/api/os/google-drive/decode-batch", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "preview", fileIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "פענוח נכשל");
+
+      const results = (data.results ?? []) as ReviewEditableItem[];
+      const editable: ReviewEditableItem[] = results.map((r) => ({
+        ...r,
+        editedClientName: r.detectedClientName,
+        editedDocType: r.detectedDocType,
+        editedTarget: r.targetModule === "CRM" ? "CRM" : "ERP",
+      }));
+
+      const needsReview = editable.filter(
+        (r) => r.needsReview || r.decodeStatus === "NEEDS_REVIEW",
+      );
+      if (needsReview.length > 0) {
+        setReviewItems(editable);
+        setReviewOpen(true);
+      } else {
+        toast.success(`פוענחו ${results.length} קבצים`);
+      }
+      setSelectedIds(new Set());
+      await fetchFiles(currentFolderId);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "פענוח נכשל");
+    } finally {
+      setDecoding(false);
+    }
+  };
+
+  const saveReviewItems = async () => {
+    const pending = reviewItems.filter((i) => i.needsReview || i.decodeStatus === "NEEDS_REVIEW");
+    if (!pending.length) {
+      setReviewOpen(false);
+      return;
+    }
+    setReviewSaving(true);
+    try {
+      const res = await fetch("/api/os/google-drive/decode-batch", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "save",
+          items: pending.map((item) => ({
+            driveFileId: item.driveFileId,
+            fileName: item.fileName,
+            targetModule: item.editedTarget,
+            aiData: {
+              ...(item.aiData ?? {}),
+              docType: item.editedDocType,
+              vendor: item.editedClientName,
+              metadata: { client: item.editedClientName },
+            },
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
+      toast.success("המסמכים נשמרו");
+      setReviewOpen(false);
+      setReviewItems([]);
+      await fetchFiles(currentFolderId);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "שמירה נכשלה");
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const statusBadge = (status: DriveDecodeStatus | null | undefined) => {
+    const label = decodeStatusLabel(status);
+    const color =
+      status === "COMPLETED"
+        ? "bg-emerald-500/15 text-emerald-700"
+        : status === "FAILED"
+          ? "bg-rose-500/15 text-rose-600"
+          : status === "PROCESSING"
+            ? "bg-amber-500/15 text-amber-700"
+            : status === "NEEDS_REVIEW"
+              ? "bg-violet-500/15 text-violet-700"
+              : "bg-slate-500/10 text-slate-500";
+    return (
+      <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${color}`}>
+        {label}
+      </span>
+    );
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,8 +468,112 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
     return <File className="text-slate-400" size={20} />;
   };
 
-  const filteredFiles = files.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const setView = (mode: DriveViewMode) => {
+    setViewMode(mode);
+    saveDriveViewMode(mode);
+  };
+
+  const fileActions = (file: GoogleFile) => (
+    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      <button
+        type="button"
+        disabled={actionFileId === file.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          void addToNotebook(file);
+        }}
+        className="p-2 hover:bg-amber-500/10 rounded-lg text-amber-600 transition-all disabled:opacity-50"
+        title="הוסף למחברת"
+        aria-label="הוסף למחברת"
+      >
+        {actionFileId === file.id ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <Library size={16} />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          runAiScan(file);
+        }}
+        className="p-2 hover:bg-violet-500/10 rounded-lg text-violet-600 transition-all"
+        title="פענוח AI"
+        aria-label="פענוח AI"
+      >
+        <Sparkles size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          window.open(file.webViewLink, "_blank");
+        }}
+        className="p-2 hover:bg-blue-500/10 rounded-lg text-blue-600 transition-all"
+        title="פתח ב-Google Drive"
+        aria-label="פתח ב-Google Drive"
+      >
+        <ExternalLink size={16} />
+      </button>
+    </div>
+  );
+
+  const renderFileRow = (file: GoogleFile, compact = false) => (
+    <div
+      key={file.id}
+      className={`group flex items-center justify-between hover:bg-[color:var(--foreground-muted)]/5 transition-all cursor-pointer ${
+        compact ? "px-3 py-2" : "p-4"
+      } ${selectedIds.has(file.id) ? "bg-violet-500/5" : ""}`}
+      onClick={() =>
+        file.mimeType === "application/vnd.google-apps.folder"
+          ? handleFolderClick(file)
+          : window.open(file.webViewLink, "_blank")
+      }
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        {isFile(file) ? (
+          <button
+            type="button"
+            className="shrink-0 p-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSelect(file.id);
+            }}
+            aria-label={selectedIds.has(file.id) ? "בטל בחירה" : "בחר"}
+          >
+            {selectedIds.has(file.id) ? (
+              <CheckSquare size={18} className="text-violet-600" />
+            ) : (
+              <Square size={18} className="text-[color:var(--foreground-muted)]" />
+            )}
+          </button>
+        ) : (
+          <span className="w-[26px]" />
+        )}
+        <div
+          className={`rounded-lg bg-[color:var(--surface-card)] border border-[color:var(--border-main)] flex items-center justify-center shadow-sm ${
+            compact ? "w-8 h-8" : "w-10 h-10"
+          }`}
+        >
+          {getFileIcon(file.mimeType)}
+        </div>
+        <div className="min-w-0">
+          <h4 className={`font-bold truncate group-hover:text-blue-500 transition-colors ${compact ? "text-xs" : "text-sm"}`}>
+            {file.name}
+          </h4>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[10px] text-[color:var(--foreground-muted)] font-mono uppercase tracking-tighter">
+              {file.mimeType === "application/vnd.google-apps.folder"
+                ? "תיקייה"
+                : file.mimeType.split("/").pop()?.toUpperCase()}
+            </p>
+            {isFile(file) ? statusBadge(file.decodeStatus) : null}
+          </div>
+        </div>
+      </div>
+      {fileActions(file)}
+    </div>
   );
 
   return (
@@ -369,7 +651,77 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
               : ""}
           </p>
         ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-[color:var(--border-main)] overflow-hidden">
+            {(
+              [
+                ["list", LayoutList],
+                ["grid", LayoutGrid],
+                ["compact", Rows3],
+                ["details", Table2],
+              ] as const
+            ).map(([mode, Icon]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setView(mode)}
+                className={`p-2 ${viewMode === mode ? "bg-violet-500/15 text-violet-700" : "text-[color:var(--foreground-muted)] hover:bg-black/5"}`}
+                title={mode}
+                aria-label={mode}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-[10px] font-bold text-[color:var(--foreground-muted)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoDecodeOnSync}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setAutoDecodeOnSync(v);
+                void fetch("/api/os/google-drive/settings", {
+                  method: "PATCH",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ driveAutoDecodeOnSync: v }),
+                });
+              }}
+            />
+            פענוח אוטומטי אחרי סנכרון
+          </label>
+          {selectableFiles.length > 0 ? (
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="text-[10px] font-bold text-violet-600 underline"
+            >
+              {selectedIds.size === selectableFiles.length ? "בטל הכל" : "בחר הכל"}
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {selectedIds.size > 0 ? (
+        <div className="flex items-center gap-2 border-b border-violet-500/20 bg-violet-500/10 px-4 py-2">
+          <span className="text-xs font-bold">{selectedIds.size} נבחרו</span>
+          <button
+            type="button"
+            disabled={decoding}
+            onClick={() => void runDecodeBatch([...selectedIds])}
+            className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50"
+          >
+            {decoding ? <Loader2 size={12} className="animate-spin inline" /> : "פענח נבחרים"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-[10px] font-bold underline"
+          >
+            נקה
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
         {driveError && !loading ? (
@@ -402,81 +754,113 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
               העלו קובץ או המתינו לסנכרון מתיקיית {workspace?.folderName ?? "BSD-YBM"} ב-Drive.
             </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 divide-y divide-[color:var(--border-main)]">
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
             {filteredFiles.map((file) => (
               <div
                 key={file.id}
-                className="group flex items-center justify-between p-4 hover:bg-[color:var(--foreground-muted)]/5 transition-all cursor-pointer"
+                className={`group relative rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 hover:shadow-md transition-all cursor-pointer ${
+                  selectedIds.has(file.id) ? "ring-2 ring-violet-500/40" : ""
+                }`}
                 onClick={() =>
                   file.mimeType === "application/vnd.google-apps.folder"
                     ? handleFolderClick(file)
                     : window.open(file.webViewLink, "_blank")
                 }
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-[color:var(--surface-card)] border border-[color:var(--border-main)] flex items-center justify-center shadow-sm">
-                    {getFileIcon(file.mimeType)}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-bold truncate group-hover:text-blue-500 transition-colors">
-                      {file.name}
-                    </h4>
-                    <p className="text-[10px] text-[color:var(--foreground-muted)] font-mono uppercase tracking-tighter">
-                      {file.mimeType === "application/vnd.google-apps.folder"
-                        ? "תיקייה"
-                        : file.mimeType.split("/").pop()?.toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                {isFile(file) ? (
                   <button
                     type="button"
-                    disabled={actionFileId === file.id}
+                    className="absolute top-2 left-2 z-10"
                     onClick={(e) => {
                       e.stopPropagation();
-                      void addToNotebook(file);
+                      toggleSelect(file.id);
                     }}
-                    className="p-2 hover:bg-amber-500/10 rounded-lg text-amber-600 transition-all disabled:opacity-50"
-                    title="הוסף למחברת"
-                    aria-label="הוסף למחברת"
                   >
-                    {actionFileId === file.id ? (
-                      <Loader2 size={16} className="animate-spin" />
+                    {selectedIds.has(file.id) ? (
+                      <CheckSquare size={16} className="text-violet-600" />
                     ) : (
-                      <Library size={16} />
+                      <Square size={16} className="text-[color:var(--foreground-muted)]" />
                     )}
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      runAiScan(file);
-                    }}
-                    className="p-2 hover:bg-violet-500/10 rounded-lg text-violet-600 transition-all"
-                    title="פענוח AI"
-                    aria-label="פענוח AI"
-                  >
-                    <Sparkles size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(file.webViewLink, "_blank");
-                    }}
-                    className="p-2 hover:bg-blue-500/10 rounded-lg text-blue-600 transition-all"
-                    title="פתח ב-Google Drive"
-                    aria-label="פתח ב-Google Drive"
-                  >
-                    <ExternalLink size={16} />
-                  </button>
+                ) : null}
+                <div className="flex flex-col items-center text-center gap-2 pt-4">
+                  <div className="w-12 h-12 rounded-lg bg-[color:var(--background-main)] border border-[color:var(--border-main)] flex items-center justify-center">
+                    {getFileIcon(file.mimeType)}
+                  </div>
+                  <h4 className="text-xs font-bold truncate w-full">{file.name}</h4>
+                  {isFile(file) ? statusBadge(file.decodeStatus) : null}
                 </div>
+                <div className="mt-2 flex justify-center">{fileActions(file)}</div>
               </div>
             ))}
           </div>
+        ) : viewMode === "details" ? (
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-[color:var(--background-main)] border-b border-[color:var(--border-main)] text-[10px] uppercase tracking-wider text-[color:var(--foreground-muted)]">
+              <tr>
+                <th className="p-3 w-10" />
+                <th className="p-3 text-right">שם</th>
+                <th className="p-3 text-right">סוג</th>
+                <th className="p-3 text-right">סטטוס</th>
+                <th className="p-3 text-right">עודכן</th>
+                <th className="p-3 w-28" />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFiles.map((file) => (
+                <tr
+                  key={file.id}
+                  className={`border-b border-[color:var(--border-main)] hover:bg-[color:var(--foreground-muted)]/5 cursor-pointer ${
+                    selectedIds.has(file.id) ? "bg-violet-500/5" : ""
+                  }`}
+                  onClick={() =>
+                    file.mimeType === "application/vnd.google-apps.folder"
+                      ? handleFolderClick(file)
+                      : window.open(file.webViewLink, "_blank")
+                  }
+                >
+                  <td className="p-3">
+                    {isFile(file) ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(file.id);
+                        }}
+                      >
+                        {selectedIds.has(file.id) ? (
+                          <CheckSquare size={16} className="text-violet-600" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                    ) : null}
+                  </td>
+                  <td className="p-3 font-bold truncate max-w-[200px]">{file.name}</td>
+                  <td className="p-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                    {file.mimeType === "application/vnd.google-apps.folder"
+                      ? "תיקייה"
+                      : file.mimeType.split("/").pop()}
+                  </td>
+                  <td className="p-3">{isFile(file) ? statusBadge(file.decodeStatus) : "—"}</td>
+                  <td className="p-3 text-[10px] text-[color:var(--foreground-muted)]">
+                    {file.modifiedTime
+                      ? new Date(file.modifiedTime).toLocaleDateString("he-IL")
+                      : "—"}
+                  </td>
+                  <td className="p-3">{fileActions(file)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="divide-y divide-[color:var(--border-main)]">
+            {filteredFiles.map((file) => renderFileRow(file, viewMode === "compact"))}
+          </div>
         )}
+
+
       </div>
 
       <div className="p-4 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex items-center justify-between text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
@@ -499,6 +883,24 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
           {driveError ? "נדרש חיבור Google" : syncing ? "מסנכרן..." : "מחובר ומסונכרן"}
         </div>
       </div>
+
+      <GoogleDriveDecodeReviewPanel
+        open={reviewOpen}
+        items={reviewItems}
+        saving={reviewSaving}
+        onClose={() => setReviewOpen(false)}
+        onChange={(driveFileId, patch) =>
+          setReviewItems((prev) =>
+            prev.map((item) =>
+              item.driveFileId === driveFileId ? { ...item, ...patch } : item,
+            ),
+          )
+        }
+        onSaveAll={() => void saveReviewItems()}
+        onSkip={(driveFileId) =>
+          setReviewItems((prev) => prev.filter((item) => item.driveFileId !== driveFileId))
+        }
+      />
     </div>
   );
 }

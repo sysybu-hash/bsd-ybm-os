@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { getLegalDocument, type LegalDocKind } from "@/lib/google-publish/legal-templates";
 import type { AppLocale } from "@/lib/i18n/config";
@@ -21,9 +22,7 @@ export default function PublicLegalLayout({ kind, locale }: PublicLegalLayoutPro
   return (
     <div className="min-h-dvh bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 border-b border-[color:var(--border-main)] px-4 py-4">
-        <Link href="/" className="text-sm font-black text-indigo-500">
-          BSD-YBM OS
-        </Link>
+        <BrandHomeLink size="sm" />
         <LocaleSwitcher compact />
       </header>
       <nav className="mx-auto flex max-w-3xl gap-2 px-4 py-3 text-sm font-bold">

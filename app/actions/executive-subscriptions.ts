@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
@@ -27,6 +27,7 @@ async function requireExecutive() {
 export type ExecutiveOrgRow = {
   id: string;
   name: string;
+  constructionTrade: string;
   subscriptionTier: SubscriptionTier;
   subscriptionStatus: string;
   cheapScansRemaining: number;
@@ -48,6 +49,7 @@ export async function executiveListOrganizationsAction(): Promise<
     select: {
       id: true,
       name: true,
+      constructionTrade: true,
       subscriptionTier: true,
       subscriptionStatus: true,
       cheapScansRemaining: true,
@@ -66,6 +68,7 @@ export async function executiveListOrganizationsAction(): Promise<
   return orgs.map((o) => ({
     id: o.id,
     name: o.name,
+    constructionTrade: o.constructionTrade,
     subscriptionTier: o.subscriptionTier,
     subscriptionStatus: o.subscriptionStatus,
     cheapScansRemaining: o.cheapScansRemaining,

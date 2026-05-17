@@ -18,6 +18,7 @@ import LandingPage from "@/components/landing/LandingPage";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
 
 type SearchResult = {
@@ -34,6 +35,7 @@ export default function OmniCanvas() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
   const { t, dir, locale } = useI18n();
+  const { profile: tradeProfile } = useTradeProfile();
   const [systemMessage, setSystemMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -115,7 +117,21 @@ export default function OmniCanvas() {
     [automationRunner],
   );
 
-  const widgetTitle = useCallback((type: WidgetType) => t(`workspaceWidgets.titles.${type}`), [t]);
+  const widgetTitle = useCallback(
+    (type: WidgetType) => {
+      if (type === "aiScanner") {
+        return `${t("workspaceWidgets.titles.aiScanner")} · ${tradeProfile.vocabulary.document}`;
+      }
+      if (type === "erpArchive") {
+        return tradeProfile.documentsLabel;
+      }
+      if (type === "settings") {
+        return `${t("workspaceWidgets.titles.settings")} · ${tradeProfile.constructionTradeLabel}`;
+      }
+      return t(`workspaceWidgets.titles.${type}`);
+    },
+    [t, tradeProfile],
+  );
 
   useEffect(() => {
     setMounted(true);

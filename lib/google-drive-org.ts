@@ -10,6 +10,9 @@ export type GoogleDriveOrgSettings = {
   driveSyncEnabled: boolean;
   lastSyncAt: Date | null;
   syncCursor: string | null;
+  driveAutoDecodeOnSync: boolean;
+  driveAutoSaveAfterDecode: boolean;
+  driveAskBeforeSave: boolean;
 };
 
 export async function getOrCreateGoogleDriveIntegration(organizationId: string) {
@@ -38,6 +41,9 @@ export function integrationToSettings(row: {
   driveSyncEnabled: boolean;
   lastSyncAt: Date | null;
   driveSyncCursor: string | null;
+  driveAutoDecodeOnSync?: boolean;
+  driveAutoSaveAfterDecode?: boolean;
+  driveAskBeforeSave?: boolean;
 }): GoogleDriveOrgSettings {
   return {
     id: row.id,
@@ -46,6 +52,9 @@ export function integrationToSettings(row: {
     driveSyncEnabled: row.driveSyncEnabled,
     lastSyncAt: row.lastSyncAt,
     syncCursor: row.driveSyncCursor,
+    driveAutoDecodeOnSync: row.driveAutoDecodeOnSync ?? false,
+    driveAutoSaveAfterDecode: row.driveAutoSaveAfterDecode ?? false,
+    driveAskBeforeSave: row.driveAskBeforeSave ?? true,
   };
 }
 

@@ -42,6 +42,10 @@ import {
   tierLabelHe,
 } from "@/lib/subscription-tier-config";
 import type { PlatformConfig } from "@/lib/platform-settings";
+import {
+  CONSTRUCTION_TRADE_IDS,
+  constructionTradeLabelHe,
+} from "@/lib/construction-trades";
 
 type TabId = "subscriptions" | "pending" | "users" | "broadcast" | "health" | "settings";
 
@@ -66,6 +70,8 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editTier, setEditTier] = useState("FREE");
   const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editConstructionTrade, setEditConstructionTrade] = useState("GENERAL_CONTRACTOR");
+  const [createConstructionTrade, setCreateConstructionTrade] = useState("GENERAL_CONTRACTOR");
   const [cheapDelta, setCheapDelta] = useState(0);
   const [premiumDelta, setPremiumDelta] = useState(0);
   const [userEmail, setUserEmail] = useState("");
@@ -147,6 +153,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     if (selectedOrg) {
       setEditTier(selectedOrg.subscriptionTier);
       setEditStatus(selectedOrg.subscriptionStatus);
+      setEditConstructionTrade(selectedOrg.constructionTrade ?? "GENERAL_CONTRACTOR");
     }
   }, [selectedOrg]);
 
@@ -156,6 +163,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     fd.set("organizationId", selectedOrgId);
     fd.set("tier", editTier);
     fd.set("subscriptionStatus", editStatus);
+    fd.set("constructionTrade", editConstructionTrade);
     const r = await manageSubsUpdateSubscriptionAction(fd);
     if (!r.ok) {
       toast.error(r.error);
@@ -254,6 +262,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
       fd.set("name", createName.trim());
       fd.set("organizationName", createOrgName.trim());
       fd.set("tier", createTier);
+      fd.set("constructionTrade", createConstructionTrade);
       if (createVip) fd.set("vip", "on");
       const r = await manageSubsCreateManualUserAction(fd);
       if (!r.ok) {
@@ -489,6 +498,17 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                       </option>
                     ))}
                   </select>
+                  <select
+                    value={createConstructionTrade}
+                    onChange={(e) => setCreateConstructionTrade(e.target.value)}
+                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                  >
+                    {CONSTRUCTION_TRADE_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {constructionTradeLabelHe(id)}
+                      </option>
+                    ))}
+                  </select>
                   <label className="flex items-center gap-2 text-sm font-bold">
                     <input
                       type="checkbox"
@@ -517,6 +537,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <tr>
                     <th className="p-2 text-start">ארגון</th>
                     <th className="p-2 text-start">אימייל</th>
+                    <th className="p-2 text-start">מקצוע</th>
                     <th className="p-2 text-start">מנוי</th>
                     <th className="p-2 text-start">סטטוס</th>
                   </tr>
@@ -532,6 +553,11 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                     >
                       <td className="p-2 font-semibold">{o.name}</td>
                       <td className="p-2 text-xs text-[color:var(--foreground-muted)]">{o.primaryEmail ?? "—"}</td>
+                      <td className="p-2 text-xs">
+                        {constructionTradeLabelHe(
+                          (o.constructionTrade ?? "GENERAL_CONTRACTOR") as (typeof CONSTRUCTION_TRADE_IDS)[number],
+                        )}
+                      </td>
                       <td className="p-2">{tierLabelHe(o.subscriptionTier)}</td>
                       <td className="p-2">{o.subscriptionStatus}</td>
                     </tr>
@@ -546,6 +572,18 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <p className="text-xs text-[color:var(--foreground-muted)]">
                     סריקות: {selectedOrg.cheapScansRemaining} זולות · {selectedOrg.premiumScansRemaining} פרימיום
                   </p>
+                  <label className="block text-xs font-bold">תת-תחום בנייה</label>
+                  <select
+                    value={editConstructionTrade}
+                    onChange={(e) => setEditConstructionTrade(e.target.value)}
+                    className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  >
+                    {CONSTRUCTION_TRADE_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {constructionTradeLabelHe(id)}
+                      </option>
+                    ))}
+                  </select>
                   <label className="block text-xs font-bold">רמת מנוי</label>
                   <select
                     value={editTier}
@@ -918,6 +956,25 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                 }
               />
               הרשמה פתוחה
+            </label>
+            <label className="block text-xs font-bold">
+              מקצוע ברירת מחדל להרשמה
+              <select
+                value={platformConfig.defaultConstructionTrade}
+                onChange={(e) =>
+                  setPlatformConfig({
+                    ...platformConfig,
+                    defaultConstructionTrade: e.target.value,
+                  })
+                }
+                className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] p-2 text-sm"
+              >
+                {CONSTRUCTION_TRADE_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {constructionTradeLabelHe(id)}
+                  </option>
+                ))}
+              </select>
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-xs font-bold">

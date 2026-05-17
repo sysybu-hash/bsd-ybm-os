@@ -3,7 +3,9 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { motion, type Variants } from "framer-motion";
-import { BrainCircuit, BarChart3, Fingerprint, Layers, ChevronLeft, ChevronRight, Mic } from "lucide-react";
+import { BrainCircuit, BarChart3, Fingerprint, ChevronLeft, ChevronRight, Mic } from "lucide-react";
+import BrandHomeLink from "@/components/brand/BrandHomeLink";
+import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -50,15 +52,7 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
       </div>
 
       <header className="relative z-10 mx-auto flex max-w-7xl min-w-0 items-center justify-between gap-3 px-4 py-5 sm:px-6 md:px-8 md:py-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 shadow-lg shadow-blue-500/20">
-            <Layers className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-[color:var(--foreground-main)]">
-            BSD<span className="text-blue-500">-</span>YBM{" "}
-            <span className="text-lg font-medium text-[color:var(--foreground-muted)]">OS</span>
-          </span>
-        </div>
+        <BrandHomeLink size="lg" priority />
         <div className="flex items-center gap-2">
           <LocaleSwitcher compact />
           <ThemeToggle variant="landing" />
@@ -79,6 +73,10 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
           animate="visible"
           className="mx-auto flex max-w-4xl flex-col items-center text-center"
         >
+          <motion.div variants={itemVariants} className="mb-6">
+            <BrandLogo size="hero" className="mx-auto shadow-xl shadow-black/30" priority />
+          </motion.div>
+
           <motion.div
             variants={itemVariants}
             className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400"

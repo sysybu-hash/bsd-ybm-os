@@ -27,5 +27,5 @@ export const legalSite = {
     envStr("NEXT_PUBLIC_EU_REPRESENTATIVE") ??
     "[אם חל — פרטי נציג באיחוד; אחרת ציון \"לא חל\" לאחר בדיקת יועץ]",
   /** תאריך עדכון אחרון של מסמכים (מחרוזת להצגה) */
-  documentsLastUpdated: "אפריל 2026",
+  documentsLastUpdated: "מאי 2026",
 } as const;

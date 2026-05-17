@@ -114,6 +114,9 @@ async function executeLiveToolCalls(
     const raw = await onToolCall(name, args);
     const result =
       typeof raw === "string" ? raw : raw == null ? "Success" : JSON.stringify(raw);
+    if (process.env.NODE_ENV === "development") {
+      console.info("[gemini-live] tool call", { name, args, result });
+    }
     responses.push({
       id: call.id,
       name,

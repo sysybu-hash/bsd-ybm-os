@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { canAccessMeckano } from "@/lib/meckano-access";
+import { getPlatformConfig } from "@/lib/platform-settings";
 import type { Session } from "next-auth";
 
 export type OsAssistantUserContext = {
@@ -44,6 +45,11 @@ export async function buildOsAssistantUserContext(
 
   const org = user.organization;
   const meckano = await canAccessMeckano(session);
+  const platform = await getPlatformConfig();
+  const geminiLive =
+    Boolean(session.user.organizationId) &&
+    platform.featureFlags.geminiLiveEnabled &&
+    !platform.maintenanceMode;
 
   return {
     user: {
@@ -69,7 +75,7 @@ export async function buildOsAssistantUserContext(
         }
       : null,
     capabilities: {
-      geminiLive: Boolean(session.user.organizationId),
+      geminiLive,
       meckano,
     },
   };

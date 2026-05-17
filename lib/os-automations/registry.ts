@@ -1,7 +1,7 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 import { normalizeAutomationIntent } from "@/lib/os-automations/catalog";
-import { isAutomationIntentEnabled } from "@/lib/platform-settings";
+import { checkAutomationIntentEnabled } from "@/lib/os-automations/check-intent-enabled";
 import type {
   AutomationAction,
   AutomationResult,
@@ -55,7 +55,7 @@ export async function runAutomationAction(
     return { ok: false, message: `Unknown intent: ${action.intent}` };
   }
 
-  const enabled = await isAutomationIntentEnabled(intent);
+  const enabled = await checkAutomationIntentEnabled(intent);
   if (!enabled) {
     return { ok: false, message: "הפעולה מושבתת בהגדרות הפלטפורמה." };
   }

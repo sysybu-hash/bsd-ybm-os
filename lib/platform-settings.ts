@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AUTOMATION_CATALOG } from "@/lib/os-automations/catalog";
 import type { AutomationIntent } from "@/lib/os-automations/types";
+import { normalizeConstructionTrade } from "@/lib/construction-trades";
 import { prisma } from "@/lib/prisma";
 
 const PLATFORM_SETTINGS_ID = "default";
@@ -19,6 +20,7 @@ export const platformConfigSchema = z.object({
   defaultTrialDays: z.number().int().min(1).max(365).default(30),
   defaultTrialScans: z.number().int().min(0).max(10_000).default(30),
   automationEnabled: z.record(z.string(), z.boolean()).default({}),
+  defaultConstructionTrade: z.string().default("GENERAL_CONTRACTOR"),
   featureFlags: featureFlagsSchema.default({
     meckanoGlobal: true,
     geminiLiveEnabled: true,
@@ -38,6 +40,7 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   automationEnabled: Object.fromEntries(
     AUTOMATION_CATALOG.map((e) => [e.id, true]),
   ) as Record<string, boolean>,
+  defaultConstructionTrade: "GENERAL_CONTRACTOR",
   featureFlags: {
     meckanoGlobal: true,
     geminiLiveEnabled: true,
@@ -61,11 +64,17 @@ function mergeWithDefaults(raw: unknown): PlatformConfig {
     ...DEFAULT_PLATFORM_CONFIG,
     ...base,
     automationEnabled,
+    defaultConstructionTrade: normalizeConstructionTrade(base.defaultConstructionTrade),
     featureFlags: {
       ...DEFAULT_PLATFORM_CONFIG.featureFlags,
       ...base.featureFlags,
     },
   };
+}
+
+export async function getDefaultConstructionTradeForRegistration(): Promise<string> {
+  const cfg = await getPlatformConfig();
+  return normalizeConstructionTrade(cfg.defaultConstructionTrade);
 }
 
 export async function getPlatformConfig(forceRefresh = false): Promise<PlatformConfig> {
@@ -115,6 +124,10 @@ export async function updatePlatformConfig(
       ...current.automationEnabled,
       ...(patch.automationEnabled ?? {}),
     },
+    defaultConstructionTrade:
+      patch.defaultConstructionTrade !== undefined
+        ? normalizeConstructionTrade(patch.defaultConstructionTrade)
+        : current.defaultConstructionTrade,
   });
 
   await prisma.platformSettings.upsert({

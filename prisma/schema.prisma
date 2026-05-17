@@ -334,6 +334,12 @@ model CloudIntegration {
   /// Changes API page token
   driveSyncCursor String?
   lastSyncAt      DateTime?
+  /// פענוח אוטומטי לקבצים חדשים אחרי סנכרון
+  driveAutoDecodeOnSync    Boolean @default(false)
+  /// שמירה אוטומטית ל-ERP/CRM אחרי פענוח מוצלח
+  driveAutoSaveAfterDecode Boolean @default(false)
+  /// פתיחת פאנל אישור לפני שמירה (כשאין זיהוי לקוח בטוח)
+  driveAskBeforeSave       Boolean @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -344,23 +350,30 @@ model CloudIntegration {
 
 /// מראה מטא-דאטה של קבצים בתיקיית העבודה ב-Drive (לסנכרון דו-כיווני)
 model DriveSyncEntry {
-  id             String       @id @default(cuid())
-  organizationId String
-  driveFileId    String
-  parentDriveId  String?
-  name           String
-  mimeType       String
-  md5Checksum    String?
-  modifiedTime   DateTime?
-  webViewLink    String?
-  trashed        Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                 String             @id @default(cuid())
+  organizationId     String
+  driveFileId        String
+  parentDriveId      String?
+  name               String
+  mimeType           String
+  md5Checksum        String?
+  modifiedTime       DateTime?
+  webViewLink        String?
+  trashed            Boolean            @default(false)
+  decodeStatus       DriveDecodeStatus?
+  decodeError        String?
+  linkedDocumentId   String?
+  lastDecodedAt      DateTime?
+  detectedClientName String?
+  detectedDocType    String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, driveFileId])
   @@index([organizationId, parentDriveId])
   @@index([organizationId, trashed])
+  @@index([organizationId, decodeStatus])
 }
 
 /// OAuth / NextAuth — נדרש עבור PrismaAdapter (התחברות Google)
@@ -777,6 +790,14 @@ enum CloudProvider {
 }
 
 /// סריקת מסמך אסינכרונית — תור רקע מול Vercel timeout / מגבלות Google
+enum DriveDecodeStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
 enum DocumentScanJobStatus {
   PENDING
   PROCESSING

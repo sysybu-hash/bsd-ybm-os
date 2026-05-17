@@ -10,7 +10,11 @@ import { trialEndsAtFromNow } from "@/lib/trial";
 import { sendRegistrationWelcomeEmail } from "@/lib/mail";
 import { defaultScanBalancesForTier, tierLabelHe } from "@/lib/subscription-tier-config";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
-import { getPlatformConfig, isRegistrationOpen } from "@/lib/platform-settings";
+import {
+  getDefaultConstructionTradeForRegistration,
+  getPlatformConfig,
+  isRegistrationOpen,
+} from "@/lib/platform-settings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,7 +36,9 @@ export async function POST(req: Request) {
     const name = String(body.name ?? "").trim() || null;
     const organizationName = String(body.organizationName ?? "").trim();
     const typeRaw = String(body.orgType ?? "COMPANY").toUpperCase();
-    const constructionTrade = normalizeConstructionTrade(body.constructionTrade);
+    const constructionTrade = body.constructionTrade
+      ? normalizeConstructionTrade(body.constructionTrade)
+      : await getDefaultConstructionTradeForRegistration();
     const inviteToken = String(body.inviteToken ?? "").trim();
     const orgInviteToken = String(body.orgInviteToken ?? "").trim();
 

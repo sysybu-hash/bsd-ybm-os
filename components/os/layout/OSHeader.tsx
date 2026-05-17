@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Layers, LayoutGrid, LogOut, Settings, Shield, Zap } from "lucide-react";
+import { Bell, Layers, LayoutGrid, LogOut, Settings, Shield } from "lucide-react";
+import BrandLogo from "@/components/brand/BrandLogo";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
@@ -86,16 +87,8 @@ export default function OSHeader({
       <div className="mx-auto flex min-h-[3.25rem] max-w-[88rem] items-center gap-2 sm:gap-3">
         {/* מיתוג */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          <div
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/25 ring-1 ring-white/15"
-            aria-hidden
-          >
-            <Zap size={18} className="fill-white/90" />
-          </div>
+          <BrandLogo size="md" className="shadow-indigo-600/20" priority />
           <div className="min-w-0 hidden sm:block">
-            <p className="truncate text-[13px] font-black leading-tight tracking-wide text-[color:var(--foreground-main)]">
-              BSD-YBM <span className="text-indigo-500 dark:text-indigo-400">OS</span>
-            </p>
             <p className="truncate text-[10px] font-semibold leading-tight text-[color:var(--foreground-muted)]">
               {t("workspaceNav.logoSubtitle")}
             </p>

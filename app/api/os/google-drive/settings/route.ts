@@ -36,6 +36,9 @@ export const GET = withWorkspacesAuth(async (_req, { orgId, userId }) => {
 const patchSchema = z.object({
   driveFolderName: z.string().min(1).max(120).optional(),
   driveSyncEnabled: z.boolean().optional(),
+  driveAutoDecodeOnSync: z.boolean().optional(),
+  driveAutoSaveAfterDecode: z.boolean().optional(),
+  driveAskBeforeSave: z.boolean().optional(),
 });
 
 export const PATCH = withWorkspacesAuth(
@@ -50,12 +53,24 @@ export const PATCH = withWorkspacesAuth(
         driveSyncEnabled?: boolean;
         driveFolderId?: string | null;
         driveSyncCursor?: string | null;
+        driveAutoDecodeOnSync?: boolean;
+        driveAutoSaveAfterDecode?: boolean;
+        driveAskBeforeSave?: boolean;
       } = {
         driveFolderName: folderName,
       };
 
       if (typeof body.driveSyncEnabled === "boolean") {
         data.driveSyncEnabled = body.driveSyncEnabled;
+      }
+      if (typeof body.driveAutoDecodeOnSync === "boolean") {
+        data.driveAutoDecodeOnSync = body.driveAutoDecodeOnSync;
+      }
+      if (typeof body.driveAutoSaveAfterDecode === "boolean") {
+        data.driveAutoSaveAfterDecode = body.driveAutoSaveAfterDecode;
+      }
+      if (typeof body.driveAskBeforeSave === "boolean") {
+        data.driveAskBeforeSave = body.driveAskBeforeSave;
       }
 
       const nameChanged =

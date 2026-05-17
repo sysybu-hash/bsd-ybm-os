@@ -10,6 +10,8 @@ import {
 import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
 import { getServerLocale } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
+import { AUTOMATION_CATALOG } from "@/lib/os-automations/catalog";
+import { getPlatformConfig } from "@/lib/platform-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +36,19 @@ export const GET = withWorkspacesAuth(async (_req, ctx) => {
     }
 
     const locale = await getServerLocale();
+    const platform = await getPlatformConfig();
+    const enabledAutomationIntents = AUTOMATION_CATALOG.filter(
+      (entry) => platform.automationEnabled[entry.id] !== false,
+    ).map((entry) => entry.id);
 
     return NextResponse.json({
       context: assistantCtx,
       contextText: formatUserContextForPrompt(assistantCtx),
       systemInstruction: buildOsAssistantSystemInstruction(assistantCtx, { locale }),
       systemInstructionVoice: buildOsAssistantSystemInstruction(assistantCtx, { voice: true, locale }),
+      geminiLiveAllowed:
+        platform.featureFlags.geminiLiveEnabled && !platform.maintenanceMode,
+      enabledAutomationIntents,
     });
   } catch (err) {
     return apiErrorResponse(err, "os/assistant/context");

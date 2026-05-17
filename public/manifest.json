@@ -1,14 +1,14 @@
 {
   "id": "/",
   "name": "BSD-YBM Intelligence OS",
-  "short_name": "BSD-YBM",
+  "short_name": "BY",
   "description": "מערכת ניהול AI מתקדמת לעסקים - ERP, CRM וניהול פרויקטים",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0a0c10",
   "lang": "he-IL",
   "dir": "rtl",
   "icons": [

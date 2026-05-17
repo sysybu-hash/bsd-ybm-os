@@ -18,7 +18,7 @@ export function buildOrganizationJsonLd() {
     "@type": "Organization",
     name: legalSite.siteName,
     url,
-    logo: `${url}/og-image.png`,
+    logo: `${url}/logo.png`,
     ...(sameAs.length ? { sameAs } : {}),
     email: legalSite.contactEmail,
     address: {

@@ -12,6 +12,7 @@
    - `/privacy` — מדיניות פרטיות
    - `/terms` — תנאי שימוש
    - `/legal` — מדיניות עוגיות / משפטי
+   - `/integrations/google` — הסבר הרשאות Google / Drive (לאימות OAuth)
 4. **מטא אימות** — לאחר deploy, הדביקו ב-Vercel:
    - `SITE_VERIFICATION_GOOGLE` או `GOOGLE_SITE_VERIFICATION` (ערך מתוך Search Console)
 5. **סitemap** — `https://<domain>/sitemap.xml` נגיש; `robots.txt` מפנה אליו.
@@ -39,3 +40,5 @@
 | `NEXT_PUBLIC_SITE_URL` | URL קנוני |
 | `SITE_VERIFICATION_GOOGLE` | אימות Search Console |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth |
+
+מדריך מלא לשליחת Verification: **`docs/google-oauth-verification-guide.md`**

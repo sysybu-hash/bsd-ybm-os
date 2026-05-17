@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast, Toaster } from 'sonner';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 export default function SigningPage() {
   const params = useParams();
@@ -132,12 +133,10 @@ export default function SigningPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-indigo-400">
-              <FileText size={28} />
-            </div>
+            <BrandLogo size="md" />
             <div>
               <h1 className="text-2xl font-bold text-white">חתימה על מסמך</h1>
-              <p className="text-xs text-slate-500">BSD-YBM OS | מערכת חתימה מאובטחת</p>
+              <p className="text-xs text-slate-500">מערכת חתימה מאובטחת</p>
             </div>
           </div>
           <div className="text-left">

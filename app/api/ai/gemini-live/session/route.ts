@@ -15,6 +15,7 @@ import {
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { getPlatformConfig } from "@/lib/platform-settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +53,20 @@ async function createLiveAuthToken(client: GoogleGenAI, model: string) {
 
 export const POST = withWorkspacesAuth(async (_req, { orgId, userId }) => {
   try {
+    const platform = await getPlatformConfig();
+    if (platform.maintenanceMode) {
+      return jsonServiceUnavailable(
+        platform.maintenanceMessage.trim() || "המערכת בתחזוקה. נסו שוב מאוחר יותר.",
+        "maintenance_mode",
+      );
+    }
+    if (!platform.featureFlags.geminiLiveEnabled) {
+      return jsonServiceUnavailable(
+        "Gemini Live מושבת בהגדרות הפלטפורמה.",
+        "gemini_live_disabled",
+      );
+    }
+
     if (!isGeminiConfigured()) {
       return jsonServiceUnavailable(
         "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",

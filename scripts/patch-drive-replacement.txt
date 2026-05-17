@@ -1,0 +1,105 @@
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
+            {filteredFiles.map((file) => (
+              <div
+                key={file.id}
+                className={`group relative rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 hover:shadow-md transition-all cursor-pointer ${
+                  selectedIds.has(file.id) ? "ring-2 ring-violet-500/40" : ""
+                }`}
+                onClick={() =>
+                  file.mimeType === "application/vnd.google-apps.folder"
+                    ? handleFolderClick(file)
+                    : window.open(file.webViewLink, "_blank")
+                }
+              >
+                {isFile(file) ? (
+                  <button
+                    type="button"
+                    className="absolute top-2 left-2 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelect(file.id);
+                    }}
+                  >
+                    {selectedIds.has(file.id) ? (
+                      <CheckSquare size={16} className="text-violet-600" />
+                    ) : (
+                      <Square size={16} className="text-[color:var(--foreground-muted)]" />
+                    )}
+                  </button>
+                ) : null}
+                <div className="flex flex-col items-center text-center gap-2 pt-4">
+                  <div className="w-12 h-12 rounded-lg bg-[color:var(--background-main)] border border-[color:var(--border-main)] flex items-center justify-center">
+                    {getFileIcon(file.mimeType)}
+                  </div>
+                  <h4 className="text-xs font-bold truncate w-full">{file.name}</h4>
+                  {isFile(file) ? statusBadge(file.decodeStatus) : null}
+                </div>
+                <div className="mt-2 flex justify-center">{fileActions(file)}</div>
+              </div>
+            ))}
+          </div>
+        ) : viewMode === "details" ? (
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-[color:var(--background-main)] border-b border-[color:var(--border-main)] text-[10px] uppercase tracking-wider text-[color:var(--foreground-muted)]">
+              <tr>
+                <th className="p-3 w-10" />
+                <th className="p-3 text-right">שם</th>
+                <th className="p-3 text-right">סוג</th>
+                <th className="p-3 text-right">סטטוס</th>
+                <th className="p-3 text-right">עודכן</th>
+                <th className="p-3 w-28" />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFiles.map((file) => (
+                <tr
+                  key={file.id}
+                  className={`border-b border-[color:var(--border-main)] hover:bg-[color:var(--foreground-muted)]/5 cursor-pointer ${
+                    selectedIds.has(file.id) ? "bg-violet-500/5" : ""
+                  }`}
+                  onClick={() =>
+                    file.mimeType === "application/vnd.google-apps.folder"
+                      ? handleFolderClick(file)
+                      : window.open(file.webViewLink, "_blank")
+                  }
+                >
+                  <td className="p-3">
+                    {isFile(file) ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(file.id);
+                        }}
+                      >
+                        {selectedIds.has(file.id) ? (
+                          <CheckSquare size={16} className="text-violet-600" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                    ) : null}
+                  </td>
+                  <td className="p-3 font-bold truncate max-w-[200px]">{file.name}</td>
+                  <td className="p-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                    {file.mimeType === "application/vnd.google-apps.folder"
+                      ? "תיקייה"
+                      : file.mimeType.split("/").pop()}
+                  </td>
+                  <td className="p-3">{isFile(file) ? statusBadge(file.decodeStatus) : "—"}</td>
+                  <td className="p-3 text-[10px] text-[color:var(--foreground-muted)]">
+                    {file.modifiedTime
+                      ? new Date(file.modifiedTime).toLocaleDateString("he-IL")
+                      : "—"}
+                  </td>
+                  <td className="p-3">{fileActions(file)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="divide-y divide-[color:var(--border-main)]">
+            {filteredFiles.map((file) => renderFileRow(file, viewMode === "compact"))}
+          </div>
+        )}

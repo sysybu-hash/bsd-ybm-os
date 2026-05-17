@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import { cookies } from "next/headers";
 import { COOKIE_LOCALE, normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
@@ -65,9 +66,7 @@ export default async function AboutPage() {
   return (
     <div className="min-h-dvh bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-        <Link href="/" className="font-black text-indigo-500">
-          BSD-YBM OS
-        </Link>
+        <BrandHomeLink size="sm" />
         <LocaleSwitcher compact />
       </header>
       <main className="mx-auto max-w-3xl px-4 py-10">

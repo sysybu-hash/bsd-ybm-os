@@ -4,7 +4,9 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldCheck, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldCheck } from "lucide-react";
+import BrandHomeLink from "@/components/brand/BrandHomeLink";
+import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 
 export default function LoginPage() {
@@ -43,20 +45,15 @@ export default function LoginPage() {
       <div className="absolute end-5 top-5 z-10 flex items-center gap-2">
         <LocaleSwitcher compact />
       </div>
-      <button
-        type="button"
-        onClick={() => router.push("/")}
-        className="absolute start-5 top-5 flex items-center gap-3 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm font-black shadow-sm transition hover:bg-[color:var(--surface-soft)]"
-        aria-label={t("auth.loginOs.backHomeAria")}
-      >
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-600 text-white">
-          <Zap size={16} aria-hidden />
-        </div>
-        BSD-YBM OS
-      </button>
+      <div className="absolute start-5 top-5">
+        <BrandHomeLink size="sm" priority />
+      </div>
 
       <section className="grid w-full max-w-5xl overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg md:grid-cols-[0.95fr_1.05fr]">
         <div className="border-b border-[color:var(--border-main)] bg-slate-950 p-8 text-white md:border-b-0 md:border-l">
+          <div className="mb-8">
+            <BrandLogo size="xl" className="shadow-lg shadow-black/40" priority />
+          </div>
           <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-200">
             <ShieldCheck size={14} aria-hidden />
             {t("auth.loginOs.secureBadge")}
