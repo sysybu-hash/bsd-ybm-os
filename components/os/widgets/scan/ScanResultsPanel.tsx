@@ -5,6 +5,12 @@ import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
+import {
+  enginePhaseBadgeClass,
+  enginePhaseLabelHe,
+  formatTelemetrySummaryHe,
+  hasSuccessfulEngine,
+} from "@/lib/scan-telemetry-display";
 
 export type ScanResultsPanelProps = {
   v5: ScanExtractionV5;
@@ -15,6 +21,12 @@ export type ScanResultsPanelProps = {
   savingNotebook?: boolean;
 };
 
+const ENGINE_ROWS = [
+  { key: "documentAI" as const, label: "Document AI" },
+  { key: "gemini" as const, label: "Gemini" },
+  { key: "gpt" as const, label: "GPT" },
+];
+
 export default function ScanResultsPanel({
   v5,
   fileName,
@@ -24,6 +36,7 @@ export default function ScanResultsPanel({
   savingNotebook,
 }: ScanResultsPanelProps) {
   const { t, dir } = useI18n();
+  const meta = v5.documentMetadata;
 
   const copyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify({ v5, telemetry }, null, 2));
@@ -49,6 +62,14 @@ export default function ScanResultsPanel({
     URL.revokeObjectURL(url);
   };
 
+  const metaRows = [
+    { label: t("scanner.source"), value: v5.vendor },
+    { label: t("scanner.document"), value: v5.docType },
+    { label: "פרויקט", value: meta?.project },
+    { label: "לקוח", value: meta?.client },
+    { label: "תאריך", value: meta?.documentDate ?? v5.date },
+  ].filter((r) => r.value && r.value !== "לא צוין" && r.value !== "UNKNOWN");
+
   return (
     <div className="space-y-4 text-sm" dir={dir}>
       <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-3">
@@ -60,29 +81,56 @@ export default function ScanResultsPanel({
         <p className="mt-2 text-lg font-black text-indigo-600 dark:text-indigo-400">
           {v5.total != null ? `₪${Number(v5.total).toLocaleString("he-IL")}` : "—"}
         </p>
+        {metaRows.length > 0 ? (
+          <dl className="mt-3 space-y-1 border-t border-[color:var(--border-main)] pt-2 text-xs">
+            {metaRows.map((row) => (
+              <div key={row.label} className="flex justify-between gap-2">
+                <dt className="text-[color:var(--foreground-muted)]">{row.label}</dt>
+                <dd className="font-semibold text-end">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
       </div>
 
       {telemetry ? (
         <div className="rounded-xl border border-[color:var(--border-main)] p-3">
-          <p className="mb-2 text-[10px] font-bold uppercase text-[color:var(--foreground-muted)]">
-            {t("scanner.results.telemetry")}
-          </p>
-          <ul className="space-y-1 text-xs">
-            {(
-              [
-                { name: "Document AI", ...telemetry.documentAI },
-                { name: "Gemini", ...telemetry.gemini },
-                { name: "GPT", ...telemetry.gpt },
-              ] as const
-            ).map((e) => (
-              <li key={e.name} className="flex justify-between gap-2">
-                <span>{e.name}</span>
-                <span className="text-[color:var(--foreground-muted)]">
-                  {e.phase}
-                  {e.ms != null ? ` · ${e.ms}ms` : ""}
-                </span>
-              </li>
-            ))}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase text-[color:var(--foreground-muted)]">
+              {t("scanner.results.telemetry")}
+            </p>
+            {!hasSuccessfulEngine(telemetry) ? (
+              <span className="rounded-md bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-300">
+                לא התקבל פענוח מוצלח
+              </span>
+            ) : null}
+          </div>
+          <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">{formatTelemetrySummaryHe(telemetry)}</p>
+          <ul className="space-y-2 text-xs">
+            {ENGINE_ROWS.map(({ key, label }) => {
+              const e = telemetry[key];
+              return (
+                <li
+                  key={key}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[color:var(--surface-soft)]/40 px-2 py-1.5"
+                >
+                  <span className="font-bold">{label}</span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-black ${enginePhaseBadgeClass(e.phase)}`}
+                    >
+                      {enginePhaseLabelHe(e.phase)}
+                    </span>
+                    {e.ms != null ? (
+                      <span className="font-mono text-[color:var(--foreground-muted)]">{e.ms}ms</span>
+                    ) : null}
+                  </span>
+                  {e.detail && e.phase === "error" ? (
+                    <p className="w-full text-[10px] leading-snug text-red-600/90 dark:text-red-300/90">{e.detail}</p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

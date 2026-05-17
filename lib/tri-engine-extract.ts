@@ -21,6 +21,7 @@ import { getMergedIndustryConfig } from "@/lib/construction-trades";
 import { LOCALE_AI_LANGUAGE_NAMES, normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 import type { MessageTree } from "@/lib/i18n/keys";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
+import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
 
 /** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
 const GEMINI_FLASH_PREFERRED = [
@@ -97,81 +98,6 @@ function industryInstructionExtras(
     .map((c: { key: string; label: string }) => `- "${c.key}": string | null (${c.label})`)
     .join("\n");
   return `### DYNAMIC FIELDS\nInclude at root if missing:\n${cols}\n\n### CONTEXT\nIndustry: ${cfg.label}\n${cfg.aiInstructions}`;
-}
-
-function mergeDrawingResults(a: ScanExtractionV5, b: ScanExtractionV5, fileName: string): ScanExtractionV5 {
-  const boqMap = new Map<string, (typeof a.billOfQuantities)[0]>();
-  for (const row of [...a.billOfQuantities, ...b.billOfQuantities]) {
-    const k = `${row.description}::${row.unit ?? ""}`;
-    if (!boqMap.has(k)) boqMap.set(k, row);
-  }
-  const liMap = new Map<string, (typeof a.lineItems)[0]>();
-  for (const row of [...a.lineItems, ...b.lineItems]) {
-    const k = `${row.description}::${row.quantity ?? ""}`;
-    if (!liMap.has(k)) liMap.set(k, row);
-  }
-  return emptyV5Base(fileName, "DRAWING_BOQ", {
-    documentMetadata: {
-      ...a.documentMetadata,
-      project: a.documentMetadata.project ?? b.documentMetadata.project,
-      client: a.documentMetadata.client ?? b.documentMetadata.client,
-      documentDate: a.documentMetadata.documentDate ?? b.documentMetadata.documentDate,
-      drawingRefs: [
-        ...(a.documentMetadata.drawingRefs ?? []),
-        ...(b.documentMetadata.drawingRefs ?? []),
-      ],
-      discipline: a.documentMetadata.discipline ?? b.documentMetadata.discipline,
-    },
-    billOfQuantities: [...boqMap.values()],
-    lineItems: [...liMap.values()],
-    vendor: a.vendor || b.vendor,
-    total: Math.max(a.total, b.total),
-    date: a.date ?? b.date,
-    docType: a.docType || b.docType,
-    summary: `${a.summary}\n---\n${b.summary}`.slice(0, 4000),
-    enginesUsed: ["gemini", "openai"],
-  });
-}
-
-function mergeScanResults(
-  primary: ScanExtractionV5,
-  secondary: ScanExtractionV5,
-  fileName: string,
-  scanMode: ScanModeV5,
-): ScanExtractionV5 {
-  if (scanMode === "DRAWING_BOQ") return mergeDrawingResults(primary, secondary, fileName);
-  const lineMap = new Map<string, (typeof primary.lineItems)[0]>();
-  for (const row of [...primary.lineItems, ...secondary.lineItems]) {
-    const key = `${row.description}::${row.quantity ?? ""}::${row.lineTotal ?? ""}`;
-    if (!lineMap.has(key)) lineMap.set(key, row);
-  }
-  const boqMap = new Map<string, (typeof primary.billOfQuantities)[0]>();
-  for (const row of [...primary.billOfQuantities, ...secondary.billOfQuantities]) {
-    const key = `${row.itemRef ?? ""}::${row.description}::${row.quantity ?? ""}`;
-    if (!boqMap.has(key)) boqMap.set(key, row);
-  }
-  return emptyV5Base(fileName, scanMode, {
-    documentMetadata: {
-      ...primary.documentMetadata,
-      project: primary.documentMetadata.project ?? secondary.documentMetadata.project,
-      client: primary.documentMetadata.client ?? secondary.documentMetadata.client,
-      documentDate: primary.documentMetadata.documentDate ?? secondary.documentMetadata.documentDate,
-      drawingRefs: [
-        ...(primary.documentMetadata.drawingRefs ?? []),
-        ...(secondary.documentMetadata.drawingRefs ?? []),
-      ],
-      discipline: primary.documentMetadata.discipline ?? secondary.documentMetadata.discipline,
-      sheetIndex: primary.documentMetadata.sheetIndex ?? secondary.documentMetadata.sheetIndex,
-    },
-    billOfQuantities: [...boqMap.values()],
-    lineItems: [...lineMap.values()],
-    vendor: primary.vendor !== "לא צוין" ? primary.vendor : secondary.vendor,
-    total: Math.max(primary.total, secondary.total),
-    date: primary.date ?? secondary.date,
-    docType: primary.docType !== "UNKNOWN" ? primary.docType : secondary.docType,
-    summary: [primary.summary, secondary.summary].filter(Boolean).join("\n---\n").slice(0, 4000),
-    enginesUsed: [...(primary.enginesUsed ?? []), ...(secondary.enginesUsed ?? [])],
-  });
 }
 
 function compactError(error: unknown, max = 320): string {
@@ -381,6 +307,7 @@ export async function runTriEngineExtraction(params: {
 
     v5 = fulfilled.reduce((acc, next) => mergeScanResults(acc, next, fileName, scanMode));
     v5.enginesUsed = fulfilled.flatMap((item) => item.enginesUsed ?? []);
+    v5 = enrichInvoiceV5(v5);
     await emitPartial(v5, "merged_parallel");
     const aiData = v5ToPersistableAiData(v5);
     aiData._triEngineTelemetry = telemetry;
@@ -544,7 +471,7 @@ export async function runTriEngineExtraction(params: {
 
     const b = coerceLegacyAiToV5(gptRaw, fileName, scanMode);
     b.enginesUsed = ["gpt-5.4-turbo"];
-    v5 = mergeDrawingResults(a, b, fileName);
+    v5 = mergeScanResults(a, b, fileName, "DRAWING_BOQ");
     v5.enginesUsed = ["gemini", "openai"];
     await emitPartial(v5, "merged_gemini_openai");
   } else {

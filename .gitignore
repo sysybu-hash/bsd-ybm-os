@@ -34,6 +34,7 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+.e2e-demo-seeded.json
 
 # TypeScript
 tsconfig.tsbuildinfo

@@ -29,36 +29,30 @@ function patchLocaleCookie(request: NextRequest, response: NextResponse) {
   }
 }
 
-const protectedApiPrefixes = [
-  "/api/ai",
-  "/api/analyze",
-  "/api/chat",
-  "/api/data",
-  "/api/crm",
-  "/api/erp",
-  "/api/assign-user",
-  "/api/integrations",
-  "/api/scan",
-  "/api/org/",
-  "/api/admin",
-  "/api/meckano",
-  "/api/billing",
-  "/api/quotes",
-  "/api/user",
-  "/api/analyze-queue",
-  "/api/reports",
-  "/api/telemetry",
-  "/api/debug-session",
+/** נתיבי API שלא דורשים JWT במידלוור (אימות אחר ב-handler או ציבורי) */
+const publicApiPrefixes = [
+  "/api/auth",
+  "/api/register",
+  "/api/webhooks",
+  "/api/cron",
+  "/api/sign",
+  "/api/org-invite",
+  "/api/locale",
+  "/api/analyze-queue/process",
 ] as const;
+
+function isPublicApi(pathname: string): boolean {
+  return publicApiPrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export default async function middleware(request: NextRequest, _event: NextFetchEvent) {
   normalizeNextAuthUrlEnv();
 
   const pathname = request.nextUrl.pathname;
-  const protectedApi = protectedApiPrefixes.some((p) => pathname.startsWith(p));
+  const requiresSession = pathname.startsWith("/api/") && !isPublicApi(pathname);
   const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 
-  if (protectedApi) {
+  if (requiresSession) {
     if (!secret) {
       const res = new NextResponse(
         JSON.stringify({ error: "שרת ללא NEXTAUTH_SECRET.", code: "auth_misconfigured" }),
@@ -67,10 +61,6 @@ export default async function middleware(request: NextRequest, _event: NextFetch
       patchLocaleCookie(request, res);
       return res;
     }
-    /**
-     * withAuth של next-auth לא מעביר secureCookie ל-getToken — ברירת המחדל תלויה ב-NEXTAUTH_URL.
-     * כאן מאלצים עוגיית __Secure-* כשהבקשה בפועל ב-HTTPS (כולל מאחורי פרוקסי ב-Vercel).
-     */
     const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
     const secureCookie =
       request.nextUrl.protocol === "https:" ||

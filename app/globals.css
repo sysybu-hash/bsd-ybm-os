@@ -472,8 +472,24 @@
   }
 }
 
+.os-modal-dialog {
+  max-width: min(calc(100vw - 1.25rem), 560px);
+  max-height: min(88dvh, calc(100dvh - var(--mobile-chrome-bottom, 5.5rem) - 1.25rem));
+  touch-action: manipulation;
+}
+
+.os-floating-panel--maximized {
+  inset: calc(4rem + env(safe-area-inset-top, 0px)) 0.625rem var(--mobile-chrome-bottom, 5.5rem) 0.625rem;
+  width: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  height: auto !important;
+  transform: none !important;
+  border-radius: 1rem;
+}
+
 .os-sidebar-peek-rail {
-  inset-inline-end: 0;
+  inset-inline-start: 0;
   top: 6rem;
   bottom: 6rem;
   width: 10px;
@@ -481,7 +497,7 @@
   padding: 0;
   cursor: pointer;
   background: linear-gradient(
-    to left,
+    to inline-end,
     color-mix(in srgb, var(--brand-accent) 35%, transparent),
     transparent
   );

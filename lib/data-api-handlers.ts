@@ -8,6 +8,14 @@ import { getProjectByName } from "@/lib/workspace-api/project-detail";
 import { getUnreadNotificationsFeed } from "@/lib/workspace-api/notifications-feed";
 import { confirmExpense } from "@/lib/workspace-api/confirm-expense";
 
+function dataJsonResponse(body: unknown, init?: ResponseInit): NextResponse {
+  const res = NextResponse.json(body, init);
+  res.headers.set("Deprecation", "true");
+  res.headers.set("Sunset", "Sat, 01 Nov 2026 00:00:00 GMT");
+  res.headers.append("Link", '</docs/QA-checklist.md#api-מיגרציה-מ-apidata>; rel="deprecation"');
+  return res;
+}
+
 export async function handleDataGet(
   req: Request,
   ctx: WorkspaceAuthContext,
@@ -19,15 +27,15 @@ export async function handleDataGet(
 
   try {
     if (type === "dashboard") {
-      return NextResponse.json(await getDashboardStats(orgId));
+      return dataJsonResponse(await getDashboardStats(orgId));
     }
 
     if (type === "project") {
-      return NextResponse.json(await getProjectByName(orgId, query));
+      return dataJsonResponse(await getProjectByName(orgId, query));
     }
 
     if (type === "notifications") {
-      return NextResponse.json(await getUnreadNotificationsFeed(userId));
+      return dataJsonResponse(await getUnreadNotificationsFeed(userId));
     }
 
     if (type === "projects") {
@@ -36,7 +44,7 @@ export async function handleDataGet(
         orderBy: { createdAt: "desc" },
         select: { id: true, name: true },
       });
-      return NextResponse.json({ projects });
+      return dataJsonResponse({ projects });
     }
 
     if (type === "clients" || type === "crm") {
@@ -45,7 +53,7 @@ export async function handleDataGet(
         orderBy: { createdAt: "desc" },
         take: 100,
       });
-      return NextResponse.json(clients || []);
+      return dataJsonResponse(clients || []);
     }
 
     return jsonNotFound("Not Found");
@@ -84,11 +92,11 @@ export async function handleDataPost(
       if (!result.ok) {
         return jsonBadRequest(result.error);
       }
-      return NextResponse.json(result);
+      return dataJsonResponse(result);
     }
 
     if (body.type === "layout") {
-      return NextResponse.json({ success: true });
+      return dataJsonResponse({ success: true });
     }
 
     if (body.type === "add-client") {
@@ -101,14 +109,14 @@ export async function handleDataPost(
           organizationId: orgId,
         },
       });
-      return NextResponse.json({ success: true, contact: newContact });
+      return dataJsonResponse({ success: true, contact: newContact });
     }
 
     if (body.type === "delete-client" && body.id) {
       await prisma.contact.deleteMany({
         where: { id: body.id, organizationId: orgId },
       });
-      return NextResponse.json({ success: true });
+      return dataJsonResponse({ success: true });
     }
 
     if (body.type === "mark-notification-read" && body.id) {
@@ -116,11 +124,11 @@ export async function handleDataPost(
         where: { id: body.id, userId },
         data: { read: true },
       });
-      return NextResponse.json({ success: true });
+      return dataJsonResponse({ success: true });
     }
 
     if (body.type === "project" || body.type === "cashflow") {
-      return NextResponse.json({
+      return dataJsonResponse({
         success: true,
         data: body.payload ?? null,
         savedAt: new Date().toISOString(),

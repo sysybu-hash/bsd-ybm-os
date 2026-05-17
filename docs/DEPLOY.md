@@ -1,5 +1,11 @@
 # פריסה ומיגרציות DB
 
+## משתני סביבה מומלצים (פרודקשן)
+
+- `CRON_SECRET` — `/api/cron/*`
+- `ANALYZE_QUEUE_SECRET` — worker של `analyze-queue/process`
+- `ITA_PRODUCTION_KEY` — מספר הקצאה מס הכנסה (ללא מפתח: mock בלבד, ראו [INTEGRATIONS-STUBS.md](./INTEGRATIONS-STUBS.md))
+
 ## Prisma
 
 1. ודאו שכל תיקיות `prisma/migrations/*` במעקב git.

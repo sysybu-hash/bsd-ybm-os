@@ -4,6 +4,11 @@
  * Compliance Level: Full (2026 Regulations)
  */
 
+export function isItaProductionConfigured(): boolean {
+  const key = process.env.ITA_PRODUCTION_KEY?.trim();
+  return Boolean(key && key.length > 0);
+}
+
 export interface ItaAllocationResult {
   success: boolean;
   allocationNumber?: string;
@@ -27,10 +32,7 @@ export async function requestItaAllocation(
      * In a real production environment, this calls the ITA REST/SOAP endpoint.
      * We use organization-specific credentials from environment variables.
      */
-    const ITA_API_KEY = process.env.ITA_PRODUCTION_KEY;
-    
-    // Simulate API call for now (or real implementation if credentials provided)
-    if (!ITA_API_KEY) {
+    if (!isItaProductionConfigured()) {
       console.warn("BSD-YBM: Missing ITA_PRODUCTION_KEY. Using High-Fidelity 2026 Mock.");
       // Generating a deterministic 9-digit allocation number for 2026
       const mockNumber = Math.floor(100000000 + Math.random() * 900000000).toString();

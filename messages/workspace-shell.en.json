@@ -592,6 +592,26 @@
       "zoomLevel": "Zoom {level}%"
     }
   },
+  "geminiLive": {
+    "panelTitle": "Gemini Live settings",
+    "saved": "Gemini Live settings saved",
+    "applyOnReconnect": "Settings apply on the next voice session",
+    "resetHint": "Reset to defaults — press Save to apply",
+    "liveActiveHint": "Voice assistant is active. After saving, settings apply on the next connection.",
+    "speechStyle": "Speech style",
+    "voice": "Voice",
+    "voiceHint": "Choose a voice for the assistant",
+    "temperature": "Temperature ({value})",
+    "silenceMs": "Silence before end of speech (ms)",
+    "prefixPaddingMs": "Prefix padding (ms)",
+    "responseMode": "Response mode",
+    "responseAudio": "Audio only",
+    "responseAudioText": "Audio + text",
+    "inputTranscription": "Input transcription",
+    "outputTranscription": "Output transcription",
+    "reset": "Reset",
+    "save": "Save"
+  },
   "settingsHub": {
     "sidebarEyebrow": "Settings",
     "sidebarTitle": "Organization, billing & operations"

@@ -272,6 +272,16 @@ export default function AdaptiveWidgetShell({
 
   const chromeTitle = { title };
   const shellRef = useRef<HTMLElement>(null);
+  const zoomOrigin = dir === "rtl" ? "top right" : "top left";
+  const contentZoomStyle =
+    zoom === 1
+      ? undefined
+      : {
+          transform: `scale(${zoom})`,
+          transformOrigin: zoomOrigin,
+          width: `${100 / zoom}%`,
+          minHeight: `${100 / zoom}%`,
+        };
 
   useEffect(() => {
     if (!mobileOrMaximized) return;
@@ -351,18 +361,18 @@ export default function AdaptiveWidgetShell({
             <button
               type="button"
               onClick={() => onZoomChange?.(-0.1)}
-              className="workspace-chrome-btn hidden md:inline-flex"
+              className="workspace-chrome-btn inline-flex"
               aria-label={t("workspaceWidgets.chrome.zoomOutAria", chromeTitle)}
             >
               <ZoomOut size={14} aria-hidden />
             </button>
-            <span className="workspace-chrome-zoom hidden md:inline" aria-live="polite" aria-atomic="true">
+            <span className="workspace-chrome-zoom inline" aria-live="polite" aria-atomic="true">
               {t("workspaceWidgets.chrome.zoomLevel", { level: String(Math.round(zoom * 100)) })}
             </span>
             <button
               type="button"
               onClick={() => onZoomChange?.(0.1)}
-              className="workspace-chrome-btn hidden md:inline-flex"
+              className="workspace-chrome-btn inline-flex"
               aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
             >
               <ZoomIn size={14} aria-hidden />
@@ -393,13 +403,10 @@ export default function AdaptiveWidgetShell({
 
       <div
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[color:var(--foreground-main)] [-webkit-overflow-scrolling:touch] md:pb-0"
-        style={
-          mobileOrMaximized
-            ? undefined
-            : { transform: `scale(${zoom})`, transformOrigin: dir === "rtl" ? "top right" : "top left" }
-        }
       >
-        <div className="min-h-full">{children}</div>
+        <div className="min-h-full" style={contentZoomStyle}>
+          {children}
+        </div>
       </div>
 
       {!mobileOrMaximized && (

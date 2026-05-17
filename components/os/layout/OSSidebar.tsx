@@ -56,14 +56,14 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
       )}
 
       <motion.aside
-        initial={{ x: 24, opacity: 0 }}
+        initial={{ x: dir === "rtl" ? -20 : 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] as const }}
         onMouseLeave={onMouseLeave}
         className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-transform duration-200 md:flex
           bottom-0 left-0 right-0 h-auto w-full items-stretch border-t px-3 py-2
           ${isOpen ? "translate-y-0" : "translate-y-0"}
-          md:bottom-28 md:end-5 md:start-auto md:top-24 md:max-h-[calc(100vh-12rem)] md:min-h-0 md:w-[var(--os-sidebar-rail-width)] md:max-w-[var(--os-sidebar-rail-width)] md:rounded-xl md:border md:px-1.5 md:py-3`}
+          md:bottom-28 md:start-5 md:end-auto md:top-24 md:max-h-[calc(100vh-12rem)] md:min-h-0 md:w-[var(--os-sidebar-rail-width)] md:max-w-[var(--os-sidebar-rail-width)] md:rounded-xl md:border md:px-1.5 md:py-3`}
         aria-label={t("workspaceWidgets.sidebar.aria")}
         dir={dir}
       >
@@ -88,7 +88,7 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
                   >
                     <item.icon size={19} aria-hidden />
                   </span>
-                  <span className="pointer-events-none absolute end-14 z-50 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
+                  <span className="pointer-events-none absolute start-full z-50 ms-2 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
                     {label}
                   </span>
                 </button>

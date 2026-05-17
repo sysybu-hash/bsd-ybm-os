@@ -384,7 +384,7 @@ export default function OmniCanvas() {
       />
 
       <div
-        className={`absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:pe-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+        className={`absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
       >
         <OSWorkspace
           widgets={widgets}

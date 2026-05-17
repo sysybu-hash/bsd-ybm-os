@@ -27,8 +27,8 @@ export function resolveTriEnginePlan(
   if (scanMode === "INVOICE_FINANCIAL") {
     return {
       scanMode,
-      effectiveRunMode: "MULTI_SEQUENTIAL",
-      providerChain: ["docai", "openai", "gemini"],
+      effectiveRunMode: "MULTI_PARALLEL",
+      providerChain: ["docai", "gemini", "openai"],
     };
   }
   if (scanMode === "DRAWING_BOQ") {

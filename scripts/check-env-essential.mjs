@@ -63,6 +63,16 @@ if (!has("NEXTAUTH_URL") && !has("AUTH_URL")) {
   warns.push("Missing NEXTAUTH_URL / AUTH_URL - production sign-in may fail.");
 }
 
+if (!has("CRON_SECRET")) {
+  warns.push("Missing CRON_SECRET - /api/cron/* routes will reject in production.");
+}
+if (!has("ANALYZE_QUEUE_SECRET")) {
+  warns.push("Missing ANALYZE_QUEUE_SECRET - analyze-queue worker cannot authenticate.");
+}
+if (!has("ITA_PRODUCTION_KEY")) {
+  warns.push("Missing ITA_PRODUCTION_KEY - tax allocation uses mock mode only.");
+}
+
 console.log("[check-env-essential] BSD-YBM");
 if (issues.length) {
   console.error("\nCritical missing variables:");

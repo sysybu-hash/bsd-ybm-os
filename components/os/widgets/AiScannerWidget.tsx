@@ -22,8 +22,11 @@ import {
   Library,
 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import ScanResultsPanel from "@/components/os/widgets/scan/ScanResultsPanel";
+import { canBrowserPreviewMime } from "@/lib/scan-preview";
 import { LAST_SCAN_STORAGE_KEY } from "@/lib/notebooklm-from-scan";
+import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { toast } from "sonner";
@@ -141,15 +144,6 @@ async function readNdjsonStream(
   }
 }
 
-function telemetryLabel(t: TriEngineTelemetry | null): string {
-  if (!t) return "—";
-  const parts: string[] = [];
-  if (t.documentAI?.phase && t.documentAI.phase !== "idle") parts.push(`DocAI: ${t.documentAI.phase}`);
-  if (t.gemini?.phase && t.gemini.phase !== "idle") parts.push(`Gemini: ${t.gemini.phase}`);
-  if (t.gpt?.phase && t.gpt.phase !== "idle") parts.push(`GPT: ${t.gpt.phase}`);
-  return parts.length ? parts.join(" · ") : "—";
-}
-
 const SCAN_INSTRUCTION_KEY = "bsd_scan_user_instruction";
 
 type AiScannerWidgetProps = {
@@ -171,6 +165,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
   const [telemetry, setTelemetry] = useState<TriEngineTelemetry | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewMime, setPreviewMime] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState("");
   const [resultJson, setResultJson] = useState<string>("");
   const [pendingAnalysis, setPendingAnalysis] = useState<DocumentAnalysis | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
@@ -178,6 +174,15 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
   const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
+  const [stackScannerPanels, setStackScannerPanels] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => setStackScannerPanels(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
   const [lastScanFileName, setLastScanFileName] = useState("");
   const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
   const [savingNotebook, setSavingNotebook] = useState(false);
@@ -236,6 +241,29 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     };
   }, [previewUrl]);
 
+  const applyFilePreview = useCallback((file: File) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
+    setPreviewFileName(file.name);
+    setPreviewMime(mime);
+    if (canBrowserPreviewMime(mime)) {
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [previewUrl]);
+
+  const openPreviewPanel = useCallback(() => {
+    if (!previewUrl && queue.length > 0) {
+      const active =
+        queue.find((q) => q.status === "processing") ??
+        [...queue].reverse().find((q) => q.status === "done") ??
+        queue[queue.length - 1];
+      if (active) applyFilePreview(active.file);
+    }
+    setPreviewPanelOpen(true);
+  }, [applyFilePreview, previewUrl, queue]);
+
   const activeEngineLabel = useMemo(() => {
     if (!engineMeta) return tr("scanner.processing", "מעבד…");
     if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
@@ -264,10 +292,11 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     setResultJson("");
     setTelemetry(null);
     setScanClassification(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
-    if (mime.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
-    else setPreviewUrl(null);
+    applyFilePreview(file);
+
+    void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
+      captureProductEvent("scan_started", { engine: engineRunMode, fileType: file.type });
+    });
 
     try {
       const formData = new FormData();
@@ -536,7 +565,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir={dir}>
-      <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-l">
+      <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-s">
         <div className="border-b border-[color:var(--border-main)] p-3">
           <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
             <History size={16} />
@@ -587,8 +616,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
             </button>
             <button
               type="button"
-              onClick={() => setPreviewPanelOpen(true)}
-              disabled={!previewUrl && queue.length === 0}
+              onClick={openPreviewPanel}
+              disabled={queue.length === 0 && !previewUrl}
               className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
               aria-label={tr("scanner.preview", "תצוגה מקדימה")}
             >
@@ -685,8 +714,12 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
             </div>
           </div>
         ) : (
-          <Group orientation="horizontal" className="min-h-0 flex-1">
-            <Panel defaultSize={48} minSize={28} className="flex min-h-0 flex-col">
+          <Group orientation={stackScannerPanels ? "vertical" : "horizontal"} className="min-h-0 flex-1">
+            <Panel
+              defaultSize={stackScannerPanels ? 42 : 48}
+              minSize={stackScannerPanels ? 24 : 28}
+              className="flex min-h-0 flex-col"
+            >
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -694,7 +727,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
-                className={`m-3 flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition ${
+                className={`m-2 flex min-h-[9rem] flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition md:m-3 ${
                   isDragging ? "border-orange-500/50 bg-orange-500/5" : "border-[color:var(--border-main)]"
                 }`}
               >
@@ -772,18 +805,35 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
                     ))}
                   </ul>
                 ) : null}
-                {previewUrl ? (
-                  <img src={previewUrl} alt={tr("scanner.preview", "תצוגה")} className="mt-4 max-h-32 rounded-lg object-contain" />
+                {previewUrl && previewMime ? (
+                  <div className="mt-4 w-full max-w-sm px-2">
+                    <ScanFilePreview
+                      url={previewUrl}
+                      mime={previewMime}
+                      fileName={previewFileName}
+                      emptyLabel=""
+                    />
+                  </div>
                 ) : null}
               </div>
             </Panel>
-            <Separator className="w-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40" />
-            <Panel defaultSize={52} minSize={28} className="flex min-h-0 flex-col p-3">
+            <Separator
+              className={
+                stackScannerPanels
+                  ? "h-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40"
+                  : "w-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40"
+              }
+            />
+            <Panel
+              defaultSize={stackScannerPanels ? 58 : 52}
+              minSize={stackScannerPanels ? 28 : 28}
+              className="flex min-h-0 flex-col p-3"
+            >
               <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
                 {t("scanner.results")}
               </p>
               <p className="mb-2 text-[10px] font-mono text-[color:var(--foreground-muted)]">
-                {tr("scanner.telemetry", "טלמטריה")}: {telemetryLabel(telemetry)}
+                {tr("scanner.telemetry", "טלמטריה")}: {formatTelemetrySummaryHe(telemetry)}
               </p>
               <pre className="custom-scrollbar flex-1 overflow-auto rounded-xl border border-[color:var(--border-main)] bg-black/20 p-3 text-[10px] leading-relaxed">
                 {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
@@ -792,7 +842,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
           </Group>
         )}
 
-        <div className="grid grid-cols-3 gap-2 border-t border-[color:var(--border-main)] p-2">
+        <div className="grid grid-cols-3 gap-1.5 border-t border-[color:var(--border-main)] p-2 sm:gap-2">
           <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
             <Zap size={14} className="mx-auto text-blue-500" />
             <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">{tr("scanner.engineActive", "מנוע")}</div>
@@ -827,17 +877,44 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         open={previewPanelOpen}
         onClose={() => setPreviewPanelOpen(false)}
         title={tr("scanner.preview", "תצוגה מקדימה")}
+        panelWidth={640}
+        zIndex={1270}
       >
-        {previewUrl ? (
-          <img src={previewUrl} alt="" className="mx-auto max-h-[50vh] rounded-lg object-contain" />
-        ) : (
-          <p className="text-sm text-[color:var(--foreground-muted)]">{tr("scanner.noPreview", "אין תצוגה")}</p>
-        )}
+        <ScanFilePreview
+          url={previewUrl}
+          mime={previewMime}
+          fileName={previewFileName}
+          emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה לסוג קובץ זה")}
+        />
+        {previewFileName ? (
+          <p className="mt-2 truncate text-center text-[10px] font-bold text-[color:var(--foreground-muted)]">
+            {previewFileName}
+          </p>
+        ) : null}
         {queue.length > 0 ? (
-          <ul className="mt-3 space-y-1 text-xs">
+          <ul className="mt-3 space-y-1 border-t border-[color:var(--border-main)] pt-3 text-xs">
             {queue.map((q) => (
-              <li key={q.id} className="truncate font-semibold">
-                {q.file.name} — {q.status}
+              <li key={q.id}>
+                <button
+                  type="button"
+                  onClick={() => applyFilePreview(q.file)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-2 py-1.5 text-start transition hover:bg-[color:var(--surface-soft)]"
+                >
+                  <span className="truncate font-semibold">{q.file.name}</span>
+                  <span
+                    className={
+                      q.status === "done"
+                        ? "text-emerald-500"
+                        : q.status === "error"
+                          ? "text-red-500"
+                          : q.status === "processing"
+                            ? "text-orange-500"
+                            : "text-[color:var(--foreground-muted)]"
+                    }
+                  >
+                    {q.status}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
@@ -848,6 +925,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         open={resultsPanelOpen}
         onClose={() => setResultsPanelOpen(false)}
         title={tr("scanner.resultsPanel", "תוצאות סריקה")}
+        panelWidth={560}
+        zIndex={1280}
       >
         {lastScanV5 && lastScanFileName ? (
           <ScanResultsPanel

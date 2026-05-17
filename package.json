@@ -10,6 +10,7 @@
     "test": "jest",
     "test:e2e": "playwright test",
     "test:e2e:quality": "playwright test e2e/site-quality.spec.ts --project=chromium --project=mobile-chrome",
+    "test:e2e:workspace": "playwright test e2e/workspace-automations.spec.ts e2e/workspace-a11y.spec.ts --project=chromium",
     "lint": "eslint .",
     "verify": "npm run lint && npx tsc --noEmit && npm test",
     "verify:all": "npm run verify && playwright test --project=chromium --project=mobile-chrome",

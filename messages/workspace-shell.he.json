@@ -592,6 +592,26 @@
       "zoomLevel": "רמת זום {level}%"
     }
   },
+  "geminiLive": {
+    "panelTitle": "הגדרות Gemini Live",
+    "saved": "הגדרות Gemini Live נשמרו",
+    "applyOnReconnect": "ההגדרות יחולו בחיבור הבא של העוזר הקולי",
+    "resetHint": "אופסו לברירת מחדל — לחץ «שמור» להחלה ולשמירה",
+    "liveActiveHint": "העוזר הקולי פעיל. אחרי שמירה, ההגדרות יחולו בחיבור הבא (אפשר לכבות ולהפעיל מחדש).",
+    "speechStyle": "סגנון דיבור",
+    "voice": "קול",
+    "voiceHint": "בחר קול לעוזר הקולי",
+    "temperature": "טמפרטורה ({value})",
+    "silenceMs": "שקט לפני סיום דיבור (ms)",
+    "prefixPaddingMs": "ריפוד לפני פעילות (ms)",
+    "responseMode": "מצב תגובה",
+    "responseAudio": "קול בלבד",
+    "responseAudioText": "קול + טקסט",
+    "inputTranscription": "תמלול קלט",
+    "outputTranscription": "תמלול פלט",
+    "reset": "איפוס",
+    "save": "שמור"
+  },
   "settingsHub": {
     "sidebarEyebrow": "הגדרות",
     "sidebarTitle": "ארגון, מנויים ותפעול"

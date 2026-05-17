@@ -48,8 +48,17 @@ jobs:
       - name: Unit tests
         run: npm test -- --runInBand
 
+      - name: API route audit
+        run: node scripts/audit-api-routes.mjs
+
       - name: Production build
         run: npm run build
 
+      - name: Seed test data
+        run: npm run seed:test
+
       - name: Browser quality gate
         run: npm run test:e2e:quality
+
+      - name: Workspace E2E (automations + a11y)
+        run: npm run test:e2e:workspace

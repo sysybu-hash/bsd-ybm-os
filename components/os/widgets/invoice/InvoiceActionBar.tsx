@@ -3,6 +3,7 @@
 import React from "react";
 import { Download, FileText, Save, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { captureProductEvent } from "@/lib/analytics/posthog-client";
 
 type InvoiceActionBarProps = {
   documentId: string;
@@ -41,6 +42,7 @@ export default function InvoiceActionBar({
         href={exportUrl("pdf")}
         className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold"
         download
+        onClick={() => captureProductEvent("pdf_exported", { document_id: documentId, format: "pdf" })}
       >
         <Download size={14} aria-hidden />
         {t("workspaceWidgets.invoice.exportPdf")}

@@ -100,6 +100,10 @@ export function useWindowManager() {
       zIndex: nextZ,
       zoom: 1
     }]);
+
+    void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
+      captureProductEvent("widget_opened", { widget_type: type });
+    });
   }, []);
 
   const toggleMaximize = useCallback((id: string) => {

@@ -1,6 +1,8 @@
 # רשימת בדיקות QA — BSD-YBM OS
 
-**סטטוס:** 10/10 — API ייעודי, i18n בווידג'טים, PostHog, WidgetState, E2E אוטומטי, `verify` + seed.
+**סטטוס:** 10/10 — API ייעודי, i18n בווידג'טים, PostHog (`widget_opened`, `scan_started`, `scan_completed`, `automation_executed`, `pdf_exported`), WidgetState, E2E אוטומטי, `verify` + seed.
+
+**ידני בלבד:** מובייל (תפריט תחתון, «עוד», גלילה), PDF עברית RTL בפרודקשן, סריקת PDF אמיתית עם DocAI/OpenAI.
 
 ## שלושת ערוצי האוטומציה
 
@@ -40,6 +42,18 @@
 | `GET /api/organization` | הגדרות ארגון ביוצר מסמכים |
 
 `/api/data` נשאר לתאימות לאחור בלבד.
+
+## CI (GitHub Actions — `quality-gate.yml`)
+
+| שלב | אוטומטי ב-CI |
+|-----|----------------|
+| `npm run lint` | כן |
+| `npx tsc --noEmit` | כן |
+| `npm test` (Jest, כולל tri-engine / סורק) | כן |
+| `node scripts/audit-api-routes.mjs` | כן |
+| `npm run build` | כן |
+| `npm run test:e2e:quality` | כן |
+| `npm run test:e2e:workspace` (אחרי seed) | כן |
 
 ## CI מקומי
 
