@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome";
 
 type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -11,6 +11,7 @@ interface ShellProps {
   initialOffset?: { x: number; y: number };
   size?: { width: number; height: number };
   zIndex?: number;
+  isFocused?: boolean;
   isMaximized?: boolean;
   zoom?: number;
   onFocus?: () => void;
@@ -33,6 +34,7 @@ export default function AdaptiveWidgetShell({
   initialOffset,
   size = { width: 600, height: 450 },
   zIndex = 10,
+  isFocused = false,
   isMaximized = false,
   zoom = 1,
   onFocus,
@@ -43,7 +45,7 @@ export default function AdaptiveWidgetShell({
   workspaceBoundsRef,
   children,
 }: ShellProps) {
-  const { t, dir } = useI18n();
+  const { dir } = useI18n();
 
   const getViewportSize = () => ({
     width: typeof window !== "undefined" ? window.innerWidth : 1280,
@@ -270,7 +272,6 @@ export default function AdaptiveWidgetShell({
     setIsResizing(true);
   };
 
-  const chromeTitle = { title };
   const shellRef = useRef<HTMLElement>(null);
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";
   const zoomActive = Math.abs(zoom - 1) > 0.001;
@@ -315,8 +316,10 @@ export default function AdaptiveWidgetShell({
       id={id}
       onMouseDown={onFocus}
       className={`workspace-window pointer-events-auto flex min-h-0 flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
+        isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
+      } ${
         mobileOrMaximized
-          ? "fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top,0px))] bottom-[var(--mobile-chrome-bottom)] !z-[950] !h-auto !max-h-none !w-full !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!z-auto md:!h-full md:!max-h-full"
+          ? "fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top,0px))] bottom-[var(--mobile-chrome-bottom)] !z-[950] !h-auto !max-h-none !w-full !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full"
           : "absolute"
       }`}
       style={
@@ -335,70 +338,30 @@ export default function AdaptiveWidgetShell({
       dir={dir}
       aria-labelledby={`${id}-title`}
     >
-      <header
-        onMouseDown={(e) => {
+      <WorkspaceWindowChrome
+        title={title}
+        titleId={`${id}-title`}
+        onClose={onClose}
+        zoom={zoom}
+        onZoomDelta={(delta) => onZoomChange?.(delta)}
+        isMaximized={isMaximized}
+        onMaximize={onMaximize}
+        maximizeHiddenOnMobile
+        closeTouchTarget
+        headerClassName={
+          mobileOrMaximized
+            ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]"
+            : "cursor-move touch-none"
+        }
+        onHeaderMouseDown={(e) => {
           if (mobileOrMaximized) return;
+          if ((e.target as HTMLElement).closest("button")) return;
           e.preventDefault();
           dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
           setIsDragging(true);
         }}
-        className={`workspace-window-header flex shrink-0 items-center justify-between gap-2 px-3 py-2.5 ${
-          mobileOrMaximized ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]" : "cursor-move"
-        }`}
-      >
-        <div className="min-w-[2rem] flex-1" aria-hidden />
+      />
 
-        <h2
-          id={`${id}-title`}
-          className="max-w-[min(42%,14rem)] truncate rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/70 px-3 py-1 text-center text-[11px] font-black tracking-[0.14em] text-[color:var(--foreground-main)] shadow-xs"
-        >
-          {title}
-        </h2>
-
-        <div className="flex flex-1 items-center justify-end gap-1.5">
-          <div className="workspace-chrome-toolbar">
-            <button
-              type="button"
-              onClick={() => onZoomChange?.(-0.1)}
-              className="workspace-chrome-btn inline-flex"
-              aria-label={t("workspaceWidgets.chrome.zoomOutAria", chromeTitle)}
-            >
-              <ZoomOut size={14} aria-hidden />
-            </button>
-            <span className="workspace-chrome-zoom inline" aria-live="polite" aria-atomic="true">
-              {t("workspaceWidgets.chrome.zoomLevel", { level: String(Math.round(zoom * 100)) })}
-            </span>
-            <button
-              type="button"
-              onClick={() => onZoomChange?.(0.1)}
-              className="workspace-chrome-btn inline-flex"
-              aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
-            >
-              <ZoomIn size={14} aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={onMaximize}
-              className="workspace-chrome-btn hidden md:inline-flex"
-              aria-label={
-                isMaximized
-                  ? t("workspaceWidgets.chrome.restoreAria", chromeTitle)
-                  : t("workspaceWidgets.chrome.maximizeAria", chromeTitle)
-              }
-            >
-              {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 md:min-h-8 md:min-w-8"
-              aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
-            >
-              <X size={16} className="shrink-0 md:h-[15px] md:w-[15px]" aria-hidden />
-            </button>
-          </div>
-        </div>
-      </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
         <div
@@ -476,9 +439,13 @@ export default function AdaptiveWidgetShell({
             aria-hidden
             tabIndex={-1}
             onMouseDown={(e) => startResize(e, "se")}
-            className="absolute bottom-0 right-0 z-[6] flex h-6 w-6 cursor-nwse-resize items-end justify-end border-0 bg-transparent p-1"
+            className="absolute bottom-0 right-0 z-[6] flex h-7 w-7 cursor-nwse-resize items-end justify-end border-0 bg-transparent p-1.5"
           >
-            <div className="pointer-events-none h-3 w-3 border-b-2 border-r-2 border-[color:var(--foreground-muted)] opacity-70" />
+            <div className="workspace-resize-grip" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </div>
           </button>
         </>
       )}

@@ -43,6 +43,23 @@
     --workspace-chrome-bg: var(--glass-bg);
     --workspace-chrome-border: var(--glass-border);
     --workspace-chrome-omnibar-offset: 5.5rem;
+
+    /* Spatial Glass OS — מסגרות חלונות workspace */
+    --window-radius: 22px;
+    --window-header-height: 2.75rem;
+    --window-ring: color-mix(in srgb, var(--brand-accent) 7%, transparent);
+    --window-ring-focus: color-mix(in srgb, var(--brand-accent) 14%, transparent);
+    --window-shadow-rest:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px rgba(15, 23, 42, 0.07),
+      0 24px 48px rgba(15, 23, 42, 0.06);
+    --window-shadow-focus:
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 12px 32px rgba(15, 23, 42, 0.1),
+      0 28px 56px rgba(79, 70, 229, 0.08);
+    --window-backdrop: blur(20px) saturate(1.12);
+    --window-surface: color-mix(in srgb, var(--surface-card) 94%, transparent);
+
   /* גובה סרגל תחתון במובייל (ניווט + safe area) */
     --mobile-chrome-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     --desktop-dock-clearance: 10.5rem;
@@ -121,6 +138,15 @@
     --sidebar-text: #d0d7e5;
     --sidebar-muted: #8996aa;
     --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+    --window-shadow-rest:
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 8px 28px rgba(0, 0, 0, 0.28),
+      0 24px 52px rgba(0, 0, 0, 0.22);
+    --window-shadow-focus:
+      0 2px 6px rgba(0, 0, 0, 0.25),
+      0 14px 36px rgba(0, 0, 0, 0.32),
+      0 28px 60px rgba(99, 102, 241, 0.12);
+    --window-surface: color-mix(in srgb, var(--surface-card) 90%, transparent);
   }
 
   html {
@@ -241,7 +267,6 @@
   .tile,
   .v2-panel,
   .pearl-panel,
-  .glass-2026-panel,
   .metric-3d-card,
   .v2-dashboard-frame,
   .card-avenue,
@@ -329,31 +354,114 @@
     backdrop-filter: none;
   }
 
-  .workspace-window {
+  .glass-2026-panel {
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--window-radius) !important;
+    background: var(--window-surface) !important;
+    box-shadow: var(--window-shadow-rest) !important;
+    backdrop-filter: var(--window-backdrop);
+    -webkit-backdrop-filter: var(--window-backdrop);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-2026-panel,
+    .workspace-window,
+    .os-floating-panel.workspace-window {
+      background: color-mix(in srgb, var(--surface-card) 96%, transparent) !important;
+    }
+  }
+
+  .workspace-window,
+  .os-floating-panel.workspace-window {
+    position: relative;
     border: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl);
-    background: color-mix(in srgb, var(--surface-card) 92%, transparent);
-    box-shadow:
-      var(--shadow-lg),
-      0 0 0 1px color-mix(in srgb, var(--brand-accent) 8%, transparent);
-    backdrop-filter: blur(18px) saturate(1.15);
+    border-radius: var(--window-radius);
+    background: var(--window-surface);
+    box-shadow: var(--window-shadow-rest), 0 0 0 1px var(--window-ring);
+    transition:
+      box-shadow 200ms ease,
+      border-color 200ms ease;
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .workspace-window,
+    .os-floating-panel.workspace-window {
+      backdrop-filter: var(--window-backdrop);
+      -webkit-backdrop-filter: var(--window-backdrop);
+    }
+  }
+
+  .workspace-window::before,
+  .os-floating-panel.workspace-window::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 2px;
+    border-radius: var(--window-radius) var(--window-radius) 0 0;
+    background: transparent;
+    pointer-events: none;
+    z-index: 2;
+    transition: background 200ms ease;
+  }
+
+  .workspace-window--focused {
+    box-shadow: var(--window-shadow-focus), 0 0 0 1px var(--window-ring-focus);
+  }
+
+  .workspace-window--focused::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--brand-accent) 55%, transparent),
+      transparent
+    );
   }
 
   .workspace-window-header {
-    border-bottom: 1px solid var(--glass-border);
-    background: color-mix(in srgb, var(--glass-bg) 88%, var(--surface-soft));
-    backdrop-filter: blur(12px);
+    display: flex;
+    min-height: var(--window-header-height);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-inline: 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 80%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--glass-bg) 92%, transparent),
+      color-mix(in srgb, var(--surface-soft) 40%, transparent)
+    );
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .workspace-window-header {
+      backdrop-filter: blur(14px) saturate(1.08);
+      -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    }
+  }
+
+  .workspace-window-title {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--foreground-main);
   }
 
   .workspace-chrome-toolbar {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
-    gap: 0.125rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-main);
-    background: color-mix(in srgb, var(--surface-card) 90%, transparent);
-    padding: 0.125rem;
-    box-shadow: var(--shadow-xs);
+    gap: 0.25rem;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
   }
 
   .workspace-chrome-btn {
@@ -362,34 +470,71 @@
     min-width: 2rem;
     align-items: center;
     justify-content: center;
-    border-radius: calc(var(--radius-md) - 2px);
+    border-radius: 9999px;
     border: 0;
     background: transparent;
     color: var(--foreground-muted);
     transition:
       background-color 140ms ease,
       color 140ms ease,
-      box-shadow 140ms ease;
+      transform 140ms ease;
   }
 
   .workspace-chrome-btn:hover {
-    background: var(--surface-soft);
+    background: color-mix(in srgb, var(--surface-soft) 85%, transparent);
     color: var(--foreground-main);
   }
 
   .workspace-chrome-btn--danger:hover {
-    background: color-mix(in srgb, rgb(244 63 94) 12%, transparent);
+    background: color-mix(in srgb, rgb(244 63 94) 14%, transparent);
     color: rgb(225 29 72);
   }
 
   .workspace-chrome-zoom {
-    min-width: 2.25rem;
-    padding-inline: 0.25rem;
+    min-width: 2rem;
+    padding-inline: 0.125rem;
     text-align: center;
-    font-size: 0.625rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     color: var(--foreground-muted);
+    user-select: none;
+  }
+
+  .workspace-resize-grip {
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    padding: 2px;
+    opacity: 0.45;
+    transition: opacity 140ms ease;
+  }
+
+  .workspace-window:hover .workspace-resize-grip,
+  .workspace-window:focus-within .workspace-resize-grip {
+    opacity: 0.75;
+  }
+
+  .workspace-resize-grip span {
+    display: block;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--foreground-muted);
+  }
+
+  .workspace-resize-grip span:nth-child(1) {
+    width: 10px;
+  }
+
+  .workspace-resize-grip span:nth-child(2) {
+    width: 7px;
+  }
+
+  .workspace-resize-grip span:nth-child(3) {
+    width: 4px;
   }
 
   .marketing-unified-shell,
@@ -485,7 +630,7 @@
   max-height: none !important;
   height: auto !important;
   transform: none !important;
-  border-radius: 1rem;
+  border-radius: var(--window-radius);
 }
 
 .os-sidebar-peek-rail {

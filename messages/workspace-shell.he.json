@@ -327,6 +327,23 @@
       "platformAdmin": "ניהול מערכת",
       "helpCenter": "מרכז עזרה"
     },
+    "helpCenter": {
+      "title": "מרכז עזרה",
+      "subtitle": "מדריכים, שאלות נפוצות וקיצורי דרך",
+      "searchPlaceholder": "חיפוש במדריכים ובשאלות…",
+      "noResults": "לא נמצאו תוצאות",
+      "guidesSection": "מדריכים",
+      "faqSection": "שאלות נפוצות",
+      "readMinutes": "זמן קריאה ~{minutes} דקות",
+      "tips": "טיפים",
+      "omnibarExamples": "דוגמאות ל-Omnibar",
+      "openRelevantScreen": "פתח מסך רלוונטי",
+      "selectGuide": "בחרו מדריך מהרשימה",
+      "globalFaqTitle": "שאלות נפוצות",
+      "openAiChat": "פתח צ׳אט AI",
+      "fullHelpPage": "דף עזרה מלא",
+      "aiChatPrompt": "יש לי שאלה על השימוש במערכת BSD-YBM"
+    },
     "quickActions": {
       "projectBoard": { "title": "לוח פרויקטים", "subtitle": "ניהול משימות" },
       "crmTable": { "title": "ניהול לקוחות", "subtitle": "מאגר CRM" },
@@ -350,6 +367,7 @@
       "aria": "ניווט מהיר במובייל",
       "dashboard": "דאשבורד",
       "aiScanner": "סורק AI",
+      "docCreator": "הפקת מסמכים",
       "meckanoReports": "דוחות Meckano",
       "crmTable": "לקוחות",
       "omnibarAria": "פתח שורת פקודה וחיפוש",

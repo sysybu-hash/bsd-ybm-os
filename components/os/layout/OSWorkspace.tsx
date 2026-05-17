@@ -127,6 +127,7 @@ export default function OSWorkspace({
   }, []);
 
   const omnibarName = t("workspaceWidgets.empty.omnibarName");
+  const topZ = widgets.length > 0 ? Math.max(...widgets.map((w) => w.zIndex)) : 0;
 
   return (
     <div ref={workspaceBoundsRef} className="relative flex h-full min-h-0 flex-1 overflow-hidden" dir={dir}>
@@ -195,6 +196,7 @@ export default function OSWorkspace({
             initialOffset={widget.position}
             size={widget.size}
             zIndex={widget.zIndex}
+            isFocused={widget.zIndex === topZ}
             isMaximized={widget.isMaximized}
             zoom={widget.zoom}
             onFocus={() => focusWidget(widget.id)}

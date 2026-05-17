@@ -109,7 +109,19 @@ export function useWindowManager() {
   }, []);
 
   const toggleMaximize = useCallback((id: string) => {
-    setWidgets(prev => prev.map(w => w.id === id ? { ...w, isMaximized: !w.isMaximized } : w));
+    setWidgets((prev) => {
+      const target = prev.find((w) => w.id === id);
+      if (!target) return prev;
+      const willMaximize = !target.isMaximized;
+      if (!willMaximize) {
+        return prev.map((w) => (w.id === id ? { ...w, isMaximized: false } : w));
+      }
+      const nextZ = nextZIndexRef.current + 1;
+      nextZIndexRef.current = nextZ;
+      return prev.map((w) =>
+        w.id === id ? { ...w, isMaximized: true, zIndex: nextZ } : w,
+      );
+    });
   }, []);
 
   const updateZoom = useCallback((id: string, delta: number) => {

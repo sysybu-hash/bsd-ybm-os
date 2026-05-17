@@ -46,6 +46,9 @@ export async function generateMetadata(): Promise<Metadata> {
       default: base.title as string,
       template: "%s | BSD-YBM-OS",
     },
+    verification: {
+      google: "kwq2iIvUlcCLM7Ji2E5WBzFpV7WQ8rsNaOb5EYWMvcE",
+    },
     manifest: "/manifest.json",
     formatDetection: { email: false, address: false, telephone: false },
     appleWebApp: { capable: true, statusBarStyle: "default", title: "BSD-YBM-OS" },

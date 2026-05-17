@@ -12,8 +12,25 @@ type Props = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
 
+const categoryBtnClass = (active: boolean) =>
+  `rounded-xl font-bold transition max-md:min-h-[44px] max-md:shrink-0 max-md:whitespace-nowrap max-md:px-4 max-md:py-2.5 max-md:text-sm md:mb-1 md:w-full md:rounded-lg md:px-3 md:py-2.5 md:text-xs ${
+    active
+      ? "bg-sky-600 text-white"
+      : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+  }`;
+
+const guideBtnClass = (active: boolean) =>
+  `rounded-xl text-start font-semibold transition max-md:min-h-[44px] max-md:shrink-0 max-md:whitespace-nowrap max-md:px-4 max-md:py-3 max-md:text-sm md:mb-1 md:block md:w-full md:rounded-lg md:px-3 md:py-2.5 md:text-xs ${
+    active
+      ? "bg-[color:var(--surface-soft)] text-[color:var(--foreground-main)]"
+      : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+  }`;
+
+const resultCardClass =
+  "w-full min-h-[44px] rounded-xl border border-[color:var(--border-main)] p-3 text-start hover:bg-[color:var(--surface-soft)] active:bg-[color:var(--surface-soft)]";
+
 export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
-  const { dir } = useI18n();
+  const { t, dir } = useI18n();
   const [categoryId, setCategoryId] = useState(HELP_CENTER_HE.categories[0]?.id ?? "start");
   const [guideId, setGuideId] = useState<string | null>(HELP_CENTER_HE.guides[0]?.id ?? null);
   const [query, setQuery] = useState("");
@@ -52,49 +69,48 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
 
   return (
     <div className="flex h-full flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
-      <header className="shrink-0 border-b border-[color:var(--border-main)] p-4">
+      <header className="shrink-0 border-b border-[color:var(--border-main)] p-4 max-md:px-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">
-            <BookOpen size={22} />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">
+            <BookOpen size={22} aria-hidden />
           </span>
-          <div>
-            <h2 className="text-lg font-black">מרכז עזרה</h2>
-            <p className="text-xs text-[color:var(--foreground-muted)]">מדריכים, שאלות נפוצות וקיצורי דרך</p>
+          <div className="min-w-0">
+            <h2 className="text-lg font-black">{t("workspaceWidgets.helpCenter.title")}</h2>
+            <p className="text-sm text-[color:var(--foreground-muted)] md:text-xs">
+              {t("workspaceWidgets.helpCenter.subtitle")}
+            </p>
           </div>
         </div>
         <div className="relative mt-3">
           <Search
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"
-            size={16}
+            className="pointer-events-none absolute inset-inline-start-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"
+            size={18}
+            aria-hidden
           />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חיפוש במדריכים ובשאלות..."
-            className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-2.5 pr-10 pl-3 text-sm"
+            placeholder={t("workspaceWidgets.helpCenter.searchPlaceholder")}
+            className="w-full min-h-[44px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-3 ps-11 pe-3 text-base text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] md:text-sm"
           />
         </div>
       </header>
 
       {searchResults ? (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 max-md:px-3">
           {searchResults.guides.length === 0 && searchResults.faq.length === 0 ? (
-            <p className="text-sm text-[color:var(--foreground-muted)]">לא נמצאו תוצאות</p>
+            <p className="text-sm text-[color:var(--foreground-muted)]">{t("workspaceWidgets.helpCenter.noResults")}</p>
           ) : null}
           {searchResults.guides.length > 0 ? (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                מדריכים
+                {t("workspaceWidgets.helpCenter.guidesSection")}
               </h3>
               <ul className="space-y-2">
                 {searchResults.guides.map((g) => (
                   <li key={g.id}>
-                    <button
-                      type="button"
-                      onClick={() => openGuide(g)}
-                      className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-start hover:bg-[color:var(--surface-soft)]"
-                    >
+                    <button type="button" onClick={() => openGuide(g)} className={resultCardClass}>
                       <p className="font-bold text-sm">{g.title}</p>
                       <p className="text-xs text-[color:var(--foreground-muted)]">{g.summary}</p>
                     </button>
@@ -106,7 +122,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           {searchResults.faq.length > 0 ? (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                שאלות נפוצות
+                {t("workspaceWidgets.helpCenter.faqSection")}
               </h3>
               <ul className="space-y-2">
                 {searchResults.faq.map((f, i) => (
@@ -120,58 +136,62 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           ) : null}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1">
-          <aside className="w-44 shrink-0 overflow-y-auto border-e border-[color:var(--border-main)] p-2">
-            {HELP_CENTER_HE.categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => {
-                  setCategoryId(c.id);
-                  const first = HELP_CENTER_HE.guides.find((g) => g.categoryId === c.id);
-                  setGuideId(first?.id ?? null);
-                }}
-                className={`mb-1 w-full rounded-lg px-2 py-2 text-start text-xs font-bold transition ${
-                  categoryId === c.id
-                    ? "bg-sky-600 text-white"
-                    : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-                }`}
-              >
-                {c.title}
-              </button>
-            ))}
-          </aside>
-
-          <div className="flex min-w-0 flex-1 flex-col md:flex-row">
-            <nav className="max-h-32 overflow-y-auto border-b border-[color:var(--border-main)] p-2 md:max-h-none md:w-52 md:border-b-0 md:border-e">
-              {guidesInCategory.map((g) => (
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
+            <div
+              className="flex gap-2 max-md:flex-row md:flex-col"
+              role="tablist"
+              aria-label={t("workspaceWidgets.helpCenter.guidesSection")}
+            >
+              {HELP_CENTER_HE.categories.map((c) => (
                 <button
-                  key={g.id}
+                  key={c.id}
                   type="button"
-                  onClick={() => setGuideId(g.id)}
-                  className={`mb-1 block w-full rounded-lg px-2 py-2 text-start text-xs font-semibold ${
-                    activeGuide?.id === g.id
-                      ? "bg-[color:var(--surface-soft)] text-[color:var(--foreground-main)]"
-                      : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-                  }`}
+                  role="tab"
+                  aria-selected={categoryId === c.id}
+                  onClick={() => {
+                    setCategoryId(c.id);
+                    const first = HELP_CENTER_HE.guides.find((g) => g.categoryId === c.id);
+                    setGuideId(first?.id ?? null);
+                  }}
+                  className={categoryBtnClass(categoryId === c.id)}
                 >
-                  {g.title}
+                  {c.title}
                 </button>
               ))}
+            </div>
+          </aside>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
+            <nav className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-56 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
+              <div className="flex gap-2 max-md:flex-row md:flex-col">
+                {guidesInCategory.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGuideId(g.id)}
+                    className={guideBtnClass(activeGuide?.id === g.id)}
+                  >
+                    {g.title}
+                  </button>
+                ))}
+              </div>
             </nav>
 
-            <article className="flex-1 overflow-y-auto p-4">
+            <article className="min-h-0 flex-1 overflow-y-auto p-4 max-md:px-3 md:p-4">
               {activeGuide ? (
                 <>
-                  <h3 className="text-xl font-black">{activeGuide.title}</h3>
-                  <p className="mt-1 text-sm text-[color:var(--foreground-muted)]">{activeGuide.summary}</p>
+                  <h3 className="text-xl font-black leading-snug">{activeGuide.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-[color:var(--foreground-muted)]">{activeGuide.summary}</p>
                   <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-sky-600">
-                    זמן קריאה ~{activeGuide.readMinutes} דקות
+                    {t("workspaceWidgets.helpCenter.readMinutes", {
+                      minutes: String(activeGuide.readMinutes),
+                    })}
                   </p>
                   <ol className="mt-4 space-y-4">
                     {activeGuide.steps.map((step, i) => (
                       <li key={i} className="flex gap-3">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-black text-sky-700">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-black text-sky-700">
                           {i + 1}
                         </span>
                         <div>
@@ -185,17 +205,17 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   </ol>
                   {activeGuide.tips?.length ? (
                     <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                      <p className="text-xs font-bold text-amber-800">טיפים</p>
+                      <p className="text-xs font-bold text-amber-800">{t("workspaceWidgets.helpCenter.tips")}</p>
                       <ul className="mt-1 list-disc ps-4 text-sm text-amber-900/90">
-                        {activeGuide.tips.map((t, i) => (
-                          <li key={i}>{t}</li>
+                        {activeGuide.tips.map((tip, i) => (
+                          <li key={i}>{tip}</li>
                         ))}
                       </ul>
                     </div>
                   ) : null}
                   {activeGuide.omnibarExamples?.length ? (
                     <div className="mt-4">
-                      <p className="text-xs font-bold">דוגמאות ל-Omnibar</p>
+                      <p className="text-xs font-bold">{t("workspaceWidgets.helpCenter.omnibarExamples")}</p>
                       <ul className="mt-2 flex flex-wrap gap-2">
                         {activeGuide.omnibarExamples.map((ex) => (
                           <li
@@ -212,19 +232,19 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                     <button
                       type="button"
                       onClick={() => openWorkspaceWidget(activeGuide.openWidget!)}
-                      className="mt-4 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+                      className="mt-4 flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white"
                     >
-                      <ExternalLink size={16} />
-                      פתח מסך רלוונטי
+                      <ExternalLink size={16} aria-hidden />
+                      {t("workspaceWidgets.helpCenter.openRelevantScreen")}
                     </button>
                   ) : null}
                 </>
               ) : (
-                <p className="text-sm text-[color:var(--foreground-muted)]">בחרו מדריך מהרשימה</p>
+                <p className="text-sm text-[color:var(--foreground-muted)]">{t("workspaceWidgets.helpCenter.selectGuide")}</p>
               )}
 
               <section className="mt-8 border-t border-[color:var(--border-main)] pt-6">
-                <h4 className="text-sm font-black">שאלות נפוצות</h4>
+                <h4 className="text-sm font-black">{t("workspaceWidgets.helpCenter.globalFaqTitle")}</h4>
                 <ul className="mt-3 space-y-2">
                   {HELP_CENTER_HE.globalFaq.map((f, i) => {
                     const key = `faq-${i}`;
@@ -234,13 +254,13 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                         <button
                           type="button"
                           onClick={() => setFaqOpen(open ? null : key)}
-                          className="flex w-full items-center justify-between gap-2 p-3 text-start text-sm font-bold"
+                          className="flex min-h-[44px] w-full items-center justify-between gap-2 p-3 text-start text-sm font-bold"
                         >
-                          {f.question}
-                          {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          <span className="min-w-0 flex-1">{f.question}</span>
+                          {open ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
                         </button>
                         {open ? (
-                          <p className="border-t border-[color:var(--border-main)] px-3 pb-3 text-sm text-[color:var(--foreground-muted)]">
+                          <p className="border-t border-[color:var(--border-main)] px-3 pb-3 text-sm leading-relaxed text-[color:var(--foreground-muted)]">
                             {f.answer}
                           </p>
                         ) : null}
@@ -254,27 +274,27 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
         </div>
       )}
 
-      <footer className="shrink-0 border-t border-[color:var(--border-main)] p-3 flex flex-wrap gap-2">
+      <footer className="flex shrink-0 flex-wrap gap-2 border-t border-[color:var(--border-main)] p-3 max-md:px-3">
         {openWorkspaceWidget ? (
           <button
             type="button"
             onClick={() =>
               openWorkspaceWidget("aiChatFull", {
-                prompt: "יש לי שאלה על השימוש במערכת BSD-YBM",
+                prompt: t("workspaceWidgets.helpCenter.aiChatPrompt"),
               })
             }
-            className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white"
+            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white md:text-xs"
           >
-            <MessageCircle size={16} />
-            פתח צ׳אט AI
+            <MessageCircle size={16} aria-hidden />
+            {t("workspaceWidgets.helpCenter.openAiChat")}
           </button>
         ) : null}
         <Link
           href="/help"
-          className="flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold"
+          className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2.5 text-sm font-bold md:text-xs"
         >
-          <Sparkles size={16} />
-          דף עזרה מלא
+          <Sparkles size={16} aria-hidden />
+          {t("workspaceWidgets.helpCenter.fullHelpPage")}
         </Link>
       </footer>
     </div>

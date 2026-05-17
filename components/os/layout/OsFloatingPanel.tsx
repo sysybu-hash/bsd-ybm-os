@@ -4,7 +4,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome";
 
 export type OsFloatingPanelProps = {
   open: boolean;
@@ -139,7 +139,6 @@ export default function OsFloatingPanel({
     }
   }, []);
 
-  const chromeTitle = { title };
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";
   const zoomActive = Math.abs(zoom - 1) > 0.001;
   const contentZoomStyle = zoomActive
@@ -177,7 +176,7 @@ export default function OsFloatingPanel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/55 backdrop-blur-[3px]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-md"
             style={{ zIndex: backdropZ }}
             aria-label={t("workspaceWidgets.chrome.closeLabel")}
             onClick={onClose}
@@ -191,79 +190,30 @@ export default function OsFloatingPanel({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ type: "spring", damping: 28, stiffness: 340 }}
-            className={`${panelClass} fixed flex flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl ${className}`}
+            className={`${panelClass} workspace-window workspace-window--focused fixed flex flex-col overflow-hidden ${className}`}
             style={panelStyle}
             dir={dir}
           >
-            <header
-              className={`workspace-window-header flex shrink-0 items-center justify-between gap-2 border-b border-[color:var(--border-main)] px-3 py-2.5 ${
+            <WorkspaceWindowChrome
+              title={title}
+              titleId={titleId}
+              onClose={onClose}
+              headerStart={headerStart}
+              showZoom={showZoom}
+              zoom={zoom}
+              onZoomIn={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))}
+              onZoomOut={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
+              showMaximize={showMaximize}
+              isMaximized={isMaximized}
+              onMaximize={() => setIsMaximized((m) => !m)}
+              headerClassName={
                 draggable && !isMaximized ? "cursor-move touch-none" : "cursor-default"
-              }`}
-              onPointerDown={onHeaderPointerDown}
-              onPointerMove={onHeaderPointerMove}
-              onPointerUp={onHeaderPointerUp}
-              onPointerCancel={onHeaderPointerUp}
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                {headerStart}
-                <h2
-                  id={titleId}
-                  className="truncate text-sm font-black text-[color:var(--foreground-main)]"
-                >
-                  {title}
-                </h2>
-              </div>
+              }
+              onHeaderPointerDown={onHeaderPointerDown}
+              onHeaderPointerMove={onHeaderPointerMove}
+              onHeaderPointerUp={onHeaderPointerUp}
+            />
 
-              <div className="workspace-chrome-toolbar shrink-0">
-                {showZoom ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
-                      className="workspace-chrome-btn inline-flex"
-                      aria-label={t("workspaceWidgets.chrome.zoomOutAria", chromeTitle)}
-                    >
-                      <ZoomOut size={14} aria-hidden />
-                    </button>
-                    <span className="workspace-chrome-zoom inline" aria-live="polite">
-                      {t("workspaceWidgets.chrome.zoomLevel", {
-                        level: String(Math.round(zoom * 100)),
-                      })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))}
-                      className="workspace-chrome-btn inline-flex"
-                      aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
-                    >
-                      <ZoomIn size={14} aria-hidden />
-                    </button>
-                  </>
-                ) : null}
-                {showMaximize ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsMaximized((m) => !m)}
-                    className="workspace-chrome-btn inline-flex"
-                    aria-label={
-                      isMaximized
-                        ? t("workspaceWidgets.chrome.restoreAria", chromeTitle)
-                        : t("workspaceWidgets.chrome.maximizeAria", chromeTitle)
-                    }
-                  >
-                    {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-9 min-w-9"
-                  aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
-                >
-                  <X size={16} aria-hidden />
-                </button>
-              </div>
-            </header>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

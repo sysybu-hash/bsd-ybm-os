@@ -327,6 +327,23 @@
       "platformAdmin": "Platform admin",
       "helpCenter": "Help center"
     },
+    "helpCenter": {
+      "title": "Help center",
+      "subtitle": "Guides, FAQs, and shortcuts",
+      "searchPlaceholder": "Search guides and questions…",
+      "noResults": "No results found",
+      "guidesSection": "Guides",
+      "faqSection": "FAQ",
+      "readMinutes": "~{minutes} min read",
+      "tips": "Tips",
+      "omnibarExamples": "Omnibar examples",
+      "openRelevantScreen": "Open related screen",
+      "selectGuide": "Select a guide from the list",
+      "globalFaqTitle": "Frequently asked questions",
+      "openAiChat": "Open AI chat",
+      "fullHelpPage": "Full help page",
+      "aiChatPrompt": "I have a question about using BSD-YBM"
+    },
     "quickActions": {
       "projectBoard": { "title": "Project board", "subtitle": "Task management" },
       "crmTable": { "title": "Clients", "subtitle": "CRM database" },
@@ -350,6 +367,7 @@
       "aria": "Mobile quick navigation",
       "dashboard": "Dashboard",
       "aiScanner": "AI scan",
+      "docCreator": "Documents",
       "meckanoReports": "Meckano reports",
       "crmTable": "Clients",
       "omnibarAria": "Open command bar and search",

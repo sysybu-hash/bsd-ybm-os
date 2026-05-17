@@ -327,6 +327,23 @@
       "platformAdmin": "Админ",
       "helpCenter": "Справка"
     },
+    "helpCenter": {
+      "title": "Справочный центр",
+      "subtitle": "Руководства, FAQ и быстрые действия",
+      "searchPlaceholder": "Поиск в руководствах и вопросах…",
+      "noResults": "Ничего не найдено",
+      "guidesSection": "Руководства",
+      "faqSection": "Частые вопросы",
+      "readMinutes": "~{minutes} мин чтения",
+      "tips": "Советы",
+      "omnibarExamples": "Примеры для Omnibar",
+      "openRelevantScreen": "Открыть связанный экран",
+      "selectGuide": "Выберите руководство из списка",
+      "globalFaqTitle": "Частые вопросы",
+      "openAiChat": "Открыть AI-чат",
+      "fullHelpPage": "Полная страница справки",
+      "aiChatPrompt": "У меня вопрос по работе с BSD-YBM"
+    },
     "quickActions": {
       "projectBoard": { "title": "Доска проектов", "subtitle": "Управление задачами" },
       "crmTable": { "title": "Клиенты", "subtitle": "База CRM" },
@@ -350,6 +367,7 @@
       "aria": "Быстрая навигация (мобильный)",
       "dashboard": "Панель",
       "aiScanner": "AI-скан",
+      "docCreator": "Документы",
       "meckanoReports": "Отчёты Meckano",
       "crmTable": "Клиенты",
       "omnibarAria": "Открыть командную строку и поиск",
