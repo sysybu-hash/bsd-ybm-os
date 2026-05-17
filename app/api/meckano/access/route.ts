@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import { canAccessMeckano, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
+import { meckanoSessionFromWorkspace } from "@/lib/meckano-route-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ allowed: false, reason: "unauthorized" }, { status: 401 });
-  }
-  const allowed = await canAccessMeckano(session);
+export const GET = withWorkspacesAuth(async (_req, ctx) => {
+  const sessionLike = await meckanoSessionFromWorkspace(ctx);
+  const allowed = await canAccessMeckano(sessionLike);
   const configured = Boolean(process.env.MECKANO_API_KEY?.trim());
   return NextResponse.json({
     allowed,
     configured,
     message: allowed ? null : MECKANO_ACCESS_ERROR,
   });
-}
+});

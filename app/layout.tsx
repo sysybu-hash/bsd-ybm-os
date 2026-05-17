@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import SessionProvider from "@/components/os/system/SessionProvider";
+import { CSPostHogProvider } from "@/components/providers/posthog-provider";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
@@ -99,6 +100,7 @@ export default async function RootLayout({
       <body
         className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
       >
+        <CSPostHogProvider>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <SessionProvider session={session}>
             <I18nProvider locale={locale} messages={messages}>
@@ -149,6 +151,7 @@ export default async function RootLayout({
             </I18nProvider>
           </SessionProvider>
         </ThemeProvider>
+        </CSPostHogProvider>
       </body>
     </html>
   );

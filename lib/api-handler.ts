@@ -17,6 +17,9 @@ export type OSAdminContext = {
   userId: string | null;
 };
 
+/** תגובת route — JSON רגיל או streaming (SSE / NDJSON) */
+export type ApiRouteResponse = NextResponse | Response;
+
 type WorkspaceAuthOptionsBase = {
   /** אם מוגדר — רק תפקידים אלה עוברים (אחרת 403) */
   allowedRoles?: UserRole[];
@@ -123,8 +126,8 @@ function isOSAdminContext(
 }
 
 export function withOSAdmin(
-  handler: (req: Request, ctx: OSAdminContext) => Promise<NextResponse>,
-): (req: Request) => Promise<NextResponse> {
+  handler: (req: Request, ctx: OSAdminContext) => Promise<ApiRouteResponse>,
+): (req: Request) => Promise<ApiRouteResponse> {
   return async (req: Request) => {
     const gate = await requireOSAdmin();
     if (!isOSAdminContext(gate)) return gate;
@@ -137,20 +140,20 @@ type WorkspaceAuthOptionsNoSchema = WorkspaceAuthOptionsBase &
 
 /** עם schema — `data` הוא `z.infer<S>` */
 export function withWorkspacesAuth<S extends z.ZodType<unknown>>(
-  handler: (req: Request, ctx: WorkspaceAuthContext, data: z.infer<S>) => Promise<NextResponse>,
+  handler: (req: Request, ctx: WorkspaceAuthContext, data: z.infer<S>) => Promise<ApiRouteResponse>,
   options: WorkspaceAuthOptionsBase & { schema: S } & Pick<WorkspaceAuthOptions, "parseTarget">,
-): (req: Request) => Promise<NextResponse>;
+): (req: Request) => Promise<ApiRouteResponse>;
 
 /** בלי schema — לא להעביר `schema` */
 export function withWorkspacesAuth(
-  handler: (req: Request, ctx: WorkspaceAuthContext) => Promise<NextResponse>,
+  handler: (req: Request, ctx: WorkspaceAuthContext) => Promise<ApiRouteResponse>,
   options?: WorkspaceAuthOptionsNoSchema,
-): (req: Request) => Promise<NextResponse>;
+): (req: Request) => Promise<ApiRouteResponse>;
 
 export function withWorkspacesAuth(
   handler:
-    | ((req: Request, ctx: WorkspaceAuthContext) => Promise<NextResponse>)
-    | ((req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<NextResponse>),
+    | ((req: Request, ctx: WorkspaceAuthContext) => Promise<ApiRouteResponse>)
+    | ((req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<ApiRouteResponse>),
   options?: WorkspaceAuthOptions,
 ) {
   return async (req: Request) => {
@@ -167,14 +170,14 @@ export function withWorkspacesAuth(
         return jsonValidationFailed(result.error.issues);
       }
 
-      return (handler as (req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<NextResponse>)(
+      return (handler as (req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<ApiRouteResponse>)(
         req,
         gate,
         result.data,
       );
     }
 
-    return (handler as (req: Request, ctx: WorkspaceAuthContext) => Promise<NextResponse>)(req, gate);
+    return (handler as (req: Request, ctx: WorkspaceAuthContext) => Promise<ApiRouteResponse>)(req, gate);
   };
 }
 
@@ -188,18 +191,18 @@ export function withWorkspacesAuthDynamic<
     ctx: WorkspaceAuthContext,
     segment: { params: Promise<P> },
     data: z.infer<S>,
-  ) => Promise<NextResponse>,
+  ) => Promise<ApiRouteResponse>,
   options: WorkspaceAuthOptionsBase & { schema: S } & Pick<WorkspaceAuthOptions, "parseTarget">,
-): (req: Request, segment: { params: Promise<P> }) => Promise<NextResponse>;
+): (req: Request, segment: { params: Promise<P> }) => Promise<ApiRouteResponse>;
 
 export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
   handler: (
     req: Request,
     ctx: WorkspaceAuthContext,
     segment: { params: Promise<P> },
-  ) => Promise<NextResponse>,
+  ) => Promise<ApiRouteResponse>,
   options?: WorkspaceAuthOptionsNoSchema,
-): (req: Request, segment: { params: Promise<P> }) => Promise<NextResponse>;
+): (req: Request, segment: { params: Promise<P> }) => Promise<ApiRouteResponse>;
 
 export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
   handler:
@@ -207,13 +210,13 @@ export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
         req: Request,
         ctx: WorkspaceAuthContext,
         segment: { params: Promise<P> },
-      ) => Promise<NextResponse>)
+      ) => Promise<ApiRouteResponse>)
     | ((
         req: Request,
         ctx: WorkspaceAuthContext,
         segment: { params: Promise<P> },
         data: unknown,
-      ) => Promise<NextResponse>),
+      ) => Promise<ApiRouteResponse>),
   options?: WorkspaceAuthOptions,
 ) {
   return async (req: Request, segment: { params: Promise<P> }) => {
@@ -236,7 +239,7 @@ export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
           ctx: WorkspaceAuthContext,
           segment: { params: Promise<P> },
           data: unknown,
-        ) => Promise<NextResponse>
+        ) => Promise<ApiRouteResponse>
       )(req, gate, segment, result.data);
     }
 
@@ -245,7 +248,7 @@ export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
         req: Request,
         ctx: WorkspaceAuthContext,
         segment: { params: Promise<P> },
-      ) => Promise<NextResponse>
+      ) => Promise<ApiRouteResponse>
     )(req, gate, segment);
   };
 }

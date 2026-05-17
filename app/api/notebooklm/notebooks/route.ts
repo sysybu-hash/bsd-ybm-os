@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonNotFound, jsonUnauthorized } from "@/lib/api-json";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
 import {
   listNotebooksForUser,
   saveNotebookForUser,
@@ -9,47 +9,55 @@ import {
   type SaveNotebookInput,
 } from "@/lib/notebooklm-db";
 
-export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return jsonUnauthorized();
+const saveNotebookSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  sources: z.array(z.unknown()).optional(),
+  messages: z.array(z.unknown()).optional(),
+});
 
-  const url = new URL(req.url);
-  const projectIdParam = url.searchParams.get("projectId");
-  const projectId = projectIdParam && projectIdParam.length > 0 ? projectIdParam : undefined;
+export const GET = withWorkspacesAuth(
+  async (req, { userId }) => {
+    const url = new URL(req.url);
+    const projectIdParam = url.searchParams.get("projectId");
+    const projectId = projectIdParam && projectIdParam.length > 0 ? projectIdParam : undefined;
 
-  const items = await listNotebooksForUser(session.user.id, projectId);
+    const items = await listNotebooksForUser(userId, projectId);
 
-  return NextResponse.json({
-    notebooks: items.map((n: (typeof items)[number]) => ({
-      id: n.id,
-      title: n.title,
-      projectId: n.projectId,
-      updatedAt: n.updatedAt.toISOString(),
-      createdAt: n.createdAt.toISOString(),
-      sourceCount: n._count.sources,
-      messageCount: n._count.messages,
-    })),
-  });
-}
+    return NextResponse.json({
+      notebooks: items.map((n: (typeof items)[number]) => ({
+        id: n.id,
+        title: n.title,
+        projectId: n.projectId,
+        updatedAt: n.updatedAt.toISOString(),
+        createdAt: n.createdAt.toISOString(),
+        sourceCount: n._count.sources,
+        messageCount: n._count.messages,
+      })),
+    });
+  },
+  { parseTarget: "query" },
+);
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return jsonUnauthorized();
+export const POST = withWorkspacesAuth(
+  async (_req, { userId, orgId }, data) => {
+    if (!data.title && !data.id) {
+      return jsonBadRequest("חסרה כותרת למחברת.", "missing_title");
+    }
 
-  const body = (await req.json().catch(() => ({}))) as SaveNotebookInput;
-  if (!body.title && !body.id) {
-    return jsonBadRequest("חסרה כותרת למחברת.", "missing_title");
-  }
+    const payload: SaveNotebookInput = {
+      id: data.id,
+      title: data.title ?? "מחברת",
+      projectId: data.projectId,
+      sources: Array.isArray(data.sources) ? (data.sources as SaveNotebookInput["sources"]) : [],
+      messages: Array.isArray(data.messages) ? (data.messages as SaveNotebookInput["messages"]) : [],
+    };
+    const saved = await saveNotebookForUser(userId, orgId, payload);
 
-  const saved = await saveNotebookForUser(session.user.id, session.user.organizationId, {
-    id: body.id,
-    title: body.title ?? "מחברת",
-    projectId: body.projectId,
-    sources: Array.isArray(body.sources) ? body.sources : [],
-    messages: Array.isArray(body.messages) ? body.messages : [],
-  });
+    if (!saved) return jsonNotFound("המחברת לא נמצאה.", "notebook_not_found");
 
-  if (!saved) return jsonNotFound("המחברת לא נמצאה.", "notebook_not_found");
-
-  return NextResponse.json({ notebook: serializeNotebook(saved) });
-}
+    return NextResponse.json({ notebook: serializeNotebook(saved) });
+  },
+  { schema: saveNotebookSchema },
+);

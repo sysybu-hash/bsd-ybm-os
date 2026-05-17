@@ -3,6 +3,7 @@
 import React from "react";
 import Omnibar from "@/components/os/Omnibar";
 import type { WidgetType } from "@/hooks/use-window-manager";
+import type { OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -19,7 +20,8 @@ interface OSDockProps {
   onSearchPreview?: (query: string) => void;
   searchResults?: SearchResult[];
   onSelectResult?: (result: SearchResult) => void;
-  openWorkspaceWidget: (type: WidgetType) => void;
+  openWorkspaceWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  assistantToolDeps?: OsAssistantToolDeps;
 }
 
 export default function OSDock({
@@ -31,6 +33,7 @@ export default function OSDock({
   searchResults,
   onSelectResult,
   openWorkspaceWidget,
+  assistantToolDeps,
 }: OSDockProps) {
   return (
     <footer className="pointer-events-none fixed inset-x-0 bottom-0 z-[1100] hidden px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:block md:px-8">
@@ -45,6 +48,7 @@ export default function OSDock({
           searchResults={searchResults}
           onSelectResult={onSelectResult}
           openWorkspaceWidget={openWorkspaceWidget}
+          assistantToolDeps={assistantToolDeps}
         />
       </div>
     </footer>

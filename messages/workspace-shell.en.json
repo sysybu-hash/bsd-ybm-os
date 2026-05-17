@@ -296,6 +296,7 @@
   "workspaceShell": {
     "refreshingOverlay": "Refreshing workspace…",
     "topBar": {
+      "toolbarAria": "Top bar actions",
       "searchAria": "Search",
       "localeAria": "Interface language",
       "notificationsAria": "Notifications",
@@ -349,7 +350,11 @@
       "aiScanner": "AI scan",
       "meckanoReports": "Meckano reports",
       "crmTable": "Clients",
-      "omnibarAria": "Open command bar and search"
+      "omnibarAria": "Open command bar and search",
+      "windowSwitcher": "Windows",
+      "moreApps": "More",
+      "moreAppsTitle": "More apps",
+      "closeMore": "Close menu"
     },
     "sidebar": {
       "aria": "Workspace navigation",
@@ -375,6 +380,7 @@
       "backToWork": "Back to work mode",
       "notificationsOpen": "Open notifications",
       "settingsOpen": "Open user settings",
+      "statusOnline": "Online",
       "signOut": "Sign out",
       "commands": {
         "processing": "Processing command…",
@@ -453,6 +459,137 @@
       "maximizeAria": "Maximize {title}",
       "closeAria": "Close {title}",
       "closeLabel": "Close"
+    },
+    "windowSwitcher": {
+      "title": "Window switcher",
+      "empty": "No open windows",
+      "closeWindow": "Close window"
+    },
+    "invoice": {
+      "title": "Issued document",
+      "client": "Client",
+      "project": "Project",
+      "noProject": "No project",
+      "lineDesc": "Description",
+      "lineQty": "Qty",
+      "linePrice": "Price",
+      "total": "Total",
+      "save": "Save",
+      "saved": "Document saved",
+      "delete": "Delete",
+      "deleted": "Document deleted",
+      "deleteConfirm": "Delete this document?",
+      "loadFailed": "Failed to load document",
+      "exportPdf": "Export PDF",
+      "exportWord": "Export Word"
+    },
+    "confirm": {
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "crmTable": {
+      "loading": "Loading clients…",
+      "empty": "No clients yet",
+      "errorLoad": "Failed to load clients",
+      "retry": "Retry",
+      "deleteTitle": "Delete client",
+      "deleteMessage": "Delete this client? This cannot be undone.",
+      "deleted": "Client deleted",
+      "deleteFailed": "Failed to delete client",
+      "updated": "Client updated",
+      "updateFailed": "Update failed",
+      "created": "Client created",
+      "createFailed": "Failed to create client",
+      "nameEmailRequired": "Name and email are required",
+      "importEmpty": "File is empty",
+      "importFailed": "Import failed",
+      "importCsvError": "CSV read error",
+      "searchPlaceholder": "Search clients…"
+    },
+    "itemActions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete item",
+      "deleteConfirm": "Delete this item?"
+    },
+    "dashboard": {
+      "loading": "Syncing financial data…",
+      "error": "Dashboard load failed",
+      "retry": "Retry",
+      "totalRevenue": "Total revenue",
+      "totalExpenses": "Total expenses",
+      "netProfit": "Operating profit",
+      "activeProjects": "Active projects"
+    },
+    "aiChat": {
+      "sendFailed": "Failed to reach AI",
+      "liveFailed": "Gemini Live connection failed",
+      "placeholder": "Ask me anything about your projects…"
+    },
+    "erp": {
+      "loading": "Loading documents…",
+      "empty": "No documents found",
+      "error": "Archive load failed",
+      "retry": "Retry",
+      "searchPlaceholder": "Search documents…",
+      "loadDocFailed": "Failed to load document",
+      "loadListFailed": "Failed to load documents"
+    },
+    "meckano": {
+      "loading": "Loading data…",
+      "empty": "No data to display",
+      "error": "Failed to load Meckano reports",
+      "retry": "Try again",
+      "noApiKey": "MECKANO_API_KEY is not set on the server",
+      "noAccess": "Cannot verify Meckano access",
+      "filter": "Filter results"
+    },
+    "docCreator": {
+      "draftTitle": "Summary before issue",
+      "draftConfirm": "Issue document",
+      "previewPdf": "Preview PDF"
+    },
+    "crmMini": {
+      "title": "CRM clients",
+      "newClient": "New client",
+      "searchPlaceholder": "Semantic search (e.g. troubled accounts)…",
+      "loading": "Loading clients…",
+      "empty": "No clients found"
+    },
+    "notebookLM": {
+      "loadListFailed": "Could not load notebooks",
+      "extractFailed": "Text extraction failed",
+      "uploadFailed": "Upload failed",
+      "addSourcesFirst": "Add knowledge sources first",
+      "saveFailed": "Save failed",
+      "loadFailed": "Load failed",
+      "deleteFailed": "Delete failed",
+      "audioSourcesFirst": "Add sources before audio overview",
+      "saveBeforeAudio": "Save the notebook before audio overview",
+      "audioFailed": "Audio overview failed",
+      "loadingNotebooks": "Loading notebooks…"
+    },
+    "project": {
+      "loadFailed": "Failed to load project",
+      "noteSaved": "Note saved",
+      "noteSaveFailed": "Failed to save note"
+    },
+    "shell": {
+      "closeAria": "Close window",
+      "maximizeAria": "Maximize window",
+      "minimizeAria": "Restore window",
+      "zoomInAria": "Zoom in",
+      "zoomOutAria": "Zoom out",
+      "zoomLevel": "Zoom level {level}%"
+    },
+    "chrome": {
+      "closeAria": "Close {title}",
+      "closeLabel": "Close",
+      "maximizeAria": "Maximize {title}",
+      "restoreAria": "Restore {title}",
+      "zoomInAria": "Zoom in {title}",
+      "zoomOutAria": "Zoom out {title}",
+      "zoomLevel": "Zoom {level}%"
     }
   },
   "settingsHub": {

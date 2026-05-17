@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   jsonBadRequest,
-  jsonServerError,
   jsonServiceUnavailable,
-  jsonUnauthorized,
 } from "@/lib/api-json";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
@@ -47,120 +46,115 @@ function estimateRawBytesFromBase64(b64: string): number {
   return Math.floor((len * 3) / 4) - padding;
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return jsonUnauthorized();
-    }
+const notebookChatBodySchema = z.object({
+  messages: z.array(z.unknown()).optional(),
+  pdfs: z.array(z.unknown()).optional(),
+  sources: z.array(z.unknown()).optional(),
+});
 
-    if (!isGeminiConfigured()) {
-      return jsonServiceUnavailable(
-        "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
-        "gemini_not_configured",
-      );
-    }
-
-    const orgId = session.user.organizationId ?? "";
-    const rateKey = orgId
-      ? `erp-notebook:org:${orgId}`
-      : `erp-notebook:user:${session.user.id}`;
-    const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
-    if (!rl.success) {
-      return NextResponse.json(
-        {
-          error: `Rate limit exceeded. Try again after ${rl.resetAt.toISOString()}.`,
-          resetAt: rl.resetAt,
-        },
-        { status: 429 },
-      );
-    }
-
-    const body = (await req.json()) as {
-      messages?: NotebookChatMessage[];
-      pdfs?: Array<{ fileName?: string; base64?: string; mimeType?: string }>;
-      sources?: Array<{ fileName?: string; base64?: string; mimeType?: string; text?: string }>;
-    };
-
-    const messages = Array.isArray(body.messages) ? body.messages : [];
-    const rawSources: RawNotebookSource[] = Array.isArray(body.sources)
-      ? body.sources
-      : Array.isArray(body.pdfs)
-        ? body.pdfs
-        : [];
-
-    if (rawSources.length > MAX_SOURCES) {
-      return jsonBadRequest(`ניתן לצרף עד ${MAX_SOURCES} מקורות למחברת.`, "too_many_sources");
-    }
-
-    let totalRaw = 0;
-    const sources: NotebookSourcePart[] = [];
-    for (const source of rawSources) {
-      const fileName = (source.fileName ?? "source").trim() || "source";
-      const base64 = source.base64?.trim();
-      const text = source.text?.trim();
-      const mimeType = (source.mimeType ?? (text ? "text/plain" : "application/pdf")).trim();
-
-      if (!base64 && !text) continue;
-      if (!ALLOWED_SOURCE_MIME_TYPES.has(mimeType)) {
-        return jsonBadRequest(`סוג מקור לא נתמך: ${mimeType}`, "invalid_mime");
+export const POST = withWorkspacesAuth(
+  async (_req, { userId, orgId }, data) => {
+    try {
+      if (!isGeminiConfigured()) {
+        return jsonServiceUnavailable(
+          "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
+          "gemini_not_configured",
+        );
       }
 
-      if (base64) {
-        const rawSize = estimateRawBytesFromBase64(base64);
-        if (rawSize > MAX_RAW_BYTES_PER_FILE) {
-          return jsonBadRequest(
-            `המקור "${fileName}" חורג ממגבלת ${MAX_RAW_BYTES_PER_FILE / 1024 / 1024}MB.`,
-            "file_too_large",
-          );
+      const rateKey = orgId ? `erp-notebook:org:${orgId}` : `erp-notebook:user:${userId}`;
+      const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
+      if (!rl.success) {
+        return NextResponse.json(
+          {
+            error: `Rate limit exceeded. Try again after ${rl.resetAt.toISOString()}.`,
+            resetAt: rl.resetAt,
+          },
+          { status: 429 },
+        );
+      }
+
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      const rawSources: RawNotebookSource[] = Array.isArray(data.sources)
+        ? (data.sources as RawNotebookSource[])
+        : Array.isArray(data.pdfs)
+          ? (data.pdfs as RawNotebookSource[])
+          : [];
+
+      if (rawSources.length > MAX_SOURCES) {
+        return jsonBadRequest(`ניתן לצרף עד ${MAX_SOURCES} מקורות למחברת.`, "too_many_sources");
+      }
+
+      let totalRaw = 0;
+      const sources: NotebookSourcePart[] = [];
+      for (const source of rawSources) {
+        const fileName = (source.fileName ?? "source").trim() || "source";
+        const base64 = source.base64?.trim();
+        const text = source.text?.trim();
+        const mimeType = (source.mimeType ?? (text ? "text/plain" : "application/pdf")).trim();
+
+        if (!base64 && !text) continue;
+        if (!ALLOWED_SOURCE_MIME_TYPES.has(mimeType)) {
+          return jsonBadRequest(`סוג מקור לא נתמך: ${mimeType}`, "invalid_mime");
         }
-        totalRaw += rawSize;
+
+        if (base64) {
+          const rawSize = estimateRawBytesFromBase64(base64);
+          if (rawSize > MAX_RAW_BYTES_PER_FILE) {
+            return jsonBadRequest(
+              `המקור "${fileName}" חורג ממגבלת ${MAX_RAW_BYTES_PER_FILE / 1024 / 1024}MB.`,
+              "file_too_large",
+            );
+          }
+          totalRaw += rawSize;
+        }
+
+        sources.push({
+          fileName,
+          base64: base64 ?? "",
+          mimeType,
+          text: text?.slice(0, 120_000),
+        });
       }
 
-      sources.push({
-        fileName,
-        base64: base64 ?? "",
-        mimeType,
-        text: text?.slice(0, 120_000),
+      if (totalRaw > MAX_TOTAL_RAW_BYTES) {
+        return jsonBadRequest(
+          `סך גודל המקורות חורג מ-${MAX_TOTAL_RAW_BYTES / 1024 / 1024}MB. הסירו או דחסו קבצים.`,
+          "total_size_exceeded",
+        );
+      }
+
+      const normalizedMessages: NotebookChatMessage[] = messages
+        .filter(
+          (message): message is NotebookChatMessage =>
+            Boolean(message) &&
+            typeof message === "object" &&
+            (message as NotebookChatMessage).role !== undefined &&
+            ((message as NotebookChatMessage).role === "user" ||
+              (message as NotebookChatMessage).role === "model") &&
+            typeof (message as NotebookChatMessage).content === "string",
+        )
+        .map((message) => ({
+          role: message.role,
+          content: message.content.slice(0, 120_000),
+        }));
+
+      if (!normalizedMessages.length) {
+        return jsonBadRequest("חסרות הודעות (messages).", "missing_messages");
+      }
+
+      const boqContext = orgId ? await loadRecentBillOfQuantitiesContext(orgId) : null;
+
+      const { text, model } = await runErpProjectNotebookChat({
+        messages: normalizedMessages,
+        sources,
+        billOfQuantitiesContext: boqContext,
       });
+
+      return NextResponse.json({ answer: text, model });
+    } catch (error) {
+      return apiErrorResponse(error, "project-notebook chat");
     }
-
-    if (totalRaw > MAX_TOTAL_RAW_BYTES) {
-      return jsonBadRequest(
-        `סך גודל המקורות חורג מ-${MAX_TOTAL_RAW_BYTES / 1024 / 1024}MB. הסירו או דחסו קבצים.`,
-        "total_size_exceeded",
-      );
-    }
-
-    const normalizedMessages: NotebookChatMessage[] = messages
-      .filter(
-        (message) =>
-          message &&
-          (message.role === "user" || message.role === "model") &&
-          typeof message.content === "string",
-      )
-      .map((message) => ({
-        role: message.role,
-        content: message.content.slice(0, 120_000),
-      }));
-
-    if (!normalizedMessages.length) {
-      return jsonBadRequest("חסרות הודעות (messages).", "missing_messages");
-    }
-
-    const boqContext =
-      orgId ? await loadRecentBillOfQuantitiesContext(orgId) : null;
-
-    const { text, model } = await runErpProjectNotebookChat({
-      messages: normalizedMessages,
-      sources,
-      billOfQuantitiesContext: boqContext,
-    });
-
-    return NextResponse.json({ answer: text, model });
-  } catch (error) {
-    console.error("project-notebook chat:", error);
-    const msg = error instanceof Error ? error.message : "Notebook chat failed.";
-    return jsonServerError(msg.slice(0, 500));
-  }
-}
+  },
+  { schema: notebookChatBodySchema },
+);

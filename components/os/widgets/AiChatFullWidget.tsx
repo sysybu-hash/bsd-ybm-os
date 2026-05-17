@@ -26,7 +26,8 @@ import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from '@/hooks/
 import type { GeminiLiveVoiceSettings } from '@/hooks/useGeminiLiveAudio';
 import { useOsAssistant } from '@/hooks/use-os-assistant';
 import { useSession } from 'next-auth/react';
-import { useWindowManager } from '@/hooks/use-window-manager';
+import { useAutomationRunnerContext } from '@/components/os/AutomationRunnerContext';
+import type { WidgetType } from '@/hooks/use-window-manager';
 import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
 import GeminiLiveSettingsSheet from '@/components/os/GeminiLiveSettingsSheet';
 
@@ -37,10 +38,18 @@ interface Message {
   timestamp: string;
 }
 
-export default function AiChatFullWidget() {
-  const { dir } = useI18n();
+type AiChatFullWidgetProps = {
+  liveData?: Record<string, unknown> | null;
+  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+};
+
+export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget }: AiChatFullWidgetProps) {
+  const { dir, t } = useI18n();
   const { data: session } = useSession();
-  const { openWidget } = useWindowManager();
+  const automationCtx = useAutomationRunnerContext();
+  const openWidget = openWorkspaceWidget ?? ((type: WidgetType, data?: Record<string, unknown> | null) => {
+    automationCtx?.assistantToolDeps.openWidget(type, data ?? null);
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +64,14 @@ export default function AiChatFullWidget() {
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
   }, []);
 
-  const osAssistant = useOsAssistant({ openWidget });
+  useEffect(() => {
+    const prompt = liveData?.prompt;
+    if (typeof prompt === "string" && prompt.trim()) setInput(prompt.trim());
+    const p = liveData?.provider;
+    if (p === "openai" || p === "claude" || p === "gemini") setProvider(p);
+  }, [liveData]);
+
+  const osAssistant = useOsAssistant(automationCtx?.assistantToolDeps ?? { openWidget });
 
   const geminiLive = useGeminiLiveAudio({
     enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
@@ -84,7 +100,7 @@ export default function AiChatFullWidget() {
     onToolCall: osAssistant.onToolCall,
     onError: (err) => {
       console.error("Gemini Live Error:", err);
-      toast.error('שגיאה בחיבור Gemini Live');
+      toast.error(t("workspaceWidgets.aiChat.liveFailed"));
     }
   });
 
@@ -114,17 +130,36 @@ export default function AiChatFullWidget() {
     };
 
     setMessages(prev => [...prev, userMsg]);
+    const sentText = input;
     setInput('');
     setIsLoading(true);
 
     try {
+      if (automationCtx?.parseAndRun) {
+        const parsed = await automationCtx.parseAndRun(sentText);
+        if (parsed?.actions?.length) {
+          if (parsed.reply?.trim()) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: parsed.reply,
+                timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+              },
+            ]);
+          }
+          return;
+        }
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          provider, 
-          prompt: input,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
+        body: JSON.stringify({
+          provider,
+          prompt: sentText,
+          history: messages.map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
@@ -140,7 +175,7 @@ export default function AiChatFullWidget() {
         throw new Error(data.error);
       }
     } catch (error) {
-      toast.error('שגיאה בתקשורת עם ה-AI');
+      toast.error(t("workspaceWidgets.aiChat.sendFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -321,7 +356,7 @@ export default function AiChatFullWidget() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="שאל אותי הכל על הפרויקטים שלך..."
+                placeholder={t("workspaceWidgets.aiChat.placeholder")}
                 className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl py-4 pr-6 pl-14 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-sm dark:shadow-none"
               />
               <button 

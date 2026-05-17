@@ -296,6 +296,7 @@
   "workspaceShell": {
     "refreshingOverlay": "Обновление рабочей области…",
     "topBar": {
+      "toolbarAria": "Действия верхней панели",
       "searchAria": "Поиск",
       "localeAria": "Язык интерфейса",
       "notificationsAria": "Уведомления",
@@ -349,7 +350,11 @@
       "aiScanner": "AI-скан",
       "meckanoReports": "Отчёты Meckano",
       "crmTable": "Клиенты",
-      "omnibarAria": "Открыть командную строку и поиск"
+      "omnibarAria": "Открыть командную строку и поиск",
+      "windowSwitcher": "Окна",
+      "moreApps": "Ещё",
+      "moreAppsTitle": "Другие приложения",
+      "closeMore": "Закрыть меню"
     },
     "sidebar": {
       "aria": "Навигация рабочей области",
@@ -375,6 +380,7 @@
       "backToWork": "Вернуться к работе",
       "notificationsOpen": "Открыть уведомления",
       "settingsOpen": "Открыть настройки",
+      "statusOnline": "В сети",
       "signOut": "Выйти",
       "commands": {
         "processing": "Обработка команды…",
@@ -453,6 +459,137 @@
       "maximizeAria": "Развернуть {title}",
       "closeAria": "Закрыть {title}",
       "closeLabel": "Закрыть"
+    },
+    "windowSwitcher": {
+      "title": "Переключатель окон",
+      "empty": "Нет открытых окон",
+      "closeWindow": "Закрыть окно"
+    },
+    "invoice": {
+      "title": "Выданный документ",
+      "client": "Клиент",
+      "project": "Проект",
+      "noProject": "Без проекта",
+      "lineDesc": "Описание",
+      "lineQty": "Кол-во",
+      "linePrice": "Цена",
+      "total": "Итого",
+      "save": "Сохранить",
+      "saved": "Документ сохранён",
+      "delete": "Удалить",
+      "deleted": "Документ удалён",
+      "deleteConfirm": "Удалить документ?",
+      "loadFailed": "Не удалось загрузить документ",
+      "exportPdf": "Экспорт PDF",
+      "exportWord": "Экспорт Word"
+    },
+    "confirm": {
+      "confirm": "Подтвердить",
+      "cancel": "Отмена"
+    },
+    "crmTable": {
+      "loading": "Загрузка клиентов…",
+      "empty": "Клиентов пока нет",
+      "errorLoad": "Ошибка загрузки клиентов",
+      "retry": "Повторить",
+      "deleteTitle": "Удалить клиента",
+      "deleteMessage": "Удалить этого клиента? Действие необратимо.",
+      "deleted": "Клиент удалён",
+      "deleteFailed": "Не удалось удалить",
+      "updated": "Клиент обновлён",
+      "updateFailed": "Ошибка обновления",
+      "created": "Клиент создан",
+      "createFailed": "Не удалось создать",
+      "nameEmailRequired": "Нужны имя и email",
+      "importEmpty": "Файл пуст",
+      "importFailed": "Импорт не удался",
+      "importCsvError": "Ошибка чтения CSV",
+      "searchPlaceholder": "Поиск клиентов…"
+    },
+    "itemActions": {
+      "edit": "Изменить",
+      "delete": "Удалить",
+      "deleteTitle": "Удалить элемент",
+      "deleteConfirm": "Удалить этот элемент?"
+    },
+    "dashboard": {
+      "loading": "Синхронизация данных…",
+      "error": "Ошибка загрузки панели",
+      "retry": "Повторить",
+      "totalRevenue": "Общий доход",
+      "totalExpenses": "Общие расходы",
+      "netProfit": "Операционная прибыль",
+      "activeProjects": "Активные проекты"
+    },
+    "aiChat": {
+      "sendFailed": "Ошибка связи с AI",
+      "liveFailed": "Ошибка Gemini Live",
+      "placeholder": "Спросите о ваших проектах…"
+    },
+    "erp": {
+      "loading": "Загрузка документов…",
+      "empty": "Документы не найдены",
+      "error": "Ошибка архива",
+      "retry": "Повторить",
+      "searchPlaceholder": "Поиск документов…",
+      "loadDocFailed": "Не удалось загрузить документ",
+      "loadListFailed": "Не удалось загрузить список"
+    },
+    "meckano": {
+      "loading": "Загрузка данных…",
+      "empty": "Нет данных",
+      "error": "Ошибка отчётов Meckano",
+      "retry": "Повторить",
+      "noApiKey": "MECKANO_API_KEY не задан",
+      "noAccess": "Нет доступа к Meckano",
+      "filter": "Фильтр"
+    },
+    "docCreator": {
+      "draftTitle": "Сводка перед выпуском",
+      "draftConfirm": "Выпустить документ",
+      "previewPdf": "Просмотр PDF"
+    },
+    "crmMini": {
+      "title": "CRM клиенты",
+      "newClient": "Новый клиент",
+      "searchPlaceholder": "Семантический поиск…",
+      "loading": "Загрузка клиентов…",
+      "empty": "Клиенты не найдены"
+    },
+    "notebookLM": {
+      "loadListFailed": "Не удалось загрузить блокноты",
+      "extractFailed": "Ошибка извлечения текста",
+      "uploadFailed": "Ошибка загрузки",
+      "addSourcesFirst": "Сначала добавьте источники",
+      "saveFailed": "Сохранение не удалось",
+      "loadFailed": "Загрузка не удалась",
+      "deleteFailed": "Удаление не удалось",
+      "audioSourcesFirst": "Добавьте источники перед аудио-обзором",
+      "saveBeforeAudio": "Сохраните блокнот перед аудио-обзором",
+      "audioFailed": "Не удалось создать аудио-обзор",
+      "loadingNotebooks": "Загрузка блокнотов…"
+    },
+    "project": {
+      "loadFailed": "Не удалось загрузить проект",
+      "noteSaved": "Заметка сохранена",
+      "noteSaveFailed": "Не удалось сохранить заметку"
+    },
+    "shell": {
+      "closeAria": "Закрыть окно",
+      "maximizeAria": "Развернуть",
+      "minimizeAria": "Свернуть",
+      "zoomInAria": "Увеличить",
+      "zoomOutAria": "Уменьшить",
+      "zoomLevel": "Масштаб {level}%"
+    },
+    "chrome": {
+      "closeAria": "Закрыть {title}",
+      "closeLabel": "Закрыть",
+      "maximizeAria": "Развернуть {title}",
+      "restoreAria": "Свернуть {title}",
+      "zoomInAria": "Увеличить {title}",
+      "zoomOutAria": "Уменьшить {title}",
+      "zoomLevel": "Масштаб {level}%"
     }
   },
   "settingsHub": {

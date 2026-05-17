@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonBadRequest } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return jsonUnauthorized();
-  }
-
+export const GET = withWorkspacesAuth(async (_req, { userId }) => {
   const items = await prisma.inAppNotification.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: 40,
     select: { id: true, title: true, body: true, read: true, createdAt: true },
@@ -23,14 +17,9 @@ export async function GET() {
       createdAt: n.createdAt.toISOString(),
     })),
   });
-}
+});
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return jsonUnauthorized();
-  }
-
+export const POST = withWorkspacesAuth(async (req, { userId }) => {
   const body = (await req.json().catch(() => ({}))) as {
     all?: boolean;
     ids?: string[];
@@ -38,7 +27,7 @@ export async function POST(req: Request) {
 
   if (body.all) {
     await prisma.inAppNotification.updateMany({
-      where: { userId: session.user.id, read: false },
+      where: { userId, read: false },
       data: { read: true },
     });
     return NextResponse.json({ ok: true });
@@ -50,9 +39,9 @@ export async function POST(req: Request) {
   }
 
   await prisma.inAppNotification.updateMany({
-    where: { userId: session.user.id, id: { in: ids } },
+    where: { userId, id: { in: ids } },
     data: { read: true },
   });
 
   return NextResponse.json({ ok: true });
-}
+});

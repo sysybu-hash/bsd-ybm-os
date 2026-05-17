@@ -1,41 +1,25 @@
-import { NextRequest, NextResponse, after } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse, after } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   jsonBadRequest,
-  jsonServerError,
   jsonServiceUnavailable,
   jsonTooManyRequests,
-  jsonUnauthorized,
 } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { DocumentScanFilePayload } from "@/lib/analyze-queue";
 import { drainDocumentScanQueue } from "@/lib/analyze-queue-runner";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 
-/**
- * מכסה נפרדת מ־/api/ai — שם אותו מפתח היה גורם ל־4 מנועים לאכול 4/5 בקשות לשעה ולקבל 429.
- * העלאה לתור זולה; מכסת סריקות ועלות API נשארות ב־processDocumentAction.
- */
 const QUEUE_ENQUEUE_PER_HOUR = 60;
 const QUEUE_ENQUEUE_PER_HOUR_PLATFORM = 200;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return jsonUnauthorized();
-    }
-
-    const orgId = session.user.organizationId ?? "";
-    if (!orgId) {
-      return jsonBadRequest("לא נמצא ארגון למשתמש", "no_org");
-    }
-
     if (process.env.NODE_ENV === "production" && !process.env.ANALYZE_QUEUE_SECRET?.trim()) {
       return jsonServiceUnavailable(
         "חסר ANALYZE_QUEUE_SECRET — לא ניתן להריץ את תור הסריקה בייצור.",
@@ -43,11 +27,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dev = isAdmin(session.user.email);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    const dev = isAdmin(user?.email);
     const limit = dev ? QUEUE_ENQUEUE_PER_HOUR_PLATFORM : QUEUE_ENQUEUE_PER_HOUR;
-    const rateKey = orgId
-      ? `scan-queue-enqueue:org:${orgId}`
-      : `scan-queue-enqueue:user:${session.user.id}`;
+    const rateKey = `scan-queue-enqueue:org:${orgId}`;
     const rl = await checkRateLimit(rateKey, limit, 60 * 60 * 1000);
 
     if (!rl.success) {
@@ -85,12 +71,11 @@ export async function POST(req: NextRequest) {
       data: {
         status: "PENDING",
         fileData: JSON.stringify(payload),
-        userId: session.user.id,
+        userId,
         organizationId: orgId,
       },
     });
 
-    /** ב-Vercel, fetch פנימי ל־/process לעיתים לא רץ — מרוקנים תור מקומית אחרי שליחת התשובה */
     after(async () => {
       try {
         await drainDocumentScanQueue(40);
@@ -100,8 +85,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ jobId: job.id });
-  } catch (error) {
-    console.error("[analyze-queue/add]", error);
-    return jsonServerError("שגיאה פנימית בשרת");
+  } catch (err: unknown) {
+    return apiErrorResponse(err, "[analyze-queue/add]");
   }
-}
+});

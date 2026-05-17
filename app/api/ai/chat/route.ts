@@ -1,14 +1,19 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
-import { getUserFacingAiErrorMessage, runAiChat } from "@/lib/ai-chat";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { runAiChat } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
 import { subscriptionTiersPromptBlockHe } from "@/lib/subscription-tier-config";
 import { prisma } from "@/lib/prisma";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 
 const MAX_MESSAGES = 24;
 const MAX_CONTENT_LEN = 8000;
+
+const chatBodySchema = z.object({
+  messages: z.array(z.unknown()).optional(),
+  provider: z.string().optional(),
+});
 
 type ChatMsg = { role?: string; content?: unknown };
 
@@ -31,47 +36,36 @@ function buildPromptFromMessages(messages: ChatMsg[]): string {
   return lines.join("\n\n");
 }
 
-export async function POST(req: Request) {
-  try {
-    const body = (await req.json()) as { messages?: unknown; provider?: string };
-    const messages = normalizeMessages(body.messages);
-    const prompt = buildPromptFromMessages(messages);
+export const POST = withWorkspacesAuth(
+  async (_req, { orgId, userId }, data) => {
+    try {
+      const messages = normalizeMessages(data.messages);
+      const prompt = buildPromptFromMessages(messages);
 
-    if (!prompt) {
-      return jsonBadRequest("חסרה הודעה.", "missing_message");
-    }
-
-    const session = await getServerSession(authOptions);
-    const displayName =
-      session?.user?.name?.trim() || session?.user?.email?.trim() || "משתמש";
-    const tiersHe = subscriptionTiersPromptBlockHe();
-
-    let orgContext: { industry: string; constructionTrade: string } | null = null;
-    if (session?.user?.organizationId) {
-      const org = await prisma.organization.findUnique({
-        where: { id: session.user.organizationId },
-        select: { industry: true, constructionTrade: true },
-      });
-      if (org) {
-        orgContext = {
-          industry: org.industry || "CONSTRUCTION",
-          constructionTrade: org.constructionTrade || "GENERAL_CONTRACTOR",
-        };
+      if (!prompt) {
+        return NextResponse.json({ error: "חסרה הודעה." }, { status: 400 });
       }
-    }
 
-    const contextJson = !session
-      ? [
-          "אתה העוזר החכם של BSD-YBM.",
-          "התפקיד שלך להסביר למבקרים על המערכת, המנויים והיכולות.",
-          tiersHe,
-        ].join("\n\n")
-      : orgContext
+      const [userRow, org] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, email: true },
+        }),
+        prisma.organization.findUnique({
+          where: { id: orgId },
+          select: { industry: true, constructionTrade: true },
+        }),
+      ]);
+
+      const displayName = userRow?.name?.trim() || userRow?.email?.trim() || "משתמש";
+      const tiersHe = subscriptionTiersPromptBlockHe();
+
+      const contextJson = org
         ? JSON.stringify({
             audience: "logged_in_org_member",
             displayName,
-            industry: orgContext.industry,
-            constructionTrade: orgContext.constructionTrade,
+            industry: org.industry || "CONSTRUCTION",
+            constructionTrade: org.constructionTrade || "GENERAL_CONTRACTOR",
             hint:
               "הארגון בענף הבנייה והמקצועות הנלווים — התאם דוגמאות (אתרים, ספקים, מסמכי שטח) לפי constructionTrade.",
             tiersHe,
@@ -82,15 +76,16 @@ export async function POST(req: Request) {
             tiersHe,
           ].join("\n\n");
 
-    const locale = await getServerLocale();
-    const { text, provider } = await runAiChat(body.provider, prompt, contextJson, locale);
+      const locale = await getServerLocale();
+      const { text, provider } = await runAiChat(data.provider, prompt, contextJson, locale);
 
-    return NextResponse.json({
-      text: text || "לא התקבלה תשובה מהמנוע.",
-      provider,
-    });
-  } catch (error) {
-    console.error("api/ai/chat", error);
-    return jsonServerError(getUserFacingAiErrorMessage(error));
-  }
-}
+      return NextResponse.json({
+        text: text || "לא התקבלה תשובה מהמנוע.",
+        provider,
+      });
+    } catch (err: unknown) {
+      return apiErrorResponse(err, "api/ai/chat");
+    }
+  },
+  { schema: chatBodySchema },
+);

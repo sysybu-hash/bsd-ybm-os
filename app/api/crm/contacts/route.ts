@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+
+const createContactSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  status: z.string().optional(),
+  notes: z.string().optional().nullable(),
+});
 
 /**
  * GET /api/crm/contacts
@@ -64,3 +74,24 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
 
   return NextResponse.json({ contacts: rows });
 });
+
+export const POST = withWorkspacesAuth(
+  async (_req, { orgId }, body) => {
+    try {
+      const contact = await prisma.contact.create({
+        data: {
+          name: body.name,
+          email: body.email ?? null,
+          phone: body.phone ?? null,
+          notes: body.notes ?? null,
+          status: (body.status ?? "LEAD").toUpperCase(),
+          organizationId: orgId,
+        },
+      });
+      return NextResponse.json({ success: true, contact });
+    } catch (err) {
+      return apiErrorResponse(err, "CRM contact create");
+    }
+  },
+  { schema: createContactSchema },
+);

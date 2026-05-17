@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, Mic, Send, Settings, SlidersHorizontal, Volume2 } from "lucide-react";
+import { Loader2, Mic, Send, SlidersHorizontal, Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
+import { useAutomationRunnerContext } from "@/components/os/AutomationRunnerContext";
+import type { OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import type { WidgetType } from "@/hooks/use-window-manager";
-import OmnibarQuickSettingsSheet from "@/components/os/OmnibarQuickSettingsSheet";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -32,6 +33,7 @@ interface OmnibarProps {
   searchResults?: SearchResult[];
   onSelectResult?: (result: SearchResult) => void;
   openWorkspaceWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  assistantToolDeps?: OsAssistantToolDeps;
 }
 
 const visualizerHeights = [10, 16, 8, 22, 14, 18, 9, 20, 12, 24, 11, 19, 15, 21, 8, 17];
@@ -46,11 +48,14 @@ export default function Omnibar({
   searchResults = [],
   onSelectResult,
   openWorkspaceWidget,
+  assistantToolDeps: assistantToolDepsProp,
 }: OmnibarProps) {
   const { t, dir } = useI18n();
   const { data: session } = useSession();
+  const automationCtx = useAutomationRunnerContext();
+  const assistantToolDeps =
+    assistantToolDepsProp ?? automationCtx?.assistantToolDeps ?? { openWidget: openWorkspaceWidget };
   const [input, setInput] = useState("");
-  const [quickSettingsOpen, setQuickSettingsOpen] = useState(false);
   const [geminiLiveSettingsOpen, setGeminiLiveSettingsOpen] = useState(false);
   const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
   const [voiceStatus, setVoiceStatus] = useState<"idle" | "connecting" | "listening" | "speaking" | "error">("idle");
@@ -59,9 +64,7 @@ export default function Omnibar({
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
   }, []);
 
-  const osAssistant = useOsAssistant({
-    openWidget: (type, data) => openWorkspaceWidget(type, data ?? null),
-  });
+  const osAssistant = useOsAssistant(assistantToolDeps);
 
   const geminiLive = useGeminiLiveAudio({
     enabled: Boolean(session?.user?.id && session?.user?.organizationId),
@@ -149,17 +152,6 @@ export default function Omnibar({
           </AnimatePresence>
 
           <div className="relative z-10 flex shrink-0 items-center gap-1.5 border-[color:var(--border-main)]/30 py-2 pl-2 pr-1 sm:gap-2 sm:pl-3 sm:pr-2">
-            <button
-              type="button"
-              onClick={() => setQuickSettingsOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-amber-300"
-              title={t("workspaceWidgets.omnibar.displaySettingsTitle")}
-              aria-label={t("workspaceWidgets.omnibar.displaySettingsAria")}
-              aria-expanded={quickSettingsOpen}
-              aria-haspopup="dialog"
-            >
-              <Settings size={18} aria-hidden />
-            </button>
             <div className="flex max-w-[5.5rem] items-center gap-1.5 rounded-md border border-[color:var(--border-main)] bg-[color:var(--background-main)]/60 px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] sm:max-w-[10rem] sm:gap-2 sm:px-2.5">
               <span
                 className={`h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -274,12 +266,6 @@ export default function Omnibar({
           {message}
         </div>
       ) : null}
-
-      <OmnibarQuickSettingsSheet
-        open={quickSettingsOpen}
-        onClose={() => setQuickSettingsOpen(false)}
-        onOpenFullOsSettings={() => openWorkspaceWidget("settings")}
-      />
 
       <GeminiLiveSettingsSheet
         open={geminiLiveSettingsOpen}

@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonNotFound, jsonUnauthorized } from "@/lib/api-json";
-import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  const orgId = session?.user?.organizationId;
-  if (!orgId) {
-    return jsonUnauthorized();
-  }
-
+export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   const body = await req.json();
   const contactId = body.contactId as string | undefined;
   const amount = Number(body.amount) || 0;
@@ -45,4 +38,4 @@ export async function POST(req: Request) {
   const signUrl = `${base.replace(/\/$/, "")}/sign/${token}`;
 
   return NextResponse.json({ signUrl, token });
-}
+});

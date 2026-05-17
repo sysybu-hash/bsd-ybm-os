@@ -13,6 +13,19 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  collectCoverageFrom: [
+    'lib/os-automations/**/*.{ts,tsx}',
+    'lib/invoice-export.ts',
+    '!lib/os-automations/**/*.d.ts',
+  ],
+  coverageThreshold: {
+    './lib/os-automations/registry.ts': {
+      branches: 50,
+      functions: 50,
+      lines: 55,
+      statements: 55,
+    },
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

@@ -1,29 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { GoogleAssistantService } from "@/lib/services/google-assistant";
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const queryBodySchema = z.object({
+  query: z.string().min(1),
+});
+
+export const POST = withWorkspacesAuth(
+  async (_req, { userId }, data) => {
+    try {
+      const assistantService = await GoogleAssistantService.forUser(userId);
+      const result = await assistantService.query(data.query);
+
+      return NextResponse.json(result);
+    } catch (error: unknown) {
+      return apiErrorResponse(error, "os/google-assistant/query");
     }
-
-    const { query } = await req.json();
-    if (!query) {
-      return NextResponse.json({ error: "Query is required" }, { status: 400 });
-    }
-
-    const assistantService = await GoogleAssistantService.forUser(session.user.id);
-    const result = await assistantService.query(query);
-
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("[Google Assistant API Error]:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to query Google Assistant" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  { schema: queryBodySchema },
+);

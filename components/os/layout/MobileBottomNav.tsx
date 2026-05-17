@@ -1,8 +1,24 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { FileText, LayoutDashboard, Mic, ScanLine, Users } from "lucide-react";
+import {
+  BarChart3,
+  FilePlus,
+  FileText,
+  Grid3x3,
+  HardDrive,
+  LayoutDashboard,
+  Layers,
+  Library,
+  Mic,
+  Package,
+  ScanLine,
+  Settings,
+  Sparkles,
+  Users,
+  X,
+} from "lucide-react";
 import { WidgetType } from "@/hooks/use-window-manager";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -10,18 +26,30 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 export type MobileBottomNavProps = {
   openWidget: (type: WidgetType) => void;
   onOpenOmnibar: () => void;
+  onOpenWindowSwitcher?: () => void;
 };
 
 type NavItem = { type: WidgetType; labelKey: string; icon: LucideIcon; chip?: boolean };
 
-const leftItems: NavItem[] = [
+const primaryLeft: NavItem[] = [
   { type: "dashboard", labelKey: "workspaceWidgets.mobileNav.dashboard", icon: LayoutDashboard },
   { type: "aiScanner", labelKey: "workspaceWidgets.mobileNav.aiScanner", icon: ScanLine },
 ];
 
-const rightItems: NavItem[] = [
+const primaryRight: NavItem[] = [
   { type: "meckanoReports", labelKey: "workspaceWidgets.mobileNav.meckanoReports", icon: FileText, chip: true },
   { type: "crmTable", labelKey: "workspaceWidgets.mobileNav.crmTable", icon: Users, chip: true },
+];
+
+const moreApps: NavItem[] = [
+  { type: "projectBoard", labelKey: "workspaceWidgets.sidebar.projectBoard", icon: BarChart3, chip: true },
+  { type: "erpArchive", labelKey: "workspaceWidgets.sidebar.erpArchive", icon: Package, chip: true },
+  { type: "docCreator", labelKey: "workspaceWidgets.sidebar.docCreator", icon: FilePlus, chip: true },
+  { type: "aiChatFull", labelKey: "workspaceWidgets.sidebar.aiChatFull", icon: Sparkles, chip: true },
+  { type: "notebookLM", labelKey: "workspaceWidgets.sidebar.notebookLM", icon: Library, chip: true },
+  { type: "googleDrive", labelKey: "workspaceWidgets.titles.googleDrive", icon: HardDrive, chip: true },
+  { type: "settings", labelKey: "workspaceWidgets.sidebar.settings", icon: Settings, chip: true },
+  { type: "accessibility", labelKey: "workspaceWidgets.titles.accessibility", icon: Settings, chip: true },
 ];
 
 function SideNavButton({
@@ -38,11 +66,7 @@ function SideNavButton({
     <button
       type="button"
       onClick={() => onOpen(item.type)}
-      className={`flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 transition active:scale-95 ${
-        item.chip
-          ? "group text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-          : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]"
-      }`}
+      className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
       aria-label={label}
     >
       {item.chip ? (
@@ -54,48 +78,137 @@ function SideNavButton({
       ) : (
         <Icon size={21} strokeWidth={1.75} className="max-[380px]:h-[19px] max-[380px]:w-[19px] shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden />
       )}
-      <span
-        className={`max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px] ${
-          item.chip ? "text-[color:var(--foreground-muted)] group-hover:text-[color:var(--foreground-main)]" : ""
-        }`}
-      >
-        {label}
-      </span>
+      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
     </button>
   );
 }
 
-export default function MobileBottomNav({ openWidget, onOpenOmnibar }: MobileBottomNavProps) {
+export default function MobileBottomNav({
+  openWidget,
+  onOpenOmnibar,
+  onOpenWindowSwitcher,
+}: MobileBottomNavProps) {
   const { t, dir } = useI18n();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-[100] grid min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
-      style={{
-        gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr)",
-      }}
-      aria-label={t("workspaceWidgets.mobileNav.aria")}
-      data-testid="mobile-bottom-nav"
-      dir={dir}
-    >
-      {leftItems.map((item) => (
-        <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
-      ))}
-
-      <div className="flex items-end justify-center self-end px-0.5 pb-0.5">
+    <>
+      {moreOpen ? (
         <button
           type="button"
-          onClick={onOpenOmnibar}
-          className="flex h-11 w-11 min-h-[44px] min-w-[44px] max-[380px]:h-10 max-[380px]:w-10 max-[380px]:min-h-10 max-[380px]:min-w-10 -translate-y-1.5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md shadow-indigo-900/25 ring-2 ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 min-[400px]:h-12 min-[400px]:w-12 min-[400px]:min-h-[48px] min-[400px]:min-w-[48px] min-[400px]:-translate-y-2 sm:h-14 sm:w-14 sm:min-h-[56px] sm:min-w-[56px] sm:-translate-y-2.5 sm:ring-4"
-          aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
-        >
-          <Mic size={22} strokeWidth={2} aria-hidden />
-        </button>
-      </div>
+          className="fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm md:hidden"
+          aria-label={t("workspaceWidgets.mobileNav.closeMore")}
+          onClick={() => setMoreOpen(false)}
+        />
+      ) : null}
+      {moreOpen ? (
+        <MoreAppsPanel
+          t={t}
+          onClose={() => setMoreOpen(false)}
+          onOpen={(type: WidgetType) => {
+            openWidget(type);
+            setMoreOpen(false);
+          }}
+        />
+      ) : null}
 
-      {rightItems.map((item) => (
-        <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
-      ))}
-    </nav>
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-[100] grid min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
+        style={{
+          gridTemplateColumns:
+            "minmax(0,1fr) minmax(0,1fr) auto minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)",
+        }}
+        aria-label={t("workspaceWidgets.mobileNav.aria")}
+        data-testid="mobile-bottom-nav"
+        dir={dir}
+      >
+        {primaryLeft.map((item) => (
+          <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
+        ))}
+
+        <div className="flex items-end justify-center self-end px-0.5 pb-0.5">
+          <button
+            type="button"
+            onClick={onOpenOmnibar}
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-y-1.5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md ring-2 ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-14 sm:w-14 sm:-translate-y-2.5"
+            aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
+          >
+            <Mic size={22} strokeWidth={2} aria-hidden />
+          </button>
+        </div>
+
+        {onOpenWindowSwitcher ? (
+          <button
+            type="button"
+            onClick={onOpenWindowSwitcher}
+            className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+            aria-label={t("workspaceWidgets.mobileNav.windowSwitcher")}
+          >
+            <Layers size={21} strokeWidth={1.75} aria-hidden />
+            <span className="max-w-full truncate px-0.5 text-[8px] font-bold">{t("workspaceWidgets.mobileNav.windowSwitcher")}</span>
+          </button>
+        ) : (
+          <span />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+          aria-label={t("workspaceWidgets.mobileNav.moreApps")}
+          aria-expanded={moreOpen}
+        >
+          <Grid3x3 size={21} strokeWidth={1.75} aria-hidden />
+          <span className="max-w-full truncate px-0.5 text-[8px] font-bold">{t("workspaceWidgets.mobileNav.moreApps")}</span>
+        </button>
+
+        {primaryRight.map((item) => (
+          <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
+        ))}
+      </nav>
+    </>
+  );
+}
+
+function MoreAppsPanel({
+  t,
+  onClose,
+  onOpen,
+}: {
+  t: (key: string) => string;
+  onClose: () => void;
+  onOpen: (type: WidgetType) => void;
+}) {
+  return (
+    <div
+      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[111] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
+      role="dialog"
+      aria-label={t("workspaceWidgets.mobileNav.moreAppsTitle")}
+    >
+      <MoreAppsPanelHeader t={t} onClose={onClose} />
+      <div className="grid grid-cols-4 gap-2">
+        {moreApps.map((item) => (
+          <SideNavButton key={item.type} item={item} onOpen={onOpen} label={t(item.labelKey)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MoreAppsPanelHeader({ t, onClose }: { t: (key: string) => string; onClose: () => void }) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <span className="text-sm font-bold text-[color:var(--foreground-main)]">
+        {t("workspaceWidgets.mobileNav.moreAppsTitle")}
+      </span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="rounded-lg p-2 hover:bg-[color:var(--surface-soft)]"
+        aria-label={t("workspaceWidgets.mobileNav.closeMore")}
+      >
+        <X size={18} aria-hidden />
+      </button>
+    </div>
   );
 }

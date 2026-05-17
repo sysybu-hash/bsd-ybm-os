@@ -1,34 +1,25 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonForbidden, jsonNotFound } from "@/lib/api-json";
+import { NextResponse, type NextRequest } from "next/server";
+import { withOSAdmin } from "@/lib/api-handler";
+import { jsonNotFound } from "@/lib/api-json";
 import { getToken } from "next-auth/jwt";
-import { isAdmin } from "@/lib/is-admin";
+import { prisma } from "@/lib/prisma";
 
 /**
- * GET /api/auth/debug-session
+ * GET /api/debug-session
  * מחזיר את מצב הסשן הנוכחי — לצורך דיבאג בלבד.
  * לא חושף סיסמאות או מפתחות — רק email, role, id, orgId.
  */
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email)) {
-    return jsonForbidden("נדרשת הרשאת מנהל.");
-  }
-
-  // In production, debug endpoint is disabled unless explicitly enabled.
+export const GET = withOSAdmin(async (req) => {
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEBUG_SESSION !== "true") {
     return jsonNotFound("לא זמין", "debug_disabled");
   }
 
-  /* Read JWT directly for comparison */
   let jwtEmail: string | null = null;
   let jwtRole: string | null = null;
   let jwtId: string | null = null;
   try {
     const token = await getToken({
-      req,
+      req: req as NextRequest,
       secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
     });
     jwtEmail = typeof token?.email === "string" ? token.email : null;
@@ -38,15 +29,29 @@ export async function GET(req: NextRequest) {
     /* ignore */
   }
 
+  const dbUser =
+    jwtId != null
+      ? await prisma.user.findUnique({
+          where: { id: jwtId },
+          select: {
+            email: true,
+            name: true,
+            role: true,
+            id: true,
+            organizationId: true,
+          },
+        })
+      : null;
+
   return NextResponse.json({
     timestamp: new Date().toISOString(),
-    session: session
+    session: dbUser
       ? {
-          email: session.user?.email ?? null,
-          name: session.user?.name ?? null,
-          role: session.user?.role ?? null,
-          id: session.user?.id ?? null,
-          organizationId: session.user?.organizationId ?? null,
+          email: dbUser.email ?? null,
+          name: dbUser.name ?? null,
+          role: dbUser.role ?? null,
+          id: dbUser.id ?? null,
+          organizationId: dbUser.organizationId ?? null,
         }
       : null,
     jwt: {
@@ -54,6 +59,6 @@ export async function GET(req: NextRequest) {
       role: jwtRole,
       id: jwtId,
     },
-    match: session?.user?.email === jwtEmail,
+    match: dbUser?.email === jwtEmail,
   });
-}
+});

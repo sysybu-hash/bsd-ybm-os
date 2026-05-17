@@ -112,11 +112,10 @@ export default function NotificationCenter({
           project: notification.details.projectName,
         });
       } else {
-        const response = await fetch("/api/data", {
+        const response = await fetch("/api/expenses/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            type: "confirm-expense",
             amount: notification.details.amount,
             projectName: notification.details.projectName,
           }),

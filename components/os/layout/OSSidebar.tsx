@@ -23,6 +23,8 @@ interface OSSidebarProps {
   openWidget: (type: WidgetType) => void;
   isOpen?: boolean;
   closeSidebar?: () => void;
+  hidden?: boolean;
+  onMouseLeave?: () => void;
 }
 
 const navItems: { id: string; icon: typeof LayoutDashboard; type: WidgetType; labelKey: string }[] = [
@@ -37,8 +39,10 @@ const navItems: { id: string; icon: typeof LayoutDashboard; type: WidgetType; la
   { id: "notebookLM", icon: Library, type: "notebookLM", labelKey: "workspaceWidgets.sidebar.notebookLM" },
 ];
 
-export default function OSSidebar({ openWidget, isOpen = false, closeSidebar }: OSSidebarProps) {
+export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hidden, onMouseLeave }: OSSidebarProps) {
   const { t, dir } = useI18n();
+
+  if (hidden) return null;
 
   return (
     <>
@@ -55,17 +59,18 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar }: 
         initial={{ x: 24, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] as const }}
+        onMouseLeave={onMouseLeave}
         className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-transform duration-200 md:flex
           bottom-0 left-0 right-0 h-auto w-full items-stretch border-t px-3 py-2
           ${isOpen ? "translate-y-0" : "translate-y-0"}
-          md:bottom-28 md:left-auto md:right-5 md:top-24 md:min-h-0 md:w-[3.75rem] md:max-w-[3.75rem] md:rounded-xl md:border md:px-1.5 md:py-3`}
+          md:bottom-28 md:end-5 md:start-auto md:top-24 md:max-h-[calc(100vh-12rem)] md:min-h-0 md:w-[var(--os-sidebar-rail-width)] md:max-w-[var(--os-sidebar-rail-width)] md:rounded-xl md:border md:px-1.5 md:py-3`}
         aria-label={t("workspaceWidgets.sidebar.aria")}
         dir={dir}
       >
         <div className="flex min-h-0 w-full flex-1 flex-col gap-2">
           <nav
             aria-label={t("workspaceWidgets.sidebar.appsAria")}
-            className="custom-scrollbar flex min-h-0 flex-1 flex-row items-center justify-around gap-1 overflow-x-auto overflow-y-hidden overscroll-contain py-0.5 md:flex-col md:justify-start md:gap-2.5 md:overflow-x-hidden md:overflow-y-auto md:px-0.5 md:py-0.5"
+            className="no-scrollbar flex min-h-0 flex-1 flex-row items-center justify-around gap-1 overflow-x-auto overflow-y-hidden overscroll-contain py-0.5 md:flex-col md:justify-start md:gap-2.5 md:overflow-x-hidden md:overflow-y-auto md:px-0.5 md:py-0.5"
           >
             {navItems.map((item) => {
               const label = t(item.labelKey);
@@ -83,7 +88,7 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar }: 
                   >
                     <item.icon size={19} aria-hidden />
                   </span>
-                  <span className="pointer-events-none absolute right-14 z-50 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
+                  <span className="pointer-events-none absolute end-14 z-50 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
                     {label}
                   </span>
                 </button>

@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonForbidden, jsonUnauthorized } from "@/lib/api-json";
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonBadRequest, jsonForbidden } from "@/lib/api-json";
 import { getAuthorizedMeckanoOrganizationId, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
+import { meckanoSessionFromWorkspace } from "@/lib/meckano-route-auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/meckano/zones — list all zones for the org
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) return jsonUnauthorized();
-  const organizationId = await getAuthorizedMeckanoOrganizationId(session);
+export const GET = withWorkspacesAuth(async (_req, ctx) => {
+  const sessionLike = await meckanoSessionFromWorkspace(ctx);
+  const organizationId = await getAuthorizedMeckanoOrganizationId(sessionLike);
   if (!organizationId) {
     return jsonForbidden(MECKANO_ACCESS_ERROR);
   }
@@ -19,21 +17,27 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
   return NextResponse.json({ status: true, data: zones });
-}
+});
 
-// POST /api/meckano/zones — create a new zone
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) return jsonUnauthorized();
-  const organizationId = await getAuthorizedMeckanoOrganizationId(session);
+export const POST = withWorkspacesAuth(async (req, ctx) => {
+  const sessionLike = await meckanoSessionFromWorkspace(ctx);
+  const organizationId = await getAuthorizedMeckanoOrganizationId(sessionLike);
   if (!organizationId) {
     return jsonForbidden(MECKANO_ACCESS_ERROR);
   }
 
-  const body = await req.json() as { name?: string; address?: string; description?: string; lat?: number; lng?: number; radius?: number };
+  const body = (await req.json()) as {
+    name?: string;
+    address?: string;
+    description?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  };
   const { name, address, description, lat, lng, radius } = body;
-  if (!name || !address)
+  if (!name || !address) {
     return jsonBadRequest("שם וכתובת הם שדות חובה", "missing_zone_fields");
+  }
 
   const zone = await prisma.meckanoZone.create({
     data: {
@@ -47,4 +51,4 @@ export async function POST(req: NextRequest) {
     },
   });
   return NextResponse.json({ status: true, data: zone }, { status: 201 });
-}
+});

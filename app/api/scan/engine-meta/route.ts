@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   ANTHROPIC_FLAGSHIP_MODEL,
   getOpenAiResponsesModelCandidates,
@@ -42,12 +40,7 @@ function geminiUiLabel(id: string): string {
   return id.replace(/^gemini-/, "");
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return jsonUnauthorized("לא מחובר.");
-  }
-
+export const GET = withWorkspacesAuth(async () => {
   const geminiPrimaryModelId = getGeminiModelId();
   const openaiDefaultModelId = getOpenAiVisionModel();
   const rawCandidates = getOpenAiResponsesModelCandidates(undefined);
@@ -82,4 +75,4 @@ export async function GET() {
       modelOptions,
     },
   });
-}
+});

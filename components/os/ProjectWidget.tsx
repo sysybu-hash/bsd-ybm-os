@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   BarChart3, 
@@ -54,7 +55,7 @@ interface Message {
 }
 
 export default function ProjectWidget({ projectName }: { projectName: string }) {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const [data, setData] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'expenses' | 'attendance' | 'notebook'>('dashboard');
@@ -70,19 +71,22 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
     const fetchProject = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/data?type=project&query=${encodeURIComponent(projectName)}`);
+        const res = await fetch(`/api/projects/detail?query=${encodeURIComponent(projectName)}`, {
+          credentials: "include",
+        });
         const projectData = await res.json();
         setData(projectData);
-        
-        // Fetch notes for this project
-        const notesRes = await fetch(`/api/data?type=project-notes&projectId=${projectData.id}`);
-        if (notesRes.ok) {
+
+        const notesRes = projectData.id
+          ? await fetch(`/api/projects/${projectData.id}/notes`, { credentials: "include" })
+          : null;
+        if (notesRes?.ok) {
           const notesData = await notesRes.json();
           setNotes(notesData);
         }
       } catch (err) {
         console.error('Failed to fetch project', err);
-        toast.error('שגיאה בטעינת נתוני פרויקט');
+        toast.error(t("workspaceWidgets.project.loadFailed"));
       } finally {
         setLoading(false);
       }
@@ -94,22 +98,19 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
   const handleSaveNote = async (content: string) => {
     if (!data?.id) return;
     try {
-      const res = await fetch('/api/data', {
+      const res = await fetch(`/api/projects/${data.id}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'create-project-note',
-          projectId: data.id,
-          content
-        })
+        body: JSON.stringify({ content }),
+        credentials: 'include',
       });
       if (res.ok) {
         const newNote = await res.json();
         setNotes(prev => [newNote, ...prev]);
-        toast.success('הערה נשמרה בהצלחה');
+        toast.success(t("workspaceWidgets.project.noteSaved"));
       }
     } catch (err) {
-      toast.error('שגיאה בשמירת הערה');
+      toast.error(t("workspaceWidgets.project.noteSaveFailed"));
     }
   };
 

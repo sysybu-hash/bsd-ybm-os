@@ -19,6 +19,7 @@ const createIssuedDocumentSchema = z.object({
   items: z.array(issuedDocumentItemSchema).min(1),
   dueDate: z.string().trim().min(1).optional(),
   contactId: z.string().trim().min(1).optional(),
+  projectId: z.string().trim().min(1).optional(),
 });
 
 const MAX_NUMBER_ALLOC_ATTEMPTS = 3;
@@ -44,12 +45,13 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 
 /* ───── POST — הנפקת מסמך חדש (חשבונית / קבלה / חש״ק / זיכוי) ───── */
 export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
-  const { type, clientName, items, dueDate, contactId } = data as {
+  const { type, clientName, items, dueDate, contactId, projectId } = data as {
     type: "INVOICE" | "RECEIPT" | "INVOICE_RECEIPT" | "CREDIT_NOTE";
     clientName: string;
     items: { desc: string; qty: number; price: number }[];
     dueDate?: string;
     contactId?: string;
+    projectId?: string;
   };
 
   if (!type || !clientName || !Array.isArray(items) || items.length === 0) {
@@ -80,6 +82,15 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
     resolvedContactId = contact?.id;
   }
 
+  let resolvedProjectId: string | undefined;
+  if (projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, organizationId: orgId },
+      select: { id: true },
+    });
+    resolvedProjectId = project?.id;
+  }
+
   let doc = null;
   for (let attempt = 1; attempt <= MAX_NUMBER_ALLOC_ATTEMPTS; attempt += 1) {
     try {
@@ -103,6 +114,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
             dueDate: dueDate ? new Date(dueDate) : undefined,
             organizationId: orgId,
             contactId: resolvedContactId ?? null,
+            projectId: resolvedProjectId ?? null,
           },
         });
       });

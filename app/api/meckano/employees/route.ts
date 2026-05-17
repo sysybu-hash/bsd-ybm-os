@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { meckanoFetch } from "@/lib/meckano-fetch";
-import { requireMeckanoSession } from "@/lib/meckano-route-auth";
+import { meckanoSessionFromWorkspace, requireMeckanoSession } from "@/lib/meckano-route-auth";
 
-export async function GET() {
+export const GET = withWorkspacesAuth(async (_req, ctx): Promise<NextResponse> => {
   try {
-    const session = await getServerSession(authOptions);
-    const auth = await requireMeckanoSession(session);
+    const sessionLike = await meckanoSessionFromWorkspace(ctx);
+    const auth = await requireMeckanoSession(sessionLike);
     if ("error" in auth) return auth.error;
 
     const response = await meckanoFetch("users", auth.apiKey);
@@ -34,11 +34,6 @@ export async function GET() {
 
     return NextResponse.json({ success: true, employees });
   } catch (error: unknown) {
-    console.error("Meckano Employees Error:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json(
-      { error: "Failed to fetch Meckano employees", details: message },
-      { status: 500 },
-    );
+    return apiErrorResponse(error, "Meckano Employees Error");
   }
-}
+});

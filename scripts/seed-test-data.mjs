@@ -190,7 +190,7 @@ async function main() {
     users.map((u) => u.id),
   );
 
-  await prisma.platformBillingConfig.upsert({
+  await prisma.oSBillingConfig.upsert({
     where: { id: "default" },
     update: {
       tierMonthlyPricesJson: {

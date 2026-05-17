@@ -1,23 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
-import { jsonBadRequest, jsonUnauthorized } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiJsonOnlyHint } from "@/lib/i18n/ai-locale";
-import { getApiMessage } from "@/lib/i18n/api-messages";
 
-export async function POST(req: NextRequest) {
+export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return jsonUnauthorized();
-
     const { query } = await req.json();
-    const orgId = session.user.organizationId;
     const locale = await getServerLocale();
-    if (!orgId) return jsonBadRequest(getApiMessage("no_org", locale), "no_org");
 
     const apiKey =
       process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
@@ -78,7 +71,6 @@ Example: ["id1", "id2"]
     void lastErr;
     return NextResponse.json({ matchedIds });
   } catch (error) {
-    console.error("Semantic Search API Error:", error);
-    return NextResponse.json({ matchedIds: [] });
+    return apiErrorResponse(error, "Semantic Search API Error");
   }
-}
+});

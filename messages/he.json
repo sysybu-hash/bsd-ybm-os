@@ -280,7 +280,28 @@
     "chatInvalid": "אין בקשת AI תקפה להפעלה.",
     "chatServerError": "שגיאת שרת",
     "chatNoReply": "לא התקבלה תגובה מה-AI.",
-    "chatNetworkError": "שגיאה בתקשורת עם השרת."
+    "chatNetworkError": "שגיאה בתקשורת עם השרת.",
+    "instructionsTitle": "הנחיות לפענוח",
+    "instructionsBtn": "הנחיות",
+    "instructionPlaceholder": "הנחיות ל-AI…",
+    "resultsPanel": "תוצאות",
+    "saveToNotebook": "שמור ב-NotebookLM",
+    "saveToNotebookDone": "נשמר במחברת",
+    "saveToNotebookFailed": "שמירה נכשלה",
+    "noScanYet": "אין סריקה לשמירה",
+    "classification": "סיווג",
+    "results": {
+      "summary": "סיכום",
+      "telemetry": "מנועים",
+      "lineDesc": "תיאור",
+      "qty": "כמות",
+      "amount": "סכום",
+      "copied": "הועתק",
+      "copyJson": "העתק JSON",
+      "exportCsv": "ייצוא CSV",
+      "saveNotebook": "שמור במחברת",
+      "confirmErp": "אשר ל-ERP"
+    }
   },
   "accessibility": {
     "toolbar": "נגישות",
@@ -609,7 +630,10 @@
       "limitsHint": "מגבלות: עד 8 PDF, עד 6MB לקובץ, עד ~18MB סה״כ לבקשה. מפרטים גדולים אולי יש לפצל.",
       "noGemini": "לא הוגדר מפתח Gemini בשרת (GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY).",
       "readError": "לא ניתן היה לקרוא אחד מהקבצים.",
-      "confirmClearOnFiles": "שינוי קבצי המקור מתחיל שיחה חדשה. למחוק את השיחה הנוכחית?"
+      "confirmClearOnFiles": "שינוי קבצי המקור מתחיל שיחה חדשה. למחוק את השיחה הנוכחית?",
+      "renameSourceTitle": "שם מקור",
+      "deleteNotebookTitle": "מחיקת מחברת",
+      "deleteNotebookMessage": "למחוק מחברת זו? לא ניתן לשחזר."
     }
   },
   "financialCharts": {

@@ -1,18 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonForbidden, jsonUnauthorized } from "@/lib/api-json";
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonForbidden } from "@/lib/api-json";
 import { getAuthorizedMeckanoOrganizationId, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
+import { meckanoSessionFromWorkspace } from "@/lib/meckano-route-auth";
 import { prisma } from "@/lib/prisma";
 
-// POST /api/meckano/sync/zones-to-crm
-// Syncs active MeckanoZones as ERP Projects + CRM Contacts, and links Contact → Project.
-// Handles existing manually-created Projects/Contacts with matching names.
-export async function POST(_req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) return jsonUnauthorized();
-
-  const orgId = await getAuthorizedMeckanoOrganizationId(session);
+/** סנכרון MeckanoZones פעילים לפרויקטי ERP + אנשי קשר ב-CRM */
+export const POST = withWorkspacesAuth(async (_req, ctx) => {
+  const sessionLike = await meckanoSessionFromWorkspace(ctx);
+  const orgId = await getAuthorizedMeckanoOrganizationId(sessionLike);
   if (!orgId) {
     return jsonForbidden(MECKANO_ACCESS_ERROR);
   }
@@ -21,14 +17,14 @@ export async function POST(_req: NextRequest) {
     where: { organizationId: orgId, isActive: true },
   });
 
-  if (zones.length === 0)
+  if (zones.length === 0) {
     return NextResponse.json({ synced: 0, message: "אין אזורים פעילים לסנכרון" });
+  }
 
   let syncedProjects = 0;
   let syncedContacts = 0;
 
   for (const zone of zones) {
-    // 1. Find or create ERP Project with zone name
     let project = await prisma.project.findFirst({
       where: { organizationId: orgId, name: zone.name },
     });
@@ -39,12 +35,10 @@ export async function POST(_req: NextRequest) {
       syncedProjects++;
     }
 
-    // 2. Find or create CRM Contact with zone name, always link to project
     const existingContact = await prisma.contact.findFirst({
       where: { organizationId: orgId, name: zone.name },
     });
     if (existingContact) {
-      // Link to project if not already linked
       if (existingContact.projectId !== project.id) {
         await prisma.contact.update({
           where: { id: existingContact.id },
@@ -63,7 +57,6 @@ export async function POST(_req: NextRequest) {
       syncedContacts++;
     }
 
-    // 3. Mark zone as synced
     await prisma.meckanoZone.update({
       where: { id: zone.id },
       data: { syncedToCrm: true },
@@ -77,4 +70,4 @@ export async function POST(_req: NextRequest) {
     syncedContacts,
     message: `סונכרנו ${total} אתרים — ${syncedProjects} פרויקטים חדשים ו-${syncedContacts} לקוחות חדשים נוצרו, הקיימים קושרו`,
   });
-}
+});

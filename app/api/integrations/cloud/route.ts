@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { CloudProvider } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonServerError, jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { jsonBadRequest } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 
 /** רשימת חיבורים לגיבוי/סריקה — OAuth מלא יתווסף בהמשך (משתני סביבה לכל ספק). */
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) {
-    return jsonUnauthorized();
-  }
-
+export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
   const items = await prisma.cloudIntegration.findMany({
-    where: { organizationId: session.user.organizationId },
+    where: { organizationId: orgId },
     select: {
       id: true,
       provider: true,
@@ -26,7 +21,7 @@ export async function GET() {
   });
 
   return NextResponse.json({ items });
-}
+});
 
 type Body = {
   provider?: CloudProvider;
@@ -36,28 +31,23 @@ type Body = {
 };
 
 /** יצירת רשומת מקום לספק — ללא אסימונים אמיתיים עד להפעלת OAuth */
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) {
-    return jsonUnauthorized();
-  }
-
-  const body = (await req.json()) as Body;
-  const provider = body.provider;
-  if (!provider || !Object.values(CloudProvider).includes(provider)) {
-    return jsonBadRequest("provider לא חוקי", "invalid_provider");
-  }
-
+export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   try {
+    const body = (await req.json()) as Body;
+    const provider = body.provider;
+    if (!provider || !Object.values(CloudProvider).includes(provider)) {
+      return jsonBadRequest("provider לא חוקי", "invalid_provider");
+    }
+
     const row = await prisma.cloudIntegration.upsert({
       where: {
         organizationId_provider: {
-          organizationId: session.user.organizationId,
+          organizationId: orgId,
           provider,
         },
       },
       create: {
-        organizationId: session.user.organizationId,
+        organizationId: orgId,
         provider,
         displayName: body.displayName?.trim() || null,
         autoScan: Boolean(body.autoScan),
@@ -71,7 +61,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, item: row });
   } catch (e) {
-    console.error(e);
-    return jsonServerError("שמירה נכשלה");
+    return apiErrorResponse(e, "Cloud integration POST Error");
   }
-}
+});

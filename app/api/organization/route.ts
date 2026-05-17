@@ -1,27 +1,14 @@
 import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { jsonNotFound } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonUnauthorized, jsonNotFound, jsonServerError } from "@/lib/api-json";
 
-export async function GET() {
+export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return jsonUnauthorized();
-    }
-
-    const organizationId = session.user.organizationId;
-    
-    let organization;
-    if (organizationId) {
-      organization = await prisma.organization.findUnique({
-        where: { id: organizationId }
-      });
-    } else {
-      // Fallback to first organization if user has no org assigned (for dev/demo)
-      organization = await prisma.organization.findFirst();
-    }
+    const organization = await prisma.organization.findUnique({
+      where: { id: orgId },
+    });
 
     if (!organization) {
       return jsonNotFound("ארגון לא נמצא");
@@ -29,45 +16,34 @@ export async function GET() {
 
     return NextResponse.json(organization);
   } catch (error) {
-    console.error("Organization GET Error:", error);
-    return jsonServerError();
+    return apiErrorResponse(error, "Organization GET Error");
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return jsonUnauthorized();
-    }
-
     const body = await req.json();
     const { name, taxId, tenantSiteBrandingJson } = body;
 
-    const organizationId = session.user.organizationId;
-    
-    let targetId = organizationId;
-    if (!targetId) {
-      const firstOrg = await prisma.organization.findFirst();
-      if (firstOrg) targetId = firstOrg.id;
-    }
-
-    if (!targetId) {
+    const existing = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true },
+    });
+    if (!existing) {
       return jsonNotFound("ארגון לא נמצא לעדכון");
     }
 
     const updated = await prisma.organization.update({
-      where: { id: targetId },
+      where: { id: orgId },
       data: {
         name,
         taxId,
         tenantSiteBrandingJson: tenantSiteBrandingJson || undefined,
-      }
+      },
     });
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Organization POST Error:", error);
-    return jsonServerError();
+    return apiErrorResponse(error, "Organization POST Error");
   }
-}
+});

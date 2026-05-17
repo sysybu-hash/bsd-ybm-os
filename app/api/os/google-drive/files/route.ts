@@ -1,27 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   GoogleDriveService,
   GoogleOAuthNotLinkedError,
   GoogleOAuthRefreshError,
 } from "@/lib/services/google-drive";
-
-export async function GET(req: NextRequest) {
+export const GET = withWorkspacesAuth(async (req, { userId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const folderId = req.nextUrl.searchParams.get("folderId") || "root";
-    const driveService = await GoogleDriveService.forUser(session.user.id);
+    const folderId = new URL(req.url).searchParams.get("folderId") || "root";
+    const driveService = await GoogleDriveService.forUser(userId);
     const files = await driveService.listFiles(folderId);
 
     return NextResponse.json({ files });
   } catch (error: unknown) {
-    console.error("[Google Drive API Error]:", error);
-
     if (error instanceof GoogleOAuthNotLinkedError) {
       return NextResponse.json(
         {
@@ -61,4 +52,4 @@ export async function GET(req: NextRequest) {
       { status: needsReauth ? 401 : 500 },
     );
   }
-}
+});

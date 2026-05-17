@@ -597,7 +597,10 @@
       "limitsHint": "Limits: 8 PDFs, 6MB each, ~18MB total per request. Large specs may need to be split.",
       "noGemini": "Gemini API key is not configured on the server (GOOGLE_GENERATIVE_AI_API_KEY or GEMINI_API_KEY).",
       "readError": "Could not read one of the files.",
-      "confirmClearOnFiles": "Changing sources starts a new session. Clear the current chat?"
+      "confirmClearOnFiles": "Changing sources starts a new session. Clear the current chat?",
+      "renameSourceTitle": "Source name",
+      "deleteNotebookTitle": "Delete notebook",
+      "deleteNotebookMessage": "Delete this notebook? This cannot be undone."
     }
   },
   "financialCharts": {

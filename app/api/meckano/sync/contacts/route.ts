@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonForbidden, jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonForbidden } from "@/lib/api-json";
 import { getAuthorizedMeckanoOrganizationId, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
+import { meckanoSessionFromWorkspace } from "@/lib/meckano-route-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +17,9 @@ type MeckanoEmployee = {
   role?: string | null;
 };
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return jsonUnauthorized();
-  }
-  const orgId = await getAuthorizedMeckanoOrganizationId(session);
+export const POST = withWorkspacesAuth(async (req, ctx) => {
+  const sessionLike = await meckanoSessionFromWorkspace(ctx);
+  const orgId = await getAuthorizedMeckanoOrganizationId(sessionLike);
   if (!orgId) {
     return jsonForbidden(MECKANO_ACCESS_ERROR);
   }
@@ -35,12 +32,12 @@ export async function POST(req: Request) {
 
   let synced = 0;
   for (const emp of employees) {
-    const name = [emp.firstName, emp.lastName].filter(Boolean).join(" ") ||
+    const name =
+      [emp.firstName, emp.lastName].filter(Boolean).join(" ") ||
       emp.workerTag ||
       emp.email ||
       `עובד #${emp.id}`;
 
-    // זיהוי קיים: אימייל (אם יש) או שם מדויק באותו ארגון
     const email = typeof emp.email === "string" ? emp.email.trim() : "";
     const orWhere: Array<{ email: string } | { name: string }> = [];
     if (email) orWhere.push({ email });
@@ -69,4 +66,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ synced });
-}
+});

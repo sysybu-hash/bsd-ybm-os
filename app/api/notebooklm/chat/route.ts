@@ -1,14 +1,13 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { google } from "@ai-sdk/google";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   jsonBadRequest,
-  jsonServerError,
   jsonServiceUnavailable,
   jsonTooManyRequests,
-  jsonUnauthorized,
 } from "@/lib/api-json";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { GEMINI_NOTEBOOKLM_DEFAULT_MODEL } from "@/lib/gemini-model";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
@@ -20,46 +19,45 @@ const MODEL =
   process.env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
 const REQUESTS_PER_HOUR = 80;
 
-export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return jsonUnauthorized();
-    }
+const notebookChatBodySchema = z.object({
+  messages: z.array(z.unknown()).min(1),
+  sources: z
+    .array(
+      z.object({
+        name: z.string().optional(),
+        content: z.string().optional(),
+      }),
+    )
+    .optional(),
+});
 
-    if (!isGeminiConfigured()) {
-      return jsonServiceUnavailable(
-        "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
-        "gemini_not_configured",
-      );
-    }
+export const POST = withWorkspacesAuth(
+  async (_req, { userId }, data) => {
+    try {
+      if (!isGeminiConfigured()) {
+        return jsonServiceUnavailable(
+          "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
+          "gemini_not_configured",
+        );
+      }
 
-    const rateKey = `notebooklm-chat:user:${session.user.id}`;
-    const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
-    if (!rl.success) {
-      return jsonTooManyRequests(
-        `הגבלת קצב. נסו שוב אחרי ${rl.resetAt.toISOString()}.`,
-        "rate_limited",
-        { resetAt: rl.resetAt },
-      );
-    }
+      const rateKey = `notebooklm-chat:user:${userId}`;
+      const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
+      if (!rl.success) {
+        return jsonTooManyRequests(
+          `הגבלת קצב. נסו שוב אחרי ${rl.resetAt.toISOString()}.`,
+          "rate_limited",
+          { resetAt: rl.resetAt },
+        );
+      }
 
-    const { messages, sources } = (await req.json()) as {
-      messages?: UIMessage[];
-      sources?: Array<{ name?: string; content?: string }>;
-    };
+      const rawMessages = data.messages as UIMessage[];
+      const src = Array.isArray(data.sources) ? data.sources : [];
+      const sourcesContext = src
+        .map((s, i) => `מקור ${i + 1} (${s.name ?? "ללא שם"}):\n${s.content ?? ""}\n`)
+        .join("\n");
 
-    const rawMessages = Array.isArray(messages) ? messages : [];
-    if (rawMessages.length === 0) {
-      return jsonBadRequest("חסרות הודעות (messages).", "missing_messages");
-    }
-
-    const src = Array.isArray(sources) ? sources : [];
-    const sourcesContext = src
-      .map((s: { name?: string; content?: string }, i: number) => `מקור ${i + 1} (${s.name ?? "ללא שם"}):\n${s.content ?? ""}\n`)
-      .join("\n");
-
-    const systemPrompt = withAssistantTemporalContext(`
+      const systemPrompt = withAssistantTemporalContext(`
 אתה עוזר מחקר חכם במערכת BSD-YBM OS.
 ענה על שאלות המשתמש *אך ורק* על בסיס מקורות הידע שסופקו למטה.
 אם התשובה לא במקורות — ציין במפורש. ענה בעברית מקצועית וברורה.
@@ -68,28 +66,29 @@ export async function POST(req: Request) {
 ${sourcesContext}
 `);
 
-    const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
-      const { id: _id, ...rest } = m;
-      return rest;
-    });
+      const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
+        const { id: _id, ...rest } = m;
+        return rest;
+      });
 
-    let modelMessages;
-    try {
-      modelMessages = await convertToModelMessages(forModel);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "המרת הודעות נכשלה.";
-      return jsonBadRequest(msg.slice(0, 400), "message_conversion_failed");
+      let modelMessages;
+      try {
+        modelMessages = await convertToModelMessages(forModel);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "המרת הודעות נכשלה.";
+        return jsonBadRequest(msg.slice(0, 400), "message_conversion_failed");
+      }
+
+      const result = streamText({
+        model: google(MODEL),
+        system: systemPrompt,
+        messages: modelMessages,
+      });
+
+      return result.toUIMessageStreamResponse();
+    } catch (error) {
+      return apiErrorResponse(error, "notebooklm/chat");
     }
-
-    const result = streamText({
-      model: google(MODEL),
-      system: systemPrompt,
-      messages: modelMessages,
-    });
-
-    return result.toUIMessageStreamResponse();
-  } catch (error) {
-    console.error("Chat API Error:", error);
-    return new Response(JSON.stringify({ error: "שגיאת שרת מול גוגל" }), { status: 500 });
-  }
-}
+  },
+  { schema: notebookChatBodySchema },
+);

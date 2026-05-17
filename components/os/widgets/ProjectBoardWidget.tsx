@@ -65,9 +65,10 @@ export default function ProjectBoardWidget() {
 
   const fetchContacts = async () => {
     try {
-      const res = await fetch('/api/data?type=clients');
+      const res = await fetch('/api/crm/contacts', { credentials: 'include' });
       const data = await res.json();
-      setContacts(data.map((c: any) => ({
+      const rows = Array.isArray(data.contacts) ? data.contacts : [];
+      setContacts(rows.map((c: { id: string; name: string }) => ({
         id: c.id,
         name: c.name
       })));

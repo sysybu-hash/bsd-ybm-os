@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -43,7 +44,7 @@ interface Project {
 }
 
 export default function MeckanoReportsWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -68,11 +69,11 @@ export default function MeckanoReportsWidget() {
           setError(data.message);
         }
         if (!data.configured) {
-          setError('מפתח MECKANO_API_KEY לא מוגדר בשרת.');
+          setError(t("workspaceWidgets.meckano.noApiKey"));
         }
       } catch {
         setAccessAllowed(false);
-        setError('לא ניתן לבדוק הרשאות Meckano');
+        setError(t("workspaceWidgets.meckano.noAccess"));
       }
     })();
   }, []);
@@ -272,7 +273,7 @@ export default function MeckanoReportsWidget() {
             onClick={fetchReports}
             className="w-full h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
           >
-            <Search size={14} /> סנן תוצאות
+            <Search size={14} /> {t("workspaceWidgets.meckano.filter")}
           </button>
         </div>
       </div>
@@ -283,7 +284,7 @@ export default function MeckanoReportsWidget() {
           <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--background-main)]/50 backdrop-blur-[1px] z-20">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-indigo-600" size={32} />
-              <span className="text-sm font-bold text-[color:var(--foreground-muted)]">טוען נתונים...</span>
+              <span className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.meckano.loading")}</span>
             </div>
           </div>
         ) : null}
@@ -302,7 +303,7 @@ export default function MeckanoReportsWidget() {
                 onClick={fetchReports}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all"
               >
-                נסה שוב
+                {t("workspaceWidgets.meckano.retry")}
               </button>
             </div>
           </div>
@@ -369,7 +370,7 @@ export default function MeckanoReportsWidget() {
         {!isLoading && reports.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 opacity-30">
             <FileText size={48} className="text-[color:var(--foreground-muted)]" />
-            <p className="mt-4 text-sm font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">אין נתונים להצגה</p>
+            <p className="mt-4 text-sm font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">{t("workspaceWidgets.meckano.empty")}</p>
           </div>
         )}
       </div>

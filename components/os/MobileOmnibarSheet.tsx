@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import Omnibar from "@/components/os/Omnibar";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import type { OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 type SearchResult = {
@@ -24,7 +25,8 @@ export type MobileOmnibarSheetProps = {
   onSearchPreview?: (query: string) => void;
   searchResults?: SearchResult[];
   onSelectResult?: (result: SearchResult) => void;
-  openWorkspaceWidget: (type: WidgetType) => void;
+  openWorkspaceWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  assistantToolDeps?: OsAssistantToolDeps;
 };
 
 export default function MobileOmnibarSheet({
@@ -38,6 +40,7 @@ export default function MobileOmnibarSheet({
   searchResults,
   onSelectResult,
   openWorkspaceWidget,
+  assistantToolDeps,
 }: MobileOmnibarSheetProps) {
   const { t } = useI18n();
   useEffect(() => {
@@ -105,6 +108,7 @@ export default function MobileOmnibarSheet({
               searchResults={searchResults}
               onSelectResult={onSelectResult}
               openWorkspaceWidget={openWorkspaceWidget}
+              assistantToolDeps={assistantToolDeps}
             />
           </motion.div>
         </>

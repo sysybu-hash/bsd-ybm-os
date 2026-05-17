@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
 import type { PriceCompareRow } from "@/lib/price-compare-types";
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  const orgId = session?.user?.organizationId;
-  if (!session?.user?.id || !orgId) {
-    return jsonUnauthorized();
-  }
-
+export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
   const observations = await prisma.productPriceObservation.findMany({
     where: { organizationId: orgId },
     orderBy: { observedAt: "desc" },
@@ -54,4 +46,4 @@ export async function GET() {
   rows.sort((a, b) => Number(b.cheaperAlternative) - Number(a.cheaperAlternative));
 
   return NextResponse.json({ rows: rows.slice(0, 200) });
-}
+});

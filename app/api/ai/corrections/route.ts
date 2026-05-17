@@ -1,31 +1,25 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(request: Request) {
+export const POST = withWorkspacesAuth(async (request, { orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.organizationId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const { documentId, originalAiData, correctedData, correctionSource } = body;
 
     const correction = await prisma.aICorrection.create({
       data: {
-        organizationId: session.user.organizationId,
+        organizationId: orgId,
         documentId,
         originalAiData: originalAiData || {},
         correctedData: correctedData || {},
-        correctionSource: correctionSource || 'USER_MANUAL'
-      }
+        correctionSource: correctionSource || "USER_MANUAL",
+      },
     });
 
     return NextResponse.json({ success: true, id: correction.id });
-  } catch (err: any) {
-    console.error("AI Correction API Error:", err);
-    return NextResponse.json({ error: 'Failed to save correction', details: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return apiErrorResponse(err, "AI Correction API Error");
   }
-}
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { 
@@ -25,7 +26,7 @@ interface CashflowPoint {
 }
 
 export default function DashboardWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const { theme } = useTheme();
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -41,30 +42,39 @@ export default function DashboardWidget() {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardStats = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/dashboard/stats", { credentials: "include" });
+      if (!res.ok) throw new Error(t("workspaceWidgets.dashboard.error"));
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("workspaceWidgets.dashboard.error"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
-        const res = await fetch('/api/data?type=dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardStats();
+    void fetchDashboardStats();
   }, []);
 
   if (loading) {
+    return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;
+  }
+
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-transparent p-4 md:p-8">
-        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-[color:var(--foreground-muted)] text-sm animate-pulse">מסנכרן נתונים פיננסיים...</p>
-      </div>
+      <WidgetState
+        variant="error"
+        message={error}
+        onRetry={() => void fetchDashboardStats()}
+        retryLabel={t("workspaceWidgets.dashboard.retry")}
+      />
     );
   }
 
@@ -77,7 +87,7 @@ export default function DashboardWidget() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">סה&quot;כ הכנסות</span>
+          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalRevenue")}</span>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalRevenue)}</span>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center mb-1"><ArrowUpRight size={12} /> 12%</span>
@@ -86,7 +96,7 @@ export default function DashboardWidget() {
 
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-rose-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">הוצאות מצטברות</span>
+          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalExpenses")}</span>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalExpenses)}</span>
             <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center mb-1"><ArrowDownRight size={12} /> 5%</span>
@@ -95,13 +105,13 @@ export default function DashboardWidget() {
 
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">רווח תפעולי</span>
+          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.netProfit")}</span>
           <div className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(netProfit)}</div>
         </div>
 
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
           <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">פרויקטים פעילים</span>
+          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.activeProjects")}</span>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-black text-[color:var(--foreground-main)]">{stats.activeProjects}</span>
             <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">{stats.pendingInvoices} בטיפול</span>

@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { MECKANO_SUBSCRIBER_EMAIL } from "@/lib/meckano-access";
-import { useWindowManager } from "@/hooks/use-window-manager";
+import { useWindowManager, type WidgetType } from "@/hooks/use-window-manager";
+import { useAutomationRunner } from "@/hooks/useAutomationRunner";
+import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
 import OSSidebar from "@/components/os/layout/OSSidebar";
 import OSWorkspace from "@/components/os/layout/OSWorkspace";
 import OSDock from "@/components/os/layout/OSDock";
+import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
 import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import LandingPage from "@/components/landing/LandingPage";
@@ -36,7 +39,9 @@ export default function OmniCanvas() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [hasOpenedDefaults, setHasOpenedDefaults] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sidebarRailPeek, setSidebarRailPeek] = useState(false);
   const [mobileOmnibarOpen, setMobileOmnibarOpen] = useState(false);
+  const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
   const bellButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
@@ -55,8 +60,76 @@ export default function OmniCanvas() {
     toggleWorkState,
   } = useWindowManager();
 
+  const hasMaximizedWidget = widgets.some((w) => w.isMaximized);
+  const sidebarRailVisible = !hasMaximizedWidget || sidebarRailPeek;
+
+  const reportMeckanoAttendance = useCallback(
+    async (action: "in" | "out") => {
+      if (session?.user?.email?.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
+        toast.error(t("workspaceWidgets.page.commands.meckanoNoPermission"));
+        return;
+      }
+
+      const label =
+        action === "in"
+          ? t("workspaceWidgets.page.commands.meckanoIn")
+          : t("workspaceWidgets.page.commands.meckanoOut");
+      setSystemMessage(t("workspaceWidgets.page.commands.meckanoReporting", { action: label }));
+
+      try {
+        const res = await fetch("/api/meckano/clock-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, timestamp: new Date().toISOString() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || t("workspaceWidgets.page.commands.meckanoFailed"));
+        setSystemMessage(data.message || t("workspaceWidgets.page.commands.meckanoReported", { action: label }));
+        toast.success(t("workspaceWidgets.page.commands.meckanoSuccess", { action: label }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : t("workspaceWidgets.page.commands.meckanoFailed");
+        setSystemMessage(t("workspaceWidgets.page.commands.meckanoError"));
+        toast.error(message);
+      }
+    },
+    [session?.user?.email, t],
+  );
+
+  const automationRunner = useAutomationRunner({
+    openWidget,
+    closeWidget,
+    focusWidget,
+    toggleMaximize,
+    clearLayout,
+    widgets: widgets.map((w) => ({ id: w.id, type: w.type })),
+    setSystemMessage,
+    reportMeckanoAttendance,
+    openWindowSwitcher: () => setWindowSwitcherOpen(true),
+  });
+
+  const automationContextValue = useMemo(
+    () => ({
+      ...automationRunner,
+      assistantToolDeps: automationRunner.deps,
+    }),
+    [automationRunner],
+  );
+
+  const widgetTitle = useCallback((type: WidgetType) => t(`workspaceWidgets.titles.${type}`), [t]);
+
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey && e.key === "Tab") {
+        e.preventDefault();
+        setWindowSwitcherOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
@@ -70,7 +143,7 @@ export default function OmniCanvas() {
 
     const fetchNotifications = async () => {
       try {
-        const res = await fetch("/api/data?type=notifications", {
+        const res = await fetch("/api/notifications/feed", {
           credentials: "include",
           cache: "no-store",
         });
@@ -129,35 +202,6 @@ export default function OmniCanvas() {
     setSystemMessage(t("workspaceWidgets.page.commands.openedClient", { name: result.name }));
   };
 
-  const reportMeckanoAttendance = async (action: "in" | "out") => {
-    if (session?.user?.email?.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
-      toast.error(t("workspaceWidgets.page.commands.meckanoNoPermission"));
-      return;
-    }
-
-    const label =
-      action === "in"
-        ? t("workspaceWidgets.page.commands.meckanoIn")
-        : t("workspaceWidgets.page.commands.meckanoOut");
-    setSystemMessage(t("workspaceWidgets.page.commands.meckanoReporting", { action: label }));
-
-    try {
-      const res = await fetch("/api/meckano/clock-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, timestamp: new Date().toISOString() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("workspaceWidgets.page.commands.meckanoFailed"));
-      setSystemMessage(data.message || t("workspaceWidgets.page.commands.meckanoReported", { action: label }));
-      toast.success(t("workspaceWidgets.page.commands.meckanoSuccess", { action: label }));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t("workspaceWidgets.page.commands.meckanoFailed");
-      setSystemMessage(t("workspaceWidgets.page.commands.meckanoError"));
-      toast.error(message);
-    }
-  };
-
   const handleCommand = async (command: string) => {
     const cmd = command.trim();
     if (!cmd) return;
@@ -167,95 +211,31 @@ export default function OmniCanvas() {
     setSystemMessage(t("workspaceWidgets.page.commands.processing"));
 
     try {
-      if (cmd.match(/(דאשבורד|סטטוס|dashboard)/i)) {
-        openWidget("dashboard");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedDashboard"));
-      } else if (cmd.match(/(נקה|clear|reset|אפס|סידור)/i)) {
-        clearLayout();
-        setSystemMessage(t("workspaceWidgets.page.commands.layoutCleared"));
-      } else if (cmd.match(/(crm|לקוחות|ניהול לקוחות|פתח לקוחות)/i)) {
-        openWidget("crmTable");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedCrm"));
-      } else if (cmd.match(/(erp|ארכיון|מסמכים|חשבוניות|סייר)/i)) {
-        openWidget("erpArchive");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedErp"));
-      } else if (cmd.match(/(פרויקטים|לוח|board|tasks|משימות|ניהול פרויקטים)/i)) {
-        openWidget("projectBoard");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedProjectBoard"));
-      } else if (cmd.match(/(הפק|צור|חדש|מחולל|הצעה|חשבונית|quote|invoice)/i)) {
-        openWidget("docCreator");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedDocCreator"));
-      } else if (cmd.match(/(סרוק|סריקה|scan|upload|העלה|פענח)/i)) {
-        openWidget("aiScanner");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedScanner"));
-      } else if (cmd.match(/(כניסה|כניסת עובד|clock in|clock-in)/i)) {
-        await reportMeckanoAttendance("in");
-      } else if (cmd.match(/(יציאה|יציאת עובד|clock out|clock-out)/i)) {
-        await reportMeckanoAttendance("out");
-      } else if (cmd.match(/(דוחות מקאנו|שעות עובדים|meckano reports|attendance report)/i)) {
-        openWidget("meckanoReports");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedMeckanoReports"));
-      } else if (cmd.match(/(notebooklm|notebook|מחברת|נוטבוק)/i)) {
-        openWidget("notebookLM");
-        setSystemMessage(t("workspaceWidgets.page.commands.openedNotebook"));
-      } else if (cmd.startsWith("/")) {
+      if (cmd.startsWith("/")) {
         openWidget("aiChatFull", { provider: "gemini", prompt: cmd.slice(1).trim() });
         setSystemMessage(t("workspaceWidgets.page.commands.openedAiChat"));
-      } else {
-        const interpretRes = await fetch("/api/os/assistant/interpret", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ message: cmd }),
-        });
+        return;
+      }
 
-        if (interpretRes.ok) {
-          const data = (await interpretRes.json()) as {
-            reply?: string;
-            openWidgets?: string[];
-            searchQuery?: string | null;
-          };
+      const handled = await automationRunner.handleCommandWithAutomations(cmd);
+      if (handled) return;
 
-          for (const w of data.openWidgets ?? []) {
-            openWidget(w as Parameters<typeof openWidget>[0]);
-          }
+      const res = await fetch(`/api/search?q=${encodeURIComponent(cmd)}`, { credentials: "include" });
+      const data = await res.json();
+      const results: SearchResult[] = Array.isArray(data.results) ? data.results : [];
 
-          const searchQ = data.searchQuery?.trim() || "";
-          if (searchQ) {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(searchQ)}`);
-            const searchData = await res.json();
-            const results: SearchResult[] = Array.isArray(searchData.results) ? searchData.results : [];
-            if (results.length > 0) {
-              const top = results[0];
-              if (top.type === "project") {
-                openWidget("project", { name: top.name });
-              } else {
-                openWidget("crmTable");
-              }
-            }
-          }
-
-          setSystemMessage(data.reply?.trim() || interpretDoneFallback(locale));
-          return;
-        }
-
-        const res = await fetch(`/api/search?q=${encodeURIComponent(cmd)}`);
-        const data = await res.json();
-        const results: SearchResult[] = Array.isArray(data.results) ? data.results : [];
-
-        if (results.length > 0) {
-          const top = results[0];
-          if (top.type === "project") {
-            openWidget("project", { name: top.name });
-            setSystemMessage(t("workspaceWidgets.page.commands.foundProject", { name: top.name }));
-          } else {
-            openWidget("crmTable");
-            setSystemMessage(t("workspaceWidgets.page.commands.foundClient", { name: top.name }));
-          }
+      if (results.length > 0) {
+        const top = results[0];
+        if (top.type === "project") {
+          openWidget("project", { name: top.name });
+          setSystemMessage(t("workspaceWidgets.page.commands.foundProject", { name: top.name }));
         } else {
-          openWidget("aiChatFull", { prompt: cmd });
-          setSystemMessage(t("workspaceWidgets.page.commands.openingAiChat"));
+          openWidget("crmTable");
+          setSystemMessage(t("workspaceWidgets.page.commands.foundClient", { name: top.name }));
         }
+      } else {
+        openWidget("aiChatFull", { prompt: cmd });
+        setSystemMessage(t("workspaceWidgets.page.commands.openingAiChat"));
       }
     } catch (err) {
       console.error("Command Error:", err);
@@ -367,6 +347,7 @@ export default function OmniCanvas() {
   }
 
   return (
+    <AutomationRunnerProvider value={automationContextValue}>
     <main className="quiet-shell fixed inset-0 max-w-[100vw] overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
@@ -379,17 +360,32 @@ export default function OmniCanvas() {
         bellButtonRef={bellButtonRef}
         isCleanDashboard={isCleanDashboard}
         onToggleWorkState={toggleWorkState}
+        onOpenWindowSwitcher={() => setWindowSwitcherOpen(true)}
       />
+      {hasMaximizedWidget && !sidebarRailPeek ? (
+        <button
+          type="button"
+          className="os-sidebar-peek-rail fixed z-[1190] hidden md:block"
+          onMouseEnter={() => setSidebarRailPeek(true)}
+          onFocus={() => setSidebarRailPeek(true)}
+          aria-label={t("workspaceWidgets.sidebar.aria")}
+        />
+      ) : null}
       <OSSidebar
         openWidget={(type) => {
           openWidget(type);
           setIsSidebarOpen(false);
+          setSidebarRailPeek(false);
         }}
         isOpen={isSidebarOpen}
         closeSidebar={() => setIsSidebarOpen(false)}
+        hidden={!sidebarRailVisible}
+        onMouseLeave={() => hasMaximizedWidget && setSidebarRailPeek(false)}
       />
 
-      <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)]">
+      <div
+        className={`absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:pe-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+      >
         <OSWorkspace
           widgets={widgets}
           hasHydrated={hasHydrated}
@@ -412,10 +408,24 @@ export default function OmniCanvas() {
         searchResults={searchResults}
         onSelectResult={handleSelectResult}
         openWorkspaceWidget={openWidget}
+        assistantToolDeps={automationRunner.deps}
+      />
+
+      <WindowSwitcher
+        open={windowSwitcherOpen}
+        onClose={() => setWindowSwitcherOpen(false)}
+        widgets={widgets}
+        widgetTitle={widgetTitle}
+        onSelect={focusWidget}
+        onCloseWidget={closeWidget}
       />
 
       <div className="md:hidden">
-        <MobileBottomNav openWidget={openWidget} onOpenOmnibar={() => setMobileOmnibarOpen(true)} />
+        <MobileBottomNav
+          openWidget={openWidget}
+          onOpenOmnibar={() => setMobileOmnibarOpen(true)}
+          onOpenWindowSwitcher={() => setWindowSwitcherOpen(true)}
+        />
         <MobileOmnibarSheet
           open={mobileOmnibarOpen}
           onClose={() => setMobileOmnibarOpen(false)}
@@ -427,6 +437,7 @@ export default function OmniCanvas() {
           searchResults={searchResults}
           onSelectResult={handleSelectResult}
           openWorkspaceWidget={openWidget}
+          assistantToolDeps={automationRunner.deps}
         />
       </div>
 
@@ -442,5 +453,6 @@ export default function OmniCanvas() {
       />
       <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />
     </main>
+    </AutomationRunnerProvider>
   );
 }

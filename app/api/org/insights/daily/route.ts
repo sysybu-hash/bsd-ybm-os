@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonUnauthorized } from "@/lib/api-json";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
 
 /** תובנה פיננסית יומית שמורה לארגון (מילוי ע״י cron / מנוע תובנות) */
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) {
-    return jsonUnauthorized();
-  }
-
+export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
   const row = await prisma.financialInsight.findUnique({
-    where: { organizationId: session.user.organizationId },
+    where: { organizationId: orgId },
     select: { content: true, updatedAt: true },
   });
 
@@ -28,4 +21,4 @@ export async function GET() {
     content: row.content,
     updatedAt: row.updatedAt.toISOString(),
   });
-}
+});

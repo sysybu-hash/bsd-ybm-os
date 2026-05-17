@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonForbidden, jsonNotFound, jsonUnauthorized } from "@/lib/api-json";
+import type { WorkspaceAuthContext } from "@/lib/api-handler";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonForbidden, jsonNotFound } from "@/lib/api-json";
 import { getAuthorizedMeckanoOrganizationId, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
 import { prisma } from "@/lib/prisma";
 import { meckanoHeaders, meckanoRestUrl } from "@/lib/meckano-fetch";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 
 export const dynamic = "force-dynamic";
+
+const MECKANO_API_PREFIX = "/api/meckano/";
+
+function pathSegmentsFromRequest(req: Request): string[] {
+  const pathname = new URL(req.url).pathname;
+  const idx = pathname.indexOf(MECKANO_API_PREFIX);
+  if (idx === -1) return [];
+  return pathname.slice(idx + MECKANO_API_PREFIX.length).split("/").filter(Boolean);
+}
 
 async function getOrgKey(organizationId: string): Promise<string | null> {
   const org = await prisma.organization.findUnique({
@@ -16,12 +26,18 @@ async function getOrgKey(organizationId: string): Promise<string | null> {
   return org?.meckanoApiKey ?? null;
 }
 
-async function proxyRequest(req: Request, segments: string[]) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return jsonUnauthorized();
-  }
-  const orgId = await getAuthorizedMeckanoOrganizationId(session);
+async function proxyRequest(req: Request, ctx: WorkspaceAuthContext, segments: string[]) {
+  const user = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    select: { email: true },
+  });
+
+  const orgId = await getAuthorizedMeckanoOrganizationId({
+    user: {
+      organizationId: ctx.orgId,
+      email: user?.email,
+    },
+  });
   if (!orgId) {
     return jsonForbidden(MECKANO_ACCESS_ERROR);
   }
@@ -35,7 +51,6 @@ async function proxyRequest(req: Request, segments: string[]) {
   const meckanoUrl = `${meckanoRestUrl(segments.join("/"))}${url.search}`;
 
   let body: string | undefined;
-  let contentType = req.headers.get("content-type") ?? "application/json";
   if (req.method !== "GET" && req.method !== "HEAD") {
     body = await req.text();
   }
@@ -50,34 +65,15 @@ async function proxyRequest(req: Request, segments: string[]) {
   return NextResponse.json(data, { status: upstream.status });
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyRequest(req, path);
+async function handle(req: Request, ctx: WorkspaceAuthContext) {
+  try {
+    return proxyRequest(req, ctx, pathSegmentsFromRequest(req));
+  } catch (err: unknown) {
+    return apiErrorResponse(err, "api/meckano proxy");
+  }
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyRequest(req, path);
-}
-
-export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyRequest(req, path);
-}
-
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyRequest(req, path);
-}
+export const GET = withWorkspacesAuth(handle);
+export const POST = withWorkspacesAuth(handle);
+export const PUT = withWorkspacesAuth(handle);
+export const DELETE = withWorkspacesAuth(handle);

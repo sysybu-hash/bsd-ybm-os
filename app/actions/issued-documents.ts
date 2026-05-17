@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
@@ -105,6 +105,7 @@ export type UpdateIssuedDocumentInput = {
   netAmount: number;
   items: unknown;
   status: DocStatus;
+  projectId?: string | null;
 };
 
 export type UpdateIssuedDocumentResult =
@@ -143,10 +144,33 @@ export async function updateIssuedDocument(
   const { vat, total } = calculateIssuedDocumentTotals(netAmount, org.companyType, org.isReportable);
   const itemsJson: Prisma.InputJsonValue = Array.isArray(data.items) ? (data.items as Prisma.InputJsonValue) : [];
 
+  let projectId: string | null | undefined = undefined;
+  if (data.projectId !== undefined) {
+    if (data.projectId === null || data.projectId === "") {
+      projectId = null;
+    } else {
+      const project = await prisma.project.findFirst({
+        where: { id: data.projectId, organizationId: orgId },
+        select: { id: true },
+      });
+      if (!project) return { ok: false, error: "פרויקט לא נמצא." };
+      projectId = project.id;
+    }
+  }
+
   try {
     await prisma.issuedDocument.update({
       where: { id: data.id },
-      data: { type: data.type, clientName, amount: netAmount, vat, total, items: itemsJson, status: data.status },
+      data: {
+        type: data.type,
+        clientName,
+        amount: netAmount,
+        vat,
+        total,
+        items: itemsJson,
+        status: data.status,
+        projectId,
+      },
     });
 revalidatePath("/app/settings/billing");
     return { ok: true };

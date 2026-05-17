@@ -18,7 +18,13 @@ import {
   Calendar,
   DollarSign,
   Settings2,
+  Eye,
+  Library,
 } from "lucide-react";
+import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import ScanResultsPanel from "@/components/os/widgets/scan/ScanResultsPanel";
+import { LAST_SCAN_STORAGE_KEY } from "@/lib/notebooklm-from-scan";
+import type { WidgetType } from "@/hooks/use-window-manager";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -144,7 +150,14 @@ function telemetryLabel(t: TriEngineTelemetry | null): string {
   return parts.length ? parts.join(" · ") : "—";
 }
 
-export default function AiScannerWidget() {
+const SCAN_INSTRUCTION_KEY = "bsd_scan_user_instruction";
+
+type AiScannerWidgetProps = {
+  liveData?: Record<string, unknown> | null;
+  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+};
+
+export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
@@ -161,6 +174,18 @@ export default function AiScannerWidget() {
   const [resultJson, setResultJson] = useState<string>("");
   const [pendingAnalysis, setPendingAnalysis] = useState<DocumentAnalysis | null>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [userInstruction, setUserInstruction] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
+  const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
+  const [lastScanFileName, setLastScanFileName] = useState("");
+  const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
+  const [savingNotebook, setSavingNotebook] = useState(false);
+  const [scanClassification, setScanClassification] = useState<{
+    scanMode: string;
+    confidence: number;
+    rationale?: string;
+  } | null>(null);
 
   const tr = useCallback(
     (key: string, fallback: string) => {
@@ -171,14 +196,34 @@ export default function AiScannerWidget() {
   );
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SCAN_INSTRUCTION_KEY);
+      if (saved) setUserInstruction(saved);
+    } catch {
+      /* ignore */
+    }
+    const inst = liveData?.userInstruction;
+    if (typeof inst === "string" && inst.trim()) setUserInstruction(inst.trim());
+    if (liveData?.openInstructions) setInstructionsOpen(true);
+    const mode = liveData?.engineRunMode;
+    if (typeof mode === "string" && ["AUTO", "MULTI_PARALLEL", "SINGLE_GEMINI", "SINGLE_OPENAI", "SINGLE_DOCUMENT_AI"].includes(mode)) {
+      setEngineRunMode(mode as TriEngineRunMode);
+    }
+  }, [liveData]);
+
+  useEffect(() => {
+    if (liveData?.v5 && typeof liveData.fileName === "string") {
+      setLastScanV5(liveData.v5 as ScanExtractionV5);
+      setLastScanFileName(liveData.fileName);
+    }
+  }, [liveData]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch("/api/scan/engine-meta");
-        if (res.ok && !cancelled) setEngineMeta((await res.json()) as EngineMeta);
-      } catch {
-        /* optional */
-      }
+      const { fetchEngineMetaCached } = await import("@/lib/scan-engine-meta-cache");
+      const data = await fetchEngineMetaCached();
+      if (!cancelled && data) setEngineMeta(data as EngineMeta);
     })();
     return () => {
       cancelled = true;
@@ -218,6 +263,7 @@ export default function AiScannerWidget() {
     setPendingAnalysis(null);
     setResultJson("");
     setTelemetry(null);
+    setScanClassification(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
     if (mime.startsWith("image/")) setPreviewUrl(URL.createObjectURL(file));
@@ -229,6 +275,7 @@ export default function AiScannerWidget() {
       formData.append("scanMode", "INVOICE_FINANCIAL");
       formData.append("persist", "false");
       formData.append("engineRunMode", engineRunMode);
+      if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
 
       const res = await fetch("/api/scan/tri-engine/stream", { method: "POST", body: formData });
       if (!res.ok) {
@@ -238,10 +285,19 @@ export default function AiScannerWidget() {
 
       let finalV5: ScanExtractionV5 | null = null;
       let finalAi: Record<string, unknown> | undefined;
+      let lastTelemetry: TriEngineTelemetry | null = null;
 
       await readNdjsonStream(res, (obj) => {
         if (obj.type === "telemetry" && obj.telemetry) {
-          setTelemetry(obj.telemetry as TriEngineTelemetry);
+          lastTelemetry = obj.telemetry as TriEngineTelemetry;
+          setTelemetry(lastTelemetry);
+        }
+        if (obj.type === "classification") {
+          setScanClassification({
+            scanMode: String(obj.scanMode ?? ""),
+            confidence: Number(obj.confidence) || 0,
+            rationale: typeof obj.rationale === "string" ? obj.rationale : undefined,
+          });
         }
         if (obj.type === "partial_v5" && obj.v5) {
           finalV5 = obj.v5 as ScanExtractionV5;
@@ -263,6 +319,23 @@ export default function AiScannerWidget() {
         const analysis = mapV5ToAnalysis(finalV5, finalAi);
         setPendingAnalysis(analysis);
         setResultJson(JSON.stringify(finalV5, null, 2));
+        setLastScanV5(finalV5);
+        setLastScanFileName(file.name);
+        try {
+          sessionStorage.setItem(
+            LAST_SCAN_STORAGE_KEY,
+            JSON.stringify({
+              fileName: file.name,
+              v5: finalV5,
+              telemetry: lastTelemetry,
+            }),
+          );
+        } catch {
+          /* ignore */
+        }
+        void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
+          captureProductEvent("scan_completed", { engine: engineRunMode, fileType: file.type });
+        });
         return analysis;
       }
       throw new Error("No extraction result");
@@ -336,8 +409,50 @@ export default function AiScannerWidget() {
         formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
       );
     },
-    [isProcessing, validateScanFile, tr, engineRunMode],
+    [isProcessing, validateScanFile, tr, engineRunMode, userInstruction, telemetry],
   );
+
+  const persistInstruction = (value: string) => {
+    setUserInstruction(value);
+    try {
+      localStorage.setItem(SCAN_INSTRUCTION_KEY, value);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const saveToNotebook = async () => {
+    if (!lastScanV5 || !lastScanFileName) {
+      toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
+      return;
+    }
+    setSavingNotebook(true);
+    try {
+      const res = await fetch("/api/notebooklm/from-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          fileName: lastScanFileName,
+          v5: lastScanV5,
+          telemetry,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      openWorkspaceWidget?.("notebookLM", { notebookId: data.notebookId, title: data.title });
+      toast.success(tr("scanner.saveToNotebookDone", "נשמר במחברת"));
+    } catch {
+      toast.error(tr("scanner.saveToNotebookFailed", "שמירה נכשלה"));
+    } finally {
+      setSavingNotebook(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!liveData?.triggerSaveToNotebook || !lastScanV5 || !lastScanFileName) return;
+    void saveToNotebook();
+  }, [liveData?.triggerSaveToNotebook, lastScanV5, lastScanFileName]);
 
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
@@ -391,15 +506,12 @@ export default function AiScannerWidget() {
     }
 
     try {
-      await fetch("/api/data", {
+      await fetch("/api/expenses/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "confirm-expense",
           amount: pendingAnalysis.amount,
           vendor: pendingAnalysis.vendor,
-          taxId: pendingAnalysis.taxId,
-          date: pendingAnalysis.date,
           projectName: pendingAnalysis.projectSuggestion,
         }),
       });
@@ -459,7 +571,47 @@ export default function AiScannerWidget() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={userInstruction}
+              onChange={(e) => persistInstruction(e.target.value)}
+              placeholder={tr("scanner.instructionPlaceholder", "הנחיות ל-AI…")}
+              className="max-w-[12rem] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-semibold"
+            />
+            <button
+              type="button"
+              onClick={() => setInstructionsOpen(true)}
+              className="rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold"
+            >
+              {tr("scanner.instructionsBtn", "הנחיות")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewPanelOpen(true)}
+              disabled={!previewUrl && queue.length === 0}
+              className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+              aria-label={tr("scanner.preview", "תצוגה מקדימה")}
+            >
+              <Eye size={14} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setResultsPanelOpen(true)}
+              disabled={!lastScanV5}
+              className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+              aria-label={tr("scanner.resultsPanel", "תוצאות")}
+            >
+              <FileText size={14} aria-hidden />
+            </button>
             <Settings2 size={14} className="text-[color:var(--foreground-muted)]" aria-hidden />
+            {scanClassification && engineRunMode === "AUTO" ? (
+              <span
+                className="max-w-[8rem] truncate rounded-lg bg-indigo-500/10 px-2 py-1 text-[9px] font-bold text-indigo-700 dark:text-indigo-300"
+                title={scanClassification.rationale}
+              >
+                {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} ({Math.round(scanClassification.confidence * 100)}%)
+              </span>
+            ) : null}
             <select
               value={engineRunMode}
               onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
@@ -656,6 +808,60 @@ export default function AiScannerWidget() {
           </div>
         </div>
       </div>
+
+      <OsFloatingPanel
+        open={instructionsOpen}
+        onClose={() => setInstructionsOpen(false)}
+        title={tr("scanner.instructionsTitle", "הנחיות לפענוח")}
+      >
+        <textarea
+          value={userInstruction}
+          onChange={(e) => persistInstruction(e.target.value)}
+          rows={6}
+          className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 text-sm"
+          placeholder={tr("scanner.instructionPlaceholder", "לדוגמה: הדגש מע״מ ושורות מע״מ")}
+        />
+      </OsFloatingPanel>
+
+      <OsFloatingPanel
+        open={previewPanelOpen}
+        onClose={() => setPreviewPanelOpen(false)}
+        title={tr("scanner.preview", "תצוגה מקדימה")}
+      >
+        {previewUrl ? (
+          <img src={previewUrl} alt="" className="mx-auto max-h-[50vh] rounded-lg object-contain" />
+        ) : (
+          <p className="text-sm text-[color:var(--foreground-muted)]">{tr("scanner.noPreview", "אין תצוגה")}</p>
+        )}
+        {queue.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-xs">
+            {queue.map((q) => (
+              <li key={q.id} className="truncate font-semibold">
+                {q.file.name} — {q.status}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </OsFloatingPanel>
+
+      <OsFloatingPanel
+        open={resultsPanelOpen}
+        onClose={() => setResultsPanelOpen(false)}
+        title={tr("scanner.resultsPanel", "תוצאות סריקה")}
+      >
+        {lastScanV5 && lastScanFileName ? (
+          <ScanResultsPanel
+            v5={lastScanV5}
+            fileName={lastScanFileName}
+            telemetry={telemetry}
+            onConfirmErp={() => pendingAnalysis && void confirmAnalysis()}
+            onSaveNotebook={() => void saveToNotebook()}
+            savingNotebook={savingNotebook}
+          />
+        ) : (
+          <p className="text-sm text-[color:var(--foreground-muted)]">{tr("scanner.noPreview", "אין תוצאה")}</p>
+        )}
+      </OsFloatingPanel>
     </div>
   );
 }

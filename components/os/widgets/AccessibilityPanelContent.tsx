@@ -4,7 +4,6 @@ import React from "react";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import {
-  ACCESSIBILITY_THEME_OPTIONS,
   applyAccessibilitySettings,
   type AccessibilityFontScale,
   type AccessibilitySettings,
@@ -58,27 +57,6 @@ export default function AccessibilityPanelContent({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
-        <section className="mb-4">
-          <h3 className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-            {t("accessibility.brandColor") !== "accessibility.brandColor" ? t("accessibility.brandColor") : "צבע מותג"}
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {ACCESSIBILITY_THEME_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                title={opt.label}
-                onClick={() => onChange({ ...value, themeColor: opt.id })}
-                className={`h-9 w-9 rounded-full border-2 transition ${
-                  value.themeColor === opt.id ? "border-[color:var(--foreground-main)] ring-2 ring-indigo-500/30" : "border-transparent opacity-80"
-                }`}
-                style={{ backgroundColor: opt.color }}
-                aria-label={opt.label}
-                aria-pressed={value.themeColor === opt.id}
-              />
-            ))}
-          </div>
-        </section>
         <section className="mb-4">
           <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
             {t("accessibility.fontScale") !== "accessibility.fontScale" ? t("accessibility.fontScale") : "גודל טקסט"}

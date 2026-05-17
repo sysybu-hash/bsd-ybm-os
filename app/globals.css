@@ -37,9 +37,17 @@
     --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.08);
     --shadow-lg: 0 18px 44px rgba(15, 23, 42, 0.1);
     --focus-ring: 0 0 0 4px rgba(79, 70, 229, 0.16);
+
+    /* workspace chrome — יישור עם OSHeader / OSDock */
+    --workspace-chrome-height: 3.5rem;
+    --workspace-chrome-bg: var(--glass-bg);
+    --workspace-chrome-border: var(--glass-border);
+    --workspace-chrome-omnibar-offset: 5.5rem;
   /* גובה סרגל תחתון במובייל (ניווט + safe area) */
     --mobile-chrome-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     --desktop-dock-clearance: 10.5rem;
+    --os-sidebar-rail-width: 4.5rem;
+    --os-sidebar-gap: 1.25rem;
 
     /* Legacy compatibility aliases used across the workspace. */
     --canvas: var(--background-main);
@@ -462,6 +470,30 @@
   .btn-outline {
     min-height: 44px;
   }
+}
+
+.os-sidebar-peek-rail {
+  inset-inline-end: 0;
+  top: 6rem;
+  bottom: 6rem;
+  width: 10px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--brand-accent) 35%, transparent),
+    transparent
+  );
+  opacity: 0.85;
+  transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.os-sidebar-peek-rail:hover,
+.os-sidebar-peek-rail:focus-visible {
+  width: 14px;
+  opacity: 1;
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
@@ -63,7 +64,7 @@ interface PriceComparison {
 }
 
 export default function ErpDocumentsWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const { theme } = useTheme();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -87,7 +88,7 @@ export default function ErpDocumentsWidget() {
       setDocuments(data.documents || []);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
-      toast.error('שגיאה בטעינת מסמכים');
+      toast.error(t("workspaceWidgets.erp.loadListFailed"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +101,7 @@ export default function ErpDocumentsWidget() {
       setSelectedDoc(data.document);
     } catch (error) {
       console.error('Failed to fetch document details:', error);
-      toast.error('שגיאה בטעינת פרטי מסמך');
+      toast.error(t("workspaceWidgets.erp.loadDocFailed"));
     }
   };
 
@@ -181,7 +182,7 @@ export default function ErpDocumentsWidget() {
             <Search className="absolute right-3 top-2.5 w-4 h-4 text-[color:var(--foreground-muted)]" />
             <input
               type="text"
-              placeholder="חיפוש מסמכים..."
+              placeholder={t("workspaceWidgets.erp.searchPlaceholder")}
               className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg py-2 pr-10 pl-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)] shadow-sm dark:shadow-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -191,11 +192,9 @@ export default function ErpDocumentsWidget() {
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-600 dark:text-emerald-500" />
-            </div>
+            <WidgetState variant="loading" message={t("workspaceWidgets.erp.loading")} />
           ) : documents.length === 0 ? (
-            <div className="p-8 text-center text-[color:var(--foreground-muted)] text-sm">לא נמצאו מסמכים</div>
+            <WidgetState variant="empty" message={t("workspaceWidgets.erp.empty")} />
           ) : (
             documents.map((doc) => (
               <button

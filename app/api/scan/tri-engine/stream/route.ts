@@ -1,6 +1,6 @@
-import { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import type { Session } from "next-auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { prisma } from "@/lib/prisma";
 import { runTriEngineExtraction, type TriEngineProgressEvent } from "@/lib/tri-engine-extract";
 import {
   buildTriEngineAiDataRecord,
@@ -13,15 +13,30 @@ import {
   triEngineNdjsonErrorResponse,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-api-common";
+import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
+import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 /** ליטרל בלבד — Next.js לא מקבל ייבוא ל־maxDuration */
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return triEngineNdjsonErrorResponse(401, { error: "Unauthorized" });
+export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  const userRow = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  const session = {
+    user: {
+      id: userId,
+      organizationId: orgId,
+      email: userRow?.email ?? null,
+    },
+  } as Session;
+
+  const rl = await checkRateLimit(`scan:org:${orgId}`, 30, 60 * 60 * 1000);
+  if (!rl.success) {
+    return triEngineNdjsonErrorResponse(429, { error: "הגבלת קצב — נסו שוב מאוחר יותר" });
   }
 
   let formData: FormData;
@@ -44,9 +59,23 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  let scanMode = parsed.scanMode;
+  let engineRunMode = parsed.engineRunMode;
+  if (engineRunMode === "AUTO") {
+    const mime = parsed.file.type || "application/octet-stream";
+    const classification = classifyScanDocumentHeuristic({
+      fileName: parsed.file.name,
+      mimeType: mime,
+      userInstruction: parsed.userInstruction,
+    });
+    scanMode = classification.scanMode;
+    const plan = resolveTriEnginePlan(scanMode, "AUTO");
+    engineRunMode = plan.effectiveRunMode;
+  }
+
   const gate = await triEngineAuthorizeAndCharge(
     session,
-    triEngineCreditKindFor(parsed.scanMode, parsed.engineRunMode),
+    triEngineCreditKindFor(scanMode, engineRunMode),
   );
   if (!gate.ok) {
     return triEngineNdjsonErrorResponse(gate.status, {
@@ -58,10 +87,10 @@ export async function POST(req: NextRequest) {
 
   const input = await loadTriEngineExtractionInput(
     parsed.file,
-    parsed.scanMode,
+    scanMode,
     gate.userId,
     parsed.openAiModel,
-    parsed.engineRunMode,
+    engineRunMode,
     parsed.userInstruction,
   );
 
@@ -76,6 +105,22 @@ export async function POST(req: NextRequest) {
   (async () => {
     try {
       await writeLine({ type: "start", usageWarnings: gate.usageWarnings });
+      if (parsed.engineRunMode === "AUTO") {
+        const classification = classifyScanDocumentHeuristic({
+          fileName: parsed.file.name,
+          mimeType: parsed.file.type || "application/octet-stream",
+          userInstruction: parsed.userInstruction,
+        });
+        const plan = resolveTriEnginePlan(classification.scanMode, "AUTO");
+        await writeLine({
+          type: "classification",
+          scanMode: classification.scanMode,
+          confidence: classification.confidence,
+          rationale: classification.rationale,
+          engineRunMode: plan.effectiveRunMode,
+          providerChain: plan.providerChain,
+        });
+      }
 
       const { v5, telemetry } = await runTriEngineExtraction({
         ...input,
@@ -128,4 +173,4 @@ export async function POST(req: NextRequest) {
       "Cache-Control": "no-store",
     },
   });
-}
+});

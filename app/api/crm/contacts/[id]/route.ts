@@ -1,52 +1,53 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonNotFound, jsonUnauthorized } from "@/lib/api-json";
+import { z } from "zod";
+import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { jsonNotFound } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/crm/contacts/[id]
- * מחזיר לקוח CRM יחיד עם כל נתוני ERP המשויכים אליו
- */
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await getServerSession(authOptions);
-  const orgId = session?.user?.organizationId;
-  if (!orgId) return jsonUnauthorized();
+const patchContactSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  status: z.string().optional(),
+});
 
-  const { id } = await params;
+const contactSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  status: true,
+  value: true,
+  notes: true,
+  createdAt: true,
+  project: { select: { id: true, name: true } },
+  issuedDocuments: {
+    orderBy: { createdAt: "desc" as const },
+    select: {
+      id: true,
+      type: true,
+      number: true,
+      clientName: true,
+      amount: true,
+      vat: true,
+      total: true,
+      status: true,
+      date: true,
+      dueDate: true,
+      items: true,
+      createdAt: true,
+    },
+  },
+};
+
+export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+  const { id } = await segment.params;
 
   const contact = await prisma.contact.findFirst({
-    where: { id, organizationId: orgId },    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      status: true,
-      value: true,
-      notes: true,
-      createdAt: true,
-      project: { select: { id: true, name: true } },
-      issuedDocuments: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          type: true,
-          number: true,
-          clientName: true,
-          amount: true,
-          vat: true,
-          total: true,
-          status: true,
-          date: true,
-          dueDate: true,
-          items: true,
-          createdAt: true,
-        },
-      },
-    },
+    where: { id, organizationId: orgId },
+    select: contactSelect,
   });
 
   if (!contact) return jsonNotFound("לא נמצא");
@@ -68,4 +69,37 @@ export async function GET(
       },
     },
   });
-}
+});
+
+export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchContactSchema>(
+  async (_req, { orgId }, segment, body) => {
+    const { id } = await segment.params;
+    try {
+      const updated = await prisma.contact.updateMany({
+        where: { id, organizationId: orgId },
+        data: {
+          ...(body.name !== undefined ? { name: body.name } : {}),
+          ...(body.email !== undefined ? { email: body.email } : {}),
+          ...(body.phone !== undefined ? { phone: body.phone } : {}),
+          ...(body.notes !== undefined ? { notes: body.notes } : {}),
+          ...(body.status !== undefined ? { status: body.status.toUpperCase() } : {}),
+        },
+      });
+      if (updated.count === 0) return jsonNotFound("לא נמצא");
+      const contact = await prisma.contact.findFirst({ where: { id, organizationId: orgId } });
+      return NextResponse.json({ success: true, contact });
+    } catch (err) {
+      return apiErrorResponse(err, "CRM contact update");
+    }
+  },
+  { schema: patchContactSchema },
+);
+
+export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+  const { id } = await segment.params;
+  const deleted = await prisma.contact.deleteMany({
+    where: { id, organizationId: orgId },
+  });
+  if (deleted.count === 0) return jsonNotFound("לא נמצא");
+  return NextResponse.json({ success: true });
+});

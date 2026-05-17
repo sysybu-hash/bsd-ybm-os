@@ -14,18 +14,35 @@ import ErpDocumentsWidget from "@/components/os/widgets/ErpDocumentsWidget";
 import ProjectBoardWidget from "@/components/os/widgets/ProjectBoardWidget";
 import CrmTableWidget from "@/components/os/widgets/CrmTableWidget";
 import ErpFileArchiveWidget from "@/components/os/widgets/ErpFileArchiveWidget";
-import DocumentCreatorWidget from "@/components/os/widgets/DocumentCreatorWidget";
-import AiScannerWidget from "@/components/os/widgets/AiScannerWidget";
+import dynamic from "next/dynamic";
 import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
 import SettingsWidget from "@/components/os/widgets/SettingsWidget";
 import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import GoogleAssistantWidget from "@/components/os/widgets/GoogleAssistantWidget";
-import NotebookLMWidget from "@/components/os/widgets/NotebookLMWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
+
+const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const DocumentCreatorWidget = dynamic(
+  () => import("@/components/os/widgets/DocumentCreatorWidget"),
+  { loading: () => <WidgetLoadingPlaceholder /> },
+);
+
+function WidgetLoadingPlaceholder() {
+  return (
+    <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-[color:var(--foreground-muted)]">
+      …
+    </div>
+  );
+}
 
 interface OSWorkspaceProps {
   widgets: ActiveWidget[];
@@ -195,14 +212,18 @@ export default function OSWorkspace({
             {widget.type === "projectBoard" && <ProjectBoardWidget />}
             {widget.type === "crmTable" && <CrmTableWidget />}
             {widget.type === "erpArchive" && <ErpFileArchiveWidget />}
-            {widget.type === "docCreator" && <DocumentCreatorWidget />}
-            {widget.type === "aiScanner" && <AiScannerWidget />}
-            {widget.type === "aiChatFull" && <AiChatFullWidget />}
+            {widget.type === "docCreator" && <DocumentCreatorWidget liveData={widget.liveData} />}
+            {widget.type === "aiScanner" && (
+              <AiScannerWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+            )}
+            {widget.type === "aiChatFull" && (
+              <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+            )}
             {widget.type === "settings" && <SettingsWidget />}
             {widget.type === "meckanoReports" && <MeckanoReportsWidget />}
             {widget.type === "googleDrive" && <GoogleDriveWidget />}
             {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
-            {widget.type === "notebookLM" && <NotebookLMWidget />}
+            {widget.type === "notebookLM" && <NotebookLMWidget liveData={widget.liveData} />}
             {widget.type === "accessibility" && <AccessibilityWidget />}
           </AdaptiveWidgetShell>
         ))}

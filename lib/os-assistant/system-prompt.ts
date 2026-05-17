@@ -6,6 +6,7 @@ import {
 } from "@/lib/i18n/config";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { formatUserContextForPrompt } from "@/lib/os-assistant/user-context";
+import { automationCatalogForPrompt } from "@/lib/os-automations/catalog";
 import { widgetCatalogForPrompt } from "@/lib/os-assistant/widget-catalog";
 
 export function buildOsAssistantSystemInstruction(
@@ -16,6 +17,7 @@ export function buildOsAssistantSystemInstruction(
   const loc = normalizeLocale(options?.locale) as AppLocale;
   const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
   const catalog = widgetCatalogForPrompt(loc);
+  const automations = automationCatalogForPrompt(loc);
 
   return withAssistantTemporalContext([
     `You are the personal assistant for BSD-YBM OS — a management workspace for construction and contractor businesses.`,
@@ -33,14 +35,19 @@ export function buildOsAssistantSystemInstruction(
       ? `- In voice mode: speak briefly and clearly; professional tone unless the user chose another style in voice settings.`
       : `- In text mode: be clear and structured when helpful.`,
     "",
+    "## Automation catalog (run_automation → intent + params)",
+    "For actions with parameters (invoice, scan with instructions, save to notebook, meckano clock): use run_automation.",
+    automations,
+    "",
     "## Widget catalog (execute_os_command → action)",
-    "When the user wants to open a screen, call execute_os_command with one of these action ids:",
+    "For simple screen open only, call execute_os_command with one of these action ids:",
     catalog,
     "",
     "## Rules",
-    "- When the user requests an in-app action — call the right tool (open widget / search) then confirm what you did.",
+    "- Prefer run_automation for create invoice, scan, notebook, attendance.",
+    "- When the user requests an in-app action — call the right tool then confirm what you did.",
     "- Do not invent internal data you were not given; suggest opening a widget or search if information is missing.",
     "- Never expose passwords or API keys.",
-    "- Prefer execute_os_command for navigation; use search_site when they name a client or project to find.",
+    "- Use search_site when they name a client or project to find.",
   ].join("\n"));
 }

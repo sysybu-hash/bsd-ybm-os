@@ -1,9 +1,10 @@
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, SlidersHorizontal } from 'lucide-react';
 
 export default function CrmWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -12,16 +13,15 @@ export default function CrmWidget() {
   const fetchClients = async (query = '') => {
     setLoading(true);
     try {
-      const endpoint = query ? `/api/search?q=${encodeURIComponent(query)}` : '/api/data?type=clients';
-      const res = await fetch(endpoint);
-      const data = await res.json();
-      
       if (query) {
-        // Map semantic results back to client objects
-        setClients(data.results?.filter((r: any) => r.type === 'contact') || []);
-      } else {
-        setClients(data);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setClients(data.results?.filter((r: { type?: string }) => r.type === 'contact') || []);
+        return;
       }
+      const res = await fetch('/api/crm/contacts', { credentials: 'include' });
+      const data = await res.json();
+      setClients(Array.isArray(data.contacts) ? data.contacts : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -50,10 +50,10 @@ export default function CrmWidget() {
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                <UserPlus size={20} />
             </div>
-            <h2 className="text-xl font-black tracking-tight">ניהול לקוחות CRM</h2>
+            <h2 className="text-xl font-black tracking-tight">{t("workspaceWidgets.crmMini.title")}</h2>
          </div>
          <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-900/20 active:scale-95">
-           + לקוח חדש
+           + {t("workspaceWidgets.crmMini.newClient")}
          </button>
       </div>
 
@@ -63,7 +63,7 @@ export default function CrmWidget() {
            value={searchQuery}
            onChange={handleSearch}
            onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
-           placeholder="חיפוש סמנטי (למשל: 'לקוח שעושה הרבה בעיות')..."
+           placeholder={t("workspaceWidgets.crmMini.searchPlaceholder")}
            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl px-5 py-3 pr-12 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all placeholder:text-[color:var(--foreground-muted)] font-medium"
          />
          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]" size={18} />
@@ -71,9 +71,7 @@ export default function CrmWidget() {
 
       <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
         {loading ? (
-          <div className="animate-pulse space-y-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-[72px] bg-[color:var(--foreground-muted)]/10 rounded-2xl w-full border border-[color:var(--border-main)]/30" />)}
-          </div>
+          <WidgetState variant="loading" message={t("workspaceWidgets.crmMini.loading")} />
         ) : clients.length > 0 ? (
           clients.map(client => (
             <div key={client.id} className="w-full p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--foreground-muted)]/10 transition-all flex justify-between items-center group cursor-pointer shadow-sm dark:shadow-none">
@@ -95,7 +93,7 @@ export default function CrmWidget() {
           ))
         ) : (
           <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-[color:var(--border-main)]/30 rounded-3xl">
-             <p className="text-[color:var(--foreground-muted)] text-sm">לא נמצאו לקוחות מתאימים.</p>
+             <p className="text-[color:var(--foreground-muted)] text-sm">{t("workspaceWidgets.crmMini.empty")}</p>
           </div>
         )}
       </div>

@@ -1,15 +1,9 @@
+import { NextResponse } from "next/server";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { google } from "@ai-sdk/google";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import {
-  jsonBadRequest,
-  jsonForbidden,
-  jsonServerError,
-  jsonServiceUnavailable,
-  jsonTooManyRequests,
-  jsonUnauthorized,
-} from "@/lib/api-json";
+import { z } from "zod";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
@@ -17,11 +11,20 @@ import { GEMINI_FLAGSHIP_MODEL } from "@/lib/gemini-model";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 
 export const maxDuration = 90;
 
 const MODEL = process.env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_FLAGSHIP_MODEL;
 const REQUESTS_PER_HOUR = 60;
+
+const omniBodySchema = z.object({
+  messages: z.array(z.custom<UIMessage>()).min(1),
+  projectId: z.string().optional(),
+  id: z.string().optional(),
+  trigger: z.string().optional(),
+  messageId: z.string().optional(),
+});
 
 function buildOmniVoiceSystemPrompt(locale: string): string {
   return withAssistantTemporalContext(`You are an intelligent voice assistant for BSD-YBM, a construction ERP.
@@ -39,43 +42,22 @@ Capabilities (do not list unless asked): ERP invoices, CRM, Meckano attendance.
 Goal: fast, accurate answers with current date when time is relevant.`);
 }
 
-type OmniBody = {
-  messages?: UIMessage[];
-  projectId?: string;
-  id?: string;
-  trigger?: string;
-  messageId?: string;
-};
-
-export async function POST(req: Request) {
+export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
   let locale = "he";
   try {
     locale = await getServerLocale();
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return jsonUnauthorized();
-    }
-    if (!session.user.organizationId) {
-      return jsonForbidden(getApiMessage("voice_org_only", locale));
-    }
 
     if (!isGeminiConfigured()) {
       return jsonServiceUnavailable(getApiMessage("gemini_not_configured", locale), "gemini_not_configured");
     }
 
-    const orgId = session.user.organizationId;
     const rateKey = `omni-voice:org:${orgId}`;
     const rl = await checkRateLimit(rateKey, REQUESTS_PER_HOUR, 60 * 60 * 1000);
     if (!rl.success) {
       return jsonTooManyRequests(getApiMessage("rate_limited", locale), "rate_limited", { resetAt: rl.resetAt });
     }
 
-    const body = (await req.json()) as OmniBody;
-    const rawMessages = Array.isArray(body.messages) ? body.messages : [];
-    if (rawMessages.length === 0) {
-      return jsonBadRequest(getApiMessage("missing_messages", locale), "missing_messages");
-    }
-
+    const rawMessages = data.messages;
     const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
       const { id: _id, ...rest } = m;
       return rest;
@@ -89,10 +71,12 @@ export async function POST(req: Request) {
       messages: modelMessages,
     });
 
-    return result.toUIMessageStreamResponse();
-  } catch (error) {
-    console.error("api/ai/omni-voice:", error);
-    const msg = error instanceof Error ? error.message : getApiMessage("server_error", locale);
-    return jsonServerError(msg.slice(0, 500));
+    const streamResponse = result.toUIMessageStreamResponse();
+    return new NextResponse(streamResponse.body, {
+      status: streamResponse.status,
+      headers: streamResponse.headers,
+    });
+  } catch (err: unknown) {
+    return apiErrorResponse(err, "api/ai/omni-voice");
   }
-}
+}, { schema: omniBodySchema });

@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
+import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { jsonBadRequest } from "@/lib/api-json";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { prisma } from "@/lib/prisma";
 import { runTriEngineExtraction } from "@/lib/tri-engine-extract";
 import {
   buildTriEngineAiDataRecord,
@@ -18,12 +20,19 @@ export const dynamic = "force-dynamic";
 /** ליטרל בלבד — Next.js לא מקבל ייבוא ל־maxDuration */
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    const session = {
+      user: {
+        id: userId,
+        organizationId: orgId,
+        email: userRow?.email ?? null,
+      },
+    } as Session;
 
     let formData: FormData;
     try {
@@ -93,8 +102,6 @@ export async function POST(req: NextRequest) {
       usageWarnings: gate.usageWarnings,
     });
   } catch (e) {
-    console.error("[tri-engine]", e);
-    const msg = e instanceof Error ? e.message : String(e);
-    return jsonServerError(msg.slice(0, 500));
+    return apiErrorResponse(e, "[tri-engine]");
   }
-}
+});

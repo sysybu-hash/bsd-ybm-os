@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { captureProductEvent } from "@/lib/analytics/posthog-client";
 
 type Props = Readonly<{
   error: Error & { digest?: string };
@@ -11,6 +13,13 @@ type Props = Readonly<{
 export default function RootError({ error, reset }: Props) {
   const { t, dir } = useI18n();
   const showDetail = process.env.NODE_ENV === "development" && Boolean(error?.message);
+
+  useEffect(() => {
+    captureProductEvent("$exception", {
+      message: error.message,
+      digest: error.digest ?? "",
+    });
+  }, [error]);
 
   return (
     <div

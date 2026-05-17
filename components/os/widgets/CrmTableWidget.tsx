@@ -1,6 +1,8 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import OsConfirmDialog from "@/components/os/OsConfirmDialog";
+import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
@@ -36,9 +38,11 @@ interface Client {
 }
 
 export default function CrmTableWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'lead' | 'inactive'>('all');
   const [isAddingClient, setIsAddingClient] = useState(false);
@@ -58,25 +62,25 @@ export default function CrmTableWidget() {
     fetchClients();
   }, []);
 
-  const handleDeleteClient = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteClient = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('האם אתה בטוח שברצונך למחוק לקוח זה?')) return;
+    setDeleteTargetId(id);
+  };
 
+  const confirmDeleteClient = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'delete-client', id })
-      });
-
+      const res = await fetch(`/api/crm/contacts/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success('לקוח נמחק בהצלחה');
+        toast.success(t("workspaceWidgets.crmTable.deleted"));
         fetchClients();
       } else {
-        throw new Error('Failed to delete client');
+        throw new Error("delete failed");
       }
-    } catch (err) {
-      toast.error('שגיאה במחיקת לקוח');
+    } catch {
+      toast.error(t("workspaceWidgets.crmTable.deleteFailed"));
     }
   };
 
@@ -84,24 +88,27 @@ export default function CrmTableWidget() {
     if (!selectedClient) return;
 
     try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: 'update-client',
-          ...selectedClient
-        })
+          name: selectedClient.name,
+          email: selectedClient.email,
+          phone: selectedClient.phone,
+          notes: selectedClient.notes,
+          status: selectedClient.status,
+        }),
       });
 
       if (res.ok) {
-        toast.success('פרטי לקוח עודכנו בהצלחה');
+        toast.success(t("workspaceWidgets.crmTable.updated"));
         setIsEditing(false);
         fetchClients();
       } else {
         throw new Error('Failed to update client');
       }
     } catch (err) {
-      toast.error('שגיאה בעדכון פרטי לקוח');
+      toast.error(t("workspaceWidgets.crmTable.updateFailed"));
     }
   };
 
@@ -152,27 +159,29 @@ export default function CrmTableWidget() {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/data?type=clients');
-      let data;
-      try {
-        data = await res.json();
-      } catch (e) {
-        throw new Error('שגיאת שרת (תגובה לא תקינה)');
+      setLoadError(null);
+      const res = await fetch("/api/crm/contacts");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || t("workspaceWidgets.crmTable.errorLoad"));
       }
-
-      if (!res.ok || !Array.isArray(data)) {
-        throw new Error(data?.error || data?.details || 'נכשלה משיכת נתונים');
-      }
-      // Transform data if needed or use as is
-      setClients(data.map((c: any) => ({
-        ...c,
-        status: c.status || 'active',
-        lastContact: c.lastContact || c.updatedAt || c.createdAt || new Date().toISOString(),
-        totalProjects: c.totalProjects || 0
-      })));
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'שגיאה בטעינת לקוחות');
+      const rows = Array.isArray(data.contacts) ? data.contacts : [];
+      setClients(
+        rows.map((c: Record<string, unknown>) => ({
+          id: String(c.id),
+          name: String(c.name ?? ""),
+          email: (c.email as string | null) ?? null,
+          phone: (c.phone as string | null) ?? null,
+          notes: (c.notes as string | null) ?? null,
+          status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
+          lastContact: String(c.createdAt ?? new Date().toISOString()),
+          totalProjects: 0,
+        })),
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("workspaceWidgets.crmTable.errorLoad");
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -180,30 +189,27 @@ export default function CrmTableWidget() {
 
   const handleAddClient = async () => {
     if (!newClient.name || !newClient.email) {
-      toast.error('אנא מלא שם ואימייל');
+      toast.error(t("workspaceWidgets.crmTable.nameEmailRequired"));
       return;
     }
 
     try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'create-client',
-          ...newClient
-        })
+      const res = await fetch("/api/crm/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newClient),
       });
 
       if (res.ok) {
-        toast.success('לקוח חדש נוסף בהצלחה');
+        toast.success(t("workspaceWidgets.crmTable.created"));
         setIsAddingClient(false);
         setNewClient({ name: '', email: '', phone: '', status: 'lead' });
         fetchClients();
       } else {
         throw new Error('Failed to create client');
       }
-    } catch (err) {
-      toast.error('שגיאה בהוספת לקוח');
+    } catch {
+      toast.error(t("workspaceWidgets.crmTable.createFailed"));
     }
   };
 
@@ -213,8 +219,30 @@ export default function CrmTableWidget() {
     return matchesSearch && matchesStatus;
   });
 
+  if (loading && clients.length === 0) {
+    return <WidgetState variant="loading" message={t("workspaceWidgets.crmTable.loading")} />;
+  }
+  if (loadError && clients.length === 0) {
+    return (
+      <WidgetState
+        variant="error"
+        message={loadError}
+        onRetry={fetchClients}
+        retryLabel={t("workspaceWidgets.crmTable.retry")}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
+      <OsConfirmDialog
+        open={deleteTargetId !== null}
+        title={t("workspaceWidgets.crmTable.deleteTitle")}
+        message={t("workspaceWidgets.crmTable.deleteMessage")}
+        destructive
+        onConfirm={confirmDeleteClient}
+        onCancel={() => setDeleteTargetId(null)}
+      />
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
         <div className="flex items-center gap-3">
@@ -561,10 +589,7 @@ export default function CrmTableWidget() {
         </div>
         
         {!loading && filteredClients.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 opacity-30">
-            <Users size={48} className="text-[color:var(--foreground-muted)]" />
-            <p className="mt-4 text-sm font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">לא נמצאו לקוחות</p>
-          </div>
+          <WidgetState variant="empty" message={t("workspaceWidgets.crmTable.empty")} />
         )}
       </div>
     </div>

@@ -296,6 +296,7 @@
   "workspaceShell": {
     "refreshingOverlay": "מעדכן את מרחב העבודה…",
     "topBar": {
+      "toolbarAria": "פעולות סרגל עליון",
       "searchAria": "חיפוש",
       "localeAria": "שפת ממשק",
       "notificationsAria": "התראות",
@@ -349,7 +350,11 @@
       "aiScanner": "סורק AI",
       "meckanoReports": "דוחות Meckano",
       "crmTable": "לקוחות",
-      "omnibarAria": "פתח שורת פקודה וחיפוש"
+      "omnibarAria": "פתח שורת פקודה וחיפוש",
+      "windowSwitcher": "חלונות",
+      "moreApps": "עוד",
+      "moreAppsTitle": "יישומים נוספים",
+      "closeMore": "סגור תפריט"
     },
     "sidebar": {
       "aria": "ניווט סביבת עבודה",
@@ -375,6 +380,7 @@
       "backToWork": "חזור למצב עבודה",
       "notificationsOpen": "פתח התראות",
       "settingsOpen": "פתח הגדרות משתמש",
+      "statusOnline": "מחובר",
       "signOut": "יציאה מהמערכת",
       "commands": {
         "processing": "מעבד פקודה…",
@@ -453,6 +459,137 @@
       "maximizeAria": "הגדל {title}",
       "closeAria": "סגור {title}",
       "closeLabel": "סגור"
+    },
+    "windowSwitcher": {
+      "title": "מחליף חלונות",
+      "empty": "אין חלונות פתוחים",
+      "closeWindow": "סגור חלון"
+    },
+    "invoice": {
+      "title": "מסמך מונפק",
+      "client": "לקוח",
+      "project": "פרויקט",
+      "noProject": "ללא פרויקט",
+      "lineDesc": "תיאור",
+      "lineQty": "כמות",
+      "linePrice": "מחיר",
+      "total": "סה״כ",
+      "save": "שמור",
+      "saved": "המסמך נשמר",
+      "delete": "מחק",
+      "deleted": "המסמך נמחק",
+      "deleteConfirm": "למחוק את המסמך?",
+      "loadFailed": "טעינת המסמך נכשלה",
+      "exportPdf": "ייצוא PDF",
+      "exportWord": "ייצוא Word"
+    },
+    "confirm": {
+      "confirm": "אישור",
+      "cancel": "ביטול"
+    },
+    "crmTable": {
+      "loading": "טוען לקוחות…",
+      "empty": "אין לקוחות במערכת",
+      "errorLoad": "שגיאה בטעינת לקוחות",
+      "retry": "נסה שוב",
+      "deleteTitle": "מחיקת לקוח",
+      "deleteMessage": "האם למחוק לקוח זה? הפעולה אינה ניתנת לביטול.",
+      "deleted": "לקוח נמחק בהצלחה",
+      "deleteFailed": "שגיאה במחיקת לקוח",
+      "updated": "פרטי לקוח עודכנו",
+      "updateFailed": "שגיאה בעדכון",
+      "created": "לקוח חדש נוסף",
+      "createFailed": "שגיאה ביצירת לקוח",
+      "nameEmailRequired": "נדרשים שם ואימייל",
+      "importEmpty": "הקובץ ריק",
+      "importFailed": "ייבוא נכשל",
+      "importCsvError": "שגיאה בקריאת CSV",
+      "searchPlaceholder": "חיפוש לקוחות…"
+    },
+    "itemActions": {
+      "edit": "ערוך",
+      "delete": "מחק",
+      "deleteTitle": "מחיקת פריט",
+      "deleteConfirm": "למחוק את הפריט?"
+    },
+    "dashboard": {
+      "loading": "מסנכרן נתונים פיננסיים…",
+      "error": "שגיאה בטעינת הדאשבורד",
+      "retry": "נסה שוב",
+      "totalRevenue": "סה״כ הכנסות",
+      "totalExpenses": "הוצאות מצטברות",
+      "netProfit": "רווח תפעולי",
+      "activeProjects": "פרויקטים פעילים"
+    },
+    "aiChat": {
+      "sendFailed": "שגיאה בתקשורת עם ה-AI",
+      "liveFailed": "שגיאה בחיבור Gemini Live",
+      "placeholder": "שאל אותי הכל על הפרויקטים שלך…"
+    },
+    "erp": {
+      "loading": "טוען מסמכים…",
+      "empty": "לא נמצאו מסמכים",
+      "error": "שגיאה בטעינת ארכיון",
+      "retry": "נסה שוב",
+      "searchPlaceholder": "חיפוש מסמכים…",
+      "loadDocFailed": "שגיאה בטעינת פרטי מסמך",
+      "loadListFailed": "שגיאה בטעינת מסמכים"
+    },
+    "meckano": {
+      "loading": "טוען נתונים…",
+      "empty": "אין נתונים להצגה",
+      "error": "שגיאה בטעינת דוחות Meckano",
+      "retry": "נסה שוב",
+      "noApiKey": "מפתח MECKANO_API_KEY לא מוגדר בשרת",
+      "noAccess": "לא ניתן לבדוק הרשאות Meckano",
+      "filter": "סנן תוצאות"
+    },
+    "docCreator": {
+      "draftTitle": "סיכום לפני הנפקה",
+      "draftConfirm": "הנפק מסמך",
+      "previewPdf": "תצוגת PDF"
+    },
+    "crmMini": {
+      "title": "ניהול לקוחות CRM",
+      "newClient": "לקוח חדש",
+      "searchPlaceholder": "חיפוש סמנטי (למשל: 'לקוח שעושה הרבה בעיות')…",
+      "loading": "טוען לקוחות…",
+      "empty": "לא נמצאו לקוחות"
+    },
+    "notebookLM": {
+      "loadListFailed": "לא ניתן לטעון רשימת מחברות",
+      "extractFailed": "שגיאה בחילוץ הטקסט",
+      "uploadFailed": "שגיאה בהעלאת הקובץ",
+      "addSourcesFirst": "הוסף מקורות ידע קודם",
+      "saveFailed": "שמירה נכשלה",
+      "loadFailed": "טעינה נכשלה",
+      "deleteFailed": "מחיקה נכשלה",
+      "audioSourcesFirst": "הוסף מקורות לפני סקירה קולית",
+      "saveBeforeAudio": "שמור את המחברת לפני סקירה קולית",
+      "audioFailed": "יצירת סקירה נכשלה",
+      "loadingNotebooks": "טוען מחברות…"
+    },
+    "project": {
+      "loadFailed": "שגיאה בטעינת נתוני פרויקט",
+      "noteSaved": "הערה נשמרה בהצלחה",
+      "noteSaveFailed": "שגיאה בשמירת הערה"
+    },
+    "shell": {
+      "closeAria": "סגור חלון",
+      "maximizeAria": "הגדל חלון",
+      "minimizeAria": "הקטן חלון",
+      "zoomInAria": "הגדל תצוגה",
+      "zoomOutAria": "הקטן תצוגה",
+      "zoomLevel": "רמת זום {level}%"
+    },
+    "chrome": {
+      "closeAria": "סגור {title}",
+      "closeLabel": "סגור",
+      "maximizeAria": "הגדל {title}",
+      "restoreAria": "הקטן {title}",
+      "zoomInAria": "הגדל תצוגה ב־{title}",
+      "zoomOutAria": "הקטן תצוגה ב־{title}",
+      "zoomLevel": "רמת זום {level}%"
     }
   },
   "settingsHub": {

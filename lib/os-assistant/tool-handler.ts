@@ -1,15 +1,33 @@
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 import type { WidgetType } from "@/hooks/use-window-manager";
+import { normalizeAutomationIntent } from "@/lib/os-automations/catalog";
+import { runAutomationAction } from "@/lib/os-automations/registry";
+import type { AutomationAction, AutomationRunnerDeps } from "@/lib/os-automations/types";
 
-export type OsAssistantToolDeps = {
-  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
-};
+export type OsAssistantToolDeps = Pick<AutomationRunnerDeps, "openWidget"> &
+  Partial<Omit<AutomationRunnerDeps, "openWidget">>;
 
 export async function handleOsAssistantToolCall(
   name: string,
   args: Record<string, unknown>,
   deps: OsAssistantToolDeps,
 ): Promise<string> {
+  if (name === "run_automation") {
+    const intent = normalizeAutomationIntent(typeof args.intent === "string" ? args.intent : "");
+    if (!intent) return `לא נמצא intent: ${String(args.intent)}`;
+    const params =
+      args.params && typeof args.params === "object"
+        ? (args.params as Record<string, unknown>)
+        : undefined;
+    const runnerDeps = deps as AutomationRunnerDeps;
+    if (!runnerDeps.setSystemMessage) {
+      deps.openWidget("dashboard");
+      return "Success";
+    }
+    await runAutomationAction({ intent, params }, runnerDeps);
+    return "Success";
+  }
+
   if (name === "execute_os_command") {
     const raw = typeof args.action === "string" ? args.action : "";
     const widget = normalizeWidgetAction(raw);

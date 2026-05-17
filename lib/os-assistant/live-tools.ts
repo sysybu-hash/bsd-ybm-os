@@ -1,3 +1,4 @@
+import { AUTOMATION_INTENT_ENUM } from "@/lib/os-automations/catalog";
 import { OS_ASSISTANT_WIDGETS } from "@/lib/os-assistant/widget-catalog";
 
 const WIDGET_ENUM = OS_ASSISTANT_WIDGETS.map((w) => w.id);
@@ -27,6 +28,26 @@ export function getOsAssistantLiveToolDeclarations() {
           },
         },
         required: ["action"],
+      },
+    },
+    {
+      name: "run_automation",
+      description:
+        "Runs a structured automation in BSD-YBM OS: create invoice, open scanner, save scan to notebook, clock in/out, open CRM, etc. Prefer this over execute_os_command when the user wants an action with parameters.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          intent: {
+            type: "STRING",
+            enum: AUTOMATION_INTENT_ENUM,
+            description: "Automation intent id",
+          },
+          params: {
+            type: "OBJECT",
+            description: "Intent-specific parameters (clientName, amount, userInstruction, etc.)",
+          },
+        },
+        required: ["intent"],
       },
     },
     {

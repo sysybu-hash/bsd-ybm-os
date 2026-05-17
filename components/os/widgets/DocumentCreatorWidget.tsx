@@ -1,7 +1,9 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
+import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
 import { 
   FilePlus, 
   User, 
@@ -18,9 +20,6 @@ import {
   Download
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-
 interface Contact {
   id: string;
   name: string;
@@ -34,8 +33,13 @@ interface DocItem {
   price: number;
 }
 
-export default function DocumentCreatorWidget() {
-  const { dir } = useI18n();
+type DocumentCreatorWidgetProps = {
+  liveData?: Record<string, unknown> | null;
+};
+
+export default function DocumentCreatorWidget({ liveData = null }: DocumentCreatorWidgetProps) {
+  const { dir, t } = useI18n();
+  const [showDraft, setShowDraft] = useState(false);
   const [docType, setDocType] = useState<'quote' | 'invoice'>('quote');
   const [orgSettings, setOrgSettings] = useState<any>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -46,26 +50,67 @@ export default function DocumentCreatorWidget() {
   const [loading, setLoading] = useState(false);
   const [fetchingContacts, setFetchingContacts] = useState(true);
   const [generatedDoc, setGeneratedDoc] = useState<{
+    id?: string;
     token: string;
     documentNumber: number;
     signUrl: string;
     paymentLink?: string;
     clientName: string;
-    items: any[];
+    items: DocItem[];
     amount: number;
   } | null>(null);
+
+  const issuedDocumentId =
+    typeof liveData?.issuedDocumentId === "string"
+      ? liveData.issuedDocumentId
+      : generatedDoc?.id ?? null;
 
   useEffect(() => {
     fetchContacts();
     fetchOrgSettings();
   }, []);
 
+  useEffect(() => {
+    if (liveData?.automation !== "invoice_draft") return;
+    if (liveData.docType === "quote" || liveData.docType === "invoice") {
+      setDocType(liveData.docType);
+    }
+    const contactName = liveData.contactName;
+    if (typeof contactName === "string" && contactName) {
+      setContacts((prev) => {
+        const exists = prev.find((c) => c.name === contactName);
+        if (exists) {
+          setSelectedContactId(exists.id);
+          return prev;
+        }
+        const id = `draft-${Date.now()}`;
+        setSelectedContactId(id);
+        return [...prev, { id, name: contactName, email: null }];
+      });
+    }
+    if (typeof liveData.contactId === "string") setSelectedContactId(liveData.contactId);
+    const draftItems = liveData.items;
+    if (Array.isArray(draftItems) && draftItems.length > 0) {
+      setItems(
+        draftItems.map((row, i) => {
+          const r = row as { description?: string; desc?: string; quantity?: number; qty?: number; price?: number };
+          return {
+            id: String(i + 1),
+            description: String(r.description ?? r.desc ?? ""),
+            quantity: Number(r.quantity ?? r.qty) || 1,
+            price: Number(r.price) || 0,
+          };
+        }),
+      );
+    }
+  }, [liveData]);
+
   const fetchOrgSettings = async () => {
     try {
-      const res = await fetch('/api/data?type=dashboard');
+      const res = await fetch('/api/organization', { credentials: 'include' });
       const data = await res.json();
       setOrgSettings({
-        name: data.orgName || 'BSD-YBM תשתיות',
+        name: data.name || 'BSD-YBM תשתיות',
         taxId: data.taxId || '512345678',
         email: data.adminEmail || 'admin@bsd-ybm.co.il'
       });
@@ -76,9 +121,10 @@ export default function DocumentCreatorWidget() {
 
   const fetchContacts = async () => {
     try {
-      const res = await fetch('/api/data?type=clients');
+      const res = await fetch('/api/crm/contacts');
       const data = await res.json();
-      setContacts(data.map((c: any) => ({
+      const rows = Array.isArray(data.contacts) ? data.contacts : [];
+      setContacts(rows.map((c: { id: string; name: string; email?: string | null }) => ({
         id: c.id,
         name: c.name,
         email: c.email
@@ -139,10 +185,11 @@ export default function DocumentCreatorWidget() {
       if (res.ok) {
         const result = data.document || data;
         setGeneratedDoc({
+          id: result.id,
           ...result,
           clientName: contact.name,
-          items: items,
-          amount: calculateSubtotal()
+          items,
+          amount: calculateSubtotal(),
         });
         toast.success(`${docType === 'quote' ? 'הצעת המחיר' : 'החשבונית'} הופקה בהצלחה`);
       } else {
@@ -156,57 +203,22 @@ export default function DocumentCreatorWidget() {
   };
 
   const downloadPDF = () => {
-    if (!generatedDoc) return;
-
-    const doc = new jsPDF();
-    
-    // For Hebrew support in jsPDF without custom fonts, we need to reverse the strings
-    // and use a font that might be available, but usually we need to embed a font.
-    // Since we can't easily embed a full TTF here, we'll use a helper to reverse Hebrew text.
-    const reverseHebrew = (text: string) => {
-      if (!text) return '';
-      return text.split('').reverse().join('');
-    };
-
-    // Basic PDF layout
-    doc.setFontSize(20);
-    doc.text(reverseHebrew(docType === 'quote' ? 'הצעת מחיר' : 'חשבונית מס'), 105, 20, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    if (orgSettings) {
-      doc.text(reverseHebrew(orgSettings.name), 10, 10);
-      doc.text(reverseHebrew(`ח"פ: ${orgSettings.taxId}`), 10, 15);
-      doc.text(reverseHebrew(orgSettings.email), 10, 20);
+    if (!generatedDoc?.id) {
+      toast.error("יש להפיק את המסמך לפני הורדת PDF");
+      return;
     }
-
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text(reverseHebrew(`מספר מסמך: ${generatedDoc.documentNumber || 'חדש'}`), 190, 40, { align: 'right' });
-    doc.text(reverseHebrew(`לקוח: ${generatedDoc.clientName}`), 190, 50, { align: 'right' });
-    doc.text(reverseHebrew(`תאריך: ${new Date().toLocaleDateString('he-IL')}`), 190, 60, { align: 'right' });
-
-    const tableData = items.map(item => [
-      `₪${((item.quantity || 0) * (item.price || 0)).toLocaleString()}`,
-      `₪${(item.price || 0).toLocaleString()}`,
-      item.quantity.toString(),
-      reverseHebrew(item.description),
-    ]);
-
-    (doc as any).autoTable({
-      startY: 70,
-      head: [[reverseHebrew('סה"כ'), reverseHebrew('מחיר יח\''), reverseHebrew('כמות'), reverseHebrew('תיאור')]],
-      body: tableData,
-      styles: { halign: 'right' },
-      headStyles: { halign: 'right' }
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.text(reverseHebrew(`סה"כ לתשלום: ₪${(calculateSubtotal() || 0).toLocaleString()}`), 190, finalY + 20, { align: 'right' });
-
-    doc.save(`${docType}_${generatedDoc.documentNumber || 'draft'}.pdf`);
-    toast.success('PDF הורד בהצלחה');
+    window.open(`/api/documents/issued/${generatedDoc.id}/export?format=pdf`, "_blank", "noopener,noreferrer");
+    toast.success("PDF הורד בהצלחה");
   };
+
+  if (issuedDocumentId) {
+    return (
+      <InvoiceDocumentView
+        issuedDocumentId={issuedDocumentId}
+        onDeleted={() => setGeneratedDoc(null)}
+      />
+    );
+  }
 
   if (generatedDoc) {
     return (
@@ -336,10 +348,48 @@ export default function DocumentCreatorWidget() {
 
       {/* Footer */}
       <div className="p-6 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
-        <button onClick={generateDocument} disabled={loading || !selectedContactId} className={`w-full h-14 ${docType === 'quote' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-emerald-600 hover:bg-emerald-500'} disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3`}>
+        <button
+          type="button"
+          onClick={() => setShowDraft(true)}
+          disabled={loading || !selectedContactId}
+          className={`w-full h-14 ${docType === 'quote' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-emerald-600 hover:bg-emerald-500'} disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3`}
+        >
           {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>{docType === 'quote' ? 'הפק הצעת מחיר' : 'הפק חשבונית לתשלום'} <Send className="w-5 h-5" /></>}
         </button>
       </div>
+      <OsFloatingPanel
+        open={showDraft}
+        onClose={() => setShowDraft(false)}
+        title={t("workspaceWidgets.docCreator.draftTitle")}
+      >
+        <div className="space-y-4 text-sm text-[color:var(--foreground-main)]">
+          <p>
+            <span className="font-bold">{contacts.find((c) => c.id === selectedContactId)?.name}</span>
+            {" · "}
+            {docType === "quote" ? "הצעת מחיר" : "חשבונית"}
+          </p>
+          <ul className="max-h-40 space-y-1 overflow-y-auto text-[color:var(--foreground-muted)]">
+            {items.map((item) => (
+              <li key={item.id}>
+                {item.description || "—"} × {item.quantity} = ₪{(item.quantity * item.price).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+          <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+            ₪{calculateSubtotal().toLocaleString()}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowDraft(false);
+              void generateDocument();
+            }}
+            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500"
+          >
+            {t("workspaceWidgets.docCreator.draftConfirm")}
+          </button>
+        </div>
+      </OsFloatingPanel>
     </div>
   );
 }

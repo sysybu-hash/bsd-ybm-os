@@ -1,26 +1,14 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(request: Request) {
+export const POST = withWorkspacesAuth(async (request, { orgId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    const organizationId = session?.user?.organizationId;
-
-    let orgId: string;
-    if (!organizationId) {
-      const firstOrg = await prisma.organization.findFirst();
-      if (!firstOrg) return NextResponse.json({ error: 'No organization found' }, { status: 500 });
-      orgId = firstOrg.id;
-    } else {
-      orgId = organizationId;
-    }
-
     const { contacts } = await request.json();
 
     if (!Array.isArray(contacts)) {
-      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
+      return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
     }
 
     let importedCount = 0;
@@ -34,16 +22,15 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Enhanced duplicate check: email, phone, or taxId (if stored in notes)
       const existing = await prisma.contact.findFirst({
         where: {
           organizationId: orgId,
           OR: [
             email ? { email } : null,
             phone ? { phone } : null,
-            taxId ? { notes: { contains: taxId } } : null
-          ].filter(Boolean) as any
-        }
+            taxId ? { notes: { contains: taxId } } : null,
+          ].filter(Boolean) as Array<{ email: string } | { phone: string } | { notes: { contains: string } }>,
+        },
       });
 
       if (existing) {
@@ -56,22 +43,21 @@ export async function POST(request: Request) {
           name,
           email: email || null,
           phone: phone || null,
-          notes: `${company ? `חברה: ${company}. ` : ''}${taxId ? `ח"פ: ${taxId}. ` : ''}${notes || ''}` || null,
+          notes: `${company ? `חברה: ${company}. ` : ""}${taxId ? `ח"פ: ${taxId}. ` : ""}${notes || ""}` || null,
           organizationId: orgId,
-          status: 'LEAD'
-        }
+          status: "LEAD",
+        },
       });
       importedCount++;
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      importedCount, 
+    return NextResponse.json({
+      success: true,
+      importedCount,
       skippedCount,
-      message: `${importedCount} לקוחות יובאו בהצלחה, ${skippedCount} נדחו עקב כפילות או חוסר בנתונים`
+      message: `${importedCount} לקוחות יובאו בהצלחה, ${skippedCount} נדחו עקב כפילות או חוסר בנתונים`,
     });
-  } catch (error: any) {
-    console.error("CRM Import Error:", error);
-    return NextResponse.json({ error: 'Import failed', details: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return apiErrorResponse(error, "CRM Import Error");
   }
-}
+});

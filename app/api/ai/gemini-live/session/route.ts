@@ -1,12 +1,9 @@
 import { GoogleGenAI, Modality } from "@google/genai";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
-  jsonForbidden,
-  jsonServerError,
   jsonServiceUnavailable,
   jsonTooManyRequests,
-  jsonUnauthorized,
 } from "@/lib/api-json";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
@@ -17,6 +14,7 @@ import {
   isGeminiApiKeyError,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,15 +50,8 @@ async function createLiveAuthToken(client: GoogleGenAI, model: string) {
   };
 }
 
-export async function POST() {
+export const POST = withWorkspacesAuth(async (_req, { orgId, userId }) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return jsonUnauthorized();
-    }
-    if (!session.user.organizationId) {
-      return jsonForbidden("Gemini Live זמין רק למשתמשים המשויכים לארגון.");
-    }
     if (!isGeminiConfigured()) {
       return jsonServiceUnavailable(
         "Gemini לא מוגדר. הגדירו GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY.",
@@ -69,7 +60,7 @@ export async function POST() {
     }
 
     const rl = await checkRateLimit(
-      `gemini-live-token:${session.user.organizationId}:${session.user.id}`,
+      `gemini-live-token:${orgId}:${userId}`,
       REQUESTS_PER_HOUR,
       60 * 60 * 1000,
     );
@@ -86,7 +77,7 @@ export async function POST() {
 
     for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
       try {
-        return Response.json(await createLiveAuthToken(client, model));
+        return NextResponse.json(await createLiveAuthToken(client, model));
       } catch (error) {
         lastError = error;
         const blob = `${error instanceof Error ? error.message : String(error)} ${JSON.stringify(error)}`;
@@ -104,16 +95,15 @@ export async function POST() {
     }
 
     throw lastError ?? new Error("כל מודלי Gemini Live נכשלו");
-  } catch (error) {
-    console.error("api/ai/gemini-live/session:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    const blob = `${message} ${JSON.stringify(error)}`;
-    if (isGeminiApiKeyError(error)) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const blob = `${message} ${JSON.stringify(err)}`;
+    if (isGeminiApiKeyError(err)) {
       return jsonServiceUnavailable(
         formatGeminiLiveUserMessage(blob),
         "gemini_api_key_invalid",
       );
     }
-    return jsonServerError(message.slice(0, 500));
+    return apiErrorResponse(err, "api/ai/gemini-live/session");
   }
-}
+});

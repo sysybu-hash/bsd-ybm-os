@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
-import { canAccessMeckano, MECKANO_ACCESS_ERROR } from "@/lib/meckano-access";
+import type { WorkspaceAuthContext } from "@/lib/api-handler";
+import { canAccessMeckano, MECKANO_ACCESS_ERROR, type SessionLike } from "@/lib/meckano-access";
+import { prisma } from "@/lib/prisma";
 
-export async function requireMeckanoSession(session: Session | null) {
+/** בונה אובייקט session ל־Meckano מתוך הקשר workspace (אחרי withWorkspacesAuth). */
+export async function meckanoSessionFromWorkspace(ctx: WorkspaceAuthContext) {
+  const user = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    select: { email: true },
+  });
+  return {
+    user: {
+      id: ctx.userId,
+      organizationId: ctx.orgId,
+      email: user?.email ?? null,
+    },
+  };
+}
+
+export type MeckanoSessionAuth =
+  | { error: NextResponse }
+  | { apiKey: string };
+
+export async function requireMeckanoSession(session: SessionLike): Promise<MeckanoSessionAuth> {
   if (!session?.user) {
     return {
       error: NextResponse.json({ error: "Unauthorized", code: "unauthorized" }, { status: 401 }),

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
-import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -272,9 +271,38 @@ export default function AdaptiveWidgetShell({
   };
 
   const chromeTitle = { title };
+  const shellRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!mobileOrMaximized) return;
+    const root = shellRef.current;
+    if (!root) return;
+    const selector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(root.querySelectorAll<HTMLElement>(selector)).filter((el) => el.offsetParent !== null);
+    getFocusable()[0]?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = getFocusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    root.addEventListener("keydown", trap);
+    return () => root.removeEventListener("keydown", trap);
+  }, [mobileOrMaximized]);
 
   return (
     <section
+      ref={shellRef}
       id={id}
       onMouseDown={onFocus}
       className={`workspace-window pointer-events-auto flex min-h-0 flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
@@ -296,7 +324,7 @@ export default function AdaptiveWidgetShell({
             }
       }
       dir={dir}
-      aria-label={title}
+      aria-labelledby={`${id}-title`}
     >
       <header
         onMouseDown={(e) => {
@@ -311,12 +339,14 @@ export default function AdaptiveWidgetShell({
       >
         <div className="min-w-[2rem] flex-1" aria-hidden />
 
-        <h2 className="max-w-[min(42%,14rem)] truncate rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/70 px-3 py-1 text-center text-[11px] font-black tracking-[0.14em] text-[color:var(--foreground-main)] shadow-xs">
+        <h2
+          id={`${id}-title`}
+          className="max-w-[min(42%,14rem)] truncate rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/70 px-3 py-1 text-center text-[11px] font-black tracking-[0.14em] text-[color:var(--foreground-main)] shadow-xs"
+        >
           {title}
         </h2>
 
         <div className="flex flex-1 items-center justify-end gap-1.5">
-          <LocaleSwitcher compact />
           <div className="workspace-chrome-toolbar">
             <button
               type="button"
@@ -326,7 +356,9 @@ export default function AdaptiveWidgetShell({
             >
               <ZoomOut size={14} aria-hidden />
             </button>
-            <span className="workspace-chrome-zoom hidden md:inline">{Math.round(zoom * 100)}%</span>
+            <span className="workspace-chrome-zoom hidden md:inline" aria-live="polite" aria-atomic="true">
+              {t("workspaceWidgets.chrome.zoomLevel", { level: String(Math.round(zoom * 100)) })}
+            </span>
             <button
               type="button"
               onClick={() => onZoomChange?.(0.1)}
@@ -350,13 +382,10 @@ export default function AdaptiveWidgetShell({
             <button
               type="button"
               onClick={onClose}
-              className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 gap-1 px-2.5 md:min-h-8 md:min-w-8 md:px-0"
+              className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 md:min-h-8 md:min-w-8"
               aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
             >
               <X size={16} className="shrink-0 md:h-[15px] md:w-[15px]" aria-hidden />
-              <span className="text-[11px] font-black tracking-wide md:hidden">
-                {t("workspaceWidgets.chrome.closeLabel", chromeTitle)}
-              </span>
             </button>
           </div>
         </div>

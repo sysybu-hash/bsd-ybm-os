@@ -4,7 +4,7 @@ import { isAdmin } from "@/lib/is-admin";
 export const MECKANO_SUBSCRIBER_EMAIL = "jbuildgca@gmail.com";
 export const MECKANO_ACCESS_ERROR = `Meckano זמין רק למנוי ${MECKANO_SUBSCRIBER_EMAIL}.`;
 
-type SessionLike = {
+export type SessionLike = {
   user?: {
     email?: string | null;
     organizationId?: string | null;

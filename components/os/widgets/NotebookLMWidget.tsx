@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ItemActions from "@/components/os/ItemActions";
+import OsConfirmDialog from "@/components/os/OsConfirmDialog";
+import OsPromptDialog from "@/components/os/OsPromptDialog";
 import {
   useNotebookSpeechPlayback,
   useNotebookSpeechSettingsState,
@@ -66,8 +68,14 @@ function uiMessagesFromStored(
   }));
 }
 
-export default function NotebookLMWidget() {
-  const { dir } = useI18n();
+type NotebookLMWidgetProps = {
+  liveData?: Record<string, unknown> | null;
+};
+
+export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetProps) {
+  const { dir, t } = useI18n();
+  const [renameSourceId, setRenameSourceId] = useState<string | null>(null);
+  const [deleteNotebookId, setDeleteNotebookId] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [notebookTitle, setNotebookTitle] = useState("מחברת חדשה");
@@ -188,7 +196,7 @@ export default function NotebookLMWidget() {
         setSavedList(data.notebooks ?? []);
       }
     } catch {
-      toast.error("לא ניתן לטעון רשימת מחברות");
+      toast.error(t("workspaceWidgets.notebookLM.loadListFailed"));
     }
   }, [projectId]);
 
@@ -227,10 +235,10 @@ export default function NotebookLMWidget() {
           },
         ]);
       } else {
-        toast.error(data.error || "שגיאה בחילוץ הטקסט");
+        toast.error(data.error || t("workspaceWidgets.notebookLM.extractFailed"));
       }
     } catch {
-      toast.error("שגיאה בהעלאת הקובץ");
+      toast.error(t("workspaceWidgets.notebookLM.uploadFailed"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -242,16 +250,21 @@ export default function NotebookLMWidget() {
   };
 
   const renameSource = (id: string) => {
-    const src = sources.find((s) => s.id === id);
-    if (!src) return;
-    const name = window.prompt("שם מקור:", src.name);
-    if (!name?.trim()) return;
-    setSources((prev) => prev.map((s) => (s.id === id ? { ...s, name: name.trim() } : s)));
+    if (sources.find((s) => s.id === id)) setRenameSourceId(id);
+  };
+
+  const confirmRenameSource = (name: string) => {
+    if (!renameSourceId || !name.trim()) {
+      setRenameSourceId(null);
+      return;
+    }
+    setSources((prev) => prev.map((s) => (s.id === renameSourceId ? { ...s, name: name.trim() } : s)));
+    setRenameSourceId(null);
   };
 
   const handleQuickAction = (prompt: string) => {
     if (sources.length === 0) {
-      toast.error("הוסף מקורות ידע קודם");
+      toast.error(t("workspaceWidgets.notebookLM.addSourcesFirst"));
       return;
     }
     void sendMessage({ text: prompt });
@@ -284,7 +297,7 @@ export default function NotebookLMWidget() {
       });
       const data = (await res.json()) as { notebook?: { id: string; audioOverview?: { scriptText: string } | null } };
       if (!res.ok) {
-        toast.error("שמירה נכשלה");
+        toast.error(t("workspaceWidgets.notebookLM.saveFailed"));
         return;
       }
       if (data.notebook?.id) {
@@ -297,7 +310,7 @@ export default function NotebookLMWidget() {
         sessionStorage.removeItem(DRAFT_KEY);
       }
     } catch {
-      toast.error("שמירה נכשלה");
+      toast.error(t("workspaceWidgets.notebookLM.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -317,7 +330,7 @@ export default function NotebookLMWidget() {
         };
       };
       if (!res.ok || !data.notebook) {
-        toast.error("טעינה נכשלה");
+        toast.error(t("workspaceWidgets.notebookLM.loadFailed"));
         return;
       }
       const nb = data.notebook;
@@ -337,12 +350,42 @@ export default function NotebookLMWidget() {
       setShowSavedPanel(false);
       toast.success("המחברת נטענה");
     } catch {
-      toast.error("טעינה נכשלה");
+      toast.error(t("workspaceWidgets.notebookLM.loadFailed"));
     }
   };
 
-  const handleDeleteSaved = async (id: string) => {
-    if (!window.confirm("למחוק מחברת זו?")) return;
+  useEffect(() => {
+    const notebookId = liveData?.notebookId;
+    if (typeof notebookId === "string" && notebookId) {
+      void handleLoadNotebook(notebookId);
+    }
+    if (typeof liveData?.title === "string" && liveData.title) {
+      setNotebookTitle(liveData.title);
+    }
+    const preload = liveData?.preloadSources;
+    if (Array.isArray(preload)) {
+      setSources(
+        preload.map((s, i) => {
+          const row = s as { name?: string; content?: string; type?: string };
+          return {
+            id: `preload-${i}`,
+            name: String(row.name ?? `מקור ${i + 1}`),
+            content: String(row.content ?? ""),
+            type: row.type === "pdf" ? "pdf" : "text",
+          };
+        }),
+      );
+    }
+  }, [liveData]);
+
+  const handleDeleteSaved = (id: string) => {
+    setDeleteNotebookId(id);
+  };
+
+  const confirmDeleteSaved = async () => {
+    const id = deleteNotebookId;
+    if (!id) return;
+    setDeleteNotebookId(null);
     try {
       const res = await fetch(`/api/notebooklm/notebooks/${id}`, { method: "DELETE", credentials: "include" });
       if (res.ok) {
@@ -351,7 +394,7 @@ export default function NotebookLMWidget() {
         toast.success("נמחק");
       }
     } catch {
-      toast.error("מחיקה נכשלה");
+      toast.error(t("workspaceWidgets.notebookLM.deleteFailed"));
     }
   };
 
@@ -367,7 +410,7 @@ export default function NotebookLMWidget() {
 
   const handleVoiceOverview = async () => {
     if (sources.length === 0) {
-      toast.error("הוסף מקורות לפני סקירה קולית");
+      toast.error(t("workspaceWidgets.notebookLM.audioSourcesFirst"));
       return;
     }
 
@@ -383,7 +426,7 @@ export default function NotebookLMWidget() {
         });
         const saveData = (await saveRes.json()) as { notebook?: { id: string } };
         if (!saveRes.ok || !saveData.notebook?.id) {
-          toast.error("שמור את המחברת לפני סקירה קולית");
+          toast.error(t("workspaceWidgets.notebookLM.saveBeforeAudio"));
           return;
         }
         id = saveData.notebook.id;
@@ -398,23 +441,41 @@ export default function NotebookLMWidget() {
       });
       const data = (await res.json()) as { scriptText?: string };
       if (!res.ok || !data.scriptText) {
-        toast.error("יצירת סקירה נכשלה");
+        toast.error(t("workspaceWidgets.notebookLM.audioFailed"));
         return;
       }
       setAudioScript(data.scriptText);
       playSpeech(data.scriptText);
     } catch {
-      toast.error("יצירת סקירה נכשלה");
+      toast.error(t("workspaceWidgets.notebookLM.audioFailed"));
     } finally {
       setIsGeneratingAudio(false);
     }
   };
+
+  const renameSourceDefault =
+    renameSourceId != null ? sources.find((s) => s.id === renameSourceId)?.name ?? "" : "";
 
   return (
     <div
       className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl md:flex-row"
       dir={dir}
     >
+      <OsPromptDialog
+        open={renameSourceId !== null}
+        title={t("notebook.renameSourceTitle")}
+        defaultValue={renameSourceDefault}
+        onConfirm={confirmRenameSource}
+        onCancel={() => setRenameSourceId(null)}
+      />
+      <OsConfirmDialog
+        open={deleteNotebookId !== null}
+        title={t("notebook.deleteNotebookTitle")}
+        message={t("notebook.deleteNotebookMessage")}
+        destructive
+        onConfirm={() => void confirmDeleteSaved()}
+        onCancel={() => setDeleteNotebookId(null)}
+      />
       <div className="flex w-full flex-col border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:w-1/3 md:border-l">
         <div className="mb-4 space-y-2">
           <input
