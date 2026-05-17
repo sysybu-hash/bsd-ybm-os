@@ -323,7 +323,9 @@
       "googleDrive": "Google Drive",
       "googleAssistant": "Google Assistant",
       "notebookLM": "NotebookLM",
-      "accessibility": "Доступность"
+      "accessibility": "Доступность",
+      "platformAdmin": "Админ",
+      "helpCenter": "Справка"
     },
     "quickActions": {
       "projectBoard": { "title": "Доска проектов", "subtitle": "Управление задачами" },

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Layers, LayoutGrid, LogOut, Settings, Zap } from "lucide-react";
+import { Bell, Layers, LayoutGrid, LogOut, Settings, Shield, Zap } from "lucide-react";
+import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { WidgetType } from "@/hooks/use-window-manager";
@@ -62,6 +63,7 @@ export default function OSHeader({
 }: OSHeaderProps) {
   const { data: session } = useSession();
   const { t } = useI18n();
+  const isPlatformAdmin = useIsPlatformAdmin();
   const [mounted, setMounted] = useState(false);
 
   const userName = session?.user?.name || t("workspaceWidgets.page.defaultUser");
@@ -146,6 +148,17 @@ export default function OSHeader({
                 aria-pressed={isCleanDashboard}
               >
                 <LayoutGrid size={16} aria-hidden />
+              </HeaderIconButton>
+            ) : null}
+
+            {isPlatformAdmin && openWidget ? (
+              <HeaderIconButton
+                onClick={() => openWidget("platformAdmin")}
+                className="hidden sm:flex"
+                title={t("workspaceWidgets.sidebar.platformAdmin")}
+                aria-label={t("workspaceWidgets.sidebar.platformAdmin")}
+              >
+                <Shield size={16} aria-hidden />
               </HeaderIconButton>
             ) : null}
 

@@ -35,6 +35,12 @@ const DocumentCreatorWidget = dynamic(
   () => import("@/components/os/widgets/DocumentCreatorWidget"),
   { loading: () => <WidgetLoadingPlaceholder /> },
 );
+const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
 
 function WidgetLoadingPlaceholder() {
   return (
@@ -227,6 +233,10 @@ export default function OSWorkspace({
             {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
             {widget.type === "notebookLM" && <NotebookLMWidget liveData={widget.liveData} />}
             {widget.type === "accessibility" && <AccessibilityWidget />}
+            {widget.type === "platformAdmin" && <PlatformAdminWidget />}
+            {widget.type === "helpCenter" && (
+              <HelpCenterWidget openWorkspaceWidget={openWidget} />
+            )}
           </AdaptiveWidgetShell>
         ))}
       </div>

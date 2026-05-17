@@ -11,11 +11,13 @@ import {
   Package,
   ScanLine,
   Settings,
+  Shield,
   Sparkles,
   Users,
   Library,
 } from "lucide-react";
 import { WidgetType } from "@/hooks/use-window-manager";
+import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -41,6 +43,7 @@ const navItems: { id: string; icon: typeof LayoutDashboard; type: WidgetType; la
 
 export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hidden, onMouseLeave }: OSSidebarProps) {
   const { t, dir } = useI18n();
+  const isPlatformAdmin = useIsPlatformAdmin();
 
   if (hidden) return null;
 
@@ -110,7 +113,7 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
             </button>
             <button
               type="button"
-              onClick={() => openWidget("aiChatFull")}
+              onClick={() => openWidget("helpCenter")}
               className="group flex h-11 w-11 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
               aria-label={t("workspaceWidgets.sidebar.help")}
               title={t("workspaceWidgets.sidebar.help")}
@@ -119,6 +122,21 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
                 <HelpCircle size={19} aria-hidden />
               </span>
             </button>
+            {isPlatformAdmin ? (
+              <button
+                type="button"
+                onClick={() => openWidget("platformAdmin")}
+                className="group flex h-11 w-11 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
+                aria-label={t("workspaceWidgets.sidebar.platformAdmin")}
+                title={t("workspaceWidgets.sidebar.platformAdmin")}
+              >
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass("platformAdmin")}`}
+                >
+                  <Shield size={19} aria-hidden />
+                </span>
+              </button>
+            ) : null}
           </div>
         </div>
       </motion.aside>

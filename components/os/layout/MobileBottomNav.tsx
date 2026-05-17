@@ -8,6 +8,7 @@ import {
   FileText,
   Grid3x3,
   HardDrive,
+  HelpCircle,
   LayoutDashboard,
   Layers,
   Library,
@@ -15,12 +16,14 @@ import {
   Package,
   ScanLine,
   Settings,
+  Shield,
   Sparkles,
   Users,
   X,
 } from "lucide-react";
 import { WidgetType } from "@/hooks/use-window-manager";
-import { widgetIconChipClass } from "@/lib/widget-icon-chip";
+import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
+import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 export type MobileBottomNavProps = {
@@ -48,6 +51,7 @@ const moreApps: NavItem[] = [
   { type: "aiChatFull", labelKey: "workspaceWidgets.sidebar.aiChatFull", icon: Sparkles, chip: true },
   { type: "notebookLM", labelKey: "workspaceWidgets.sidebar.notebookLM", icon: Library, chip: true },
   { type: "googleDrive", labelKey: "workspaceWidgets.titles.googleDrive", icon: HardDrive, chip: true },
+  { type: "helpCenter", labelKey: "workspaceWidgets.sidebar.help", icon: HelpCircle, chip: true },
   { type: "settings", labelKey: "workspaceWidgets.sidebar.settings", icon: Settings, chip: true },
   { type: "accessibility", labelKey: "workspaceWidgets.titles.accessibility", icon: Settings, chip: true },
 ];
@@ -71,7 +75,9 @@ function SideNavButton({
     >
       {item.chip ? (
         <span
-          className={`flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg transition sm:h-10 sm:w-10 sm:rounded-xl ${widgetIconChipClass(item.type)}`}
+          className={`flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg transition sm:h-10 sm:w-10 sm:rounded-xl ${
+            item.type === "helpCenter" ? helpIconChipClass : widgetIconChipClass(item.type)
+          }`}
         >
           <Icon size={20} strokeWidth={1.75} aria-hidden />
         </span>
@@ -89,7 +95,20 @@ export default function MobileBottomNav({
   onOpenWindowSwitcher,
 }: MobileBottomNavProps) {
   const { t, dir } = useI18n();
+  const isPlatformAdmin = useIsPlatformAdmin();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const moreAppsWithAdmin: NavItem[] = isPlatformAdmin
+    ? [
+        ...moreApps,
+        {
+          type: "platformAdmin" as WidgetType,
+          labelKey: "workspaceWidgets.sidebar.platformAdmin",
+          icon: Shield,
+          chip: true,
+        },
+      ]
+    : moreApps;
 
   return (
     <>
@@ -104,6 +123,7 @@ export default function MobileBottomNav({
       {moreOpen ? (
         <MoreAppsPanel
           t={t}
+          apps={moreAppsWithAdmin}
           onClose={() => setMoreOpen(false)}
           onOpen={(type: WidgetType) => {
             openWidget(type);
@@ -172,10 +192,12 @@ export default function MobileBottomNav({
 
 function MoreAppsPanel({
   t,
+  apps,
   onClose,
   onOpen,
 }: {
   t: (key: string) => string;
+  apps: NavItem[];
   onClose: () => void;
   onOpen: (type: WidgetType) => void;
 }) {
@@ -187,7 +209,7 @@ function MoreAppsPanel({
     >
       <MoreAppsPanelHeader t={t} onClose={onClose} />
       <div className="grid grid-cols-4 gap-2">
-        {moreApps.map((item) => (
+        {apps.map((item) => (
           <SideNavButton key={item.type} item={item} onOpen={onOpen} label={t(item.labelKey)} />
         ))}
       </div>

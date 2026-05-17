@@ -797,3 +797,10 @@ model AICorrection {
   @@index([organizationId])
   @@index([createdAt])
 }
+
+/// הגדרות פלטפורמה גלובליות (רשומה יחידה id=default)
+model PlatformSettings {
+  id         String   @id @default("default")
+  configJson Json
+  updatedAt  DateTime @updatedAt
+}

@@ -124,6 +124,20 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelRu: "Доступность",
     keywords: ["נגישות", "accessibility"],
   },
+  {
+    id: "helpCenter",
+    labelHe: "מרכז עזרה",
+    labelEn: "Help center",
+    labelRu: "Справка",
+    keywords: ["עזרה", "help", "מדריך", "faq", "תמיכה"],
+  },
+  {
+    id: "platformAdmin",
+    labelHe: "ניהול מערכת",
+    labelEn: "Platform admin",
+    labelRu: "Админ",
+    keywords: ["אדמין", "admin", "מנהל", "מנויים", "הרשמות"],
+  },
 ];
 
 const ALIASES: Record<string, WidgetType> = {

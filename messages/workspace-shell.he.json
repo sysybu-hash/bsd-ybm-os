@@ -323,7 +323,9 @@
       "googleDrive": "Google Drive",
       "googleAssistant": "Google Assistant",
       "notebookLM": "NotebookLM",
-      "accessibility": "נגישות"
+      "accessibility": "נגישות",
+      "platformAdmin": "ניהול מערכת",
+      "helpCenter": "מרכז עזרה"
     },
     "quickActions": {
       "projectBoard": { "title": "לוח פרויקטים", "subtitle": "ניהול משימות" },
@@ -370,7 +372,9 @@
       "meckanoReports": "דוחות Meckano",
       "notebookLM": "NotebookLM",
       "settings": "הגדרות",
-      "help": "עזרה"
+      "help": "עזרה",
+      "platformAdmin": "ניהול",
+      "adminFull": "ניהול מלא"
     },
     "page": {
       "loading": "טוען סביבת עבודה…",

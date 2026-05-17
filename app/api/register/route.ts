@@ -10,6 +10,7 @@ import { trialEndsAtFromNow } from "@/lib/trial";
 import { sendRegistrationWelcomeEmail } from "@/lib/mail";
 import { defaultScanBalancesForTier, tierLabelHe } from "@/lib/subscription-tier-config";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
+import { getPlatformConfig, isRegistrationOpen } from "@/lib/platform-settings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,6 +41,17 @@ export async function POST(req: Request) {
     }
 
     const normalized = emailRaw.toLowerCase();
+
+    if (!orgInviteToken && !inviteToken) {
+      const open = await isRegistrationOpen();
+      if (!open) {
+        const cfg = await getPlatformConfig();
+        const msg = cfg.maintenanceMode
+          ? cfg.maintenanceMessage.trim() || "המערכת בתחזוקה. נסו שוב מאוחר יותר."
+          : "הרשמה חדשה סגורה כרגע. פנו למנהל המערכת.";
+        return jsonBadRequest(msg, "registration_closed");
+      }
+    }
 
     /** הזמנה לצוות — הצטרפות לארגון קיים עם תפקיד; לא נוצר ארגון חדש */
     if (orgInviteToken) {

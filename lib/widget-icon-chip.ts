@@ -24,6 +24,8 @@ export function widgetIconChipClass(type: WidgetType): string {
     aiChat: "bg-purple-500/15 text-purple-300 group-hover:bg-purple-500/28",
     erp: "bg-emerald-500/15 text-emerald-300 group-hover:bg-emerald-500/28",
     quoteGen: "bg-amber-500/15 text-amber-300 group-hover:bg-amber-500/28",
+    platformAdmin: "bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/28",
+    helpCenter: "bg-sky-500/15 text-sky-300 group-hover:bg-sky-500/28",
   };
   return map[type] ?? "bg-indigo-500/15 text-indigo-200 group-hover:bg-indigo-500/28";
 }
