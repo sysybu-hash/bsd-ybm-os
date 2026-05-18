@@ -30,7 +30,7 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
       }
 
       try {
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/chat/legacy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ provider, prompt }),

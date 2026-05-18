@@ -11,12 +11,14 @@ import React, {
 } from "react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
+import { useMeckanoAccess } from "@/hooks/use-meckano-access";
 import {
   filterLauncherWidget,
   filterWidgetsForPicker,
   type LauncherPermissionContext,
 } from "@/lib/launcher/launcher-permissions";
 import {
+  ensureMeckanoLauncherSlots,
   getDefaultLauncherConfig,
   LAUNCHER_STORAGE_KEY,
   mergeLauncherConfig,
@@ -92,6 +94,7 @@ function padMobileEnd(slots: LauncherSlot[]): LauncherSlot[] {
 
 export function LauncherConfigProvider({ children }: { children: React.ReactNode }) {
   const isPlatformAdmin = useIsPlatformAdmin();
+  const { allowed: meckanoEnabled } = useMeckanoAccess();
   const [hydrated, setHydrated] = useState(false);
   const [config, setConfig] = useState<UserLauncherConfig>(() => getDefaultLauncherConfig());
   const [editMode, setEditMode] = useState(false);
@@ -99,27 +102,29 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const [announce, setAnnounce] = useState("");
 
   const permissionCtx = useMemo<LauncherPermissionContext>(
-    () => ({ isPlatformAdmin, meckanoEnabled: true }),
-    [isPlatformAdmin],
+    () => ({ isPlatformAdmin, meckanoEnabled }),
+    [isPlatformAdmin, meckanoEnabled],
   );
 
   useEffect(() => {
     const stored = parseLauncherConfigFromStorage(
       typeof window !== "undefined" ? localStorage.getItem(LAUNCHER_STORAGE_KEY) : null,
     );
-    setConfig(sanitizeConfig(stored, permissionCtx));
+    const withMeckano = ensureMeckanoLauncherSlots(stored, meckanoEnabled);
+    setConfig(sanitizeConfig(withMeckano, permissionCtx));
     setHydrated(true);
-  }, [permissionCtx]);
+  }, [permissionCtx, meckanoEnabled]);
 
   const persist = useCallback((next: UserLauncherConfig) => {
-    const sanitized = sanitizeConfig(next, permissionCtx);
+    const withMeckano = ensureMeckanoLauncherSlots(next, meckanoEnabled);
+    const sanitized = sanitizeConfig(withMeckano, permissionCtx);
     setConfig(sanitized);
     try {
       localStorage.setItem(LAUNCHER_STORAGE_KEY, JSON.stringify(sanitized));
     } catch {
       /* ignore quota */
     }
-  }, [permissionCtx]);
+  }, [permissionCtx, meckanoEnabled]);
 
   const zoneWidgets = useCallback(
     (zone: LauncherZone) =>

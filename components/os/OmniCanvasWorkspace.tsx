@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { MECKANO_SUBSCRIBER_EMAIL } from "@/lib/meckano-access";
+import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
 import { useWindowManager, type WidgetType } from "@/hooks/use-window-manager";
 import { useAutomationRunner } from "@/hooks/useAutomationRunner";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
@@ -70,7 +70,7 @@ export default function OmniCanvasWorkspace() {
 
   const reportMeckanoAttendance = useCallback(
     async (action: "in" | "out") => {
-      if (session?.user?.email?.toLowerCase() !== MECKANO_SUBSCRIBER_EMAIL.toLowerCase()) {
+      if (!isMeckanoSubscriberEmail(session?.user?.email)) {
         toast.error(t("workspaceWidgets.page.commands.meckanoNoPermission"));
         return;
       }

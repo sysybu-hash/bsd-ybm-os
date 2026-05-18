@@ -153,7 +153,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         }
       }
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/chat/legacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -87,6 +87,25 @@ function normalizeZone(raw: unknown, fallback: LauncherSlot[]): LauncherSlot[] {
   return raw.map(normalizeSlot);
 }
 
+/** מוסיף אריח מקאנו לסרגל הצד אם חסר — למנוי מורשה */
+export function ensureMeckanoLauncherSlots(
+  config: UserLauncherConfig,
+  meckanoEnabled: boolean,
+): UserLauncherConfig {
+  if (!meckanoEnabled) return config;
+  if (config.sidebar.some((s) => s.widgetId === "meckanoReports")) return config;
+
+  const sidebar = [...config.sidebar];
+  const afterAiChat = sidebar.findIndex((s) => s.widgetId === "aiChatFull");
+  const slot: LauncherSlot = { widgetId: "meckanoReports" };
+  if (afterAiChat >= 0) {
+    sidebar.splice(afterAiChat + 1, 0, slot);
+  } else {
+    sidebar.push(slot);
+  }
+  return { ...config, sidebar };
+}
+
 export function mergeLauncherConfig(partial: unknown): UserLauncherConfig {
   const defaults = getDefaultLauncherConfig();
   if (!partial || typeof partial !== "object") return defaults;

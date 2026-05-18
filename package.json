@@ -52,7 +52,7 @@
     "lighthouse:sample": "node scripts/lighthouse-sample.mjs"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.64",
+    "@ai-sdk/google": "^3.0.75",
     "@ai-sdk/openai": "^3.0.48",
     "@ai-sdk/react": "^3.0.170",
     "@anthropic-ai/sdk": "^0.95.2",
@@ -71,7 +71,7 @@
     "@react-pdf/renderer": "^4.3.2",
     "@tanstack/react-query": "^5.95.2",
     "@types/leaflet": "^1.9.21",
-    "ai": "^6.0.140",
+    "ai": "^6.0.184",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "eslint-plugin-import": "^2.32.0",
@@ -108,7 +108,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "overrides": {
     "effect": ">=3.20.0"

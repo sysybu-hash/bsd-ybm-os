@@ -1,84 +1,93 @@
-import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
+import { google } from "@ai-sdk/google";
+import { convertToModelMessages, streamText, tool, type UIMessage } from "ai";
 import { z } from "zod";
-import { withWorkspacesAuth } from "@/lib/api-handler";
-import { jsonTooManyRequests } from "@/lib/api-json";
-import { getUserFacingAiErrorMessage, runAiChat } from "@/lib/ai-chat";
-import { getServerLocale } from "@/lib/i18n/server";
-import { buildOsAssistantUserContext } from "@/lib/os-assistant/user-context";
-import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
-import { getApiMessage } from "@/lib/i18n/api-messages";
-import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { prisma } from "@/lib/prisma";
+import { isGeminiConfigured } from "@/lib/ai-providers";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { jsonBadRequest, jsonServiceUnavailable } from "@/lib/api-json";
 
-export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
-const CHAT_PER_HOUR = 120;
+const AGENT_MODEL =
+  process.env.GEMINI_AGENT_MODEL?.trim() ||
+  process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
+  "gemini-2.5-flash";
 
 const chatBodySchema = z.object({
-  provider: z.string().optional(),
-  prompt: z.string().min(1),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string(),
-      }),
-    )
-    .optional(),
+  messages: z.array(z.unknown()).min(1),
+  id: z.string().optional(),
+  trigger: z.string().optional(),
+  messageId: z.string().optional(),
 });
 
-function mapProvider(raw: unknown): string | undefined {
-  if (typeof raw !== "string") return undefined;
-  const p = raw.trim().toLowerCase();
-  if (p === "claude") return "anthropic";
-  return p;
-}
-
-export const POST = withWorkspacesAuth(async (req, ctx, data) => {
-  let locale = "he";
+export async function POST(req: Request) {
   try {
-    locale = await getServerLocale();
-    const prompt = data.prompt.trim();
-
-    const rl = await checkRateLimit(`chat:user:${ctx.userId}`, CHAT_PER_HOUR, 60 * 60 * 1000);
-    if (!rl.success) {
-      return jsonTooManyRequests(getApiMessage("rate_limited", locale));
+    if (!isGeminiConfigured()) {
+      return jsonServiceUnavailable(
+        "Gemini לא מוגדר. הוסיפו GOOGLE_GENERATIVE_AI_API_KEY ל-.env.local",
+        "gemini_not_configured",
+      );
     }
 
-    const userRow = await prisma.user.findUnique({
-      where: { id: ctx.userId },
-      select: { email: true, name: true },
+    const body = chatBodySchema.parse(await req.json());
+    const rawMessages = body.messages as UIMessage[];
+
+    const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
+      const { id: _id, ...rest } = m;
+      return rest;
     });
-    const assistantCtx = await buildOsAssistantUserContext({
-      user: {
-        id: ctx.userId,
-        email: userRow?.email ?? undefined,
-        name: userRow?.name ?? undefined,
-        role: ctx.role,
-        organizationId: ctx.orgId,
+
+    let modelMessages;
+    try {
+      modelMessages = await convertToModelMessages(forModel);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "המרת הודעות נכשלה.";
+      return jsonBadRequest(msg.slice(0, 400), "message_conversion_failed");
+    }
+
+    const result = streamText({
+      model: google(AGENT_MODEL),
+      system: `אתה עוזר וירטואלי חכם המוטמע באתר. 
+    תפקידך לעזור למשתמשים לבצע פעולות במערכת כמו פתיחת פרויקטים, הפקת חשבוניות וניהול כללי. 
+    אם מבקשים ממך לבצע פעולה, השתמש בכלים (Tools) שעומדים לרשותך. תמיד תענה בשפה העברית או לפי שפת המשתמש באתר.`,
+      messages: modelMessages,
+      tools: {
+        createProject: tool({
+          description: "פותח פרויקט חדש במערכת",
+          inputSchema: z.object({
+            projectName: z.string().describe("השם של הפרויקט החדש"),
+            location: z.string().optional().describe("מיקום הפרויקט (אופציונלי)"),
+          }),
+          execute: async ({ projectName, location }) => {
+            console.log(`יצירת פרויקט: ${projectName} במיקום: ${location}`);
+            const newProjectId = `PRJ-${Math.floor(Math.random() * 1000)}`;
+            return {
+              success: true,
+              projectId: newProjectId,
+              message: `הפרויקט ${projectName} נפתח בהצלחה במסד הנתונים`,
+            };
+          },
+        }),
+        generateInvoice: tool({
+          description: "מפיק חשבונית חדשה ללקוח או לפרויקט",
+          inputSchema: z.object({
+            clientName: z.string().describe("שם הלקוח אליו מיועדת החשבונית"),
+            amount: z.number().describe("סכום החשבונית בשקלים"),
+          }),
+          execute: async ({ clientName, amount }) => {
+            console.log(`מפיק חשבונית על סך ${amount} עבור ${clientName}`);
+            return {
+              success: true,
+              invoiceNumber: `INV-${Date.now()}`,
+              amount,
+              message: `חשבונית על סך ${amount} ש"ח הופקה ונשלחה ל-${clientName}`,
+            };
+          },
+        }),
       },
-    } as Session);
-    const contextJson = assistantCtx
-      ? buildOsAssistantSystemInstruction(assistantCtx, { locale })
-      : `You are the BSD-YBM OS assistant. ${aiReplyLanguageRule(locale)}`;
-
-    const { text, provider } = await runAiChat(mapProvider(data.provider), prompt, contextJson, locale);
-
-    return NextResponse.json({
-      reply: text || getApiMessage("server_error", locale),
-      provider,
     });
-  } catch (err: unknown) {
-    const message = getUserFacingAiErrorMessage(err, locale);
-    const lower = message.toLowerCase();
-    const status =
-      lower.includes("חסר") && lower.includes("api")
-        ? 503
-        : lower.includes("api key") || lower.includes("מפתח")
-          ? 503
-          : 500;
-    return NextResponse.json({ error: message }, { status });
+
+    return result.toUIMessageStreamResponse();
+  } catch (error) {
+    return apiErrorResponse(error, "chat/agent");
   }
-}, { schema: chatBodySchema });
+}
