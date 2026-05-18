@@ -6,6 +6,9 @@ import { buildInvoiceDocxHtml, buildInvoicePdfBuffer } from "@/lib/invoice-expor
 import { buildInvoiceExportPayload } from "@/lib/invoice-payload";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 export const GET = withWorkspacesAuthDynamic<{ id: string }>(
   async (req, { orgId, userId }, segment) => {
     const { id } = await segment.params;
@@ -49,7 +52,16 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
       });
     }
 
-    const buffer = await buildInvoicePdfBuffer(payload);
+    let buffer: Uint8Array;
+    try {
+      buffer = await buildInvoicePdfBuffer(payload);
+    } catch (err) {
+      console.error("[invoice-export] PDF render failed", err);
+      return NextResponse.json(
+        { error: "יצירת קובץ PDF נכשלה. נסו שוב בעוד רגע.", code: "pdf_render_failed" },
+        { status: 500 },
+      );
+    }
     captureServerEvent(userId, "invoice_exported", {
       documentId: id,
       format: "pdf",
@@ -60,6 +72,7 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${safeName}.pdf"`,
+        "Cache-Control": "private, no-store",
       },
     });
   },

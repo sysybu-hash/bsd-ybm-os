@@ -29,6 +29,7 @@ import {
   Download
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
 interface Contact {
   id: string;
   name: string;
@@ -262,12 +263,16 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     }
   };
 
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     if (!generatedDoc?.id) {
       toast.error("יש להפיק את המסמך לפני הורדת PDF");
       return;
     }
-    window.open(`/api/documents/issued/${generatedDoc.id}/export?format=pdf`, "_blank", "noopener,noreferrer");
+    const result = await downloadIssuedDocumentExport(generatedDoc.id, "pdf");
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
     toast.success("PDF הורד בהצלחה");
   };
 

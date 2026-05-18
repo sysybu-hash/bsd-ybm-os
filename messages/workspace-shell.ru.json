@@ -512,7 +512,8 @@
       "deleteConfirm": "Удалить документ?",
       "loadFailed": "Не удалось загрузить документ",
       "exportPdf": "Экспорт PDF",
-      "exportWord": "Экспорт Word"
+      "exportWord": "Экспорт Word",
+      "exportSuccess": "Файл успешно загружен"
     },
     "confirm": {
       "confirm": "Подтвердить",

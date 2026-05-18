@@ -512,7 +512,8 @@
       "deleteConfirm": "Delete this document?",
       "loadFailed": "Failed to load document",
       "exportPdf": "Export PDF",
-      "exportWord": "Export Word"
+      "exportWord": "Export Word",
+      "exportSuccess": "File downloaded successfully"
     },
     "confirm": {
       "confirm": "Confirm",

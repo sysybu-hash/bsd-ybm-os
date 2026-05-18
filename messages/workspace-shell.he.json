@@ -531,6 +531,7 @@
       "loadFailed": "טעינת המסמך נכשלה",
       "exportPdf": "ייצוא PDF",
       "exportWord": "ייצוא Word",
+      "exportSuccess": "הקובץ הורד בהצלחה",
       "sendReminder": "שלח תזכורת",
       "reminderSent": "תזכורת נשלחה במייל",
       "reminderFailed": "שליחת תזכורת נכשלה",
