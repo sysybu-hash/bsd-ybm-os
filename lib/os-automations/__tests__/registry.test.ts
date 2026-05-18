@@ -2,16 +2,36 @@ import { AUTOMATION_INTENT_ENUM } from "@/lib/os-automations/catalog";
 import { runAutomationAction } from "@/lib/os-automations/registry";
 import type { AutomationAction, AutomationIntent, AutomationRunnerDeps } from "@/lib/os-automations/types";
 
+jest.mock("@/lib/os-automations/check-intent-enabled", () => ({
+  checkAutomationIntentEnabled: jest.fn().mockResolvedValue(true),
+}));
+
 const INTENT_PARAMS: Partial<Record<AutomationIntent, Record<string, unknown>>> = {
   open_widget: { widgetId: "dashboard" },
   scan_with_instructions: { userInstruction: "test" },
   google_assistant_command: { query: "test" },
+  create_task: { title: "Test task", projectName: "כללי" },
+  create_contact: { name: "Test Client" },
   edit_issued_document: { documentId: "doc-test" },
   delete_issued_document: { documentId: "doc-test" },
   export_document: { documentId: "doc-test" },
   assign_document_project: { documentId: "doc-test" },
   search_client: { query: "client" },
 };
+
+beforeAll(() => {
+  Object.defineProperty(window, "open", {
+    writable: true,
+    value: jest.fn(),
+  });
+});
+
+beforeEach(() => {
+  globalThis.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ success: true, results: [], fulfillmentText: "ok" }),
+  }) as typeof fetch;
+});
 
 function mockDeps(overrides: Partial<AutomationRunnerDeps> = {}): AutomationRunnerDeps {
   return {

@@ -48,6 +48,16 @@ jest.mock("@/lib/trial", () => ({
   trialEndsAtFromNow: jest.fn(() => new Date("2026-05-12T00:00:00.000Z")),
 }));
 
+jest.mock("@/lib/platform-settings", () => ({
+  getPlatformConfig: jest.fn().mockResolvedValue({
+    registrationOpen: true,
+    defaultConstructionTrade: "general",
+    featureFlags: { automationIntents: {} },
+  }),
+  getDefaultConstructionTradeForRegistration: jest.fn().mockResolvedValue("general"),
+  isRegistrationOpen: jest.fn().mockResolvedValue(true),
+}));
+
 // Helper to cast mocks
 const mockPrisma = prisma as any;
 const mockSendRegistrationWelcomeEmail = sendRegistrationWelcomeEmail as jest.Mock;
@@ -103,7 +113,7 @@ describe("POST /api/register", () => {
         name: "Example Org",
         type: "COMPANY",
         industry: "CONSTRUCTION",
-        constructionTrade: "GENERAL_CONTRACTOR",
+        constructionTrade: "general",
         subscriptionTier: "FREE",
         subscriptionStatus: "PENDING_APPROVAL",
         trialEndsAt: new Date("2026-05-12T00:00:00.000Z"),
@@ -148,7 +158,7 @@ describe("POST /api/register", () => {
         name: "Paid Org",
         type: "ENTERPRISE",
         industry: "CONSTRUCTION",
-        constructionTrade: "GENERAL_CONTRACTOR",
+        constructionTrade: "general",
         subscriptionTier: "COMPANY",
         subscriptionStatus: "ACTIVE",
         trialEndsAt: null,

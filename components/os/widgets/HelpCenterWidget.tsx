@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, ChevronUp, ExternalLink, MessageCircle, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { WidgetType } from "@/hooks/use-window-manager";
-import { HELP_CENTER_HE } from "@/lib/help-center/content.he";
+import { getHelpCenterContent } from "@/lib/help-center/get-content";
 import type { HelpGuide } from "@/lib/help-center/types";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -30,36 +30,46 @@ const resultCardClass =
   "w-full min-h-[44px] rounded-xl border border-[color:var(--border-main)] p-3 text-start hover:bg-[color:var(--surface-soft)] active:bg-[color:var(--surface-soft)]";
 
 export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
-  const { t, dir } = useI18n();
-  const [categoryId, setCategoryId] = useState(HELP_CENTER_HE.categories[0]?.id ?? "start");
-  const [guideId, setGuideId] = useState<string | null>(HELP_CENTER_HE.guides[0]?.id ?? null);
+  const { t, dir, locale } = useI18n();
+  const content = useMemo(() => getHelpCenterContent(locale), [locale]);
+
+  const [categoryId, setCategoryId] = useState(content.categories[0]?.id ?? "start");
+  const [guideId, setGuideId] = useState<string | null>(content.guides[0]?.id ?? null);
   const [query, setQuery] = useState("");
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
 
+  useEffect(() => {
+    const firstCategory = content.categories[0]?.id ?? "start";
+    const firstGuide =
+      content.guides.find((g) => g.categoryId === firstCategory)?.id ?? content.guides[0]?.id ?? null;
+    setCategoryId(firstCategory);
+    setGuideId(firstGuide);
+    setQuery("");
+    setFaqOpen(null);
+  }, [locale, content]);
+
   const guidesInCategory = useMemo(
-    () => HELP_CENTER_HE.guides.filter((g) => g.categoryId === categoryId),
-    [categoryId],
+    () => content.guides.filter((g) => g.categoryId === categoryId),
+    [content.guides, categoryId],
   );
 
   const activeGuide: HelpGuide | null =
-    HELP_CENTER_HE.guides.find((g) => g.id === guideId) ??
-    guidesInCategory[0] ??
-    null;
+    content.guides.find((g) => g.id === guideId) ?? guidesInCategory[0] ?? null;
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return null;
-    const guides = HELP_CENTER_HE.guides.filter(
+    const guides = content.guides.filter(
       (g) =>
         g.title.toLowerCase().includes(q) ||
         g.summary.toLowerCase().includes(q) ||
         g.steps.some((s) => s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q)),
     );
-    const faq = HELP_CENTER_HE.globalFaq.filter(
+    const faq = content.globalFaq.filter(
       (f) => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q),
     );
     return { guides, faq };
-  }, [query]);
+  }, [query, content]);
 
   const openGuide = (g: HelpGuide) => {
     setCategoryId(g.categoryId);
@@ -143,7 +153,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
               role="tablist"
               aria-label={t("workspaceWidgets.helpCenter.guidesSection")}
             >
-              {HELP_CENTER_HE.categories.map((c) => (
+              {content.categories.map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -151,7 +161,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   aria-selected={categoryId === c.id}
                   onClick={() => {
                     setCategoryId(c.id);
-                    const first = HELP_CENTER_HE.guides.find((g) => g.categoryId === c.id);
+                    const first = content.guides.find((g) => g.categoryId === c.id);
                     setGuideId(first?.id ?? null);
                   }}
                   className={categoryBtnClass(categoryId === c.id)}
@@ -246,7 +256,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
               <section className="mt-8 border-t border-[color:var(--border-main)] pt-6">
                 <h4 className="text-sm font-black">{t("workspaceWidgets.helpCenter.globalFaqTitle")}</h4>
                 <ul className="mt-3 space-y-2">
-                  {HELP_CENTER_HE.globalFaq.map((f, i) => {
+                  {content.globalFaq.map((f, i) => {
                     const key = `faq-${i}`;
                     const open = faqOpen === key;
                     return (

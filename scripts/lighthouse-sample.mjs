@@ -8,10 +8,10 @@
  */
 
 import lighthouse from "lighthouse";
-import chromeLauncher from "chrome-launcher";
+import * as chromeLauncher from "chrome-launcher";
 
 const DEFAULT_BASE = "http://127.0.0.1:3000";
-const PATHS = ["/", "/login", "/product"];
+const PATHS = ["/", "/login", "/about", "/help"];
 
 /** סף מינימלי לכל קטגוריה כש־--fail-on-budget (0–1) */
 const BUDGET = {

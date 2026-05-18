@@ -2,7 +2,6 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { motion, type Variants } from "framer-motion";
 import { BrainCircuit, BarChart3, Fingerprint, ChevronLeft, ChevronRight, Mic } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import BrandLogo from "@/components/brand/BrandLogo";
@@ -12,27 +11,14 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 
 const featureIcons = [BrainCircuit, Mic, BarChart3, Fingerprint] as const;
 
+const revealStyle = (delaySec: number): React.CSSProperties => ({
+  animationDelay: `${delaySec}s`,
+});
+
 export default function LandingPage({ onLogin }: { onLogin: () => void }) {
   const router = useRouter();
   const { t, dir } = useI18n();
   const CtaIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
-
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2, delayChildren: 0.1 },
-    },
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8, ease: [0, 0, 0.2, 1] as const },
-    },
-  };
 
   const features = [0, 1, 2, 3].map((i) => ({
     title: t(`marketingHome.osLanding.features.${i}.title`),
@@ -42,20 +28,19 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div
-      className="min-h-dvh overflow-x-hidden overflow-y-auto bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] [-webkit-overflow-scrolling:touch]"
+      className="relative min-h-dvh overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]"
       dir={dir}
     >
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div className="absolute top-[-20%] end-[-10%] h-[min(800px,90vw)] w-[min(800px,90vw)] rounded-full bg-blue-500/20 blur-[120px] dark:bg-blue-600/10" />
-          <div className="absolute bottom-[-20%] start-[-10%] h-[min(600px,80vw)] w-[min(600px,80vw)] rounded-full bg-emerald-500/15 blur-[120px] dark:bg-emerald-500/10" />
-        <div className="absolute top-[40%] start-[30%] h-[min(400px,70vw)] w-[min(400px,70vw)] rounded-full bg-purple-500/15 blur-[100px] dark:bg-purple-500/10" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 start-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-blue-500/10 blur-[120px]" />
+        <div className="absolute bottom-0 end-0 h-[400px] w-[400px] rounded-full bg-emerald-500/10 blur-[100px]" />
       </div>
 
-      <header className="relative z-10 mx-auto flex max-w-7xl min-w-0 items-center justify-between gap-3 px-4 py-5 sm:px-6 md:px-8 md:py-6">
-        <BrandHomeLink size="lg" priority />
-        <div className="flex items-center gap-2">
-          <LocaleSwitcher compact />
-          <ThemeToggle variant="landing" />
+      <header className="relative z-10 flex items-center justify-between px-4 py-6 sm:px-8">
+        <BrandHomeLink />
+        <div className="flex items-center gap-3">
+          <LocaleSwitcher />
+          <ThemeToggle />
           <button
             type="button"
             onClick={onLogin}
@@ -67,39 +52,40 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl min-w-0 px-4 pb-24 pt-12 sm:px-6 sm:pb-28 sm:pt-16 md:px-8 md:pb-32 md:pt-20">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="mx-auto flex max-w-4xl flex-col items-center text-center"
-        >
-          <motion.div variants={itemVariants} className="mb-6">
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <div className="landing-reveal mb-6" style={revealStyle(0.1)}>
             <BrandLogo size="hero" className="mx-auto shadow-xl shadow-black/30" priority />
-          </motion.div>
+          </div>
 
-          <motion.div
-            variants={itemVariants}
-            className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400"
+          <div
+            className="landing-reveal mb-8 inline-flex items-center gap-2 rounded-full border border-blue-500/25 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400"
+            style={revealStyle(0.2)}
           >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
             </span>
             {t("marketingHome.osLanding.badge")}
-          </motion.div>
+          </div>
 
-          <motion.h1 variants={itemVariants} className="mb-8 text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl">
+          <h1
+            className="landing-reveal mb-8 text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl"
+            style={revealStyle(0.3)}
+          >
             {t("marketingHome.osLanding.heroTitleLine1")} <br />
             <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 bg-clip-text text-transparent">
               {t("marketingHome.osLanding.heroTitleLine2")}
             </span>
-          </motion.h1>
+          </h1>
 
-          <motion.p variants={itemVariants} className="mb-12 max-w-2xl text-xl leading-relaxed text-[color:var(--foreground-muted)] md:text-2xl">
+          <p
+            className="landing-reveal mb-12 max-w-2xl text-xl leading-relaxed text-[color:var(--foreground-muted)] md:text-2xl"
+            style={revealStyle(0.4)}
+          >
             {t("marketingHome.osLanding.heroSubtitle")}
-          </motion.p>
+          </p>
 
-          <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row">
+          <div className="landing-reveal flex flex-col gap-4 sm:flex-row" style={revealStyle(0.5)}>
             <button
               type="button"
               onClick={onLogin}
@@ -115,25 +101,20 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
             >
               {t("marketingHome.osLanding.ctaDemo")}
             </button>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 1 }}
-          className="mt-32 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4"
-        >
+        <div className="mt-32 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, index) => (
             <FeatureCard
               key={feature.title}
               icon={<feature.icon className="h-6 w-6 text-emerald-400" />}
               title={feature.title}
               description={feature.body}
-              delay={0.1 * (index + 1)}
+              delay={0.6 + 0.1 * (index + 1)}
             />
           ))}
-        </motion.div>
+        </div>
       </main>
 
       <footer className="relative z-10 border-t border-[color:var(--border-main)] px-8 py-8 text-center text-xs text-[color:var(--foreground-muted)]">
@@ -169,15 +150,13 @@ function FeatureCard({
   delay: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.8 + delay, duration: 0.5 }}
-      className="rounded-3xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 p-6 backdrop-blur-md transition-colors hover:bg-[color:var(--surface-soft)]"
+    <div
+      className="landing-reveal rounded-3xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 p-6 backdrop-blur-md transition-colors hover:bg-[color:var(--surface-soft)]"
+      style={revealStyle(delay)}
     >
       <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--surface-soft)]">{icon}</div>
       <h3 className="mb-3 text-xl font-bold text-[color:var(--foreground-main)]">{title}</h3>
       <p className="text-sm leading-relaxed text-[color:var(--foreground-muted)]">{description}</p>
-    </motion.div>
+    </div>
   );
 }
