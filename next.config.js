@@ -63,8 +63,7 @@ const nextConfig = {
   transpilePackages: ["react-signature-canvas", "signature_pad"],
   serverExternalPackages: ["pdf-parse", "pdfmake"],
   outputFileTracingIncludes: {
-    "/api/documents/issued/[id]/export": ["./lib/pdf/fonts/*.ttf"],
-    "/api/cron/collection-reminders": ["./lib/pdf/fonts/*.ttf"],
+    "/api/**": ["./lib/pdf/fonts/*.ttf"],
   },
   images: {
     remotePatterns: [

@@ -3,7 +3,7 @@
 import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DocType } from "@prisma/client";
-import { ISSUED_DOCUMENT_TYPES } from "@/lib/document-types";
+import { ISSUED_DOCUMENT_TYPES, documentTypeLabel } from "@/lib/document-types";
 import { previewPayloadFromDraft } from "@/lib/invoice-payload";
 import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
 import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
@@ -77,6 +77,17 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
   } | null>(null);
 
   const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
+  const [issuedList, setIssuedList] = useState<
+    Array<{
+      id: string;
+      type: DocType;
+      number: number;
+      clientName: string;
+      total: number;
+      date: string;
+    }>
+  >([]);
+  const [issuedListLoading, setIssuedListLoading] = useState(true);
   const draftPanelExitRef = useRef<(() => void) | null>(null);
 
   const closeDraftPanel = useCallback((): Promise<void> => {
@@ -105,7 +116,31 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
   useEffect(() => {
     fetchContacts();
     fetchOrgSettings();
+    void fetchIssuedDocuments();
   }, []);
+
+  const fetchIssuedDocuments = async () => {
+    try {
+      setIssuedListLoading(true);
+      const res = await fetch("/api/erp/issued-documents", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        documents?: Array<{
+          id: string;
+          type: DocType;
+          number: number;
+          clientName: string;
+          total: number;
+          date: string;
+        }>;
+      };
+      setIssuedList(data.documents ?? []);
+    } catch {
+      /* רשימה אופציונלית */
+    } finally {
+      setIssuedListLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (liveData?.automation !== "invoice_draft") return;
@@ -253,6 +288,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
         }
         toast.success(`${selectedTypeMeta?.labelHe ?? "המסמך"} הופק בהצלחה`);
+        void fetchIssuedDocuments();
       } else {
         toast.error(data.error || 'שגיאה בהפקת המסמך');
       }
@@ -369,6 +405,49 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+        <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <h3 className="text-sm font-bold text-[color:var(--foreground-main)]">מסמכים שהונפקו</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => void fetchIssuedDocuments()}
+              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              רענון
+            </button>
+          </div>
+          {issuedListLoading ? (
+            <p className="text-xs text-[color:var(--foreground-muted)]">טוען רשימה…</p>
+          ) : issuedList.length === 0 ? (
+            <p className="text-xs text-[color:var(--foreground-muted)]">
+              עדיין אין מסמכים. לאחר הפקה הם יופיעו כאן.
+            </p>
+          ) : (
+            <ul className="max-h-44 space-y-1 overflow-y-auto custom-scrollbar">
+              {issuedList.map((doc) => (
+                <li key={doc.id}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenIssuedId(doc.id)}
+                    className="flex w-full items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-right text-xs transition-colors hover:border-[color:var(--border-main)] hover:bg-[color:var(--background-main)]/60"
+                  >
+                    <span className="font-bold text-[color:var(--foreground-main)]">
+                      {documentTypeLabel(doc.type)} #{doc.number}
+                    </span>
+                    <span className="truncate text-[color:var(--foreground-muted)]">{doc.clientName}</span>
+                    <span className="shrink-0 font-bold text-emerald-600 dark:text-emerald-400">
+                      ₪{doc.total.toLocaleString("he-IL")}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {/* Client Selection */}
         <section>
           <div className="flex items-center gap-2 mb-4">

@@ -4,9 +4,13 @@ import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import type { InvoiceExportPayload } from "@/lib/invoice-export-types";
 import { documentTypeLabel } from "@/lib/document-types";
 import { formatVatPercent } from "@/lib/vat-config";
-import { resolvePdfFontDir } from "@/lib/pdf/resolve-pdf-font-dir";
+import {
+  loadPdfFontBuffers,
+  PDF_FONT_VFS_KEYS,
+} from "@/lib/pdf/load-pdf-font-buffers";
 
 type PdfMakeInstance = {
+  virtualfs: { writeFileSync: (name: string, content: Buffer) => void };
   setFonts: (fonts: Record<string, { normal: string; bold: string }>) => void;
   setLocalAccessPolicy: (fn: (p: string) => boolean) => void;
   createPdf: (def: TDocumentDefinitions) => { getBuffer: () => Promise<Buffer> };
@@ -43,14 +47,16 @@ let fontsReady = false;
 function ensureFonts(): void {
   if (fontsReady) return;
   const pdfmake = getPdfMake();
-  const dir = resolvePdfFontDir();
+  const { regular, bold } = loadPdfFontBuffers();
+  pdfmake.virtualfs.writeFileSync(PDF_FONT_VFS_KEYS.regular, regular);
+  pdfmake.virtualfs.writeFileSync(PDF_FONT_VFS_KEYS.bold, bold);
   pdfmake.setFonts({
     NotoHebrew: {
-      normal: path.join(dir, "NotoSansHebrew-Regular.ttf"),
-      bold: path.join(dir, "NotoSansHebrew-Bold.ttf"),
+      normal: PDF_FONT_VFS_KEYS.regular,
+      bold: PDF_FONT_VFS_KEYS.bold,
     },
   });
-  pdfmake.setLocalAccessPolicy((filePath: string) => filePath.startsWith(dir));
+  pdfmake.setLocalAccessPolicy(() => false);
   fontsReady = true;
 }
 
