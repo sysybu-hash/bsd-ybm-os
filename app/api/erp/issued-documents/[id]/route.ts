@@ -43,9 +43,10 @@ function normalizeItems(raw: unknown) {
 function totalsFromItems(
   items: Array<{ qty: number; price: number }>,
   org: { companyType: CompanyType; isReportable: boolean; vatRatePercent: number | null },
+  docType: DocType,
 ) {
   const amount = items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const t = calculateDocumentTotalsFromOrg(amount, org);
+  const t = calculateDocumentTotalsFromOrg(amount, org, { docType });
   return {
     amount,
     vat: Math.round(t.vat * 100) / 100,
@@ -70,6 +71,7 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
       where: { id, organizationId: orgId },
       select: {
         id: true,
+        type: true,
         items: true,
         amount: true,
         vat: true,
@@ -98,7 +100,8 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
     }
 
     const items = normalizeItems(body.items);
-    const totals = items ? totalsFromItems(items, org) : null;
+    const docTypeForTotals = type ?? existing.type;
+    const totals = items ? totalsFromItems(items, org, docTypeForTotals) : null;
 
     let contactId: string | null | undefined = undefined;
     if (body.contactId === null || body.contactId === "") {

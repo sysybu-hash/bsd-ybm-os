@@ -37,7 +37,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     }
 
     const net = parseFloat(amount);
-    const totals = calculateDocumentTotalsFromOrg(net, org);
+    const totals = calculateDocumentTotalsFromOrg(net, org, { docType: "QUOTE" });
 
     const issuedDoc = await createNumberedDocument({
       organizationId: orgId,

@@ -79,7 +79,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
   }
 
   const amount = items.reduce((sum, i) => sum + i.qty * i.price, 0);
-  const t = calculateDocumentTotalsFromOrg(amount, org);
+  const t = calculateDocumentTotalsFromOrg(amount, org, { docType: type });
   const vat = Math.round(t.vat * 100) / 100;
   const total = Math.round(t.total * 100) / 100;
   const docDate = new Date();

@@ -1,4 +1,4 @@
-import type { CompanyType as PrismaCompanyType } from "@prisma/client";
+import type { CompanyType as PrismaCompanyType, DocType } from "@prisma/client";
 import { payPlusFeeIls } from "@/lib/crm-client-ai";
 import { DEFAULT_VAT_RATE_PERCENT, resolveVatRatePercent, vatRateDecimal } from "@/lib/vat-config";
 
@@ -12,6 +12,29 @@ export const COMPANY_TYPE = {
 } as const satisfies Record<string, PrismaCompanyType>;
 
 export type CompanyType = PrismaCompanyType;
+
+/** מסמכים ללקוח — מע״מ גם כש־isReportable כבוי (מזכר פנימי רק ל־RECEIPT וכו׳) */
+export const CUSTOMER_FACING_DOC_TYPES: readonly DocType[] = [
+  "QUOTE",
+  "TRANSACTION_INVOICE",
+  "INVOICE",
+  "INVOICE_RECEIPT",
+  "CREDIT_NOTE",
+] as const;
+
+export function isCustomerFacingDocType(type: DocType): boolean {
+  return (CUSTOMER_FACING_DOC_TYPES as readonly string[]).includes(type);
+}
+
+/** האם לחייב מע״מ במסמך מונפק */
+export function shouldApplyVatForIssuedDocument(
+  org: { companyType: CompanyType; isReportable: boolean },
+  docType?: DocType,
+): boolean {
+  if (org.companyType === COMPANY_TYPE.EXEMPT_DEALER) return false;
+  if (org.isReportable) return true;
+  return docType != null && isCustomerFacingDocType(docType);
+}
 
 export function calculateTotals(
   netAmount: number,
@@ -36,14 +59,19 @@ export function calculateIssuedDocumentTotals(
   companyType: CompanyType,
   isReportable: boolean,
   vatRatePercent: number = DEFAULT_VAT_RATE_PERCENT,
+  docType?: DocType,
 ) {
-  if (!isReportable) {
+  const chargeVat = shouldApplyVatForIssuedDocument(
+    { companyType, isReportable },
+    docType,
+  );
+  if (!chargeVat) {
     return {
       net: netAmount,
       vat: 0,
       total: netAmount,
-      isExempt: true,
-      isInternalMemo: true as const,
+      isExempt: companyType === COMPANY_TYPE.EXEMPT_DEALER,
+      isInternalMemo: !isReportable,
       vatRatePercent: 0,
     };
   }
@@ -59,12 +87,14 @@ export function calculateDocumentTotalsFromOrg(
     isReportable: boolean;
     vatRatePercent: number | null;
   },
+  options?: { docType?: DocType },
 ) {
   return calculateIssuedDocumentTotals(
     netAmount,
     org.companyType,
     org.isReportable,
     resolveVatRatePercent(org.vatRatePercent),
+    options?.docType,
   );
 }
 

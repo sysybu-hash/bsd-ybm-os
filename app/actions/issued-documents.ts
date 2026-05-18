@@ -52,7 +52,7 @@ export async function createIssuedDocument(
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { companyType: true, isReportable: true },
+    select: { companyType: true, isReportable: true, vatRatePercent: true },
   });
 
   if (!org) {
@@ -63,6 +63,8 @@ export async function createIssuedDocument(
     netAmount,
     org.companyType,
     org.isReportable,
+    org.vatRatePercent ?? undefined,
+    data.type,
   );
 
   const lastDoc = await prisma.issuedDocument.findFirst({
@@ -137,11 +139,17 @@ export async function updateIssuedDocument(
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { companyType: true, isReportable: true },
+    select: { companyType: true, isReportable: true, vatRatePercent: true },
   });
   if (!org) return { ok: false, error: "׳׳¨׳’׳•׳ ׳׳ ׳ ׳׳¦׳." };
 
-  const { vat, total } = calculateIssuedDocumentTotals(netAmount, org.companyType, org.isReportable);
+  const { vat, total } = calculateIssuedDocumentTotals(
+    netAmount,
+    org.companyType,
+    org.isReportable,
+    org.vatRatePercent ?? undefined,
+    data.type,
+  );
   const itemsJson: Prisma.InputJsonValue = Array.isArray(data.items) ? (data.items as Prisma.InputJsonValue) : [];
 
   let projectId: string | null | undefined = undefined;

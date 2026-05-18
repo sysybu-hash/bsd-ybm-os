@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DocType } from "@prisma/client";
 import { ISSUED_DOCUMENT_TYPES, documentTypeLabel } from "@/lib/document-types";
 import { previewPayloadFromDraft } from "@/lib/invoice-payload";
-import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
 import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
 import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
@@ -55,6 +55,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     email: string;
     vatRatePercent: number;
     companyType?: string;
+    isReportable?: boolean;
   } | null>(null);
   const [contacts, setContacts] = useState<DocumentClientContact[]>([]);
   const [clientNameInput, setClientNameInput] = useState("");
@@ -205,6 +206,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         email: data.paypalMerchantEmail || data.adminEmail || "",
         vatRatePercent: resolveVatRatePercent(data.vatRatePercent),
         companyType: data.companyType,
+        isReportable: data.isReportable !== false,
       });
     } catch (err) {
       console.error('Failed to fetch org settings:', err);
@@ -251,11 +253,18 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   const calculateBilling = () => {
     const net = calculateSubtotal();
-    const companyType =
-      orgSettings?.companyType === COMPANY_TYPE.EXEMPT_DEALER
-        ? COMPANY_TYPE.EXEMPT_DEALER
-        : COMPANY_TYPE.LICENSED_DEALER;
-    return calculateTotals(net, companyType, vatRatePercent);
+    if (!orgSettings?.companyType) {
+      return { net, vat: 0, total: net, isExempt: false, vatRatePercent };
+    }
+    return calculateDocumentTotalsFromOrg(
+      net,
+      {
+        companyType: orgSettings.companyType as import("@prisma/client").CompanyType,
+        isReportable: orgSettings.isReportable !== false,
+        vatRatePercent,
+      },
+      { docType },
+    );
   };
 
   const selectedTypeMeta = ISSUED_DOCUMENT_TYPES.find((d) => d.id === docType);

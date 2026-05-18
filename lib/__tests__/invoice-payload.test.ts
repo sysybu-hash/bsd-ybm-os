@@ -11,6 +11,7 @@ describe("resolveExportTotals", () => {
   it("מחשב מע״מ מפריטים גם כשב-DB vat=0", () => {
     const totals = resolveExportTotals(
       {
+        type: "INVOICE_RECEIPT",
         amount: 7500,
         vat: 0,
         total: 7500,
@@ -24,9 +25,29 @@ describe("resolveExportTotals", () => {
     expect(totals.vatRatePercent).toBe(18);
   });
 
+  it("מע״מ בהצעת מחיר גם כש־isReportable כבוי", () => {
+    const totals = resolveExportTotals(
+      {
+        type: "QUOTE",
+        amount: 5000,
+        vat: 0,
+        total: 5000,
+        items: [{ desc: "טסט", qty: 1, price: 5000 }],
+      },
+      {
+        companyType: COMPANY_TYPE.LICENSED_DEALER,
+        isReportable: false,
+        vatRatePercent: 18,
+      },
+    );
+    expect(totals.vat).toBe(900);
+    expect(totals.total).toBe(5900);
+  });
+
   it("מחזיר 0 מע״מ לעוסק פטור", () => {
     const totals = resolveExportTotals(
       {
+        type: "INVOICE",
         amount: 1000,
         vat: 180,
         total: 1180,

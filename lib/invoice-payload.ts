@@ -27,7 +27,7 @@ export function parseInvoiceLineItems(items: unknown): InvoiceLineItem[] {
 
 /** סכומי ייצוא — מחושבים מפריטים + הגדרות ארגון (לא רק שדות שמורים שעלולים להיות 0). */
 export function resolveExportTotals(
-  doc: Pick<IssuedDocument, "amount" | "vat" | "total" | "items">,
+  doc: Pick<IssuedDocument, "amount" | "vat" | "total" | "items" | "type">,
   org: Pick<Organization, "companyType" | "isReportable" | "vatRatePercent">,
 ): { amount: number; vat: number; total: number; vatRatePercent: number } {
   const items = parseInvoiceLineItems(doc.items);
@@ -38,7 +38,7 @@ export function resolveExportTotals(
   const net = netFromItems > 0 ? netFromItems : doc.amount;
 
   if (net > 0) {
-    const t = calculateDocumentTotalsFromOrg(net, org);
+    const t = calculateDocumentTotalsFromOrg(net, org, { docType: doc.type });
     return {
       amount: t.net,
       vat: t.vat,
