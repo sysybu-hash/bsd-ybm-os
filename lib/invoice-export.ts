@@ -1,13 +1,13 @@
 import type { InvoiceExportPayload } from "@/lib/invoice-export-types";
 import { documentTypeLabel } from "@/lib/document-types";
 import { formatVatPercent } from "@/lib/vat-config";
-import { renderHebrewInvoicePdf } from "@/lib/pdf/hebrew-pdf";
 
 export type { InvoiceExportPayload, InvoiceLineItem } from "@/lib/invoice-export-types";
 
-/** PDF מעוצב (react-pdf) — תואם לתצוגה המקדימה בממשק */
+/** PDF מעוצב בעברית — pdfmake (תואם תצוגה מקדימה, יציב ב-Vercel) */
 export async function buildInvoicePdfBuffer(payload: InvoiceExportPayload): Promise<Uint8Array> {
-  return renderHebrewInvoicePdf(payload);
+  const { renderInvoicePdfWithPdfMake } = await import("@/lib/pdf/invoice-pdfmake");
+  return renderInvoicePdfWithPdfMake(payload);
 }
 
 function money(n: number) {
