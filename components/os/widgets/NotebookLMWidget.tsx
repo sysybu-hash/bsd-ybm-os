@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import { visibleTextFromUIMessage } from "@/lib/ai/ui-message-text";
 import {
   AlignLeft,
   Bot,
@@ -49,14 +50,6 @@ type SavedNotebookSummary = {
 };
 
 type ProjectOption = { id: string; name: string };
-
-function textFromMessage(m: UIMessage): string {
-  if (!m.parts?.length) return "";
-  return m.parts
-    .filter((p): p is { type: "text"; text: string } => p.type === "text")
-    .map((p) => p.text)
-    .join("");
-}
 
 function uiMessagesFromStored(
   stored: Array<{ id?: string; role: string; content: string }>,
@@ -145,7 +138,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
         notebookTitle,
         projectId,
         sources,
-        messages: messages.map((m) => ({ role: m.role, content: textFromMessage(m) })),
+        messages: messages.map((m) => ({ role: m.role, content: visibleTextFromUIMessage(m) })),
       }),
     );
   }, [notebookTitle, projectId, sources, messages]);
@@ -282,7 +275,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
     })),
     messages: messages.map((m) => ({
       role: m.role,
-      content: textFromMessage(m),
+      content: visibleTextFromUIMessage(m),
     })),
   });
 
@@ -711,7 +704,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
                       : "rounded-bl-sm border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-main)]"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{textFromMessage(m)}</div>
+                  <div className="whitespace-pre-wrap">{visibleTextFromUIMessage(m)}</div>
                 </div>
               </div>
             ))

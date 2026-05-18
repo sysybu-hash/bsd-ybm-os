@@ -4,6 +4,9 @@ import { z } from "zod";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest, jsonServiceUnavailable } from "@/lib/api-json";
+import { getServerLocale } from "@/lib/i18n/server";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
+import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 
 export const maxDuration = 30;
 
@@ -44,11 +47,14 @@ export async function POST(req: Request) {
       return jsonBadRequest(msg.slice(0, 400), "message_conversion_failed");
     }
 
+    const locale = await getServerLocale();
     const result = streamText({
       model: google(AGENT_MODEL),
-      system: `אתה עוזר וירטואלי חכם המוטמע באתר. 
-    תפקידך לעזור למשתמשים לבצע פעולות במערכת כמו פתיחת פרויקטים, הפקת חשבוניות וניהול כללי. 
-    אם מבקשים ממך לבצע פעולה, השתמש בכלים (Tools) שעומדים לרשותך. תמיד תענה בשפה העברית או לפי שפת המשתמש באתר.`,
+      system: withAssistantTemporalContext(`You are a smart virtual assistant embedded in BSD-YBM OS.
+Help users perform actions such as opening projects, issuing invoices, and general management.
+When asked to perform an action, use the available tools.
+${aiReplyLanguageRule(locale)}
+Never expose internal reasoning or planning text to the user — only the final answer.`),
       messages: modelMessages,
       tools: {
         createProject: tool({
@@ -86,7 +92,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({ sendReasoning: false });
   } catch (error) {
     return apiErrorResponse(error, "chat/agent");
   }

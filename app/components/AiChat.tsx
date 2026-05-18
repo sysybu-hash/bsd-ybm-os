@@ -2,15 +2,8 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import { visibleTextFromUIMessage } from "@/lib/ai/ui-message-text";
 import { useMemo, useState, type FormEvent } from "react";
-
-function textFromMessage(m: UIMessage): string {
-  if (!m.parts?.length) return "";
-  return m.parts
-    .filter((p): p is { type: "text"; text: string } => p.type === "text")
-    .map((p) => p.text)
-    .join("");
-}
 
 type ToolLikePart = {
   type: string;
@@ -73,7 +66,7 @@ export default function AiChat() {
     >
       <div className="mb-4 flex-1 space-y-4 overflow-y-auto">
         {messages.map((m) => {
-          const content = textFromMessage(m);
+          const content = visibleTextFromUIMessage(m);
           return (
             <div
               key={m.id}

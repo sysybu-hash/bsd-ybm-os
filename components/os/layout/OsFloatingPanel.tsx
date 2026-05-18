@@ -27,6 +27,7 @@ export type OsFloatingPanelProps = {
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
+const EXIT_MS = 220;
 
 export default function OsFloatingPanel({
   open,
@@ -64,6 +65,12 @@ export default function OsFloatingPanel({
     setZoom(1);
     setIsMaximized(false);
   }, [open]);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -172,16 +179,19 @@ export default function OsFloatingPanel({
       {open ? (
         <>
           <motion.button
+            key="os-floating-panel-backdrop"
             type="button"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: EXIT_MS / 1000 }}
             className="fixed inset-0 bg-black/40 backdrop-blur-md"
             style={{ zIndex: backdropZ }}
             aria-label={t("workspaceWidgets.chrome.closeLabel")}
             onClick={onClose}
           />
           <motion.div
+            key="os-floating-panel-dialog"
             ref={panelRef}
             role="dialog"
             aria-modal="true"
@@ -214,7 +224,6 @@ export default function OsFloatingPanel({
               onHeaderPointerUp={onHeaderPointerUp}
             />
 
-
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <div
@@ -235,4 +244,11 @@ export default function OsFloatingPanel({
     </AnimatePresence>,
     document.body,
   );
+}
+
+/** ממתין לסיום אנימציית סגירה של פאנל צף לפני מעבר תצוגה שמפרקת את ההורה */
+export function waitForFloatingPanelExit(ms = EXIT_MS): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }

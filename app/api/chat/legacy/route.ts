@@ -18,6 +18,7 @@ const CHAT_PER_HOUR = 120;
 
 const chatBodySchema = z.object({
   provider: z.string().optional(),
+  locale: z.enum(["he", "en", "ru"]).optional(),
   prompt: z.string().min(1),
   history: z
     .array(
@@ -40,7 +41,7 @@ function mapProvider(raw: unknown): string | undefined {
 export const POST = withWorkspacesAuth(async (req, ctx, data) => {
   let locale = "he";
   try {
-    locale = await getServerLocale();
+    locale = data.locale ?? (await getServerLocale());
     const prompt = data.prompt.trim();
 
     const rl = await checkRateLimit(`chat:user:${ctx.userId}`, CHAT_PER_HOUR, 60 * 60 * 1000);

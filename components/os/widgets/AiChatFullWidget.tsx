@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -22,7 +22,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { getAssistantVisibleTranscript } from '@/lib/ai/filter-assistant-visible-text';
 import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from '@/hooks/useGeminiLiveAudio';
+import type { GeminiLiveStatusLabels } from '@/hooks/useGeminiLiveAudio';
 import type { GeminiLiveVoiceSettings } from '@/hooks/useGeminiLiveAudio';
 import { useOsAssistant } from '@/hooks/use-os-assistant';
 import { useSession } from 'next-auth/react';
@@ -43,8 +45,13 @@ type AiChatFullWidgetProps = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
 
+function formatChatTime(locale: string) {
+  const tag = locale === 'he' ? 'he-IL' : locale === 'ru' ? 'ru-RU' : 'en-US';
+  return new Date().toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget }: AiChatFullWidgetProps) {
-  const { dir, t } = useI18n();
+  const { dir, t, locale } = useI18n();
   const { data: session } = useSession();
   const automationCtx = useAutomationRunnerContext();
   const openWidget = openWorkspaceWidget ?? ((type: WidgetType, data?: Record<string, unknown> | null) => {
@@ -73,27 +80,45 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
   const osAssistant = useOsAssistant(automationCtx?.assistantToolDeps ?? { openWidget });
 
+  const liveStatusLabels = useMemo<GeminiLiveStatusLabels>(
+    () => ({
+      ready: t('workspaceWidgets.aiChat.liveStatusReady'),
+      connected: t('workspaceWidgets.aiChat.liveStatusConnected'),
+      listening: t('workspaceWidgets.aiChat.liveStatusListening'),
+      speaking: t('workspaceWidgets.aiChat.liveStatusSpeaking'),
+      interrupted: t('workspaceWidgets.aiChat.liveStatusInterrupted'),
+      tool: t('workspaceWidgets.aiChat.liveStatusTool'),
+      disconnected: t('workspaceWidgets.aiChat.liveStatusDisconnected'),
+      preparing: t('workspaceWidgets.aiChat.liveStatusPreparing'),
+      fallback: t('workspaceWidgets.aiChat.liveStatusFallback'),
+    }),
+    [t],
+  );
+
   const geminiLive = useGeminiLiveAudio({
     enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
     systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,
+    statusLabels: liveStatusLabels,
     onUserTranscript: (text, finished) => {
       if (finished) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           role: 'user',
           content: text,
-          timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+          timestamp: formatChatTime(locale),
         }]);
       }
     },
     onModelTranscript: (text, finished) => {
       if (finished) {
+        const visible = getAssistantVisibleTranscript(text);
+        if (!visible) return;
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: text,
-          timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+          content: visible,
+          timestamp: formatChatTime(locale),
         }]);
       }
     },
@@ -126,7 +151,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
       id: Date.now().toString(),
       role: 'user',
       content: input,
-      timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+      timestamp: formatChatTime(locale),
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -145,7 +170,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
                 content: parsed.reply,
-                timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+                timestamp: formatChatTime(locale),
               },
             ]);
           }
@@ -158,6 +183,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider,
+          locale,
           prompt: sentText,
           history: messages.map(m => ({ role: m.role, content: m.content })),
         }),
@@ -165,11 +191,12 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
       const data = await res.json();
       if (res.ok) {
+        const visible = getAssistantVisibleTranscript(String(data.reply ?? '')) ?? String(data.reply ?? '');
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: data.reply,
-          timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+          content: visible,
+          timestamp: formatChatTime(locale),
         }]);
       } else {
         throw new Error(data.error);
@@ -188,11 +215,11 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         <div className="p-6 border-b border-[color:var(--border-main)]">
           <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-6">
             <Sparkles size={20} />
-            <span className="font-black text-sm uppercase tracking-widest">AI Assistant</span>
+            <span className="font-black text-sm uppercase tracking-widest">{t('workspaceWidgets.aiChat.title')}</span>
           </div>
 
           <div className="space-y-2">
-            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest block mb-2">מנוע פעיל</span>
+            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest block mb-2">{t('workspaceWidgets.aiChat.activeEngine')}</span>
             {(['gemini', 'openai', 'claude'] as const).map(p => (
               <button
                 key={p}
@@ -209,7 +236,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-          <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest px-2 block mb-4">שיחות אחרונות</span>
+          <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest px-2 block mb-4">{t('workspaceWidgets.aiChat.recentChats')}</span>
           <div className="space-y-1">
             {['ניתוח תקציב וילה', 'השוואת מחירי בטון', 'דרישות בטיחות אתר'].map((h, i) => (
               <button key={i} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[color:var(--foreground-muted)]/5 text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] text-xs font-medium transition-all truncate text-right">
@@ -224,7 +251,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             onClick={() => setMessages([])}
             className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[color:var(--foreground-muted)] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/5 transition-all text-xs font-bold"
           >
-            <Trash2 size={14} /> נקה היסטוריה
+            <Trash2 size={14} /> {t('workspaceWidgets.aiChat.clearHistory')}
           </button>
         </div>
       </div>
@@ -243,13 +270,13 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               }`}
             >
               {isLiveMode ? <MicOff size={14} /> : <Mic size={14} />}
-              {isLiveMode ? 'עצור Gemini Live' : 'הפעל Gemini Live'}
+              {isLiveMode ? t('workspaceWidgets.aiChat.stopLive') : t('workspaceWidgets.aiChat.startLive')}
             </button>
             {isLiveMode && (
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isLiveActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                 <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-                  {isLiveActive ? 'מחובר' : 'מתחבר...'}
+                  {isLiveActive ? t('workspaceWidgets.aiChat.connected') : t('workspaceWidgets.aiChat.connecting')}
                 </span>
               </div>
             )}
@@ -279,10 +306,10 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
                 </div>
               </div>
               <h4 className="text-lg font-black text-white mb-2">
-                {isSpeaking ? 'העוזר מדבר...' : isListening ? 'אני מקשיב...' : 'Gemini Live מוכן'}
+                {isSpeaking ? t('workspaceWidgets.aiChat.liveSpeaking') : isListening ? t('workspaceWidgets.aiChat.liveListening') : t('workspaceWidgets.aiChat.liveReady')}
               </h4>
               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                {isListening ? 'דבר בחופשיות' : 'לחץ על המיקרופון כדי להתחיל'}
+                {isListening ? t('workspaceWidgets.aiChat.liveListening') : t('workspaceWidgets.aiChat.liveTapMic')}
               </p>
               
               {!isListening && isLiveActive && (
@@ -290,7 +317,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
                   onClick={start}
                   className="mt-8 px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-2xl shadow-xl shadow-purple-900/20 transition-all transform hover:scale-105 active:scale-95"
                 >
-                  התחל לדבר
+                  {t('workspaceWidgets.aiChat.startTalking')}
                 </button>
               )}
             </div>
@@ -301,8 +328,8 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
                 <Bot size={40} className="text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">במה אוכל לעזור היום?</h3>
-              <p className="text-sm text-[color:var(--foreground-muted)] max-w-xs leading-relaxed">אני יכול לנתח נתונים פיננסיים, לעזור בניהול פרויקטים או לענות על שאלות מקצועיות.</p>
+              <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">{t('workspaceWidgets.aiChat.emptyTitle')}</h3>
+              <p className="text-sm text-[color:var(--foreground-muted)] max-w-xs leading-relaxed">{t('workspaceWidgets.aiChat.emptySubtitle')}</p>
             </div>
           )}
 
@@ -320,7 +347,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
                     : 'bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] text-[color:var(--foreground-main)] rounded-tl-none prose dark:prose-invert prose-sm max-w-none shadow-sm dark:shadow-none'
                 }`}>
                   {m.role === 'assistant' ? (
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                    <ReactMarkdown>{getAssistantVisibleTranscript(m.content) ?? m.content}</ReactMarkdown>
                   ) : (
                     m.content
                   )}
@@ -369,11 +396,11 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             </div>
           </form>
           <div className="mt-3 flex justify-center gap-6 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-            <span>תמיכה ב-Markdown</span>
+            <span>{t('workspaceWidgets.aiChat.footerMarkdown')}</span>
             <span>•</span>
-            <span>זיכרון רב-שלבי</span>
+            <span>{t('workspaceWidgets.aiChat.footerMemory')}</span>
             <span>•</span>
-            <span>מודע לנתונים</span>
+            <span>{t('workspaceWidgets.aiChat.footerDataAware')}</span>
           </div>
         </div>
       </div>

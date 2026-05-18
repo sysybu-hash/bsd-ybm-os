@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
@@ -28,13 +29,39 @@ export const DEFAULT_GEMINI_LIVE_VOICE_SETTINGS: GeminiLiveVoiceSettings = {
   responseMode: "audio",
 };
 
+export type GeminiLiveStatusKey =
+  | "ready"
+  | "connected"
+  | "listening"
+  | "speaking"
+  | "interrupted"
+  | "tool"
+  | "disconnected"
+  | "preparing"
+  | "fallback";
+
+export type GeminiLiveStatusLabels = Record<GeminiLiveStatusKey, string>;
+
+const DEFAULT_STATUS_LABELS: GeminiLiveStatusLabels = {
+  ready: "Gemini Live מוכן",
+  connected: "Gemini Live מחובר. אפשר לדבר.",
+  listening: "מקשיב דרך Gemini Live...",
+  speaking: "העוזר מדבר...",
+  interrupted: "הדיבור הופסק, מקשיב להמשך.",
+  tool: "מבצע פעולה במערכת...",
+  disconnected: "Gemini Live נותק.",
+  preparing: "מכין Gemini Live מאובטח...",
+  fallback: "Gemini Live זמין אחרי התחברות ושיוך לארגון.",
+};
+
 type GeminiLiveOptions = {
   enabled: boolean;
   systemInstruction: string;
   settings?: GeminiLiveVoiceSettings;
+  statusLabels?: Partial<GeminiLiveStatusLabels>;
   onUserTranscript?: (text: string, finished: boolean) => void;
   onModelTranscript?: (text: string, finished: boolean) => void;
-  onToolCall?: (name: string, args: any) => Promise<any> | any;
+  onToolCall?: (name: string, args: Record<string, unknown>) => Promise<unknown> | unknown;
   onError?: (message: string) => void;
 };
 
@@ -61,6 +88,7 @@ type LiveResponse = {
     modelTurn?: {
       parts?: Array<{
         text?: string;
+        thought?: boolean;
         inlineData?: { data?: string; mimeType?: string };
         functionCall?: LiveFunctionCall;
       }>;
@@ -165,17 +193,30 @@ function getAudioContextCtor(): typeof AudioContext | null {
   return window.AudioContext || win.webkitAudioContext || null;
 }
 
+function deliverModelTranscript(
+  raw: string,
+  deliveredRef: { current: string },
+  onModelTranscript?: (text: string, finished: boolean) => void,
+) {
+  const visible = getAssistantVisibleTranscript(raw);
+  if (!visible || visible === deliveredRef.current) return;
+  deliveredRef.current = visible;
+  onModelTranscript?.(visible, true);
+}
+
 export function useGeminiLiveAudio({
   enabled,
   systemInstruction,
   settings = DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+  statusLabels: statusLabelsProp,
   onUserTranscript,
   onModelTranscript,
   onToolCall,
   onError,
 }: GeminiLiveOptions) {
+  const statusLabels = { ...DEFAULT_STATUS_LABELS, ...statusLabelsProp };
   const [state, setState] = useState<GeminiLiveState>("idle");
-  const [statusText, setStatusText] = useState("Gemini Live ready");
+  const [statusText, setStatusText] = useState(statusLabels.ready);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [model, setModel] = useState("gemini-2.5-flash-native-audio-latest");
   const [lastTranscript, setLastTranscript] = useState("");
@@ -241,7 +282,7 @@ export function useGeminiLiveAudio({
 
       if ("setupComplete" in message && message.setupComplete !== undefined) {
         setState("ready");
-        setStatusText("Gemini Live מחובר. אפשר לדבר.");
+        setStatusText(statusLabels.connected);
         return;
       }
 
@@ -254,7 +295,7 @@ export function useGeminiLiveAudio({
               toolResponse: { functionResponses },
             }),
           );
-          setStatusText("מבצע פעולה במערכת...");
+          setStatusText(statusLabels.tool);
         }
       }
 
@@ -264,7 +305,7 @@ export function useGeminiLiveAudio({
       if (serverContent.interrupted) {
         playbackNodeRef.current?.port.postMessage("interrupt");
         latestModelTextRef.current = "";
-        setStatusText("הדיבור הופסק, מקשיב להמשך.");
+        setStatusText(statusLabels.interrupted);
       }
 
       const inputText = serverContent.inputTranscription?.text?.trim();
@@ -276,14 +317,14 @@ export function useGeminiLiveAudio({
       const outputText = serverContent.outputTranscription?.text?.trim();
       if (outputText) {
         latestModelTextRef.current = outputText;
-        if (serverContent.outputTranscription?.finished && outputText !== deliveredModelTextRef.current) {
-          deliveredModelTextRef.current = outputText;
-          onModelTranscript?.(outputText, true);
+        if (serverContent.outputTranscription?.finished) {
+          deliverModelTranscript(outputText, deliveredModelTextRef, onModelTranscript);
         }
       }
 
       const parts = serverContent.modelTurn?.parts ?? [];
       for (const part of parts) {
+        if (part.thought) continue;
         if (part.text?.trim()) {
           latestModelTextRef.current = part.text.trim();
         }
@@ -292,29 +333,28 @@ export function useGeminiLiveAudio({
           playbackNodeRef.current?.port.postMessage(audio);
           setState("streaming");
           setIsModelSpeaking(true);
-          setStatusText("Gemini Live speaking");
+          setStatusText(statusLabels.speaking);
         }
       }
 
       if (serverContent.turnComplete) {
         const finalText = latestModelTextRef.current.trim();
-        if (finalText && finalText !== deliveredModelTextRef.current) {
-          deliveredModelTextRef.current = finalText;
-          onModelTranscript?.(finalText, true);
+        if (finalText) {
+          deliverModelTranscript(finalText, deliveredModelTextRef, onModelTranscript);
         }
         setState("ready");
         setIsModelSpeaking(false);
-        setStatusText("Gemini Live ready for next turn");
+        setStatusText(statusLabels.ready);
       }
 
     },
-    [onModelTranscript, onUserTranscript, onToolCall],
+    [onModelTranscript, onUserTranscript, onToolCall, statusLabels],
   );
 
   const start = useCallback(async () => {
     if (!enabled) {
       setState("fallback");
-      setStatusText("Gemini Live זמין אחרי התחברות ושיוך לארגון.");
+      setStatusText(statusLabels.fallback);
       return false;
     }
 
@@ -327,7 +367,7 @@ export function useGeminiLiveAudio({
 
     cleanup();
     setState("connecting");
-    setStatusText("מכין Gemini Live מאובטח...");
+    setStatusText(statusLabels.preparing);
 
     try {
       const tokenResponse = await fetch("/api/ai/gemini-live/session", {
@@ -393,7 +433,7 @@ export function useGeminiLiveAudio({
       };
       socket.onclose = () => {
         if (state !== "idle") {
-          setStatusText("Gemini Live נותק.");
+          setStatusText(statusLabels.disconnected);
         }
       };
 
@@ -460,7 +500,7 @@ export function useGeminiLiveAudio({
       captureNodeRef.current = captureNode;
 
       setState("streaming");
-      setStatusText("מקשיב דרך Gemini Live...");
+      setStatusText(statusLabels.listening);
       return true;
     } catch (error) {
       cleanup();
@@ -471,17 +511,17 @@ export function useGeminiLiveAudio({
       onError?.(friendly);
       return false;
     }
-  }, [cleanup, enabled, handleLiveMessage, model, onError, settings, state, systemInstruction]);
+  }, [cleanup, enabled, handleLiveMessage, model, onError, settings, state, statusLabels, systemInstruction]);
 
   const stop = useCallback(() => {
     cleanup();
     setState("idle");
     setIsModelSpeaking(false);
-    setStatusText("Gemini Live ready");
+    setStatusText(statusLabels.ready);
     setLastTranscript("");
     latestModelTextRef.current = "";
     deliveredModelTextRef.current = "";
-  }, [cleanup]);
+  }, [cleanup, statusLabels.ready]);
 
   useEffect(() => stop, [stop]);
 

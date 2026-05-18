@@ -94,7 +94,7 @@ Behavior:
         messages: modelMessages,
       });
 
-      return result.toUIMessageStreamResponse();
+      return result.toUIMessageStreamResponse({ sendReasoning: false });
     } catch (error) {
       return apiErrorResponse(error, "project-notebook chat-stream");
     }

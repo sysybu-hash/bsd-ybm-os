@@ -11,6 +11,8 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { GEMINI_NOTEBOOKLM_DEFAULT_MODEL } from "@/lib/gemini-model";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
+import { getServerLocale } from "@/lib/i18n/server";
+import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
@@ -57,12 +59,14 @@ export const POST = withWorkspacesAuth(
         .map((s, i) => `מקור ${i + 1} (${s.name ?? "ללא שם"}):\n${s.content ?? ""}\n`)
         .join("\n");
 
+      const locale = await getServerLocale();
       const systemPrompt = withAssistantTemporalContext(`
-אתה עוזר מחקר חכם במערכת BSD-YBM OS.
-ענה על שאלות המשתמש *אך ורק* על בסיס מקורות הידע שסופקו למטה.
-אם התשובה לא במקורות — ציין במפורש. ענה בעברית מקצועית וברורה.
+You are a research assistant in BSD-YBM OS.
+Answer *only* from the knowledge sources below.
+If the answer is not in the sources, say so explicitly.
+${aiReplyLanguageRule(locale)}
 
-מקורות ידע זמינים:
+Available knowledge sources:
 ${sourcesContext}
 `);
 
@@ -85,7 +89,7 @@ ${sourcesContext}
         messages: modelMessages,
       });
 
-      return result.toUIMessageStreamResponse();
+      return result.toUIMessageStreamResponse({ sendReasoning: false });
     } catch (error) {
       return apiErrorResponse(error, "notebooklm/chat");
     }

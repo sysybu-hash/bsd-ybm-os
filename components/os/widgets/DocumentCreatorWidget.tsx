@@ -9,7 +9,7 @@ import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
 import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
 import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
 import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
-import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import OsFloatingPanel, { waitForFloatingPanelExit } from "@/components/os/layout/OsFloatingPanel";
 import { 
   FilePlus, 
   User, 
@@ -72,10 +72,12 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     amount: number;
   } | null>(null);
 
+  const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
+
   const issuedDocumentId =
     typeof liveData?.issuedDocumentId === "string"
       ? liveData.issuedDocumentId
-      : generatedDoc?.id ?? null;
+      : openIssuedId;
 
   useEffect(() => {
     fetchContacts();
@@ -212,6 +214,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       const data = await res.json();
       if (res.ok) {
         const result = data.document ?? data;
+        await waitForFloatingPanelExit();
         setGeneratedDoc({
           id: result.id,
           token: result.token ?? "",
@@ -221,6 +224,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           items,
           amount: calculateSubtotal(),
         });
+        setOpenIssuedId(result.id);
         if (data.itaError) {
           toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
         }
@@ -248,7 +252,10 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     return (
       <InvoiceDocumentView
         issuedDocumentId={issuedDocumentId}
-        onDeleted={() => setGeneratedDoc(null)}
+        onDeleted={() => {
+          setGeneratedDoc(null);
+          setOpenIssuedId(null);
+        }}
       />
     );
   }
@@ -281,7 +288,15 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           </div>
 
           <div className="flex gap-4 pt-4">
-            <button onClick={() => setGeneratedDoc(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all">הפק מסמך חדש</button>
+            <button
+              onClick={() => {
+                setGeneratedDoc(null);
+                setOpenIssuedId(null);
+              }}
+              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all"
+            >
+              הפק מסמך חדש
+            </button>
             {generatedDoc.signUrl && (
               <a href={generatedDoc.signUrl} target="_blank" className="p-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl transition-all flex items-center justify-center"><ExternalLink size={20} /></a>
             )}

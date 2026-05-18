@@ -6,22 +6,25 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { handleOsAssistantToolCall, type OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
-const FALLBACK_INSTRUCTION =
-  "You are the BSD-YBM OS assistant. Reply in the user's interface language. Open widgets when asked using execute_os_command.";
+function fallbackInstruction(locale: string) {
+  const lang =
+    locale === "en" ? "English" : locale === "ru" ? "Russian" : "Hebrew";
+  return `You are the BSD-YBM OS assistant. Always reply in ${lang}. Never show internal reasoning. Open widgets when asked using execute_os_command.`;
+}
 
 export function useOsAssistant(deps: OsAssistantToolDeps) {
   const { data: session, status } = useSession();
   const { locale } = useI18n();
   const [context, setContext] = useState<OsAssistantUserContext | null>(null);
-  const [systemInstruction, setSystemInstruction] = useState(FALLBACK_INSTRUCTION);
-  const [systemInstructionVoice, setSystemInstructionVoice] = useState(FALLBACK_INSTRUCTION);
+  const [systemInstruction, setSystemInstruction] = useState(() => fallbackInstruction(locale));
+  const [systemInstructionVoice, setSystemInstructionVoice] = useState(() => fallbackInstruction(locale));
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!session?.user?.id) {
       setContext(null);
-      setSystemInstruction(FALLBACK_INSTRUCTION);
-      setSystemInstructionVoice(FALLBACK_INSTRUCTION);
+      setSystemInstruction(fallbackInstruction(locale));
+      setSystemInstructionVoice(fallbackInstruction(locale));
       return;
     }
     setLoading(true);
@@ -46,7 +49,7 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, locale]);
 
   useEffect(() => {
     if (status === "authenticated") void refresh();

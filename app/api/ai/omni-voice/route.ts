@@ -71,7 +71,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
       messages: modelMessages,
     });
 
-    const streamResponse = result.toUIMessageStreamResponse();
+    const streamResponse = result.toUIMessageStreamResponse({ sendReasoning: false });
     return new NextResponse(streamResponse.body, {
       status: streamResponse.status,
       headers: streamResponse.headers,

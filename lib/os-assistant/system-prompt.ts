@@ -34,6 +34,7 @@ export function buildOsAssistantSystemInstruction(
     voice
       ? [
           `- In voice mode: speak briefly and clearly; professional tone unless the user chose another style in voice settings.`,
+          `- NEVER output internal reasoning, planning, or meta-commentary (e.g. "Responding in Hebrew", "I'm focusing on crafting…"). Only the final user-facing reply in ${lang}.`,
           `- CRITICAL (voice): You control BSD-YBM OS. Create invoices, tasks, clients, scans, and open any screen via tools — never only talk about it.`,
           `- Prefer execute_user_command with the user's exact words for: create invoice, add task, add client, or mixed requests (e.g. «צור חשבונית ליוסי 5000» / «הוסף משימה לבדוק הצעה בפרויקט הרצליה»).`,
           `- After a tool succeeds, confirm in one short sentence in ${lang}. Never claim you did something without calling a tool.`,
