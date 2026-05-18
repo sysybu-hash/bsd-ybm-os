@@ -81,7 +81,17 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 10, color: muted },
   totalValue: { fontSize: 10, color: slate },
-  grandTotal: { fontSize: 13, fontWeight: "bold", color: indigo, marginTop: 6 },
+  grandTotalRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: border,
+  },
+  grandTotalLabel: { fontSize: 13, fontWeight: "bold", color: indigo },
+  grandTotalValue: { fontSize: 13, fontWeight: "bold", color: indigo },
   footer: {
     position: "absolute",
     bottom: 28,
@@ -165,16 +175,16 @@ export default function InvoiceDocument({ payload }: { payload: InvoiceExportPay
 
         <View style={styles.totalsWrap}>
           <View style={styles.totalLine}>
-            <Text style={styles.totalLabel}>סכום לפני מע״מ</Text>
+            <Text style={styles.totalLabel}>לפני מע״מ</Text>
             <Text style={styles.totalValue}>{money(payload.amount)}</Text>
           </View>
           <View style={styles.totalLine}>
             <Text style={styles.totalLabel}>{`מע״מ (${vatPct}%)`}</Text>
             <Text style={styles.totalValue}>{money(payload.vat)}</Text>
           </View>
-          <View style={styles.totalLine}>
-            <Text style={[styles.totalLabel, styles.grandTotal]}>סה״כ לתשלום</Text>
-            <Text style={[styles.totalValue, styles.grandTotal]}>{money(payload.total)}</Text>
+          <View style={styles.grandTotalRow}>
+            <Text style={styles.grandTotalLabel}>סה״כ לתשלום</Text>
+            <Text style={styles.grandTotalValue}>{money(payload.total)}</Text>
           </View>
         </View>
 

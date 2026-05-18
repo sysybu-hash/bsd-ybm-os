@@ -2,17 +2,12 @@ import type { InvoiceExportPayload } from "@/lib/invoice-export-types";
 import { documentTypeLabel } from "@/lib/document-types";
 import { formatVatPercent } from "@/lib/vat-config";
 import { renderHebrewInvoicePdf } from "@/lib/pdf/hebrew-pdf";
-import { renderInvoicePdfWithPdfKit } from "@/lib/pdf/invoice-pdfkit";
 
 export type { InvoiceExportPayload, InvoiceLineItem } from "@/lib/invoice-export-types";
 
+/** PDF מעוצב (react-pdf) — תואם לתצוגה המקדימה בממשק */
 export async function buildInvoicePdfBuffer(payload: InvoiceExportPayload): Promise<Uint8Array> {
-  try {
-    return await renderInvoicePdfWithPdfKit(payload);
-  } catch (pdfKitErr) {
-    console.warn("[invoice-export] pdfkit failed, trying react-pdf:", pdfKitErr);
-    return renderHebrewInvoicePdf(payload);
-  }
+  return renderHebrewInvoicePdf(payload);
 }
 
 function money(n: number) {

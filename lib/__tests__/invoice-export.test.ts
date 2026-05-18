@@ -1,7 +1,3 @@
-jest.mock("@/lib/pdf/invoice-pdfkit", () => ({
-  renderInvoicePdfWithPdfKit: jest.fn(async () => new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])),
-}));
-
 jest.mock("@/lib/pdf/hebrew-pdf", () => ({
   renderHebrewInvoicePdf: jest.fn(async () => new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])),
 }));
