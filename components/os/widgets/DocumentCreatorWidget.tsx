@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DocType } from "@prisma/client";
 import { ISSUED_DOCUMENT_TYPES } from "@/lib/document-types";
 import { previewPayloadFromDraft } from "@/lib/invoice-payload";
@@ -9,7 +9,10 @@ import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
 import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
 import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
 import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
-import OsFloatingPanel, { waitForFloatingPanelExit } from "@/components/os/layout/OsFloatingPanel";
+import OsFloatingPanel, {
+  FLOATING_PANEL_EXIT_MS,
+  waitForFloatingPanelExit,
+} from "@/components/os/layout/OsFloatingPanel";
 import { 
   FilePlus, 
   User, 
@@ -73,6 +76,25 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
   } | null>(null);
 
   const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
+  const draftPanelExitRef = useRef<(() => void) | null>(null);
+
+  const closeDraftPanel = useCallback((): Promise<void> => {
+    if (!showDraft) return Promise.resolve();
+    return new Promise((resolve) => {
+      draftPanelExitRef.current = resolve;
+      setShowDraft(false);
+      window.setTimeout(() => {
+        if (!draftPanelExitRef.current) return;
+        draftPanelExitRef.current();
+        draftPanelExitRef.current = null;
+      }, FLOATING_PANEL_EXIT_MS + 80);
+    });
+  }, [showDraft]);
+
+  const onDraftPanelExitComplete = useCallback(() => {
+    draftPanelExitRef.current?.();
+    draftPanelExitRef.current = null;
+  }, []);
 
   const issuedDocumentId =
     typeof liveData?.issuedDocumentId === "string"
@@ -200,6 +222,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
     setLoading(true);
     try {
+      await closeDraftPanel();
       const res = await fetch("/api/erp/issued-documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -214,7 +237,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       const data = await res.json();
       if (res.ok) {
         const result = data.document ?? data;
-        await waitForFloatingPanelExit();
+        await waitForFloatingPanelExit(FLOATING_PANEL_EXIT_MS + 80);
         setGeneratedDoc({
           id: result.id,
           token: result.token ?? "",
@@ -441,7 +464,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       <div className="p-6 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
         <button
           type="button"
-          onClick={() => setShowDraft(true)}
+          onClick={() => void generateDocument()}
           disabled={loading || !selectedContactId}
           className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
         >
@@ -457,6 +480,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       <OsFloatingPanel
         open={showDraft}
         onClose={() => setShowDraft(false)}
+        onExitComplete={onDraftPanelExitComplete}
         title={t("workspaceWidgets.docCreator.draftTitle")}
       >
         <div className="space-y-4 text-sm text-[color:var(--foreground-main)]">
@@ -481,10 +505,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           </p>
           <button
             type="button"
-            onClick={() => {
-              setShowDraft(false);
-              void generateDocument();
-            }}
+            onClick={() => void generateDocument()}
             className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500"
           >
             {t("workspaceWidgets.docCreator.draftConfirm")}

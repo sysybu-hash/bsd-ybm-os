@@ -23,11 +23,14 @@ export type OsFloatingPanelProps = {
   draggable?: boolean;
   showZoom?: boolean;
   showMaximize?: boolean;
+  /** נקרא אחרי סיום אנימציית סגירה (backdrop + דיאלוג) */
+  onExitComplete?: () => void;
 };
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
-const EXIT_MS = 220;
+export const FLOATING_PANEL_EXIT_MS = 220;
+const EXIT_MS = FLOATING_PANEL_EXIT_MS;
 
 export default function OsFloatingPanel({
   open,
@@ -43,6 +46,7 @@ export default function OsFloatingPanel({
   draggable = true,
   showZoom = true,
   showMaximize = true,
+  onExitComplete,
 }: OsFloatingPanelProps) {
   const { t, dir } = useI18n();
   const [mounted, setMounted] = useState(false);
@@ -69,6 +73,9 @@ export default function OsFloatingPanel({
   useEffect(() => {
     return () => {
       document.body.style.overflow = "";
+      document
+        .querySelectorAll("[data-os-floating-panel-backdrop]")
+        .forEach((el) => el.remove());
     };
   }, []);
 
@@ -175,17 +182,18 @@ export default function OsFloatingPanel({
       };
 
   return createPortal(
-    <AnimatePresence>
+    <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
       {open ? (
         <>
           <motion.button
             key="os-floating-panel-backdrop"
             type="button"
+            data-os-floating-panel-backdrop
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: EXIT_MS / 1000 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-md"
+            className="fixed inset-0 bg-black/45"
             style={{ zIndex: backdropZ }}
             aria-label={t("workspaceWidgets.chrome.closeLabel")}
             onClick={onClose}
