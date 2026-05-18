@@ -94,7 +94,7 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-indigo-500">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
             {t("workspaceWidgets.onboarding.eyebrow")}
           </p>
           <h2 className="text-base font-black text-[color:var(--foreground-main)]">
