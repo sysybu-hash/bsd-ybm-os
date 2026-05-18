@@ -1,5 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  NOTO_HEBREW_BOLD_BASE64,
+  NOTO_HEBREW_REGULAR_BASE64,
+} from "@/lib/pdf/font-data.generated";
 
 const REGULAR = "NotoSansHebrew-Regular.ttf";
 const BOLD = "NotoSansHebrew-Bold.ttf";
@@ -33,7 +37,14 @@ function readFontFile(fileName: string): Buffer {
   );
 }
 
+/** פונטים מוטמעים בבאנדל — עובד ב-Vercel ללא קבצי .ttf על הדיסק */
 export function loadPdfFontBuffers(): { regular: Buffer; bold: Buffer } {
+  if (NOTO_HEBREW_REGULAR_BASE64 && NOTO_HEBREW_BOLD_BASE64) {
+    return {
+      regular: Buffer.from(NOTO_HEBREW_REGULAR_BASE64, "base64"),
+      bold: Buffer.from(NOTO_HEBREW_BOLD_BASE64, "base64"),
+    };
+  }
   return {
     regular: readFontFile(REGULAR),
     bold: readFontFile(BOLD),

@@ -251,33 +251,38 @@ function buildDocDefinition(payload: InvoiceExportPayload): TDocumentDefinitions
         margin: [0, 0, 0, 14],
       },
       {
-        width: 220,
-        table: {
-          widths: ["*", "auto"],
-          body: [
-            [
-              { text: "לפני מע״מ", style: "totalLabel" },
-              { text: money(payload.amount), style: "totalValue", alignment: "left" },
-            ],
-            [
-              { text: `מע״מ (${vatPct}%)`, style: "totalLabel" },
-              { text: money(payload.vat), style: "totalValue", alignment: "left" },
-            ],
-            [
-              { text: "סה״כ לתשלום", style: "grandLabel" },
-              { text: money(payload.total), style: "grandValue", alignment: "left" },
-            ],
-          ],
-        },
-        layout: {
-          hLineWidth: (i: number) => (i === 2 ? 1 : 0),
-          vLineWidth: () => 0,
-          hLineColor: () => BORDER,
-          paddingLeft: () => 10,
-          paddingRight: () => 10,
-          paddingTop: () => 6,
-          paddingBottom: () => 6,
-        },
+        columns: [
+          { width: "*", text: "" },
+          {
+            width: 220,
+            table: {
+              widths: ["*", "auto"],
+              body: [
+                [
+                  { text: "לפני מע״מ", style: "totalLabel" },
+                  { text: money(payload.amount), style: "totalValue", alignment: "left" },
+                ],
+                [
+                  { text: `מע״מ (${vatPct}%)`, style: "totalLabel" },
+                  { text: money(payload.vat), style: "totalValue", alignment: "left" },
+                ],
+                [
+                  { text: "סה״כ לתשלום", style: "grandLabel" },
+                  { text: money(payload.total), style: "grandValue", alignment: "left" },
+                ],
+              ],
+            },
+            layout: {
+              hLineWidth: (i: number) => (i === 2 ? 1 : 0),
+              vLineWidth: () => 0,
+              hLineColor: () => BORDER,
+              paddingLeft: () => 10,
+              paddingRight: () => 10,
+              paddingTop: () => 6,
+              paddingBottom: () => 6,
+            },
+          },
+        ],
       },
       ...(payload.itaAllocationNumber
         ? [
