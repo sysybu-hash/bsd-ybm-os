@@ -12,6 +12,7 @@ const samplePayload = {
   amount: 1000,
   vat: 180,
   total: 1180,
+  vatRatePercent: 18,
   items: [{ desc: "שירות", qty: 1, price: 1000 }],
   orgName: "BSD-YBM",
   orgTaxId: "123456789",

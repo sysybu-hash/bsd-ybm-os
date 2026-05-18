@@ -22,6 +22,8 @@ type IssuedDoc = {
   items: LineItem[];
   projectId: string | null;
   project?: { id: string; name: string } | null;
+  itaAllocationNumber?: string | null;
+  contactPhone?: string | null;
 };
 
 type ProjectOption = { id: string; name: string };
@@ -36,6 +38,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
   const [doc, setDoc] = useState<IssuedDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState(false);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
   const load = useCallback(async () => {
@@ -64,6 +67,8 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
         items,
         projectId: raw.projectId ?? null,
         project: raw.project ?? null,
+        itaAllocationNumber: raw.itaAllocationNumber ?? null,
+        contactPhone: raw.contact?.phone ?? null,
       });
     } catch {
       toast.error(t("workspaceWidgets.invoice.loadFailed"));
@@ -113,6 +118,27 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
     }
   };
 
+  const handleSendReminder = async () => {
+    if (!doc) return;
+    setSendingReminder(true);
+    try {
+      const res = await fetch(`/api/documents/issued/${doc.id}/send-reminder`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(t("workspaceWidgets.invoice.reminderSent"));
+      } else {
+        toast.error(data.error ?? t("workspaceWidgets.invoice.reminderFailed"));
+      }
+    } catch {
+      toast.error(t("workspaceWidgets.invoice.reminderFailed"));
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!doc || !confirm(t("workspaceWidgets.invoice.deleteConfirm"))) return;
     const result = await deleteIssuedDocument(doc.id);
@@ -145,6 +171,11 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
           {t("workspaceWidgets.invoice.title")} #{doc.number}
         </h2>
         <p className="text-xs text-[color:var(--foreground-muted)]">{doc.type}</p>
+        {doc.itaAllocationNumber ? (
+          <p className="mt-1 text-xs font-semibold text-indigo-600">
+            {t("workspaceWidgets.invoice.itaAllocation")}: {doc.itaAllocationNumber}
+          </p>
+        ) : null}
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -226,16 +257,38 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
         </table>
       </div>
 
-      <div className="mt-3 text-end text-sm font-bold">
-        {t("workspaceWidgets.invoice.total")}: ₪{doc.total.toLocaleString("he-IL")}
+      <div className="mt-3 space-y-1 text-end text-sm">
+        <p className="text-[color:var(--foreground-muted)]">
+          לפני מע״מ: ₪{doc.amount.toLocaleString("he-IL")}
+        </p>
+        <p className="text-[color:var(--foreground-muted)]">
+          מע״מ: ₪{doc.vat.toLocaleString("he-IL")}
+        </p>
+        <p className="font-bold text-[color:var(--foreground-main)]">
+          {t("workspaceWidgets.invoice.total")}: ₪{doc.total.toLocaleString("he-IL")}
+        </p>
       </div>
 
       <InvoiceActionBar
         documentId={doc.id}
         saving={saving}
+        sendingReminder={sendingReminder}
         onSave={() => void handleSave()}
         onDelete={() => void handleDelete()}
+        onSendReminder={() => void handleSendReminder()}
       />
+      {doc.contactPhone ? (
+        <a
+          href={`https://wa.me/${doc.contactPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+            `שלום ${doc.clientName}, תזכורת לתשלום חשבונית ${doc.number} — ${doc.total} ₪`,
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-xs font-bold text-emerald-700 underline"
+        >
+          {t("workspaceWidgets.invoice.whatsappReminder")}
+        </a>
+      ) : null}
     </div>
   );
 }

@@ -376,6 +376,16 @@
       "moreAppsTitle": "More apps",
       "closeMore": "Close menu"
     },
+    "launcher": {
+      "editHint": "Drag to reorder · Tap X to remove · Tap empty slot to replace",
+      "done": "Done",
+      "resetDefault": "Reset to default",
+      "pickerTitle": "Choose an app",
+      "closePicker": "Close",
+      "remove": "Remove tile",
+      "emptySlot": "Add app",
+      "editDesktop": "Customize desktop"
+    },
     "sidebar": {
       "aria": "Workspace navigation",
       "appsAria": "Apps",

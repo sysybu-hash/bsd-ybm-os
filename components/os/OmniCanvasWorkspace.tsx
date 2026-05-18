@@ -13,6 +13,10 @@ import OSWorkspace from "@/components/os/layout/OSWorkspace";
 import OSDock from "@/components/os/layout/OSDock";
 import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
+import { LauncherConfigProvider } from "@/components/os/launcher/LauncherConfigProvider";
+import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
+import LauncherPickerSheet from "@/components/os/launcher/LauncherPickerSheet";
+import FirstDayWizard from "@/components/os/onboarding/FirstDayWizard";
 import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
@@ -358,8 +362,16 @@ export default function OmniCanvasWorkspace() {
   }
 
   return (
+    <LauncherConfigProvider>
     <AutomationRunnerProvider value={automationContextValue}>
     <main className="quiet-shell fixed inset-0 max-w-[100vw] overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
+      <LauncherEditBanner />
+      <LauncherPickerSheet />
+      <FirstDayWizard
+        onOpenWidget={(type) => {
+          openWidget(type);
+        }}
+      />
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 
@@ -465,5 +477,6 @@ export default function OmniCanvasWorkspace() {
       <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />
     </main>
     </AutomationRunnerProvider>
+    </LauncherConfigProvider>
   );
 }

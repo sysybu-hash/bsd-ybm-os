@@ -376,6 +376,32 @@
       "moreAppsTitle": "יישומים נוספים",
       "closeMore": "סגור תפריט"
     },
+    "onboarding": {
+      "title": "יום ראשון ב-BSD-YBM",
+      "eyebrow": "התחלה מהירה",
+      "dismiss": "סגור",
+      "next": "המשך",
+      "finish": "סיום",
+      "skip": "דלג",
+      "stepLogin": "התחברות הושלמה",
+      "stepDrive": "חיבור Google Drive",
+      "stepScan": "סריקת מסמך ראשון",
+      "stepDocument": "הנפקת מסמך ראשון",
+      "desc_login": "מחוברים ומוכנים — נמשיך להגדרת סביבת העבודה.",
+      "desc_drive": "חברו Drive כדי לסנכרן קבצים ולסרוק חשבוניות.",
+      "desc_scan": "פתחו את סורק ה-AI ונסו לפענח מסמך אחד.",
+      "desc_document": "הפיקו הצעה או חשבונית ראשונה מהמחולל."
+    },
+    "launcher": {
+      "editHint": "גרור לסידור · הקש X להסרה · הקש ריק להחלפה",
+      "done": "סיום",
+      "resetDefault": "שחזר ברירת מחדל",
+      "pickerTitle": "בחר אפליקציה",
+      "closePicker": "סגור",
+      "remove": "הסר אריח",
+      "emptySlot": "הוסף אפליקציה",
+      "editDesktop": "ערוך שולחן עבודה"
+    },
     "sidebar": {
       "aria": "ניווט סביבת עבודה",
       "appsAria": "יישומים",
@@ -504,7 +530,13 @@
       "deleteConfirm": "למחוק את המסמך?",
       "loadFailed": "טעינת המסמך נכשלה",
       "exportPdf": "ייצוא PDF",
-      "exportWord": "ייצוא Word"
+      "exportWord": "ייצוא Word",
+      "sendReminder": "שלח תזכורת",
+      "reminderSent": "תזכורת נשלחה במייל",
+      "reminderFailed": "שליחת תזכורת נכשלה",
+      "itaAllocation": "מספר הקצאה",
+      "itaMock": "מספר הקצאה (דמו — הגדירו ITA_PRODUCTION_KEY)",
+      "whatsappReminder": "וואטסאפ"
     },
     "confirm": {
       "confirm": "אישור",

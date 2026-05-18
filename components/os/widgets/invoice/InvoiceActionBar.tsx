@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Download, FileText, Save, Trash2 } from "lucide-react";
+import { Download, FileText, Mail, Save, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { captureProductEvent } from "@/lib/analytics/posthog-client";
 
@@ -10,6 +10,8 @@ type InvoiceActionBarProps = {
   saving?: boolean;
   onSave?: () => void;
   onDelete?: () => void;
+  onSendReminder?: () => void;
+  sendingReminder?: boolean;
   showSave?: boolean;
 };
 
@@ -18,6 +20,8 @@ export default function InvoiceActionBar({
   saving = false,
   onSave,
   onDelete,
+  onSendReminder,
+  sendingReminder = false,
   showSave = true,
 }: InvoiceActionBarProps) {
   const { t } = useI18n();
@@ -36,6 +40,17 @@ export default function InvoiceActionBar({
         >
           <Save size={14} aria-hidden />
           {t("workspaceWidgets.invoice.save")}
+        </button>
+      ) : null}
+      {onSendReminder ? (
+        <button
+          type="button"
+          onClick={onSendReminder}
+          disabled={sendingReminder}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 disabled:opacity-50 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <Mail size={14} aria-hidden />
+          {t("workspaceWidgets.invoice.sendReminder")}
         </button>
       ) : null}
       <a

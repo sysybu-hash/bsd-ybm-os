@@ -23,7 +23,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   try {
     const body = await req.json();
-    const { name, taxId, tenantSiteBrandingJson } = body;
+    const { name, taxId, tenantSiteBrandingJson, vatRatePercent } = body;
 
     const existing = await prisma.organization.findUnique({
       where: { id: orgId },
@@ -33,12 +33,18 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       return jsonNotFound("ארגון לא נמצא לעדכון");
     }
 
+    const vatData =
+      vatRatePercent !== undefined && vatRatePercent !== null && vatRatePercent !== ""
+        ? { vatRatePercent: Math.min(100, Math.max(0, Number(vatRatePercent))) }
+        : {};
+
     const updated = await prisma.organization.update({
       where: { id: orgId },
       data: {
         name,
         taxId,
         tenantSiteBrandingJson: tenantSiteBrandingJson || undefined,
+        ...vatData,
       },
     });
 

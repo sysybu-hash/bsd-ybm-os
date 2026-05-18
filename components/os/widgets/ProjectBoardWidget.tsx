@@ -116,7 +116,11 @@ export default function ProjectBoardWidget() {
       const res = await fetch('/api/projects/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify({
+          ...newTask,
+          projectName: newTask.project,
+          contactId: newProject.contactId,
+        })
       });
       const data = await res.json();
       if (data.success && data.task) {

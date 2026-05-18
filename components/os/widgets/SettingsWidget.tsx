@@ -41,7 +41,8 @@ export default function SettingsWidget() {
     taxId: '',
     email: '',
     website: '',
-    logoSvg: ''
+    logoSvg: '',
+    vatRatePercent: 18,
   });
 
   const [assignEmail, setAssignEmail] = useState('');
@@ -85,7 +86,11 @@ export default function SettingsWidget() {
         taxId: data.taxId || '',
         email: data.paypalMerchantEmail || '',
         website: data.tenantPublicDomain || '',
-        logoSvg: branding.logoSvg || ''
+        logoSvg: branding.logoSvg || '',
+        vatRatePercent:
+          typeof data.vatRatePercent === 'number' && Number.isFinite(data.vatRatePercent)
+            ? data.vatRatePercent
+            : 18,
       });
 
       try {
@@ -147,6 +152,7 @@ export default function SettingsWidget() {
         body: JSON.stringify({
           name: settings.name,
           taxId: settings.taxId,
+          vatRatePercent: settings.vatRatePercent,
           tenantSiteBrandingJson: {
             logoSvg: settings.logoSvg
           }
@@ -308,7 +314,30 @@ export default function SettingsWidget() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳™׳׳™׳™׳ ׳׳׳©׳׳•׳— ׳”׳×׳¨׳׳•׳×</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שיעור מע״מ (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={settings.vatRatePercent}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        vatRatePercent: Math.min(100, Math.max(0, Number(e.target.value) || 0)),
+                      })
+                    }
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+                  />
+                </div>
+                <p className="text-[10px] text-[color:var(--foreground-muted)] pr-1">
+                  ברירת מחדל בישראל: 18% (מאי 2025). חל על חשבוניות והצעות מחיר.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל למשלוח התראות</label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 

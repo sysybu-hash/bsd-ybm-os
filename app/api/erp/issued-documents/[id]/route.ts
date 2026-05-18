@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { DocStatus, DocType } from "@prisma/client";
+import { CompanyType, DocStatus, DocType } from "@prisma/client";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { prisma } from "@/lib/prisma";
 import { jsonNotFound } from "@/lib/api-json";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
@@ -39,11 +40,17 @@ function normalizeItems(raw: unknown) {
   return items.length > 0 ? items : null;
 }
 
-function totalsFromItems(items: Array<{ qty: number; price: number }>) {
+function totalsFromItems(
+  items: Array<{ qty: number; price: number }>,
+  org: { companyType: CompanyType; isReportable: boolean; vatRatePercent: number | null },
+) {
   const amount = items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const vat = Math.round(amount * 0.17 * 100) / 100;
-  const total = Math.round((amount + vat) * 100) / 100;
-  return { amount, vat, total };
+  const t = calculateDocumentTotalsFromOrg(amount, org);
+  return {
+    amount,
+    vat: Math.round(t.vat * 100) / 100,
+    total: Math.round(t.total * 100) / 100,
+  };
 }
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
@@ -82,8 +89,16 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
       ? (body.status as DocStatus)
       : undefined;
     const clientName = typeof body.clientName === "string" ? body.clientName.trim() : undefined;
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { companyType: true, isReportable: true, vatRatePercent: true },
+    });
+    if (!org) {
+      return jsonNotFound("ארגון לא נמצא");
+    }
+
     const items = normalizeItems(body.items);
-    const totals = items ? totalsFromItems(items) : null;
+    const totals = items ? totalsFromItems(items, org) : null;
 
     let contactId: string | null | undefined = undefined;
     if (body.contactId === null || body.contactId === "") {

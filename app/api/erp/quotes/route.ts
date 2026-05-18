@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { createNumberedDocument } from "@/lib/finance-numbering";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { createPayPlusPaymentPage, isPayPlusConfigured } from "@/lib/payplus";
 import { v4 as uuidv4 } from "uuid";
 
@@ -27,15 +28,24 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       }
     });
 
-    // 2. Create the IssuedDocument (Sequential numbering)
-    // We added QUOTE to DocType enum
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { companyType: true, isReportable: true, vatRatePercent: true },
+    });
+    if (!org) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 400 });
+    }
+
+    const net = parseFloat(amount);
+    const totals = calculateDocumentTotalsFromOrg(net, org);
+
     const issuedDoc = await createNumberedDocument({
       organizationId: orgId,
       type: "QUOTE",
       clientName,
-      amount: parseFloat(amount),
-      vat: parseFloat(amount) * 0.17, // Assuming 17% VAT
-      total: parseFloat(amount) * 1.17,
+      amount: net,
+      vat: totals.vat,
+      total: totals.total,
       items,
       contactId,
     });
@@ -45,7 +55,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     if (isPayPlusConfigured() && clientEmail) {
       try {
         paymentLink = await createPayPlusPaymentPage({
-          amount: parseFloat(amount) * 1.17,
+          amount: totals.total,
           itemName: `הצעת מחיר #${issuedDoc.number} - ${clientName}`,
           customerName: clientName,
           customerEmail: clientEmail,

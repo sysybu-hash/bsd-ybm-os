@@ -26,6 +26,8 @@ model Organization {
   taxId                    String?
   /// true = ארגון מדווח למס (חשבוניות רשמיות); false = ניהול אישי בלבד — מסמכים כמזכר פנימי
   isReportable             Boolean                   @default(true)
+  /// שיעור מע״מ באחוזים (ברירת מחדל 18% מ-2025)
+  vatRatePercent           Float                     @default(18)
   /// לוח שנה בדשבורד + אפשרות סנכרון Google (הפעלה מדף הגדרות)
   calendarGoogleEnabled    Boolean                   @default(false)
   /// רמת נתונים חיים / יעילות — basic | standard | premium (הרחבות ביטוח ועתיד)
@@ -457,6 +459,10 @@ model IssuedDocument {
   vat            Float
   total          Float
   status         DocStatus    @default(PENDING)
+  /// מספר הקצאה מרשות המסים (ITA) — חובה מעל 25,000 ₪
+  itaAllocationNumber String?
+  lastReminderAt      DateTime?
+  reminderCount       Int          @default(0)
   /// פריטים: [{ desc, qty, price }, ...]
   items          Json
   organizationId String
@@ -729,11 +735,12 @@ enum CompanyType {
 
 /// סוג מסמך מס שהונפק על ידי הארגון (לא מסמכי סריקה ב־Document)
 enum DocType {
-  INVOICE
-  RECEIPT
-  INVOICE_RECEIPT
-  CREDIT_NOTE
   QUOTE
+  TRANSACTION_INVOICE
+  INVOICE
+  INVOICE_RECEIPT
+  RECEIPT
+  CREDIT_NOTE
 }
 
 enum DocStatus {

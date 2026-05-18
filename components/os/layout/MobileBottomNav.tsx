@@ -2,28 +2,14 @@
 
 import React, { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  BarChart3,
-  FilePlus,
-  Grid3x3,
-  HardDrive,
-  HelpCircle,
-  LayoutDashboard,
-  Layers,
-  Library,
-  Mic,
-  Package,
-  ScanLine,
-  Settings,
-  Shield,
-  Sparkles,
-  Users,
-  X,
-} from "lucide-react";
+import { Grid3x3, Layers, Mic, Shield, X } from "lucide-react";
 import { WidgetType } from "@/hooks/use-window-manager";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
+import { getLauncherNavMeta, mobileNavLabelKey } from "@/lib/launcher/launcher-icons";
+import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 
 export type MobileBottomNavProps = {
   openWidget: (type: WidgetType) => void;
@@ -32,29 +18,6 @@ export type MobileBottomNavProps = {
 };
 
 type NavItem = { type: WidgetType; labelKey: string; icon: LucideIcon; chip?: boolean };
-
-/** First side in DOM — visually on the right in RTL (דאשבורד, סורק AI, הפקת מסמכים). */
-const navSideStart: NavItem[] = [
-  { type: "dashboard", labelKey: "workspaceWidgets.mobileNav.dashboard", icon: LayoutDashboard },
-  { type: "aiScanner", labelKey: "workspaceWidgets.mobileNav.aiScanner", icon: ScanLine },
-  { type: "docCreator", labelKey: "workspaceWidgets.mobileNav.docCreator", icon: FilePlus, chip: true },
-];
-
-/** Second side in DOM — visually on the left in RTL (לקוחות, עוד; חלונות when present). */
-const navSideEnd: NavItem[] = [
-  { type: "crmTable", labelKey: "workspaceWidgets.mobileNav.crmTable", icon: Users, chip: true },
-];
-
-const moreApps: NavItem[] = [
-  { type: "projectBoard", labelKey: "workspaceWidgets.sidebar.projectBoard", icon: BarChart3, chip: true },
-  { type: "erpArchive", labelKey: "workspaceWidgets.sidebar.erpArchive", icon: Package, chip: true },
-  { type: "aiChatFull", labelKey: "workspaceWidgets.sidebar.aiChatFull", icon: Sparkles, chip: true },
-  { type: "notebookLM", labelKey: "workspaceWidgets.sidebar.notebookLM", icon: Library, chip: true },
-  { type: "googleDrive", labelKey: "workspaceWidgets.titles.googleDrive", icon: HardDrive, chip: true },
-  { type: "helpCenter", labelKey: "workspaceWidgets.sidebar.help", icon: HelpCircle, chip: true },
-  { type: "settings", labelKey: "workspaceWidgets.sidebar.settings", icon: Settings, chip: true },
-  { type: "accessibility", labelKey: "workspaceWidgets.titles.accessibility", icon: Settings, chip: true },
-];
 
 function SideNavButton({
   item,
@@ -140,6 +103,21 @@ function MoreNavButton({
   );
 }
 
+function slotsToNavItems(slots: { widgetId: WidgetType | null }[]): NavItem[] {
+  return slots
+    .map((s) => s.widgetId)
+    .filter((id): id is WidgetType => id !== null)
+    .map((type) => {
+      const meta = getLauncherNavMeta(type);
+      return {
+        type,
+        labelKey: mobileNavLabelKey(type),
+        icon: meta?.icon ?? Shield,
+        chip: meta?.chip ?? true,
+      };
+    });
+}
+
 export default function MobileBottomNav({
   openWidget,
   onOpenOmnibar,
@@ -148,10 +126,12 @@ export default function MobileBottomNav({
   const { t, dir } = useI18n();
   const isPlatformAdmin = useIsPlatformAdmin();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { zoneSlots } = useLauncherConfig();
 
+  const moreFromConfig = slotsToNavItems(zoneSlots("mobileMore"));
   const moreAppsWithAdmin: NavItem[] = isPlatformAdmin
     ? [
-        ...moreApps,
+        ...moreFromConfig,
         {
           type: "platformAdmin" as WidgetType,
           labelKey: "workspaceWidgets.sidebar.platformAdmin",
@@ -159,7 +139,7 @@ export default function MobileBottomNav({
           chip: true,
         },
       ]
-    : moreApps;
+    : moreFromConfig;
 
   return (
     <>
@@ -190,9 +170,12 @@ export default function MobileBottomNav({
         dir={dir}
       >
         <NavSideGrid>
-          {navSideStart.map((item) => (
-            <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
-          ))}
+          <SortableLauncherZone
+            zone="mobileBarStart"
+            variant="mobile"
+            onOpen={openWidget}
+            className="contents"
+          />
         </NavSideGrid>
 
         <div className="flex shrink-0 items-end justify-center px-0.5 pb-0.5">
@@ -215,9 +198,12 @@ export default function MobileBottomNav({
           ) : (
             <NavSideBalanceSlot />
           )}
-          {navSideEnd.map((item) => (
-            <SideNavButton key={item.type} item={item} onOpen={openWidget} label={t(item.labelKey)} />
-          ))}
+          <SortableLauncherZone
+            zone="mobileBarEnd"
+            variant="mobile"
+            onOpen={openWidget}
+            className="contents"
+          />
           <MoreNavButton
             label={t("workspaceWidgets.mobileNav.moreApps")}
             moreOpen={moreOpen}

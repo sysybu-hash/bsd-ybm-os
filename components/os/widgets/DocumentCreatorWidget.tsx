@@ -2,7 +2,13 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useState, useEffect } from "react";
+import type { DocType } from "@prisma/client";
+import { ISSUED_DOCUMENT_TYPES } from "@/lib/document-types";
+import { previewPayloadFromDraft } from "@/lib/invoice-payload";
+import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
+import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
 import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
+import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
 import { 
   FilePlus, 
@@ -40,8 +46,14 @@ type DocumentCreatorWidgetProps = {
 export default function DocumentCreatorWidget({ liveData = null }: DocumentCreatorWidgetProps) {
   const { dir, t } = useI18n();
   const [showDraft, setShowDraft] = useState(false);
-  const [docType, setDocType] = useState<'quote' | 'invoice'>('quote');
-  const [orgSettings, setOrgSettings] = useState<any>(null);
+  const [docType, setDocType] = useState<DocType>("QUOTE");
+  const [orgSettings, setOrgSettings] = useState<{
+    name: string;
+    taxId: string;
+    email: string;
+    vatRatePercent: number;
+    companyType?: string;
+  } | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContactId, setSelectedContactId] = useState('');
   const [items, setItems] = useState<DocItem[]>([
@@ -72,8 +84,13 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   useEffect(() => {
     if (liveData?.automation !== "invoice_draft") return;
-    if (liveData.docType === "quote" || liveData.docType === "invoice") {
-      setDocType(liveData.docType);
+    const dt = liveData.docType;
+    if (typeof dt === "string" && ISSUED_DOCUMENT_TYPES.some((d) => d.id === dt)) {
+      setDocType(dt as DocType);
+    } else if (dt === "quote") {
+      setDocType("QUOTE");
+    } else if (dt === "invoice") {
+      setDocType("INVOICE");
     }
     const contactName = liveData.contactName;
     if (typeof contactName === "string" && contactName) {
@@ -110,9 +127,11 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       const res = await fetch('/api/organization', { credentials: 'include' });
       const data = await res.json();
       setOrgSettings({
-        name: data.name || 'BSD-YBM תשתיות',
-        taxId: data.taxId || '512345678',
-        email: data.adminEmail || 'admin@bsd-ybm.co.il'
+        name: data.name || "BSD-YBM תשתיות",
+        taxId: data.taxId || "",
+        email: data.paypalMerchantEmail || data.adminEmail || "",
+        vatRatePercent: resolveVatRatePercent(data.vatRatePercent),
+        companyType: data.companyType,
       });
     } catch (err) {
       console.error('Failed to fetch org settings:', err);
@@ -149,9 +168,21 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const calculateSubtotal = () => {
-    return items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const vatRatePercent = orgSettings?.vatRatePercent ?? 18;
+
+  const calculateSubtotal = () =>
+    items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+
+  const calculateBilling = () => {
+    const net = calculateSubtotal();
+    const companyType =
+      orgSettings?.companyType === COMPANY_TYPE.EXEMPT_DEALER
+        ? COMPANY_TYPE.EXEMPT_DEALER
+        : COMPANY_TYPE.LICENSED_DEALER;
+    return calculateTotals(net, companyType, vatRatePercent);
   };
+
+  const selectedTypeMeta = ISSUED_DOCUMENT_TYPES.find((d) => d.id === docType);
 
   const generateDocument = async () => {
     const contact = contacts.find(c => c.id === selectedContactId);
@@ -167,31 +198,33 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
     setLoading(true);
     try {
-      const endpoint = docType === 'quote' ? '/api/erp/quotes' : '/api/erp/issued-documents';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/erp/issued-documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: docType === 'quote' ? 'QUOTE' : 'INVOICE',
-          contactId: selectedContactId,
+          type: docType,
+          contactId: selectedContactId.startsWith("draft-") ? undefined : selectedContactId,
           clientName: contact.name,
-          clientEmail: contact.email,
-          amount: calculateSubtotal(),
-          items: items.map(i => ({ desc: i.description, qty: i.quantity, price: i.price }))
-        })
+          items: items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
+        }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        const result = data.document || data;
+        const result = data.document ?? data;
         setGeneratedDoc({
           id: result.id,
-          ...result,
+          token: result.token ?? "",
+          documentNumber: result.number ?? result.documentNumber,
+          signUrl: data.signUrl ?? "",
           clientName: contact.name,
           items,
           amount: calculateSubtotal(),
         });
-        toast.success(`${docType === 'quote' ? 'הצעת המחיר' : 'החשבונית'} הופקה בהצלחה`);
+        if (data.itaError) {
+          toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
+        }
+        toast.success(`${selectedTypeMeta?.labelHe ?? "המסמך"} הופק בהצלחה`);
       } else {
         toast.error(data.error || 'שגיאה בהפקת המסמך');
       }
@@ -226,7 +259,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
           <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
         </div>
-        <h2 className="text-2xl font-bold mb-2 text-[color:var(--foreground-main)]">{docType === 'quote' ? 'הצעת מחיר' : 'חשבונית'} #{generatedDoc.documentNumber} הופקה!</h2>
+        <h2 className="text-2xl font-bold mb-2 text-[color:var(--foreground-main)]">{selectedTypeMeta?.labelHe ?? "מסמך"} #{generatedDoc.documentNumber} הופק!</h2>
         <p className="text-[color:var(--foreground-muted)] mb-8 text-center">המסמך נשמר בבסיס הנתונים ומוכן להורדה או לשליחה.</p>
 
         <div className="w-full max-w-md space-y-4">
@@ -263,18 +296,32 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       {/* Header */}
       <div className="p-6 border-b border-[color:var(--border-main)] flex justify-between items-center bg-[color:var(--background-main)]/50">
         <div className="flex items-center gap-4">
-          <div className="flex bg-[color:var(--background-main)]/50 p-1 rounded-xl border border-[color:var(--border-main)]">
-            <button onClick={() => setDocType('quote')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${docType === 'quote' ? 'bg-indigo-500 text-white shadow-lg' : 'text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]'}`}>הצעת מחיר</button>
-            <button onClick={() => setDocType('invoice')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${docType === 'invoice' ? 'bg-emerald-500 text-white shadow-lg' : 'text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]'}`}>חשבונית</button>
-          </div>
+          <select
+            value={docType}
+            onChange={(e) => setDocType(e.target.value as DocType)}
+            className="max-w-[220px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
+          >
+            {ISSUED_DOCUMENT_TYPES.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.labelHe}
+              </option>
+            ))}
+          </select>
           <div>
             <h2 className="text-lg font-bold text-[color:var(--foreground-main)]">מחולל מסמכים חכם</h2>
             <p className="text-[10px] text-[color:var(--foreground-muted)] uppercase tracking-widest font-bold">BSD-YBM Financial Engine</p>
           </div>
         </div>
-        <div className="text-left">
-          <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest block mb-1">סה&quot;כ לתשלום</span>
-          <span className={`text-2xl font-black ${docType === 'quote' ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>₪{(calculateSubtotal() || 0).toLocaleString()}</span>
+        <div className="text-left space-y-0.5">
+          <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">
+            לפני מע״מ · מע״מ {formatVatPercent(vatRatePercent)}%
+          </span>
+          <span className="text-xs text-[color:var(--foreground-muted)]">
+            מע״מ: ₪{calculateBilling().vat.toLocaleString()}
+          </span>
+          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block">
+            ₪{calculateBilling().total.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -344,6 +391,35 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
             </div>
           </div>
         </section>
+
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">
+              5
+            </div>
+            <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תצוגה מקדימה</h3>
+          </div>
+          {selectedTypeMeta ? (
+            <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">{selectedTypeMeta.descriptionHe}</p>
+          ) : null}
+          <DocumentPreview
+            payload={previewPayloadFromDraft({
+              type: docType,
+              clientName: contacts.find((c) => c.id === selectedContactId)?.name ?? "",
+              items: items.map((i) => ({
+                desc: i.description,
+                qty: i.quantity,
+                price: i.price,
+              })),
+              net: calculateBilling().net,
+              vat: calculateBilling().vat,
+              total: calculateBilling().total,
+              vatRatePercent,
+              orgName: orgSettings?.name ?? "BSD-YBM",
+              orgTaxId: orgSettings?.taxId,
+            })}
+          />
+        </section>
       </div>
 
       {/* Footer */}
@@ -352,9 +428,15 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           type="button"
           onClick={() => setShowDraft(true)}
           disabled={loading || !selectedContactId}
-          className={`w-full h-14 ${docType === 'quote' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-emerald-600 hover:bg-emerald-500'} disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3`}
+          className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
         >
-          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>{docType === 'quote' ? 'הפק הצעת מחיר' : 'הפק חשבונית לתשלום'} <Send className="w-5 h-5" /></>}
+          {loading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <>
+              הפק {selectedTypeMeta?.labelHe ?? "מסמך"} <Send className="w-5 h-5" />
+            </>
+          )}
         </button>
       </div>
       <OsFloatingPanel
@@ -366,7 +448,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           <p>
             <span className="font-bold">{contacts.find((c) => c.id === selectedContactId)?.name}</span>
             {" · "}
-            {docType === "quote" ? "הצעת מחיר" : "חשבונית"}
+            {selectedTypeMeta?.labelHe ?? docType}
           </p>
           <ul className="max-h-40 space-y-1 overflow-y-auto text-[color:var(--foreground-muted)]">
             {items.map((item) => (
@@ -375,8 +457,12 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
               </li>
             ))}
           </ul>
+          <p className="text-sm text-[color:var(--foreground-muted)]">
+            לפני מע״מ: ₪{calculateBilling().net.toLocaleString()} · מע״מ ({formatVatPercent(vatRatePercent)}%): ₪
+            {calculateBilling().vat.toLocaleString()}
+          </p>
           <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-            ₪{calculateSubtotal().toLocaleString()}
+            ₪{calculateBilling().total.toLocaleString()}
           </p>
           <button
             type="button"

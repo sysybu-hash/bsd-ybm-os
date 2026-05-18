@@ -2,7 +2,8 @@
 
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, FilePlus, HardDrive, Library, Package, ScanLine, Sparkles, Users } from "lucide-react";
+import { Bot } from "lucide-react";
+import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
 import { useSession } from "next-auth/react";
 import AdaptiveWidgetShell from "@/components/os/AdaptiveWidgetShell";
 import ProjectWidget from "@/components/os/ProjectWidget";
@@ -23,8 +24,6 @@ import GoogleAssistantWidget from "@/components/os/widgets/GoogleAssistantWidget
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
-import { widgetIconChipClass } from "@/lib/widget-icon-chip";
-
 const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
@@ -61,28 +60,6 @@ interface OSWorkspaceProps {
   toggleMaximize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
 }
-
-const quickActionTypes: WidgetType[] = [
-  "projectBoard",
-  "crmTable",
-  "erpArchive",
-  "docCreator",
-  "aiScanner",
-  "aiChatFull",
-  "googleDrive",
-  "notebookLM",
-];
-
-const quickActionIcons = {
-  projectBoard: BarChart3,
-  crmTable: Users,
-  erpArchive: Package,
-  docCreator: FilePlus,
-  aiScanner: ScanLine,
-  aiChatFull: Sparkles,
-  googleDrive: HardDrive,
-  notebookLM: Library,
-} as const;
 
 export default function OSWorkspace({
   widgets,
@@ -153,33 +130,12 @@ export default function OSWorkspace({
               {t("workspaceWidgets.empty.subtitle", { omnibar: omnibarName })}
             </p>
 
-            <div className="grid w-full max-w-4xl grid-cols-2 gap-3 px-2 md:grid-cols-4 md:px-0">
-              {quickActionTypes.map((type) => {
-                const Icon = quickActionIcons[type as keyof typeof quickActionIcons];
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => openWidget(type)}
-                    className="quiet-surface group flex min-h-[108px] flex-col items-center justify-center gap-3 p-4 text-center transition"
-                  >
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-lg transition ${widgetIconChipClass(type)}`}
-                    >
-                      <Icon size={21} aria-hidden />
-                    </div>
-                    <div>
-                      <div className="text-sm font-black text-[color:var(--foreground-main)]">
-                        {t(`workspaceWidgets.quickActions.${type}.title`)}
-                      </div>
-                      <div className="mt-1 text-[11px] font-semibold text-[color:var(--foreground-muted)]">
-                        {t(`workspaceWidgets.quickActions.${type}.subtitle`)}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <SortableLauncherZone
+              zone="quickGrid"
+              variant="quick"
+              onOpen={openWidget}
+              className="grid w-full max-w-4xl grid-cols-2 gap-3 px-2 md:grid-cols-4 md:px-0"
+            />
           </motion.section>
         )}
       </AnimatePresence>

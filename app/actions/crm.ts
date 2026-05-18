@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { prisma } from "@/lib/prisma";
 
 function revalidateCrmAndRelated() {
@@ -227,9 +228,16 @@ export async function updateContactStatusAction(contactId: string, status: strin
       select: { id: true },
     });
     if (!existingInvoice) {
+      const org = await prisma.organization.findUnique({
+        where: { id: ctx.orgId },
+        select: { companyType: true, isReportable: true, vatRatePercent: true },
+      });
       const amount = row.value ?? 0;
-      const vat = Math.round(amount * 0.17 * 100) / 100;
-      const total = Math.round((amount + vat) * 100) / 100;
+      const totals = org
+        ? calculateDocumentTotalsFromOrg(amount, org)
+        : { vat: 0, total: amount };
+      const vat = Math.round(totals.vat * 100) / 100;
+      const total = Math.round(totals.total * 100) / 100;
       const last = await prisma.issuedDocument.findFirst({
         where: { organizationId: ctx.orgId, type: "INVOICE" },
         orderBy: { number: "desc" },

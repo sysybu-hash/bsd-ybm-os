@@ -2,7 +2,10 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { calculateIssuedDocumentTotals } from "@/lib/billing-calculations";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
+import { requiresItaAllocation } from "@/lib/ita-allocation-rules";
+import { requestItaAllocation } from "@/lib/services/ita-service";
+import type { DocType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest } from "@/lib/api-json";
@@ -13,8 +16,17 @@ const issuedDocumentItemSchema = z.object({
   price: z.coerce.number().nonnegative(),
 });
 
+const ISSUED_DOC_TYPES = [
+  "QUOTE",
+  "TRANSACTION_INVOICE",
+  "INVOICE",
+  "INVOICE_RECEIPT",
+  "RECEIPT",
+  "CREDIT_NOTE",
+] as const satisfies readonly DocType[];
+
 const createIssuedDocumentSchema = z.object({
-  type: z.enum(["INVOICE", "RECEIPT", "INVOICE_RECEIPT", "CREDIT_NOTE"]),
+  type: z.enum(ISSUED_DOC_TYPES),
   clientName: z.string().trim().min(1),
   items: z.array(issuedDocumentItemSchema).min(1),
   dueDate: z.string().trim().min(1).optional(),
@@ -46,7 +58,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 /* ───── POST — הנפקת מסמך חדש (חשבונית / קבלה / חש״ק / זיכוי) ───── */
 export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
   const { type, clientName, items, dueDate, contactId, projectId } = data as {
-    type: "INVOICE" | "RECEIPT" | "INVOICE_RECEIPT" | "CREDIT_NOTE";
+    type: DocType;
     clientName: string;
     items: { desc: string; qty: number; price: number }[];
     dueDate?: string;
@@ -60,16 +72,17 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { companyType: true, isReportable: true },
+    select: { companyType: true, isReportable: true, vatRatePercent: true, taxId: true },
   });
   if (!org) {
     return jsonBadRequest("ארגון לא נמצא.", "org_not_found");
   }
 
   const amount = items.reduce((sum, i) => sum + i.qty * i.price, 0);
-  const t = calculateIssuedDocumentTotals(amount, org.companyType, org.isReportable);
+  const t = calculateDocumentTotalsFromOrg(amount, org);
   const vat = Math.round(t.vat * 100) / 100;
   const total = Math.round(t.total * 100) / 100;
+  const docDate = new Date();
 
   /* מספר רץ — MAX(number) + 1 לסוג מסמך בתוך הארגון */
   /* אם נשלח contactId — וודא שהוא שייך לאותו ארגון */
@@ -130,11 +143,41 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
     return jsonBadRequest("לא ניתן היה להקצות מספר מסמך.", "document_number_allocation_failed");
   }
 
+  let itaAllocationNumber: string | null = null;
+  let itaIsMock = false;
+  if (requiresItaAllocation(type, amount, docDate)) {
+    const ita = await requestItaAllocation(amount, org.taxId ?? "", doc.id, {
+      docType: type,
+      asOf: docDate,
+    });
+    if (!ita.success) {
+      return NextResponse.json(
+        {
+          document: doc,
+          itaError: ita.error ?? "בקשת מספר הקצאה נכשלה",
+          itaIsMock: false,
+        },
+        { status: 201 },
+      );
+    }
+    if (ita.allocationNumber) {
+      itaAllocationNumber = ita.allocationNumber;
+      itaIsMock = ita.isMock;
+      doc = await prisma.issuedDocument.update({
+        where: { id: doc.id },
+        data: { itaAllocationNumber },
+      });
+    }
+  }
+
   revalidatePath("/app/erp");
   revalidatePath("/app/crm");
   if (resolvedContactId) {
     revalidatePath(`/app/crm/client/${resolvedContactId}`);
   }
 
-  return NextResponse.json({ document: doc }, { status: 201 });
+  return NextResponse.json(
+    { document: doc, itaAllocationNumber, itaIsMock },
+    { status: 201 },
+  );
 }, { schema: createIssuedDocumentSchema });

@@ -1,8 +1,12 @@
 /**
- * 🇮🇱 BSD-YBM: ISRAEL TAX AUTHORITY (ITA) 2026 SERVICE
- * Protocol for obtaining Invoice Allocation Numbers (מספר הקצאה)
- * Compliance Level: Full (2026 Regulations)
+ * מספר הקצאה — רשות המסים (מעודכן 18/05/2026)
+ * סף לפני מע״מ: 10,000 ₪ (מ-1.1.2026), 5,000 ₪ (מ-1.6.2026)
  */
+import type { DocType } from "@prisma/client";
+import {
+  getItaAllocationThresholdNis,
+  requiresItaAllocation,
+} from "@/lib/ita-allocation-rules";
 
 export function isItaProductionConfigured(): boolean {
   const key = process.env.ITA_PRODUCTION_KEY?.trim();
@@ -14,44 +18,49 @@ export interface ItaAllocationResult {
   allocationNumber?: string;
   error?: string;
   isMock: boolean;
+  skipped?: boolean;
+  thresholdNis?: number;
 }
 
 export async function requestItaAllocation(
-  amount: number,
+  netAmount: number,
   clientVat: string,
-  invoiceId: string
+  invoiceId: string,
+  options?: { docType?: DocType; asOf?: Date },
 ): Promise<ItaAllocationResult> {
-  // 📜 Rule 2026: Mandatory for invoices above 25,000 ILS
-  if (amount < 25000) {
-    return { success: true, isMock: false }; 
+  const asOf = options?.asOf ?? new Date();
+  const docType = options?.docType ?? "INVOICE";
+  const threshold = getItaAllocationThresholdNis(asOf);
+
+  if (!requiresItaAllocation(docType, netAmount, asOf)) {
+    return { success: true, isMock: false, skipped: true, thresholdNis: threshold };
   }
 
   try {
-    /**
-     * 🚀 BSD-YBM PRODUCTION HANDSHAKE
-     * In a real production environment, this calls the ITA REST/SOAP endpoint.
-     * We use organization-specific credentials from environment variables.
-     */
     if (!isItaProductionConfigured()) {
-      console.warn("BSD-YBM: Missing ITA_PRODUCTION_KEY. Using High-Fidelity 2026 Mock.");
-      // Generating a deterministic 9-digit allocation number for 2026
+      console.warn("BSD-YBM: Missing ITA_PRODUCTION_KEY. Using 2026 mock allocation number.");
       const mockNumber = Math.floor(100000000 + Math.random() * 900000000).toString();
-      return { 
-        success: true, 
-        allocationNumber: mockNumber, 
-        isMock: true 
+      return {
+        success: true,
+        allocationNumber: mockNumber,
+        isMock: true,
+        thresholdNis: threshold,
       };
     }
 
-    // REAL PRODUCTION LOGIC (Placeholder for the actual handshake)
-    // const res = await fetch("https://api.taxes.gov.il/allocation/v1/request", { ... });
-    
-    return { 
-      success: true, 
-      allocationNumber: "2026-PENDING-KEY", 
-      isMock: false 
+    // TODO: חיבור API רשמי לפי מפרט רשות המסים
+    return {
+      success: true,
+      allocationNumber: "2026-PENDING-KEY",
+      isMock: false,
+      thresholdNis: threshold,
     };
-  } catch (err) {
-    return { success: false, error: "ITA Handshake Failed", isMock: false };
+  } catch {
+    return {
+      success: false,
+      error: "בקשת מספר הקצאה לרשות המסים נכשלה",
+      isMock: false,
+      thresholdNis: threshold,
+    };
   }
 }

@@ -2,21 +2,9 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import {
-  BarChart3,
-  FilePlus,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
-  Package,
-  ScanLine,
-  Settings,
-  Shield,
-  Sparkles,
-  Users,
-  Library,
-} from "lucide-react";
+import { HelpCircle, Settings, Shield } from "lucide-react";
 import { WidgetType } from "@/hooks/use-window-manager";
+import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -28,18 +16,6 @@ interface OSSidebarProps {
   hidden?: boolean;
   onMouseLeave?: () => void;
 }
-
-const navItems: { id: string; icon: typeof LayoutDashboard; type: WidgetType; labelKey: string }[] = [
-  { id: "dashboard", icon: LayoutDashboard, type: "dashboard", labelKey: "workspaceWidgets.sidebar.dashboard" },
-  { id: "projectBoard", icon: BarChart3, type: "projectBoard", labelKey: "workspaceWidgets.sidebar.projectBoard" },
-  { id: "crmTable", icon: Users, type: "crmTable", labelKey: "workspaceWidgets.sidebar.crmTable" },
-  { id: "erpArchive", icon: Package, type: "erpArchive", labelKey: "workspaceWidgets.sidebar.erpArchive" },
-  { id: "docCreator", icon: FilePlus, type: "docCreator", labelKey: "workspaceWidgets.sidebar.docCreator" },
-  { id: "aiScanner", icon: ScanLine, type: "aiScanner", labelKey: "workspaceWidgets.sidebar.aiScanner" },
-  { id: "aiChatFull", icon: Sparkles, type: "aiChatFull", labelKey: "workspaceWidgets.sidebar.aiChatFull" },
-  { id: "meckanoReports", icon: FileText, type: "meckanoReports", labelKey: "workspaceWidgets.sidebar.meckanoReports" },
-  { id: "notebookLM", icon: Library, type: "notebookLM", labelKey: "workspaceWidgets.sidebar.notebookLM" },
-];
 
 export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hidden, onMouseLeave }: OSSidebarProps) {
   const { t, dir } = useI18n();
@@ -75,28 +51,12 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
             aria-label={t("workspaceWidgets.sidebar.appsAria")}
             className="no-scrollbar flex min-h-0 flex-1 flex-row items-center justify-around gap-1 overflow-x-auto overflow-y-hidden overscroll-contain py-0.5 md:flex-col md:justify-start md:gap-2.5 md:overflow-x-hidden md:overflow-y-auto md:px-0.5 md:py-0.5"
           >
-            {navItems.map((item) => {
-              const label = t(item.labelKey);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openWidget(item.type)}
-                  className="group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)]"
-                  title={label}
-                  aria-label={label}
-                >
-                  <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass(item.type)}`}
-                  >
-                    <item.icon size={19} aria-hidden />
-                  </span>
-                  <span className="pointer-events-none absolute start-full z-50 ms-2 hidden whitespace-nowrap rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold text-[color:var(--foreground-main)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 md:block">
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
+            <SortableLauncherZone
+              zone="sidebar"
+              variant="sidebar"
+              onOpen={openWidget}
+              className="flex min-h-0 flex-1 flex-row items-center justify-around gap-1 md:flex-col md:justify-start md:gap-2.5"
+            />
           </nav>
 
           <div className="flex shrink-0 items-center justify-around gap-1 border-t border-[color:var(--border-main)] pt-2 md:mt-1 md:flex-col md:justify-start md:gap-2 md:border-t md:pt-2">

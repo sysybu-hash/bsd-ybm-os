@@ -5,10 +5,16 @@ export type InvoiceExportPayload = {
   number: number;
   clientName: string;
   date: string;
+  dueDate?: string;
   amount: number;
   vat: number;
   total: number;
+  vatRatePercent: number;
   items: InvoiceLineItem[];
   orgName?: string;
   orgTaxId?: string;
+  orgEmail?: string;
+  orgAddress?: string;
+  itaAllocationNumber?: string | null;
+  paymentNote?: string;
 };

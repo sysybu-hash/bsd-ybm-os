@@ -12,7 +12,7 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
       where: { id, organizationId: orgId },
       include: {
         project: { select: { id: true, name: true } },
-        contact: { select: { id: true, name: true } },
+        contact: { select: { id: true, name: true, phone: true } },
       },
     });
 

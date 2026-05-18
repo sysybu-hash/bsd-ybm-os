@@ -113,6 +113,73 @@ export async function sendTransactionalEmail(
   }
 }
 
+export type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+};
+
+/** שליחה עם קבצים מצורפים (SMTP; Resend כשזמין) */
+export async function sendTransactionalEmailWithAttachments(
+  to: string | string[],
+  subject: string,
+  htmlBodyInner: string,
+  attachments: EmailAttachment[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const html = wrapBrandedHtml(htmlBodyInner);
+  const list = Array.isArray(to) ? to : [to];
+  const mapped = attachments.map((a) => ({
+    filename: a.filename,
+    content: a.content,
+    contentType: a.contentType ?? "application/octet-stream",
+  }));
+
+  try {
+    const resend = createResend();
+    if (resend) {
+      await resend.emails.send({
+        from: defaultFrom(),
+        to: list,
+        subject,
+        html,
+        attachments: mapped.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
+      });
+      return { ok: true };
+    }
+
+    const host = process.env.SMTP_HOST?.trim();
+    if (host) {
+      const port = Number(process.env.SMTP_PORT?.trim() || "587");
+      const secure = process.env.SMTP_SECURE === "true" || port === 465;
+      const user = process.env.SMTP_USER?.trim();
+      const pass = process.env.SMTP_PASS?.trim();
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: user && pass ? { user, pass } : undefined,
+      });
+      await transporter.sendMail({
+        from: defaultFrom(),
+        to: list.join(", "),
+        subject,
+        html,
+        attachments: mapped,
+      });
+      return { ok: true };
+    }
+
+    return { ok: false, error: "חסר RESEND_API_KEY או SMTP להודעה עם קובץ מצורף" };
+  } catch (e) {
+    console.error("sendTransactionalEmailWithAttachments", e);
+    return { ok: false, error: "שליחת אימייל נכשלה" };
+  }
+}
+
 export async function sendWelcomeEmail(toEmail: string, name: string | null): Promise<void> {
   const greeting = name?.trim() ? `שלום ${name.trim()},` : "שלום,";
   const inner = `

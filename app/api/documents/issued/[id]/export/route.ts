@@ -2,26 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
-import {
-  buildInvoiceDocxHtml,
-  buildInvoicePdfBuffer,
-  type InvoiceLineItem,
-} from "@/lib/invoice-export";
+import { buildInvoiceDocxHtml, buildInvoicePdfBuffer } from "@/lib/invoice-export";
+import { buildInvoiceExportPayload } from "@/lib/invoice-payload";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
-
-function parseItems(items: unknown): InvoiceLineItem[] {
-  if (!Array.isArray(items)) return [];
-  return items
-    .map((row) => {
-      const r = row as { desc?: string; qty?: number; price?: number };
-      return {
-        desc: String(r.desc ?? ""),
-        qty: Number(r.qty) || 0,
-        price: Number(r.price) || 0,
-      };
-    })
-    .filter((i) => i.desc);
-}
 
 export const GET = withWorkspacesAuthDynamic<{ id: string }>(
   async (req, { orgId, userId }, segment) => {
@@ -41,21 +24,17 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
 
     const org = await prisma.organization.findUnique({
       where: { id: orgId },
-      select: { name: true, taxId: true },
+      select: {
+        name: true,
+        taxId: true,
+        vatRatePercent: true,
+        address: true,
+        paypalMerchantEmail: true,
+      },
     });
+    if (!org) return jsonNotFound("ארגון לא נמצא");
 
-    const payload = {
-      type: doc.type,
-      number: doc.number,
-      clientName: doc.clientName,
-      date: new Date(doc.date).toLocaleDateString("he-IL"),
-      amount: doc.amount,
-      vat: doc.vat,
-      total: doc.total,
-      items: parseItems(doc.items),
-      orgName: org?.name ?? undefined,
-      orgTaxId: org?.taxId ?? undefined,
-    };
+    const payload = buildInvoiceExportPayload(doc, org);
 
     const safeName = `bsd-ybm-${doc.type}-${doc.number}`;
 

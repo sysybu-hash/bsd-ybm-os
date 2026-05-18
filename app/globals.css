@@ -672,6 +672,19 @@
   animation: landing-fade-up 0.8s cubic-bezier(0, 0, 0.2, 1) both;
 }
 
+@keyframes launcher-jiggle {
+  0% {
+    transform: rotate(-1.2deg);
+  }
+  100% {
+    transform: rotate(1.2deg);
+  }
+}
+
+.launcher-jiggle {
+  animation: launcher-jiggle 0.28s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
