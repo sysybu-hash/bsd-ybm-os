@@ -61,9 +61,16 @@ const nextConfig = {
     return [];
   },
   transpilePackages: ["react-signature-canvas", "signature_pad"],
-  serverExternalPackages: ["pdf-parse", "pdfmake"],
+  serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core"],
   outputFileTracingIncludes: {
-    "/api/documents/issued/[id]/export": ["./lib/pdf/font-data.generated.ts"],
+    "/api/documents/issued/[id]/export": [
+      "./lib/pdf/font-data.generated.ts",
+      "./lib/pdf/fonts/**",
+      "./lib/pdf/invoice-print-html.ts",
+      "./lib/pdf/render-invoice-pdf-chromium.ts",
+      "./lib/pdf/load-pdf-font-buffers.ts",
+      "./node_modules/@sparticuz/chromium/**",
+    ],
   },
   images: {
     remotePatterns: [

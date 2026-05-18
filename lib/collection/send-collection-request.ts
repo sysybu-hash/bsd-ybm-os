@@ -12,7 +12,15 @@ export async function sendCollectionRequest(issuedDocumentId: string): Promise<S
     where: { id: issuedDocumentId },
     include: {
       organization: {
-        select: { name: true, taxId: true, vatRatePercent: true, address: true, paypalMerchantEmail: true },
+        select: {
+          name: true,
+          taxId: true,
+          vatRatePercent: true,
+          address: true,
+          paypalMerchantEmail: true,
+          companyType: true,
+          isReportable: true,
+        },
       },
       contact: { select: { email: true, name: true } },
     },

@@ -1,6 +1,6 @@
-import path from "node:path";
-import { createRequire } from "node:module";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+// ייבוא סטטי — חייב להיכלל ב-NFT של Vercel (createRequire + serverExternalPackages שברו בפרודקשן)
+import pdfMakeImport from "pdfmake";
 import type { InvoiceExportPayload } from "@/lib/invoice-export-types";
 import { documentTypeLabel } from "@/lib/document-types";
 import { formatVatPercent } from "@/lib/vat-config";
@@ -16,13 +16,8 @@ type PdfMakeInstance = {
   createPdf: (def: TDocumentDefinitions) => { getBuffer: () => Promise<Buffer> };
 };
 
-let pdfMakeSingleton: PdfMakeInstance | null = null;
-
-/** טעינה עצלה — מונעת שבירת `next build` כש-Next סורק מודולי API */
-function getPdfMake(): PdfMakeInstance {
-  if (pdfMakeSingleton) return pdfMakeSingleton;
-  const requirePdfMake = createRequire(path.join(process.cwd(), "package.json"));
-  const mod = requirePdfMake("pdfmake") as PdfMakeInstance & { default?: PdfMakeInstance };
+function resolvePdfMake(): PdfMakeInstance {
+  const mod = pdfMakeImport as unknown as PdfMakeInstance & { default?: PdfMakeInstance };
   const instance =
     mod && typeof mod.createPdf === "function"
       ? mod
@@ -32,8 +27,17 @@ function getPdfMake(): PdfMakeInstance {
   if (!instance) {
     throw new Error("pdfmake failed to load (missing createPdf)");
   }
-  pdfMakeSingleton = instance;
   return instance;
+}
+
+let pdfMakeSingleton: PdfMakeInstance | null = null;
+
+function getPdfMake(): PdfMakeInstance {
+  if (!pdfMakeSingleton) {
+    pdfMakeSingleton = resolvePdfMake();
+    pdfMakeSingleton.setLocalAccessPolicy(() => false);
+  }
+  return pdfMakeSingleton;
 }
 
 const INDIGO = "#4f46e5";
@@ -56,7 +60,6 @@ function ensureFonts(): void {
       bold: PDF_FONT_VFS_KEYS.bold,
     },
   });
-  pdfmake.setLocalAccessPolicy(() => false);
   fontsReady = true;
 }
 

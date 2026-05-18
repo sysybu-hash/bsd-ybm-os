@@ -1,7 +1,15 @@
 import type { DocType, IssuedDocument, Organization } from "@prisma/client";
 import type { InvoiceExportPayload, InvoiceLineItem } from "@/lib/invoice-export-types";
+import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { documentTypeLabel } from "@/lib/document-types";
 import { resolveVatRatePercent } from "@/lib/vat-config";
+
+export type InvoiceExportOrg = Pick<
+  Organization,
+  "name" | "taxId" | "vatRatePercent" | "address" | "companyType" | "isReportable"
+> & {
+  paypalMerchantEmail?: string | null;
+};
 
 export function parseInvoiceLineItems(items: unknown): InvoiceLineItem[] {
   if (!Array.isArray(items)) return [];
@@ -15,6 +23,36 @@ export function parseInvoiceLineItems(items: unknown): InvoiceLineItem[] {
       };
     })
     .filter((i) => i.desc);
+}
+
+/** סכומי ייצוא — מחושבים מפריטים + הגדרות ארגון (לא רק שדות שמורים שעלולים להיות 0). */
+export function resolveExportTotals(
+  doc: Pick<IssuedDocument, "amount" | "vat" | "total" | "items">,
+  org: Pick<Organization, "companyType" | "isReportable" | "vatRatePercent">,
+): { amount: number; vat: number; total: number; vatRatePercent: number } {
+  const items = parseInvoiceLineItems(doc.items);
+  const netFromItems =
+    items.length > 0
+      ? Math.round(items.reduce((s, i) => s + i.qty * i.price, 0) * 100) / 100
+      : 0;
+  const net = netFromItems > 0 ? netFromItems : doc.amount;
+
+  if (net > 0) {
+    const t = calculateDocumentTotalsFromOrg(net, org);
+    return {
+      amount: t.net,
+      vat: t.vat,
+      total: t.total,
+      vatRatePercent: t.vatRatePercent,
+    };
+  }
+
+  return {
+    amount: doc.amount,
+    vat: doc.vat,
+    total: doc.total,
+    vatRatePercent: resolveVatRatePercent(org.vatRatePercent),
+  };
 }
 
 export function buildInvoiceExportPayload(
@@ -31,13 +69,11 @@ export function buildInvoiceExportPayload(
     | "items"
     | "itaAllocationNumber"
   >,
-  org: Pick<Organization, "name" | "taxId" | "vatRatePercent" | "address"> & {
-    paypalMerchantEmail?: string | null;
-  },
+  org: InvoiceExportOrg,
 ): InvoiceExportPayload {
-  const branding = org as { tenantSiteBrandingJson?: unknown };
   const email =
     typeof org.paypalMerchantEmail === "string" ? org.paypalMerchantEmail : undefined;
+  const totals = resolveExportTotals(doc, org);
 
   return {
     type: doc.type,
@@ -45,10 +81,10 @@ export function buildInvoiceExportPayload(
     clientName: doc.clientName,
     date: new Date(doc.date).toLocaleDateString("he-IL"),
     dueDate: doc.dueDate ? new Date(doc.dueDate).toLocaleDateString("he-IL") : undefined,
-    amount: doc.amount,
-    vat: doc.vat,
-    total: doc.total,
-    vatRatePercent: resolveVatRatePercent(org.vatRatePercent),
+    amount: totals.amount,
+    vat: totals.vat,
+    total: totals.total,
+    vatRatePercent: totals.vatRatePercent,
     items: parseInvoiceLineItems(doc.items),
     orgName: org.name,
     orgTaxId: org.taxId ?? undefined,

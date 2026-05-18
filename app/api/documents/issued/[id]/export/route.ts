@@ -7,7 +7,7 @@ import { buildInvoiceExportPayload } from "@/lib/invoice-payload";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 export const GET = withWorkspacesAuthDynamic<{ id: string }>(
   async (req, { orgId, userId }, segment) => {
@@ -33,6 +33,8 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
         vatRatePercent: true,
         address: true,
         paypalMerchantEmail: true,
+        companyType: true,
+        isReportable: true,
       },
     });
     if (!org) return jsonNotFound("ארגון לא נמצא");

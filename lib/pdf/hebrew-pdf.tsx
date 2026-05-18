@@ -1,3 +1,4 @@
+import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import type { InvoiceExportPayload } from "@/lib/invoice-export-types";
 import InvoiceDocument from "@/lib/pdf/InvoiceDocument";
