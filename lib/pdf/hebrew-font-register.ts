@@ -1,28 +1,31 @@
+import fs from "node:fs";
 import path from "node:path";
 import { Font } from "@react-pdf/renderer";
 
 let registered = false;
 
-const FONT_DIR = path.join(
-  process.cwd(),
-  "node_modules",
-  "@fontsource",
-  "noto-sans-hebrew",
-  "files",
-);
+const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
-/** פונט עברי מקומי (ללא CDN) — יציב ב-Vercel וב-CI */
+function fontPath(filename: string): string {
+  const filePath = path.join(FONT_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`קובץ פונט PDF חסר: ${filePath}`);
+  }
+  return filePath;
+}
+
+/** פונט עברי מ־public/fonts (TTF) — נכלל בדיפלוי, ללא CDN */
 export function registerHebrewPdfFont(): void {
   if (registered) return;
   Font.register({
     family: "NotoSansHebrew",
     fonts: [
       {
-        src: path.join(FONT_DIR, "noto-sans-hebrew-hebrew-400-normal.woff"),
+        src: fontPath("NotoSansHebrew-Regular.ttf"),
         fontWeight: "normal",
       },
       {
-        src: path.join(FONT_DIR, "noto-sans-hebrew-hebrew-700-normal.woff"),
+        src: fontPath("NotoSansHebrew-Bold.ttf"),
         fontWeight: "bold",
       },
     ],

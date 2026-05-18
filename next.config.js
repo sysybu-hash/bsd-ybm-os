@@ -62,12 +62,6 @@ const nextConfig = {
   },
   transpilePackages: ["react-signature-canvas", "signature_pad"],
   serverExternalPackages: ["pdf-parse", "@react-pdf/renderer"],
-  outputFileTracingIncludes: {
-    "/api/documents/issued/[id]/export": [
-      "./node_modules/@fontsource/noto-sans-hebrew/files/noto-sans-hebrew-hebrew-400-normal.woff",
-      "./node_modules/@fontsource/noto-sans-hebrew/files/noto-sans-hebrew-hebrew-700-normal.woff",
-    ],
-  },
   images: {
     remotePatterns: [
       {

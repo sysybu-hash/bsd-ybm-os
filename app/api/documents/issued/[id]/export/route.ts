@@ -56,9 +56,14 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
     try {
       buffer = await buildInvoicePdfBuffer(payload);
     } catch (err) {
-      console.error("[invoice-export] PDF render failed", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error("[invoice-export] PDF render failed:", detail, err);
       return NextResponse.json(
-        { error: "יצירת קובץ PDF נכשלה. נסו שוב בעוד רגע.", code: "pdf_render_failed" },
+        {
+          error: "יצירת קובץ PDF נכשלה. נסו שוב בעוד רגע.",
+          code: "pdf_render_failed",
+          ...(process.env.NODE_ENV !== "production" ? { detail } : {}),
+        },
         { status: 500 },
       );
     }
