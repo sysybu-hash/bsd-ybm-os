@@ -10,6 +10,7 @@ import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { useTenant } from "@/components/tenant/TenantContext";
+import { loginErrorMessages } from "@/lib/auth/login-messages";
 
 function LoginContent() {
   const { t, dir } = useI18n();
@@ -19,10 +20,17 @@ function LoginContent() {
   const tenant = useTenant();
   const [isLoading, setIsLoading] = useState(false);
 
-  const reason = params.get("reason") ?? params.get("error");
+  const authError = params.get("error");
+  const reason = params.get("reason") ?? authError;
   const prefilledEmail = params.get("email")?.trim() ?? "";
 
   const banner = useMemo(() => {
+    if (authError && loginErrorMessages[authError]) {
+      return {
+        tone: "rose" as const,
+        text: loginErrorMessages[authError],
+      };
+    }
     if (reason === "pending" || reason === "CredentialsSignin" && params.get("reason") === "pending") {
       return {
         tone: "amber" as const,
@@ -48,7 +56,7 @@ function LoginContent() {
       return { tone: "rose" as const, text: "החשבון חסום. פנו לתמיכה." };
     }
     return null;
-  }, [reason, prefilledEmail, params]);
+  }, [authError, reason, prefilledEmail, params]);
 
   const registerHref = useMemo(() => {
     const q = new URLSearchParams();

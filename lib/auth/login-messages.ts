@@ -6,6 +6,8 @@ export const loginErrorMessages: Record<string, string> = {
   Verification: "פג תוקף קישור האימות. נסה שוב.",
   OAuthAccountNotLinked:
     "האימייל כבר קיים במערכת — נסה שוב להתחבר עם Google (אמור להיקשר אוטומטית).",
+  Callback:
+    "התחברות עם Google נכשלה בשלב החזרה לשרת. נסו שוב בעוד דקה; אם נמשך — פנו למנהל המערכת.",
   CredentialsSignin: "התחברות נכשלה — בדקו אימייל וסיסמה.",
   Default: "התחברות נכשלה. נסה שוב.",
 };

@@ -9,12 +9,16 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL ?? "";
+  /** WebSocket driver — רק פיתוח מקומי ב-Windows (עוקף P1001 / IPv6). ב-Vercel משתמשים ב-TCP רגיל. */
   const useNeonDriver =
     /neon\.tech/i.test(connectionString) &&
-    process.env.PRISMA_USE_NEON_DRIVER !== "0";
+    process.env.PRISMA_USE_NEON_DRIVER !== "0" &&
+    process.platform === "win32";
 
   if (useNeonDriver) {
-    neonConfig.webSocketConstructor = ws;
+    if (typeof WebSocket === "undefined") {
+      neonConfig.webSocketConstructor = ws;
+    }
     const adapter = new PrismaNeon({ connectionString });
     return new PrismaClient({ adapter });
   }
