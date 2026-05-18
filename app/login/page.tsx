@@ -1,19 +1,61 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, CheckCircle2, LockKeyhole, ShieldCheck } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
+import { useTenant } from "@/components/tenant/TenantContext";
 
-export default function LoginPage() {
+function LoginContent() {
   const { t, dir } = useI18n();
   const { status } = useSession();
   const router = useRouter();
+  const params = useSearchParams();
+  const tenant = useTenant();
   const [isLoading, setIsLoading] = useState(false);
+
+  const reason = params.get("reason") ?? params.get("error");
+  const prefilledEmail = params.get("email")?.trim() ?? "";
+
+  const banner = useMemo(() => {
+    if (reason === "pending" || reason === "CredentialsSignin" && params.get("reason") === "pending") {
+      return {
+        tone: "amber" as const,
+        text: "החשבון ממתין לאישור מנהל המערכת. לאחר האישור ניתן להתחבר שוב עם Google.",
+      };
+    }
+    if (params.get("reason") === "no_account" || (reason === "CredentialsSignin" && !prefilledEmail)) {
+      return null;
+    }
+    if (prefilledEmail) {
+      return {
+        tone: "blue" as const,
+        text: `לא נמצא חשבון פעיל ל־${prefilledEmail}. מלאו פרטים להרשמה — לאחר אישור מנהל המערכת תוכלו להתחבר.`,
+      };
+    }
+    if (params.get("reason") === "allowlist") {
+      return {
+        tone: "amber" as const,
+        text: "האימייל אינו ברשימת ההרשמה המותרת. פנו למנהל המערכת או שלחו בקשת הצטרפות.",
+      };
+    }
+    if (params.get("reason") === "blocked") {
+      return { tone: "rose" as const, text: "החשבון חסום. פנו לתמיכה." };
+    }
+    return null;
+  }, [reason, prefilledEmail, params]);
+
+  const registerHref = useMemo(() => {
+    const q = new URLSearchParams();
+    if (prefilledEmail) q.set("email", prefilledEmail);
+    const s = q.toString();
+    return s ? `/register?${s}` : "/register";
+  }, [prefilledEmail]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -35,10 +77,17 @@ export default function LoginPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[color:var(--background-main)]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" aria-hidden />
       </div>
     );
   }
+
+  const bannerClass =
+    banner?.tone === "rose"
+      ? "border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200"
+      : banner?.tone === "amber"
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100"
+        : "border-blue-500/40 bg-blue-500/10 text-blue-900 dark:text-blue-100";
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[color:var(--background-main)] px-5 py-10 text-[color:var(--foreground-main)]" dir={dir}>
@@ -54,6 +103,12 @@ export default function LoginPage() {
           <div className="mb-8">
             <BrandLogo size="xl" className="shadow-lg shadow-black/40" priority />
           </div>
+          {tenant?.branding.landingTitle ? (
+            <p className="mb-4 text-lg font-black text-white">{tenant.branding.landingTitle}</p>
+          ) : null}
+          {tenant?.branding.tagline ? (
+            <p className="mb-6 text-sm text-slate-300">{tenant.branding.tagline}</p>
+          ) : null}
           <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-200">
             <ShieldCheck size={14} aria-hidden />
             {t("auth.loginOs.secureBadge")}
@@ -61,7 +116,7 @@ export default function LoginPage() {
 
           <h1 className="text-4xl font-black tracking-normal">{t("auth.loginOs.heroTitle")}</h1>
           <p className="mt-4 text-base font-medium leading-8 text-slate-300">
-            {t("auth.loginOs.heroBody")}
+            {tenant ? `${t("auth.loginOs.heroBody")} (${tenant.organizationName})` : t("auth.loginOs.heroBody")}
           </p>
 
           <ul className="mt-10 space-y-4 text-sm font-semibold text-slate-300">
@@ -88,6 +143,12 @@ export default function LoginPage() {
             {t("auth.loginOs.authBody")}
           </p>
 
+          {banner ? (
+            <p className={`mt-4 rounded-lg border px-4 py-3 text-sm font-semibold leading-relaxed ${bannerClass}`}>
+              {banner.text}
+            </p>
+          ) : null}
+
           <button
             type="button"
             onClick={handleLogin}
@@ -107,6 +168,13 @@ export default function LoginPage() {
             {t("auth.loginOs.google")}
           </button>
 
+          <Link
+            href={registerHref}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[color:var(--accent)] px-5 text-sm font-black text-white shadow-sm transition hover:opacity-90"
+          >
+            {prefilledEmail ? "השלמת הרשמה / בקשת גישה" : "אין לכם חשבון? הרשמה"}
+          </Link>
+
           <button
             type="button"
             onClick={() => router.push("/")}
@@ -118,5 +186,19 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" aria-hidden />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -15,7 +15,13 @@ const revealStyle = (delaySec: number): React.CSSProperties => ({
   animationDelay: `${delaySec}s`,
 });
 
-export default function LandingPage({ onLogin }: { onLogin: () => void }) {
+export default function LandingPage({
+  onLogin,
+  onRegister,
+}: {
+  onLogin: () => void;
+  onRegister?: () => void;
+}) {
   const router = useRouter();
   const { t, dir } = useI18n();
   const CtaIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
@@ -96,10 +102,10 @@ export default function LandingPage({ onLogin }: { onLogin: () => void }) {
             </button>
             <button
               type="button"
-              onClick={() => router.push("/login")}
+              onClick={onRegister ?? (() => router.push("/register"))}
               className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-8 py-4 text-lg font-bold text-[color:var(--foreground-main)] shadow-sm backdrop-blur-sm transition-all hover:bg-[color:var(--surface-soft)]"
             >
-              {t("marketingHome.osLanding.ctaDemo")}
+              {t("nav.register")}
             </button>
           </div>
         </div>

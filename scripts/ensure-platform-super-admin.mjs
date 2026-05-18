@@ -1,27 +1,30 @@
 /**
- * מקדם משתמש קיים ל-SUPER_ADMIN לפי אימייל (ברירת מחדל: yb@bsd-ybm.co.il).
- * המשתמש חייב כבר להירשם במערכת (רשומה ב-users).
+ * יוצר/מקדם סופר-אדמין לפי אימייל (ברירת מחדל: yb@bsd-ybm.co.il).
  *
  * שימוש: node scripts/ensure-platform-super-admin.mjs [email]
  */
 import { PrismaClient } from "@prisma/client";
+
+const ADMIN_EMAILS = new Set([
+  "yb@bsd-ybm.co.il",
+  "sysybu@gmail.com",
+]);
 
 const email = (process.argv[2] || "yb@bsd-ybm.co.il").trim().toLowerCase();
 const OS_UNLIMITED = 2_147_483_647;
 const prisma = new PrismaClient();
 
 async function main() {
-  const user = await prisma.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-  });
-  if (!user) {
-    console.error(
-      `לא נמצא משתמש עם ${email}. התחברו פעם אחת עם Google לאותו אימייל, ואז הריצו שוב.`,
-    );
+  if (!ADMIN_EMAILS.has(email)) {
+    console.error(`האימייל ${email} אינו ברשימת סופר-אדמין המובנית.`);
     process.exit(1);
   }
 
-  let orgId = user.organizationId;
+  let user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+
+  let orgId = user?.organizationId ?? null;
   if (!orgId) {
     const org = await prisma.organization.create({
       data: {
@@ -44,21 +47,34 @@ async function main() {
         maxCompanies: 999,
         subscriptionTier: "CORPORATE",
         subscriptionStatus: "ACTIVE",
+        name: "BSD-YBM-OS — מפתחי מערכת",
       },
     });
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      role: "SUPER_ADMIN",
-      organizationId: orgId,
-      email,
-      accountStatus: "ACTIVE",
-    },
-  });
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email,
+        name: "מנהל BSD-YBM",
+        role: "SUPER_ADMIN",
+        organizationId: orgId,
+        accountStatus: "ACTIVE",
+      },
+    });
+  } else {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        role: "SUPER_ADMIN",
+        organizationId: orgId,
+        email,
+        accountStatus: "ACTIVE",
+      },
+    });
+  }
 
-  console.log(`✓ ${email} עודכן ל-SUPER_ADMIN (org: ${orgId})`);
+  console.log(`✓ ${email} מוכן כ-SUPER_ADMIN (org: ${orgId}, user: ${user.id})`);
 }
 
 main()

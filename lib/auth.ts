@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { AccountStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureOSDeveloperAccount } from "@/lib/platform-developers";
+import { createOSAdminAccountIfMissing } from "@/lib/provision-platform-admin";
 import { isAdmin, jwtRoleForSession } from "@/lib/is-admin";
 import { verifyPassword } from "@/lib/password";
 import { isLoginBlockedEmail } from "@/lib/login-blocklist";
@@ -109,15 +110,26 @@ export const authOptions: NextAuthOptions = {
         if (!email) {
           return false;
         }
-        const dbUser = await prisma.user.findFirst({
+        let dbUser = await prisma.user.findFirst({
           where: { email: { equals: email, mode: "insensitive" } },
           select: { accountStatus: true },
         });
         if (!dbUser) {
-          return "/login?error=CredentialsSignin&reason=no_account";
+          if (isAdmin(email)) {
+            const provisioned = await createOSAdminAccountIfMissing(email, user.name);
+            if (provisioned) {
+              dbUser = { accountStatus: AccountStatus.ACTIVE };
+            }
+          }
+        }
+        if (!dbUser) {
+          const q = new URLSearchParams({ email });
+          return `/register?${q.toString()}`;
         }
         if (dbUser.accountStatus !== AccountStatus.ACTIVE) {
-          return "/login?error=CredentialsSignin&reason=pending";
+          const q = new URLSearchParams({ reason: "pending" });
+          if (email) q.set("email", email);
+          return `/login?${q.toString()}`;
         }
         if (isLoginBlockedEmail(email)) {
           return "/login?error=CredentialsSignin&reason=blocked";

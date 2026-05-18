@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import LandingPage from "@/components/landing/LandingPage";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -13,6 +14,7 @@ const OmniCanvasWorkspace = dynamic(() => import("@/components/os/OmniCanvasWork
 
 export default function OmniCanvas() {
   const { data: session, status: sessionStatus } = useSession();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { t, dir } = useI18n();
 
@@ -33,7 +35,12 @@ export default function OmniCanvas() {
   }
 
   if (sessionStatus === "unauthenticated" || !session) {
-    return <LandingPage onLogin={() => void signIn("google", { callbackUrl: "/" })} />;
+    return (
+      <LandingPage
+        onLogin={() => void signIn("google", { callbackUrl: "/" })}
+        onRegister={() => router.push("/register")}
+      />
+    );
   }
 
   return <OmniCanvasWorkspace />;

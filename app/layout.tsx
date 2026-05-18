@@ -2,9 +2,17 @@ import type { Metadata, Viewport } from "next";
 import { Assistant, Heebo } from "next/font/google";
 import "./globals.css";
 import { unstable_noStore as noStore } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import {
+  isPlatformHost,
+  normalizeHostname,
+  resolveTenantByHost,
+  tenantBrandingCssVars,
+} from "@/lib/tenant-host";
+import { TenantProvider } from "@/components/tenant/TenantContext";
 import SessionProvider from "@/components/os/system/SessionProvider";
 import { CSPostHogProvider } from "@/components/providers/posthog-provider";
 import PostHogIdentify from "@/components/providers/posthog-identify";
@@ -95,21 +103,34 @@ export default async function RootLayout({
   const htmlLang = locale;
   const mainSkipLabel = skipToMainLabel(messages, locale);
 
+  const hdrs = await headers();
+  const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
+  const host = normalizeHostname(hostHeader);
+  const tenant = await resolveTenantByHost(host);
+  if (host && !isPlatformHost(host) && !tenant) {
+    redirect(process.env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");
+  }
+  const tenantStyle = tenant ? tenantBrandingCssVars(tenant.branding) : undefined;
+
   return (
     <html
       lang={htmlLang}
       dir={dir}
       className={`${heebo.variable} ${assistant.variable}`}
+      style={tenantStyle}
       suppressHydrationWarning
     >
       <body
         className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
+        data-tenant-id={tenant?.organizationId ?? undefined}
+        data-tenant-host={tenant?.host ?? undefined}
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <SessionProvider session={session}>
             <CSPostHogProvider>
             <PostHogIdentify />
             <I18nProvider locale={locale} messages={messages}>
+              <TenantProvider tenant={tenant}>
               <TradeProfileProvider>
               <a
                 href="#site-main"
@@ -156,6 +177,7 @@ export default async function RootLayout({
                 </Script>
               </div>
               </TradeProfileProvider>
+              </TenantProvider>
             </I18nProvider>
             </CSPostHogProvider>
           </SessionProvider>
