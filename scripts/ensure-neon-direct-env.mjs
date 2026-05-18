@@ -104,6 +104,9 @@ function main() {
   const existingDirect = merged.get("DIRECT_URL");
   if (existingDirect && String(existingDirect).trim().length > 0) {
     console.log("DIRECT_URL כבר מוגדר — אין צורך בשינוי.");
+    console.log(
+      "ב-Windows: `npx prisma migrate status` עלול להיכשל ב-P1001 (IPv6). השתמשו ב: npm run db:migrate:status",
+    );
     process.exit(0);
   }
 

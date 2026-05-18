@@ -1,0 +1,1 @@
+-- Baseline applied on Neon before local migration history; placeholder for Prisma drift.

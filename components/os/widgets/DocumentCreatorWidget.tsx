@@ -9,13 +9,17 @@ import { calculateTotals, COMPANY_TYPE } from "@/lib/billing-calculations";
 import { formatVatPercent, resolveVatRatePercent } from "@/lib/vat-config";
 import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocumentView";
 import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
+import DocumentClientPicker, {
+  findContactByName,
+  type DocumentClientContact,
+  type NewClientDetails,
+} from "@/components/os/widgets/invoice/DocumentClientPicker";
 import OsFloatingPanel, {
   FLOATING_PANEL_EXIT_MS,
   waitForFloatingPanelExit,
 } from "@/components/os/layout/OsFloatingPanel";
 import { 
   FilePlus, 
-  User, 
   Plus, 
   Trash2, 
   Send, 
@@ -30,12 +34,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
-interface Contact {
-  id: string;
-  name: string;
-  email: string | null;
-}
-
 interface DocItem {
   id: string;
   description: string;
@@ -58,8 +56,15 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
     vatRatePercent: number;
     companyType?: string;
   } | null>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [selectedContactId, setSelectedContactId] = useState('');
+  const [contacts, setContacts] = useState<DocumentClientContact[]>([]);
+  const [clientNameInput, setClientNameInput] = useState("");
+  const [selectedContactId, setSelectedContactId] = useState("");
+  const [isNewClient, setIsNewClient] = useState(false);
+  const [newClient, setNewClient] = useState<NewClientDetails>({
+    email: "",
+    phone: "",
+    notes: "",
+  });
   const [items, setItems] = useState<DocItem[]>([
     { id: '1', description: '', quantity: 1, price: 0 }
   ]);
@@ -158,14 +163,22 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         const exists = prev.find((c) => c.name === contactName);
         if (exists) {
           setSelectedContactId(exists.id);
+          setClientNameInput(contactName);
+          setIsNewClient(false);
           return prev;
         }
         const id = `draft-${Date.now()}`;
         setSelectedContactId(id);
+        setClientNameInput(contactName);
+        setIsNewClient(true);
         return [...prev, { id, name: contactName, email: null }];
       });
     }
-    if (typeof liveData.contactId === "string") setSelectedContactId(liveData.contactId);
+    if (typeof liveData.contactId === "string") {
+      setSelectedContactId(liveData.contactId);
+      const c = contacts.find((x) => x.id === liveData.contactId);
+      if (c) setClientNameInput(c.name);
+    }
     const draftItems = liveData.items;
     if (Array.isArray(draftItems) && draftItems.length > 0) {
       setItems(
@@ -203,11 +216,14 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       const res = await fetch('/api/crm/contacts');
       const data = await res.json();
       const rows = Array.isArray(data.contacts) ? data.contacts : [];
-      setContacts(rows.map((c: { id: string; name: string; email?: string | null }) => ({
-        id: c.id,
-        name: c.name,
-        email: c.email
-      })));
+      setContacts(
+        rows.map((c: { id: string; name: string; email?: string | null; phone?: string | null }) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+        })),
+      );
     } catch (error) {
       console.error('Failed to fetch contacts:', error);
     } finally {
@@ -244,12 +260,75 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   const selectedTypeMeta = ISSUED_DOCUMENT_TYPES.find((d) => d.id === docType);
 
-  const generateDocument = async () => {
-    const contact = contacts.find(c => c.id === selectedContactId);
-    if (!contact) {
-      toast.error('אנא בחר לקוח');
-      return;
+  const resolveContactForIssue = async (): Promise<DocumentClientContact | null> => {
+    const trimmedName = clientNameInput.trim();
+    if (!trimmedName) {
+      toast.error("אנא הזן שם לקוח");
+      return null;
     }
+
+    const fromList =
+      contacts.find((c) => c.id === selectedContactId && !c.id.startsWith("draft-")) ??
+      findContactByName(contacts, trimmedName);
+
+    if (fromList && !isNewClient) {
+      return fromList;
+    }
+
+    if (!isNewClient && fromList) {
+      return fromList;
+    }
+
+    const emailTrim = newClient.email.trim();
+    if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      toast.error("כתובת אימייל לא תקינה");
+      return null;
+    }
+
+    try {
+      const res = await fetch("/api/crm/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: trimmedName,
+          email: emailTrim || null,
+          phone: newClient.phone.trim() || null,
+          notes: newClient.notes.trim() || null,
+          status: "LEAD",
+        }),
+      });
+      const data = (await res.json()) as { contact?: DocumentClientContact; error?: string };
+      if (!res.ok) {
+        toast.error(data.error || "יצירת לקוח חדש נכשלה");
+        return null;
+      }
+      const created = data.contact;
+      if (!created?.id) {
+        toast.error("יצירת לקוח חדש נכשלה");
+        return null;
+      }
+      const row: DocumentClientContact = {
+        id: created.id,
+        name: created.name,
+        email: created.email ?? null,
+        phone: created.phone ?? null,
+      };
+      setContacts((prev) => (prev.some((c) => c.id === row.id) ? prev : [row, ...prev]));
+      setSelectedContactId(row.id);
+      setClientNameInput(row.name);
+      setIsNewClient(false);
+      toast.success("לקוח חדש נוסף ל-CRM");
+      return row;
+    } catch {
+      toast.error("שגיאה ביצירת לקוח");
+      return null;
+    }
+  };
+
+  const generateDocument = async () => {
+    const contact = await resolveContactForIssue();
+    if (!contact) return;
 
     if (items.some(item => !item.description || item.price <= 0)) {
       toast.error('אנא מלא את כל פרטי הפריטים');
@@ -264,7 +343,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: docType,
-          contactId: selectedContactId.startsWith("draft-") ? undefined : selectedContactId,
+          contactId: contact.id,
           clientName: contact.name,
           items: items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
         }),
@@ -448,20 +527,21 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           )}
         </section>
 
-        {/* Client Selection */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">1</div>
-            <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">בחירת לקוח מה-CRM</h3>
-          </div>
-          <div className="relative">
-            <User className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
-            <select className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none text-[color:var(--foreground-main)]" value={selectedContactId} onChange={(e) => setSelectedContactId(e.target.value)} disabled={fetchingContacts}>
-              <option value="">{fetchingContacts ? 'טוען לקוחות...' : 'בחר לקוח מהרשימה...'}</option>
-              {contacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.email || 'אין אימייל'})</option>)}
-            </select>
-          </div>
-        </section>
+        <DocumentClientPicker
+          contacts={contacts}
+          loading={fetchingContacts}
+          name={clientNameInput}
+          selectedContactId={selectedContactId}
+          isNewClient={isNewClient}
+          newClient={newClient}
+          onNameChange={setClientNameInput}
+          onSelectContact={(c) => {
+            setSelectedContactId(c.id);
+            setClientNameInput(c.name);
+          }}
+          onNewClientChange={(patch) => setNewClient((prev) => ({ ...prev, ...patch }))}
+          onIsNewClientChange={setIsNewClient}
+        />
 
         {/* Items */}
         <section>
@@ -527,7 +607,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           <DocumentPreview
             payload={previewPayloadFromDraft({
               type: docType,
-              clientName: contacts.find((c) => c.id === selectedContactId)?.name ?? "",
+              clientName: clientNameInput.trim() || contacts.find((c) => c.id === selectedContactId)?.name || "",
               items: items.map((i) => ({
                 desc: i.description,
                 qty: i.quantity,
@@ -549,7 +629,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         <button
           type="button"
           onClick={() => void generateDocument()}
-          disabled={loading || !selectedContactId}
+          disabled={loading || !clientNameInput.trim()}
           className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
         >
           {loading ? (
@@ -569,7 +649,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       >
         <div className="space-y-4 text-sm text-[color:var(--foreground-main)]">
           <p>
-            <span className="font-bold">{contacts.find((c) => c.id === selectedContactId)?.name}</span>
+            <span className="font-bold">{clientNameInput.trim() || contacts.find((c) => c.id === selectedContactId)?.name}</span>
             {" · "}
             {selectedTypeMeta?.labelHe ?? docType}
           </p>
