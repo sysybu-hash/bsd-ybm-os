@@ -12,6 +12,20 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bsd_ybm_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bsd_ybm_ci
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/bsd_ybm_ci
@@ -53,6 +67,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Prepare CI database
+        run: npx prisma db push --skip-generate
 
       - name: Seed test data
         run: npm run seed:test

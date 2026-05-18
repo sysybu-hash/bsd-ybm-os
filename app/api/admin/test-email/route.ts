@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { isAdmin } from "@/lib/is-admin";
+import { withOSAdmin } from "@/lib/api-handler";
 import { sendTestEmail } from "@/lib/mail";
 import { isMailTransportConfigured, mailTransportLabel, getMailFrom } from "@/lib/mail-config";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email?.trim().toLowerCase();
-  if (!email || !isAdmin(email)) {
-    return NextResponse.json({ ok: false, error: "אין הרשאה" }, { status: 403 });
-  }
-
+export const POST = withOSAdmin(async (req, { email: adminEmail }) => {
   if (!isMailTransportConfigured()) {
     return NextResponse.json(
       {
@@ -26,7 +18,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let to = email;
+  let to = adminEmail;
   try {
     const body = (await req.json()) as { to?: string };
     if (body?.to?.trim()) {
@@ -50,4 +42,4 @@ export async function POST(req: Request) {
     transport: mailTransportLabel(),
     from: getMailFrom(),
   });
-}
+});
