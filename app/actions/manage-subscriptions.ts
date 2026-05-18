@@ -126,7 +126,7 @@ export async function manageSubsSaveTenantDomainAction(
 
 export async function manageSubsCreateManualUserAction(
   formData: FormData,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; emailed: boolean; mailError?: string } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
   if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
 
@@ -206,9 +206,7 @@ export async function manageSubsCreateManualUserAction(
       });
     }
 
-    void sendProvisionCredentialsEmail(email, name, plain, organizationName).catch((err) =>
-      console.error("sendProvisionCredentialsEmail manage-subscriptions", err),
-    );
+    const mail = await sendProvisionCredentialsEmail(email, name, plain, organizationName);
 
     if (s.user?.id) {
       const createdOrg = await prisma.organization.findFirst({
@@ -222,10 +220,12 @@ export async function manageSubsCreateManualUserAction(
     }
 
     revalidateSubscriptionSurfaces();
-    return { ok: true };
+    return mail.ok
+      ? { ok: true, emailed: true }
+      : { ok: true, emailed: false, mailError: mail.error };
   } catch (e) {
     console.error("manageSubsCreateManualUserAction", e);
-    return { ok: false, error: "׳™׳¦׳™׳¨׳× ׳׳¨׳’׳•׳ ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "יצירת ארגון נכשלה" };
   }
 }
 

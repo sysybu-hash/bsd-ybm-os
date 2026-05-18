@@ -98,6 +98,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
   const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
   const [provisionSendEmail, setProvisionSendEmail] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
 
   const loadOrgs = useCallback(async () => {
     const data = await manageSubsListOrganizationsAction();
@@ -269,7 +270,15 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
         toast.error(r.error);
         return;
       }
-      toast.success("מנוי חדש נוצר — פרטי התחברות נשלחו במייל");
+      if (r.emailed) {
+        toast.success("מנוי חדש נוצר — פרטי התחברות נשלחו במייל");
+      } else {
+        toast.warning(
+          r.mailError
+            ? `מנוי נוצר, אך המייל לא נשלח: ${r.mailError}`
+            : "מנוי נוצר, אך שליחת המייל נכשלה — בדקו RESEND_API_KEY או SMTP ב-Vercel",
+        );
+      }
       setShowCreateOrg(false);
       setCreateEmail("");
       setCreateName("");
@@ -892,13 +901,39 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
 
         {tab === "health" && (
           <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => void loadHealth()}
-              className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold"
-            >
-              רענן בדיקה
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void loadHealth()}
+                className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold"
+              >
+                רענן בדיקה
+              </button>
+              <button
+                type="button"
+                disabled={testingEmail}
+                onClick={async () => {
+                  setTestingEmail(true);
+                  try {
+                    const res = await fetch("/api/admin/test-email", {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: "{}",
+                    });
+                    const j = (await res.json()) as { ok?: boolean; to?: string; error?: string };
+                    if (j.ok) toast.success(`מייל בדיקה נשלח ל־${j.to ?? "תיבתך"}`);
+                    else toast.error(j.error ?? "שליחת מייל בדיקה נכשלה");
+                    void loadHealth();
+                  } finally {
+                    setTestingEmail(false);
+                  }
+                }}
+                className="rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {testingEmail ? "שולח…" : "שלח מייל בדיקה"}
+              </button>
+            </div>
             {health?.statuses?.map((s) => (
               <div
                 key={s.name}

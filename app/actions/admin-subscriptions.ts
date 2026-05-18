@@ -233,7 +233,10 @@ export async function provisionUserAction(formData: FormData): Promise<
   let emailed = false;
   if (sendEmail) {
     const r = await sendProvisionCredentialsEmail(emailRaw, name, plain, org.name);
-    emailed = r.ok;
+    if (!r.ok) {
+      return { ok: false, error: r.error };
+    }
+    emailed = true;
   }
 
   revalidatePath("/app/admin");

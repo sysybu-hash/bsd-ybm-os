@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
-import { osOwnerEmail } from "@/lib/is-admin";
+import { osAdminEmails } from "@/lib/is-admin";
+import {
+  getMailFrom,
+  getMailReplyTo,
+  isMailTransportConfigured,
+  isResendConfigured,
+  isSmtpConfigured,
+} from "@/lib/mail-config";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://bsd-ybm.co.il";
 const TAGLINE = "BSD-YBM-OS - השדרה שמחברת בין כולם";
@@ -22,8 +29,7 @@ function wrapBrandedHtml(innerBody: string): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#020617;padding:28px 16px;">
     <tr>
       <td align="center">
-        <div style="max-width:560px;margin:0 auto;background:#0f172a;border-radius:20px;padding:36px 28px;border:1px solid #1e293b;
-          box-shadow:0 25px 50px -12px rgba(0,0,0,0.45);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8fafc;line-height:1.65;">
+        <div style="max-width:560px;margin:0 auto;background:#0f172a;border-radius:20px;padding:36px 28px;border:1px solid #1e293b;box-shadow:0 25px 50px -12px rgba(0,0,0,0.45);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8fafc;line-height:1.65;">
           <div style="width:48px;height:48px;border-radius:14px;background:#2563eb;margin:0 auto 20px;"></div>
           ${innerBody}
           <p style="margin:32px 0 0;padding-top:20px;border-top:1px solid #334155;color:#64748b;font-size:11px;text-align:center;letter-spacing:0.02em;">
@@ -37,36 +43,33 @@ function wrapBrandedHtml(innerBody: string): string {
 </html>`;
 }
 
-function defaultFrom(): string {
-  return (
-    process.env.MAIL_FROM?.trim() ||
-    process.env.EMAIL_FROM?.trim() ||
-    "BSD-YBM <system@bsd-ybm.co.il>"
-  );
-}
-
 function createResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY?.trim();
-  if (!key) return null;
-  return new Resend(key);
+  if (!isResendConfigured()) return null;
+  return new Resend(process.env.RESEND_API_KEY!.trim());
 }
 
 async function sendViaResend(to: string | string[], subject: string, html: string): Promise<boolean> {
   const resend = createResend();
   if (!resend) return false;
   const list = Array.isArray(to) ? to : [to];
-  await resend.emails.send({
-    from: defaultFrom(),
+  const replyTo = getMailReplyTo();
+  const { error } = await resend.emails.send({
+    from: getMailFrom(),
     to: list,
     subject,
     html,
+    ...(replyTo ? { replyTo } : {}),
   });
+  if (error) {
+    console.error("Resend send failed:", error);
+    return false;
+  }
   return true;
 }
 
 async function sendViaSmtp(to: string | string[], subject: string, html: string): Promise<boolean> {
-  const host = process.env.SMTP_HOST?.trim();
-  if (!host) return false;
+  if (!isSmtpConfigured()) return false;
+  const host = process.env.SMTP_HOST!.trim();
   const port = Number(process.env.SMTP_PORT?.trim() || "587");
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
   const user = process.env.SMTP_USER?.trim();
@@ -80,21 +83,33 @@ async function sendViaSmtp(to: string | string[], subject: string, html: string)
   });
 
   const list = Array.isArray(to) ? to : [to];
+  const replyTo = getMailReplyTo();
   await transporter.sendMail({
-    from: defaultFrom(),
+    from: getMailFrom(),
     to: list.join(", "),
     subject,
     html,
+    ...(replyTo ? { replyTo } : {}),
   });
   return true;
 }
 
-/** שליחה פנימית — קודם Resend, אחרת SMTP (Nodemailer) */
+export { isMailTransportConfigured, getMailFrom, getMailReplyTo } from "@/lib/mail-config";
+
+/** שליחה פנימית — קודם Resend, אחרת SMTP */
 export async function sendTransactionalEmail(
   to: string | string[],
   subject: string,
   htmlBodyInner: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isMailTransportConfigured()) {
+    return {
+      ok: false,
+      error:
+        "שירות המייל לא מוגדר. הוסיפו RESEND_API_KEY או SMTP_HOST + SMTP_USER + SMTP_PASS ב־Vercel / .env.local",
+    };
+  }
+
   const html = wrapBrandedHtml(htmlBodyInner);
   try {
     if (await sendViaResend(to, subject, html)) {
@@ -105,11 +120,12 @@ export async function sendTransactionalEmail(
     }
     return {
       ok: false,
-      error: "חסר RESEND_API_KEY או הגדרות SMTP (SMTP_HOST וכו׳)",
+      error: "שליחת המייל נכשלה — בדקו את מפתח Resend או הגדרות SMTP ואימות הדומיין bsd-ybm.co.il",
     };
   } catch (e) {
     console.error("sendTransactionalEmail", e);
-    return { ok: false, error: "שליחת אימייל נכשלה" };
+    const msg = e instanceof Error ? e.message : "שליחת אימייל נכשלה";
+    return { ok: false, error: msg };
   }
 }
 
@@ -119,13 +135,20 @@ export type EmailAttachment = {
   contentType?: string;
 };
 
-/** שליחה עם קבצים מצורפים (SMTP; Resend כשזמין) */
+/** שליחה עם קבצים מצורפים */
 export async function sendTransactionalEmailWithAttachments(
   to: string | string[],
   subject: string,
   htmlBodyInner: string,
   attachments: EmailAttachment[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isMailTransportConfigured()) {
+    return {
+      ok: false,
+      error: "שירות המייל לא מוגדר (RESEND_API_KEY או SMTP)",
+    };
+  }
+
   const html = wrapBrandedHtml(htmlBodyInner);
   const list = Array.isArray(to) ? to : [to];
   const mapped = attachments.map((a) => ({
@@ -133,12 +156,13 @@ export async function sendTransactionalEmailWithAttachments(
     content: a.content,
     contentType: a.contentType ?? "application/octet-stream",
   }));
+  const replyTo = getMailReplyTo();
 
   try {
     const resend = createResend();
     if (resend) {
-      await resend.emails.send({
-        from: defaultFrom(),
+      const { error } = await resend.emails.send({
+        from: getMailFrom(),
         to: list,
         subject,
         html,
@@ -147,12 +171,17 @@ export async function sendTransactionalEmailWithAttachments(
           content: a.content,
           contentType: a.contentType,
         })),
+        ...(replyTo ? { replyTo } : {}),
       });
+      if (error) {
+        console.error("Resend attachments failed:", error);
+        return { ok: false, error: error.message ?? "שליחת מייל נכשלה (Resend)" };
+      }
       return { ok: true };
     }
 
-    const host = process.env.SMTP_HOST?.trim();
-    if (host) {
+    if (isSmtpConfigured()) {
+      const host = process.env.SMTP_HOST!.trim();
       const port = Number(process.env.SMTP_PORT?.trim() || "587");
       const secure = process.env.SMTP_SECURE === "true" || port === 465;
       const user = process.env.SMTP_USER?.trim();
@@ -164,11 +193,12 @@ export async function sendTransactionalEmailWithAttachments(
         auth: user && pass ? { user, pass } : undefined,
       });
       await transporter.sendMail({
-        from: defaultFrom(),
+        from: getMailFrom(),
         to: list.join(", "),
         subject,
         html,
         attachments: mapped,
+        ...(replyTo ? { replyTo } : {}),
       });
       return { ok: true };
     }
@@ -176,8 +206,22 @@ export async function sendTransactionalEmailWithAttachments(
     return { ok: false, error: "חסר RESEND_API_KEY או SMTP להודעה עם קובץ מצורף" };
   } catch (e) {
     console.error("sendTransactionalEmailWithAttachments", e);
-    return { ok: false, error: "שליחת אימייל נכשלה" };
+    const msg = e instanceof Error ? e.message : "שליחת אימייל נכשלה";
+    return { ok: false, error: msg };
   }
+}
+
+/** מייל בדיקה — לוודא שהמערכת שולחת בפועל */
+export async function sendTestEmail(to: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">בדיקת מייל BSD-YBM</h1>
+    <p style="margin:0;color:#94a3b8;font-size:14px;text-align:center;">
+      אם קיבלתם הודעה זו, שליחת המייל מהמערכת פעילה.
+    </p>
+    <p style="margin:16px 0 0;color:#64748b;font-size:12px;text-align:center;">
+      שולח: ${escapeHtml(getMailFrom())}
+    </p>`;
+  return sendTransactionalEmail(to.trim().toLowerCase(), "BSD-YBM — בדיקת מייל", inner);
 }
 
 export async function sendWelcomeEmail(toEmail: string, name: string | null): Promise<void> {
@@ -199,7 +243,6 @@ export async function sendWelcomeEmail(toEmail: string, name: string | null): Pr
   }
 }
 
-/** מייל ברוכים הבאים אחרי הרשמה — כולל רמת מנוי נוכחית (מותג BSD-YBM) */
 export async function sendRegistrationWelcomeEmail(
   toEmail: string,
   name: string | null,
@@ -209,7 +252,7 @@ export async function sendRegistrationWelcomeEmail(
     accountActive: boolean;
     extraNote?: string;
   },
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const greeting = name?.trim() ? `שלום ${name.trim()},` : "שלום,";
   const statusLine = params.accountActive
     ? "החשבון שלך פעיל — ניתן להתחבר עם Google באותו אימייל."
@@ -218,41 +261,33 @@ export async function sendRegistrationWelcomeEmail(
     ? `<p style="margin:12px 0 0;color:#94a3b8;font-size:13px;text-align:center;line-height:1.6;">${escapeHtml(params.extraNote)}</p>`
     : "";
   const inner = `
-    <h1 style="margin:0 0 12px;font-size:24px;font-weight:800;background:linear-gradient(135deg,#fde68a,#e2e8f0);-webkit-background-clip:text;background-clip:text;color:transparent;text-align:center;">
-      Welcome to BSD-YBM
-    </h1>
-    <p style="margin:0 0 8px;color:#f8fafc;font-size:16px;text-align:center;font-weight:700;">ברוכים הבאים ל־BSD-YBM</p>
+    <h1 style="margin:0 0 12px;font-size:24px;font-weight:800;color:#f8fafc;text-align:center;">ברוכים הבאים ל־BSD-YBM</h1>
     <p style="margin:0 0 16px;color:#cbd5e1;font-size:15px;text-align:center;">${greeting}</p>
     <p style="margin:0 0 12px;color:#e2e8f0;font-size:15px;text-align:center;line-height:1.75;">
-      אתם כעת על רמת המנוי: <strong style="color:#fde68a;">${escapeHtml(params.tierLabelHe)}</strong>
-      <span style="color:#94a3b8;"> (${escapeHtml(params.tierKey)})</span>.
+      רמת מנוי: <strong style="color:#fde68a;">${escapeHtml(params.tierLabelHe)}</strong>
     </p>
     <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;">
       ${escapeHtml(statusLine)}
     </p>
     ${extra}
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="${SITE_URL}/login" style="display:inline-block;background:linear-gradient(135deg,#b45309,#ca8a04);color:#0f172a;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(180,83,9,0.35);">
+      <a href="${SITE_URL}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
         כניסה למערכת
       </a>
     </p>`;
-  const r = await sendTransactionalEmail(
+  return sendTransactionalEmail(
     toEmail.trim().toLowerCase(),
     "ברוכים הבאים ל־BSD-YBM-OS — הרשמה הושלמה",
     inner,
   );
-  if (!r.ok) {
-    console.warn("sendRegistrationWelcomeEmail:", r.error);
-  }
 }
 
-/** מייל למשתמש שאושרה לו הגישה (תוכן לפי מפרט מוצר) */
 export async function sendAccessApprovedEmail(toEmail: string): Promise<void> {
   const inner = `
     <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">הגישה הופעלה</h1>
     <p style="margin:0;color:#e2e8f0;font-size:15px;text-align:center;line-height:1.7;">
-      שלום, הגישה שלך למערכת הניהול BSD-YBM הופעלה בהצלחה. כעת ניתן לגשת ל-ERP, ל-Billing ולניהול הארגוני בכתובת
-      <a href="https://bsd-ybm.co.il" style="color:#60a5fa;font-weight:700;">https://bsd-ybm.co.il</a>.
+      שלום, הגישה שלך למערכת BSD-YBM הופעלה בהצלחה.
+      <a href="https://bsd-ybm.co.il" style="color:#60a5fa;font-weight:700;">https://bsd-ybm.co.il</a>
     </p>
     <p style="text-align:center;margin:28px 0 0;">
       <a href="https://bsd-ybm.co.il/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
@@ -269,13 +304,11 @@ export async function sendAccessApprovedEmail(toEmail: string): Promise<void> {
   }
 }
 
-/** התראה לבעל ה-OS כשאושרה גישה למשתמש חדש */
 export async function sendAccessApprovedAdminNotify(
   approvedUserEmail: string,
   approvedUserName: string | null,
 ): Promise<void> {
-  const admins = [osOwnerEmail()];
-
+  const admins = osAdminEmails();
   const who = approvedUserName?.trim()
     ? `${approvedUserName.trim()} (${approvedUserEmail})`
     : approvedUserEmail;
@@ -284,14 +317,11 @@ export async function sendAccessApprovedAdminNotify(
     <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">עדכון אישור גישה</h1>
     <p style="margin:0;color:#cbd5e1;font-size:14px;text-align:center;">
       אושרה גישה למערכת עבור: <strong style="color:#fff;">${who}</strong>
-    </p>
-    <p style="margin:16px 0 0;color:#94a3b8;font-size:13px;text-align:center;">
-      זוהי הודעה אוטומטית ממערכת BSD-YBM.
     </p>`;
 
   const r = await sendTransactionalEmail(
     admins,
-    "ברוכים הבאים ל-BSD-YBM-OS: הגישה למערכת אושרה",
+    "BSD-YBM-OS: הגישה למערכת אושרה",
     inner,
   );
   if (!r.ok) {
@@ -299,33 +329,19 @@ export async function sendAccessApprovedAdminNotify(
   }
 }
 
-/** אישור תשלום מנוי אחרי PayPal (מעוצב עם מיתוג BSD-YBM) */
 export async function sendPayPalSubscriptionConfirmationEmail(
   toEmail: string,
   params: { planLabel: string; amountIls: string; orgName: string },
 ): Promise<void> {
   const inner = `
-    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">תשלום התקבל — תודה!</h1>
-    <p style="margin:0 0 16px;color:#cbd5e1;font-size:16px;text-align:center;line-height:1.7;">
-      המנוי עבור <strong style="color:#fff;">${escapeHtml(params.orgName)}</strong> הופעל בהצלחה.
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">תשלום התקבל</h1>
+    <p style="margin:0 0 16px;color:#cbd5e1;font-size:16px;text-align:center;">
+      המנוי עבור <strong>${escapeHtml(params.orgName)}</strong> הופעל.
     </p>
-    <div style="background:#1e293b;border-radius:14px;padding:18px 20px;margin:0 0 20px;border:1px solid #334155;">
-      <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;">תוכנית</p>
-      <p style="margin:0 0 16px;color:#f8fafc;font-size:18px;font-weight:800;">${escapeHtml(params.planLabel)}</p>
-      <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;">סכום ששולם</p>
-      <p style="margin:0;color:#34d399;font-size:20px;font-weight:800;">₪${escapeHtml(params.amountIls)}</p>
-    </div>
-    <p style="margin:0 0 24px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.65;">
-      ברוך הבא לשדרה שמחברת בין כולם — BSD-YBM.
-    </p>
-    <p style="text-align:center;margin:0;">
-      <a href="${SITE_URL}/app" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
-        כניסה ללוח הבקרה
-      </a>
-    </p>`;
+    <p style="margin:0;color:#34d399;font-size:20px;font-weight:800;text-align:center;">₪${escapeHtml(params.amountIls)}</p>`;
   const r = await sendTransactionalEmail(
     toEmail.trim().toLowerCase(),
-    `BSD-YBM-OS — אישור תשלום מנוי`,
+    "BSD-YBM-OS — אישור תשלום מנוי",
     inner,
   );
   if (!r.ok) {
@@ -333,7 +349,6 @@ export async function sendPayPalSubscriptionConfirmationEmail(
   }
 }
 
-/** הזמנת הצטרפות / שדרוג — מייל מעוצב (טקסט גוף בלבד, ללא HTML חיצוני) */
 export async function sendSubscriptionJoinInviteEmail(
   toEmail: string,
   params: { headline: string; bodyText: string; ctaLabel?: string; ctaPath?: string },
@@ -344,26 +359,21 @@ export async function sendSubscriptionJoinInviteEmail(
   const bodySafe = escapeHtml(params.bodyText).replace(/\n/g, "<br/>");
   const inner = `
     <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">${escapeHtml(params.headline)}</h1>
-    <div style="margin:0 0 24px;color:#cbd5e1;font-size:15px;line-height:1.75;text-align:center;">
+    <p style="margin:0 0 24px;color:#cbd5e1;font-size:15px;line-height:1.75;text-align:center;">
       ${bodySafe}
-    </div>
+    </p>
     <p style="text-align:center;margin:0;">
-      <a href="${escapeHtml(ctaHref)}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#2563eb);color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;box-shadow:0 12px 24px rgba(37,99,235,0.35);">
+      <a href="${escapeHtml(ctaHref)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
         ${escapeHtml(ctaLabel)}
       </a>
     </p>`;
-  const r = await sendTransactionalEmail(
+  return sendTransactionalEmail(
     toEmail.trim().toLowerCase(),
-    "BSD-YBM-OS — הזמנה להצטרפות למערכת",
+    "BSD-YBM-OS — הזמנה להצטרפות",
     inner,
   );
-  if (!r.ok) {
-    return { ok: false, error: r.error };
-  }
-  return { ok: true };
 }
 
-/** הזמנה להצטרף לארגון קיים (תפקיד שנבחר — לא יצירת ארגון חדש) */
 export async function sendOrganizationTeamInviteEmail(
   toEmail: string,
   params: {
@@ -378,27 +388,22 @@ export async function sendOrganizationTeamInviteEmail(
     : "";
   const inner = `
     <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">הוזמנתם לצוות</h1>
-    <p style="margin:0 0 12px;color:#cbd5e1;font-size:15px;text-align:center;line-height:1.75;">
-      הוזמנתם להצטרף לארגון <strong style="color:#fff;">${escapeHtml(params.orgName)}</strong>
-      בתפקיד: <strong style="color:#fff;">${escapeHtml(params.roleLabel)}</strong>.
-      <br/>לא נפתח ארגון נפרד — ההרשמה מקשרת אתכם לארגון המזמין בלבד.
+    <p style="margin:0 0 12px;color:#cbd5e1;font-size:15px;text-align:center;">
+      ארגון: <strong>${escapeHtml(params.orgName)}</strong> · תפקיד: <strong>${escapeHtml(params.roleLabel)}</strong>
     </p>
     ${note}
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="${escapeHtml(params.registerUrl)}" style="display:inline-block;background:linear-gradient(135deg,#0d9488,#2563eb);color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;box-shadow:0 12px 24px rgba(37,99,235,0.35);">
-        השלמת הרשמה לצוות
+      <a href="${escapeHtml(params.registerUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
+        השלמת הרשמה
       </a>
     </p>`;
-  const r = await sendTransactionalEmail(
+  return sendTransactionalEmail(
     toEmail.trim().toLowerCase(),
     `BSD-YBM-OS — הזמנה לצוות (${params.orgName})`,
     inner,
   );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true };
 }
 
-/** הזמנת רמת מנוי עם קישור הרשמה וטוקן (Executive SuperAdmin) */
 export async function sendSubscriptionTierInvitationEmail(
   toEmail: string,
   params: { tierLabel: string; registerUrl: string; expiresNote?: string },
@@ -408,22 +413,50 @@ export async function sendSubscriptionTierInvitationEmail(
     : "";
   const inner = `
     <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">הוזמנתם ל-BSD-YBM</h1>
-    <p style="margin:0 0 12px;color:#cbd5e1;font-size:15px;text-align:center;line-height:1.75;">
-      הוקצתה לכם רמת מנוי: <strong style="color:#fff;">${escapeHtml(params.tierLabel)}</strong>.
-      השלימו הרשמה בקישור הבא (האימייל חייב להתאים להזמנה).
+    <p style="margin:0 0 12px;color:#cbd5e1;font-size:15px;text-align:center;">
+      רמת מנוי: <strong>${escapeHtml(params.tierLabel)}</strong>
     </p>
     ${note}
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="${escapeHtml(params.registerUrl)}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#2563eb);color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;box-shadow:0 12px 24px rgba(37,99,235,0.35);">
+      <a href="${escapeHtml(params.registerUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
         השלמת הרשמה
       </a>
     </p>`;
-  const r = await sendTransactionalEmail(
+  return sendTransactionalEmail(
     toEmail.trim().toLowerCase(),
     `BSD-YBM-OS — הזמנת מנוי (${params.tierLabel})`,
     inner,
   );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true };
 }
 
+/** פרטי כניסה למשתמש שנוצר ידנית על ידי סופר-אדמין */
+export async function sendProvisionCredentialsEmail(
+  to: string,
+  displayName: string | null,
+  plainPassword: string,
+  orgName: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const loginUrl = `${SITE_URL.replace(/\/$/, "")}/login`;
+  const greeting = displayName?.trim() ? `שלום ${escapeHtml(displayName.trim())},` : "שלום,";
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">פרטי כניסה ל־BSD-YBM</h1>
+    <p style="margin:0 0 16px;color:#cbd5e1;font-size:15px;text-align:center;">${greeting}</p>
+    <p style="margin:0 0 12px;color:#94a3b8;font-size:14px;text-align:center;">
+      נפתח לך חשבון בארגון <strong style="color:#e2e8f0;">${escapeHtml(orgName)}</strong>
+    </p>
+    <table role="presentation" style="margin:20px auto 0;border-collapse:collapse;font-size:14px;color:#e2e8f0;">
+      <tr><td style="padding:6px 12px;color:#94a3b8;">אימייל</td><td style="padding:6px 12px;font-weight:700;">${escapeHtml(to.trim().toLowerCase())}</td></tr>
+      <tr><td style="padding:6px 12px;color:#94a3b8;">סיסמה זמנית</td><td style="padding:6px 12px;font-family:ui-monospace,monospace;font-weight:700;letter-spacing:0.05em;">${escapeHtml(plainPassword)}</td></tr>
+    </table>
+    <p style="margin:20px 0 0;color:#64748b;font-size:13px;text-align:center;">מומלץ לשנות סיסמה לאחר הכניסה הראשונה.</p>
+    <p style="text-align:center;margin:28px 0 0;">
+      <a href="${escapeHtml(loginUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+        כניסה למערכת
+      </a>
+    </p>`;
+  return sendTransactionalEmail(
+    to.trim().toLowerCase(),
+    "פרטי כניסה ל־BSD-YBM",
+    inner,
+  );
+}

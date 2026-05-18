@@ -53,6 +53,13 @@ const NEVER_SENSITIVE = new Set([
   "AUTH_URL",
   "GOOGLE_CLIENT_ID",
   "NEXT_PUBLIC_SITE_URL",
+  "MAIL_FROM",
+  "MAIL_REPLY_TO",
+  "OS_ADMIN_EMAIL",
+  "OS_ADMIN_EMAILS",
+  "SMTP_PORT",
+  "SMTP_SECURE",
+  "SMTP_HOST",
 ]);
 const PRODUCTION_NEXTAUTH_URL = "https://bsd-ybm.co.il";
 

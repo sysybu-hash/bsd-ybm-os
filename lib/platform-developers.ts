@@ -1,13 +1,13 @@
 import type { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isAdmin, osOwnerEmail } from "@/lib/is-admin";
+import { isAdmin, osAdminEmails } from "@/lib/is-admin";
 
 /** PostgreSQL INT — ערך גבוה ללא ניכוי מעשי */
 export const OS_UNLIMITED_CREDITS = 2_147_483_647;
 
-/** רשימת בעלי ה-OS — מסונכרן עם isAdmin (OS Owner) */
+/** רשימת סופר-אדמינים — מסונכרן עם isAdmin */
 export function getOSDeveloperEmails(): string[] {
-  return [osOwnerEmail()];
+  return osAdminEmails();
 }
 
 /** @deprecated השתמשו ב־isAdmin מ־lib/is-admin.ts */
@@ -17,7 +17,7 @@ export function isOSDeveloperEmail(email: string | null | undefined): boolean {
 
 /**
  * מעדכן משתמש מפתח: SUPER_ADMIN, ארגון עם מכסה מקסימימלית.
- * רק sysybu@gmail.com (isAdmin).
+ * רק כתובות ב־osAdminEmails() / isAdmin.
  */
 export async function ensureOSDeveloperAccount(
   rawEmail: string | null | undefined,

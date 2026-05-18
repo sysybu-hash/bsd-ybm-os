@@ -1,21 +1,47 @@
 import type { UserRole } from "@prisma/client";
 
-export const DEFAULT_OS_ADMIN_EMAIL = "sysybu@gmail.com";
+/** סופר-אדמינים קבועים בפלטפורמה */
+export const DEFAULT_OS_ADMIN_EMAILS = [
+  "yb@bsd-ybm.co.il",
+  "sysybu@gmail.com",
+] as const;
 
-export function osOwnerEmail(): string {
-  const raw = process.env.OS_ADMIN_EMAIL?.trim().toLowerCase();
-  if (raw && raw.includes("@")) return raw;
-  return DEFAULT_OS_ADMIN_EMAIL;
+/** @deprecated השתמשו ב־osAdminEmails() */
+export const DEFAULT_OS_ADMIN_EMAIL = DEFAULT_OS_ADMIN_EMAILS[0];
+
+function parseEmailList(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(/[,;]/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.includes("@"));
 }
 
-/** @deprecated Use osOwnerEmail() so env overrides are respected. */
-export const OS_ADMIN_EMAIL = DEFAULT_OS_ADMIN_EMAIL;
+/** כל כתובות הסופר-אדמין (env: OS_ADMIN_EMAILS או OS_ADMIN_EMAIL, מופרד בפסיק) */
+export function osAdminEmails(): string[] {
+  const fromEnv = [
+    ...parseEmailList(process.env.OS_ADMIN_EMAILS),
+    ...parseEmailList(process.env.OS_ADMIN_EMAIL),
+  ];
+  const merged = [...fromEnv, ...DEFAULT_OS_ADMIN_EMAILS.map((e) => e.toLowerCase())];
+  return [...new Set(merged)];
+}
 
-/** @deprecated Use osOwnerEmail() so env overrides are respected. */
-export const OS_SUPER_ADMIN_EMAIL = DEFAULT_OS_ADMIN_EMAIL;
+/** כתובת ראשית לתאימות לאחור (התראות מערכת) */
+export function osOwnerEmail(): string {
+  return osAdminEmails()[0] ?? DEFAULT_OS_ADMIN_EMAILS[0];
+}
+
+/** @deprecated Use osOwnerEmail() */
+export const OS_ADMIN_EMAIL = DEFAULT_OS_ADMIN_EMAILS[0];
+
+/** @deprecated Use osOwnerEmail() */
+export const OS_SUPER_ADMIN_EMAIL = DEFAULT_OS_ADMIN_EMAILS[0];
 
 export function isAdmin(email: string | null | undefined): boolean {
-  return (email ?? "").trim().toLowerCase() === osOwnerEmail();
+  const e = (email ?? "").trim().toLowerCase();
+  if (!e) return false;
+  return osAdminEmails().includes(e);
 }
 
 export function jwtRoleForSession(

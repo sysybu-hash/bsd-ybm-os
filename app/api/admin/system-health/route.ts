@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { withOSAdmin } from "@/lib/api-handler";
 import { hasOSPayPalConfigured } from "@/lib/platform-paypal";
 import { prisma } from "@/lib/prisma";
+import {
+  getMailFrom,
+  isMailTransportConfigured,
+  isResendConfigured,
+  isSmtpConfigured,
+  mailTransportLabel,
+} from "@/lib/mail-config";
 
 type ServiceStatus = {
   name: string;
@@ -36,6 +43,15 @@ export const GET = withOSAdmin(async () => {
       process.env.PAYPLUS_PAYMENT_PAGE_UID?.trim(),
   );
   const platformPaypal = hasOSPayPalConfigured();
+  const mailOk = isMailTransportConfigured();
+  statuses.push({
+    name: "דואר (מייל)",
+    ok: mailOk,
+    detail: mailOk
+      ? `${mailTransportLabel()} · שולח: ${getMailFrom()}${isResendConfigured() ? "" : isSmtpConfigured() ? " (SMTP)" : ""}`
+      : "חסר RESEND_API_KEY או SMTP_HOST — מיילים לא יישלחו",
+  });
+
   statuses.push({
     name: "תשלומים",
     ok: true,

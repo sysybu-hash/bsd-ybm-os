@@ -40,6 +40,7 @@
     "vercel:env:push:core": "node scripts/vercel-push-env-from-local.mjs --only=DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL,GOOGLE_GENERATIVE_AI_API_KEY,NEXT_PUBLIC_VAT_RATE",
     "vercel:env:push:stack": "node scripts/vercel-push-env-from-local.mjs --only=DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL,AUTH_URL,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_GENERATIVE_AI_API_KEY,NEXT_PUBLIC_SITE_URL,NEXT_PUBLIC_API_URL",
     "vercel:env:push:auth": "node scripts/vercel-push-env-from-local.mjs --only=NEXTAUTH_URL,AUTH_URL,NEXT_PUBLIC_SITE_URL,NEXT_PUBLIC_API_URL",
+    "vercel:env:push:mail": "node scripts/vercel-push-mail-env.mjs",
     "vercel:deploy:prod": "vercel deploy --prod --yes",
     "check:deploy": "node scripts/check-neon-vercel-prereqs.mjs",
     "env:check": "node scripts/check-env-essential.mjs",

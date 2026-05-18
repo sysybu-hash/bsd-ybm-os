@@ -73,6 +73,15 @@ if (!has("ITA_PRODUCTION_KEY")) {
   warns.push("Missing ITA_PRODUCTION_KEY - tax allocation uses mock mode only.");
 }
 
+const mailOk =
+  has("RESEND_API_KEY") ||
+  (has("SMTP_HOST") && has("SMTP_USER") && has("SMTP_PASS"));
+if (!mailOk) {
+  warns.push(
+    "Missing RESEND_API_KEY or SMTP (HOST+USER+PASS) - transactional email will not send.",
+  );
+}
+
 console.log("[check-env-essential] BSD-YBM");
 if (issues.length) {
   console.error("\nCritical missing variables:");

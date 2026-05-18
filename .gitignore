@@ -1,4 +1,5 @@
 .env.vercel.pull
+.env.vercel.prod
 .env.vercel.production
 .env.vprod
 
