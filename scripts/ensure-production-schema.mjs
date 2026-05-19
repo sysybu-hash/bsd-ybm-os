@@ -4,12 +4,14 @@
  * מדלג על placeholder מ-build ללא DB.
  */
 import { execSync } from "node:child_process";
+import { applyProjectEnvFiles, getProjectEnv } from "./load-project-env.mjs";
 
-/** לפני ש-placeholders של env:check דורסים (אם בכלל) */
+applyProjectEnvFiles();
+
 const db = (
-  process.env.DATABASE_URL ??
-  process.env.POSTGRES_URL ??
-  process.env.POSTGRES_PRISMA_URL ??
+  getProjectEnv("DATABASE_URL") ||
+  getProjectEnv("POSTGRES_URL") ||
+  getProjectEnv("POSTGRES_PRISMA_URL") ||
   ""
 ).trim();
 

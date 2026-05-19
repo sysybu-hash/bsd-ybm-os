@@ -46,7 +46,8 @@ function loadMergedEnvPairs() {
  * Preview דורש ציון ענף Git; Development לא מקבל משתני sensitive.
  * Preview/Dev: הגדרה ידנית בדשבורד או פריסה מקומית.
  */
-const ENVIRONMENTS = ["production"];
+/** Preview — פריסות ענף; Production — bsd-ybm.co.il */
+const ENVIRONMENTS = ["production", "preview"];
 const DELAY_MS = 650;
 const NEVER_SENSITIVE = new Set([
   "NEXTAUTH_URL",
@@ -73,10 +74,14 @@ function sleepSync(ms) {
 const shouldUseSensitiveFlag = (key) =>
   !key.startsWith("NEXT_PUBLIC_") && !NEVER_SENSITIVE.has(key);
 
-function pushOne(key, val, environment) {
-  const args = ["vercel", "env", "add", key, environment, "--yes", "--force"];
+/** @param {string} [previewGitBranch] עבור preview — השאר ריק לכל ענפי Preview */
+function pushOne(key, val, environment, previewGitBranch) {
+  const args = ["vercel", "env", "add", key, environment];
+  if (environment === "preview" && previewGitBranch) {
+    args.push(previewGitBranch);
+  }
+  args.push("--value", val, "--yes", "--force");
   if (shouldUseSensitiveFlag(key)) args.push("--sensitive");
-  args.push("--value", val);
 
   const r = spawnSync("npx", args, {
     cwd: root,
@@ -92,6 +97,21 @@ function pushOne(key, val, environment) {
       out,
     );
   return { ok: success, msg: out.trim().slice(-800) };
+}
+
+function resolvePreviewGitBranch() {
+  const fromEnv = process.env.VERCEL_PREVIEW_GIT_BRANCH?.trim();
+  if (fromEnv) return fromEnv;
+
+  const r = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (r.status === 0) {
+    const branch = (r.stdout || "").trim();
+    if (branch && branch !== "HEAD") return branch;
+  }
+  return "";
 }
 
 function parseOnlyArg() {
@@ -134,6 +154,22 @@ function resolveValueForOnlyKey(key, byKey) {
     const v = byKey.NEXTAUTH_SECRET || byKey.AUTH_SECRET;
     if (!v) {
       console.error("חסר NEXTAUTH_SECRET או AUTH_SECRET ב-.env / .env.local");
+      process.exit(1);
+    }
+    return v;
+  }
+  if (key === "DIRECT_URL") {
+    const v = byKey.DIRECT_URL || byKey.DATABASE_URL;
+    if (!v) {
+      console.error("חסר DIRECT_URL (או DATABASE_URL) ב-.env / .env.local");
+      process.exit(1);
+    }
+    return v;
+  }
+  if (key === "DATABASE_URL") {
+    const v = byKey.DATABASE_URL;
+    if (!v) {
+      console.error("חסר DATABASE_URL ב-.env / .env.local");
       process.exit(1);
     }
     return v;
@@ -182,8 +218,22 @@ function main() {
   let ok = 0;
   let fail = 0;
 
+  const previewBranch = resolvePreviewGitBranch();
+  if (ENVIRONMENTS.includes("preview") && !previewBranch) {
+    console.warn(
+      "[אזהרה] Preview: לא זוהה ענף Git — הגדירו VERCEL_PREVIEW_GIT_BRANCH או הריצו מתוך clone עם git.",
+    );
+  } else if (previewBranch) {
+    console.log(`Preview → ענף Git: ${previewBranch}\n`);
+  }
+
   function run(key, val, env) {
-    const { ok: success, msg } = pushOne(key, val, env);
+    const { ok: success, msg } = pushOne(
+      key,
+      val,
+      env,
+      env === "preview" ? previewBranch : undefined,
+    );
     if (!success) {
       console.error(`[שגיאה] ${key} (${env})\n${msg}`);
       fail++;

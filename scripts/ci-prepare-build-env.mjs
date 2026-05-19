@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyProjectEnvFiles, getProjectEnv } from "./load-project-env.mjs";
 
 const PLACEHOLDERS = {
   GOOGLE_GENERATIVE_AI_API_KEY: "ci-placeholder-gemini-key-0000000000",
@@ -18,8 +19,7 @@ const PLACEHOLDERS = {
 };
 
 function envHas(key) {
-  const v = process.env[key];
-  return typeof v === "string" && v.trim().length > 0;
+  return getProjectEnv(key).length > 0;
 }
 
 /**
@@ -27,6 +27,8 @@ function envHas(key) {
  * @returns {string[]} מפתחות שקיבלו placeholder
  */
 export function prepareBuildEnv() {
+  applyProjectEnvFiles();
+
   const isRemoteBuild =
     process.env.GITHUB_ACTIONS === "true" || process.env.VERCEL === "1";
   if (!isRemoteBuild) {
