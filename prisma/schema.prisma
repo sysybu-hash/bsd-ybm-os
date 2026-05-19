@@ -362,6 +362,8 @@ model CloudIntegration {
   driveAutoSaveAfterDecode Boolean @default(false)
   /// פתיחת פאנל אישור לפני שמירה (כשאין זיהוי לקוח בטוח)
   driveAskBeforeSave       Boolean @default(true)
+  /// מזהי תת-תיקיות מאגר ידע תחת תיקיית העבודה { rootId, ingestId, parsedId, issuedId }
+  knowledgeVaultFoldersJson Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -388,6 +390,14 @@ model DriveSyncEntry {
   lastDecodedAt      DateTime?
   detectedClientName String?
   detectedDocType    String?
+  /// נתיב במאגר ידע (Ingest / Parsed / Issued / Archive)
+  vaultPath          KnowledgeVaultPath?
+  /// תקציר פענוח (טקסט, שדות מפתח) — לא הקובץ עצמו
+  parsedSummary      Json?
+  /// ווידג'ט שהנפיק את הקובץ
+  issuedByWidget     String?
+  /// ווידג'ט שביצע ingest
+  sourceWidgetId     String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -396,6 +406,7 @@ model DriveSyncEntry {
   @@index([organizationId, parentDriveId])
   @@index([organizationId, trashed])
   @@index([organizationId, decodeStatus])
+  @@index([organizationId, vaultPath])
 }
 
 /// OAuth / NextAuth — נדרש עבור PrismaAdapter (התחברות Google)
@@ -830,6 +841,13 @@ enum DriveDecodeStatus {
   COMPLETED
   FAILED
   NEEDS_REVIEW
+}
+
+enum KnowledgeVaultPath {
+  INGEST
+  PARSED
+  ISSUED
+  ARCHIVE
 }
 
 enum DocumentScanJobStatus {

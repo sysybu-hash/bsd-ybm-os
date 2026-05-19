@@ -1062,7 +1062,16 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
             <p className="text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
               דגלי תכונות
             </p>
-            {(["meckanoGlobal", "geminiLiveEnabled", "driveSyncDefault"] as const).map((flag) => (
+            {(
+              [
+                "meckanoGlobal",
+                "geminiLiveEnabled",
+                "driveSyncDefault",
+                "knowledgeVaultEnabled",
+                "aiChatLiveDefault",
+                "geminiLiveAdvancedFeatures",
+              ] as const
+            ).map((flag) => (
               <label key={flag} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"

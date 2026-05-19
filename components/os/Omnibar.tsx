@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Loader2, Mic, Send, SlidersHorizontal, Volume2 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
@@ -14,6 +13,7 @@ import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
+import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 type SearchResult = {
@@ -36,7 +36,6 @@ interface OmnibarProps {
   assistantToolDeps?: OsAssistantToolDeps;
 }
 
-const visualizerHeights = [10, 16, 8, 22, 14, 18, 9, 20, 12, 24, 11, 19, 15, 21, 8, 17];
 
 export default function Omnibar({
   onCommand,
@@ -50,7 +49,7 @@ export default function Omnibar({
   openWorkspaceWidget,
   assistantToolDeps: assistantToolDepsProp,
 }: OmnibarProps) {
-  const { t, dir } = useI18n();
+  const { t, dir, locale } = useI18n();
   const { data: session } = useSession();
   const automationCtx = useAutomationRunnerContext();
   const assistantToolDeps =
@@ -66,10 +65,24 @@ export default function Omnibar({
 
   const osAssistant = useOsAssistant(assistantToolDeps);
 
+  useEffect(() => {
+    if (session?.user?.id) void osAssistant.refresh();
+  }, [session?.user?.id, osAssistant.refresh]);
+
+  const liveUserName =
+    osAssistant.context?.user.name?.trim() ||
+    session?.user?.name?.trim() ||
+    undefined;
+
   const geminiLive = useGeminiLiveAudio({
     enabled: Boolean(session?.user?.id && session?.user?.organizationId),
+    contextReady: osAssistant.hasRichContext,
     settings: geminiVoiceSettings,
+    advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
     systemInstruction: osAssistant.systemInstructionVoice,
+    locale,
+    userName: liveUserName,
+    greetOnConnect: true,
     onToolCall: async (name, args) => {
       const result = await osAssistant.onToolCall(name, args);
       const text = typeof result === "string" ? result : "Success";
@@ -132,34 +145,6 @@ export default function Omnibar({
               : "border-[color:var(--border-main)]"
           } bg-[color:var(--surface-card)]`}
         >
-          <AnimatePresence>
-            {voiceActive && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit] bg-indigo-500/[0.06]"
-              >
-                <div className="absolute bottom-0 left-0 right-0 flex h-7 items-end justify-center gap-1 px-4">
-                  {visualizerHeights.map((height, i) => (
-                    <motion.div
-                      key={`${height}-${i}`}
-                      animate={{
-                        height: voiceStatus === "speaking" ? [4, height, 4] : [3, Math.max(6, height / 2), 3],
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 0.65 + (i % 4) * 0.08,
-                        ease: [0.42, 0, 0.58, 1] as const,
-                      }}
-                      className={`w-1 rounded-full ${voiceStatus === "speaking" ? "bg-indigo-500" : "bg-emerald-500/60"}`}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <div className="relative z-10 flex shrink-0 items-center gap-1.5 border-[color:var(--border-main)]/30 py-2 pl-2 pr-1 sm:gap-2 sm:pl-3 sm:pr-2">
             <div className="flex max-w-[5.5rem] items-center gap-1.5 rounded-md border border-[color:var(--border-main)] bg-[color:var(--background-main)]/60 px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] sm:max-w-[10rem] sm:gap-2 sm:px-2.5">
               <span
@@ -237,6 +222,27 @@ export default function Omnibar({
         </div>
       </form>
 
+      {voiceActive ? (
+        <div className="mt-2 space-y-2">
+          <GeminiLivePanel
+            compact
+            statusLabel={statusLabel}
+            voiceStatus={voiceStatus}
+            isLiveActive={geminiLive.isLiveActive}
+            onToggleLive={() => (geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start())}
+            onOpenSettings={() => setGeminiLiveSettingsOpen(true)}
+            lastTranscript={geminiLive.lastTranscript}
+          />
+          <button
+            type="button"
+            onClick={() => openWorkspaceWidget("aiChatFull", { startLive: true })}
+            className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-[10px] font-bold text-indigo-300 hover:bg-[color:var(--surface-soft)]"
+          >
+            {t("workspaceWidgets.omnibar.openFullLiveChat")}
+          </button>
+        </div>
+      ) : null}
+
       {searchResults.length > 0 && input.trim() && (
         <div className="absolute bottom-full mb-3 w-[calc(100%-2rem)] overflow-hidden rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg">
           {searchResults.map((result, idx) => (
@@ -282,6 +288,7 @@ export default function Omnibar({
         value={geminiVoiceSettings}
         onChange={setGeminiVoiceSettings}
         isLiveActive={geminiLive.isLiveActive}
+        advancedFeaturesEnabled={osAssistant.featureFlags.geminiLiveAdvancedFeatures}
       />
     </div>
   );

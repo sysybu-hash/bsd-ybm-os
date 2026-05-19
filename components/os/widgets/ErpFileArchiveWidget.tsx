@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 
 type ProjectRow = { id: string; name: string };
 
@@ -605,6 +606,12 @@ export default function ErpFileArchiveWidget() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:flex-row md:items-center md:justify-between md:p-6">
           <div className="flex w-full flex-col gap-4 md:flex-1 md:flex-row md:items-center">
+            <KnowledgeVaultAttachButton
+              onSelect={(item) => {
+                toast.success(item.name);
+                if (item.webViewLink) window.open(item.webViewLink, "_blank", "noopener,noreferrer");
+              }}
+            />
             <div className="relative w-full md:max-w-md md:flex-1">
               <Search
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"

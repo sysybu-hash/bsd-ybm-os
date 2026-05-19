@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Mic, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
@@ -20,6 +21,8 @@ export type GeminiLiveSettingsSheetProps = {
   value: GeminiLiveVoiceSettings;
   onChange: (next: GeminiLiveVoiceSettings) => void;
   isLiveActive: boolean;
+  /** דגל פלטפורמה — מאפשר proactiveAudio / affectiveDialog */
+  advancedFeaturesEnabled?: boolean;
 };
 
 function ToggleRow({
@@ -57,6 +60,7 @@ export default function GeminiLiveSettingsSheet({
   value,
   onChange,
   isLiveActive,
+  advancedFeaturesEnabled = false,
 }: GeminiLiveSettingsSheetProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState<GeminiLiveVoiceSettings>(value);
@@ -87,7 +91,7 @@ export default function GeminiLiveSettingsSheet({
       title={t("geminiLive.panelTitle")}
       titleId="gemini-live-settings-title"
       panelWidth={480}
-      zIndex={1260}
+      zIndex={OS_MODAL_PANEL_Z}
       headerStart={
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
           <Mic size={18} aria-hidden />
@@ -161,6 +165,28 @@ export default function GeminiLiveSettingsSheet({
             checked={draft.outputTranscription}
             onChange={(v) => setDraft({ ...draft, outputTranscription: v })}
           />
+          {advancedFeaturesEnabled ? (
+            <>
+              <ToggleRow
+                label={t("geminiLive.proactiveAudio")}
+                description={t("geminiLive.proactiveAudioHint")}
+                checked={draft.proactiveAudio ?? false}
+                onChange={(v) => setDraft({ ...draft, proactiveAudio: v })}
+              />
+              <ToggleRow
+                label={t("geminiLive.affectiveDialog")}
+                description={t("geminiLive.affectiveDialogHint")}
+                checked={draft.affectiveDialog ?? false}
+                onChange={(v) => setDraft({ ...draft, affectiveDialog: v })}
+              />
+              <ToggleRow
+                label={t("geminiLive.sessionResumption")}
+                description={t("geminiLive.sessionResumptionHint")}
+                checked={draft.sessionResumptionEnabled ?? true}
+                onChange={(v) => setDraft({ ...draft, sessionResumptionEnabled: v })}
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </OsFloatingPanel>

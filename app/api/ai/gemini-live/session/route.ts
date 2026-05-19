@@ -1,5 +1,6 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
+import type { Session } from "next-auth";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   jsonServiceUnavailable,
@@ -16,13 +17,28 @@ import {
 } from "@/lib/gemini-model";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { getPlatformConfig } from "@/lib/platform-settings";
+import {
+  buildFullLiveConnectConfig,
+  normalizeSessionRequest,
+} from "@/lib/gemini-live-session-config";
+import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
+import { buildOsAssistantSystemInstruction } from "@/lib/os-assistant/system-prompt";
+import { buildOsAssistantUserContext } from "@/lib/os-assistant/user-context";
+import { getServerLocale } from "@/lib/i18n/server";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const REQUESTS_PER_HOUR = 80;
 
-async function createLiveAuthToken(client: GoogleGenAI, model: string) {
+async function createLiveAuthToken(
+  client: GoogleGenAI,
+  model: string,
+  settings: GeminiLiveVoiceSettings,
+  systemInstruction: string,
+  advancedFeatures: boolean,
+) {
   const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const newSessionExpireTime = new Date(Date.now() + 60 * 1000).toISOString();
 
@@ -33,11 +49,7 @@ async function createLiveAuthToken(client: GoogleGenAI, model: string) {
       newSessionExpireTime,
       liveConnectConstraints: {
         model,
-        config: {
-          sessionResumption: {},
-          temperature: 0.7,
-          responseModalities: [Modality.AUDIO],
-        },
+        config: buildFullLiveConnectConfig(settings, systemInstruction, { advancedFeatures }),
       },
       httpOptions: { apiVersion: "v1alpha" },
     },
@@ -48,10 +60,13 @@ async function createLiveAuthToken(client: GoogleGenAI, model: string) {
     model,
     expiresAt: expireTime,
     newSessionExpiresAt: newSessionExpireTime,
+    responseMode: settings.responseMode,
+    embeddedSetup: true,
+    systemInstructionLength: systemInstruction.length,
   };
 }
 
-export const POST = withWorkspacesAuth(async (_req, { orgId, userId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
   try {
     const platform = await getPlatformConfig();
     if (platform.maintenanceMode) {
@@ -87,12 +102,54 @@ export const POST = withWorkspacesAuth(async (_req, { orgId, userId }) => {
       );
     }
 
+    let sessionBody: unknown = {};
+    try {
+      sessionBody = await req.json();
+    } catch {
+      sessionBody = {};
+    }
+    const { settings, advancedFeatures } = normalizeSessionRequest(sessionBody);
+    const locale = await getServerLocale();
+
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    const session = {
+      user: {
+        id: userId,
+        organizationId: orgId,
+        role,
+        email: userRow?.email ?? null,
+      },
+    } as Session;
+
+    const assistantCtx = await buildOsAssistantUserContext(session);
+    const systemInstruction = assistantCtx
+      ? buildOsAssistantSystemInstruction(assistantCtx, { voice: true, locale })
+      : buildOsAssistantSystemInstruction(
+          {
+            user: {
+              id: userId,
+              name: "משתמש",
+              email: userRow?.email ?? "",
+              role,
+              isPlatformAdmin: false,
+            },
+            organization: null,
+            capabilities: { geminiLive: true, meckano: false },
+          },
+          { voice: true, locale },
+        );
+
     const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     let lastError: unknown;
 
     for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
       try {
-        return NextResponse.json(await createLiveAuthToken(client, model));
+        return NextResponse.json(
+          await createLiveAuthToken(client, model, settings, systemInstruction, advancedFeatures),
+        );
       } catch (error) {
         lastError = error;
         const blob = `${error instanceof Error ? error.message : String(error)} ${JSON.stringify(error)}`;

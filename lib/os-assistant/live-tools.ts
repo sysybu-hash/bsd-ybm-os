@@ -9,7 +9,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "execute_user_command",
       description:
-        "PRIMARY tool for any in-app request: create invoice/quote, add task, add client, scan, open screens, clock in/out, or combined requests. Pass the user's exact words in Hebrew. Use when unsure which specific tool to call, or when the request has multiple steps.",
+        "PRIMARY tool — runs real actions in BSD-YBM OS from natural language. Use for: create invoice/quote/receipt, add task, new client, scan with instructions, open any screen, Meckano clock in/out, notebook, multi-step requests, or when unsure. Pass the user's full sentence unchanged (Hebrew/English/Russian). Always prefer this for complex commands.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -24,7 +24,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "run_automation",
       description:
-        "Runs a specific automation when you know the exact intent. Examples: create_invoice (clientName, amount, lineDescription), create_task (title, projectName), create_contact (name), open_scanner, meckano_clock_in, save_scan_to_notebook.",
+        "Runs one known automation intent with structured params. Use when intent is clear: create_invoice, create_quote, create_task, create_contact, open_scanner, scan_with_instructions, save_scan_to_notebook, meckano_clock_in/out, open_dashboard, open_crm, open_project_board, open_erp_archive, open_google_drive, open_notebook, clear_layout, close_widget, export_document, search_client, open_project, and all catalog intents.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -45,7 +45,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "execute_os_command",
       description:
-        "Opens a workspace window only (no create/submit). Use for navigation: dashboard, projectBoard, crmTable, docCreator, aiScanner, etc.",
+        "Opens a workspace widget only (navigation, no data creation). Widget ids: dashboard, projectBoard, crmTable, docCreator, aiScanner, erpArchive, googleDrive, notebookLM, aiChatFull, meckanoReports, settings, helpCenter, and all OS_ASSISTANT_WIDGETS ids.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -69,7 +69,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "search_site",
       description:
-        "Searches clients and projects by name. Opens the best match. Use before create_invoice if client name is ambiguous.",
+        "Searches clients and projects in the database by name; opens the best match. Use before create_invoice/create_quote when the client name might be ambiguous or to answer 'find client X'.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -81,7 +81,7 @@ export function getOsAssistantLiveToolDeclarations() {
     {
       name: "google_assistant_command",
       description:
-        "External queries only: weather, smart home, general knowledge. NOT for BSD-YBM OS actions.",
+        "External queries ONLY (weather, smart home, web-style facts). Never use for invoices, tasks, CRM, scans, or any BSD-YBM OS screen — use execute_user_command or run_automation instead.",
       parameters: {
         type: "OBJECT",
         properties: {

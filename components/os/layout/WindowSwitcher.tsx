@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 
 const ICONS: Partial<Record<WidgetType, typeof LayoutDashboard>> = {
   dashboard: LayoutDashboard,
@@ -65,7 +66,7 @@ export default function WindowSwitcher({
       onClose={onClose}
       title={t("workspaceWidgets.windowSwitcher.title")}
       titleId="window-switcher-title"
-      zIndex={1300}
+      zIndex={OS_MODAL_PANEL_Z}
     >
       {widgets.length === 0 ? (
         <p className="text-center text-sm text-[color:var(--foreground-muted)]">

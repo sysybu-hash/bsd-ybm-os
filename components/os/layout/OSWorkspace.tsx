@@ -194,7 +194,9 @@ export default function OSWorkspace({
               <GoogleDriveWidget openWorkspaceWidget={openWidget} />
             )}
             {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
-            {widget.type === "notebookLM" && <NotebookLMWidget liveData={widget.liveData} />}
+            {widget.type === "notebookLM" && (
+              <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+            )}
             {widget.type === "accessibility" && <AccessibilityWidget />}
             {widget.type === "platformAdmin" && <PlatformAdminWidget />}
             {widget.type === "helpCenter" && (

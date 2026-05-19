@@ -32,6 +32,33 @@ import { useAutomationRunnerContext } from '@/components/os/AutomationRunnerCont
 import type { WidgetType } from '@/hooks/use-window-manager';
 import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
 import GeminiLiveSettingsSheet from '@/components/os/GeminiLiveSettingsSheet';
+import GeminiLivePanel from '@/components/os/gemini-live/GeminiLivePanel';
+import KnowledgeVaultAttachButton from '@/components/os/knowledge-vault/KnowledgeVaultAttachButton';
+import { GEMINI_LIVE_SESSION_START_TAG } from '@/lib/gemini-live/session-greeting';
+
+const LIVE_USER_DRAFT_ID = 'gemini-live-user-draft';
+const LIVE_ASSISTANT_DRAFT_ID = 'gemini-live-assistant-draft';
+
+function upsertLiveTranscriptMessage(
+  prev: Message[],
+  draftId: string,
+  role: Message['role'],
+  content: string,
+  finished: boolean,
+  locale: string,
+): Message[] {
+  const trimmed = content.trim();
+  if (!trimmed || trimmed === GEMINI_LIVE_SESSION_START_TAG) return prev;
+
+  const withoutDraft = prev.filter((m) => m.id !== draftId);
+  const entry: Message = {
+    id: finished ? `${role}-live-${Date.now()}` : draftId,
+    role,
+    content: role === 'assistant' ? (getAssistantVisibleTranscript(trimmed) ?? trimmed) : trimmed,
+    timestamp: formatChatTime(locale),
+  };
+  return [...withoutDraft, entry];
+}
 
 interface Message {
   id: string;
@@ -61,6 +88,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'claude'>('gemini');
+  const [chatTab, setChatTab] = useState<'live' | 'text'>('text');
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
@@ -73,14 +101,44 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
   }, []);
 
+  const assistantToolDeps = useMemo(
+    () => automationCtx?.assistantToolDeps ?? { openWidget },
+    [automationCtx?.assistantToolDeps, openWidget],
+  );
+  const osAssistant = useOsAssistant(assistantToolDeps);
+
   useEffect(() => {
     const prompt = liveData?.prompt;
     if (typeof prompt === "string" && prompt.trim()) setInput(prompt.trim());
     const p = liveData?.provider;
     if (p === "openai" || p === "claude" || p === "gemini") setProvider(p);
+    if (liveData?.startLive === true) {
+      setChatTab('live');
+      setIsLiveMode(true);
+    }
   }, [liveData]);
 
-  const osAssistant = useOsAssistant(automationCtx?.assistantToolDeps ?? { openWidget });
+  useEffect(() => {
+    if (chatTab === "live" && session?.user?.id) {
+      void osAssistant.refresh();
+    }
+  }, [chatTab, session?.user?.id, osAssistant.refresh]);
+
+  useEffect(() => {
+    if (osAssistant.featureFlags.geminiLiveEnabled === false) {
+      setChatTab('text');
+      setIsLiveMode(false);
+      return;
+    }
+    if (osAssistant.featureFlags.aiChatLiveDefault && osAssistant.ready) {
+      setChatTab('live');
+      setIsLiveMode(true);
+    }
+  }, [
+    osAssistant.featureFlags.aiChatLiveDefault,
+    osAssistant.featureFlags.geminiLiveEnabled,
+    osAssistant.ready,
+  ]);
 
   const liveStatusLabels = useMemo<GeminiLiveStatusLabels>(
     () => ({
@@ -97,34 +155,48 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     [t],
   );
 
+  const liveUserName =
+    osAssistant.context?.user.name?.trim() ||
+    session?.user?.name?.trim() ||
+    undefined;
+
   const geminiLive = useGeminiLiveAudio({
     enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
+    contextReady: osAssistant.hasRichContext,
     systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,
+    advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
+    locale,
+    userName: liveUserName,
+    greetOnConnect: true,
     statusLabels: liveStatusLabels,
     onUserTranscript: (text, finished) => {
-      if (finished) {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'user',
-          content: text,
-          timestamp: formatChatTime(locale),
-        }]);
-      }
+      setMessages((prev) =>
+        upsertLiveTranscriptMessage(prev, LIVE_USER_DRAFT_ID, 'user', text, finished, locale),
+      );
     },
     onModelTranscript: (text, finished) => {
-      if (finished) {
-        const visible = getAssistantVisibleTranscript(text);
-        if (!visible) return;
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: visible,
-          timestamp: formatChatTime(locale),
-        }]);
-      }
+      const visible = getAssistantVisibleTranscript(text) ?? text;
+      if (!visible.trim()) return;
+      setMessages((prev) =>
+        upsertLiveTranscriptMessage(prev, LIVE_ASSISTANT_DRAFT_ID, 'assistant', visible, finished, locale),
+      );
     },
-    onToolCall: osAssistant.onToolCall,
+    onToolCall: async (name, args) => {
+      const result = await osAssistant.onToolCall(name, args);
+      const text = typeof result === "string" ? result : "Success";
+      if (text === "Success") {
+        toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
+      } else if (
+        text &&
+        !text.startsWith("לא ") &&
+        !text.startsWith("שגיאה") &&
+        !text.toLowerCase().startsWith("error")
+      ) {
+        toast.success(text);
+      }
+      return result;
+    },
     onError: (err) => {
       console.error("Gemini Live Error:", err);
       toast.error(t("workspaceWidgets.aiChat.liveFailed"));
@@ -134,12 +206,23 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const { isLiveActive, isListening, isSpeaking, start, stop } = geminiLive;
 
   useEffect(() => {
-    if (isLiveMode && !isLiveActive) {
+    setIsLiveMode(chatTab === 'live');
+  }, [chatTab]);
+
+  useEffect(() => {
+    if (isLiveMode && !isLiveActive && osAssistant.hasRichContext) {
       start();
     } else if (!isLiveMode && isLiveActive) {
       stop();
     }
-  }, [isLiveMode, isLiveActive, start, stop]);
+  }, [isLiveMode, isLiveActive, osAssistant.hasRichContext, start, stop]);
+
+  const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =
+    geminiLive.state === "connecting" ? "connecting"
+    : geminiLive.state === "streaming" ? (geminiLive.isSpeaking ? "speaking" : "listening")
+    : geminiLive.state === "error" ? "error"
+    : isLiveActive ? "listening"
+    : "idle";
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -321,72 +404,30 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col relative">
-        {/* Chat Header with Live Toggle */}
-        <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsLiveMode(!isLiveMode)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                isLiveMode 
-                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' 
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-              }`}
-            >
-              {isLiveMode ? <MicOff size={14} /> : <Mic size={14} />}
-              {isLiveMode ? t('workspaceWidgets.aiChat.stopLive') : t('workspaceWidgets.aiChat.startLive')}
-            </button>
-            {isLiveMode && (
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isLiveActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-                  {isLiveActive ? t('workspaceWidgets.aiChat.connected') : t('workspaceWidgets.aiChat.connecting')}
-                </span>
-              </div>
-            )}
+        <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
+          <div className="flex items-center gap-2">
+            {osAssistant.featureFlags.geminiLiveEnabled !== false ? (
+            <button type="button" onClick={() => setChatTab('live')} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'live' ? 'bg-indigo-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabLive')}</button>
+            ) : null}
+            <button type="button" onClick={() => setChatTab('text')} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'text' ? 'bg-purple-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabText')}</button>
           </div>
-          <button 
-            onClick={() => setShowSettings(true)}
-            className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"
-          >
-            <Settings2 size={18} />
-          </button>
+          <button type="button" onClick={() => setShowSettings(true)} className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"><Settings2 size={18} /></button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-          {isLiveMode && (
-            <div className="flex flex-col items-center justify-center py-12 bg-purple-500/5 rounded-[3rem] border border-purple-500/10 mb-8">
-              <div className="relative mb-8">
-                <div className={`absolute inset-0 rounded-full bg-purple-500/20 blur-2xl transition-all duration-500 ${isSpeaking || isListening ? 'scale-150 opacity-100' : 'scale-100 opacity-0'}`} />
-                <div className={`w-24 h-24 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                  isSpeaking ? 'border-emerald-500 bg-emerald-500/10' : 
-                  isListening ? 'border-purple-500 bg-purple-500/10' : 
-                  'border-slate-300 dark:border-white/10'
-                }`}>
-                  {isSpeaking ? <Volume2 size={40} className="text-emerald-500 animate-pulse" /> : 
-                   isListening ? <Mic size={40} className="text-purple-500 animate-bounce" /> : 
-                   <MicOff size={40} className="text-slate-400" />}
-                </div>
-              </div>
-              <h4 className="text-lg font-black text-white mb-2">
-                {isSpeaking ? t('workspaceWidgets.aiChat.liveSpeaking') : isListening ? t('workspaceWidgets.aiChat.liveListening') : t('workspaceWidgets.aiChat.liveReady')}
-              </h4>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                {isListening ? t('workspaceWidgets.aiChat.liveListening') : t('workspaceWidgets.aiChat.liveTapMic')}
-              </p>
-              
-              {!isListening && isLiveActive && (
-                <button 
-                  onClick={start}
-                  className="mt-8 px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-2xl shadow-xl shadow-purple-900/20 transition-all transform hover:scale-105 active:scale-95"
-                >
-                  {t('workspaceWidgets.aiChat.startTalking')}
-                </button>
-              )}
-            </div>
+          {chatTab === 'live' && (
+            <GeminiLivePanel
+              statusLabel={geminiLive.statusText}
+              voiceStatus={voiceStatus}
+              isLiveActive={isLiveActive}
+              onToggleLive={() => (isLiveActive ? stop() : start())}
+              onOpenSettings={() => setShowSettings(true)}
+              lastTranscript={geminiLive.lastTranscript}
+            />
           )}
 
-          {messages.length === 0 && !isLiveMode && (
+          {messages.length === 0 && chatTab === 'text' && (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
               <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
                 <Bot size={40} className="text-purple-600 dark:text-purple-400" />
@@ -436,7 +477,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
           <div ref={chatEndRef} />
         </div>
 
-        {/* Input */}
+        {chatTab === 'text' ? (
         <div className="p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
           {attachment ? (
             <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
@@ -462,6 +503,15 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             >
               <Paperclip size={20} />
             </button>
+            <KnowledgeVaultAttachButton
+              onSelect={(item) => {
+                if (item.parsedSummary && typeof item.parsedSummary === 'object') {
+                  const text = (item.parsedSummary as { textPreview?: string }).textPreview;
+                  if (text) setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
+                }
+                toast.success(item.name);
+              }}
+            />
             <div className="relative flex-1">
               <input
                 value={input}
@@ -486,6 +536,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             <span>{t('workspaceWidgets.aiChat.footerDataAware')}</span>
           </div>
         </div>
+        ) : null}
       </div>
 
       <GeminiLiveSettingsSheet
@@ -494,6 +545,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         value={geminiVoiceSettings}
         onChange={setGeminiVoiceSettings}
         isLiveActive={isLiveActive}
+        advancedFeaturesEnabled={osAssistant.featureFlags.geminiLiveAdvancedFeatures}
       />
     </div>
   );

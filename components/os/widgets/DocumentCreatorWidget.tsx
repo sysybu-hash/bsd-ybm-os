@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
+import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+
 interface DocItem {
   id: string;
   description: string;
@@ -500,6 +502,12 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
             <p className="text-[10px] text-[color:var(--foreground-muted)] uppercase tracking-widest font-bold">BSD-YBM Financial Engine</p>
           </div>
         </div>
+        <div className="flex flex-col items-end gap-2">
+          <KnowledgeVaultAttachButton
+            onSelect={(item) => {
+              toast.success(`נבחר ממאגר: ${item.name}`);
+            }}
+          />
         <div className="text-left space-y-0.5">
           <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">
             לפני מע״מ · מע״מ {formatVatPercent(vatRatePercent)}%
@@ -510,6 +518,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block">
             ₪{calculateBilling().total.toLocaleString()}
           </span>
+        </div>
         </div>
       </div>
 

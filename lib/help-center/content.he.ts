@@ -314,7 +314,12 @@ export const HELP_CENTER_HE: HelpCenterData = {
     {
       question: "מה עושה Gemini Live?",
       answer:
-        "מאפשר שיחה קולית עם העוזר; ניתן לבקש פתיחת מסכים, סריקה, משימות ועוד — לפי הרשאות המנוי.",
+        "עוזר קולי (Google Gemini Live) שמברך אותך בתחילת כל שיחה, עונה על כל נושא, ומבצע פעולות אמיתיות במערכת: חשבוניות, משימות, לקוחות, סריקות, פתיחת מסכים, מקאנו ועוד — דרך כלי המערכת. בחלון העוזר: טאב Live וטאב טקסט. ברירת מחדל Live רק אם הופעל aiChatLiveDefault במנהל הפלטפורמה.",
+    },
+    {
+      question: "מהו מאגר הידע?",
+      answer:
+        "קבצים שנקלטים ל-Google Drive תחת BSD-YBM Knowledge (Ingest/Parsed/Issued). הפעלה דרך דגל knowledgeVaultEnabled במנהל הפלטפורמה; גרירת קבצים, Drive, מחולל מסמכים ועוזר AI יכולים לשלוח למאגר.",
     },
     {
       question: "למי מוצג כפתור «ניהול»?",

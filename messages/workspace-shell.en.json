@@ -465,7 +465,8 @@
       "taxId": "ID: {id}",
       "sheetTitle": "Command & search",
       "sheetAria": "Command bar and search",
-      "sheetCloseAria": "Close command bar"
+      "sheetCloseAria": "Close command bar",
+      "openFullLiveChat": "Open full Live chat"
     },
     "notificationCenter": {
       "title": "Notifications",
@@ -586,7 +587,9 @@
       "liveStatusFallback": "Gemini Live is available after sign-in and org assignment.",
       "sendFailed": "Failed to reach AI",
       "liveFailed": "Gemini Live connection failed",
-      "placeholder": "Ask me anything about your projects…"
+      "placeholder": "Ask me anything about your projects…",
+      "tabLive": "Live",
+      "tabText": "Text"
     },
     "erp": {
       "loading": "Loading documents…",
@@ -629,7 +632,18 @@
       "audioSourcesFirst": "Add sources before audio overview",
       "saveBeforeAudio": "Save the notebook before audio overview",
       "audioFailed": "Audio overview failed",
-      "loadingNotebooks": "Loading notebooks…"
+      "loadingNotebooks": "Loading notebooks…",
+      "uploadHint": "Drag files or click to upload (all scanner file types)",
+      "uploadSuccess": "{count} source(s) uploaded",
+      "issueDocument": "Issue document",
+      "issueDocumentTitle": "Issue document from notebook",
+      "issueDocumentHint": "Describe the document you need (contract, letter, report, proposal, etc.)",
+      "issueDocumentConfirm": "Generate",
+      "issueSuccess": "Document generated and added to sources",
+      "issueFailed": "Document generation failed",
+      "issuedDocName": "Generated document",
+      "downloadIssued": "Download document",
+      "openInDocCreator": "Open in document creator"
     },
     "project": {
       "loadFailed": "Failed to load project",
@@ -672,7 +686,21 @@
     "inputTranscription": "Input transcription",
     "outputTranscription": "Output transcription",
     "reset": "Reset",
-    "save": "Save"
+    "save": "Save",
+    "proactiveAudio": "Proactive audio",
+    "proactiveAudioHint": "Model may initiate speech when appropriate",
+    "affectiveDialog": "Affective dialog",
+    "affectiveDialogHint": "Emotional tone adaptation (if supported)",
+    "sessionResumption": "Session resumption",
+    "sessionResumptionHint": "Resume Live after brief disconnects"
+  },
+  "knowledgeVault": {
+    "pickerTitle": "Knowledge vault",
+    "searchPlaceholder": "Search vault…",
+    "loading": "Loading items…",
+    "empty": "No vault items",
+    "attachFromVault": "Attach from knowledge vault",
+    "attachShort": "Vault"
   },
   "settingsHub": {
     "sidebarEyebrow": "Settings",

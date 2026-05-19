@@ -41,6 +41,11 @@ export function normalizeGeminiLiveVoiceSettings(raw: unknown): GeminiLiveVoiceS
   if (typeof o.inputTranscription === "boolean") base.inputTranscription = o.inputTranscription;
   if (typeof o.outputTranscription === "boolean") base.outputTranscription = o.outputTranscription;
   if (o.responseMode === "audio" || o.responseMode === "audio_text") base.responseMode = o.responseMode;
+  if (typeof o.proactiveAudio === "boolean") base.proactiveAudio = o.proactiveAudio;
+  if (typeof o.affectiveDialog === "boolean") base.affectiveDialog = o.affectiveDialog;
+  if (typeof o.sessionResumptionEnabled === "boolean") {
+    base.sessionResumptionEnabled = o.sessionResumptionEnabled;
+  }
 
   return base;
 }

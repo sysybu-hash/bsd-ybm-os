@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome";
+import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 
 export type OsFloatingPanelProps = {
   open: boolean;
@@ -39,7 +40,7 @@ export default function OsFloatingPanel({
   titleId = "os-floating-panel-title",
   children,
   className = "",
-  zIndex = 1260,
+  zIndex = OS_MODAL_PANEL_Z,
   panelWidth = 560,
   headerStart,
   footer,
@@ -55,6 +56,8 @@ export default function OsFloatingPanel({
   const [isMaximized, setIsMaximized] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const backdropZ = zIndex > OS_MODAL_BACKDROP_Z ? zIndex - 10 : OS_MODAL_BACKDROP_Z;
 
   const FOCUSABLE =
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -165,28 +168,65 @@ export default function OsFloatingPanel({
 
   if (!mounted || typeof document === "undefined") return null;
 
-  const backdropZ = zIndex - 10;
-
   const panelClass = isMaximized
     ? "os-floating-panel os-floating-panel--maximized"
     : "os-floating-panel os-modal-dialog";
 
-  const panelStyle: React.CSSProperties = isMaximized
-    ? { zIndex }
-    : {
-        zIndex,
-        width: `min(calc(100vw - 1.25rem), ${panelWidth}px)`,
-        left: `calc(50% + ${offset.x}px)`,
-        top: `calc(50% + ${offset.y}px)`,
-        transform: "translate(-50%, -50%)",
-      };
+  const panelSurfaceClass = `${panelClass} workspace-window workspace-window--focused flex flex-col overflow-hidden bg-[color:var(--surface-card)] ${className}`;
+
+  const panelBody = (
+    <>
+      <WorkspaceWindowChrome
+        title={title}
+        titleId={titleId}
+        onClose={onClose}
+        headerStart={headerStart}
+        showZoom={showZoom}
+        zoom={zoom}
+        onZoomIn={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))}
+        onZoomOut={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
+        showMaximize={showMaximize}
+        isMaximized={isMaximized}
+        onMaximize={() => setIsMaximized((m) => !m)}
+        canGoBack
+        canGoForward={false}
+        onBack={onClose}
+        maximizeHiddenOnMobile={false}
+        headerClassName={
+          draggable && !isMaximized ? "cursor-move touch-none" : "cursor-default"
+        }
+        onHeaderPointerDown={onHeaderPointerDown}
+        onHeaderPointerMove={onHeaderPointerMove}
+        onHeaderPointerUp={onHeaderPointerUp}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <motion.div
+            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : "h-full min-h-0"}`}
+            style={contentZoomStyle}
+          >
+            {children}
+          </motion.div>
+        </div>
+      </div>
+
+      {footer ? (
+        <div className="shrink-0 border-t border-[color:var(--border-main)] px-4 py-3">{footer}</div>
+      ) : null}
+    </>
+  );
 
   return createPortal(
-    <AnimatePresence mode="wait" onExitComplete={onExitComplete}>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {open ? (
-        <>
+        <div
+          key="os-floating-panel-overlay"
+          className="fixed inset-0 isolate"
+          style={{ zIndex }}
+          dir={dir}
+        >
           <motion.button
-            key="os-floating-panel-backdrop"
             type="button"
             data-os-floating-panel-backdrop
             initial={{ opacity: 0 }}
@@ -198,60 +238,51 @@ export default function OsFloatingPanel({
             aria-label={t("workspaceWidgets.chrome.closeLabel")}
             onClick={onClose}
           />
-          <motion.div
-            key="os-floating-panel-dialog"
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ type: "spring", damping: 28, stiffness: 340 }}
-            className={`${panelClass} workspace-window workspace-window--focused fixed flex flex-col overflow-hidden ${className}`}
-            style={panelStyle}
-            dir={dir}
-          >
-            <WorkspaceWindowChrome
-              title={title}
-              titleId={titleId}
-              onClose={onClose}
-              headerStart={headerStart}
-              showZoom={showZoom}
-              zoom={zoom}
-              onZoomIn={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))}
-              onZoomOut={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
-              showMaximize={showMaximize}
-              isMaximized={isMaximized}
-              onMaximize={() => setIsMaximized((m) => !m)}
-              canGoBack
-              canGoForward={false}
-              onBack={onClose}
-              maximizeHiddenOnMobile={false}
-              headerClassName={
-                draggable && !isMaximized ? "cursor-move touch-none" : "cursor-default"
-              }
-              onHeaderPointerDown={onHeaderPointerDown}
-              onHeaderPointerMove={onHeaderPointerMove}
-              onHeaderPointerUp={onHeaderPointerUp}
-            />
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                <div
-                  className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : "h-full min-h-0"}`}
-                  style={contentZoomStyle}
+          {isMaximized ? (
+            <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ type: "spring", damping: 28, stiffness: 340 }}
+              className={`${panelSurfaceClass} fixed flex flex-col overflow-hidden`}
+              style={{ zIndex }}
+            >
+              {panelBody}
+            </motion.div>
+          ) : (
+            <div
+              className="pointer-events-none fixed inset-0 flex items-center justify-center p-2 sm:p-4"
+              style={{ zIndex }}
+            >
+              <div
+                className="pointer-events-auto w-full max-w-[calc(100vw-1rem)]"
+                style={{
+                  width: `min(calc(100vw - 1.25rem), ${panelWidth}px)`,
+                  transform: `translate(${offset.x}px, ${offset.y}px)`,
+                }}
+              >
+                <motion.div
+                  ref={panelRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={titleId}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ type: "spring", damping: 28, stiffness: 340 }}
+                  className={`${panelSurfaceClass} max-h-[min(88dvh,calc(100dvh-var(--mobile-chrome-bottom,5.5rem)-1.25rem))]`}
                 >
-                  {children}
-                </div>
+                  {panelBody}
+                </motion.div>
               </div>
             </div>
-
-            {footer ? (
-              <div className="shrink-0 border-t border-[color:var(--border-main)] px-4 py-3">{footer}</div>
-            ) : null}
-          </motion.div>
-        </>
+          )}
+        </div>
       ) : null}
     </AnimatePresence>,
     document.body,

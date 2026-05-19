@@ -1,10 +1,10 @@
 /**
- * קטלוג מודלי Gemini — עודכן לפי Models API, 2026-05-15.
+ * קטלוג מודלי Gemini — עודכן לפי Models API, 2026-05-19.
  * @see https://ai.google.dev/gemini-api/docs/models
  * @see https://ai.google.dev/gemini-api/docs/multimodal-live
  */
 
-export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-15";
+export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-19";
 
 /** מודל טקסט יציב (GA) — ברירת מחדל לפרודקשן */
 export const GEMINI_STABLE_TEXT_MODEL = "gemini-2.5-flash";
@@ -21,11 +21,11 @@ export const GEMINI_FLAGSHIP_MODEL = GEMINI_STABLE_TEXT_MODEL;
  */
 export const GEMINI_LIVE_NATIVE_AUDIO_MODEL = "gemini-2.5-flash-native-audio-latest";
 
-/** מודלים ל-Gemini Live — ניסיון לפי סדר */
+/** מודלים ל-Gemini Live — ניסיון לפי סדר (3.1 Live ראשון אם זמין ב-API) */
 export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
+  "gemini-3.1-flash-live-preview",
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
   "gemini-2.5-flash-native-audio-preview-12-2025",
-  "gemini-3.1-flash-live-preview",
   "gemini-2.5-flash-native-audio-preview-09-2025",
 ] as const;
 
@@ -59,6 +59,15 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
   "gemini-2.0-pro-stable": "gemini-2.5-pro",
   "gemini-2.0-flash-live-001": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
 };
+
+export function getGeminiLiveModelId(): string {
+  const fromEnv = process.env.GEMINI_LIVE_MODEL?.trim();
+  if (fromEnv) {
+    if (fromEnv.includes("live")) return fromEnv;
+    return LEGACY_MODEL_ALIASES[fromEnv] ?? fromEnv;
+  }
+  return GEMINI_LIVE_MODEL_FALLBACK_CHAIN[0] ?? GEMINI_LIVE_NATIVE_AUDIO_MODEL;
+}
 
 function dedupeModels(ids: string[]): string[] {
   const seen = new Set<string>();

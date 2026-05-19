@@ -24,6 +24,7 @@ import {
   Library,
 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import ScanResultsPanel from "@/components/os/widgets/scan/ScanResultsPanel";
 import { canBrowserPreviewMime } from "@/lib/scan-preview";
@@ -939,7 +940,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         onClose={() => setPreviewPanelOpen(false)}
         title={tr("scanner.preview", "תצוגה מקדימה")}
         panelWidth={640}
-        zIndex={1270}
+        zIndex={OS_MODAL_PANEL_Z + 10}
       >
         <ScanFilePreview
           url={previewUrl}
@@ -987,7 +988,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         onClose={() => setResultsPanelOpen(false)}
         title={tr("scanner.resultsPanel", "תוצאות סריקה")}
         panelWidth={560}
-        zIndex={1280}
+        zIndex={OS_MODAL_PANEL_Z + 20}
       >
         {lastScanV5 && lastScanFileName ? (
           <ScanResultsPanel

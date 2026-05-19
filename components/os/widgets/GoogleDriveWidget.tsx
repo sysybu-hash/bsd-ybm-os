@@ -35,6 +35,7 @@ import {
   saveDriveViewMode,
 } from "@/lib/google-drive-view-mode";
 import { decodeStatusLabel } from "@/lib/google-drive-decode-routing";
+import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 import GoogleDriveDecodeReviewPanel, {
   type ReviewEditableItem,
 } from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
@@ -616,6 +617,12 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
         </div>
 
         <div className="flex items-center gap-2">
+          <KnowledgeVaultAttachButton
+            onSelect={(item) => {
+              if (item.webViewLink) window.open(item.webViewLink, "_blank", "noopener,noreferrer");
+              else toast.success(item.name);
+            }}
+          />
           <button
             type="button"
             onClick={() => void handleRefresh()}

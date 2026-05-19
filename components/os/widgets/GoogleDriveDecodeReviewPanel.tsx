@@ -3,6 +3,7 @@
 import React from "react";
 import { Loader2, X } from "lucide-react";
 import type { DriveDecodePreviewItem } from "@/lib/google-drive-decode-types";
+import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 
 export type ReviewEditableItem = DriveDecodePreviewItem & {
   editedClientName: string;
@@ -34,9 +35,21 @@ export default function GoogleDriveDecodeReviewPanel({
   const pending = items.filter((i) => i.decodeStatus === "NEEDS_REVIEW" || i.needsReview);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/50 p-4 sm:items-center" role="presentation">
+    <div
+      className="fixed inset-0 flex items-end justify-center p-4 sm:items-center"
+      style={{ zIndex: OS_MODAL_PANEL_Z }}
+      role="presentation"
+    >
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/50"
+        style={{ zIndex: OS_MODAL_BACKDROP_Z }}
+        aria-label="סגור"
+        onClick={onClose}
+      />
       <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl"
+        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl"
+        style={{ zIndex: OS_MODAL_PANEL_Z }}
         dir="rtl"
       >
         <div className="flex items-center justify-between border-b border-[color:var(--border-main)] px-4 py-3">

@@ -10,6 +10,12 @@ const featureFlagsSchema = z.object({
   meckanoGlobal: z.boolean().default(true),
   geminiLiveEnabled: z.boolean().default(true),
   driveSyncDefault: z.boolean().default(true),
+  /** מאגר ידע (Drive Ingest/Parsed/Issued) — כבוי בפרוד עד QA */
+  knowledgeVaultEnabled: z.boolean().default(false),
+  /** Gemini Live כברירת מחדל בחלון aiChatFull */
+  aiChatLiveDefault: z.boolean().default(false),
+  /** proactiveAudio / affectiveDialog ב-Live */
+  geminiLiveAdvancedFeatures: z.boolean().default(false),
 });
 
 export const platformConfigSchema = z.object({
@@ -25,6 +31,9 @@ export const platformConfigSchema = z.object({
     meckanoGlobal: true,
     geminiLiveEnabled: true,
     driveSyncDefault: true,
+    knowledgeVaultEnabled: false,
+    aiChatLiveDefault: false,
+    geminiLiveAdvancedFeatures: false,
   }),
 });
 
@@ -45,6 +54,9 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
     meckanoGlobal: true,
     geminiLiveEnabled: true,
     driveSyncDefault: true,
+    knowledgeVaultEnabled: false,
+    aiChatLiveDefault: false,
+    geminiLiveAdvancedFeatures: false,
   },
 };
 

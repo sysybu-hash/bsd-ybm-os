@@ -21,6 +21,7 @@ import FirstDayWizard from "@/components/os/onboarding/FirstDayWizard";
 import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
+import KnowledgeVaultWorkspaceBridge from "@/components/os/KnowledgeVaultWorkspaceBridge";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
@@ -415,6 +416,7 @@ export default function OmniCanvasWorkspace() {
   return (
     <LauncherConfigProvider>
     <AutomationRunnerProvider value={automationContextValue}>
+    <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
     <main className="quiet-shell fixed inset-0 max-w-[100vw] overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
       <LauncherEditBanner />
       <LauncherPickerSheet />
@@ -531,6 +533,7 @@ export default function OmniCanvasWorkspace() {
       />
       <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />
     </main>
+    </KnowledgeVaultWorkspaceBridge>
     </AutomationRunnerProvider>
     </LauncherConfigProvider>
   );

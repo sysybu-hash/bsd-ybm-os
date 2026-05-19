@@ -48,6 +48,12 @@ export const GET = withWorkspacesAuth(async (_req, ctx) => {
       systemInstructionVoice: buildOsAssistantSystemInstruction(assistantCtx, { voice: true, locale }),
       geminiLiveAllowed:
         platform.featureFlags.geminiLiveEnabled && !platform.maintenanceMode,
+      featureFlags: {
+        knowledgeVaultEnabled: platform.featureFlags.knowledgeVaultEnabled,
+        aiChatLiveDefault: platform.featureFlags.aiChatLiveDefault,
+        geminiLiveAdvancedFeatures: platform.featureFlags.geminiLiveAdvancedFeatures,
+        geminiLiveEnabled: platform.featureFlags.geminiLiveEnabled,
+      },
       enabledAutomationIntents,
     });
   } catch (err) {

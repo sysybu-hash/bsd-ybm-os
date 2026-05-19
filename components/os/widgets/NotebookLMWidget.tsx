@@ -10,6 +10,8 @@ import {
   AlignLeft,
   Bot,
   BrainCircuit,
+  FileDown,
+  FilePlus,
   FileText,
   FolderOpen,
   Loader2,
@@ -21,6 +23,11 @@ import {
   Square,
   Upload,
 } from "lucide-react";
+import type { WidgetType } from "@/hooks/use-window-manager";
+import {
+  buildScanFileAcceptAttribute,
+  SCAN_ACCEPT_SUMMARY,
+} from "@/lib/scan-mime";
 import { toast } from "sonner";
 import ItemActions from "@/components/os/ItemActions";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
@@ -30,6 +37,7 @@ import {
   useNotebookSpeechSettingsState,
 } from "@/hooks/useNotebookSpeechPlayback";
 import NotebookSpeechSettingsPanel from "@/components/os/widgets/NotebookSpeechSettingsPanel";
+import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 
 const DRAFT_KEY = "notebooklm-draft-v1";
 
@@ -63,9 +71,13 @@ function uiMessagesFromStored(
 
 type NotebookLMWidgetProps = {
   liveData?: Record<string, unknown> | null;
+  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
 
-export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetProps) {
+export default function NotebookLMWidget({
+  liveData = null,
+  openWorkspaceWidget,
+}: NotebookLMWidgetProps) {
   const { dir, t } = useI18n();
   const [renameSourceId, setRenameSourceId] = useState<string | null>(null);
   const [deleteNotebookId, setDeleteNotebookId] = useState<string | null>(null);
@@ -80,8 +92,12 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [audioScript, setAudioScript] = useState<string | null>(null);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [issuePromptOpen, setIssuePromptOpen] = useState(false);
+  const [isIssuingDocument, setIsIssuingDocument] = useState(false);
+  const [issuedDocumentText, setIssuedDocumentText] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
   const sourcesRef = useRef<Source[]>([]);
   sourcesRef.current = sources;
 
@@ -205,37 +221,102 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
     await sendMessage({ text: t });
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
+  const uploadSourceFile = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+    const res = await fetch("/api/notebooklm/extract-source", { method: "POST", body: formData });
+    const data = (await res.json()) as { text?: string; error?: string; mimeType?: string };
+    if (!res.ok || !data.text) {
+      throw new Error(data.error || t("workspaceWidgets.notebookLM.extractFailed"));
+    }
+    const isPdf =
+      data.mimeType === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    setSources((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(7),
+        name: file.name,
+        content: data.text as string,
+        type: isPdf ? "pdf" : "text",
+      },
+    ]);
+  };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+
+    setIsUploading(true);
+    let ok = 0;
     try {
-      const res = await fetch("/api/notebooklm/extract-pdf", { method: "POST", body: formData });
-      const data = (await res.json()) as { text?: string; error?: string };
-
-      if (data.text) {
-        setSources((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substring(7),
-            name: file.name,
-            content: data.text as string,
-            type: "pdf",
-          },
-        ]);
-      } else {
-        toast.error(data.error || t("workspaceWidgets.notebookLM.extractFailed"));
+      for (const file of Array.from(files)) {
+        try {
+          await uploadSourceFile(file);
+          ok += 1;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : t("workspaceWidgets.notebookLM.uploadFailed");
+          toast.error(`${file.name}: ${msg}`);
+        }
       }
-    } catch {
-      toast.error(t("workspaceWidgets.notebookLM.uploadFailed"));
+      if (ok > 0) toast.success(`${ok} ${t("workspaceWidgets.notebookLM.uploadSuccess").replace("{count}", String(ok))}`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleIssueDocument = async (requirement: string) => {
+    const req = requirement.trim();
+    if (!req) return;
+    setIssuePromptOpen(false);
+    setIsIssuingDocument(true);
+    try {
+      const res = await fetch("/api/notebooklm/generate-document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          requirement: req,
+          notebookTitle,
+          sources: sources.map((s) => ({ name: s.name, content: s.content })),
+        }),
+      });
+      const data = (await res.json()) as {
+        text?: string;
+        suggestedFileName?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.text) {
+        toast.error(data.error || t("workspaceWidgets.notebookLM.issueFailed"));
+        return;
+      }
+      setIssuedDocumentText(data.text);
+      setSources((prev) => [
+        ...prev,
+        {
+          id: `issued-${Date.now()}`,
+          name: data.suggestedFileName ?? t("workspaceWidgets.notebookLM.issuedDocName"),
+          content: data.text as string,
+          type: "text",
+        },
+      ]);
+      toast.success(t("workspaceWidgets.notebookLM.issueSuccess"));
+    } catch {
+      toast.error(t("workspaceWidgets.notebookLM.issueFailed"));
+    } finally {
+      setIsIssuingDocument(false);
+    }
+  };
+
+  const downloadIssuedDocument = () => {
+    if (!issuedDocumentText) return;
+    const blob = new Blob([issuedDocumentText], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${notebookTitle.replace(/\s+/g, "-").slice(0, 40) || "מסמך-ממחברת"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const removeSource = (id: string) => {
@@ -463,6 +544,16 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
         onConfirm={confirmRenameSource}
         onCancel={() => setRenameSourceId(null)}
       />
+      <OsPromptDialog
+        open={issuePromptOpen}
+        title={t("workspaceWidgets.notebookLM.issueDocumentTitle")}
+        label={t("workspaceWidgets.notebookLM.issueDocumentHint")}
+        defaultValue=""
+        confirmLabel={t("workspaceWidgets.notebookLM.issueDocumentConfirm")}
+        onConfirm={handleIssueDocument}
+        onCancel={() => setIssuePromptOpen(false)}
+      />
+
       <OsConfirmDialog
         open={deleteNotebookId !== null}
         title={t("notebook.deleteNotebookTitle")}
@@ -521,6 +612,21 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
             >
               חדש
             </button>
+            <KnowledgeVaultAttachButton
+              onSelect={(item) => {
+                const text =
+                  item.parsedSummary && typeof item.parsedSummary === "object"
+                    ? String((item.parsedSummary as { textPreview?: string }).textPreview ?? "")
+                    : "";
+                if (text.trim()) {
+                  setSources((prev) => [
+                    ...prev,
+                    { id: `vault-${item.id}`, name: item.name, content: text.slice(0, 12000), type: "text" },
+                  ]);
+                }
+                toast.success(item.name);
+              }}
+            />
           </div>
         </div>
 
@@ -568,10 +674,14 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
           ) : (
             <Upload className="mx-auto mb-2 h-8 w-8 text-[color:var(--foreground-muted)] group-hover:text-indigo-500" />
           )}
-          <p className="text-sm font-medium text-[color:var(--foreground-muted)]">גרור PDF או לחץ להעלאה</p>
+          <p className="text-sm font-medium text-[color:var(--foreground-muted)]">
+            {t("workspaceWidgets.notebookLM.uploadHint")}
+          </p>
+          <p className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">{SCAN_ACCEPT_SUMMARY}</p>
           <input
             type="file"
-            accept="application/pdf"
+            accept={fileAccept}
+            multiple
             className="hidden"
             ref={fileInputRef}
             onChange={handleFileUpload}
@@ -747,6 +857,44 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
             >
               <BrainCircuit className="h-3 w-3" /> מפת חשיבה
             </button>
+            <button
+              type="button"
+              disabled={isIssuingDocument}
+              onClick={() => setIssuePromptOpen(true)}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-200"
+            >
+              {isIssuingDocument ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <FilePlus className="h-3 w-3" />
+              )}
+              {t("workspaceWidgets.notebookLM.issueDocument")}
+            </button>
+            {issuedDocumentText ? (
+              <button
+                type="button"
+                onClick={downloadIssuedDocument}
+                className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-200"
+              >
+                <FileDown className="h-3 w-3" />
+                {t("workspaceWidgets.notebookLM.downloadIssued")}
+              </button>
+            ) : null}
+            {issuedDocumentText && openWorkspaceWidget ? (
+              <button
+                type="button"
+                onClick={() =>
+                  openWorkspaceWidget("docCreator", {
+                    notebookFreeformDraft: issuedDocumentText,
+                    prompt: issuedDocumentText.slice(0, 500),
+                  })
+                }
+                className="flex shrink-0 items-center gap-2 rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-1.5 text-xs font-medium"
+              >
+                <FileText className="h-3 w-3" />
+                {t("workspaceWidgets.notebookLM.openInDocCreator")}
+              </button>
+            ) : null}
           </div>
 
           <form onSubmit={handleSubmit} className="relative flex items-center">

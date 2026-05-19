@@ -465,7 +465,8 @@
       "taxId": "ИНН: {id}",
       "sheetTitle": "Команда и поиск",
       "sheetAria": "Командная строка и поиск",
-      "sheetCloseAria": "Закрыть командную строку"
+      "sheetCloseAria": "Закрыть командную строку",
+      "openFullLiveChat": "Открыть полный Live-чат"
     },
     "notificationCenter": {
       "title": "Уведомления",
@@ -586,7 +587,9 @@
       "liveStatusFallback": "Gemini Live доступен после входа и привязки к организации.",
       "sendFailed": "Ошибка связи с AI",
       "liveFailed": "Ошибка Gemini Live",
-      "placeholder": "Спросите о ваших проектах…"
+      "placeholder": "Спросите о ваших проектах…",
+      "tabLive": "Live",
+      "tabText": "Текст"
     },
     "erp": {
       "loading": "Загрузка документов…",
@@ -629,7 +632,18 @@
       "audioSourcesFirst": "Добавьте источники перед аудио-обзором",
       "saveBeforeAudio": "Сохраните блокнот перед аудио-обзором",
       "audioFailed": "Не удалось создать аудио-обзор",
-      "loadingNotebooks": "Загрузка блокнотов…"
+      "loadingNotebooks": "Загрузка блокнотов…",
+      "uploadHint": "Перетащите файлы или нажмите (все типы как в сканере)",
+      "uploadSuccess": "Загружено источников: {count}",
+      "issueDocument": "Создать документ",
+      "issueDocumentTitle": "Создание документа из блокнота",
+      "issueDocumentHint": "Опишите нужный документ (договор, письмо, отчёт, предложение и т.д.)",
+      "issueDocumentConfirm": "Создать",
+      "issueSuccess": "Документ создан и добавлен в источники",
+      "issueFailed": "Не удалось создать документ",
+      "issuedDocName": "Созданный документ",
+      "downloadIssued": "Скачать документ",
+      "openInDocCreator": "Открыть в создателе документов"
     },
     "project": {
       "loadFailed": "Не удалось загрузить проект",
@@ -653,6 +667,40 @@
       "zoomOutAria": "Уменьшить {title}",
       "zoomLevel": "Масштаб {level}%"
     }
+  },
+  "geminiLive": {
+    "panelTitle": "Настройки Gemini Live",
+    "saved": "Настройки Gemini Live сохранены",
+    "applyOnReconnect": "Настройки применятся при следующем подключении",
+    "resetHint": "Сброшено — нажмите «Сохранить»",
+    "liveActiveHint": "Голосовой ассистент активен. После сохранения — при следующем подключении.",
+    "speechStyle": "Стиль речи",
+    "voice": "Голос",
+    "voiceHint": "Выберите голос ассистента",
+    "temperature": "Температура ({value})",
+    "silenceMs": "Тишина перед концом речи (мс)",
+    "prefixPaddingMs": "Отступ префикса (мс)",
+    "responseMode": "Режим ответа",
+    "responseAudio": "Только аудио",
+    "responseAudioText": "Аудио + текст",
+    "inputTranscription": "Транскрипция ввода",
+    "outputTranscription": "Транскрипция вывода",
+    "reset": "Сброс",
+    "save": "Сохранить",
+    "proactiveAudio": "Проактивное аудио",
+    "proactiveAudioHint": "Модель может начать речь по контексту",
+    "affectiveDialog": "Эмоциональный диалог",
+    "affectiveDialogHint": "Адаптация тона (если поддерживается)",
+    "sessionResumption": "Возобновление сессии",
+    "sessionResumptionHint": "Восстановление Live после краткого обрыва"
+  },
+  "knowledgeVault": {
+    "pickerTitle": "Хранилище знаний",
+    "searchPlaceholder": "Поиск…",
+    "loading": "Загрузка…",
+    "empty": "Нет элементов",
+    "attachFromVault": "Из хранилища знаний",
+    "attachShort": "Хранилище"
   },
   "settingsHub": {
     "sidebarEyebrow": "Настройки",

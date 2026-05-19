@@ -6,9 +6,12 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { handleOsAssistantToolCall, type OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
-function fallbackInstruction(locale: string) {
+function fallbackInstruction(locale: string, voice = false) {
   const lang =
     locale === "en" ? "English" : locale === "ru" ? "Russian" : "Hebrew";
+  if (voice) {
+    return `You are the BSD-YBM OS voice assistant (Gemini Live). Reply in ${lang} only. Use tools for all in-app actions: execute_user_command, run_automation, execute_os_command, search_site. Answer any topic when asked.`;
+  }
   return `You are the BSD-YBM OS assistant. Always reply in ${lang}. Never show internal reasoning. Open widgets when asked using execute_os_command.`;
 }
 
@@ -17,14 +20,22 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
   const { locale } = useI18n();
   const [context, setContext] = useState<OsAssistantUserContext | null>(null);
   const [systemInstruction, setSystemInstruction] = useState(() => fallbackInstruction(locale));
-  const [systemInstructionVoice, setSystemInstructionVoice] = useState(() => fallbackInstruction(locale));
+  const [systemInstructionVoice, setSystemInstructionVoice] = useState(() =>
+    fallbackInstruction(locale, true),
+  );
   const [loading, setLoading] = useState(false);
+  const [featureFlags, setFeatureFlags] = useState({
+    knowledgeVaultEnabled: false,
+    aiChatLiveDefault: false,
+    geminiLiveAdvancedFeatures: false,
+    geminiLiveEnabled: true,
+  });
 
   const refresh = useCallback(async () => {
     if (!session?.user?.id) {
       setContext(null);
       setSystemInstruction(fallbackInstruction(locale));
-      setSystemInstructionVoice(fallbackInstruction(locale));
+      setSystemInstructionVoice(fallbackInstruction(locale, true));
       return;
     }
     setLoading(true);
@@ -38,11 +49,15 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
         context?: OsAssistantUserContext;
         systemInstruction?: string;
         systemInstructionVoice?: string;
+        featureFlags?: Partial<typeof featureFlags>;
       };
       if (data.context) setContext(data.context);
       if (typeof data.systemInstruction === "string") setSystemInstruction(data.systemInstruction);
       if (typeof data.systemInstructionVoice === "string") {
         setSystemInstructionVoice(data.systemInstructionVoice);
+      }
+      if (data.featureFlags) {
+        setFeatureFlags((prev) => ({ ...prev, ...data.featureFlags }));
       }
     } catch {
       /* keep fallback */
@@ -61,13 +76,22 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
     [deps],
   );
 
+  const hasRichContext =
+    Boolean(context) &&
+    systemInstructionVoice.length > 500 &&
+    !systemInstructionVoice.startsWith(
+      "You are the BSD-YBM OS voice assistant (Gemini Live). Reply in",
+    );
+
   return {
     context,
     systemInstruction,
     systemInstructionVoice,
+    featureFlags,
     loading,
     refresh,
     onToolCall,
     ready: Boolean(session?.user?.id) && !loading,
+    hasRichContext,
   };
 }

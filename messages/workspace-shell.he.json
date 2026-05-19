@@ -483,7 +483,8 @@
       "taxId": "ח״פ: {id}",
       "sheetTitle": "פקודה וחיפוש",
       "sheetAria": "שורת פקודה וחיפוש",
-      "sheetCloseAria": "סגור שורת פקודה"
+      "sheetCloseAria": "סגור שורת פקודה",
+      "openFullLiveChat": "פתח חלון Live מלא"
     },
     "notificationCenter": {
       "title": "מרכז התראות",
@@ -610,7 +611,9 @@
       "liveStatusFallback": "Gemini Live זמין אחרי התחברות ושיוך לארגון.",
       "sendFailed": "שגיאה בתקשורת עם ה-AI",
       "liveFailed": "שגיאה בחיבור Gemini Live",
-      "placeholder": "שאל אותי הכל על הפרויקטים שלך…"
+      "placeholder": "שאל אותי הכל על הפרויקטים שלך…",
+      "tabLive": "Live",
+      "tabText": "טקסט"
     },
     "erp": {
       "loading": "טוען מסמכים…",
@@ -653,7 +656,18 @@
       "audioSourcesFirst": "הוסף מקורות לפני סקירה קולית",
       "saveBeforeAudio": "שמור את המחברת לפני סקירה קולית",
       "audioFailed": "יצירת סקירה נכשלה",
-      "loadingNotebooks": "טוען מחברות…"
+      "loadingNotebooks": "טוען מחברות…",
+      "uploadHint": "גרור קבצים או לחץ להעלאה (כל סוגי הסריקה)",
+      "uploadSuccess": "הועלו {count} מקורות",
+      "issueDocument": "הנפק מסמך",
+      "issueDocumentTitle": "הנפקת מסמך מהמחברת",
+      "issueDocumentHint": "תאר את המסמך שברצונך להפיק (חוזה, מכתב, דוח, הצעה וכו')",
+      "issueDocumentConfirm": "הפק",
+      "issueSuccess": "המסמך הופק ונוסף למקורות",
+      "issueFailed": "הנפקת המסמך נכשלה",
+      "issuedDocName": "מסמך מופק",
+      "downloadIssued": "הורד מסמך",
+      "openInDocCreator": "פתח ביוצר מסמכים"
     },
     "project": {
       "loadFailed": "שגיאה בטעינת נתוני פרויקט",
@@ -696,7 +710,21 @@
     "inputTranscription": "תמלול קלט",
     "outputTranscription": "תמלול פלט",
     "reset": "איפוס",
-    "save": "שמור"
+    "save": "שמור",
+    "proactiveAudio": "אודיו יזום",
+    "proactiveAudioHint": "המודל יכול ליזום דיבור כשמתאים להקשר",
+    "affectiveDialog": "דיאלוג רגשי",
+    "affectiveDialogHint": "התאמת טון רגשי (אם נתמך במודל)",
+    "sessionResumption": "המשך סשן",
+    "sessionResumptionHint": "שחזור חיבור Live אחרי ניתוק קצר"
+  },
+  "knowledgeVault": {
+    "pickerTitle": "מאגר ידע",
+    "searchPlaceholder": "חיפוש במאגר…",
+    "loading": "טוען פריטים…",
+    "empty": "אין פריטים במאגר",
+    "attachFromVault": "צרף ממאגר הידע",
+    "attachShort": "מאגר"
   },
   "settingsHub": {
     "sidebarEyebrow": "הגדרות",

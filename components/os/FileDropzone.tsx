@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { OSNotification } from '@/components/os/NotificationCenter';
+import { useKnowledgeVault } from '@/components/os/KnowledgeVaultProvider';
 
 interface DocumentAnalysis {
   amount: number | null;
@@ -37,11 +40,15 @@ const formatAmount = (amount: number | null) => {
 };
 
 export default function FileDropzone({ onProcessed, onLatency }: FileDropzoneProps) {
+  const vault = useKnowledgeVault();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const dragDepthRef = useRef(0);
 
   const processFile = useCallback(async (file: File) => {
+    if (vault.enabled) {
+      void vault.ingestFile(file, 'fileDropzone');
+    }
     onProcessed({
       id: `ai-analysis-started-${Date.now()}`,
       title: 'AI Analysis Started',
@@ -121,7 +128,7 @@ export default function FileDropzone({ onProcessed, onLatency }: FileDropzonePro
     } finally {
       setIsProcessing(false);
     }
-  }, [onLatency, onProcessed]);
+  }, [onLatency, onProcessed, vault]);
 
   useEffect(() => {
     const handleDragEnter = (event: DragEvent) => {
