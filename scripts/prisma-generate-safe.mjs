@@ -1,22 +1,17 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import dotenv from "dotenv";
+import { applyProjectEnvFiles, getProjectEnv } from "./load-project-env.mjs";
 
 const workspaceRoot = process.cwd();
 const prismaClientDir = path.join(workspaceRoot, "node_modules", ".prisma", "client");
 const clientEntry = path.join(prismaClientDir, "index.js");
 const windowsEngine = path.join(prismaClientDir, "query_engine-windows.dll.node");
 
-for (const file of [".env", ".env.local", ".env.vercel.pull"]) {
-  const envPath = path.join(workspaceRoot, file);
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override: false, quiet: true });
-  }
-}
+applyProjectEnvFiles(workspaceRoot);
 
-if (!process.env.DIRECT_URL && process.env.DATABASE_URL) {
-  process.env.DIRECT_URL = process.env.DATABASE_URL;
+if (!getProjectEnv("DIRECT_URL", workspaceRoot) && getProjectEnv("DATABASE_URL", workspaceRoot)) {
+  process.env.DIRECT_URL = getProjectEnv("DATABASE_URL", workspaceRoot);
 }
 
 const prismaCli = path.join(workspaceRoot, "node_modules", "prisma", "build", "index.js");
