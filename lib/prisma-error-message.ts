@@ -33,5 +33,16 @@ export function getUserFacingDbErrorMessage(err: unknown): string | null {
     return "מסד הנתונים לא זמין כרגע. נסו שוב בעוד רגע.";
   }
 
+  if (
+    lower.includes("p2022") ||
+    lower.includes("does not exist in the current database") ||
+    (lower.includes("column") && lower.includes("does not exist"))
+  ) {
+    return (
+      "מבנה מסד הנתונים לא מעודכן (חסרות עמודות או טבלאות). " +
+      "הריצו prisma migrate deploy על בסיס הייצור או פנו למנהל המערכת."
+    );
+  }
+
   return null;
 }

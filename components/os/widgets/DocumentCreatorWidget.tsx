@@ -238,7 +238,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   const fetchContacts = async () => {
     try {
-      const res = await fetch('/api/crm/contacts');
+      const res = await fetch("/api/crm/contacts", { credentials: "include" });
       const data = await res.json();
       const rows = Array.isArray(data.contacts) ? data.contacts : [];
       setContacts(
@@ -373,6 +373,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       const res = await fetch("/api/erp/issued-documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           type: docType,
           contactId: contact.id,
@@ -381,7 +382,13 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         }),
       });
 
-      const data = await res.json();
+      let data: { document?: { id?: string; number?: number; token?: string }; error?: string; signUrl?: string; itaError?: string } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        toast.error(res.ok ? "תגובת שרת לא תקינה" : `שגיאת שרת (${res.status})`);
+        return;
+      }
       if (res.ok) {
         const result = data.document ?? data;
         await waitForFloatingPanelExit(FLOATING_PANEL_EXIT_MS + 80);
@@ -401,10 +408,11 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         toast.success(`${selectedTypeMeta?.labelHe ?? "המסמך"} הופק בהצלחה`);
         void fetchIssuedDocuments();
       } else {
-        toast.error(data.error || 'שגיאה בהפקת המסמך');
+        toast.error(data.error || `שגיאה בהפקת המסמך (${res.status})`);
       }
     } catch (error) {
-      toast.error('שגיאה בחיבור לשרת');
+      console.error("generateDocument", error);
+      toast.error(error instanceof Error ? error.message : "שגיאה בחיבור לשרת");
     } finally {
       setLoading(false);
     }

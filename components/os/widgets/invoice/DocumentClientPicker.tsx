@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
-import { User, Mail, Phone, FileText } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { User, Mail, Phone, FileText, ChevronDown } from "lucide-react";
 
 export type DocumentClientContact = {
   id: string;
@@ -54,8 +54,8 @@ export default function DocumentClientPicker({
   onNewClientChange,
   onIsNewClientChange,
 }: DocumentClientPickerProps) {
-  const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
 
   const suggestions = useMemo(() => {
@@ -71,15 +71,25 @@ export default function DocumentClientPicker({
   }, [contacts, name]);
 
   useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    const onPointerDown = (e: PointerEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
     };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
+
+  const pickContact = (contact: DocumentClientContact) => {
+    onNameChange(contact.name);
+    onSelectContact(contact);
+    onIsNewClientChange(false);
+    setOpen(false);
+    inputRef.current?.focus();
+  };
 
   const handleNameInput = (value: string) => {
     onNameChange(value);
+    setOpen(true);
     const match = findContactByName(contacts, value);
     if (match) {
       onSelectContact(match);
@@ -103,29 +113,44 @@ export default function DocumentClientPicker({
       </div>
 
       <div ref={wrapRef} className="relative space-y-3">
-        <div className="relative">
-          <User className="absolute right-3 top-3 h-4 w-4 text-[color:var(--foreground-muted)]" />
-          <input
-            type="text"
-            list={listId}
-            autoComplete="off"
-            disabled={loading}
-            value={name}
-            placeholder={loading ? "טוען לקוחות…" : "הקלד שם לקוח או בחר מהרשימה…"}
-            onFocus={() => setOpen(true)}
-            onChange={(e) => handleNameInput(e.target.value)}
-            className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-3 pl-4 pr-10 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-          />
-          <datalist id={listId}>
-            {contacts.map((c) => (
-              <option key={c.id} value={c.name} />
-            ))}
-          </datalist>
+        <div className="relative flex gap-1">
+          <div className="relative min-w-0 flex-1">
+            <User className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-[color:var(--foreground-muted)]" />
+            <input
+              ref={inputRef}
+              type="text"
+              autoComplete="off"
+              disabled={loading}
+              value={name}
+              placeholder={loading ? "טוען לקוחות…" : "הקלד שם לקוח או בחר מהרשימה…"}
+              onFocus={() => setOpen(true)}
+              onChange={(e) => handleNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setOpen(false);
+              }}
+              aria-expanded={open && suggestions.length > 0}
+              aria-autocomplete="list"
+              className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-3 pl-4 pr-10 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={loading || contacts.length === 0}
+            aria-label="פתח רשימת לקוחות"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setOpen((v) => !v);
+              inputRef.current?.focus();
+            }}
+            className="flex h-[46px] w-11 shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 text-[color:var(--foreground-muted)] hover:bg-[color:var(--background-main)]/60 disabled:opacity-40"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+          </button>
         </div>
 
-        {open && suggestions.length > 0 && name.trim().length > 0 ? (
+        {open && suggestions.length > 0 ? (
           <ul
-            className="absolute z-20 max-h-48 w-full overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg"
+            className="absolute z-[100] max-h-48 w-full overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg"
             role="listbox"
           >
             {suggestions.map((c) => (
@@ -135,11 +160,10 @@ export default function DocumentClientPicker({
                   role="option"
                   aria-selected={c.id === selectedContactId}
                   className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-right text-sm hover:bg-[color:var(--background-main)]/60"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onSelectContact(c);
-                    onIsNewClientChange(false);
-                    setOpen(false);
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pickContact(c);
                   }}
                 >
                   <span className="font-bold text-[color:var(--foreground-main)]">{c.name}</span>
@@ -150,6 +174,10 @@ export default function DocumentClientPicker({
               </li>
             ))}
           </ul>
+        ) : open && !loading && contacts.length === 0 ? (
+          <p className="absolute z-[100] w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-xs text-[color:var(--foreground-muted)] shadow-lg">
+            אין לקוחות ב-CRM — הקלידו שם ליצירת לקוח חדש
+          </p>
         ) : null}
 
         {selected && !isNewClient ? (

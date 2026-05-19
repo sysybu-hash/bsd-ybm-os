@@ -8,6 +8,7 @@ import { requestItaAllocation } from "@/lib/services/ita-service";
 import type { DocType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
+import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest } from "@/lib/api-json";
 
 const issuedDocumentItemSchema = z.object({
@@ -57,6 +58,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 
 /* ───── POST — הנפקת מסמך חדש (חשבונית / קבלה / חש״ק / זיכוי) ───── */
 export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => {
+  try {
   const { type, clientName, items, dueDate, contactId, projectId } = data as {
     type: DocType;
     clientName: string;
@@ -181,4 +183,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => 
     { document: doc, itaAllocationNumber, itaIsMock },
     { status: 201 },
   );
+  } catch (error) {
+    return apiErrorResponse(error, "issued-documents POST");
+  }
 }, { schema: createIssuedDocumentSchema });
