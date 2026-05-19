@@ -1,5 +1,9 @@
 jest.mock("@google/genai", () => ({
   Modality: { AUDIO: "AUDIO", TEXT: "TEXT" },
+  Type: {
+    OBJECT: "OBJECT",
+    STRING: "STRING",
+  },
 }));
 
 import {
