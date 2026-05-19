@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 /**
- * ב-CI: משלים משתני חובה מ-GitHub Secrets; אם חסר — placeholder לבנייה בלבד.
- * מקומי: לא נדרש (יש .env / .env.local).
+ * ב-CI / Vercel: משלים משתני חובה חסרים ב-placeholder לבנייה בלבד.
+ * מקומי עם .env.local: בדרך כלל לא ממלא כלום.
  */
 import fs from "node:fs";
+
+const isRemoteBuild =
+  process.env.GITHUB_ACTIONS === "true" || process.env.VERCEL === "1";
+if (!isRemoteBuild) {
+  process.exit(0);
+}
 
 const PLACEHOLDERS = {
   GOOGLE_GENERATIVE_AI_API_KEY: "ci-placeholder-gemini-key-0000000000",
@@ -30,10 +36,11 @@ for (const [key, fallback] of Object.entries(PLACEHOLDERS)) {
   }
 }
 
+const target = process.env.VERCEL === "1" ? "Vercel Environment Variables" : "GitHub Secrets";
 if (filled.length) {
   console.log(
-    `[ci-prepare-build-env] placeholders for build: ${filled.join(", ")} (add GitHub Secrets to use real values)`,
+    `[prepare-build-env] placeholders for build: ${filled.join(", ")} (configure ${target} for real values)`,
   );
 } else {
-  console.log("[ci-prepare-build-env] using secrets / workflow env (no placeholders needed)");
+  console.log("[prepare-build-env] using configured env (no placeholders needed)");
 }
