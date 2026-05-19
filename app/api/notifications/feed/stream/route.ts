@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import { Redis } from "@upstash/redis";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +15,7 @@ function getRedis(): Redis | null {
   }
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+export const GET = withWorkspacesAuth(async (_req, { userId }) => {
   const redis = getRedis();
   if (!redis) {
     return new Response("SSE requires Upstash Redis (UPSTASH_REDIS_REST_URL)", { status: 503 });
@@ -78,4 +71,4 @@ export async function GET() {
       Connection: "keep-alive",
     },
   });
-}
+});
