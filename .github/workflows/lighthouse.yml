@@ -40,3 +40,5 @@ jobs:
 
       - name: Lighthouse CI
         run: npx @lhci/cli@latest autorun
+        env:
+          PORT: "3000"
