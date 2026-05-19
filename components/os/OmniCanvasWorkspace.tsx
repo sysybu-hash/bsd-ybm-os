@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
@@ -9,7 +9,8 @@ import { useAutomationRunner } from "@/hooks/useAutomationRunner";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
 import OSSidebar from "@/components/os/layout/OSSidebar";
-import OSWorkspace from "@/components/os/layout/OSWorkspace";
+import { WorkspaceNavigationProvider } from "@/components/os/navigation/WorkspaceNavigationProvider";
+import OmniCanvasWorkspaceBody from "@/components/os/navigation/OmniCanvasWorkspaceBody";
 import OSDock from "@/components/os/layout/OSDock";
 import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
@@ -409,17 +410,21 @@ export default function OmniCanvasWorkspace() {
       <div
         className={`absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
       >
-        <OSWorkspace
-          widgets={widgets}
-          hasHydrated={hasHydrated}
-          openWidget={openWidget}
-          closeWidget={closeWidget}
-          focusWidget={focusWidget}
-          updateWidgetPosition={updateWidgetPosition}
-          updateWidgetSize={updateWidgetSize}
-          toggleMaximize={toggleMaximize}
-          updateZoom={updateZoom}
-        />
+        <WorkspaceNavigationProvider>
+          <Suspense fallback={null}>
+            <OmniCanvasWorkspaceBody
+              widgets={widgets}
+              hasHydrated={hasHydrated}
+              openWidget={openWidget}
+              closeWidget={closeWidget}
+              focusWidget={focusWidget}
+              updateWidgetPosition={updateWidgetPosition}
+              updateWidgetSize={updateWidgetSize}
+              toggleMaximize={toggleMaximize}
+              updateZoom={updateZoom}
+            />
+          </Suspense>
+        </WorkspaceNavigationProvider>
       </div>
 
       <OSDock

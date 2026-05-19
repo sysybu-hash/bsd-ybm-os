@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import Link from "next/link";
 import {
   Activity,
@@ -46,6 +48,7 @@ import {
   CONSTRUCTION_TRADE_IDS,
   constructionTradeLabelHe,
 } from "@/lib/construction-trades";
+import { osFieldClassName, osFieldInlineClassName } from "@/components/os/ui/os-field";
 
 type TabId = "subscriptions" | "pending" | "users" | "broadcast" | "health" | "settings";
 
@@ -99,6 +102,21 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
   const [provisionSendEmail, setProvisionSendEmail] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+
+  const applyTabNav = useCallback((view: WidgetViewState) => {
+    const next = view.tab as TabId | undefined;
+    if (next && TABS.some((t) => t.id === next)) setTab(next);
+  }, []);
+
+  const { pushView } = useSyncedWidgetNavigation(applyTabNav);
+
+  const selectTab = useCallback(
+    (id: TabId) => {
+      setTab(id);
+      pushView({ tab: id });
+    },
+    [pushView],
+  );
 
   const loadOrgs = useCallback(async () => {
     const data = await manageSubsListOrganizationsAction();
@@ -444,7 +462,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
             <button
               key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => selectTab(t.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
                 active
                   ? "bg-blue-600 text-white"
@@ -481,25 +499,25 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                     value={createEmail}
                     onChange={(e) => setCreateEmail(e.target.value)}
                     placeholder="אימייל מנהל *"
-                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldInlineClassName}
                   />
                   <input
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
                     placeholder="שם מלא"
-                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldInlineClassName}
                   />
                   <input
                     value={createOrgName}
                     onChange={(e) => setCreateOrgName(e.target.value)}
                     placeholder="שם ארגון *"
-                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                    className={`${osFieldInlineClassName} sm:col-span-2`}
                   />
                   <select
                     value={createTier}
                     onChange={(e) => setCreateTier(e.target.value)}
                     disabled={createVip}
-                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldInlineClassName}
                   >
                     {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => (
                       <option key={t} value={t}>
@@ -510,7 +528,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <select
                     value={createConstructionTrade}
                     onChange={(e) => setCreateConstructionTrade(e.target.value)}
-                    className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                    className={`${osFieldInlineClassName} sm:col-span-2`}
                   >
                     {CONSTRUCTION_TRADE_IDS.map((id) => (
                       <option key={id} value={id}>
@@ -585,7 +603,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <select
                     value={editConstructionTrade}
                     onChange={(e) => setEditConstructionTrade(e.target.value)}
-                    className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldClassName}
                   >
                     {CONSTRUCTION_TRADE_IDS.map((id) => (
                       <option key={id} value={id}>
@@ -597,7 +615,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <select
                     value={editTier}
                     onChange={(e) => setEditTier(e.target.value)}
-                    className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldClassName}
                   >
                     {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => (
                       <option key={t} value={t}>
@@ -609,7 +627,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                    className={osFieldClassName}
                   >
                     {["ACTIVE", "INACTIVE", "PENDING_APPROVAL", "TRIAL"].map((s) => (
                       <option key={s} value={s}>
@@ -683,7 +701,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                 <select
                   value={approvePlan}
                   onChange={(e) => setApprovePlan(e.target.value)}
-                  className="mt-1 block rounded-lg border border-[color:var(--border-main)] p-2 text-sm"
+                  className={`mt-1 block ${osFieldClassName}`}
                 >
                   {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => (
                     <option key={t} value={t}>
@@ -697,7 +715,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                 <select
                   value={approveRole}
                   onChange={(e) => setApproveRole(e.target.value)}
-                  className="mt-1 block rounded-lg border border-[color:var(--border-main)] p-2 text-sm"
+                  className={`mt-1 block ${osFieldClassName}`}
                 >
                   <option value="ORG_ADMIN">מנהל ארגון</option>
                   <option value="PROJECT_MGR">מנהל פרויקטים</option>
@@ -744,18 +762,18 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   value={provisionEmail}
                   onChange={(e) => setProvisionEmail(e.target.value)}
                   placeholder="אימייל *"
-                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  className={osFieldInlineClassName}
                 />
                 <input
                   value={provisionName}
                   onChange={(e) => setProvisionName(e.target.value)}
                   placeholder="שם"
-                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  className={osFieldInlineClassName}
                 />
                 <select
                   value={provisionOrgId}
                   onChange={(e) => setProvisionOrgId(e.target.value)}
-                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm sm:col-span-2"
+                  className={`${osFieldInlineClassName} sm:col-span-2`}
                 >
                   <option value="">בחרו ארגון *</option>
                   {orgs.map((o) => (
@@ -767,7 +785,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                 <select
                   value={provisionRole}
                   onChange={(e) => setProvisionRole(e.target.value)}
-                  className="rounded-lg border border-[color:var(--border-main)] bg-transparent p-2 text-sm"
+                  className={osFieldInlineClassName}
                 >
                   <option value="ORG_ADMIN">מנהל ארגון</option>
                   <option value="PROJECT_MGR">מנהל פרויקטים</option>

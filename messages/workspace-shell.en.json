@@ -486,6 +486,9 @@
     "chrome": {
       "zoomOutAria": "Zoom out in {title}",
       "zoomInAria": "Zoom in in {title}",
+      "zoomLevel": "{level}%",
+      "backAria": "Back in {title}",
+      "forwardAria": "Forward in {title}",
       "restoreAria": "Restore {title}",
       "maximizeAria": "Maximize {title}",
       "closeAria": "Close {title}",

@@ -56,7 +56,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 });
 
 /* ───── POST — הנפקת מסמך חדש (חשבונית / קבלה / חש״ק / זיכוי) ───── */
-export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
+export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => {
   const { type, clientName, items, dueDate, contactId, projectId } = data as {
     type: DocType;
     clientName: string;
@@ -128,6 +128,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
             organizationId: orgId,
             contactId: resolvedContactId ?? null,
             projectId: resolvedProjectId ?? null,
+            createdByUserId: userId,
           },
         });
       });

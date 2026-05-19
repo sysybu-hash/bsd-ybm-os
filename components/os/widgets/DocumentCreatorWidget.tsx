@@ -2,6 +2,8 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { DocType } from "@prisma/client";
 import { ISSUED_DOCUMENT_TYPES, documentTypeLabel } from "@/lib/document-types";
 import { previewPayloadFromDraft } from "@/lib/invoice-payload";
@@ -83,6 +85,25 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
   } | null>(null);
 
   const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
+
+  const applyDocNav = useCallback((view: WidgetViewState) => {
+    const id = view.issuedDocumentId;
+    if (typeof id === "string") setOpenIssuedId(id);
+    else if (id === null || id === undefined) {
+      if (!view.issuedDocumentId && Object.keys(view).length === 0) setOpenIssuedId(null);
+    }
+  }, []);
+
+  const { pushView } = useSyncedWidgetNavigation(applyDocNav);
+
+  const navigateIssued = useCallback(
+    (id: string | null) => {
+      setOpenIssuedId(id);
+      if (id) pushView({ issuedDocumentId: id });
+      else pushView({});
+    },
+    [pushView],
+  );
   const [issuedList, setIssuedList] = useState<
     Array<{
       id: string;
@@ -371,7 +392,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           items,
           amount: calculateSubtotal(),
         });
-        setOpenIssuedId(result.id);
+        navigateIssued(result.id);
         if (data.itaError) {
           toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
         }
@@ -406,7 +427,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         issuedDocumentId={issuedDocumentId}
         onDeleted={() => {
           setGeneratedDoc(null);
-          setOpenIssuedId(null);
+          navigateIssued(null);
         }}
       />
     );
@@ -443,7 +464,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
             <button
               onClick={() => {
                 setGeneratedDoc(null);
-                setOpenIssuedId(null);
+                navigateIssued(null);
               }}
               className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all"
             >
@@ -519,7 +540,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
                 <li key={doc.id}>
                   <button
                     type="button"
-                    onClick={() => setOpenIssuedId(doc.id)}
+                    onClick={() => navigateIssued(doc.id)}
                     className="flex w-full items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-right text-xs transition-colors hover:border-[color:var(--border-main)] hover:bg-[color:var(--background-main)]/60"
                   >
                     <span className="font-bold text-[color:var(--foreground-main)]">

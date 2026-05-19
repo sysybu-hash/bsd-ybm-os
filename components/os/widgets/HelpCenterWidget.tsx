@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { BookOpen, ChevronDown, ChevronUp, ExternalLink, MessageCircle, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { WidgetType } from "@/hooks/use-window-manager";
@@ -37,6 +39,13 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
   const [guideId, setGuideId] = useState<string | null>(content.guides[0]?.id ?? null);
   const [query, setQuery] = useState("");
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
+
+  const applyHelpNav = useCallback((view: WidgetViewState) => {
+    if (view.categoryId) setCategoryId(String(view.categoryId));
+    if (view.guideId !== undefined) setGuideId(view.guideId ? String(view.guideId) : null);
+  }, []);
+
+  const { pushView } = useSyncedWidgetNavigation(applyHelpNav);
 
   useEffect(() => {
     const firstCategory = content.categories[0]?.id ?? "start";
@@ -75,6 +84,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
     setCategoryId(g.categoryId);
     setGuideId(g.id);
     setQuery("");
+    pushView({ categoryId: g.categoryId, guideId: g.id });
   };
 
   return (
@@ -162,7 +172,9 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   onClick={() => {
                     setCategoryId(c.id);
                     const first = content.guides.find((g) => g.categoryId === c.id);
-                    setGuideId(first?.id ?? null);
+                    const gid = first?.id ?? null;
+                    setGuideId(gid);
+                    pushView({ categoryId: c.id, guideId: gid });
                   }}
                   className={categoryBtnClass(categoryId === c.id)}
                 >
@@ -179,7 +191,10 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   <button
                     key={g.id}
                     type="button"
-                    onClick={() => setGuideId(g.id)}
+                    onClick={() => {
+                      setGuideId(g.id);
+                      pushView({ categoryId: g.categoryId, guideId: g.id });
+                    }}
                     className={guideBtnClass(activeGuide?.id === g.id)}
                   >
                     {g.title}

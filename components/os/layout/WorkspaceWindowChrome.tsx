@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 export type WorkspaceWindowChromeProps = {
@@ -25,6 +25,11 @@ export type WorkspaceWindowChromeProps = {
   onMaximize?: () => void;
   maximizeHiddenOnMobile?: boolean;
   closeTouchTarget?: boolean;
+  showNavigation?: boolean;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  onBack?: () => void;
+  onForward?: () => void;
 };
 
 export default function WorkspaceWindowChrome({
@@ -47,8 +52,13 @@ export default function WorkspaceWindowChrome({
   onMaximize,
   maximizeHiddenOnMobile = false,
   closeTouchTarget = false,
+  showNavigation = true,
+  canGoBack = false,
+  canGoForward = false,
+  onBack,
+  onForward,
 }: WorkspaceWindowChromeProps) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const chromeTitle = { title };
 
   const handleZoomOut = () => {
@@ -69,6 +79,9 @@ export default function WorkspaceWindowChrome({
     ? "workspace-chrome-btn hidden md:inline-flex"
     : "workspace-chrome-btn inline-flex";
 
+  const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
+  const ForwardIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
+
   return (
     <header
       className={`workspace-window-header ${headerClassName}`.trim()}
@@ -79,6 +92,28 @@ export default function WorkspaceWindowChrome({
       onPointerCancel={onHeaderPointerUp}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
+        {showNavigation ? (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={!canGoBack}
+              className="workspace-chrome-btn inline-flex disabled:opacity-35"
+              aria-label={t("workspaceWidgets.chrome.backAria", chromeTitle)}
+            >
+              <BackIcon size={16} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={onForward}
+              disabled={!canGoForward}
+              className="workspace-chrome-btn inline-flex disabled:opacity-35"
+              aria-label={t("workspaceWidgets.chrome.forwardAria", chromeTitle)}
+            >
+              <ForwardIcon size={16} aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {headerStart}
         <h2 id={titleId} className="workspace-window-title">
           {title}

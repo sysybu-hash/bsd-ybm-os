@@ -21,6 +21,11 @@ interface ShellProps {
   onZoomChange?: (delta: number) => void;
   /** אזור העבודה (מתחת לכותרת, מעל ה־Omnibar) — גבולות גרירה/גודל יחושבו ממנו */
   workspaceBoundsRef?: React.RefObject<HTMLElement | null>;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
+  onBack?: () => void;
+  onForward?: () => void;
+  maximizeHiddenOnMobile?: boolean;
   children: React.ReactNode;
 }
 
@@ -43,6 +48,11 @@ export default function AdaptiveWidgetShell({
   onMaximize,
   onZoomChange,
   workspaceBoundsRef,
+  canGoBack = false,
+  canGoForward = false,
+  onBack,
+  onForward,
+  maximizeHiddenOnMobile = false,
   children,
 }: ShellProps) {
   const { dir } = useI18n();
@@ -346,7 +356,11 @@ export default function AdaptiveWidgetShell({
         onZoomDelta={(delta) => onZoomChange?.(delta)}
         isMaximized={isMaximized}
         onMaximize={onMaximize}
-        maximizeHiddenOnMobile
+        maximizeHiddenOnMobile={maximizeHiddenOnMobile}
+        canGoBack={canGoBack}
+        canGoForward={canGoForward}
+        onBack={onBack}
+        onForward={onForward}
         closeTouchTarget
         headerClassName={
           mobileOrMaximized

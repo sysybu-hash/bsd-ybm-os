@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import {
   ScanLine,
   Upload,
@@ -175,6 +177,13 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
   const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
+
+  const applyScannerNav = useCallback((view: WidgetViewState) => {
+    if (view.openPreviewPanel) setPreviewPanelOpen(true);
+    if (view.openResultsPanel) setResultsPanelOpen(true);
+  }, []);
+
+  const { pushView: pushScannerView } = useSyncedWidgetNavigation(applyScannerNav);
   const [stackScannerPanels, setStackScannerPanels] = useState(false);
 
   useEffect(() => {
@@ -263,7 +272,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
       if (active) applyFilePreview(active.file);
     }
     setPreviewPanelOpen(true);
-  }, [applyFilePreview, previewUrl, queue]);
+    pushScannerView({ openPreviewPanel: true });
+  }, [applyFilePreview, previewUrl, queue, pushScannerView]);
 
   const activeEngineLabel = useMemo(() => {
     if (!engineMeta) return tr("scanner.processing", "מעבד…");
@@ -671,7 +681,10 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
             </button>
             <button
               type="button"
-              onClick={() => setResultsPanelOpen(true)}
+              onClick={() => {
+                setResultsPanelOpen(true);
+                pushScannerView({ openResultsPanel: true });
+              }}
               disabled={!lastScanV5}
               className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
               aria-label={tr("scanner.resultsPanel", "תוצאות")}

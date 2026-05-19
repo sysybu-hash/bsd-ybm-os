@@ -504,6 +504,9 @@
     "chrome": {
       "zoomOutAria": "הקטן זום ב-{title}",
       "zoomInAria": "הגדל זום ב-{title}",
+      "zoomLevel": "{level}%",
+      "backAria": "חזור ב-{title}",
+      "forwardAria": "קדימה ב-{title}",
       "restoreAria": "הקטן {title}",
       "maximizeAria": "הגדל {title}",
       "closeAria": "סגור {title}",

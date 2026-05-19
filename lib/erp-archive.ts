@@ -3,6 +3,9 @@ import { documentTypeLabel } from "@/lib/document-types";
 
 export type ArchiveFileCategory = "invoice" | "quote" | "contract" | "other" | "SIGNED_QUOTE";
 
+/** תצוגת סרגל צד בארכיון */
+export type ArchiveView = "active" | "shared" | "trash";
+
 export type ErpArchiveFile = {
   id: string;
   name: string;
@@ -16,6 +19,10 @@ export type ErpArchiveFile = {
   clientName?: string;
   total?: number;
   docTypeLabel?: string;
+  /** שם המשתמש שהעלה/הפיק (ל«שותפו איתי») */
+  ownerName?: string;
+  deletedAt?: string;
+  isTrash: boolean;
 };
 
 export function issuedDocToArchiveCategory(type: DocType): ArchiveFileCategory {
@@ -42,8 +49,19 @@ export function scanDocToArchiveCategory(type: string): ArchiveFileCategory {
   return "other";
 }
 
+type ArchiveUserPick = { name: string | null; email: string };
+
+function displayUserName(user?: ArchiveUserPick | null): string | undefined {
+  if (!user) return undefined;
+  return user.name?.trim() || user.email || undefined;
+}
+
 export function mapIssuedToArchive(
-  doc: IssuedDocument & { project?: Pick<Project, "id" | "name"> | null },
+  doc: IssuedDocument & {
+    project?: Pick<Project, "id" | "name"> | null;
+    createdByUser?: ArchiveUserPick | null;
+    deletedAt?: Date | null;
+  },
 ): ErpArchiveFile {
   const label = documentTypeLabel(doc.type);
   return {
@@ -51,7 +69,7 @@ export function mapIssuedToArchive(
     name: `${label}_${doc.number}.pdf`,
     category: issuedDocToArchiveCategory(doc.type),
     sizeLabel: "PDF",
-    updatedAt: (doc.updatedAt ?? doc.createdAt).toISOString(),
+    updatedAt: (doc.deletedAt ?? doc.updatedAt ?? doc.createdAt).toISOString(),
     projectId: doc.projectId,
     projectName: doc.project?.name ?? "כללי",
     source: "issued",
@@ -59,17 +77,22 @@ export function mapIssuedToArchive(
     clientName: doc.clientName,
     total: doc.total,
     docTypeLabel: label,
+    ownerName: displayUserName(doc.createdByUser),
+    deletedAt: doc.deletedAt?.toISOString(),
+    isTrash: doc.deletedAt != null,
   };
 }
 
-export function mapDocumentToArchive(doc: Document): ErpArchiveFile {
+export function mapDocumentToArchive(
+  doc: Document & { user?: ArchiveUserPick | null; deletedAt?: Date | null },
+): ErpArchiveFile {
   const ai = doc.aiData as { projectName?: string; clientName?: string; total?: number } | null;
   return {
     id: `document:${doc.id}`,
     name: doc.fileName,
     category: scanDocToArchiveCategory(doc.type),
     sizeLabel: "סריקה",
-    updatedAt: doc.createdAt.toISOString(),
+    updatedAt: (doc.deletedAt ?? doc.createdAt).toISOString(),
     projectId: null,
     projectName: ai?.projectName ?? "כללי",
     source: "document",
@@ -77,6 +100,9 @@ export function mapDocumentToArchive(doc: Document): ErpArchiveFile {
     clientName: ai?.clientName,
     total: typeof ai?.total === "number" ? ai.total : undefined,
     docTypeLabel: doc.type,
+    ownerName: displayUserName(doc.user),
+    deletedAt: doc.deletedAt?.toISOString(),
+    isTrash: doc.deletedAt != null,
   };
 }
 

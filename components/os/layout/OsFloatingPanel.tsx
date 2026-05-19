@@ -224,6 +224,10 @@ export default function OsFloatingPanel({
               showMaximize={showMaximize}
               isMaximized={isMaximized}
               onMaximize={() => setIsMaximized((m) => !m)}
+              canGoBack
+              canGoForward={false}
+              onBack={onClose}
+              maximizeHiddenOnMobile={false}
               headerClassName={
                 draggable && !isMaximized ? "cursor-move touch-none" : "cursor-default"
               }

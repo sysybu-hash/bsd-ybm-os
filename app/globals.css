@@ -260,6 +260,25 @@
     color: var(--foreground-main);
   }
 
+  .quiet-shell :where(select, .os-field) {
+    border: 1px solid var(--border-main);
+    border-radius: var(--radius-md);
+    background: var(--surface-card);
+    color: var(--foreground-main);
+  }
+
+  .quiet-shell select option {
+    background: var(--surface-card);
+    color: var(--foreground-main);
+  }
+
+  .quiet-shell select:focus,
+  .quiet-shell .os-field:focus {
+    border-color: var(--brand-accent);
+    box-shadow: var(--focus-ring);
+    outline: none;
+  }
+
   .quiet-surface,
   .workspace-panel,
   .workspace-surface,

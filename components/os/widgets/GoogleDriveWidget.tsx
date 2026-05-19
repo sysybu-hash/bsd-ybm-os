@@ -25,6 +25,8 @@ import {
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { DriveDecodeStatus } from "@prisma/client";
 import {
@@ -468,9 +470,20 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
     return <File className="text-slate-400" size={20} />;
   };
 
+  const applyDriveNav = useCallback((view: WidgetViewState) => {
+    const mode = view.viewMode as DriveViewMode | undefined;
+    if (mode) {
+      setViewMode(mode);
+      saveDriveViewMode(mode);
+    }
+  }, []);
+
+  const { pushView: pushDriveView } = useSyncedWidgetNavigation(applyDriveNav);
+
   const setView = (mode: DriveViewMode) => {
     setViewMode(mode);
     saveDriveViewMode(mode);
+    pushDriveView({ viewMode: mode });
   };
 
   const fileActions = (file: GoogleFile) => (

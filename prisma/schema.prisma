@@ -237,6 +237,7 @@ model User {
   accounts           Account[]
   activityLogs       ActivityLog[]
   documents          Document[]
+  issuedDocumentsCreated IssuedDocument[] @relation("IssuedDocumentCreatedBy")
   documentScanJobs   DocumentScanJob[]
   inAppNotifications InAppNotification[]
   notebooks          Notebook[]
@@ -474,11 +475,16 @@ model IssuedDocument {
   projectId      String?
   project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// מי הפיק את המסמך (לסינון «שותפו איתי»)
+  createdByUserId String?
+  createdByUser   User?        @relation("IssuedDocumentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  deletedAt       DateTime?
 
   @@unique([organizationId, type, number])
   @@index([organizationId])
   @@index([contactId])
   @@index([projectId])
+  @@index([organizationId, deletedAt])
 }
 
 /// הוצאה / חשבונית ספק — משרד, פרויקט או לקוח; ניתן לקליטה מסריקה ו-AI
@@ -580,6 +586,7 @@ model Document {
   userId                   String
   organizationId           String
   createdAt                DateTime                  @default(now())
+  deletedAt                DateTime?
   organization             Organization              @relation(fields: [organizationId], references: [id])
   user                     User                      @relation(fields: [userId], references: [id])
   lineItems                DocumentLineItem[]
@@ -587,6 +594,7 @@ model Document {
   productPriceObservations ProductPriceObservation[]
 
   @@index([organizationId, createdAt])
+  @@index([organizationId, deletedAt])
 }
 
 /// תוצאת סריקת AI לפי גיבוב קובץ — חיסכון במכסה ובעלות API

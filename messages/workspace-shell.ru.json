@@ -486,6 +486,9 @@
     "chrome": {
       "zoomOutAria": "Уменьшить масштаб в {title}",
       "zoomInAria": "Увеличить масштаб в {title}",
+      "zoomLevel": "{level}%",
+      "backAria": "Назад в {title}",
+      "forwardAria": "Вперёд в {title}",
       "restoreAria": "Восстановить {title}",
       "maximizeAria": "Развернуть {title}",
       "closeAria": "Закрыть {title}",

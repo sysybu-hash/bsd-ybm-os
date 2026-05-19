@@ -4,10 +4,13 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
-import type { ArchiveFileCategory, ErpArchiveFile } from "@/lib/erp-archive";
+import type { ArchiveFileCategory, ArchiveView, ErpArchiveFile } from "@/lib/erp-archive";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import {
   ArrowUpRight,
+  RotateCcw,
   Clock,
   Download,
   Eye,
@@ -29,6 +32,8 @@ type ArchiveApiResponse = {
   files: ErpArchiveFile[];
   projects: ProjectRow[];
   totalCount?: number;
+  trashCount?: number;
+  view?: ArchiveView;
 };
 
 type ScanDocPreview = {
@@ -73,6 +78,7 @@ function buildArchiveQuery(params: {
   category: ArchiveFileCategory | "all";
   recentOnly: boolean;
   projectId: string | null;
+  view: ArchiveView;
 }): string {
   const sp = new URLSearchParams();
   const q = params.q.trim();
@@ -80,6 +86,7 @@ function buildArchiveQuery(params: {
   if (params.category !== "all") sp.set("type", params.category);
   if (params.recentOnly) sp.set("recent", "1");
   if (params.projectId) sp.set("projectId", params.projectId);
+  if (params.view !== "active") sp.set("view", params.view);
   const s = sp.toString();
   return s ? `?${s}` : "";
 }
@@ -99,8 +106,10 @@ export default function ErpFileArchiveWidget() {
   const [debouncedQ, setDebouncedQ] = useState("");
 
   const [category, setCategory] = useState<ArchiveFileCategory | "all">("all");
+  const [archiveView, setArchiveView] = useState<ArchiveView>("active");
   const [recentOnly, setRecentOnly] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [trashCount, setTrashCount] = useState(0);
 
   const [selectedFile, setSelectedFile] = useState<ErpArchiveFile | null>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
@@ -113,6 +122,19 @@ export default function ErpFileArchiveWidget() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<ErpArchiveFile | null>(null);
+
+  const applyArchiveNav = useCallback((view: WidgetViewState) => {
+    if (view.archiveView) setArchiveView(view.archiveView as ArchiveView);
+    if (view.recentOnly !== undefined) setRecentOnly(Boolean(view.recentOnly));
+    if (view.projectId !== undefined) setProjectId((view.projectId as string | null) ?? null);
+    if (view.q !== undefined) {
+      const q = String(view.q);
+      setSearchQuery(q);
+      setDebouncedQ(q);
+    }
+  }, []);
+
+  const { pushView } = useSyncedWidgetNavigation(applyArchiveNav);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
@@ -128,6 +150,7 @@ export default function ErpFileArchiveWidget() {
         category,
         recentOnly,
         projectId,
+        view: archiveView,
       });
       const res = await fetch(`/api/erp/archive${qs}`, {
         credentials: "include",
@@ -147,6 +170,7 @@ export default function ErpFileArchiveWidget() {
       setFiles(Array.isArray(data.files) ? data.files : []);
       setProjects(Array.isArray(data.projects) ? data.projects : []);
       setTotalCount(typeof data.totalCount === "number" ? data.totalCount : data.files?.length ?? 0);
+      setTrashCount(typeof data.trashCount === "number" ? data.trashCount : 0);
     } catch (e) {
       console.error(e);
       setLoadError(e instanceof Error ? e.message : "שגיאת טעינה");
@@ -155,7 +179,7 @@ export default function ErpFileArchiveWidget() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedQ, category, recentOnly, projectId]);
+  }, [debouncedQ, category, recentOnly, projectId, archiveView]);
 
   useEffect(() => {
     void fetchArchive();
@@ -271,11 +295,48 @@ export default function ErpFileArchiveWidget() {
   }
 
   function selectArchiveScope(next: {
-    recentOnly: boolean;
-    projectId: string | null;
+    view?: ArchiveView;
+    recentOnly?: boolean;
+    projectId?: string | null;
   }) {
-    setRecentOnly(next.recentOnly);
-    setProjectId(next.projectId);
+    let nextView = archiveView;
+    let nextRecent = recentOnly;
+    let nextProject = projectId;
+    if (next.view !== undefined) nextView = next.view;
+    if (next.recentOnly !== undefined) nextRecent = next.recentOnly;
+    if (next.projectId !== undefined) nextProject = next.projectId;
+    if (next.view === "shared" || next.view === "trash") {
+      nextRecent = false;
+      nextProject = null;
+    }
+    setArchiveView(nextView);
+    setRecentOnly(nextRecent);
+    setProjectId(nextProject);
+    pushView({
+      archiveView: nextView,
+      recentOnly: nextRecent,
+      projectId: nextProject,
+    });
+  }
+
+  async function archiveItemAction(
+    file: ErpArchiveFile,
+    action: "trash" | "restore" | "purge",
+  ) {
+    const res = await fetch("/api/erp/archive/item", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source: file.source,
+        sourceId: file.sourceId,
+        action,
+      }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "הפעולה נכשלה");
+    }
   }
 
   async function handlePreview(file: ErpArchiveFile) {
@@ -298,20 +359,27 @@ export default function ErpFileArchiveWidget() {
     if (!deleteTarget) return;
     const file = deleteTarget;
     setDeleteTarget(null);
-    const url =
-      file.source === "issued"
-        ? `/api/erp/issued-documents/${file.sourceId}`
-        : `/api/erp/documents/${file.sourceId}`;
     try {
-      const res = await fetch(url, { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw new Error("delete failed");
-      toast.success("המסמך נמחק");
-      if (selectedFile?.id === file.id) {
-        setSelectedFile(null);
-      }
+      await archiveItemAction(file, archiveView === "trash" ? "purge" : "trash");
+      toast.success(
+        archiveView === "trash" ? "המסמך נמחק לצמיתות" : "המסמך הועבר לפח האשפה",
+      );
+      if (selectedFile?.id === file.id) setSelectedFile(null);
       void fetchArchive();
-    } catch {
-      toast.error("מחיקה נכשלה");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "מחיקה נכשלה");
+    }
+  }
+
+  async function handleRestore(file: ErpArchiveFile) {
+    setOpenMenuId(null);
+    try {
+      await archiveItemAction(file, "restore");
+      toast.success("המסמך שוחזר לארכיון");
+      if (selectedFile?.id === file.id) setSelectedFile(null);
+      void fetchArchive();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "שחזור נכשל");
     }
   }
 
@@ -320,7 +388,86 @@ export default function ErpFileArchiveWidget() {
     setDeleteTarget(file);
   }
 
-  const sidebarActiveAll = !recentOnly && projectId === null;
+  function renderActionMenu(file: ErpArchiveFile, menuClassName: string) {
+    return (
+      <div data-archive-menu className={menuClassName} dir={dir}>
+        {archiveView !== "trash" ? (
+          <>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                void handlePreview(file);
+              }}
+            >
+              <Eye size={14} aria-hidden />
+              תצוגה מקדימה
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleDownload(file);
+              }}
+            >
+              <Download size={14} aria-hidden />
+              הורדה
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteDialog(file);
+              }}
+            >
+              <Trash2 size={14} aria-hidden />
+              העבר לפח
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                void handleRestore(file);
+              }}
+            >
+              <RotateCcw size={14} aria-hidden />
+              שחזור לארכיון
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteDialog(file);
+              }}
+            >
+              <Trash2 size={14} aria-hidden />
+              מחיקה לצמיתות
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const listSourceColumnLabel = archiveView === "shared" ? "משתף" : "מקור";
+
+  const sidebarActiveAll =
+    archiveView === "active" && !recentOnly && projectId === null;
+
+  const emptyMessage =
+    archiveView === "trash"
+      ? "פח האשפה ריק."
+      : archiveView === "shared"
+        ? "אין מסמכים שחברי צוות שיתפו איתך."
+        : "אין מסמכים התואמים לסינון.";
 
   return (
     <div
@@ -329,8 +476,14 @@ export default function ErpFileArchiveWidget() {
     >
       <OsConfirmDialog
         open={deleteTarget !== null}
-        title="למחוק מסמך?"
-        message={deleteTarget ? `המסמך «${deleteTarget.name}» יוסר לצמיתות מהארכיון.` : undefined}
+        title={archiveView === "trash" ? "מחיקה לצמיתות?" : "להעביר לפח האשפה?"}
+        message={
+          deleteTarget
+            ? archiveView === "trash"
+              ? `המסמך «${deleteTarget.name}» יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.`
+              : `המסמך «${deleteTarget.name}» יועבר לפח האשפה. ניתן לשחזר משם.`
+            : undefined
+        }
         destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
@@ -346,7 +499,9 @@ export default function ErpFileArchiveWidget() {
           <nav className="space-y-1">
             <button
               type="button"
-              onClick={() => selectArchiveScope({ recentOnly: false, projectId: null })}
+              onClick={() =>
+                selectArchiveScope({ view: "active", recentOnly: false, projectId: null })
+              }
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
                 sidebarActiveAll
                   ? "border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 font-bold text-[color:var(--foreground-main)] shadow-sm"
@@ -358,9 +513,11 @@ export default function ErpFileArchiveWidget() {
             </button>
             <button
               type="button"
-              onClick={() => selectArchiveScope({ recentOnly: true, projectId: null })}
+              onClick={() =>
+                selectArchiveScope({ view: "active", recentOnly: true, projectId: null })
+              }
               className={`flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
-                recentOnly && projectId === null
+                archiveView === "active" && recentOnly && projectId === null
                   ? "border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 font-bold text-[color:var(--foreground-main)] shadow-sm"
                   : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/5 hover:text-[color:var(--foreground-main)]"
               }`}
@@ -370,19 +527,34 @@ export default function ErpFileArchiveWidget() {
             </button>
             <button
               type="button"
-              onClick={() => toast.message("בקרוב", { description: "שיתוף עם שותפים יתווסף בהמשך." })}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-[color:var(--foreground-muted)] transition-all hover:bg-[color:var(--foreground-muted)]/5 hover:text-[color:var(--foreground-main)]"
+              onClick={() => selectArchiveScope({ view: "shared" })}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                archiveView === "shared"
+                  ? "border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 font-bold text-[color:var(--foreground-main)] shadow-sm"
+                  : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/5 hover:text-[color:var(--foreground-main)]"
+              }`}
             >
               <ArrowUpRight size={16} aria-hidden />
               שותפו איתי
             </button>
             <button
               type="button"
-              onClick={() => toast.message("בקרוב", { description: "פח האשפה יתווסף בהמשך." })}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-[color:var(--foreground-muted)] transition-all hover:bg-rose-600/10 hover:text-rose-600 dark:hover:text-rose-400"
+              onClick={() => selectArchiveScope({ view: "trash" })}
+              className={`flex w-full items-center justify-between gap-3 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                archiveView === "trash"
+                  ? "border border-rose-500/30 bg-rose-500/10 font-bold text-rose-700 dark:text-rose-300"
+                  : "text-[color:var(--foreground-muted)] hover:bg-rose-600/10 hover:text-rose-600 dark:hover:text-rose-400"
+              }`}
             >
-              <Trash2 size={16} aria-hidden />
-              פח אשפה
+              <span className="flex items-center gap-3">
+                <Trash2 size={16} aria-hidden />
+                פח אשפה
+              </span>
+              {trashCount > 0 ? (
+                <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold">
+                  {trashCount}
+                </span>
+              ) : null}
             </button>
           </nav>
 
@@ -398,9 +570,15 @@ export default function ErpFileArchiveWidget() {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => selectArchiveScope({ recentOnly: false, projectId: p.id })}
+                    onClick={() =>
+                      selectArchiveScope({
+                        view: "active",
+                        recentOnly: false,
+                        projectId: p.id,
+                      })
+                    }
                     className={`flex w-full max-w-full items-center gap-3 truncate rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                      projectId === p.id
+                      archiveView === "active" && projectId === p.id
                         ? "border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80 text-[color:var(--foreground-main)] shadow-sm"
                         : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/5 hover:text-[color:var(--foreground-main)]"
                     }`}
@@ -501,13 +679,13 @@ export default function ErpFileArchiveWidget() {
                 onRetry={() => void fetchArchive()}
               />
             ) : emptyAfterLoad ? (
-              <WidgetState variant="empty" message="אין מסמכים התואמים לסינון." />
+              <WidgetState variant="empty" message={emptyMessage} />
             ) : viewMode === "list" ? (
               <div className="min-w-[600px] space-y-2">
                 <div className="mb-2 grid grid-cols-12 border-b border-[color:var(--border-main)]/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
                   <div className="col-span-5">שם</div>
                   <div className="col-span-2 text-center">פרויקט</div>
-                  <div className="col-span-2 text-center">מקור</div>
+                  <div className="col-span-2 text-center">{listSourceColumnLabel}</div>
                   <div className="col-span-2 text-center">עודכן</div>
                   <div className="col-span-1 text-center">גודל</div>
                 </div>
@@ -540,8 +718,12 @@ export default function ErpFileArchiveWidget() {
                       <div className="col-span-2 truncate text-center text-[11px] font-bold text-[color:var(--foreground-muted)]">
                         {file.projectName}
                       </div>
-                      <div className="col-span-2 text-center text-[11px] text-[color:var(--foreground-muted)]">
-                        {file.source === "issued" ? "מונפק" : "סריקה"}
+                      <div className="col-span-2 truncate text-center text-[11px] text-[color:var(--foreground-muted)]">
+                        {archiveView === "shared"
+                          ? file.ownerName ?? "—"
+                          : file.source === "issued"
+                            ? "מונפק"
+                            : "סריקה"}
                       </div>
                       <div className="col-span-2 text-center text-[11px] text-[color:var(--foreground-muted)]">
                         {new Date(file.updatedAt).toLocaleDateString("he-IL")}
@@ -562,47 +744,12 @@ export default function ErpFileArchiveWidget() {
                           >
                             <MoreVertical size={16} />
                           </button>
-                          {openMenuId === file.id ? (
-                            <div
-                              data-archive-menu
-                              className="absolute end-4 top-10 z-30 min-w-[160px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl"
-                              dir={dir}
-                            >
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handlePreview(file);
-                                }}
-                              >
-                                <Eye size={14} aria-hidden />
-                                תצוגה מקדימה
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDownload(file);
-                                }}
-                              >
-                                <Download size={14} aria-hidden />
-                                הורדה
-                              </button>
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openDeleteDialog(file);
-                                }}
-                              >
-                                <Trash2 size={14} aria-hidden />
-                                מחיקה
-                              </button>
-                            </div>
-                          ) : null}
+                          {openMenuId === file.id
+                            ? renderActionMenu(
+                                file,
+                                "absolute end-4 top-10 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl",
+                              )
+                            : null}
                         </div>
                       </div>
                     </div>
@@ -643,47 +790,12 @@ export default function ErpFileArchiveWidget() {
                         >
                           <MoreVertical size={16} />
                         </button>
-                        {openMenuId === file.id ? (
-                          <div
-                            data-archive-menu
-                            className="absolute end-0 top-9 z-30 min-w-[160px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl"
-                            dir={dir}
-                          >
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handlePreview(file);
-                              }}
-                            >
-                              <Eye size={14} aria-hidden />
-                              תצוגה מקדימה
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handleDownload(file);
-                              }}
-                            >
-                              <Download size={14} aria-hidden />
-                              הורדה
-                            </button>
-                            <button
-                              type="button"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteDialog(file);
-                              }}
-                            >
-                              <Trash2 size={14} aria-hidden />
-                              מחיקה
-                            </button>
-                          </div>
-                        ) : null}
+                        {openMenuId === file.id
+                          ? renderActionMenu(
+                              file,
+                              "absolute end-0 top-9 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl",
+                            )
+                          : null}
                       </div>
                       <div
                         className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${categoryIconWrap(file.category)}`}
@@ -696,6 +808,11 @@ export default function ErpFileArchiveWidget() {
                       <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">
                         {file.projectName}
                       </div>
+                      {archiveView === "shared" && file.ownerName ? (
+                        <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">
+                          מאת {file.ownerName}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

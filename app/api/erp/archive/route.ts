@@ -6,24 +6,46 @@ import {
   mapDocumentToArchive,
   mapIssuedToArchive,
   type ArchiveFileCategory,
+  type ArchiveView,
 } from "@/lib/erp-archive";
 
+function parseArchiveView(raw: string | null): ArchiveView {
+  if (raw === "shared" || raw === "trash") return raw;
+  return "active";
+}
+
 /** ארכיון ERP מאוחד: מסמכים מונפקים + סריקות AI */
-export const GET = withWorkspacesAuth(async (req, { orgId }) => {
+export const GET = withWorkspacesAuth(async (req, { orgId, userId }) => {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";
   const category = (searchParams.get("type") ?? "all") as ArchiveFileCategory | "all";
   const projectId = searchParams.get("projectId");
   const recentOnly = searchParams.get("recent") === "1";
+  const view = parseArchiveView(searchParams.get("view"));
 
-  const [documents, issued, projects] = await Promise.all([
+  const inTrash = view === "trash";
+  const sharedOnly = view === "shared";
+
+  const [documents, issued, projects, trashCount] = await Promise.all([
     prisma.document.findMany({
-      where: { organizationId: orgId },
+      where: {
+        organizationId: orgId,
+        deletedAt: inTrash ? { not: null } : null,
+        ...(sharedOnly ? { userId: { not: userId } } : {}),
+      },
+      include: { user: { select: { name: true, email: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.issuedDocument.findMany({
-      where: { organizationId: orgId },
-      include: { project: { select: { id: true, name: true } } },
+      where: {
+        organizationId: orgId,
+        deletedAt: inTrash ? { not: null } : null,
+        ...(sharedOnly ? { createdByUserId: { not: userId } } : {}),
+      },
+      include: {
+        project: { select: { id: true, name: true } },
+        createdByUser: { select: { name: true, email: true } },
+      },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.project.findMany({
@@ -31,6 +53,10 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.$transaction([
+      prisma.document.count({ where: { organizationId: orgId, deletedAt: { not: null } } }),
+      prisma.issuedDocument.count({ where: { organizationId: orgId, deletedAt: { not: null } } }),
+    ]).then(([a, b]) => a + b),
   ]);
 
   const files = [
@@ -45,9 +71,16 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
     recentOnly,
   });
 
+  const activeCount = await prisma.$transaction([
+    prisma.document.count({ where: { organizationId: orgId, deletedAt: null } }),
+    prisma.issuedDocument.count({ where: { organizationId: orgId, deletedAt: null } }),
+  ]).then(([a, b]) => a + b);
+
   return NextResponse.json({
     files: filtered,
     projects,
-    totalCount: files.length,
+    totalCount: activeCount,
+    trashCount,
+    view,
   });
 });

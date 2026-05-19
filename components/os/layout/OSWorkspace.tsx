@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bot } from "lucide-react";
 import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
 import { useSession } from "next-auth/react";
-import AdaptiveWidgetShell from "@/components/os/AdaptiveWidgetShell";
+import WidgetInstance from "@/components/os/navigation/WidgetInstance";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import ProjectWidget from "@/components/os/ProjectWidget";
 import CashflowWidget from "@/components/os/widgets/CashflowWidget";
 import AiChatWidget from "@/components/os/AiChatWidget";
@@ -59,6 +60,7 @@ interface OSWorkspaceProps {
   updateWidgetSize: (id: string, size: { width: number; height: number }) => void;
   toggleMaximize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
+  onWidgetViewChange?: (widgetId: string, widgetType: WidgetType, state: WidgetViewState | null) => void;
 }
 
 export default function OSWorkspace({
@@ -71,6 +73,7 @@ export default function OSWorkspace({
   updateWidgetSize,
   toggleMaximize,
   updateZoom,
+  onWidgetViewChange,
 }: OSWorkspaceProps) {
   const { t, dir } = useI18n();
   const { data: session } = useSession();
@@ -88,12 +91,16 @@ export default function OSWorkspace({
         if (!a.isMaximized && b.isMaximized) return 1;
         return b.zIndex - a.zIndex;
       })[0];
+      if (topWidget?.isMaximized) {
+        toggleMaximize(topWidget.id);
+        return;
+      }
       if (topWidget) closeWidget(topWidget.id);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [widgets, closeWidget]);
+  }, [widgets, closeWidget, toggleMaximize]);
 
   React.useEffect(() => {
     const hour = new Date().getHours();
@@ -144,22 +151,20 @@ export default function OSWorkspace({
         className={`pointer-events-none absolute inset-0 ${widgets.length > 0 ? "z-[900]" : "z-20"}`}
       >
         {widgets.map((widget) => (
-          <AdaptiveWidgetShell
+          <WidgetInstance
             key={widget.id}
-            id={widget.id}
+            widget={widget}
             title={widgetTitle(widget.type)}
-            onClose={() => closeWidget(widget.id)}
-            initialOffset={widget.position}
-            size={widget.size}
-            zIndex={widget.zIndex}
+            topZ={topZ}
             isFocused={widget.zIndex === topZ}
-            isMaximized={widget.isMaximized}
-            zoom={widget.zoom}
+            onClose={() => closeWidget(widget.id)}
             onFocus={() => focusWidget(widget.id)}
             onPositionChange={(pos) => updateWidgetPosition(widget.id, pos)}
             onResize={(s) => updateWidgetSize(widget.id, s)}
             onMaximize={() => toggleMaximize(widget.id)}
             onZoomChange={(delta) => updateZoom(widget.id, delta)}
+            onRequestFocusWidget={focusWidget}
+            onViewChange={onWidgetViewChange}
             workspaceBoundsRef={workspaceBoundsRef}
           >
             {widget.type === "project" && <ProjectWidget projectName={String(widget.liveData?.name || "Search")} />}
@@ -195,7 +200,7 @@ export default function OSWorkspace({
             {widget.type === "helpCenter" && (
               <HelpCenterWidget openWorkspaceWidget={openWidget} />
             )}
-          </AdaptiveWidgetShell>
+          </WidgetInstance>
         ))}
       </div>
     </div>
