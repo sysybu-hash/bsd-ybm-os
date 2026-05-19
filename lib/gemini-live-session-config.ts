@@ -1,4 +1,4 @@
-import { Modality } from "@google/genai";
+import { Modality, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { normalizeGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
@@ -39,7 +39,7 @@ export function buildFullLiveConnectConfig(
   settings: GeminiLiveVoiceSettings,
   systemInstruction: string,
   options?: { advancedFeatures?: boolean },
-) {
+): LiveConnectConfig {
   const base = buildLiveConnectConfig(settings);
   return {
     ...base,

@@ -56,7 +56,12 @@ describe("gemini-live-session-config", () => {
     expect(cfg.systemInstruction).toEqual({
       parts: [{ text: "You are BSD-YBM OS voice assistant." }],
     });
-    expect(cfg.tools?.[0]?.functionDeclarations?.length).toBeGreaterThan(0);
+    const firstTool = cfg.tools?.[0];
+    const decls =
+      firstTool && "functionDeclarations" in firstTool
+        ? firstTool.functionDeclarations
+        : undefined;
+    expect(decls?.length).toBeGreaterThan(0);
     expect(cfg.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Charon");
   });
 });
