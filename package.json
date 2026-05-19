@@ -101,7 +101,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.446.0",
     "mammoth": "^1.12.0",
-    "next": "^15.5.14",
+    "next": "^15.5.18",
     "next-auth": "^4.24.10",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.13",
@@ -128,7 +128,11 @@
     "zod": "^4.4.3"
   },
   "overrides": {
-    "effect": ">=3.20.0"
+    "effect": ">=3.20.0",
+    "protobufjs": ">=7.5.8",
+    "lodash": ">=4.17.24",
+    "fast-xml-parser": ">=5.7.0",
+    "fast-xml-builder": ">=1.1.7"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
@@ -151,12 +155,12 @@
     "dotenv": "^17.4.2",
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^15.5.14",
+    "eslint-config-next": "^15.5.18",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "lighthouse": "^13.1.0",
     "pg": "^8.21.0",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.10",
     "prisma": "^6.19.3",
     "puppeteer": "^25.0.4",
     "sharp": "^0.34.5",
