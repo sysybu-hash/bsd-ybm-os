@@ -5,6 +5,7 @@
  * קורא מקבצי .env (מיזוג כמו Next.js) וגם מ-process.env (CI / GitHub Secrets).
  */
 
+import { prepareBuildEnv } from "./ci-prepare-build-env.mjs";
 import {
   applyProjectEnvFiles,
   getProjectEnv,
@@ -12,6 +13,7 @@ import {
 } from "./load-project-env.mjs";
 
 applyProjectEnvFiles();
+prepareBuildEnv();
 
 const issues = [];
 const warns = [];

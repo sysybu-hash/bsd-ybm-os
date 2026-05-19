@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
     "embed-pdf-fonts": "node scripts/embed-pdf-fonts.mjs",
-    "build": "node scripts/ci-prepare-build-env.mjs && npm run env:check && node scripts/embed-pdf-fonts.mjs && node scripts/prisma-generate-safe.mjs && next build",
+    "build": "npm run env:check && node scripts/embed-pdf-fonts.mjs && node scripts/prisma-generate-safe.mjs && next build",
     "start": "next start",
     "test": "jest",
     "test:coverage": "jest --coverage --runInBand",
