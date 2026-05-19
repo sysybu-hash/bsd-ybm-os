@@ -5,7 +5,13 @@
  */
 import { execSync } from "node:child_process";
 
-const db = (process.env.DATABASE_URL ?? "").trim();
+/** לפני ש-placeholders של env:check דורסים (אם בכלל) */
+const db = (
+  process.env.DATABASE_URL ??
+  process.env.POSTGRES_URL ??
+  process.env.POSTGRES_PRISMA_URL ??
+  ""
+).trim();
 
 function isPlaceholderUrl(url) {
   return (

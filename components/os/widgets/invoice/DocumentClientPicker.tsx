@@ -128,7 +128,6 @@ export default function DocumentClientPicker({
               onKeyDown={(e) => {
                 if (e.key === "Escape") setOpen(false);
               }}
-              aria-expanded={open && suggestions.length > 0}
               aria-autocomplete="list"
               className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-3 pl-4 pr-10 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
             />

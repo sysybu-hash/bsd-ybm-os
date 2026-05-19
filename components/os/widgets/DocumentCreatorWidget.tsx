@@ -382,26 +382,37 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         }),
       });
 
-      let data: { document?: { id?: string; number?: number; token?: string }; error?: string; signUrl?: string; itaError?: string } = {};
+      type IssuedDocBody = { id?: string; number?: number; documentNumber?: number; token?: string };
+      type CreateIssuedResponse = {
+        document?: IssuedDocBody;
+        error?: string;
+        signUrl?: string;
+        itaError?: string;
+      };
+      let data: CreateIssuedResponse = {};
       try {
-        data = (await res.json()) as typeof data;
+        data = (await res.json()) as CreateIssuedResponse;
       } catch {
         toast.error(res.ok ? "תגובת שרת לא תקינה" : `שגיאת שרת (${res.status})`);
         return;
       }
       if (res.ok) {
-        const result = data.document ?? data;
+        const doc = data.document;
+        if (!doc?.id) {
+          toast.error("תגובת שרת לא תקינה — חסר מזהה מסמך");
+          return;
+        }
         await waitForFloatingPanelExit(FLOATING_PANEL_EXIT_MS + 80);
         setGeneratedDoc({
-          id: result.id,
-          token: result.token ?? "",
-          documentNumber: result.number ?? result.documentNumber,
+          id: doc.id,
+          token: doc.token ?? "",
+          documentNumber: doc.number ?? doc.documentNumber ?? 0,
           signUrl: data.signUrl ?? "",
           clientName: contact.name,
           items,
           amount: calculateSubtotal(),
         });
-        navigateIssued(result.id);
+        navigateIssued(doc.id);
         if (data.itaError) {
           toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
         }
