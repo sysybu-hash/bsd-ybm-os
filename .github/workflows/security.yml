@@ -1,0 +1,61 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+  schedule:
+    # יום ראשון 04:00 UTC — סריקת CVE שבועית גם בלי PR
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+jobs:
+  gitleaks:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # gitleaks מסרק את כל ה-history כדי לתפוס סודות בהיסטוריה
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # מצב CI בלי דרישת רישיון Pro
+          GITLEAKS_LICENSE: ""
+
+  npm-audit:
+    name: Dependency vulnerabilities (npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies (npm ci)
+        run: npm ci --ignore-scripts
+
+      # נכשל רק על high/critical — moderate ב-Next/Prisma רגיל ולא חוסם
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # רץ גם על dev — אבל בלי לחסום (informational only)
+      - name: Audit dev dependencies (informational)
+        run: npm audit --audit-level=high || true
+        continue-on-error: true
