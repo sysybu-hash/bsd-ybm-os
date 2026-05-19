@@ -152,7 +152,7 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
         setLoading(false);
       }
     },
-    [],
+    [driveError],
   );
 
   const initWorkspace = useCallback(async () => {

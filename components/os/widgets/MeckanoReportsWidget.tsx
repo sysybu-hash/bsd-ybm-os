@@ -76,7 +76,7 @@ export default function MeckanoReportsWidget() {
         setError(t("workspaceWidgets.meckano.noAccess"));
       }
     })();
-  }, []);
+  }, [t]);
 
   const fetchEmployees = React.useCallback(async () => {
     if (!accessAllowed) return;

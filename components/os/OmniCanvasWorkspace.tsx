@@ -32,6 +32,18 @@ type SearchResult = {
   relevance?: number;
 };
 
+function mapFeedItemToNotification(raw: Record<string, unknown>): OSNotification {
+  return {
+    id: String(raw.id ?? `n-${Date.now()}`),
+    title: String(raw.title ?? ""),
+    message: String(raw.message ?? raw.body ?? ""),
+    severity: (raw.severity as OSNotification["severity"]) ?? "info",
+    createdAt: String(raw.createdAt ?? new Date().toISOString()),
+    linkType: raw.linkType != null ? String(raw.linkType) : null,
+    targetId: raw.targetId != null ? String(raw.targetId) : null,
+  };
+}
+
 export default function OmniCanvasWorkspace() {
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
@@ -177,8 +189,46 @@ export default function OmniCanvasWorkspace() {
     };
 
     void fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000);
-    return () => clearInterval(interval);
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let es: EventSource | null = null;
+
+    const startPolling = () => {
+      if (pollInterval) return;
+      pollInterval = setInterval(fetchNotifications, 10000);
+    };
+
+    try {
+      es = new EventSource("/api/notifications/feed/stream");
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as Record<string, unknown> | Record<string, unknown>[];
+          if (Array.isArray(payload)) {
+            setNotifications(payload.map((item) => mapFeedItemToNotification(item)));
+            return;
+          }
+          const next = mapFeedItemToNotification(payload);
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === next.id)) return prev;
+            return [next, ...prev];
+          });
+        } catch {
+          void fetchNotifications();
+        }
+      };
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        startPolling();
+      };
+    } catch {
+      startPolling();
+    }
+
+    return () => {
+      es?.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [sessionStatus, session?.user?.id]);
 
   useEffect(() => {

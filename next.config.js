@@ -49,6 +49,23 @@ const nextConfig = {
         key: "Strict-Transport-Security",
         value: "max-age=63072000; includeSubDomains; preload",
       });
+      const csp = [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.paypal.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com https://*.payplus.co.il wss://generativelanguage.googleapis.com",
+        "frame-src https://www.paypal.com https://*.paypal.com https://payplus.co.il https://*.payplus.co.il",
+        "media-src 'self' blob:",
+        "worker-src 'self' blob:",
+        "manifest-src 'self'",
+        "upgrade-insecure-requests",
+      ].join("; ");
+      security.push({ key: "Content-Security-Policy", value: csp });
     }
     return [
       {

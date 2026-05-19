@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeProductKey } from "@/lib/normalize-product-key";
+import { notifyUser } from "@/lib/notify-user";
 
 type LineJson = {
   description?: string;
@@ -135,12 +136,10 @@ export async function persistDocumentLineItemsFromAiData(
     !skipNotification &&
     priceAlertLineCount > 0
   ) {
-    await prisma.inAppNotification.create({
-      data: {
-        userId: notifyUserId,
-        title: "השלמת מחיר נדרשת (ERP)",
-        body: `${priceAlertLineCount} שורות ב«${fileLabel}» זוהו ללא מחיר — הזינו מחיר ידנית בלוח ERP.`,
-      },
-    });
+    await notifyUser(
+      notifyUserId,
+      "השלמת מחיר נדרשת (ERP)",
+      `${priceAlertLineCount} שורות ב«${fileLabel}» זוהו ללא מחיר — הזינו מחיר ידנית בלוח ERP.`,
+    );
   }
 }

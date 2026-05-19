@@ -93,7 +93,7 @@ export default function ProjectWidget({ projectName }: { projectName: string }) 
     };
 
     fetchProject();
-  }, [projectName]);
+  }, [projectName, t]);
 
   const handleSaveNote = async (content: string) => {
     if (!data?.id) return;

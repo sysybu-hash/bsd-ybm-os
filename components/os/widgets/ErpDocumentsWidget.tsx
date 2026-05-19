@@ -75,12 +75,7 @@ export default function ErpDocumentsWidget() {
   const [priceComparison, setPriceComparison] = useState<PriceComparison | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    fetchDocuments();
-    fetchPriceComparison();
-  }, []);
-
-  const fetchDocuments = async (query = '') => {
+  const fetchDocuments = React.useCallback(async (query = '') => {
     try {
       setLoading(true);
       const res = await fetch(`/api/erp/documents${query ? `?q=${encodeURIComponent(query)}` : ''}`);
@@ -92,7 +87,7 @@ export default function ErpDocumentsWidget() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const fetchDocDetails = async (id: string) => {
     try {
@@ -114,6 +109,11 @@ export default function ErpDocumentsWidget() {
       console.error('Failed to fetch price comparison:', error);
     }
   };
+
+  useEffect(() => {
+    void fetchDocuments();
+    void fetchPriceComparison();
+  }, [fetchDocuments]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

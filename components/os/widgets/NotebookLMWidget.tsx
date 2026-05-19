@@ -191,7 +191,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
     } catch {
       toast.error(t("workspaceWidgets.notebookLM.loadListFailed"));
     }
-  }, [projectId]);
+  }, [projectId, t]);
 
   useEffect(() => {
     void loadProjects();
@@ -309,7 +309,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
     }
   };
 
-  const handleLoadNotebook = async (id: string) => {
+  const handleLoadNotebook = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/notebooklm/notebooks/${id}`, { credentials: "include" });
       const data = (await res.json()) as {
@@ -345,7 +345,9 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
     } catch {
       toast.error(t("workspaceWidgets.notebookLM.loadFailed"));
     }
-  };
+  // setMessages מ-useState יציב
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setMessages יציב
+  }, [t]);
 
   useEffect(() => {
     const notebookId = liveData?.notebookId;
@@ -369,7 +371,7 @@ export default function NotebookLMWidget({ liveData = null }: NotebookLMWidgetPr
         }),
       );
     }
-  }, [liveData]);
+  }, [liveData, handleLoadNotebook]);
 
   const handleDeleteSaved = (id: string) => {
     setDeleteNotebookId(id);

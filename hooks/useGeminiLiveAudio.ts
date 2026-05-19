@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
@@ -214,7 +214,10 @@ export function useGeminiLiveAudio({
   onToolCall,
   onError,
 }: GeminiLiveOptions) {
-  const statusLabels = { ...DEFAULT_STATUS_LABELS, ...statusLabelsProp };
+  const statusLabels = useMemo(
+    () => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }),
+    [statusLabelsProp],
+  );
   const [state, setState] = useState<GeminiLiveState>("idle");
   const [statusText, setStatusText] = useState(statusLabels.ready);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);

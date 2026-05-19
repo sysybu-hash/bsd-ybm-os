@@ -58,6 +58,8 @@ export default function SettingsWidget() {
     driveAskBeforeSave: true,
   });
   const [driveSaving, setDriveSaving] = useState(false);
+  const [driveFolders, setDriveFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [driveFoldersLoading, setDriveFoldersLoading] = useState(false);
 
   const isSuper = session?.user?.role === 'SUPER_ADMIN';
   const isOrgAdmin = session?.user?.role === 'ORG_ADMIN';
@@ -110,7 +112,27 @@ export default function SettingsWidget() {
           }
         }
       } catch {
-        /* Drive ׳׳ ׳׳—׳•׳‘׳¨ */
+        /* Drive לא מחובר */
+      }
+
+      setDriveFoldersLoading(true);
+      try {
+        const foldersRes = await fetch('/api/os/google-drive/folders', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (foldersRes.ok) {
+          const foldersData = (await foldersRes.json()) as {
+            folders?: Array<{ id: string; name: string }>;
+          };
+          setDriveFolders(
+            (foldersData.folders ?? []).filter((f) => f.id && f.name),
+          );
+        }
+      } catch {
+        setDriveFolders([]);
+      } finally {
+        setDriveFoldersLoading(false);
       }
     } catch (err) {
       toast.error('׳©׳’׳™׳׳” ׳‘׳˜׳¢׳™׳ ׳× ׳”׳’׳“׳¨׳•׳×');
@@ -217,6 +239,24 @@ export default function SettingsWidget() {
 
     setAssigning(true);
     try {
+      const verifyRes = await fetch(
+        `/api/org/check-email-verified?email=${encodeURIComponent(email)}`,
+        { credentials: 'include' },
+      );
+      const verifyData = (await verifyRes.json().catch(() => ({}))) as { isVerified?: boolean };
+      if (verifyRes.ok && !verifyData.isVerified) {
+        const proceed = confirm(
+          `האימייל ${email} עדיין לא אומת. לשלוח שוב מייל אימות?`,
+        );
+        if (!proceed) return;
+        await fetch('/api/org/resend-verification', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+      }
+
       const res = await fetch('/api/assign-user', {
         method: 'POST',
         credentials: 'include',
@@ -409,13 +449,43 @@ export default function SettingsWidget() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳©׳ ׳×׳™׳§׳™׳™׳× ׳¡׳ ׳›׳¨׳•׳</label>
-                <input
-                  value={driveSettings.driveFolderName}
-                  onChange={(e) => setDriveSettings({ ...driveSettings, driveFolderName: e.target.value })}
-                  className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-[color:var(--foreground-main)]"
-                  placeholder={DEFAULT_GOOGLE_DRIVE_FOLDER_NAME}
-                />
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">
+                  תיקיית סנכרון ב-Drive
+                </label>
+                {driveFolders.length > 0 ? (
+                  <select
+                    value={driveSettings.driveFolderId ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const folder = driveFolders.find((f) => f.id === id);
+                      setDriveSettings({
+                        ...driveSettings,
+                        driveFolderId: id || null,
+                        driveFolderName: folder?.name ?? driveSettings.driveFolderName,
+                      });
+                    }}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-[color:var(--foreground-main)]"
+                  >
+                    <option value="">— בחר תיקייה —</option>
+                    {driveFolders.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={driveSettings.driveFolderName}
+                    onChange={(e) =>
+                      setDriveSettings({ ...driveSettings, driveFolderName: e.target.value })
+                    }
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-[color:var(--foreground-main)]"
+                    placeholder={DEFAULT_GOOGLE_DRIVE_FOLDER_NAME}
+                  />
+                )}
+                {driveFoldersLoading ? (
+                  <p className="text-[10px] text-[color:var(--foreground-muted)]">טוען תיקיות…</p>
+                ) : null}
               </div>
               <div className="flex items-center gap-3 pb-2">
                 <input

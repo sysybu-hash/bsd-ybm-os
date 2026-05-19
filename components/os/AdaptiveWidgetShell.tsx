@@ -31,6 +31,7 @@ interface ShellProps {
 
 const MIN_WIDTH = 420;
 const MIN_HEIGHT = 320;
+const SNAP_THRESHOLD = 24;
 
 export default function AdaptiveWidgetShell({
   id,
@@ -97,7 +98,6 @@ export default function AdaptiveWidgetShell({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
   const positionRef = useRef(position);
   const sizeRef = useRef(currentSize);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
@@ -139,11 +139,32 @@ export default function AdaptiveWidgetShell({
     [getWorkspaceSize],
   );
 
+  const applySnap = useCallback(
+    (pos: { x: number; y: number }, dim: { width: number; height: number }) => {
+      const ws = getWorkspaceSize();
+      const snapX =
+        pos.x < SNAP_THRESHOLD
+          ? 0
+          : pos.x + dim.width > ws.width - SNAP_THRESHOLD
+            ? Math.max(0, ws.width - dim.width)
+            : pos.x;
+      const snapY =
+        pos.y < SNAP_THRESHOLD
+          ? 0
+          : pos.y + dim.height > ws.height - SNAP_THRESHOLD
+            ? Math.max(0, ws.height - dim.height)
+            : pos.y;
+      return { x: snapX, y: snapY };
+    },
+    [getWorkspaceSize],
+  );
+
   const moveWindow = useCallback(
     (clientX: number, clientY: number) => {
       const { mouseX, mouseY, x, y } = dragStartRef.current;
       const next = { x: x + clientX - mouseX, y: y + clientY - mouseY };
-      setPosition(clampToWorkspace(next, sizeRef.current));
+      const dim = sizeRef.current;
+      setPosition(clampToWorkspace(next, dim));
     },
     [clampToWorkspace],
   );
@@ -238,7 +259,13 @@ export default function AdaptiveWidgetShell({
     const handleUp = () => {
       if (isDragging) {
         setIsDragging(false);
-        onPositionChange?.(clampToWorkspace(positionRef.current, sizeRef.current));
+        const dim = sizeRef.current;
+        const snapped = applySnap(positionRef.current, dim);
+        const clampedPos = clampToWorkspace(snapped, dim);
+        if (clampedPos.x !== positionRef.current.x || clampedPos.y !== positionRef.current.y) {
+          setPosition(clampedPos);
+        }
+        onPositionChange?.(clampedPos);
       }
       if (isResizing) {
         setIsResizing(false);
@@ -258,7 +285,7 @@ export default function AdaptiveWidgetShell({
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize, clampToWorkspace]);
+  }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize, clampToWorkspace, applySnap]);
 
   const ws = getWorkspaceSize();
   const mobileOrMaximized = isMobile || isMaximized;

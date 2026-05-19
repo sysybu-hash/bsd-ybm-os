@@ -197,7 +197,6 @@ export default function ErpFileArchiveWidget() {
     return () => {
       revokePdfBlob();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ניקוי בסגירת הקומפוננטה בלבד
   }, []);
 
   useEffect(() => {

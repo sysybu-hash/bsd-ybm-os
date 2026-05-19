@@ -59,8 +59,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Unit tests
-        run: npm test -- --runInBand
+      - name: Unit tests with coverage
+        run: npm run test:coverage
 
       - name: API route audit
         run: node scripts/audit-api-routes.mjs

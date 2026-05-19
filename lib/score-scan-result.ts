@@ -28,9 +28,10 @@ export function scoreExtractedDocument(ai: Record<string, unknown> | undefined):
   if (Array.isArray(lineItems)) {
     s += Math.min(6, lineItems.length * 2);
     // Financial Validation Bonus: if sum of items == total
-    const itemsSum = lineItems.reduce((acc: number, item: any) => {
-      const p = parseFloat(String(item.price || 0));
-      const q = parseFloat(String(item.qty || 1));
+    const itemsSum = lineItems.reduce((acc: number, item: unknown) => {
+      const r = (item ?? {}) as { price?: unknown; qty?: unknown };
+      const p = parseFloat(String(r.price ?? 0));
+      const q = parseFloat(String(r.qty ?? 1));
       return acc + (p * q);
     }, 0);
     if (numericTotal > 0 && Math.abs(numericTotal - itemsSum) < 0.1) {

@@ -2,7 +2,7 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { 
   AreaChart, 
@@ -44,7 +44,7 @@ export default function DashboardWidget() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -57,11 +57,11 @@ export default function DashboardWidget() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     void fetchDashboardStats();
-  }, []);
+  }, [fetchDashboardStats]);
 
   if (loading) {
     return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;

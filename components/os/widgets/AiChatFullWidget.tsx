@@ -64,8 +64,10 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
+  const [attachment, setAttachment] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
@@ -143,24 +145,37 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleAttachmentPick = (file: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      setAttachment({ base64, mimeType: file.type || "application/octet-stream", name: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !attachment) || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: attachment ? `${input.trim() || attachment.name} 📎` : input,
       timestamp: formatChatTime(locale),
     };
 
     setMessages(prev => [...prev, userMsg]);
-    const sentText = input;
+    const sentText = input.trim() || (attachment ? `נתח את הקובץ המצורף: ${attachment.name}` : "");
+    const sentAttachment = attachment;
     setInput('');
+    setAttachment(null);
     setIsLoading(true);
 
     try {
-      if (automationCtx?.parseAndRun) {
+      if (!sentAttachment && automationCtx?.parseAndRun) {
         const parsed = await automationCtx.parseAndRun(sentText);
         if (parsed?.actions?.length) {
           if (parsed.reply?.trim()) {
@@ -178,16 +193,64 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         }
       }
 
+      const body: Record<string, unknown> = {
+        provider,
+        locale,
+        prompt: sentText,
+        stream: true,
+        history: messages.map(m => ({ role: m.role, content: m.content })),
+      };
+      if (sentAttachment) {
+        body.attachmentBase64 = sentAttachment.base64;
+        body.attachmentMimeType = sentAttachment.mimeType;
+      }
+
       const res = await fetch('/api/chat/legacy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          locale,
-          prompt: sentText,
-          history: messages.map(m => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify(body),
       });
+
+      const contentType = res.headers.get('content-type') ?? '';
+
+      if (contentType.includes('text/event-stream') && res.body) {
+        const assistantId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          timestamp: formatChatTime(locale),
+        }]);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() ?? '';
+          for (const part of parts) {
+            const line = part.split('\n').find((l) => l.startsWith('data: '));
+            if (!line) continue;
+            const data = JSON.parse(line.slice(6)) as { chunk?: string; done?: boolean; error?: string };
+            if (data.error) throw new Error(data.error);
+            if (data.chunk) {
+              setMessages(prev => prev.map(m =>
+                m.id === assistantId ? { ...m, content: m.content + data.chunk } : m,
+              ));
+            }
+          }
+        }
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: getAssistantVisibleTranscript(m.content) ?? m.content }
+            : m,
+        ));
+        return;
+      }
 
       const data = await res.json();
       if (res.ok) {
@@ -201,7 +264,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
       } else {
         throw new Error(data.error);
       }
-    } catch (error) {
+    } catch {
       toast.error(t("workspaceWidgets.aiChat.sendFailed"));
     } finally {
       setIsLoading(false);
@@ -375,8 +438,28 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
         {/* Input */}
         <div className="p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
+          {attachment ? (
+            <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
+              <span className="truncate max-w-[240px]">{attachment.name}</span>
+              <button type="button" onClick={() => setAttachment(null)} className="text-red-500 hover:underline">
+                הסר
+              </button>
+            </div>
+          ) : null}
           <form onSubmit={handleSend} className="relative flex gap-3">
-            <button type="button" className="p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => handleAttachmentPick(e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
+              aria-label="צרף קובץ"
+            >
               <Paperclip size={20} />
             </button>
             <div className="relative flex-1">
@@ -388,7 +471,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               />
               <button 
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || (!input.trim() && !attachment)}
                 className="absolute left-2 top-2 bottom-2 px-4 bg-purple-600 hover:bg-purple-500 disabled:bg-[color:var(--foreground-muted)]/20 disabled:text-[color:var(--foreground-muted)] text-white rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center justify-center"
               >
                 <Send size={18} />

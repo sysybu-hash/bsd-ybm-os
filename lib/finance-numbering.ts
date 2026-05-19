@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { DocType } from "@prisma/client";
+import { DocType, Prisma } from "@prisma/client";
 
 /**
  * Gets the next sequential number for an issued document of a specific type.
@@ -29,7 +29,7 @@ export async function createNumberedDocument(params: {
   amount: number;
   vat: number;
   total: number;
-  items: any;
+  items: Prisma.InputJsonValue;
   dueDate?: Date;
   contactId?: string;
 }) {

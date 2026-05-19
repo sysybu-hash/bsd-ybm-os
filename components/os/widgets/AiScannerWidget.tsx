@@ -449,7 +449,9 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
       );
     },
-    [isProcessing, validateScanFile, tr, engineRunMode, userInstruction, telemetry],
+    // scanSingleFile מוגדר באותו קומפוננטה — הוספה ל-deps גורמת לרינדור מחדש בכל פעם
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scanSingleFile יציב מספיק לתור קבצים
+    [isProcessing, validateScanFile, tr],
   );
 
   useEffect(() => {
@@ -506,7 +508,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     }
   };
 
-  const saveToNotebook = async () => {
+  const saveToNotebook = useCallback(async () => {
     if (!lastScanV5 || !lastScanFileName) {
       toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
       return;
@@ -532,12 +534,12 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     } finally {
       setSavingNotebook(false);
     }
-  };
+  }, [lastScanV5, lastScanFileName, openWorkspaceWidget, telemetry, tr]);
 
   useEffect(() => {
     if (!liveData?.triggerSaveToNotebook || !lastScanV5 || !lastScanFileName) return;
     void saveToNotebook();
-  }, [liveData?.triggerSaveToNotebook, lastScanV5, lastScanFileName]);
+  }, [liveData?.triggerSaveToNotebook, lastScanV5, lastScanFileName, saveToNotebook]);
 
   const onDrop = useCallback(
     async (e: React.DragEvent) => {

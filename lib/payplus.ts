@@ -26,7 +26,7 @@ export async function createPayPlusPaymentPage(params: {
   successUrl: string;
   errorUrl: string;
   callbackUrl: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   const apiKey = getPayPlusKey();
   const secretKey = getPayPlusSecret();
@@ -79,8 +79,11 @@ export async function createPayPlusPaymentPage(params: {
  * Validates the PayPlus IPN/Webhook request.
  * PayPlus usually sends a POST with transaction details.
  */
-export async function processPayPlusWebhook(payload: any) {
-  const { transaction, more_info } = payload;
+export async function processPayPlusWebhook(payload: Record<string, unknown>) {
+  const transaction = payload.transaction as
+    | { status?: string; uid?: string; transaction_uid?: string; amount?: number }
+    | undefined;
+  const more_info = payload.more_info as string | undefined;
   
   if (!transaction || transaction.status !== "success") {
     return { success: false, message: "Transaction failed or invalid" };
@@ -96,8 +99,8 @@ export async function processPayPlusWebhook(payload: any) {
       data: {
         status: "PAID",
         paidAt: new Date(),
-        payplusTransactionId: transaction.uid,
-        lastWebhookPayload: payload
+        payplusTransactionId: transaction.uid ?? transaction.transaction_uid,
+        lastWebhookPayload: payload as unknown as import("@prisma/client").Prisma.InputJsonValue
       }
     });
     return { success: true };

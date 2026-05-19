@@ -6,6 +6,7 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { WidgetNavigationProvider } from "@/components/os/navigation/WidgetNavigationProvider";
 import { useWorkspaceNavigation } from "@/components/os/navigation/WorkspaceNavigationProvider";
 import ManagedWidgetShell from "@/components/os/navigation/ManagedWidgetShell";
+import WidgetErrorBoundary from "@/components/os/WidgetErrorBoundary";
 
 function readInitialView(widget: ActiveWidget): WidgetViewState | null {
   const data = widget.liveData;
@@ -74,7 +75,9 @@ export default function WidgetInstance({
         workspaceBoundsRef={workspaceBoundsRef}
         onRequestFocusWidget={onRequestFocusWidget}
       >
-        {children}
+        <WidgetErrorBoundary widgetId={widget.id} widgetTitle={title}>
+          {children}
+        </WidgetErrorBoundary>
       </ManagedWidgetShell>
     </WidgetNavigationProvider>
   );

@@ -56,10 +56,25 @@ export default function CrmTableWidget() {
   const [isImporting, setIsImporting] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const mapContactRow = (c: Record<string, unknown>): Client => ({
+    id: String(c.id),
+    name: String(c.name ?? ""),
+    email: (c.email as string | null) ?? null,
+    phone: (c.phone as string | null) ?? null,
+    notes: (c.notes as string | null) ?? null,
+    status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
+    lastContact: String(c.createdAt ?? new Date().toISOString()),
+    totalProjects: 0,
+  });
+
   useEffect(() => {
-    fetchClients();
+    void fetchClients(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- טעינה ראשונית בלבד
   }, []);
 
   const handleDeleteClient = (id: string, e: React.MouseEvent) => {
@@ -156,34 +171,42 @@ export default function CrmTableWidget() {
     });
   };
 
-  const fetchClients = async () => {
+  const fetchClients = async (append = false) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setPage(0);
+      }
       setLoadError(null);
-      const res = await fetch("/api/crm/contacts");
+      const skip = append ? (page + 1) * 50 : 0;
+      const q = searchQuery.trim();
+      const params = new URLSearchParams({ skip: String(skip), take: "50" });
+      if (q) params.set("q", q);
+      const res = await fetch(`/api/crm/contacts?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.error || t("workspaceWidgets.crmTable.errorLoad"));
       }
       const rows = Array.isArray(data.contacts) ? data.contacts : [];
-      setClients(
-        rows.map((c: Record<string, unknown>) => ({
-          id: String(c.id),
-          name: String(c.name ?? ""),
-          email: (c.email as string | null) ?? null,
-          phone: (c.phone as string | null) ?? null,
-          notes: (c.notes as string | null) ?? null,
-          status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
-          lastContact: String(c.createdAt ?? new Date().toISOString()),
-          totalProjects: 0,
-        })),
-      );
+      const mapped = rows.map((c: Record<string, unknown>) => mapContactRow(c));
+      const total = typeof data.total === "number" ? data.total : mapped.length;
+      if (append) {
+        setClients((prev) => [...prev, ...mapped]);
+        setPage((p) => p + 1);
+      } else {
+        setClients(mapped);
+        setPage(0);
+      }
+      setHasMore(skip + mapped.length < total);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("workspaceWidgets.crmTable.errorLoad");
       setLoadError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -587,7 +610,18 @@ export default function CrmTableWidget() {
           </tbody>
           </table>
         </div>
-        
+
+        {hasMore && !loading && (
+          <button
+            type="button"
+            onClick={() => void fetchClients(true)}
+            disabled={loadingMore}
+            className="mx-auto my-4 block rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)]/80 px-6 py-2 text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--foreground-muted)]/10 disabled:opacity-50"
+          >
+            {loadingMore ? t("workspaceWidgets.crmTable.loading") : "טען עוד"}
+          </button>
+        )}
+
         {!loading && filteredClients.length === 0 && (
           <WidgetState variant="empty" message={t("workspaceWidgets.crmTable.empty")} />
         )}

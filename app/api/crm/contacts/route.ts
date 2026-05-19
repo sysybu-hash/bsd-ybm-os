@@ -20,14 +20,21 @@ const createContactSchema = z.object({
 export const GET = withWorkspacesAuth(async (req, { orgId }) => {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const skip = Math.max(0, parseInt(searchParams.get("skip") ?? "0", 10) || 0);
+  const take = Math.min(200, Math.max(1, parseInt(searchParams.get("take") ?? "50", 10) || 50));
+
+  const where = {
+    organizationId: orgId,
+    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+  };
+
+  const total = await prisma.contact.count({ where });
 
   const contacts = await prisma.contact.findMany({
-    where: {
-      organizationId: orgId,
-      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-    },
+    where,
     orderBy: { createdAt: "desc" },
-    take: 50,
+    skip,
+    take,
     select: {
       id: true,
       name: true,
@@ -72,7 +79,7 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
     };
   });
 
-  return NextResponse.json({ contacts: rows });
+  return NextResponse.json({ contacts: rows, total, skip, take });
 });
 
 export const POST = withWorkspacesAuth(

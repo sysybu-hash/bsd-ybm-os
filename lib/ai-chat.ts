@@ -270,4 +270,61 @@ export async function runAiChat(
     : new Error("שירות ה-AI לא הצליח להשיב כרגע.");
 }
 
+export type AiChatStreamChunkHandler = (chunk: string) => void | Promise<void>;
+
+async function runGeminiPromptStreaming(prompt: string, onChunk: AiChatStreamChunkHandler) {
+  if (!isGeminiConfigured()) throw new Error("חסר מפתח Gemini");
+  const genAI = new GoogleGenerativeAI(
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "",
+  );
+  let lastErr: unknown = null;
+  for (const modelName of getGeminiModelFallbackChain()) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContentStream(prompt);
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) await onChunk(text);
+      }
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (isLikelyGeminiModelUnavailable(e)) continue;
+      throw e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Gemini stream: כל המודלים נכשלו");
+}
+
+export async function runAiChatStreaming(
+  providerRaw: string | undefined,
+  userPrompt: string,
+  contextJson: string,
+  locale: string,
+  onChunk: AiChatStreamChunkHandler,
+): Promise<{ provider: AiProviderId }> {
+  const { text, provider } = await runAiChat(providerRaw, userPrompt, contextJson, locale);
+  if (text) await onChunk(text);
+  return { provider };
+}
+
+export async function runAiChatStreamingNative(
+  providerRaw: string | undefined,
+  userPrompt: string,
+  contextJson: string,
+  locale: string,
+  onChunk: AiChatStreamChunkHandler,
+): Promise<{ provider: AiProviderId }> {
+  const requestedProvider = normalizeAiProviderId(providerRaw);
+  const systemPrefix = getAiChatSystemPrefix(contextJson, locale);
+  const prompt = systemPrefix + userPrompt;
+
+  if (requestedProvider === "gemini" && isGeminiConfigured()) {
+    await runGeminiPromptStreaming(prompt, onChunk);
+    return { provider: "gemini" };
+  }
+
+  return runAiChatStreaming(providerRaw, userPrompt, contextJson, locale, onChunk);
+}
+
 export { isRetryableProviderError, isFallbackEligibleProviderError };

@@ -19,6 +19,7 @@ import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
 import { isDocAiConfigured, isGeminiConfigured, isOpenAiConfigured } from "@/lib/ai-providers";
+import { notifyUser } from "@/lib/notify-user";
 
 export const TRI_ENGINE_RATE_PER_HOUR = 40;
 export const TRI_ENGINE_RATE_PER_HOUR_ADMIN = 120;
@@ -393,13 +394,7 @@ async function detectAndNotifyPriceSpikes(params: {
     const bodyLead = `${top.description}: +${top.changePercent.toFixed(1)}% (₪${top.previousPrice.toFixed(2)} → ₪${top.latestPrice.toFixed(2)})`;
     const body = moreCount > 0 ? `${bodyLead} ועוד ${moreCount} פריטים` : bodyLead;
 
-    await prisma.inAppNotification.create({
-      data: {
-        userId,
-        title,
-        body,
-      },
-    });
+    await notifyUser(userId, title, body);
     void documentId;
 
     return relevant;

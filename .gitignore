@@ -56,6 +56,10 @@ tsconfig.tsbuildinfo
 test-results/
 playwright-report/
 
+# Jest coverage + קבצי בדיקה מקומיים
+coverage/
+/test-*.pdf
+
 .env*.local
 
 .vercel

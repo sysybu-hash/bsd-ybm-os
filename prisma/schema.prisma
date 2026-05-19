@@ -81,6 +81,25 @@ model Organization {
   quotes                   Quote[]
   tasks                    Task[]
   users                    User[]
+  documentDrafts           DocumentDraft[]
+}
+
+/// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
+model DocumentDraft {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  /// סוג מסמך (INVOICE / RECEIPT / QUOTE …) כפי שמוגדר ב-DocType
+  docType        String
+  /// payload חופשי: { items, dueDate, paymentMethod, contactId, clientName, notes }
+  payload        Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, docType], name: "draft_per_user_doctype")
+  @@index([organizationId])
+  @@index([userId])
 }
 
 /// אזורי דיווח מורשים למקאנו — נקודות עבודה/אתרים לחתימה

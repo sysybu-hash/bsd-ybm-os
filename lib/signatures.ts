@@ -9,7 +9,7 @@ export async function createSignatureRequest(params: {
   documentId?: string;
   recipientEmail: string;
   recipientName: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }) {
   const token = uuidv4();
   
