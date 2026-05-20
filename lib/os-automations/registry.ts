@@ -338,7 +338,11 @@ export async function runAutomationAction(
     }
     case "open_project": {
       const name = String(params.name ?? params.projectName ?? "");
-      deps.openWidget("project", { name });
+      const projectId = String(params.projectId ?? params.id ?? "").trim();
+      deps.openWidget("project", {
+        ...(name ? { name } : {}),
+        ...(projectId ? { projectId } : {}),
+      });
       return { ok: true };
     }
     default:

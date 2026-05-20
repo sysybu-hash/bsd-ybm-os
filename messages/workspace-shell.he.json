@@ -305,7 +305,7 @@
   },
   "workspaceWidgets": {
     "titles": {
-      "project": "פרויקט",
+      "project": "מרכז שליטה לפרויקט",
       "cashflow": "תזרים מזומנים",
       "aiChat": "עוזר AI",
       "crm": "ניהול לקוחות CRM",
@@ -729,5 +729,63 @@
   "settingsHub": {
     "sidebarEyebrow": "הגדרות",
     "sidebarTitle": "ארגון, מנויים ותפעול"
+  },
+  "projectDashboard": {
+    "tabs": {
+      "financial": "מרכז פיננסי",
+      "diary": "יומן עבודה",
+      "gantt": "גנט",
+      "ai": "מחברת AI",
+      "settings": "הגדרות"
+    },
+    "errors": {
+      "load": "טעינת נתוני הפרויקט נכשלה",
+      "blueprint": "פענוח הגרמושקה נכשל",
+      "saveSettings": "שמירת ההגדרות נכשלה"
+    },
+    "emptyTitle": "לא נמצא פרויקט",
+    "emptyDesc": "פתחו פרויקט מהלוח או העבירו projectId",
+    "noClient": "ללא לקוח",
+    "pushToggle": "התראות",
+    "pushOn": "התראות פוש הופעלו (מקומי)",
+    "pushOff": "התראות פוש כובו (מקומי)",
+    "pushNote": "בקרוב: חיבור להגדרות משתמש במערכת. כרגע ההעדפה נשמרת במכשיר זה בלבד.",
+    "uploadBlueprint": "העלאת גרמושקה",
+    "blueprintSuccess": "כתב כמויות הוזן בהצלחה",
+    "budgetUtilization": "ניצול תקציב",
+    "milestones": "אבני דרך תשלום",
+    "extras": "תוספות",
+    "erpExpenses": "חשבוניות ERP",
+    "erpVsPlannedHelp": "חשבוניות ERP מגיעות ממערכת הכספים; הוצאות מתוכננות הן תקציב חודשי שמזינים ידנית בפרויקט.",
+    "noErpExpenses": "אין חשבוניות ERP משויכות לפרויקט",
+    "plannedExpenses": "הוצאות מתוכננות",
+    "attendanceTitle": "נוכחות אחרונה (Meckano)",
+    "attendanceEmpty": "אין נתוני נוכחות — חברו אזור Meckano לפרויקט",
+    "milestoneName": "שם שלב",
+    "amount": "סכום",
+    "add": "הוסף",
+    "approved": "מאושר",
+    "approve": "אשר",
+    "extraDesc": "תיאור תוספת",
+    "category": "קטגוריה",
+    "diaryPlaceholder": "תיאור עבודה שבוצעה היום…",
+    "workers": "עובדים",
+    "progress": "התקדמות",
+    "saveDiary": "שמור יומן",
+    "diarySaved": "יומן העבודה נשמר",
+    "task": "משימה",
+    "start": "התחלה",
+    "end": "סיום",
+    "noTasks": "אין משימות — העלו גרמושקה או הוסיפו משימות",
+    "ganttListView": "רשימה",
+    "ganttChartView": "ציר זמן",
+    "settingsStatus": "סטטוס פרויקט",
+    "settingsBudget": "תקציב",
+    "settingsPrimaryContact": "לקוח ראשי (CRM)",
+    "noPrimaryContact": "ללא לקוח ראשי",
+    "settingsAutoSyncCrm": "סנכרון אוטומטי ל-CRM",
+    "saveSettings": "שמור הגדרות",
+    "settingsSaved": "ההגדרות נשמרו",
+    "saving": "שומר…"
   }
 }

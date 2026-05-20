@@ -5,7 +5,7 @@ import { normalizeDocAiResultWithGemini, processDocumentAiRawForScanMode } from 
 import { assertProviderConfigured, normalizeAiProviderId } from "@/lib/ai-providers";
 import { mapDocAiEntitiesToInvoiceV5 } from "@/lib/docai-invoice-mapper";
 import {
-  GEMINI_FLAGSHIP_MODEL,
+  getBlueprintAnalysisModelChain,
   getGeminiModelFallbackChain,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
@@ -25,8 +25,8 @@ import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
 
 /** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
 const GEMINI_FLASH_PREFERRED = [
+  "gemini-3.5-flash",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
   "gemini-2.5-flash-lite",
 ] as const;
 
@@ -61,7 +61,7 @@ function localeLang(locale: string): string {
   return LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
 }
 
-async function geminiMultimodal(
+export async function geminiMultimodal(
   base64: string,
   mimeType: string,
   instruction: string,
@@ -179,8 +179,8 @@ export async function runTriEngineExtraction(params: {
     if (gErr) throw new Error(gErr);
     const modelChain =
       scanMode === "DRAWING_BOQ"
-        ? [GEMINI_FLAGSHIP_MODEL, ...getGeminiModelFallbackChain().filter((m) => m !== GEMINI_FLAGSHIP_MODEL)]
-        : [...GEMINI_FLASH_PREFERRED, ...getGeminiModelFallbackChain()];
+        ? getBlueprintAnalysisModelChain()
+        : [...new Set([...GEMINI_FLASH_PREFERRED, ...getGeminiModelFallbackChain()])];
     const raw = await geminiMultimodal(base64, mimeType, fullInstruction, modelChain);
     const out = coerceLegacyAiToV5(raw, fileName, scanMode);
     out.enginesUsed = [scanMode === "DRAWING_BOQ" ? "gemini-pro" : "gemini-flash"];
@@ -417,7 +417,7 @@ export async function runTriEngineExtraction(params: {
       await emitTelemetry();
     }
   } else if (scanMode === "DRAWING_BOQ") {
-    const flagshipFirst = [GEMINI_FLAGSHIP_MODEL, ...getGeminiModelFallbackChain().filter((m) => m !== GEMINI_FLAGSHIP_MODEL)];
+    const flagshipFirst = getBlueprintAnalysisModelChain();
 
     const tG = Date.now();
     telemetry.gemini = { phase: "running" };

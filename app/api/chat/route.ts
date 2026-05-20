@@ -8,13 +8,14 @@ import { jsonBadRequest, jsonServiceUnavailable } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
+import { getGeminiModelId } from "@/lib/gemini-model";
 
 export const maxDuration = 30;
 
 const AGENT_MODEL =
   process.env.GEMINI_AGENT_MODEL?.trim() ||
   process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
-  "gemini-2.5-flash";
+  getGeminiModelId();
 
 const chatBodySchema = z.object({
   messages: z.array(z.unknown()).min(1),

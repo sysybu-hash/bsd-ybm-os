@@ -167,7 +167,14 @@ export default function OSWorkspace({
             onViewChange={onWidgetViewChange}
             workspaceBoundsRef={workspaceBoundsRef}
           >
-            {widget.type === "project" && <ProjectWidget projectName={String(widget.liveData?.name || "Search")} />}
+            {widget.type === "project" && (
+              <ProjectWidget
+                projectId={
+                  typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined
+                }
+                projectName={typeof widget.liveData?.name === "string" ? widget.liveData.name : undefined}
+              />
+            )}
             {widget.type === "crm" && <CrmWidget />}
             {widget.type === "dashboard" && <DashboardWidget />}
             {widget.type === "aiChat" && (

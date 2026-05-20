@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Activity,
   Bell,
+  Bot,
   Loader2,
   Plus,
   RefreshCw,
@@ -49,8 +50,9 @@ import {
   constructionTradeLabelHe,
 } from "@/lib/construction-trades";
 import { osFieldClassName, osFieldInlineClassName } from "@/components/os/ui/os-field";
+import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
 
-type TabId = "subscriptions" | "pending" | "users" | "broadcast" | "health" | "settings";
+type TabId = "subscriptions" | "pending" | "users" | "broadcast" | "health" | "settings" | "assistant";
 
 type Props = {
   variant?: "page" | "widget";
@@ -62,6 +64,7 @@ const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
   { id: "users", label: "משתמשים", icon: Users },
   { id: "broadcast", label: "שידורים", icon: Bell },
   { id: "health", label: "בריאות", icon: Activity },
+  { id: "assistant", label: "עוזר ניהול", icon: Bot },
   { id: "settings", label: "הגדרות", icon: Settings2 },
 ];
 
@@ -977,6 +980,10 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
               </div>
             ) : null}
           </div>
+        )}
+
+        {tab === "assistant" && (
+          <AdminAssistantTab onNavigateTab={(id) => selectTab(id as TabId)} />
         )}
 
         {tab === "settings" && platformConfig && (

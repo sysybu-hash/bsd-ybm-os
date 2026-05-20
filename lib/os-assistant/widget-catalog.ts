@@ -98,10 +98,10 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
   },
   {
     id: "project",
-    labelHe: "פרויקט בודד",
-    labelEn: "Single project",
-    labelRu: "Проект",
-    keywords: ["פרויקט", "project"],
+    labelHe: "מרכז שליטה לפרויקט",
+    labelEn: "Project control center",
+    labelRu: "Центр управления проектом",
+    keywords: ["פרויקט", "project", "גנט", "תקציב", "יומן עבודה"],
   },
   {
     id: "cashflow",

@@ -305,7 +305,7 @@
   },
   "workspaceWidgets": {
     "titles": {
-      "project": "Проект",
+      "project": "Центр управления проектом",
       "cashflow": "Денежный поток",
       "aiChat": "AI-ассистент",
       "crm": "CRM",
@@ -705,5 +705,63 @@
   "settingsHub": {
     "sidebarEyebrow": "Настройки",
     "sidebarTitle": "Организация, оплата и операции"
+  },
+  "projectDashboard": {
+    "tabs": {
+      "financial": "Финансы",
+      "diary": "Журнал работ",
+      "gantt": "Гант",
+      "ai": "AI-блокнот",
+      "settings": "Настройки"
+    },
+    "errors": {
+      "load": "Не удалось загрузить проект",
+      "blueprint": "Ошибка разбора чертежа",
+      "saveSettings": "Не удалось сохранить настройки"
+    },
+    "emptyTitle": "Проект не найден",
+    "emptyDesc": "Откройте проект с доски или передайте projectId",
+    "noClient": "Без клиента",
+    "pushToggle": "Уведомления",
+    "pushOn": "Push включены (локально)",
+    "pushOff": "Push выключены (локально)",
+    "pushNote": "Скоро: связь с настройками уведомлений пользователя. Сейчас только на этом устройстве.",
+    "uploadBlueprint": "Загрузить чертёж",
+    "blueprintSuccess": "Ведомость импортирована",
+    "budgetUtilization": "Использование бюджета",
+    "milestones": "Этапы оплаты",
+    "extras": "Дополнения",
+    "erpExpenses": "Счета ERP",
+    "erpVsPlannedHelp": "Счета ERP из финансов; плановые расходы — месячный бюджет в проекте.",
+    "noErpExpenses": "Нет счетов ERP для проекта",
+    "plannedExpenses": "Плановые расходы",
+    "attendanceTitle": "Последняя явка (Meckano)",
+    "attendanceEmpty": "Нет данных явки — привяжите зону Meckano",
+    "milestoneName": "Название этапа",
+    "amount": "Сумма",
+    "add": "Добавить",
+    "approved": "Одобрено",
+    "approve": "Одобрить",
+    "extraDesc": "Описание",
+    "category": "Категория",
+    "diaryPlaceholder": "Опишите работу за день…",
+    "workers": "Рабочие",
+    "progress": "Прогресс",
+    "saveDiary": "Сохранить",
+    "diarySaved": "Журнал сохранён",
+    "task": "Задача",
+    "start": "Начало",
+    "end": "Конец",
+    "noTasks": "Нет задач — загрузите чертёж",
+    "ganttListView": "Список",
+    "ganttChartView": "Временная шкала",
+    "settingsStatus": "Статус проекта",
+    "settingsBudget": "Бюджет",
+    "settingsPrimaryContact": "Основной клиент (CRM)",
+    "noPrimaryContact": "Без основного клиента",
+    "settingsAutoSyncCrm": "Автосинхронизация CRM",
+    "saveSettings": "Сохранить",
+    "settingsSaved": "Настройки сохранены",
+    "saving": "Сохранение…"
   }
 }

@@ -25,14 +25,22 @@ export async function getProjectByName(orgId: string, query: string) {
       console.warn("Meckano sync failed for project", e);
     }
 
-    const primaryContact = await prisma.contact.findFirst({
-      where: { projectId: project.id, organizationId: orgId },
-      select: { name: true },
-    });
+    const primaryContact = project.primaryContactId
+      ? await prisma.contact.findFirst({
+          where: { id: project.primaryContactId, organizationId: orgId },
+          select: { name: true },
+        })
+      : await prisma.contact.findFirst({
+          where: { projectId: project.id, organizationId: orgId },
+          select: { name: true },
+        });
 
     return {
       id: project.id,
       name: project.name,
+      status: project.status,
+      primaryContactId: project.primaryContactId,
+      autoSyncCrm: project.autoSyncCrm,
       client: primaryContact?.name ?? "לקוח מ-DB",
       budget: project.budget,
       expenses: projectExpenses,

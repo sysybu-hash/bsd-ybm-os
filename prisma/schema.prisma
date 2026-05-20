@@ -77,6 +77,10 @@ model Organization {
   organizationInvites      OrganizationInvite[]
   productPriceObservations ProductPriceObservation[]
   projects                 Project[]
+  workDiaries              WorkDiary[]
+  paymentMilestones        PaymentMilestone[]
+  projectExtras            ProjectExtra[]
+  projectExpenses          ProjectExpense[]
   notebooks                Notebook[]
   quotes                   Quote[]
   tasks                    Task[]
@@ -192,24 +196,36 @@ model SubscriptionInvitation {
 
 /// פרויקט / עסק תחת ארגון — לשיוך לקוחות ומעקב
 model Project {
-  id             String          @id @default(cuid())
-  name           String
-  organizationId String
-  createdAt      DateTime        @default(now())
+  id               String             @id @default(cuid())
+  name             String
+  organizationId   String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  /// סטטוס תצוגה (פעיל / מושהה וכו')
+  status           String             @default("פעיל")
+  /// לקוח ראשי מ-CRM
+  primaryContactId String?
+  /// סנכרון אוטומטי מול Contact.projectId
+  autoSyncCrm      Boolean            @default(true)
   /// תחילת תקופת עבודה / זמינות (אופציונלי)
-  activeFrom     DateTime?
+  activeFrom       DateTime?
   /// סיום תקופה מתוכננת (אופציונלי) — לתכנון משאבים
-  activeTo       DateTime?
+  activeTo         DateTime?
   /// פרויקט פעיל — מופיע בברירות מחדל; כבוי = ארכיון / לא ממשיך
-  isActive       Boolean         @default(true)
+  isActive         Boolean            @default(true)
   /// תקציב הפרויקט
-  budget         Float           @default(0)
+  budget           Float              @default(0)
   /// אופציונלי — קישור לאזור שטח/אתר במקאנו (אותו ארגון)
-  meckanoZoneId  String?
-  contacts       Contact[]
-  expenseRecords ExpenseRecord[]
-  meckanoZone    MeckanoZone?    @relation(fields: [meckanoZoneId], references: [id])
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  meckanoZoneId    String?
+  contacts         Contact[]
+  expenseRecords   ExpenseRecord[]
+  workDiaries      WorkDiary[]
+  paymentMilestones PaymentMilestone[]
+  projectExtras    ProjectExtra[]
+  projectExpenses  ProjectExpense[]
+  meckanoZone      MeckanoZone?       @relation(fields: [meckanoZoneId], references: [id])
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  primaryContact   Contact?           @relation("ProjectPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
   tasks            Task[]
   notebooks        Notebook[]
   issuedDocuments  IssuedDocument[]
@@ -217,6 +233,7 @@ model Project {
   @@index([organizationId])
   @@index([organizationId, isActive])
   @@index([meckanoZoneId])
+  @@index([primaryContactId])
 }
 
 model Task {
@@ -226,6 +243,11 @@ model Task {
   status         String       @default("TODO") // TODO, IN_PROGRESS, DONE
   priority       String       @default("MEDIUM") // LOW, MEDIUM, HIGH
   dueDate        DateTime?
+  startDate      DateTime?
+  endDate        DateTime?
+  progress       Int          @default(0)
+  /// JSON array של מזהי משימות תלויות
+  dependencies   String?
   projectId      String
   organizationId String
   createdAt      DateTime     @default(now())
@@ -236,6 +258,77 @@ model Task {
   @@index([projectId])
   @@index([organizationId])
   @@index([status])
+}
+
+/// יומן עבודה בשטח
+model WorkDiary {
+  id              String       @id @default(cuid())
+  projectId       String
+  organizationId  String
+  date            DateTime     @default(now())
+  workersCount    Int          @default(1)
+  description     String       @db.Text
+  progress        Int          @default(0)
+  isSyncedToAI    Boolean      @default(true)
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+/// חשבונות חלקיים / אבני דרך תשלום
+model PaymentMilestone {
+  id             String    @id @default(cuid())
+  projectId      String
+  organizationId String
+  name           String
+  amount         Float
+  isPaid         Boolean   @default(false)
+  datePaid       DateTime?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([organizationId])
+}
+
+/// תוספות ושינויים בשטח
+model ProjectExtra {
+  id             String   @id @default(cuid())
+  projectId      String
+  organizationId String
+  description    String
+  cost           Float
+  isApproved     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([organizationId])
+}
+
+/// עלויות חודשיות מתוכננות (לא חשבוניות ERP)
+model ProjectExpense {
+  id             String   @id @default(cuid())
+  projectId      String
+  organizationId String
+  month          String
+  category       String
+  amount         Float
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([organizationId])
+  @@index([month])
 }
 
 model User {
@@ -457,6 +550,7 @@ model Contact {
   value           Float?
   organization    Organization     @relation(fields: [organizationId], references: [id])
   project         Project?         @relation(fields: [projectId], references: [id])
+  primaryForProjects Project[]   @relation("ProjectPrimaryContact")
   expenseRecords  ExpenseRecord[]
   issuedDocuments IssuedDocument[]
   quotes          Quote[]

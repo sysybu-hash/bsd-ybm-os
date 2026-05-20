@@ -1,27 +1,31 @@
 /**
- * קטלוג מודלי Gemini — עודכן לפי Models API, 2026-05-19.
+ * קטלוג מודלי Gemini — עודכן לפי Google I/O 2026 (19/05).
  * @see https://ai.google.dev/gemini-api/docs/models
- * @see https://ai.google.dev/gemini-api/docs/multimodal-live
+ * @see https://dev.to/googleai/gemini-35-flash-developer-guide-1i46
  */
 
 export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-19";
 
-/** מודל טקסט יציב (GA) — ברירת מחדל לפרודקשן */
-export const GEMINI_STABLE_TEXT_MODEL = "gemini-2.5-flash";
+/** GA — Google I/O 2026 (19/05) */
+export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.5-flash";
 
-/** מודל טקסט חדיש (preview) — אופציונלי דרך GEMINI_MODEL */
-export const GEMINI_FLAGSHIP_PREVIEW_MODEL = "gemini-3-flash-preview";
+/** מיושן; נשמר לתאימות env */
+export const GEMINI_LEGACY_PREVIEW_MODEL = "gemini-3-flash-preview";
 
-/** @deprecated השתמשו ב-GEMINI_STABLE_TEXT_MODEL או GEMINI_FLAGSHIP_PREVIEW_MODEL */
+/** @deprecated השתמשו ב-GEMINI_STABLE_TEXT_MODEL */
+export const GEMINI_FLAGSHIP_PREVIEW_MODEL = GEMINI_LEGACY_PREVIEW_MODEL;
+
+/** @deprecated השתמשו ב-GEMINI_STABLE_TEXT_MODEL */
 export const GEMINI_FLAGSHIP_MODEL = GEMINI_STABLE_TEXT_MODEL;
 
+/** גרמושקה / BOQ — אותו מודל GA (קוד + סוכנים) */
+export const GEMINI_BLUEPRINT_PRIMARY_MODEL = "gemini-3.5-flash";
+
 /**
- * Live API — אודיו native (מומלץ Google AI Studio, מאי 2026).
- * ראשון: `gemini-2.5-flash-native-audio-latest` (זמין ב-Models API).
+ * Live API — אודיו native.
  */
 export const GEMINI_LIVE_NATIVE_AUDIO_MODEL = "gemini-2.5-flash-native-audio-latest";
 
-/** מודלים ל-Gemini Live — ניסיון לפי סדר (3.1 Live ראשון אם זמין ב-API) */
 export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
   "gemini-3.1-flash-live-preview",
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
@@ -32,14 +36,13 @@ export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
 /** שרשרת טקסט (צ'אט, מסמכים) */
 export const GEMINI_MODEL_FALLBACK_TIER: readonly string[] = [
   GEMINI_STABLE_TEXT_MODEL,
-  GEMINI_FLAGSHIP_PREVIEW_MODEL,
+  "gemini-2.5-flash",
   "gemini-2.5-pro",
   "gemini-2.5-flash-lite",
   "gemini-3.1-flash-lite",
 ] as const;
 
-/** NotebookLM / צ'אט מהיר */
-export const GEMINI_NOTEBOOKLM_DEFAULT_MODEL = "gemini-2.5-flash";
+export const GEMINI_NOTEBOOKLM_DEFAULT_MODEL = GEMINI_STABLE_TEXT_MODEL;
 
 const LEGACY_MODEL_ALIASES: Record<string, string> = {
   "gemini-1.5-flash": GEMINI_STABLE_TEXT_MODEL,
@@ -47,13 +50,15 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
   "gemini-1.5-flash-002": GEMINI_STABLE_TEXT_MODEL,
   "gemini-1.5-flash-latest": GEMINI_STABLE_TEXT_MODEL,
   "gemini-1.5-pro": "gemini-2.5-pro",
+  "gemini-3-flash-preview": GEMINI_STABLE_TEXT_MODEL,
   "gemini-3.1-pro": "gemini-2.5-pro",
   "gemini-3.1-pro-stable": "gemini-2.5-pro",
-  "gemini-3.1-flash": GEMINI_FLAGSHIP_PREVIEW_MODEL,
-  "gemini-3.1-flash-stable": GEMINI_FLAGSHIP_PREVIEW_MODEL,
+  "gemini-3.1-flash": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-3.1-flash-stable": GEMINI_STABLE_TEXT_MODEL,
   "gemini-3.1-flash-live": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
   "gemini-3.1-flash-live-preview": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
-  "gemini-2.0-flash-001": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-2.0-flash-001": "gemini-2.5-flash",
+  "gemini-2.0-flash": "gemini-2.5-flash",
   "gemini-2.0-flash-lite": "gemini-2.5-flash-lite",
   "gemini-2.0-flash-exp": "gemini-2.5-pro",
   "gemini-2.0-pro-stable": "gemini-2.5-pro",
@@ -92,6 +97,18 @@ export function getGeminiModelId(): string {
 export function getGeminiModelFallbackChain(): string[] {
   const primary = getGeminiModelId();
   return dedupeModels([primary, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+/** שרשרת לפענוח גרמושקה / תוכניות ביצוע */
+export function getBlueprintAnalysisModelChain(): string[] {
+  const flashOnly = process.env.BLUEPRINT_USE_FLASH_ONLY === "true";
+  const fromEnv = process.env.GEMINI_BLUEPRINT_MODEL?.trim();
+  const primary = flashOnly ? "gemini-2.5-flash-lite" : GEMINI_BLUEPRINT_PRIMARY_MODEL;
+  return dedupeModels([
+    ...(fromEnv ? [fromEnv] : []),
+    primary,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 export function isLikelyGeminiModelUnavailable(err: unknown): boolean {

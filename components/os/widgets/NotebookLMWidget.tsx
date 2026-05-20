@@ -431,6 +431,10 @@ export default function NotebookLMWidget({
   }, [t]);
 
   useEffect(() => {
+    const pid = liveData?.projectId;
+    if (typeof pid === "string" && pid) {
+      setProjectId(pid);
+    }
     const notebookId = liveData?.notebookId;
     if (typeof notebookId === "string" && notebookId) {
       void handleLoadNotebook(notebookId);
