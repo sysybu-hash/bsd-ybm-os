@@ -22,7 +22,7 @@ const PLATFORM_HOSTS = new Set(
     "127.0.0.1",
     ...(process.env.NEXT_PUBLIC_SITE_URL ?? "")
       .replace(/^https?:\/\//i, "")
-      .split("/")[0]
+      .split("/")[0]!
       .toLowerCase()
       .split(",")
       .filter(Boolean),
@@ -35,7 +35,7 @@ const PLATFORM_HOSTS = new Set(
 
 export function normalizeHostname(host: string | null | undefined): string {
   if (!host) return "";
-  return host.split(":")[0].trim().toLowerCase();
+  return (host.split(":")[0] ?? "").trim().toLowerCase();
 }
 
 export function isPlatformHost(hostname: string): boolean {

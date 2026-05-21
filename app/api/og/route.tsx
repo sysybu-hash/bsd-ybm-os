@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const title    = (searchParams.get("title") ?? "BSD-YBM Intelligence").slice(0, 60);
   const subtitle = (searchParams.get("subtitle") ?? "").slice(0, 80);
   const typeKey  = searchParams.get("type") ?? "default";
-  const { label, accent } = TYPE_CONFIG[typeKey] ?? TYPE_CONFIG.default;
+  const { label, accent } = TYPE_CONFIG[typeKey] ?? TYPE_CONFIG["default"]!;
 
   return new ImageResponse(
     (

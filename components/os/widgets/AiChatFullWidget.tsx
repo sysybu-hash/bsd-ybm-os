@@ -296,7 +296,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result ?? "");
-      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      const base64 = result.includes(",") ? (result.split(",")[1] ?? "") : result;
       setAttachment({ base64, mimeType: file.type || "application/octet-stream", name: file.name });
     };
     reader.readAsDataURL(file);

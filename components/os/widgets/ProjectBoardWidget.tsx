@@ -64,7 +64,7 @@ const emptyForm = (projectName = ""): TaskFormState => ({
   projectName,
   contactId: "",
   budget: 0,
-  dueDate: new Date().toISOString().split("T")[0],
+  dueDate: new Date().toISOString().split("T")[0]!,
   status: "todo",
   priority: "medium",
 });
@@ -76,7 +76,7 @@ function taskToForm(task: Task): TaskFormState {
     projectName: task.project,
     contactId: task.contactId ?? "",
     budget: task.budget,
-    dueDate: task.dueDate || new Date().toISOString().split("T")[0],
+    dueDate: task.dueDate || new Date().toISOString().split("T")[0]!,
     status: task.status,
     priority: task.priority,
   };

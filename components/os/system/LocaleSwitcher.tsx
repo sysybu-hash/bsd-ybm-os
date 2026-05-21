@@ -99,8 +99,8 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
                 e.preventDefault();
                 const next =
                   e.key === "ArrowDown"
-                    ? SELECTABLE_LOCALES[(idx + 1) % SELECTABLE_LOCALES.length]
-                    : SELECTABLE_LOCALES[(idx - 1 + SELECTABLE_LOCALES.length) % SELECTABLE_LOCALES.length];
+                    ? SELECTABLE_LOCALES[(idx + 1) % SELECTABLE_LOCALES.length]!
+                    : SELECTABLE_LOCALES[(idx - 1 + SELECTABLE_LOCALES.length) % SELECTABLE_LOCALES.length]!;
                 void changeLocale(next);
               }
               if (e.key === "Escape") setOpen(false);

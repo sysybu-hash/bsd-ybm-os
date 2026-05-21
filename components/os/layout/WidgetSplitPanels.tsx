@@ -40,7 +40,7 @@ export default function WidgetSplitPanels({
 
   if (panels.length === 0) return null;
   if (panels.length === 1) {
-    return <div className={className}>{panels[0].children}</div>;
+    return <div className={className}>{panels[0]!.children}</div>;
   }
 
   const orientation =

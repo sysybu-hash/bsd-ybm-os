@@ -45,7 +45,7 @@ export async function runTaskRemindersForAllOrganizations(): Promise<{ notified:
       await createOrganizationNotification(
         org.id,
         "משימות באיחור",
-        `${overdue.length} משימות באיחור — לדוגמה: «${overdue[0].title}» (${overdue[0].project.name})`,
+        `${overdue.length} משימות באיחור — לדוגמה: «${overdue[0]!.title}» (${overdue[0]!.project.name})`,
       );
       notified += 1;
     }
@@ -54,7 +54,7 @@ export async function runTaskRemindersForAllOrganizations(): Promise<{ notified:
       await createOrganizationNotification(
         org.id,
         "משימות להיום",
-        `${dueToday.length} משימות ליום זה — «${dueToday[0].title}»`,
+        `${dueToday.length} משימות ליום זה — «${dueToday[0]!.title}»`,
       );
       notified += 1;
     }

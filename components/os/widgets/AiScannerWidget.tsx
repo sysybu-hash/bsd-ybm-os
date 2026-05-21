@@ -478,8 +478,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
       let fail = 0;
 
       for (let i = 0; i < valid.length; i++) {
-        const file = valid[i];
-        const qid = initialQueue[i].id;
+        const file = valid[i]!;
+        const qid = initialQueue[i]!.id;
         setQueueProgress({ current: i + 1, total: valid.length, name: file.name });
         setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "processing" } : q)));
         toast.info(
@@ -500,7 +500,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
               fileName: file.name,
               vendor: analysis.vendor,
               amount: analysis.amount,
-              date: analysis.date || new Date().toISOString().split("T")[0],
+              date: analysis.date || new Date().toISOString().split("T")[0]!,
               status: "success",
             },
             ...prev,
@@ -682,7 +682,7 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         fileName: tr("scanner.results", "סריקה"),
         vendor: pendingAnalysis.vendor,
         amount: pendingAnalysis.amount,
-        date: pendingAnalysis.date || new Date().toISOString().split("T")[0],
+        date: pendingAnalysis.date || new Date().toISOString().split("T")[0]!,
         status: "success",
       },
       ...prev,

@@ -68,7 +68,7 @@ export const POST = withWorkspacesAuth(async (request, ctx): Promise<NextRespons
       const userId = entry.userId;
       const taskId = entry.taskId;
       const key = `${userId}_${taskId}`;
-      const date = new Date(entry.ts * 1000).toISOString().split("T")[0];
+      const date = new Date(entry.ts * 1000).toISOString().split("T")[0]!;
       const groupKey = `${userId}_${date}_${taskId}`;
 
       if (!entry.taskStop) {
@@ -105,7 +105,7 @@ export const POST = withWorkspacesAuth(async (request, ctx): Promise<NextRespons
 
     timeEntries.forEach((entry: { userId: number; ts: number; isOut?: boolean }) => {
       const userId = entry.userId;
-      const date = new Date(entry.ts * 1000).toISOString().split("T")[0];
+      const date = new Date(entry.ts * 1000).toISOString().split("T")[0]!;
       const dayKey = `${userId}_${date}`;
 
       if (!entry.isOut) {
@@ -122,7 +122,7 @@ export const POST = withWorkspacesAuth(async (request, ctx): Promise<NextRespons
     });
 
     dailyTotalAttendance.forEach((totalHours, dayKey) => {
-      const [userId, date] = dayKey.split("_");
+      const [userId, date] = dayKey.split("_") as [string, string];
 
       let assignedHours = 0;
       grouped.forEach((group, groupKey) => {

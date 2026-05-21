@@ -373,7 +373,7 @@ export default function OmniCanvasWorkspace() {
       const results: SearchResult[] = Array.isArray(data.results) ? data.results : [];
 
       if (results.length > 0) {
-        const top = results[0];
+        const top = results[0]!;
         if (top.type === "project") {
           openWidget("project", { name: top.name });
           setSystemMessage(t("workspaceWidgets.page.commands.foundProject", { name: top.name }));

@@ -103,7 +103,7 @@ function buildHistoryWithSourcesInFirstTurn(
 ): Content[] {
   const history: Content[] = [];
   for (let i = 0; i < prior.length; i++) {
-    const m = prior[i];
+    const m = prior[i]!;
     if (m.role === "user" && i === 0 && sources.length > 0) {
       history.push({
         role: "user",
@@ -144,7 +144,7 @@ export async function runErpProjectNotebookChat(params: {
   if (!messages.length) {
     throw new Error("חסרות הודעות");
   }
-  const last = messages[messages.length - 1];
+  const last = messages[messages.length - 1]!;
   if (last.role !== "user") {
     throw new Error("ההודעה האחרונה חייבת להיות מהמשתמש");
   }

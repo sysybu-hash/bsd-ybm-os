@@ -37,7 +37,7 @@ export async function getCashflowForecasting(organizationId: string): Promise<Ca
       .reduce((sum, e) => sum + (e._sum.total || 0), 0);
     
     points.push({
-      name: monthNames[monthKey],
+      name: monthNames[monthKey]!,
       actual: total || Math.floor(Math.random() * 5000) + 10000,
       type: 'past'
     });
@@ -45,7 +45,7 @@ export async function getCashflowForecasting(organizationId: string): Promise<Ca
 
   // Current month (partial)
   points.push({
-    name: monthNames[now.getMonth()],
+    name: monthNames[now.getMonth()]!,
     actual: Math.floor(Math.random() * 8000) + 5000,
     forecast: Math.floor(Math.random() * 4000) + 12000,
     type: 'past'
@@ -55,7 +55,7 @@ export async function getCashflowForecasting(organizationId: string): Promise<Ca
   for (let i = 1; i <= 3; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     points.push({
-      name: monthNames[d.getMonth()],
+      name: monthNames[d.getMonth()]!,
       forecast: Math.floor(Math.random() * 5000) + 15000,
       type: 'future'
     });

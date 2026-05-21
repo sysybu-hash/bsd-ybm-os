@@ -47,7 +47,7 @@ export const SITE_WIZARD_STEPS: WizardStep[] = [
 ];
 
 function normalizePath(pathname: string): string {
-  const clean = pathname.split("?")[0].split("#")[0];
+  const clean = (pathname.split("?")[0] ?? pathname).split("#")[0] ?? pathname;
   if (clean.length > 1 && clean.endsWith("/")) {
     return clean.slice(0, -1);
   }
@@ -70,7 +70,7 @@ export function findWizardStepIndex(pathname: string): number {
 }
 
 export function findWizardStep(pathname: string): WizardStep {
-  return SITE_WIZARD_STEPS[findWizardStepIndex(pathname)];
+  return SITE_WIZARD_STEPS[findWizardStepIndex(pathname)]!;
 }
 
 export function getAdjacentWizardRoute(
@@ -80,6 +80,6 @@ export function getAdjacentWizardRoute(
   const current = findWizardStepIndex(pathname);
   const target = direction === "prev" ? current - 1 : current + 1;
   if (target < 0 || target >= SITE_WIZARD_STEPS.length) return null;
-  return SITE_WIZARD_STEPS[target].primaryRoute;
+  return SITE_WIZARD_STEPS[target]!.primaryRoute;
 }
 

@@ -236,7 +236,7 @@ export default function GoogleDriveWidget({
   const navigateToFolder = (index: number) => {
     const newPath = folderPath.slice(0, index + 1);
     setFolderPath(newPath);
-    const id = newPath[newPath.length - 1].id;
+    const id = newPath[newPath.length - 1]!.id;
     setCurrentFolderId(id);
     void fetchFiles(id);
   };

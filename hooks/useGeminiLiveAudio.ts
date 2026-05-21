@@ -186,7 +186,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let index = 0; index < bytes.byteLength; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
+    binary += String.fromCharCode(bytes[index]!);
   }
   return window.btoa(binary);
 }
@@ -194,7 +194,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 function float32ToPcm16(float32: Float32Array): ArrayBuffer {
   const pcm = new Int16Array(float32.length);
   for (let index = 0; index < float32.length; index += 1) {
-    const sample = Math.max(-1, Math.min(1, float32[index]));
+    const sample = Math.max(-1, Math.min(1, float32[index]!));
     pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
   }
   return pcm.buffer;
@@ -210,7 +210,7 @@ function base64PcmToFloat32(base64Audio: string): Float32Array {
   const pcm = new Int16Array(bytes.buffer);
   const audio = new Float32Array(pcm.length);
   for (let index = 0; index < pcm.length; index += 1) {
-    audio[index] = pcm[index] / 32768;
+    audio[index] = pcm[index]! / 32768;
   }
   return audio;
 }

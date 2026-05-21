@@ -101,7 +101,7 @@ export async function resolvePrimaryContactId(
     select: { id: true },
     take: 2,
   });
-  if (contacts.length === 1) return contacts[0].id;
+  if (contacts.length === 1) return contacts[0]!.id;
   return primaryContactId ?? null;
 }
 

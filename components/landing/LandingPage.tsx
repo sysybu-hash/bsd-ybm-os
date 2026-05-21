@@ -29,7 +29,7 @@ export default function LandingPage({
   const features = [0, 1, 2, 3].map((i) => ({
     title: t(`marketingHome.osLanding.features.${i}.title`),
     body: t(`marketingHome.osLanding.features.${i}.body`),
-    icon: featureIcons[i],
+    icon: featureIcons[i]!,
   }));
 
   return (

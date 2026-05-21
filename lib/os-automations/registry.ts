@@ -266,7 +266,7 @@ export async function runAutomationAction(
     case "close_widget": {
       const id = String(params.widgetId ?? "");
       if (id) deps.closeWidget(id);
-      else if (deps.widgets.length > 0) deps.closeWidget(deps.widgets[deps.widgets.length - 1].id);
+      else if (deps.widgets.length > 0) deps.closeWidget(deps.widgets[deps.widgets.length - 1]!.id);
       return { ok: true };
     }
     case "focus_widget": {
@@ -283,7 +283,7 @@ export async function runAutomationAction(
     case "toggle_maximize": {
       const id = String(params.widgetId ?? "");
       if (id) deps.toggleMaximize(id);
-      else if (deps.widgets.length > 0) deps.toggleMaximize(deps.widgets[deps.widgets.length - 1].id);
+      else if (deps.widgets.length > 0) deps.toggleMaximize(deps.widgets[deps.widgets.length - 1]!.id);
       return { ok: true };
     }
     case "meckano_clock_in":

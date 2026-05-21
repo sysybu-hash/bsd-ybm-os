@@ -59,14 +59,14 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
     groq: "bg-rose-400 text-rose-400 border-rose-500/30",
   };
 
-  const themeColor = engineColors[provider] || engineColors.gemini;
+  const themeColor = engineColors[provider] ?? "bg-blue-400 text-blue-400 border-blue-500/30";
 
   return (
     <div className="flex h-full w-full flex-col gap-4 rounded-2xl bg-transparent p-6 text-[color:var(--foreground-main)]">
       <div className="flex items-center justify-between border-b border-[color:var(--border-main)] pb-3">
         <div className="flex items-center gap-3">
           <div
-            className={`h-3 w-3 rounded-full ${themeColor.split(" ")[0]} animate-pulse shadow-[0_0_10px_currentColor]`}
+            className={`h-3 w-3 rounded-full ${themeColor.split(" ")[0] ?? ""} animate-pulse shadow-[0_0_10px_currentColor]`}
           />
           <h2 className="text-xl font-bold capitalize text-[color:var(--foreground-main)]">
             {provider}{" "}
@@ -80,12 +80,12 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
       </div>
 
       <div
-        className={`custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border bg-[color:var(--background-main)]/30 p-4 text-sm leading-relaxed text-[color:var(--foreground-main)] ${themeColor.split(" ")[2]}`}
+        className={`custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border bg-[color:var(--background-main)]/30 p-4 text-sm leading-relaxed text-[color:var(--foreground-main)] ${themeColor.split(" ")[2] ?? ""}`}
       >
         {loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-[color:var(--foreground-muted)]">
             <div
-              className={`h-6 w-6 animate-spin rounded-full border-2 ${themeColor.split(" ")[1].replace("text", "border")} border-t-transparent`}
+              className={`h-6 w-6 animate-spin rounded-full border-2 ${(themeColor.split(" ")[1] ?? "").replace("text", "border")} border-t-transparent`}
             />
             <span>{tr("scanner.processing", "המנוע מעבד את הבקשה...")}</span>
           </div>

@@ -8,7 +8,7 @@ describe("parseActionsJson", () => {
     });
     const parsed = parseActionsJson(raw, "he");
     expect(parsed?.actions).toHaveLength(1);
-    expect(parsed?.actions[0].intent).toBe("open_dashboard");
+    expect(parsed?.actions[0]!.intent).toBe("open_dashboard");
   });
 
   it("returns null for invalid JSON", () => {

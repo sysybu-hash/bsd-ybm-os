@@ -60,7 +60,7 @@ export async function checkRateLimit(
 /** Extract a stable key from the incoming request (IP or user-id). */
 export function getRateLimitKey(req: NextRequest, suffix: string): string {
   const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+  const ip = forwarded ? (forwarded.split(",")[0] ?? "unknown").trim() : "unknown";
   return `rl:${suffix}:${ip}`;
 }
 

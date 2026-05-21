@@ -66,7 +66,7 @@ export function formatBoardDueDate(dueDate: string | null | undefined): string {
 export function parseClientFromDescription(description: string | null | undefined): string {
   if (!description) return "";
   const m = description.match(/Client:\s*([^|]+)/i);
-  return m ? m[1].trim() : "";
+  return m ? (m[1] ?? "").trim() : "";
 }
 
 export function buildTaskDescription(

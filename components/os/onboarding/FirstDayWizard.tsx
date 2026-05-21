@@ -71,7 +71,7 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
 
   if (!open) return null;
 
-  const current = STEPS[step];
+  const current = STEPS[step]!;
 
   const onPrimary = () => {
     void trackWizard(`step_${current.id}`);

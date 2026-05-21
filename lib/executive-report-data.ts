@@ -88,11 +88,11 @@ export async function getAnnualFlowSeries(year: number): Promise<ExecutiveFlowPo
 
   for (const row of issued) {
     const m = row.date.getMonth();
-    incomeByMonth[m] += row.total;
+    incomeByMonth[m] = (incomeByMonth[m] ?? 0) + row.total;
   }
   for (const row of documents) {
     const m = row.createdAt.getMonth();
-    expenseByMonth[m] += extractDocTotal(row.aiData);
+    expenseByMonth[m] = (expenseByMonth[m] ?? 0) + extractDocTotal(row.aiData);
   }
 
   return months.map((name, i) => ({

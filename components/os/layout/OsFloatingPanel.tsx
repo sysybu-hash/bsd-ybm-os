@@ -112,8 +112,8 @@ export default function OsFloatingPanel({
       if (e.key !== "Tab") return;
       const list = nodes();
       if (list.length === 0) return;
-      const first = list[0];
-      const last = list[list.length - 1];
+      const first = list[0]!;
+      const last = list[list.length - 1]!;
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
