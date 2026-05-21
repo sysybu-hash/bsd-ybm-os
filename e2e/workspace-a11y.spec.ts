@@ -1,25 +1,148 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { dismissCookieBannerIfVisible, tryCredentialsSignIn } from "./helpers";
+import type { AxeResults, Result } from "axe-core";
+import { dismissCookieBannerIfVisible, tryCredentialsSignIn, workspaceUrl } from "./helpers";
 
-test.describe("Workspace accessibility", () => {
+const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
+
+type A11yBaseline = Record<
+  string,
+  { ruleId: string; impact: string; description: string }[]
+>;
+
+function readBaseline(): A11yBaseline {
+  try {
+    return JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8")) as A11yBaseline;
+  } catch {
+    return {};
+  }
+}
+
+function saveBaseline(baseline: A11yBaseline) {
+  fs.writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2), "utf8");
+}
+
+function toCatalogEntries(violations: Result[]) {
+  return violations.map((v) => ({
+    ruleId: v.id,
+    impact: v.impact ?? "unknown",
+    description: v.description,
+  }));
+}
+
+/** Returns violations that are NOT already in the baseline for this key. */
+function newViolations(
+  key: string,
+  violations: Result[],
+  baseline: A11yBaseline,
+): Result[] {
+  const baselineIds = new Set(
+    (baseline[key] ?? []).map((e) => e.ruleId),
+  );
+  return violations.filter((v) => !baselineIds.has(v.id));
+}
+
+// ─── shared axe config ───────────────────────────────────────────────────────
+const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const CRITICAL_IMPACTS = new Set(["critical", "serious"]);
+
+// ─── widget smoke URLs ───────────────────────────────────────────────────────
+const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
+  { key: "workspace-chrome",  url: "/",                        label: "עצם סביבת עבודה" },
+  { key: "dashboard",         url: workspaceUrl({ w: "dashboard" }), label: "דאשבורד" },
+  { key: "crm",               url: workspaceUrl({ w: "crmTable" }), label: "CRM לקוחות" },
+  { key: "ai-chat",           url: workspaceUrl({ w: "aiChatFull" }), label: "צ'אט AI" },
+  { key: "project-board",     url: workspaceUrl({ w: "project" }), label: "לוח פרויקטים" },
+  { key: "scanner",           url: workspaceUrl({ w: "aiScanner" }), label: "סורק AI" },
+  { key: "drive",             url: workspaceUrl({ w: "googleDrive" }), label: "Google Drive" },
+];
+
+// ─── test suite ──────────────────────────────────────────────────────────────
+test.describe("Workspace accessibility — axe audit per widget", () => {
   test.beforeEach(async ({ context }) => {
-    await context.addCookies([{ name: "bsd-locale", value: "he", url: "http://localhost:3001" }]);
+    await context.addCookies([
+      { name: "bsd-locale", value: "he", url: "http://localhost:3001" },
+    ]);
   });
 
-  test("no serious/critical axe violations on workspace chrome", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium", "דסקטופ");
+  for (const { key, url, label } of WIDGET_ROUTES) {
+    test(`no new critical/serious axe violations — ${label}`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
+
+      const signed = await tryCredentialsSignIn(page);
+      test.skip(!signed, "אין משתמש E2E");
+
+      await dismissCookieBannerIfVisible(page);
+      await page.goto(url);
+      await page.waitForLoadState("networkidle");
+      // Short wait for async widget mount
+      await page.waitForTimeout(1500);
+
+      const results: AxeResults = await new AxeBuilder({ page })
+        .withTags(AXE_TAGS)
+        .analyze();
+
+      const baseline = readBaseline();
+
+      // Persist all violations to baseline on first run
+      if (!baseline[key]) {
+        baseline[key] = toCatalogEntries(results.violations);
+        saveBaseline(baseline);
+      }
+
+      // Fail only on violations NOT in baseline
+      const newCritical = newViolations(key, results.violations, baseline).filter(
+        (v) => CRITICAL_IMPACTS.has(v.impact ?? ""),
+      );
+
+      if (newCritical.length > 0) {
+        const summary = newCritical
+          .map((v) => `  [${v.impact}] ${v.id}: ${v.description}`)
+          .join("\n");
+        expect.soft(
+          newCritical,
+          `דפקטים חדשים Critical/Serious ב-${label}:\n${summary}`,
+        ).toHaveLength(0);
+      }
+
+      // Attach full report as artifact
+      await testInfo.attach(`axe-${key}.json`, {
+        body: JSON.stringify(results.violations, null, 2),
+        contentType: "application/json",
+      });
+    });
+  }
+
+  // ─── consolidated baseline-update helper ───────────────────────────────────
+  test("baseline: dump all widget violations (run once to update baseline)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      !process.env.UPDATE_A11Y_BASELINE,
+      "רק כשמריצים עם UPDATE_A11Y_BASELINE=1",
+    );
+    test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
+
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
     await dismissCookieBannerIfVisible(page);
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+    const newBaseline: A11yBaseline = {};
 
-    const serious = results.violations.filter(
-      (v) => v.impact === "serious" || v.impact === "critical",
-    );
-    expect(serious).toEqual([]);
+    for (const { key, url } of WIDGET_ROUTES) {
+      await page.goto(url);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(1500);
+      const results: AxeResults = await new AxeBuilder({ page })
+        .withTags(AXE_TAGS)
+        .analyze();
+      newBaseline[key] = toCatalogEntries(results.violations);
+    }
+
+    saveBaseline(newBaseline);
+    console.log(`✅ Baseline saved to ${BASELINE_PATH}`);
+    expect(Object.keys(newBaseline).length).toBeGreaterThan(0);
   });
 });

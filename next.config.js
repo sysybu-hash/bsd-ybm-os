@@ -1,4 +1,8 @@
 const path = require("path");
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
+  openAnalyzer: false,
+});
 
 /** Legacy `/os` workspace path → root workspace (query preserved). */
 const LEGACY_REDIRECTS = [{ source: "/os", destination: "/", permanent: false }];
@@ -103,4 +107,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

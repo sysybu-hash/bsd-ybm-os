@@ -43,13 +43,30 @@
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],
+  "categories": ["business", "productivity", "finance"],
   "screenshots": [
     {
       "src": "/og-image.png",
       "sizes": "1200x630",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "BSD-YBM OS Desktop"
+      "label": "BSD-YBM OS — ממשק שולחן עבודה"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/api/scan/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  }
 }

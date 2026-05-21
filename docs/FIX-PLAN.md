@@ -1,8 +1,8 @@
 # 🎯 BSD-YBM OS — תוכנית שדרוג מלאה ל-Production Grade
 
-> **גרסה**: 3.0
+> **גרסה**: 4.0
 > **נכתב**: 2026-05-21 | **עדכון אחרון**: 2026-05-21
-> **סטטוס**: בביצוע — עדכון אחרי סשן ביצוע מלא (commits fa24445 → 05be832)
+> **סטטוס**: בביצוע — עדכון אחרי סשן ביצוע מלא (commits fa24445 → 3c91151)
 > **בעלים**: yohanan.bukshpan
 > **מבצע**: Cursor + Claude (פועל ביחד)
 > **יעד**: להעביר את הקוד ממצב "מוצר late-beta מצוין" למצב "production-grade ברמה גלובלית"
@@ -52,17 +52,21 @@ npm run premerge   # = verify:all
 | Claude | loading.tsx: about, help, sign/[id], admin. error.tsx: app/app, settings, sign/[id]. 4 lint warnings תוקנו. PII redaction ב-lib/logger.ts (email, Israeli ID, phone, API key, CC) | `2b98da5` |
 | Claude | `lib/webhook-verify.ts`: PayPlus HMAC-SHA256 timing-safe verification. webhook routes מנוקים מ-console.*. paypal-server.ts → createLogger | `d99aa2e` |
 | Claude | כל `any` ב-codebase הוסרו (17 מקומות): workspace-features, I18nProvider, SessionProvider, sign page, CrmTableWidget, routes. SignatureCanvasRef הורחב. 0 TS errors · 0 ESLint warnings | `05be832` |
+| Claude | OG image דינמי (`app/opengraph-image.tsx` + `/api/og`). `docs/ARCHITECTURE.md`, `docs/RUNBOOK.md`, `docs/ONBOARDING.md` נוצרו. DB indexes (Quote ×4, Task, IssuedDocument, Session ×2) + migration CONCURRENTLY | `ed59a17..be34c4b` |
+| Claude | `noUncheckedIndexedAccess: true` הופעל ב-tsconfig. כל 29 קבצים תוקנו. `npx tsc --noEmit` = 0 שגיאות | `3c91151` |
 
 ### מה נשאר — לפי עדיפות
 | # | פריט | מצב |
 |---|---|---|
 | 🟡 | lib/ refactor (169 קבצים שטוחים) | לא התחיל |
 | 🟡 | פיצול 10 קומפוננטים >700 שורות | לא התחיל |
-| 🟡 | DB indexes audit + N+1 | לא התחיל |
-| 🟢 | SEO: JSON-LD schema.org + og:image דינמי | בסיסי קיים — שדרוג חסר |
-| 🟢 | `noUncheckedIndexedAccess` בtsconfig | לא התחיל |
-| 🟢 | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | חסר |
+| ✅ | DB indexes audit + migrations | הושלם (`be34c4b`) |
+| 🟢 | SEO: JSON-LD schema.org | חסר JSON-LD |
+| ✅ | og:image דינמי | הושלם (`ed59a17`) |
+| ✅ | `noUncheckedIndexedAccess` בtsconfig | הושלם (`3c91151`) |
+| ✅ | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | הושלם (`200e728`) |
 | 🟢 | axe a11y audit ב-E2E | לא התחיל |
+| 🟢 | PWA manifest (screenshots + categories) | חסר |
 | ⚪ | i18n אנגלית | אופציונלי |
 
 ---
@@ -77,12 +81,12 @@ npm run premerge   # = verify:all
 | 3 | חוב טכני — lib/ | מבנה ברור ויחיד | 2–3 ימים | בינוני-גבוה | ⏳ **לא התחיל** |
 | 4 | קומפוננטים ענקיים | פיצול > 700 שורות | 2 ימים | נמוך | ⏳ **לא התחיל** |
 | 5 | טיפוסים | סוף ל-`any` | 1–2 ימים | נמוך | ✅ **הושלם** — 0 `any` בsource |
-| 6 | DB & Performance | אינדקסים + צריבת query | 1 יום | בינוני | ⏳ **לא התחיל** |
+| 6 | DB & Performance | אינדקסים + צריבת query | 1 יום | בינוני | ✅ **אינדקסים הושלמו** — N+1 + bundle חסרים |
 | 7 | Observability | לוגים, traces, alerts | 1 יום | אפס | ✅ **הושלם** — Sentry, cron monitoring, PII redaction |
 | 8 | UX & a11y | WCAG AA + RTL polish | 1 יום | אפס | ✅ **הושלם** — loading×7, error.tsx×4, lint clean |
-| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | 🔄 **בסיס קיים, og:image דינמי + JSON-LD חסר** |
+| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | 🔄 **og:image דינמי הושלם** — JSON-LD + PWA screenshots חסרים |
 | 10 | i18n אנגלית | פתיחת שוק בינלאומי | 2 ימים | בינוני | ⏳ **אופציונלי** |
-| 11 | תיעוד & Runbook | bus factor + DR | חצי יום | אפס | ⏳ **לא התחיל** |
+| 11 | תיעוד & Runbook | bus factor + DR | חצי יום | אפס | ✅ **ARCHITECTURE + RUNBOOK + ONBOARDING הושלמו** — DR-PLAN + OpenAPI חסרים |
 | 12 | Launch Readiness | בדיקות final | חצי יום | אפס | ⏳ **לא התחיל** |
 
 **סה"כ ריאלי**: 12–15 ימי עבודה ביעילות גבוהה.
