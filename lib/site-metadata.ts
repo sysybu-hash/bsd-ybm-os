@@ -93,10 +93,12 @@ export function buildLocalizedMetadata(
       alternateLocale: ["he_IL", "en_US", "ru_RU"].filter((l) => l !== seo.ogLocale),
       images: [
         {
-          url: "/og-image.png",
+          // Dynamic OG image route — Next.js auto-uses /opengraph-image for root
+          url: "/opengraph-image",
           width: 1200,
           height: 630,
-          alt: "BSD-YBM Operating System",
+          alt: seo.title,
+          type: "image/png",
         },
       ],
       type: "website",
@@ -105,7 +107,14 @@ export function buildLocalizedMetadata(
       card: "summary_large_image",
       title: seo.title,
       description: seo.description,
-      images: ["/og-image.png"],
+      images: [
+        {
+          url: "/opengraph-image",
+          width: 1200,
+          height: 630,
+          alt: seo.title,
+        },
+      ],
     },
     alternates: {
       canonical: canonicalPath,

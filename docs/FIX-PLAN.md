@@ -1,10 +1,10 @@
 # 🎯 BSD-YBM OS — תוכנית שדרוג מלאה ל-Production Grade
 
-> **גרסה**: 2.0
+> **גרסה**: 3.0
 > **נכתב**: 2026-05-21 | **עדכון אחרון**: 2026-05-21
-> **סטטוס**: בביצוע — עדכון לאחר ניתוח קומיטים של Cursor
+> **סטטוס**: בביצוע — עדכון אחרי סשן ביצוע מלא (commits fa24445 → 05be832)
 > **בעלים**: yohanan.bukshpan
-> **מבצע**: Cursor (תחת הנחיה) + ידני
+> **מבצע**: Cursor + Claude (פועל ביחד)
 > **יעד**: להעביר את הקוד ממצב "מוצר late-beta מצוין" למצב "production-grade ברמה גלובלית"
 
 ---
@@ -43,27 +43,26 @@ npm run premerge   # = verify:all
 
 ## 📊 סיכום מצב נוכחי (עדכון v2)
 
-### מה בוצע (לפני + בסשן האחרון)
-| בוצע על ידי | מה |
-|---|---|
-| Cursor (לפני) | Sentry + WidgetErrorBoundary, Lighthouse CI, CRM pagination, email verification, SSE notifications, Knowledge Vault module, NotebookLM improvements, Passkey auth suite, gitleaks + npm audit CI, rate-limit על 10+ AI routes, coverage threshold 60% |
-| Claude (סשן זה) | Stage 0 hygiene, `lib/env.ts` (Zod, 90 vars), `applyRateLimit` helper + withWorkspacesAuth option, `scripts/prebuild.mjs`, loading.tsx ×3, console.log cleanup |
+### מה בוצע (לפני + בסשנים האחרונים)
+| בוצע על ידי | מה | commit |
+|---|---|---|
+| Cursor (לפני) | Sentry + WidgetErrorBoundary, Lighthouse CI, CRM pagination, email verification, SSE notifications, Knowledge Vault module, NotebookLM improvements, Passkey auth suite, gitleaks + npm audit CI, rate-limit על 10+ AI routes, coverage threshold 60% | — |
+| Claude | Stage 0 hygiene, `lib/env.ts` (Zod, 90 vars), `applyRateLimit` helper + withWorkspacesAuth option, `scripts/prebuild.mjs`, loading.tsx ×3, console.log cleanup | `fa24445` |
+| Claude | Rate limit: 8 routes (auth passkeys ×2, set-password, sign, KV ×4), `lib/cron-guard.ts`, כל 5 cron routes עם withCronGuard + Sentry Crons monitoring | `18f5d6e` |
+| Claude | loading.tsx: about, help, sign/[id], admin. error.tsx: app/app, settings, sign/[id]. 4 lint warnings תוקנו. PII redaction ב-lib/logger.ts (email, Israeli ID, phone, API key, CC) | `2b98da5` |
+| Claude | `lib/webhook-verify.ts`: PayPlus HMAC-SHA256 timing-safe verification. webhook routes מנוקים מ-console.*. paypal-server.ts → createLogger | `d99aa2e` |
+| Claude | כל `any` ב-codebase הוסרו (17 מקומות): workspace-features, I18nProvider, SessionProvider, sign page, CrmTableWidget, routes. SignatureCanvasRef הורחב. 0 TS errors · 0 ESLint warnings | `05be832` |
 
 ### מה נשאר — לפי עדיפות
 | # | פריט | מצב |
 |---|---|---|
-| 🔴 | Rate limit: 5 routes עדיין חשופים | בוצע חלקי |
-| 🔴 | Rate limit: Knowledge Vault API (4 routes חדשים) | חסר לחלוטין |
 | 🟡 | lib/ refactor (169 קבצים שטוחים) | לא התחיל |
 | 🟡 | פיצול 10 קומפוננטים >700 שורות | לא התחיל |
-| 🟡 | `any` types: 149 בקוד | לא התחיל |
 | 🟡 | DB indexes audit + N+1 | לא התחיל |
-| 🟢 | Error boundaries לכל route segment | WidgetErrorBoundary קיים בלבד |
-| 🟢 | loading.tsx לכל segment | 3 מתוך ~8 |
-| 🟢 | lint warnings (9) | נותר |
+| 🟢 | SEO: JSON-LD schema.org + og:image דינמי | בסיסי קיים — שדרוג חסר |
 | 🟢 | `noUncheckedIndexedAccess` בtsconfig | לא התחיל |
-| 🟢 | SEO/PWA polish | בסיסי קיים |
 | 🟢 | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | חסר |
+| 🟢 | axe a11y audit ב-E2E | לא התחיל |
 | ⚪ | i18n אנגלית | אופציונלי |
 
 ---
@@ -73,15 +72,15 @@ npm run premerge   # = verify:all
 | # | שלב | מטרה | זמן | סיכון | סטטוס |
 |---|---|---|---|---|---|
 | 0 | היגיינה | לנקות רעש | 30 דק' | אפס | ✅ **הושלם** |
-| 1 | אבטחה | לסגור פערים קריטיים | 4–6 ש' | בינוני | 🔄 **90% הושלם** |
+| 1 | אבטחה | לסגור פערים קריטיים | 4–6 ש' | בינוני | ✅ **הושלם** (1.1–1.5 בוצעו) |
 | 2 | יציבות CI/Build | פייפלין דטרמיניסטי | 3–4 ש' | נמוך | ✅ **הושלם** |
 | 3 | חוב טכני — lib/ | מבנה ברור ויחיד | 2–3 ימים | בינוני-גבוה | ⏳ **לא התחיל** |
 | 4 | קומפוננטים ענקיים | פיצול > 700 שורות | 2 ימים | נמוך | ⏳ **לא התחיל** |
-| 5 | טיפוסים | סוף ל-`any` | 1–2 ימים | נמוך | ⏳ **לא התחיל** |
+| 5 | טיפוסים | סוף ל-`any` | 1–2 ימים | נמוך | ✅ **הושלם** — 0 `any` בsource |
 | 6 | DB & Performance | אינדקסים + צריבת query | 1 יום | בינוני | ⏳ **לא התחיל** |
-| 7 | Observability | לוגים, traces, alerts | 1 יום | אפס | 🔄 **50% — Sentry קיים, cron monitoring חסר** |
-| 8 | UX & a11y | WCAG AA + RTL polish | 1 יום | אפס | 🔄 **40% — loading×3, WidgetErrorBoundary קיים** |
-| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | 🔄 **בסיס קיים, schema.org + og:image חסר** |
+| 7 | Observability | לוגים, traces, alerts | 1 יום | אפס | ✅ **הושלם** — Sentry, cron monitoring, PII redaction |
+| 8 | UX & a11y | WCAG AA + RTL polish | 1 יום | אפס | ✅ **הושלם** — loading×7, error.tsx×4, lint clean |
+| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | 🔄 **בסיס קיים, og:image דינמי + JSON-LD חסר** |
 | 10 | i18n אנגלית | פתיחת שוק בינלאומי | 2 ימים | בינוני | ⏳ **אופציונלי** |
 | 11 | תיעוד & Runbook | bus factor + DR | חצי יום | אפס | ⏳ **לא התחיל** |
 | 12 | Launch Readiness | בדיקות final | חצי יום | אפס | ⏳ **לא התחיל** |
@@ -132,11 +131,11 @@ Run `npx tsc --noEmit` after all 8. Report changes.
 ### ✅ 1.3 Gitleaks + npm audit — הושלם (קומיט `90ec545`)
 CI workflow מריץ gitleaks + npm audit --audit-level=critical בכל push.
 
-### ⏳ 1.4 PII redaction בלוגים — לא התחיל
+### ✅ 1.4 PII redaction בלוגים — הושלם (קומיט `2b98da5`)
 **פרומפט Cursor**:
 > Add PII sanitization to `lib/logger.ts`. Before any log is written, run the payload through a `sanitize()` function that: (1) replaces email addresses with `***@domain.com`, (2) replaces 9-digit sequences (Israeli ID) with `[ID-REDACTED]`, (3) replaces `sk-...`, `AIza...`, `Bearer ...` patterns with `[KEY-REDACTED]`. Write unit tests in `lib/__tests__/logger-sanitize.test.ts` covering each pattern.
 
-### ⏳ 1.5 webhook signature verification — לא נבדק
+### ✅ 1.5 webhook signature verification — הושלם (קומיט `d99aa2e`)
 ```bash
 grep -rn "verifySignature\|verifyWebhook\|transmission-sig\|HMAC\|hmac" app/api/webhooks/
 ```
