@@ -60,6 +60,7 @@
     "vercel:env:pull:prod": "vercel env pull .env.vercel.prod --environment=production --yes",
     "db:sync-from-vercel": "node scripts/sync-db-env-from-vercel-pull.mjs",
     "db:fix-migrations": "dotenv -e .env.local -- node scripts/fix-prisma-migrations-neon.mjs",
+    "db:repair-migrations": "dotenv -e .env.local -- node scripts/repair-failed-prisma-migrations.mjs",
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
     "i18n:construction-trades": "node scripts/build-construction-trade-locales.mjs",
     "tutorials:encode": "node scripts/generate-tutorial-videos.mjs",

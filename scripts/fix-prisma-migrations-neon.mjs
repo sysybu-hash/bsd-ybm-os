@@ -46,6 +46,14 @@ const expenseSql = readFileSync(
 const pool = new Pool({ connectionString: url });
 
 try {
+  const orphan = await pool.query(
+    `DELETE FROM _prisma_migrations
+     WHERE finished_at IS NULL AND rolled_back_at IS NOT NULL`,
+  );
+  if (orphan.rowCount > 0) {
+    console.log("נמחקו רשומות מיגרציה יתומות:", orphan.rowCount);
+  }
+
   const tableCheck = await pool.query(
     `SELECT EXISTS (
        SELECT 1 FROM information_schema.tables

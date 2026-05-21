@@ -106,7 +106,12 @@ export default async function RootLayout({
   const hdrs = await headers();
   const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
   const host = normalizeHostname(hostHeader);
-  const tenant = await resolveTenantByHost(host);
+  let tenant = null;
+  try {
+    tenant = await resolveTenantByHost(host);
+  } catch (e) {
+    console.warn("[layout] resolveTenantByHost failed — continuing as platform", e);
+  }
   if (host && !isPlatformHost(host) && !tenant) {
     redirect(process.env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");
   }

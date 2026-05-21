@@ -37,14 +37,20 @@ if (isPlaceholderUrl(db)) {
 }
 
 const useDbPush = shouldUseDbPush(db);
-const cmd = useDbPush
-  ? "npx prisma db push --skip-generate"
-  : "npx prisma migrate deploy";
 
 console.log(
   `[ensure-production-schema] ${useDbPush ? "db push (CI/fresh)" : "migrate deploy"}…`,
 );
 try {
+  if (!useDbPush) {
+    execSync("node scripts/repair-failed-prisma-migrations.mjs", {
+      stdio: "inherit",
+      env: process.env,
+    });
+  }
+  const cmd = useDbPush
+    ? "npx prisma db push --skip-generate"
+    : "npx prisma migrate deploy";
   execSync(cmd, {
     stdio: "inherit",
     env: process.env,
