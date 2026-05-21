@@ -1,13 +1,8 @@
-name: Security
+# סריקת אבטחה שבועית בלבד — push/PR רצים ב-Quality Gate (workflow אחד)
+name: Security (scheduled)
 
 on:
-  pull_request:
-  push:
-    branches:
-      - master
-      - main
   schedule:
-    # יום ראשון 04:00 UTC — סריקת CVE שבועית גם בלי PR
     - cron: "0 4 * * 0"
   workflow_dispatch:
 
@@ -22,14 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # gitleaks מסרק את כל ה-history כדי לתפוס סודות בהיסטוריה
           fetch-depth: 0
 
       - name: Run gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # מצב CI בלי דרישת רישיון Pro
           GITLEAKS_LICENSE: ""
 
   npm-audit:
@@ -51,11 +44,9 @@ jobs:
       - name: Install dependencies (npm ci)
         run: npm ci --ignore-scripts
 
-      # נכשל רק על critical — xlsx אין תיקון ב-audit; moderate ב-Next לא חוסם
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
 
-      # רץ גם על dev — אבל בלי לחסום (informational only)
       - name: Audit dev dependencies (informational)
         run: npm audit --audit-level=high || true
         continue-on-error: true
