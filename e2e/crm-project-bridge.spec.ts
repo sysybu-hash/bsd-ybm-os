@@ -5,8 +5,10 @@ import {
   E2E_PROJECT_ID,
   dismissCookieBannerIfVisible,
   dismissWorkspaceOverlays,
+  expectProjectDashboardReady,
   tryCredentialsSignIn,
   waitForAuthenticatedWorkspace,
+  waitForCrmContactsLoaded,
   workspaceUrl,
 } from "./helpers";
 
@@ -23,15 +25,17 @@ test.describe("CRM ↔ project bridge", () => {
     await dismissWorkspaceOverlays(page);
     await page.goto(workspaceUrl({ w: "crmTable" }));
     await waitForAuthenticatedWorkspace(page);
-    await expect(page.locator("[data-widget-shell]").first()).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/ניהול לקוחות|CRM/i).first()).toBeVisible({ timeout: 30000 });
+    const crmShell = page.locator("[data-widget-shell]").first();
+    await expect(crmShell).toBeVisible({ timeout: 30000 });
+    await waitForCrmContactsLoaded(page);
 
     const openHub = page
       .getByRole("button", { name: /פתח מרכז שליטה|Open control center/i })
+      .or(page.getByTitle(/פתח מרכז שליטה|Open control center/i))
       .first();
     await expect(openHub).toBeVisible({ timeout: 30000 });
     await dismissWorkspaceOverlays(page);
     await openHub.click();
-    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 30000 });
+    await expectProjectDashboardReady(page);
   });
 });

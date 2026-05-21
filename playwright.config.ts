@@ -3,7 +3,23 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
-const playwrightPort = process.env.PLAYWRIGHT_DEV_PORT ?? '3001';
+/** פורט אחיד ל־webServer ול־baseURL (מניעת 3330 בשרת מול 3001 ב-health-check). */
+function resolvePlaywrightPort(): string {
+  const fromDev = process.env.PLAYWRIGHT_DEV_PORT?.trim();
+  if (fromDev) return fromDev;
+  const auth = process.env.NEXTAUTH_URL?.trim() ?? process.env.AUTH_URL?.trim();
+  if (auth) {
+    try {
+      const p = new URL(auth).port;
+      if (p) return p;
+    } catch {
+      /* fall through */
+    }
+  }
+  return "3001";
+}
+
+const playwrightPort = resolvePlaywrightPort();
 
 /** Must match NEXTAUTH_URL host in CI (127.0.0.1) or session cookies are not sent. */
 function resolvePlaywrightHost(): string {
@@ -86,8 +102,9 @@ export default defineConfig({
         command: process.env.PLAYWRIGHT_WEB_COMMAND ?? `npx next start -p ${playwrightPort}`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        stdout: "ignore",
+        stdout: "pipe",
         stderr: "pipe",
         timeout: 180_000,
+        /* Omit `env` so the child inherits process.env; Next.js loads .env* from the project root. */
       },
 });

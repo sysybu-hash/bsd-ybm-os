@@ -32,11 +32,24 @@ const googleOAuthConfigured =
 
 const nextAuthUrlIsHttps = process.env.NEXTAUTH_URL?.trim().toLowerCase().startsWith("https://");
 
+function authHostIsLoopback(): boolean {
+  const raw = process.env.NEXTAUTH_URL?.trim();
+  if (!raw) return false;
+  try {
+    const h = new URL(raw).hostname.toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
-  /** עוגיית __Secure-* ב-Vercel גם כש-NEXTAUTH_URL בטעות ב-http */
-  useSecureCookies: Boolean(process.env.VERCEL || nextAuthUrlIsHttps),
+  /** עוגיית __Secure-* ב-Vercel; לא על loopback HTTP (E2E / next start מקומי). */
+  useSecureCookies: Boolean(
+    (process.env.VERCEL || nextAuthUrlIsHttps) && !authHostIsLoopback(),
+  ),
   session: {
     strategy: "jwt",
     maxAge: SESSION_MAX_AGE_DEFAULT_SEC,

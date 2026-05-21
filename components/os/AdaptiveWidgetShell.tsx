@@ -79,13 +79,17 @@ export default function AdaptiveWidgetShell({
     return { width: Math.max(320, v.width - 24), height: Math.max(400, v.height - 130) };
   }, [workspaceBoundsRef]);
 
-  const resizeMinWidth = (wsWidth: number) =>
-    isMobile ? Math.max(280, wsWidth) : Math.min(RESIZE_MIN_WINDOW_WIDTH, Math.max(320, wsWidth - 16));
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
 
   const resolveDesktopDimensions = useCallback(
     (ws: { width: number; height: number }) => resolveShellDesktopDimensions(ws, size),
     [size],
   );
+
+  const resizeMinWidth = (wsWidth: number) =>
+    isMobile ? Math.max(280, wsWidth) : Math.min(RESIZE_MIN_WINDOW_WIDTH, Math.max(320, wsWidth - 16));
 
   const getInitialPosition = (dim: { width: number; height: number }) => {
     if (isMobile || isMaximized) return { x: 0, y: 0 };
@@ -99,8 +103,7 @@ export default function AdaptiveWidgetShell({
 
   const [currentSize, setCurrentSize] = useState(() => {
     const ws = getWorkspaceSize();
-    const mobile = typeof window !== "undefined" && window.innerWidth < 768;
-    if (mobile || isMaximized) {
+    if (isMobile || isMaximized) {
       return { width: ws.width, height: ws.height };
     }
     return resolveDesktopDimensions(ws);
@@ -109,7 +112,6 @@ export default function AdaptiveWidgetShell({
   const [position, setPosition] = useState(() => getInitialPosition(currentSize));
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const positionRef = useRef(position);
   const sizeRef = useRef(currentSize);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });

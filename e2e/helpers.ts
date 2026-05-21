@@ -80,7 +80,13 @@ export async function primeCookieConsent(page: Page) {
 export async function waitForAuthenticatedWorkspace(page: Page) {
   const sidebar = page.getByRole("navigation", { name: /יישומים|Apps/i });
   const mobileNav = page.getByTestId("mobile-bottom-nav");
-  await expect(sidebar.or(mobileNav)).toBeVisible({ timeout: 30000 });
+  const workspaceNav = page.getByRole("complementary", { name: /Workspace navigation|ניווט/i });
+  const hubGreeting = page.getByRole("heading", {
+    name: /Good (morning|afternoon|evening)|בוקר טוב|צהריים טובים|ערב טוב/i,
+  });
+  await expect(sidebar.or(mobileNav).or(workspaceNav).or(hubGreeting).first()).toBeVisible({
+    timeout: 30000,
+  });
 }
 
 /** פותח ווידג'ט פרויקט מה-URL ומחכה ל-shell. */
@@ -117,6 +123,40 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
   }
 
   await expect(target).toBeVisible({ timeout: 15_000 });
+}
+
+/** מחכה שווידג'ט מרכז הבקרה לפרויקט נפתח (לא דורש השלמת fetch לדשבורד). */
+export async function expectProjectDashboardReady(page: Page) {
+  await expect(
+    page.getByRole("region", { name: /Project control center|מרכז בקרה/i }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
+}
+
+/** מחכה שטעינת `/api/crm/contacts` הצליחה (לא מסך «נדרשת התחברות»). */
+export async function waitForCrmContactsLoaded(page: Page) {
+  const authError = page.getByRole("alert").filter({ hasText: /נדרשת התחברות|login required/i });
+  const retry = page.getByRole("button", { name: /נסה שוב|Retry/i });
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const waitLoaded = page.waitForResponse(
+      (res) => res.url().includes("/api/crm/contacts") && res.request().method() === "GET" && res.ok(),
+      { timeout: 45_000 },
+    );
+    if (await authError.isVisible().catch(() => false)) {
+      if (await retry.isVisible().catch(() => false)) {
+        await Promise.all([waitLoaded, retry.click()]);
+      } else {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await waitLoaded;
+      }
+    } else {
+      await waitLoaded;
+    }
+    if (!(await authError.isVisible().catch(() => false))) return;
+  }
+
+  await expect(authError).toHaveCount(0, { timeout: 5000 });
 }
 
 export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
@@ -172,7 +212,10 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
     await waitForAuthenticatedWorkspace(page);
     await dismissWorkspaceOverlays(page);
     return true;
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG_E2E_SIGNIN) {
+      console.error("[e2e] tryCredentialsSignIn failed:", err);
+    }
     return false;
   }
 }

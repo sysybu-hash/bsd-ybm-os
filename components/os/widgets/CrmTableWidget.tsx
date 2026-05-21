@@ -806,6 +806,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
                           {selectedClient.projectId && openWorkspaceWidget ? (
                             <button
                               type="button"
+                              aria-label={t("workspaceWidgets.crmTable.openControlCenter")}
                               onClick={() => openProjectHub()}
                               className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300"
                             >
@@ -958,6 +959,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
                       <button
                         type="button"
                         title={t("workspaceWidgets.crmTable.openControlCenter")}
+                        aria-label={t("workspaceWidgets.crmTable.openControlCenter")}
                         onClick={(e) => {
                           e.stopPropagation();
                           openProjectHub(client);

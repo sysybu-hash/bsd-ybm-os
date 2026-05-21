@@ -32,6 +32,8 @@ export function useWorkspaceUrlSync({
   const searchParams = useSearchParams();
   const skipNextWrite = useRef(false);
   const openIntentKeyRef = useRef<string | null>(null);
+  /** מונע לולאת focusWidget → widgets → effect (Maximum update depth / error boundary). */
+  const fulfilledFocusRef = useRef<string | null>(null);
 
   const resolveIntent = useCallback((): ReturnType<typeof parseWorkspaceUrl> => {
     const fromHook = parseWorkspaceUrl(searchParams);
@@ -104,10 +106,19 @@ export function useWorkspaceUrlSync({
 
     if (matchingWidget) {
       openIntentKeyRef.current = null;
-      skipNextWrite.current = true;
-      focusWidget(matchingWidget.id);
+      const focusKey = `${urlKey}:${matchingWidget.id}`;
+      if (fulfilledFocusRef.current !== focusKey) {
+        fulfilledFocusRef.current = focusKey;
+        const topZ = Math.max(...widgets.map((w) => w.zIndex));
+        if (matchingWidget.zIndex < topZ) {
+          skipNextWrite.current = true;
+          focusWidget(matchingWidget.id);
+        }
+      }
       return;
     }
+
+    fulfilledFocusRef.current = null;
 
     if (openIntentKeyRef.current === urlKey) return;
     openIntentKeyRef.current = urlKey;

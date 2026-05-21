@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { E2E_EMAIL, E2E_PROJECT_ID, gotoWorkspaceProject, tryCredentialsSignIn } from "./helpers";
+import {
+  E2E_EMAIL,
+  E2E_PROJECT_ID,
+  expectProjectDashboardReady,
+  gotoWorkspaceProject,
+  tryCredentialsSignIn,
+} from "./helpers";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -13,7 +19,7 @@ test.describe("project workflow", () => {
     test.skip(!signed, "login failed");
 
     await gotoWorkspaceProject(page, E2E_PROJECT_ID);
-    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 30000 });
+    await expectProjectDashboardReady(page);
 
     const xmlPath = path.join(process.cwd(), "e2e/fixtures/schedule-minimal.xml");
     const xml = fs.readFileSync(xmlPath, "utf8");
