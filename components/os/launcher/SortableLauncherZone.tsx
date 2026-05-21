@@ -270,6 +270,8 @@ function SortableSlot({
 
       }
 
+      role={variant === "quick" || variant === "mobile" ? "listitem" : undefined}
+
     >
 
       <LauncherTile
@@ -370,6 +372,8 @@ function QuickGridPositionView({
 
             className={LAUNCHER_QUICK_TILE_WRAPPER_CLASS}
 
+            role="listitem"
+
           >
 
             <LauncherTile
@@ -459,6 +463,8 @@ function QuickGridMobileColumnView({
           key={`${slot.row ?? 0}-${slot.col ?? 0}-${slot.widgetId}`}
 
           className={LAUNCHER_QUICK_MOBILE_TILE_WRAPPER_CLASS}
+
+          role="listitem"
 
         >
 
@@ -559,6 +565,8 @@ function QuickGridEditCell({
         isOver ? "ring-2 ring-indigo-400/80 ring-offset-1 ring-offset-[color:var(--surface-main)]" : ""
 
       } ${isDragging ? "opacity-25" : ""}`}
+
+      role="listitem"
 
       data-testid={hasWidget ? `launcher-grid-cell-${cell.row}-${cell.col}` : `launcher-grid-empty-${cell.row}-${cell.col}`}
 
