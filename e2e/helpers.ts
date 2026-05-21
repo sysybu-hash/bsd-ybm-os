@@ -88,22 +88,35 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
   const shellTimeout = process.env.CI ? 90_000 : 60_000;
   const projectShell = page.locator("[data-widget-shell]").first();
   const projectHub = page.getByText(/מרכז פיננסי|Financial hub/i).first();
+  const target = projectShell.or(projectHub);
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     await page.goto(workspaceProjectUrl(projectId));
     await page.waitForLoadState("domcontentloaded");
+    await waitForAuthenticatedWorkspace(page);
     await dismissWorkspaceOverlays(page);
     try {
-      await page.waitForURL(/[?&]w=project/, { timeout: 15_000 });
+      await page.waitForURL(/[?&]w=project/, { timeout: 20_000 });
     } catch {
-      /* continue — may still render widget */
+      /* continue */
     }
-    if (await projectShell.or(projectHub).isVisible({ timeout: shellTimeout }).catch(() => false)) {
+    if (await target.isVisible({ timeout: shellTimeout }).catch(() => false)) {
       return;
+    }
+
+    const launcherTile = page.getByTestId("launcher-tile-project");
+    if (await launcherTile.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await launcherTile.click();
+      await page.goto(workspaceProjectUrl(projectId));
+      await page.waitForLoadState("domcontentloaded");
+      await dismissWorkspaceOverlays(page);
+      if (await target.isVisible({ timeout: shellTimeout }).catch(() => false)) {
+        return;
+      }
     }
   }
 
-  await expect(projectShell.or(projectHub)).toBeVisible({ timeout: 10_000 });
+  await expect(target).toBeVisible({ timeout: 15_000 });
 }
 
 export async function tryCredentialsSignIn(page: Page): Promise<boolean> {

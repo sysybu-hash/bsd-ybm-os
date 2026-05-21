@@ -30,8 +30,15 @@ export function useWorkspaceUrlSync({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const appliedUrlKey = useRef<string | null>(null);
   const skipNextWrite = useRef(false);
+  const openIntentKeyRef = useRef<string | null>(null);
+
+  const resolveIntent = useCallback((): ReturnType<typeof parseWorkspaceUrl> => {
+    const fromHook = parseWorkspaceUrl(searchParams);
+    if (fromHook) return fromHook;
+    if (typeof window === "undefined") return null;
+    return parseWorkspaceUrl(new URLSearchParams(window.location.search));
+  }, [searchParams]);
 
   const writeUrl = useCallback(
     (opts: {
@@ -54,7 +61,7 @@ export function useWorkspaceUrlSync({
     (focused: ActiveWidget | undefined) => {
       if (!focused) {
         // אל תנקה ?w= לפני שה-deep link הספיק לפתוח חלון (race עם widgets.length === 0)
-        if (parseWorkspaceUrl(searchParams)) return;
+        if (resolveIntent()) return;
         writeUrl({ widgetType: null, viewState: null });
         return;
       }
@@ -69,30 +76,53 @@ export function useWorkspaceUrlSync({
         viewState: mergedViewState,
       });
     },
-    [writeUrl, getWidgetViewState, searchParams],
+    [writeUrl, getWidgetViewState, resolveIntent],
   );
 
   useEffect(() => {
     if (!hasHydrated) return;
-    const intent = parseWorkspaceUrl(searchParams);
+    const intent = resolveIntent();
     if (!intent) return;
 
-    const urlKey = searchParams.toString();
-    if (appliedUrlKey.current === urlKey) return;
-    appliedUrlKey.current = urlKey;
+    const urlKey =
+      searchParams.toString() ||
+      (typeof window !== "undefined" ? window.location.search.slice(1) : "");
+    if (!urlKey) return;
+
+    const projectId =
+      intent.widgetType === "project" && typeof intent.viewState?.projectId === "string"
+        ? intent.viewState.projectId
+        : null;
+
+    const matchingWidget = intent.widgetInstanceId
+      ? widgets.find((w) => w.id === intent.widgetInstanceId)
+      : widgets.find((w) => {
+          if (w.type !== intent.widgetType) return false;
+          if (projectId) return w.liveData?.projectId === projectId;
+          return true;
+        });
+
+    if (matchingWidget) {
+      openIntentKeyRef.current = null;
+      skipNextWrite.current = true;
+      focusWidget(matchingWidget.id);
+      return;
+    }
+
+    if (openIntentKeyRef.current === urlKey) return;
+    openIntentKeyRef.current = urlKey;
     skipNextWrite.current = true;
 
-    const existing = intent.widgetInstanceId
-      ? widgets.find((w) => w.id === intent.widgetInstanceId)
-      : findWidgetByType(intent.widgetType);
-
-    if (existing) {
-      focusWidget(existing.id);
-    } else {
-      const liveData = intent.viewState ? { ...intent.viewState, __navInitial: intent.viewState } : null;
-      openWidget(intent.widgetType, liveData);
-    }
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, findWidgetByType]);
+    const viewState = intent.viewState;
+    const liveData = viewState
+      ? {
+          ...viewState,
+          ...(projectId ? { projectId } : {}),
+          __navInitial: viewState,
+        }
+      : null;
+    openWidget(intent.widgetType, liveData);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent]);
 
   useEffect(() => {
     const onPopState = () => {
