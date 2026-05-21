@@ -444,6 +444,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
       resetToDefault,
       zoneSlots,
       zoneWidgets,
+      persist,
     ],
   );
 

@@ -704,11 +704,8 @@ export function useGeminiLiveAudio({
     statusLabels,
     systemInstruction,
     locale,
-    userName,
-    greetOnConnect,
     contextReady,
     owner,
-    cleanup,
   ]);
 
   const stop = useCallback(() => {

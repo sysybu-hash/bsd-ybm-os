@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   Sparkles, 
   Send, 
@@ -88,9 +88,16 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const { dir, t, locale } = useI18n();
   const { data: session } = useSession();
   const automationCtx = useAutomationRunnerContext();
-  const openWidget = openWorkspaceWidget ?? ((type: WidgetType, data?: Record<string, unknown> | null) => {
-    automationCtx?.assistantToolDeps.openWidget(type, data ?? null);
-  });
+  const openWidget = useCallback(
+    (type: WidgetType, data?: Record<string, unknown> | null) => {
+      if (openWorkspaceWidget) {
+        openWorkspaceWidget(type, data);
+      } else {
+        automationCtx?.assistantToolDeps.openWidget(type, data ?? null);
+      }
+    },
+    [openWorkspaceWidget, automationCtx?.assistantToolDeps],
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +137,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     if (chatTab === "live" && session?.user?.id) {
       void osAssistant.refresh();
     }
-  }, [chatTab, session?.user?.id, osAssistant.refresh]);
+  }, [chatTab, session?.user?.id, osAssistant]);
 
   useEffect(() => {
     if (osAssistant.featureFlags.geminiLiveEnabled === false) {
