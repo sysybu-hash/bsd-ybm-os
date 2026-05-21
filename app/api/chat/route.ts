@@ -8,6 +8,9 @@ import { jsonBadRequest, jsonServiceUnavailable } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("api/chat");
 import { getGeminiModelId } from "@/lib/gemini-model";
 
 export const maxDuration = 30;
@@ -66,7 +69,7 @@ Never expose internal reasoning or planning text to the user — only the final 
               location: z.string().optional().describe("מיקום הפרויקט (אופציונלי)"),
             }),
             execute: async ({ projectName, location }) => {
-              console.log(`יצירת פרויקט: ${projectName} במיקום: ${location}`);
+              log.info("tool:createProject", { projectName, location });
               const newProjectId = `PRJ-${Math.floor(Math.random() * 1000)}`;
               return {
                 success: true,
@@ -82,7 +85,7 @@ Never expose internal reasoning or planning text to the user — only the final 
               amount: z.number().describe("סכום החשבונית בשקלים"),
             }),
             execute: async ({ clientName, amount }) => {
-              console.log(`מפיק חשבונית על סך ${amount} עבור ${clientName}`);
+              log.info("tool:generateInvoice", { clientName, amount });
               return {
                 success: true,
                 invoiceNumber: `INV-${Date.now()}`,
