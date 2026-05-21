@@ -128,9 +128,9 @@ export default function OSWorkspace({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-hidden p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 md:p-6 md:pb-8"
+            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-y-auto overscroll-contain p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 md:overflow-hidden md:p-6 md:pb-8"
           >
-            <header className="flex w-full max-w-4xl shrink-0 flex-col items-center text-center">
+            <header className="flex w-full max-w-4xl shrink-0 flex-col items-center text-center pb-2 md:pb-0">
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm md:mb-4 md:h-16 md:w-16">
                 <Bot size={28} className="text-indigo-400" aria-hidden />
               </div>
@@ -145,7 +145,7 @@ export default function OSWorkspace({
               </p>
             </header>
 
-            <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-center">
+            <div className="flex w-full min-h-0 flex-col items-center justify-start pt-2 md:flex-1 md:justify-center md:pt-0">
               <SortableLauncherZone
                 zone="quickGrid"
                 variant="quick"

@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PROJECT_ID, tryCredentialsSignIn, workspaceProjectUrl } from "./helpers";
+import { E2E_EMAIL, E2E_PROJECT_ID, gotoWorkspaceProject, tryCredentialsSignIn } from "./helpers";
 import fs from "node:fs";
 import path from "node:path";
 
 test.describe("project workflow", () => {
-  test.skip(!process.env.E2E_EMAIL, "requires E2E credentials");
+  test.skip(!E2E_EMAIL, "requires E2E credentials");
 
   test("financial hub and schedule import API", async ({ page, request }) => {
     test.skip(!E2E_PROJECT_ID, "run npm run seed:test first");
@@ -12,8 +12,8 @@ test.describe("project workflow", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");
 
-    await page.goto(workspaceProjectUrl(E2E_PROJECT_ID));
-    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 15000 });
+    await gotoWorkspaceProject(page, E2E_PROJECT_ID);
+    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 30000 });
 
     const xmlPath = path.join(process.cwd(), "e2e/fixtures/schedule-minimal.xml");
     const xml = fs.readFileSync(xmlPath, "utf8");

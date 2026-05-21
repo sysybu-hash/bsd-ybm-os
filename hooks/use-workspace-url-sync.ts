@@ -30,7 +30,7 @@ export function useWorkspaceUrlSync({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const appliedFromUrl = useRef(false);
+  const appliedUrlKey = useRef<string | null>(null);
   const skipNextWrite = useRef(false);
 
   const writeUrl = useCallback(
@@ -53,24 +53,33 @@ export function useWorkspaceUrlSync({
   const syncUrlFromFocusedWidget = useCallback(
     (focused: ActiveWidget | undefined) => {
       if (!focused) {
+        // אל תנקה ?w= לפני שה-deep link הספיק לפתוח חלון (race עם widgets.length === 0)
+        if (parseWorkspaceUrl(searchParams)) return;
         writeUrl({ widgetType: null, viewState: null });
         return;
       }
       const viewState = getWidgetViewState(focused.id);
+      const mergedViewState =
+        focused.type === "project" && typeof focused.liveData?.projectId === "string"
+          ? { ...(viewState ?? {}), projectId: focused.liveData.projectId }
+          : viewState;
       writeUrl({
         widgetType: focused.type,
         widgetInstanceId: focused.id,
-        viewState,
+        viewState: mergedViewState,
       });
     },
-    [writeUrl, getWidgetViewState],
+    [writeUrl, getWidgetViewState, searchParams],
   );
 
   useEffect(() => {
-    if (!hasHydrated || appliedFromUrl.current) return;
+    if (!hasHydrated) return;
     const intent = parseWorkspaceUrl(searchParams);
     if (!intent) return;
-    appliedFromUrl.current = true;
+
+    const urlKey = searchParams.toString();
+    if (appliedUrlKey.current === urlKey) return;
+    appliedUrlKey.current = urlKey;
     skipNextWrite.current = true;
 
     const existing = intent.widgetInstanceId

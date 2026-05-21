@@ -28,6 +28,7 @@ import PasskeyOfferModal from "@/components/auth/PasskeyOfferModal";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
+import { parseWorkspaceUrl } from "@/lib/workspace-url";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -304,14 +305,19 @@ export default function OmniCanvasWorkspace() {
   }, [sessionStatus, session?.user?.id]);
 
   useEffect(() => {
-    if (hasHydrated && session && widgets.length === 0 && isFirstTime && !hasOpenedDefaults && !isCleanDashboard) {
-      setHasOpenedDefaults(true);
-      const timer = setTimeout(() => {
-        openWidget("dashboard");
-        setTimeout(() => openWidget("crmTable"), 300);
-      }, 800);
-      return () => clearTimeout(timer);
+    if (!hasHydrated || !session || widgets.length > 0 || !isFirstTime || hasOpenedDefaults || isCleanDashboard) {
+      return;
     }
+    if (typeof window !== "undefined") {
+      const deepLink = parseWorkspaceUrl(new URLSearchParams(window.location.search));
+      if (deepLink) return;
+    }
+    setHasOpenedDefaults(true);
+    const timer = setTimeout(() => {
+      openWidget("dashboard");
+      setTimeout(() => openWidget("crmTable"), 300);
+    }, 800);
+    return () => clearTimeout(timer);
   }, [hasHydrated, session, widgets.length, openWidget, hasOpenedDefaults, isFirstTime, isCleanDashboard]);
 
   const handleSearchPreview = async (query: string) => {

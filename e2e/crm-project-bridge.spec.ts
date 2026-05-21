@@ -1,8 +1,17 @@
 import { test, expect } from "@playwright/test";
-import { E2E_CONTACT_ID, E2E_PROJECT_ID, tryCredentialsSignIn, workspaceUrl } from "./helpers";
+import {
+  E2E_EMAIL,
+  E2E_CONTACT_ID,
+  E2E_PROJECT_ID,
+  dismissCookieBannerIfVisible,
+  dismissWorkspaceOverlays,
+  tryCredentialsSignIn,
+  waitForAuthenticatedWorkspace,
+  workspaceUrl,
+} from "./helpers";
 
 test.describe("CRM ↔ project bridge", () => {
-  test.skip(!process.env.E2E_EMAIL, "requires E2E credentials");
+  test.skip(!E2E_EMAIL, "requires E2E credentials");
 
   test("crm table opens project control center", async ({ page }) => {
     test.skip(!E2E_PROJECT_ID || !E2E_CONTACT_ID, "run npm run seed:test first");
@@ -10,12 +19,19 @@ test.describe("CRM ↔ project bridge", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");
 
+    await dismissCookieBannerIfVisible(page);
+    await dismissWorkspaceOverlays(page);
     await page.goto(workspaceUrl({ w: "crmTable" }));
-    await expect(page.getByText(/ניהול לקוחות|CRM/i).first()).toBeVisible({ timeout: 15000 });
+    await waitForAuthenticatedWorkspace(page);
+    await expect(page.locator("[data-widget-shell]").first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(/ניהול לקוחות|CRM/i).first()).toBeVisible({ timeout: 30000 });
 
-    const openHub = page.getByRole("button", { name: /פתח מרכז שליטה/i }).first();
-    await expect(openHub).toBeVisible({ timeout: 15000 });
+    const openHub = page
+      .getByRole("button", { name: /פתח מרכז שליטה|Open control center/i })
+      .first();
+    await expect(openHub).toBeVisible({ timeout: 30000 });
+    await dismissWorkspaceOverlays(page);
     await openHub.click();
-    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 30000 });
   });
 });

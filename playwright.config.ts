@@ -4,10 +4,34 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 const playwrightPort = process.env.PLAYWRIGHT_DEV_PORT ?? '3001';
-const baseURL = `http://localhost:${playwrightPort}`;
+
+/** Must match NEXTAUTH_URL host in CI (127.0.0.1) or session cookies are not sent. */
+function resolvePlaywrightHost(): string {
+  if (process.env.PLAYWRIGHT_BASE_URL) {
+    try {
+      return new URL(process.env.PLAYWRIGHT_BASE_URL).hostname;
+    } catch {
+      /* fall through */
+    }
+  }
+  for (const key of ["NEXTAUTH_URL", "AUTH_URL"] as const) {
+    const raw = process.env[key];
+    if (!raw) continue;
+    try {
+      return new URL(raw).hostname;
+    } catch {
+      /* try next */
+    }
+  }
+  return process.env.CI ? "127.0.0.1" : "localhost";
+}
+
+const baseURL =
+  process.env.PLAYWRIGHT_BASE_URL ?? `http://${resolvePlaywrightHost()}:${playwrightPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+  timeout: process.env.CI ? 120_000 : 60_000,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

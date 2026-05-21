@@ -2,10 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { dismissCookieBannerIfVisible, tryCredentialsSignIn } from "./helpers";
 
 test.describe("Workspace automations", () => {
-  test.beforeEach(async ({ context }) => {
-    await context.addCookies([
-      { name: "bsd-locale", value: "he", url: "http://localhost:3001" },
-    ]);
+  test.beforeEach(async ({ context, baseURL }) => {
+    const origin = baseURL ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_DEV_PORT ?? "3001"}`;
+    await context.addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
   });
 
   async function openOmnibar(page: Page) {

@@ -74,6 +74,10 @@ export function buildWorkspaceSearchParams(opts: {
     const st = encodeWidgetState(opts.widgetType, opts.viewState ?? null);
     if (st) sp.set(WORKSPACE_URL_PARAMS.state, st);
     if (opts.widgetInstanceId) sp.set(WORKSPACE_URL_PARAMS.widgetInstance, opts.widgetInstanceId);
+    const projectId = opts.viewState?.projectId;
+    if (opts.widgetType === "project" && typeof projectId === "string" && projectId.trim()) {
+      sp.set("projectId", projectId.trim());
+    }
   }
   return sp;
 }

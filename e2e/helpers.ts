@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
@@ -31,6 +31,35 @@ export function workspaceProjectUrl(projectId: string): string {
 
 const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
+const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
+const FIRST_DAY_WIZARD_KEY = "bsd_ybm_first_day_wizard_v1";
+
+/** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
+export async function primeE2eBrowserStorage(page: Page) {
+  await page.addInitScript(
+    ({ passkeyKey, wizardKey, layoutKeys }) => {
+      try {
+        localStorage.setItem(passkeyKey, "1");
+        localStorage.setItem(wizardKey, "dismissed");
+        for (const k of layoutKeys) localStorage.removeItem(k);
+      } catch {
+        /* ignore */
+      }
+    },
+    {
+      passkeyKey: PASSKEY_OFFER_KEY,
+      wizardKey: FIRST_DAY_WIZARD_KEY,
+      layoutKeys: [
+        "bsd_ybm_layout_quiet_v6",
+        "bsd_ybm_layout_quiet_v5",
+        "bsd_ybm_layout_quiet_v3",
+        "bsd_ybm_layout_quiet_v4",
+        "bsd_ybm_layout_snapshot_session",
+      ],
+    },
+  );
+}
+
 /** מונע חסימת קליקים מבאנר העוגיות בבדיקות E2E */
 export async function primeCookieConsent(page: Page) {
   await page.addInitScript((key) => {
@@ -47,10 +76,57 @@ export async function primeCookieConsent(page: Page) {
   }, COOKIE_CONSENT_KEY);
 }
 
+/** מחכה שה-workspace נטען אחרי התחברות (לא דף נחיתה / login). */
+export async function waitForAuthenticatedWorkspace(page: Page) {
+  const sidebar = page.getByRole("navigation", { name: /יישומים|Apps/i });
+  const mobileNav = page.getByTestId("mobile-bottom-nav");
+  await expect(sidebar.or(mobileNav)).toBeVisible({ timeout: 30000 });
+}
+
+/** פותח ווידג'ט פרויקט מה-URL ומחכה ל-shell. */
+export async function gotoWorkspaceProject(page: Page, projectId: string) {
+  const shellTimeout = process.env.CI ? 90_000 : 60_000;
+  const projectShell = page.locator("[data-widget-shell]").first();
+  const projectHub = page.getByText(/מרכז פיננסי|Financial hub/i).first();
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto(workspaceProjectUrl(projectId));
+    await page.waitForLoadState("domcontentloaded");
+    await dismissWorkspaceOverlays(page);
+    try {
+      await page.waitForURL(/[?&]w=project/, { timeout: 15_000 });
+    } catch {
+      /* continue — may still render widget */
+    }
+    if (await projectShell.or(projectHub).isVisible({ timeout: shellTimeout }).catch(() => false)) {
+      return;
+    }
+  }
+
+  await expect(projectShell.or(projectHub)).toBeVisible({ timeout: 10_000 });
+}
+
 export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
   try {
     await primeCookieConsent(page);
+    await primeE2eBrowserStorage(page);
     await page.goto("/login");
+    await page.waitForLoadState("domcontentloaded");
+
+    const emailInput = page.getByPlaceholder(/אימייל|email/i).first();
+    const passwordInput = page.getByPlaceholder(/סיסמה|password/i).first();
+    const submit = page.locator('form button[type="submit"]').first();
+
+    if (await emailInput.isVisible({ timeout: 8000 }).catch(() => false)) {
+      await emailInput.fill(E2E_EMAIL);
+      await passwordInput.fill(E2E_PASSWORD);
+      await submit.click();
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 25000 });
+      await waitForAuthenticatedWorkspace(page);
+      await dismissWorkspaceOverlays(page);
+      return true;
+    }
+
     const ok = await page.evaluate(
       async ({ email, password }) => {
         const csrf = (await fetch(`${window.location.origin}/api/auth/csrf`).then((r) => r.json())) as {
@@ -66,15 +142,22 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
         const res = await fetch(`${window.location.origin}/api/auth/callback/credentials`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          credentials: "include",
           body,
         });
-        return res.ok;
+        if (!res.ok) return false;
+        const data = (await res.json().catch(() => null)) as { url?: string } | null;
+        if (data?.url) {
+          await fetch(data.url, { credentials: "include" });
+        }
+        return true;
       },
       { email: E2E_EMAIL, password: E2E_PASSWORD },
     );
     if (!ok) return false;
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await waitForAuthenticatedWorkspace(page);
+    await dismissWorkspaceOverlays(page);
     return true;
   } catch {
     return false;
@@ -85,5 +168,34 @@ export async function dismissCookieBannerIfVisible(page: Page) {
   const accept = page.getByRole("button", { name: /קבל את כל העוגיות|Accept all cookies/i });
   if (await accept.isVisible().catch(() => false)) {
     await accept.click();
+  }
+}
+
+/** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
+export async function dismissWorkspaceOverlays(page: Page) {
+  const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
+  try {
+    await passkeyDialog.waitFor({ state: "visible", timeout: 4000 });
+    const later = passkeyDialog.getByRole("button", { name: /אולי אחר כך|Maybe later/i });
+    const close = passkeyDialog.getByRole("button", { name: /סגירה|Close/i });
+    if (await later.isVisible().catch(() => false)) {
+      await later.click();
+    } else if (await close.isVisible().catch(() => false)) {
+      await close.click();
+    }
+    await passkeyDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  } catch {
+    /* passkey offer not shown */
+  }
+
+  const wizard = page.getByTestId("first-day-wizard");
+  if (await wizard.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
+    const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
+    if (await skip.isVisible().catch(() => false)) {
+      await skip.click();
+    } else if (await dismiss.isVisible().catch(() => false)) {
+      await dismiss.click();
+    }
   }
 }

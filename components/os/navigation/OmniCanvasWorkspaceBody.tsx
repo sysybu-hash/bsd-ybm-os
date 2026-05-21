@@ -69,10 +69,10 @@ export default function OmniCanvasWorkspaceBody({
   );
 
   useEffect(() => {
-    if (!hasHydrated) return;
+    if (!hasHydrated || widgets.length === 0) return;
     const focused = getFocusedWidget();
     syncUrlFromFocusedWidget(focused);
-  }, [focusSignature, hasHydrated, getFocusedWidget, syncUrlFromFocusedWidget]);
+  }, [focusSignature, hasHydrated, widgets.length, getFocusedWidget, syncUrlFromFocusedWidget]);
 
   return (
     <OSWorkspace
