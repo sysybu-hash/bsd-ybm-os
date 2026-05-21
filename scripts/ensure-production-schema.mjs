@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * מריץ prisma migrate deploy כשיש DATABASE_URL אמיתי (Vercel / CI).
- * מדלג על placeholder מ-build ללא DB.
+ * מריץ סכמת DB לפני build:
+ * - CI / DB ריק (bsd_ybm_ci): prisma db push — baseline ריק לא יוצר טבלאות
+ * - פרודקשן (Neon וכו'): prisma migrate deploy
  */
 import { execSync } from "node:child_process";
 import { applyProjectEnvFiles, getProjectEnv } from "./load-project-env.mjs";
@@ -23,19 +24,36 @@ function isPlaceholderUrl(url) {
   );
 }
 
+/** DB ריק ב-GitHub Actions או מקומי לבדיקות CI */
+function shouldUseDbPush(url) {
+  if (process.env.PRISMA_DB_PUSH === "1") return true;
+  if (process.env.GITHUB_ACTIONS === "true") return true;
+  return /\/bsd_ybm_ci(\?|$)/i.test(url);
+}
+
 if (isPlaceholderUrl(db)) {
   console.log("[ensure-production-schema] skip — no real DATABASE_URL");
   process.exit(0);
 }
 
-console.log("[ensure-production-schema] running prisma migrate deploy…");
+const useDbPush = shouldUseDbPush(db);
+const cmd = useDbPush
+  ? "npx prisma db push --skip-generate"
+  : "npx prisma migrate deploy";
+
+console.log(
+  `[ensure-production-schema] ${useDbPush ? "db push (CI/fresh)" : "migrate deploy"}…`,
+);
 try {
-  execSync("npx prisma migrate deploy", {
+  execSync(cmd, {
     stdio: "inherit",
     env: process.env,
   });
-  console.log("[ensure-production-schema] migrations applied");
+  console.log("[ensure-production-schema] schema ready");
 } catch (err) {
-  console.error("[ensure-production-schema] migrate deploy failed:", err?.message ?? err);
+  console.error(
+    "[ensure-production-schema] failed:",
+    err?.message ?? err,
+  );
   process.exit(1);
 }

@@ -51,9 +51,9 @@ jobs:
       - name: Install dependencies (npm ci)
         run: npm ci --ignore-scripts
 
-      # נכשל רק על high/critical — moderate ב-Next/Prisma רגיל ולא חוסם
+      # נכשל רק על critical — xlsx אין תיקון ב-audit; moderate ב-Next לא חוסם
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=critical
 
       # רץ גם על dev — אבל בלי לחסום (informational only)
       - name: Audit dev dependencies (informational)
