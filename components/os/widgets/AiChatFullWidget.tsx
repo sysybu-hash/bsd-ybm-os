@@ -36,6 +36,12 @@ import GeminiLivePanel from '@/components/os/gemini-live/GeminiLivePanel';
 import WidgetSplitPanels from '@/components/os/layout/WidgetSplitPanels';
 import KnowledgeVaultAttachButton from '@/components/os/knowledge-vault/KnowledgeVaultAttachButton';
 import { GEMINI_LIVE_SESSION_START_TAG } from '@/lib/gemini-live/session-greeting';
+import {
+  isGeminiLiveAllowedByContext,
+  isGeminiLiveContextReady,
+  isGeminiLiveSessionEligible,
+  resolveGeminiLiveOrgId,
+} from '@/lib/gemini-live/eligibility';
 
 const LIVE_USER_DRAFT_ID = 'gemini-live-user-draft';
 const LIVE_ASSISTANT_DRAFT_ID = 'gemini-live-assistant-draft';
@@ -97,6 +103,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const liveAutoStartRef = useRef(false);
 
   useEffect(() => {
     setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
@@ -152,10 +159,24 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     session?.user?.name?.trim() ||
     undefined;
 
+  const liveOrgId = resolveGeminiLiveOrgId(session?.user?.organizationId, osAssistant.context);
+  const geminiLiveEligible =
+    isGeminiLiveSessionEligible({
+      userId: session?.user?.id,
+      orgId: liveOrgId,
+      platformEnabled: osAssistant.featureFlags.geminiLiveEnabled,
+    }) && isGeminiLiveAllowedByContext(osAssistant.context);
+  const liveContextReady = isGeminiLiveContextReady({
+    assistantReady: osAssistant.ready,
+    assistantLoading: osAssistant.loading,
+    systemInstructionVoice: osAssistant.systemInstructionVoice,
+    context: osAssistant.context,
+  });
+
   const geminiLive = useGeminiLiveAudio({
     owner: "aiChatFull",
-    enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
-    contextReady: osAssistant.hasRichContext,
+    enabled: chatTab === "live" && geminiLiveEligible,
+    contextReady: liveContextReady,
     systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,
     advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
@@ -205,14 +226,35 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   }, [isLiveMode, isLiveActive, stop]);
 
   useEffect(() => {
-    if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !osAssistant.hasRichContext) {
+    if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !liveContextReady) {
       return;
     }
     void start();
-  }, [liveData?.startLive, isLiveMode, isLiveActive, osAssistant.hasRichContext, start]);
+  }, [liveData?.startLive, isLiveMode, isLiveActive, liveContextReady, start]);
+
+  useEffect(() => {
+    if (chatTab !== "live") {
+      liveAutoStartRef.current = false;
+      return;
+    }
+    if (!geminiLiveEligible || !liveContextReady) return;
+    if (isLiveActive || geminiLive.state === "connecting" || liveAutoStartRef.current) return;
+    liveAutoStartRef.current = true;
+    setIsLiveMode(true);
+    void start();
+  }, [
+    chatTab,
+    geminiLiveEligible,
+    liveContextReady,
+    isLiveActive,
+    geminiLive.state,
+    start,
+  ]);
 
   const handleLiveTab = () => {
-    setChatTab('live');
+    setChatTab("live");
+    setIsLiveMode(true);
+    void osAssistant.refresh();
   };
 
   const handleTextTab = () => {

@@ -15,6 +15,12 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
 import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import {
+  isGeminiLiveAllowedByContext,
+  isGeminiLiveContextReady,
+  isGeminiLiveSessionEligible,
+  resolveGeminiLiveOrgId,
+} from "@/lib/gemini-live/eligibility";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -76,12 +82,24 @@ export default function Omnibar({
 
   const [omnibarLiveOn, setOmnibarLiveOn] = useState(false);
 
+  const liveOrgId = resolveGeminiLiveOrgId(session?.user?.organizationId, osAssistant.context);
+  const geminiLiveEligible =
+    isGeminiLiveSessionEligible({
+      userId: session?.user?.id,
+      orgId: liveOrgId,
+      platformEnabled: osAssistant.featureFlags.geminiLiveEnabled,
+    }) && isGeminiLiveAllowedByContext(osAssistant.context);
+  const liveContextReady = isGeminiLiveContextReady({
+    assistantReady: osAssistant.ready,
+    assistantLoading: osAssistant.loading,
+    systemInstructionVoice: osAssistant.systemInstructionVoice,
+    context: osAssistant.context,
+  });
+
   const geminiLive = useGeminiLiveAudio({
     owner: "omnibar",
-    enabled: Boolean(
-      omnibarLiveOn && session?.user?.id && session?.user?.organizationId,
-    ),
-    contextReady: osAssistant.hasRichContext,
+    enabled: omnibarLiveOn && geminiLiveEligible,
+    contextReady: liveContextReady,
     settings: geminiVoiceSettings,
     advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
     systemInstruction: osAssistant.systemInstructionVoice,
@@ -119,6 +137,19 @@ export default function Omnibar({
     window.addEventListener("gemini-live:owner-changed", onOwnerChange);
     return () => window.removeEventListener("gemini-live:owner-changed", onOwnerChange);
   }, [geminiLive]);
+
+  useEffect(() => {
+    if (!omnibarLiveOn || !geminiLiveEligible || !liveContextReady) return;
+    if (geminiLive.isLiveActive || geminiLive.state === "connecting") return;
+    void geminiLive.start();
+  }, [
+    omnibarLiveOn,
+    geminiLiveEligible,
+    liveContextReady,
+    geminiLive.isLiveActive,
+    geminiLive.state,
+    geminiLive.start,
+  ]);
 
   useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
@@ -218,7 +249,6 @@ export default function Omnibar({
                   setOmnibarLiveOn(false);
                 } else {
                   setOmnibarLiveOn(true);
-                  void geminiLive.start();
                 }
               }}
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition ${
@@ -260,7 +290,6 @@ export default function Omnibar({
                 setOmnibarLiveOn(false);
               } else {
                 setOmnibarLiveOn(true);
-                void geminiLive.start();
               }
             }}
             onOpenSettings={() => setGeminiLiveSettingsOpen(true)}

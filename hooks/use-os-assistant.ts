@@ -77,8 +77,8 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
   );
 
   const hasRichContext =
-    Boolean(context) &&
-    systemInstructionVoice.length > 500 &&
+    Boolean(context?.capabilities.geminiLive) &&
+    systemInstructionVoice.length > 120 &&
     !systemInstructionVoice.startsWith(
       "You are the BSD-YBM OS voice assistant (Gemini Live). Reply in",
     );

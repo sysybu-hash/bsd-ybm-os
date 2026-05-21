@@ -721,6 +721,23 @@ export function useGeminiLiveAudio({
     deliveredModelTextRef.current = "";
   }, [cleanup, statusLabels.ready]);
 
+  useEffect(() => {
+    if (!enabled) {
+      if (state === "connecting" || state === "streaming" || state === "ready") {
+        cleanup();
+      }
+      if (state !== "connecting" && state !== "streaming") {
+        setState("idle");
+        setStatusText(statusLabels.ready);
+      }
+      return;
+    }
+    if (contextReady && state === "fallback") {
+      setState("idle");
+      setStatusText(statusLabels.ready);
+    }
+  }, [cleanup, contextReady, enabled, state, statusLabels.ready]);
+
   useEffect(() => stop, [stop]);
 
   return {

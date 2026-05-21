@@ -48,7 +48,7 @@ export async function buildOsAssistantUserContext(
   const meckano = await canAccessMeckano(session);
   const platform = await getPlatformConfig();
   const geminiLive =
-    Boolean(session.user.organizationId) &&
+    Boolean(org?.id) &&
     platform.featureFlags.geminiLiveEnabled &&
     !platform.maintenanceMode;
 
