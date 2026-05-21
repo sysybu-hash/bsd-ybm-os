@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PROJECT_ID, tryCredentialsSignIn } from "./helpers";
+import { E2E_PROJECT_ID, tryCredentialsSignIn, workspaceProjectUrl } from "./helpers";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,7 +12,7 @@ test.describe("project workflow", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");
 
-    await page.goto(`/os?widget=project&projectId=${encodeURIComponent(E2E_PROJECT_ID)}`);
+    await page.goto(workspaceProjectUrl(E2E_PROJECT_ID));
     await expect(page.getByText(/מרכז פיננסי|Financial hub/i)).toBeVisible({ timeout: 15000 });
 
     const xmlPath = path.join(process.cwd(), "e2e/fixtures/schedule-minimal.xml");

@@ -92,7 +92,11 @@ export function useWorkspaceUrlSync({
       if (!intent) return;
       const existing = findWidgetByType(intent.widgetType);
       if (existing) focusWidget(existing.id);
-      else openWidget(intent.widgetType, intent.viewState ? { __navInitial: intent.viewState } : null);
+      else
+        openWidget(
+          intent.widgetType,
+          intent.viewState ? { ...intent.viewState, __navInitial: intent.viewState } : null,
+        );
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);

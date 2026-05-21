@@ -19,6 +19,16 @@ const seedMarker = readSeedMarker();
 export const E2E_PROJECT_ID = process.env.E2E_PROJECT_ID ?? seedMarker.e2eProjectId ?? "";
 export const E2E_CONTACT_ID = process.env.E2E_CONTACT_ID ?? seedMarker.e2eContactId ?? "";
 
+/** Canonical workspace URL at `/` with query params (use `w` for widget type). */
+export function workspaceUrl(params: Record<string, string>): string {
+  const q = new URLSearchParams(params).toString();
+  return q ? `/?${q}` : "/";
+}
+
+export function workspaceProjectUrl(projectId: string): string {
+  return workspaceUrl({ w: "project", projectId });
+}
+
 const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 /** מונע חסימת קליקים מבאנר העוגיות בבדיקות E2E */

@@ -43,14 +43,23 @@ export type WorkspaceUrlIntent = {
 };
 
 export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIntent | null {
-  const widgetType = parseWidgetType(searchParams.get(WORKSPACE_URL_PARAMS.widget));
+  const widgetRaw =
+    searchParams.get(WORKSPACE_URL_PARAMS.widget) ?? searchParams.get("widget");
+  const widgetType = parseWidgetType(widgetRaw);
   if (!widgetType) return null;
   const st = searchParams.get(WORKSPACE_URL_PARAMS.state);
   const wid = searchParams.get(WORKSPACE_URL_PARAMS.widgetInstance) ?? undefined;
+  let viewState = decodeWidgetState(widgetType, st);
+  if (widgetType === "project") {
+    const projectId = searchParams.get("projectId");
+    if (projectId) {
+      viewState = { ...(viewState ?? {}), projectId };
+    }
+  }
   return {
     widgetType,
     widgetInstanceId: wid,
-    viewState: decodeWidgetState(widgetType, st),
+    viewState,
   };
 }
 

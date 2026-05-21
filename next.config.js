@@ -1,9 +1,7 @@
 const path = require("path");
 
-/**
- * No legacy redirects.
- */
-const LEGACY_REDIRECTS = [];
+/** Legacy `/os` workspace path → root workspace (query preserved). */
+const LEGACY_REDIRECTS = [{ source: "/os", destination: "/", permanent: false }];
 
 /** Allow common local dev ports to avoid Next dev cross-origin warnings. */
 function buildAllowedDevOrigins() {
@@ -75,7 +73,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [];
+    return LEGACY_REDIRECTS;
   },
   transpilePackages: ["react-signature-canvas", "signature_pad"],
   serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core"],

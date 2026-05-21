@@ -35,7 +35,7 @@ export async function runWorkDiaryDailyReminders(): Promise<{ notified: number }
       const n = await sendPushToUser(u.id, {
         title: `יומן עבודה — ${p.name}`,
         body: "לא נרשם יומן עבודה ב-24 השעות האחרונות. לחץ לעדכון.",
-        url: `/os?widget=project&projectId=${encodeURIComponent(p.id)}`,
+        url: `/?w=project&projectId=${encodeURIComponent(p.id)}`,
         tag: `work-diary-${p.id}`,
       });
       notified += n;
@@ -57,7 +57,7 @@ export async function notifyProgressDrop(
   await sendPushToUser(userId, {
     title: `ירידת התקדמות — ${projectName}`,
     body: `ההתקדמות ירדה מ-${prev}% ל-${next}%`,
-    url: `/os?widget=project&projectId=${encodeURIComponent(projectId)}`,
+    url: `/?w=project&projectId=${encodeURIComponent(projectId)}`,
     tag: `progress-drop-${projectId}`,
   });
 }

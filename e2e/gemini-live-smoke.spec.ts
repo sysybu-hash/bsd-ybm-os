@@ -15,7 +15,7 @@ test.describe("gemini live smoke", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");
 
-    await page.goto("/os");
+    await page.goto("/");
     await page.waitForLoadState("networkidle");
     const liveButtons = page.getByRole("button", { name: /שיחה חיה|Live/i });
     const count = await liveButtons.count();

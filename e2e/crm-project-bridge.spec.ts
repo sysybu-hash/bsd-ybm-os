@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { E2E_CONTACT_ID, E2E_PROJECT_ID, tryCredentialsSignIn } from "./helpers";
+import { E2E_CONTACT_ID, E2E_PROJECT_ID, tryCredentialsSignIn, workspaceUrl } from "./helpers";
 
 test.describe("CRM ↔ project bridge", () => {
   test.skip(!process.env.E2E_EMAIL, "requires E2E credentials");
@@ -10,7 +10,7 @@ test.describe("CRM ↔ project bridge", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");
 
-    await page.goto("/os?widget=crmTable");
+    await page.goto(workspaceUrl({ w: "crmTable" }));
     await expect(page.getByText(/ניהול לקוחות|CRM/i).first()).toBeVisible({ timeout: 15000 });
 
     const openHub = page.getByRole("button", { name: /פתח מרכז שליטה/i }).first();

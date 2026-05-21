@@ -407,6 +407,7 @@ export default function AdaptiveWidgetShell({
 
   return (
     <section
+      data-widget-shell
       ref={shellRef}
       id={id}
       onMouseDown={onFocus}

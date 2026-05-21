@@ -48,6 +48,10 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
       const segment = state.segment as string | undefined;
       return segment?.trim() ? segment.trim() : null;
     }
+    case "project": {
+      const id = state.projectId as string | undefined;
+      return id ? `p:${id}` : null;
+    }
     default:
       return null;
   }
@@ -88,6 +92,8 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
     }
     case "settings":
       return { segment: raw };
+    case "project":
+      return raw.startsWith("p:") ? { projectId: raw.slice(2) } : null;
     default:
       return null;
   }
