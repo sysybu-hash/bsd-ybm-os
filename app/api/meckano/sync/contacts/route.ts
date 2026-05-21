@@ -30,40 +30,56 @@ export const POST = withWorkspacesAuth(async (req, ctx) => {
     return NextResponse.json({ synced: 0 });
   }
 
-  let synced = 0;
-  for (const emp of employees) {
-    const name =
+  // Build name + email for each employee
+  const mapped = employees.map((emp) => ({
+    emp,
+    name:
       [emp.firstName, emp.lastName].filter(Boolean).join(" ") ||
       emp.workerTag ||
       emp.email ||
-      `עובד #${emp.id}`;
+      `עובד #${emp.id}`,
+    email: typeof emp.email === "string" ? emp.email.trim() : "",
+  }));
 
-    const email = typeof emp.email === "string" ? emp.email.trim() : "";
-    const orWhere: Array<{ email: string } | { name: string }> = [];
-    if (email) orWhere.push({ email });
-    orWhere.push({ name });
+  // --- N+1 fix: batch-load all existing contacts in ONE query ---
+  const allEmails = mapped.map((m) => m.email).filter(Boolean) as string[];
+  const allNames = mapped.map((m) => m.name);
 
-    const existing = await prisma.contact.findFirst({
-      where: { organizationId: orgId, OR: orWhere },
-    });
+  const existingContacts = await prisma.contact.findMany({
+    where: {
+      organizationId: orgId,
+      OR: [
+        allEmails.length > 0 ? { email: { in: allEmails } } : undefined,
+        { name: { in: allNames } },
+      ].filter(Boolean) as Array<{ email: { in: string[] } } | { name: { in: string[] } }>,
+    },
+    select: { id: true, email: true, name: true },
+  });
 
+  const byEmail = new Map(existingContacts.filter((c) => c.email).map((c) => [c.email!, c]));
+  const byName = new Map(existingContacts.map((c) => [c.name, c]));
+
+  const toCreate: Array<{ name: string; email: string | null; organizationId: string; status: "ACTIVE" }> = [];
+  const toUpdate: Array<{ id: string; name: string; email: string | null }> = [];
+
+  for (const { emp, name, email } of mapped) {
+    const existing = (email ? byEmail.get(email) : undefined) ?? byName.get(name);
     if (existing) {
-      await prisma.contact.update({
-        where: { id: existing.id },
-        data: { name, email: emp.email ?? existing.email },
-      });
+      toUpdate.push({ id: existing.id, name, email: emp.email ?? existing.email ?? null });
     } else {
-      await prisma.contact.create({
-        data: {
-          name,
-          email: emp.email ?? null,
-          organizationId: orgId,
-          status: "ACTIVE",
-        },
-      });
+      toCreate.push({ name, email: emp.email ?? null, organizationId: orgId, status: "ACTIVE" });
     }
-    synced++;
   }
 
-  return NextResponse.json({ synced });
+  // Batch updates — Prisma doesn't support updateMany with per-row data, so use transaction
+  await prisma.$transaction([
+    ...toUpdate.map(({ id, name, email }) =>
+      prisma.contact.update({ where: { id }, data: { name, email } }),
+    ),
+    toCreate.length > 0
+      ? prisma.contact.createMany({ data: toCreate, skipDuplicates: true })
+      : prisma.$queryRaw`SELECT 1`,
+  ]);
+
+  return NextResponse.json({ synced: toCreate.length + toUpdate.length });
 });

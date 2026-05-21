@@ -10,9 +10,19 @@ export async function listProjects(orgId: string) {
 }
 
 export async function getProjectByName(orgId: string, query: string) {
+  // N+1 fix: include primaryContact + one fallback contact in the same query
   const project = await prisma.project.findFirst({
     where: { name: query.trim(), organizationId: orgId },
-    include: { expenseRecords: true },
+    include: {
+      expenseRecords: true,
+      primaryContact: { select: { name: true } },
+      contacts: {
+        where: { organizationId: orgId },
+        select: { name: true },
+        take: 1,
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
   if (project) {
@@ -25,15 +35,7 @@ export async function getProjectByName(orgId: string, query: string) {
       console.warn("Meckano sync failed for project", e);
     }
 
-    const primaryContact = project.primaryContactId
-      ? await prisma.contact.findFirst({
-          where: { id: project.primaryContactId, organizationId: orgId },
-          select: { name: true },
-        })
-      : await prisma.contact.findFirst({
-          where: { projectId: project.id, organizationId: orgId },
-          select: { name: true },
-        });
+    const primaryContact = project.primaryContact ?? project.contacts[0] ?? null;
 
     return {
       id: project.id,

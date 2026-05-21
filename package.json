@@ -69,7 +69,8 @@
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
     "i18n:construction-trades": "node scripts/build-construction-trade-locales.mjs",
     "tutorials:encode": "node scripts/generate-tutorial-videos.mjs",
-    "lighthouse:sample": "node scripts/lighthouse-sample.mjs"
+    "lighthouse:sample": "node scripts/lighthouse-sample.mjs",
+    "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.75",
@@ -169,6 +170,7 @@
     "@types/uuid": "^10.0.0",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
+    "autocannon": "^8.0.0",
     "autoprefixer": "^10.4.20",
     "dotenv": "^17.4.2",
     "dotenv-cli": "^11.0.0",
