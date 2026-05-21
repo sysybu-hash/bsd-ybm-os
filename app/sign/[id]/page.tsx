@@ -3,6 +3,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import SignatureCanvas from 'react-signature-canvas';
+
+/** Shape returned by GET /api/sign/[id] */
+interface SignDocument {
+  id: string;
+  title?: string;
+  clientName?: string;
+  status?: string;
+  documentUrl?: string;
+  createdAt?: string | number;
+  amount?: number;
+  [key: string]: unknown;
+}
+
+/** Instance type of react-signature-canvas — derive from the component itself */
+type SignatureCanvasInstance = React.ElementRef<typeof SignatureCanvas>;
 import { 
   CheckCircle2, 
   FileText, 
@@ -19,12 +34,12 @@ import BrandLogo from '@/components/brand/BrandLogo';
 export default function SigningPage() {
   const params = useParams();
   const id = params.id as string;
-  const [doc, setDoc] = useState<any>(null);
+  const [doc, setDoc] = useState<SignDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSigned, setIsSigned] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const sigCanvas = useRef<any>(null);
+  const sigCanvas = useRef<SignatureCanvasInstance | null>(null);
 
   useEffect(() => {
     const fetchDoc = async () => {
@@ -33,8 +48,8 @@ export default function SigningPage() {
         if (!res.ok) throw new Error('המסמך לא נמצא או שתוקפו פג');
         const data = await res.json();
         setDoc(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'שגיאה בטעינת המסמך');
       } finally {
         setLoading(false);
       }
@@ -95,6 +110,9 @@ export default function SigningPage() {
     );
   }
 
+  // After loading + error guards, doc is guaranteed to be loaded
+  if (!doc) return null;
+
   if (isSigned) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
@@ -141,7 +159,7 @@ export default function SigningPage() {
           </div>
           <div className="text-left">
             <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">תאריך הנפקה</div>
-            <div className="text-sm font-bold">{new Date(doc.createdAt).toLocaleDateString('he-IL')}</div>
+            <div className="text-sm font-bold">{doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('he-IL') : "—"}</div>
           </div>
         </div>
 
@@ -154,7 +172,7 @@ export default function SigningPage() {
             </div>
             <div className="text-left">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">סכום כולל</label>
-              <div className="text-3xl font-black text-emerald-400">₪{doc.amount.toLocaleString()}</div>
+              <div className="text-3xl font-black text-emerald-400">₪{doc.amount?.toLocaleString() ?? "—"}</div>
             </div>
           </div>
 

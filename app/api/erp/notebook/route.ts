@@ -21,8 +21,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
     });
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("Notebook Chat Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to process chat" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to process chat";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 });

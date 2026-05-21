@@ -8,9 +8,12 @@ declare module "react-signature-canvas" {
   export interface SignatureCanvasRef {
     clear: () => void;
     isEmpty: () => boolean;
-    toDataURL: (type?: string) => string;
-    fromDataURL?: (data: string) => void;
+    toDataURL: (type?: string, encoderOptions?: number) => string;
+    fromDataURL?: (data: string, options?: Record<string, unknown>) => void;
     getCanvas?: () => HTMLCanvasElement;
+    /** Returns a trimmed copy of the signature canvas */
+    getTrimmedCanvas: () => HTMLCanvasElement;
+    getSignaturePad?: () => unknown;
   }
 
   export interface SignatureCanvasProps {

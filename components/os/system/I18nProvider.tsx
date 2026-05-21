@@ -3,23 +3,24 @@
 import { createContext, useContext, ReactNode, useMemo } from "react";
 import { isRtlLocale } from "@/lib/i18n/config";
 import { createTranslator } from "@/lib/i18n/translate";
+import type { MessageTree } from "@/lib/i18n/keys";
 
 type I18nContextType = {
   t: (key: string, vars?: Record<string, string>) => string;
   locale: string;
   dir: "rtl" | "ltr";
-  messages: any;
+  messages: MessageTree;
 };
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
 export function I18nProvider({
   children,
-  messages = {},
+  messages = {} as MessageTree,
   locale = "he",
 }: {
   children: ReactNode;
-  messages?: any;
+  messages?: MessageTree;
   locale?: string;
 }) {
   const dir = (isRtlLocale(locale) ? "rtl" : "ltr") as "rtl" | "ltr";
@@ -46,7 +47,7 @@ export function useI18n() {
       t: (key: string) => key,
       locale: "he",
       dir: "rtl",
-      messages: {} as any,
+      messages: {} as MessageTree,
     };
   }
   return ctx;

@@ -136,11 +136,16 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'lead' | 'inactive'>('all');
   const [isAddingClient, setIsAddingClient] = useState(false);
-  const [newClient, setNewClient] = useState({
+  const [newClient, setNewClient] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    status: 'active' | 'lead' | 'inactive';
+  }>({
     name: '',
     email: '',
     phone: '',
-    status: 'lead' as const
+    status: 'lead',
   });
 
   const [isImporting, setIsImporting] = useState(false);
@@ -414,7 +419,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const data = results.data as any[];
+        const data = results.data as Record<string, string>[];
         if (data.length === 0) {
           toast.error('הקובץ ריק');
           setIsImporting(false);
@@ -435,8 +440,8 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
           } else {
             throw new Error(result.error || 'ייבוא נכשל');
           }
-        } catch (err: any) {
-          toast.error(err.message || 'שגיאה בתהליך הייבוא');
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : 'שגיאה בתהליך הייבוא');
         } finally {
           setIsImporting(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
@@ -641,7 +646,12 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
                   <select 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none text-slate-900 dark:text-slate-200"
                     value={newClient.status}
-                    onChange={(e) => setNewClient({...newClient, status: e.target.value as any})}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'active' || v === 'lead' || v === 'inactive') {
+                        setNewClient({...newClient, status: v});
+                      }
+                    }}
                   >
                     <option value="lead">ליד (Lead)</option>
                     <option value="active">פעיל (Active)</option>

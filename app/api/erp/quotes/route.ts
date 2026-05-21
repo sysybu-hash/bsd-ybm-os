@@ -77,9 +77,9 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       paymentLink,
       signUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/sign/${token}`
     });
-  } catch (error: any) {
-    console.error("Quote generation failed:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate quote" }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to generate quote";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 });
 
