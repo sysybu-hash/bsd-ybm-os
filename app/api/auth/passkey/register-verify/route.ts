@@ -1,11 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonUnauthorized, jsonServerError } from "@/lib/api-json";
 import { verifyPasskeyRegistration } from "@/lib/auth/passkey-server";
+import { applyRateLimit } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limited = await applyRateLimit(req, "auth:passkey-register-verify", 5, 60_000);
+  if (limited) return limited;
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;

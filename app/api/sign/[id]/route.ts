@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
 import { createOrganizationNotification } from "@/lib/notifications-service";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   req: Request,
@@ -28,9 +29,12 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  // 10 חתימות/דקה per IP — מגן על signature spam
+  const limited = await applyRateLimit(req, "sign:document", 10, 60_000);
+  if (limited) return limited;
   const { id } = await context.params;
   const body = await req.json();
   const signatureBase64 = body.signatureBase64 as string | undefined;

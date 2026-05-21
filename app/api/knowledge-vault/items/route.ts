@@ -27,4 +27,4 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
 
   const items = await listForOrg(orgId, { vaultPath, search, limit });
   return NextResponse.json({ ok: true, items });
-});
+}, { rateLimit: { key: "kv:items", limit: 60, windowMs: 60_000 } });

@@ -8,6 +8,7 @@ import { googleDriveErrorResponse } from "@/lib/google-drive-api-errors";
 export const dynamic = "force-dynamic";
 
 export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
+  // rate-limit applied via option below
   if (!(await isKnowledgeVaultEnabled())) {
     return jsonServiceUnavailable("מאגר ידע מושבת בהגדרות הפלטפורמה.", "knowledge_vault_disabled");
   }
@@ -36,4 +37,4 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
   } catch (error) {
     return googleDriveErrorResponse(error);
   }
-});
+}, { rateLimit: { key: "kv:ingest", limit: 20, windowMs: 60_000 } });

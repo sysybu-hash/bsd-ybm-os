@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonUnauthorized, jsonServerError } from "@/lib/api-json";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { applyRateLimit } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 10 ניסיונות ל-15 דקות — מגן על brute-force לשינוי סיסמה
+  const limited = await applyRateLimit(req, "auth:set-password", 10, 15 * 60_000);
+  if (limited) return limited;
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;

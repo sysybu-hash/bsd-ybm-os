@@ -1,14 +1,9 @@
-import { NextResponse } from "next/server";
-import { jsonUnauthorized } from "@/lib/api-json";
+import type { NextRequest } from "next/server";
 import { runTaskRemindersForAllOrganizations } from "@/lib/tasks/task-reminder-runner";
+import { withCronGuard } from "@/lib/cron-guard";
 
-export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return jsonUnauthorized("אימות Cron נכשל.");
-  }
-
-  const result = await runTaskRemindersForAllOrganizations();
-  return NextResponse.json({ ok: true, ...result });
+export async function GET(req: NextRequest) {
+  return withCronGuard(req, "cron-task-reminders", { type: "crontab", value: "0 7 * * *" }, async () => {
+    return await runTaskRemindersForAllOrganizations();
+  });
 }

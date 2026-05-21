@@ -31,5 +31,5 @@ export const POST = withWorkspacesAuth(
       return googleDriveErrorResponse(error);
     }
   },
-  { schema: bodySchema },
+  { schema: bodySchema, rateLimit: { key: "kv:parse", limit: 20, windowMs: 60_000 } },
 );

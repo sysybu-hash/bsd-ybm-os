@@ -1,14 +1,10 @@
-import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { runDailyInsightsForAllOrganizations } from "@/lib/financial-insights";
-import { jsonUnauthorized } from "@/lib/api-json";
+import { withCronGuard } from "@/lib/cron-guard";
 
-export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return jsonUnauthorized("אימות Cron נכשל.");
-  }
-
-  await runDailyInsightsForAllOrganizations();
-  return NextResponse.json({ ok: true });
+export async function GET(req: NextRequest) {
+  return withCronGuard(req, "cron-financial-insights", { type: "crontab", value: "0 6 * * *" }, async () => {
+    await runDailyInsightsForAllOrganizations();
+    return { ran: true };
+  });
 }
