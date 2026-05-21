@@ -1,8 +1,8 @@
 # 🎯 BSD-YBM OS — תוכנית שדרוג מלאה ל-Production Grade
 
-> **גרסה**: 1.0
-> **נכתב**: 2026-05-21
-> **סטטוס**: מאושר לביצוע
+> **גרסה**: 2.0
+> **נכתב**: 2026-05-21 | **עדכון אחרון**: 2026-05-21
+> **סטטוס**: בביצוע — עדכון לאחר ניתוח קומיטים של Cursor
 > **בעלים**: yohanan.bukshpan
 > **מבצע**: Cursor (תחת הנחיה) + ידני
 > **יעד**: להעביר את הקוד ממצב "מוצר late-beta מצוין" למצב "production-grade ברמה גלובלית"
@@ -41,147 +41,123 @@ npm run premerge   # = verify:all
 
 ---
 
+## 📊 סיכום מצב נוכחי (עדכון v2)
+
+### מה בוצע (לפני + בסשן האחרון)
+| בוצע על ידי | מה |
+|---|---|
+| Cursor (לפני) | Sentry + WidgetErrorBoundary, Lighthouse CI, CRM pagination, email verification, SSE notifications, Knowledge Vault module, NotebookLM improvements, Passkey auth suite, gitleaks + npm audit CI, rate-limit על 10+ AI routes, coverage threshold 60% |
+| Claude (סשן זה) | Stage 0 hygiene, `lib/env.ts` (Zod, 90 vars), `applyRateLimit` helper + withWorkspacesAuth option, `scripts/prebuild.mjs`, loading.tsx ×3, console.log cleanup |
+
+### מה נשאר — לפי עדיפות
+| # | פריט | מצב |
+|---|---|---|
+| 🔴 | Rate limit: 5 routes עדיין חשופים | בוצע חלקי |
+| 🔴 | Rate limit: Knowledge Vault API (4 routes חדשים) | חסר לחלוטין |
+| 🟡 | lib/ refactor (169 קבצים שטוחים) | לא התחיל |
+| 🟡 | פיצול 10 קומפוננטים >700 שורות | לא התחיל |
+| 🟡 | `any` types: 149 בקוד | לא התחיל |
+| 🟡 | DB indexes audit + N+1 | לא התחיל |
+| 🟢 | Error boundaries לכל route segment | WidgetErrorBoundary קיים בלבד |
+| 🟢 | loading.tsx לכל segment | 3 מתוך ~8 |
+| 🟢 | lint warnings (9) | נותר |
+| 🟢 | `noUncheckedIndexedAccess` בtsconfig | לא התחיל |
+| 🟢 | SEO/PWA polish | בסיסי קיים |
+| 🟢 | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | חסר |
+| ⚪ | i18n אנגלית | אופציונלי |
+
+---
+
 ## 🗺️ מפת הדרכים — תמונה כללית
 
-| # | שלב | מטרה | זמן | סיכון | אפשר Cursor? |
+| # | שלב | מטרה | זמן | סיכון | סטטוס |
 |---|---|---|---|---|---|
-| 0 | היגיינה | לנקות רעש | 30 דק' | אפס | חלקית (ידני עדיף) |
-| 1 | אבטחה | לסגור פערים קריטיים | 4–6 ש' | בינוני | חלקית |
-| 2 | יציבות CI/Build | פייפלין דטרמיניסטי | 3–4 ש' | נמוך | כן |
-| 3 | חוב טכני — lib/ | מבנה ברור ויחיד | 2–3 ימים | בינוני-גבוה | כן (עם הדרכה) |
-| 4 | קומפוננטים ענקיים | פיצול > 700 שורות | 2 ימים | נמוך | כן ⭐ |
-| 5 | טיפוסים | סוף ל-`any` | 1–2 ימים | נמוך | כן |
-| 6 | DB & Performance | אינדקסים + צריבת query | 1 יום | בינוני | חלקית |
-| 7 | Observability | לוגים, traces, alerts | 1 יום | אפס | כן |
-| 8 | UX & a11y | WCAG AA + RTL polish | 1 יום | אפס | כן |
-| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | כן |
-| 10 | i18n אנגלית | פתיחת שוק בינלאומי | 2 ימים | בינוני | חלקית |
-| 11 | תיעוד & Runbook | bus factor + DR | חצי יום | אפס | כן |
-| 12 | Launch Readiness | בדיקות final | חצי יום | אפס | ידני |
+| 0 | היגיינה | לנקות רעש | 30 דק' | אפס | ✅ **הושלם** |
+| 1 | אבטחה | לסגור פערים קריטיים | 4–6 ש' | בינוני | 🔄 **90% הושלם** |
+| 2 | יציבות CI/Build | פייפלין דטרמיניסטי | 3–4 ש' | נמוך | ✅ **הושלם** |
+| 3 | חוב טכני — lib/ | מבנה ברור ויחיד | 2–3 ימים | בינוני-גבוה | ⏳ **לא התחיל** |
+| 4 | קומפוננטים ענקיים | פיצול > 700 שורות | 2 ימים | נמוך | ⏳ **לא התחיל** |
+| 5 | טיפוסים | סוף ל-`any` | 1–2 ימים | נמוך | ⏳ **לא התחיל** |
+| 6 | DB & Performance | אינדקסים + צריבת query | 1 יום | בינוני | ⏳ **לא התחיל** |
+| 7 | Observability | לוגים, traces, alerts | 1 יום | אפס | 🔄 **50% — Sentry קיים, cron monitoring חסר** |
+| 8 | UX & a11y | WCAG AA + RTL polish | 1 יום | אפס | 🔄 **40% — loading×3, WidgetErrorBoundary קיים** |
+| 9 | SEO & PWA | discoverability + offline | חצי יום | אפס | 🔄 **בסיס קיים, schema.org + og:image חסר** |
+| 10 | i18n אנגלית | פתיחת שוק בינלאומי | 2 ימים | בינוני | ⏳ **אופציונלי** |
+| 11 | תיעוד & Runbook | bus factor + DR | חצי יום | אפס | ⏳ **לא התחיל** |
+| 12 | Launch Readiness | בדיקות final | חצי יום | אפס | ⏳ **לא התחיל** |
 
 **סה"כ ריאלי**: 12–15 ימי עבודה ביעילות גבוהה.
 
 ---
 
-## 🔧 שלב 0 — היגיינה (30 דקות, ידני)
+## ✅ שלב 0 — היגיינה — **הושלם** (קומיט `76a3aab`)
 
-### 0.1 מחיקת קבצי זבל ב-root
-```bash
-git rm dev-3004.log test-invoice-hebrew.pdf test-meckano.js test-pdfmake.pdf
-git commit -m "chore: remove dev/test artifacts from repo root"
-```
-
-### 0.2 וידוא שאף `.env` לא דלף בעבר
-```bash
-git log --all --full-history -- .env .env.local .env.vercel.prod .env.vercel.production .env.vprod
-```
-**אם יש קומיטים** → לרוטט מפתחות. **אם אין** → מצוין, להמשיך.
-
-### 0.3 הוספת `.gitattributes` (אם לא קיים)
-```
-* text=auto eol=lf
-*.ps1 text eol=crlf
-*.pdf binary
-*.png binary
-*.jpg binary
-```
-זה מונע התפוצצויות EOL בין מערכות הפעלה.
-
-### 0.4 ארכוב סקריפטים חד-פעמיים
-```bash
-mkdir -p scripts/archive
-git mv scripts/fix-broad-text-white.ps1 scripts/archive/
-git mv scripts/fix-dark-theme.ps1 scripts/archive/
-git mv scripts/fix-final-text-white.ps1 scripts/archive/
-git mv scripts/fix-remaining-text-white.ps1 scripts/archive/
-git mv scripts/fix-targeted.ps1 scripts/archive/
-git mv scripts/_patch_crm_widget.py scripts/archive/
-git commit -m "chore(scripts): archive one-off PowerShell fixers"
-```
-
-### 0.5 גייט סיום
-```bash
-npm run lint
-npx tsc --noEmit
-```
+- ✅ נמחקו: `dev-3004.log`, `test-invoice-hebrew.pdf`, `test-meckano.js`, `test-pdfmake.pdf`
+- ✅ נוסף `.gitattributes` עם EOL + binary marking
+- ✅ ארכוב 6 סקריפטים ל-`scripts/archive/`
+- ✅ אין `env` files בהיסטוריית git
 
 ---
 
-## 🔐 שלב 1 — אבטחה (4–6 שעות)
+## 🔐 שלב 1 — אבטחה — 🔄 90% הושלם
 
-### 1.1 עטיפת `process.env` עם validation
-**מצב נוכחי**: 225 שימושים ישירים ב-`process.env` בקוד.
-**יעד**: גישה דרך `lib/env.ts` יחיד עם Zod validation שרץ ב-startup.
+### ✅ 1.1 lib/env.ts — הושלם (קומיט `fa24445`)
+- `lib/env.ts` קיים עם Zod schema ל-90 משתנים (server + client)
+- **נותר**: להחליף `process.env.X` → `env.X` בקובץ-קובץ (לא דחוף — validation רץ בסטארטאפ)
 
-**פרומפט Cursor**:
-> Create `lib/env.ts` that exports a typed, validated `env` object using Zod. Read all `process.env.X` usages across `lib/`, `app/`, and `middleware.ts`, list every distinct env var, and create a single Zod schema with proper types and defaults. Categorize: REQUIRED (throws on missing), OPTIONAL (returns undefined), SERVER_ONLY (throws if accessed client-side). Use `z.string().url()` for URLs, `z.string().min(32)` for secrets. Export a typed `env` const. Don't replace any usages yet — only create the file.
+### 🔄 1.2 Rate limiting — 90% הושלם
+**מה קיים**: `applyRateLimit()` helper, הגנה על 15+ endpoints (AI, scan, auth, analyze-queue, notebooklm)
+**מה חסר (4 auth + 4 knowledge-vault):**
 
-**אחרי שזה קיים**:
-```bash
-# Find-replace בזהירות, קובץ-קובץ:
-# process.env.DATABASE_URL → env.DATABASE_URL
+**פרומפט Cursor — הדבק כולו:**
+```
+Add `applyRateLimit` to these 8 route files. Import from `@/lib/rate-limit`.
+Pattern to copy from: app/api/auth/forgot-password/route.ts (IP-based, unauthenticated)
+
+FILES + LIMITS:
+1. app/api/auth/passkey/register-options/route.ts  → key="auth:passkey-register-options", limit=5, windowMs=60_000
+2. app/api/auth/passkey/register-verify/route.ts   → key="auth:passkey-register-verify",  limit=5, windowMs=60_000
+3. app/api/auth/set-password/route.ts              → key="auth:set-password",              limit=10, windowMs=15*60_000
+4. app/api/sign/[id]/route.ts                      → key="sign:document",                  limit=10, windowMs=60_000
+5. app/api/knowledge-vault/ingest/route.ts         → key="kv:ingest",   limit=20, windowMs=60_000  (authenticated, use withWorkspacesAuth rateLimit option)
+6. app/api/knowledge-vault/issue/route.ts          → key="kv:issue",    limit=10, windowMs=60_000
+7. app/api/knowledge-vault/items/route.ts          → key="kv:items",    limit=60, windowMs=60_000
+8. app/api/knowledge-vault/parse/route.ts          → key="kv:parse",    limit=20, windowMs=60_000
+
+For items 1-4: Add before session check — return `limited` response immediately.
+For items 5-8: Check if using withWorkspacesAuth — if yes, add rateLimit option. If not, use applyRateLimit directly after auth check.
+Run `npx tsc --noEmit` after all 8. Report changes.
 ```
 
-### 1.2 ביקורת rate-limit על endpoints רגישים
-**גלה מי פגיע**:
+### ✅ 1.3 Gitleaks + npm audit — הושלם (קומיט `90ec545`)
+CI workflow מריץ gitleaks + npm audit --audit-level=critical בכל push.
+
+### ⏳ 1.4 PII redaction בלוגים — לא התחיל
+**פרומפט Cursor**:
+> Add PII sanitization to `lib/logger.ts`. Before any log is written, run the payload through a `sanitize()` function that: (1) replaces email addresses with `***@domain.com`, (2) replaces 9-digit sequences (Israeli ID) with `[ID-REDACTED]`, (3) replaces `sk-...`, `AIza...`, `Bearer ...` patterns with `[KEY-REDACTED]`. Write unit tests in `lib/__tests__/logger-sanitize.test.ts` covering each pattern.
+
+### ⏳ 1.5 webhook signature verification — לא נבדק
 ```bash
-# כל endpoint שלא מייבא rate-limit:
-grep -rL "rate-limit\|rateLimit\|withRateLimit" app/api/auth app/api/ai app/api/scan app/api/sign
+grep -rn "verifySignature\|verifyWebhook\|transmission-sig\|HMAC\|hmac" app/api/webhooks/
 ```
+אם ריק → **פרומפט Cursor**:
+> Audit `app/api/webhooks/paypal/route.ts` and `app/api/webhooks/payplus/route.ts`. Add HMAC/signature verification before processing. PayPal: use `paypal-transmission-sig` header + `PAYPAL_WEBHOOK_ID`. PayPlus: use their HMAC-SHA256 with `PAYPLUS_SECRET_KEY`. Reject with 401 on mismatch. Add unit test with tampered payload → asserts 401.
 
-**פרומפט Cursor** (לכל קובץ ברשימה):
-> Add rate limiting to this route handler using the existing `lib/rate-limit.ts` utility. Use IP-based key for unauthenticated routes, user-id-based for authenticated. Limits: auth routes = 5/min, AI routes = 30/min/user, scan routes = 20/min/user, sign routes = 10/min/user. Return 429 with `Retry-After` header on violation. Log violations to `lib/logger.ts`.
-
-### 1.3 CSP audit
-`next.config.js:55` יש CSP טוב. **אבל**: `'unsafe-inline'` ו-`'unsafe-eval'` ב-`script-src`.
-
-**יעד**: להחליף ב-nonce-based CSP. זה דורש middleware שמזריק nonce לכל בקשה.
-
-**פרומפט Cursor**:
-> Refactor the CSP in `next.config.js` and `middleware.ts` to use per-request nonces instead of `'unsafe-inline'` and `'unsafe-eval'`. Use `next/script` with the `nonce` prop. Keep `'unsafe-inline'` for `style-src` (Tailwind requires it). For `script-src`: nonce + `'strict-dynamic'`. Test that PayPal SDK still loads. Add a fallback `'unsafe-inline'` only in development.
-
-### 1.4 PII בלוגים
-**פרומפט Cursor**:
-> Audit `lib/logger.ts` and add a sanitization layer that strips/redacts: email addresses (preserve domain), Israeli ID numbers (9 digits), phone numbers, credit card patterns, JWT tokens, API keys (Bearer xxx, sk-xxx, AIza-xxx). Apply automatically to all log payloads. Add unit tests in `lib/__tests__/logger-sanitize.test.ts`.
-
-### 1.5 Secret rotation runbook
-**צור** `docs/SECURITY-RUNBOOK.md`:
-- רשימת כל המפתחות במערכת + איפה הם נמצאים (Vercel / Neon / PayPal / וכו')
-- שלבי רוטציה לכל מפתח
-- תדירות מומלצת: שבועי (NEXTAUTH_SECRET) → רבעוני (AI keys) → שנתי (PayPal)
-- procedure ל"חירום rotation" — איך מסובבים מפתח ב-< 5 דקות
-
-### 1.6 webhook signature verification
-**בדוק** `app/api/webhooks/paypal/*` ו-`app/api/webhooks/payplus/*`:
-```bash
-grep -rn "verifySignature\|verifyWebhook\|paypal-transmission-sig" app/api/webhooks/
-```
-
-**פרומפט Cursor**:
-> Audit `app/api/webhooks/paypal/route.ts` and `app/api/webhooks/payplus/route.ts`. Ensure each webhook verifies the signature/HMAC from the provider before processing. If verification is missing, add it using the provider's documented method. Reject with 401 on signature mismatch. Add a unit test that simulates a tampered payload and asserts rejection.
-
-### 1.7 גייט סיום
+### 1.6 גייט סיום
 ```bash
 npm run verify
-# + ידני: לפתוח את האתר ולוודא שלא נשבר משהו
 ```
 
 ---
 
-## ⚙️ שלב 2 — יציבות CI/Build (3–4 שעות)
+## ✅ שלב 2 — יציבות CI/Build — הושלם (קומיט `fa24445`)
 
-### 2.1 איחוד prebuild ל-script יחיד
-**מצב נוכחי**: 4 prebuild steps שרשרת.
-**יעד**: סקריפט יחיד עם logging ברור.
+- ✅ `scripts/prebuild.mjs` — 4 שלבים עם logging וtiming
+- ✅ `scripts/check-env-essential.mjs` — טבלה צבעונית, כל 90 משתנים
+- ✅ `package.json`: `"build": "node scripts/prebuild.mjs && next build"`
+- ✅ `prebuild:1..4` לדיבוג נפרד
 
-**פרומפט Cursor**:
-> Create `scripts/prebuild.mjs` that runs in sequence: (1) `ensure-production-schema`, (2) `env:check`, (3) `embed-pdf-fonts`, (4) `prisma-generate-safe`. Each step prints `[N/4] step-name: STARTING` and `[N/4] step-name: OK (Xms)` or `[N/4] step-name: FAILED — reason`. On failure, exit with code 1 and print which env var or file is missing. Update `package.json` `"build"` to call only this script + `next build`. Keep the individual scripts as `npm run prebuild:N` for debugging.
-
-### 2.2 חיזוק env:check
-**פרומפט Cursor**:
-> Refactor `scripts/check-env-essential.mjs` to read the Zod schema from `lib/env.ts` (created in stage 1) so we have a single source of truth. Print a colored table: env var | required? | present? | masked value (first 4 chars + ...). Exit 1 if any REQUIRED is missing.
-
-### 2.3 Cron job monitoring
+### ⏳ 2.3 Cron job monitoring — עדיין חסר
 **מצב נוכחי**: 5 cron jobs ב-`vercel.json`, אבל אין alerting אם הם נכשלים.
 
 **פרומפט Cursor**:
@@ -191,15 +167,9 @@ npm run verify
 **פרומפט Cursor**:
 > Add a CI step that runs `npm run build` twice consecutively and compares the output of `find .next -type f -name "*.js" | xargs sha256sum | sort` — fails if hashes differ. This catches non-deterministic builds.
 
-### 2.5 גייט סיום
-```bash
-npm run build   # חייב לעבור
-git diff package-lock.json   # ללא שינויים
-```
-
 ---
 
-## 🗂️ שלב 3 — חוב טכני: refactor של `lib/` (2–3 ימים)
+## 🗂️ שלב 3 — חוב טכני: refactor של `lib/` (2–3 ימים) ⏳
 
 ### 3.1 מבנה היעד
 ```
@@ -358,45 +328,48 @@ grep -rn ": any\b\|<any>\| any\[\]" --include="*.ts" lib app components | grep -
 
 ---
 
-## 📊 שלב 7 — Observability (1 יום)
+## 📊 שלב 7 — Observability — 🔄 50% הושלם
 
-### 7.1 Sentry tracing coverage
+### ✅ 7.1 Sentry — קיים (הוגדר ב-`cdd258b`)
+- `sentry.{client,server,edge}.config.ts` קיימים
+- `WidgetErrorBoundary` מדווח ל-Sentry
+- **עדיין לבדוק**: `tracesSampleRate` — לוודא שהוא 0.1 בprod ולא 1.0
+
+### ✅ 7.2 console.log cleanup — הושלם (קומיט `64dcb53`)
+- `api/chat/route.ts`, `webhooks/payplus/route.ts` עברו ל-`createLogger`
+
+### ⏳ 7.3 Cron job monitoring — לא התחיל
 **פרומפט Cursor**:
-> Audit Sentry coverage in `sentry.{client,server,edge}.config.ts`. Ensure: (1) `tracesSampleRate` is 0.1 in prod (not 1.0 — too expensive), (2) `replaysSessionSampleRate` is 0.1, `replaysOnErrorSampleRate` is 1.0, (3) `beforeSend` filters out known noise (NotFoundError, network errors from cancelled requests), (4) all API routes have proper `Sentry.startSpan` wrapping. Report missing instrumentation.
+> Integrate Sentry Crons monitoring with all 5 cron jobs in `vercel.json`. For each `app/api/cron/X/route.ts`: (1) wrap with `Sentry.withMonitor("cron-X", handler, { schedule: { type: "crontab", value: "0 6 * * *" } })`, (2) add `Authorization: Bearer CRON_SECRET` check at top — return 401 if missing. Run `npx tsc --noEmit` after.
 
-### 7.2 Structured logging audit
-**מצב נוכחי**: 6 `console.log` בקוד.
-**פעולה**: למחוק את כולם או להחליף ב-`logger.info`.
-
-```bash
-# מצא:
-grep -rn "console\.log\|console\.error\|console\.warn" lib app components --include="*.ts" --include="*.tsx" | grep -v __tests__
-```
-
-### 7.3 ניטור Cron jobs (Sentry Crons)
-**פרומפט Cursor**:
-> Integrate Sentry Crons monitoring with all 5 cron jobs in `vercel.json`. For each `app/api/cron/X/route.ts`, wrap the handler with `Sentry.withMonitor("X", async () => { ... })`. Configure expected schedule in Sentry dashboard. Add alert: if a cron misses 2 consecutive runs, notify via email.
-
-### 7.4 PostHog event taxonomy
-**צור** `docs/ANALYTICS-TAXONOMY.md` — רשימת כל ה-events ב-PostHog עם properties.
-**כלל**: כל event חדש חייב להיכנס למסמך הזה לפני שמוסיפים אותו לקוד.
+### ⏳ 7.4 PostHog event taxonomy — לא התחיל
+צור `docs/ANALYTICS-TAXONOMY.md` — רשימת כל events עם properties מוגדרים.
 
 ### 7.5 גייט סיום
-- Sentry rate < 0.5% מהבקשות
-- PostHog dashboard עם 5 KPIs מרכזיים מוגדרים
+```bash
+# ודא tracesSampleRate נכון:
+grep -n "tracesSampleRate" sentry.*.config.ts
+```
 
 ---
 
-## ♿ שלב 8 — UX & a11y (1 יום)
+## ♿ שלב 8 — UX & a11y — 🔄 40% הושלם
 
-### 8.1 loading states (חסר לחלוטין!)
-**ממצא**: 0 קבצי `loading.tsx` באפליקציה. זה אומר ש-Suspense streaming לא מנוצל.
+### 🔄 8.1 loading states — הושלם חלקית (קומיט `64dcb53`)
+**מה קיים**: `app/loading.tsx`, `app/app/loading.tsx`, `app/app/settings/loading.tsx`
+**מה חסר**:
 
 **פרומפט Cursor**:
-> For each major route in `app/`, add a `loading.tsx` file with a skeleton UI matching the route's structure. Priority: `app/app/`, `app/app/settings/`, `app/api` routes don't need this. Use Tailwind `animate-pulse` for skeletons. Keep it RTL-aware.
+> Add `loading.tsx` skeleton files to these route segments (RTL, `animate-pulse`, dark theme `bg-white/5`):
+> - `app/about/loading.tsx` — simple text skeleton
+> - `app/help/loading.tsx` — list skeleton
+> - `app/sign/[id]/loading.tsx` — document viewer skeleton
+> - `app/app/admin/loading.tsx` — table skeleton
+> Copy the pattern from `app/app/settings/loading.tsx`. Keep each file under 40 lines.
 
-### 8.2 Error boundaries
-**מצב נוכחי**: 4 error boundaries בלבד.
+### 🔄 8.2 Error boundaries — חלקי
+**מה קיים**: `app/error.tsx` (root), `app/global-error.tsx`, `WidgetErrorBoundary` (Cursor הוסיף ב-`cdd258b`)
+**מה חסר**: `error.tsx` לכל route segment עיקרי
 
 **פרומפט Cursor**:
 > Add `error.tsx` to each major route segment in `app/app/`. Each error boundary should: (1) log to Sentry with route context, (2) show a friendly Hebrew error message, (3) provide a "נסה שוב" button (calls `reset()`), (4) provide a "חזרה לעמוד הראשי" link. Match the app's visual style.
