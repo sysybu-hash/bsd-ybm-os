@@ -79,17 +79,5 @@ export function getOsAssistantLiveToolDeclarations(): FunctionDeclaration[] {
         required: ["query"],
       },
     },
-    {
-      name: "google_assistant_command",
-      description:
-        "External queries ONLY (weather, smart home, web-style facts). Never use for invoices, tasks, CRM, scans, or any BSD-YBM OS screen — use execute_user_command or run_automation instead.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          query: { type: Type.STRING },
-        },
-        required: ["query"],
-      },
-    },
   ];
 }

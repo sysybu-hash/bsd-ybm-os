@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
 
 type ProjectRow = { id: string; name: string };
 
@@ -469,27 +470,8 @@ export default function ErpFileArchiveWidget() {
         ? "אין מסמכים שחברי צוות שיתפו איתך."
         : "אין מסמכים התואמים לסינון.";
 
-  return (
-    <div
-      className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row"
-      dir={dir}
-    >
-      <OsConfirmDialog
-        open={deleteTarget !== null}
-        title={archiveView === "trash" ? "מחיקה לצמיתות?" : "להעביר לפח האשפה?"}
-        message={
-          deleteTarget
-            ? archiveView === "trash"
-              ? `המסמך «${deleteTarget.name}» יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.`
-              : `המסמך «${deleteTarget.name}» יועבר לפח האשפה. ניתן לשחזר משם.`
-            : undefined
-        }
-        destructive
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => void confirmDelete()}
-      />
-
-      <div className="hidden w-64 shrink-0 flex-col border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:flex">
+  const archiveSidebar = (
+    <div className="flex h-full min-h-0 flex-col">
         <div className="flex flex-1 flex-col overflow-auto p-6">
           <div className="mb-8 flex items-center gap-2 text-amber-600 dark:text-amber-400">
             <HardDrive size={20} aria-hidden />
@@ -601,8 +583,10 @@ export default function ErpFileArchiveWidget() {
             תוצאות במסך: {files.length}
           </p>
         </div>
-      </div>
+    </div>
+  );
 
+  const archiveMain = (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:flex-row md:items-center md:justify-between md:p-6">
           <div className="flex w-full flex-col gap-4 md:flex-1 md:flex-row md:items-center">
@@ -897,6 +881,51 @@ export default function ErpFileArchiveWidget() {
         </div>
 
       </div>
+  );
+
+  return (
+    <div
+      className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
+      dir={dir}
+    >
+      <OsConfirmDialog
+        open={deleteTarget !== null}
+        title={archiveView === "trash" ? "מחיקה לצמיתות?" : "להעביר לפח האשפה?"}
+        message={
+          deleteTarget
+            ? archiveView === "trash"
+              ? `המסמך «${deleteTarget.name}» יימחק לצמיתות ולא ניתן יהיה לשחזר אותו.`
+              : `המסמך «${deleteTarget.name}» יועבר לפח האשפה. ניתן לשחזר משם.`
+            : undefined
+        }
+        destructive
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+      />
+
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <WidgetSplitPanels
+          className="min-h-0 flex-1"
+          panels={[
+            {
+              id: "erp-archive-nav",
+              defaultSize: 22,
+              minSize: 16,
+              className:
+                "flex min-h-0 min-w-0 flex-col border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50",
+              children: archiveSidebar,
+            },
+            {
+              id: "erp-archive-main",
+              defaultSize: 78,
+              minSize: 45,
+              className: "flex min-h-0 min-w-0 flex-col",
+              children: archiveMain,
+            },
+          ]}
+        />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">{archiveMain}</div>
     </div>
   );
 }

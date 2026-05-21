@@ -74,8 +74,13 @@ export default function Omnibar({
     session?.user?.name?.trim() ||
     undefined;
 
+  const [omnibarLiveOn, setOmnibarLiveOn] = useState(false);
+
   const geminiLive = useGeminiLiveAudio({
-    enabled: Boolean(session?.user?.id && session?.user?.organizationId),
+    owner: "omnibar",
+    enabled: Boolean(
+      omnibarLiveOn && session?.user?.id && session?.user?.organizationId,
+    ),
     contextReady: osAssistant.hasRichContext,
     settings: geminiVoiceSettings,
     advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
@@ -102,6 +107,18 @@ export default function Omnibar({
       setVoiceStatus("error");
     },
   });
+
+  useEffect(() => {
+    const onOwnerChange = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ owner?: string | null }>).detail;
+      if (detail?.owner === "aiChatFull") {
+        geminiLive.stop();
+        setOmnibarLiveOn(false);
+      }
+    };
+    window.addEventListener("gemini-live:owner-changed", onOwnerChange);
+    return () => window.removeEventListener("gemini-live:owner-changed", onOwnerChange);
+  }, [geminiLive]);
 
   useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
@@ -139,7 +156,7 @@ export default function Omnibar({
     <div className="relative z-50 w-full px-0 md:px-4" dir={dir}>
       <form onSubmit={handleSubmit} className="relative">
         <div
-          className={`relative flex min-h-[3.25rem] w-full items-stretch overflow-hidden rounded-[var(--radius-md)] border shadow-md transition-shadow ${
+          className={`relative flex min-h-[2.75rem] w-full items-stretch overflow-hidden rounded-[var(--radius-md)] border shadow-md transition-shadow ${
             voiceActive
               ? "border-indigo-400/50 ring-2 ring-indigo-500/25"
               : "border-[color:var(--border-main)]"
@@ -195,7 +212,15 @@ export default function Omnibar({
             </button>
             <button
               type="button"
-              onClick={() => (geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start())}
+              onClick={() => {
+                if (geminiLive.isLiveActive) {
+                  geminiLive.stop();
+                  setOmnibarLiveOn(false);
+                } else {
+                  setOmnibarLiveOn(true);
+                  void geminiLive.start();
+                }
+              }}
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition ${
                 voiceStatus === "listening" || voiceStatus === "speaking"
                   ? "bg-indigo-600 text-white shadow-sm"
@@ -229,7 +254,15 @@ export default function Omnibar({
             statusLabel={statusLabel}
             voiceStatus={voiceStatus}
             isLiveActive={geminiLive.isLiveActive}
-            onToggleLive={() => (geminiLive.isLiveActive ? geminiLive.stop() : geminiLive.start())}
+            onToggleLive={() => {
+              if (geminiLive.isLiveActive) {
+                geminiLive.stop();
+                setOmnibarLiveOn(false);
+              } else {
+                setOmnibarLiveOn(true);
+                void geminiLive.start();
+              }
+            }}
             onOpenSettings={() => setGeminiLiveSettingsOpen(true)}
             lastTranscript={geminiLive.lastTranscript}
           />
@@ -277,7 +310,7 @@ export default function Omnibar({
       )}
 
       {message ? (
-        <div className="mx-auto mt-2 max-w-2xl rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-2 text-center text-[11px] font-semibold text-[color:var(--foreground-muted)] shadow-sm">
+        <div className="mx-auto mt-1 max-w-2xl truncate rounded-md border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/90 px-3 py-1 text-center text-[10px] font-semibold text-[color:var(--foreground-muted)] shadow-sm">
           {message}
         </div>
       ) : null}

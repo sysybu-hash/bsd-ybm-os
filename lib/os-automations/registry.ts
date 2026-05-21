@@ -301,24 +301,6 @@ export async function runAutomationAction(
     case "switch_window":
       deps.openWindowSwitcher?.();
       return { ok: true };
-    case "google_assistant_command": {
-      const query = String(params.query ?? "").trim();
-      if (!query) return { ok: false };
-      try {
-        const res = await fetch("/api/os/google-assistant/query", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
-          credentials: "include",
-        });
-        const data = await res.json();
-        const text = typeof data.fulfillmentText === "string" ? data.fulfillmentText : "";
-        if (text) deps.setSystemMessage(text);
-      } catch {
-        return { ok: false };
-      }
-      return { ok: true };
-    }
     case "search_client": {
       const q = String(params.query ?? params.clientName ?? "").trim();
       if (!q) return { ok: false };

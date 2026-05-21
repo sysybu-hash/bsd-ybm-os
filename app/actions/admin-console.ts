@@ -21,6 +21,7 @@ export type PendingRegistrationRow = {
   createdAt: string;
   organizationId: string | null;
   organizationName: string | null;
+  organizationIndustry: string | null;
 };
 
 export async function listPendingRegistrationsAction(): Promise<
@@ -38,7 +39,7 @@ export async function listPendingRegistrationsAction(): Promise<
       name: true,
       createdAt: true,
       organizationId: true,
-      organization: { select: { name: true } },
+      organization: { select: { name: true, industry: true } },
     },
     take: 200,
   });
@@ -50,6 +51,7 @@ export async function listPendingRegistrationsAction(): Promise<
     createdAt: u.createdAt.toISOString(),
     organizationId: u.organizationId,
     organizationName: u.organization?.name ?? null,
+    organizationIndustry: u.organization?.industry ?? null,
   }));
 }
 

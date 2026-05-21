@@ -7,16 +7,56 @@ import {
 } from "@/lib/api-json";
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { trialEndsAtFromNow } from "@/lib/trial";
-import { sendRegistrationWelcomeEmail } from "@/lib/mail";
+import {
+  sendRegistrationCredentialsEmail,
+  sendRegistrationWelcomeEmail,
+} from "@/lib/mail";
+import {
+  generateProvisionPassword,
+  hashPassword,
+  validatePasswordStrength,
+} from "@/lib/password";
 import { defaultScanBalancesForTier, tierLabelHe } from "@/lib/subscription-tier-config";
+import { normalizeBusinessLine } from "@/lib/business-lines";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import {
   getDefaultConstructionTradeForRegistration,
+  getDefaultIndustryForRegistration,
   getPlatformConfig,
   isRegistrationOpen,
 } from "@/lib/platform-settings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function resolveRegistrationPassword(
+  bodyPassword: unknown,
+): Promise<
+  | { ok: true; passwordHash: string; plainForEmail: string | null }
+  | { ok: false; response: NextResponse }
+> {
+  const raw = typeof bodyPassword === "string" ? bodyPassword.trim() : "";
+  if (raw) {
+    const strength = validatePasswordStrength(raw);
+    if (!strength.ok) {
+      return {
+        ok: false,
+        response: jsonBadRequest(strength.message, "weak_password"),
+      };
+    }
+    return {
+      ok: true,
+      passwordHash: await hashPassword(raw),
+      plainForEmail: null,
+    };
+  }
+  const plain = generateProvisionPassword();
+  return {
+    ok: true,
+    passwordHash: await hashPassword(plain),
+    plainForEmail: plain,
+  };
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,15 +70,24 @@ export async function POST(req: Request) {
       inviteToken?: string;
       orgInviteToken?: string;
       plan?: string;
+      password?: string;
     };
 
     const emailRaw = String(body.email ?? "").trim();
     const name = String(body.name ?? "").trim() || null;
     const organizationName = String(body.organizationName ?? "").trim();
     const typeRaw = String(body.orgType ?? "COMPANY").toUpperCase();
-    const constructionTrade = body.constructionTrade
-      ? normalizeConstructionTrade(body.constructionTrade)
-      : await getDefaultConstructionTradeForRegistration();
+    const industry = normalizeIndustryType(
+      body.industry ?? (await getDefaultIndustryForRegistration()),
+    );
+    const constructionTrade =
+      industry === "COMPANY_MGMT"
+        ? body.constructionTrade
+          ? normalizeBusinessLine(body.constructionTrade)
+          : "GENERAL_BUSINESS"
+        : body.constructionTrade
+          ? normalizeConstructionTrade(body.constructionTrade)
+          : await getDefaultConstructionTradeForRegistration();
     const inviteToken = String(body.inviteToken ?? "").trim();
     const orgInviteToken = String(body.orgInviteToken ?? "").trim();
 
@@ -47,6 +96,10 @@ export async function POST(req: Request) {
     }
 
     const normalized = emailRaw.toLowerCase();
+
+    const pwdRes = await resolveRegistrationPassword(body.password);
+    if (!pwdRes.ok) return pwdRes.response;
+    const { passwordHash, plainForEmail } = pwdRes;
 
     if (!orgInviteToken && !inviteToken) {
       const open = await isRegistrationOpen();
@@ -100,6 +153,7 @@ export async function POST(req: Request) {
                 organizationId: inv.organizationId,
                 role: inv.role,
                 accountStatus: AccountStatus.ACTIVE,
+                passwordHash,
                 ...(name ? { name } : {}),
               },
             });
@@ -111,6 +165,7 @@ export async function POST(req: Request) {
                 organizationId: inv.organizationId,
                 role: inv.role,
                 accountStatus: AccountStatus.ACTIVE,
+                passwordHash,
               },
             });
           }
@@ -134,13 +189,19 @@ export async function POST(req: Request) {
         tierKey: tier,
         accountActive: true,
         extraNote:
-          "הצטרפתם לארגון קיים כחברי צוות. Welcome to BSD-YBM — הרשאות לפי ההזמנה.",
+          "הצטרפתם לארגון קיים כחברי צוות. ניתן להתחבר במייל וסיסמה, Google, או ביומטרי לאחר הגדרה.",
       }).catch((err) => console.error("sendRegistrationWelcomeEmail (orgInvite)", err));
+      if (plainForEmail) {
+        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
+          console.error("sendRegistrationCredentialsEmail (orgInvite)", err),
+        );
+      }
 
       return NextResponse.json({
         ok: true,
-        message:
-          "ההרשמה הושלמה. התחברו עם Google באותו אימייל — התפקיד שנקבע בהזמנה הוחל.",
+        message: plainForEmail
+          ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — התחברו בדף הכניסה."
+          : "ההרשמה הושלמה. התחברו בדף הכניסה עם האימייל והסיסמה שבחרתם.",
       });
     }
 
@@ -187,7 +248,7 @@ export async function POST(req: Request) {
           data: {
             name: organizationName,
             type: orgType,
-            industry: "CONSTRUCTION",
+            industry,
             constructionTrade,
             subscriptionTier: inv.subscriptionTier,
             subscriptionStatus: "ACTIVE",
@@ -202,6 +263,7 @@ export async function POST(req: Request) {
                 name,
                 role: "ORG_ADMIN",
                 accountStatus: AccountStatus.ACTIVE,
+                passwordHash,
               },
             },
           },
@@ -221,11 +283,17 @@ export async function POST(req: Request) {
             ? "Welcome to BSD-YBM! You are currently on the FREE tier with an active trial window where applicable."
             : undefined,
       }).catch((err) => console.error("sendRegistrationWelcomeEmail (invite)", err));
+      if (plainForEmail) {
+        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
+          console.error("sendRegistrationCredentialsEmail (invite)", err),
+        );
+      }
 
       return NextResponse.json({
         ok: true,
-        message:
-          "ההרשמה הושלמה — נוצר ארגון חדש ואתם מנהליו. ניתן להתחבר עם Google באותו אימייל.",
+        message: plainForEmail
+          ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל."
+          : "ההרשמה הושלמה — התחברו במייל והסיסמה שבחרתם.",
       });
     }
 
@@ -248,7 +316,7 @@ export async function POST(req: Request) {
       data: {
         name: organizationName,
         type: orgType,
-        industry: "CONSTRUCTION",
+        industry,
         constructionTrade,
         subscriptionTier: tier,
         trialEndsAt: tier === "FREE" ? trialEndsAtFromNow() : null,
@@ -262,6 +330,7 @@ export async function POST(req: Request) {
             name,
             role: "ORG_ADMIN",
             accountStatus: initialStatus,
+            passwordHash,
           },
         },
       },
@@ -275,12 +344,19 @@ export async function POST(req: Request) {
         ? `Welcome to BSD-YBM! Your ${tierLabelHe(tier)} account is now ACTIVE.`
         : "Welcome to BSD-YBM! You are currently on the FREE tier pending admin approval — you will receive full access once approved.",
     }).catch((err) => console.error("sendRegistrationWelcomeEmail (signup)", err));
+    if (plainForEmail && shouldApprove) {
+      void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
+        console.error("sendRegistrationCredentialsEmail (signup)", err),
+      );
+    }
 
     return NextResponse.json({
       ok: true,
-      message: shouldApprove 
-        ? "ההרשמה הושלמה בהצלחה! ניתן להתחבר כעת."
-        : "הבקשה נקלטה. מנהל המערכת יאשר את המנוי וישלח לך פרטי כניסה.",
+      message: shouldApprove
+        ? plainForEmail
+          ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — ניתן להתחבר כעת."
+          : "ההרשמה הושלמה. התחברו במייל והסיסמה שבחרתם."
+        : "הבקשה נקלטה. מנהל המערכת יאשר את המנוי; לאחר האישור התחברו במייל וסיסמה.",
     });
   } catch (e) {
     console.error("register", e);

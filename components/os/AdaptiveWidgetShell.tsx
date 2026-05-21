@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome";
+import {
+  RESIZE_MIN_WINDOW_HEIGHT,
+  RESIZE_MIN_WINDOW_WIDTH,
+  resolveShellDesktopDimensions,
+} from "@/lib/workspace/window-layout-policy";
 
 type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
@@ -29,8 +34,6 @@ interface ShellProps {
   children: React.ReactNode;
 }
 
-const MIN_WIDTH = 420;
-const MIN_HEIGHT = 320;
 const SNAP_THRESHOLD = 24;
 
 export default function AdaptiveWidgetShell({
@@ -76,25 +79,34 @@ export default function AdaptiveWidgetShell({
     return { width: Math.max(320, v.width - 24), height: Math.max(400, v.height - 130) };
   }, [workspaceBoundsRef]);
 
-  const getInitialPosition = () => {
+  const resizeMinWidth = (wsWidth: number) =>
+    isMobile ? Math.max(280, wsWidth) : Math.min(RESIZE_MIN_WINDOW_WIDTH, Math.max(320, wsWidth - 16));
+
+  const resolveDesktopDimensions = useCallback(
+    (ws: { width: number; height: number }) => resolveShellDesktopDimensions(ws, size),
+    [size],
+  );
+
+  const getInitialPosition = (dim: { width: number; height: number }) => {
+    if (isMobile || isMaximized) return { x: 0, y: 0 };
     if (initialOffset) return initialOffset;
     const ws = getWorkspaceSize();
-    const width = Math.min(size.width, Math.max(MIN_WIDTH, ws.width - 16));
-    const height = Math.min(size.height, Math.max(MIN_HEIGHT, ws.height - 16));
     return {
-      x: Math.max(0, ws.width / 2 - width / 2),
-      y: Math.max(0, ws.height / 2 - height / 2),
+      x: Math.max(0, Math.round(ws.width / 2 - dim.width / 2)),
+      y: Math.max(0, Math.round(ws.height / 2 - dim.height / 2)),
     };
   };
 
-  const [position, setPosition] = useState(getInitialPosition);
   const [currentSize, setCurrentSize] = useState(() => {
     const ws = getWorkspaceSize();
-    return {
-      width: Math.min(size.width, Math.max(MIN_WIDTH, ws.width - 16)),
-      height: Math.min(size.height, Math.max(MIN_HEIGHT, ws.height - 16)),
-    };
+    const mobile = typeof window !== "undefined" && window.innerWidth < 768;
+    if (mobile || isMaximized) {
+      return { width: ws.width, height: ws.height };
+    }
+    return resolveDesktopDimensions(ws);
   });
+
+  const [position, setPosition] = useState(() => getInitialPosition(currentSize));
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -120,10 +132,17 @@ export default function AdaptiveWidgetShell({
   }, [currentSize]);
 
   useEffect(() => {
-    const syncViewport = () => setIsMobile(window.innerWidth < 768);
+    const syncViewport = () => {
+      const w = window.visualViewport?.width ?? window.innerWidth;
+      setIsMobile(w < 768);
+    };
     syncViewport();
     window.addEventListener("resize", syncViewport);
-    return () => window.removeEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+    };
   }, []);
 
   const clampToWorkspace = useCallback(
@@ -219,8 +238,9 @@ export default function AdaptiveWidgetShell({
           break;
       }
 
-      newW = Math.max(MIN_WIDTH, newW);
-      newH = Math.max(MIN_HEIGHT, newH);
+      const wsForMin = getWorkspaceSize();
+      newW = Math.max(resizeMinWidth(wsForMin.width), newW);
+      newH = Math.max(RESIZE_MIN_WINDOW_HEIGHT, newH);
 
       const wsInner = getWorkspaceSize();
       newW = Math.min(newW, wsInner.width);
@@ -235,11 +255,11 @@ export default function AdaptiveWidgetShell({
 
       const clamped = clampToWorkspace({ x: newL, y: newT }, { width: newW, height: newH });
       if (clamped.x !== newL) {
-        newW = Math.max(MIN_WIDTH, newW - (newL - clamped.x));
+        newW = Math.max(resizeMinWidth(wsInner.width), newW - (newL - clamped.x));
         newL = clamped.x;
       }
       if (clamped.y !== newT) {
-        newH = Math.max(MIN_HEIGHT, newH - (newT - clamped.y));
+        newH = Math.max(RESIZE_MIN_WINDOW_HEIGHT, newH - (newT - clamped.y));
         newT = clamped.y;
       }
 
@@ -289,6 +309,44 @@ export default function AdaptiveWidgetShell({
 
   const ws = getWorkspaceSize();
   const mobileOrMaximized = isMobile || isMaximized;
+
+  useEffect(() => {
+    if (!isMobile) return;
+    setPosition({ x: 0, y: 0 });
+    setCurrentSize({ width: ws.width, height: ws.height });
+  }, [isMobile, ws.width, ws.height]);
+
+  const layoutSyncKey =
+    initialOffset && size
+      ? `${initialOffset.x},${initialOffset.y},${size.width},${size.height}`
+      : null;
+
+  useEffect(() => {
+    if (!layoutSyncKey || !initialOffset || !size || isDragging || isResizing || isMobile || isMaximized) {
+      return;
+    }
+    const ws = getWorkspaceSize();
+    const nextSize = {
+      width: Math.min(size.width, ws.width),
+      height: Math.min(size.height, ws.height),
+    };
+    setCurrentSize((prev) =>
+      prev.width === nextSize.width && prev.height === nextSize.height ? prev : nextSize,
+    );
+    const pos = clampToWorkspace(initialOffset, nextSize);
+    setPosition((prev) => (prev.x === pos.x && prev.y === pos.y ? prev : pos));
+  }, [
+    layoutSyncKey,
+    isDragging,
+    isResizing,
+    isMobile,
+    isMaximized,
+    clampToWorkspace,
+    getWorkspaceSize,
+    initialOffset,
+    size,
+  ]);
+
   const clamped = clampToWorkspace(position, currentSize);
   const clampedLeft = mobileOrMaximized ? 0 : clamped.x;
   const clampedTop = mobileOrMaximized ? 0 : clamped.y;
@@ -356,8 +414,8 @@ export default function AdaptiveWidgetShell({
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
-          ? "fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top,0px))] bottom-[var(--mobile-chrome-bottom)] !z-[950] !h-auto !max-h-none !w-full !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full"
-          : "absolute"
+          ? "workspace-window--mobile fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !z-[950] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full"
+          : "absolute max-w-[100dvw]"
       }`}
       style={
         mobileOrMaximized

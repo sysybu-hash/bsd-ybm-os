@@ -33,6 +33,7 @@ import type { WidgetType } from '@/hooks/use-window-manager';
 import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
 import GeminiLiveSettingsSheet from '@/components/os/GeminiLiveSettingsSheet';
 import GeminiLivePanel from '@/components/os/gemini-live/GeminiLivePanel';
+import WidgetSplitPanels from '@/components/os/layout/WidgetSplitPanels';
 import KnowledgeVaultAttachButton from '@/components/os/knowledge-vault/KnowledgeVaultAttachButton';
 import { GEMINI_LIVE_SESSION_START_TAG } from '@/lib/gemini-live/session-greeting';
 
@@ -128,17 +129,8 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     if (osAssistant.featureFlags.geminiLiveEnabled === false) {
       setChatTab('text');
       setIsLiveMode(false);
-      return;
     }
-    if (osAssistant.featureFlags.aiChatLiveDefault && osAssistant.ready) {
-      setChatTab('live');
-      setIsLiveMode(true);
-    }
-  }, [
-    osAssistant.featureFlags.aiChatLiveDefault,
-    osAssistant.featureFlags.geminiLiveEnabled,
-    osAssistant.ready,
-  ]);
+  }, [osAssistant.featureFlags.geminiLiveEnabled]);
 
   const liveStatusLabels = useMemo<GeminiLiveStatusLabels>(
     () => ({
@@ -161,6 +153,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     undefined;
 
   const geminiLive = useGeminiLiveAudio({
+    owner: "aiChatFull",
     enabled: isLiveMode && Boolean(session?.user?.id && session?.user?.organizationId),
     contextReady: osAssistant.hasRichContext,
     systemInstruction: osAssistant.systemInstructionVoice,
@@ -206,16 +199,37 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const { isLiveActive, isListening, isSpeaking, start, stop } = geminiLive;
 
   useEffect(() => {
-    setIsLiveMode(chatTab === 'live');
-  }, [chatTab]);
-
-  useEffect(() => {
-    if (isLiveMode && !isLiveActive && osAssistant.hasRichContext) {
-      start();
-    } else if (!isLiveMode && isLiveActive) {
+    if (!isLiveMode && isLiveActive) {
       stop();
     }
-  }, [isLiveMode, isLiveActive, osAssistant.hasRichContext, start, stop]);
+  }, [isLiveMode, isLiveActive, stop]);
+
+  useEffect(() => {
+    if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !osAssistant.hasRichContext) {
+      return;
+    }
+    void start();
+  }, [liveData?.startLive, isLiveMode, isLiveActive, osAssistant.hasRichContext, start]);
+
+  const handleLiveTab = () => {
+    setChatTab('live');
+  };
+
+  const handleTextTab = () => {
+    setChatTab('text');
+    setIsLiveMode(false);
+    if (isLiveActive) stop();
+  };
+
+  const handleToggleLive = () => {
+    if (isLiveActive) {
+      stop();
+      setIsLiveMode(false);
+      return;
+    }
+    setIsLiveMode(true);
+    void start();
+  };
 
   const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =
     geminiLive.state === "connecting" ? "connecting"
@@ -354,10 +368,8 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
     }
   };
 
-  return (
-    <div className="flex flex-col md:flex-row h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
-      {/* Sidebar - Providers & History */}
-      <div className="hidden md:flex w-64 border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex-col">
+  const sidebar = (
+    <div className="flex h-full min-h-0 flex-col">
         <div className="p-6 border-b border-[color:var(--border-main)]">
           <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-6">
             <Sparkles size={20} />
@@ -400,16 +412,17 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             <Trash2 size={14} /> {t('workspaceWidgets.aiChat.clearHistory')}
           </button>
         </div>
-      </div>
+    </div>
+  );
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col relative">
+  const chatArea = (
+      <div className="flex min-h-0 flex-1 flex-col relative">
         <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
           <div className="flex items-center gap-2">
             {osAssistant.featureFlags.geminiLiveEnabled !== false ? (
-            <button type="button" onClick={() => setChatTab('live')} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'live' ? 'bg-indigo-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabLive')}</button>
+            <button type="button" onClick={handleLiveTab} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'live' ? 'bg-indigo-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabLive')}</button>
             ) : null}
-            <button type="button" onClick={() => setChatTab('text')} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'text' ? 'bg-purple-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabText')}</button>
+            <button type="button" onClick={handleTextTab} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'text' ? 'bg-purple-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabText')}</button>
           </div>
           <button type="button" onClick={() => setShowSettings(true)} className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"><Settings2 size={18} /></button>
         </div>
@@ -421,7 +434,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               statusLabel={geminiLive.statusText}
               voiceStatus={voiceStatus}
               isLiveActive={isLiveActive}
-              onToggleLive={() => (isLiveActive ? stop() : start())}
+              onToggleLive={handleToggleLive}
               onOpenSettings={() => setShowSettings(true)}
               lastTranscript={geminiLive.lastTranscript}
             />
@@ -538,6 +551,32 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         </div>
         ) : null}
       </div>
+  );
+
+  return (
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <WidgetSplitPanels
+          className="min-h-0 flex-1"
+          panels={[
+            {
+              id: "ai-chat-sidebar",
+              defaultSize: 28,
+              minSize: 18,
+              className: "flex min-h-0 min-w-0 flex-col border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50",
+              children: sidebar,
+            },
+            {
+              id: "ai-chat-main",
+              defaultSize: 72,
+              minSize: 40,
+              className: "flex min-h-0 min-w-0 flex-col",
+              children: chatArea,
+            },
+          ]}
+        />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">{chatArea}</div>
 
       <GeminiLiveSettingsSheet
         open={showSettings}

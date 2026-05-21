@@ -4,13 +4,15 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { useWorkspaceNavigation } from "@/components/os/navigation/WorkspaceNavigationProvider";
 import { useWorkspaceUrlSync } from "@/hooks/use-workspace-url-sync";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
+import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import OSWorkspace from "@/components/os/layout/OSWorkspace";
 
 type Props = {
   widgets: ActiveWidget[];
   hasHydrated: boolean;
-  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => string;
+  openWorkspaceWidget: OpenWorkspaceWidgetFn;
   closeWidget: (id: string) => void;
   focusWidget: (id: string) => void;
   updateWidgetPosition: (id: string, pos: { x: number; y: number }) => void;
@@ -23,6 +25,7 @@ export default function OmniCanvasWorkspaceBody({
   widgets,
   hasHydrated,
   openWidget,
+  openWorkspaceWidget,
   closeWidget,
   focusWidget,
   updateWidgetPosition,
@@ -76,6 +79,7 @@ export default function OmniCanvasWorkspaceBody({
       widgets={widgets}
       hasHydrated={hasHydrated}
       openWidget={openWidget}
+      openWorkspaceWidget={openWorkspaceWidget}
       closeWidget={closeWidget}
       focusWidget={focusWidget}
       updateWidgetPosition={updateWidgetPosition}

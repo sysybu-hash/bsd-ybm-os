@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
+import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
+import { useProjectPicker } from "@/hooks/use-project-picker";
 import {
   ScanLine,
   Upload,
@@ -34,9 +36,20 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useIndustryConfig } from "@/hooks/use-industry-config";
+import {
+  clampScanModeForIndustry,
+  defaultScanModeForIndustry,
+  getScanModesForUi,
+} from "@/lib/scan-modes-for-ui";
 import ItemActions from "@/components/os/ItemActions";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import { runScanPostActions } from "@/lib/ai/scan-post-actions";
+import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
+import {
+  inferScreenTypeFromFileForIndustry,
+  resolvePolicyForIndustry,
+} from "@/lib/ai/screen-decode-policy";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
 import {
   buildScanFileAcceptAttribute,
@@ -89,6 +102,7 @@ function formatMsg(template: string, vars: Record<string, string | number>): str
     template,
   );
 }
+
 
 const ENGINE_MODES: { id: TriEngineRunMode; labelKey: string; fallback: string }[] = [
   { id: "AUTO", labelKey: "scanner.modeAuto", fallback: "אוטומטי" },
@@ -156,6 +170,9 @@ type AiScannerWidgetProps = {
 
 export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
+  const industryConfig = useIndustryConfig();
+  const industryId = industryConfig.id;
+  const scanModes = useMemo(() => getScanModesForUi(industryId), [industryId]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const driveImportDoneRef = useRef<string | null>(null);
   const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
@@ -167,6 +184,29 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
   );
   const [engineMeta, setEngineMeta] = useState<EngineMeta | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
+  const [scanModeOverride, setScanModeOverride] = useState<ScanModeV5>(() =>
+    defaultScanModeForIndustry(industryId),
+  );
+
+  useEffect(() => {
+    const next = defaultScanModeForIndustry(industryId);
+    setScanModeOverride(next);
+  }, [industryId]);
+  const scannerPrefix = "workspaceWidgets.aiScanner";
+  const {
+    resolvedProjectId: boundProjectId,
+    selectedProjectName: boundProjectName,
+    projectsList,
+    projectsListLoading,
+    showProjectPicker,
+    loadProjectsList,
+    selectProject,
+    clearProject,
+  } = useProjectPicker({
+    initialProjectId:
+      typeof liveData?.projectId === "string" ? liveData.projectId : "",
+    listErrorKey: `${scannerPrefix}.loadFailed`,
+  });
   const [telemetry, setTelemetry] = useState<TriEngineTelemetry | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewMime, setPreviewMime] = useState<string | null>(null);
@@ -225,7 +265,11 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     if (typeof mode === "string" && ["AUTO", "MULTI_PARALLEL", "SINGLE_GEMINI", "SINGLE_OPENAI", "SINGLE_DOCUMENT_AI"].includes(mode)) {
       setEngineRunMode(mode as TriEngineRunMode);
     }
-  }, [liveData]);
+    const sm = liveData?.scanMode;
+    if (typeof sm === "string") setScanModeOverride(sm as ScanModeV5);
+    const pid = liveData?.projectId;
+    if (typeof pid === "string") selectProject(pid);
+  }, [liveData, selectProject]);
 
   useEffect(() => {
     if (liveData?.v5 && typeof liveData.fileName === "string") {
@@ -313,8 +357,17 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("scanMode", "INVOICE_FINANCIAL");
-      formData.append("persist", "false");
+      const inferred = inferScreenTypeFromFileForIndustry(file.name, file.type || "", industryId);
+      const policy = resolvePolicyForIndustry(inferred, industryId);
+      const scanMode = clampScanModeForIndustry(
+        engineRunMode === "AUTO"
+          ? (policy.scanMode as ScanModeV5)
+          : scanModeOverride,
+        industryId,
+      );
+      formData.append("scanMode", scanMode);
+      formData.append("persist", boundProjectId ? "true" : "false");
+      if (boundProjectId) formData.append("projectId", boundProjectId);
       formData.append("engineRunMode", engineRunMode);
       if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
 
@@ -377,6 +430,22 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
         void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
           captureProductEvent("scan_completed", { engine: engineRunMode, fileType: file.type });
         });
+
+        const postPolicy = resolvePolicyForIndustry(inferred, industryId);
+        if (postPolicy.postActions.length > 0 && boundProjectId) {
+          const post = await runScanPostActions({
+            projectId: boundProjectId,
+            v5: finalV5,
+            policy: postPolicy,
+            openWorkspaceWidget,
+          });
+          if (post.applied.length > 0) {
+            toast.success(`פעולות הושלמו: ${post.applied.join(", ")}`);
+          }
+        } else if (postPolicy.postActions.length > 0 && !boundProjectId) {
+          toast.message("נדרש projectId לפעולות אוטומטיות אחרי הסריקה");
+        }
+
         return analysis;
       }
       throw new Error("No extraction result");
@@ -622,6 +691,26 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
   };
 
+  useEffect(() => {
+    if (showProjectPicker) void loadProjectsList();
+  }, [showProjectPicker, loadProjectsList]);
+
+  if (showProjectPicker) {
+    return (
+      <ProjectPickerPanel
+        projects={projectsList}
+        loading={projectsListLoading}
+        onSelect={selectProject}
+        titleKey={`${scannerPrefix}.pickProjectTitle`}
+        descKey={`${scannerPrefix}.pickProjectDesc`}
+        loadingKey={`${scannerPrefix}.pickProjectLoading`}
+        emptyKey={`${scannerPrefix}.noProjects`}
+        openCrmKey={openWorkspaceWidget ? `${scannerPrefix}.openCrm` : undefined}
+        onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
+      />
+    );
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir={dir}>
       <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-s">
@@ -651,14 +740,26 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] p-3">
-          <div className="flex items-center gap-3">
-            <ScanLine className="text-orange-500" size={22} />
-            <div>
-              <h2 className="text-sm font-black">{t("scanner.title")}</h2>
-              <p className="text-[10px] text-[color:var(--foreground-muted)]">{t("scanner.subtitle")}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <ScanLine className="text-orange-500 shrink-0" size={22} />
+            <div className="min-w-0">
+              <h2 className="text-sm font-black truncate">
+                {boundProjectName || t("scanner.title")}
+              </h2>
+              <p className="text-[10px] text-[color:var(--foreground-muted)]">
+                {boundProjectName ? t(`${scannerPrefix}.subtitleScoped`) : t("scanner.subtitle")}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={clearProject}
+              className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            >
+              <ArrowRight size={12} aria-hidden />
+              {t(`${scannerPrefix}.switchProject`)}
+            </button>
             <input
               type="text"
               value={userInstruction}
@@ -703,6 +804,18 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
                 {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} ({Math.round(scanClassification.confidence * 100)}%)
               </span>
             ) : null}
+            <select
+              value={scanModeOverride}
+              onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
+              className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
+              aria-label="מצב סריקה"
+            >
+              {scanModes.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
             <select
               value={engineRunMode}
               onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}

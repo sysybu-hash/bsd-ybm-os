@@ -41,8 +41,9 @@ test.describe("Site quality", () => {
   test("login page is usable and quiet", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "כניסה למערכת העבודה" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /התחבר עם Google/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "ברוכים הבאים" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "כניסה" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /התחבר עם Google|Google/i })).toBeVisible();
     await expect(page.getByText("חזרה לדף הבית")).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });

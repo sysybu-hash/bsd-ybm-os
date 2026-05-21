@@ -19,7 +19,9 @@ import { logActivity } from "@/lib/activity-log";
 import { sendProvisionCredentialsEmail } from "@/app/actions/send-credentials-email";
 import { sendSubscriptionTierInvitationEmail } from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
+import { normalizeBusinessLine } from "@/lib/business-lines";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 
 async function requireSuperAdmin() {
@@ -46,6 +48,7 @@ export async function manageSubsListOrganizationsAction(): Promise<ExecutiveOrgR
     select: {
       id: true,
       name: true,
+      industry: true,
       constructionTrade: true,
       subscriptionTier: true,
       subscriptionStatus: true,
@@ -65,6 +68,7 @@ export async function manageSubsListOrganizationsAction(): Promise<ExecutiveOrgR
   return orgs.map((o) => ({
     id: o.id,
     name: o.name,
+    industry: o.industry,
     constructionTrade: o.constructionTrade,
     subscriptionTier: o.subscriptionTier,
     subscriptionStatus: o.subscriptionStatus,
@@ -136,7 +140,13 @@ export async function manageSubsCreateManualUserAction(
   const tierRaw = String(formData.get("tier") ?? "FREE");
   const vip = formData.get("vip") === "on" || formData.get("vip") === "true";
   const typeRaw = String(formData.get("orgType") ?? "COMPANY").toUpperCase();
-  const constructionTrade = normalizeConstructionTrade(String(formData.get("constructionTrade") ?? ""));
+  const industryRaw = String(formData.get("industry") ?? "").trim();
+  const industry = normalizeIndustryType(industryRaw || "CONSTRUCTION");
+  const tradeRaw = String(formData.get("constructionTrade") ?? "").trim();
+  const constructionTrade =
+    industry === "COMPANY_MGMT"
+      ? normalizeBusinessLine(tradeRaw)
+      : normalizeConstructionTrade(tradeRaw);
 
   if (!email.includes("@")) return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
   if (organizationName.length < 2) return { ok: false, error: "׳©׳ ׳׳¨׳’׳•׳ ׳§׳¦׳¨ ׳׳“׳™" };
@@ -160,6 +170,7 @@ export async function manageSubsCreateManualUserAction(
         data: {
           name: organizationName,
           type: orgType,
+          industry,
           constructionTrade,
           subscriptionTier: "CORPORATE",
           subscriptionStatus: "ACTIVE",
@@ -185,6 +196,7 @@ export async function manageSubsCreateManualUserAction(
         data: {
           name: organizationName,
           type: orgType,
+          industry,
           constructionTrade,
           subscriptionTier: tier,
           subscriptionStatus: "ACTIVE",
@@ -323,6 +335,7 @@ export async function manageSubsUpdateSubscriptionAction(
   const tierRaw = String(formData.get("tier") ?? "").trim();
   const statusRaw = String(formData.get("subscriptionStatus") ?? "").trim().toUpperCase();
   const constructionTradeRaw = String(formData.get("constructionTrade") ?? "").trim();
+  const industryRaw = String(formData.get("industry") ?? "").trim();
 
   const tier = parseSubscriptionTier(tierRaw);
   if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
@@ -330,16 +343,30 @@ export async function manageSubsUpdateSubscriptionAction(
   if (!statusRaw) return { ok: false, error: "׳¡׳˜׳˜׳•׳¡ ׳׳ ׳•׳™ ׳—׳¡׳¨" };
 
   try {
+    const industry = industryRaw ? normalizeIndustryType(industryRaw) : undefined;
     const data: {
       subscriptionTier: typeof tier;
       subscriptionStatus: string;
+      industry?: string;
       constructionTrade?: string;
     } = {
       subscriptionTier: tier,
       subscriptionStatus: statusRaw,
     };
+    if (industry) data.industry = industry;
     if (constructionTradeRaw) {
-      data.constructionTrade = normalizeConstructionTrade(constructionTradeRaw);
+      let effectiveIndustry = industry;
+      if (!effectiveIndustry) {
+        const existing = await prisma.organization.findUnique({
+          where: { id: organizationId },
+          select: { industry: true },
+        });
+        effectiveIndustry = normalizeIndustryType(existing?.industry);
+      }
+      data.constructionTrade =
+        effectiveIndustry === "COMPANY_MGMT"
+          ? normalizeBusinessLine(constructionTradeRaw)
+          : normalizeConstructionTrade(constructionTradeRaw);
     }
     await prisma.organization.update({
       where: { id: organizationId },

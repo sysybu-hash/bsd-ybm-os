@@ -134,10 +134,9 @@
 - `api/integrations/cloud/route.ts`
 - `api/integrations/google-calendar/route.ts`
 
-### 4.8 מערכת הפעלה / Google (Drive, Assistant)
+### 4.8 מערכת הפעלה / Google Drive
 
 - `api/os/google-drive/files/route.ts`
-- `api/os/google-assistant/query/route.ts`
 
 ### 4.9 גבייה ותשלומים
 
@@ -190,7 +189,7 @@
 
 - הוק `useWindowManager` — מפתח localStorage: `bsd_ybm_layout_quiet_v3`
 - טיפוסי ווידג׳טים (`WidgetType`):  
-  `project`, `cashflow`, `aiChat`, `crm`, `dashboard`, `erp`, `quoteGen`, `aiScanner`, `projectBoard`, `crmTable`, `erpArchive`, `docCreator`, `aiChatFull`, `settings`, `meckanoReports`, `googleDrive`, `googleAssistant`
+  `project`, `cashflow`, `aiChat`, `crm`, `dashboard`, `erp`, `quoteGen`, `aiScanner`, `projectBoard`, `crmTable`, `erpArchive`, `docCreator`, `aiChatFull`, `settings`, `meckanoReports`, `googleDrive`
 
 ### 6.2 קבצי ווידג׳טים (`components/os/widgets/`)
 
@@ -198,7 +197,7 @@
 - `ErpDocumentsWidget`, `ErpFileArchiveWidget`, `DocumentCreatorWidget`
 - `AiScannerWidget`, `AiChatFullWidget`
 - `SettingsWidget`, `MeckanoReportsWidget`
-- `GoogleDriveWidget`, `GoogleAssistantWidget`
+- `GoogleDriveWidget`
 
 ### 6.3 רכיבי מעטפת OS
 

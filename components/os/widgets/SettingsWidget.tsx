@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -20,17 +20,21 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from '@/lib/google-drive-config';
+import ProfessionSettingsPanel from '@/components/os/widgets/settings/ProfessionSettingsPanel';
+import PasskeySecuritySection from "@/components/auth/PasskeySecuritySection";
 import { toast } from 'sonner';
 
-const ASSIGN_ROLES = [
-  { value: 'EMPLOYEE', label: '׳¢׳•׳‘׳“' },
-  { value: 'PROJECT_MGR', label: '׳׳ ׳”׳ ׳₪׳¨׳•׳™׳§׳˜׳™׳' },
-  { value: 'CLIENT', label: '׳׳§׳•׳—' },
-  { value: 'ORG_ADMIN', label: '׳׳ ׳”׳ ׳׳¨׳’׳•׳' },
+const ASSIGN_ROLE_KEYS = [
+  { value: 'EMPLOYEE', labelKey: 'workspaceWidgets.settings.roles.employee' },
+  { value: 'PROJECT_MGR', labelKey: 'workspaceWidgets.settings.roles.projectMgr' },
+  { value: 'CLIENT', labelKey: 'workspaceWidgets.settings.roles.client' },
+  { value: 'ORG_ADMIN', labelKey: 'workspaceWidgets.settings.roles.orgAdmin' },
 ] as const;
 
+const S = 'workspaceWidgets.settings';
+
 export default function SettingsWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const [loading, setLoading] = useState(true);
@@ -60,6 +64,17 @@ export default function SettingsWidget() {
   const [driveSaving, setDriveSaving] = useState(false);
   const [driveFolders, setDriveFolders] = useState<Array<{ id: string; name: string }>>([]);
   const [driveFoldersLoading, setDriveFoldersLoading] = useState(false);
+  const [orgIndustry, setOrgIndustry] = useState<string | null>(null);
+  const [orgSpecialization, setOrgSpecialization] = useState<string | null>(null);
+
+  const assignRoles = useMemo(
+    () =>
+      ASSIGN_ROLE_KEYS.map((r) => ({
+        value: r.value,
+        label: t(r.labelKey),
+      })),
+    [t],
+  );
 
   const isSuper = session?.user?.role === 'SUPER_ADMIN';
   const isOrgAdmin = session?.user?.role === 'ORG_ADMIN';
@@ -79,6 +94,12 @@ export default function SettingsWidget() {
       const data = await res.json();
       if (typeof data.id === 'string') {
         setOrganizationId(data.id);
+      }
+      if (typeof data.industry === 'string') {
+        setOrgIndustry(data.industry);
+      }
+      if (typeof data.constructionTrade === 'string') {
+        setOrgSpecialization(data.constructionTrade);
       }
 
       const branding = data.tenantSiteBrandingJson || {};
@@ -134,12 +155,12 @@ export default function SettingsWidget() {
       } finally {
         setDriveFoldersLoading(false);
       }
-    } catch (err) {
-      toast.error('׳©׳’׳™׳׳” ׳‘׳˜׳¢׳™׳ ׳× ׳”׳’׳“׳¨׳•׳×');
+    } catch {
+      toast.error(t(`${S}.errors.loadFailed`));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (sessionStatus === 'loading') return;
@@ -151,7 +172,7 @@ export default function SettingsWidget() {
     if (!file) return;
 
     if (file.type !== 'image/svg+xml' && !file.type.startsWith('image/')) {
-      toast.error('׳׳ ׳ ׳‘׳—׳¨ ׳§׳•׳‘׳¥ ׳×׳׳•׳ ׳” (׳¨׳¦׳•׳™ SVG)');
+      toast.error(t(`${S}.errors.invalidImage`));
       return;
     }
 
@@ -159,7 +180,7 @@ export default function SettingsWidget() {
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       setSettings({ ...settings, logoSvg: base64 });
-      toast.success('׳׳•׳’׳• ׳ ׳˜׳¢׳ ׳‘׳”׳¦׳׳—׳”');
+      toast.success(t(`${S}.toast.logoLoaded`));
     };
     reader.readAsDataURL(file);
   };
@@ -182,9 +203,9 @@ export default function SettingsWidget() {
       });
       
       if (!res.ok) throw new Error();
-      toast.success('׳”׳”׳’׳“׳¨׳•׳× ׳ ׳©׳׳¨׳• ׳‘׳”׳¦׳׳—׳”');
-    } catch (err) {
-      toast.error('׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳”׳’׳“׳¨׳•׳×');
+      toast.success(t(`${S}.toast.saved`));
+    } catch {
+      toast.error(t(`${S}.errors.saveFailed`));
     } finally {
       setSaving(false);
     }
@@ -206,7 +227,7 @@ export default function SettingsWidget() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? '׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳”');
+      if (!res.ok) throw new Error(data.error ?? t(`${S}.errors.driveSaveFailed`));
       if (data.settings) {
         setDriveSettings({
           driveFolderName: data.settings.driveFolderName,
@@ -218,9 +239,11 @@ export default function SettingsWidget() {
           driveAskBeforeSave: data.settings.driveAskBeforeSave ?? true,
         });
       }
-      toast.success('׳”׳’׳“׳¨׳•׳× Google Drive ׳ ׳©׳׳¨׳•');
+      toast.success(t(`${S}.toast.driveSaved`));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳’׳“׳¨׳•׳× Drive');
+      toast.error(
+        e instanceof Error ? e.message : t(`${S}.errors.driveSaveFailedFull`),
+      );
     } finally {
       setDriveSaving(false);
     }
@@ -229,11 +252,11 @@ export default function SettingsWidget() {
   const handleAssignUser = async () => {
     const email = assignEmail.trim().toLowerCase();
     if (!email) {
-      toast.error('׳”׳–׳ ׳׳™׳׳™׳™׳ ׳©׳ ׳׳©׳×׳׳© ׳©׳›׳‘׳¨ ׳”׳×׳—׳‘׳¨ ׳׳₪׳—׳•׳× ׳₪׳¢׳ ׳׳—׳×');
+      toast.error(t(`${S}.errors.assignEmailRequired`));
       return;
     }
     if (!assignTargetOrgId) {
-      toast.error('׳׳ ׳ ׳׳¦׳ ׳׳–׳”׳” ׳׳¨׳’׳•׳ ׳׳©׳™׳•׳');
+      toast.error(t(`${S}.errors.assignNoOrg`));
       return;
     }
 
@@ -246,7 +269,7 @@ export default function SettingsWidget() {
       const verifyData = (await verifyRes.json().catch(() => ({}))) as { isVerified?: boolean };
       if (verifyRes.ok && !verifyData.isVerified) {
         const proceed = confirm(
-          `האימייל ${email} עדיין לא אומת. לשלוח שוב מייל אימות?`,
+          t(`${S}.confirmUnverifiedEmail`, { email }),
         );
         if (!proceed) return;
         await fetch('/api/org/resend-verification', {
@@ -270,16 +293,16 @@ export default function SettingsWidget() {
       const data = (await res.json().catch(() => ({}))) as { error?: string; success?: boolean };
 
       if (!res.ok) {
-        throw new Error(data.error || '׳©׳’׳™׳׳” ׳‘׳©׳™׳•׳');
+        throw new Error(data.error || t(`${S}.errors.assignFailed`));
       }
 
-      toast.success('׳”׳׳©׳×׳׳© ׳©׳•׳™׳ ׳׳׳¨׳’׳•׳ ׳‘׳”׳¦׳׳—׳”', {
-        description: '׳›׳“׳™ ׳©ײ¾Gemini Live ׳•׳”׳¨׳©׳׳•׳× ׳™׳×׳¢׳“׳›׳ ׳• ׳׳™׳“ ג€” ׳׳•׳׳׳¥ ׳©׳”׳׳©׳×׳׳© ׳™׳¦׳ ׳•׳™׳›׳ ׳¡ ׳©׳•׳‘ ׳׳׳¢׳¨׳›׳×.',
+      toast.success(t(`${S}.toast.assigned`), {
+        description: t(`${S}.toast.assignedHint`),
       });
       setAssignEmail('');
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '׳©׳’׳™׳׳” ׳‘׳©׳™׳•׳ ׳׳©׳×׳׳©');
+      toast.error(e instanceof Error ? e.message : t(`${S}.errors.assignFailedUser`));
     } finally {
       setAssigning(false);
     }
@@ -302,8 +325,8 @@ export default function SettingsWidget() {
             <Settings size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">׳”׳’׳“׳¨׳•׳× ׳׳¢׳¨׳›׳×</h2>
-            <p className="text-xs text-[color:var(--foreground-muted)]">׳ ׳™׳”׳•׳ ׳₪׳¨׳˜׳™ ׳”׳¢׳¡׳§, ׳׳•׳’׳• ׳•׳”׳×׳¨׳׳•׳× ׳’׳׳•׳‘׳׳™׳•׳×</p>
+            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">{t(`${S}.title`)}</h2>
+            <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${S}.subtitle`)}</p>
           </div>
         </div>
         <button 
@@ -312,49 +335,58 @@ export default function SettingsWidget() {
           className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-          ׳©׳׳•׳¨ ׳©׳™׳ ׳•׳™׳™׳
+          {t(`${S}.saveChanges`)}
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
         <div className="max-w-2xl mx-auto space-y-10">
+
+          <ProfessionSettingsPanel
+            initialIndustry={orgIndustry ?? session?.user?.organizationIndustry}
+            initialSpecialization={
+              orgSpecialization ??
+              (session?.user as { organizationConstructionTrade?: string | null } | undefined)
+                ?.organizationConstructionTrade
+            }
+          />
           
           {/* Business Profile */}
           <section>
             <div className="flex items-center gap-2 mb-6">
               <Building2 size={18} className="text-indigo-500" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">׳₪׳¨׳•׳₪׳™׳ ׳¢׳¡׳§׳™</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">{t(`${S}.businessProfile`)}</h3>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳©׳ ׳”׳¢׳¡׳§ / ׳—׳‘׳¨׳”</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.businessName`)}</label>
                 <div className="relative">
                   <Building2 className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
                     value={settings.name}
                     onChange={(e) => setSettings({...settings, name: e.target.value})}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
-                    placeholder="׳׳“׳•׳’׳׳”: BSD-YBM ׳₪׳×׳¨׳•׳ ׳•׳× ׳×׳©׳×׳™׳×"
+                    placeholder={t(`${S}.businessNamePlaceholder`)}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳—&quot;׳₪ / ׳¢׳•׳¡׳§ ׳׳•׳¨׳©׳”</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.taxId`)}</label>
                 <div className="relative">
                   <Hash className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
                     value={settings.taxId}
                     onChange={(e) => setSettings({...settings, taxId: e.target.value})}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
-                    placeholder="׳׳¡׳₪׳¨ ׳–׳™׳”׳•׳™ ׳׳¡"
+                    placeholder={t(`${S}.taxIdPlaceholder`)}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">שיעור מע״מ (%)</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.vatRate`)}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -372,12 +404,12 @@ export default function SettingsWidget() {
                   />
                 </div>
                 <p className="text-[10px] text-[color:var(--foreground-muted)] pr-1">
-                  ברירת מחדל בישראל: 18% (מאי 2025). חל על חשבוניות והצעות מחיר.
+                  {t(`${S}.vatHint`)}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">אימייל למשלוח התראות</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.notificationEmail`)}</label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
@@ -390,7 +422,7 @@ export default function SettingsWidget() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳×׳¨ ׳׳™׳ ׳˜׳¨׳ ׳˜</label>
+                <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.website`)}</label>
                 <div className="relative">
                   <Globe className="absolute right-3 top-3 text-[color:var(--foreground-muted)]" size={16} />
                   <input 
@@ -408,7 +440,7 @@ export default function SettingsWidget() {
           <section>
             <div className="flex items-center gap-2 mb-6">
               <ImageIcon size={18} className="text-emerald-500" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">׳׳™׳×׳•׳’ ׳•׳׳•׳’׳•</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">{t(`${S}.branding`)}</h3>
             </div>
 
             <div className="bg-[color:var(--background-main)]/30 border-2 border-dashed border-[color:var(--border-main)] rounded-[2rem] p-10 flex flex-col items-center text-center">
@@ -419,19 +451,19 @@ export default function SettingsWidget() {
                   <ImageIcon size={40} className="text-[color:var(--foreground-muted)] opacity-30" />
                 )}
               </div>
-              <h4 className="font-bold text-[color:var(--foreground-main)] mb-1">׳”׳¢׳׳׳× ׳׳•׳’׳• ׳”׳¢׳¡׳§</h4>
-              <p className="text-xs text-[color:var(--foreground-muted)] mb-6 max-w-xs">׳׳•׳׳׳¥ ׳׳”׳©׳×׳׳© ׳‘׳₪׳•׳¨׳׳˜ SVG ׳׳§׳‘׳׳× ׳׳™׳›׳•׳× ׳׳§׳¡׳™׳׳׳™׳× ׳‘׳›׳ ׳—׳׳§׳™ ׳”׳׳¢׳¨׳›׳× ׳•׳”׳׳¡׳׳›׳™׳</p>
+              <h4 className="font-bold text-[color:var(--foreground-main)] mb-1">{t(`${S}.uploadLogoTitle`)}</h4>
+              <p className="text-xs text-[color:var(--foreground-muted)] mb-6 max-w-xs">{t(`${S}.uploadLogoDesc`)}</p>
               
               <div className="flex gap-3">
                 <label className="px-4 py-2 bg-[color:var(--surface-card)]/50 dark:bg-white/10 border border-[color:var(--border-main)] rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-main)] transition-all cursor-pointer">
-                  <Upload size={14} /> ׳‘׳—׳¨ ׳§׳•׳‘׳¥
+                  <Upload size={14} /> {t(`${S}.chooseFile`)}
                   <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
                 </label>
                 <button 
                   onClick={() => setSettings({ ...settings, logoSvg: '' })}
                   className="px-4 py-2 text-rose-500 text-xs font-bold hover:bg-rose-500/5 rounded-xl transition-all"
                 >
-                  ׳”׳¡׳¨ ׳׳•׳’׳•
+                  {t(`${S}.removeLogo`)}
                 </button>
               </div>
             </div>
@@ -441,16 +473,16 @@ export default function SettingsWidget() {
             <div className="flex items-center gap-2 mb-6">
               <HardDrive size={18} className="text-blue-500" />
               <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                Google Drive
+                {t(`${S}.driveSection`)}
               </h3>
             </div>
             <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
-              ׳×׳™׳§׳™׳™׳× ׳‘׳¨׳™׳¨׳× ׳׳—׳“׳ ׳‘-Drive ׳׳¡׳ ׳›׳¨׳•׳ ׳“׳•-׳›׳™׳•׳•׳ ׳™ ׳¢׳ ׳”׳׳¢׳¨׳›׳×. ׳׳ ׳׳™׳ refresh token ג€” ׳”׳×׳ ׳×׳§׳• ׳•׳”׳×׳—׳‘׳¨׳• ׳©׳•׳‘ ׳¢׳ Google (׳׳™׳©׳•׳¨ ׳”׳¨׳©׳׳•׳× ׳׳׳).
+              {t(`${S}.driveIntro`)}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">
-                  תיקיית סנכרון ב-Drive
+                  {t(`${S}.driveFolder`)}
                 </label>
                 {driveFolders.length > 0 ? (
                   <select
@@ -466,7 +498,7 @@ export default function SettingsWidget() {
                     }}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-[color:var(--foreground-main)]"
                   >
-                    <option value="">— בחר תיקייה —</option>
+                    <option value="">{t(`${S}.driveFolderPlaceholder`)}</option>
                     {driveFolders.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.name}
@@ -484,7 +516,7 @@ export default function SettingsWidget() {
                   />
                 )}
                 {driveFoldersLoading ? (
-                  <p className="text-[10px] text-[color:var(--foreground-muted)]">טוען תיקיות…</p>
+                  <p className="text-[10px] text-[color:var(--foreground-muted)]">{t(`${S}.driveFoldersLoading`)}</p>
                 ) : null}
               </div>
               <div className="flex items-center gap-3 pb-2">
@@ -496,7 +528,7 @@ export default function SettingsWidget() {
                   className="h-4 w-4 rounded border-[color:var(--border-main)]"
                 />
                 <label htmlFor="drive-sync-enabled" className="text-sm font-semibold text-[color:var(--foreground-main)]">
-                  ׳¡׳ ׳›׳¨׳•׳ ׳׳•׳˜׳•׳׳˜׳™ ׳“׳•-׳›׳™׳•׳•׳ ׳™
+                  {t(`${S}.driveSyncAuto`)}
                 </label>
               </div>
             </div>
@@ -510,7 +542,7 @@ export default function SettingsWidget() {
                   }
                   className="h-4 w-4 rounded border-[color:var(--border-main)]"
                 />
-                ׳₪׳¢׳ ׳•׳— ׳׳•׳˜׳•׳׳˜׳™ ׳׳—׳¨׳™ ׳¡׳ ׳›׳¨׳•׳
+                {t(`${S}.driveAutoDecode`)}
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
                 <input
@@ -521,7 +553,7 @@ export default function SettingsWidget() {
                   }
                   className="h-4 w-4 rounded border-[color:var(--border-main)]"
                 />
-                ׳©׳׳™׳¨׳” ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳¨׳™ ׳₪׳¢׳ ׳•׳—
+                {t(`${S}.driveAutoSave`)}
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
                 <input
@@ -532,14 +564,16 @@ export default function SettingsWidget() {
                   }
                   className="h-4 w-4 rounded border-[color:var(--border-main)]"
                 />
-                ׳©׳׳ ׳׳₪׳ ׳™ ׳©׳׳™׳¨׳”
+                {t(`${S}.driveAskBeforeSave`)}
               </label>
             </div>
             {driveSettings.driveFolderId ? (
               <p className="mt-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
-                ׳׳–׳”׳” ׳×׳™׳§׳™׳™׳”: {driveSettings.driveFolderId}
+                {t(`${S}.driveFolderId`, { id: driveSettings.driveFolderId })}
                 {driveSettings.lastSyncAt
-                  ? ` ֲ· ׳¡׳•׳ ׳›׳¨׳ ${new Date(driveSettings.lastSyncAt).toLocaleString('he-IL')}`
+                  ? t(`${S}.driveLastSync`, {
+                      at: new Date(driveSettings.lastSyncAt).toLocaleString('he-IL'),
+                    })
                   : ''}
               </p>
             ) : null}
@@ -551,7 +585,7 @@ export default function SettingsWidget() {
                 className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
               >
                 {driveSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                ׳©׳׳•׳¨ ׳”׳’׳“׳¨׳•׳× Drive
+                {t(`${S}.saveDriveSettings`)}
               </button>
               <button
                 type="button"
@@ -560,7 +594,7 @@ export default function SettingsWidget() {
                 }}
                 className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
               >
-                ׳—׳™׳‘׳•׳¨ ׳׳—׳“׳© ׳-Google
+                {t(`${S}.reconnectGoogle`)}
               </button>
             </div>
           </section>
@@ -570,15 +604,15 @@ export default function SettingsWidget() {
               <div className="flex items-center gap-2 mb-6">
                 <UserPlus size={18} className="text-amber-500" />
                 <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                  ׳©׳™׳•׳ ׳׳©׳×׳׳©׳™׳ ׳׳׳¨׳’׳•׳
+                  {t(`${S}.assignSection`)}
                 </h3>
               </div>
               <p className="text-xs text-[color:var(--foreground-muted)] mb-4 leading-relaxed max-w-xl">
-                ׳׳©׳×׳׳© ׳—׳™׳™׳‘ ׳׳”׳×׳—׳‘׳¨ ׳¢׳ Google ׳׳₪׳—׳•׳× ׳₪׳¢׳ ׳׳—׳× ׳׳₪׳ ׳™ ׳”׳©׳™׳•׳. ׳׳—׳¨׳™ ׳”׳©׳™׳•׳ ג€” ׳™׳¦׳™׳׳” ׳•׳”׳×׳—׳‘׳¨׳•׳× ׳׳—׳“׳© ׳׳¢׳“׳›׳ ׳•׳× ׳׳× ׳”׳¢׳•׳–׳¨ ׳”׳§׳•׳׳™ (Gemini Live) ׳•׳”׳¨׳©׳׳•׳× API.
+                {t(`${S}.assignIntro`)}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div className="space-y-2 md:col-span-1">
-                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳׳™׳׳™׳™׳ ׳׳©׳×׳׳©</label>
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.assignEmail`)}</label>
                   <input
                     type="email"
                     value={assignEmail}
@@ -589,13 +623,13 @@ export default function SettingsWidget() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">׳×׳₪׳§׳™׳“ ׳‘׳׳¨׳’׳•׳</label>
+                  <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.assignRole`)}</label>
                   <select
                     value={assignRole}
                     onChange={(e) => setAssignRole(e.target.value)}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
                   >
-                    {ASSIGN_ROLES.map((r) => (
+                    {assignRoles.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
                       </option>
@@ -610,7 +644,7 @@ export default function SettingsWidget() {
                     className="w-full md:w-auto bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                   >
                     {assigning ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                    ׳©׳™׳™׳ ׳׳׳¨׳’׳•׳
+                    {t(`${S}.assignSubmit`)}
                   </button>
                 </div>
               </div>
@@ -619,16 +653,21 @@ export default function SettingsWidget() {
 
           {/* Security & System */}
           <section className="pt-6 border-t border-[color:var(--border-main)]/30">
-            <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6 flex items-start gap-4">
-              <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-500">
-                <ShieldCheck size={20} />
+            <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6">
+              <div className="mb-4 flex items-start gap-4">
+                <div className="rounded-lg bg-indigo-500/10 p-2 text-indigo-500">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h4 className="mb-1 text-sm font-bold text-indigo-900 dark:text-indigo-300">
+                    {t(`${S}.securityTitle`)}
+                  </h4>
+                  <p className="text-xs leading-relaxed text-indigo-700/60 dark:text-indigo-400/60">
+                    {t(`${S}.securityDesc`)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-1">׳׳‘׳˜׳—׳× ׳ ׳×׳•׳ ׳™׳</h4>
-                <p className="text-xs text-indigo-700/60 dark:text-indigo-400/60 leading-relaxed">
-                  ׳”׳’׳“׳¨׳•׳× ׳׳׳• ׳׳¡׳•׳ ׳›׳¨׳ ׳•׳× ׳™׳©׳™׳¨׳•׳× ׳׳˜׳‘׳׳× ׳”-Organization ׳‘-PostgreSQL. ׳”׳ ׳׳©׳₪׳™׳¢׳•׳× ׳¢׳ ׳›׳•׳×׳¨׳•׳× ׳”׳—׳©׳‘׳•׳ ׳™׳•׳×, ׳”׳¦׳¢׳•׳× ׳”׳׳—׳™׳¨ ׳•׳”׳×׳¨׳׳•׳× ׳”׳׳¢׳¨׳›׳× ׳”׳ ׳©׳׳—׳•׳× ׳׳׳§׳•׳—׳•׳×.
-                </p>
-              </div>
+              <PasskeySecuritySection />
             </div>
           </section>
 
@@ -637,5 +676,3 @@ export default function SettingsWidget() {
     </div>
   );
 }
-
-

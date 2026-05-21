@@ -3,7 +3,13 @@
  */
 export const SCAN_SCHEMA_V5 = 5 as const;
 
-export type ScanModeV5 = "INVOICE_FINANCIAL" | "DRAWING_BOQ" | "GENERAL_DOCUMENT";
+export type ScanModeV5 =
+  | "INVOICE_FINANCIAL"
+  | "DRAWING_BOQ"
+  | "GENERAL_DOCUMENT"
+  | "QUOTE_BOQ"
+  | "PROGRESS_BILL"
+  | "SITE_LOG";
 
 export type DocumentMetadataV5 = {
   project: string | null;
@@ -217,7 +223,17 @@ export function v5ToPersistableAiData(v: ScanExtractionV5): Record<string, unkno
   };
 }
 
-export function buildV5JsonInstruction(localeLang: string, scanMode: ScanModeV5): string {
+export function buildV5JsonInstruction(
+  localeLang: string,
+  scanMode: ScanModeV5,
+  industryRaw?: string | null,
+): string {
+  const isCompany =
+    String(industryRaw ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/-/g, "_") === "COMPANY_MGMT" ||
+    String(industryRaw ?? "").trim().toUpperCase() === "BUSINESS";
   const baseShape = `Return ONLY one JSON object (no markdown). Shape:
 {
   "schemaVersion": 5,
@@ -252,12 +268,53 @@ RULES:
 - Human-readable strings in ${localeLang}.`;
   }
 
+  if (isCompany && (scanMode === "DRAWING_BOQ" || scanMode === "QUOTE_BOQ" || scanMode === "SITE_LOG" || scanMode === "PROGRESS_BILL")) {
+    return `You are a business document analyst for Israeli companies (contracts, proposals, reports — not construction sites).
+${baseShape}
+RULES:
+- "summary" captures parties, dates, amounts, obligations.
+- Use "lineItems" for priced rows; avoid construction BOQ jargon unless explicitly present.
+- "billOfQuantities" usually empty for office documents.
+- Human-readable strings in ${localeLang}.`;
+  }
+
   if (scanMode === "DRAWING_BOQ") {
     return `You are a Senior Quantity Surveyor (כמי"ס). Scan ALL pages. Find Legend (מקרא). Extract BOQ rows with SI units (m, m², m³, יח׳).
 ${baseShape}
 RULES:
 - Fill "billOfQuantities" richly; map each BOQ row also into "lineItems" with description + quantity + unit (prices null if unknown).
 - "priceAlertPending" true if any line item is missing unit price when invoice-like amounts appear.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "QUOTE_BOQ") {
+    return `You are extracting a contractor quote / BOQ (הצעת מחיר / כתב כמויות).
+${baseShape}
+RULES:
+- Populate "billOfQuantities" with itemRef, description, quantity, unit, material, dimensions.
+- Map priced rows to "lineItems" with unitPrice/lineTotal when visible.
+- "docType" should reflect quote/BOQ; "summary" lists scope and assumptions.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "SITE_LOG") {
+    return `You are extracting a construction site daily log (יומן עבודה / דוח שטח).
+${baseShape}
+RULES:
+- "summary" must capture weather, crew, work done, issues, deliveries.
+- Use "lineItems" for discrete work items or incidents; "billOfQuantities" may list materials/equipment.
+- "documentMetadata.documentDate" = log date if found; "project" and "client" from header.
+- "priceAlertPending": false unless invoice amounts appear.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "PROGRESS_BILL") {
+    return `You are extracting a progress billing / interim payment certificate (חשבון התקדמות / חלקי).
+${baseShape}
+RULES:
+- Fill "lineItems" with section descriptions, cumulative %, amounts billed this period.
+- "billOfQuantities" for BOQ lines with progress % and quantities.
+- "total" = amount due this bill; note retention/advance in "summary" if visible.
 - Human-readable strings in ${localeLang}.`;
   }
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { assignContactProject } from "@/lib/workspace-api/project-crm-sync";
 
 const createContactSchema = z.object({
   name: z.string().min(1),
@@ -10,6 +11,7 @@ const createContactSchema = z.object({
   phone: z.string().optional().nullable(),
   status: z.string().optional(),
   notes: z.string().optional().nullable(),
+  projectId: z.string().nullable().optional(),
 });
 
 /**
@@ -93,9 +95,25 @@ export const POST = withWorkspacesAuth(
           notes: body.notes ?? null,
           status: (body.status ?? "LEAD").toUpperCase(),
           organizationId: orgId,
+          projectId: null,
         },
       });
-      return NextResponse.json({ success: true, contact });
+      if (body.projectId) {
+        await assignContactProject(contact.id, body.projectId, orgId);
+      }
+      const refreshed = await prisma.contact.findFirst({
+        where: { id: contact.id, organizationId: orgId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          status: true,
+          notes: true,
+          project: { select: { id: true, name: true } },
+        },
+      });
+      return NextResponse.json({ success: true, contact: refreshed ?? contact });
     } catch (err) {
       return apiErrorResponse(err, "CRM contact create");
     }

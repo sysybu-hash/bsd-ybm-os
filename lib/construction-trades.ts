@@ -5,6 +5,7 @@ import {
   mergeTradeVocabularyFromMessages,
 } from "@/lib/construction-trades-i18n";
 import type { MessageTree } from "@/lib/i18n/keys";
+import { mergeCompanyMgmtIndustryConfig } from "@/lib/business-lines";
 import {
   INDUSTRY_CONFIGS,
   normalizeIndustryType,
@@ -614,6 +615,9 @@ export function getMergedIndustryConfig(
 ): IndustryConfig {
   const key = normalizeIndustryType(industryRaw) as IndustryType;
   const base = INDUSTRY_CONFIGS[key] ?? INDUSTRY_CONFIGS.GENERAL;
+  if (key === "COMPANY_MGMT") {
+    return mergeCompanyMgmtIndustryConfig(constructionTradeRaw, localeMessages);
+  }
   if (key !== "CONSTRUCTION") {
     return base;
   }

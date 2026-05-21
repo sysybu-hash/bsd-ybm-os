@@ -51,6 +51,19 @@ export const HELP_CENTER_HE: HelpCenterData = {
       guideIds: ["meckano-attendance"],
     },
     {
+      id: "company-mgmt",
+      title: "ניהול עסק וחברה",
+      description: "CRM, פרויקטים, ERP וסריקה עסקית",
+      guideIds: [
+        "company-mgmt-overview",
+        "company-mgmt-crm",
+        "company-mgmt-projects",
+        "company-mgmt-erp",
+        "company-mgmt-scan",
+        "company-mgmt-profession",
+      ],
+    },
+    {
       id: "settings",
       title: "הגדרות ומנוי",
       description: "ארגון, חיוב ואינטגרציות",
@@ -175,9 +188,9 @@ export const HELP_CENTER_HE: HelpCenterData = {
       summary: "טבלת CRM, פרויקטים וחיפוש.",
       readMinutes: 4,
       steps: [
-        { title: "פתיחה", body: "אייקון «לקוחות» בסרגל פותח את טבלת ה-CRM." },
-        { title: "הוספה", body: "הוסיפו איש קשר חדש עם שם, טלפון ופרטי מס." },
-        { title: "פרויקטים", body: "«לוח פרויקטים» מציג משימות ושלבים — ניתן לשייך ללקוח." },
+        { title: "פתיחה", body: "אייקון «לקוחות» בסרגל פותח את טבלת ה-CRM (crmTable)." },
+        { title: "שיוך פרויקט", body: "בחרו פרויקט ללקוח — נקודת הסטטוס מציגה מקושר / מסונכרן / מסנכרן. «פרויקט חדש» ו«פתח מרכז שליטה» זמינים כשיש שיוך." },
+        { title: "הוספה", body: "הוסיפו איש קשר חדש עם שם, טלפון ואופציונלית projectId — הסנכרון ל-CRM↔פרויקט אוטומטי כש-autoSyncCrm פעיל." },
         { title: "חיפוש סמנטי", body: "ב-Omnibar חפשו לפי שם; המערכת מציעה התאמות." },
       ],
       omnibarExamples: ["חפש לקוח כהן", "פתח לוח פרויקטים"],
@@ -279,6 +292,88 @@ export const HELP_CENTER_HE: HelpCenterData = {
       ],
     },
     {
+      id: "company-mgmt-overview",
+      categoryId: "company-mgmt",
+      title: "מצב ניהול עסק",
+      summary: "מה מופעל ומה מוסתר לעומת מסלול בנייה.",
+      readMinutes: 3,
+      steps: [
+        {
+          title: "הבדל עיקרי",
+          body: "במסלול ניהול עסק אין BOQ, מקאנו ותפריטי בנייה — יש CRM, ERP, פרויקטים פנימיים וסריקה עסקית.",
+        },
+        {
+          title: "הגדרת ענף",
+          body: "מנהל הארגון בוחר «ניהול עסק / חברה» והתמחות עסקית בהגדרות → תחום העסק.",
+        },
+      ],
+      openWidget: "settings",
+    },
+    {
+      id: "company-mgmt-crm",
+      categoryId: "company-mgmt",
+      title: "CRM לעסק",
+      summary: "לקוחות, משימות והתקדמות בלי מושגי שטח בנייה.",
+      readMinutes: 4,
+      steps: [
+        { title: "כניסה", body: "פתחו את יישום הלקוחות מהמפעיל או מ-Omnibar." },
+        { title: "שיוך לפרויקט", body: "פרויקטים פנימיים מקושרים ללקוחות כמו במסלול בנייה, בלי כתב כמויות." },
+      ],
+      openWidget: "crm",
+    },
+    {
+      id: "company-mgmt-projects",
+      categoryId: "company-mgmt",
+      title: "פרויקטים פנימיים",
+      summary: "גantt ומשימות בלי BOQ.",
+      readMinutes: 4,
+      steps: [
+        { title: "לוח זמנים", body: "בפרויקט פתחו לוח זמנים — תלויות ומשימות ללא שורות BOQ." },
+        { title: "מסמכים", body: "מסמכי פרויקט מותאמים לעסק (הצעות, חוזים, דוחות) ללא תוכניות ביצוע." },
+      ],
+      openWidget: "project",
+    },
+    {
+      id: "company-mgmt-erp",
+      categoryId: "company-mgmt",
+      title: "ERP ומסמכים",
+      summary: "הפקה, ארכיון וחיוב.",
+      readMinutes: 3,
+      steps: [
+        { title: "ארכיון", body: "מסמכים מונפקים וממתינים — כמו במסלול הכללי." },
+        { title: "מחולל", body: "מחולל המסמכים תומך בתבניות עסקיות." },
+      ],
+      openWidget: "erp",
+    },
+    {
+      id: "company-mgmt-scan",
+      categoryId: "company-mgmt",
+      title: "סריקה עסקית",
+      summary: "פענוח חשבוניות, הצעות ומסמכי משרד.",
+      readMinutes: 3,
+      steps: [
+        { title: "מצב סריקה", body: "הסורק מציע מצבי עסק (לא תוכנית/שטח) לפי ענף הארגון." },
+        { title: "העברה ל-ERP", body: "לאחר אישור — שמירה לארכיון או הפקת מסמך." },
+      ],
+      openWidget: "aiScanner",
+    },
+    {
+      id: "company-mgmt-profession",
+      categoryId: "company-mgmt",
+      title: "הגדרת תחום העסק",
+      summary: "שינוי ענף והתמחות עסקית.",
+      readMinutes: 2,
+      steps: [
+        {
+          title: "נתיב",
+          body: "הגדרות → תחום העסק / מקצוע, או /app/settings/profession במרחב העבודה.",
+        },
+        { title: "שמירה", body: "רק מנהל ארגון; לאחר שמירה יש להתנתק ולהתחבר לרענון תפריטים.",
+        },
+      ],
+      openWidget: "settings",
+    },
+    {
       id: "trouble-scan",
       categoryId: "troubleshoot",
       title: "סריקה נכשלה",
@@ -314,7 +409,7 @@ export const HELP_CENTER_HE: HelpCenterData = {
     {
       question: "מה עושה Gemini Live?",
       answer:
-        "עוזר קולי (Google Gemini Live) שמברך אותך בתחילת כל שיחה, עונה על כל נושא, ומבצע פעולות אמיתיות במערכת: חשבוניות, משימות, לקוחות, סריקות, פתיחת מסכים, מקאנו ועוד — דרך כלי המערכת. בחלון העוזר: טאב Live וטאב טקסט. ברירת מחדל Live רק אם הופעל aiChatLiveDefault במנהל הפלטפורמה.",
+        "עוזר קולי (Google Gemini Live) שמברך אותך בתחילת כל שיחה, עונה על כל נושא, ומבצע פעולות אמיתיות במערכת. רק חיבור Live אחד בכל רגע (Omnibar או צ'אט). במובייל חלונות CRM ופרויקט נפתחים במסך מלא. בחלון העוזר: טאב Live וטאב טקסט.",
     },
     {
       question: "מהו מאגר הידע?",

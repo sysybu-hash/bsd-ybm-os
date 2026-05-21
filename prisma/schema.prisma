@@ -77,6 +77,9 @@ model Organization {
   organizationInvites      OrganizationInvite[]
   productPriceObservations ProductPriceObservation[]
   projects                 Project[]
+  projectQuotes            ProjectQuote[]
+  projectBoqLines          ProjectBoqLine[]
+  progressBills            ProgressBill[]
   workDiaries              WorkDiary[]
   paymentMilestones        PaymentMilestone[]
   projectExtras            ProjectExtra[]
@@ -217,6 +220,14 @@ model Project {
   budget           Float              @default(0)
   /// אופציונלי — קישור לאזור שטח/אתר במקאנו (אותו ארגון)
   meckanoZoneId    String?
+  /// תיקיית Google Drive ייעודית לפרויקט
+  driveFolderId    String?
+  driveFolderName  String?
+  /// ייבוא לוח זמנים (MPP/XML)
+  lastScheduleImportAt DateTime?
+  scheduleSourceFile   String?
+  /// מדיניות סנכרון CRM: { syncDirection, onContactProjectChange }
+  crmSyncPolicyJson Json?
   contacts         Contact[]
   expenseRecords   ExpenseRecord[]
   workDiaries      WorkDiary[]
@@ -229,6 +240,9 @@ model Project {
   tasks            Task[]
   notebooks        Notebook[]
   issuedDocuments  IssuedDocument[]
+  quotes           ProjectQuote[]
+  boqLines         ProjectBoqLine[]
+  progressBills    ProgressBill[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -248,6 +262,12 @@ model Task {
   progress       Int          @default(0)
   /// JSON array של מזהי משימות תלויות
   dependencies   String?
+  /// משימת אב (היררכיית גנט)
+  parentTaskId   String?
+  /// מזהה חיצוני מ-MS Project
+  externalTaskId String?
+  /// שורת כתב כמויות מקושרת
+  linkedBoqLineId String?
   projectId      String
   organizationId String
   createdAt      DateTime     @default(now())
@@ -258,6 +278,7 @@ model Task {
   @@index([projectId])
   @@index([organizationId])
   @@index([status])
+  @@index([linkedBoqLineId])
 }
 
 /// יומן עבודה בשטח
@@ -271,13 +292,137 @@ model WorkDiary {
   progress        Int          @default(0)
   isSyncedToAI    Boolean      @default(true)
   createdByUserId String?
+  weather         String?
+  workHours       Float?
+  materialsJson   Json?
+  photosJson      Json?
+  meckanoRef      String?
+  linkedTaskId    String?
+  linkedBoqLineId String?
   createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@index([organizationId])
   @@index([date])
+}
+
+/// הצעת מחיר / כתב כמויות לפרויקט
+model ProjectQuote {
+  id             String           @id @default(cuid())
+  projectId      String
+  organizationId String
+  version        Int              @default(1)
+  title          String
+  status         String           @default("draft")
+  sourceFileName String?
+  totalAmount    Float            @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  boqLines       ProjectBoqLine[]
+
+  @@index([projectId])
+  @@index([organizationId])
+}
+
+/// שורת כתב כמויות
+model ProjectBoqLine {
+  id                 String                @id @default(cuid())
+  projectId          String
+  organizationId     String
+  quoteId            String?
+  sortOrder          Int                   @default(0)
+  sectionTitle       String?
+  description        String                @db.Text
+  unit               String?
+  quantity           Float?
+  unitPrice          Float?
+  lineTotal          Float                 @default(0)
+  isSectionSubtotal  Boolean               @default(false)
+  executedQuantity   Float?
+  progressCoefficient Float?
+  billedAmount       Float?
+  isWorkDone         Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  project            Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quote              ProjectQuote?         @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  phaseColumns       ProjectBoqPhaseColumn[]
+  billLines          ProgressBillLine[]
+
+  @@index([projectId])
+  @@index([organizationId])
+  @@index([quoteId])
+}
+
+/// עמודת אבן דרך (2–5) לשורת BOQ
+model ProjectBoqPhaseColumn {
+  id          String         @id @default(cuid())
+  boqLineId   String
+  phaseIndex  Int
+  coefficient Float?
+  phaseAmount Float?
+  boqLine     ProjectBoqLine @relation(fields: [boqLineId], references: [id], onDelete: Cascade)
+
+  @@unique([boqLineId, phaseIndex])
+}
+
+/// חשבון חלקי (חשבון 2, 3…)
+model ProgressBill {
+  id              String             @id @default(cuid())
+  projectId       String
+  organizationId  String
+  billNumber      Int
+  billDate        DateTime?
+  subtotal        Float              @default(0)
+  discountPercent Float?
+  vatPercent      Float?
+  adjustmentsJson Json?
+  total           Float              @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lines           ProgressBillLine[]
+
+  @@unique([projectId, billNumber])
+  @@index([organizationId])
+}
+
+model ProgressBillLine {
+  id            String         @id @default(cuid())
+  billId        String
+  boqLineId     String?
+  description   String?        @db.Text
+  contractQty   Float?
+  unitPrice     Float?
+  executedQty   Float?
+  executedCoef  Float?
+  lineTotal     Float          @default(0)
+  bill          ProgressBill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  boqLine       ProjectBoqLine? @relation(fields: [boqLineId], references: [id], onDelete: SetNull)
+
+  @@index([billId])
+  @@index([boqLineId])
+}
+
+/// Web Push subscription
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// חשבונות חלקיים / אבני דרך תשלום
@@ -346,17 +491,50 @@ model User {
   passwordHash       String?
   /// התחברות אחרונה (מעודכן ב־NextAuth signIn)
   lastLoginAt        DateTime?
+  /// פריסת Launcher אישית (quickGrid עם row/col, sidebar וכו׳)
+  launcherConfigJson Json?
   accounts           Account[]
   activityLogs       ActivityLog[]
   documents          Document[]
   issuedDocumentsCreated IssuedDocument[] @relation("IssuedDocumentCreatedBy")
   documentScanJobs   DocumentScanJob[]
   inAppNotifications InAppNotification[]
+  pushSubscriptions  PushSubscription[]
   notebooks          Notebook[]
   sessions           Session[]
+  passkeys           UserPasskey[]
+  passwordResetTokens PasswordResetToken[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   @@index([lastLoginAt])
+}
+
+/// מפתחות Passkey (WebAuthn) לכניסה ביומטרית
+model UserPasskey {
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique
+  publicKey    Bytes
+  counter      BigInt   @default(0)
+  deviceName   String?
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// איפוס סיסמה — טוקן חד-פעמי במייל
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 /// הודעות בתוך המערכת (פעמון בדשבורד)

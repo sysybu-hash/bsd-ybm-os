@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <Name>שלב א</Name>
+      <OutlineLevel>1</OutlineLevel>
+      <PercentComplete>25</PercentComplete>
+      <Start>2026-01-01T08:00:00</Start>
+      <Finish>2026-02-01T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>2</UID>
+      <Name>יציקה</Name>
+      <OutlineLevel>2</OutlineLevel>
+      <PercentComplete>10</PercentComplete>
+      <Start>2026-01-05T08:00:00</Start>
+      <Finish>2026-01-20T17:00:00</Finish>
+    </Task>
+  </Tasks>
+</Project>

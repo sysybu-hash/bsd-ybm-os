@@ -1,7 +1,23 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Page } from "@playwright/test";
 
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
+
+function readSeedMarker(): { e2eProjectId?: string; e2eContactId?: string } {
+  try {
+    const p = path.resolve(process.cwd(), ".e2e-demo-seeded.json");
+    return JSON.parse(fs.readFileSync(p, "utf8")) as { e2eProjectId?: string; e2eContactId?: string };
+  } catch {
+    return {};
+  }
+}
+
+const seedMarker = readSeedMarker();
+
+export const E2E_PROJECT_ID = process.env.E2E_PROJECT_ID ?? seedMarker.e2eProjectId ?? "";
+export const E2E_CONTACT_ID = process.env.E2E_CONTACT_ID ?? seedMarker.e2eContactId ?? "";
 
 const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 

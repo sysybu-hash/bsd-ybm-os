@@ -67,9 +67,34 @@ RULES:
 `;
 }
 
-export function getAiChatSystemPrefix(contextJson: string, locale: string): string {
+function industryAssistantBlurb(industryRaw: string | undefined): string {
+  const key = String(industryRaw ?? "CONSTRUCTION").trim().toUpperCase();
+  if (key === "COMPANY_MGMT" || key === "BUSINESS") {
+    return "Israeli business and company management (CRM, ERP, projects, contracts, invoices — not construction sites unless the user asks)";
+  }
+  if (key === "CONSTRUCTION") {
+    return "Israeli construction-sector organizations (contracting, sites, and allied trades such as electrical, plumbing, HVAC, finishing)";
+  }
+  return "Israeli organizations using BSD-YBM OS";
+}
+
+export function getAiChatSystemPrefix(
+  contextJson: string,
+  locale: string,
+  industryRaw?: string,
+): string {
   const loc = normalizeLocale(locale) as AppLocale;
   const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "English";
-  const core = `You are the BSD-YBM assistant for Israeli construction-sector organizations (contracting, sites, and allied trades such as electrical, plumbing, HVAC, finishing). Use the context JSON (industry, constructionTrade, documents). Answer clearly and concisely in ${lang}. When time or "today" matters, use the current date from the temporal block above. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
+  let industry = industryRaw;
+  if (!industry) {
+    try {
+      const parsed = JSON.parse(contextJson) as { organization?: { industry?: string } };
+      industry = parsed.organization?.industry;
+    } catch {
+      /* ignore */
+    }
+  }
+  const blurb = industryAssistantBlurb(industry);
+  const core = `You are the BSD-YBM assistant for ${blurb}. Use the context JSON (industry, constructionTrade or business line, documents). Answer clearly and concisely in ${lang}. When time or "today" matters, use the current date from the temporal block above. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
   return withAssistantTemporalContext(core);
 }

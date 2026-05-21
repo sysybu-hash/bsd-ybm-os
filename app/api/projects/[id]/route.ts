@@ -38,12 +38,20 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgI
   }
 });
 
+const crmPolicySchema = z.object({
+  syncDirection: z.enum(["project_to_contact", "bidirectional"]).optional(),
+  onContactProjectChange: z.enum(["set_primary", "link_only"]).optional(),
+});
+
 const patchSchema = z.object({
   status: z.string().min(1).optional(),
   budget: z.number().nonnegative().optional(),
   primaryContactId: z.string().nullable().optional(),
   autoSyncCrm: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  driveFolderId: z.string().nullable().optional(),
+  driveFolderName: z.string().nullable().optional(),
+  crmSyncPolicy: crmPolicySchema.optional(),
 });
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchema>(
@@ -74,6 +82,9 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
           isActive: body.isActive,
           autoSyncCrm,
           primaryContactId: resolvedPrimary ?? null,
+          driveFolderId: body.driveFolderId,
+          driveFolderName: body.driveFolderName,
+          crmSyncPolicyJson: body.crmSyncPolicy ?? undefined,
         },
         select: {
           id: true,

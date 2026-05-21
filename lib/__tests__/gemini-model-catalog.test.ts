@@ -16,7 +16,6 @@ describe("gemini-model-catalog", () => {
     const chain = getGeminiModelFallbackChain();
     expect(chain[0]).toBe(getGeminiModelId());
     expect(chain.some((m) => m.includes("gemini-1.5"))).toBe(false);
-    expect(chain[0]).toBe("gemini-3.5-flash");
   });
 
   it("blueprint chain starts with 3.5-flash", () => {

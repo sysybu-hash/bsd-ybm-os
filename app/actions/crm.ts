@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { prisma } from "@/lib/prisma";
+import { assignContactProject, syncProjectCrmContact } from "@/lib/workspace-api/project-crm-sync";
+import { seedDefaultPaymentMilestonesIfEmpty } from "@/lib/workspace-api/seed-project-milestones";
 
 function revalidateCrmAndRelated() {
   revalidatePath("/app/clients");
@@ -52,7 +54,7 @@ export async function createContactAction(formData: FormData) {
     projectId = p?.id;
   }
 
-  await prisma.contact.create({
+  const contact = await prisma.contact.create({
     data: {
       name,
       email: emailRaw || null,
@@ -61,12 +63,16 @@ export async function createContactAction(formData: FormData) {
       value: valueRaw ? parseFloat(valueRaw) : null,
       status: status || "LEAD",
       organizationId: ctx.orgId,
-      projectId: projectId ?? null,
+      projectId: null,
     },
   });
 
+  if (projectId) {
+    await assignContactProject(contact.id, projectId, ctx.orgId);
+  }
+
   revalidateCrmAndRelated();
-  return { ok: true as const };
+  return { ok: true as const, contactId: contact.id };
 }
 
 export async function createProjectAction(formData: FormData) {
@@ -82,7 +88,12 @@ export async function createProjectAction(formData: FormData) {
   const activeToRaw = String(formData.get("activeTo") || "").trim();
   const isActive = formData.has("isActive") && formData.get("isActive") !== "off" && formData.get("isActive") !== "false";
 
-  await prisma.project.create({
+  const org = await prisma.organization.findUnique({
+    where: { id: ctx.orgId },
+    select: { industry: true },
+  });
+
+  const project = await prisma.project.create({
     data: {
       name,
       organizationId: ctx.orgId,
@@ -92,8 +103,50 @@ export async function createProjectAction(formData: FormData) {
     },
   });
 
+  await seedDefaultPaymentMilestonesIfEmpty(project.id, ctx.orgId, org?.industry);
+
   revalidateCrmAndRelated();
   return { ok: true as const };
+}
+
+/** יוצר פרויקט חדש ומשייך ללקוח (CRM) */
+export async function createProjectForContact(input: {
+  contactId: string;
+  projectName?: string;
+}) {
+  const ctx = await getOrgContext();
+  if ("error" in ctx) return { ok: false as const, error: ctx.error };
+
+  const contact = await prisma.contact.findFirst({
+    where: { id: input.contactId, organizationId: ctx.orgId },
+    select: { id: true, name: true },
+  });
+  if (!contact) return { ok: false as const, error: "לקוח לא נמצא" };
+
+  const name = (input.projectName?.trim() || `פרויקט — ${contact.name}`).slice(0, 200);
+
+  const org = await prisma.organization.findUnique({
+    where: { id: ctx.orgId },
+    select: { industry: true },
+  });
+
+  const project = await prisma.project.create({
+    data: {
+      name,
+      organizationId: ctx.orgId,
+      primaryContactId: contact.id,
+      autoSyncCrm: true,
+    },
+    select: { id: true, name: true },
+  });
+
+  await seedDefaultPaymentMilestonesIfEmpty(project.id, ctx.orgId, org?.industry);
+
+  await assignContactProject(contact.id, project.id, ctx.orgId);
+  await syncProjectCrmContact(project.id, ctx.orgId, contact.id, true);
+
+  revalidateCrmAndRelated();
+  return { ok: true as const, projectId: project.id, projectName: project.name };
 }
 
 export async function updateProjectAction(formData: FormData) {
@@ -200,11 +253,14 @@ export async function updateContactAction(input: {
       email: input.email.trim() || null,
       phone: input.phone.trim() || null,
       status: input.status.trim() || "LEAD",
-      projectId,
       value: input.value.trim() ? parseFloat(input.value) : null,
       notes: input.notes.trim() || null,
     },
   });
+
+  if (projectId !== row.projectId) {
+    await assignContactProject(input.contactId, projectId, ctx.orgId);
+  }
 
   revalidateCrmAndRelated();
   return { ok: true as const };

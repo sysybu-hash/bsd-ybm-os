@@ -35,7 +35,6 @@ export type AutomationIntent =
   | "meckano_clock_out"
   | "open_ai_chat"
   | "open_notebook"
-  | "google_assistant_command"
   | "open_google_drive"
   | "open_settings"
   | "open_accessibility"

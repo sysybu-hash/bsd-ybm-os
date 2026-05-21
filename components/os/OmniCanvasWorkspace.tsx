@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
 import { useWindowManager, type WidgetType } from "@/hooks/use-window-manager";
+import { isMobileViewport } from "@/lib/workspace/window-layout-policy";
 import { useAutomationRunner } from "@/hooks/useAutomationRunner";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
@@ -22,6 +23,8 @@ import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import NotificationCenter, { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
 import KnowledgeVaultWorkspaceBridge from "@/components/os/KnowledgeVaultWorkspaceBridge";
+import PwaInstallBanner from "@/components/os/system/PwaInstallBanner";
+import PasskeyOfferModal from "@/components/auth/PasskeyOfferModal";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
@@ -67,6 +70,7 @@ export default function OmniCanvasWorkspace() {
     widgets,
     hasHydrated,
     openWidget,
+    openWidgetFocused,
     closeWidget,
     focusWidget,
     updateWidgetPosition,
@@ -77,10 +81,38 @@ export default function OmniCanvasWorkspace() {
     isFirstTime,
     isCleanDashboard,
     toggleWorkState,
+    applyProfessionalLayout,
   } = useWindowManager();
+
+  const openWorkspaceWidget = useCallback(
+    (
+      type: WidgetType,
+      data?: Record<string, unknown> | null,
+      options?: { maximize?: boolean },
+    ) => {
+      if (options?.maximize) {
+        return openWidgetFocused(type, data ?? null, { maximize: true });
+      }
+      return openWidget(type, data ?? null);
+    },
+    [openWidget, openWidgetFocused],
+  );
 
   const hasMaximizedWidget = widgets.some((w) => w.isMaximized);
   const sidebarRailVisible = !hasMaximizedWidget || sidebarRailPeek;
+
+  const handleApplyScreenLayout = useCallback(() => {
+    if (widgets.length === 0) {
+      toast.message(t("workspaceShell.topBar.screenLayout.toastNoWindows"));
+      return;
+    }
+    if (typeof window !== "undefined" && isMobileViewport()) {
+      toast.message(t("workspaceShell.topBar.screenLayout.toastMobile"));
+      return;
+    }
+    applyProfessionalLayout();
+    toast.success(t("workspaceShell.topBar.screenLayout.toastSuccess"));
+  }, [applyProfessionalLayout, t, widgets.length]);
 
   const reportMeckanoAttendance = useCallback(
     async (action: "in" | "out") => {
@@ -143,7 +175,11 @@ export default function OmniCanvasWorkspace() {
         return tradeProfile.documentsLabel;
       }
       if (type === "settings") {
-        return `${t("workspaceWidgets.titles.settings")} · ${tradeProfile.constructionTradeLabel}`;
+        const spec =
+          tradeProfile.businessLineLabel ??
+          tradeProfile.constructionTradeLabel ??
+          tradeProfile.industryLabel;
+        return `${t("workspaceWidgets.titles.settings")} · ${spec}`;
       }
       return t(`workspaceWidgets.titles.${type}`);
     },
@@ -171,37 +207,70 @@ export default function OmniCanvasWorkspace() {
 
   useEffect(() => {
     if (sessionStatus !== "authenticated" || !session?.user?.id) {
+      setNotifications([]);
       return;
     }
 
+    const abort = new AbortController();
+    let disposed = false;
+    let inFlight = false;
+
     const fetchNotifications = async () => {
+      if (disposed || inFlight) return;
+      inFlight = true;
       try {
         const res = await fetch("/api/notifications/feed", {
           credentials: "include",
           cache: "no-store",
+          signal: abort.signal,
         });
-        if (res.ok) {
-          const data = await res.json();
-          setNotifications(Array.isArray(data) ? data : []);
+        if (disposed) return;
+        if (!res.ok) {
+          setNotifications([]);
+          return;
         }
+        let data: unknown;
+        try {
+          data = await res.json();
+        } catch {
+          setNotifications([]);
+          return;
+        }
+        if (disposed) return;
+        const items = Array.isArray(data) ? data : [];
+        setNotifications(items.map((item) => mapFeedItemToNotification(item as Record<string, unknown>)));
       } catch (err) {
-        console.error("Failed to fetch notifications", err);
+        if (disposed || abort.signal.aborted) return;
+        const isNetworkFailure =
+          err instanceof TypeError &&
+          (err.message === "Failed to fetch" || err.message.includes("NetworkError"));
+        if (process.env.NODE_ENV === "development" && !isNetworkFailure) {
+          console.warn("Notifications feed unavailable", err);
+        }
+        setNotifications([]);
+      } finally {
+        inFlight = false;
       }
     };
 
-    void fetchNotifications();
+    const scheduleFetch = () => {
+      void fetchNotifications();
+    };
+
+    scheduleFetch();
 
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let es: EventSource | null = null;
 
     const startPolling = () => {
-      if (pollInterval) return;
-      pollInterval = setInterval(fetchNotifications, 10000);
+      if (pollInterval || disposed) return;
+      pollInterval = setInterval(scheduleFetch, 10000);
     };
 
     try {
       es = new EventSource("/api/notifications/feed/stream");
       es.onmessage = (event) => {
+        if (disposed) return;
         try {
           const payload = JSON.parse(event.data) as Record<string, unknown> | Record<string, unknown>[];
           if (Array.isArray(payload)) {
@@ -214,7 +283,7 @@ export default function OmniCanvasWorkspace() {
             return [next, ...prev];
           });
         } catch {
-          void fetchNotifications();
+          scheduleFetch();
         }
       };
       es.onerror = () => {
@@ -227,6 +296,8 @@ export default function OmniCanvasWorkspace() {
     }
 
     return () => {
+      disposed = true;
+      abort.abort();
       es?.close();
       if (pollInterval) clearInterval(pollInterval);
     };
@@ -418,6 +489,8 @@ export default function OmniCanvasWorkspace() {
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
     <main className="quiet-shell fixed inset-0 max-w-[100vw] overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
+      <PwaInstallBanner />
+      <PasskeyOfferModal />
       <LauncherEditBanner />
       <LauncherPickerSheet />
       <FirstDayWizard
@@ -437,6 +510,7 @@ export default function OmniCanvasWorkspace() {
         isCleanDashboard={isCleanDashboard}
         onToggleWorkState={toggleWorkState}
         onOpenWindowSwitcher={() => setWindowSwitcherOpen(true)}
+        onApplyScreenLayout={handleApplyScreenLayout}
       />
       {hasMaximizedWidget && !sidebarRailPeek ? (
         <button
@@ -460,7 +534,7 @@ export default function OmniCanvasWorkspace() {
       />
 
       <div
-        className={`absolute inset-0 flex min-h-0 flex-col overflow-hidden pt-[calc(4rem+env(safe-area-inset-top,0px))] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+        className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
       >
         <WorkspaceNavigationProvider>
           <Suspense fallback={null}>
@@ -468,6 +542,7 @@ export default function OmniCanvasWorkspace() {
               widgets={widgets}
               hasHydrated={hasHydrated}
               openWidget={openWidget}
+              openWorkspaceWidget={openWorkspaceWidget}
               closeWidget={closeWidget}
               focusWidget={focusWidget}
               updateWidgetPosition={updateWidgetPosition}
@@ -487,7 +562,7 @@ export default function OmniCanvasWorkspace() {
         onSearchPreview={handleSearchPreview}
         searchResults={searchResults}
         onSelectResult={handleSelectResult}
-        openWorkspaceWidget={openWidget}
+        openWorkspaceWidget={openWorkspaceWidget}
         assistantToolDeps={automationRunner.deps}
       />
 
@@ -516,7 +591,7 @@ export default function OmniCanvasWorkspace() {
           onSearchPreview={handleSearchPreview}
           searchResults={searchResults}
           onSelectResult={handleSelectResult}
-          openWorkspaceWidget={openWidget}
+          openWorkspaceWidget={openWorkspaceWidget}
           assistantToolDeps={automationRunner.deps}
         />
       </div>

@@ -38,6 +38,7 @@ import {
 } from "@/hooks/useNotebookSpeechPlayback";
 import NotebookSpeechSettingsPanel from "@/components/os/widgets/NotebookSpeechSettingsPanel";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+import { ensureProjectNotebook } from "@/lib/notebooklm/ensure-project-notebook";
 
 const DRAFT_KEY = "notebooklm-draft-v1";
 
@@ -430,10 +431,24 @@ export default function NotebookLMWidget({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- setMessages יציב
   }, [t]);
 
+  const ensuredProjectRef = useRef<string | null>(null);
+
   useEffect(() => {
     const pid = liveData?.projectId;
-    if (typeof pid === "string" && pid) {
+    if (typeof pid === "string" && pid && ensuredProjectRef.current !== pid) {
+      ensuredProjectRef.current = pid;
       setProjectId(pid);
+      const title = typeof liveData?.title === "string" ? liveData.title : undefined;
+      void (async () => {
+        const { notebookId, created } = await ensureProjectNotebook(pid, title);
+        if (!notebookId) return;
+        setSavedNotebookId(notebookId);
+        if (created) {
+          setNotebookTitle(title?.trim() ? `מחברת — ${title.trim()}` : "מחברת פרויקט");
+          return;
+        }
+        void handleLoadNotebook(notebookId);
+      })();
     }
     const notebookId = liveData?.notebookId;
     if (typeof notebookId === "string" && notebookId) {

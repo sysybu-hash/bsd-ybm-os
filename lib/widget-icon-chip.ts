@@ -15,7 +15,6 @@ export function widgetIconChipClass(type: WidgetType): string {
     aiChatFull: "bg-purple-500/15 text-purple-300 group-hover:bg-purple-500/28",
     meckanoReports: "bg-rose-500/12 text-rose-300 group-hover:bg-rose-500/24",
     googleDrive: "bg-blue-500/15 text-blue-300 group-hover:bg-blue-500/28",
-    googleAssistant: "bg-fuchsia-500/12 text-fuchsia-300 group-hover:bg-fuchsia-500/24",
     notebookLM: "bg-amber-500/15 text-amber-300 group-hover:bg-amber-500/28",
     settings: "bg-slate-500/20 text-slate-300 group-hover:bg-slate-500/32",
     project: "bg-indigo-500/15 text-indigo-200 group-hover:bg-indigo-500/28",
@@ -26,6 +25,7 @@ export function widgetIconChipClass(type: WidgetType): string {
     quoteGen: "bg-amber-500/15 text-amber-300 group-hover:bg-amber-500/28",
     platformAdmin: "bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/28",
     helpCenter: "bg-sky-500/15 text-sky-300 group-hover:bg-sky-500/28",
+    accessibility: "bg-slate-500/20 text-slate-300 group-hover:bg-slate-500/32",
   };
   return map[type] ?? "bg-indigo-500/15 text-indigo-200 group-hover:bg-indigo-500/28";
 }

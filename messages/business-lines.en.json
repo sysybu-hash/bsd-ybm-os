@@ -1,0 +1,10 @@
+{
+  "businessLineLabels": {
+    "GENERAL_BUSINESS": "General business / company",
+    "SERVICES": "Professional services",
+    "TECH": "Technology / product",
+    "TRADE": "Trade / import",
+    "AGENCY": "Agency / marketing",
+    "HOLDING": "Holding / group"
+  }
+}

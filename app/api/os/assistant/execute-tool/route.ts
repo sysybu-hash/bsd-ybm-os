@@ -59,35 +59,6 @@ export const POST = withWorkspacesAuth(
         return NextResponse.json({ result: "לא זוהתה פעולה לביצוע" });
       }
 
-      if (name === "google_assistant_command") {
-        const query = typeof args.query === "string" ? args.query.trim() : "";
-        if (!query) {
-          return NextResponse.json({ result: "חסרה פקודה" });
-        }
-        try {
-          const base =
-            process.env.NEXTAUTH_URL?.replace(/\/$/, "") ??
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-          const res = await fetch(`${base}/api/os/google-assistant/query`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              cookie: _req.headers.get("cookie") ?? "",
-            },
-            body: JSON.stringify({ query }),
-          });
-          const data = (await res.json()) as { fulfillmentText?: string; error?: string };
-          if (!res.ok) {
-            return NextResponse.json({ result: data.error ?? "שגיאה ב-Google Assistant" });
-          }
-          return NextResponse.json({
-            result: typeof data.fulfillmentText === "string" ? data.fulfillmentText : "בוצע",
-          });
-        } catch {
-          return NextResponse.json({ result: "שגיאה בביצוע פקודת Google Assistant" });
-        }
-      }
-
       return NextResponse.json({ result: `כלי לא נתמך בשרת: ${name}` });
     } catch (err) {
       if (err instanceof z.ZodError) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
@@ -28,6 +29,12 @@ const createSchema = z.object({
   progress: z.number().int().min(0).max(100).optional(),
   isSyncedToAI: z.boolean().optional(),
   date: z.string().datetime().optional(),
+  weather: z.string().optional(),
+  workHours: z.number().optional(),
+  materialsJson: z.unknown().optional(),
+  photosJson: z.unknown().optional(),
+  linkedTaskId: z.string().optional(),
+  linkedBoqLineId: z.string().optional(),
 });
 
 export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchema>(
@@ -47,6 +54,16 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchem
           isSyncedToAI: body.isSyncedToAI ?? true,
           date: body.date ? new Date(body.date) : new Date(),
           createdByUserId: userId,
+          weather: body.weather,
+          workHours: body.workHours,
+          materialsJson:
+            body.materialsJson === undefined
+              ? undefined
+              : (body.materialsJson as Prisma.InputJsonValue),
+          photosJson:
+            body.photosJson === undefined ? undefined : (body.photosJson as Prisma.InputJsonValue),
+          linkedTaskId: body.linkedTaskId,
+          linkedBoqLineId: body.linkedBoqLineId,
         },
       });
 

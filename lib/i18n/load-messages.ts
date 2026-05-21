@@ -15,6 +15,9 @@ import brandBriefEn from "@/messages/brand-brief.en.json";
 import brandBriefRu from "@/messages/brand-brief.ru.json";
 import constructionTradesEn from "@/messages/construction-trades.en.json";
 import constructionTradesRu from "@/messages/construction-trades.ru.json";
+import businessLinesHe from "@/messages/business-lines.he.json";
+import businessLinesEn from "@/messages/business-lines.en.json";
+import businessLinesRu from "@/messages/business-lines.ru.json";
 import workspaceShellHe from "@/messages/workspace-shell.he.json";
 import workspaceShellEn from "@/messages/workspace-shell.en.json";
 import workspaceShellRu from "@/messages/workspace-shell.ru.json";
@@ -130,8 +133,17 @@ export function getMessages(locale: string): MessageTree {
       : code === "ru"
         ? (constructionTradesRu as unknown as Record<string, unknown>)
         : {};
+  const businessPack =
+    code === "he"
+      ? (businessLinesHe as unknown as Record<string, unknown>)
+      : code === "en"
+        ? (businessLinesEn as unknown as Record<string, unknown>)
+        : code === "ru"
+          ? (businessLinesRu as unknown as Record<string, unknown>)
+          : {};
   let merged = deepMerge(base as unknown as Record<string, unknown>, extra);
   merged = deepMerge(merged, tradePack);
+  merged = deepMerge(merged, businessPack);
   merged = deepMerge(merged, workspaceExtras(code));
   merged = deepMerge(merged, siteChromeExtras(code));
   merged = deepMerge(merged, workspaceAreasExtras(code));

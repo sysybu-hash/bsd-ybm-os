@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { resolveLinkedBoqLineId } from "@/lib/project-task-metadata";
+import { filterPaymentMilestonesForDisplay } from "@/lib/project-payment-milestones";
 
 export async function getProjectDashboard(orgId: string, projectId: string) {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { industry: true },
+  });
+  const orgIndustry = org?.industry ?? null;
+
   const project = await prisma.project.findFirst({
     where: { id: projectId, organizationId: orgId },
     include: {
@@ -9,7 +17,19 @@ export async function getProjectDashboard(orgId: string, projectId: string) {
       projectExtras: { orderBy: { createdAt: "desc" } },
       projectExpenses: { orderBy: [{ month: "desc" }, { createdAt: "desc" }] },
       workDiaries: { orderBy: { date: "desc" } },
-      tasks: { orderBy: { startDate: "asc" } },
+      tasks: {
+        orderBy: { startDate: "asc" },
+        select: {
+          id: true,
+          title: true,
+          startDate: true,
+          endDate: true,
+          progress: true,
+          dependencies: true,
+          description: true,
+          linkedBoqLineId: true,
+        },
+      },
       expenseRecords: { orderBy: { expenseDate: "desc" }, take: 50 },
     },
   });
@@ -24,8 +44,12 @@ export async function getProjectDashboard(orgId: string, projectId: string) {
   const extrasPending = project.projectExtras
     .filter((e) => !e.isApproved)
     .reduce((s, e) => s + e.cost, 0);
-  const milestonesTotal = project.paymentMilestones.reduce((s, m) => s + m.amount, 0);
-  const milestonesPaid = project.paymentMilestones
+  const visibleMilestones = filterPaymentMilestonesForDisplay(
+    orgIndustry,
+    project.paymentMilestones,
+  );
+  const milestonesTotal = visibleMilestones.reduce((s, m) => s + m.amount, 0);
+  const milestonesPaid = visibleMilestones
     .filter((m) => m.isPaid)
     .reduce((s, m) => s + m.amount, 0);
 
@@ -60,11 +84,33 @@ export async function getProjectDashboard(orgId: string, projectId: string) {
       milestonesPaid,
       utilized,
     },
-    milestones: project.paymentMilestones,
+    milestones: visibleMilestones,
+    hiddenConstructionMilestones: Math.max(
+      0,
+      project.paymentMilestones.length - visibleMilestones.length,
+    ),
     extras: project.projectExtras,
     projectExpenses: project.projectExpenses,
     workDiaries: project.workDiaries,
-    tasks: project.tasks,
+    tasks: await (async () => {
+      const diaryByTask = new Map<string, string>();
+      for (const d of project.workDiaries) {
+        if (d.linkedTaskId && !diaryByTask.has(d.linkedTaskId)) {
+          diaryByTask.set(d.linkedTaskId, d.id);
+        }
+      }
+      return project.tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        startDate: t.startDate?.toISOString() ?? null,
+        endDate: t.endDate?.toISOString() ?? null,
+        progress: t.progress,
+        dependencies: t.dependencies,
+        description: t.description,
+        linkedBoqLineId: resolveLinkedBoqLineId(t.linkedBoqLineId, t.description),
+        linkedWorkDiaryId: diaryByTask.get(t.id) ?? null,
+      }));
+    })(),
     expenseRecords: project.expenseRecords.map((e) => ({
       id: e.id,
       amount: e.total,

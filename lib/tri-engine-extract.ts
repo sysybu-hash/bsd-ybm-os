@@ -143,7 +143,7 @@ export async function runTriEngineExtraction(params: {
   };
 
   const lang = localeLang(locale);
-  const v5Instruction = buildV5JsonInstruction(lang, scanMode);
+  const v5Instruction = buildV5JsonInstruction(lang, scanMode, industry);
   const extra = industryInstructionExtras(industry, orgTrade, messages);
   const userInstructionBlock = userInstruction?.trim()
     ? `\n\n### USER REQUEST\nThe user added these extra instructions. Follow them when they do not conflict with the required JSON schema or safety constraints:\n${userInstruction.trim().slice(0, 1200)}`

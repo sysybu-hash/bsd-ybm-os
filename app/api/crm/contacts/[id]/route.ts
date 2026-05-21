@@ -4,6 +4,7 @@ import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonNotFound } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
+import { assignContactProject } from "@/lib/workspace-api/project-crm-sync";
 
 const patchContactSchema = z.object({
   name: z.string().min(1).optional(),
@@ -11,6 +12,7 @@ const patchContactSchema = z.object({
   phone: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   status: z.string().optional(),
+  projectId: z.string().nullable().optional(),
 });
 
 const contactSelect = {
@@ -75,18 +77,39 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchConta
   async (_req, { orgId }, segment, body) => {
     const { id } = await segment.params;
     try {
-      const updated = await prisma.contact.updateMany({
+      const existing = await prisma.contact.findFirst({
         where: { id, organizationId: orgId },
-        data: {
-          ...(body.name !== undefined ? { name: body.name } : {}),
-          ...(body.email !== undefined ? { email: body.email } : {}),
-          ...(body.phone !== undefined ? { phone: body.phone } : {}),
-          ...(body.notes !== undefined ? { notes: body.notes } : {}),
-          ...(body.status !== undefined ? { status: body.status.toUpperCase() } : {}),
-        },
+        select: { id: true },
       });
-      if (updated.count === 0) return jsonNotFound("לא נמצא");
-      const contact = await prisma.contact.findFirst({ where: { id, organizationId: orgId } });
+      if (!existing) return jsonNotFound("לא נמצא");
+
+      if (body.projectId !== undefined) {
+        await assignContactProject(id, body.projectId, orgId);
+      }
+
+      if (
+        body.name !== undefined ||
+        body.email !== undefined ||
+        body.phone !== undefined ||
+        body.notes !== undefined ||
+        body.status !== undefined
+      ) {
+        await prisma.contact.updateMany({
+          where: { id, organizationId: orgId },
+          data: {
+            ...(body.name !== undefined ? { name: body.name } : {}),
+            ...(body.email !== undefined ? { email: body.email } : {}),
+            ...(body.phone !== undefined ? { phone: body.phone } : {}),
+            ...(body.notes !== undefined ? { notes: body.notes } : {}),
+            ...(body.status !== undefined ? { status: body.status.toUpperCase() } : {}),
+          },
+        });
+      }
+
+      const contact = await prisma.contact.findFirst({
+        where: { id, organizationId: orgId },
+        select: contactSelect,
+      });
       return NextResponse.json({ success: true, contact });
     } catch (err) {
       return apiErrorResponse(err, "CRM contact update");

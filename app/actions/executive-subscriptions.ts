@@ -27,6 +27,7 @@ async function requireExecutive() {
 export type ExecutiveOrgRow = {
   id: string;
   name: string;
+  industry: string;
   constructionTrade: string;
   subscriptionTier: SubscriptionTier;
   subscriptionStatus: string;
@@ -49,6 +50,7 @@ export async function executiveListOrganizationsAction(): Promise<
     select: {
       id: true,
       name: true,
+      industry: true,
       constructionTrade: true,
       subscriptionTier: true,
       subscriptionStatus: true,
@@ -68,6 +70,7 @@ export async function executiveListOrganizationsAction(): Promise<
   return orgs.map((o) => ({
     id: o.id,
     name: o.name,
+    industry: o.industry,
     constructionTrade: o.constructionTrade,
     subscriptionTier: o.subscriptionTier,
     subscriptionStatus: o.subscriptionStatus,

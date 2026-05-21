@@ -62,7 +62,7 @@ const NEVER_SENSITIVE = new Set([
   "SMTP_SECURE",
   "SMTP_HOST",
 ]);
-const PRODUCTION_NEXTAUTH_URL = "https://bsd-ybm.co.il";
+const PRODUCTION_NEXTAUTH_URL = "https://www.bsd-ybm.co.il";
 
 function sleepSync(ms) {
   const until = performance.now() + ms;

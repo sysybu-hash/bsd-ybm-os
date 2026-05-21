@@ -12,20 +12,29 @@ export async function resolveOrganizationForUser(
   orgId: string,
   userId: string,
 ): Promise<{ id: string } | null> {
-  if (orgId) {
-    const org = await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { id: true },
-    });
-    if (org) return org;
-  }
-
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { organizationId: true, email: true, name: true },
   });
 
-  if (user?.organizationId) {
+  if (!user) return null;
+
+  const isPlatformAdmin = Boolean(user.email && isAdmin(user.email));
+
+  if (orgId) {
+    if (isPlatformAdmin) {
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { id: true },
+      });
+      if (org) return org;
+    } else if (user.organizationId === orgId) {
+      return { id: orgId };
+    }
+    // orgId בטוקן לא תואם למשתמש — נופל ל-org של המשתמש (לא ל-org אקראי קיים)
+  }
+
+  if (user.organizationId) {
     return { id: user.organizationId };
   }
 

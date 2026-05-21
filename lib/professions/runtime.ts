@@ -5,6 +5,12 @@ import {
   mergeTradeProfileFromMessages,
 } from "@/lib/construction-trades-i18n";
 import {
+  businessLineLabelHe,
+  getBusinessLineProfileOverlay,
+  normalizeBusinessLine,
+  type BusinessLineId,
+} from "@/lib/business-lines";
+import {
   constructionTradeLabelHe,
   getConstructionTradeProfileOverlay,
   getMergedIndustryConfig,
@@ -50,6 +56,8 @@ export type IndustryProfile = IndustryProfileBase & {
   /** מזהה התמחות בענף הבנייה — כשלא רלוונטי undefined */
   constructionTradeId?: ConstructionTradeId;
   constructionTradeLabel?: string;
+  businessLineId?: BusinessLineId;
+  businessLineLabel?: string;
 };
 
 type IndustryOverrides = {
@@ -101,6 +109,55 @@ const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfileBase> = {
       { id: "TAX_APPROVAL", label: "אישור מס", description: "אישור הגשה, תיאום או בקרה ללקוח.", kind: "APPROVAL" },
       { id: "AUDIT_MEMO", label: "מזכר ביקורת", description: "סיכום ממצאים ופעולות מתקנות.", kind: "REPORT" },
       { id: "INVOICE", label: "חשבונית שירותי הנהלת חשבונות", description: "חיוב רשמי עבור שירותי המשרד.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
+    ],
+  },
+  COMPANY_MGMT: {
+    clientsLabel: "לקוחות ושותפים",
+    documentsLabel: "מסמכים וחוזים",
+    recordsLabel: "הצעות, חוזים ואישורים",
+    financeNavLabel: "כספים",
+    homeTitle: "מרכז עבודה לניהול העסק והחברה.",
+    homeDescription:
+      "לקוחות, פרויקטים פנימיים, מסמכים וחיובים במסך אחד — בלי שפת אתרי בנייה.",
+    templates: [
+      {
+        id: "QUOTE_PROPOSAL",
+        label: "הצעת מחיר",
+        description: "הצעה מסודרת ללקוח או לשותף.",
+        kind: "FORM",
+      },
+      {
+        id: "SERVICE_CONTRACT",
+        label: "חוזה שירות",
+        description: "הסכם התקשרות ותנאי ביצוע.",
+        kind: "FORM",
+      },
+      {
+        id: "ACTIVITY_REPORT",
+        label: "דוח ביצוע / סטטוס",
+        description: "סיכום תקופתי או דוח פרויקט.",
+        kind: "REPORT",
+      },
+      {
+        id: "INTERNAL_APPROVAL",
+        label: "אישור הנהלה",
+        description: "אישור הוצאה, רכש או ביצוע.",
+        kind: "APPROVAL",
+      },
+      {
+        id: "INVOICE",
+        label: "חשבונית מס",
+        description: "חיוב רשמי ללקוח.",
+        kind: "OFFICIAL",
+        issuedDocumentType: "INVOICE",
+      },
+      {
+        id: "RECEIPT",
+        label: "קבלה",
+        description: "אישור תשלום.",
+        kind: "OFFICIAL",
+        issuedDocumentType: "RECEIPT",
+      },
     ],
   },
   CONSTRUCTION: {
@@ -201,22 +258,37 @@ export function getIndustryProfile(
   const tradeId = normalizeConstructionTrade(constructionTrade);
   const tradeLabelHe = constructionTradeLabelHe(tradeId);
   const tradeLabel = mergeConstructionTradeLabel(localeMessages ?? undefined, tradeId, tradeLabelHe);
+  const lineId = normalizeBusinessLine(constructionTrade);
+  const lineLabelHe = businessLineLabelHe(lineId);
+  const lineLabel = pickMessageString(localeMessages ?? undefined, `businessLineLabels.${lineId}`) ?? lineLabelHe;
+
   let tradeProfile =
     config.id === "CONSTRUCTION" ? getConstructionTradeProfileOverlay(constructionTrade) : null;
   if (localeMessages && tradeProfile) {
     tradeProfile = mergeTradeProfileFromMessages(localeMessages, tradeId, tradeProfile);
   }
 
+  let businessProfile =
+    config.id === "COMPANY_MGMT" ? getBusinessLineProfileOverlay(constructionTrade) : null;
+
   const baseIndustryLabel = pickMessageString(localeMessages ?? undefined, `professions.${config.id}.label`) ?? config.label;
   const industryLabel =
-    config.id === "CONSTRUCTION" ? `${baseIndustryLabel} · ${tradeLabel}` : baseIndustryLabel;
+    config.id === "CONSTRUCTION"
+      ? `${baseIndustryLabel} · ${tradeLabel}`
+      : config.id === "COMPANY_MGMT"
+        ? `${baseIndustryLabel} · ${lineLabel}`
+        : baseIndustryLabel;
 
-  const clientsBase = tradeProfile?.clientsLabel ?? profile.clientsLabel;
-  const documentsBase = tradeProfile?.documentsLabel ?? profile.documentsLabel;
-  const recordsBase = tradeProfile?.recordsLabel ?? profile.recordsLabel;
-  const homeTitleBase = tradeProfile?.homeTitle ?? profile.homeTitle;
-  const homeDescriptionBase = tradeProfile?.homeDescription ?? profile.homeDescription;
-  const templatesBase = tradeProfile?.templates ?? profile.templates;
+  const clientsBase =
+    tradeProfile?.clientsLabel ?? businessProfile?.clientsLabel ?? profile.clientsLabel;
+  const documentsBase =
+    tradeProfile?.documentsLabel ?? businessProfile?.documentsLabel ?? profile.documentsLabel;
+  const recordsBase =
+    tradeProfile?.recordsLabel ?? businessProfile?.recordsLabel ?? profile.recordsLabel;
+  const homeTitleBase = tradeProfile?.homeTitle ?? businessProfile?.homeTitle ?? profile.homeTitle;
+  const homeDescriptionBase =
+    tradeProfile?.homeDescription ?? businessProfile?.homeDescription ?? profile.homeDescription;
+  const templatesBase = tradeProfile?.templates ?? businessProfile?.templates ?? profile.templates;
 
   return {
     id: config.id,
@@ -236,5 +308,7 @@ export function getIndustryProfile(
     templates: templatesBase as IndustryProfileBase["templates"],
     constructionTradeId: config.id === "CONSTRUCTION" ? tradeId : undefined,
     constructionTradeLabel: config.id === "CONSTRUCTION" ? tradeLabel : undefined,
+    businessLineId: config.id === "COMPANY_MGMT" ? lineId : undefined,
+    businessLineLabel: config.id === "COMPANY_MGMT" ? lineLabel : undefined,
   };
 }

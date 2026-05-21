@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { canAccessMeckano } from "@/lib/meckano-access";
+import { isCompanyMgmtIndustry } from "@/lib/business-lines";
 import { getPlatformConfig } from "@/lib/platform-settings";
 import type { Session } from "next-auth";
 
@@ -87,7 +88,7 @@ export function formatUserContextForPrompt(ctx: OsAssistantUserContext): string 
     ? [
         `ארגון: ${org.name}`,
         `תוכנית: ${org.subscriptionTier} (${org.subscriptionStatus})`,
-        `ענף: ${org.industry} / ${org.constructionTrade}`,
+        `ענף: ${org.industry} / ${isCompanyMgmtIndustry(org.industry) ? `קו עסק: ${org.constructionTrade}` : `מקצוע בנייה: ${org.constructionTrade}`}`,
         `סריקות זמינות: זולות ${org.cheapScansRemaining}, פרימיום ${org.premiumScansRemaining}`,
         org.isVip ? "מנוי VIP" : null,
         org.trialEndsAt ? `ניסיון עד: ${org.trialEndsAt.slice(0, 10)}` : null,

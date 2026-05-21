@@ -69,6 +69,21 @@
   "contactPage": {
     "shellDescription": "Talk to us about a demo, org rollout or a workflow that fits your business."
   },
+  "marketingIndustries": {
+    "metaTitle": "Construction & company management",
+    "metaDescription": "Two work modes: construction with BOQ and field tools, or company management with CRM, ERP and internal projects.",
+    "eyebrow": "Industry modes",
+    "title": "One platform — two work modes",
+    "description": "Pick the path that fits: construction (plans, BOQ, Meckano) or company management (CRM, documents, projects, business scanning — no BOQ or Meckano).",
+    "construction": {
+      "title": "Construction & contracting",
+      "body": "Projects with BOQ, Gantt, Meckano, execution plans and field scans."
+    },
+    "companyMgmt": {
+      "title": "Company & business management",
+      "body": "CRM, ERP, internal projects, document studio and business scanning — without dedicated construction tools."
+    }
+  },
   "professionalPage": {
     "metaTitle": "Professional insights",
     "metaDescription": "Methodology, field notes and practical guidance for construction and professional services.",

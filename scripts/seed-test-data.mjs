@@ -154,6 +154,76 @@ async function main() {
     },
   });
 
+  const COMPANY_MGMT_DOMAIN = "company.bsd-ybm.test";
+  const companyMgmtOrg = await prisma.organization.upsert({
+    where: { tenantPublicDomain: COMPANY_MGMT_DOMAIN },
+    update: {
+      name: "BSD Demo Business Ltd",
+      industry: "COMPANY_MGMT",
+      constructionTrade: "GENERAL_BUSINESS",
+      subscriptionTier: "DEALER",
+      subscriptionStatus: "ACTIVE",
+      cheapScansRemaining: 100,
+      premiumScansRemaining: 20,
+      maxCompanies: 5,
+    },
+    create: {
+      name: "BSD Demo Business Ltd",
+      type: "COMPANY",
+      tenantPublicDomain: COMPANY_MGMT_DOMAIN,
+      industry: "COMPANY_MGMT",
+      constructionTrade: "GENERAL_BUSINESS",
+      subscriptionTier: "DEALER",
+      subscriptionStatus: "ACTIVE",
+      cheapScansRemaining: 100,
+      premiumScansRemaining: 20,
+      maxCompanies: 5,
+      industryConfigJson: { businessLine: "GENERAL_BUSINESS", boqMode: false },
+    },
+  });
+
+  await upsertUser({
+    email: "company@bsd-demo.test",
+    name: "מנהל עסק דמו",
+    role: "ORG_ADMIN",
+    organizationId: companyMgmtOrg.id,
+    passwordHash,
+  });
+
+  const companyProject = await prisma.project.upsert({
+    where: {
+      id: `${companyMgmtOrg.id}-demo-project`,
+    },
+    update: {
+      name: "bsd-ybm",
+      organizationId: companyMgmtOrg.id,
+      isActive: true,
+      budget: 250000,
+      status: "פעיל",
+    },
+    create: {
+      id: `${companyMgmtOrg.id}-demo-project`,
+      name: "bsd-ybm",
+      organizationId: companyMgmtOrg.id,
+      isActive: true,
+      budget: 250000,
+      status: "פעיל",
+    },
+  });
+
+  await prisma.paymentMilestone.deleteMany({
+    where: { projectId: companyProject.id, organizationId: companyMgmtOrg.id },
+  });
+  await prisma.paymentMilestone.createMany({
+    data: [
+      { projectId: companyProject.id, organizationId: companyMgmtOrg.id, name: "חתימת הסכם / הצעה", amount: 0, sortOrder: 0 },
+      { projectId: companyProject.id, organizationId: companyMgmtOrg.id, name: "מקדמה", amount: 50000, sortOrder: 1 },
+      { projectId: companyProject.id, organizationId: companyMgmtOrg.id, name: "אספקה / מסירה", amount: 80000, sortOrder: 2 },
+      { projectId: companyProject.id, organizationId: companyMgmtOrg.id, name: "חשבונית ביניים", amount: 60000, sortOrder: 3 },
+      { projectId: companyProject.id, organizationId: companyMgmtOrg.id, name: "סיום ומסירה", amount: 60000, sortOrder: 4 },
+    ],
+  });
+
   const users = await Promise.all([
     upsertUser({
       email: "owner@bsd-demo.test",
@@ -235,6 +305,11 @@ async function main() {
         name: "מגדלי כנפי נשרים - שלב ב",
         activeFrom: daysAgo(120),
         activeTo: daysFromNow(210),
+        autoSyncCrm: true,
+        crmSyncPolicyJson: {
+          syncDirection: "bidirectional",
+          onContactProjectChange: "sync",
+        },
       },
     }),
     prisma.project.create({
@@ -663,18 +738,39 @@ async function main() {
   }
   console.log(`Quote token: ${quote.token}`);
   console.log(`Issued documents: ${issuedDocs.map((d) => `${d.type} #${d.number}`).join(", ")}`);
+  await prisma.project.update({
+    where: { id: tower.id },
+    data: { primaryContactId: contacts[0].id },
+  });
+
+  const e2eEnvExample = `# העתק ל-e2e/.env.local לבדיקות Playwright
+E2E_EMAIL=owner@bsd-demo.test
+E2E_PASSWORD=${PASSWORD}
+E2E_PROJECT_ID=${tower.id}
+E2E_CONTACT_ID=${contacts[0].id}
+`;
+  const e2eExamplePath = path.resolve(process.cwd(), "e2e/.env.example");
+  fs.writeFileSync(e2eExamplePath, e2eEnvExample, "utf8");
+
   fs.writeFileSync(
     seedMarkerPath,
     JSON.stringify(
       {
         seededAt: new Date().toISOString(),
         organizationId: organization.id,
+        companyMgmtOrganizationId: companyMgmtOrg.id,
+        companyMgmtEmail: "company@bsd-demo.test",
         email: "owner@bsd-demo.test",
+        e2eProjectId: tower.id,
+        e2eContactId: contacts[0].id,
       },
       null,
       2,
     ),
   );
+  console.log(`E2E_PROJECT_ID=${tower.id}`);
+  console.log(`E2E_CONTACT_ID=${contacts[0].id}`);
+  console.log(`Wrote ${e2eExamplePath}`);
 }
 
 main()

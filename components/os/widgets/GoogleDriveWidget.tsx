@@ -39,6 +39,8 @@ import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/Knowledg
 import GoogleDriveDecodeReviewPanel, {
   type ReviewEditableItem,
 } from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
+import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
+import { useProjectPicker } from "@/hooks/use-project-picker";
 
 interface GoogleFile {
   id: string;
@@ -59,11 +61,15 @@ type WorkspaceInfo = {
 };
 
 type GoogleDriveWidgetProps = {
+  liveData?: Record<string, unknown> | null;
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
 
-export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWidgetProps) {
-  const { dir } = useI18n();
+export default function GoogleDriveWidget({
+  liveData = null,
+  openWorkspaceWidget,
+}: GoogleDriveWidgetProps) {
+  const { dir, t } = useI18n();
   const [files, setFiles] = useState<GoogleFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -448,6 +454,7 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
       return;
     }
     openWorkspaceWidget("aiScanner", {
+      projectId: boundProjectId || nav?.currentView?.projectId,
       driveImportFile: {
         fileId: file.id,
         fileName: file.name,
@@ -471,15 +478,117 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
     return <File className="text-slate-400" size={20} />;
   };
 
-  const applyDriveNav = useCallback((view: WidgetViewState) => {
-    const mode = view.viewMode as DriveViewMode | undefined;
-    if (mode) {
-      setViewMode(mode);
-      saveDriveViewMode(mode);
-    }
-  }, []);
+  const drivePrefix = "workspaceWidgets.googleDrive";
+  const [orgBrowseMode, setOrgBrowseMode] = useState(false);
+  const {
+    resolvedProjectId: boundProjectId,
+    selectedProjectName: boundProjectName,
+    projectsList,
+    projectsListLoading,
+    showProjectPicker,
+    loadProjectsList,
+    selectProject,
+    clearProject,
+  } = useProjectPicker({
+    initialProjectId:
+      typeof liveData?.projectId === "string" ? liveData.projectId : "",
+    listErrorKey: `${drivePrefix}.loadFailed`,
+  });
 
-  const { pushView: pushDriveView } = useSyncedWidgetNavigation(applyDriveNav);
+  const applyDriveNav = useCallback(
+    (view: WidgetViewState) => {
+      const mode = view.viewMode as DriveViewMode | undefined;
+      if (mode) {
+        setViewMode(mode);
+        saveDriveViewMode(mode);
+      }
+      const pid = typeof view.projectId === "string" ? view.projectId : null;
+      if (pid) {
+        setOrgBrowseMode(false);
+        selectProject(pid);
+      }
+    },
+    [selectProject],
+  );
+
+  const { pushView: pushDriveView, nav } = useSyncedWidgetNavigation(applyDriveNav);
+
+  useEffect(() => {
+    const pid = typeof liveData?.projectId === "string" ? liveData.projectId : "";
+    if (pid) {
+      setOrgBrowseMode(false);
+      selectProject(pid);
+    }
+  }, [liveData?.projectId, selectProject]);
+
+  useEffect(() => {
+    if (showProjectPicker && !orgBrowseMode) void loadProjectsList();
+  }, [showProjectPicker, orgBrowseMode, loadProjectsList]);
+
+  useEffect(() => {
+    const pid =
+      boundProjectId ||
+      (typeof nav?.currentView?.projectId === "string" ? nav.currentView.projectId : "");
+    if (!pid || orgBrowseMode) return;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/drive-folder`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok || !data.driveFolderId) return;
+        setFolderPath([{ id: data.driveFolderId, name: data.driveFolderName ?? "פרויקט" }]);
+        setCurrentFolderId(data.driveFolderId);
+        await fetchFiles(data.driveFolderId);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [boundProjectId, nav?.currentView?.projectId, fetchFiles, orgBrowseMode]);
+
+  const handleSelectProject = (id: string) => {
+    setOrgBrowseMode(false);
+    selectProject(id);
+    pushDriveView({ projectId: id });
+  };
+
+  const handleClearProject = () => {
+    setOrgBrowseMode(false);
+    clearProject();
+    setFolderPath([]);
+    setCurrentFolderId("workspace");
+    void fetchFiles("workspace");
+  };
+
+  if (showProjectPicker && !orgBrowseMode) {
+    return (
+      <div className="flex h-full min-h-0 flex-col" dir={dir}>
+        <ProjectPickerPanel
+          projects={projectsList}
+          loading={projectsListLoading}
+          onSelect={handleSelectProject}
+          titleKey={`${drivePrefix}.pickProjectTitle`}
+          descKey={`${drivePrefix}.pickProjectDesc`}
+          loadingKey={`${drivePrefix}.pickProjectLoading`}
+          emptyKey={`${drivePrefix}.noProjects`}
+          openCrmKey={openWorkspaceWidget ? `${drivePrefix}.openCrm` : undefined}
+          onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
+        />
+        <div className="shrink-0 border-t border-[color:var(--border-main)] p-3">
+          <button
+            type="button"
+            onClick={() => {
+              setOrgBrowseMode(true);
+              void fetchFiles("workspace");
+            }}
+            className="w-full rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+          >
+            {t(`${drivePrefix}.browseOrg`)}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const setView = (mode: DriveViewMode) => {
     setViewMode(mode);
@@ -597,8 +706,10 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
             <HardDrive size={24} />
           </div>
-          <div>
-            <h3 className="font-black text-sm uppercase tracking-widest">Google Drive</h3>
+          <div className="min-w-0">
+            <h3 className="font-black text-sm uppercase tracking-widest truncate">
+              {boundProjectName && !orgBrowseMode ? boundProjectName : "Google Drive"}
+            </h3>
             <div className="flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)] font-bold">
               {folderPath.map((folder, i) => (
                 <React.Fragment key={folder.id}>
@@ -617,6 +728,26 @@ export default function GoogleDriveWidget({ openWorkspaceWidget }: GoogleDriveWi
         </div>
 
         <div className="flex items-center gap-2">
+          {boundProjectId && !orgBrowseMode ? (
+            <button
+              type="button"
+              onClick={handleClearProject}
+              className="rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            >
+              {t(`${drivePrefix}.switchProject`)}
+            </button>
+          ) : orgBrowseMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOrgBrowseMode(false);
+                void loadProjectsList();
+              }}
+              className="rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            >
+              {t(`${drivePrefix}.pickProjectTitle`)}
+            </button>
+          ) : null}
           <KnowledgeVaultAttachButton
             onSelect={(item) => {
               if (item.webViewLink) window.open(item.webViewLink, "_blank", "noopener,noreferrer");

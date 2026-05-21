@@ -46,9 +46,14 @@ import {
 } from "@/lib/subscription-tier-config";
 import type { PlatformConfig } from "@/lib/platform-settings";
 import {
+  BUSINESS_LINE_IDS,
+  businessLineLabelHe,
+} from "@/lib/business-lines";
+import {
   CONSTRUCTION_TRADE_IDS,
   constructionTradeLabelHe,
 } from "@/lib/construction-trades";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import { osFieldClassName, osFieldInlineClassName } from "@/components/os/ui/os-field";
 import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
 
@@ -76,7 +81,9 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [editTier, setEditTier] = useState("FREE");
   const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editIndustry, setEditIndustry] = useState("CONSTRUCTION");
   const [editConstructionTrade, setEditConstructionTrade] = useState("GENERAL_CONTRACTOR");
+  const [createIndustry, setCreateIndustry] = useState("CONSTRUCTION");
   const [createConstructionTrade, setCreateConstructionTrade] = useState("GENERAL_CONTRACTOR");
   const [cheapDelta, setCheapDelta] = useState(0);
   const [premiumDelta, setPremiumDelta] = useState(0);
@@ -169,12 +176,20 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     void refreshAll();
   }, [refreshAll]);
 
+  useEffect(() => {
+    if (!platformConfig) return;
+    const def = normalizeIndustryType(platformConfig.defaultIndustryForRegistration);
+    setCreateIndustry(def);
+    setCreateConstructionTrade(def === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
+  }, [platformConfig?.defaultIndustryForRegistration]);
+
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId) ?? null;
 
   useEffect(() => {
     if (selectedOrg) {
       setEditTier(selectedOrg.subscriptionTier);
       setEditStatus(selectedOrg.subscriptionStatus);
+      setEditIndustry(normalizeIndustryType(selectedOrg.industry));
       setEditConstructionTrade(selectedOrg.constructionTrade ?? "GENERAL_CONTRACTOR");
     }
   }, [selectedOrg]);
@@ -185,6 +200,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
     fd.set("organizationId", selectedOrgId);
     fd.set("tier", editTier);
     fd.set("subscriptionStatus", editStatus);
+    fd.set("industry", editIndustry);
     fd.set("constructionTrade", editConstructionTrade);
     const r = await manageSubsUpdateSubscriptionAction(fd);
     if (!r.ok) {
@@ -284,6 +300,7 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
       fd.set("name", createName.trim());
       fd.set("organizationName", createOrgName.trim());
       fd.set("tier", createTier);
+      fd.set("industry", createIndustry);
       fd.set("constructionTrade", createConstructionTrade);
       if (createVip) fd.set("vip", "on");
       const r = await manageSubsCreateManualUserAction(fd);
@@ -306,6 +323,15 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
       setCreateOrgName("");
       setCreateTier("FREE");
       setCreateVip(false);
+      setCreateIndustry(
+        normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION"),
+      );
+      setCreateConstructionTrade(
+        normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION") ===
+          "COMPANY_MGMT"
+          ? "GENERAL_BUSINESS"
+          : "GENERAL_CONTRACTOR",
+      );
       await loadOrgs();
       await loadUsers();
     } finally {
@@ -529,15 +555,35 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                     ))}
                   </select>
                   <select
+                    value={createIndustry}
+                    onChange={(e) => {
+                      const next = normalizeIndustryType(e.target.value);
+                      setCreateIndustry(next);
+                      setCreateConstructionTrade(
+                        next === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR",
+                      );
+                    }}
+                    className={osFieldInlineClassName}
+                  >
+                    <option value="CONSTRUCTION">בנייה / קבלנות</option>
+                    <option value="COMPANY_MGMT">ניהול עסק / חברה</option>
+                  </select>
+                  <select
                     value={createConstructionTrade}
                     onChange={(e) => setCreateConstructionTrade(e.target.value)}
-                    className={`${osFieldInlineClassName} sm:col-span-2`}
+                    className={osFieldInlineClassName}
                   >
-                    {CONSTRUCTION_TRADE_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {constructionTradeLabelHe(id)}
-                      </option>
-                    ))}
+                    {createIndustry === "COMPANY_MGMT"
+                      ? BUSINESS_LINE_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {businessLineLabelHe(id)}
+                          </option>
+                        ))
+                      : CONSTRUCTION_TRADE_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {constructionTradeLabelHe(id)}
+                          </option>
+                        ))}
                   </select>
                   <label className="flex items-center gap-2 text-sm font-bold">
                     <input
@@ -567,7 +613,8 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <tr>
                     <th className="p-2 text-start">ארגון</th>
                     <th className="p-2 text-start">אימייל</th>
-                    <th className="p-2 text-start">מקצוע</th>
+                    <th className="p-2 text-start">ענף</th>
+                    <th className="p-2 text-start">התמחות</th>
                     <th className="p-2 text-start">מנוי</th>
                     <th className="p-2 text-start">סטטוס</th>
                   </tr>
@@ -584,9 +631,16 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                       <td className="p-2 font-semibold">{o.name}</td>
                       <td className="p-2 text-xs text-[color:var(--foreground-muted)]">{o.primaryEmail ?? "—"}</td>
                       <td className="p-2 text-xs">
-                        {constructionTradeLabelHe(
-                          (o.constructionTrade ?? "GENERAL_CONTRACTOR") as (typeof CONSTRUCTION_TRADE_IDS)[number],
-                        )}
+                        {normalizeIndustryType(o.industry) === "COMPANY_MGMT" ? "ניהול עסק" : "בנייה"}
+                      </td>
+                      <td className="p-2 text-xs">
+                        {normalizeIndustryType(o.industry) === "COMPANY_MGMT"
+                          ? businessLineLabelHe(
+                              (o.constructionTrade ?? "GENERAL_BUSINESS") as (typeof BUSINESS_LINE_IDS)[number],
+                            )
+                          : constructionTradeLabelHe(
+                              (o.constructionTrade ?? "GENERAL_CONTRACTOR") as (typeof CONSTRUCTION_TRADE_IDS)[number],
+                            )}
                       </td>
                       <td className="p-2">{tierLabelHe(o.subscriptionTier)}</td>
                       <td className="p-2">{o.subscriptionStatus}</td>
@@ -602,17 +656,42 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                   <p className="text-xs text-[color:var(--foreground-muted)]">
                     סריקות: {selectedOrg.cheapScansRemaining} זולות · {selectedOrg.premiumScansRemaining} פרימיום
                   </p>
-                  <label className="block text-xs font-bold">תת-תחום בנייה</label>
+                  <label className="block text-xs font-bold">ענף</label>
+                  <select
+                    value={editIndustry}
+                    onChange={(e) => {
+                      const next = normalizeIndustryType(e.target.value);
+                      setEditIndustry(next);
+                      if (next === "COMPANY_MGMT") {
+                        setEditConstructionTrade("GENERAL_BUSINESS");
+                      } else {
+                        setEditConstructionTrade("GENERAL_CONTRACTOR");
+                      }
+                    }}
+                    className={osFieldClassName}
+                  >
+                    <option value="CONSTRUCTION">בנייה / קבלנות</option>
+                    <option value="COMPANY_MGMT">ניהול עסק / חברה</option>
+                  </select>
+                  <label className="block text-xs font-bold">
+                    {editIndustry === "COMPANY_MGMT" ? "קו עסק" : "תת-תחום בנייה"}
+                  </label>
                   <select
                     value={editConstructionTrade}
                     onChange={(e) => setEditConstructionTrade(e.target.value)}
                     className={osFieldClassName}
                   >
-                    {CONSTRUCTION_TRADE_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {constructionTradeLabelHe(id)}
-                      </option>
-                    ))}
+                    {editIndustry === "COMPANY_MGMT"
+                      ? BUSINESS_LINE_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {businessLineLabelHe(id)}
+                          </option>
+                        ))
+                      : CONSTRUCTION_TRADE_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {constructionTradeLabelHe(id)}
+                          </option>
+                        ))}
                   </select>
                   <label className="block text-xs font-bold">רמת מנוי</label>
                   <select
@@ -738,7 +817,16 @@ export default function PlatformAdminConsole({ variant = "page" }: Props) {
                     <div>
                       <p className="font-bold">{u.email}</p>
                       <p className="text-xs text-[color:var(--foreground-muted)]">
-                        {u.organizationName ?? "ללא ארגון"} · {new Date(u.createdAt).toLocaleString("he-IL")}
+                        {u.organizationName ?? "ללא ארגון"}
+                        {u.organizationIndustry ? (
+                          <span className="me-1 rounded bg-[color:var(--surface-soft)] px-1.5 py-0.5 font-bold">
+                            {normalizeIndustryType(u.organizationIndustry) === "COMPANY_MGMT"
+                              ? "ניהול עסק"
+                              : "בנייה"}
+                          </span>
+                        ) : null}
+                        {" · "}
+                        {new Date(u.createdAt).toLocaleString("he-IL")}
                       </p>
                     </div>
                     <button

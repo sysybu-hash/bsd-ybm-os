@@ -1,0 +1,10 @@
+{
+  "businessLineLabels": {
+    "GENERAL_BUSINESS": "עסק כללי / חברה",
+    "SERVICES": "שירותים מקצועיים",
+    "TECH": "טכנולוגיה / מוצר",
+    "TRADE": "מסחר / יבוא",
+    "AGENCY": "סוכנות / שיווק",
+    "HOLDING": "החזקה / קבוצה"
+  }
+}

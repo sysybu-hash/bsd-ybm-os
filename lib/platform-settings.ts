@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AUTOMATION_CATALOG } from "@/lib/os-automations/catalog";
 import type { AutomationIntent } from "@/lib/os-automations/types";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
+import { normalizeIndustryType, type IndustryType } from "@/lib/professions/config";
 import { prisma } from "@/lib/prisma";
 
 const PLATFORM_SETTINGS_ID = "default";
@@ -27,6 +28,7 @@ export const platformConfigSchema = z.object({
   defaultTrialScans: z.number().int().min(0).max(10_000).default(30),
   automationEnabled: z.record(z.string(), z.boolean()).default({}),
   defaultConstructionTrade: z.string().default("GENERAL_CONTRACTOR"),
+  defaultIndustryForRegistration: z.string().default("CONSTRUCTION"),
   featureFlags: featureFlagsSchema.default({
     meckanoGlobal: true,
     geminiLiveEnabled: true,
@@ -50,6 +52,7 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
     AUTOMATION_CATALOG.map((e) => [e.id, true]),
   ) as Record<string, boolean>,
   defaultConstructionTrade: "GENERAL_CONTRACTOR",
+  defaultIndustryForRegistration: "CONSTRUCTION",
   featureFlags: {
     meckanoGlobal: true,
     geminiLiveEnabled: true,
@@ -77,6 +80,9 @@ function mergeWithDefaults(raw: unknown): PlatformConfig {
     ...base,
     automationEnabled,
     defaultConstructionTrade: normalizeConstructionTrade(base.defaultConstructionTrade),
+    defaultIndustryForRegistration: normalizeIndustryType(
+      base.defaultIndustryForRegistration,
+    ) as IndustryType,
     featureFlags: {
       ...DEFAULT_PLATFORM_CONFIG.featureFlags,
       ...base.featureFlags,
@@ -87,6 +93,11 @@ function mergeWithDefaults(raw: unknown): PlatformConfig {
 export async function getDefaultConstructionTradeForRegistration(): Promise<string> {
   const cfg = await getPlatformConfig();
   return normalizeConstructionTrade(cfg.defaultConstructionTrade);
+}
+
+export async function getDefaultIndustryForRegistration(): Promise<IndustryType> {
+  const cfg = await getPlatformConfig();
+  return normalizeIndustryType(cfg.defaultIndustryForRegistration) as IndustryType;
 }
 
 export async function getPlatformConfig(forceRefresh = false): Promise<PlatformConfig> {

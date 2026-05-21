@@ -20,9 +20,16 @@ export const GET = withWorkspacesAuth(async (req, ctx) => {
   }
 
   const user = await prisma.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
+    where: {
+      email: { equals: email, mode: "insensitive" },
+      organizationId: ctx.orgId,
+    },
     select: { emailVerified: true },
   });
 
-  return NextResponse.json({ isVerified: Boolean(user?.emailVerified) });
+  if (!user) {
+    return NextResponse.json({ isVerified: false, foundInOrg: false });
+  }
+
+  return NextResponse.json({ isVerified: Boolean(user.emailVerified), foundInOrg: true });
 });

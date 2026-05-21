@@ -83,8 +83,8 @@ export const SETTINGS_HUB_NAV_GROUPS: readonly SettingsHubNavGroup[] = [
       {
         id: "profession",
         href: `${BASE}/profession`,
-        label: "תחום בניה",
-        description: "התמחות, שפה מקצועית ותבניות",
+        label: "תחום העסק / מקצוע",
+        description: "ענף, התמחות, שפה מקצועית ותבניות",
         icon: BriefcaseBusiness,
       },
     ],

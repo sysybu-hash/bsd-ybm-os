@@ -10,6 +10,7 @@ export const WORKSPACE_ROUTES = {
   erp: "/app/erp",
   operations: "/app/operations",
   settingsOverview: "/app/settings/overview",
+  settingsProfession: "/app/settings/profession",
   settingsBilling: "/app/settings/billing",
   settingsAutomations: "/app/settings/automations",
   success: "/app/success",

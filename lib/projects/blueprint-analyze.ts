@@ -14,7 +14,9 @@ const BLUEPRINT_INSTRUCTION = `
 החזר אך ורק אובייקט JSON תקין בפורמט:
 {
   "tasks": [{ "name": "שם משימה", "startDate": "ISO-8601 אופציונלי", "endDate": "ISO-8601 אופציונלי" }],
-  "milestones": [{ "name": "תיאור שלב תשלום", "amount": מספר }]
+  "milestones": [{ "name": "תיאור שלב תשלום", "amount": מספר }],
+  "boqLineItems": [{ "description": "תיאור סעיף", "unit": "מ\"ר", "quantity": מספר, "note": "הערה", "confidence": 0.0-1.0 }],
+  "requiresReview": true
 }
 ללא טקסט נוסף מחוץ ל-JSON.
 `.trim();

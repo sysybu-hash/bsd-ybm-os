@@ -9,7 +9,6 @@ jest.mock("@/lib/os-automations/check-intent-enabled", () => ({
 const INTENT_PARAMS: Partial<Record<AutomationIntent, Record<string, unknown>>> = {
   open_widget: { widgetId: "dashboard" },
   scan_with_instructions: { userInstruction: "test" },
-  google_assistant_command: { query: "test" },
   create_task: { title: "Test task", projectName: "כללי" },
   create_contact: { name: "Test Client" },
   edit_issued_document: { documentId: "doc-test" },
@@ -72,9 +71,7 @@ describe("runAutomationAction", () => {
     expect(deps.clearLayout).toHaveBeenCalled();
   });
 
-  const LOCAL_INTENTS = AUTOMATION_INTENT_ENUM.filter(
-    (i) => i !== "google_assistant_command" && i !== "search_client",
-  );
+  const LOCAL_INTENTS = AUTOMATION_INTENT_ENUM.filter((i) => i !== "search_client");
 
   it.each(LOCAL_INTENTS)("intent %s returns ok with mock deps", async (intent) => {
     const deps = mockDeps();
@@ -86,19 +83,16 @@ describe("runAutomationAction", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("search_client and google_assistant_command with mocked fetch", async () => {
+  it("search_client with mocked fetch", async () => {
     const deps = mockDeps();
     const fetchFn = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ results: [], fulfillmentText: "ok" }),
+      json: async () => ({ results: [] }),
     });
     const prev = globalThis.fetch;
     globalThis.fetch = fetchFn as typeof fetch;
     try {
       expect((await runAutomationAction({ intent: "search_client", params: { query: "x" } }, deps)).ok).toBe(true);
-      expect(
-        (await runAutomationAction({ intent: "google_assistant_command", params: { query: "hi" } }, deps)).ok,
-      ).toBe(true);
     } finally {
       globalThis.fetch = prev;
     }

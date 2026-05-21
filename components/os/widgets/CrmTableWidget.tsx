@@ -4,6 +4,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Users, 
   Search, 
@@ -21,10 +22,25 @@ import {
   Save,
   User,
   Hash,
-  Upload
+  Upload,
+  LayoutDashboard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import { createProjectForContact } from '@/app/actions/crm';
+import type { WidgetType } from '@/hooks/use-window-manager';
+import { formatCurrencyILS, formatShortDate } from '@/lib/ui-formatters';
+
+type IssuedDocumentRow = {
+  id: string;
+  type: string;
+  number: number;
+  clientName: string;
+  total: number;
+  status: string;
+  date: string;
+  items: unknown;
+};
 
 interface Client {
   id: string;
@@ -35,9 +51,83 @@ interface Client {
   status: 'active' | 'lead' | 'inactive';
   lastContact: string;
   totalProjects: number;
+  projectId: string | null;
+  projectName: string | null;
+  issuedDocuments: IssuedDocumentRow[];
 }
 
-export default function CrmTableWidget() {
+const DOC_TYPE_LABELS: Record<string, string> = {
+  QUOTE: "הצעת מחיר",
+  TRANSACTION_INVOICE: "חשבונית עסקה",
+  INVOICE: "חשבונית",
+  INVOICE_RECEIPT: "חשבונית מס קבלה",
+  RECEIPT: "קבלה",
+  CREDIT_NOTE: "זיכוי",
+};
+
+const DOC_STATUS_LABELS: Record<string, string> = {
+  PENDING: "ממתין",
+  PAID: "שולם",
+  CANCELLED: "בוטל",
+};
+
+function mapIssuedDocuments(raw: unknown): IssuedDocumentRow[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) => {
+    const d = entry as Record<string, unknown>;
+    return {
+      id: String(d.id),
+      type: String(d.type ?? ""),
+      number: Number(d.number) || 0,
+      clientName: String(d.clientName ?? ""),
+      total: Number(d.total) || 0,
+      status: String(d.status ?? "PENDING"),
+      date: String(d.date ?? d.createdAt ?? ""),
+      items: d.items,
+    };
+  });
+}
+
+function issuedDocumentDescription(doc: IssuedDocumentRow): string {
+  const items = Array.isArray(doc.items) ? doc.items : [];
+  const first = items[0] as { desc?: string; description?: string } | undefined;
+  const lineDesc = first?.desc ?? first?.description;
+  if (lineDesc && String(lineDesc).trim()) return String(lineDesc).trim();
+  const typeLabel = DOC_TYPE_LABELS[doc.type] ?? doc.type;
+  return doc.number > 0 ? `${typeLabel} #${doc.number}` : typeLabel;
+}
+
+function issuedDocumentStatusClass(status: string): string {
+  if (status === "PAID") return "bg-emerald-500/10 text-emerald-500";
+  if (status === "CANCELLED") return "bg-slate-500/10 text-slate-500";
+  return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
+}
+
+type ProjectOption = { id: string; name: string };
+
+export type OpenWorkspaceWidgetFn = (
+  type: WidgetType,
+  data?: Record<string, unknown> | null,
+  options?: { maximize?: boolean },
+) => string | void;
+
+function CrmOverlayPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto bg-slate-900/80 p-4 backdrop-blur-md custom-scrollbar md:p-6">
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+export type CrmTableWidgetProps = {
+  openWorkspaceWidget?: OpenWorkspaceWidgetFn;
+};
+
+export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetProps) {
   const { dir, t } = useI18n();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,17 +150,48 @@ export default function CrmTableWidget() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
+  const [savingProject, setSavingProject] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [projectSyncMeta, setProjectSyncMeta] = useState<{
+    autoSyncCrm: boolean;
+    primaryContactId: string | null;
+  } | null>(null);
 
-  const mapContactRow = (c: Record<string, unknown>): Client => ({
-    id: String(c.id),
-    name: String(c.name ?? ""),
-    email: (c.email as string | null) ?? null,
-    phone: (c.phone as string | null) ?? null,
-    notes: (c.notes as string | null) ?? null,
-    status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
-    lastContact: String(c.createdAt ?? new Date().toISOString()),
-    totalProjects: 0,
-  });
+  const mapContactRow = (c: Record<string, unknown>): Client => {
+    const project = c.project as { id?: string; name?: string } | null | undefined;
+    return {
+      id: String(c.id),
+      name: String(c.name ?? ""),
+      email: (c.email as string | null) ?? null,
+      phone: (c.phone as string | null) ?? null,
+      notes: (c.notes as string | null) ?? null,
+      status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
+      lastContact: String(c.createdAt ?? new Date().toISOString()),
+      totalProjects: project?.id ? 1 : 0,
+      projectId: project?.id ?? null,
+      projectName: project?.name ?? null,
+      issuedDocuments: mapIssuedDocuments(c.issuedDocuments),
+    };
+  };
+
+  const loadProjectOptions = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      const json = await res.json();
+      if (!res.ok) return;
+      const list = Array.isArray(json.projects) ? json.projects : Array.isArray(json) ? json : [];
+      setProjectOptions(
+        list.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProjectOptions();
+  }, [loadProjectOptions]);
 
   useEffect(() => {
     void fetchClients(false);
@@ -112,10 +233,16 @@ export default function CrmTableWidget() {
           phone: selectedClient.phone,
           notes: selectedClient.notes,
           status: selectedClient.status,
+          projectId: selectedClient.projectId,
         }),
       });
 
       if (res.ok) {
+        const json = (await res.json()) as { contact?: Record<string, unknown> };
+        if (json.contact) {
+          const refreshed = mapContactRow(json.contact);
+          setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
+        }
         toast.success(t("workspaceWidgets.crmTable.updated"));
         setIsEditing(false);
         fetchClients();
@@ -125,6 +252,157 @@ export default function CrmTableWidget() {
     } catch (err) {
       toast.error(t("workspaceWidgets.crmTable.updateFailed"));
     }
+  };
+
+  useEffect(() => {
+    if (!selectedClient?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, {
+          credentials: "include",
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { contact?: Record<string, unknown> };
+        if (!data.contact || cancelled) return;
+        const refreshed = mapContactRow(data.contact);
+        setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
+        setClients((prev) => prev.map((c) => (c.id === refreshed.id ? { ...c, ...refreshed } : c)));
+      } catch {
+        /* פרטי מסמכים אופציונליים */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- רענון לפי מזהה לקוח בלבד
+  }, [selectedClient?.id]);
+
+  useEffect(() => {
+    if (!selectedClient?.projectId) {
+      setProjectSyncMeta(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/projects/${selectedClient.projectId}`, {
+          credentials: "include",
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          project?: { autoSyncCrm?: boolean; primaryContactId?: string | null };
+        };
+        if (!cancelled) {
+          setProjectSyncMeta({
+            autoSyncCrm: Boolean(data.project?.autoSyncCrm),
+            primaryContactId: data.project?.primaryContactId ?? null,
+          });
+        }
+      } catch {
+        if (!cancelled) setProjectSyncMeta(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClient?.projectId, selectedClient?.id]);
+
+  const crmSyncStatus: "unlinked" | "syncing" | "synced" | "linked" = (() => {
+    if (savingProject) return "syncing";
+    if (!selectedClient?.projectId) return "unlinked";
+    if (projectSyncMeta?.autoSyncCrm) {
+      if (projectSyncMeta.primaryContactId === selectedClient.id) return "synced";
+      return "linked";
+    }
+    return "linked";
+  })();
+
+  const saveClientProject = async (projectId: string | null) => {
+    if (!selectedClient || savingProject) return;
+    if (projectId) {
+      const check = await fetch(
+        `/api/crm/contacts/${selectedClient.id}/project-change-check?nextProjectId=${encodeURIComponent(projectId)}`,
+        { credentials: "include" },
+      ).catch(() => null);
+      if (check?.ok) {
+        const j = (await check.json()) as { allowed?: boolean; warn?: string };
+        if (j.allowed === false) {
+          toast.error(j.warn ?? "שינוי שיוך חסום");
+          return;
+        }
+        if (j.warn && !window.confirm(j.warn)) return;
+      }
+    }
+    setSavingProject(true);
+    try {
+      const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      if (!res.ok) throw new Error("patch failed");
+      const json = await res.json();
+      const contact = json.contact as Record<string, unknown> | undefined;
+      const proj = contact?.project as { id?: string; name?: string } | null;
+      const updated: Client = contact
+        ? mapContactRow(contact)
+        : {
+            ...selectedClient,
+            projectId: proj?.id ?? null,
+            projectName: proj?.name ?? null,
+            totalProjects: proj?.id ? 1 : 0,
+          };
+      setSelectedClient(updated);
+      setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      toast.success("שיוך פרויקט עודכן");
+    } catch {
+      toast.error("עדכון שיוך פרויקט נכשל");
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleCreateProjectForClient = async () => {
+    if (!selectedClient) return;
+    setCreatingProject(true);
+    try {
+      const result = await createProjectForContact({ contactId: selectedClient.id });
+      if (!result.ok) {
+        toast.error(result.error ?? "יצירת פרויקט נכשלה");
+        return;
+      }
+      const updated: Client = {
+        ...selectedClient,
+        projectId: result.projectId,
+        projectName: result.projectName,
+        totalProjects: 1,
+      };
+      setSelectedClient(updated);
+      setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      await loadProjectOptions();
+      toast.success("פרויקט נוצר ושויך");
+    } catch {
+      toast.error("יצירת פרויקט נכשלה");
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
+  const openProjectHub = (client?: Client) => {
+    const target = client ?? selectedClient;
+    if (!target?.projectId || !openWorkspaceWidget) return;
+    const projectId = target.projectId;
+    const name = target.projectName ?? undefined;
+    if (!client) {
+      setSelectedClient(null);
+      setIsEditing(false);
+    }
+    openWorkspaceWidget(
+      "project",
+      { projectId, name },
+      { maximize: true },
+    );
   };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,7 +535,7 @@ export default function CrmTableWidget() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
+    <div className="flex min-h-0 flex-1 w-full min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       <OsConfirmDialog
         open={deleteTargetId !== null}
         title={t("workspaceWidgets.crmTable.deleteTitle")}
@@ -309,8 +587,8 @@ export default function CrmTableWidget() {
       {/* Kanban Board / Table Area */}
       <div className="flex-1 min-w-0 overflow-auto custom-scrollbar relative">
         {isAddingClient && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl">
+          <CrmOverlayPortal>
+            <div className="w-full max-w-md shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                   <UserPlus className="text-emerald-600 dark:text-emerald-400" size={24} /> הוספת לקוח חדש
@@ -381,12 +659,12 @@ export default function CrmTableWidget() {
                 </button>
               </div>
             </div>
-          </div>
+          </CrmOverlayPortal>
         )}
 
         {selectedClient && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-6 overflow-auto custom-scrollbar">
-            <div className="w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh]">
+          <CrmOverlayPortal>
+            <div className="my-auto flex w-full max-w-4xl max-h-[min(90vh,calc(100vh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-2xl">
               {/* Modal Header */}
               <div className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start">
                 <div className="flex items-center gap-6">
@@ -472,23 +750,76 @@ export default function CrmTableWidget() {
                   <div className="md:col-span-2 space-y-8">
                     <section>
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">פרויקטים פעילים</h4>
-                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded text-[10px] font-bold text-slate-500">{selectedClient.totalProjects} פרויקטים</span>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">פרויקט משויך</h4>
                       </div>
-                      <div className="grid grid-cols-1 gap-4">
-                        {/* Placeholder for real projects */}
-                        <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 flex items-center justify-between group hover:border-emerald-500/30 transition-all cursor-pointer">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                              <Hash size={20} />
-                            </div>
-                            <div>
-                              <div className="font-bold text-slate-900 dark:text-white">שיפוץ וילה הרצליה</div>
-                              <div className="text-[10px] text-slate-500 font-bold uppercase">סטטוס: בביצוע</div>
-                            </div>
-                          </div>
-                          <ChevronDown size={16} className="text-slate-400 -rotate-90 group-hover:translate-x-1 transition-all" />
+                      <div className="space-y-3 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-[9px] font-bold text-slate-500 uppercase block">בחר פרויקט</label>
+                          <span
+                            className="inline-flex items-center gap-1.5 text-[10px] font-bold"
+                            title={t("workspaceWidgets.crmTable.syncStatusHint")}
+                          >
+                            <span
+                              className={`h-2 w-2 rounded-full ${
+                                crmSyncStatus === "syncing"
+                                  ? "animate-pulse bg-amber-400"
+                                  : crmSyncStatus === "synced"
+                                    ? "bg-emerald-500"
+                                    : crmSyncStatus === "linked"
+                                      ? "bg-sky-500"
+                                      : "bg-slate-400"
+                              }`}
+                            />
+                            {crmSyncStatus === "syncing"
+                              ? t("workspaceWidgets.crmTable.syncSyncing")
+                              : crmSyncStatus === "synced"
+                                ? t("workspaceWidgets.crmTable.syncSynced")
+                                : crmSyncStatus === "linked"
+                                  ? t("workspaceWidgets.crmTable.syncLinked")
+                                  : t("workspaceWidgets.crmTable.syncUnlinked")}
+                          </span>
                         </div>
+                        <select
+                          className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 px-3 py-2 text-sm"
+                          value={selectedClient.projectId ?? ""}
+                          disabled={savingProject}
+                          onChange={(e) => {
+                            void saveClientProject(e.target.value || null);
+                          }}
+                        >
+                          <option value="">ללא פרויקט</option>
+                          {projectOptions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={creatingProject}
+                            onClick={() => void handleCreateProjectForClient()}
+                            className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                          >
+                            {creatingProject ? "יוצר…" : "פרויקט חדש"}
+                          </button>
+                          {selectedClient.projectId && openWorkspaceWidget ? (
+                            <button
+                              type="button"
+                              onClick={() => openProjectHub()}
+                              className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300"
+                            >
+                              {t("workspaceWidgets.crmTable.openControlCenter")}
+                            </button>
+                          ) : null}
+                        </div>
+                        {selectedClient.projectName ? (
+                          <p className="text-xs text-slate-600 dark:text-slate-300">
+                            מקושר ל: <span className="font-bold">{selectedClient.projectName}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-500">אין פרויקט משויך</p>
+                        )}
                       </div>
                     </section>
 
@@ -505,12 +836,37 @@ export default function CrmTableWidget() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                            <tr>
-                              <td className="px-6 py-4 text-slate-500 font-medium">12/05/2026</td>
-                              <td className="px-6 py-4 text-slate-900 dark:text-slate-200 font-bold">מקדמה פרויקט הרצליה</td>
-                              <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-black">₪45,000</td>
-                              <td className="px-6 py-4"><span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-[4px] text-[9px] font-bold">שולם</span></td>
-                            </tr>
+                            {selectedClient.issuedDocuments.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  className="px-6 py-8 text-center text-slate-500 dark:text-slate-400 font-medium"
+                                >
+                                  אין מסמכים פיננסיים ללקוח זה
+                                </td>
+                              </tr>
+                            ) : (
+                              selectedClient.issuedDocuments.map((doc) => (
+                                <tr key={doc.id}>
+                                  <td className="px-6 py-4 text-slate-500 font-medium">
+                                    {doc.date ? formatShortDate(doc.date) : "—"}
+                                  </td>
+                                  <td className="px-6 py-4 text-slate-900 dark:text-slate-200 font-bold">
+                                    {issuedDocumentDescription(doc)}
+                                  </td>
+                                  <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 font-black">
+                                    {formatCurrencyILS(doc.total)}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-[4px] text-[9px] font-bold ${issuedDocumentStatusClass(doc.status)}`}
+                                    >
+                                      {DOC_STATUS_LABELS[doc.status] ?? doc.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -519,11 +875,11 @@ export default function CrmTableWidget() {
                 </div>
               </div>
             </div>
-          </div>
+          </CrmOverlayPortal>
         )}
 
         <div className="overflow-x-auto min-w-0">
-          <table className="w-full border-collapse min-w-[800px]">
+          <table className="w-full border-collapse min-w-[920px]">
           <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
             <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
               <th className="px-6 py-4">לקוח / חברה</th>
@@ -531,7 +887,7 @@ export default function CrmTableWidget() {
               <th className="px-6 py-4">פרטי קשר</th>
               <th className="px-6 py-4">פרויקטים</th>
               <th className="px-6 py-4">קשר אחרון</th>
-              <th className="px-6 py-4 w-20"></th>
+              <th className="px-6 py-4 min-w-[11rem]">{t("workspaceWidgets.crmTable.columnActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[color:var(--border-main)]/30">
@@ -577,11 +933,18 @@ export default function CrmTableWidget() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-xs font-bold text-[color:var(--foreground-main)] border border-[color:var(--border-main)]">
-                      {client.totalProjects}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-xs font-bold text-[color:var(--foreground-main)] border border-[color:var(--border-main)]">
+                        {client.totalProjects}
+                      </div>
+                      <span className="text-[10px] text-[color:var(--foreground-muted)] font-bold uppercase">פרויקטים</span>
                     </div>
-                    <span className="text-[10px] text-[color:var(--foreground-muted)] font-bold uppercase">פרויקטים</span>
+                    {client.projectName ? (
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 truncate max-w-[12rem]" title={client.projectName}>
+                        {client.projectName}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -590,19 +953,37 @@ export default function CrmTableWidget() {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditing(true); }}
-                      className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                    <button 
-                      onClick={(e) => handleDeleteClient(client.id, e)}
-                      className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {client.projectId && openWorkspaceWidget ? (
+                      <button
+                        type="button"
+                        title={t("workspaceWidgets.crmTable.openControlCenter")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openProjectHub(client);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors shrink-0"
+                      >
+                        <LayoutDashboard size={12} className="shrink-0" />
+                        <span className="hidden sm:inline">{t("workspaceWidgets.crmTable.openControlCenter")}</span>
+                      </button>
+                    ) : null}
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditing(true); }}
+                        className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={(e) => handleDeleteClient(client.id, e)}
+                        className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </td>
               </tr>

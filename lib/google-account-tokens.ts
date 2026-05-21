@@ -3,12 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { PRODUCTION_SITE_URL, resolveSiteBaseUrl } from "@/lib/site-url";
 
 const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+
+/** התחברות בלבד — ללא Drive (Restricted); Drive נדרש רק ב-reconnect */
+export const GOOGLE_SIGN_IN_SCOPES = ["openid", "email", "profile"].join(" ");
+
 const GOOGLE_OAUTH_SCOPES = [
   "openid",
   "email",
   "profile",
   GOOGLE_DRIVE_SCOPE,
 ].join(" ");
+
+export function googleSignInScopes(): string {
+  return GOOGLE_SIGN_IN_SCOPES;
+}
 
 export function getGoogleReconnectCallbackUri(): string {
   const base = resolveSiteBaseUrl() ?? PRODUCTION_SITE_URL;

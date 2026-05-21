@@ -14,6 +14,7 @@ import {
   validateTriEngineRequest,
 } from "@/lib/tri-engine-api-common";
 import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
+import { isExplicitClientScanMode } from "@/lib/scan-classify";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -59,16 +60,26 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
     });
   }
 
+  const orgRow = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { industry: true },
+  });
+  const orgIndustry = orgRow?.industry ?? "CONSTRUCTION";
+
   let scanMode = parsed.scanMode;
   let engineRunMode = parsed.engineRunMode;
   if (engineRunMode === "AUTO") {
-    const mime = parsed.file.type || "application/octet-stream";
-    const classification = classifyScanDocumentHeuristic({
-      fileName: parsed.file.name,
-      mimeType: mime,
-      userInstruction: parsed.userInstruction,
-    });
-    scanMode = classification.scanMode;
+    const clientExplicit = isExplicitClientScanMode(parsed.scanMode);
+    if (!clientExplicit) {
+      const mime = parsed.file.type || "application/octet-stream";
+      const classification = classifyScanDocumentHeuristic({
+        fileName: parsed.file.name,
+        mimeType: mime,
+        userInstruction: parsed.userInstruction,
+        industry: orgIndustry,
+      });
+      scanMode = classification.scanMode;
+    }
     const plan = resolveTriEnginePlan(scanMode, "AUTO");
     engineRunMode = plan.effectiveRunMode;
   }
@@ -110,6 +121,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
           fileName: parsed.file.name,
           mimeType: parsed.file.type || "application/octet-stream",
           userInstruction: parsed.userInstruction,
+          industry: orgIndustry,
         });
         const plan = resolveTriEnginePlan(classification.scanMode, "AUTO");
         await writeLine({

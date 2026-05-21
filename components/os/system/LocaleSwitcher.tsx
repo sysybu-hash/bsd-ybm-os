@@ -86,7 +86,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[1200] cursor-default bg-transparent"
+            className="fixed inset-0 z-[1100] cursor-default bg-transparent"
             aria-label="סגור"
             onClick={() => setOpen(false)}
           />

@@ -42,7 +42,8 @@
     --workspace-chrome-height: 3.5rem;
     --workspace-chrome-bg: var(--glass-bg);
     --workspace-chrome-border: var(--glass-border);
-    --workspace-chrome-omnibar-offset: 5.5rem;
+    --workspace-chrome-omnibar-offset: 4.25rem;
+    --workspace-header-height: 4rem;
 
     /* Spatial Glass OS — מסגרות חלונות workspace */
     --window-radius: 22px;
@@ -62,7 +63,9 @@
 
   /* גובה סרגל תחתון במובייל (ניווט + safe area) */
     --mobile-chrome-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-    --desktop-dock-clearance: 10.5rem;
+    --workspace-inset-top: calc(var(--workspace-header-height) + env(safe-area-inset-top, 0px));
+    --workspace-inset-bottom: var(--mobile-chrome-bottom);
+    --desktop-dock-clearance: 7rem;
     --os-sidebar-rail-width: 4.5rem;
     --os-sidebar-gap: 1.25rem;
 
@@ -642,8 +645,19 @@
   touch-action: manipulation;
 }
 
+.workspace-window--mobile {
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --workspace-inset-bottom: var(--desktop-dock-clearance);
+  }
+}
+
 .os-floating-panel--maximized {
-  inset: calc(4rem + env(safe-area-inset-top, 0px)) 0.625rem var(--mobile-chrome-bottom, 5.5rem) 0.625rem;
+  inset: var(--workspace-inset-top) 0.625rem var(--workspace-inset-bottom) 0.625rem;
   width: auto !important;
   max-width: none !important;
   max-height: none !important;

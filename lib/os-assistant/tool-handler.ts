@@ -6,11 +6,7 @@ import type { AutomationAction, AutomationRunnerDeps } from "@/lib/os-automation
 export type OsAssistantToolDeps = Pick<AutomationRunnerDeps, "openWidget"> &
   Partial<Omit<AutomationRunnerDeps, "openWidget">>;
 
-const SERVER_TOOL_NAMES = new Set([
-  "run_automation",
-  "execute_user_command",
-  "google_assistant_command",
-]);
+const SERVER_TOOL_NAMES = new Set(["run_automation", "execute_user_command"]);
 
 async function executeToolOnServer(
   name: string,
@@ -106,23 +102,6 @@ export async function handleOsAssistantToolCall(
       return `נמצאו ${results.length} תוצאות. מובילות: ${top}`;
     } catch {
       return "שגיאה בחיפוש במערכת";
-    }
-  }
-
-  if (name === "google_assistant_command") {
-    const query = typeof args.query === "string" ? args.query.trim() : "";
-    if (!query) return "חסרה פקודה";
-    try {
-      const res = await fetch("/api/os/google-assistant/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-        credentials: "include",
-      });
-      const data = await res.json();
-      return typeof data.fulfillmentText === "string" ? data.fulfillmentText : "בוצע";
-    } catch {
-      return "שגיאה בביצוע פקודת Google Assistant";
     }
   }
 

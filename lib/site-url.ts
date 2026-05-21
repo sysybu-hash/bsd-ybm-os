@@ -1,5 +1,6 @@
 /** כתובת אתר ראשית בפרודקשן */
-export const PRODUCTION_SITE_URL = "https://bsd-ybm.co.il";
+/** דומיין קנוני ל-OAuth / מדיניות (תואם legal-site.publicUrl) */
+export const PRODUCTION_SITE_URL = "https://www.bsd-ybm.co.il";
 
 /**
  * כתובת בסיס ל-NextAuth / OAuth — תמיד HTTPS בפרודקשן.

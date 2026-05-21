@@ -15,6 +15,7 @@ export type IndustryType =
   | "LEGAL" 
   | "ACCOUNTING" 
   | "CONSTRUCTION" 
+  | "COMPANY_MGMT"
   | "MEDICAL" 
   | "RETAIL" 
   | "REAL_ESTATE";
@@ -27,6 +28,9 @@ const INDUSTRY_ALIASES: Record<string, IndustryType> = {
   ACCOUNTING: "ACCOUNTING",
   CONTRACTOR: "CONSTRUCTION",
   CONSTRUCTION: "CONSTRUCTION",
+  BUSINESS: "COMPANY_MGMT",
+  COMPANY_MANAGEMENT: "COMPANY_MGMT",
+  COMPANY_MGMT: "COMPANY_MGMT",
   HEALTH: "MEDICAL",
   MEDICAL: "MEDICAL",
   RETAIL: "RETAIL",
@@ -170,6 +174,48 @@ export const INDUSTRY_CONFIGS: Record<IndustryType, IndustryConfig> = {
       ]
     },
     aiInstructions: "Analyze for materials, quantities, billing amounts, contractor names, and site management data in Israeli construction contexts."
+  },
+  COMPANY_MGMT: {
+    id: "COMPANY_MGMT",
+    label: "ניהול העסק / החברה",
+    iconName: "Briefcase",
+    vocabulary: {
+      client: "לקוח / שותף עסקי",
+      project: "יוזמה / פרויקט",
+      document: "מסמך / חוזה / הצעה",
+      inventory: "מלאי / רכש",
+    },
+    features: {
+      hasCrm: true,
+      hasErp: true,
+      hasInventory: true,
+      hasFleet: false,
+      hasConstructionPlan: false,
+    },
+    scanner: {
+      title: "סריקת מסמכים עסקיים (Vision AI)",
+      subtitle: "חשבוניות, חוזים, הצעות מחיר ודוחות פעילות — לניהול חברה ומשרד",
+      dropzoneTitle: "גרור חשבוניות, חוזים או דוחות",
+      dropzoneSub: "תמיכה ב-PDF, JPG, PNG",
+      analysisTypes: [
+        { id: "VENDOR_INVOICE", label: "חשבונית ספק", description: "רכש, שירותים ומע״מ לתשלום" },
+        { id: "CLIENT_INVOICE", label: "חשבונית ללקוח", description: "חיוב לקוח, סעיפים ותנאי תשלום" },
+        { id: "SERVICE_CONTRACT", label: "חוזה שירות / הסכם", description: "תקופה, סעיפים, צדדים והתחייבויות" },
+        { id: "QUOTE_PROPOSAL", label: "הצעת מחיר", description: "סעיפי הצעה, מחירים ותוקף" },
+        { id: "ACTIVITY_REPORT", label: "דוח פעילות / סטטוס", description: "סיכום ביצוע, KPI או דוח תקופתי" },
+        { id: "INTERNAL_APPROVAL", label: "אישור הנהלה", description: "אישור הוצאה, רכש או ביצוע פנימי" },
+        { id: "RECEIPT", label: "קבלה / אישור תשלום", description: "אישור תשלום או החזר" },
+      ],
+      resultColumns: [
+        { key: "counterparty", label: "צד עסקי" },
+        { key: "doc_type", label: "סוג מסמך" },
+        { key: "project_or_initiative", label: "פרויקט / יוזמה" },
+        { key: "total_amount", label: "סכום" },
+        { key: "due_date", label: "מועד / תאריך" },
+      ],
+    },
+    aiInstructions:
+      "Analyze business documents for vendors, clients, contracts, proposals, approvals, and corporate accounting in Israeli business context. Avoid construction-site or BOQ terminology unless explicitly present.",
   },
   MEDICAL: {
     id: "MEDICAL",

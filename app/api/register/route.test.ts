@@ -42,6 +42,13 @@ jest.mock("@/lib/prisma", () => ({
 
 jest.mock("@/lib/mail", () => ({
   sendRegistrationWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+  sendRegistrationCredentialsEmail: jest.fn().mockResolvedValue({ ok: true }),
+}));
+
+jest.mock("@/lib/password", () => ({
+  generateProvisionPassword: jest.fn(() => "GeneratedPass1!"),
+  hashPassword: jest.fn(async () => "hashed"),
+  validatePasswordStrength: jest.fn(() => ({ ok: true })),
 }));
 
 jest.mock("@/lib/trial", () => ({
@@ -52,9 +59,11 @@ jest.mock("@/lib/platform-settings", () => ({
   getPlatformConfig: jest.fn().mockResolvedValue({
     registrationOpen: true,
     defaultConstructionTrade: "general",
+    defaultIndustryForRegistration: "CONSTRUCTION",
     featureFlags: { automationIntents: {} },
   }),
   getDefaultConstructionTradeForRegistration: jest.fn().mockResolvedValue("general"),
+  getDefaultIndustryForRegistration: jest.fn().mockResolvedValue("CONSTRUCTION"),
   isRegistrationOpen: jest.fn().mockResolvedValue(true),
 }));
 
@@ -103,7 +112,7 @@ describe("POST /api/register", () => {
         name: "Owner",
         organizationName: "Example Org",
         orgType: "company",
-        industry: "general",
+        industry: "CONSTRUCTION",
       }),
     );
 
@@ -126,6 +135,7 @@ describe("POST /api/register", () => {
             name: "Owner",
             role: "ORG_ADMIN",
             accountStatus: "PENDING_APPROVAL",
+            passwordHash: "hashed",
           },
         },
       }),
@@ -148,7 +158,7 @@ describe("POST /api/register", () => {
         organizationName: "Paid Org",
         plan: "company",
         orgType: "enterprise",
-        industry: "lawyer",
+        industry: "CONSTRUCTION",
       }),
     );
 
@@ -171,6 +181,7 @@ describe("POST /api/register", () => {
             name: "Pro User",
             role: "ORG_ADMIN",
             accountStatus: "ACTIVE",
+            passwordHash: "hashed",
           },
         },
       }),
@@ -183,6 +194,26 @@ describe("POST /api/register", () => {
         accountActive: true,
       }),
     );
+  });
+
+  test("creates COMPANY_MGMT org when industry is business", async () => {
+    const response = await POST(
+      createMockRequest({
+        email: "biz@example.com",
+        name: "Biz Owner",
+        organizationName: "Biz Org",
+        industry: "COMPANY_MGMT",
+        constructionTrade: "SERVICES",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.organization.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        industry: "COMPANY_MGMT",
+        constructionTrade: "SERVICES",
+      }),
+    });
   });
 
   test("returns conflict when email already exists", async () => {

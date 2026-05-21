@@ -44,6 +44,10 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
       if (state.openPreviewPanel) return "preview";
       return null;
     }
+    case "settings": {
+      const segment = state.segment as string | undefined;
+      return segment?.trim() ? segment.trim() : null;
+    }
     default:
       return null;
   }
@@ -82,6 +86,8 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
       if (raw === "preview") return { openPreviewPanel: true };
       return null;
     }
+    case "settings":
+      return { segment: raw };
     default:
       return null;
   }

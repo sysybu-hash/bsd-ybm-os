@@ -36,7 +36,14 @@ export type TriEngineRunMode =
 
 export function parseScanMode(raw: string | null): ScanModeV5 {
   const u = String(raw ?? "").toUpperCase();
-  if (u === "INVOICE_FINANCIAL" || u === "DRAWING_BOQ" || u === "GENERAL_DOCUMENT") {
+  if (
+    u === "INVOICE_FINANCIAL" ||
+    u === "DRAWING_BOQ" ||
+    u === "GENERAL_DOCUMENT" ||
+    u === "QUOTE_BOQ" ||
+    u === "PROGRESS_BILL" ||
+    u === "SITE_LOG"
+  ) {
     return u;
   }
   return "GENERAL_DOCUMENT";

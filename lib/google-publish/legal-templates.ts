@@ -48,7 +48,7 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         },
         {
           heading: "התחברות Google ו-Google Drive",
-          body: `בהתחברות עם Google אנו מקבלים מזהה, אימייל ושם פרופיל (openid, email, profile). בחיבור אופציונלי ל-Google Drive נדרשת הרשאת ${legalSite.siteName} לגישה לקבצים ותיקיות בחשבון Google שלכם (scope: https://www.googleapis.com/auth/drive) לצורך סנכרון תיקיית עבודה, הצגת קבצים, העלאה ופענוח מסמכים ל-ERP. תוכן קבצים שתבחרו לעיבוד עשוי להישמר בשרתינו. לא נמכור מידע זה לצדדים שלישיים. ביטול: הגדרות במערכת, או https://myaccount.google.com/permissions — פירוט: ${legalSite.publicUrl}/integrations/google. פניות: ${legalSite.contactEmail}.`,
+          body: `בהתחברות עם Google אנו מקבלים מזהה, אימייל ושם פרופיל (openid, email, profile) בלבד. חיבור Google Drive הוא נפרד ואופציונלי — רק לאחר התחברות, דרך הגדרות המערכת, עם הרשאת ${legalSite.siteName} לגישה לקבצים ותיקיות (scope: https://www.googleapis.com/auth/drive) לסנכרון תיקיית עבודה, הצגת קבצים, העלאה ופענוח מסמכים ל-ERP. תוכן קבצים שתבחרו לעיבוד עשוי להישמר בשרתינו. לא נמכור מידע זה לצדדים שלישיים. ביטול: הגדרות במערכת, או https://myaccount.google.com/permissions — פירוט: ${legalSite.publicUrl}/integrations/google. פניות: ${legalSite.contactEmail}.`,
         },
       ],
     },

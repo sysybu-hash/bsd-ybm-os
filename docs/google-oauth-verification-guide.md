@@ -44,20 +44,24 @@
 
 ## 3. OAuth Client (Credentials)
 
-Redirect URIs (ייצור):
+Redirect URIs (ייצור) — **חובה גם reconnect**:
 
 ```
 https://www.bsd-ybm.co.il/api/auth/callback/google
-https://bsd-ybm.co.il/api/auth/callback/google
+https://www.bsd-ybm.co.il/api/auth/google-reconnect/callback
 ```
 
-(אם משתמשים רק ב-www, אפשר רק שורה אחת — אבל redirect חייב להתאים בדיוק ל-`NEXTAUTH_URL`.)
+(אופציונלי — אם יש redirect מ-www: `https://bsd-ybm.co.il/...` עם אותם שני נתיבים. ה-host חייב להתאים בדיוק ל-`NEXTAUTH_URL`.)
 
 פיתוח:
 
 ```
 http://localhost:3000/api/auth/callback/google
+http://localhost:3000/api/auth/google-reconnect/callback
 ```
+
+**התחברות (sign-in):** scopes `openid`, `email`, `profile` בלבד — ראו `lib/auth.ts`.  
+**Google Drive (Restricted):** scope `https://www.googleapis.com/auth/drive` רק ב-`/api/auth/google-reconnect` — ראו `lib/google-account-tokens.ts`.
 
 ## 4. שליחת Verification (Restricted scope: Drive)
 
@@ -133,7 +137,11 @@ NEXT_PUBLIC_LEGAL_CONTACT_EMAIL=yb@bsd-ybm.co.il
 
 בינתיים לבדיקות מוגבלות: השאירו **Testing** והוסיפו Test users.
 
-## 8. פתרון בעיות נפוצות
+## 8. Runbook בעברית (צעד-אחר-צעד)
+
+לצוות שמבצע את הפעולות בקונסולה: **`docs/google-oauth-verification-runbook-he.md`** (כולל סקריפט לסרטון 2–5 דקות).
+
+## 9. פתרון בעיות נפוצות
 
 | בעיה | פתרון |
 |------|--------|

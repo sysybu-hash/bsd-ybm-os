@@ -112,7 +112,7 @@ function slotsToNavItems(slots: { widgetId: WidgetType | null }[]): NavItem[] {
       return {
         type,
         labelKey: mobileNavLabelKey(type),
-        icon: meta?.icon ?? Shield,
+        icon: meta.icon,
         chip: meta?.chip ?? true,
       };
     });

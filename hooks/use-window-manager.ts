@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  buildWidgetLayout,
+  isMobileViewport,
+  normalizeWidgetForViewport,
+} from '@/lib/workspace/window-layout-policy';
+import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generator';
+import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
+import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
 
-export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'googleAssistant' | 'notebookLM' | 'accessibility' | 'platformAdmin' | 'helpCenter';
+export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'notebookLM' | 'accessibility' | 'platformAdmin' | 'helpCenter';
 
 export interface ActiveWidget {
   id: string;
@@ -15,11 +23,13 @@ export interface ActiveWidget {
   zoom?: number;
 }
 
-const STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
+const STORAGE_KEY = 'bsd_ybm_layout_quiet_v6';
+const PREVIOUS_STORAGE_KEY = 'bsd_ybm_layout_quiet_v5';
+const LEGACY_STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
 const SNAPSHOT_KEY = 'bsd_ybm_layout_snapshot_session';
 
 const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }> = {
-  project: { width: 800, height: 600 },
+  project: { width: 1120, height: 780 },
   cashflow: { width: 900, height: 600 },
   aiChat: { width: 550, height: 650 },
   crm: { width: 850, height: 650 },
@@ -35,7 +45,6 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   settings: { width: 600, height: 700 },
   meckanoReports: { width: 900, height: 750 },
   googleDrive: { width: 800, height: 600 },
-  googleAssistant: { width: 500, height: 650 },
   notebookLM: { width: 720, height: 620 },
   accessibility: { width: 420, height: 560 },
   platformAdmin: { width: 1100, height: 780 },
@@ -52,11 +61,37 @@ export function useWindowManager() {
   // Persistence: Load
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      let raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        raw = localStorage.getItem(PREVIOUS_STORAGE_KEY);
+        if (raw) localStorage.removeItem(PREVIOUS_STORAGE_KEY);
+      }
+      if (!raw) {
+        const v4 = localStorage.getItem('bsd_ybm_layout_quiet_v4');
+        if (v4) {
+          raw = v4;
+          localStorage.removeItem('bsd_ybm_layout_quiet_v4');
+        }
+      }
+      if (!raw) {
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          raw = legacy;
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+      }
+      if (raw) {
+        const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          const restored = parsed.filter((w) => w && typeof w.id === 'string' && typeof w.type === 'string') as ActiveWidget[];
+          const restored = parsed
+            .filter(
+              (w) =>
+                w &&
+                typeof w.id === 'string' &&
+                typeof w.type === 'string' &&
+                normalizeWidgetAction(w.type),
+            )
+            .map((w) => normalizeWidgetForViewport(w as ActiveWidget)) as ActiveWidget[];
           setWidgets(restored);
           const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
           nextZIndexRef.current = maxZ + 1;
@@ -80,32 +115,40 @@ export function useWindowManager() {
     }
   }, [widgets, hasHydrated]);
 
-  const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null) => {
+  const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null): string => {
     const id = `${type}-${Date.now()}`;
     const nextZ = nextZIndexRef.current + 1;
     nextZIndexRef.current = nextZ;
-    
-    const size = DEFAULT_WIDGET_SIZES[type] || { width: 750, height: 550 };
-    
-    // מרכוז החלון
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
-    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const width = Math.min(size.width, Math.max(360, viewportWidth - 32));
-    const height = Math.min(size.height, Math.max(320, viewportHeight - 140));
-    const x = viewportWidth / 2 - width / 2;
-    const y = viewportHeight / 2 - height / 2;
 
-    setWidgets(prev => [...prev, {
-      id, type, liveData: data,
-      position: { x: x + (prev.length * 20), y: y + (prev.length * 20) }, // Offset slightly for stack
-      size: { width, height },
-      zIndex: nextZ,
-      zoom: 1
-    }]);
+    const defaultSize = DEFAULT_WIDGET_SIZES[type] || { width: 750, height: 550 };
+    const mobile = typeof window !== 'undefined' && isMobileViewport();
+
+    setWidgets((prev) => {
+      const stackIndex = mobile ? 0 : prev.length;
+      const layout = buildWidgetLayout(type, defaultSize, stackIndex);
+      const next: ActiveWidget = {
+        id,
+        type,
+        liveData: data,
+        position: layout.position,
+        size: layout.size,
+        zIndex: nextZ,
+        zoom: 1,
+        isMaximized: layout.isMaximized,
+      };
+      if (mobile) {
+        return [next];
+      }
+      return [...prev, next];
+    });
 
     void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
-      captureProductEvent("widget_opened", { widget_type: type });
+      captureProductEvent("widget_opened", {
+        widget_type: type,
+        mobile: mobile ? "1" : "0",
+      });
     });
+    return id;
   }, []);
 
   const toggleMaximize = useCallback((id: string) => {
@@ -187,10 +230,63 @@ export function useWindowManager() {
     }
   }, [isCleanDashboard, enterCleanDashboard, restoreWorkSnapshot]);
 
+  const applyProfessionalLayout = useCallback(() => {
+    if (typeof window === 'undefined' || isMobileViewport()) return;
+    const workspace = readWorkspaceBounds();
+    setWidgets((prev) => {
+      if (prev.length === 0) return prev;
+      const sorted = [...prev].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+      const layouts = computeProfessionalLayout(
+        sorted.map((w) => ({ id: w.id })),
+        workspace,
+      );
+      let z = 100;
+      const zById = new Map<string, number>();
+      for (const w of sorted) {
+        z += 1;
+        zById.set(w.id, z);
+      }
+      nextZIndexRef.current = z + 1;
+      return prev.map((w) => {
+        const cell = layouts.get(w.id);
+        const nextZ = zById.get(w.id) ?? w.zIndex;
+        if (!cell) {
+          return { ...w, isMaximized: false, zIndex: nextZ };
+        }
+        return {
+          ...w,
+          position: cell.position,
+          size: cell.size,
+          isMaximized: false,
+          zIndex: nextZ,
+        };
+      });
+    });
+  }, []);
+
+  const openWidgetFocused = useCallback(
+    (
+      type: WidgetType,
+      data: Record<string, unknown> | null = null,
+      options?: { maximize?: boolean },
+    ) => {
+      const id = openWidget(type, data);
+      const shouldMaximize =
+        options?.maximize ?? (typeof window !== 'undefined' && isMobileViewport());
+      window.setTimeout(() => {
+        focusWidget(id);
+        if (shouldMaximize) toggleMaximize(id);
+      }, 0);
+      return id;
+    },
+    [openWidget, focusWidget, toggleMaximize],
+  );
+
   return {
     widgets,
     hasHydrated,
     openWidget,
+    openWidgetFocused,
     closeWidget,
     focusWidget,
     updateWidgetPosition,
@@ -201,5 +297,6 @@ export function useWindowManager() {
     isFirstTime,
     isCleanDashboard,
     toggleWorkState,
+    applyProfessionalLayout,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Layers, LayoutGrid, LogOut, Settings, Shield } from "lucide-react";
+import { Bell, Layers, LayoutGrid, LayoutTemplate, LogOut, Settings, Shield } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { signOut, useSession } from "next-auth/react";
@@ -20,6 +20,7 @@ interface OSHeaderProps {
   isCleanDashboard?: boolean;
   onToggleWorkState?: () => void;
   onOpenWindowSwitcher?: () => void;
+  onApplyScreenLayout?: () => void;
 }
 
 function cn(...parts: Array<string | false | null | undefined>) {
@@ -61,6 +62,7 @@ export default function OSHeader({
   isCleanDashboard = false,
   onToggleWorkState,
   onOpenWindowSwitcher,
+  onApplyScreenLayout,
 }: OSHeaderProps) {
   const { data: session } = useSession();
   const { t } = useI18n();
@@ -83,7 +85,7 @@ export default function OSHeader({
       : "פעולות סרגל עליון";
 
   return (
-    <header className="absolute inset-x-0 top-0 z-[1000] max-w-[100vw] border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2.5 pt-[max(0.65rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">
+    <header className="fixed inset-x-0 top-0 z-[1200] max-w-[100vw] border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">
       <div className="mx-auto flex min-h-[3.25rem] max-w-[88rem] items-center gap-2 sm:gap-3">
         {/* מיתוג */}
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
@@ -130,6 +132,17 @@ export default function OSHeader({
                   <Layers size={16} aria-hidden />
                 </HeaderIconButton>
               </>
+            ) : null}
+
+            {onApplyScreenLayout ? (
+              <HeaderIconButton
+                onClick={onApplyScreenLayout}
+                className="hidden md:flex"
+                title={t("workspaceShell.topBar.screenLayout.title")}
+                aria-label={t("workspaceShell.topBar.screenLayout.aria")}
+              >
+                <LayoutTemplate size={16} aria-hidden />
+              </HeaderIconButton>
             ) : null}
 
             {onToggleWorkState ? (

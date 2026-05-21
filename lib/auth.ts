@@ -13,7 +13,15 @@ import { isLoginAllowedByAllowlist } from "@/lib/login-allowlist";
 import { sendWelcomeEmail } from "@/lib/mail";
 import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
 import { applyNextAuthUrlEnv } from "@/lib/site-url";
-import { persistGoogleOAuthAccountFromNextAuth } from "@/lib/google-account-tokens";
+import {
+  googleSignInScopes,
+  persistGoogleOAuthAccountFromNextAuth,
+} from "@/lib/google-account-tokens";
+import { verifyPasskeyLoginToken } from "@/lib/auth/passkey-login-token";
+import {
+  SESSION_MAX_AGE_DEFAULT_SEC,
+  SESSION_MAX_AGE_REMEMBER_SEC,
+} from "@/lib/auth/remember-preference";
 
 applyNextAuthUrlEnv();
 normalizeNextAuthUrlEnv();
@@ -31,6 +39,10 @@ export const authOptions: NextAuthOptions = {
   useSecureCookies: Boolean(process.env.VERCEL || nextAuthUrlIsHttps),
   session: {
     strategy: "jwt",
+    maxAge: SESSION_MAX_AGE_DEFAULT_SEC,
+  },
+  jwt: {
+    maxAge: SESSION_MAX_AGE_REMEMBER_SEC,
   },
   pages: {
     signIn: "/login",
@@ -52,8 +64,7 @@ export const authOptions: NextAuthOptions = {
                 prompt: "consent select_account",
                 access_type: "offline",
                 include_granted_scopes: "true",
-                scope:
-                  "openid email profile https://www.googleapis.com/auth/drive",
+                scope: googleSignInScopes(),
               },
             },
           }),
@@ -65,8 +76,27 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "אימייל", type: "email" },
         password: { label: "סיסמה", type: "password" },
+        signInToken: { label: "טוקן", type: "text" },
       },
       async authorize(credentials) {
+        const signInToken = credentials?.signInToken?.trim();
+        if (signInToken) {
+          const userId = verifyPasskeyLoginToken(signInToken);
+          if (!userId) return null;
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+          });
+          if (!user || user.accountStatus !== AccountStatus.ACTIVE) return null;
+          const email = user.email.trim().toLowerCase();
+          if (isLoginBlockedEmail(email)) return null;
+          if (!isLoginAllowedByAllowlist(email, true)) return null;
+          return {
+            id: user.id,
+            email,
+            name: user.name ?? undefined,
+          };
+        }
+
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
         if (!email || !password) {
@@ -124,7 +154,8 @@ export const authOptions: NextAuthOptions = {
         }
         if (!dbUser) {
           const q = new URLSearchParams({ email });
-          return `/register?${q.toString()}`;
+          q.set("mode", "register");
+          return `/login?${q.toString()}`;
         }
         if (dbUser.accountStatus !== AccountStatus.ACTIVE) {
           const q = new URLSearchParams({ reason: "pending" });
@@ -156,10 +187,12 @@ export const authOptions: NextAuthOptions = {
         if (typeof token.picture === "string" && token.picture.length > 0) {
           session.user.image = token.picture;
         }
-        session.user.organizationIndustry =
+        const sessionIndustry =
           (token.organizationIndustry as string | null) ?? "CONSTRUCTION";
+        session.user.organizationIndustry = sessionIndustry;
         session.user.organizationConstructionTrade =
-          (token.organizationConstructionTrade as string | null) ?? "GENERAL_CONTRACTOR";
+          (token.organizationConstructionTrade as string | null) ??
+          (sessionIndustry === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
         /** הגנה כפולה: SUPER_ADMIN ב-UI/API רק ל־osOwnerEmail() — לא דרך באג ב-JWT */
         const em = typeof session.user.email === "string" ? session.user.email : "";
         if (session.user.role === "SUPER_ADMIN" && !isAdmin(em)) {
@@ -298,9 +331,11 @@ export const authOptions: NextAuthOptions = {
 
         token.id = dbUser.id;
         token.organizationId = dbUser.organizationId;
-        token.organizationIndustry = dbUser.organization?.industry ?? "CONSTRUCTION";
+        const orgIndustry = dbUser.organization?.industry ?? "CONSTRUCTION";
+        token.organizationIndustry = orgIndustry;
         token.organizationConstructionTrade =
-          dbUser.organization?.constructionTrade ?? "GENERAL_CONTRACTOR";
+          dbUser.organization?.constructionTrade ??
+          (orgIndustry === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
 
         /**
          * הגנה כפולה: אם משתמש שאינו OS Owner קיבל SUPER_ADMIN ב-DB (באג עבר) —

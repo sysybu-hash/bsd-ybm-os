@@ -9,7 +9,9 @@ import { type CompanyType, type CustomerType, Prisma, UserRole } from "@prisma/c
 import { isExecutiveSubscriptionSuperAdmin } from "@/lib/executive-subscription-super-admin";
 import { defaultScanBalancesForTier, parseSubscriptionTier } from "@/lib/subscription-tier-config";
 import { trialEndsAtFromNow } from "@/lib/trial";
+import { normalizeBusinessLine } from "@/lib/business-lines";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
+import { normalizeIndustryType } from "@/lib/professions/config";
 
 const TYPES: CustomerType[] = ["HOME", "FREELANCER", "COMPANY", "ENTERPRISE"];
 const COMPANY_TYPES: CompanyType[] = ["EXEMPT_DEALER", "LICENSED_DEALER", "LTD_COMPANY"];
@@ -263,7 +265,12 @@ export async function updateIndustryProfileAction(formData: FormData) {
     return { ok: false as const, error: "רק מנהל ארגון רשאי לעדכן מקצוע ושפה" };
   }
 
-  const constructionTrade = normalizeConstructionTrade(String(formData.get("constructionTrade") ?? ""));
+  const industry = normalizeIndustryType(String(formData.get("industry") ?? "CONSTRUCTION"));
+  const specializationRaw = String(formData.get("constructionTrade") ?? "");
+  const constructionTrade =
+    industry === "COMPANY_MGMT"
+      ? normalizeBusinessLine(specializationRaw || "GENERAL_BUSINESS")
+      : normalizeConstructionTrade(specializationRaw || "GENERAL_CONTRACTOR");
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
@@ -290,7 +297,7 @@ export async function updateIndustryProfileAction(formData: FormData) {
   await prisma.organization.update({
     where: { id: orgId },
     data: {
-      industry: "CONSTRUCTION",
+      industry,
       constructionTrade,
       industryConfigJson: nextConfig,
     },

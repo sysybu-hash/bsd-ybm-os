@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { IndustryConfig } from "@/lib/professions/config";
+import { normalizeBusinessLine } from "@/lib/business-lines";
 import { getMergedIndustryConfig, normalizeConstructionTrade } from "@/lib/construction-trades";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -17,8 +18,11 @@ export function useIndustryConfig(): IndustryConfig {
   const trade = (session?.user as { organizationConstructionTrade?: string | null })?.organizationConstructionTrade;
   const config = getMergedIndustryConfig(industryId, trade, messages);
   const tradeId = normalizeConstructionTrade(trade);
-  /** מקצוע בנייה ספציפי — שומרים אוצר מילים מהמיזוג (עברית מקצועית) ולא דורסים ב־t() של ענף כללי */
-  const useTradeSpecificVocabulary = config.id === "CONSTRUCTION" && tradeId !== "GENERAL_CONTRACTOR";
+  const lineId = normalizeBusinessLine(trade);
+  /** מקצוע בנייה / קו עסקי ספציפי — שומרים אוצר מילים מהמיזוג */
+  const useTradeSpecificVocabulary =
+    (config.id === "CONSTRUCTION" && tradeId !== "GENERAL_CONTRACTOR") ||
+    (config.id === "COMPANY_MGMT" && lineId !== "GENERAL_BUSINESS");
 
   // 🌍 BSD-YBM BSD-YBM: Dynamic Hydration
   // We override the hardcoded labels with localized ones from t() system

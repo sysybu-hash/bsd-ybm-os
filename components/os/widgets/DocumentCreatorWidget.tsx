@@ -217,6 +217,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
         }),
       );
     }
+    setShowDraft(true);
   }, [liveData, contacts]);
 
   const fetchOrgSettings = async () => {

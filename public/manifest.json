@@ -6,7 +6,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#0a0c10",
   "lang": "he-IL",
@@ -28,12 +29,17 @@
   "shortcuts": [
     {
       "name": "דאשבורד",
-      "url": "/dashboard",
+      "url": "/?w=dashboard",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "לקוחות",
-      "url": "/crm",
+      "url": "/?w=crmTable",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "עוזר AI",
+      "url": "/?w=aiChatFull",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

@@ -5,6 +5,7 @@ import { jsonBadRequest, jsonTooManyRequests } from "@/lib/api-json";
 import { assertProviderConfigured } from "@/lib/ai-providers";
 import { analyzeBlueprintFile } from "@/lib/projects/blueprint-analyze";
 import { prisma } from "@/lib/prisma";
+import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -42,6 +43,9 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     if (file.size > MAX_BYTES) {
       return jsonBadRequest("הקובץ גדול מדי (מקסימום 15MB)", "file_too_large");
     }
+
+    const industryBlock = await guardConstructionOnlyApi(orgId);
+    if (industryBlock) return industryBlock;
 
     const gate = await requireProjectForOrg(projectId, orgId);
     if (!gate.ok) return gate.response;

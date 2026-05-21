@@ -121,7 +121,6 @@ flowchart TB
 | `aiChatFull` | צ'אט AI | שיחה מלאה |
 | `notebookLM` | NotebookLM | מחברות, צ'אט, אודיו |
 | `googleDrive` | Google Drive | סנכרון, פענוח, שמירה |
-| `googleAssistant` | Google Assistant | פקודות קוליות |
 | `meckanoReports` | Meckano | דוחות נוכחות |
 | `settings` | הגדרות | פרופיל, מע״מ, Drive, משתמשים |
 | `project` | פרויקט | פרטי פרויקט בודד |
@@ -268,7 +267,6 @@ flowchart TB
 |--------|--------|--------|
 | Google OAuth | פעיל | התחברות + הרשאות |
 | Google Drive | פעיל | סנכרון, פענוח batch, העלאה |
-| Google Assistant | פעיל | שאילתות קוליות |
 | Google Calendar | Stub | `lib/services/google-calendar.ts` |
 | Gemini | פעיל | מודלים ב-`lib/gemini-model.ts` |
 | Document AI | לפי env | חשבוניות סרוקות |
@@ -428,7 +426,7 @@ Auth: Account, Session, VerificationToken
 - `/api/ai/*`, `/api/analyze*`, `/api/scan/*`, `/api/chat`
 
 ### OS
-- `/api/os/assistant/*`, `/api/os/automations/*`, `/api/os/google-drive/*`, `/api/os/google-assistant/query`
+- `/api/os/assistant/*`, `/api/os/automations/*`, `/api/os/google-drive/*`
 
 ### NotebookLM
 - `/api/notebooklm/*`

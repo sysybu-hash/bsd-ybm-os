@@ -14,17 +14,17 @@ import CrmWidget from "@/components/os/CrmWidget";
 import DashboardWidget from "@/components/os/DashboardWidget";
 import ErpDocumentsWidget from "@/components/os/widgets/ErpDocumentsWidget";
 import ProjectBoardWidget from "@/components/os/widgets/ProjectBoardWidget";
-import CrmTableWidget from "@/components/os/widgets/CrmTableWidget";
+import CrmTableWidget, { type OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import ErpFileArchiveWidget from "@/components/os/widgets/ErpFileArchiveWidget";
 import dynamic from "next/dynamic";
 import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
 import SettingsWidget from "@/components/os/widgets/SettingsWidget";
 import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
-import GoogleAssistantWidget from "@/components/os/widgets/GoogleAssistantWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
+import { registerWorkspaceBoundsRef } from "@/lib/workspace/workspace-bounds-registry";
 const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
@@ -53,7 +53,8 @@ function WidgetLoadingPlaceholder() {
 interface OSWorkspaceProps {
   widgets: ActiveWidget[];
   hasHydrated: boolean;
-  openWidget: (type: WidgetType) => void;
+  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => string;
+  openWorkspaceWidget: OpenWorkspaceWidgetFn;
   closeWidget: (id: string) => void;
   focusWidget: (id: string) => void;
   updateWidgetPosition: (id: string, pos: { x: number; y: number }) => void;
@@ -67,6 +68,7 @@ export default function OSWorkspace({
   widgets,
   hasHydrated,
   openWidget,
+  openWorkspaceWidget,
   closeWidget,
   focusWidget,
   updateWidgetPosition,
@@ -78,6 +80,10 @@ export default function OSWorkspace({
   const { t, dir } = useI18n();
   const { data: session } = useSession();
   const workspaceBoundsRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    registerWorkspaceBoundsRef(workspaceBoundsRef);
+    return () => registerWorkspaceBoundsRef(null);
+  }, []);
   const [greetingKey, setGreetingKey] = React.useState("workspaceWidgets.empty.greetingMorning");
   const userName = session?.user?.name?.split(" ")[0] || t("workspaceWidgets.empty.guestUser");
 
@@ -122,33 +128,37 @@ export default function OSWorkspace({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center justify-start overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] p-4 pb-8 pt-6 md:justify-center md:overflow-visible md:p-6"
+            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-hidden p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 md:p-6 md:pb-8"
           >
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
-              <Bot size={28} className="text-indigo-400" aria-hidden />
+            <header className="flex w-full max-w-4xl shrink-0 flex-col items-center text-center">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm md:mb-4 md:h-16 md:w-16">
+                <Bot size={28} className="text-indigo-400" aria-hidden />
+              </div>
+
+              <h1 className="mb-1.5 px-4 text-2xl font-black tracking-normal text-[color:var(--foreground-main)] sm:text-3xl md:mb-2 md:text-6xl">
+                {t(greetingKey)},{" "}
+                <span className="bg-gradient-to-l from-emerald-400 to-indigo-400 bg-clip-text text-transparent">{userName}</span>
+              </h1>
+
+              <p className="mx-auto max-w-xl px-4 text-sm font-semibold leading-6 text-pretty text-[color:var(--foreground-muted)] md:text-lg md:leading-7">
+                {t("workspaceWidgets.empty.subtitle", { omnibar: omnibarName })}
+              </p>
+            </header>
+
+            <div className="flex w-full min-h-0 flex-1 flex-col items-center justify-center">
+              <SortableLauncherZone
+                zone="quickGrid"
+                variant="quick"
+                onOpen={openWidget}
+                className="w-full shrink-0"
+              />
             </div>
-
-            <h1 className="mb-3 px-4 text-center text-3xl font-black tracking-normal text-[color:var(--foreground-main)] sm:text-4xl md:text-6xl">
-              {t(greetingKey)},{" "}
-              <span className="bg-gradient-to-l from-emerald-400 to-indigo-400 bg-clip-text text-transparent">{userName}</span>
-            </h1>
-
-            <p className="mx-auto mb-8 max-w-xl px-4 text-center text-base font-semibold leading-7 text-pretty text-[color:var(--foreground-muted)] md:text-lg">
-              {t("workspaceWidgets.empty.subtitle", { omnibar: omnibarName })}
-            </p>
-
-            <SortableLauncherZone
-              zone="quickGrid"
-              variant="quick"
-              onOpen={openWidget}
-              className="grid w-full max-w-4xl grid-cols-2 gap-3 px-2 md:grid-cols-4 md:px-0"
-            />
           </motion.section>
         )}
       </AnimatePresence>
 
       <div
-        className={`pointer-events-none absolute inset-0 ${widgets.length > 0 ? "z-[900]" : "z-20"}`}
+        className={`pointer-events-none absolute inset-0 ${widgets.length > 0 ? "z-[800]" : "z-20"}`}
       >
         {widgets.map((widget) => (
           <WidgetInstance
@@ -173,6 +183,7 @@ export default function OSWorkspace({
                   typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined
                 }
                 projectName={typeof widget.liveData?.name === "string" ? widget.liveData.name : undefined}
+                openWorkspaceWidget={openWorkspaceWidget}
               />
             )}
             {widget.type === "crm" && <CrmWidget />}
@@ -185,29 +196,35 @@ export default function OSWorkspace({
             )}
             {widget.type === "cashflow" && <CashflowWidget data={widget.liveData} />}
             {widget.type === "erp" && <ErpDocumentsWidget />}
-            {widget.type === "projectBoard" && <ProjectBoardWidget />}
-            {widget.type === "crmTable" && <CrmTableWidget />}
+            {widget.type === "projectBoard" && (
+              <ProjectBoardWidget
+                projectId={
+                  typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined
+                }
+                openWorkspaceWidget={openWorkspaceWidget}
+              />
+            )}
+            {widget.type === "crmTable" && <CrmTableWidget openWorkspaceWidget={openWorkspaceWidget} />}
             {widget.type === "erpArchive" && <ErpFileArchiveWidget />}
             {widget.type === "docCreator" && <DocumentCreatorWidget liveData={widget.liveData} />}
             {widget.type === "aiScanner" && (
-              <AiScannerWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+              <AiScannerWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
             {widget.type === "aiChatFull" && (
-              <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+              <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
             {widget.type === "settings" && <SettingsWidget />}
             {widget.type === "meckanoReports" && <MeckanoReportsWidget />}
             {widget.type === "googleDrive" && (
-              <GoogleDriveWidget openWorkspaceWidget={openWidget} />
+              <GoogleDriveWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
-            {widget.type === "googleAssistant" && <GoogleAssistantWidget />}
             {widget.type === "notebookLM" && (
-              <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWidget} />
+              <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
             {widget.type === "accessibility" && <AccessibilityWidget />}
             {widget.type === "platformAdmin" && <PlatformAdminWidget />}
             {widget.type === "helpCenter" && (
-              <HelpCenterWidget openWorkspaceWidget={openWidget} />
+              <HelpCenterWidget openWorkspaceWidget={openWorkspaceWidget} />
             )}
           </WidgetInstance>
         ))}

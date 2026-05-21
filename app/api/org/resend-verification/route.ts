@@ -21,12 +21,18 @@ export const POST = withWorkspacesAuth(async (req, ctx, data) => {
 
   const email = data.email.trim().toLowerCase();
   const user = await prisma.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
+    where: {
+      email: { equals: email, mode: "insensitive" },
+      organizationId: ctx.orgId,
+    },
     select: { name: true, emailVerified: true },
   });
 
   if (!user) {
-    return jsonBadRequest("משתמש לא נמצא. עליו להתחבר פעם אחת לפני שליחת מייל.", "user_not_found");
+    return jsonBadRequest(
+      "משתמש לא נמצא בארגון שלך. עליו להתחבר פעם אחת לפני שליחת מייל.",
+      "user_not_found",
+    );
   }
 
   if (user.emailVerified) {

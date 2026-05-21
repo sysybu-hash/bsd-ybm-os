@@ -2,22 +2,31 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import {
   BarChart3,
   Bell,
   BellOff,
   BookOpen,
   Calendar,
+  FolderOpen,
+  ArrowRight,
   Loader2,
   Plus,
+  Scan,
   Settings,
   Upload,
 } from "lucide-react";
-import ProjectGanttChart from "@/components/os/widgets/project/ProjectGanttChart";
+import type { WidgetType } from "@/hooks/use-window-manager";
+import ProjectSchedulePanel from "@/components/os/widgets/project/ProjectSchedulePanel";
+import ProjectBoqPanel from "@/components/os/widgets/project/ProjectBoqPanel";
+import { registerWebPush, unregisterWebPush } from "@/lib/push/register-client";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import WidgetState from "@/components/os/WidgetState";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { BUSINESS_PAYMENT_MILESTONE_PRESETS } from "@/lib/project-payment-milestones";
 
 const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), {
   loading: () => (
@@ -54,6 +63,7 @@ type DashboardData = {
     isPaid: boolean;
     datePaid: string | null;
   }>;
+  hiddenConstructionMilestones?: number;
   extras: Array<{
     id: string;
     description: string;
@@ -75,6 +85,9 @@ type DashboardData = {
     endDate: string | null;
     progress: number;
     dependencies: string | null;
+    description?: string | null;
+    linkedBoqLineId?: string | null;
+    linkedWorkDiaryId?: string | null;
   }>;
   expenseRecords: Array<{
     id: string;
@@ -93,6 +106,8 @@ type DashboardData = {
 
 const PUSH_KEY = "project-dashboard-push-enabled";
 
+type ProjectListItem = { id: string; name: string; isActive?: boolean };
+
 function formatMoney(n: number) {
   return new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(
     n,
@@ -107,13 +122,21 @@ function formatDate(iso: string | null) {
 export type ProjectDashboardWidgetProps = {
   projectId?: string;
   projectName?: string;
+  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
 
-export default function ProjectDashboardWidget({ projectId, projectName }: ProjectDashboardWidgetProps) {
+export default function ProjectDashboardWidget({
+  projectId,
+  projectName,
+  openWorkspaceWidget,
+}: ProjectDashboardWidgetProps) {
   const { t, dir } = useI18n();
+  const { isCompanyMgmt, industryId } = useTradeProfile();
   const [resolvedId, setResolvedId] = useState(projectId ?? "");
   const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(projectId || projectName));
+  const [projectsList, setProjectsList] = useState<ProjectListItem[]>([]);
+  const [projectsListLoading, setProjectsListLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("financial");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [uploadingBlueprint, setUploadingBlueprint] = useState(false);
@@ -127,6 +150,7 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
   const [expCategory, setExpCategory] = useState("");
   const [expAmount, setExpAmount] = useState("");
   const [diaryDesc, setDiaryDesc] = useState("");
+  const [diaryLinkTaskId, setDiaryLinkTaskId] = useState<string | null>(null);
   const [diaryWorkers, setDiaryWorkers] = useState("1");
   const [diaryProgress, setDiaryProgress] = useState("0");
   const [settingsStatus, setSettingsStatus] = useState("");
@@ -144,10 +168,44 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
     }
   }, []);
 
+  useEffect(() => {
+    if (projectId) setResolvedId(projectId);
+  }, [projectId]);
+
   const loadDashboard = useCallback(async (id: string) => {
     const res = await fetch(`/api/projects/${encodeURIComponent(id)}/dashboard`, { credentials: "include" });
-    if (!res.ok) throw new Error("dashboard");
-    return (await res.json()) as DashboardData;
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      throw new Error(typeof body.error === "string" ? body.error : "dashboard");
+    }
+    return body as DashboardData;
+  }, []);
+
+  const loadProjectsList = useCallback(async () => {
+    setProjectsListLoading(true);
+    try {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      const json = (await res.json().catch(() => ({}))) as { projects?: ProjectListItem[] };
+      if (!res.ok) throw new Error("projects");
+      const list = Array.isArray(json.projects) ? json.projects : [];
+      setProjectsList(
+        list.map((p) => ({
+          id: String(p.id),
+          name: String(p.name ?? ""),
+          isActive: p.isActive,
+        })),
+      );
+    } catch {
+      toast.error(t("projectDashboard.errors.projectsList"));
+      setProjectsList([]);
+    } finally {
+      setProjectsListLoading(false);
+    }
+  }, [t]);
+
+  const selectProject = useCallback((id: string) => {
+    setResolvedId(id);
+    setLoading(true);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -178,12 +236,29 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
     }
   }, [loadDashboard, projectId, projectName, resolvedId, t]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const showProjectPicker = !data && !resolvedId && !projectId && !projectName;
 
-  const togglePush = () => {
+  useEffect(() => {
+    if (projectId || projectName || resolvedId) {
+      void refresh();
+      return;
+    }
+    setLoading(false);
+    setData(null);
+    void loadProjectsList();
+  }, [projectId, projectName, resolvedId, refresh, loadProjectsList]);
+
+  const togglePush = async () => {
     const next = !pushEnabled;
+    if (next) {
+      const ok = await registerWebPush();
+      if (!ok) {
+        toast.error("התראות Push לא זמינות — בדקו VAPID והרשאות דפדפן");
+        return;
+      }
+    } else {
+      await unregisterWebPush().catch(() => undefined);
+    }
     setPushEnabled(next);
     try {
       localStorage.setItem(PUSH_KEY, next ? "1" : "0");
@@ -244,18 +319,54 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
     })();
   }, [activeTab]);
 
-  const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = useMemo(
-    () => [
-      { id: "financial", label: t("projectDashboard.tabs.financial"), icon: BarChart3 },
+  const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = useMemo(() => {
+    const all: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
+      {
+        id: "financial",
+        label: isCompanyMgmt
+          ? t("projectDashboard.tabs.financialBusiness")
+          : t("projectDashboard.tabs.financial"),
+        icon: BarChart3,
+      },
       { id: "diary", label: t("projectDashboard.tabs.diary"), icon: BookOpen },
       { id: "gantt", label: t("projectDashboard.tabs.gantt"), icon: Calendar },
       { id: "ai", label: t("projectDashboard.tabs.ai"), icon: BookOpen },
       { id: "settings", label: t("projectDashboard.tabs.settings"), icon: Settings },
-    ],
-    [t],
-  );
+    ];
+    return isCompanyMgmt ? all.filter((tab) => tab.id !== "diary") : all;
+  }, [t, isCompanyMgmt]);
 
-  if (loading && !data) {
+  useEffect(() => {
+    if (isCompanyMgmt && activeTab === "diary") {
+      setActiveTab("gantt");
+    }
+  }, [isCompanyMgmt, activeTab]);
+
+  const clearProjectSelection = useCallback(() => {
+    setData(null);
+    setResolvedId("");
+    void loadProjectsList();
+  }, [loadProjectsList]);
+
+  if (showProjectPicker) {
+    return (
+      <ProjectPickerPanel
+        projects={projectsList}
+        loading={projectsListLoading}
+        onSelect={selectProject}
+        titleKey="projectDashboard.pickProjectTitle"
+        descKey="projectDashboard.pickProjectDesc"
+        loadingKey="projectDashboard.pickProjectLoading"
+        emptyKey="projectDashboard.noProjects"
+        openCrmKey={openWorkspaceWidget ? "projectDashboard.openCrm" : undefined}
+        onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
+        statusActiveKey="projectDashboard.statusActive"
+        statusInactiveKey="projectDashboard.statusInactive"
+      />
+    );
+  }
+
+  if (!data && !showProjectPicker && (loading || Boolean(resolvedId || projectId || projectName))) {
     return (
       <div className="flex h-full min-h-[200px] items-center justify-center" dir={dir}>
         <Loader2 className="animate-spin text-amber-500" aria-hidden />
@@ -268,6 +379,15 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
       <WidgetState
         variant="empty"
         message={`${t("projectDashboard.emptyTitle")} — ${t("projectDashboard.emptyDesc")}`}
+        action={
+          <button
+            type="button"
+            onClick={clearProjectSelection}
+            className="rounded-lg border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold hover:bg-[color:var(--surface-elevated)]"
+          >
+            {t("projectDashboard.pickProjectTitle")}
+          </button>
+        }
       />
     );
   }
@@ -275,7 +395,7 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
   const apiBase = `/api/projects/${encodeURIComponent(resolvedId)}`;
 
   return (
-    <div className="flex h-full min-h-0 flex-col text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col text-[color:var(--foreground-main)]" dir={dir}>
       <header className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -284,7 +404,15 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
               {data.client ?? t("projectDashboard.noClient")} · {data.status}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={clearProjectSelection}
+              className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            >
+              <ArrowRight size={14} aria-hidden />
+              {t("projectDashboard.switchProject")}
+            </button>
             <button
               type="button"
               onClick={togglePush}
@@ -298,32 +426,83 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
             <p className="w-full text-[10px] text-[color:var(--foreground-muted)]">
               {t("projectDashboard.pushNote")}
             </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void onBlueprintFile(f);
-                e.target.value = "";
-              }}
-            />
-            <button
-              type="button"
-              disabled={uploadingBlueprint}
-              onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1 rounded-lg bg-amber-600/90 px-2 py-1 text-xs text-white disabled:opacity-50"
-            >
-              {uploadingBlueprint ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Upload size={14} />
-              )}
-              {t("projectDashboard.uploadBlueprint")}
-            </button>
+            {!isCompanyMgmt ? (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void onBlueprintFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={uploadingBlueprint}
+                  onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-1 rounded-lg bg-amber-600/90 px-2 py-1 text-xs text-white disabled:opacity-50"
+                >
+                  {uploadingBlueprint ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Upload size={14} />
+                  )}
+                  {t("projectDashboard.uploadBlueprint")}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
+        {openWorkspaceWidget && resolvedId ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {!isCompanyMgmt ? (
+              <button
+                type="button"
+                onClick={() =>
+                  openWorkspaceWidget("aiScanner", {
+                    projectId: resolvedId,
+                    scanMode: "DRAWING_BOQ",
+                  })
+                }
+                className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
+              >
+                <Scan size={12} aria-hidden />
+                סורק AI
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() =>
+                openWorkspaceWidget("notebookLM", {
+                  projectId: resolvedId,
+                  title: data.name,
+                })
+              }
+              className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
+            >
+              <BookOpen size={12} aria-hidden />
+              מחברת
+            </button>
+            <button
+              type="button"
+              onClick={() => openWorkspaceWidget("googleDrive", { projectId: resolvedId })}
+              className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
+            >
+              <FolderOpen size={12} aria-hidden />
+              Drive
+            </button>
+            <button
+              type="button"
+              onClick={() => openWorkspaceWidget("crmTable", null)}
+              className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
+            >
+              CRM
+            </button>
+          </div>
+        ) : null}
         <div className="mt-2 flex gap-1 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -349,6 +528,13 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {activeTab === "financial" && (
           <div className="space-y-4">
+            {!isCompanyMgmt ? (
+              <section>
+                <h3 className="mb-2 text-xs font-semibold">{t("projectDashboard.financialBoqTitle")}</h3>
+                <ProjectBoqPanel projectId={resolvedId} apiBase={apiBase} />
+              </section>
+            ) : null}
+
             <section>
               <p className="mb-1 text-xs text-[color:var(--foreground-muted)]">
                 {t("projectDashboard.budgetUtilization")} ({data.budgetUtilizationPercent}%)
@@ -365,7 +551,52 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
             </section>
 
             <section>
-              <h3 className="mb-2 text-xs font-semibold">{t("projectDashboard.milestones")}</h3>
+              <h3 className="mb-2 text-xs font-semibold">
+                {isCompanyMgmt
+                  ? t("projectDashboard.milestonesBusiness")
+                  : t("projectDashboard.milestones")}
+              </h3>
+              {isCompanyMgmt ? (
+                <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">
+                  {t("projectDashboard.milestonesBusinessHelp")}
+                </p>
+              ) : null}
+              {(data.hiddenConstructionMilestones ?? 0) > 0 ? (
+                <p className="mb-2 text-[10px] text-amber-400/90">
+                  {t("projectDashboard.milestonesHiddenConstruction", {
+                    count: String(data.hiddenConstructionMilestones ?? 0),
+                  })}
+                </p>
+              ) : null}
+              {isCompanyMgmt && data.milestones.length === 0 ? (
+                <div className="mb-2 rounded-lg border border-dashed border-[color:var(--border-main)] p-3 text-xs text-[color:var(--foreground-muted)]">
+                  <p>{t("projectDashboard.milestonesEmptyBusiness")}</p>
+                  <button
+                    type="button"
+                    className="mt-2 rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+                    onClick={async () => {
+                      const existing = new Set(data.milestones.map((m) => m.name.trim()));
+                      for (const preset of BUSINESS_PAYMENT_MILESTONE_PRESETS) {
+                        if (existing.has(preset.name)) continue;
+                        await fetch(`${apiBase}/milestones`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            name: preset.name,
+                            amount: preset.amount,
+                            sortOrder: preset.sortOrder,
+                          }),
+                        });
+                      }
+                      await refresh();
+                      toast.success(t("projectDashboard.milestonesBusinessApplied"));
+                    }}
+                  >
+                    {t("projectDashboard.applyBusinessMilestones")}
+                  </button>
+                </div>
+              ) : null}
               <ul className="space-y-1 text-xs">
                 {data.milestones.map((m) => (
                   <li
@@ -395,7 +626,11 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
               <div className="mt-2 flex flex-wrap gap-2">
                 <input
                   className={osFieldClassName}
-                  placeholder={t("projectDashboard.milestoneName")}
+                  placeholder={
+                    isCompanyMgmt
+                      ? t("projectDashboard.milestoneNameBusiness")
+                      : t("projectDashboard.milestoneName")
+                  }
                   value={milestoneName}
                   onChange={(e) => setMilestoneName(e.target.value)}
                 />
@@ -577,6 +812,25 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
 
         {activeTab === "diary" && (
           <div className="space-y-4">
+            <button
+              type="button"
+              className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs"
+              onClick={async () => {
+                const res = await fetch(`${apiBase}/sync-meckano`, {
+                  method: "POST",
+                  credentials: "include",
+                });
+                const json = await res.json();
+                if (!res.ok) {
+                  toast.error(json.error ?? "סנכרון מקאנו נכשל");
+                  return;
+                }
+                toast.success(`מקאנו: ${json.created} חדש, ${json.updated} עודכן`);
+                await refresh();
+              }}
+            >
+              סנכרון ממקאנו ליומן
+            </button>
             <form
               className="space-y-2 rounded-lg border border-[color:var(--border-main)] p-2"
               onSubmit={async (e) => {
@@ -591,9 +845,11 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
                     workersCount: Number(diaryWorkers) || 1,
                     progress: Number(diaryProgress) || 0,
                     isSyncedToAI: true,
+                    linkedTaskId: diaryLinkTaskId ?? undefined,
                   }),
                 });
                 setDiaryDesc("");
+                setDiaryLinkTaskId(null);
                 toast.success(t("projectDashboard.diarySaved"));
                 await refresh();
               }}
@@ -666,9 +922,36 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
         )}
 
         {activeTab === "gantt" && (
-          <ProjectGanttChart
+          <ProjectSchedulePanel
+            projectId={resolvedId}
+            projectName={data.name}
+            clientName={data.client}
+            primaryContactId={data.primaryContactId}
+            apiBase={apiBase}
             tasks={data.tasks}
+            organizationIndustry={industryId}
+            hideConstructionFeatures={isCompanyMgmt}
+            onRefresh={refresh}
+            openWorkspaceWidget={openWorkspaceWidget}
+            onOpenBoq={isCompanyMgmt ? undefined : () => setActiveTab("financial")}
+            onOpenDiary={
+              isCompanyMgmt
+                ? undefined
+                : (opts) => {
+                    setActiveTab("diary");
+                    if (opts?.description) setDiaryDesc(opts.description);
+                    if (opts?.taskId) setDiaryLinkTaskId(opts.taskId);
+                  }
+            }
             labels={{
+              importSchedule: t("projectDashboard.importSchedule"),
+              importConfirm: t("projectDashboard.importConfirm"),
+              importSuccess: t("projectDashboard.importSuccess"),
+              importFailed: t("projectDashboard.importFailed"),
+              allDomains: t("projectDashboard.allDomains"),
+              generateDoc: t("projectDashboard.generateDoc"),
+              docGeneratorTitle: t("projectDashboard.docGeneratorTitle"),
+              domainCount: t("projectDashboard.domainCount"),
               task: t("projectDashboard.task"),
               start: t("projectDashboard.start"),
               end: t("projectDashboard.end"),
@@ -676,15 +959,27 @@ export default function ProjectDashboardWidget({ projectId, projectName }: Proje
               noTasks: t("projectDashboard.noTasks"),
               listView: t("projectDashboard.ganttListView"),
               chartView: t("projectDashboard.ganttChartView"),
-            }}
-            onProgressChange={async (taskId, progress) => {
-              await fetch(`${apiBase}/tasks/schedule`, {
-                method: "PATCH",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tasks: [{ id: taskId, progress }] }),
-              });
-              await refresh();
+              addTask: t("projectDashboard.addTask"),
+              editTask: t("projectDashboard.editTask"),
+              save: t("projectDashboard.save"),
+              cancel: t("projectDashboard.cancel"),
+              delete: t("projectDashboard.delete"),
+              deleteConfirm: t("projectDashboard.deleteConfirm"),
+              scaleWeeks: t("projectDashboard.scaleWeeks"),
+              scaleMonths: t("projectDashboard.scaleMonths"),
+              trade: t("projectDashboard.trade"),
+              dependencies: t("projectDashboard.dependencies"),
+              linkedBoq: t("projectDashboard.linkedBoq"),
+              workDiary: t("projectDashboard.workDiary"),
+              createDiary: t("projectDashboard.createDiary"),
+              ganttLegend: t("projectDashboard.ganttLegend"),
+              ganttToday: t("projectDashboard.ganttToday"),
+              ganttProgress: t("projectDashboard.ganttProgress"),
+              ganttDependency: t("projectDashboard.ganttDependency"),
+              newTaskTitle: t("projectDashboard.newTaskTitle"),
+              taskSaved: t("projectDashboard.taskSaved"),
+              taskDeleted: t("projectDashboard.taskDeleted"),
+              taskSaveFailed: t("projectDashboard.taskSaveFailed"),
             }}
           />
         )}

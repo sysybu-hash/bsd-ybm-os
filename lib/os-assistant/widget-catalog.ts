@@ -76,13 +76,6 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["דרייב", "drive", "קבצים", "files"],
   },
   {
-    id: "googleAssistant",
-    labelHe: "Google Assistant",
-    labelEn: "Google Assistant",
-    labelRu: "Google Assistant",
-    keywords: ["assistant", "עוזר גוגל", "google"],
-  },
-  {
     id: "meckanoReports",
     labelHe: "דוחות Meckano",
     labelEn: "Meckano reports",

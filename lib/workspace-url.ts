@@ -25,7 +25,6 @@ const WIDGET_TYPES = new Set<string>([
   "settings",
   "meckanoReports",
   "googleDrive",
-  "googleAssistant",
   "notebookLM",
   "accessibility",
   "platformAdmin",

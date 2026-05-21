@@ -16,7 +16,6 @@ const files = [
   "components/os/widgets/ErpFileArchiveWidget.tsx",
   "components/os/widgets/NotebookLMWidget.tsx",
   "components/os/widgets/DocumentCreatorWidget.tsx",
-  "components/os/widgets/GoogleAssistantWidget.tsx",
   "components/os/widgets/CrmTableWidget.tsx",
   "components/os/OmnibarQuickSettingsSheet.tsx",
   "app/login/page.tsx",

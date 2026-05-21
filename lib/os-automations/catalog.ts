@@ -28,7 +28,6 @@ export const AUTOMATION_CATALOG: AutomationCatalogEntry[] = [
   { id: "open_meckano_reports", labelHe: "דוחות מקאנו", labelEn: "Meckano reports", labelRu: "Отчёты Meckano", keywords: ["מקאנו", "דוחות"] },
   { id: "open_notebook", labelHe: "NotebookLM", labelEn: "NotebookLM", labelRu: "NotebookLM", keywords: ["מחברת", "notebook"] },
   { id: "open_ai_chat", labelHe: "צ'אט AI", labelEn: "AI chat", labelRu: "AI чат", keywords: ["צ'אט", "chat", "ai"] },
-  { id: "google_assistant_command", labelHe: "Google Assistant", labelEn: "Google Assistant", labelRu: "Google Assistant", keywords: ["google", "עוזר"] },
   { id: "open_google_drive", labelHe: "Google Drive", labelEn: "Google Drive", labelRu: "Google Drive", keywords: ["drive", "דרייב"] },
   { id: "open_settings", labelHe: "הגדרות", labelEn: "Settings", labelRu: "Настройки", keywords: ["הגדרות", "settings"] },
   { id: "clear_layout", labelHe: "ניקוי פריסה", labelEn: "Clear layout", labelRu: "Очистить раскладку", keywords: ["נקה", "clear", "אפס"] },

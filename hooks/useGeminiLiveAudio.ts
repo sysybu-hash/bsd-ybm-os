@@ -6,6 +6,11 @@ import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 import { mergeTranscriptChunk } from "@/lib/gemini-live/merge-transcript-chunk";
 import { buildGeminiLiveSessionStartUserTurn } from "@/lib/gemini-live/session-greeting";
+import {
+  acquireGeminiLiveLease,
+  releaseGeminiLiveLease,
+  type GeminiLiveOwner,
+} from "@/lib/gemini-live/session-coordinator";
 
 type GeminiLiveState = "idle" | "connecting" | "ready" | "streaming" | "fallback" | "error";
 
@@ -67,6 +72,8 @@ const DEFAULT_STATUS_LABELS: GeminiLiveStatusLabels = {
 
 type GeminiLiveOptions = {
   enabled: boolean;
+  /** מזהה מקור — רק מופע Live אחד פעיל במערכת */
+  owner?: GeminiLiveOwner;
   systemInstruction: string;
   settings?: GeminiLiveVoiceSettings;
   /** מאפשר proactiveAudio / affectiveDialog (דגל פלטפורמה) */
@@ -262,6 +269,7 @@ function flushUserTranscriptTurn(
 
 export function useGeminiLiveAudio({
   enabled,
+  owner,
   systemInstruction,
   settings = DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
   advancedFeaturesEnabled = false,
@@ -298,6 +306,7 @@ export function useGeminiLiveAudio({
   const latestUserTextRef = useRef("");
   const deliveredUserTextRef = useRef("");
   const greetingSentRef = useRef(false);
+  const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
 
   const cleanup = useCallback(() => {
@@ -332,6 +341,10 @@ export function useGeminiLiveAudio({
     playbackContextRef.current = null;
 
     greetingSentRef.current = false;
+    if (leaseIdRef.current) {
+      releaseGeminiLiveLease(leaseIdRef.current);
+      leaseIdRef.current = null;
+    }
     latestUserTextRef.current = "";
     deliveredUserTextRef.current = "";
     latestModelTextRef.current = "";
@@ -502,6 +515,14 @@ export function useGeminiLiveAudio({
     }
 
     cleanup();
+    if (owner) {
+      leaseIdRef.current = acquireGeminiLiveLease(owner, () => {
+        cleanup();
+        setState("idle");
+        setIsModelSpeaking(false);
+        setStatusText(statusLabels.ready);
+      });
+    }
     setState("connecting");
     setStatusText(statusLabels.preparing);
 
@@ -686,6 +707,8 @@ export function useGeminiLiveAudio({
     userName,
     greetOnConnect,
     contextReady,
+    owner,
+    cleanup,
   ]);
 
   const stop = useCallback(() => {

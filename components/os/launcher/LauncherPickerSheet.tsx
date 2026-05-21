@@ -8,6 +8,12 @@ import { OS_ASSISTANT_WIDGETS } from "@/lib/os-assistant/widget-catalog";
 import { getLauncherNavMeta } from "@/lib/launcher/launcher-icons";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
+import { splitIntoBalancedRows } from "@/lib/launcher/launcher-grid-layout";
+import {
+  LAUNCHER_PICKER_GRID_CONTAINER_CLASS,
+  LAUNCHER_PICKER_ROW_CLASS,
+  LAUNCHER_PICKER_TILE_CLASS,
+} from "@/lib/launcher/user-launcher-config";
 
 function widgetLabel(type: WidgetType, locale: string): string {
   const entry = OS_ASSISTANT_WIDGETS.find((w) => w.id === type);
@@ -51,31 +57,33 @@ export default function LauncherPickerSheet() {
             <X size={18} aria-hidden />
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {pickerOptions.map((type) => {
-            const meta = getLauncherNavMeta(type);
-            const Icon = meta?.icon;
-            return (
-              <button
-                key={type}
-                type="button"
-                data-testid={`launcher-pick-${type}`}
-                onClick={() => assignWidget(type)}
-                className="flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border-main)] p-3 transition hover:bg-[color:var(--surface-soft)]"
-              >
-                {Icon ? (
-                  <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${widgetIconChipClass(type)}`}
+        <div className={LAUNCHER_PICKER_GRID_CONTAINER_CLASS}>
+          {splitIntoBalancedRows(pickerOptions).map((row, rowIndex) => (
+            <div key={`picker-row-${rowIndex}`} className={LAUNCHER_PICKER_ROW_CLASS}>
+              {row.map((type) => {
+                const meta = getLauncherNavMeta(type);
+                const Icon = meta.icon;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    data-testid={`launcher-pick-${type}`}
+                    onClick={() => assignWidget(type)}
+                    className={`${LAUNCHER_PICKER_TILE_CLASS} flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border-main)] p-3 transition hover:bg-[color:var(--surface-soft)]`}
                   >
-                    <Icon size={20} aria-hidden />
-                  </span>
-                ) : null}
-                <span className="text-center text-[11px] font-bold text-[color:var(--foreground-main)]">
-                  {widgetLabel(type, locale)}
-                </span>
-              </button>
-            );
-          })}
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${widgetIconChipClass(type)}`}
+                    >
+                      <Icon size={20} strokeWidth={2} aria-hidden />
+                    </span>
+                    <span className="text-center text-[11px] font-bold text-[color:var(--foreground-main)]">
+                      {widgetLabel(type, locale)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
     </>

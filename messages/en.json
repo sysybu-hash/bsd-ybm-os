@@ -52,6 +52,76 @@
       "errorEmpty": "Enter email and password",
       "errorInvalid": "Invalid email or password — or no password set yet."
     },
+    "hub": {
+      "heroTitle": "Welcome",
+      "heroBody": "Secure sign-in with Google, email and password, or biometrics after your first login.",
+      "bullet1": "Strong password with built-in generator",
+      "bullet2": "Remember me — fewer repeat sign-ins",
+      "bullet3": "Fingerprint / Face ID after first login",
+      "tabs": { "login": "Sign in", "register": "Register" },
+      "loginTitle": "Sign in",
+      "loginSubtitle": "Choose how you want to authenticate",
+      "registerSubtitle": "Create a new organization or join with an invite",
+      "login": {
+        "remember": "Remember me on this device",
+        "passkey": "Sign in with fingerprint / Face ID",
+        "forgot": "Forgot password",
+        "errorEmpty": "Enter email and password",
+        "errorInvalid": "Invalid email or password"
+      },
+      "forgot": {
+        "title": "Reset password",
+        "body": "We will email a link if an account exists.",
+        "submit": "Send link",
+        "sent": "If the account exists, an email was sent.",
+        "error": "Send failed",
+        "invalidEmail": "Invalid email"
+      },
+      "reset": {
+        "title": "New password",
+        "body": "Choose a strong password (12+ characters).",
+        "placeholder": "New password",
+        "submit": "Save"
+      },
+      "register": {
+        "emailHint": "You can sign in with email/password, Google, or biometrics after setup.",
+        "passwordLabel": "Password",
+        "passwordConfirm": "Confirm password",
+        "generatePassword": "Generate strong password",
+        "copyPassword": "Copied",
+        "passwordRequirements": "At least 12 characters with upper, lower, and a digit.",
+        "passwordInvalid": "Check password and confirmation",
+        "pendingTitle": "Request received",
+        "pendingDesc": "After admin approval, sign in with your email and password.",
+        "successDesc": "Account created. Sign in with your email and password."
+      },
+      "passkey": {
+        "offerTitle": "Faster biometric sign-in",
+        "offerBody": "Enable fingerprint or Face ID for passwordless sign-in next time.",
+        "offerEnable": "Enable now",
+        "offerLater": "Maybe later",
+        "dismiss": "Close",
+        "registerSuccess": "Biometric sign-in enabled",
+        "registerFailed": "Could not register biometric device",
+        "defaultDevice": "This device",
+        "unsupported": "Biometric sign-in not supported in this browser",
+        "delete": "Remove",
+        "deleted": "Device removed",
+        "deleteFailed": "Remove failed"
+      },
+      "security": {
+        "passwordTitle": "Sign-in password",
+        "passwordDesc": "Google-only users: set a password to also sign in with email.",
+        "currentPassword": "Current password (if any)",
+        "newPassword": "New password",
+        "savePassword": "Save password",
+        "passwordSaved": "Password saved",
+        "passkeyTitle": "Biometric sign-in",
+        "passkeyDesc": "Manage fingerprint / Face ID devices.",
+        "noPasskeys": "No devices registered",
+        "addPasskey": "Add biometric device"
+      }
+    },
     "loginOs": {
       "backHomeAria": "Back to home",
       "secureBadge": "Authorized access only",
@@ -78,6 +148,7 @@
         "type": "Business Type",
         "personal": "Personal Details",
         "orgName": "Organization Name",
+        "password": "Password",
         "confirm": "Confirm & Submit",
         "of": "of",
         "step": "Step"

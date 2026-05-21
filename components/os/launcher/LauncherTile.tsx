@@ -1,20 +1,29 @@
 "use client";
 
 import React from "react";
-import { Plus, X } from "lucide-react";
+import { LayoutGrid, Plus, X } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
-import { getLauncherNavMeta, quickActionLabelKey } from "@/lib/launcher/launcher-icons";
+import {
+  getLauncherNavMeta,
+  quickActionLabelKey,
+  quickActionSubtitleKey,
+} from "@/lib/launcher/launcher-icons";
+import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
+import type { GridCellCoord } from "@/lib/launcher/quick-grid";
 import type { LauncherZone } from "@/lib/launcher/user-launcher-config";
 
 type LauncherTileProps = {
   zone: LauncherZone;
   slotIndex: number;
+  gridCoord?: GridCellCoord;
   widgetId: WidgetType | null;
   onOpen: (type: WidgetType) => void;
   variant: "quick" | "sidebar" | "mobile";
+  /** רשת 3 עמודות במובייל — אריח קומפקטי */
+  tileSize?: "default" | "mobile";
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
 };
@@ -22,37 +31,40 @@ type LauncherTileProps = {
 export default function LauncherTile({
   zone,
   slotIndex,
+  gridCoord,
   widgetId,
   onOpen,
   variant,
+  tileSize = "default",
   dragHandleProps,
   isDragging,
 }: LauncherTileProps) {
   const { t } = useI18n();
   const { editMode, removeAt, openPickerAt } = useLauncherConfig();
-  const meta = widgetId ? getLauncherNavMeta(widgetId) : null;
-  const Icon = meta?.icon;
-  const isEmpty = !widgetId;
+  const resolvedWidgetId = widgetId ? normalizeWidgetAction(widgetId) : null;
+  const meta = resolvedWidgetId ? getLauncherNavMeta(resolvedWidgetId) : null;
+  const Icon = meta?.icon ?? LayoutGrid;
+  const isEmpty = !resolvedWidgetId;
 
-  const label = widgetId
+  const label = resolvedWidgetId
     ? variant === "quick"
-      ? t(quickActionLabelKey(widgetId))
-      : t(meta?.labelKey ?? `workspaceWidgets.titles.${widgetId}`)
+      ? t(quickActionLabelKey(resolvedWidgetId))
+      : t(meta!.labelKey)
     : t("workspaceWidgets.launcher.emptySlot");
 
   const handleClick = () => {
     if (editMode) {
-      openPickerAt(zone, slotIndex);
+      openPickerAt(zone, slotIndex, gridCoord);
       return;
     }
-    if (widgetId) onOpen(widgetId);
+    if (resolvedWidgetId) onOpen(resolvedWidgetId);
   };
 
   if (variant === "sidebar") {
     return (
       <div
         className={`relative ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}
-        data-testid={widgetId ? `launcher-tile-${widgetId}` : "launcher-tile-empty"}
+        data-testid={resolvedWidgetId ? `launcher-tile-${resolvedWidgetId}` : "launcher-tile-empty"}
       >
         {editMode ? (
           <button
@@ -61,7 +73,7 @@ export default function LauncherTile({
             aria-label={t("workspaceWidgets.launcher.remove")}
             onClick={(e) => {
               e.stopPropagation();
-              removeAt(zone, slotIndex);
+              removeAt(zone, slotIndex, gridCoord);
             }}
           >
             <X size={12} aria-hidden />
@@ -79,13 +91,13 @@ export default function LauncherTile({
         >
           {isEmpty ? (
             <Plus size={18} className="text-indigo-400" aria-hidden />
-          ) : Icon ? (
+          ) : (
             <span
-              className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass(widgetId)}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)}`}
             >
               <Icon size={19} aria-hidden />
             </span>
-          ) : null}
+          )}
         </button>
       </div>
     );
@@ -94,14 +106,14 @@ export default function LauncherTile({
   if (variant === "mobile") {
     return (
       <div className={`relative min-w-0 ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}>
-        {editMode && widgetId ? (
+        {editMode && resolvedWidgetId ? (
           <button
             type="button"
             className="absolute -end-0.5 -top-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-white"
             aria-label={t("workspaceWidgets.launcher.remove")}
             onClick={(e) => {
               e.stopPropagation();
-              removeAt(zone, slotIndex);
+              removeAt(zone, slotIndex, gridCoord);
             }}
           >
             <X size={10} aria-hidden />
@@ -120,11 +132,11 @@ export default function LauncherTile({
             editMode ? (
               <Plus size={20} className="text-indigo-400" aria-hidden />
             ) : null
-          ) : Icon ? (
+          ) : (
             <>
               {meta?.chip ? (
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${widgetIconChipClass(widgetId)}`}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${widgetIconChipClass(resolvedWidgetId)}`}
                 >
                   <Icon size={20} strokeWidth={1.75} aria-hidden />
                 </span>
@@ -133,7 +145,7 @@ export default function LauncherTile({
               )}
               <span className="max-w-full truncate px-0.5 text-[8px] font-bold sm:text-[9px]">{label}</span>
             </>
-          ) : null}
+          )}
         </button>
       </div>
     );
@@ -142,7 +154,7 @@ export default function LauncherTile({
   return (
     <div
       className={`relative ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}
-      data-testid={widgetId ? `launcher-quick-${widgetId}` : "launcher-quick-empty"}
+      data-testid={resolvedWidgetId ? `launcher-quick-${resolvedWidgetId}` : "launcher-quick-empty"}
     >
       {editMode && widgetId ? (
         <button
@@ -151,7 +163,7 @@ export default function LauncherTile({
           aria-label={t("workspaceWidgets.launcher.remove")}
           onClick={(e) => {
             e.stopPropagation();
-            removeAt(zone, slotIndex);
+            removeAt(zone, slotIndex, gridCoord);
           }}
         >
           <X size={14} aria-hidden />
@@ -160,31 +172,57 @@ export default function LauncherTile({
       <button
         type="button"
         onClick={handleClick}
-        className={`quiet-surface group flex min-h-[108px] w-full flex-col items-center justify-center gap-3 p-4 text-center transition ${
-          isEmpty && editMode ? "border-2 border-dashed border-indigo-400/50" : ""
-        } ${isEmpty && !editMode ? "hidden" : ""}`}
+        className={`quiet-surface group flex flex-none flex-col items-center justify-center text-center transition ${
+          tileSize === "mobile"
+            ? "h-[100px] w-full max-w-[112px] gap-1.5 p-2"
+            : "h-[140px] w-[140px] gap-3 p-4"
+        } ${isEmpty && editMode ? "border-2 border-dashed border-indigo-400/50" : ""} ${
+          isEmpty && !editMode ? "hidden" : ""
+        }`}
         {...(editMode ? dragHandleProps : {})}
       >
         {isEmpty ? (
           <>
-            <Plus size={28} className="text-indigo-400" aria-hidden />
-            <span className="text-sm font-bold text-[color:var(--foreground-muted)]">{label}</span>
+            <Plus
+              size={tileSize === "mobile" ? 22 : 28}
+              className="text-indigo-400"
+              aria-hidden
+            />
+            <span
+              className={`font-bold text-[color:var(--foreground-muted)] ${
+                tileSize === "mobile" ? "text-[10px]" : "text-sm"
+              }`}
+            >
+              {label}
+            </span>
           </>
-        ) : Icon ? (
+        ) : (
           <>
             <div
-              className={`flex h-11 w-11 items-center justify-center rounded-lg transition ${widgetIconChipClass(widgetId)}`}
+              className={`flex shrink-0 items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)} ${
+                tileSize === "mobile" ? "h-8 w-8" : "h-11 w-11"
+              }`}
             >
-              <Icon size={21} aria-hidden />
+              <Icon size={tileSize === "mobile" ? 18 : 22} strokeWidth={2} aria-hidden />
             </div>
-            <div>
-              <div className="text-sm font-black text-[color:var(--foreground-main)]">{label}</div>
-              <div className="mt-1 text-[11px] font-semibold text-[color:var(--foreground-muted)]">
-                {t(`workspaceWidgets.quickActions.${widgetId}.subtitle`)}
+            <div className="min-w-0 w-full px-0.5">
+              <div
+                className={`font-black leading-tight text-[color:var(--foreground-main)] ${
+                  tileSize === "mobile" ? "text-[10px]" : "text-sm"
+                }`}
+              >
+                {label}
+              </div>
+              <div
+                className={`font-semibold leading-tight text-[color:var(--foreground-muted)] ${
+                  tileSize === "mobile" ? "mt-0.5 line-clamp-2 text-[8px]" : "mt-1 text-[11px]"
+                }`}
+              >
+                {t(quickActionSubtitleKey(resolvedWidgetId))}
               </div>
             </div>
           </>
-        ) : null}
+        )}
       </button>
     </div>
   );

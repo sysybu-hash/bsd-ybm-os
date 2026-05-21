@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { osAdminEmails } from "@/lib/is-admin";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import {
   getMailFrom,
   getMailReplyTo,
@@ -9,7 +10,9 @@ import {
   isSmtpConfigured,
 } from "@/lib/mail-config";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://bsd-ybm.co.il";
+function mailSiteUrl(): string {
+  return getCanonicalSiteUrl().replace(/\/$/, "");
+}
 const TAGLINE = "BSD-YBM-OS - השדרה שמחברת בין כולם";
 
 function escapeHtml(s: string): string {
@@ -233,7 +236,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string | null): Pr
       הבקשה להצטרפות נקלטה. לאחר אישור מנהל המערכת תקבלו גישה מלאה לניהול הארגון.
     </p>
     <p style="text-align:center;margin:24px 0 0;">
-      <a href="${SITE_URL}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+      <a href="${mailSiteUrl()}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
         מעבר לדף הכניסה
       </a>
     </p>`;
@@ -271,7 +274,7 @@ export async function sendRegistrationWelcomeEmail(
     </p>
     ${extra}
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="${SITE_URL}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
+      <a href="${mailSiteUrl()}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:14px;text-decoration:none;">
         כניסה למערכת
       </a>
     </p>`;
@@ -282,15 +285,61 @@ export async function sendRegistrationWelcomeEmail(
   );
 }
 
+export async function sendRegistrationCredentialsEmail(
+  toEmail: string,
+  name: string | null,
+  plainPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const greeting = name?.trim() ? `שלום ${escapeHtml(name.trim())},` : "שלום,";
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">פרטי הכניסה שלכם</h1>
+    <p style="margin:0 0 16px;color:#cbd5e1;font-size:15px;text-align:center;">${greeting}</p>
+    <p style="margin:0 0 12px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;">
+      נוצרה עבורכם סיסמה זמנית להתחברות ראשונה. מומלץ לשנות אותה לאחר הכניסה בהגדרות.
+    </p>
+    <p style="margin:16px auto;max-width:320px;padding:14px 18px;background:#0f172a;border:1px solid #334155;border-radius:12px;font-family:monospace;font-size:15px;color:#f8fafc;text-align:center;letter-spacing:0.04em;">
+      ${escapeHtml(plainPassword)}
+    </p>
+    <p style="text-align:center;margin:24px 0 0;">
+      <a href="${mailSiteUrl()}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+        כניסה למערכת
+      </a>
+    </p>`;
+  return sendTransactionalEmail(
+    toEmail.trim().toLowerCase(),
+    "BSD-YBM — פרטי התחברות",
+    inner,
+  );
+}
+
+export async function sendPasswordResetEmail(
+  toEmail: string,
+  token: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const url = `${mailSiteUrl()}/login?reset=${encodeURIComponent(token)}`;
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">איפוס סיסמה</h1>
+    <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;">
+      התקבלה בקשה לאיפוס סיסמה. הקישור תקף לשעה אחת.
+    </p>
+    <p style="text-align:center;margin:24px 0 0;">
+      <a href="${escapeHtml(url)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+        בחירת סיסמה חדשה
+      </a>
+    </p>`;
+  return sendTransactionalEmail(toEmail.trim().toLowerCase(), "איפוס סיסמה — BSD-YBM", inner);
+}
+
 export async function sendAccessApprovedEmail(toEmail: string): Promise<void> {
+  const base = mailSiteUrl();
   const inner = `
     <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">הגישה הופעלה</h1>
     <p style="margin:0;color:#e2e8f0;font-size:15px;text-align:center;line-height:1.7;">
       שלום, הגישה שלך למערכת BSD-YBM הופעלה בהצלחה.
-      <a href="https://bsd-ybm.co.il" style="color:#60a5fa;font-weight:700;">https://bsd-ybm.co.il</a>
+      <a href="${escapeHtml(base)}" style="color:#60a5fa;font-weight:700;">${escapeHtml(base)}</a>
     </p>
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="https://bsd-ybm.co.il/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+      <a href="${escapeHtml(base)}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
         כניסה למערכת
       </a>
     </p>`;
@@ -355,7 +404,7 @@ export async function sendSubscriptionJoinInviteEmail(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ctaLabel = params.ctaLabel?.trim() || "כניסה ל-BSD-YBM";
   const path = params.ctaPath?.trim().startsWith("/") ? params.ctaPath.trim() : "/login";
-  const ctaHref = `${SITE_URL.replace(/\/$/, "")}${path}`;
+  const ctaHref = `${mailSiteUrl()}${path}`;
   const bodySafe = escapeHtml(params.bodyText).replace(/\n/g, "<br/>");
   const inner = `
     <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">${escapeHtml(params.headline)}</h1>
@@ -436,7 +485,7 @@ export async function sendProvisionCredentialsEmail(
   plainPassword: string,
   orgName: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const loginUrl = `${SITE_URL.replace(/\/$/, "")}/login`;
+  const loginUrl = `${mailSiteUrl()}/login`;
   const greeting = displayName?.trim() ? `שלום ${escapeHtml(displayName.trim())},` : "שלום,";
   const inner = `
     <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">פרטי כניסה ל־BSD-YBM</h1>

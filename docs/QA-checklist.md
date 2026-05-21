@@ -54,6 +54,8 @@
 | `npm run build` | כן |
 | `npm run test:e2e:quality` | כן |
 | `npm run test:e2e:workspace` (אחרי seed) | כן |
+| `npm run test:e2e:project` | כן (אחרי seed) |
+| `npm run test:e2e:crm` | כן (אחרי seed) |
 
 ## CI מקומי
 

@@ -52,6 +52,76 @@
       "errorEmpty": "מלאו אימייל וסיסמה",
       "errorInvalid": "אימייל או סיסמה שגויים — או שאין סיסמה עדיין."
     },
+    "hub": {
+      "heroTitle": "ברוכים הבאים",
+      "heroBody": "כניסה מאובטחת עם Google, אימייל וסיסמה, או ביומטרי — והרשמה מהירה לארגון חדש.",
+      "bullet1": "סיסמה חזקה עם מחולל מובנה",
+      "bullet2": "זכור אותי — פחות התחברויות חוזרות",
+      "bullet3": "טביעת אצבע / Face ID אחרי כניסה ראשונה",
+      "tabs": { "login": "כניסה", "register": "הרשמה" },
+      "loginTitle": "כניסה למערכת",
+      "loginSubtitle": "בחרו את שיטת ההזדהות המועדפת עליכם",
+      "registerSubtitle": "פתיחת ארגון חדש או הצטרפות עם הזמנה",
+      "login": {
+        "remember": "זכור אותי במכשיר זה",
+        "passkey": "כניסה בטביעת אצבע / Face ID",
+        "forgot": "שכחתי סיסמה",
+        "errorEmpty": "מלאו אימייל וסיסמה",
+        "errorInvalid": "אימייל או סיסמה שגויים"
+      },
+      "forgot": {
+        "title": "איפוס סיסמה",
+        "body": "נשלח קישור לאימייל אם קיים חשבון עם סיסמה.",
+        "submit": "שליחת קישור",
+        "sent": "אם החשבון קיים, נשלח אימייל.",
+        "error": "שגיאה בשליחה",
+        "invalidEmail": "אימייל לא תקין"
+      },
+      "reset": {
+        "title": "סיסמה חדשה",
+        "body": "בחרו סיסמה חזקה (12 תווים לפחות).",
+        "placeholder": "סיסמה חדשה",
+        "submit": "שמירה"
+      },
+      "register": {
+        "emailHint": "תוכלו להתחבר עם אימייל וסיסמה, Google, או ביומטרי לאחר הגדרה.",
+        "passwordLabel": "סיסמה",
+        "passwordConfirm": "אימות סיסמה",
+        "generatePassword": "צור סיסמה חזקה",
+        "copyPassword": "הועתק",
+        "passwordRequirements": "לפחות 12 תווים, אות גדולה, קטנה וספרה.",
+        "passwordInvalid": "בדקו את הסיסמה ואימותה",
+        "pendingTitle": "הבקשה נקלטה",
+        "pendingDesc": "לאחר אישור מנהל המערכת התחברו במייל והסיסמה.",
+        "successDesc": "החשבון נוצר. התחברו עם האימייל והסיסמה."
+      },
+      "passkey": {
+        "offerTitle": "כניסה מהירה ביומטרי",
+        "offerBody": "הפעילו טביעת אצבע או Face ID לכניסה בלי סיסמה בפעם הבאה.",
+        "offerEnable": "הפעלה עכשיו",
+        "offerLater": "אולי אחר כך",
+        "dismiss": "סגירה",
+        "registerSuccess": "כניסה ביומטרית הופעלה",
+        "registerFailed": "לא הצלחנו לרשום מכשיר ביומטרי",
+        "defaultDevice": "מכשיר זה",
+        "unsupported": "הדפדפן לא תומך בכניסה ביומטרית",
+        "delete": "הסרה",
+        "deleted": "המכשיר הוסר",
+        "deleteFailed": "הסרה נכשלה"
+      },
+      "security": {
+        "passwordTitle": "סיסמת כניסה",
+        "passwordDesc": "למשתמשי Google: הגדירו סיסמה כדי להתחבר גם במייל.",
+        "currentPassword": "סיסמה נוכחית (אם קיימת)",
+        "newPassword": "סיסמה חדשה",
+        "savePassword": "שמירת סיסמה",
+        "passwordSaved": "הסיסמה נשמרה",
+        "passkeyTitle": "כניסה ביומטרית",
+        "passkeyDesc": "נהלו מכשירים עם טביעת אצבע או Face ID.",
+        "noPasskeys": "אין מכשירים רשומים",
+        "addPasskey": "הוספת מכשיר ביומטרי"
+      }
+    },
     "loginOs": {
       "backHomeAria": "חזרה לדף הבית",
       "secureBadge": "גישה מאובטחת למורשים בלבד",
@@ -78,6 +148,7 @@
         "type": "סוג עסק",
         "personal": "פרטים אישיים",
         "orgName": "שם הארגון",
+        "password": "סיסמה",
         "confirm": "אישור ושליחה",
         "of": "מתוך",
         "step": "שלב"
@@ -125,6 +196,10 @@
         "joining": "הצטרפות ל",
         "trade": "התמחות בענף"
       },
+      "industrySection": "תחום העסק במערכת",
+      "industryConstruction": "בנייה וקבלנות",
+      "industryCompany": "ניהול העסק / החברה",
+      "industryHint": "ניתן לשנות בהגדרות הארגון לאחר ההרשמה.",
       "construction": {
         "lead": "התמחות ענפית תיפתח רק במסלולי מנוי שמוגדרים לכך. ההרשמה הראשונית נשארת כללית ונקייה.",
         "selectLabel": "התמחות ענפית",
@@ -828,6 +903,13 @@
       "project": "אתר בנייה / פרויקט",
       "document": "כתב כמויות / חשבונית חומרים",
       "inventory": "ציוד וכלי עבודה"
+    },
+    "COMPANY_MGMT": {
+      "label": "ניהול העסק / החברה",
+      "client": "לקוח / שותף עסקי",
+      "project": "יוזמה / פרויקט",
+      "document": "מסמך / חוזה / הצעה",
+      "inventory": "מלאי / רכש"
     },
     "MEDICAL": {
       "label": "רפואה / קליניקה",
