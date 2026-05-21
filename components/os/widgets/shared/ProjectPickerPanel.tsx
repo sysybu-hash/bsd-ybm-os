@@ -75,6 +75,7 @@ export default function ProjectPickerPanel({
             <button
               type="button"
               role="option"
+              aria-selected={false}
               onClick={() => onSelect(p.id)}
               className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-elevated)]/40 px-3 py-2.5 text-start text-xs transition-colors hover:border-indigo-500/40 hover:bg-indigo-500/10"
             >

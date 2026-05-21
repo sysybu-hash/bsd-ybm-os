@@ -21,6 +21,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  // rate limit: 20 סריקות/דקה per user (scan הוא פעולה יקרה)
   try {
     const userRow = await prisma.user.findUnique({
       where: { id: userId },
@@ -104,4 +105,4 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   } catch (e) {
     return apiErrorResponse(e, "[tri-engine]");
   }
-});
+}, { rateLimit: { key: "scan:tri-engine", limit: 20, windowMs: 60_000 } });

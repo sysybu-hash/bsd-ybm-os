@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { sendPasswordResetEmail } from "@/lib/mail";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 5 ניסיונות לדקה per IP — מגן על email enumeration + spam
+  const limited = await applyRateLimit(req, "auth:forgot-password", 5, 60_000);
+  if (limited) return limited;
   try {
     const body = (await req.json().catch(() => ({}))) as { email?: string };
     const email = String(body.email ?? "").trim().toLowerCase();

@@ -275,7 +275,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- רענון לפי מזהה לקוח בלבד
+     
   }, [selectedClient?.id]);
 
   useEffect(() => {

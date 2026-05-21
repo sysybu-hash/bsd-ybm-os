@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { AccountStatus } from "@prisma/client";
 import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { verifyPasskeyAuthentication } from "@/lib/auth/passkey-server";
 import { createPasskeyLoginToken } from "@/lib/auth/passkey-login-token";
+import { applyRateLimit } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 10 ניסיונות ל-5 דקות per IP — מגן על brute-force
+  const limited = await applyRateLimit(req, "auth:passkey-verify", 10, 5 * 60_000);
+  if (limited) return limited;
   try {
     const body = (await req.json()) as {
       response?: AuthenticationResponseJSON;

@@ -1,10 +1,11 @@
 import type { UserRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonForbidden, jsonUnauthorized, jsonValidationFailed } from "@/lib/api-json";
 import { isAdmin } from "@/lib/is-admin";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export type WorkspaceAuthContext = {
   orgId: string;
@@ -20,9 +21,20 @@ export type OSAdminContext = {
 /** תגובת route — JSON רגיל או streaming (SSE / NDJSON) */
 export type ApiRouteResponse = NextResponse | Response;
 
+type RateLimitOptions = {
+  /** מפתח ייחודי לזיהוי הנקודה (למשל "ai:chat") */
+  key: string;
+  /** מספר בקשות מקסימלי בחלון */
+  limit: number;
+  /** אורך החלון במילישניות */
+  windowMs: number;
+};
+
 type WorkspaceAuthOptionsBase = {
   /** אם מוגדר — רק תפקידים אלה עוברים (אחרת 403) */
   allowedRoles?: UserRole[];
+  /** הגבלת קצב אופציונלית — מוחלת לפי user-id לאחר אימות */
+  rateLimit?: RateLimitOptions;
 };
 
 export type WorkspaceAuthOptions = WorkspaceAuthOptionsBase & {
@@ -159,6 +171,14 @@ export function withWorkspacesAuth(
   return async (req: Request) => {
     const gate = await requireWorkspaceAuth(options);
     if (!isWorkspaceContext(gate)) return gate;
+
+    // rate limit — per authenticated user (more fair than IP-based for authed routes)
+    if (options?.rateLimit) {
+      const { key, limit, windowMs } = options.rateLimit;
+      const rlKey = `rl:${key}:user:${gate.userId}`;
+      const limited = await applyRateLimit(req as NextRequest, rlKey, limit, windowMs);
+      if (limited) return limited;
+    }
 
     if (options?.schema) {
       const target = effectiveParseTarget(req, options.parseTarget);

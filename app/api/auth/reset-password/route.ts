@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
+import { applyRateLimit } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 10 ניסיונות ל-15 דקות per IP
+  const limited = await applyRateLimit(req, "auth:reset-password", 10, 15 * 60_000);
+  if (limited) return limited;
   try {
     const body = (await req.json().catch(() => null)) as { token?: string; password?: string };
     const token = String(body?.token ?? "").trim();

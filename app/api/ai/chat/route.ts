@@ -38,6 +38,7 @@ function buildPromptFromMessages(messages: ChatMsg[]): string {
 
 export const POST = withWorkspacesAuth(
   async (_req, { orgId, userId }, data) => {
+  // rate limit applied by withWorkspacesAuth option below
     try {
       const messages = normalizeMessages(data.messages);
       const prompt = buildPromptFromMessages(messages);
@@ -87,5 +88,8 @@ export const POST = withWorkspacesAuth(
       return apiErrorResponse(err, "api/ai/chat");
     }
   },
-  { schema: chatBodySchema },
+  {
+    schema: chatBodySchema,
+    rateLimit: { key: "ai:chat", limit: 30, windowMs: 60_000 }, // 30 הודעות/דקה per user
+  },
 );
