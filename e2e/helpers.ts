@@ -89,12 +89,10 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
   });
 }
 
-/** פותח ווידג'ט פרויקט מה-URL ומחכה ל-shell. */
+/** פותח ווידג'ט פרויקט מה-URL ומחכה ל-region (לא .or — strict mode כשגם shell וגם כפתור hub נראים). */
 export async function gotoWorkspaceProject(page: Page, projectId: string) {
   const shellTimeout = process.env.CI ? 90_000 : 60_000;
-  const projectShell = page.locator("[data-widget-shell]").first();
-  const projectHub = page.getByText(/מרכז פיננסי|Financial hub/i).first();
-  const target = projectShell.or(projectHub);
+  const projectRegion = page.getByRole("region", { name: /Project control center|מרכז בקרה/i }).first();
 
   for (let attempt = 0; attempt < 3; attempt++) {
     await page.goto(workspaceProjectUrl(projectId));
@@ -106,7 +104,7 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
     } catch {
       /* continue */
     }
-    if (await target.isVisible({ timeout: shellTimeout }).catch(() => false)) {
+    if (await projectRegion.isVisible({ timeout: shellTimeout }).catch(() => false)) {
       return;
     }
 
@@ -116,13 +114,13 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
       await page.goto(workspaceProjectUrl(projectId));
       await page.waitForLoadState("domcontentloaded");
       await dismissWorkspaceOverlays(page);
-      if (await target.isVisible({ timeout: shellTimeout }).catch(() => false)) {
+      if (await projectRegion.isVisible({ timeout: shellTimeout }).catch(() => false)) {
         return;
       }
     }
   }
 
-  await expect(target).toBeVisible({ timeout: 15_000 });
+  await expectProjectDashboardReady(page);
 }
 
 /** מחכה שווידג'ט מרכז הבקרה לפרויקט נפתח (לא דורש השלמת fetch לדשבורד). */

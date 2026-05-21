@@ -13,7 +13,7 @@ test.describe("mobile workspace windows", () => {
     test.skip(!signed, "login failed");
 
     await gotoWorkspaceProject(page, E2E_PROJECT_ID);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.getByRole("region", { name: /Project control center|מרכז בקרה/i }).first();
     const box = await shell.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThan(300);
   });
