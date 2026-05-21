@@ -1,7 +1,19 @@
-import { expect, test, type Page } from "@playwright/test";
-import { dismissCookieBannerIfVisible, primeCookieConsent, tryCredentialsSignIn } from "./helpers";
+import { expect, test } from "@playwright/test";
+import {
+  dismissCookieBannerIfVisible,
+  dismissWorkspaceOverlays,
+  primeCookieConsent,
+  tryCredentialsSignIn,
+} from "./helpers";
 
 const MOBILE_PROJECTS = new Set(["mobile-chrome", "mobile-safari"]);
+
+const LANDING_H1 = /מערכת ההפעלה|The operating system for/i;
+const LANDING_CTA = /התחל לעבוד|Get started/i;
+const AUTH_HERO = /ברוכים הבאים|Welcome/i;
+const AUTH_TAB_SIGN_IN = /כניסה|Sign in/i;
+const AUTH_BACK_HOME = /חזרה לדף הבית|Back to home/i;
+const OMNIBAR_OPEN = /פתח שורת פקודה|Open command bar/i;
 
 function isMobileProject(projectName: string) {
   return MOBILE_PROJECTS.has(projectName);
@@ -15,15 +27,20 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 2);
 }
 
+async function setLocaleCookie(context: import("@playwright/test").BrowserContext, baseURL: string, locale: string) {
+  await context.addCookies([
+    {
+      name: "bsd-locale",
+      value: locale,
+      url: baseURL,
+    },
+  ]);
+}
+
 test.describe("Site quality", () => {
-  test.beforeEach(async ({ context }) => {
-    await context.addCookies([
-      {
-        name: "bsd-locale",
-        value: "he",
-        url: "http://localhost:3001",
-      },
-    ]);
+  test.beforeEach(async ({ context, baseURL }) => {
+    const origin = baseURL ?? "http://127.0.0.1:3330";
+    await setLocaleCookie(context, origin, "he");
   });
 
   test("landing page presents the product clearly", async ({ page }) => {
@@ -31,8 +48,8 @@ test.describe("Site quality", () => {
     await page.goto("/");
 
     await expect(page).toHaveTitle(/BSD-YBM/i);
-    await expect(page.getByRole("heading", { level: 1, name: /מערכת ההפעלה/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /התחל לעבוד/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: LANDING_CTA })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Gemini Live" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expectNoHorizontalOverflow(page);
@@ -41,10 +58,10 @@ test.describe("Site quality", () => {
   test("login page is usable and quiet", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "ברוכים הבאים" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "כניסה" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: AUTH_HERO })).toBeVisible();
+    await expect(page.getByRole("tab", { name: AUTH_TAB_SIGN_IN })).toBeVisible();
     await expect(page.getByRole("button", { name: /התחבר עם Google|Google/i })).toBeVisible();
-    await expect(page.getByText("חזרה לדף הבית")).toBeVisible();
+    await expect(page.getByText(AUTH_BACK_HOME)).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
@@ -53,19 +70,14 @@ test.describe("Site quality", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { level: 1, name: /מערכת ההפעלה/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /התחל לעבוד/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
+    await expect(page.getByRole("button", { name: LANDING_CTA })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
-  test("locale cookie switches landing copy to English", async ({ page, context }) => {
-    await context.addCookies([
-      {
-        name: "bsd-locale",
-        value: "en",
-        url: "http://localhost:3001",
-      },
-    ]);
+  test("locale cookie switches landing copy to English", async ({ page, context, baseURL }) => {
+    const origin = baseURL ?? "http://127.0.0.1:3330";
+    await setLocaleCookie(context, origin, "en");
     await page.goto("/");
     await expect(page.getByRole("button", { name: /Get started/i })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
@@ -98,6 +110,7 @@ test.describe("Site quality", () => {
     test.skip(!signed, "אין משתמש credentials ב-DB — דלג או הגדר E2E_EMAIL / E2E_PASSWORD");
 
     await dismissCookieBannerIfVisible(page);
+    await dismissWorkspaceOverlays(page);
     await expect(page.getByRole("navigation", { name: /יישומים|Apps/i })).toBeVisible({ timeout: 15000 });
     await expectNoHorizontalOverflow(page);
   });
@@ -108,9 +121,10 @@ test.describe("Site quality", () => {
     test.skip(!signed, "אין משתמש credentials ב-DB — דלג או הגדר E2E_EMAIL / E2E_PASSWORD");
 
     await dismissCookieBannerIfVisible(page);
+    await dismissWorkspaceOverlays(page);
     await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
-    await page.getByRole("button", { name: "פתח שורת פקודה וחיפוש" }).click();
-    await expect(page.getByTestId("mobile-omnibar-sheet")).toBeVisible();
+    await page.getByRole("button", { name: OMNIBAR_OPEN }).click();
+    await expect(page.getByTestId("mobile-omnibar-sheet")).toBeVisible({ timeout: 15000 });
     await expectNoHorizontalOverflow(page);
   });
 });
