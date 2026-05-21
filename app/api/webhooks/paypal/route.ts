@@ -7,6 +7,9 @@ import {
 import { parseCapturePayload } from "@/lib/paypal-order-parse";
 import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
 import { sendInvoiceEmail } from "@/lib/invoice-mailer";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("webhooks/paypal");
 
 export const dynamic = "force-dynamic";
 
@@ -87,13 +90,13 @@ export async function POST(req: Request) {
         const parsed = parseCapturePayload(order);
         if (parsed?.customId) customId = parsed.customId;
       } catch (e) {
-        console.error("[webhooks/paypal] fetch order", e);
+        log.error("fetch_order_failed", e instanceof Error ? e : new Error(String(e)));
       }
     }
   }
 
   if (!customId) {
-    console.warn("[webhooks/paypal] חסר custom_id ולא ניתן לשחזר מהזמנה");
+    log.warn("missing_custom_id", { captureId });
     return NextResponse.json({ received: true });
   }
 
@@ -105,7 +108,7 @@ export async function POST(req: Request) {
   });
 
   if (!applied.ok) {
-    console.error("[webhooks/paypal] apply", applied.error);
+    log.error("apply_failed", undefined, { reason: applied.error });
     return NextResponse.json({ received: true });
   }
 
@@ -116,7 +119,7 @@ export async function POST(req: Request) {
       amount: applied.paidTotal,
     });
     if (!okMail) {
-      console.warn("[webhooks/paypal] invoice email not sent");
+      log.warn("invoice_email_not_sent", { captureId });
     }
   }
 

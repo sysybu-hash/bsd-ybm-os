@@ -1,6 +1,10 @@
 /**
  * PayPal REST API (Orders v2) — שרת בלבד. דורש PAYPAL_CLIENT_SECRET + מזהה לקוח.
  */
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("paypal-server");
+
 function paypalBaseUrl(): string {
   const mode = process.env.PAYPAL_ENV?.trim().toLowerCase();
   if (mode === "sandbox") return "https://api-m.sandbox.paypal.com";
@@ -127,7 +131,7 @@ export async function verifyPayPalWebhookSignature(params: {
 }): Promise<boolean> {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID?.trim();
   if (!webhookId) {
-    console.error("[PayPal webhook] חסר PAYPAL_WEBHOOK_ID — דוחים אירוע");
+    log.error("verify_webhook_no_id", undefined, { hint: "Set PAYPAL_WEBHOOK_ID to enable webhook verification" });
     return false;
   }
   try {
@@ -151,7 +155,7 @@ export async function verifyPayPalWebhookSignature(params: {
     const j = (await res.json()) as { verification_status?: string };
     return res.ok && j.verification_status === "SUCCESS";
   } catch (e) {
-    console.error("[PayPal webhook] verify", e);
+    log.error("verify_webhook_failed", e instanceof Error ? e : new Error(String(e)));
     return false;
   }
 }
