@@ -7,192 +7,80 @@ import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPane
 import { useProjectPicker } from "@/hooks/use-project-picker";
 import {
   ScanLine,
-  Upload,
   FileText,
-  CheckCircle2,
-  Loader2,
-  History,
   ArrowRight,
-  Bot,
   Zap,
-  Save,
-  X,
-  Building2,
-  Hash,
-  Calendar,
-  DollarSign,
+  Bot,
   Settings2,
   Eye,
-  Library,
 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
 import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import ScanResultsPanel from "@/components/os/widgets/scan/ScanResultsPanel";
-import { canBrowserPreviewMime } from "@/lib/scan-preview";
-import { LAST_SCAN_STORAGE_KEY } from "@/lib/notebooklm-from-scan";
+import { buildScanFileAcceptAttribute } from "@/lib/scan-mime";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
-import type { WidgetType } from "@/hooks/use-window-manager";
 import { Group, Panel, Separator } from "react-resizable-panels";
-import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useIndustryConfig } from "@/hooks/use-industry-config";
-import {
-  clampScanModeForIndustry,
-  defaultScanModeForIndustry,
-  getScanModesForUi,
-} from "@/lib/scan-modes-for-ui";
-import ItemActions from "@/components/os/ItemActions";
+import { defaultScanModeForIndustry, getScanModesForUi } from "@/lib/scan-modes-for-ui";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import { runScanPostActions } from "@/lib/ai/scan-post-actions";
-import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
-import {
-  inferScreenTypeFromFileForIndustry,
-  resolvePolicyForIndustry,
-} from "@/lib/ai/screen-decode-policy";
-import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
-import {
-  buildScanFileAcceptAttribute,
-  inferMimeFromFileName,
-  isSupportedScanMime,
-  MAX_SCAN_FILE_BYTES,
-  SCAN_ACCEPT_SUMMARY,
-} from "@/lib/scan-mime";
-
-type EngineMeta = {
-  configured: { documentAI: boolean; gemini: boolean; openai: boolean };
-  gemini?: { primaryLabel?: string };
-  openai?: { defaultModelId?: string };
-};
-
-interface DocumentAnalysis {
-  amount: number;
-  vendor: string;
-  taxId?: string;
-  projectSuggestion: string;
-  confidence: number;
-  summary: string;
-  date?: string;
-  documentId?: string;
-  rawAiData?: Record<string, unknown>;
-  v5?: ScanExtractionV5;
-}
-
-interface ScanHistoryItem {
-  id: string;
-  fileName: string;
-  vendor: string;
-  amount: number;
-  date: string;
-  status: "success" | "warning" | "error";
-}
-
-type QueueStatus = "pending" | "processing" | "done" | "error";
-
-interface QueueItem {
-  id: string;
-  file: File;
-  status: QueueStatus;
-  error?: string;
-}
-
-function formatMsg(template: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce(
-    (s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)),
-    template,
-  );
-}
-
-
-const ENGINE_MODES: { id: TriEngineRunMode; labelKey: string; fallback: string }[] = [
-  { id: "AUTO", labelKey: "scanner.modeAuto", fallback: "אוטומטי" },
-  { id: "MULTI_PARALLEL", labelKey: "scanner.modeMulti", fallback: "ריבוי מנועים" },
-  { id: "SINGLE_GEMINI", labelKey: "scanner.modeGemini", fallback: "Gemini" },
-  { id: "SINGLE_OPENAI", labelKey: "scanner.modeOpenai", fallback: "OpenAI" },
-  { id: "SINGLE_DOCUMENT_AI", labelKey: "scanner.modeDocAi", fallback: "Document AI" },
-];
-
-function mapV5ToAnalysis(v5: ScanExtractionV5, aiData?: Record<string, unknown>): DocumentAnalysis {
-  const meta = v5.documentMetadata;
-  return {
-    amount: Number(v5.total ?? 0),
-    vendor: v5.vendor || "לא צוין",
-    taxId: v5.taxId ?? undefined,
-    projectSuggestion: meta?.project ?? meta?.client ?? "",
-    confidence: 0.92,
-    summary: v5.summary || v5.docType,
-    date: v5.date ?? meta?.documentDate ?? new Date().toISOString().split("T")[0],
-    rawAiData: aiData ?? (v5 as unknown as Record<string, unknown>),
-    v5,
-  };
-}
-
-async function readNdjsonStream(
-  res: Response,
-  onLine: (obj: Record<string, unknown>) => void,
-): Promise<void> {
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("No body");
-  const dec = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop() ?? "";
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t) continue;
-      try {
-        onLine(JSON.parse(t) as Record<string, unknown>);
-      } catch {
-        /* skip malformed */
-      }
-    }
-  }
-  const tail = buf.trim();
-  if (tail) {
-    try {
-      onLine(JSON.parse(tail) as Record<string, unknown>);
-    } catch {
-      /* */
-    }
-  }
-}
-
-const SCAN_INSTRUCTION_KEY = "bsd_scan_user_instruction";
-
-type AiScannerWidgetProps = {
-  liveData?: Record<string, unknown> | null;
-  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
-};
+import type { ScanModeV5 } from "@/lib/scan-schema-v5";
+import type { AiScannerWidgetProps } from "./ai-scanner/types";
+import { ENGINE_MODES, SCAN_INSTRUCTION_KEY } from "./ai-scanner/constants";
+import { useScanQueue } from "./ai-scanner/useScanQueue";
+import { ScanDropZone } from "./ai-scanner/ScanDropZone";
+import { ScanConfirmPanel } from "./ai-scanner/ScanConfirmPanel";
+import { ScanHistorySidebar } from "./ai-scanner/ScanHistorySidebar";
 
 export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
   const industryConfig = useIndustryConfig();
   const industryId = industryConfig.id;
   const scanModes = useMemo(() => getScanModesForUi(industryId), [industryId]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const driveImportDoneRef = useRef<string | null>(null);
   const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
+
   const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [queueProgress, setQueueProgress] = useState<{ current: number; total: number; name: string } | null>(
-    null,
-  );
-  const [engineMeta, setEngineMeta] = useState<EngineMeta | null>(null);
+  const [engineMeta, setEngineMeta] = useState<{
+    configured: { documentAI: boolean; gemini: boolean; openai: boolean };
+    gemini?: { primaryLabel?: string };
+    openai?: { defaultModelId?: string };
+  } | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
   const [scanModeOverride, setScanModeOverride] = useState<ScanModeV5>(() =>
     defaultScanModeForIndustry(industryId),
   );
+  const [userInstruction, setUserInstruction] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
+  const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
+  const [stackScannerPanels, setStackScannerPanels] = useState(false);
+
+  const scannerPrefix = "workspaceWidgets.aiScanner";
 
   useEffect(() => {
     const next = defaultScanModeForIndustry(industryId);
     setScanModeOverride(next);
   }, [industryId]);
-  const scannerPrefix = "workspaceWidgets.aiScanner";
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => setStackScannerPanels(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  const tr = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v !== key ? v : fallback;
+    },
+    [t],
+  );
+
   const {
     resolvedProjectId: boundProjectId,
     selectedProjectName: boundProjectName,
@@ -203,66 +91,86 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     selectProject,
     clearProject,
   } = useProjectPicker({
-    initialProjectId:
-      typeof liveData?.projectId === "string" ? liveData.projectId : "",
+    initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "",
     listErrorKey: `${scannerPrefix}.loadFailed`,
   });
-  const [telemetry, setTelemetry] = useState<TriEngineTelemetry | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewMime, setPreviewMime] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState("");
-  const [resultJson, setResultJson] = useState<string>("");
-  const [pendingAnalysis, setPendingAnalysis] = useState<DocumentAnalysis | null>(null);
-  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
-  const [userInstruction, setUserInstruction] = useState("");
-  const [instructionsOpen, setInstructionsOpen] = useState(false);
-  const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
-  const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
+
+  const {
+    queue,
+    isProcessing,
+    queueProgress,
+    pendingAnalysis,
+    setPendingAnalysis,
+    history,
+    setHistory,
+    telemetry,
+    resultJson,
+    scanClassification,
+    lastScanV5,
+    setLastScanV5,
+    lastScanFileName,
+    setLastScanFileName,
+    savingNotebook,
+    previewUrl,
+    previewMime,
+    previewFileName,
+    applyFilePreview,
+    runFileQueue,
+    confirmAnalysis,
+    saveToNotebook,
+  } = useScanQueue({
+    engineRunMode,
+    scanModeOverride,
+    boundProjectId,
+    userInstruction,
+    industryId,
+    openWorkspaceWidget,
+    tr,
+  });
 
   const applyScannerNav = useCallback((view: WidgetViewState) => {
     if (view.openPreviewPanel) setPreviewPanelOpen(true);
     if (view.openResultsPanel) setResultsPanelOpen(true);
   }, []);
-
   const { pushView: pushScannerView } = useSyncedWidgetNavigation(applyScannerNav);
-  const [stackScannerPanels, setStackScannerPanels] = useState(false);
 
+  // Load engine meta
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const apply = () => setStackScannerPanels(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    let cancelled = false;
+    (async () => {
+      const { fetchEngineMetaCached } = await import("@/lib/scan-engine-meta-cache");
+      const data = await fetchEngineMetaCached();
+      if (!cancelled && data)
+        setEngineMeta(
+          data as {
+            configured: { documentAI: boolean; gemini: boolean; openai: boolean };
+            gemini?: { primaryLabel?: string };
+            openai?: { defaultModelId?: string };
+          },
+        );
+    })();
+    return () => { cancelled = true; };
   }, []);
-  const [lastScanFileName, setLastScanFileName] = useState("");
-  const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
-  const [savingNotebook, setSavingNotebook] = useState(false);
-  const [scanClassification, setScanClassification] = useState<{
-    scanMode: string;
-    confidence: number;
-    rationale?: string;
-  } | null>(null);
 
-  const tr = useCallback(
-    (key: string, fallback: string) => {
-      const v = t(key);
-      return v !== key ? v : fallback;
-    },
-    [t],
-  );
+  // Revoke preview URL on unmount
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
 
+  // liveData overrides
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SCAN_INSTRUCTION_KEY);
       if (saved) setUserInstruction(saved);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     const inst = liveData?.userInstruction;
     if (typeof inst === "string" && inst.trim()) setUserInstruction(inst.trim());
     if (liveData?.openInstructions) setInstructionsOpen(true);
     const mode = liveData?.engineRunMode;
-    if (typeof mode === "string" && ["AUTO", "MULTI_PARALLEL", "SINGLE_GEMINI", "SINGLE_OPENAI", "SINGLE_DOCUMENT_AI"].includes(mode)) {
+    if (
+      typeof mode === "string" &&
+      ["AUTO", "MULTI_PARALLEL", "SINGLE_GEMINI", "SINGLE_OPENAI", "SINGLE_DOCUMENT_AI"].includes(mode)
+    ) {
       setEngineRunMode(mode as TriEngineRunMode);
     }
     const sm = liveData?.scanMode;
@@ -273,40 +181,67 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
 
   useEffect(() => {
     if (liveData?.v5 && typeof liveData.fileName === "string") {
-      setLastScanV5(liveData.v5 as ScanExtractionV5);
+      setLastScanV5(liveData.v5 as import("@/lib/scan-schema-v5").ScanExtractionV5);
       setLastScanFileName(liveData.fileName);
     }
-  }, [liveData]);
+  }, [liveData, setLastScanV5, setLastScanFileName]);
 
   useEffect(() => {
+    if (!liveData?.triggerSaveToNotebook || !lastScanV5 || !lastScanFileName) return;
+    void saveToNotebook();
+  }, [liveData?.triggerSaveToNotebook, lastScanV5, lastScanFileName, saveToNotebook]);
+
+  // Google Drive import
+  useEffect(() => {
+    const imp = liveData?.driveImportFile;
+    if (!imp || typeof imp !== "object") return;
+    const fileId = (imp as { fileId?: unknown }).fileId;
+    const fileName = (imp as { fileName?: unknown }).fileName;
+    const mimeType = (imp as { mimeType?: unknown }).mimeType;
+    if (typeof fileId !== "string" || typeof fileName !== "string") return;
+    if (driveImportDoneRef.current === fileId) return;
+
     let cancelled = false;
+    driveImportDoneRef.current = fileId;
+
     (async () => {
-      const { fetchEngineMetaCached } = await import("@/lib/scan-engine-meta-cache");
-      const data = await fetchEngineMetaCached();
-      if (!cancelled && data) setEngineMeta(data as EngineMeta);
+      const { toast } = await import("sonner");
+      toast.info(`מוריד מ-Drive: ${fileName}`);
+      try {
+        const { inferMimeFromFileName } = await import("@/lib/scan-mime");
+        const params = new URLSearchParams({
+          fileId,
+          fileName,
+          mimeType: typeof mimeType === "string" ? mimeType : "application/octet-stream",
+        });
+        const res = await fetch(`/api/os/google-drive/download?${params}`, {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error ?? "הורדה מ-Google Drive נכשלה");
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const headerName = res.headers.get("X-Drive-File-Name");
+        const resolvedName = headerName ? decodeURIComponent(headerName) : fileName;
+        const resolvedMime = inferMimeFromFileName(resolvedName, blob.type);
+        const file = new File([blob], resolvedName, { type: resolvedMime });
+        await runFileQueue([file]);
+      } catch (err) {
+        if (driveImportDoneRef.current === fileId) driveImportDoneRef.current = null;
+        const { toast: t2 } = await import("sonner");
+        t2.error(err instanceof Error ? err.message : "ייבוא מ-Drive נכשל");
+      }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+    return () => { cancelled = true; };
+  }, [liveData?.driveImportFile, runFileQueue]);
 
-  const applyFilePreview = useCallback((file: File) => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
-    setPreviewFileName(file.name);
-    setPreviewMime(mime);
-    if (canBrowserPreviewMime(mime)) {
-      setPreviewUrl(URL.createObjectURL(file));
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [previewUrl]);
+  const persistInstruction = (value: string) => {
+    setUserInstruction(value);
+    try { localStorage.setItem(SCAN_INSTRUCTION_KEY, value); } catch { /* ignore */ }
+  };
 
   const openPreviewPanel = useCallback(() => {
     if (!previewUrl && queue.length > 0) {
@@ -329,288 +264,6 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     return tr("scanner.modeAuto", "אוטומטי");
   }, [engineMeta, engineRunMode, tr]);
 
-  const validateScanFile = useCallback(
-    (file: File): string | null => {
-      if (file.size > MAX_SCAN_FILE_BYTES) {
-        return formatMsg(tr("scanner.fileTooLarge", "קובץ גדול מדי: {name}"), { name: file.name });
-      }
-      const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
-      if (!isSupportedScanMime(mime)) {
-        return formatMsg(tr("scanner.unsupportedFile", "לא נתמך: {name}"), { name: file.name });
-      }
-      return null;
-    },
-    [tr],
-  );
-
-  const scanSingleFile = async (file: File): Promise<DocumentAnalysis> => {
-    setPendingAnalysis(null);
-    setResultJson("");
-    setTelemetry(null);
-    setScanClassification(null);
-    applyFilePreview(file);
-
-    void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
-      captureProductEvent("scan_started", { engine: engineRunMode, fileType: file.type });
-    });
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const inferred = inferScreenTypeFromFileForIndustry(file.name, file.type || "", industryId);
-      const policy = resolvePolicyForIndustry(inferred, industryId);
-      const scanMode = clampScanModeForIndustry(
-        engineRunMode === "AUTO"
-          ? (policy.scanMode as ScanModeV5)
-          : scanModeOverride,
-        industryId,
-      );
-      formData.append("scanMode", scanMode);
-      formData.append("persist", boundProjectId ? "true" : "false");
-      if (boundProjectId) formData.append("projectId", boundProjectId);
-      formData.append("engineRunMode", engineRunMode);
-      if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
-
-      const res = await fetch("/api/scan/tri-engine/stream", { method: "POST", body: formData });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(String((err as { error?: string }).error ?? res.status));
-      }
-
-      let finalV5: ScanExtractionV5 | null = null;
-      let finalAi: Record<string, unknown> | undefined;
-      let lastTelemetry: TriEngineTelemetry | null = null;
-
-      await readNdjsonStream(res, (obj) => {
-        if (obj.type === "telemetry" && obj.telemetry) {
-          lastTelemetry = obj.telemetry as TriEngineTelemetry;
-          setTelemetry(lastTelemetry);
-        }
-        if (obj.type === "classification") {
-          setScanClassification({
-            scanMode: String(obj.scanMode ?? ""),
-            confidence: Number(obj.confidence) || 0,
-            rationale: typeof obj.rationale === "string" ? obj.rationale : undefined,
-          });
-        }
-        if (obj.type === "partial_v5" && obj.v5) {
-          finalV5 = obj.v5 as ScanExtractionV5;
-          setResultJson(JSON.stringify(obj.v5, null, 2));
-        }
-        if (obj.type === "done" && obj.ok) {
-          if (obj.aiData) finalAi = obj.aiData as Record<string, unknown>;
-          if (obj.aiData && typeof obj.aiData === "object") {
-            const nested = (obj.aiData as { v5?: ScanExtractionV5 }).v5;
-            if (nested) finalV5 = nested;
-          }
-        }
-        if (obj.type === "error" || (obj.error && !obj.ok)) {
-          throw new Error(String(obj.error ?? "Scan failed"));
-        }
-      });
-
-      if (finalV5) {
-        const analysis = mapV5ToAnalysis(finalV5, finalAi);
-        setPendingAnalysis(analysis);
-        setResultJson(JSON.stringify(finalV5, null, 2));
-        setLastScanV5(finalV5);
-        setLastScanFileName(file.name);
-        try {
-          sessionStorage.setItem(
-            LAST_SCAN_STORAGE_KEY,
-            JSON.stringify({
-              fileName: file.name,
-              v5: finalV5,
-              telemetry: lastTelemetry,
-            }),
-          );
-        } catch {
-          /* ignore */
-        }
-        void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
-          captureProductEvent("scan_completed", { engine: engineRunMode, fileType: file.type });
-        });
-
-        const postPolicy = resolvePolicyForIndustry(inferred, industryId);
-        if (postPolicy.postActions.length > 0 && boundProjectId) {
-          const post = await runScanPostActions({
-            projectId: boundProjectId,
-            v5: finalV5,
-            policy: postPolicy,
-            openWorkspaceWidget,
-          });
-          if (post.applied.length > 0) {
-            toast.success(`פעולות הושלמו: ${post.applied.join(", ")}`);
-          }
-        } else if (postPolicy.postActions.length > 0 && !boundProjectId) {
-          toast.message("נדרש projectId לפעולות אוטומטיות אחרי הסריקה");
-        }
-
-        return analysis;
-      }
-      throw new Error("No extraction result");
-    } catch (err) {
-      throw err instanceof Error ? err : new Error(tr("scanner.scanError", "שגיאה בסריקה"));
-    }
-  };
-
-  const runFileQueue = useCallback(
-    async (files: File[]) => {
-      if (!files.length || isProcessing) return;
-
-      const valid: File[] = [];
-      for (const file of files) {
-        const err = validateScanFile(file);
-        if (err) toast.error(err);
-        else valid.push(file);
-      }
-      if (!valid.length) return;
-
-      const initialQueue: QueueItem[] = valid.map((file) => ({
-        id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
-        file,
-        status: "pending",
-      }));
-      setQueue(initialQueue);
-      setIsProcessing(true);
-
-      let ok = 0;
-      let fail = 0;
-
-      for (let i = 0; i < valid.length; i++) {
-        const file = valid[i]!;
-        const qid = initialQueue[i]!.id;
-        setQueueProgress({ current: i + 1, total: valid.length, name: file.name });
-        setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "processing" } : q)));
-        toast.info(
-          formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
-            current: i + 1,
-            total: valid.length,
-            name: file.name,
-          }),
-        );
-
-        try {
-          const analysis = await scanSingleFile(file);
-          ok++;
-          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "done" } : q)));
-          setHistory((prev) => [
-            {
-              id: qid,
-              fileName: file.name,
-              vendor: analysis.vendor,
-              amount: analysis.amount,
-              date: analysis.date || new Date().toISOString().split("T")[0]!,
-              status: "success",
-            },
-            ...prev,
-          ]);
-        } catch (err) {
-          fail++;
-          const msg = err instanceof Error ? err.message : tr("scanner.scanError", "שגיאה");
-          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "error", error: msg } : q)));
-          toast.error(`${file.name}: ${msg}`);
-        }
-      }
-
-      setQueueProgress(null);
-      setIsProcessing(false);
-      toast.success(
-        formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
-      );
-    },
-    // scanSingleFile מוגדר באותו קומפוננטה — הוספה ל-deps גורמת לרינדור מחדש בכל פעם
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- scanSingleFile יציב מספיק לתור קבצים
-    [isProcessing, validateScanFile, tr],
-  );
-
-  useEffect(() => {
-    const imp = liveData?.driveImportFile;
-    if (!imp || typeof imp !== "object") return;
-    const fileId = (imp as { fileId?: unknown }).fileId;
-    const fileName = (imp as { fileName?: unknown }).fileName;
-    const mimeType = (imp as { mimeType?: unknown }).mimeType;
-    if (typeof fileId !== "string" || typeof fileName !== "string") return;
-    if (driveImportDoneRef.current === fileId) return;
-
-    let cancelled = false;
-    driveImportDoneRef.current = fileId;
-
-    (async () => {
-      toast.info(`מוריד מ-Drive: ${fileName}`);
-      try {
-        const params = new URLSearchParams({
-          fileId,
-          fileName,
-          mimeType: typeof mimeType === "string" ? mimeType : "application/octet-stream",
-        });
-        const res = await fetch(`/api/os/google-drive/download?${params}`, {
-          credentials: "include",
-        });
-        if (!res.ok) {
-          const data = (await res.json().catch(() => ({}))) as { error?: string };
-          throw new Error(data.error ?? "הורדה מ-Google Drive נכשלה");
-        }
-        const blob = await res.blob();
-        if (cancelled) return;
-        const headerName = res.headers.get("X-Drive-File-Name");
-        const resolvedName = headerName ? decodeURIComponent(headerName) : fileName;
-        const resolvedMime = inferMimeFromFileName(resolvedName, blob.type);
-        const file = new File([blob], resolvedName, { type: resolvedMime });
-        await runFileQueue([file]);
-      } catch (err) {
-        if (driveImportDoneRef.current === fileId) driveImportDoneRef.current = null;
-        toast.error(err instanceof Error ? err.message : "ייבוא מ-Drive נכשל");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [liveData?.driveImportFile, runFileQueue]);
-
-  const persistInstruction = (value: string) => {
-    setUserInstruction(value);
-    try {
-      localStorage.setItem(SCAN_INSTRUCTION_KEY, value);
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const saveToNotebook = useCallback(async () => {
-    if (!lastScanV5 || !lastScanFileName) {
-      toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
-      return;
-    }
-    setSavingNotebook(true);
-    try {
-      const res = await fetch("/api/notebooklm/from-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          fileName: lastScanFileName,
-          v5: lastScanV5,
-          telemetry,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      openWorkspaceWidget?.("notebookLM", { notebookId: data.notebookId, title: data.title });
-      toast.success(tr("scanner.saveToNotebookDone", "נשמר במחברת"));
-    } catch {
-      toast.error(tr("scanner.saveToNotebookFailed", "שמירה נכשלה"));
-    } finally {
-      setSavingNotebook(false);
-    }
-  }, [lastScanV5, lastScanFileName, openWorkspaceWidget, telemetry, tr]);
-
-  useEffect(() => {
-    if (!liveData?.triggerSaveToNotebook || !lastScanV5 || !lastScanFileName) return;
-    void saveToNotebook();
-  }, [liveData?.triggerSaveToNotebook, lastScanV5, lastScanFileName, saveToNotebook]);
-
   const onDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault();
@@ -629,67 +282,6 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
     },
     [runFileQueue],
   );
-
-  const confirmAnalysis = async () => {
-    if (!pendingAnalysis) return;
-    const raw = pendingAnalysis.rawAiData as DocumentAnalysis | undefined;
-    const isCorrected =
-      raw &&
-      (pendingAnalysis.vendor !== raw.vendor ||
-        pendingAnalysis.amount !== raw.amount ||
-        pendingAnalysis.taxId !== raw.taxId ||
-        pendingAnalysis.date !== raw.date);
-
-    if (isCorrected && pendingAnalysis.documentId) {
-      try {
-        await fetch("/api/ai/corrections", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            documentId: pendingAnalysis.documentId,
-            originalAiData: raw,
-            correctedData: {
-              vendor: pendingAnalysis.vendor,
-              amount: pendingAnalysis.amount,
-              taxId: pendingAnalysis.taxId,
-              date: pendingAnalysis.date,
-            },
-            correctionSource: "USER_MANUAL",
-          }),
-        });
-      } catch {
-        /* */
-      }
-    }
-
-    try {
-      await fetch("/api/expenses/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: pendingAnalysis.amount,
-          vendor: pendingAnalysis.vendor,
-          projectName: pendingAnalysis.projectSuggestion,
-        }),
-      });
-    } catch {
-      /* */
-    }
-
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        fileName: tr("scanner.results", "סריקה"),
-        vendor: pendingAnalysis.vendor,
-        amount: pendingAnalysis.amount,
-        date: pendingAnalysis.date || new Date().toISOString().split("T")[0]!,
-        status: "success",
-      },
-      ...prev,
-    ]);
-    setPendingAnalysis(null);
-    toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
-  };
 
   useEffect(() => {
     if (showProjectPicker) void loadProjectsList();
@@ -712,33 +304,18 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row" dir={dir}>
-      <div className="flex h-36 shrink-0 flex-col border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 md:h-auto md:w-56 md:border-b-0 md:border-s">
-        <div className="border-b border-[color:var(--border-main)] p-3">
-          <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
-            <History size={16} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              {tr("scanner.historyTitle", "היסטוריה")}
-            </span>
-          </div>
-        </div>
-        <div className="custom-scrollbar flex-1 overflow-y-auto p-2 space-y-2">
-          {history.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[10px] font-bold">{item.vendor}</div>
-                <div className="text-[10px] font-mono text-emerald-600">₪{(item.amount || 0).toLocaleString()}</div>
-              </div>
-              <ItemActions onDelete={() => setHistory((prev) => prev.filter((h) => h.id !== item.id))} />
-            </div>
-          ))}
-        </div>
-      </div>
+    <div
+      className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row"
+      dir={dir}
+    >
+      <ScanHistorySidebar
+        history={history}
+        onDelete={(id) => setHistory((prev) => prev.filter((h) => h.id !== id))}
+        tr={tr}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] p-3">
           <div className="flex items-center gap-3 min-w-0">
             <ScanLine className="text-orange-500 shrink-0" size={22} />
@@ -801,7 +378,8 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
                 className="max-w-[8rem] truncate rounded-lg bg-indigo-500/10 px-2 py-1 text-[9px] font-bold text-indigo-700 dark:text-indigo-300"
                 title={scanClassification.rationale}
               >
-                {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} ({Math.round(scanClassification.confidence * 100)}%)
+                {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} (
+                {Math.round(scanClassification.confidence * 100)}%)
               </span>
             ) : null}
             <select
@@ -823,7 +401,13 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
               aria-label={tr("scanner.configAi", "מנועים")}
             >
               {ENGINE_MODES.map((m) => (
-                <option key={m.id} value={m.id} disabled={m.id === "SINGLE_DOCUMENT_AI" && !engineMeta?.configured.documentAI}>
+                <option
+                  key={m.id}
+                  value={m.id}
+                  disabled={
+                    m.id === "SINGLE_DOCUMENT_AI" && !engineMeta?.configured.documentAI
+                  }
+                >
                   {tr(m.labelKey, m.fallback)}
                 </option>
               ))}
@@ -831,166 +415,43 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
           </div>
         </div>
 
+        {/* Body */}
         {pendingAnalysis ? (
-          <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
-            <div className="mx-auto max-w-xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="flex items-center gap-2 font-bold">
-                  <CheckCircle2 className="text-emerald-500" size={20} />
-                  {tr("scanner.results", "אישור")}
-                </h3>
-                <button type="button" onClick={() => setPendingAnalysis(null)} className="rounded-lg p-1 hover:bg-black/5">
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                  <Building2 size={10} className="inline" /> ספק
-                  <input
-                    value={pendingAnalysis.vendor}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, vendor: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
-                  />
-                </label>
-                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                  <Hash size={10} className="inline" /> ח&quot;פ
-                  <input
-                    value={pendingAnalysis.taxId || ""}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, taxId: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
-                  />
-                </label>
-                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                  <DollarSign size={10} className="inline" /> סכום
-                  <input
-                    type="number"
-                    value={pendingAnalysis.amount}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, amount: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-mono"
-                  />
-                </label>
-                <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                  <Calendar size={10} className="inline" /> תאריך
-                  <input
-                    type="date"
-                    value={pendingAnalysis.date}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, date: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={confirmAnalysis}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-black text-white"
-              >
-                <Save size={18} /> {tr("scanner.confirmExpense", "אשר ושמור")}
-              </button>
-            </div>
-          </div>
+          <ScanConfirmPanel
+            analysis={pendingAnalysis}
+            onChange={setPendingAnalysis}
+            onClose={() => setPendingAnalysis(null)}
+            onConfirm={() => void confirmAnalysis()}
+            tr={tr}
+          />
         ) : (
-          <Group orientation={stackScannerPanels ? "vertical" : "horizontal"} className="min-h-0 flex-1">
+          <Group
+            orientation={stackScannerPanels ? "vertical" : "horizontal"}
+            className="min-h-0 flex-1"
+          >
             <Panel
               defaultSize={stackScannerPanels ? 42 : 48}
               minSize={stackScannerPanels ? 24 : 28}
               className="flex min-h-0 flex-col"
             >
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
+              <ScanDropZone
+                isDragging={isDragging}
+                setIsDragging={setIsDragging}
+                isProcessing={isProcessing}
+                queue={queue}
+                queueProgress={queueProgress}
+                hasPendingAnalysis={!!pendingAnalysis}
+                previewUrl={previewUrl}
+                previewMime={previewMime}
+                previewFileName={previewFileName}
+                fileAccept={fileAccept}
+                fileInputRef={fileInputRef}
                 onDrop={onDrop}
-                className={`m-2 flex min-h-[9rem] flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition md:m-3 ${
-                  isDragging ? "border-orange-500/50 bg-orange-500/5" : "border-[color:var(--border-main)]"
-                }`}
-              >
-                {isProcessing ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="animate-spin text-orange-500" size={40} />
-                    {queueProgress ? (
-                      <p className="px-4 text-center text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                        {formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
-                          current: queueProgress.current,
-                          total: queueProgress.total,
-                          name: queueProgress.name,
-                        })}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    <Upload size={36} className="mb-3 text-[color:var(--foreground-muted)]" />
-                    <p className="px-4 text-center text-xs font-bold">{t("scanner.drop")}</p>
-                    <p className="mt-1 px-4 text-center text-[9px] text-[color:var(--foreground-muted)]">
-                      {tr("scanner.acceptHint", SCAN_ACCEPT_SUMMARY)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="mt-4 flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold"
-                    >
-                      {tr("scanner.selectFiles", "בחר קבצים")} <ArrowRight size={14} />
-                    </button>
-                    {queue.length > 0 ? (
-                      <p className="mt-2 text-[10px] font-bold text-orange-500">
-                        {queue.filter((q) => q.status === "done").length}/{queue.length}{" "}
-                        {tr("scanner.filesQueued", "קבצים בתור")}
-                      </p>
-                    ) : null}
-                  </>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  accept={fileAccept}
-                  onChange={onFileInputChange}
-                />
-                {queue.length > 0 && !pendingAnalysis ? (
-                  <ul className="custom-scrollbar mt-3 max-h-28 w-full max-w-sm space-y-1 overflow-y-auto px-4">
-                    {queue.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2 py-1 text-[9px]"
-                      >
-                        <span className="truncate font-bold">{item.file.name}</span>
-                        <span
-                          className={
-                            item.status === "done"
-                              ? "text-emerald-500"
-                              : item.status === "error"
-                                ? "text-red-500"
-                                : item.status === "processing"
-                                  ? "text-orange-500"
-                                  : "text-[color:var(--foreground-muted)]"
-                          }
-                        >
-                          {item.status === "done"
-                            ? tr("scanner.queueStatusDone", "הושלם")
-                            : item.status === "error"
-                              ? tr("scanner.queueStatusError", "שגיאה")
-                              : item.status === "processing"
-                                ? tr("scanner.queueStatusProcessing", "מעבד")
-                                : tr("scanner.queueStatusPending", "ממתין")}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {previewUrl && previewMime ? (
-                  <div className="mt-4 w-full max-w-sm px-2">
-                    <ScanFilePreview
-                      url={previewUrl}
-                      mime={previewMime}
-                      fileName={previewFileName}
-                      emptyLabel=""
-                    />
-                  </div>
-                ) : null}
-              </div>
+                onFileInputChange={onFileInputChange}
+                applyFilePreview={applyFilePreview}
+                t={t}
+                tr={tr}
+              />
             </Panel>
             <Separator
               className={
@@ -1017,23 +478,31 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
           </Group>
         )}
 
+        {/* Engine status bar */}
         <div className="grid grid-cols-3 gap-1.5 border-t border-[color:var(--border-main)] p-2 sm:gap-2">
           <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
             <Zap size={14} className="mx-auto text-blue-500" />
-            <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">{tr("scanner.engineActive", "מנוע")}</div>
+            <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">
+              {tr("scanner.engineActive", "מנוע")}
+            </div>
             <div className="text-[10px] font-black truncate">{activeEngineLabel}</div>
           </div>
           <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
             <Bot size={14} className="mx-auto text-purple-500" />
-            <div className="text-[9px] font-bold">{engineMeta?.configured.gemini ? "Gemini ✓" : "—"}</div>
+            <div className="text-[9px] font-bold">
+              {engineMeta?.configured.gemini ? "Gemini ✓" : "—"}
+            </div>
           </div>
           <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
             <FileText size={14} className="mx-auto text-emerald-500" />
-            <div className="text-[9px] font-bold">{engineMeta?.configured.openai ? "OpenAI ✓" : "—"}</div>
+            <div className="text-[9px] font-bold">
+              {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Floating panels */}
       <OsFloatingPanel
         open={instructionsOpen}
         onClose={() => setInstructionsOpen(false)}
@@ -1113,7 +582,9 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
             savingNotebook={savingNotebook}
           />
         ) : (
-          <p className="text-sm text-[color:var(--foreground-muted)]">{tr("scanner.noPreview", "אין תוצאה")}</p>
+          <p className="text-sm text-[color:var(--foreground-muted)]">
+            {tr("scanner.noPreview", "אין תוצאה")}
+          </p>
         )}
       </OsFloatingPanel>
     </div>
