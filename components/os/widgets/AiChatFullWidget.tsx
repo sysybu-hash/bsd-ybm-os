@@ -1,605 +1,78 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Sparkles, 
-  Send, 
-  User, 
-  Bot, 
-  Loader2, 
-  Trash2, 
-  Copy, 
-  MessageSquare,
-  History,
-  Settings2,
-  ChevronLeft,
-  Paperclip,
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX
-} from 'lucide-react';
-import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
-import { getAssistantVisibleTranscript } from '@/lib/ai/filter-assistant-visible-text';
-import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from '@/hooks/useGeminiLiveAudio';
-import type { GeminiLiveStatusLabels } from '@/hooks/useGeminiLiveAudio';
-import type { GeminiLiveVoiceSettings } from '@/hooks/useGeminiLiveAudio';
-import { useOsAssistant } from '@/hooks/use-os-assistant';
-import { useSession } from 'next-auth/react';
-import { useAutomationRunnerContext } from '@/components/os/AutomationRunnerContext';
-import type { WidgetType } from '@/hooks/use-window-manager';
-import { loadGeminiLiveVoiceSettings } from '@/lib/gemini-live-voice-settings';
-import GeminiLiveSettingsSheet from '@/components/os/GeminiLiveSettingsSheet';
-import GeminiLivePanel from '@/components/os/gemini-live/GeminiLivePanel';
-import WidgetSplitPanels from '@/components/os/layout/WidgetSplitPanels';
-import KnowledgeVaultAttachButton from '@/components/os/knowledge-vault/KnowledgeVaultAttachButton';
-import { GEMINI_LIVE_SESSION_START_TAG } from '@/lib/gemini-live/session-greeting';
-import {
-  isGeminiLiveAllowedByContext,
-  isGeminiLiveContextReady,
-  isGeminiLiveSessionEligible,
-  resolveGeminiLiveOrgId,
-} from '@/lib/gemini-live/eligibility';
-
-const LIVE_USER_DRAFT_ID = 'gemini-live-user-draft';
-const LIVE_ASSISTANT_DRAFT_ID = 'gemini-live-assistant-draft';
-
-function upsertLiveTranscriptMessage(
-  prev: Message[],
-  draftId: string,
-  role: Message['role'],
-  content: string,
-  finished: boolean,
-  locale: string,
-): Message[] {
-  const trimmed = content.trim();
-  if (!trimmed || trimmed === GEMINI_LIVE_SESSION_START_TAG) return prev;
-
-  const withoutDraft = prev.filter((m) => m.id !== draftId);
-  const entry: Message = {
-    id: finished ? `${role}-live-${Date.now()}` : draftId,
-    role,
-    content: role === 'assistant' ? (getAssistantVisibleTranscript(trimmed) ?? trimmed) : trimmed,
-    timestamp: formatChatTime(locale),
-  };
-  return [...withoutDraft, entry];
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
-type AiChatFullWidgetProps = {
-  liveData?: Record<string, unknown> | null;
-  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
-};
-
-function formatChatTime(locale: string) {
-  const tag = locale === 'he' ? 'he-IL' : locale === 'ru' ? 'ru-RU' : 'en-US';
-  return new Date().toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' });
-}
+import React from "react";
+import { Settings2 } from "lucide-react";
+import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
+import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
+import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
+import { useAiChatState } from "./ai-chat/useAiChatState";
+import { AiChatSidebar } from "./ai-chat/AiChatSidebar";
+import { AiChatMessages } from "./ai-chat/AiChatMessages";
+import { AiChatInput } from "./ai-chat/AiChatInput";
+import type { AiChatFullWidgetProps } from "./ai-chat/types";
 
 export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget }: AiChatFullWidgetProps) {
-  const { dir, t, locale } = useI18n();
-  const { data: session } = useSession();
-  const automationCtx = useAutomationRunnerContext();
-  const openWidget = useCallback(
-    (type: WidgetType, data?: Record<string, unknown> | null) => {
-      if (openWorkspaceWidget) {
-        openWorkspaceWidget(type, data);
-      } else {
-        automationCtx?.assistantToolDeps.openWidget(type, data ?? null);
-      }
-    },
-    [openWorkspaceWidget, automationCtx?.assistantToolDeps],
-  );
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [provider, setProvider] = useState<'gemini' | 'openai' | 'claude'>('gemini');
-  const [chatTab, setChatTab] = useState<'live' | 'text'>('text');
-  const [isLiveMode, setIsLiveMode] = useState(false);
-  const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
-  const [showSettings, setShowSettings] = useState(false);
-  const [attachment, setAttachment] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
-
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const liveAutoStartRef = useRef(false);
-
-  useEffect(() => {
-    setGeminiVoiceSettings(loadGeminiLiveVoiceSettings());
-  }, []);
-
-  const assistantToolDeps = useMemo(
-    () => automationCtx?.assistantToolDeps ?? { openWidget },
-    [automationCtx?.assistantToolDeps, openWidget],
-  );
-  const osAssistant = useOsAssistant(assistantToolDeps);
-
-  useEffect(() => {
-    const prompt = liveData?.prompt;
-    if (typeof prompt === "string" && prompt.trim()) setInput(prompt.trim());
-    const p = liveData?.provider;
-    if (p === "openai" || p === "claude" || p === "gemini") setProvider(p);
-    if (liveData?.startLive === true) {
-      setChatTab('live');
-      setIsLiveMode(true);
-    }
-  }, [liveData]);
-
-  useEffect(() => {
-    if (chatTab === "live" && session?.user?.id) {
-      void osAssistant.refresh();
-    }
-  }, [chatTab, session?.user?.id, osAssistant]);
-
-  useEffect(() => {
-    if (osAssistant.featureFlags.geminiLiveEnabled === false) {
-      setChatTab('text');
-      setIsLiveMode(false);
-    }
-  }, [osAssistant.featureFlags.geminiLiveEnabled]);
-
-  const liveStatusLabels = useMemo<GeminiLiveStatusLabels>(
-    () => ({
-      ready: t('workspaceWidgets.aiChat.liveStatusReady'),
-      connected: t('workspaceWidgets.aiChat.liveStatusConnected'),
-      listening: t('workspaceWidgets.aiChat.liveStatusListening'),
-      speaking: t('workspaceWidgets.aiChat.liveStatusSpeaking'),
-      interrupted: t('workspaceWidgets.aiChat.liveStatusInterrupted'),
-      tool: t('workspaceWidgets.aiChat.liveStatusTool'),
-      disconnected: t('workspaceWidgets.aiChat.liveStatusDisconnected'),
-      preparing: t('workspaceWidgets.aiChat.liveStatusPreparing'),
-      fallback: t('workspaceWidgets.aiChat.liveStatusFallback'),
-    }),
-    [t],
-  );
-
-  const liveUserName =
-    osAssistant.context?.user.name?.trim() ||
-    session?.user?.name?.trim() ||
-    undefined;
-
-  const liveOrgId = resolveGeminiLiveOrgId(session?.user?.organizationId, osAssistant.context);
-  const geminiLiveEligible =
-    isGeminiLiveSessionEligible({
-      userId: session?.user?.id,
-      orgId: liveOrgId,
-      platformEnabled: osAssistant.featureFlags.geminiLiveEnabled,
-    }) && isGeminiLiveAllowedByContext(osAssistant.context);
-  const liveContextReady = isGeminiLiveContextReady({
-    assistantReady: osAssistant.ready,
-    assistantLoading: osAssistant.loading,
-    systemInstructionVoice: osAssistant.systemInstructionVoice,
-    context: osAssistant.context,
-  });
-
-  const geminiLive = useGeminiLiveAudio({
-    owner: "aiChatFull",
-    enabled: chatTab === "live" && geminiLiveEligible,
-    contextReady: liveContextReady,
-    systemInstruction: osAssistant.systemInstructionVoice,
-    settings: geminiVoiceSettings,
-    advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
-    locale,
-    userName: liveUserName,
-    greetOnConnect: true,
-    statusLabels: liveStatusLabels,
-    onUserTranscript: (text, finished) => {
-      setMessages((prev) =>
-        upsertLiveTranscriptMessage(prev, LIVE_USER_DRAFT_ID, 'user', text, finished, locale),
-      );
-    },
-    onModelTranscript: (text, finished) => {
-      const visible = getAssistantVisibleTranscript(text) ?? text;
-      if (!visible.trim()) return;
-      setMessages((prev) =>
-        upsertLiveTranscriptMessage(prev, LIVE_ASSISTANT_DRAFT_ID, 'assistant', visible, finished, locale),
-      );
-    },
-    onToolCall: async (name, args) => {
-      const result = await osAssistant.onToolCall(name, args);
-      const text = typeof result === "string" ? result : "Success";
-      if (text === "Success") {
-        toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
-      } else if (
-        text &&
-        !text.startsWith("לא ") &&
-        !text.startsWith("שגיאה") &&
-        !text.toLowerCase().startsWith("error")
-      ) {
-        toast.success(text);
-      }
-      return result;
-    },
-    onError: (err) => {
-      console.error("Gemini Live Error:", err);
-      toast.error(t("workspaceWidgets.aiChat.liveFailed"));
-    }
-  });
-
-  const { isLiveActive, isListening, isSpeaking, start, stop } = geminiLive;
-
-  useEffect(() => {
-    if (!isLiveMode && isLiveActive) {
-      stop();
-    }
-  }, [isLiveMode, isLiveActive, stop]);
-
-  useEffect(() => {
-    if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !liveContextReady) {
-      return;
-    }
-    void start();
-  }, [liveData?.startLive, isLiveMode, isLiveActive, liveContextReady, start]);
-
-  useEffect(() => {
-    if (chatTab !== "live") {
-      liveAutoStartRef.current = false;
-      return;
-    }
-    if (!geminiLiveEligible || !liveContextReady) return;
-    if (isLiveActive || geminiLive.state === "connecting" || liveAutoStartRef.current) return;
-    liveAutoStartRef.current = true;
-    setIsLiveMode(true);
-    void start();
-  }, [
-    chatTab,
-    geminiLiveEligible,
-    liveContextReady,
-    isLiveActive,
-    geminiLive.state,
-    start,
-  ]);
-
-  const handleLiveTab = () => {
-    setChatTab("live");
-    setIsLiveMode(true);
-    void osAssistant.refresh();
-  };
-
-  const handleTextTab = () => {
-    setChatTab('text');
-    setIsLiveMode(false);
-    if (isLiveActive) stop();
-  };
-
-  const handleToggleLive = () => {
-    if (isLiveActive) {
-      stop();
-      setIsLiveMode(false);
-      return;
-    }
-    setIsLiveMode(true);
-    void start();
-  };
-
-  const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =
-    geminiLive.state === "connecting" ? "connecting"
-    : geminiLive.state === "streaming" ? (geminiLive.isSpeaking ? "speaking" : "listening")
-    : geminiLive.state === "error" ? "error"
-    : isLiveActive ? "listening"
-    : "idle";
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleAttachmentPick = (file: File | null) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      const base64 = result.includes(",") ? (result.split(",")[1] ?? "") : result;
-      setAttachment({ base64, mimeType: file.type || "application/octet-stream", name: file.name });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if ((!input.trim() && !attachment) || isLoading) return;
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: attachment ? `${input.trim() || attachment.name} 📎` : input,
-      timestamp: formatChatTime(locale),
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    const sentText = input.trim() || (attachment ? `נתח את הקובץ המצורף: ${attachment.name}` : "");
-    const sentAttachment = attachment;
-    setInput('');
-    setAttachment(null);
-    setIsLoading(true);
-
-    try {
-      if (!sentAttachment && automationCtx?.parseAndRun) {
-        const parsed = await automationCtx.parseAndRun(sentText);
-        if (parsed?.actions?.length) {
-          if (parsed.reply?.trim()) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: (Date.now() + 1).toString(),
-                role: 'assistant',
-                content: parsed.reply,
-                timestamp: formatChatTime(locale),
-              },
-            ]);
-          }
-          return;
-        }
-      }
-
-      const body: Record<string, unknown> = {
-        provider,
-        locale,
-        prompt: sentText,
-        stream: true,
-        history: messages.map(m => ({ role: m.role, content: m.content })),
-      };
-      if (sentAttachment) {
-        body.attachmentBase64 = sentAttachment.base64;
-        body.attachmentMimeType = sentAttachment.mimeType;
-      }
-
-      const res = await fetch('/api/chat/legacy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const contentType = res.headers.get('content-type') ?? '';
-
-      if (contentType.includes('text/event-stream') && res.body) {
-        const assistantId = (Date.now() + 1).toString();
-        setMessages(prev => [...prev, {
-          id: assistantId,
-          role: 'assistant',
-          content: '',
-          timestamp: formatChatTime(locale),
-        }]);
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() ?? '';
-          for (const part of parts) {
-            const line = part.split('\n').find((l) => l.startsWith('data: '));
-            if (!line) continue;
-            const data = JSON.parse(line.slice(6)) as { chunk?: string; done?: boolean; error?: string };
-            if (data.error) throw new Error(data.error);
-            if (data.chunk) {
-              setMessages(prev => prev.map(m =>
-                m.id === assistantId ? { ...m, content: m.content + data.chunk } : m,
-              ));
-            }
-          }
-        }
-        setMessages(prev => prev.map(m =>
-          m.id === assistantId
-            ? { ...m, content: getAssistantVisibleTranscript(m.content) ?? m.content }
-            : m,
-        ));
-        return;
-      }
-
-      const data = await res.json();
-      if (res.ok) {
-        const visible = getAssistantVisibleTranscript(String(data.reply ?? '')) ?? String(data.reply ?? '');
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: visible,
-          timestamp: formatChatTime(locale),
-        }]);
-      } else {
-        throw new Error(data.error);
-      }
-    } catch {
-      toast.error(t("workspaceWidgets.aiChat.sendFailed"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const sidebar = (
-    <div className="flex h-full min-h-0 flex-col">
-        <div className="p-6 border-b border-[color:var(--border-main)]">
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-6">
-            <Sparkles size={20} />
-            <span className="font-black text-sm uppercase tracking-widest">{t('workspaceWidgets.aiChat.title')}</span>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest block mb-2">{t('workspaceWidgets.aiChat.activeEngine')}</span>
-            {(['gemini', 'openai', 'claude'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setProvider(p)}
-                className={`w-full flex items-center justify-between px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  provider === p ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shadow-sm' : 'text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] hover:bg-[color:var(--foreground-muted)]/5'
-                }`}
-              >
-                <span className="capitalize">{p}</span>
-                {provider === p && <div className="w-1.5 h-1.5 rounded-full bg-purple-500 dark:bg-purple-400 animate-pulse" />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-          <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest px-2 block mb-4">{t('workspaceWidgets.aiChat.recentChats')}</span>
-          <div className="space-y-1">
-            {['ניתוח תקציב וילה', 'השוואת מחירי בטון', 'דרישות בטיחות אתר'].map((h, i) => (
-              <button key={i} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[color:var(--foreground-muted)]/5 text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] text-xs font-medium transition-all truncate text-right">
-                <MessageSquare size={14} className="flex-shrink-0" /> {h}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-[color:var(--border-main)]">
-          <button 
-            onClick={() => setMessages([])}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[color:var(--foreground-muted)] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/5 transition-all text-xs font-bold"
-          >
-            <Trash2 size={14} /> {t('workspaceWidgets.aiChat.clearHistory')}
-          </button>
-        </div>
-    </div>
-  );
+  const { dir, t } = useI18n();
+  const c = useAiChatState(liveData, openWorkspaceWidget);
 
   const chatArea = (
-      <div className="flex min-h-0 flex-1 flex-col relative">
-        <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
-          <div className="flex items-center gap-2">
-            {osAssistant.featureFlags.geminiLiveEnabled !== false ? (
-            <button type="button" onClick={handleLiveTab} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'live' ? 'bg-indigo-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabLive')}</button>
-            ) : null}
-            <button type="button" onClick={handleTextTab} className={`px-3 py-1.5 rounded-lg text-xs font-black ${chatTab === 'text' ? 'bg-purple-600 text-white' : 'text-[color:var(--foreground-muted)]'}`}>{t('workspaceWidgets.aiChat.tabText')}</button>
-          </div>
-          <button type="button" onClick={() => setShowSettings(true)} className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"><Settings2 size={18} /></button>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
-          {chatTab === 'live' && (
-            <GeminiLivePanel
-              statusLabel={geminiLive.statusText}
-              voiceStatus={voiceStatus}
-              isLiveActive={isLiveActive}
-              onToggleLive={handleToggleLive}
-              onOpenSettings={() => setShowSettings(true)}
-              lastTranscript={geminiLive.lastTranscript}
-            />
-          )}
-
-          {messages.length === 0 && chatTab === 'text' && (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-              <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
-                <Bot size={40} className="text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">{t('workspaceWidgets.aiChat.emptyTitle')}</h3>
-              <p className="text-sm text-[color:var(--foreground-muted)] max-w-xs leading-relaxed">{t('workspaceWidgets.aiChat.emptySubtitle')}</p>
-            </div>
-          )}
-
-          {messages.map((m) => (
-            <div key={m.id} className={`flex gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-                m.role === 'user' ? 'bg-[color:var(--surface-card)]/50 border-[color:var(--border-main)] text-[color:var(--foreground-main)]' : 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400'
-              }`}>
-                {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-              </div>
-              <div className={`flex flex-col max-w-[80%] ${m.role === 'user' ? 'items-end' : ''}`}>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
-                  m.role === 'user' 
-                    ? 'bg-[color:var(--surface-card)]/80 text-[color:var(--foreground-main)] rounded-tr-none shadow-sm dark:shadow-none' 
-                    : 'bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] text-[color:var(--foreground-main)] rounded-tl-none prose dark:prose-invert prose-sm max-w-none shadow-sm dark:shadow-none'
-                }`}>
-                  {m.role === 'assistant' ? (
-                    <ReactMarkdown>{getAssistantVisibleTranscript(m.content) ?? m.content}</ReactMarkdown>
-                  ) : (
-                    m.content
-                  )}
-                </div>
-                <span className="text-[10px] text-[color:var(--foreground-muted)] mt-1.5 font-mono">{m.timestamp}</span>
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
-                <Loader2 size={16} className="text-purple-600 dark:text-purple-400 animate-spin" />
-              </div>
-              <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 rounded-2xl rounded-tl-none">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500/40 animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500/40 animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500/40 animate-bounce" />
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {chatTab === 'text' ? (
-        <div className="p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
-          {attachment ? (
-            <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
-              <span className="truncate max-w-[240px]">{attachment.name}</span>
-              <button type="button" onClick={() => setAttachment(null)} className="text-red-500 hover:underline">
-                הסר
-              </button>
-            </div>
-          ) : null}
-          <form onSubmit={handleSend} className="relative flex gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => handleAttachmentPick(e.target.files?.[0] ?? null)}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
-              aria-label="צרף קובץ"
-            >
-              <Paperclip size={20} />
+    <div className="flex min-h-0 flex-1 flex-col relative">
+      {/* Tab header */}
+      <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
+        <div className="flex items-center gap-2">
+          {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
+            <button type="button" onClick={c.handleLiveTab}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+              {t("workspaceWidgets.aiChat.tabLive")}
             </button>
-            <KnowledgeVaultAttachButton
-              onSelect={(item) => {
-                if (item.parsedSummary && typeof item.parsedSummary === 'object') {
-                  const text = (item.parsedSummary as { textPreview?: string }).textPreview;
-                  if (text) setInput((prev) => (prev ? `${prev}\n\n${text}` : text));
-                }
-                toast.success(item.name);
-              }}
-            />
-            <div className="relative flex-1">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={t("workspaceWidgets.aiChat.placeholder")}
-                className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl py-4 pr-6 pl-14 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-sm dark:shadow-none"
-              />
-              <button 
-                type="submit"
-                disabled={isLoading || (!input.trim() && !attachment)}
-                className="absolute left-2 top-2 bottom-2 px-4 bg-purple-600 hover:bg-purple-500 disabled:bg-[color:var(--foreground-muted)]/20 disabled:text-[color:var(--foreground-muted)] text-white rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center justify-center"
-              >
-                <Send size={18} />
-              </button>
-            </div>
-          </form>
-          <div className="mt-3 flex justify-center gap-6 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-            <span>{t('workspaceWidgets.aiChat.footerMarkdown')}</span>
-            <span>•</span>
-            <span>{t('workspaceWidgets.aiChat.footerMemory')}</span>
-            <span>•</span>
-            <span>{t('workspaceWidgets.aiChat.footerDataAware')}</span>
-          </div>
+          ) : null}
+          <button type="button" onClick={c.handleTextTab}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "text" ? "bg-purple-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+            {t("workspaceWidgets.aiChat.tabText")}
+          </button>
         </div>
-        ) : null}
+        <button type="button" onClick={() => c.setShowSettings(true)}
+          className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all">
+          <Settings2 size={18} />
+        </button>
       </div>
+
+      {/* Messages */}
+      <AiChatMessages
+        messages={c.messages}
+        isLoading={c.isLoading}
+        chatTab={c.chatTab}
+        chatEndRef={c.chatEndRef}
+        t={t}
+      >
+        {c.chatTab === "live" && (
+          <GeminiLivePanel
+            statusLabel={c.geminiLive.statusText}
+            voiceStatus={c.voiceStatus}
+            isLiveActive={c.isLiveActive}
+            onToggleLive={c.handleToggleLive}
+            onOpenSettings={() => c.setShowSettings(true)}
+            lastTranscript={c.geminiLive.lastTranscript}
+          />
+        )}
+      </AiChatMessages>
+
+      {/* Text input */}
+      {c.chatTab === "text" && (
+        <AiChatInput
+          input={c.input}
+          setInput={c.setInput}
+          isLoading={c.isLoading}
+          attachment={c.attachment}
+          onClearAttachment={() => c.setAttachment(null)}
+          onAttachFile={c.handleAttachmentPick}
+          onSubmit={(e) => void c.handleSend(e)}
+          fileInputRef={c.fileInputRef}
+          t={t}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -613,7 +86,14 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               defaultSize: 28,
               minSize: 18,
               className: "flex min-h-0 min-w-0 flex-col border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50",
-              children: sidebar,
+              children: (
+                <AiChatSidebar
+                  provider={c.provider}
+                  onSetProvider={c.setProvider}
+                  onClear={() => c.setMessages([])}
+                  t={t}
+                />
+              ),
             },
             {
               id: "ai-chat-main",
@@ -628,12 +108,12 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
       <div className="flex min-h-0 flex-1 flex-col md:hidden">{chatArea}</div>
 
       <GeminiLiveSettingsSheet
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        value={geminiVoiceSettings}
-        onChange={setGeminiVoiceSettings}
-        isLiveActive={isLiveActive}
-        advancedFeaturesEnabled={osAssistant.featureFlags.geminiLiveAdvancedFeatures}
+        open={c.showSettings}
+        onClose={() => c.setShowSettings(false)}
+        value={c.geminiVoiceSettings}
+        onChange={c.setGeminiVoiceSettings}
+        isLiveActive={c.isLiveActive}
+        advancedFeaturesEnabled={c.osAssistant.featureFlags.geminiLiveAdvancedFeatures}
       />
     </div>
   );
