@@ -6,252 +6,12 @@ import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPane
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import { useProjectPicker } from "@/hooks/use-project-picker";
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  BarChart3,
-  Plus,
-  Clock,
-  Search,
-  User,
-  X,
-  Save,
-  ArrowRight,
-} from "lucide-react";
+import { BarChart3, Plus, Clock, Search, User, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatBoardDueDate, type BoardColumnId, type BoardPriorityId } from "@/lib/tasks/board-mapping";
-
-interface Contact {
-  id: string;
-  name: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  project: string;
-  projectId?: string;
-  clientName: string;
-  contactId?: string;
-  budget: number;
-  status: BoardColumnId;
-  priority: BoardPriorityId;
-  dueDate: string;
-}
-
-type TaskFormState = {
-  title: string;
-  description: string;
-  projectName: string;
-  contactId: string;
-  budget: number;
-  dueDate: string;
-  status: BoardColumnId;
-  priority: BoardPriorityId;
-};
-
-const initialTasks: Task[] = [];
-
-const columns: { id: BoardColumnId; titleKey: string; color: string }[] = [
-  { id: "todo", titleKey: "todo", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400" },
-  { id: "in-progress", titleKey: "inProgress", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  { id: "review", titleKey: "review", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  { id: "done", titleKey: "done", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-];
-
-const emptyForm = (projectName = ""): TaskFormState => ({
-  title: "",
-  description: "",
-  projectName,
-  contactId: "",
-  budget: 0,
-  dueDate: new Date().toISOString().split("T")[0]!,
-  status: "todo",
-  priority: "medium",
-});
-
-function taskToForm(task: Task): TaskFormState {
-  return {
-    title: task.title,
-    description: task.description ?? "",
-    projectName: task.project,
-    contactId: task.contactId ?? "",
-    budget: task.budget,
-    dueDate: task.dueDate || new Date().toISOString().split("T")[0]!,
-    status: task.status,
-    priority: task.priority,
-  };
-}
-
-async function syncTask(payload: Record<string, unknown>) {
-  const res = await fetch("/api/projects/update", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.success === false) {
-    throw new Error(data.error || "שגיאת שמירה");
-  }
-  return data;
-}
-
-function TaskFormModal({
-  open,
-  title,
-  form,
-  contacts,
-  lockedProjectName,
-  onChange,
-  onClose,
-  onSave,
-  saveLabel,
-  t,
-}: {
-  open: boolean;
-  title: string;
-  form: TaskFormState;
-  contacts: Contact[];
-  lockedProjectName?: string;
-  onChange: (next: TaskFormState) => void;
-  onClose: () => void;
-  onSave: () => void;
-  saveLabel: string;
-  t: (key: string) => string;
-}) {
-  if (!open) return null;
-
-  const inputClass =
-    "w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-slate-900 dark:text-slate-200";
-  const labelClass = "text-[10px] font-bold text-slate-500 uppercase tracking-widest";
-
-  return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 overflow-y-auto">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <Plus className="text-indigo-600 dark:text-indigo-400" size={24} /> {title}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-500 transition-all"
-            aria-label={t("workspaceWidgets.confirm.cancel")}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-4 mb-8 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
-          <div className="space-y-1.5">
-            <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.title")}</label>
-            <input
-              className={inputClass}
-              value={form.title}
-              onChange={(e) => onChange({ ...form, title: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.description")}</label>
-            <textarea
-              rows={3}
-              className={`${inputClass} resize-none`}
-              value={form.description}
-              onChange={(e) => onChange({ ...form, description: e.target.value })}
-            />
-          </div>
-          {lockedProjectName ? (
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.project")}</label>
-              <p className={`${inputClass} opacity-90`}>{lockedProjectName}</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.project")}</label>
-              <input
-                className={inputClass}
-                value={form.projectName}
-                onChange={(e) => onChange({ ...form, projectName: e.target.value })}
-              />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.contact")}</label>
-            <select
-              className={`${inputClass} appearance-none`}
-              value={form.contactId}
-              onChange={(e) => onChange({ ...form, contactId: e.target.value })}
-            >
-              <option value="">{t("workspaceWidgets.projectBoard.fields.contactPlaceholder")}</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.status")}</label>
-              <select
-                className={`${inputClass} appearance-none`}
-                value={form.status}
-                onChange={(e) => onChange({ ...form, status: e.target.value as BoardColumnId })}
-              >
-                {columns.map((col) => (
-                  <option key={col.id} value={col.id}>
-                    {t(`workspaceWidgets.projectBoard.columns.${col.titleKey}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.priority")}</label>
-              <select
-                className={`${inputClass} appearance-none`}
-                value={form.priority}
-                onChange={(e) => onChange({ ...form, priority: e.target.value as BoardPriorityId })}
-              >
-                <option value="low">{t("workspaceWidgets.projectBoard.priority.low")}</option>
-                <option value="medium">{t("workspaceWidgets.projectBoard.priority.medium")}</option>
-                <option value="high">{t("workspaceWidgets.projectBoard.priority.high")}</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.budget")}</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                className={inputClass}
-                value={form.budget}
-                onChange={(e) => onChange({ ...form, budget: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.dueDate")}</label>
-              <input
-                type="date"
-                className={inputClass}
-                value={form.dueDate}
-                onChange={(e) => onChange({ ...form, dueDate: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onSave}
-          className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
-        >
-          <Save size={18} /> {saveLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
+import { TaskFormModal } from "./project-board/TaskFormModal";
+import { columns, emptyForm, taskToForm, syncTask, initialTasks } from "./project-board/constants";
+import type { Task, Contact, TaskFormState } from "./project-board/types";
 
 export type ProjectBoardWidgetProps = {
   projectId?: string;
@@ -287,6 +47,9 @@ export default function ProjectBoardWidget({
   const [editForm, setEditForm] = useState<TaskFormState>(emptyForm());
   const [contacts, setContacts] = useState<Contact[]>([]);
 
+  // Suppress unused-variable lint for setSelectedProjectName (kept for future use)
+  void setSelectedProjectName;
+
   const handleClearProject = useCallback(() => {
     clearProject();
     setTasks([]);
@@ -296,9 +59,9 @@ export default function ProjectBoardWidget({
   const fetchContacts = useCallback(async () => {
     try {
       const res = await fetch("/api/crm/contacts", { credentials: "include" });
-      const data = await res.json();
+      const data = (await res.json()) as { contacts?: { id: string; name: string }[] };
       const rows = Array.isArray(data.contacts) ? data.contacts : [];
-      setContacts(rows.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })));
+      setContacts(rows.map((c) => ({ id: c.id, name: c.name })));
     } catch (error) {
       console.error("Failed to fetch contacts:", error);
     }
@@ -311,10 +74,10 @@ export default function ProjectBoardWidget({
         `/api/projects/update?projectId=${encodeURIComponent(resolvedProjectId)}`,
         { credentials: "include" },
       );
-      const data = await res.json();
+      const data = (await res.json()) as Task[] | unknown;
       if (Array.isArray(data)) {
         setTasks(
-          data.map((row: Task) => ({
+          (data as Task[]).map((row) => ({
             ...row,
             status: (row.status || "todo") as BoardColumnId,
             priority: (row.priority || "medium") as BoardPriorityId,
@@ -349,7 +112,7 @@ export default function ProjectBoardWidget({
   const taskPayloadBase = useCallback(
     () => ({
       projectId: resolvedProjectId,
-      projectName: selectedProjectName || undefined,
+      projectName: selectedProjectName ?? undefined,
     }),
     [resolvedProjectId, selectedProjectName],
   );
@@ -361,7 +124,7 @@ export default function ProjectBoardWidget({
 
   const handleAddProject = async () => {
     const contact = contacts.find((c) => c.id === addForm.contactId);
-    const projectLabel = selectedProjectName || addForm.projectName.trim();
+    const projectLabel = selectedProjectName ?? addForm.projectName.trim();
     if (!addForm.title.trim() || !contact || (!resolvedProjectId && !projectLabel)) {
       toast.error(t(`${boardPrefix}.requiredFields`));
       return;
@@ -384,10 +147,10 @@ export default function ProjectBoardWidget({
 
     setTasks((prev) => [optimistic, ...prev]);
     setIsAddingProject(false);
-    setAddForm(emptyForm(selectedProjectName));
+    setAddForm(emptyForm(selectedProjectName ?? ""));
 
     try {
-      const data = await syncTask({
+      const data = (await syncTask({
         ...taskPayloadBase(),
         title: optimistic.title,
         description: optimistic.description,
@@ -398,9 +161,11 @@ export default function ProjectBoardWidget({
         status: optimistic.status,
         priority: optimistic.priority,
         dueDate: optimistic.dueDate,
-      });
+      })) as { task?: { id?: string } };
       if (data.task?.id) {
-        setTasks((prev) => prev.map((item) => (item.id === optimisticId ? { ...item, id: data.task.id } : item)));
+        setTasks((prev) =>
+          prev.map((item) => (item.id === optimisticId ? { ...item, id: data.task!.id! } : item)),
+        );
       }
       toast.success(t(`${boardPrefix}.created`));
       void fetchTasks();
@@ -416,7 +181,7 @@ export default function ProjectBoardWidget({
     if (!task) return;
 
     const contact = contacts.find((c) => c.id === editForm.contactId);
-    const projectLabel = selectedProjectName || editForm.projectName.trim();
+    const projectLabel = selectedProjectName ?? editForm.projectName.trim();
     if (!editForm.title.trim() || (!resolvedProjectId && !projectLabel)) {
       toast.error(t(`${boardPrefix}.requiredFields`));
       return;
@@ -427,7 +192,7 @@ export default function ProjectBoardWidget({
       title: editForm.title.trim(),
       description: editForm.description.trim(),
       project: projectLabel,
-      projectId: resolvedProjectId || task.projectId,
+      projectId: resolvedProjectId ?? task.projectId,
       clientName: contact?.name ?? task.clientName,
       contactId: editForm.contactId,
       budget: editForm.budget,
@@ -471,7 +236,7 @@ export default function ProjectBoardWidget({
         method: "DELETE",
         credentials: "include",
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || data.success === false) {
         throw new Error(data.error);
       }
@@ -503,7 +268,9 @@ export default function ProjectBoardWidget({
     if (!task || task.budget === newBudget) return;
 
     const prev = tasks;
-    setTasks((list) => list.map((item) => (item.id === taskId ? { ...item, budget: newBudget } : item)));
+    setTasks((list) =>
+      list.map((item) => (item.id === taskId ? { ...item, budget: newBudget } : item)),
+    );
 
     try {
       await syncTask({ ...taskPayloadBase(), ...task, budget: newBudget });
@@ -552,7 +319,9 @@ export default function ProjectBoardWidget({
             <BarChart3 size={24} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-bold truncate">{selectedProjectName || t(`${boardPrefix}.headerTitle`)}</h2>
+            <h2 className="text-xl font-bold truncate">
+              {selectedProjectName ?? t(`${boardPrefix}.headerTitle`)}
+            </h2>
             <p className="text-xs text-[color:var(--foreground-muted)]">
               {t(`${boardPrefix}.headerSubtitleScoped`)}
             </p>
@@ -584,7 +353,7 @@ export default function ProjectBoardWidget({
           <button
             type="button"
             onClick={() => {
-              setAddForm(emptyForm(selectedProjectName));
+              setAddForm(emptyForm(selectedProjectName ?? ""));
               setIsAddingProject(true);
             }}
             className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 w-full md:w-auto justify-center"
@@ -600,7 +369,7 @@ export default function ProjectBoardWidget({
           title={t(`${boardPrefix}.addTitle`)}
           form={addForm}
           contacts={contacts}
-          lockedProjectName={selectedProjectName || undefined}
+          lockedProjectName={selectedProjectName ?? undefined}
           onChange={setAddForm}
           onClose={() => setIsAddingProject(false)}
           onSave={() => void handleAddProject()}
@@ -612,7 +381,7 @@ export default function ProjectBoardWidget({
           title={t(`${boardPrefix}.editTitle`)}
           form={editForm}
           contacts={contacts}
-          lockedProjectName={selectedProjectName || undefined}
+          lockedProjectName={selectedProjectName ?? undefined}
           onChange={setEditForm}
           onClose={() => setEditingTaskId(null)}
           onSave={() => void handleSaveEdit()}
@@ -669,7 +438,9 @@ export default function ProjectBoardWidget({
                           type="number"
                           inputMode="decimal"
                           defaultValue={task.budget}
-                          onBlur={(e) => updateTaskBudget(task.id, parseFloat(e.target.value) || 0)}
+                          onBlur={(e) =>
+                            updateTaskBudget(task.id, parseFloat(e.target.value) || 0)
+                          }
                           className="w-16 bg-transparent border-none text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold focus:ring-0 p-0 text-left"
                           aria-label={t(`${boardPrefix}.fields.budget`)}
                         />
@@ -689,7 +460,9 @@ export default function ProjectBoardWidget({
                     <div className="flex items-center gap-2 mb-3">
                       <select
                         value={task.status}
-                        onChange={(e) => updateTaskStatus(task.id, e.target.value as BoardColumnId)}
+                        onChange={(e) =>
+                          updateTaskStatus(task.id, e.target.value as BoardColumnId)
+                        }
                         className="bg-[color:var(--surface-card)] border border-[color:var(--border-main)] rounded-lg px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] outline-none focus:ring-1 focus:ring-indigo-500/50"
                         aria-label={t(`${boardPrefix}.fields.status`)}
                       >
@@ -711,7 +484,9 @@ export default function ProjectBoardWidget({
                     <div className="flex justify-between items-center border-t border-[color:var(--border-main)]/30 pt-3">
                       <div className="flex items-center gap-1.5 text-[color:var(--foreground-muted)]">
                         <Clock size={12} aria-hidden />
-                        <span className="text-[10px] font-medium">{formatBoardDueDate(task.dueDate)}</span>
+                        <span className="text-[10px] font-medium">
+                          {formatBoardDueDate(task.dueDate)}
+                        </span>
                       </div>
                       <button
                         type="button"
@@ -727,7 +502,7 @@ export default function ProjectBoardWidget({
               <button
                 type="button"
                 onClick={() => {
-                  setAddForm({ ...emptyForm(selectedProjectName), status: column.id });
+                  setAddForm({ ...emptyForm(selectedProjectName ?? ""), status: column.id });
                   setIsAddingProject(true);
                 }}
                 className="w-full py-3 border-2 border-dashed border-[color:var(--border-main)] rounded-2xl text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] hover:border-[color:var(--foreground-muted)] transition-all text-xs font-bold flex items-center justify-center gap-2"
