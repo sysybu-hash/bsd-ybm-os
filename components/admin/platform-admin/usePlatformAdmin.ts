@@ -1,0 +1,304 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
+import { toast } from "sonner";
+import {
+  approvePendingRegistrationAction,
+} from "@/app/actions/admin-subscriptions";
+import {
+  listPendingRegistrationsAction,
+  listUsersForAdminAction,
+  type AdminUserRow,
+  type PendingRegistrationRow,
+} from "@/app/actions/admin-console";
+import { provisionUserAction } from "@/app/actions/admin-subscriptions";
+import {
+  manageSubsAdjustScansAction,
+  manageSubsCreateManualUserAction,
+  manageSubsDeleteOrganizationAction,
+  manageSubsDeleteUserByEmailAction,
+  manageSubsListOrganizationsAction,
+  manageSubsUpdateSubscriptionAction,
+} from "@/app/actions/manage-subscriptions";
+import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
+import { normalizeIndustryType } from "@/lib/professions/config";
+import type { PlatformConfig } from "@/lib/platform-settings";
+import { TABS, type TabId } from "./types";
+
+export function usePlatformAdmin() {
+  const [tab, setTab] = useState<TabId>("subscriptions");
+  const [orgs, setOrgs] = useState<ExecutiveOrgRow[]>([]);
+  const [pending, setPending] = useState<PendingRegistrationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [editTier, setEditTier] = useState("FREE");
+  const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editIndustry, setEditIndustry] = useState("CONSTRUCTION");
+  const [editConstructionTrade, setEditConstructionTrade] = useState("GENERAL_CONTRACTOR");
+  const [createIndustry, setCreateIndustry] = useState("CONSTRUCTION");
+  const [createConstructionTrade, setCreateConstructionTrade] = useState("GENERAL_CONTRACTOR");
+  const [cheapDelta, setCheapDelta] = useState(0);
+  const [premiumDelta, setPremiumDelta] = useState(0);
+  const [userEmail, setUserEmail] = useState("");
+  const [userLookup, setUserLookup] = useState<Record<string, unknown> | null>(null);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [health, setHealth] = useState<{ checkedAt?: string; statuses?: { name: string; ok: boolean; detail: string }[] } | null>(null);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
+  const [envStatus, setEnvStatus] = useState<Record<string, boolean> | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [approvePlan, setApprovePlan] = useState("DEALER");
+  const [approveRole, setApproveRole] = useState("ORG_ADMIN");
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
+  const [createEmail, setCreateEmail] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createOrgName, setCreateOrgName] = useState("");
+  const [createTier, setCreateTier] = useState("FREE");
+  const [createVip, setCreateVip] = useState(false);
+  const [deleteOrgConfirm, setDeleteOrgConfirm] = useState("");
+  const [adminUsers, setAdminUsers] = useState<AdminUserRow[]>([]);
+  const [provisionEmail, setProvisionEmail] = useState("");
+  const [provisionName, setProvisionName] = useState("");
+  const [provisionOrgId, setProvisionOrgId] = useState("");
+  const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
+  const [provisionSendEmail, setProvisionSendEmail] = useState(true);
+  const [busyAction, setBusyAction] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+
+  const applyTabNav = useCallback((view: WidgetViewState) => {
+    const next = view.tab as TabId | undefined;
+    if (next && TABS.some((t) => t.id === next)) setTab(next);
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyTabNav);
+
+  const selectTab = useCallback((id: TabId) => { setTab(id); pushView({ tab: id }); }, [pushView]);
+
+  const loadOrgs = useCallback(async () => {
+    const data = await manageSubsListOrganizationsAction();
+    if ("error" in data) { toast.error(data.error); return; }
+    setOrgs(data);
+  }, []);
+
+  const loadPending = useCallback(async () => {
+    const data = await listPendingRegistrationsAction();
+    if ("error" in data) { toast.error(data.error); return; }
+    setPending(data);
+  }, []);
+
+  const loadUsers = useCallback(async () => {
+    const data = await listUsersForAdminAction();
+    if ("error" in data) { toast.error(data.error); return; }
+    setAdminUsers(data);
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    const res = await fetch("/api/admin/platform-settings", { credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "טעינת הגדרות נכשלה"); return; }
+    setPlatformConfig(data.config);
+    setEnvStatus(data.envStatus);
+  }, []);
+
+  const loadHealth = useCallback(async () => {
+    const res = await fetch("/api/admin/system-health", { credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) { toast.error("טעינת בריאות מערכת נכשלה"); return; }
+    setHealth(data);
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadOrgs(), loadPending(), loadUsers(), loadSettings()]);
+    setLoading(false);
+  }, [loadOrgs, loadPending, loadUsers, loadSettings]);
+
+  useEffect(() => { void refreshAll(); }, [refreshAll]);
+
+  useEffect(() => {
+    if (!platformConfig) return;
+    const def = normalizeIndustryType(platformConfig.defaultIndustryForRegistration);
+    setCreateIndustry(def);
+    setCreateConstructionTrade(def === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformConfig?.defaultIndustryForRegistration]);
+
+  const selectedOrg = orgs.find((o) => o.id === selectedOrgId) ?? null;
+
+  useEffect(() => {
+    if (selectedOrg) {
+      setEditTier(selectedOrg.subscriptionTier);
+      setEditStatus(selectedOrg.subscriptionStatus);
+      setEditIndustry(normalizeIndustryType(selectedOrg.industry));
+      setEditConstructionTrade(selectedOrg.constructionTrade ?? "GENERAL_CONTRACTOR");
+    }
+  }, [selectedOrg]);
+
+  useEffect(() => { if (tab === "health" && !health) void loadHealth(); }, [tab, health, loadHealth]);
+  useEffect(() => { if (tab === "users" && adminUsers.length === 0) void loadUsers(); }, [tab, adminUsers.length, loadUsers]);
+  useEffect(() => { if (selectedOrgId && !provisionOrgId) setProvisionOrgId(selectedOrgId); }, [selectedOrgId, provisionOrgId]);
+
+  const handleSaveSubscription = async () => {
+    if (!selectedOrgId) return;
+    const fd = new FormData();
+    fd.set("organizationId", selectedOrgId); fd.set("tier", editTier); fd.set("subscriptionStatus", editStatus);
+    fd.set("industry", editIndustry); fd.set("constructionTrade", editConstructionTrade);
+    const r = await manageSubsUpdateSubscriptionAction(fd);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success("מנוי עודכן");
+    await loadOrgs();
+  };
+
+  const handleAdjustScans = async () => {
+    if (!selectedOrgId) return;
+    const fd = new FormData();
+    fd.set("organizationId", selectedOrgId); fd.set("cheapDelta", String(cheapDelta)); fd.set("premiumDelta", String(premiumDelta));
+    const r = await manageSubsAdjustScansAction(fd);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success("יתרות סריקה עודכנו");
+    setCheapDelta(0); setPremiumDelta(0);
+    await loadOrgs();
+  };
+
+  const handleApprovePending = async (userId: string) => {
+    const r = await approvePendingRegistrationAction(userId, approveRole, approvePlan);
+    if (!r.ok) { toast.error(r.error); return; }
+    toast.success("הרשמה אושרה");
+    await loadPending(); await loadOrgs();
+  };
+
+  const handleLookupUser = async () => {
+    const email = userEmail.trim().toLowerCase();
+    if (!email) return;
+    const res = await fetch(`/api/admin/check-user?email=${encodeURIComponent(email)}`, { credentials: "include" });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "חיפוש נכשל"); return; }
+    setUserLookup(data);
+  };
+
+  const handleBroadcast = async () => {
+    const res = await fetch("/api/admin/broadcast-notification", {
+      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: broadcastTitle, body: broadcastBody }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "שידור נכשל"); return; }
+    toast.success(`שודר ל-${data.count ?? 0} משתמשים`);
+    setBroadcastTitle(""); setBroadcastBody("");
+  };
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    try {
+      const res = await fetch("/api/admin/test-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const j = (await res.json()) as { ok?: boolean; to?: string; error?: string };
+      if (j.ok) toast.success(`מייל בדיקה נשלח ל־${j.to ?? "תיבתך"}`);
+      else toast.error(j.error ?? "שליחת מייל בדיקה נכשלה");
+      void loadHealth();
+    } finally { setTestingEmail(false); }
+  };
+
+  const handleCreateOrg = async () => {
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", createEmail.trim().toLowerCase()); fd.set("name", createName.trim());
+      fd.set("organizationName", createOrgName.trim()); fd.set("tier", createTier);
+      fd.set("industry", createIndustry); fd.set("constructionTrade", createConstructionTrade);
+      if (createVip) fd.set("vip", "on");
+      const r = await manageSubsCreateManualUserAction(fd);
+      if (!r.ok) { toast.error(r.error); return; }
+      if (r.emailed) toast.success("מנוי חדש נוצר — פרטי התחברות נשלחו במייל");
+      else toast.warning(r.mailError ? `מנוי נוצר, אך המייל לא נשלח: ${r.mailError}` : "מנוי נוצר, אך שליחת המייל נכשלה — בדקו RESEND_API_KEY או SMTP ב-Vercel");
+      setShowCreateOrg(false); setCreateEmail(""); setCreateName(""); setCreateOrgName(""); setCreateTier("FREE"); setCreateVip(false);
+      setCreateIndustry(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION"));
+      setCreateConstructionTrade(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION") === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
+      await loadOrgs(); await loadUsers();
+    } finally { setBusyAction(false); }
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!selectedOrg) return;
+    if (!window.confirm(`למחוק את הארגון «${selectedOrg.name}» ואת כל המשתמשים והנתונים שלו? פעולה בלתי הפיכה.`)) return;
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("organizationId", selectedOrg.id); fd.set("confirmation", deleteOrgConfirm.trim());
+      const r = await manageSubsDeleteOrganizationAction(fd);
+      if (!r.ok) { toast.error(r.error); return; }
+      toast.success("הארגון נמחק"); setSelectedOrgId(null); setDeleteOrgConfirm("");
+      await loadOrgs(); await loadUsers();
+    } finally { setBusyAction(false); }
+  };
+
+  const handleDeleteUser = async (email: string) => {
+    if (!window.confirm(`למחוק את המשתמש ${email}?`)) return;
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", email.trim().toLowerCase());
+      const r = await manageSubsDeleteUserByEmailAction(fd);
+      if (!r.ok) { toast.error(r.error); return; }
+      toast.success("המשתמש נמחק"); setUserLookup(null); setUserEmail("");
+      await loadUsers(); await loadOrgs();
+    } finally { setBusyAction(false); }
+  };
+
+  const handleProvisionUser = async () => {
+    const orgId = provisionOrgId || selectedOrgId;
+    if (!orgId) { toast.error("בחרו ארגון"); return; }
+    setBusyAction(true);
+    try {
+      const fd = new FormData();
+      fd.set("email", provisionEmail.trim().toLowerCase()); fd.set("name", provisionName.trim());
+      fd.set("organizationId", orgId); fd.set("role", provisionRole); fd.set("useGenerated", "on");
+      if (provisionSendEmail) fd.set("sendEmail", "on");
+      const r = await provisionUserAction(fd);
+      if (!r.ok) { toast.error(r.error); return; }
+      toast.success(r.emailed ? "משתמש נוצר — פרטים נשלחו במייל" : "משתמש נוצר");
+      setProvisionEmail(""); setProvisionName(""); await loadUsers();
+    } finally { setBusyAction(false); }
+  };
+
+  const savePlatformSettings = async () => {
+    if (!platformConfig) return;
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/admin/platform-settings", {
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(platformConfig),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
+      setPlatformConfig(data.config);
+      toast.success("הגדרות פלטפורמה נשמרו");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "שמירה נכשלה"); }
+    finally { setSavingSettings(false); }
+  };
+
+  return {
+    tab, selectTab, loading, refreshAll,
+    orgs, selectedOrgId, setSelectedOrgId, selectedOrg,
+    editTier, setEditTier, editStatus, setEditStatus,
+    editIndustry, setEditIndustry, editConstructionTrade, setEditConstructionTrade,
+    cheapDelta, setCheapDelta, premiumDelta, setPremiumDelta,
+    deleteOrgConfirm, setDeleteOrgConfirm, showCreateOrg, setShowCreateOrg,
+    createEmail, setCreateEmail, createName, setCreateName,
+    createOrgName, setCreateOrgName, createTier, setCreateTier,
+    createVip, setCreateVip, createIndustry, setCreateIndustry,
+    createConstructionTrade, setCreateConstructionTrade,
+    busyAction, platformConfig,
+    pending, approvePlan, setApprovePlan, approveRole, setApproveRole,
+    adminUsers, provisionEmail, setProvisionEmail, provisionName, setProvisionName,
+    provisionOrgId, setProvisionOrgId, provisionRole, setProvisionRole,
+    provisionSendEmail, setProvisionSendEmail,
+    userEmail, setUserEmail, userLookup,
+    broadcastTitle, setBroadcastTitle, broadcastBody, setBroadcastBody,
+    health, envStatus, testingEmail, savingSettings, setPlatformConfig,
+    handleSaveSubscription, handleAdjustScans, handleApprovePending,
+    handleLookupUser, handleBroadcast, handleTestEmail,
+    handleCreateOrg, handleDeleteOrg, handleDeleteUser, handleProvisionUser,
+    savePlatformSettings, loadHealth,
+  };
+}
