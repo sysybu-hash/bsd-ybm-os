@@ -1,0 +1,68 @@
+import type { WidgetType } from "@/hooks/use-window-manager";
+
+export type ScheduleTaskRow = {
+  id: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+  progress: number;
+  dependencies: string | null;
+  description?: string | null;
+  linkedBoqLineId?: string | null;
+  linkedWorkDiaryId?: string | null;
+};
+
+export type ScheduleLabels = {
+  importSchedule: string;
+  importConfirm: string;
+  importSuccess: string;
+  importFailed: string;
+  allDomains: string;
+  generateDoc: string;
+  docGeneratorTitle: string;
+  domainCount: string;
+  task: string;
+  start: string;
+  end: string;
+  progress: string;
+  noTasks: string;
+  listView: string;
+  chartView: string;
+  addTask: string;
+  editTask: string;
+  save: string;
+  cancel: string;
+  delete: string;
+  deleteConfirm: string;
+  scaleWeeks: string;
+  scaleMonths: string;
+  trade: string;
+  dependencies: string;
+  linkedBoq: string;
+  workDiary: string;
+  createDiary: string;
+  newTaskTitle: string;
+  taskSaved: string;
+  taskDeleted: string;
+  taskSaveFailed: string;
+  ganttLegend: string;
+  ganttToday: string;
+  ganttProgress: string;
+  ganttDependency: string;
+};
+
+export type ProjectSchedulePanelProps = {
+  projectId: string;
+  projectName: string;
+  clientName: string | null;
+  primaryContactId?: string | null;
+  apiBase: string;
+  tasks: ScheduleTaskRow[];
+  labels: ScheduleLabels;
+  onRefresh: () => Promise<void>;
+  openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  onOpenBoq?: () => void;
+  onOpenDiary?: (opts?: { taskId?: string; description?: string }) => void;
+  organizationIndustry?: string | null;
+  hideConstructionFeatures?: boolean;
+};
