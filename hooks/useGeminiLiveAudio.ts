@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
-import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
+import { buildClientLiveSetupMessage } from "@/lib/gemini-live/client-setup";
 import { mergeTranscriptChunk } from "@/lib/gemini-live/merge-transcript-chunk";
 import { buildGeminiLiveSessionStartUserTurn } from "@/lib/gemini-live/session-greeting";
-import { buildRealtimeInputConfig } from "@/lib/gemini-live-session-config";
+import { createLogger } from "@/lib/logger";
 import {
   acquireGeminiLiveLease,
   releaseGeminiLiveLease,
@@ -97,9 +97,12 @@ type GeminiLiveOptions = {
 type TokenResponse = {
   token?: string;
   model?: string;
+  embeddedSetup?: boolean;
   error?: string;
   code?: string;
 };
+
+const log = createLogger("gemini-live-client");
 
 type LiveFunctionCall = {
   id?: string;
@@ -309,6 +312,7 @@ export function useGeminiLiveAudio({
   const deliveredUserTextRef = useRef("");
   const greetingSentRef = useRef(false);
   const greetingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const realtimeInputChunksSentRef = useRef(0);
   const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
   const contextReadyLatchRef = useRef(false);
@@ -326,6 +330,7 @@ export function useGeminiLiveAudio({
     const socket = webSocketRef.current;
     if (socket?.readyState !== WebSocket.OPEN) return;
     greetingSentRef.current = true;
+    log.info("session greeting sent");
     socket.send(
       JSON.stringify({
         clientContent: {
@@ -380,6 +385,7 @@ export function useGeminiLiveAudio({
     playbackContextRef.current = null;
 
     greetingSentRef.current = false;
+    realtimeInputChunksSentRef.current = 0;
     if (leaseIdRef.current) {
       releaseGeminiLiveLease(leaseIdRef.current);
       leaseIdRef.current = null;
@@ -415,6 +421,7 @@ export function useGeminiLiveAudio({
           window.clearTimeout(greetingFallbackTimerRef.current);
           greetingFallbackTimerRef.current = null;
         }
+        log.info("setupComplete received");
         setState("ready");
         setStatusText(statusLabels.connected);
         sendSessionGreeting();
@@ -592,7 +599,12 @@ export function useGeminiLiveAudio({
       }
 
       const resolvedModel = tokenData.model ?? model;
+      const embeddedSetup = tokenData.embeddedSetup !== false;
       setModel(resolvedModel);
+      log.info("session token received", {
+        model: resolvedModel,
+        embeddedSetup,
+      });
 
       const onVisibility = () => {
         void resumeAudioContext(playbackContextRef.current);
@@ -634,32 +646,18 @@ export function useGeminiLiveAudio({
         };
       });
 
-      const setupPayload: Record<string, unknown> = {
-        model: `models/${resolvedModel}`,
-        generationConfig: {
-          responseModalities: settings.responseMode === "audio_text" ? ["AUDIO", "TEXT"] : ["AUDIO"],
-          temperature: settings.temperature,
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: settings.voiceName },
-            },
-          },
-          ...(advancedFeaturesEnabled && settings.affectiveDialog ? { enableAffectiveDialog: true } : {}),
-        },
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
-        ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
-        ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
-        realtimeInputConfig: buildRealtimeInputConfig(settings),
-      };
-      if (advancedFeaturesEnabled && settings.proactiveAudio) {
-        setupPayload.proactivity = { proactiveAudio: true };
-      }
-      if (settings.sessionResumptionEnabled) {
-        setupPayload.sessionResumption = {};
-      }
-
-      socket.send(JSON.stringify({ setup: setupPayload }));
+      const setupMessage = buildClientLiveSetupMessage({
+        model: resolvedModel,
+        systemInstruction,
+        settings,
+        advancedFeaturesEnabled,
+        embeddedSetup,
+      });
+      log.info("websocket setup sent", {
+        embeddedSetup,
+        setupKeys: Object.keys(setupMessage.setup),
+      });
+      socket.send(JSON.stringify(setupMessage));
       greetingFallbackTimerRef.current = setTimeout(() => {
         greetingFallbackTimerRef.current = null;
         sendSessionGreeting();
@@ -683,6 +681,11 @@ export function useGeminiLiveAudio({
       captureNode.port.onmessage = (event) => {
         if (socket.readyState !== WebSocket.OPEN || event.data?.type !== "audio") return;
         const pcm = float32ToPcm16(event.data.data as Float32Array);
+        realtimeInputChunksSentRef.current += 1;
+        const chunkIndex = realtimeInputChunksSentRef.current;
+        if (chunkIndex === 1 || chunkIndex % 50 === 0) {
+          log.info("realtimeInput audio chunk", { chunkIndex });
+        }
         socket.send(
           JSON.stringify({
             realtimeInput: {
@@ -706,10 +709,15 @@ export function useGeminiLiveAudio({
 
       setState("streaming");
       setStatusText(statusLabels.listening);
+      log.info("live session streaming", {
+        captureState: captureContext.state,
+        playbackState: playbackContext.state,
+      });
       return true;
     } catch (error) {
       cleanup();
       const raw = error instanceof Error ? error.message : String(error);
+      log.error("live session start failed", { message: raw });
       const friendly = formatGeminiLiveUserMessage(raw);
       setState("fallback");
       setStatusText(friendly);

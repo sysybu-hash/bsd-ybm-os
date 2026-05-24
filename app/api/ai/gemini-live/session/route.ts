@@ -16,6 +16,7 @@ import {
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { createLogger } from "@/lib/logger";
 import { getPlatformConfig } from "@/lib/platform-settings";
 import {
   buildFullLiveConnectConfig,
@@ -31,6 +32,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const REQUESTS_PER_HOUR = 80;
+const log = createLogger("gemini-live-session");
 
 async function createLiveAuthToken(
   client: GoogleGenAI,
@@ -147,9 +149,19 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
 
     for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
       try {
-        return NextResponse.json(
-          await createLiveAuthToken(client, model, settings, systemInstruction, advancedFeatures),
+        const payload = await createLiveAuthToken(
+          client,
+          model,
+          settings,
+          systemInstruction,
+          advancedFeatures,
         );
+        log.info("auth token created", {
+          model,
+          systemInstructionLength: payload.systemInstructionLength,
+          responseMode: payload.responseMode,
+        });
+        return NextResponse.json(payload);
       } catch (error) {
         lastError = error;
         const blob = `${error instanceof Error ? error.message : String(error)} ${JSON.stringify(error)}`;
@@ -162,7 +174,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
         if (!isLikelyGeminiModelUnavailable(error)) {
           throw error;
         }
-        console.warn(`[gemini-live] model ${model} unavailable, trying next`);
+        log.warn("live model unavailable, trying next", { model });
       }
     }
 

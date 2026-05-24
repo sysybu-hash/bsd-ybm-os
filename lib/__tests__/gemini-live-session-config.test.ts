@@ -1,14 +1,5 @@
 jest.mock("@google/genai", () => ({
   Modality: { AUDIO: "AUDIO", TEXT: "TEXT" },
-  Type: {
-    OBJECT: "OBJECT",
-    STRING: "STRING",
-  },
-  TurnCoverage: {
-    TURN_COVERAGE_UNSPECIFIED: "TURN_COVERAGE_UNSPECIFIED",
-    TURN_INCLUDES_ONLY_ACTIVITY: "TURN_INCLUDES_ONLY_ACTIVITY",
-    TURN_INCLUDES_ALL_INPUT: "TURN_INCLUDES_ALL_INPUT",
-  },
 }));
 
 import {

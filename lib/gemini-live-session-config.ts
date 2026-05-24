@@ -1,5 +1,7 @@
-import { Modality, TurnCoverage, type LiveConnectConfig } from "@google/genai";
+import { Modality, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
+import { GEMINI_LIVE_MODALITY } from "@/lib/gemini-live/api-constants";
+import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
 import { normalizeGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
@@ -7,11 +9,23 @@ export type GeminiLiveSessionRequest = Partial<GeminiLiveVoiceSettings> & {
   geminiLiveAdvancedFeatures?: boolean;
 };
 
+export { buildRealtimeInputConfig };
+
 export function liveModalitiesFromSettings(settings: GeminiLiveVoiceSettings): Modality[] {
   if (settings.responseMode === "audio_text") {
     return [Modality.AUDIO, Modality.TEXT];
   }
   return [Modality.AUDIO];
+}
+
+/** ערכי modality כמחרוזות (לוג / בדיקות) — זהה ל-liveModalitiesFromSettings. */
+export function liveModalitiesStringsFromSettings(
+  settings: GeminiLiveVoiceSettings,
+): string[] {
+  if (settings.responseMode === "audio_text") {
+    return [GEMINI_LIVE_MODALITY.AUDIO, GEMINI_LIVE_MODALITY.TEXT];
+  }
+  return [GEMINI_LIVE_MODALITY.AUDIO];
 }
 
 export function normalizeSessionRequest(body: unknown): {
@@ -31,18 +45,6 @@ export function buildLiveConnectConfig(settings: GeminiLiveVoiceSettings) {
     sessionResumption: {},
     temperature: settings.temperature,
     responseModalities: liveModalitiesFromSettings(settings),
-  };
-}
-
-/** VAD / פעילות קול — חייב להיות גם ב-auth token (ה-setup מהלקוח מוחלף בהגבלות הטוקן). */
-export function buildRealtimeInputConfig(settings: GeminiLiveVoiceSettings) {
-  return {
-    automaticActivityDetection: {
-      disabled: false,
-      silenceDurationMs: settings.silenceDurationMs,
-      prefixPaddingMs: settings.prefixPaddingMs,
-    },
-    turnCoverage: TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
   };
 }
 
