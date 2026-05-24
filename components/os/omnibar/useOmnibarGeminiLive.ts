@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
+import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
+import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
+import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
+import {
+  isGeminiLiveAllowedByContext,
+  isGeminiLiveContextReady,
+  isGeminiLiveSessionEligible,
+  resolveGeminiLiveOrgId,
+} from "@/lib/gemini-live/eligibility";
+import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
+
+type OsAssistantSlice = {
+  context: OsAssistantUserContext | null;
+  featureFlags: { geminiLiveEnabled?: boolean; geminiLiveAdvancedFeatures?: boolean };
+  ready: boolean;
+  loading: boolean;
+  systemInstructionVoice?: string;
+  onToolCall: (name: string, args: Record<string, unknown>) => Promise<string>;
+};
+
+type UseOmnibarGeminiLiveArgs = {
+  sessionUserId?: string | null;
+  sessionOrgId?: string | null;
+  osAssistant: OsAssistantSlice;
+  userName?: string;
+  locale: string;
+  t: (key: string) => string;
+};
+
+export type VoiceStatus = "idle" | "connecting" | "listening" | "speaking" | "error";
+
+export function useOmnibarGeminiLive({
+  sessionUserId, sessionOrgId, osAssistant, userName, locale, t,
+}: UseOmnibarGeminiLiveArgs) {
+  const [geminiLiveSettingsOpen, setGeminiLiveSettingsOpen] = useState(false);
+  const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("idle");
+  const [omnibarLiveOn, setOmnibarLiveOn] = useState(false);
+
+  useEffect(() => { setGeminiVoiceSettings(loadGeminiLiveVoiceSettings()); }, []);
+
+  const liveOrgId = resolveGeminiLiveOrgId(sessionOrgId, osAssistant.context);
+  const geminiLiveEligible =
+    isGeminiLiveSessionEligible({ userId: sessionUserId, orgId: liveOrgId, platformEnabled: osAssistant.featureFlags.geminiLiveEnabled }) &&
+    isGeminiLiveAllowedByContext(osAssistant.context);
+
+  const liveContextReady = isGeminiLiveContextReady({
+    assistantReady: osAssistant.ready,
+    assistantLoading: osAssistant.loading,
+    systemInstructionVoice: osAssistant.systemInstructionVoice ?? "",
+    context: osAssistant.context,
+  });
+
+  const geminiLive = useGeminiLiveAudio({
+    owner: "omnibar",
+    enabled: omnibarLiveOn && geminiLiveEligible,
+    contextReady: liveContextReady,
+    settings: geminiVoiceSettings,
+    advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
+    systemInstruction: osAssistant.systemInstructionVoice ?? "",
+    locale,
+    userName,
+    greetOnConnect: true,
+    onToolCall: async (name, args) => {
+      const result = await osAssistant.onToolCall(name, args);
+      const text = typeof result === "string" ? result : "Success";
+      if (text === "Success") toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
+      else if (!text.startsWith("לא ") && !text.startsWith("שגיאה")) toast.success(text);
+      return result;
+    },
+    onError: (err) => {
+      toast.error(formatGeminiLiveUserMessage(err));
+      if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
+      setVoiceStatus("error");
+    },
+  });
+
+  useEffect(() => {
+    const onOwnerChange = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ owner?: string | null }>).detail;
+      if (detail?.owner === "aiChatFull") { geminiLive.stop(); setOmnibarLiveOn(false); }
+    };
+    window.addEventListener("gemini-live:owner-changed", onOwnerChange);
+    return () => window.removeEventListener("gemini-live:owner-changed", onOwnerChange);
+  }, [geminiLive]);
+
+  useEffect(() => {
+    if (!omnibarLiveOn || !geminiLiveEligible || !liveContextReady) return;
+    if (geminiLive.isLiveActive || geminiLive.state === "connecting") return;
+    void geminiLive.start();
+  }, [omnibarLiveOn, geminiLiveEligible, liveContextReady, geminiLive.isLiveActive, geminiLive.state, geminiLive.start]);
+
+  useEffect(() => {
+    if (geminiLive.state === "connecting") setVoiceStatus("connecting");
+    else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.isSpeaking ? "speaking" : "listening");
+    else if (geminiLive.state === "ready") setVoiceStatus("listening");
+    else if (geminiLive.state === "error") setVoiceStatus("error");
+    else setVoiceStatus("idle");
+  }, [geminiLive.state, geminiLive.isSpeaking]);
+
+  const statusLabel = useMemo(() => {
+    if (voiceStatus === "connecting") return t("workspaceWidgets.omnibar.voiceConnecting");
+    if (voiceStatus === "listening") return t("workspaceWidgets.omnibar.voiceListening");
+    if (voiceStatus === "speaking") return t("workspaceWidgets.omnibar.voiceSpeaking");
+    return t("workspaceWidgets.omnibar.ready");
+  }, [voiceStatus, t]);
+
+  const voiceActive = voiceStatus === "listening" || voiceStatus === "speaking";
+
+  const toggleLive = () => {
+    if (geminiLive.isLiveActive) { geminiLive.stop(); setOmnibarLiveOn(false); }
+    else setOmnibarLiveOn(true);
+  };
+
+  return {
+    geminiLiveSettingsOpen, setGeminiLiveSettingsOpen,
+    geminiVoiceSettings, setGeminiVoiceSettings,
+    voiceStatus, voiceActive, statusLabel,
+    geminiLive, toggleLive,
+    advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
+  };
+}
