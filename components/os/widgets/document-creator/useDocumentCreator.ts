@@ -6,25 +6,20 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { DocType } from "@prisma/client";
 import { ISSUED_DOCUMENT_TYPES } from "@/lib/document-types";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
-import { resolveVatRatePercent } from "@/lib/vat-config";
 import {
   FLOATING_PANEL_EXIT_MS,
   waitForFloatingPanelExit,
 } from "@/components/os/layout/OsFloatingPanel";
-import type {
-  DocumentClientContact,
-  NewClientDetails,
-} from "@/components/os/widgets/invoice/DocumentClientPicker";
-import { findContactByName } from "@/components/os/widgets/invoice/DocumentClientPicker";
+import type { NewClientDetails } from "@/components/os/widgets/invoice/DocumentClientPicker";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
 import { toast } from "sonner";
-import type { DocItem, GeneratedDocState, IssuedDocEntry, OrgSettings } from "./types";
+import type { DocItem, GeneratedDocState } from "./types";
+import { useDocumentData } from "./useDocumentData";
+import { resolveContactForIssue } from "./resolveContactForIssue";
 
 export function useDocumentCreator(liveData: Record<string, unknown> | null | undefined) {
   const [showDraft, setShowDraft] = useState(false);
   const [docType, setDocType] = useState<DocType>("QUOTE");
-  const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null);
-  const [contacts, setContacts] = useState<DocumentClientContact[]>([]);
   const [clientNameInput, setClientNameInput] = useState("");
   const [selectedContactId, setSelectedContactId] = useState("");
   const [isNewClient, setIsNewClient] = useState(false);
@@ -33,13 +28,17 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     { id: "1", description: "", quantity: 1, price: 0 },
   ]);
   const [loading, setLoading] = useState(false);
-  const [fetchingContacts, setFetchingContacts] = useState(true);
   const [generatedDoc, setGeneratedDoc] = useState<GeneratedDocState | null>(null);
   const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
-  const [issuedList, setIssuedList] = useState<IssuedDocEntry[]>([]);
-  const [issuedListLoading, setIssuedListLoading] = useState(true);
 
   const draftPanelExitRef = useRef<(() => void) | null>(null);
+
+  const {
+    contacts, setContacts,
+    fetchingContacts, orgSettings,
+    issuedList, issuedListLoading,
+    fetchIssuedDocuments,
+  } = useDocumentData();
 
   // ── navigation ────────────────────────────────────────────────────────────
   const applyDocNav = useCallback((view: WidgetViewState) => {
@@ -81,77 +80,15 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     draftPanelExitRef.current = null;
   }, []);
 
-  // ── data loaders ──────────────────────────────────────────────────────────
-  const fetchIssuedDocuments = async () => {
-    try {
-      setIssuedListLoading(true);
-      const res = await fetch("/api/erp/issued-documents", { credentials: "include" });
-      if (!res.ok) return;
-      const data = (await res.json()) as { documents?: IssuedDocEntry[] };
-      setIssuedList(data.documents ?? []);
-    } catch {
-      /* optional list */
-    } finally {
-      setIssuedListLoading(false);
-    }
-  };
-
-  const fetchOrgSettings = async () => {
-    try {
-      const res = await fetch("/api/organization", { credentials: "include" });
-      const data = await res.json();
-      setOrgSettings({
-        name: data.name || "BSD-YBM תשתיות",
-        taxId: data.taxId || "",
-        email: data.paypalMerchantEmail || data.adminEmail || "",
-        vatRatePercent: resolveVatRatePercent(data.vatRatePercent),
-        companyType: data.companyType,
-        isReportable: data.isReportable !== false,
-      });
-    } catch {
-      /* non-critical */
-    }
-  };
-
-  const fetchContacts = async () => {
-    try {
-      const res = await fetch("/api/crm/contacts", { credentials: "include" });
-      const data = await res.json();
-      const rows = Array.isArray(data.contacts) ? data.contacts : [];
-      setContacts(
-        rows.map((c: { id: string; name: string; email?: string | null; phone?: string | null }) => ({
-          id: c.id,
-          name: c.name,
-          email: c.email ?? null,
-          phone: c.phone ?? null,
-        })),
-      );
-    } catch {
-      /* non-critical */
-    } finally {
-      setFetchingContacts(false);
-    }
-  };
-
-  // ── init ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    void fetchContacts();
-    void fetchOrgSettings();
-    void fetchIssuedDocuments();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── liveData (automation draft) ───────────────────────────────────────────
   useEffect(() => {
     if (liveData?.automation !== "invoice_draft") return;
     const dt = liveData.docType;
     if (typeof dt === "string" && ISSUED_DOCUMENT_TYPES.some((d) => d.id === dt)) {
       setDocType(dt as DocType);
-    } else if (dt === "quote") {
-      setDocType("QUOTE");
-    } else if (dt === "invoice") {
-      setDocType("INVOICE");
-    }
+    } else if (dt === "quote") { setDocType("QUOTE"); }
+    else if (dt === "invoice") { setDocType("INVOICE"); }
+
     const contactName = liveData.contactName;
     if (typeof contactName === "string" && contactName) {
       setContacts((prev) => {
@@ -194,10 +131,7 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
 
   // ── item helpers ──────────────────────────────────────────────────────────
   const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { id: Math.random().toString(36).substring(2, 11), description: "", quantity: 1, price: 0 },
-    ]);
+    setItems((prev) => [...prev, { id: Math.random().toString(36).substring(2, 11), description: "", quantity: 1, price: 0 }]);
   };
 
   const removeItem = (id: string) => {
@@ -208,16 +142,13 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
-  // ── billing calculations ──────────────────────────────────────────────────
+  // ── billing ───────────────────────────────────────────────────────────────
   const vatRatePercent = orgSettings?.vatRatePercent ?? 18;
-
   const calculateSubtotal = () => items.reduce((sum, item) => sum + item.quantity * item.price, 0);
 
   const calculateBilling = () => {
     const net = calculateSubtotal();
-    if (!orgSettings?.companyType) {
-      return { net, vat: 0, total: net, isExempt: false, vatRatePercent };
-    }
+    if (!orgSettings?.companyType) return { net, vat: 0, total: net, isExempt: false, vatRatePercent };
     return calculateDocumentTotalsFromOrg(
       net,
       {
@@ -229,68 +160,17 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     );
   };
 
-  // ── contact resolution ────────────────────────────────────────────────────
-  const resolveContactForIssue = async (): Promise<DocumentClientContact | null> => {
-    const trimmedName = clientNameInput.trim();
-    if (!trimmedName) { toast.error("אנא הזן שם לקוח"); return null; }
-
-    const fromList =
-      contacts.find((c) => c.id === selectedContactId && !c.id.startsWith("draft-")) ??
-      findContactByName(contacts, trimmedName);
-
-    if (fromList && !isNewClient) return fromList;
-    if (!isNewClient && fromList) return fromList;
-
-    const emailTrim = newClient.email.trim();
-    if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      toast.error("כתובת אימייל לא תקינה");
-      return null;
-    }
-
-    try {
-      const res = await fetch("/api/crm/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: trimmedName,
-          email: emailTrim || null,
-          phone: newClient.phone.trim() || null,
-          notes: newClient.notes.trim() || null,
-          status: "LEAD",
-        }),
-      });
-      const data = (await res.json()) as { contact?: DocumentClientContact; error?: string };
-      if (!res.ok) { toast.error(data.error || "יצירת לקוח חדש נכשלה"); return null; }
-      const created = data.contact;
-      if (!created?.id) { toast.error("יצירת לקוח חדש נכשלה"); return null; }
-      const row: DocumentClientContact = {
-        id: created.id,
-        name: created.name,
-        email: created.email ?? null,
-        phone: created.phone ?? null,
-      };
-      setContacts((prev) => (prev.some((c) => c.id === row.id) ? prev : [row, ...prev]));
-      setSelectedContactId(row.id);
-      setClientNameInput(row.name);
-      setIsNewClient(false);
-      toast.success("לקוח חדש נוסף ל-CRM");
-      return row;
-    } catch {
-      toast.error("שגיאה ביצירת לקוח");
-      return null;
-    }
-  };
-
   // ── generate document ─────────────────────────────────────────────────────
   const selectedTypeMeta = ISSUED_DOCUMENT_TYPES.find((d) => d.id === docType);
 
   const generateDocument = async () => {
-    const contact = await resolveContactForIssue();
+    const contact = await resolveContactForIssue({
+      contacts, selectedContactId, clientNameInput, isNewClient, newClient,
+      setContacts, setSelectedContactId, setClientNameInput, setIsNewClient,
+    });
     if (!contact) return;
     if (items.some((item) => !item.description || item.price <= 0)) {
-      toast.error("אנא מלא את כל פרטי הפריטים");
-      return;
+      toast.error("אנא מלא את כל פרטי הפריטים"); return;
     }
     setLoading(true);
     try {
@@ -310,11 +190,8 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
       type IssuedDocBody = { id?: string; number?: number; documentNumber?: number; token?: string };
       type CreateIssuedResponse = { document?: IssuedDocBody; error?: string; signUrl?: string; itaError?: string };
       let data: CreateIssuedResponse = {};
-      try {
-        data = (await res.json()) as CreateIssuedResponse;
-      } catch {
-        toast.error(res.ok ? "תגובת שרת לא תקינה" : `שגיאת שרת (${res.status})`);
-        return;
+      try { data = (await res.json()) as CreateIssuedResponse; } catch {
+        toast.error(res.ok ? "תגובת שרת לא תקינה" : `שגיאת שרת (${res.status})`); return;
       }
       if (res.ok) {
         const doc = data.document;
