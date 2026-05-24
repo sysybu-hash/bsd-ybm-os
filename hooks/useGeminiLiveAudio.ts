@@ -308,7 +308,7 @@ export function useGeminiLiveAudio({
   const latestUserTextRef = useRef("");
   const deliveredUserTextRef = useRef("");
   const greetingSentRef = useRef(false);
-  const greetingFallbackTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const greetingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
   const contextReadyLatchRef = useRef(false);
@@ -343,7 +343,7 @@ export function useGeminiLiveAudio({
 
   const cleanup = useCallback(() => {
     if (greetingFallbackTimerRef.current) {
-      window.clearTimeout(greetingFallbackTimerRef.current);
+      clearTimeout(greetingFallbackTimerRef.current);
       greetingFallbackTimerRef.current = null;
     }
     if (visibilityHandlerRef.current) {
@@ -660,7 +660,7 @@ export function useGeminiLiveAudio({
       }
 
       socket.send(JSON.stringify({ setup: setupPayload }));
-      greetingFallbackTimerRef.current = window.setTimeout(() => {
+      greetingFallbackTimerRef.current = setTimeout(() => {
         greetingFallbackTimerRef.current = null;
         sendSessionGreeting();
       }, 3_000);

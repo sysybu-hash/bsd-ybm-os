@@ -1,4 +1,4 @@
-import { Modality, type LiveConnectConfig } from "@google/genai";
+import { Modality, TurnCoverage, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { normalizeGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
@@ -42,7 +42,7 @@ export function buildRealtimeInputConfig(settings: GeminiLiveVoiceSettings) {
       silenceDurationMs: settings.silenceDurationMs,
       prefixPaddingMs: settings.prefixPaddingMs,
     },
-    turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY" as const,
+    turnCoverage: TurnCoverage.TURN_INCLUDES_ONLY_ACTIVITY,
   };
 }
 
