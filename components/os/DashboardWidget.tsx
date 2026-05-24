@@ -2,84 +2,41 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
-import React, { useState, useEffect, useCallback } from 'react';
-import { useTheme } from 'next-themes';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
+import React from "react";
+import { useTheme } from "next-themes";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
   CartesianGrid,
   BarChart,
-  Bar
-} from 'recharts';
-import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-interface CashflowPoint {
-  name: string;
-  actual?: number;
-  forecast?: number;
-  type: 'past' | 'future';
-}
+  Bar,
+} from "recharts";
+import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { motion } from "framer-motion";
+import { useDashboardStats } from "./useDashboardStats";
 
 export default function DashboardWidget() {
   const { dir, t } = useI18n();
   const { theme } = useTheme();
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
-    activeProjects: 0,
-    totalClients: 0,
-    pendingInvoices: 0,
-    aiInsight: '',
-    cashflow: [] as CashflowPoint[],
-    analytics: {
-      monthlyExpenses: [] as { name: string, value: number }[],
-      quoteStatus: [] as { name: string, value: number, color: string }[]
-    }
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { stats, loading, error, fetchDashboardStats } = useDashboardStats(t);
 
-  const fetchDashboardStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/dashboard/stats", { credentials: "include" });
-      if (!res.ok) throw new Error(t("workspaceWidgets.dashboard.error"));
-      const data = await res.json();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("workspaceWidgets.dashboard.error"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void fetchDashboardStats();
-  }, [fetchDashboardStats]);
-
-  if (loading) {
-    return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;
-  }
-
-  if (error) {
-    return (
-      <WidgetState
-        variant="error"
-        message={error}
-        onRetry={() => void fetchDashboardStats()}
-        retryLabel={t("workspaceWidgets.dashboard.retry")}
-      />
-    );
-  }
+  if (loading) return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;
+  if (error) return (
+    <WidgetState
+      variant="error"
+      message={error}
+      onRetry={() => void fetchDashboardStats()}
+      retryLabel={t("workspaceWidgets.dashboard.retry")}
+    />
+  );
 
   const netProfit = stats.totalRevenue - stats.totalExpenses;
-  const formatCurrency = (num: number) => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(num);
+  const formatCurrency = (num: number) =>
+    new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(num);
 
   return (
     <div className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8" dir={dir}>
@@ -119,22 +76,21 @@ export default function DashboardWidget() {
         </div>
       </div>
 
-      {/* AI Insight Section */}
+      {/* AI Insight */}
       {stats.aiInsight && (
         <div className="bg-emerald-500/[0.03] border border-emerald-500/20 p-4 md:p-5 rounded-[2rem] flex flex-col sm:flex-row items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-lg shadow-emerald-500/5">
             <Sparkles size={22} />
           </div>
           <div className="flex flex-col gap-1">
-             <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em] mb-1">AI Financial Intelligence</span>
-             <p className="text-sm text-[color:var(--foreground-main)] opacity-90 leading-relaxed font-medium">{stats.aiInsight}</p>
+            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em] mb-1">AI Financial Intelligence</span>
+            <p className="text-sm text-[color:var(--foreground-main)] opacity-90 leading-relaxed font-medium">{stats.aiInsight}</p>
           </div>
         </div>
       )}
 
-      {/* Analytics Section */}
+      {/* Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Expense Summary Chart */}
         <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
           <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
             <TrendingUp size={16} className="text-emerald-500 dark:text-emerald-400" /> סיכום הוצאות חודשי
@@ -142,12 +98,12 @@ export default function DashboardWidget() {
           <div className="h-48 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.analytics.monthlyExpenses}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#ffffff05" : "#00000005"} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff05" : "#00000005"} vertical={false} />
                 <XAxis dataKey="name" stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₪${v/1000}k`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', border: '1px solid var(--border-main)', borderRadius: '12px', fontSize: '12px' }}
-                  itemStyle={{ color: theme === 'dark' ? '#e2e8f0' : '#0f172a' }}
+                <YAxis stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₪${v / 1000}k`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff", border: "1px solid var(--border-main)", borderRadius: "12px", fontSize: "12px" }}
+                  itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
                   formatter={(v: number) => formatCurrency(v)}
                 />
                 <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
@@ -156,7 +112,6 @@ export default function DashboardWidget() {
           </div>
         </div>
 
-        {/* Document Status Breakdown */}
         <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
           <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
             <Activity size={16} className="text-indigo-500 dark:text-indigo-400" /> סטטוס הצעות מחיר
@@ -169,7 +124,7 @@ export default function DashboardWidget() {
                   <span className="text-[color:var(--foreground-main)]">{status.value} מסמכים</span>
                 </div>
                 <div className="h-2 w-full bg-[color:var(--foreground-muted)]/10 rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(status.value / (stats.analytics.quoteStatus.reduce((a, b) => a + b.value, 0) || 1)) * 100}%` }}
                     className="h-full"
@@ -180,14 +135,14 @@ export default function DashboardWidget() {
             ))}
             <div className="mt-4 p-4 bg-[color:var(--surface-card)]/50 rounded-xl border border-[color:var(--border-main)]">
               <p className="text-[10px] text-[color:var(--foreground-muted)] leading-relaxed text-center">
-                המערכת מזהה {stats.analytics.quoteStatus.find(s => s.name === 'ממתין')?.value || 0} הצעות מחיר שטרם נחתמו. מומלץ לשלוח תזכורת אוטומטית.
+                המערכת מזהה {stats.analytics.quoteStatus.find((s) => s.name === "ממתין")?.value ?? 0} הצעות מחיר שטרם נחתמו. מומלץ לשלוח תזכורת אוטומטית.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Cashflow Forecasting Chart */}
+      {/* Cashflow Chart */}
       <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-8 flex flex-col shadow-sm dark:shadow-none min-w-0">
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6 md:mb-8">
           <div>
@@ -213,82 +168,45 @@ export default function DashboardWidget() {
             <AreaChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#ffffff05" : "#00000005"} vertical={false} />
-              <XAxis 
-                dataKey="name" 
-                stroke="var(--foreground-muted)" 
-                fontSize={10} 
-                tickLine={false} 
-                axisLine={false} 
-                dy={10}
-              />
-              <YAxis 
-                stroke="var(--foreground-muted)" 
-                fontSize={10} 
-                tickLine={false} 
-                axisLine={false} 
-                tickFormatter={(value) => `₪${value/1000}k`}
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', border: '1px solid var(--border-main)', borderRadius: '12px', fontSize: '12px' }}
-                itemStyle={{ color: theme === 'dark' ? '#e2e8f0' : '#0f172a' }}
+              <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff05" : "#00000005"} vertical={false} />
+              <XAxis dataKey="name" stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} dy={10} />
+              <YAxis stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `₪${value / 1000}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff", border: "1px solid var(--border-main)", borderRadius: "12px", fontSize: "12px" }}
+                itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
                 formatter={(value: number) => formatCurrency(value)}
               />
-              <Area 
-                type="monotone" 
-                dataKey="actual" 
-                stroke="#6366f1" 
-                strokeWidth={4} 
-                fillOpacity={1} 
-                fill="url(#colorActual)" 
-                strokeLinecap="round"
-                connectNulls
-              />
-              <Area 
-                type="monotone" 
-                dataKey="forecast" 
-                stroke="#6366f1" 
-                strokeWidth={2} 
-                strokeDasharray="5 5"
-                fillOpacity={1} 
-                fill="url(#colorForecast)" 
-                connectNulls
-              />
+              <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" strokeLinecap="round" connectNulls />
+              <Area type="monotone" dataKey="forecast" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorForecast)" connectNulls />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        
+
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-[color:var(--border-main)]/30">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400">
-              <TrendingUp size={20} />
-            </div>
+            <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400"><TrendingUp size={20} /></div>
             <div>
               <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">מגמת צמיחה</div>
               <div className="text-lg font-black text-[color:var(--foreground-main)]">+18.4%</div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-400">
-              <AlertTriangle size={20} />
-            </div>
+            <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-400"><AlertTriangle size={20} /></div>
             <div>
               <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">חריגת תקציב פוטנציאלית</div>
               <div className="text-lg font-black text-[color:var(--foreground-main)]">יוני 2026</div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-400">
-              <Activity size={20} />
-            </div>
+            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-400"><Activity size={20} /></div>
             <div>
               <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">דירוג אשראי פנימי</div>
               <div className="text-lg font-black text-[color:var(--foreground-main)]">AA+</div>
