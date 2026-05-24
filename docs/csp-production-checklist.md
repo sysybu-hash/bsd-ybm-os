@@ -8,6 +8,7 @@
 - [ ] PayPal modal (הגדרות → תשלום)
 - [ ] קישור PayPlus (יצירת חשבונית)
 - [ ] Gemini Live (Omnibar → מיקרופון)
+- [ ] PostHog (אין חסימת `us-assets.i.posthog.com` ב-Console)
 - [ ] שאלה ב-NotebookLM
 
 ## אם יש violation
@@ -16,7 +17,7 @@
 
 - `connect-src` — API חיצוניים
 - `frame-src` — מודלים / checkout
-- `script-src` — SDK צד שלישי
+- `script-src` — SDK צד שלישי (PayPal, PostHog: `https://*.posthog.com`, `https://*.i.posthog.com`)
 
 ## משימה 1 — DocumentDraft ב-Neon ייצור
 

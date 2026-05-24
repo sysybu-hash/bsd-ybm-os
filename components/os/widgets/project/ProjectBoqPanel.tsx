@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type BoqLine = {
   id: string;
@@ -25,24 +26,38 @@ export default function ProjectBoqPanel({
   projectId: string;
   apiBase: string;
 }) {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<SubTab>("boq");
   const [lines, setLines] = useState<BoqLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`${apiBase}/boq`, { credentials: "include" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      setLines(json.lines ?? []);
-    } catch {
-      toast.error("שגיאה בטעינת כתב כמויות");
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        lines?: BoqLine[];
+      };
+      if (!res.ok) {
+        const msg =
+          typeof json.error === "string" && json.error.trim()
+            ? json.error
+            : t("projectDashboard.errors.boqLoad");
+        throw new Error(msg);
+      }
+      setLines(Array.isArray(json.lines) ? json.lines : []);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("projectDashboard.errors.boqLoad");
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   useEffect(() => {
     void load();
@@ -159,6 +174,10 @@ export default function ProjectBoqPanel({
         <div className="flex justify-center py-6">
           <Loader2 className="animate-spin text-amber-500" size={20} />
         </div>
+      ) : loadError ? (
+        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+          {loadError}
+        </p>
       ) : lines.length === 0 ? (
         <p className="text-xs text-[color:var(--foreground-muted)]">
           אין שורות — ייבאו קובץ Excel (הצעת מחיר / חשבון חיים אדלר).

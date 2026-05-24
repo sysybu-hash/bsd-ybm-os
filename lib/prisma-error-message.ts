@@ -34,8 +34,10 @@ export function getUserFacingDbErrorMessage(err: unknown): string | null {
   }
 
   if (
+    lower.includes("p2021") ||
     lower.includes("p2022") ||
     lower.includes("does not exist in the current database") ||
+    (lower.includes("table") && lower.includes("does not exist")) ||
     (lower.includes("column") && lower.includes("does not exist"))
   ) {
     return (

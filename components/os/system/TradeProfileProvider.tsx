@@ -22,22 +22,26 @@ type TradeProfileContextValue = {
 const TradeProfileContext = createContext<TradeProfileContextValue | null>(null);
 
 export function TradeProfileProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { messages } = useI18n();
 
-  const industry =
-    (session?.user as { organizationIndustry?: string | null } | undefined)?.organizationIndustry ??
-    "CONSTRUCTION";
+  const industryRaw = (session?.user as { organizationIndustry?: string | null } | undefined)
+    ?.organizationIndustry;
+  const industry = industryRaw ?? null;
   const trade =
     (session?.user as { organizationConstructionTrade?: string | null } | undefined)
       ?.organizationConstructionTrade ??
-    (isCompanyMgmtIndustry(industry) ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
+    (industry && isCompanyMgmtIndustry(industry) ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
 
   const value = useMemo(() => {
-    const industryId = normalizeIndustryType(industry);
+    const industryResolved = industry ?? "CONSTRUCTION";
+    const industryId = normalizeIndustryType(industryResolved);
     const mergedConfig = getIndustryConfig(industryId);
-    const profile = getIndustryProfile(industry, undefined, trade, messages);
-    const isCompanyMgmt = industryId === "COMPANY_MGMT";
+    const profile = getIndustryProfile(industryResolved, undefined, trade, messages);
+    const isCompanyMgmt =
+      industryId === "COMPANY_MGMT" ||
+      (sessionStatus === "loading" && industry === null) ||
+      (sessionStatus === "authenticated" && industry === null);
     return {
       profile,
       industryId,
@@ -49,7 +53,7 @@ export function TradeProfileProvider({ children }: { children: React.ReactNode }
       businessLineId: profile.businessLineId ?? trade,
       businessLineLabel: profile.businessLineLabel ?? trade,
     };
-  }, [industry, trade, messages]);
+  }, [industry, trade, messages, sessionStatus]);
 
   return (
     <TradeProfileContext.Provider value={value}>{children}</TradeProfileContext.Provider>

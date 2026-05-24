@@ -881,7 +881,9 @@
       "load": "Failed to load project data",
       "blueprint": "Blueprint analysis failed",
       "saveSettings": "Failed to save settings",
-      "projectsList": "Failed to load projects list"
+      "projectsList": "Failed to load projects list",
+      "boqLoad": "Failed to load bill of quantities",
+      "boqConstructionOnly": "Bill of quantities is available only for construction contractors"
     },
     "pickProjectTitle": "Choose a project",
     "pickProjectDesc": "Select a project to open the control center",

@@ -56,7 +56,7 @@ const nextConfig = {
         "base-uri 'self'",
         "object-src 'none'",
         "frame-ancestors 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.paypal.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.paypal.com https://*.posthog.com https://*.i.posthog.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
