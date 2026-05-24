@@ -311,11 +311,65 @@ export function useGeminiLiveAudio({
   const latestUserTextRef = useRef("");
   const deliveredUserTextRef = useRef("");
   const greetingSentRef = useRef(false);
-  const greetingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeInputChunksSentRef = useRef(0);
   const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
   const contextReadyLatchRef = useRef(false);
+  /** true רק אחרי setupComplete — אסור לשלוח realtimeInput לפני כן (דרישת Live API). */
+  const sessionReadyRef = useRef(false);
+  const setupCompleteReceivedRef = useRef(false);
+  const intentionalStopRef = useRef(false);
+  const setupWaiterRef = useRef<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  } | null>(null);
+  const setupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearSetupWaiter = useCallback((rejectReason?: Error) => {
+    if (setupTimeoutRef.current) {
+      clearTimeout(setupTimeoutRef.current);
+      setupTimeoutRef.current = null;
+    }
+    const waiter = setupWaiterRef.current;
+    if (!waiter) return;
+    setupWaiterRef.current = null;
+    if (rejectReason) {
+      waiter.reject(rejectReason);
+    }
+  }, []);
+
+  const resolveSetupWaiter = useCallback(() => {
+    if (setupTimeoutRef.current) {
+      clearTimeout(setupTimeoutRef.current);
+      setupTimeoutRef.current = null;
+    }
+    const waiter = setupWaiterRef.current;
+    if (!waiter) return;
+    setupWaiterRef.current = null;
+    waiter.resolve();
+  }, []);
+
+  const waitForSetupComplete = useCallback(
+    (timeoutMs: number) => {
+      if (setupCompleteReceivedRef.current) {
+        return Promise.resolve();
+      }
+      return new Promise<void>((resolve, reject) => {
+        clearSetupWaiter();
+        setupTimeoutRef.current = setTimeout(() => {
+          setupTimeoutRef.current = null;
+          setupWaiterRef.current = null;
+          reject(
+            new Error(
+              "Gemini Live setup timeout — לא התקבל setupComplete מהשרת. נסו שוב או בדקו מפתח API.",
+            ),
+          );
+        }, timeoutMs);
+        setupWaiterRef.current = { resolve, reject };
+      });
+    },
+    [clearSetupWaiter],
+  );
 
   useEffect(() => {
     if (contextReady) contextReadyLatchRef.current = true;
@@ -347,10 +401,9 @@ export function useGeminiLiveAudio({
   }, [greetOnConnect, locale, userName]);
 
   const cleanup = useCallback(() => {
-    if (greetingFallbackTimerRef.current) {
-      clearTimeout(greetingFallbackTimerRef.current);
-      greetingFallbackTimerRef.current = null;
-    }
+    clearSetupWaiter();
+    sessionReadyRef.current = false;
+    setupCompleteReceivedRef.current = false;
     if (visibilityHandlerRef.current) {
       document.removeEventListener("visibilitychange", visibilityHandlerRef.current);
       visibilityHandlerRef.current = null;
@@ -394,7 +447,7 @@ export function useGeminiLiveAudio({
     deliveredUserTextRef.current = "";
     latestModelTextRef.current = "";
     deliveredModelTextRef.current = "";
-  }, []);
+  }, [clearSetupWaiter]);
 
   const handleLiveMessage = useCallback(
     async (event: MessageEvent) => {
@@ -409,6 +462,9 @@ export function useGeminiLiveAudio({
       try {
         message = JSON.parse(raw) as LiveResponse;
       } catch {
+        log.warn("unparseable live websocket message", {
+          preview: raw.slice(0, 240),
+        });
         return;
       }
 
@@ -417,11 +473,10 @@ export function useGeminiLiveAudio({
       }
 
       if ("setupComplete" in message && message.setupComplete !== undefined) {
-        if (greetingFallbackTimerRef.current) {
-          window.clearTimeout(greetingFallbackTimerRef.current);
-          greetingFallbackTimerRef.current = null;
-        }
         log.info("setupComplete received");
+        setupCompleteReceivedRef.current = true;
+        sessionReadyRef.current = true;
+        resolveSetupWaiter();
         setState("ready");
         setStatusText(statusLabels.connected);
         sendSessionGreeting();
@@ -519,7 +574,14 @@ export function useGeminiLiveAudio({
       }
 
     },
-    [onModelTranscript, onUserTranscript, onToolCall, sendSessionGreeting, statusLabels],
+    [
+      onModelTranscript,
+      onUserTranscript,
+      onToolCall,
+      resolveSetupWaiter,
+      sendSessionGreeting,
+      statusLabels,
+    ],
   );
 
   const start = useCallback(async () => {
@@ -540,6 +602,9 @@ export function useGeminiLiveAudio({
     }
 
     cleanup();
+    intentionalStopRef.current = false;
+    sessionReadyRef.current = false;
+    setupCompleteReceivedRef.current = false;
     if (owner) {
       leaseIdRef.current = acquireGeminiLiveLease(owner, () => {
         cleanup();
@@ -628,8 +693,23 @@ export function useGeminiLiveAudio({
           onError?.(friendly);
         });
       };
-      socket.onclose = () => {
-        if (state !== "idle") {
+      socket.onclose = (closeEvent) => {
+        sessionReadyRef.current = false;
+        if (!intentionalStopRef.current) {
+          clearSetupWaiter(
+            new Error(
+              closeEvent.code === 1006
+                ? "חיבור Gemini Live נותק באופן בלתי צפוי (1006)"
+                : `חיבור Gemini Live נסגר (קוד ${closeEvent.code})`,
+            ),
+          );
+          const friendly = formatGeminiLiveUserMessage(
+            closeEvent.reason || statusLabels.disconnected,
+          );
+          setState("error");
+          setStatusText(friendly);
+          onError?.(friendly);
+        } else if (state !== "idle") {
           setStatusText(statusLabels.disconnected);
         }
       };
@@ -658,10 +738,8 @@ export function useGeminiLiveAudio({
         setupKeys: Object.keys(setupMessage.setup),
       });
       socket.send(JSON.stringify(setupMessage));
-      greetingFallbackTimerRef.current = setTimeout(() => {
-        greetingFallbackTimerRef.current = null;
-        sendSessionGreeting();
-      }, 3_000);
+      log.info("awaiting setupComplete before mic stream");
+      await waitForSetupComplete(15_000);
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -679,7 +757,13 @@ export function useGeminiLiveAudio({
       const captureMute = captureContext.createGain();
       captureMute.gain.value = 0;
       captureNode.port.onmessage = (event) => {
-        if (socket.readyState !== WebSocket.OPEN || event.data?.type !== "audio") return;
+        if (
+          !sessionReadyRef.current ||
+          socket.readyState !== WebSocket.OPEN ||
+          event.data?.type !== "audio"
+        ) {
+          return;
+        }
         const pcm = float32ToPcm16(event.data.data as Float32Array);
         realtimeInputChunksSentRef.current += 1;
         const chunkIndex = realtimeInputChunksSentRef.current;
@@ -731,16 +815,18 @@ export function useGeminiLiveAudio({
     handleLiveMessage,
     model,
     onError,
-    sendSessionGreeting,
+    clearSetupWaiter,
     settings,
     state,
     statusLabels,
     systemInstruction,
     contextReady,
     owner,
+    waitForSetupComplete,
   ]);
 
   const stop = useCallback(() => {
+    intentionalStopRef.current = true;
     cleanup();
     setState("idle");
     setIsModelSpeaking(false);
