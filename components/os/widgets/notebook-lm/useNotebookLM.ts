@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { visibleTextFromUIMessage } from "@/lib/ai/ui-message-text";
-import { buildScanFileAcceptAttribute } from "@/lib/scan-mime";
 import { toast } from "sonner";
 import {
   useNotebookSpeechPlayback,
@@ -13,6 +12,7 @@ import {
 import { ensureProjectNotebook } from "@/lib/notebooklm/ensure-project-notebook";
 import type { Source, SavedNotebookSummary, ProjectOption } from "./types";
 import { uiMessagesFromStored } from "./types";
+import { useNotebookSources } from "./useNotebookSources";
 
 const DRAFT_KEY = "notebooklm-draft-v1";
 
@@ -23,7 +23,6 @@ type UseNotebookLMParams = {
 
 export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const [sources, setSources] = useState<Source[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [notebookTitle, setNotebookTitle] = useState("מחברת חדשה");
   const [projectId, setProjectId] = useState<string>("");
   const [savedNotebookId, setSavedNotebookId] = useState<string | null>(null);
@@ -36,12 +35,9 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const [issuePromptOpen, setIssuePromptOpen] = useState(false);
   const [isIssuingDocument, setIsIssuingDocument] = useState(false);
   const [issuedDocumentText, setIssuedDocumentText] = useState<string | null>(null);
-  const [renameSourceId, setRenameSourceId] = useState<string | null>(null);
   const [deleteNotebookId, setDeleteNotebookId] = useState<string | null>(null);
   const [input, setInput] = useState("");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
   const sourcesRef = useRef<Source[]>([]);
   sourcesRef.current = sources;
 
@@ -53,14 +49,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
         api: "/api/notebooklm/chat",
         credentials: "same-origin",
         prepareSendMessagesRequest: ({ id, messages, body, trigger, messageId }) => ({
-          body: {
-            ...body,
-            id,
-            messages,
-            trigger,
-            messageId,
-            sources: sourcesRef.current.map((s) => ({ name: s.name, content: s.content })),
-          },
+          body: { ...body, id, messages, trigger, messageId, sources: sourcesRef.current.map((s) => ({ name: s.name, content: s.content })) },
         }),
       }),
     [],
@@ -75,18 +64,15 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
 
   useEffect(() => () => stopSpeech(), [stopSpeech]);
 
-  // Persist draft
+  const sourcesMgr = useNotebookSources({ sources, setSources, t });
+
+  // Draft persist
   const persistDraft = useCallback(() => {
     if (typeof sessionStorage === "undefined") return;
-    sessionStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({
-        notebookTitle,
-        projectId,
-        sources,
-        messages: messages.map((m) => ({ role: m.role, content: visibleTextFromUIMessage(m) })),
-      }),
-    );
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+      notebookTitle, projectId, sources,
+      messages: messages.map((m) => ({ role: m.role, content: visibleTextFromUIMessage(m) })),
+    }));
   }, [notebookTitle, projectId, sources, messages]);
 
   useEffect(() => {
@@ -100,12 +86,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     const raw = sessionStorage.getItem(DRAFT_KEY);
     if (!raw || savedNotebookId) return;
     try {
-      const d = JSON.parse(raw) as {
-        notebookTitle?: string;
-        projectId?: string;
-        sources?: Source[];
-        messages?: Array<{ role: string; content: string }>;
-      };
+      const d = JSON.parse(raw) as { notebookTitle?: string; projectId?: string; sources?: Source[]; messages?: Array<{ role: string; content: string }> };
       if (d.notebookTitle) setNotebookTitle(d.notebookTitle);
       if (d.projectId) setProjectId(d.projectId);
       if (Array.isArray(d.sources) && d.sources.length) setSources(d.sources);
@@ -132,9 +113,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
         const data = (await res.json()) as { notebooks: SavedNotebookSummary[] };
         setSavedList(data.notebooks ?? []);
       }
-    } catch {
-      toast.error(t("workspaceWidgets.notebookLM.loadListFailed"));
-    }
+    } catch { toast.error(t("workspaceWidgets.notebookLM.loadListFailed")); }
   }, [projectId, t]);
 
   useEffect(() => { void loadProjects(); }, [loadProjects]);
@@ -142,30 +121,17 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const handleLoadNotebook = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/notebooklm/notebooks/${id}`, { credentials: "include" });
-      const data = (await res.json()) as {
-        notebook?: {
-          id: string;
-          title: string;
-          projectId: string | null;
-          sources: Array<{ id: string; name: string; content: string; mimeType: string }>;
-          messages: Array<{ role: string; content: string }>;
-          audioOverview: { scriptText: string } | null;
-        };
-      };
+      const data = (await res.json()) as { notebook?: { id: string; title: string; projectId: string | null; sources: Array<{ id: string; name: string; content: string; mimeType: string }>; messages: Array<{ role: string; content: string }>; audioOverview: { scriptText: string } | null } };
       if (!res.ok || !data.notebook) { toast.error(t("workspaceWidgets.notebookLM.loadFailed")); return; }
       const nb = data.notebook;
-      setSavedNotebookId(nb.id);
-      setNotebookTitle(nb.title);
-      setProjectId(nb.projectId ?? "");
+      setSavedNotebookId(nb.id); setNotebookTitle(nb.title); setProjectId(nb.projectId ?? "");
       setSources(nb.sources.map((s) => ({ id: s.id, name: s.name, content: s.content, type: s.mimeType.includes("pdf") ? "pdf" : "text" })));
       setMessages(uiMessagesFromStored(nb.messages));
       setAudioScript(nb.audioOverview?.scriptText ?? null);
       setShowSavedPanel(false);
       toast.success("המחברת נטענה");
-    } catch {
-      toast.error(t("workspaceWidgets.notebookLM.loadFailed"));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- setMessages יציב
+    } catch { toast.error(t("workspaceWidgets.notebookLM.loadFailed")); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   const ensuredProjectRef = useRef<string | null>(null);
@@ -189,19 +155,15 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     if (typeof liveData?.title === "string" && liveData.title) setNotebookTitle(liveData.title);
     const preload = liveData?.preloadSources;
     if (Array.isArray(preload)) {
-      setSources(
-        preload.map((s, i) => {
-          const row = s as { name?: string; content?: string; type?: string };
-          return { id: `preload-${i}`, name: String(row.name ?? `מקור ${i + 1}`), content: String(row.content ?? ""), type: row.type === "pdf" ? "pdf" : "text" };
-        }),
-      );
+      setSources(preload.map((s, i) => {
+        const row = s as { name?: string; content?: string; type?: string };
+        return { id: `preload-${i}`, name: String(row.name ?? `מקור ${i + 1}`), content: String(row.content ?? ""), type: row.type === "pdf" ? "pdf" : "text" };
+      }));
     }
   }, [liveData, handleLoadNotebook]);
 
   const buildPayload = () => ({
-    id: savedNotebookId ?? undefined,
-    title: notebookTitle,
-    projectId: projectId || null,
+    id: savedNotebookId ?? undefined, title: notebookTitle, projectId: projectId || null,
     sources: sources.map((s, i) => ({ name: s.name, content: s.content, mimeType: s.type === "pdf" ? "application/pdf" : "text/plain", sortOrder: i })),
     messages: messages.map((m) => ({ role: m.role, content: visibleTextFromUIMessage(m) })),
   });
@@ -209,10 +171,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch("/api/notebooklm/notebooks", {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify(buildPayload()),
-      });
+      const res = await fetch("/api/notebooklm/notebooks", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(buildPayload()) });
       const data = (await res.json()) as { notebook?: { id: string; audioOverview?: { scriptText: string } | null } };
       if (!res.ok) { toast.error(t("workspaceWidgets.notebookLM.saveFailed")); return; }
       if (data.notebook?.id) {
@@ -231,33 +190,6 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     sessionStorage.removeItem(DRAFT_KEY);
   };
 
-  const uploadSourceFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/notebooklm/extract-source", { method: "POST", body: formData });
-    const data = (await res.json()) as { text?: string; error?: string; mimeType?: string };
-    if (!res.ok || !data.text) throw new Error(data.error || t("workspaceWidgets.notebookLM.extractFailed"));
-    const isPdf = data.mimeType === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    setSources((prev) => [...prev, { id: Math.random().toString(36).substring(7), name: file.name, content: data.text as string, type: isPdf ? "pdf" : "text" }]);
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    setIsUploading(true);
-    let ok = 0;
-    try {
-      for (const file of Array.from(files)) {
-        try { await uploadSourceFile(file); ok += 1; }
-        catch (err) { toast.error(`${file.name}: ${err instanceof Error ? err.message : t("workspaceWidgets.notebookLM.uploadFailed")}`); }
-      }
-      if (ok > 0) toast.success(`${ok} ${t("workspaceWidgets.notebookLM.uploadSuccess").replace("{count}", String(ok))}`);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
   const handleVoiceOverview = async () => {
     if (sources.length === 0) { toast.error(t("workspaceWidgets.notebookLM.audioSourcesFirst")); return; }
     setIsGeneratingAudio(true);
@@ -267,14 +199,12 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
         const saveRes = await fetch("/api/notebooklm/notebooks", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(buildPayload()) });
         const saveData = (await saveRes.json()) as { notebook?: { id: string } };
         if (!saveRes.ok || !saveData.notebook?.id) { toast.error(t("workspaceWidgets.notebookLM.saveBeforeAudio")); return; }
-        id = saveData.notebook.id;
-        setSavedNotebookId(id);
+        id = saveData.notebook.id; setSavedNotebookId(id);
       }
       const res = await fetch(`/api/notebooklm/notebooks/${id}/audio-overview`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({}) });
       const data = (await res.json()) as { scriptText?: string };
       if (!res.ok || !data.scriptText) { toast.error(t("workspaceWidgets.notebookLM.audioFailed")); return; }
-      setAudioScript(data.scriptText);
-      playSpeech(data.scriptText);
+      setAudioScript(data.scriptText); playSpeech(data.scriptText);
     } catch { toast.error(t("workspaceWidgets.notebookLM.audioFailed")); }
     finally { setIsGeneratingAudio(false); }
   };
@@ -282,13 +212,9 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const handleIssueDocument = async (requirement: string) => {
     const req = requirement.trim();
     if (!req) return;
-    setIssuePromptOpen(false);
-    setIsIssuingDocument(true);
+    setIssuePromptOpen(false); setIsIssuingDocument(true);
     try {
-      const res = await fetch("/api/notebooklm/generate-document", {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ requirement: req, notebookTitle, sources: sources.map((s) => ({ name: s.name, content: s.content })) }),
-      });
+      const res = await fetch("/api/notebooklm/generate-document", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ requirement: req, notebookTitle, sources: sources.map((s) => ({ name: s.name, content: s.content })) }) });
       const data = (await res.json()) as { text?: string; suggestedFileName?: string; error?: string };
       if (!res.ok || !data.text) { toast.error(data.error || t("workspaceWidgets.notebookLM.issueFailed")); return; }
       setIssuedDocumentText(data.text);
@@ -302,26 +228,15 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     if (!issuedDocumentText) return;
     const blob = new Blob([issuedDocumentText], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
+    const a = document.createElement("a"); a.href = url;
     a.download = `${notebookTitle.replace(/\s+/g, "-").slice(0, 40) || "מסמך-ממחברת"}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const removeSource = (id: string) => setSources((prev) => prev.filter((s) => s.id !== id));
-  const renameSource = (id: string) => { if (sources.find((s) => s.id === id)) setRenameSourceId(id); };
-  const confirmRenameSource = (name: string) => {
-    if (!renameSourceId || !name.trim()) { setRenameSourceId(null); return; }
-    setSources((prev) => prev.map((s) => (s.id === renameSourceId ? { ...s, name: name.trim() } : s)));
-    setRenameSourceId(null);
+    a.click(); URL.revokeObjectURL(url);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    const text = input.trim();
-    setInput("");
+    const text = input.trim(); setInput("");
     await sendMessage({ text });
   };
 
@@ -337,30 +252,22 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     setDeleteNotebookId(null);
     try {
       const res = await fetch(`/api/notebooklm/notebooks/${id}`, { method: "DELETE", credentials: "include" });
-      if (res.ok) {
-        if (savedNotebookId === id) handleNewNotebook();
-        void refreshSavedList();
-        toast.success("נמחק");
-      }
+      if (res.ok) { if (savedNotebookId === id) handleNewNotebook(); void refreshSavedList(); toast.success("נמחק"); }
     } catch { toast.error(t("workspaceWidgets.notebookLM.deleteFailed")); }
   };
 
-  const renameSourceDefault = renameSourceId != null ? sources.find((s) => s.id === renameSourceId)?.name ?? "" : "";
-
   return {
-    // state
-    sources, setSources, isUploading, notebookTitle, setNotebookTitle, projectId, setProjectId,
+    sources, setSources, notebookTitle, setNotebookTitle, projectId, setProjectId,
     savedNotebookId, savedList, showSavedPanel, setShowSavedPanel, isSaving, projects,
     audioScript, isGeneratingAudio, issuePromptOpen, setIssuePromptOpen, isIssuingDocument,
-    issuedDocumentText, renameSourceId, setRenameSourceId, deleteNotebookId, setDeleteNotebookId, input, setInput,
-    fileInputRef, fileAccept, messages, isLoading,
-    // speech
+    issuedDocumentText, deleteNotebookId, setDeleteNotebookId, input, setInput,
+    messages, isLoading,
     speechSettings, setSpeechSettings, playSpeech, pauseSpeech, resumeSpeech, stopSpeech,
     isPlaying, isPaused, progress,
-    // handlers
-    handleSave, handleNewNotebook, handleLoadNotebook, handleFileUpload, handleVoiceOverview,
-    handleIssueDocument, downloadIssuedDocument, removeSource, renameSource, confirmRenameSource,
+    handleSave, handleNewNotebook, handleLoadNotebook, handleVoiceOverview,
+    handleIssueDocument, downloadIssuedDocument,
     handleSubmit, handleQuickAction, handleDeleteSaved, confirmDeleteSaved,
-    refreshSavedList, renameSourceDefault,
+    refreshSavedList,
+    ...sourcesMgr,
   };
 }
