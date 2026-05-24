@@ -308,6 +308,15 @@ export function useGeminiLiveAudio({
   const greetingSentRef = useRef(false);
   const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
+  const contextReadyLatchRef = useRef(false);
+
+  useEffect(() => {
+    if (contextReady) contextReadyLatchRef.current = true;
+  }, [contextReady]);
+
+  const acknowledgeContextReady = useCallback(() => {
+    contextReadyLatchRef.current = true;
+  }, []);
 
   const cleanup = useCallback(() => {
     if (visibilityHandlerRef.current) {
@@ -501,9 +510,7 @@ export function useGeminiLiveAudio({
       setStatusText(statusLabels.fallback);
       return false;
     }
-    if (!contextReady) {
-      setState("idle");
-      setStatusText(statusLabels.preparing);
+    if (!contextReady && !contextReadyLatchRef.current) {
       return false;
     }
 
@@ -750,5 +757,6 @@ export function useGeminiLiveAudio({
     isSpeaking: state === "streaming" && isModelSpeaking,
     start,
     stop,
+    acknowledgeContextReady,
   };
 }

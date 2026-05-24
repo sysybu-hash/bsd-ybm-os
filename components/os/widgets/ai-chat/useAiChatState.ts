@@ -127,7 +127,7 @@ export function useAiChatState(
 
   const geminiLive = useGeminiLiveAudio({
     owner: "aiChatFull",
-    enabled: chatTab === "live" && geminiLiveEligible,
+    enabled: (chatTab === "live" || isLiveMode) && geminiLiveEligible,
     contextReady: liveContextReady,
     systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,
@@ -154,7 +154,7 @@ export function useAiChatState(
     onError: () => toast.error(t("workspaceWidgets.aiChat.liveFailed")),
   });
 
-  const { isLiveActive, start, stop } = geminiLive;
+  const { isLiveActive, start, stop, acknowledgeContextReady } = geminiLive;
 
   useEffect(() => { if (!isLiveMode && isLiveActive) stop(); }, [isLiveMode, isLiveActive, stop]);
   useEffect(() => {
@@ -162,13 +162,42 @@ export function useAiChatState(
     void start();
   }, [liveData?.startLive, isLiveMode, isLiveActive, liveContextReady, start]);
   useEffect(() => {
-    if (chatTab !== "live") { liveAutoStartRef.current = false; return; }
-    if (!geminiLiveEligible || !liveContextReady) return;
-    if (isLiveActive || geminiLive.state === "connecting" || liveAutoStartRef.current) return;
+    if (chatTab !== "live") {
+      liveAutoStartRef.current = false;
+      return;
+    }
+    if (!isLiveMode || !geminiLiveEligible || !liveContextReady) return;
+    if (isLiveActive || geminiLive.state === "connecting") return;
+    if (geminiLive.state === "fallback" || geminiLive.state === "error") return;
+    if (liveAutoStartRef.current) return;
     liveAutoStartRef.current = true;
-    setIsLiveMode(true);
     void start();
-  }, [chatTab, geminiLiveEligible, liveContextReady, isLiveActive, geminiLive.state, start]);
+  }, [
+    chatTab,
+    isLiveMode,
+    geminiLiveEligible,
+    liveContextReady,
+    isLiveActive,
+    geminiLive.state,
+    start,
+  ]);
+
+  const beginLiveSession = useCallback(async () => {
+    setIsLiveMode(true);
+    const contextOk = liveContextReady || (await osAssistant.refresh());
+    if (!contextOk) {
+      toast.error(t("workspaceWidgets.aiChat.liveContextLoading"));
+      return;
+    }
+    if (!geminiLiveEligible) {
+      toast.error(t("workspaceWidgets.aiChat.liveFailed"));
+      return;
+    }
+    liveAutoStartRef.current = true;
+    acknowledgeContextReady();
+    const ok = await start();
+    if (!ok) liveAutoStartRef.current = false;
+  }, [liveContextReady, osAssistant, geminiLiveEligible, start, acknowledgeContextReady, t]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -178,17 +207,16 @@ export function useAiChatState(
   const handleLiveTab = () => {
     setChatTab("live");
     setIsLiveMode(true);
-    void osAssistant.refresh();
-    if (geminiLiveEligible && liveContextReady && !isLiveActive && geminiLive.state !== "connecting") {
-      liveAutoStartRef.current = true;
-      void start();
-    }
+    liveAutoStartRef.current = false;
+    void (async () => {
+      await osAssistant.refresh();
+      await beginLiveSession();
+    })();
   };
   const handleTextTab = () => { setChatTab("text"); setIsLiveMode(false); if (isLiveActive) stop(); };
   const handleToggleLive = () => {
-    if (isLiveActive) { stop(); setIsLiveMode(false); return; }
-    setIsLiveMode(true);
-    void start();
+    if (isLiveActive) { stop(); setIsLiveMode(false); liveAutoStartRef.current = false; return; }
+    void beginLiveSession();
   };
 
   const handleAttachmentPick = (file: File | null) => {
@@ -280,7 +308,8 @@ export function useAiChatState(
   };
 
   const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =
-    geminiLive.state === "connecting" ? "connecting"
+    geminiLive.state === "connecting" || (chatTab === "live" && osAssistant.loading && !isLiveActive)
+      ? "connecting"
     : geminiLive.state === "streaming" ? (geminiLive.isSpeaking ? "speaking" : "listening")
     : geminiLive.state === "error" ? "error"
     : isLiveActive ? "listening"

@@ -41,11 +41,6 @@ export function isGeminiLiveContextReady(params: {
     return false;
   }
   const voice = params.systemInstructionVoice.trim();
-  if (voice.length < 120) return false;
-  if (
-    voice.startsWith("You are the BSD-YBM OS voice assistant (Gemini Live). Reply in")
-  ) {
-    return false;
-  }
-  return true;
+  // מספיק הוראה קולית מלאה (שרת או fallback מקומי) — לא לחסום את fallback הלגיטימי.
+  return voice.length >= 80;
 }

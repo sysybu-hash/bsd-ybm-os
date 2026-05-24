@@ -773,6 +773,7 @@
       "liveStatusFallback": "Gemini Live זמין אחרי התחברות ושיוך לארגון.",
       "sendFailed": "שגיאה בתקשורת עם ה-AI",
       "liveFailed": "שגיאה בחיבור Gemini Live",
+      "liveContextLoading": "לא ניתן להכין את העוזר הקולי — נסו שוב בעוד רגע",
       "placeholder": "שאל אותי הכל על הפרויקטים שלך…",
       "tabLive": "Live",
       "tabText": "טקסט"

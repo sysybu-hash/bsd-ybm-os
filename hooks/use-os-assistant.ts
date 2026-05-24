@@ -31,12 +31,12 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
     geminiLiveEnabled: true,
   });
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     if (!session?.user?.id) {
       setContext(null);
       setSystemInstruction(fallbackInstruction(locale));
       setSystemInstructionVoice(fallbackInstruction(locale, true));
-      return;
+      return false;
     }
     setLoading(true);
     try {
@@ -44,7 +44,10 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
         credentials: "include",
         cache: "no-store",
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setSystemInstructionVoice(fallbackInstruction(locale, true));
+        return fallbackInstruction(locale, true).trim().length >= 80;
+      }
       const data = (await res.json()) as {
         context?: OsAssistantUserContext;
         systemInstruction?: string;
@@ -53,14 +56,20 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
       };
       if (data.context) setContext(data.context);
       if (typeof data.systemInstruction === "string") setSystemInstruction(data.systemInstruction);
-      if (typeof data.systemInstructionVoice === "string") {
-        setSystemInstructionVoice(data.systemInstructionVoice);
-      }
       if (data.featureFlags) {
         setFeatureFlags((prev) => ({ ...prev, ...data.featureFlags }));
       }
+      if (typeof data.systemInstructionVoice === "string") {
+        setSystemInstructionVoice(data.systemInstructionVoice);
+        return data.systemInstructionVoice.trim().length >= 80;
+      }
+      const voice = fallbackInstruction(locale, true);
+      setSystemInstructionVoice(voice);
+      return voice.trim().length >= 80;
     } catch {
-      /* keep fallback */
+      const voice = fallbackInstruction(locale, true);
+      setSystemInstructionVoice(voice);
+      return voice.trim().length >= 80;
     } finally {
       setLoading(false);
     }

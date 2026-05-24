@@ -749,6 +749,7 @@
       "liveStatusFallback": "Gemini Live is available after sign-in and org assignment.",
       "sendFailed": "Failed to reach AI",
       "liveFailed": "Gemini Live connection failed",
+      "liveContextLoading": "Could not prepare the voice assistant — try again in a moment",
       "placeholder": "Ask me anything about your projects…",
       "tabLive": "Live",
       "tabText": "Text"
