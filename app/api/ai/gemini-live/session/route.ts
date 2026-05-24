@@ -32,6 +32,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const REQUESTS_PER_HOUR = 80;
+/** זמן להשלמת BidiGenerateContentSetup אחרי mint — מינימום עיכוב בין טוקן ל-WebSocket בלקוח. */
+const NEW_SESSION_EXPIRE_MS = 120 * 1000;
 const log = createLogger("gemini-live-session");
 
 async function createLiveAuthToken(
@@ -42,7 +44,7 @@ async function createLiveAuthToken(
   advancedFeatures: boolean,
 ) {
   const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  const newSessionExpireTime = new Date(Date.now() + 60 * 1000).toISOString();
+  const newSessionExpireTime = new Date(Date.now() + NEW_SESSION_EXPIRE_MS).toISOString();
 
   const token = await client.authTokens.create({
     config: {

@@ -74,7 +74,7 @@ export function useOmnibarGeminiLive({
       return result;
     },
     onError: (err) => {
-      toast.error(formatGeminiLiveUserMessage(err));
+      toast.error(formatGeminiLiveUserMessage(err, t));
       if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
       setVoiceStatus("error");
     },
@@ -120,7 +120,6 @@ export function useOmnibarGeminiLive({
     }
     setOmnibarLiveOn(true);
     geminiLive.acknowledgeContextReady();
-    void geminiLive.start();
   };
 
   return {

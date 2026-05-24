@@ -219,6 +219,49 @@ function base64PcmToFloat32(base64Audio: string): Float32Array {
   return audio;
 }
 
+type LiveSessionTokenPayload = {
+  token: string;
+  model?: string;
+  embeddedSetup: boolean;
+};
+
+async function fetchLiveSessionToken(
+  settings: GeminiLiveVoiceSettings,
+  advancedFeaturesEnabled: boolean,
+  locale: string | undefined,
+): Promise<LiveSessionTokenPayload> {
+  const tokenResponse = await fetch("/api/ai/gemini-live/session", {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...settings,
+      geminiLiveAdvancedFeatures: advancedFeaturesEnabled,
+      locale,
+    }),
+  });
+  const tokenData = (await tokenResponse.json().catch(() => ({}))) as TokenResponse;
+  if (!tokenResponse.ok || !tokenData.token) {
+    if (tokenResponse.status === 403) {
+      throw new Error(
+        tokenData.error ?? "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
+      );
+    }
+    if (tokenResponse.status === 401) {
+      throw new Error(
+        tokenData.error ?? "פג תוקף ההתחברות. התנתק והתחבר שוב כדי להשתמש בעוזר הקולי.",
+      );
+    }
+    throw new Error(tokenData.error ?? "לא התקבל token עבור Gemini Live");
+  }
+  return {
+    token: tokenData.token,
+    model: tokenData.model,
+    embeddedSetup: tokenData.embeddedSetup !== false,
+  };
+}
+
 function getAudioContextCtor(): typeof AudioContext | null {
   if (typeof window === "undefined") return null;
   const win = window as typeof window & { webkitAudioContext?: typeof AudioContext };
@@ -324,6 +367,7 @@ export function useGeminiLiveAudio({
     reject: (err: Error) => void;
   } | null>(null);
   const setupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startInFlightRef = useRef(false);
 
   const clearSetupWaiter = useCallback((rejectReason?: Error) => {
     if (setupTimeoutRef.current) {
@@ -593,6 +637,15 @@ export function useGeminiLiveAudio({
     if (!contextReady && !contextReadyLatchRef.current) {
       return false;
     }
+    if (startInFlightRef.current) {
+      log.info("start skipped — connection already in flight");
+      return (
+        webSocketRef.current !== null ||
+        state === "connecting" ||
+        state === "ready" ||
+        state === "streaming"
+      );
+    }
 
     const AudioCtor = getAudioContextCtor();
     if (!AudioCtor || !navigator.mediaDevices?.getUserMedia || !("AudioWorkletNode" in window)) {
@@ -602,6 +655,7 @@ export function useGeminiLiveAudio({
     }
 
     cleanup();
+    startInFlightRef.current = true;
     intentionalStopRef.current = false;
     sessionReadyRef.current = false;
     setupCompleteReceivedRef.current = false;
@@ -625,9 +679,13 @@ export function useGeminiLiveAudio({
     await resumeAudioContext(captureContext);
 
     try {
-      await playbackContext.audioWorklet.addModule(
-        `/gemini-live/playback.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
-      );
+      const [, tokenPayload] = await Promise.all([
+        playbackContext.audioWorklet.addModule(
+          `/gemini-live/playback.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
+        ),
+        fetchLiveSessionToken(settings, advancedFeaturesEnabled, locale),
+      ]);
+
       const playbackNode = new AudioWorkletNode(playbackContext, "gemini-live-playback");
       const gainNode = playbackContext.createGain();
       gainNode.gain.value = 1;
@@ -637,36 +695,10 @@ export function useGeminiLiveAudio({
       gainNodeRef.current = gainNode;
       await resumeAudioContext(playbackContext);
 
-      const tokenResponse = await fetch("/api/ai/gemini-live/session", {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...settings,
-          geminiLiveAdvancedFeatures: advancedFeaturesEnabled,
-          locale,
-        }),
-      });
-      const tokenData = (await tokenResponse.json().catch(() => ({}))) as TokenResponse;
-      if (!tokenResponse.ok || !tokenData.token) {
-        if (tokenResponse.status === 403) {
-          throw new Error(
-            tokenData.error ?? "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
-          );
-        }
-        if (tokenResponse.status === 401) {
-          throw new Error(
-            tokenData.error ?? "פג תוקף ההתחברות. התנתק והתחבר שוב כדי להשתמש בעוזר הקולי.",
-          );
-        }
-        throw new Error(tokenData.error ?? "לא התקבל token עבור Gemini Live");
-      }
-
-      const resolvedModel = tokenData.model ?? model;
-      const embeddedSetup = tokenData.embeddedSetup !== false;
+      const resolvedModel = tokenPayload.model ?? model;
+      const embeddedSetup = tokenPayload.embeddedSetup;
       setModel(resolvedModel);
-      log.info("session token received", {
+      log.info("session token received — opening websocket", {
         model: resolvedModel,
         embeddedSetup,
       });
@@ -680,7 +712,7 @@ export function useGeminiLiveAudio({
 
       const serviceUrl =
         `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained` +
-        `?access_token=${encodeURIComponent(tokenData.token)}`;
+        `?access_token=${encodeURIComponent(tokenPayload.token)}`;
       const socket = new WebSocket(serviceUrl);
       webSocketRef.current = socket;
 
@@ -696,16 +728,13 @@ export function useGeminiLiveAudio({
       socket.onclose = (closeEvent) => {
         sessionReadyRef.current = false;
         if (!intentionalStopRef.current) {
-          clearSetupWaiter(
-            new Error(
-              closeEvent.code === 1006
-                ? "חיבור Gemini Live נותק באופן בלתי צפוי (1006)"
-                : `חיבור Gemini Live נסגר (קוד ${closeEvent.code})`,
-            ),
-          );
-          const friendly = formatGeminiLiveUserMessage(
-            closeEvent.reason || statusLabels.disconnected,
-          );
+          const closeDetail =
+            closeEvent.reason?.trim() ||
+            (closeEvent.code === 1006
+              ? "חיבור Gemini Live נותק באופן בלתי צפוי (1006)"
+              : `חיבור Gemini Live נסגר (קוד ${closeEvent.code})`);
+          clearSetupWaiter(new Error(closeDetail));
+          const friendly = formatGeminiLiveUserMessage(closeDetail);
           setState("error");
           setStatusText(friendly);
           onError?.(friendly);
@@ -807,6 +836,8 @@ export function useGeminiLiveAudio({
       setStatusText(friendly);
       onError?.(friendly);
       return false;
+    } finally {
+      startInFlightRef.current = false;
     }
   }, [
     advancedFeaturesEnabled,
@@ -823,6 +854,7 @@ export function useGeminiLiveAudio({
     contextReady,
     owner,
     waitForSetupComplete,
+    locale,
   ]);
 
   const stop = useCallback(() => {

@@ -18,6 +18,7 @@ import {
   resolveGeminiLiveOrgId,
 } from "@/lib/gemini-live/eligibility";
 import { toast } from "sonner";
+import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { formatChatTime, type Message } from "./types";
 
 const LIVE_USER_DRAFT_ID = "gemini-live-user-draft";
@@ -151,7 +152,8 @@ export function useAiChatState(
       else if (text && !text.startsWith("לא ") && !text.startsWith("שגיאה") && !text.toLowerCase().startsWith("error")) toast.success(text);
       return result;
     },
-    onError: () => toast.error(t("workspaceWidgets.aiChat.liveFailed")),
+    onError: (message) =>
+      toast.error(formatGeminiLiveUserMessage(message, t)),
   });
 
   const { isLiveActive, start, stop, acknowledgeContextReady } = geminiLive;
@@ -207,7 +209,7 @@ export function useAiChatState(
   const handleLiveTab = () => {
     setChatTab("live");
     setIsLiveMode(true);
-    liveAutoStartRef.current = false;
+    liveAutoStartRef.current = true;
     void (async () => {
       await osAssistant.refresh();
       await beginLiveSession();

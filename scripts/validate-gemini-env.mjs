@@ -75,7 +75,7 @@ for (const model of modelsToTest) {
       config: {
         uses: 1,
         expireTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        newSessionExpireTime: new Date(Date.now() + 60 * 1000).toISOString(),
+        newSessionExpireTime: new Date(Date.now() + 120 * 1000).toISOString(),
         liveConnectConstraints: {
           model,
           config: { responseModalities: [Modality.AUDIO] },

@@ -749,6 +749,7 @@
       "liveStatusFallback": "Gemini Live доступен после входа и привязки к организации.",
       "sendFailed": "Ошибка связи с AI",
       "liveFailed": "Ошибка Gemini Live",
+      "liveSessionExpired": "Срок голосового подключения истёк до завершения настройки. Нажмите микрофон ещё раз.",
       "liveContextLoading": "Не удалось подготовить голосового помощника — повторите позже",
       "placeholder": "Спросите о ваших проектах…",
       "tabLive": "Live",

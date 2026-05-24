@@ -773,6 +773,7 @@
       "liveStatusFallback": "Gemini Live זמין אחרי התחברות ושיוך לארגון.",
       "sendFailed": "שגיאה בתקשורת עם ה-AI",
       "liveFailed": "שגיאה בחיבור Gemini Live",
+      "liveSessionExpired": "פג תוקף חיבור הקול — ההקמה לא הסתיימה בזמן. לחצו שוב על המיקרופון.",
       "liveContextLoading": "לא ניתן להכין את העוזר הקולי — נסו שוב בעוד רגע",
       "placeholder": "שאל אותי הכל על הפרויקטים שלך…",
       "tabLive": "Live",
