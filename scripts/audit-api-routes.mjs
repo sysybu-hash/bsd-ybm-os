@@ -16,6 +16,10 @@ const ALLOWLIST_NO_WRAPPER = [
   "app/api/locale/route.ts",
   "app/api/analyze-queue/process/route.ts",
   "app/api/integrations/google-calendar/route.ts",
+  // OG image generator — public by design, generates share images with no sensitive data
+  "app/api/og/route.tsx",
+  // PWA Web Share Target — public browser endpoint that redirects to authenticated workspace
+  "app/api/scan/share/route.ts",
 ];
 
 async function walk(dir, acc = []) {
