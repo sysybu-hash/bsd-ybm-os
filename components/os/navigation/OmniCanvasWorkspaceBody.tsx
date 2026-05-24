@@ -69,7 +69,11 @@ export default function OmniCanvasWorkspaceBody({
   );
 
   useEffect(() => {
-    if (!hasHydrated || widgets.length === 0) return;
+    if (!hasHydrated) return;
+    if (widgets.length === 0) {
+      syncUrlFromFocusedWidget(undefined);
+      return;
+    }
     const focused = getFocusedWidget();
     syncUrlFromFocusedWidget(focused);
   }, [focusSignature, hasHydrated, widgets.length, getFocusedWidget, syncUrlFromFocusedWidget]);

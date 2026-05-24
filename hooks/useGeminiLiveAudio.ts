@@ -526,7 +526,24 @@ export function useGeminiLiveAudio({
     setState("connecting");
     setStatusText(statusLabels.preparing);
 
+  /** יוצר ומפעיל AudioContext מיד בתוך user gesture — לפני כל await (קריטי לדסקטופ). */
+    const playbackContext = new AudioCtor({ sampleRate: 24000 });
+    playbackContextRef.current = playbackContext;
+    await resumeAudioContext(playbackContext);
+
     try {
+      await playbackContext.audioWorklet.addModule(
+        `/gemini-live/playback.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
+      );
+      const playbackNode = new AudioWorkletNode(playbackContext, "gemini-live-playback");
+      const gainNode = playbackContext.createGain();
+      gainNode.gain.value = 1;
+      playbackNode.connect(gainNode);
+      gainNode.connect(playbackContext.destination);
+      playbackNodeRef.current = playbackNode;
+      gainNodeRef.current = gainNode;
+      await resumeAudioContext(playbackContext);
+
       const tokenResponse = await fetch("/api/ai/gemini-live/session", {
         method: "POST",
         credentials: "include",
@@ -555,20 +572,6 @@ export function useGeminiLiveAudio({
 
       const resolvedModel = tokenData.model ?? model;
       setModel(resolvedModel);
-
-      const playbackContext = new AudioCtor({ sampleRate: 24000 });
-      await playbackContext.audioWorklet.addModule(
-        `/gemini-live/playback.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
-      );
-      const playbackNode = new AudioWorkletNode(playbackContext, "gemini-live-playback");
-      const gainNode = playbackContext.createGain();
-      gainNode.gain.value = 1;
-      playbackNode.connect(gainNode);
-      gainNode.connect(playbackContext.destination);
-      playbackContextRef.current = playbackContext;
-      playbackNodeRef.current = playbackNode;
-      gainNodeRef.current = gainNode;
-      await resumeAudioContext(playbackContext);
 
       const onVisibility = () => {
         void resumeAudioContext(playbackContextRef.current);

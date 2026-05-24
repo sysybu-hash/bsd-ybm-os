@@ -175,7 +175,15 @@ export function useAiChatState(
   }, [messages]);
 
   // ── handlers ──────────────────────────────────────────────────────────────
-  const handleLiveTab = () => { setChatTab("live"); setIsLiveMode(true); void osAssistant.refresh(); };
+  const handleLiveTab = () => {
+    setChatTab("live");
+    setIsLiveMode(true);
+    void osAssistant.refresh();
+    if (geminiLiveEligible && liveContextReady && !isLiveActive && geminiLive.state !== "connecting") {
+      liveAutoStartRef.current = true;
+      void start();
+    }
+  };
   const handleTextTab = () => { setChatTab("text"); setIsLiveMode(false); if (isLiveActive) stop(); };
   const handleToggleLive = () => {
     if (isLiveActive) { stop(); setIsLiveMode(false); return; }

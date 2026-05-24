@@ -113,8 +113,13 @@ export function useOmnibarGeminiLive({
   const voiceActive = voiceStatus === "listening" || voiceStatus === "speaking";
 
   const toggleLive = () => {
-    if (geminiLive.isLiveActive) { geminiLive.stop(); setOmnibarLiveOn(false); }
-    else setOmnibarLiveOn(true);
+    if (geminiLive.isLiveActive) {
+      geminiLive.stop();
+      setOmnibarLiveOn(false);
+      return;
+    }
+    setOmnibarLiveOn(true);
+    void geminiLive.start();
   };
 
   return {
