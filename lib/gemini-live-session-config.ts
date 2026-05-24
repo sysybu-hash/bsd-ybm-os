@@ -34,6 +34,18 @@ export function buildLiveConnectConfig(settings: GeminiLiveVoiceSettings) {
   };
 }
 
+/** VAD / פעילות קול — חייב להיות גם ב-auth token (ה-setup מהלקוח מוחלף בהגבלות הטוקן). */
+export function buildRealtimeInputConfig(settings: GeminiLiveVoiceSettings) {
+  return {
+    automaticActivityDetection: {
+      disabled: false,
+      silenceDurationMs: settings.silenceDurationMs,
+      prefixPaddingMs: settings.prefixPaddingMs,
+    },
+    turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY" as const,
+  };
+}
+
 /** תצורה מלאה ל-auth token — כולל הוראות מערכת וכלים (חובה ל-BidiGenerateContentConstrained) */
 export function buildFullLiveConnectConfig(
   settings: GeminiLiveVoiceSettings,
@@ -55,5 +67,9 @@ export function buildFullLiveConnectConfig(
       : {}),
     ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
     ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
+    realtimeInputConfig: buildRealtimeInputConfig(settings),
+    ...(options?.advancedFeatures && settings.proactiveAudio
+      ? { proactivity: { proactiveAudio: true } }
+      : {}),
   };
 }

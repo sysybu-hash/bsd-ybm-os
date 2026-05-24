@@ -67,5 +67,13 @@ describe("gemini-live-session-config", () => {
         : undefined;
     expect(decls?.length).toBeGreaterThan(0);
     expect(cfg.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Charon");
+    expect(cfg.realtimeInputConfig).toEqual({
+      automaticActivityDetection: {
+        disabled: false,
+        silenceDurationMs: DEFAULT_GEMINI_LIVE_VOICE_SETTINGS.silenceDurationMs,
+        prefixPaddingMs: DEFAULT_GEMINI_LIVE_VOICE_SETTINGS.prefixPaddingMs,
+      },
+      turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
+    });
   });
 });

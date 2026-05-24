@@ -6,6 +6,7 @@ import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 import { mergeTranscriptChunk } from "@/lib/gemini-live/merge-transcript-chunk";
 import { buildGeminiLiveSessionStartUserTurn } from "@/lib/gemini-live/session-greeting";
+import { buildRealtimeInputConfig } from "@/lib/gemini-live-session-config";
 import {
   acquireGeminiLiveLease,
   releaseGeminiLiveLease,
@@ -297,6 +298,7 @@ export function useGeminiLiveAudio({
   const captureContextRef = useRef<AudioContext | null>(null);
   const playbackContextRef = useRef<AudioContext | null>(null);
   const captureNodeRef = useRef<AudioWorkletNode | null>(null);
+  const captureMuteGainRef = useRef<GainNode | null>(null);
   const playbackNodeRef = useRef<AudioWorkletNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -306,6 +308,7 @@ export function useGeminiLiveAudio({
   const latestUserTextRef = useRef("");
   const deliveredUserTextRef = useRef("");
   const greetingSentRef = useRef(false);
+  const greetingFallbackTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const leaseIdRef = useRef<string | null>(null);
   const visibilityHandlerRef = useRef<(() => void) | null>(null);
   const contextReadyLatchRef = useRef(false);
@@ -318,7 +321,31 @@ export function useGeminiLiveAudio({
     contextReadyLatchRef.current = true;
   }, []);
 
+  const sendSessionGreeting = useCallback(() => {
+    if (!greetOnConnect || greetingSentRef.current) return;
+    const socket = webSocketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    greetingSentRef.current = true;
+    socket.send(
+      JSON.stringify({
+        clientContent: {
+          turns: [
+            {
+              role: "user",
+              parts: [{ text: buildGeminiLiveSessionStartUserTurn(locale, userName) }],
+            },
+          ],
+          turnComplete: true,
+        },
+      }),
+    );
+  }, [greetOnConnect, locale, userName]);
+
   const cleanup = useCallback(() => {
+    if (greetingFallbackTimerRef.current) {
+      window.clearTimeout(greetingFallbackTimerRef.current);
+      greetingFallbackTimerRef.current = null;
+    }
     if (visibilityHandlerRef.current) {
       document.removeEventListener("visibilitychange", visibilityHandlerRef.current);
       visibilityHandlerRef.current = null;
@@ -329,6 +356,9 @@ export function useGeminiLiveAudio({
     captureNodeRef.current?.disconnect();
     captureNodeRef.current?.port.close();
     captureNodeRef.current = null;
+
+    captureMuteGainRef.current?.disconnect();
+    captureMuteGainRef.current = null;
 
     sourceNodeRef.current?.disconnect();
     sourceNodeRef.current = null;
@@ -381,32 +411,13 @@ export function useGeminiLiveAudio({
       }
 
       if ("setupComplete" in message && message.setupComplete !== undefined) {
+        if (greetingFallbackTimerRef.current) {
+          window.clearTimeout(greetingFallbackTimerRef.current);
+          greetingFallbackTimerRef.current = null;
+        }
         setState("ready");
         setStatusText(statusLabels.connected);
-        if (
-          greetOnConnect &&
-          !greetingSentRef.current &&
-          webSocketRef.current?.readyState === WebSocket.OPEN
-        ) {
-          greetingSentRef.current = true;
-          webSocketRef.current.send(
-            JSON.stringify({
-              clientContent: {
-                turns: [
-                  {
-                    role: "user",
-                    parts: [
-                      {
-                        text: buildGeminiLiveSessionStartUserTurn(locale, userName),
-                      },
-                    ],
-                  },
-                ],
-                turnComplete: true,
-              },
-            }),
-          );
-        }
+        sendSessionGreeting();
         return;
       }
 
@@ -501,7 +512,7 @@ export function useGeminiLiveAudio({
       }
 
     },
-    [greetOnConnect, locale, onModelTranscript, onUserTranscript, onToolCall, statusLabels, userName],
+    [onModelTranscript, onUserTranscript, onToolCall, sendSessionGreeting, statusLabels],
   );
 
   const start = useCallback(async () => {
@@ -536,7 +547,10 @@ export function useGeminiLiveAudio({
   /** יוצר ומפעיל AudioContext מיד בתוך user gesture — לפני כל await (קריטי לדסקטופ). */
     const playbackContext = new AudioCtor({ sampleRate: 24000 });
     playbackContextRef.current = playbackContext;
+    const captureContext = new AudioCtor({ sampleRate: 16000 });
+    captureContextRef.current = captureContext;
     await resumeAudioContext(playbackContext);
+    await resumeAudioContext(captureContext);
 
     try {
       await playbackContext.audioWorklet.addModule(
@@ -593,18 +607,6 @@ export function useGeminiLiveAudio({
       const socket = new WebSocket(serviceUrl);
       webSocketRef.current = socket;
 
-      await new Promise<void>((resolve, reject) => {
-        const failTimer = window.setTimeout(() => reject(new Error("Gemini Live connection timeout")), 12_000);
-        socket.onerror = () => {
-          window.clearTimeout(failTimer);
-          reject(new Error("Gemini Live WebSocket failed"));
-        };
-        socket.onopen = () => {
-          window.clearTimeout(failTimer);
-          resolve();
-        };
-      });
-
       socket.onmessage = (event) => {
         void handleLiveMessage(event).catch((error: unknown) => {
           const raw = error instanceof Error ? error.message : String(error);
@@ -619,6 +621,18 @@ export function useGeminiLiveAudio({
           setStatusText(statusLabels.disconnected);
         }
       };
+
+      await new Promise<void>((resolve, reject) => {
+        const failTimer = window.setTimeout(() => reject(new Error("Gemini Live connection timeout")), 12_000);
+        socket.onerror = () => {
+          window.clearTimeout(failTimer);
+          reject(new Error("Gemini Live WebSocket failed"));
+        };
+        socket.onopen = () => {
+          window.clearTimeout(failTimer);
+          resolve();
+        };
+      });
 
       const setupPayload: Record<string, unknown> = {
         model: `models/${resolvedModel}`,
@@ -636,14 +650,7 @@ export function useGeminiLiveAudio({
         tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
         ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
         ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
-        realtimeInputConfig: {
-          automaticActivityDetection: {
-            disabled: false,
-            silenceDurationMs: settings.silenceDurationMs,
-            prefixPaddingMs: settings.prefixPaddingMs,
-          },
-          turnCoverage: "TURN_INCLUDES_ONLY_ACTIVITY",
-        },
+        realtimeInputConfig: buildRealtimeInputConfig(settings),
       };
       if (advancedFeaturesEnabled && settings.proactiveAudio) {
         setupPayload.proactivity = { proactiveAudio: true };
@@ -653,6 +660,10 @@ export function useGeminiLiveAudio({
       }
 
       socket.send(JSON.stringify({ setup: setupPayload }));
+      greetingFallbackTimerRef.current = window.setTimeout(() => {
+        greetingFallbackTimerRef.current = null;
+        sendSessionGreeting();
+      }, 3_000);
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -662,12 +673,13 @@ export function useGeminiLiveAudio({
           channelCount: 1,
         },
       });
-      const captureContext = new AudioCtor({ sampleRate: 16000 });
       await captureContext.audioWorklet.addModule(
         `/gemini-live/capture.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
       );
       const source = captureContext.createMediaStreamSource(mediaStream);
       const captureNode = new AudioWorkletNode(captureContext, "gemini-live-capture");
+      const captureMute = captureContext.createGain();
+      captureMute.gain.value = 0;
       captureNode.port.onmessage = (event) => {
         if (socket.readyState !== WebSocket.OPEN || event.data?.type !== "audio") return;
         const pcm = float32ToPcm16(event.data.data as Float32Array);
@@ -684,10 +696,12 @@ export function useGeminiLiveAudio({
       };
 
       source.connect(captureNode);
+      captureNode.connect(captureMute);
+      captureMute.connect(captureContext.destination);
       mediaStreamRef.current = mediaStream;
-      captureContextRef.current = captureContext;
       sourceNodeRef.current = source;
       captureNodeRef.current = captureNode;
+      captureMuteGainRef.current = captureMute;
       await resumeAudioContext(captureContext);
 
       setState("streaming");
@@ -709,11 +723,11 @@ export function useGeminiLiveAudio({
     handleLiveMessage,
     model,
     onError,
+    sendSessionGreeting,
     settings,
     state,
     statusLabels,
     systemInstruction,
-    locale,
     contextReady,
     owner,
   ]);

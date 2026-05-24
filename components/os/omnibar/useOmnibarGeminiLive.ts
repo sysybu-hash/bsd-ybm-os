@@ -119,6 +119,7 @@ export function useOmnibarGeminiLive({
       return;
     }
     setOmnibarLiveOn(true);
+    geminiLive.acknowledgeContextReady();
     void geminiLive.start();
   };
 
