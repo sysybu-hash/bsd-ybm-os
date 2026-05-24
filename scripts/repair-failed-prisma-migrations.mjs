@@ -56,6 +56,16 @@ const REPAIRS = [
   },
 ];
 
+/**
+ * Migrations that used CONCURRENTLY (invalid inside transactions) and must be
+ * rolled-back so migrate deploy can re-apply them with the fixed SQL.
+ * The orphan-cleanup step above will delete the rolled-back record; migrate
+ * deploy will then find the migration on disk and apply it fresh.
+ */
+const ROLLBACK_REPAIRS = new Set([
+  "20260521180000_add_missing_indexes",
+]);
+
 try {
   const failed = await pool.query(
     `SELECT migration_name, logs
@@ -78,6 +88,18 @@ try {
 
   for (const row of failed.rows) {
     const name = row.migration_name;
+
+    // Migrations that failed due to CONCURRENTLY-in-transaction: roll them back
+    // so migrate deploy can re-apply the fixed SQL on the next run.
+    if (ROLLBACK_REPAIRS.has(name)) {
+      await pool.query(
+        `UPDATE _prisma_migrations SET rolled_back_at = NOW() WHERE migration_name = $1`,
+        [name],
+      );
+      console.log("סומן כבוטל (יוחל מחדש עם SQL מתוקן):", name);
+      continue;
+    }
+
     const repair = REPAIRS.find((r) => r.name === name);
     if (!repair) {
       console.warn("מיגרציה שנכשלה ללא כלל תיקון אוטומטי:", name);
