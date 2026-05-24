@@ -4,9 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { toast } from "sonner";
-import {
-  approvePendingRegistrationAction,
-} from "@/app/actions/admin-subscriptions";
+import { approvePendingRegistrationAction } from "@/app/actions/admin-subscriptions";
 import {
   listPendingRegistrationsAction,
   listUsersForAdminAction,
@@ -26,6 +24,7 @@ import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 import { normalizeIndustryType } from "@/lib/professions/config";
 import type { PlatformConfig } from "@/lib/platform-settings";
 import { TABS, type TabId } from "./types";
+import { usePlatformAdminUtils } from "./usePlatformAdminUtils";
 
 export function usePlatformAdmin() {
   const [tab, setTab] = useState<TabId>("subscriptions");
@@ -41,14 +40,6 @@ export function usePlatformAdmin() {
   const [createConstructionTrade, setCreateConstructionTrade] = useState("GENERAL_CONTRACTOR");
   const [cheapDelta, setCheapDelta] = useState(0);
   const [premiumDelta, setPremiumDelta] = useState(0);
-  const [userEmail, setUserEmail] = useState("");
-  const [userLookup, setUserLookup] = useState<Record<string, unknown> | null>(null);
-  const [broadcastTitle, setBroadcastTitle] = useState("");
-  const [broadcastBody, setBroadcastBody] = useState("");
-  const [health, setHealth] = useState<{ checkedAt?: string; statuses?: { name: string; ok: boolean; detail: string }[] } | null>(null);
-  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
-  const [envStatus, setEnvStatus] = useState<Record<string, boolean> | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
   const [approvePlan, setApprovePlan] = useState("DEALER");
   const [approveRole, setApproveRole] = useState("ORG_ADMIN");
   const [showCreateOrg, setShowCreateOrg] = useState(false);
@@ -65,14 +56,16 @@ export function usePlatformAdmin() {
   const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
   const [provisionSendEmail, setProvisionSendEmail] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
-  const [testingEmail, setTestingEmail] = useState(false);
+  const [health, setHealth] = useState<{ checkedAt?: string; statuses?: { name: string; ok: boolean; detail: string }[] } | null>(null);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
+  const [envStatus, setEnvStatus] = useState<Record<string, boolean> | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const applyTabNav = useCallback((view: WidgetViewState) => {
     const next = view.tab as TabId | undefined;
     if (next && TABS.some((t) => t.id === next)) setTab(next);
   }, []);
   const { pushView } = useSyncedWidgetNavigation(applyTabNav);
-
   const selectTab = useCallback((id: TabId) => { setTab(id); pushView({ tab: id }); }, [pushView]);
 
   const loadOrgs = useCallback(async () => {
@@ -139,6 +132,8 @@ export function usePlatformAdmin() {
   useEffect(() => { if (tab === "users" && adminUsers.length === 0) void loadUsers(); }, [tab, adminUsers.length, loadUsers]);
   useEffect(() => { if (selectedOrgId && !provisionOrgId) setProvisionOrgId(selectedOrgId); }, [selectedOrgId, provisionOrgId]);
 
+  const utils = usePlatformAdminUtils(loadHealth);
+
   const handleSaveSubscription = async () => {
     if (!selectedOrgId) return;
     const fd = new FormData();
@@ -166,37 +161,6 @@ export function usePlatformAdmin() {
     if (!r.ok) { toast.error(r.error); return; }
     toast.success("הרשמה אושרה");
     await loadPending(); await loadOrgs();
-  };
-
-  const handleLookupUser = async () => {
-    const email = userEmail.trim().toLowerCase();
-    if (!email) return;
-    const res = await fetch(`/api/admin/check-user?email=${encodeURIComponent(email)}`, { credentials: "include" });
-    const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "חיפוש נכשל"); return; }
-    setUserLookup(data);
-  };
-
-  const handleBroadcast = async () => {
-    const res = await fetch("/api/admin/broadcast-notification", {
-      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: broadcastTitle, body: broadcastBody }),
-    });
-    const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "שידור נכשל"); return; }
-    toast.success(`שודר ל-${data.count ?? 0} משתמשים`);
-    setBroadcastTitle(""); setBroadcastBody("");
-  };
-
-  const handleTestEmail = async () => {
-    setTestingEmail(true);
-    try {
-      const res = await fetch("/api/admin/test-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: "{}" });
-      const j = (await res.json()) as { ok?: boolean; to?: string; error?: string };
-      if (j.ok) toast.success(`מייל בדיקה נשלח ל־${j.to ?? "תיבתך"}`);
-      else toast.error(j.error ?? "שליחת מייל בדיקה נכשלה");
-      void loadHealth();
-    } finally { setTestingEmail(false); }
   };
 
   const handleCreateOrg = async () => {
@@ -240,7 +204,7 @@ export function usePlatformAdmin() {
       fd.set("email", email.trim().toLowerCase());
       const r = await manageSubsDeleteUserByEmailAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
-      toast.success("המשתמש נמחק"); setUserLookup(null); setUserEmail("");
+      toast.success("המשתמש נמחק"); utils.setUserLookup(null); utils.setUserEmail("");
       await loadUsers(); await loadOrgs();
     } finally { setBusyAction(false); }
   };
@@ -266,7 +230,8 @@ export function usePlatformAdmin() {
     setSavingSettings(true);
     try {
       const res = await fetch("/api/admin/platform-settings", {
-        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(platformConfig),
       });
       const data = await res.json();
@@ -288,17 +253,15 @@ export function usePlatformAdmin() {
     createOrgName, setCreateOrgName, createTier, setCreateTier,
     createVip, setCreateVip, createIndustry, setCreateIndustry,
     createConstructionTrade, setCreateConstructionTrade,
-    busyAction, platformConfig,
+    busyAction, platformConfig, setPlatformConfig,
     pending, approvePlan, setApprovePlan, approveRole, setApproveRole,
     adminUsers, provisionEmail, setProvisionEmail, provisionName, setProvisionName,
     provisionOrgId, setProvisionOrgId, provisionRole, setProvisionRole,
     provisionSendEmail, setProvisionSendEmail,
-    userEmail, setUserEmail, userLookup,
-    broadcastTitle, setBroadcastTitle, broadcastBody, setBroadcastBody,
-    health, envStatus, testingEmail, savingSettings, setPlatformConfig,
+    health, envStatus, savingSettings,
     handleSaveSubscription, handleAdjustScans, handleApprovePending,
-    handleLookupUser, handleBroadcast, handleTestEmail,
     handleCreateOrg, handleDeleteOrg, handleDeleteUser, handleProvisionUser,
     savePlatformSettings, loadHealth,
+    ...utils,
   };
 }
