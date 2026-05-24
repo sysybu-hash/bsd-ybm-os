@@ -1,187 +1,19 @@
 "use client";
 
-import { useI18n } from "@/components/os/system/I18nProvider";
-import WidgetState from "@/components/os/WidgetState";
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Calendar, 
-  User, 
-  Briefcase, 
-  MapPin, 
-  Download, 
-  FileDown, 
-  Search,
-  Filter,
-  ArrowLeftRight,
-  Clock,
-  Loader2
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import Papa from 'papaparse';
-
-interface ReportEntry {
-  id: string | number;
-  date: string;
-  employeeName: string;
-  project: string;
-  location: string;
-  hours: number;
-}
-
-interface Employee {
-  id: number;
-  name: string;
-  email: string;
-  department: string;
-}
-
-interface Project {
-  id: number;
-  name: string;
-}
+import React from "react";
+import {
+  ArrowLeftRight, Briefcase, Calendar, Clock, Download,
+  FileDown, FileText, Loader2, MapPin, Search, User,
+} from "lucide-react";
+import { useMeckanoReports } from "./meckano-reports/useMeckanoReports";
 
 export default function MeckanoReportsWidget() {
-  const { dir, t } = useI18n();
-  const [reports, setReports] = useState<ReportEntry[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [accessAllowed, setAccessAllowed] = useState<boolean | null>(null);
-  const [filters, setFilters] = useState({
-    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    employeeId: 'all',
-    projectId: 'all',
-    locationId: 'all'
-  });
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/meckano/access');
-        const data = await res.json();
-        setAccessAllowed(Boolean(data.allowed));
-        if (!data.allowed && data.message) {
-          setError(data.message);
-        }
-        if (!data.configured) {
-          setError(t("workspaceWidgets.meckano.noApiKey"));
-        }
-      } catch {
-        setAccessAllowed(false);
-        setError(t("workspaceWidgets.meckano.noAccess"));
-      }
-    })();
-  }, [t]);
-
-  const fetchEmployees = React.useCallback(async () => {
-    if (!accessAllowed) return;
-    try {
-      const res = await fetch('/api/meckano/employees');
-      const data = await res.json();
-      if (res.ok) {
-        setEmployees(data.employees || []);
-      } else if (res.status === 403) {
-        setError(data.error || 'אין הרשאה ל-Meckano');
-      }
-    } catch (err) {
-      console.error("Failed to fetch employees:", err);
-    }
-  }, [accessAllowed]);
-
-  const fetchProjects = React.useCallback(async () => {
-    if (!accessAllowed) return;
-    try {
-      const res = await fetch('/api/meckano/projects');
-      const data = await res.json();
-      if (res.ok) {
-        setProjects(data.projects || []);
-      } else if (res.status === 403) {
-        setError(data.error || 'אין הרשאה ל-Meckano');
-      }
-    } catch (err) {
-      console.error("Failed to fetch projects:", err);
-    }
-  }, [accessAllowed]);
-
-  const fetchReports = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/meckano/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setReports(data.reports);
-      } else {
-        setError(data.error);
-        toast.error(data.error || 'נכשל בטעינת דוחות');
-      }
-    } catch (err) {
-      setError('שגיאת תקשורת בטעינת דוחות');
-      toast.error('שגיאת תקשורת בטעינת דוחות');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filters]);
-
-  useEffect(() => {
-    if (accessAllowed !== true) return;
-    fetchEmployees();
-    fetchProjects();
-    fetchReports();
-  }, [accessAllowed, fetchEmployees, fetchProjects, fetchReports]);
-
-  const exportToCSV = () => {
-    const csv = Papa.unparse(reports);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `meckano_report_${filters.startDate}_to_${filters.endDate}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success('דוח CSV יוצא בהצלחה');
-  };
-
-  const downloadPDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    
-    // Header
-    doc.setFont("helvetica", "bold");
-    doc.text("Meckano Attendance Report", 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Date Range: ${filters.startDate} - ${filters.endDate}`, 14, 22);
-
-    const tableData = reports.map(r => [
-      r.date,
-      r.employeeName,
-      r.project,
-      r.location,
-      r.hours.toString()
-    ]);
-
-    autoTable(doc, {
-      startY: 30,
-      head: [['Date', 'Employee', 'Project', 'Location', 'Hours']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [16, 185, 129] } // Emerald-500
-    });
-
-    doc.save(`meckano_report_${filters.startDate}_to_${filters.endDate}.pdf`);
-    toast.success('דוח PDF הורד בהצלחה');
-  };
+  const {
+    dir, t,
+    reports, employees, projects,
+    isLoading, error, filters, setFilters,
+    fetchReports, exportToCSV, downloadPDF,
+  } = useMeckanoReports();
 
   return (
     <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
@@ -196,18 +28,13 @@ export default function MeckanoReportsWidget() {
             <p className="text-xs text-[color:var(--foreground-muted)]">ניהול ומעקב שעות עובדים ופרויקטים</p>
           </div>
         </div>
-
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button 
-            onClick={exportToCSV}
-            className="flex-1 md:flex-none p-2 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 rounded-xl text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-all border border-[color:var(--border-main)] flex items-center justify-center gap-2 text-xs font-bold"
-          >
+          <button onClick={exportToCSV}
+            className="flex-1 md:flex-none p-2 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 rounded-xl text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-all border border-[color:var(--border-main)] flex items-center justify-center gap-2 text-xs font-bold">
             <Download size={16} /> ייצוא CSV
           </button>
-          <button 
-            onClick={downloadPDF}
-            className="flex-1 md:flex-none p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20"
-          >
+          <button onClick={downloadPDF}
+            className="flex-1 md:flex-none p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20">
             <FileDown size={16} /> הורד PDF
           </button>
         </div>
@@ -219,60 +46,44 @@ export default function MeckanoReportsWidget() {
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
             <Calendar size={10} /> מתאריך
           </label>
-          <input 
-            type="date" 
-            value={filters.startDate}
-            onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[color:var(--foreground-main)]"
-          />
+          <input type="date" value={filters.startDate}
+            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[color:var(--foreground-main)]" />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
             <Calendar size={10} /> עד תאריך
           </label>
-          <input 
-            type="date" 
-            value={filters.endDate}
-            onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[color:var(--foreground-main)]"
-          />
+          <input type="date" value={filters.endDate}
+            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[color:var(--foreground-main)]" />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
             <User size={10} /> עובד
           </label>
-          <select 
-            value={filters.employeeId}
-            onChange={(e) => setFilters({...filters, employeeId: e.target.value})}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]"
-          >
+          <select value={filters.employeeId}
+            onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
+            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]">
             <option value="all">כל העובדים</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>{emp.name}</option>
-            ))}
+            {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
           </select>
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
             <Briefcase size={10} /> פרויקט
           </label>
-          <select 
-            value={filters.projectId}
-            onChange={(e) => setFilters({...filters, projectId: e.target.value})}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]"
-          >
+          <select value={filters.projectId}
+            onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
+            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]">
             <option value="all">כל הפרויקטים</option>
             <option value="general">כללי / משרד</option>
-            {projects.map(proj => (
-              <option key={proj.id} value={proj.id}>{proj.name}</option>
-            ))}
+            {projects.map((proj) => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
           </select>
         </div>
         <div className="flex items-end">
-          <button 
-            onClick={fetchReports}
-            className="w-full h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
-          >
+          <button onClick={() => void fetchReports()}
+            className="w-full h-9 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center justify-center gap-2">
             <Search size={14} /> {t("workspaceWidgets.meckano.filter")}
           </button>
         </div>
@@ -289,7 +100,7 @@ export default function MeckanoReportsWidget() {
           </div>
         ) : null}
 
-        {error && error.includes('API Key') && (
+        {error?.includes("API Key") ? (
           <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--background-main)] z-30 p-8 text-center">
             <div className="max-w-md">
               <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-6 text-rose-500">
@@ -299,80 +110,78 @@ export default function MeckanoReportsWidget() {
               <p className="text-sm text-[color:var(--foreground-muted)] mb-8">
                 כדי למשוך דוחות מ-Meckano, עליך להגדיר את מפתח ה-API בקובץ ה-<code>.env</code> תחת המשתנה <code>MECKANO_API_KEY</code>.
               </p>
-              <button 
-                onClick={fetchReports}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all"
-              >
+              <button onClick={() => void fetchReports()}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 transition-all">
                 {t("workspaceWidgets.meckano.retry")}
               </button>
             </div>
           </div>
-        )}
+        ) : null}
 
         <div className="overflow-x-auto">
           <table className="w-full border-collapse min-w-[600px]">
-          <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
-            <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
-              <th className="px-6 py-4">תאריך</th>
-              <th className="px-6 py-4">עובד</th>
-              <th className="px-6 py-4">פרויקט</th>
-              <th className="px-6 py-4">מיקום</th>
-              <th className="px-6 py-4">שעות</th>
-              <th className="px-6 py-4 w-10"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[color:var(--border-main)]/10">
-            {reports.map((report, idx) => (
-              <tr key={report.id || idx} className="group hover:bg-[color:var(--foreground-muted)]/5 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--foreground-main)]">
-                    <Calendar size={12} className="text-[color:var(--foreground-muted)]" />
-                    {new Date(report.date).toLocaleDateString('he-IL')}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-600">
-                      {report.employeeName?.charAt(0) || 'U'}
-                    </div>
-                    <span className="text-xs font-bold text-[color:var(--foreground-main)]">{report.employeeName}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
-                    <Briefcase size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
-                    {report.project}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
-                    <MapPin size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
-                    {report.location}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-black">
-                      {report.hours}
-                    </div>
-                    <Clock size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <ArrowLeftRight size={14} className="text-[color:var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
-                </td>
+            <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
+              <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
+                <th className="px-6 py-4">תאריך</th>
+                <th className="px-6 py-4">עובד</th>
+                <th className="px-6 py-4">פרויקט</th>
+                <th className="px-6 py-4">מיקום</th>
+                <th className="px-6 py-4">שעות</th>
+                <th className="px-6 py-4 w-10"></th>
               </tr>
-            ))}
-          </tbody>
+            </thead>
+            <tbody className="divide-y divide-[color:var(--border-main)]/10">
+              {reports.map((report, idx) => (
+                <tr key={report.id ?? idx} className="group hover:bg-[color:var(--foreground-muted)]/5 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--foreground-main)]">
+                      <Calendar size={12} className="text-[color:var(--foreground-muted)]" />
+                      {new Date(report.date).toLocaleDateString("he-IL")}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                        {report.employeeName?.charAt(0) ?? "U"}
+                      </div>
+                      <span className="text-xs font-bold text-[color:var(--foreground-main)]">{report.employeeName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
+                      <Briefcase size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
+                      {report.project}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
+                      <MapPin size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
+                      {report.location}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-black">
+                        {report.hours}
+                      </div>
+                      <Clock size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <ArrowLeftRight size={14} className="text-[color:var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
 
-        {!isLoading && reports.length === 0 && (
+        {!isLoading && reports.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-30">
             <FileText size={48} className="text-[color:var(--foreground-muted)]" />
             <p className="mt-4 text-sm font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">{t("workspaceWidgets.meckano.empty")}</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Summary Footer */}
