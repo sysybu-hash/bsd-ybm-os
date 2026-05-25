@@ -1,16 +1,20 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: ".env.local" });
+loadEnv();
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
-/** פורט אחיד ל־webServer ול־baseURL (מניעת 3330 בשרת מול 3001 ב-health-check). */
+/** פורט E2E — לא מ-NEXTAUTH_URL (3000 ב-.env.local) כדי לא להתנגש עם `npm run dev`. */
 function resolvePlaywrightPort(): string {
   const fromDev = process.env.PLAYWRIGHT_DEV_PORT?.trim();
   if (fromDev) return fromDev;
-  const auth = process.env.NEXTAUTH_URL?.trim() ?? process.env.AUTH_URL?.trim();
-  if (auth) {
+  const fromBase = process.env.PLAYWRIGHT_BASE_URL?.trim();
+  if (fromBase) {
     try {
-      const p = new URL(auth).port;
+      const p = new URL(fromBase).port;
       if (p) return p;
     } catch {
       /* fall through */
@@ -45,6 +49,31 @@ function resolvePlaywrightHost(): string {
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ?? `http://${resolvePlaywrightHost()}:${playwrightPort}`;
 
+/** Keep NextAuth callbacks + session cookies on the same origin Playwright hits. */
+function buildE2eAuthEnv(base: string): Record<string, string> {
+  const url = base.replace(/\/$/, "");
+  return {
+    NEXTAUTH_URL: url,
+    AUTH_URL: url,
+    NEXT_PUBLIC_SITE_URL: url,
+    /** Dev allowlists in .env.local must not block seeded E2E users. */
+    LOGIN_ALLOWLIST_EMAILS: "",
+    ALLOWED_LOGIN_EMAILS: "",
+  };
+}
+
+
+/** Playwright webServer.env requires string values only. */
+function processEnvStrings(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+const e2eAuthEnv = buildE2eAuthEnv(baseURL);
+Object.assign(process.env, e2eAuthEnv);
+
 /** Local: dev server (no prior `next build`). CI: production server after build. */
 const defaultWebCommand = process.env.CI
   ? `npm run build && npx next start -p ${playwrightPort}`
@@ -52,6 +81,7 @@ const defaultWebCommand = process.env.CI
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: "./e2e/global-setup.ts",
   timeout: process.env.CI ? 120_000 : 60_000,
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -110,6 +140,6 @@ export default defineConfig({
         stdout: "pipe",
         stderr: "pipe",
         timeout: 180_000,
-        /* Omit `env` so the child inherits process.env; Next.js loads .env* from the project root. */
+        env: { ...processEnvStrings(process.env), ...e2eAuthEnv },
       },
 });

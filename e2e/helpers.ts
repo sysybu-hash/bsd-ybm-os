@@ -33,14 +33,18 @@ const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
 const FIRST_DAY_WIZARD_KEY = "bsd_ybm_first_day_wizard_v1";
+const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
+const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
 export async function primeE2eBrowserStorage(page: Page) {
   await page.addInitScript(
-    ({ passkeyKey, wizardKey, layoutKeys }) => {
+    ({ passkeyKey, wizardKey, launcherBannerKey, launcherStorageKey, layoutKeys }) => {
       try {
         localStorage.setItem(passkeyKey, "1");
         localStorage.setItem(wizardKey, "dismissed");
+        localStorage.setItem(launcherBannerKey, "1");
+        localStorage.setItem(launcherStorageKey, "{}");
         for (const k of layoutKeys) localStorage.removeItem(k);
       } catch {
         /* ignore */
@@ -49,6 +53,8 @@ export async function primeE2eBrowserStorage(page: Page) {
     {
       passkeyKey: PASSKEY_OFFER_KEY,
       wizardKey: FIRST_DAY_WIZARD_KEY,
+      launcherBannerKey: LAUNCHER_V2_BANNER_KEY,
+      launcherStorageKey: LAUNCHER_STORAGE_KEY,
       layoutKeys: [
         "bsd_ybm_layout_quiet_v6",
         "bsd_ybm_layout_quiet_v5",
@@ -157,6 +163,69 @@ export async function waitForCrmContactsLoaded(page: Page) {
   await expect(authError).toHaveCount(0, { timeout: 5000 });
 }
 
+async function hasAuthenticatedSession(page: Page): Promise<boolean> {
+  return page.evaluate(async () => {
+    const res = await fetch("/api/auth/session", { credentials: "include" });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { user?: { email?: string } };
+    return Boolean(data.user?.email);
+  });
+}
+
+async function credentialsSignInViaApi(page: Page): Promise<boolean> {
+  const ok = await page.evaluate(
+    async ({ email, password }) => {
+      const csrf = (await fetch(`${window.location.origin}/api/auth/csrf`).then((r) => r.json())) as {
+        csrfToken: string;
+      };
+      const body = new URLSearchParams({
+        csrfToken: csrf.csrfToken,
+        email,
+        password,
+        callbackUrl: `${window.location.origin}/`,
+        json: "true",
+      });
+      const res = await fetch(`${window.location.origin}/api/auth/callback/credentials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "include",
+        body,
+      });
+      if (!res.ok) return false;
+      const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (data?.error) return false;
+      if (data?.url) {
+        await fetch(data.url, { credentials: "include" });
+      }
+      const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
+      return Boolean((session as { user?: { email?: string } }).user?.email);
+    },
+    { email: E2E_EMAIL, password: E2E_PASSWORD },
+  );
+  return ok;
+}
+
+async function credentialsSignInViaUi(page: Page): Promise<boolean> {
+  const emailInput = page
+    .getByPlaceholder(/אימייל|email/i)
+    .or(page.getByLabel(/אימייל|email/i))
+    .first();
+  const passwordInput = page
+    .getByPlaceholder(/סיסמה|password/i)
+    .or(page.getByLabel(/סיסמה|password/i))
+    .first();
+  const submit = page.locator('form button[type="submit"]').first();
+
+  if (!(await emailInput.isVisible({ timeout: 12_000 }).catch(() => false))) {
+    return false;
+  }
+  await emailInput.fill(E2E_EMAIL);
+  await passwordInput.fill(E2E_PASSWORD);
+  await submit.click();
+  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 35_000 });
+  return hasAuthenticatedSession(page);
+}
+
 export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
   try {
     await primeCookieConsent(page);
@@ -164,58 +233,31 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
     await page.goto("/login");
     await page.waitForLoadState("domcontentloaded");
 
-    const emailInput = page.getByPlaceholder(/אימייל|email/i).first();
-    const passwordInput = page.getByPlaceholder(/סיסמה|password/i).first();
-    const submit = page.locator('form button[type="submit"]').first();
-
-    if (await emailInput.isVisible({ timeout: 8000 }).catch(() => false)) {
-      await emailInput.fill(E2E_EMAIL);
-      await passwordInput.fill(E2E_PASSWORD);
-      await submit.click();
-      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 25000 });
+    if (await credentialsSignInViaApi(page)) {
+      await page.goto("/");
       await waitForAuthenticatedWorkspace(page);
       await dismissWorkspaceOverlays(page);
       return true;
     }
 
-    const ok = await page.evaluate(
-      async ({ email, password }) => {
-        const csrf = (await fetch(`${window.location.origin}/api/auth/csrf`).then((r) => r.json())) as {
-          csrfToken: string;
-        };
-        const body = new URLSearchParams({
-          csrfToken: csrf.csrfToken,
-          email,
-          password,
-          callbackUrl: `${window.location.origin}/`,
-          json: "true",
-        });
-        const res = await fetch(`${window.location.origin}/api/auth/callback/credentials`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          credentials: "include",
-          body,
-        });
-        if (!res.ok) return false;
-        const data = (await res.json().catch(() => null)) as { url?: string } | null;
-        if (data?.url) {
-          await fetch(data.url, { credentials: "include" });
-        }
-        return true;
-      },
-      { email: E2E_EMAIL, password: E2E_PASSWORD },
-    );
-    if (!ok) return false;
-    await page.goto("/");
-    await waitForAuthenticatedWorkspace(page);
-    await dismissWorkspaceOverlays(page);
-    return true;
+    if (await credentialsSignInViaUi(page)) {
+      await waitForAuthenticatedWorkspace(page);
+      await dismissWorkspaceOverlays(page);
+      return true;
+    }
+
+    return false;
   } catch (err) {
     if (process.env.DEBUG_E2E_SIGNIN) {
       console.error("[e2e] tryCredentialsSignIn failed:", err);
     }
     return false;
   }
+}
+
+/** כפתור Hub ברשת המהירה (לא אייקון בסרגל הצד). */
+export function hubQuickGridButton(page: Page, name: RegExp) {
+  return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
 }
 
 export async function dismissCookieBannerIfVisible(page: Page) {
@@ -227,6 +269,17 @@ export async function dismissCookieBannerIfVisible(page: Page) {
 
 /** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
 export async function dismissWorkspaceOverlays(page: Page) {
+  const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
+  if (await migrationBanner.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const dismissBtn = migrationBanner.getByRole("button", { name: /הבנתי|Got it|Close|סגירה/i });
+    if (await dismissBtn.isVisible().catch(() => false)) {
+      await dismissBtn.click();
+    } else {
+      await migrationBanner.locator("button").first().click();
+    }
+    await migrationBanner.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  }
+
   const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
   try {
     await passkeyDialog.waitFor({ state: "visible", timeout: 4000 });

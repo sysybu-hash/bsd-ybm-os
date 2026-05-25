@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults, Result } from "axe-core";
-import { dismissCookieBannerIfVisible, tryCredentialsSignIn, workspaceUrl } from "./helpers";
+import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, tryCredentialsSignIn, workspaceUrl } from "./helpers";
 
 const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
 
@@ -61,10 +61,9 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
 
 // ─── test suite ──────────────────────────────────────────────────────────────
 test.describe("Workspace accessibility — axe audit per widget", () => {
-  test.beforeEach(async ({ context }) => {
-    await context.addCookies([
-      { name: "bsd-locale", value: "he", url: "http://localhost:3001" },
-    ]);
+  test.beforeEach(async ({ context, baseURL }) => {
+    const origin = baseURL ?? "http://localhost:3001";
+    await context.addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
   });
 
   for (const { key, url, label } of WIDGET_ROUTES) {
@@ -75,9 +74,8 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       test.skip(!signed, "אין משתמש E2E");
 
       await dismissCookieBannerIfVisible(page);
-      await page.goto(url);
-      await page.waitForLoadState("networkidle");
-      // Short wait for async widget mount
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      await dismissWorkspaceOverlays(page);
       await page.waitForTimeout(1500);
 
       const results: AxeResults = await new AxeBuilder({ page })
@@ -132,8 +130,8 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     const newBaseline: A11yBaseline = {};
 
     for (const { key, url } of WIDGET_ROUTES) {
-      await page.goto(url);
-      await page.waitForLoadState("networkidle");
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      await dismissWorkspaceOverlays(page);
       await page.waitForTimeout(1500);
       const results: AxeResults = await new AxeBuilder({ page })
         .withTags(AXE_TAGS)
