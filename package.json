@@ -20,6 +20,7 @@
     "test:e2e:workspace": "playwright test e2e/workspace-automations.spec.ts e2e/workspace-a11y.spec.ts e2e/hubs.spec.ts e2e/auth-api-smoke.spec.ts --project=chromium",
     "test:e2e:project": "playwright test e2e/project-control-center.spec.ts e2e/project-workflow.spec.ts e2e/mobile-workspace-windows.spec.ts --project=chromium --project=mobile-chrome",
     "test:e2e:crm": "playwright test e2e/crm-project-bridge.spec.ts --project=chromium",
+    "test:e2e:ci-gate": "playwright test e2e/site-quality.spec.ts e2e/workspace-automations.spec.ts e2e/workspace-a11y.spec.ts e2e/hubs.spec.ts e2e/auth-api-smoke.spec.ts e2e/project-control-center.spec.ts e2e/project-workflow.spec.ts e2e/mobile-workspace-windows.spec.ts e2e/crm-project-bridge.spec.ts --project=chromium --project=mobile-chrome",
     "lint": "eslint .",
     "verify": "npm run lint && npx tsc --noEmit && npm test",
     "verify:all": "npm run verify && playwright test --project=chromium --project=mobile-chrome",

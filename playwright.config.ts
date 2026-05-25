@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config as loadEnv } from "dotenv";
 
-loadEnv({ path: ".env.local" });
-loadEnv();
+loadEnv({ path: ".env.local", quiet: true });
+loadEnv({ quiet: true });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -74,9 +74,9 @@ function processEnvStrings(env: NodeJS.ProcessEnv): Record<string, string> {
 const e2eAuthEnv = buildE2eAuthEnv(baseURL);
 Object.assign(process.env, e2eAuthEnv);
 
-/** Local: dev server (no prior `next build`). CI: production server after build. */
+/** CI: build runs in the workflow before E2E — only start the server here. */
 const defaultWebCommand = process.env.CI
-  ? `npm run build && npx next start -p ${playwrightPort}`
+  ? `npx next start -p ${playwrightPort}`
   : `npx next dev -p ${playwrightPort}`;
 
 export default defineConfig({

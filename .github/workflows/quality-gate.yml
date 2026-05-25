@@ -55,7 +55,7 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     services:
       postgres:
         image: postgres:16
@@ -121,14 +121,8 @@ jobs:
       - name: Seed test data
         run: npm run seed:test
 
-      - name: Browser quality gate
-        run: npm run test:e2e:quality
-
-      - name: Workspace E2E (automations + a11y)
-        run: npm run test:e2e:workspace
-
-      - name: Project and CRM E2E
-        run: npm run test:e2e:project && npm run test:e2e:crm
+      - name: E2E quality gate
+        run: npm run test:e2e:ci-gate
         env:
           E2E_EMAIL: owner@bsd-demo.test
           E2E_PASSWORD: Demo!2026
