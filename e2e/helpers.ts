@@ -95,10 +95,14 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
   });
 }
 
-/** פותח ווידג'ט פרויקט מה-URL ומחכה ל-region (לא .or — strict mode כשגם shell וגם כפתור hub נראים). */
+/** סלקטור לחלון פרויקטים / מרכז שליטה (hub או standalone). */
+export function projectWorkspaceShell(page: Page) {
+  return page.locator("[data-widget-shell]").first();
+}
+
+/** פותח ווידג'ט פרויקט מה-URL ומחכה ל-shell + תוכן דשבורד. */
 export async function gotoWorkspaceProject(page: Page, projectId: string) {
-  const shellTimeout = process.env.CI ? 90_000 : 60_000;
-  const projectRegion = page.getByRole("region", { name: /Project control center|מרכז בקרה/i }).first();
+  const shellTimeout = process.env.CI ? 45_000 : 30_000;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     await page.goto(workspaceProjectUrl(projectId));
@@ -106,12 +110,12 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
     await waitForAuthenticatedWorkspace(page);
     await dismissWorkspaceOverlays(page);
     try {
-      await page.waitForURL(/[?&]w=project/, { timeout: 20_000 });
+      await page.waitForURL(/[?&]w=(project|projectsHub)/, { timeout: 20_000 });
     } catch {
       /* continue */
     }
-    if (await projectRegion.isVisible({ timeout: shellTimeout }).catch(() => false)) {
-      return;
+    if (await projectWorkspaceShell(page).isVisible({ timeout: shellTimeout }).catch(() => false)) {
+      if (await expectProjectDashboardReady(page, { soft: true })) return;
     }
 
     const launcherTile = page.getByTestId("launcher-tile-project");
@@ -120,8 +124,8 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
       await page.goto(workspaceProjectUrl(projectId));
       await page.waitForLoadState("domcontentloaded");
       await dismissWorkspaceOverlays(page);
-      if (await projectRegion.isVisible({ timeout: shellTimeout }).catch(() => false)) {
-        return;
+      if (await projectWorkspaceShell(page).isVisible({ timeout: shellTimeout }).catch(() => false)) {
+        if (await expectProjectDashboardReady(page, { soft: true })) return;
       }
     }
   }
@@ -129,12 +133,28 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
   await expectProjectDashboardReady(page);
 }
 
-/** מחכה שווידג'ט מרכז הבקרה לפרויקט נפתח (לא דורש השלמת fetch לדשבורד). */
-export async function expectProjectDashboardReady(page: Page) {
-  await expect(
-    page.getByRole("region", { name: /Project control center|מרכז בקרה/i }),
-  ).toBeVisible({ timeout: 30_000 });
+/** מחכה שווידג'ט מרכז השליטה לפרויקט נפתח (לא דורש השלמת fetch לדשבורד). */
+export async function expectProjectDashboardReady(
+  page: Page,
+  opts?: { soft?: boolean },
+): Promise<boolean> {
+  const shell = projectWorkspaceShell(page);
+  const projectContent = page
+    .getByRole("tab", { name: /מרכז פרויקט|Project control|control center/i })
+    .or(page.locator("[data-widget-shell] h2").first());
+
+  if (opts?.soft) {
+    const ok =
+      (await shell.isVisible({ timeout: 30_000 }).catch(() => false)) &&
+      (await projectContent.isVisible({ timeout: 15_000 }).catch(() => false)) &&
+      (await page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i }).count()) === 0;
+    return ok;
+  }
+
+  await expect(shell).toBeVisible({ timeout: 30_000 });
+  await expect(projectContent).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
+  return true;
 }
 
 /** מחכה שטעינת `/api/crm/contacts` הצליחה (לא מסך «נדרשת התחברות»). */

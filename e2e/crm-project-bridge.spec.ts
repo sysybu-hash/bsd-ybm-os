@@ -15,7 +15,8 @@ import {
 test.describe("CRM ↔ project bridge", () => {
   test.skip(!E2E_EMAIL, "requires E2E credentials");
 
-  test("crm table opens project control center", async ({ page }) => {
+  test("crm table opens project control center", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile-chrome", "CRM desktop layout only");
     test.skip(!E2E_PROJECT_ID || !E2E_CONTACT_ID, "run npm run seed:test first");
 
     const signed = await tryCredentialsSignIn(page);

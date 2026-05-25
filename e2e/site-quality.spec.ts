@@ -97,9 +97,9 @@ test.describe("Site quality", () => {
 
     await primeCookieConsent(page);
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
     await page.goto("/login");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: AUTH_HERO })).toBeVisible();
 
     expect(errors).toEqual([]);
   });

@@ -50,7 +50,8 @@ export function useWorkspaceUrlSync({
       if (intent.widgetInstanceId) return intent.widgetInstanceId === widget.id;
       if (widget.type !== intent.widgetType) return false;
       const projectId =
-        intent.widgetType === "project" && typeof intent.viewState?.projectId === "string"
+        (intent.widgetType === "project" || intent.widgetType === "projectsHub") &&
+        typeof intent.viewState?.projectId === "string"
           ? intent.viewState.projectId
           : null;
       if (projectId) return widget.liveData?.projectId === projectId;
@@ -95,7 +96,8 @@ export function useWorkspaceUrlSync({
       }
       const viewState = getWidgetViewState(focused.id);
       const mergedViewState =
-        focused.type === "project" && typeof focused.liveData?.projectId === "string"
+        (focused.type === "project" || focused.type === "projectsHub") &&
+        typeof focused.liveData?.projectId === "string"
           ? { ...(viewState ?? {}), projectId: focused.liveData.projectId }
           : viewState;
       writeUrl({
@@ -148,7 +150,8 @@ export function useWorkspaceUrlSync({
     if (!urlKey) return;
 
     const projectId =
-      intent.widgetType === "project" && typeof intent.viewState?.projectId === "string"
+      (intent.widgetType === "project" || intent.widgetType === "projectsHub") &&
+      typeof intent.viewState?.projectId === "string"
         ? intent.viewState.projectId
         : null;
 

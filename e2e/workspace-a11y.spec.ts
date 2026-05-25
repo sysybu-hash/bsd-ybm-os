@@ -76,7 +76,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      await page.waitForTimeout(1500);
+      await page.locator("[data-widget-shell]").first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
 
       const results: AxeResults = await new AxeBuilder({ page })
         .withTags(AXE_TAGS)
@@ -84,8 +84,8 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
 
       const baseline = readBaseline();
 
-      // Persist all violations to baseline on first run
-      if (!baseline[key]) {
+      // Persist violations to baseline on first run (local only — not in CI)
+      if (!baseline[key] && !process.env.CI) {
         baseline[key] = toCatalogEntries(results.violations);
         saveBaseline(baseline);
       }
