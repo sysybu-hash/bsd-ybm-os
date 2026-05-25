@@ -62,34 +62,33 @@ export default function ProjectPickerPanel({
   return (
     <div className="flex h-full min-h-0 flex-col text-[color:var(--foreground-main)]" dir={dir}>
       <header className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-3">
-        <h2 className="text-sm font-bold">{t(titleKey)}</h2>
+        <h2 className="text-sm font-bold text-[color:var(--foreground-main)]">{t(titleKey)}</h2>
         <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">{t(descKey)}</p>
       </header>
-      <ul
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
+      <div
         role="listbox"
         aria-label={t(titleKey)}
+        className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3"
       >
         {projects.map((p) => (
-          <li key={p.id}>
-            <button
-              type="button"
-              role="option"
-              aria-selected={false}
-              onClick={() => onSelect(p.id)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-elevated)]/40 px-3 py-2.5 text-start text-xs transition-colors hover:border-indigo-500/40 hover:bg-indigo-500/10"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold">{p.name}</span>
-                <span className="mt-0.5 block text-[10px] text-[color:var(--foreground-muted)]">
-                  {p.isActive === false ? t(statusInactiveKey) : t(statusActiveKey)}
-                </span>
+          <button
+            key={p.id}
+            type="button"
+            role="option"
+            aria-selected={false}
+            onClick={() => onSelect(p.id)}
+            className="flex w-full items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-elevated)]/40 px-3 py-2.5 text-start text-xs transition-colors hover:border-indigo-500/40 hover:bg-indigo-500/10"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-bold">{p.name}</span>
+              <span className="mt-0.5 block text-[10px] text-[color:var(--foreground-muted)]">
+                {p.isActive === false ? t(statusInactiveKey) : t(statusActiveKey)}
               </span>
-              <ChevronLeft size={16} className="shrink-0 text-indigo-500/80" aria-hidden />
-            </button>
-          </li>
+            </span>
+            <ChevronLeft size={16} className="shrink-0 text-indigo-500/80" aria-hidden />
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

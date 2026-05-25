@@ -781,7 +781,9 @@
       "edit": "ערוך",
       "delete": "מחק",
       "deleteTitle": "מחיקת פריט",
-      "deleteConfirm": "למחוק את הפריט?"
+      "deleteConfirm": "למחוק את הפריט?",
+      "actionsMenu": "תפריט פעולות",
+      "previewFile": "תצוגה מקדימה: {name}"
     },
     "projectPicker": {
       "statusActive": "פעיל",

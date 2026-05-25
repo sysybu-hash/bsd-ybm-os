@@ -766,7 +766,9 @@
       "edit": "Изменить",
       "delete": "Удалить",
       "deleteTitle": "Удалить элемент",
-      "deleteConfirm": "Удалить этот элемент?"
+      "deleteConfirm": "Удалить этот элемент?",
+      "actionsMenu": "Меню действий",
+      "previewFile": "Предпросмотр: {name}"
     },
     "projectPicker": {
       "statusActive": "Активен",

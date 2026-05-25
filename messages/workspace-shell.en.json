@@ -766,7 +766,9 @@
       "edit": "Edit",
       "delete": "Delete",
       "deleteTitle": "Delete item",
-      "deleteConfirm": "Delete this item?"
+      "deleteConfirm": "Delete this item?",
+      "actionsMenu": "Actions menu",
+      "previewFile": "Preview: {name}"
     },
     "projectPicker": {
       "statusActive": "Active",

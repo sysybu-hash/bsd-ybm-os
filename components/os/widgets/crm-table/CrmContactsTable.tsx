@@ -165,20 +165,22 @@ export function CrmContactsTable({
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
+                            aria-label={t("workspaceWidgets.itemActions.edit")}
                             onClick={(e) => {
                               e.stopPropagation();
                               onEdit(client);
                             }}
                             className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={14} aria-hidden />
                           </button>
                           <button
                             type="button"
+                            aria-label={t("workspaceWidgets.itemActions.delete")}
                             onClick={(e) => onDelete(client.id, e)}
                             className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={14} aria-hidden />
                           </button>
                         </div>
                       </div>

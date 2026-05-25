@@ -23,7 +23,7 @@ import { ArchivePreviewPanel } from "./erp-file-archive/ArchivePreviewPanel";
 import { CategoryGlyph, categoryChipLabel } from "./erp-file-archive/utils";
 
 export default function ErpFileArchiveWidget() {
-  const { dir } = useI18n();
+  const { dir, t } = useI18n();
   const archive = useArchiveData();
 
   const {
@@ -148,33 +148,41 @@ export default function ErpFileArchiveWidget() {
               {files.map((file) => {
                 const selected = selectedFile?.id === file.id;
                 return (
-                  <div key={file.id} role="button" tabIndex={0}
-                    onClick={() => handlePreview(file)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handlePreview(file); } }}
-                    className={`group relative grid cursor-pointer grid-cols-12 items-center rounded-xl border px-4 py-3 shadow-sm transition-all dark:shadow-none ${
+                  <div
+                    key={file.id}
+                    className={`group relative grid grid-cols-12 items-center rounded-xl border px-4 py-3 shadow-sm transition-all dark:shadow-none ${
                       selected ? "border-amber-500/50 bg-[color:var(--surface-card)]/90" : "border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80"
-                    }`}>
-                    <div className="col-span-5 flex min-w-0 items-center gap-3">
-                      <CategoryGlyph category={file.category} />
-                      <span className="truncate text-sm font-bold text-[color:var(--foreground-main)] group-hover:text-amber-600 dark:group-hover:text-amber-400">{file.name}</span>
-                    </div>
-                    <div className="col-span-2 truncate text-center text-[11px] font-bold text-[color:var(--foreground-muted)]">{file.projectName}</div>
-                    <div className="col-span-2 truncate text-center text-[11px] text-[color:var(--foreground-muted)]">
-                      {archiveView === "shared" ? file.ownerName ?? "—" : file.source === "issued" ? "מונפק" : "סריקה"}
-                    </div>
-                    <div className="col-span-2 text-center text-[11px] text-[color:var(--foreground-muted)]">
-                      {new Date(file.updatedAt).toLocaleDateString("he-IL")}
-                    </div>
-                    <div className="relative col-span-1 flex items-center justify-end gap-1">
-                      <span className="text-[10px] text-[color:var(--foreground-muted)] opacity-80">{file.sizeLabel}</span>
-                      <div>
-                        <button type="button" aria-label="תפריט פעולות"
-                          className="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/10 hover:text-[color:var(--foreground-main)]"
-                          onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}>
-                          <MoreVertical size={16} />
-                        </button>
-                        {openMenuId === file.id ? renderActionMenu(file, "absolute end-4 top-10 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl") : null}
-                      </div>
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handlePreview(file)}
+                      aria-label={t("workspaceWidgets.itemActions.previewFile", { name: file.name })}
+                      className="col-span-11 grid grid-cols-11 items-center text-start min-w-0"
+                    >
+                      <span className="col-span-5 flex min-w-0 items-center gap-3">
+                        <CategoryGlyph category={file.category} />
+                        <span className="truncate text-sm font-bold text-[color:var(--foreground-main)] group-hover:text-amber-600 dark:group-hover:text-amber-400">{file.name}</span>
+                      </span>
+                      <span className="col-span-2 truncate text-center text-[11px] font-bold text-[color:var(--foreground-muted)]">{file.projectName}</span>
+                      <span className="col-span-2 truncate text-center text-[11px] text-[color:var(--foreground-muted)]">
+                        {archiveView === "shared" ? file.ownerName ?? "—" : file.source === "issued" ? "מונפק" : "סריקה"}
+                      </span>
+                      <span className="col-span-1 text-center text-[11px] text-[color:var(--foreground-muted)]">
+                        {new Date(file.updatedAt).toLocaleDateString("he-IL")}
+                      </span>
+                      <span className="col-span-1 text-end text-[10px] text-[color:var(--foreground-muted)] opacity-80">{file.sizeLabel}</span>
+                    </button>
+                    <div className="relative col-span-1 flex items-center justify-end">
+                      <button
+                        type="button"
+                        aria-label={t("workspaceWidgets.itemActions.actionsMenu")}
+                        className="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/10 hover:text-[color:var(--foreground-main)]"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}
+                      >
+                        <MoreVertical size={16} aria-hidden />
+                      </button>
+                      {openMenuId === file.id ? renderActionMenu(file, "absolute end-4 top-10 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl") : null}
                     </div>
                   </div>
                 );
@@ -185,28 +193,38 @@ export default function ErpFileArchiveWidget() {
               {files.map((file) => {
                 const selected = selectedFile?.id === file.id;
                 return (
-                  <div key={file.id} role="button" tabIndex={0}
-                    onClick={() => handlePreview(file)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handlePreview(file); } }}
-                    className={`relative flex cursor-pointer flex-col items-center rounded-2xl border p-4 pt-10 text-center shadow-sm transition-all dark:shadow-none ${
+                  <div
+                    key={file.id}
+                    className={`relative flex flex-col items-center rounded-2xl border p-4 pt-10 text-center shadow-sm transition-all dark:shadow-none ${
                       selected ? "border-amber-500/50 bg-[color:var(--surface-card)]/90" : "border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80"
-                    }`}>
+                    }`}
+                  >
                     <div className="absolute end-2 top-2">
-                      <button type="button" aria-label="תפריט פעולות"
+                      <button
+                        type="button"
+                        aria-label={t("workspaceWidgets.itemActions.actionsMenu")}
                         className="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/15"
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}>
-                        <MoreVertical size={16} />
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}
+                      >
+                        <MoreVertical size={16} aria-hidden />
                       </button>
                       {openMenuId === file.id ? renderActionMenu(file, "absolute end-0 top-9 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl") : null}
                     </div>
-                    <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]`}>
-                      <CategoryGlyph category={file.category} />
-                    </div>
-                    <div className="mb-1 w-full truncate text-sm font-bold text-[color:var(--foreground-main)]">{file.name}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">{file.projectName}</div>
-                    {archiveView === "shared" && file.ownerName ? (
-                      <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">מאת {file.ownerName}</div>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handlePreview(file)}
+                      aria-label={t("workspaceWidgets.itemActions.previewFile", { name: file.name })}
+                      className="flex w-full flex-col items-center text-center"
+                    >
+                      <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]`}>
+                        <CategoryGlyph category={file.category} />
+                      </div>
+                      <div className="mb-1 w-full truncate text-sm font-bold text-[color:var(--foreground-main)]">{file.name}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">{file.projectName}</div>
+                      {archiveView === "shared" && file.ownerName ? (
+                        <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">מאת {file.ownerName}</div>
+                      ) : null}
+                    </button>
                   </div>
                 );
               })}

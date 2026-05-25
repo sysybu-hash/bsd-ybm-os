@@ -39,7 +39,13 @@ export default function DashboardWidget() {
     new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(num);
 
   return (
-    <div className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8" dir={dir}>
+    <div
+      role="region"
+      aria-label={t("workspaceWidgets.quickActions.dashboard.title")}
+      tabIndex={0}
+      className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+      dir={dir}
+    >
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
