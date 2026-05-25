@@ -11,7 +11,7 @@ import {
   quickGridSlotsForView,
   quickGridUsesCoordinates,
 } from "@/lib/launcher/quick-grid";
-import { DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
+import { BUSINESS_MGMT_QUICK_GRID, DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
 import type { LauncherSlot } from "@/lib/launcher/user-launcher-config";
 
 describe("ensureQuickGridPositions", () => {
@@ -91,6 +91,16 @@ describe("buildQuickGridEditMatrix", () => {
     const matrix = buildQuickGridEditMatrix(DEFAULT_QUICK_GRID, true);
     expect(matrix.length).toBe(3);
     expect(matrix[0]?.length).toBe(4);
+  });
+
+  it("sizes business mgmt 2x4 quick grid edit extents", () => {
+    const extents = getQuickGridEditExtents(BUSINESS_MGMT_QUICK_GRID, true);
+    expect(extents.rows).toBe(3);
+    expect(extents.cols).toBe(5);
+
+    const matrix = buildQuickGridEditMatrix(BUSINESS_MGMT_QUICK_GRID, true);
+    expect(matrix.length).toBe(3);
+    expect(matrix[0]?.length).toBe(5);
   });
 
   it("caps edit grid size and ignores viewport canvas", () => {

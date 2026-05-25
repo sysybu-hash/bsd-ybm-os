@@ -183,9 +183,9 @@ export function useLauncherActions({
   }, [config, permissionCtx, picker, zoneSlots]);
 
   const resetToDefault = useCallback(() => {
-    persist(getDefaultLauncherConfig(organizationIndustry));
+    persist(getDefaultLauncherConfig(organizationIndustry, { isPlatformAdmin }));
     setAnnounce("שוחזר לברירת מחדל");
-  }, [persist, organizationIndustry, setAnnounce]);
+  }, [persist, organizationIndustry, isPlatformAdmin, setAnnounce]);
 
   const enterEditMode = useCallback(() => {
     let next = { ...config, quickGrid: ensureQuickGridPositions(config.quickGrid) };

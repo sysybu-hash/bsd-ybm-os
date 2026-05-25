@@ -1,4 +1,5 @@
 import {
+  BUSINESS_MGMT_QUICK_GRID,
   compactZoneSlots,
   DEFAULT_QUICK_GRID,
   ensureEditTrailingEmptySlot,
@@ -11,6 +12,7 @@ import {
   scrubLauncherConfig,
   shouldUsePlatformLauncherDefault,
   trimTrailingEmptySlots,
+  usesBusinessMgmtQuickGrid,
   widgetsUsedInZone,
 } from "@/lib/launcher/user-launcher-config";
 
@@ -31,11 +33,20 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 1 });
   });
 
-  it("omits meckano in sidebar for company mgmt industry", () => {
+  it("uses 8-tile business grid for company mgmt industry", () => {
+    expect(usesBusinessMgmtQuickGrid("COMPANY_MGMT")).toBe(true);
     const cfg = getDefaultLauncherConfig("COMPANY_MGMT");
+    expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
     const ids = cfg.sidebar.map((s) => s.widgetId);
     expect(ids).not.toContain("meckanoReports");
     expect(cfg.quickGrid.every((s) => s.widgetId !== "fieldCopilot")).toBe(true);
+  });
+
+  it("uses 8-tile business grid for platform admin regardless of industry", () => {
+    expect(usesBusinessMgmtQuickGrid("CONSTRUCTION", true)).toBe(true);
+    const cfg = getDefaultLauncherConfig("CONSTRUCTION", { isPlatformAdmin: true });
+    expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
+    expect(cfg.quickGrid).toHaveLength(8);
   });
 
   it("includes meckano in sidebar for construction industry", () => {
@@ -50,7 +61,7 @@ describe("user-launcher-config", () => {
     expect(shouldUsePlatformLauncherDefault({ quickGrid: [] })).toBe(true);
 
     const resolved = resolveStoredLauncherConfig({ sidebar: [{ widgetId: "crmTable" }] }, "CONSTRUCTION");
-    expect(resolved.quickGrid).toHaveLength(6);
+    expect(resolved.quickGrid).toHaveLength(DEFAULT_QUICK_GRID.length);
     expect(resolved.sidebar[0]!.widgetId).toBe("financeHub");
   });
 

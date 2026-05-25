@@ -110,20 +110,28 @@ export async function getPlatformConfig(forceRefresh = false): Promise<PlatformC
     return cachedConfig;
   }
 
-  const row = await prisma.platformSettings.findUnique({
+  let row = await prisma.platformSettings.findUnique({
     where: { id: PLATFORM_SETTINGS_ID },
   });
 
   if (!row) {
-    await prisma.platformSettings.create({
-      data: {
-        id: PLATFORM_SETTINGS_ID,
-        configJson: DEFAULT_PLATFORM_CONFIG,
-      },
+    await prisma.platformSettings.createMany({
+      data: [
+        {
+          id: PLATFORM_SETTINGS_ID,
+          configJson: DEFAULT_PLATFORM_CONFIG,
+        },
+      ],
+      skipDuplicates: true,
     });
-    cachedConfig = DEFAULT_PLATFORM_CONFIG;
-    cacheAt = now;
-    return DEFAULT_PLATFORM_CONFIG;
+    row = await prisma.platformSettings.findUnique({
+      where: { id: PLATFORM_SETTINGS_ID },
+    });
+    if (!row) {
+      cachedConfig = DEFAULT_PLATFORM_CONFIG;
+      cacheAt = now;
+      return DEFAULT_PLATFORM_CONFIG;
+    }
   }
 
   cachedConfig = mergeWithDefaults(row.configJson);

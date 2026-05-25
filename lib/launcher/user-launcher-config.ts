@@ -97,10 +97,10 @@ function emptySlot(): LauncherSlot {
 }
 
 /**
- * ברירת מחדל ל-quick grid — 2×6 (7 עמודות מקס), קואורדינטות LTR.
- * סדר RTL בשורה: מרכז שליטה → … → דאשבורד (שורה 0), מרכז עזרה → … → צ'אט AI (שורה 1).
+ * ברירת מחדל ל-quick grid — קואורדינטות LTR; בתצוגה RTL השורה נקראת מימין לשמאל.
  */
-/** 6 אריחי Hub — שורה 0: פיננסים · פרויקטים · CRM; שורה 1: מסמכים · קופיילוט · AI */
+
+/** בנייה — 6 אריחי Hub: שורה 0 פיננסים · פרויקטים · CRM; שורה 1 מסמכים · קופיילוט · AI */
 export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("financeHub", 0, 0),
   gridSlot("projectsHub", 0, 1),
@@ -110,8 +110,41 @@ export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("aiHub", 1, 2),
 ];
 
-function buildDefaultQuickGrid(): LauncherSlot[] {
-  return DEFAULT_QUICK_GRID.map((s) => ({ ...s }));
+/**
+ * ניהול עסק / מנהל פלטפורמה — 2×4.
+ * שורה 0 (RTL): פרויקטים · CRM · פיננסים · הפקת מסמכים.
+ * שורה 1 (RTL): סריקת AI · AI · מסמכים · מרכז עזרה.
+ */
+export const BUSINESS_MGMT_QUICK_GRID: LauncherSlot[] = [
+  gridSlot("projectsHub", 0, 3),
+  gridSlot("crmTable", 0, 2),
+  gridSlot("financeHub", 0, 1),
+  gridSlot("docCreator", 0, 0),
+  gridSlot("aiScanner", 1, 3),
+  gridSlot("aiHub", 1, 2),
+  gridSlot("documentsHub", 1, 1),
+  gridSlot("helpCenter", 1, 0),
+];
+
+export type LauncherDefaultOptions = {
+  isPlatformAdmin?: boolean;
+};
+
+export function usesBusinessMgmtQuickGrid(
+  industryRaw?: string | null,
+  isPlatformAdmin?: boolean,
+): boolean {
+  return Boolean(isPlatformAdmin) || isCompanyMgmtIndustry(industryRaw);
+}
+
+function buildDefaultQuickGrid(
+  industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
+): LauncherSlot[] {
+  const source = usesBusinessMgmtQuickGrid(industryRaw, options?.isPlatformAdmin)
+    ? BUSINESS_MGMT_QUICK_GRID
+    : DEFAULT_QUICK_GRID;
+  return source.map((s) => ({ ...s }));
 }
 
 export function isQuickGridEmpty(raw: unknown): boolean {
@@ -129,13 +162,12 @@ export function shouldUsePlatformLauncherDefault(partial: unknown): boolean {
   return isQuickGridEmpty((partial as Partial<UserLauncherConfig>).quickGrid);
 }
 
-export function buildDefaultLauncherConfig(industryRaw?: string | null): UserLauncherConfig {
+export function buildDefaultLauncherConfig(
+  industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
+): UserLauncherConfig {
   const company = isCompanyMgmtIndustry(industryRaw);
-  const quickGrid = company
-    ? DEFAULT_QUICK_GRID.map((s) =>
-        s.widgetId === "fieldCopilot" ? emptySlot() : { ...s },
-      )
-    : buildDefaultQuickGrid();
+  const quickGrid = buildDefaultQuickGrid(industryRaw, options);
 
   return {
     version: 2,
@@ -172,26 +204,33 @@ export function buildDefaultLauncherConfig(industryRaw?: string | null): UserLau
 }
 
 /** ברירת מחדל לפי ענף — בנייה וניהול חברה משתמשים באותה פריסת 12 אריחים */
-export function buildIndustryLauncherConfig(industryRaw?: string | null): UserLauncherConfig {
-  return buildDefaultLauncherConfig(industryRaw);
+export function buildIndustryLauncherConfig(
+  industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
+): UserLauncherConfig {
+  return buildDefaultLauncherConfig(industryRaw, options);
 }
 
-export function getDefaultLauncherConfig(industryRaw?: string | null): UserLauncherConfig {
-  return buildIndustryLauncherConfig(industryRaw);
+export function getDefaultLauncherConfig(
+  industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
+): UserLauncherConfig {
+  return buildIndustryLauncherConfig(industryRaw, options);
 }
 
 /** ממזג שמירה בשרת/localStorage; quickGrid ריק → ברירת מחדל, שאר האזורים נשמרים */
 export function resolveStoredLauncherConfig(
   stored: unknown,
   industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
 ): UserLauncherConfig {
   if (!stored || typeof stored !== "object") {
-    return getDefaultLauncherConfig(industryRaw);
+    return getDefaultLauncherConfig(industryRaw, options);
   }
   if ((stored as Partial<UserLauncherConfig>).version !== 2) {
-    return getDefaultLauncherConfig(industryRaw);
+    return getDefaultLauncherConfig(industryRaw, options);
   }
-  return mergeLauncherConfig(stored, industryRaw);
+  return mergeLauncherConfig(stored, industryRaw, options);
 }
 
 const ZONE_KEYS: LauncherZone[] = [
@@ -281,8 +320,9 @@ export function scrubLauncherConfig(config: UserLauncherConfig): UserLauncherCon
 export function mergeLauncherConfig(
   partial: unknown,
   industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
 ): UserLauncherConfig {
-  const defaults = getDefaultLauncherConfig(industryRaw);
+  const defaults = getDefaultLauncherConfig(industryRaw, options);
   if (!partial || typeof partial !== "object") return defaults;
 
   const p = partial as Partial<UserLauncherConfig>;
@@ -303,27 +343,29 @@ export function mergeLauncherConfig(
 export function parseLauncherConfigFromStorage(
   raw: string | null,
   industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
 ): UserLauncherConfig {
-  if (!raw) return getDefaultLauncherConfig(industryRaw);
+  if (!raw) return getDefaultLauncherConfig(industryRaw, options);
   try {
     const parsed = JSON.parse(raw) as Partial<UserLauncherConfig>;
     if (parsed.version !== 2) {
-      return getDefaultLauncherConfig(industryRaw);
+      return getDefaultLauncherConfig(industryRaw, options);
     }
-    return resolveStoredLauncherConfig(parsed, industryRaw);
+    return resolveStoredLauncherConfig(parsed, industryRaw, options);
   } catch {
-    return getDefaultLauncherConfig(industryRaw);
+    return getDefaultLauncherConfig(industryRaw, options);
   }
 }
 
 /** טוען v2 בלבד; אין מיגרציה מ-v1 — איפוס נקי */
 export function readLauncherConfigFromBrowser(
   industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
 ): UserLauncherConfig {
-  if (typeof window === "undefined") return getDefaultLauncherConfig(industryRaw);
+  if (typeof window === "undefined") return getDefaultLauncherConfig(industryRaw, options);
   const v2 = localStorage.getItem(LAUNCHER_STORAGE_KEY);
-  if (v2) return parseLauncherConfigFromStorage(v2, industryRaw);
-  return getDefaultLauncherConfig(industryRaw);
+  if (v2) return parseLauncherConfigFromStorage(v2, industryRaw, options);
+  return getDefaultLauncherConfig(industryRaw, options);
 }
 
 export function resolveZoneWidgets(

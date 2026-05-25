@@ -62,7 +62,14 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const isPlatformAdmin = useIsPlatformAdmin();
   const { allowed: meckanoEnabled } = useMeckanoAccess();
   const [hydrated, setHydrated] = useState(false);
-  const [config, setConfig] = useState<UserLauncherConfig>(() => getDefaultLauncherConfig(organizationIndustry));
+  const launcherDefaultOptions = useMemo(
+    () => ({ isPlatformAdmin }),
+    [isPlatformAdmin],
+  );
+
+  const [config, setConfig] = useState<UserLauncherConfig>(() =>
+    getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions),
+  );
   const [editMode, setEditMode] = useState(false);
   const [picker, setPicker] = useState<PickerState>(null);
   const [announce, setAnnounce] = useState("");
@@ -79,6 +86,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
       let base = parseLauncherConfigFromStorage(
         typeof window !== "undefined" ? localStorage.getItem(LAUNCHER_STORAGE_KEY) : null,
         organizationIndustry,
+        launcherDefaultOptions,
       );
       if (userId) {
         try {
@@ -86,8 +94,8 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
           if (res.ok) {
             const data = (await res.json()) as { config?: unknown };
             base = data.config
-              ? resolveStoredLauncherConfig(data.config, organizationIndustry)
-              : getDefaultLauncherConfig(organizationIndustry);
+              ? resolveStoredLauncherConfig(data.config, organizationIndustry, launcherDefaultOptions)
+              : getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions);
           }
         } catch { /* offline */ }
       }
@@ -105,7 +113,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { cancelled = true; };
-  }, [organizationIndustry, permissionCtx, meckanoEnabled, userId]);
+  }, [organizationIndustry, permissionCtx, meckanoEnabled, userId, launcherDefaultOptions]);
 
   const actions = useLauncherActions({
     config, editMode, permissionCtx, isPlatformAdmin, meckanoEnabled,
