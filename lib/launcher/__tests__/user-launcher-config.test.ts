@@ -1,6 +1,7 @@
 import {
   BUSINESS_MGMT_QUICK_GRID,
   compactZoneSlots,
+  dedupeQuickGridSlots,
   DEFAULT_QUICK_GRID,
   ensureEditTrailingEmptySlot,
   getDefaultLauncherConfig,
@@ -84,7 +85,7 @@ describe("user-launcher-config", () => {
     };
     const resolved = resolveStoredLauncherConfig(custom, "CONSTRUCTION");
     expect(resolved.quickGrid).toHaveLength(1);
-    expect(resolved.quickGrid[0]).toEqual({ widgetId: "financeHub", row: 2, col: 1 });
+    expect(resolved.quickGrid[0]).toEqual({ widgetId: "dashboard", row: 2, col: 1 });
   });
 
   it("merges partial config", () => {
@@ -94,12 +95,31 @@ describe("user-launcher-config", () => {
     expect(merged.quickGrid[0]!.widgetId).toBe("crmTable");
   });
 
-  it("scrub maps legacy widget ids to hubs", () => {
+  it("scrub keeps distinct launcher tile ids in quick grid", () => {
     const cfg = mergeLauncherConfig({
       quickGrid: [{ widgetId: "aiChatFull", row: 4, col: 0 }],
     });
     const scrubbed = scrubLauncherConfig(cfg);
-    expect(scrubbed.quickGrid[0]).toEqual({ widgetId: "aiHub", row: 4, col: 0 });
+    expect(scrubbed.quickGrid[0]).toEqual({ widgetId: "aiChatFull", row: 4, col: 0 });
+  });
+
+  it("dedupes repeated documentsHub tiles after legacy migration", () => {
+    const slots = [
+      { widgetId: "documentsHub" as const, row: 0, col: 0 },
+      { widgetId: "documentsHub" as const, row: 1, col: 1 },
+      { widgetId: "documentsHub" as const, row: 1, col: 2 },
+    ];
+    expect(dedupeQuickGridSlots(slots)).toHaveLength(1);
+  });
+
+  it("keeps docCreator, aiScanner, and documentsHub as separate quick tiles", () => {
+    const slots = BUSINESS_MGMT_QUICK_GRID.map((s) => ({ ...s }));
+    const deduped = dedupeQuickGridSlots(slots);
+    const ids = deduped.map((s) => s.widgetId);
+    expect(ids).toContain("docCreator");
+    expect(ids).toContain("aiScanner");
+    expect(ids).toContain("documentsHub");
+    expect(deduped).toHaveLength(8);
   });
 
   it("parses invalid storage safely", () => {
@@ -127,12 +147,12 @@ describe("user-launcher-config", () => {
     expect(used.has(null as never)).toBe(false);
   });
 
-  it("strips removed launcher widgets and maps dashboard to financeHub", () => {
+  it("strips removed launcher widgets from quick grid", () => {
     const merged = mergeLauncherConfig({
-      quickGrid: [{ widgetId: "googleAssistant" }, { widgetId: "dashboard" }],
+      quickGrid: [{ widgetId: "googleAssistant" }, { widgetId: "dashboard", row: 0, col: 1 }],
     });
-    expect(merged.quickGrid[0]!.widgetId).toBeNull();
-    expect(merged.quickGrid[1]!.widgetId).toBe("financeHub");
+    expect(merged.quickGrid).toHaveLength(1);
+    expect(merged.quickGrid[0]!.widgetId).toBe("dashboard");
   });
 
   it("trims only trailing empty slots", () => {

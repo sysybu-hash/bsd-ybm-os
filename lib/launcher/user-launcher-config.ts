@@ -241,6 +241,12 @@ const ZONE_KEYS: LauncherZone[] = [
   "mobileMore",
 ];
 
+/** מזהה אריח לשמירה — שומר קיצור legacy (docCreator, aiScanner) ולא מאחד ל-Hub */
+function launcherTileWidgetId(raw: string): WidgetType | null {
+  if (isRemovedLauncherWidgetId(raw)) return null;
+  return normalizeWidgetAction(raw);
+}
+
 function normalizeSlot(raw: unknown): LauncherSlot {
   if (!raw || typeof raw !== "object") return emptySlot();
   const o = raw as LauncherSlot;
@@ -249,10 +255,20 @@ function normalizeSlot(raw: unknown): LauncherSlot {
   const col = typeof o.col === "number" && o.col >= 0 ? Math.floor(o.col) : undefined;
   if (w === null) return row !== undefined || col !== undefined ? { widgetId: null, row, col } : emptySlot();
   if (typeof w !== "string") return emptySlot();
+  const tileId = launcherTileWidgetId(w);
+  return tileId ? { widgetId: tileId, row, col } : emptySlot();
+}
+
+function normalizeSidebarSlot(raw: unknown): LauncherSlot {
+  if (!raw || typeof raw !== "object") return emptySlot();
+  const o = raw as LauncherSlot;
+  const w = o.widgetId;
+  if (w === null) return emptySlot();
+  if (typeof w !== "string") return emptySlot();
   if (isRemovedLauncherWidgetId(w)) return emptySlot();
   const normalized = normalizeWidgetAction(w);
   const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
-  return mapped ? { widgetId: mapped, row, col } : emptySlot();
+  return mapped ? { widgetId: mapped } : emptySlot();
 }
 
 function normalizeZone(raw: unknown, fallback: LauncherSlot[]): LauncherSlot[] {
@@ -282,27 +298,49 @@ export function ensureMeckanoLauncherSlots(
 function scrubZoneSlots(slots: LauncherSlot[]): LauncherSlot[] {
   return slots.map((s) => {
     if (!s.widgetId) return emptySlot();
-    if (isRemovedLauncherWidgetId(s.widgetId)) return emptySlot();
-    const normalized = normalizeWidgetAction(s.widgetId);
-    const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
-    return mapped ? { widgetId: mapped } : emptySlot();
+    return normalizeSidebarSlot(s);
   });
 }
 
-function scrubQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
-  return slots.map((s) => {
-    if (!s.widgetId) return emptySlot();
-    if (isRemovedLauncherWidgetId(s.widgetId)) return emptySlot();
-    const normalized = normalizeWidgetAction(s.widgetId);
-    const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
-    if (!mapped) return emptySlot();
+/** מסיר כפילויות באותו widgetId (למשל שלושה documentsHub אחרי מיגרציה ישנה) */
+export function dedupeQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
+  const seen = new Set<WidgetType>();
+  const out: LauncherSlot[] = [];
+  const ordered = [...slots].sort((a, b) => {
+    const ar = a.row ?? 999;
+    const br = b.row ?? 999;
+    if (ar !== br) return ar - br;
+    return (a.col ?? 999) - (b.col ?? 999);
+  });
+  for (const s of ordered) {
+    if (!s.widgetId) continue;
+    const tileId = launcherTileWidgetId(s.widgetId);
+    if (!tileId || seen.has(tileId)) continue;
+    seen.add(tileId);
     const row = typeof s.row === "number" && s.row >= 0 ? Math.floor(s.row) : undefined;
     const col = typeof s.col === "number" && s.col >= 0 ? Math.floor(s.col) : undefined;
     if (row !== undefined && col !== undefined) {
-      return { widgetId: mapped, row, col };
+      out.push({ widgetId: tileId, row, col });
+    } else {
+      out.push({ widgetId: tileId });
     }
-    return { widgetId: mapped };
+  }
+  return out.length > 0 ? out : slots;
+}
+
+function scrubQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
+  const scrubbed = slots.map((s) => {
+    if (!s.widgetId) return emptySlot();
+    const tileId = launcherTileWidgetId(s.widgetId);
+    if (!tileId) return emptySlot();
+    const row = typeof s.row === "number" && s.row >= 0 ? Math.floor(s.row) : undefined;
+    const col = typeof s.col === "number" && s.col >= 0 ? Math.floor(s.col) : undefined;
+    if (row !== undefined && col !== undefined) {
+      return { widgetId: tileId, row, col };
+    }
+    return { widgetId: tileId };
   });
+  return dedupeQuickGridSlots(scrubbed.filter((s) => s.widgetId !== null));
 }
 
 /** מנקה ווידג'טים שהוסרו / לא תקינים בכל האזורים */

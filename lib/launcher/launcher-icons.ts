@@ -435,11 +435,8 @@ export function quickActionLabelKey(type: WidgetType): string {
 
 
 export function quickActionSubtitleKey(type: WidgetType): string {
-
-  const resolved = resolveWidgetType(type);
-
-  return `workspaceWidgets.quickActions.${resolved}.subtitle`;
-
+  const normalized = normalizeWidgetAction(type) ?? type;
+  return `workspaceWidgets.quickActions.${normalized}.subtitle`;
 }
 
 

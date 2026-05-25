@@ -100,8 +100,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
         } catch { /* offline */ }
       }
       if (cancelled) return;
-      const withMeckano = ensureMeckanoLauncherSlots(base, meckanoEnabled);
-      const withGrid = { ...withMeckano, quickGrid: ensureGridPos(withMeckano.quickGrid) };
+      const withGrid = { ...base, quickGrid: ensureGridPos(base.quickGrid) };
       const sanitized = sanitizeConfig(withGrid, permissionCtx);
       setConfig(sanitized);
       setHydrated(true);
@@ -113,7 +112,14 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { cancelled = true; };
-  }, [organizationIndustry, permissionCtx, meckanoEnabled, userId, launcherDefaultOptions]);
+  }, [organizationIndustry, userId, launcherDefaultOptions]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    setConfig((prev) =>
+      sanitizeConfig(ensureMeckanoLauncherSlots(prev, meckanoEnabled), permissionCtx),
+    );
+  }, [hydrated, meckanoEnabled, permissionCtx]);
 
   const actions = useLauncherActions({
     config, editMode, permissionCtx, isPlatformAdmin, meckanoEnabled,
