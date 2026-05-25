@@ -22,6 +22,7 @@ import { trialEndsAtFromNow } from "@/lib/trial";
 import { normalizeBusinessLine } from "@/lib/business-lines";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
 import { normalizeIndustryType } from "@/lib/professions/config";
+import { deleteOrganizationCascade } from "@/lib/organization-delete-cascade";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 
 async function requireSuperAdmin() {
@@ -444,24 +445,7 @@ export async function manageSubsDeleteOrganizationAction(
     if (s.user?.id) {
       await logActivity(s.user.id, organizationId, "SUBSCRIPTION:organization_deleted", `name=${org.name}`);
     }
-    await prisma.$transaction(async (tx) => {
-      await tx.activityLog.deleteMany({ where: { organizationId } });
-      await tx.productPriceObservation.deleteMany({ where: { organizationId } });
-      await tx.documentLineItem.deleteMany({ where: { organizationId } });
-      await tx.documentScanCache.deleteMany({ where: { organizationId } });
-      await tx.quote.deleteMany({ where: { organizationId } });
-      await tx.issuedDocument.deleteMany({ where: { organizationId } });
-      await tx.invoice.deleteMany({ where: { organizationId } });
-      await tx.financialInsight.deleteMany({ where: { organizationId } });
-      await tx.cloudIntegration.deleteMany({ where: { organizationId } });
-      await tx.meckanoZone.deleteMany({ where: { organizationId } });
-      await tx.organizationInvite.deleteMany({ where: { organizationId } });
-      await tx.project.deleteMany({ where: { organizationId } });
-      await tx.contact.deleteMany({ where: { organizationId } });
-      await tx.document.deleteMany({ where: { organizationId } });
-      await tx.user.deleteMany({ where: { organizationId } });
-      await tx.organization.delete({ where: { id: organizationId } });
-    });
+    await deleteOrganizationCascade(organizationId);
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {

@@ -169,6 +169,12 @@ export function useOmniCanvasHandlers({
       case "scan":
         openWidget("aiScanner", targetId ? { documentId: targetId } : null);
         break;
+      case "docCreator":
+        openWidget("docCreator", targetId ? { issuedDocumentId: targetId } : null);
+        break;
+      case "fieldCopilot":
+        openWidget("fieldCopilot", targetId ? { sessionId: targetId } : null);
+        break;
       case "expense":
         openWidget("aiScanner");
         break;

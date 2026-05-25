@@ -61,6 +61,12 @@ export function WidgetNavigationProvider({
     initialView ? { entries: [initialView], index: 0 } : emptyHistory(),
   );
   const bootstrapped = useRef(!!initialView);
+  const onViewChangeRef = useRef(onViewChange);
+  const lastNotifiedKeyRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    onViewChangeRef.current = onViewChange;
+  }, [onViewChange]);
 
   const currentView =
     history.index >= 0 ? (history.entries[history.index] ?? null) : null;
@@ -68,18 +74,13 @@ export function WidgetNavigationProvider({
   const canGoForward =
     history.index >= 0 && history.index < history.entries.length - 1;
 
-  const applyView = useCallback(
-    (state: WidgetViewState | null) => {
-      if (!state || Object.keys(state).length === 0) {
-        setHistory(emptyHistory());
-        onViewChange?.(null);
-        return;
-      }
-      setHistory({ entries: [state], index: 0 });
-      onViewChange?.(state);
-    },
-    [onViewChange],
-  );
+  const applyView = useCallback((state: WidgetViewState | null) => {
+    if (!state || Object.keys(state).length === 0) {
+      setHistory(emptyHistory());
+      return;
+    }
+    setHistory({ entries: [state], index: 0 });
+  }, []);
 
   useEffect(() => {
     if (initialView && !bootstrapped.current) {
@@ -88,53 +89,47 @@ export function WidgetNavigationProvider({
     }
   }, [initialView, applyView]);
 
-  const pushView = useCallback(
-    (state: WidgetViewState) => {
-      setHistory((prev) => {
-        const cur = prev.index >= 0 ? prev.entries[prev.index] : null;
-        if (cur && stateKey(cur) === stateKey(state)) return prev;
-        const truncated = prev.index >= 0 ? prev.entries.slice(0, prev.index + 1) : [];
-        const entries = [...truncated, state];
-        onViewChange?.(state);
-        return { entries, index: entries.length - 1 };
-      });
-    },
-    [onViewChange],
-  );
+  useEffect(() => {
+    const key = currentView ? stateKey(currentView) : "__null__";
+    if (lastNotifiedKeyRef.current === key) return;
+    lastNotifiedKeyRef.current = key;
+    onViewChangeRef.current?.(currentView);
+  }, [currentView]);
 
-  const replaceView = useCallback(
-    (state: WidgetViewState) => {
-      setHistory((prev) => {
-        if (prev.index < 0) {
-          onViewChange?.(state);
-          return { entries: [state], index: 0 };
-        }
-        const entries = [...prev.entries];
-        entries[prev.index] = state;
-        onViewChange?.(state);
-        return { ...prev, entries };
-      });
-    },
-    [onViewChange],
-  );
+  const pushView = useCallback((state: WidgetViewState) => {
+    setHistory((prev) => {
+      const cur = prev.index >= 0 ? prev.entries[prev.index] : null;
+      if (cur && stateKey(cur) === stateKey(state)) return prev;
+      const truncated = prev.index >= 0 ? prev.entries.slice(0, prev.index + 1) : [];
+      const entries = [...truncated, state];
+      return { entries, index: entries.length - 1 };
+    });
+  }, []);
+
+  const replaceView = useCallback((state: WidgetViewState) => {
+    setHistory((prev) => {
+      if (prev.index < 0) {
+        return { entries: [state], index: 0 };
+      }
+      const entries = [...prev.entries];
+      entries[prev.index] = state;
+      return { ...prev, entries };
+    });
+  }, []);
 
   const back = useCallback(() => {
     setHistory((prev) => {
       if (prev.index <= 0) return prev;
-      const index = prev.index - 1;
-      onViewChange?.(prev.entries[index] ?? null);
-      return { ...prev, index };
+      return { ...prev, index: prev.index - 1 };
     });
-  }, [onViewChange]);
+  }, []);
 
   const forward = useCallback(() => {
     setHistory((prev) => {
       if (prev.index >= prev.entries.length - 1) return prev;
-      const index = prev.index + 1;
-      onViewChange?.(prev.entries[index] ?? null);
-      return { ...prev, index };
+      return { ...prev, index: prev.index + 1 };
     });
-  }, [onViewChange]);
+  }, []);
 
   const controller = useMemo<WidgetNavController>(
     () => ({

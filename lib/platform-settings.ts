@@ -17,6 +17,8 @@ const featureFlagsSchema = z.object({
   aiChatLiveDefault: z.boolean().default(false),
   /** proactiveAudio / affectiveDialog ב-Live */
   geminiLiveAdvancedFeatures: z.boolean().default(false),
+  /** קופיילוט שטח — הצעות מחיר מהאתר */
+  fieldCopilotEnabled: z.boolean().default(true),
 });
 
 export const platformConfigSchema = z.object({
@@ -36,6 +38,7 @@ export const platformConfigSchema = z.object({
     knowledgeVaultEnabled: false,
     aiChatLiveDefault: false,
     geminiLiveAdvancedFeatures: false,
+    fieldCopilotEnabled: true,
   }),
 });
 
@@ -60,6 +63,7 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
     knowledgeVaultEnabled: false,
     aiChatLiveDefault: false,
     geminiLiveAdvancedFeatures: false,
+    fieldCopilotEnabled: true,
   },
 };
 
@@ -161,6 +165,11 @@ export async function updatePlatformConfig(
 
   invalidatePlatformConfigCache();
   return next;
+}
+
+export async function isFieldCopilotEnabled(): Promise<boolean> {
+  const cfg = await getPlatformConfig();
+  return cfg.featureFlags.fieldCopilotEnabled !== false && !cfg.maintenanceMode;
 }
 
 export async function isAutomationIntentEnabled(intent: AutomationIntent): Promise<boolean> {

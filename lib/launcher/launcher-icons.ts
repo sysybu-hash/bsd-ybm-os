@@ -6,6 +6,8 @@ import {
 
   BarChart3,
 
+  Bot,
+
   Building2,
 
   FilePlus,
@@ -13,6 +15,8 @@ import {
   FileText,
 
   HardDrive,
+
+  HardHat,
 
   HelpCircle,
 
@@ -39,6 +43,7 @@ import {
 } from "lucide-react";
 
 import type { WidgetType } from "@/hooks/use-window-manager";
+import { mapLauncherWidgetId } from "@/lib/os-assistant/resolve-widget-open";
 
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 
@@ -280,6 +285,18 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
 
   },
 
+  fieldCopilot: {
+
+    type: "fieldCopilot",
+
+    labelKey: "workspaceWidgets.sidebar.fieldCopilot",
+
+    icon: HardHat,
+
+    chip: true,
+
+  },
+
   platformAdmin: {
 
     type: "platformAdmin",
@@ -304,14 +321,38 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
 
   },
 
+  financeHub: {
+    type: "financeHub",
+    labelKey: "workspaceWidgets.titles.financeHub",
+    icon: LayoutDashboard,
+    chip: true,
+  },
+  projectsHub: {
+    type: "projectsHub",
+    labelKey: "workspaceWidgets.titles.projectsHub",
+    icon: BarChart3,
+    chip: true,
+  },
+  documentsHub: {
+    type: "documentsHub",
+    labelKey: "workspaceWidgets.titles.documentsHub",
+    icon: Package,
+    chip: true,
+  },
+  aiHub: {
+    type: "aiHub",
+    labelKey: "workspaceWidgets.titles.aiHub",
+    icon: Bot,
+    chip: true,
+  },
+
 };
 
 
 
 function resolveWidgetType(type: WidgetType): WidgetType {
-
-  return normalizeWidgetAction(type) ?? type;
-
+  const normalized = normalizeWidgetAction(type) ?? type;
+  return mapLauncherWidgetId(normalized);
 }
 
 
@@ -378,6 +419,11 @@ export function quickActionLabelKey(type: WidgetType): string {
 
     helpCenter: "workspaceWidgets.quickActions.helpCenter.title",
 
+    fieldCopilot: "workspaceWidgets.quickActions.fieldCopilot.title",
+    financeHub: "workspaceWidgets.quickActions.financeHub.title",
+    projectsHub: "workspaceWidgets.quickActions.projectsHub.title",
+    documentsHub: "workspaceWidgets.quickActions.documentsHub.title",
+    aiHub: "workspaceWidgets.quickActions.aiHub.title",
   };
 
   const known = getLauncherNavMeta(type);

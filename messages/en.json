@@ -836,6 +836,17 @@
       "f3": "VIP support & integrations"
     }
   },
+  "platformAdmin": {
+    "pending": {
+      "approve": "Approve",
+      "remove": "Remove",
+      "empty": "No pending registrations",
+      "noOrg": "No organization",
+      "removeConfirm": "Remove registration for {email}? This cannot be undone.",
+      "removed": "Registration removed",
+      "approved": "Registration approved"
+    }
+  },
   "professions": {
     "GENERAL": { "label": "General Management", "client": "Client", "project": "Project", "document": "Document", "inventory": "Inventory" },
     "LAWYER": { "label": "Law Firm", "client": "Client / Represented", "project": "Legal Case", "document": "Legal Filing", "inventory": "Library" },

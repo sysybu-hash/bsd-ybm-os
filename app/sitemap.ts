@@ -4,7 +4,16 @@ import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getCanonicalSiteUrl().replace(/\/$/, "");
   const now = new Date();
-  const paths = ["/", "/login", "/about", "/privacy", "/terms", "/legal", "/integrations/google"];
+  const paths = [
+    "/",
+    "/login",
+    "/about",
+    "/privacy",
+    "/terms",
+    "/legal",
+    "/integrations/google",
+    "/help",
+  ];
   return paths.map((path) => ({
     url: `${base}${path}`,
     lastModified: now,

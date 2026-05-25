@@ -99,10 +99,14 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       60 * 60 * 1000,
     );
     if (!rl.success) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000),
+      );
       return jsonTooManyRequests(
-        `הגבלת קצב. נסו שוב אחרי ${rl.resetAt.toISOString()}.`,
+        "הגבלת קצב ב-Gemini Live.",
         "rate_limited",
-        { resetAt: rl.resetAt },
+        { resetAt: rl.resetAt.toISOString(), retryAfter: retryAfterSec },
       );
     }
 
@@ -130,7 +134,11 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
 
     const assistantCtx = await buildOsAssistantUserContext(session);
     const systemInstruction = assistantCtx
-      ? buildOsAssistantSystemInstruction(assistantCtx, { voice: true, locale })
+      ? buildOsAssistantSystemInstruction(assistantCtx, {
+          voice: true,
+          locale,
+          compactForLiveToken: true,
+        })
       : buildOsAssistantSystemInstruction(
           {
             user: {
@@ -143,7 +151,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
             organization: null,
             capabilities: { geminiLive: true, meckano: false },
           },
-          { voice: true, locale },
+          { voice: true, locale, compactForLiveToken: true },
         );
 
     const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });

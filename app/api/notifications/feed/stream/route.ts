@@ -15,10 +15,39 @@ function getRedis(): Redis | null {
   }
 }
 
+function emptyNotificationStream(): Response {
+  const encoder = new TextEncoder();
+  let closed = false;
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(": notifications-stream-disabled\n\n"));
+      const pingTimer = setInterval(() => {
+        if (closed) return;
+        controller.enqueue(encoder.encode(": ping\n\n"));
+      }, 30_000);
+      return () => {
+        closed = true;
+        clearInterval(pingTimer);
+      };
+    },
+    cancel() {
+      closed = true;
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-store, no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 export const GET = withWorkspacesAuth(async (_req, { userId }) => {
   const redis = getRedis();
   if (!redis) {
-    return new Response("SSE requires Upstash Redis (UPSTASH_REDIS_REST_URL)", { status: 503 });
+    return emptyNotificationStream();
   }
 
   const eventsKey = `notifications:${userId}:events`;

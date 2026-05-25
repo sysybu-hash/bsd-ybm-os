@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { toast } from "sonner";
-import { approvePendingRegistrationAction } from "@/app/actions/admin-subscriptions";
+import {
+  approvePendingRegistrationAction,
+  rejectPendingRegistrationAction,
+} from "@/app/actions/admin-subscriptions";
 import {
   listPendingRegistrationsAction,
   listUsersForAdminAction,
@@ -27,6 +31,7 @@ import { TABS, type TabId } from "./types";
 import { usePlatformAdminUtils } from "./usePlatformAdminUtils";
 
 export function usePlatformAdmin() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<TabId>("subscriptions");
   const [orgs, setOrgs] = useState<ExecutiveOrgRow[]>([]);
   const [pending, setPending] = useState<PendingRegistrationRow[]>([]);
@@ -159,8 +164,21 @@ export function usePlatformAdmin() {
   const handleApprovePending = async (userId: string) => {
     const r = await approvePendingRegistrationAction(userId, approveRole, approvePlan);
     if (!r.ok) { toast.error(r.error); return; }
-    toast.success("הרשמה אושרה");
+    toast.success(t("platformAdmin.pending.approved"));
     await loadPending(); await loadOrgs();
+  };
+
+  const handleRejectPending = async (userId: string, email: string) => {
+    if (!window.confirm(t("platformAdmin.pending.removeConfirm", { email }))) return;
+    setBusyAction(true);
+    try {
+      const r = await rejectPendingRegistrationAction(userId);
+      if (!r.ok) { toast.error(r.error); return; }
+      toast.success(t("platformAdmin.pending.removed"));
+      await loadPending(); await loadOrgs();
+    } finally {
+      setBusyAction(false);
+    }
   };
 
   const handleCreateOrg = async () => {
@@ -259,7 +277,7 @@ export function usePlatformAdmin() {
     provisionOrgId, setProvisionOrgId, provisionRole, setProvisionRole,
     provisionSendEmail, setProvisionSendEmail,
     health, envStatus, savingSettings,
-    handleSaveSubscription, handleAdjustScans, handleApprovePending,
+    handleSaveSubscription, handleAdjustScans, handleApprovePending, handleRejectPending,
     handleCreateOrg, handleDeleteOrg, handleDeleteUser, handleProvisionUser,
     savePlatformSettings, loadHealth,
     ...utils,

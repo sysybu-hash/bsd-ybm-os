@@ -88,13 +88,13 @@ export default function OSHeader({
     <header className="fixed inset-x-0 top-0 z-[1200] max-w-[100vw] border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">
       <div className="mx-auto flex min-h-[3.25rem] max-w-[88rem] items-center gap-2 sm:gap-3">
         {/* מיתוג */}
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          <BrandLogo size="md" className="shadow-indigo-600/20" priority />
-          <div className="min-w-0 hidden sm:block">
-            <p className="truncate text-[10px] font-semibold leading-tight text-[color:var(--foreground-muted)]">
-              {t("workspaceNav.logoSubtitle")}
-            </p>
-          </div>
+        <div className="flex min-w-0 flex-1 items-center">
+          <BrandLogo
+            size="sm"
+            className="items-center"
+            priority
+            subtitle={t("workspaceNav.logoSubtitle")}
+          />
         </div>
 
         {/* כלי עבודה מרכזיים */}

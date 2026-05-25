@@ -344,6 +344,22 @@ npx prisma generate
 
 Run this after any change to `prisma/schema.prisma` to regenerate the Prisma client types.
 
+### Field Copilot / «שגיאה ביצירת סשן»
+
+קופיילוט שטח דורש טבלאות `FieldCopilotSession` ו-`FieldCopilotAsset`. אחרי `git pull`:
+
+```bash
+npm run db:migrate
+npm run db:migrate:status   # WebSocket ל-Neon ב-Windows
+npx prisma generate
+```
+
+אל תשתמשו ב-`CREATE INDEX CONCURRENTLY` בתוך קבצי מיגרציה של Prisma — Neon מריץ מיגרציות ב-transaction. השתמשו ב-`CREATE INDEX IF NOT EXISTS` בלבד. ראו [PRODUCT-MAP.md](./PRODUCT-MAP.md).
+
+### NextAuth `CLIENT_FETCH_ERROR` (תשובה לא JSON)
+
+ודאו `NEXTAUTH_URL=http://localhost:3000` בפיתוח (לא רק `NEXT_PUBLIC_SITE_URL` של פרודקשן). אחרי עדכון קוד auth, `/api/auth/session` מחזיר JSON גם בשגיאת שרת.
+
 ### Hebrew text rendering is garbled
 
 The app uses **Heebo** (Hebrew) and **Assistant** (Latin) fonts from Google Fonts. They're configured in `app/layout.tsx`. If fonts don't load, check your internet connection or the `next.config.js` CSP headers.

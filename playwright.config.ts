@@ -45,6 +45,11 @@ function resolvePlaywrightHost(): string {
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ?? `http://${resolvePlaywrightHost()}:${playwrightPort}`;
 
+/** Local: dev server (no prior `next build`). CI: production server after build. */
+const defaultWebCommand = process.env.CI
+  ? `npm run build && npx next start -p ${playwrightPort}`
+  : `npx next dev -p ${playwrightPort}`;
+
 export default defineConfig({
   testDir: './e2e',
   timeout: process.env.CI ? 120_000 : 60_000,
@@ -99,7 +104,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {
-        command: process.env.PLAYWRIGHT_WEB_COMMAND ?? `npx next start -p ${playwrightPort}`,
+        command: process.env.PLAYWRIGHT_WEB_COMMAND ?? defaultWebCommand,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         stdout: "pipe",

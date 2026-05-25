@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mail, Phone, Edit3, Trash2, LayoutDashboard } from "lucide-react";
+import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import type { Client, OpenWorkspaceWidgetFn } from "./types";
 
@@ -123,6 +123,28 @@ export function CrmContactsTable({
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2 flex-wrap">
+                        {openWorkspaceWidget ? (
+                          <button
+                            type="button"
+                            title={t("workspaceWidgets.crmTable.openFieldCopilot")}
+                            aria-label={t("workspaceWidgets.crmTable.openFieldCopilot")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openWorkspaceWidget("fieldCopilot", {
+                                contactId: client.id,
+                                contactName: client.name,
+                                projectId: client.projectId ?? undefined,
+                                projectName: client.projectName ?? undefined,
+                              });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[10px] font-bold text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 transition-colors shrink-0"
+                          >
+                            <HardHat size={12} className="shrink-0" />
+                            <span className="hidden sm:inline">
+                              {t("workspaceWidgets.crmTable.openFieldCopilot")}
+                            </span>
+                          </button>
+                        ) : null}
                         {client.projectId && openWorkspaceWidget ? (
                           <button
                             type="button"

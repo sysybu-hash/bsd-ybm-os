@@ -41,4 +41,6 @@ export interface QueueItem {
 export type AiScannerWidgetProps = {
   liveData?: Record<string, unknown> | null;
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
+  /** מוצג כטאב בתוך documentsHub — ללא פתיחת חלון נפרד */
+  embeddedInHub?: boolean;
 };

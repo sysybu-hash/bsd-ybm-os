@@ -875,6 +875,17 @@
       "f3": "תמיכת VIP ואינטגרציות"
     }
   },
+  "platformAdmin": {
+    "pending": {
+      "approve": "אשר",
+      "remove": "הסר",
+      "empty": "אין הרשמות ממתינות",
+      "noOrg": "ללא ארגון",
+      "removeConfirm": "להסיר את ההרשמה של {email}? פעולה בלתי הפיכה.",
+      "removed": "ההרשמה הוסרה",
+      "approved": "הרשמה אושרה"
+    }
+  },
   "professions": {
     "GENERAL": {
       "label": "ניהול כללי",

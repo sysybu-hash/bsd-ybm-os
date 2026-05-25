@@ -1,50 +1,50 @@
-/** הודעות עברית לשגיאות Prisma/Postgres — בלי לחשוף host או סודות */
+import { Prisma } from "@prisma/client";
+
+/** הודעת שגיאה קריאה מ-Prisma / unknown (ללוגים ו-API). */
+export function prismaErrorMessage(err: unknown): string {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    const meta =
+      err.meta && typeof err.meta === "object" ? ` ${JSON.stringify(err.meta)}` : "";
+    return `${err.code}: ${err.message}${meta}`;
+  }
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    return err.message;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === "object" && err !== null) {
+    const o = err as { message?: unknown; code?: unknown };
+    if (typeof o.message === "string") return o.message;
+    if (typeof o.code === "string") return o.code;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
+export function prismaErrorCode(err: unknown): string | undefined {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    return err.code;
+  }
+  return undefined;
+}
+
+/** הודעה בעברית למשתמש; `null` אם אין מיפוי ידוע (ה-handler ישתמש בהודעה כללית). */
 export function getUserFacingDbErrorMessage(err: unknown): string | null {
-  const message =
-    err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
-  const lower = message.toLowerCase();
-
-  if (
-    lower.includes("can't reach database server") ||
-    lower.includes("p1001") ||
-    lower.includes("econnrefused") ||
-    lower.includes("etimedout") ||
-    lower.includes("enotfound")
-  ) {
-    return (
-      "לא ניתן להתחבר למסד הנתונים (Neon). " +
-      "היכנסו ללוח הבקרה של Neon, ודאו שהפרויקט פעיל (לא מושהה), " +
-      "העתיקו מחדש את מחרוזת החיבור ל־DATABASE_URL ב־.env.local, והפעילו מחדש את שרת הפיתוח."
-    );
+  const code = prismaErrorCode(err);
+  const message = prismaErrorMessage(err);
+  if (code === "P2003") {
+    return "חשבון לא מקושר לארגון פעיל. התנתקו והתחברו מחדש.";
   }
-
-  if (
-    lower.includes("p1000") ||
-    lower.includes("authentication failed") ||
-    lower.includes("password authentication failed")
-  ) {
-    return (
-      "שגיאת התחברות למסד הנתונים — הסיסמה ב־DATABASE_URL אינה תקינה. " +
-      "ב-Neon: Connect → Copy snippet, עדכנו את .env.local והפעילו מחדש את שרת הפיתוח."
-    );
+  if (code === "P2021" || /does not exist/i.test(message)) {
+    return "מסד הנתונים לא מעודכן. פנו למנהל המערכת או הריצו מיגרציות.";
   }
-
-  if (lower.includes("p1002") || lower.includes("p1017")) {
-    return "מסד הנתונים לא זמין כרגע. נסו שוב בעוד רגע.";
+  if (code === "P1001" || /can't reach|connection/i.test(message)) {
+    return "לא ניתן להתחבר למסד הנתונים. נסו שוב בעוד רגע.";
   }
-
-  if (
-    lower.includes("p2021") ||
-    lower.includes("p2022") ||
-    lower.includes("does not exist in the current database") ||
-    (lower.includes("table") && lower.includes("does not exist")) ||
-    (lower.includes("column") && lower.includes("does not exist"))
-  ) {
-    return (
-      "מבנה מסד הנתונים לא מעודכן (חסרות עמודות או טבלאות). " +
-      "הריצו prisma migrate deploy על בסיס הייצור או פנו למנהל המערכת."
-    );
-  }
-
   return null;
 }

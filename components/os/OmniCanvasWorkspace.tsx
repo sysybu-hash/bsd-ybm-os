@@ -9,10 +9,11 @@ import OmniCanvasWorkspaceBody from "@/components/os/navigation/OmniCanvasWorksp
 import OSDock from "@/components/os/layout/OSDock";
 import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
-import { LauncherConfigProvider } from "@/components/os/launcher/LauncherConfigProvider";
+import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
 import LauncherPickerSheet from "@/components/os/launcher/LauncherPickerSheet";
 import FirstDayWizard from "@/components/os/onboarding/FirstDayWizard";
+import LauncherV2MigrationBanner from "@/components/os/onboarding/LauncherV2MigrationBanner";
 import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import NotificationCenter from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
@@ -20,6 +21,81 @@ import KnowledgeVaultWorkspaceBridge from "@/components/os/KnowledgeVaultWorkspa
 import PwaInstallBanner from "@/components/os/system/PwaInstallBanner";
 import PasskeyOfferModal from "@/components/auth/PasskeyOfferModal";
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
+import type { WidgetType } from "@/hooks/use-window-manager";
+
+/** מסתיר את רail הסרגל בעריכת quick grid על מסך הבית — מונע כפילות UI */
+function OmniCanvasSidebarRail({
+  widgetsCount,
+  sidebarRailVisible,
+  hasMaximizedWidget,
+  sidebarRailPeek,
+  setSidebarRailPeek,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  openWidget,
+  sidebarAria,
+}: {
+  widgetsCount: number;
+  sidebarRailVisible: boolean;
+  hasMaximizedWidget: boolean;
+  sidebarRailPeek: boolean;
+  setSidebarRailPeek: (v: boolean) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (v: boolean) => void;
+  openWidget: (type: WidgetType) => void;
+  sidebarAria: string;
+}) {
+  const { editMode } = useLauncherConfig();
+  const hideForHomeGridEdit = editMode && widgetsCount === 0;
+  const railVisible = sidebarRailVisible && !hideForHomeGridEdit;
+
+  return (
+    <>
+      {hasMaximizedWidget && !sidebarRailPeek && railVisible ? (
+        <button
+          type="button"
+          className="os-sidebar-peek-rail fixed z-[1190] hidden md:block"
+          onMouseEnter={() => setSidebarRailPeek(true)}
+          onFocus={() => setSidebarRailPeek(true)}
+          aria-label={sidebarAria}
+        />
+      ) : null}
+
+      <OSSidebar
+        openWidget={(type) => {
+          openWidget(type);
+          setIsSidebarOpen(false);
+          setSidebarRailPeek(false);
+        }}
+        isOpen={isSidebarOpen}
+        closeSidebar={() => setIsSidebarOpen(false)}
+        hidden={!railVisible}
+        onMouseLeave={() => hasMaximizedWidget && setSidebarRailPeek(false)}
+      />
+    </>
+  );
+}
+
+function OmniCanvasWorkspaceInset({
+  widgetsCount,
+  sidebarRailVisible,
+  children,
+}: {
+  widgetsCount: number;
+  sidebarRailVisible: boolean;
+  children: React.ReactNode;
+}) {
+  const { editMode } = useLauncherConfig();
+  const padSidebar = sidebarRailVisible && !(editMode && widgetsCount === 0);
+
+  return (
+    <div
+      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function OmniCanvasWorkspace() {
   const s = useOmniCanvasState();
@@ -70,7 +146,12 @@ export default function OmniCanvasWorkspace() {
       <PasskeyOfferModal />
       <LauncherEditBanner />
       <LauncherPickerSheet />
-      <FirstDayWizard onOpenWidget={(type) => { openWidget(type); }} />
+      <LauncherV2MigrationBanner />
+      <FirstDayWizard
+        onOpenWidget={(type, data) => {
+          openWorkspaceWidget(type, data);
+        }}
+      />
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 
@@ -86,31 +167,19 @@ export default function OmniCanvasWorkspace() {
         onApplyScreenLayout={handleApplyScreenLayout}
       />
 
-      {hasMaximizedWidget && !sidebarRailPeek ? (
-        <button
-          type="button"
-          className="os-sidebar-peek-rail fixed z-[1190] hidden md:block"
-          onMouseEnter={() => setSidebarRailPeek(true)}
-          onFocus={() => setSidebarRailPeek(true)}
-          aria-label={t("workspaceWidgets.sidebar.aria")}
-        />
-      ) : null}
-
-      <OSSidebar
-        openWidget={(type) => {
-          openWidget(type);
-          setIsSidebarOpen(false);
-          setSidebarRailPeek(false);
-        }}
-        isOpen={isSidebarOpen}
-        closeSidebar={() => setIsSidebarOpen(false)}
-        hidden={!sidebarRailVisible}
-        onMouseLeave={() => hasMaximizedWidget && setSidebarRailPeek(false)}
+      <OmniCanvasSidebarRail
+        widgetsCount={widgets.length}
+        sidebarRailVisible={sidebarRailVisible}
+        hasMaximizedWidget={hasMaximizedWidget}
+        sidebarRailPeek={sidebarRailPeek}
+        setSidebarRailPeek={setSidebarRailPeek}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        openWidget={openWidget}
+        sidebarAria={t("workspaceWidgets.sidebar.aria")}
       />
 
-      <div
-        className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${sidebarRailVisible ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
-      >
+      <OmniCanvasWorkspaceInset widgetsCount={widgets.length} sidebarRailVisible={sidebarRailVisible}>
         <WorkspaceNavigationProvider>
           <Suspense fallback={null}>
             <OmniCanvasWorkspaceBody
@@ -127,7 +196,7 @@ export default function OmniCanvasWorkspace() {
             />
           </Suspense>
         </WorkspaceNavigationProvider>
-      </div>
+      </OmniCanvasWorkspaceInset>
 
       <OSDock
         systemMessage={systemMessage}

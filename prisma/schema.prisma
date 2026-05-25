@@ -89,6 +89,7 @@ model Organization {
   tasks                    Task[]
   users                    User[]
   documentDrafts           DocumentDraft[]
+  fieldCopilotSessions     FieldCopilotSession[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -506,6 +507,7 @@ model User {
   sessions           Session[]
   passkeys           UserPasskey[]
   passwordResetTokens PasswordResetToken[]
+  fieldCopilotSessions FieldCopilotSession[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   @@index([lastLoginAt])
@@ -1160,4 +1162,63 @@ model PlatformSettings {
   id         String   @id @default("default")
   configJson Json
   updatedAt  DateTime @updatedAt
+}
+
+enum FieldCopilotSessionStatus {
+  DRAFT
+  ANALYZING
+  READY
+  HANDED_OFF
+  ARCHIVED
+}
+
+/// סשן קופיילוט שטח — לכידה, ניתוח והפקת הצעה
+model FieldCopilotSession {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  userId            String
+  contactId         String?
+  projectId         String?
+  contactName       String?
+  projectName       String?
+  constructionTrade String?
+  transcript        String?                   @db.Text
+  userNotes         String?                   @db.Text
+  videoAssetId      String?
+  analysisJson      Json?
+  scopeSummary      String?                   @db.Text
+  assumptionsJson   Json                      @default("[]")
+  status            FieldCopilotSessionStatus @default(DRAFT)
+  handedOffAt       DateTime?
+  issuedDocumentId  String?
+  quoteId           String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets            FieldCopilotAsset[]
+
+  @@index([organizationId, userId])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+}
+
+/// נכסי לכידה (תמונה / keyframe) — base64 ב-DB לסביבת serverless
+model FieldCopilotAsset {
+  id                 String              @id @default(cuid())
+  sessionId          String
+  organizationId     String
+  mimeType           String
+  kind               String
+  dataBase64         String              @db.Text
+  driveFileId        String?
+  driveWebViewLink   String?
+  driveFolderId      String?
+  driveArchiveStatus String?
+  driveError         String?
+  createdAt          DateTime            @default(now())
+  session            FieldCopilotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([organizationId])
 }

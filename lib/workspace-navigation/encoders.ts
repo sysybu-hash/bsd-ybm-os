@@ -52,6 +52,25 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
       const id = state.projectId as string | undefined;
       return id ? `p:${id}` : null;
     }
+    case "fieldCopilot": {
+      const sessionId = state.sessionId as string | undefined;
+      const step = state.step as number | undefined;
+      if (sessionId) return `s:${sessionId}${step != null ? `,step:${step}` : ""}`;
+      return step != null ? `step:${step}` : null;
+    }
+    case "financeHub":
+    case "documentsHub":
+    case "aiHub": {
+      const tab = state.tab as string | undefined;
+      return tab?.trim() ? `t:${tab.trim()}` : null;
+    }
+    case "projectsHub": {
+      const parts: string[] = [];
+      const tab = state.tab as string | undefined;
+      if (tab?.trim()) parts.push(`t:${tab.trim()}`);
+      if (state.projectId) parts.push(`p:${String(state.projectId)}`);
+      return parts.length ? parts.join(",") : null;
+    }
     default:
       return null;
   }
@@ -94,6 +113,28 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
       return { segment: raw };
     case "project":
       return raw.startsWith("p:") ? { projectId: raw.slice(2) } : null;
+    case "fieldCopilot": {
+      const state: WidgetViewState = {};
+      for (const part of raw.split(",")) {
+        if (part.startsWith("s:")) state.sessionId = part.slice(2);
+        else if (part.startsWith("step:")) state.step = Number(part.slice(5)) || 0;
+      }
+      return Object.keys(state).length > 0 ? state : null;
+    }
+    case "financeHub":
+    case "documentsHub":
+    case "aiHub": {
+      if (raw.startsWith("t:")) return { tab: raw.slice(2) };
+      return { tab: raw };
+    }
+    case "projectsHub": {
+      const state: WidgetViewState = {};
+      for (const part of raw.split(",")) {
+        if (part.startsWith("t:")) state.tab = part.slice(2);
+        else if (part.startsWith("p:")) state.projectId = part.slice(2);
+      }
+      return Object.keys(state).length > 0 ? state : null;
+    }
     default:
       return null;
   }

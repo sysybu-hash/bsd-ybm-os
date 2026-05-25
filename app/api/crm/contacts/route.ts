@@ -27,7 +27,15 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
 
   const where = {
     organizationId: orgId,
-    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { notes: { contains: q, mode: "insensitive" as const } },
+            { project: { name: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
   };
 
   const total = await prisma.contact.count({ where });

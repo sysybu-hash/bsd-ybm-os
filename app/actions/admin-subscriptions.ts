@@ -12,10 +12,14 @@ import {
   sendAccessApprovedEmail,
 } from "@/lib/mail";
 import { isAdmin } from "@/lib/is-admin";
+import { createLogger } from "@/lib/logger";
+import { deleteOrganizationCascade } from "@/lib/organization-delete-cascade";
 import {
   defaultScanBalancesForTier,
   parseSubscriptionTier,
 } from "@/lib/subscription-tier-config";
+
+const log = createLogger("admin-subscriptions");
 
 /** אישור מנויים / ניהול לקוחות — רק OS Owner */
 async function requireOSOwner() {
@@ -144,8 +148,65 @@ export async function approvePendingRegistrationAction(
     ]).catch((err) => console.error("access-approved emails", err));
 
     return { ok: true };
-  } catch {
+  } catch (err: unknown) {
+    log.error("approve_pending_failed", {
+      userId,
+      message: err instanceof Error ? err.message : String(err),
+    });
     return { ok: false, error: "אישור הרשמה נכשל" };
+  }
+}
+
+export async function rejectPendingRegistrationAction(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireOSOwner();
+  if (!session) return { ok: false, error: "אין הרשאה" };
+  if (!userId) return { ok: false, error: "חסר מזהה משתמש" };
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      accountStatus: true,
+      organizationId: true,
+      organization: { select: { subscriptionStatus: true } },
+    },
+  });
+  if (!user) return { ok: false, error: "משתמש לא נמצא" };
+  if (user.accountStatus !== AccountStatus.PENDING_APPROVAL) {
+    return { ok: false, error: "המשתמש אינו ממתין לאישור" };
+  }
+  if (isAdmin(user.email)) {
+    return { ok: false, error: "לא ניתן להסיר משתמש מנהל מערכת" };
+  }
+
+  try {
+    if (user.organizationId && user.organization?.subscriptionStatus === "PENDING_APPROVAL") {
+      const userCount = await prisma.user.count({
+        where: { organizationId: user.organizationId },
+      });
+      if (userCount <= 1) {
+        await deleteOrganizationCascade(user.organizationId);
+      } else {
+        await prisma.user.delete({ where: { id: user.id } });
+      }
+    } else {
+      await prisma.user.delete({ where: { id: user.id } });
+    }
+
+    revalidatePath("/app/admin");
+    revalidatePath("/app/documents/erp");
+    revalidatePath("/app/settings/billing");
+    revalidatePath("/app/settings/overview");
+    return { ok: true };
+  } catch (err: unknown) {
+    log.error("reject_pending_failed", {
+      userId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false, error: "הסרת הרשמה נכשלה" };
   }
 }
 

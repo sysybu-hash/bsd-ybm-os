@@ -42,7 +42,7 @@ export function normalizeSessionRequest(body: unknown): {
 
 export function buildLiveConnectConfig(settings: GeminiLiveVoiceSettings) {
   return {
-    sessionResumption: {},
+    ...(settings.sessionResumptionEnabled ? { sessionResumption: {} } : {}),
     temperature: settings.temperature,
     responseModalities: liveModalitiesFromSettings(settings),
   };

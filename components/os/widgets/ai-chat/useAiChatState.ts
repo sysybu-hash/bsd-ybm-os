@@ -18,7 +18,11 @@ import {
   resolveGeminiLiveOrgId,
 } from "@/lib/gemini-live/eligibility";
 import { toast } from "sonner";
-import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
+import { formatGeminiLiveRateLimitMessage } from "@/lib/gemini-live-user-message";
+import {
+  getGeminiLiveRateLimitCooldownUntilMs,
+  isGeminiLiveRateLimited,
+} from "@/lib/gemini-live/rate-limit-cooldown";
 import { formatChatTime, type Message } from "./types";
 
 const LIVE_USER_DRAFT_ID = "gemini-live-user-draft";
@@ -136,6 +140,7 @@ export function useAiChatState(
     locale,
     userName: liveUserName,
     greetOnConnect: true,
+    translate: t,
     statusLabels: liveStatusLabels,
     onUserTranscript: (text, finished) => {
       setMessages((prev) => upsertLiveTranscriptMessage(prev, LIVE_USER_DRAFT_ID, "user", text, finished, locale));
@@ -152,8 +157,13 @@ export function useAiChatState(
       else if (text && !text.startsWith("לא ") && !text.startsWith("שגיאה") && !text.toLowerCase().startsWith("error")) toast.success(text);
       return result;
     },
-    onError: (message) =>
-      toast.error(formatGeminiLiveUserMessage(message, t)),
+    onError: (message) => {
+      toast.error(message);
+      if (isGeminiLiveRateLimited()) {
+        liveAutoStartRef.current = false;
+        setIsLiveMode(false);
+      }
+    },
   });
 
   const { isLiveActive, start, stop, acknowledgeContextReady } = geminiLive;
@@ -161,14 +171,23 @@ export function useAiChatState(
   useEffect(() => { if (!isLiveMode && isLiveActive) stop(); }, [isLiveMode, isLiveActive, stop]);
   useEffect(() => {
     if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !liveContextReady) return;
+    if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
     void start();
-  }, [liveData?.startLive, isLiveMode, isLiveActive, liveContextReady, start]);
+  }, [
+    liveData?.startLive,
+    isLiveMode,
+    isLiveActive,
+    liveContextReady,
+    geminiLive.isRateLimited,
+    start,
+  ]);
   useEffect(() => {
     if (chatTab !== "live") {
       liveAutoStartRef.current = false;
       return;
     }
     if (!isLiveMode || !geminiLiveEligible || !liveContextReady) return;
+    if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
     if (isLiveActive || geminiLive.state === "connecting") return;
     if (geminiLive.state === "fallback" || geminiLive.state === "error") return;
     if (liveAutoStartRef.current) return;
@@ -180,11 +199,18 @@ export function useAiChatState(
     geminiLiveEligible,
     liveContextReady,
     isLiveActive,
+    geminiLive.isRateLimited,
     geminiLive.state,
     start,
   ]);
 
   const beginLiveSession = useCallback(async () => {
+    if (isGeminiLiveRateLimited()) {
+      const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
+      const retryAt = untilMs != null ? new Date(untilMs) : new Date(Date.now() + 60_000);
+      toast.error(formatGeminiLiveRateLimitMessage(retryAt, locale, t));
+      return;
+    }
     setIsLiveMode(true);
     const contextOk = liveContextReady || (await osAssistant.refresh());
     if (!contextOk) {

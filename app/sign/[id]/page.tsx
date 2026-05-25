@@ -150,9 +150,9 @@ export default function SigningPage() {
         <Toaster position="top-center" />
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
-          <div className="flex items-center gap-3">
-            <BrandLogo size="md" />
-            <div>
+          <div className="flex items-center gap-4">
+            <BrandLogo size="md" className="shrink-0" />
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold text-white">חתימה על מסמך</h1>
               <p className="text-xs text-slate-500">מערכת חתימה מאובטחת</p>
             </div>

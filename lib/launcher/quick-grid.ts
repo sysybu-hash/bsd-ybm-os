@@ -7,6 +7,9 @@ export const LAUNCHER_TILE_PX = 140;
 export const LAUNCHER_GRID_GAP_PX = 12;
 /** שורות מינימליות במצב עריכה — קנבס גלילה כמו מסך בית נייד */
 export const LAUNCHER_GRID_MIN_EDIT_ROWS = 6;
+/** תקרת עמודות/שורות במצב עריכה — מונע מילוי מסך בתאי "הוסף אפליקציה" */
+export const LAUNCHER_GRID_MAX_EDIT_COLS = 10;
+export const LAUNCHER_GRID_MAX_EDIT_ROWS = 9;
 
 /** ממדים דינמיים לפי שטח זמין (תא 140px + רווח) */
 export function computeQuickGridDimensions(
@@ -148,20 +151,53 @@ export function quickGridSlotsForView(slots: LauncherSlot[]): LauncherSlot[] {
   return ensureQuickGridPositions(slots).filter((s) => s.widgetId !== null);
 }
 
-/** מטריצה לעריכה — כולל תאים ריקים */
+/**
+ * גודל רשת עריכה — תיבת תוכן צמודה לאריחים + שורה/עמודה ריקה אחת לכל היותר.
+ * לא ממלא את המסך ולא כופה מינימום 6×7 (שגרם לשורות ריקות רבות).
+ */
+export function getQuickGridEditExtents(
+  slots: LauncherSlot[],
+  extraPadding = true,
+): { rows: number; cols: number } {
+  const positioned = ensureQuickGridPositions(slots);
+  let maxRow = -1;
+  let maxCol = -1;
+  let hasWidget = false;
+
+  for (const s of positioned) {
+    if (!slotHasGridPosition(s) || !s.widgetId) continue;
+    hasWidget = true;
+    maxRow = Math.max(maxRow, s.row!);
+    maxCol = Math.max(maxCol, s.col!);
+  }
+
+  const pad = extraPadding ? 1 : 0;
+
+  if (!hasWidget) {
+    return {
+      rows: Math.min(2 + pad, LAUNCHER_GRID_MAX_EDIT_ROWS),
+      cols: Math.min(4 + pad, LAUNCHER_GRID_MAX_EDIT_COLS),
+    };
+  }
+
+  return {
+    rows: Math.min(maxRow + 1 + pad, LAUNCHER_GRID_MAX_EDIT_ROWS),
+    cols: Math.min(maxCol + 1 + pad, LAUNCHER_GRID_MAX_EDIT_COLS),
+  };
+}
+
+/** מטריצה לעריכה — כולל תאים ריקים בתוך תיבת התוכן בלבד */
 export function buildQuickGridEditMatrix(
   slots: LauncherSlot[],
   extraEmptyRow = true,
-  canvas?: { cols: number; rows: number },
+  /** @deprecated ignored — retained for call-site compatibility */
+  _canvas?: { cols: number; rows: number },
 ): QuickGridCell[][] {
   const positioned = ensureQuickGridPositions(slots);
-  const extents = getQuickGridExtents(
+  const { rows: totalRows, cols: totalCols } = getQuickGridEditExtents(
     positioned,
-    canvas ? { cols: canvas.cols, rows: canvas.rows } : undefined,
+    extraEmptyRow,
   );
-  const baseRows = extraEmptyRow ? extents.rows + 1 : extents.rows;
-  const totalRows = Math.max(baseRows, canvas?.rows ?? LAUNCHER_GRID_MIN_EDIT_ROWS);
-  const totalCols = Math.max(extents.cols, canvas?.cols ?? LAUNCHER_GRID_COLS);
   const matrix: QuickGridCell[][] = Array.from({ length: totalRows }, (_, row) =>
     Array.from({ length: totalCols }, (_, col) => ({
       row,

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
-import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTenant } from "@/components/tenant/TenantContext";
@@ -105,7 +104,11 @@ export default function AuthExperience() {
 
       <section className="landing-reveal relative z-[1] grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-2xl backdrop-blur-md md:grid-cols-[0.92fr_1.08fr]">
         <div className="border-b border-[color:var(--border-main)] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-8 text-white md:border-b-0 md:border-s">
-          <BrandLogo size="xl" className="mb-8 shadow-lg shadow-black/40" priority />
+          <BrandHomeLink
+            size="xl"
+            className="mb-8 items-start pointer-events-none"
+            priority
+          />
           {tenant?.branding.landingTitle ? (
             <p className="mb-3 text-lg font-black">{tenant.branding.landingTitle}</p>
           ) : null}

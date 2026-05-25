@@ -26,11 +26,12 @@ export const GEMINI_BLUEPRINT_PRIMARY_MODEL = "gemini-3.5-flash";
  */
 export const GEMINI_LIVE_NATIVE_AUDIO_MODEL = "gemini-2.5-flash-native-audio-latest";
 
+/** יציב ראשון — preview models עלולים להחזיר Internal error ב-WebSocket. */
 export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
-  "gemini-3.1-flash-live-preview",
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
   "gemini-2.5-flash-native-audio-preview-12-2025",
   "gemini-2.5-flash-native-audio-preview-09-2025",
+  "gemini-3.1-flash-live-preview",
 ] as const;
 
 /** שרשרת טקסט (צ'אט, מסמכים) */

@@ -2,12 +2,16 @@ import {
   buildQuickGridEditMatrix,
   computeQuickGridDimensions,
   ensureQuickGridPositions,
+  getQuickGridEditExtents,
   LAUNCHER_GRID_COLS,
+  LAUNCHER_GRID_MAX_EDIT_COLS,
+  LAUNCHER_GRID_MAX_EDIT_ROWS,
   LAUNCHER_GRID_MIN_EDIT_ROWS,
   moveQuickGridSlot,
   quickGridSlotsForView,
   quickGridUsesCoordinates,
 } from "@/lib/launcher/quick-grid";
+import { DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
 import type { LauncherSlot } from "@/lib/launcher/user-launcher-config";
 
 describe("ensureQuickGridPositions", () => {
@@ -68,32 +72,42 @@ describe("computeQuickGridDimensions", () => {
 });
 
 describe("buildQuickGridEditMatrix", () => {
-  it("includes empty trailing row for drops", () => {
+  it("sizes edit grid tightly around widget positions plus one padding row", () => {
     const matrix = buildQuickGridEditMatrix(
       [{ widgetId: "dashboard", row: 0, col: 3 }],
       true,
     );
-    expect(matrix.length).toBeGreaterThan(1);
+    expect(matrix.length).toBe(2);
+    expect(matrix[0]?.length).toBe(5);
     const emptyCells = matrix.flat().filter((c) => c.widgetId === null);
     expect(emptyCells.length).toBeGreaterThan(0);
   });
 
-  it("renders at least LAUNCHER_GRID_MIN_EDIT_ROWS rows", () => {
-    const matrix = buildQuickGridEditMatrix(
-      [{ widgetId: "dashboard", row: 0, col: 0 }],
-      true,
-    );
-    expect(matrix.length).toBeGreaterThanOrEqual(LAUNCHER_GRID_MIN_EDIT_ROWS);
+  it("sizes default quick grid edit to content plus padding not min 6 rows", () => {
+    const extents = getQuickGridEditExtents(DEFAULT_QUICK_GRID, true);
+    expect(extents.rows).toBe(3);
+    expect(extents.cols).toBe(4);
+
+    const matrix = buildQuickGridEditMatrix(DEFAULT_QUICK_GRID, true);
+    expect(matrix.length).toBe(3);
+    expect(matrix[0]?.length).toBe(4);
   });
 
-  it("uses canvas cols for wide edit surface", () => {
+  it("caps edit grid size and ignores viewport canvas", () => {
+    const extents = getQuickGridEditExtents(DEFAULT_QUICK_GRID, true);
+    expect(extents.cols).toBeLessThanOrEqual(LAUNCHER_GRID_MAX_EDIT_COLS);
+    expect(extents.rows).toBeLessThanOrEqual(LAUNCHER_GRID_MAX_EDIT_ROWS);
+
     const matrix = buildQuickGridEditMatrix(
       [{ widgetId: "dashboard", row: 0, col: 0 }],
       true,
       { cols: 12, rows: 8 },
     );
-    expect(matrix[0]?.length).toBe(12);
-    expect(matrix.length).toBeGreaterThanOrEqual(8);
+    expect(matrix[0]?.length).toBeLessThanOrEqual(LAUNCHER_GRID_MAX_EDIT_COLS);
+    expect(matrix.length).toBeLessThanOrEqual(LAUNCHER_GRID_MAX_EDIT_ROWS);
+    expect(matrix.flat()).toHaveLength(
+      matrix.length * (matrix[0]?.length ?? 0),
+    );
   });
 
   it("allows bottom-left placement coordinates", () => {

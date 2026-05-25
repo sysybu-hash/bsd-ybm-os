@@ -7,6 +7,7 @@ import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription
 import { normalizeIndustryType } from "@/lib/professions/config";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { usePlatformAdmin } from "./platform-admin/usePlatformAdmin";
 import { SubscriptionsTab } from "./platform-admin/SubscriptionsTab";
 import { UsersTab } from "./platform-admin/UsersTab";
@@ -14,6 +15,7 @@ import { SettingsTab } from "./platform-admin/SettingsTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
+  const { t } = useI18n();
   const p = usePlatformAdmin();
 
   const shellClass =
@@ -128,7 +130,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
               </label>
             </div>
             {p.pending.length === 0 ? (
-              <p className="text-sm text-[color:var(--foreground-muted)]">אין הרשמות ממתינות</p>
+              <p className="text-sm text-[color:var(--foreground-muted)]">{t("platformAdmin.pending.empty")}</p>
             ) : (
               <ul className="space-y-2">
                 {p.pending.map((u) => (
@@ -136,7 +138,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                     <div>
                       <p className="font-bold">{u.email}</p>
                       <p className="text-xs text-[color:var(--foreground-muted)]">
-                        {u.organizationName ?? "ללא ארגון"}
+                        {u.organizationName ?? t("platformAdmin.pending.noOrg")}
                         {u.organizationIndustry ? (
                           <span className="me-1 rounded bg-[color:var(--surface-soft)] px-1.5 py-0.5 font-bold">
                             {normalizeIndustryType(u.organizationIndustry) === "COMPANY_MGMT" ? "ניהול עסק" : "בנייה"}
@@ -145,9 +147,24 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                         {" · "}{new Date(u.createdAt).toLocaleString("he-IL")}
                       </p>
                     </div>
-                    <button type="button" onClick={() => void p.handleApprovePending(u.id)} className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white">
-                      אשר
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={p.busyAction}
+                        onClick={() => void p.handleRejectPending(u.id, u.email)}
+                        className="rounded-lg border border-rose-500/40 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
+                      >
+                        {t("platformAdmin.pending.remove")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={p.busyAction}
+                        onClick={() => void p.handleApprovePending(u.id)}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                      >
+                        {t("platformAdmin.pending.approve")}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

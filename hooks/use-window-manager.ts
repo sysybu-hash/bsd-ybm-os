@@ -10,7 +10,32 @@ import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generat
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
 import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
 
-export type WidgetType = 'project' | 'cashflow' | 'aiChat' | 'crm' | 'dashboard' | 'erp' | 'quoteGen' | 'aiScanner' | 'projectBoard' | 'crmTable' | 'erpArchive' | 'docCreator' | 'aiChatFull' | 'settings' | 'meckanoReports' | 'googleDrive' | 'notebookLM' | 'accessibility' | 'platformAdmin' | 'helpCenter';
+export type WidgetType =
+  | 'project'
+  | 'cashflow'
+  | 'aiChat'
+  | 'crm'
+  | 'dashboard'
+  | 'erp'
+  | 'quoteGen'
+  | 'aiScanner'
+  | 'projectBoard'
+  | 'crmTable'
+  | 'erpArchive'
+  | 'docCreator'
+  | 'aiChatFull'
+  | 'settings'
+  | 'meckanoReports'
+  | 'googleDrive'
+  | 'notebookLM'
+  | 'accessibility'
+  | 'platformAdmin'
+  | 'helpCenter'
+  | 'fieldCopilot'
+  | 'financeHub'
+  | 'projectsHub'
+  | 'documentsHub'
+  | 'aiHub';
 
 export interface ActiveWidget {
   id: string;
@@ -49,6 +74,11 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   accessibility: { width: 420, height: 560 },
   platformAdmin: { width: 1100, height: 780 },
   helpCenter: { width: 920, height: 720 },
+  fieldCopilot: { width: 920, height: 820 },
+  financeHub: { width: 1040, height: 780 },
+  projectsHub: { width: 1120, height: 780 },
+  documentsHub: { width: 1040, height: 780 },
+  aiHub: { width: 720, height: 750 },
 };
 
 export function useWindowManager() {
@@ -142,11 +172,8 @@ export function useWindowManager() {
       return [...prev, next];
     });
 
-    void import("@/lib/analytics/posthog-client").then(({ captureProductEvent }) => {
-      captureProductEvent("widget_opened", {
-        widget_type: type,
-        mobile: mobile ? "1" : "0",
-      });
+    void import("@/lib/analytics/workspace-events").then(({ trackWidgetOpened }) => {
+      trackWidgetOpened(type, { source: "launcher", mobile });
     });
     return id;
   }, []);

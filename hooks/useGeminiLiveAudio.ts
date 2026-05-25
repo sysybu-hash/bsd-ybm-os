@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
-import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
+import {
+  formatGeminiLiveUserMessage,
+  parseGeminiLiveRetryAt,
+} from "@/lib/gemini-live-user-message";
+import {
+  clearGeminiLiveRateLimitCooldown,
+  getGeminiLiveRateLimitCooldownUntilMs,
+  setGeminiLiveRateLimitCooldown,
+} from "@/lib/gemini-live/rate-limit-cooldown";
 import { buildClientLiveSetupMessage } from "@/lib/gemini-live/client-setup";
 import { mergeTranscriptChunk } from "@/lib/gemini-live/merge-transcript-chunk";
 import { buildGeminiLiveSessionStartUserTurn } from "@/lib/gemini-live/session-greeting";
@@ -92,6 +100,8 @@ type GeminiLiveOptions = {
   greetOnConnect?: boolean;
   /** כש-false — לא מתחיל חיבור (ממתין להקשר מערכת מהשרת) */
   contextReady?: boolean;
+  /** תרגום i18n להודעות שגיאה (מפתחות workspaceWidgets.aiChat.*) */
+  translate?: (key: string) => string;
 };
 
 type TokenResponse = {
@@ -100,6 +110,8 @@ type TokenResponse = {
   embeddedSetup?: boolean;
   error?: string;
   code?: string;
+  resetAt?: string;
+  retryAfter?: number;
 };
 
 const log = createLogger("gemini-live-client");
@@ -243,6 +255,17 @@ async function fetchLiveSessionToken(
   });
   const tokenData = (await tokenResponse.json().catch(() => ({}))) as TokenResponse;
   if (!tokenResponse.ok || !tokenData.token) {
+    if (tokenResponse.status === 429 || tokenData.code === "rate_limited") {
+      const retryAt =
+        parseGeminiLiveRetryAt(tokenData.error ?? "", {
+          resetAt: tokenData.resetAt,
+          retryAfterSec: tokenData.retryAfter,
+        }) ?? new Date(Date.now() + 60_000);
+      throw Object.assign(new Error("rate_limited"), {
+        retryAt,
+        rateLimited: true as const,
+      });
+    }
     if (tokenResponse.status === 403) {
       throw new Error(
         tokenData.error ?? "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
@@ -329,6 +352,7 @@ export function useGeminiLiveAudio({
   userName,
   greetOnConnect = true,
   contextReady = true,
+  translate,
 }: GeminiLiveOptions) {
   const statusLabels = useMemo(
     () => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }),
@@ -339,6 +363,10 @@ export function useGeminiLiveAudio({
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
   const [model, setModel] = useState("gemini-2.5-flash-native-audio-latest");
   const [lastTranscript, setLastTranscript] = useState("");
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<Date | null>(() => {
+    const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
+    return untilMs != null ? new Date(untilMs) : null;
+  });
 
   const webSocketRef = useRef<WebSocket | null>(null);
   const captureContextRef = useRef<AudioContext | null>(null);
@@ -368,6 +396,35 @@ export function useGeminiLiveAudio({
   } | null>(null);
   const setupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startInFlightRef = useRef(false);
+  const startAttemptIdRef = useRef(0);
+  const lastErrorNotifiedRef = useRef<string | null>(null);
+
+  const applyRateLimitCooldown = useCallback((retryAt: Date) => {
+    setGeminiLiveRateLimitCooldown(retryAt);
+    setRateLimitedUntil(retryAt);
+  }, []);
+
+  const notifyLiveError = useCallback(
+    (raw: string, nextState: GeminiLiveState = "error", meta?: { retryAt?: Date }) => {
+      const retryAt =
+        meta?.retryAt ?? parseGeminiLiveRetryAt(raw, undefined) ?? null;
+      if (retryAt && retryAt.getTime() > Date.now()) {
+        applyRateLimitCooldown(retryAt);
+      }
+      const friendly = formatGeminiLiveUserMessage(raw, translate, {
+        locale,
+        retryAt,
+      });
+      const fingerprint = `${startAttemptIdRef.current}:${friendly}`;
+      if (lastErrorNotifiedRef.current === fingerprint) return;
+      lastErrorNotifiedRef.current = fingerprint;
+      intentionalStopRef.current = true;
+      setState(nextState);
+      setStatusText(friendly);
+      onError?.(friendly);
+    },
+    [applyRateLimitCooldown, locale, onError, translate],
+  );
 
   const clearSetupWaiter = useCallback((rejectReason?: Error) => {
     if (setupTimeoutRef.current) {
@@ -513,7 +570,11 @@ export function useGeminiLiveAudio({
       }
 
       if ("error" in message && message.error?.message) {
-        throw new Error(message.error.message);
+        log.error("live websocket error message", { message: message.error.message });
+        intentionalStopRef.current = true;
+        notifyLiveError(message.error.message);
+        webSocketRef.current?.close();
+        return;
       }
 
       if ("setupComplete" in message && message.setupComplete !== undefined) {
@@ -619,6 +680,7 @@ export function useGeminiLiveAudio({
 
     },
     [
+      notifyLiveError,
       onModelTranscript,
       onUserTranscript,
       onToolCall,
@@ -635,6 +697,18 @@ export function useGeminiLiveAudio({
       return false;
     }
     if (!contextReady && !contextReadyLatchRef.current) {
+      return false;
+    }
+    const cooldownMs = getGeminiLiveRateLimitCooldownUntilMs();
+    if (cooldownMs != null) {
+      const retryAt = new Date(cooldownMs);
+      setRateLimitedUntil(retryAt);
+      const friendly = formatGeminiLiveUserMessage("rate_limited", translate, {
+        locale,
+        retryAt,
+      });
+      setState("error");
+      setStatusText(friendly);
       return false;
     }
     if (startInFlightRef.current) {
@@ -655,6 +729,8 @@ export function useGeminiLiveAudio({
     }
 
     cleanup();
+    startAttemptIdRef.current += 1;
+    lastErrorNotifiedRef.current = null;
     startInFlightRef.current = true;
     intentionalStopRef.current = false;
     sessionReadyRef.current = false;
@@ -719,26 +795,22 @@ export function useGeminiLiveAudio({
       socket.onmessage = (event) => {
         void handleLiveMessage(event).catch((error: unknown) => {
           const raw = error instanceof Error ? error.message : String(error);
-          const friendly = formatGeminiLiveUserMessage(raw);
-          setState("error");
-          setStatusText(friendly);
-          onError?.(friendly);
+          log.error("live message handler failed", { message: raw });
+          intentionalStopRef.current = true;
+          notifyLiveError(raw);
         });
       };
       socket.onclose = (closeEvent) => {
         sessionReadyRef.current = false;
-        if (!intentionalStopRef.current) {
+        if (!intentionalStopRef.current && lastErrorNotifiedRef.current === null) {
           const closeDetail =
             closeEvent.reason?.trim() ||
             (closeEvent.code === 1006
               ? "חיבור Gemini Live נותק באופן בלתי צפוי (1006)"
               : `חיבור Gemini Live נסגר (קוד ${closeEvent.code})`);
           clearSetupWaiter(new Error(closeDetail));
-          const friendly = formatGeminiLiveUserMessage(closeDetail);
-          setState("error");
-          setStatusText(friendly);
-          onError?.(friendly);
-        } else if (state !== "idle") {
+          notifyLiveError(closeDetail);
+        } else if (state !== "idle" && intentionalStopRef.current) {
           setStatusText(statusLabels.disconnected);
         }
       };
@@ -830,11 +902,23 @@ export function useGeminiLiveAudio({
     } catch (error) {
       cleanup();
       const raw = error instanceof Error ? error.message : String(error);
-      log.error("live session start failed", { message: raw });
-      const friendly = formatGeminiLiveUserMessage(raw);
-      setState("fallback");
-      setStatusText(friendly);
-      onError?.(friendly);
+      const rateLimited =
+        typeof error === "object" &&
+        error !== null &&
+        "rateLimited" in error &&
+        (error as { rateLimited?: boolean }).rateLimited === true;
+      const retryAt =
+        rateLimited &&
+        typeof error === "object" &&
+        error !== null &&
+        "retryAt" in error &&
+        (error as { retryAt?: Date }).retryAt instanceof Date
+          ? (error as { retryAt: Date }).retryAt
+          : parseGeminiLiveRetryAt(raw);
+      log.error("live session start failed", { message: raw, rateLimited });
+      notifyLiveError(raw, rateLimited ? "error" : "fallback", {
+        retryAt: retryAt ?? undefined,
+      });
       return false;
     } finally {
       startInFlightRef.current = false;
@@ -845,6 +929,7 @@ export function useGeminiLiveAudio({
     enabled,
     handleLiveMessage,
     model,
+    notifyLiveError,
     onError,
     clearSetupWaiter,
     settings,
@@ -887,6 +972,28 @@ export function useGeminiLiveAudio({
 
   useEffect(() => stop, [stop]);
 
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    const ms = rateLimitedUntil.getTime() - Date.now();
+    if (ms <= 0) {
+      clearGeminiLiveRateLimitCooldown();
+      setRateLimitedUntil(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      clearGeminiLiveRateLimitCooldown();
+      setRateLimitedUntil(null);
+      if (state === "error") {
+        setState("idle");
+        setStatusText(statusLabels.ready);
+      }
+    }, ms + 50);
+    return () => window.clearTimeout(timer);
+  }, [rateLimitedUntil, state, statusLabels.ready]);
+
+  const isRateLimited =
+    rateLimitedUntil != null && rateLimitedUntil.getTime() > Date.now();
+
   return {
     state,
     statusText,
@@ -895,6 +1002,8 @@ export function useGeminiLiveAudio({
     isLiveActive: state === "connecting" || state === "ready" || state === "streaming",
     isListening: state === "streaming" && !isModelSpeaking,
     isSpeaking: state === "streaming" && isModelSpeaking,
+    isRateLimited,
+    rateLimitedUntil,
     start,
     stop,
     acknowledgeContextReady,

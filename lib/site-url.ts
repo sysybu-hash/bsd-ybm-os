@@ -4,14 +4,18 @@ export const PRODUCTION_SITE_URL = "https://www.bsd-ybm.co.il";
 
 /**
  * כתובת בסיס ל-NextAuth / OAuth — תמיד HTTPS בפרודקשן.
- * סדר עדיפות: NEXTAUTH_URL → AUTH_URL → NEXT_PUBLIC_SITE_URL → VERCEL_URL
+ * סדר עדיפות: NEXTAUTH_URL → AUTH_URL → (פרודקשן) NEXT_PUBLIC_SITE_URL → VERCEL_URL
+ *
+ * בפיתוח לא משתמשים ב-NEXT_PUBLIC_SITE_URL — לעיתים מוגדר לדומיין ייצור ושובר OAuth מול localhost.
  */
 export function resolveSiteBaseUrl(): string | undefined {
-  const candidates = [
+  const candidates: (string | undefined)[] = [
     process.env.NEXTAUTH_URL,
     process.env.AUTH_URL,
-    process.env.NEXT_PUBLIC_SITE_URL,
   ];
+  if (process.env.NODE_ENV === "production") {
+    candidates.push(process.env.NEXT_PUBLIC_SITE_URL);
+  }
   for (const raw of candidates) {
     const t = raw?.trim();
     if (t) return t.replace(/\/$/, "");

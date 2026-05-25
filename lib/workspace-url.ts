@@ -1,4 +1,5 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
+import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 import { encodeWidgetState, decodeWidgetState } from "@/lib/workspace-navigation/encoders";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 
@@ -29,6 +30,11 @@ const WIDGET_TYPES = new Set<string>([
   "accessibility",
   "platformAdmin",
   "helpCenter",
+  "fieldCopilot",
+  "financeHub",
+  "projectsHub",
+  "documentsHub",
+  "aiHub",
 ]);
 
 export function parseWidgetType(raw: string | null): WidgetType | null {
@@ -45,7 +51,8 @@ export type WorkspaceUrlIntent = {
 export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIntent | null {
   const widgetRaw =
     searchParams.get(WORKSPACE_URL_PARAMS.widget) ?? searchParams.get("widget");
-  const widgetType = parseWidgetType(widgetRaw);
+  const resolved = widgetRaw ? resolveWidgetOpen(widgetRaw, null) : null;
+  const widgetType = resolved?.type ?? parseWidgetType(widgetRaw);
   if (!widgetType) return null;
   const st = searchParams.get(WORKSPACE_URL_PARAMS.state);
   const wid = searchParams.get(WORKSPACE_URL_PARAMS.widgetInstance) ?? undefined;

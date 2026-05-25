@@ -6,6 +6,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { OS_ASSISTANT_WIDGETS } from "@/lib/os-assistant/widget-catalog";
 import { getLauncherNavMeta } from "@/lib/launcher/launcher-icons";
+import { groupPickerOptions } from "@/lib/launcher/picker-catalog";
 import { widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import { splitIntoBalancedRows } from "@/lib/launcher/launcher-grid-layout";
@@ -23,11 +24,54 @@ function widgetLabel(type: WidgetType, locale: string): string {
   return entry.labelHe;
 }
 
+function PickerSectionGrid({
+  types,
+  locale,
+  onPick,
+}: {
+  types: WidgetType[];
+  locale: string;
+  onPick: (type: WidgetType) => void;
+}) {
+  return (
+    <div className={LAUNCHER_PICKER_GRID_CONTAINER_CLASS}>
+      {splitIntoBalancedRows(types).map((row, rowIndex) => (
+        <div key={`picker-row-${rowIndex}`} className={LAUNCHER_PICKER_ROW_CLASS}>
+          {row.map((type) => {
+            const meta = getLauncherNavMeta(type);
+            const Icon = meta.icon;
+            return (
+              <button
+                key={type}
+                type="button"
+                data-testid={`launcher-pick-${type}`}
+                onClick={() => onPick(type)}
+                className={`${LAUNCHER_PICKER_TILE_CLASS} flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border-main)] p-3 transition hover:bg-[color:var(--surface-soft)]`}
+              >
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${widgetIconChipClass(type)}`}
+                >
+                  <Icon size={20} strokeWidth={2} aria-hidden />
+                </span>
+                <span className="text-center text-[11px] font-bold text-[color:var(--foreground-main)]">
+                  {widgetLabel(type, locale)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LauncherPickerSheet() {
   const { locale, t } = useI18n();
   const { picker, closePicker, assignWidget, pickerOptions } = useLauncherConfig();
 
   if (!picker) return null;
+
+  const sections = groupPickerOptions(pickerOptions);
 
   return (
     <>
@@ -57,32 +101,21 @@ export default function LauncherPickerSheet() {
             <X size={18} aria-hidden />
           </button>
         </div>
-        <div className={LAUNCHER_PICKER_GRID_CONTAINER_CLASS}>
-          {splitIntoBalancedRows(pickerOptions).map((row, rowIndex) => (
-            <div key={`picker-row-${rowIndex}`} className={LAUNCHER_PICKER_ROW_CLASS}>
-              {row.map((type) => {
-                const meta = getLauncherNavMeta(type);
-                const Icon = meta.icon;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    data-testid={`launcher-pick-${type}`}
-                    onClick={() => assignWidget(type)}
-                    className={`${LAUNCHER_PICKER_TILE_CLASS} flex flex-col items-center gap-2 rounded-lg border border-[color:var(--border-main)] p-3 transition hover:bg-[color:var(--surface-soft)]`}
-                  >
-                    <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg ${widgetIconChipClass(type)}`}
-                    >
-                      <Icon size={20} strokeWidth={2} aria-hidden />
-                    </span>
-                    <span className="text-center text-[11px] font-bold text-[color:var(--foreground-main)]">
-                      {widgetLabel(type, locale)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        <div className="flex flex-col gap-4">
+          {sections.map((section) => (
+            <section key={section.id} aria-labelledby={`picker-section-${section.id}`}>
+              <h3
+                id={`picker-section-${section.id}`}
+                className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[color:var(--foreground-muted)]"
+              >
+                {t(section.labelKey)}
+              </h3>
+              <PickerSectionGrid
+                types={section.types}
+                locale={locale}
+                onPick={assignWidget}
+              />
+            </section>
           ))}
         </div>
       </div>

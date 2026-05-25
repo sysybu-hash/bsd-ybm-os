@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { FileOutput, X } from "lucide-react";
+import { FileOutput, HardHat, X } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import {
   getProjectSubDomainsForIndustry,
@@ -145,6 +145,27 @@ export default function ProjectDocumentGeneratorModal({
           </button>
         </header>
 
+        {openWorkspaceWidget ? (
+          <div className="border-b border-[color:var(--border-main)] px-4 py-2">
+            <button
+              type="button"
+              onClick={() => {
+                openWorkspaceWidget("fieldCopilot", {
+                  projectId,
+                  projectName,
+                  contactId,
+                  contactName,
+                  startCapture: "voice",
+                });
+                onClose();
+              }}
+              className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20"
+            >
+              קופיילוט שטח — צלם / דבר מהאתר
+            </button>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-1 border-b border-[color:var(--border-main)] px-3 py-2">
           <button
             type="button"
@@ -172,6 +193,24 @@ export default function ProjectDocumentGeneratorModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3 space-y-4">
+          {openWorkspaceWidget ? (
+            <button
+              type="button"
+              onClick={() => {
+                openWorkspaceWidget("fieldCopilot", {
+                  projectId,
+                  projectName,
+                  contactId: contactId ?? undefined,
+                  contactName: contactName ?? undefined,
+                });
+                onClose();
+              }}
+              className="flex w-full items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-3 text-start text-[11px] font-bold text-amber-800 dark:text-amber-200 hover:bg-amber-500/20"
+            >
+              <HardHat size={18} className="shrink-0" />
+              <span>קופיילוט שטח — הצעה מהירה מהאתר</span>
+            </button>
+          ) : null}
           {grouped.map(({ domain, entries }) => (
             <section key={domain.id}>
               <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">

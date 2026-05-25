@@ -28,18 +28,27 @@
   ],
   "shortcuts": [
     {
-      "name": "דאשבורד",
-      "url": "/?w=dashboard",
+      "name": "פיננסים",
+      "short_name": "פיננסים",
+      "url": "/?w=financeHub",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "לקוחות",
-      "url": "/?w=crmTable",
+      "name": "Google Drive",
+      "short_name": "Drive",
+      "url": "/?w=googleDrive",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "קופיילוט שטח",
+      "short_name": "שטח",
+      "url": "/?w=fieldCopilot",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "עוזר AI",
-      "url": "/?w=aiChatFull",
+      "short_name": "AI",
+      "url": "/?w=aiHub&tab=chat",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

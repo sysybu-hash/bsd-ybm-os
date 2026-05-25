@@ -125,6 +125,41 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["עזרה", "help", "מדריך", "faq", "תמיכה"],
   },
   {
+    id: "fieldCopilot",
+    labelHe: "קופיילוט שטח",
+    labelEn: "Field Copilot",
+    labelRu: "Полевой копilot",
+    keywords: ["שטח", "field", "copilot", "הצעה מהירה", "אתר", "site", "קבלן"],
+  },
+  {
+    id: "financeHub",
+    labelHe: "פיננסים",
+    labelEn: "Finance hub",
+    labelRu: "Финансы",
+    keywords: ["דאשבורד", "dashboard", "תזרים", "cashflow", "פיננסים"],
+  },
+  {
+    id: "projectsHub",
+    labelHe: "פרויקטים",
+    labelEn: "Projects hub",
+    labelRu: "Проекты",
+    keywords: ["פרויקטים", "לוח", "project", "board", "גנט"],
+  },
+  {
+    id: "documentsHub",
+    labelHe: "מסמכים",
+    labelEn: "Documents hub",
+    labelRu: "Документы",
+    keywords: ["מסמכים", "ארכיון", "הפקה", "סריקה", "erp", "scan"],
+  },
+  {
+    id: "aiHub",
+    labelHe: "בינה מלאכותית",
+    labelEn: "AI hub",
+    labelRu: "ИИ",
+    keywords: ["ai", "צ'אט", "chat", "notebook", "מחברת"],
+  },
+  {
     id: "platformAdmin",
     labelHe: "ניהול מערכת",
     labelEn: "Platform admin",
@@ -139,6 +174,7 @@ const ALIASES: Record<string, WidgetType> = {
   aiChat: "aiChatFull",
   quoteGen: "docCreator",
   scan: "aiScanner",
+  field: "fieldCopilot",
 };
 
 function labelForLocale(w: OsWidgetAction, locale: AppLocale): string {

@@ -4,6 +4,7 @@ import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot } from "lucide-react";
 import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
+import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import { useSession } from "next-auth/react";
 import WidgetInstance from "@/components/os/navigation/WidgetInstance";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
@@ -22,6 +23,10 @@ import SettingsWidget from "@/components/os/widgets/SettingsWidget";
 import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
+import FinanceHubWidget from "@/components/os/hubs/FinanceHubWidget";
+import ProjectsHubWidget from "@/components/os/hubs/ProjectsHubWidget";
+import DocumentsHubWidget from "@/components/os/hubs/DocumentsHubWidget";
+import AiHubWidget from "@/components/os/hubs/AiHubWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { registerWorkspaceBoundsRef } from "@/lib/workspace/workspace-bounds-registry";
@@ -35,6 +40,9 @@ const DocumentCreatorWidget = dynamic(
   () => import("@/components/os/widgets/DocumentCreatorWidget"),
   { loading: () => <WidgetLoadingPlaceholder /> },
 );
+const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCopilotWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
 const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
@@ -78,6 +86,7 @@ export default function OSWorkspace({
   onWidgetViewChange,
 }: OSWorkspaceProps) {
   const { t, dir } = useI18n();
+  const { editMode: launcherEditMode } = useLauncherConfig();
   const { data: session } = useSession();
   const workspaceBoundsRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -128,9 +137,15 @@ export default function OSWorkspace({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className="absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-y-auto overscroll-contain p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 md:overflow-hidden md:p-6 md:pb-8"
+            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-y-auto overscroll-contain p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:p-6 md:pb-8 ${
+              launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5"
+            }`}
           >
-            <header className="flex w-full max-w-4xl shrink-0 flex-col items-center text-center pb-2 md:pb-0">
+            <header
+              className={`flex w-full max-w-4xl shrink-0 flex-col items-center text-center pb-2 transition-opacity md:pb-0 ${
+                launcherEditMode ? "pointer-events-none max-h-0 overflow-hidden opacity-0" : ""
+              }`}
+            >
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm md:mb-4 md:h-16 md:w-16">
                 <Bot size={28} className="text-indigo-400" aria-hidden />
               </div>
@@ -210,6 +225,9 @@ export default function OSWorkspace({
             {widget.type === "aiScanner" && (
               <AiScannerWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
+            {widget.type === "fieldCopilot" && (
+              <FieldCopilotWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
+            )}
             {widget.type === "aiChatFull" && (
               <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
@@ -225,6 +243,16 @@ export default function OSWorkspace({
             {widget.type === "platformAdmin" && <PlatformAdminWidget />}
             {widget.type === "helpCenter" && (
               <HelpCenterWidget openWorkspaceWidget={openWorkspaceWidget} />
+            )}
+            {widget.type === "financeHub" && <FinanceHubWidget liveData={widget.liveData} />}
+            {widget.type === "projectsHub" && (
+              <ProjectsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
+            )}
+            {widget.type === "documentsHub" && (
+              <DocumentsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
+            )}
+            {widget.type === "aiHub" && (
+              <AiHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
           </WidgetInstance>
         ))}

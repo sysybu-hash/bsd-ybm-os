@@ -38,14 +38,23 @@ describe("gemini-live-session-config", () => {
     expect(advancedFeatures).toBe(true);
   });
 
-  it("buildLiveConnectConfig includes temperature and session resumption", () => {
+  it("buildLiveConnectConfig includes temperature and session resumption when enabled", () => {
     const cfg = buildLiveConnectConfig({
       ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
       temperature: 0.55,
+      sessionResumptionEnabled: true,
     });
     expect(cfg.temperature).toBe(0.55);
     expect(cfg.sessionResumption).toEqual({});
     expect(cfg.responseModalities).toEqual(["AUDIO"]);
+  });
+
+  it("buildLiveConnectConfig omits session resumption when disabled", () => {
+    const cfg = buildLiveConnectConfig({
+      ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+      sessionResumptionEnabled: false,
+    });
+    expect(cfg.sessionResumption).toBeUndefined();
   });
 
   it("buildFullLiveConnectConfig embeds system instruction and tools", () => {

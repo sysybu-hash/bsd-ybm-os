@@ -4,7 +4,6 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { BrainCircuit, BarChart3, Fingerprint, ChevronLeft, ChevronRight, Mic } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
-import BrandLogo from "@/components/brand/BrandLogo";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -43,7 +42,7 @@ export default function LandingPage({
       </div>
 
       <header className="relative z-10 flex items-center justify-between px-4 py-6 sm:px-8">
-        <BrandHomeLink />
+        <BrandHomeLink size="sm" />
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
           <ThemeToggle />
@@ -60,7 +59,11 @@ export default function LandingPage({
       <main className="relative z-10 mx-auto max-w-7xl min-w-0 px-4 pb-24 pt-12 sm:px-6 sm:pb-28 sm:pt-16 md:px-8 md:pb-32 md:pt-20">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <div className="landing-reveal mb-6" style={revealStyle(0.1)}>
-            <BrandLogo size="hero" className="mx-auto shadow-xl shadow-black/30" priority />
+            <BrandHomeLink
+              size="hero"
+              className="mx-auto pointer-events-none"
+              priority
+            />
           </div>
 
           <div

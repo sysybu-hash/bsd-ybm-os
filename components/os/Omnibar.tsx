@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Loader2, Mic, Send, SlidersHorizontal, Volume2 } from "lucide-react";
+import { Loader2, Mic, Send, SlidersHorizontal, Volume2, HardHat } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { useAutomationRunnerContext } from "@/components/os/AutomationRunnerContext";
@@ -107,6 +107,12 @@ export default function Omnibar({
 
           {/* Actions */}
           <div className="relative z-10 flex shrink-0 items-center gap-1.5 py-2 pr-2 pl-1 sm:gap-2 sm:pr-3 sm:pl-2">
+            <button type="button" onClick={() => openWorkspaceWidget("fieldCopilot")}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-amber-600 transition hover:bg-amber-500/10 dark:text-amber-300"
+              title={t("workspaceWidgets.sidebar.fieldCopilot")}
+              aria-label={t("workspaceWidgets.sidebar.fieldCopilot")}>
+              <HardHat size={18} aria-hidden />
+            </button>
             <button type="button" onClick={() => live.setGeminiLiveSettingsOpen(true)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-indigo-300"
               title={t("workspaceWidgets.omnibar.voiceSettingsTitle")} aria-label={t("workspaceWidgets.omnibar.voiceSettingsAria")} aria-expanded={live.geminiLiveSettingsOpen} aria-haspopup="dialog">

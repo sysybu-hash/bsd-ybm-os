@@ -94,6 +94,18 @@ export async function runAutomationAction(
       });
       return { ok: true };
     }
+    case "open_field_copilot": {
+      deps.openWidget("fieldCopilot", {
+        contactId: params.contactId,
+        contactName: params.contactName,
+        projectId: params.projectId,
+        projectName: params.projectName,
+        sessionId: params.sessionId,
+        step: params.step,
+        ...widgetPayload(params),
+      });
+      return { ok: true, message: "נפתח קופיילוט שטח" };
+    }
     case "show_scan_preview": {
       deps.openWidget("aiScanner", { openPreviewPanel: true, ...widgetPayload(params) });
       return { ok: true };
@@ -326,6 +338,18 @@ export async function runAutomationAction(
         ...(projectId ? { projectId } : {}),
       });
       return { ok: true };
+    }
+    case "open_field_copilot":
+    case "create_field_quote": {
+      deps.openWidget("fieldCopilot", {
+        contactId: params.contactId,
+        contactName: params.contactName ?? params.clientName,
+        projectId: params.projectId,
+        projectName: params.projectName,
+        startCapture: params.startCapture,
+        ...widgetPayload(params),
+      });
+      return { ok: true, message: "נפתח קופיילוט שטח" };
     }
     default:
       return { ok: false, message: `Unhandled: ${intent}` };

@@ -14,6 +14,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import type { GridCellCoord } from "@/lib/launcher/quick-grid";
 import type { LauncherZone } from "@/lib/launcher/user-launcher-config";
+import { getHubTabCount } from "@/lib/launcher/hub-meta";
 
 type LauncherTileProps = {
   zone: LauncherZone;
@@ -26,6 +27,10 @@ type LauncherTileProps = {
   tileSize?: "default" | "mobile";
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
+  /** תא ריק ברשת עריכה — בלי כותרת "הוסף אפליקציה" (מונע עומס ויזואלי) */
+  compactEmpty?: boolean;
+  /** רשת עריכה — ללא אנימציית jiggle (יציבות בגרירה) */
+  suppressJiggle?: boolean;
 };
 
 export default function LauncherTile({
@@ -38,13 +43,18 @@ export default function LauncherTile({
   tileSize = "default",
   dragHandleProps,
   isDragging,
+  compactEmpty = false,
+  suppressJiggle = false,
 }: LauncherTileProps) {
   const { t } = useI18n();
   const { editMode, removeAt, openPickerAt } = useLauncherConfig();
+  const jiggleClass = editMode && !suppressJiggle ? "launcher-jiggle" : "";
   const resolvedWidgetId = widgetId ? normalizeWidgetAction(widgetId) : null;
   const meta = resolvedWidgetId ? getLauncherNavMeta(resolvedWidgetId) : null;
   const Icon = meta?.icon ?? LayoutGrid;
   const isEmpty = !resolvedWidgetId;
+
+  const hubTabCount = resolvedWidgetId ? getHubTabCount(resolvedWidgetId) : null;
 
   const label = resolvedWidgetId
     ? variant === "quick"
@@ -63,7 +73,7 @@ export default function LauncherTile({
   if (variant === "sidebar") {
     return (
       <div
-        className={`relative ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}
+        className={`relative ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
         data-testid={resolvedWidgetId ? `launcher-tile-${resolvedWidgetId}` : "launcher-tile-empty"}
       >
         {editMode ? (
@@ -105,7 +115,7 @@ export default function LauncherTile({
 
   if (variant === "mobile") {
     return (
-      <div className={`relative min-w-0 ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}>
+      <div className={`relative min-w-0 ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}>
         {editMode && resolvedWidgetId ? (
           <button
             type="button"
@@ -153,7 +163,7 @@ export default function LauncherTile({
 
   return (
     <div
-      className={`relative ${editMode ? "launcher-jiggle" : ""} ${isDragging ? "opacity-60" : ""}`}
+      className={`relative ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
       data-testid={resolvedWidgetId ? `launcher-quick-${resolvedWidgetId}` : "launcher-quick-empty"}
     >
       {editMode && widgetId ? (
@@ -184,26 +194,40 @@ export default function LauncherTile({
         {isEmpty ? (
           <>
             <Plus
-              size={tileSize === "mobile" ? 22 : 28}
+              size={tileSize === "mobile" ? 22 : compactEmpty ? 24 : 28}
               className="text-indigo-400"
               aria-hidden
             />
-            <span
-              className={`font-bold text-[color:var(--foreground-muted)] ${
-                tileSize === "mobile" ? "text-[10px]" : "text-sm"
-              }`}
-            >
-              {label}
-            </span>
+            {compactEmpty ? null : (
+              <span
+                className={`font-bold text-[color:var(--foreground-muted)] ${
+                  tileSize === "mobile" ? "text-[10px]" : "text-sm"
+                }`}
+              >
+                {label}
+              </span>
+            )}
           </>
         ) : (
           <>
-            <div
-              className={`flex shrink-0 items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)} ${
-                tileSize === "mobile" ? "h-8 w-8" : "h-11 w-11"
-              }`}
-            >
-              <Icon size={tileSize === "mobile" ? 18 : 22} strokeWidth={2} aria-hidden />
+            <div className="relative shrink-0">
+              <div
+                className={`flex items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)} ${
+                  tileSize === "mobile" ? "h-8 w-8" : "h-11 w-11"
+                }`}
+              >
+                <Icon size={tileSize === "mobile" ? 18 : 22} strokeWidth={2} aria-hidden />
+              </div>
+              {hubTabCount != null && hubTabCount > 0 ? (
+                <span
+                  className="absolute -end-1 -top-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow"
+                  aria-label={t("workspaceWidgets.hubs.actionsBadge", {
+                    count: String(hubTabCount),
+                  })}
+                >
+                  {hubTabCount}
+                </span>
+              ) : null}
             </div>
             <div className="min-w-0 w-full px-0.5">
               <div

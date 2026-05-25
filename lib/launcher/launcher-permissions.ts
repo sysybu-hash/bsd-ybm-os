@@ -16,6 +16,7 @@ function isWidgetAllowed(type: WidgetType, ctx: LauncherPermissionContext): bool
     if (isCompanyMgmtIndustry(ctx.organizationIndustry)) return false;
     if (ctx.meckanoEnabled === false) return false;
   }
+  if (type === "fieldCopilot" && isCompanyMgmtIndustry(ctx.organizationIndustry)) return false;
   return OS_ASSISTANT_WIDGETS.some((w) => w.id === type);
 }
 

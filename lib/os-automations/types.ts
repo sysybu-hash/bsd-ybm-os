@@ -38,6 +38,9 @@ export type AutomationIntent =
   | "open_google_drive"
   | "open_settings"
   | "open_accessibility"
+  | "open_field_copilot"
+  | "create_field_quote"
+  | "open_field_copilot"
   | "clean_dashboard";
 
 export type AutomationAction = {

@@ -17,6 +17,7 @@ export const AUTOMATION_CATALOG: AutomationCatalogEntry[] = [
   { id: "create_task", labelHe: "הוספת משימה", labelEn: "Create task", labelRu: "Создать задачу", keywords: ["משימה", "task", "הוסף משימה", "todo"] },
   { id: "create_contact", labelHe: "יצירת לקוח", labelEn: "Create client", labelRu: "Создать клиента", keywords: ["לקוח חדש", "contact", "הוסף לקוח"] },
   { id: "open_scanner", labelHe: "פתיחת סורק", labelEn: "Open scanner", labelRu: "Открыть сканер", keywords: ["סרוק", "סריקה", "scan"] },
+  { id: "open_field_copilot", labelHe: "קופיילוט שטח", labelEn: "Field Copilot", labelRu: "Полевой копilot", keywords: ["שטח", "field", "copilot", "הצעה מהירה", "אתר", "site"] },
   { id: "scan_with_instructions", labelHe: "סריקה עם הנחיות", labelEn: "Scan with instructions", labelRu: "Скан с инструкциями", keywords: ["סרוק עם", "scan with"] },
   { id: "save_scan_to_notebook", labelHe: "שמירת סריקה במחברת", labelEn: "Save scan to notebook", labelRu: "Сохранить скан в блокнот", keywords: ["מחברת", "notebook", "שמור סריקה"] },
   { id: "open_crm", labelHe: "פתיחת CRM", labelEn: "Open CRM", labelRu: "Открыть CRM", keywords: ["לקוחות", "crm"] },
@@ -46,6 +47,7 @@ export const AUTOMATION_CATALOG: AutomationCatalogEntry[] = [
   { id: "confirm_scan_to_erp", labelHe: "אישור ל-ERP", labelEn: "Confirm to ERP", labelRu: "Подтвердить в ERP", keywords: ["אישור", "erp confirm"] },
   { id: "search_client", labelHe: "חיפוש לקוח", labelEn: "Search client", labelRu: "Поиск клиента", keywords: ["חפש לקוח", "search client"] },
   { id: "open_project", labelHe: "פתיחת פרויקט", labelEn: "Open project", labelRu: "Открыть проект", keywords: ["פרויקט", "project"] },
+  { id: "create_field_quote", labelHe: "הצעה מהירה מהאתר", labelEn: "Quick site quote", labelRu: "Быстрая смета", keywords: ["הצעה מהירה", "site quote"] },
 ];
 
 const INTENT_SET = new Set(AUTOMATION_CATALOG.map((e) => e.id));

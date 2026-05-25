@@ -15,14 +15,28 @@ import { resolveSiteBaseUrl, PRODUCTION_SITE_URL } from "@/lib/site-url";
 
 export function buildOsAssistantSystemInstruction(
   ctx: OsAssistantUserContext,
-  options?: { voice?: boolean; locale?: string },
+  options?: { voice?: boolean; locale?: string; compactForLiveToken?: boolean },
 ): string {
   const voice = options?.voice ?? false;
+  const compactForLiveToken = options?.compactForLiveToken === true && voice;
   const loc = normalizeLocale(options?.locale) as AppLocale;
   const lang = LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
-  const catalog = widgetCatalogForPrompt(loc);
-  const automations = automationCatalogForPrompt(loc);
+  const catalog = compactForLiveToken ? "" : widgetCatalogForPrompt(loc);
+  const automations = compactForLiveToken ? "" : automationCatalogForPrompt(loc);
   const siteUrl = resolveSiteBaseUrl() ?? PRODUCTION_SITE_URL;
+
+  const catalogSections = compactForLiveToken
+    ? []
+    : [
+        "## Automation catalog (run_automation → intent + params)",
+        "For actions with parameters (invoice, scan with instructions, save to notebook, meckano clock): use run_automation.",
+        automations,
+        "",
+        "## Widget catalog (execute_os_command → action)",
+        "For simple screen open only, call execute_os_command with one of these action ids:",
+        catalog,
+        "",
+      ];
 
   return withAssistantTemporalContext([
     `You are the personal assistant for BSD-YBM OS — a management workspace for construction contractors and for general business / company management (CRM, ERP, projects, documents). Adapt vocabulary to the user's industry in context.`,
@@ -67,15 +81,14 @@ export function buildOsAssistantSystemInstruction(
           `- If the user asks a general question with no app action, answer fully in ${lang} without calling tools.`,
         ].join("\n")
       : `- In text mode: be clear and structured when helpful.`,
-    "",
-    "## Automation catalog (run_automation → intent + params)",
-    "For actions with parameters (invoice, scan with instructions, save to notebook, meckano clock): use run_automation.",
-    automations,
-    "",
-    "## Widget catalog (execute_os_command → action)",
-    "For simple screen open only, call execute_os_command with one of these action ids:",
-    catalog,
-    "",
+    ...(compactForLiveToken
+      ? [
+          "",
+          "## Live token note",
+          "- Tool schemas list valid intent and widget ids — do not repeat long catalogs in speech.",
+        ]
+      : []),
+    ...catalogSections,
     "## Rules",
     "- Prefer run_automation for create invoice, scan, notebook, attendance.",
     voice

@@ -167,6 +167,9 @@ export function useLauncherActions({
       persist(next);
       setPicker(null);
       setAnnounce("אפליקציה הוחלפה");
+      void import("@/lib/analytics/workspace-events").then(({ trackLauncherWidgetAdded }) => {
+        trackLauncherWidgetAdded(type, zone);
+      });
     },
     [config, editMode, permissionCtx, persist, picker, setPicker, setAnnounce],
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -29,7 +29,6 @@ import {
   LAUNCHER_QUICK_GRID_CONTAINER_CLASS,
   LAUNCHER_QUICK_ROW_CLASS,
 } from "@/lib/launcher/user-launcher-config";
-import { useQuickGridCanvasSize } from "./sortable-launcher-zone/useQuickGridCanvasSize";
 import { SortableSlot, slotId } from "./sortable-launcher-zone/SortableSlot";
 import { QuickGridPositionView } from "./sortable-launcher-zone/QuickGridPositionView";
 import { QuickGridMobileColumnView } from "./sortable-launcher-zone/QuickGridMobileColumnView";
@@ -111,8 +110,6 @@ export default function SortableLauncherZone({
   };
 
   const isQuickGrid = variant === "quick" && zone === "quickGrid";
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const canvas = useQuickGridCanvasSize(canvasRef);
 
   let items: React.ReactNode;
   if (isQuickGrid && editMode) {
@@ -122,7 +119,6 @@ export default function SortableLauncherZone({
         slots={slots}
         onOpen={onOpen}
         moveQuickGridCell={moveQuickGridCell}
-        canvas={canvas}
       />
     );
   } else if (isQuickGrid) {
@@ -156,14 +152,21 @@ export default function SortableLauncherZone({
   const wrapperProps = {
     ...longPress,
     "data-testid": `launcher-zone-${zone}`,
-    className:
-      isQuickGrid
-        ? [LAUNCHER_QUICK_GRID_CONTAINER_CLASS, className].filter(Boolean).join(" ")
-        : className ?? "",
+    className: isQuickGrid
+      ? [
+          LAUNCHER_QUICK_GRID_CONTAINER_CLASS,
+          editMode
+            ? "relative z-20 flex min-h-0 max-h-full w-full flex-1 flex-col items-center justify-center overflow-hidden bg-[color:var(--background-main)]"
+            : "",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : (className ?? ""),
   };
 
   return (
-    <div ref={isQuickGrid ? canvasRef : undefined} {...wrapperProps}>
+    <div {...wrapperProps}>
       {inner}
     </div>
   );

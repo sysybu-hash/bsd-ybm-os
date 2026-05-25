@@ -8,6 +8,7 @@ import { isMobileViewport } from "@/lib/workspace/window-layout-policy";
 import { useAutomationRunner } from "@/hooks/useAutomationRunner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
+import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { SearchResult } from "./types";
 import { useNotificationsFeed } from "./useNotificationsFeed";
@@ -54,12 +55,22 @@ export function useOmniCanvasState() {
       data?: Record<string, unknown> | null,
       options?: { maximize?: boolean },
     ) => {
-      if (options?.maximize) {
-        return openWidgetFocused(type, data ?? null, { maximize: true });
+      const resolved = resolveWidgetOpen(type, data ?? null);
+      if (!resolved) return "";
+      const { type: openType, liveData } = resolved;
+      if (openType === "fieldCopilot") {
+        const existing = widgets.find((w) => w.type === "fieldCopilot");
+        if (existing) {
+          focusWidget(existing.id);
+          return existing.id;
+        }
       }
-      return openWidget(type, data ?? null);
+      if (options?.maximize) {
+        return openWidgetFocused(openType, liveData, { maximize: true });
+      }
+      return openWidget(openType, liveData);
     },
-    [openWidget, openWidgetFocused],
+    [widgets, focusWidget, openWidget, openWidgetFocused],
   );
 
   const hasMaximizedWidget = widgets.some((w) => w.isMaximized);
@@ -157,11 +168,20 @@ export function useOmniCanvasState() {
     }
     setHasOpenedDefaults(true);
     const timer = setTimeout(() => {
-      openWidget("dashboard");
+      openWorkspaceWidget("financeHub", { tab: "overview" });
       setTimeout(() => openWidget("crmTable"), 300);
     }, 800);
     return () => clearTimeout(timer);
-  }, [hasHydrated, session, widgets.length, openWidget, hasOpenedDefaults, isFirstTime, isCleanDashboard]);
+  }, [
+    hasHydrated,
+    session,
+    widgets.length,
+    openWidget,
+    openWorkspaceWidget,
+    hasOpenedDefaults,
+    isFirstTime,
+    isCleanDashboard,
+  ]);
 
   return {
     t, dir, locale,

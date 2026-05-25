@@ -30,6 +30,9 @@ All events follow the convention `noun_verb` (snake_case). Super-properties (set
 |-------|---------|-----------|
 | `workspace_opened` | Workspace shell mounts | `locale`, `dir`, `widget_count: number` |
 | `widget_opened` | Widget added to canvas | `widget_type: WidgetType`, `source: "launcher" \| "automation" \| "url"` |
+| `hub_opened` | Hub widget opened (finance/projects/documents/ai) | `hub_type`, `source` |
+| `launcher_widget_added` | User assigns tile in launcher edit mode | `widget_type`, `zone` |
+| `session_create_failed` | Field copilot session POST failed | `reason`, `code` (server) |
 | `widget_closed` | Widget removed | `widget_type` |
 | `widget_maximized` | Widget toggled to full screen | `widget_type` |
 | `launcher_customized` | User saves custom layout | `quick_grid_count: number`, `sidebar_count: number` |

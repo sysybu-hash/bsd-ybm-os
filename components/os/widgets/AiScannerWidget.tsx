@@ -13,8 +13,15 @@ import { ScanHistorySidebar } from "./ai-scanner/ScanHistorySidebar";
 import { ScanHeaderToolbar } from "./ai-scanner/ScanHeaderToolbar";
 import { ScanFloatingPanels } from "./ai-scanner/ScanFloatingPanels";
 
-export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }: AiScannerWidgetProps) {
-  const s = useAiScannerState({ liveData, openWorkspaceWidget });
+export default function AiScannerWidget({
+  liveData = null,
+  openWorkspaceWidget,
+  embeddedInHub = false,
+}: AiScannerWidgetProps) {
+  const s = useAiScannerState({
+    liveData,
+    openWorkspaceWidget: embeddedInHub ? undefined : openWorkspaceWidget,
+  });
   const {
     t, dir, tr, scannerPrefix,
     scanModes, fileInputRef, fileAccept,
@@ -62,7 +69,10 @@ export default function AiScannerWidget({ liveData = null, openWorkspaceWidget }
 
   return (
     <div
-      className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row"
+      className={`flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row ${
+        embeddedInHub ? "[&_.workspace-window]:hidden" : ""
+      }`}
+      data-embedded-in-hub={embeddedInHub ? "true" : undefined}
       dir={dir}
     >
       <ScanHistorySidebar

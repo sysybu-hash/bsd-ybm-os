@@ -3,17 +3,21 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { CheckCircle2, ChevronLeft, X } from "lucide-react";
+import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { captureProductEvent } from "@/lib/analytics/posthog-client";
 
-const STORAGE_KEY = "bsd_ybm_first_day_wizard_v1";
+const STORAGE_KEY = "bsd_ybm_first_day_wizard_v2";
 
 const STEPS = [
   { id: "login", titleKey: "workspaceWidgets.onboarding.stepLogin" },
-  { id: "drive", titleKey: "workspaceWidgets.onboarding.stepDrive" },
+  { id: "finance", titleKey: "workspaceWidgets.onboarding.stepFinance" },
   { id: "scan", titleKey: "workspaceWidgets.onboarding.stepScan" },
-  { id: "document", titleKey: "workspaceWidgets.onboarding.stepDocument" },
+  { id: "drive", titleKey: "workspaceWidgets.onboarding.stepDrive" },
+  { id: "fieldCopilot", titleKey: "workspaceWidgets.onboarding.stepFieldCopilot" },
 ] as const;
+
+type StepId = (typeof STEPS)[number]["id"];
 
 async function trackWizard(action: string, details?: string) {
   captureProductEvent("wizard_step", { action, details: details ?? "" });
@@ -30,8 +34,30 @@ async function trackWizard(action: string, details?: string) {
 }
 
 type FirstDayWizardProps = {
-  onOpenWidget: (type: "googleDrive" | "aiScanner" | "docCreator") => void;
+  onOpenWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
 };
+
+function openForStep(
+  stepId: StepId,
+  onOpenWidget: FirstDayWizardProps["onOpenWidget"],
+): void {
+  switch (stepId) {
+    case "finance":
+      onOpenWidget("financeHub", { tab: "overview" });
+      break;
+    case "scan":
+      onOpenWidget("documentsHub", { tab: "scan" });
+      break;
+    case "drive":
+      onOpenWidget("googleDrive", null);
+      break;
+    case "fieldCopilot":
+      onOpenWidget("fieldCopilot", null);
+      break;
+    default:
+      break;
+  }
+}
 
 export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
   const { t } = useI18n();
@@ -75,9 +101,9 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
 
   const onPrimary = () => {
     void trackWizard(`step_${current.id}`);
-    if (current.id === "drive") onOpenWidget("googleDrive");
-    if (current.id === "scan") onOpenWidget("aiScanner");
-    if (current.id === "document") onOpenWidget("docCreator");
+    if (current.id !== "login") {
+      openForStep(current.id, onOpenWidget);
+    }
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {

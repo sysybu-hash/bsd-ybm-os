@@ -1,6 +1,7 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
+import { mapLauncherWidgetId } from "@/lib/os-assistant/resolve-widget-open";
 
 export type LauncherZone = "quickGrid" | "sidebar" | "mobileBarStart" | "mobileBarEnd" | "mobileMore";
 
@@ -12,7 +13,7 @@ export type LauncherSlot = {
 };
 
 export type UserLauncherConfig = {
-  version: 1;
+  version: 1 | 2;
   quickGrid: LauncherSlot[];
   sidebar: LauncherSlot[];
   mobileBarStart: LauncherSlot[];
@@ -20,7 +21,8 @@ export type UserLauncherConfig = {
   mobileMore: LauncherSlot[];
 };
 
-export const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v1";
+export const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
+export const LAUNCHER_STORAGE_KEY_LEGACY = "bsd_ybm_launcher_v1";
 
 /** מקסימום אריחים לאזור — מספיק לכל האפליקציות הזמינות + מרווח */
 export const LAUNCHER_ZONE_MAX_SLOTS = 48;
@@ -48,11 +50,11 @@ export const LAUNCHER_QUICK_TILE_WRAPPER_CLASS = "h-[140px] w-[140px] shrink-0 f
 
 /** רשת עריכה — עמודות/שורות דינמיות ב־inline style; LTR לקואורדינטות עקביות */
 export const LAUNCHER_QUICK_EDIT_GRID_CLASS =
-  "grid justify-start gap-3 rounded-xl border border-dashed border-indigo-400/25 [direction:ltr] bg-[repeating-linear-gradient(0deg,transparent,transparent_139px,color-mix(in_srgb,var(--border-main)_40%,transparent)_139px,color-mix(in_srgb,var(--border-main)_40%,transparent)_140px),repeating-linear-gradient(90deg,transparent,transparent_139px,color-mix(in_srgb,var(--border-main)_40%,transparent)_139px,color-mix(in_srgb,var(--border-main)_40%,transparent)_140px)] p-3";
+  "grid shrink-0 justify-items-center gap-3 rounded-xl border border-dashed border-indigo-400/30 [direction:ltr] bg-[color:var(--surface-card)]/40 p-3 shadow-sm";
 
-/** מעטפת עריכת quick grid — ללא פס גלילה במובייל (מונע קפיצות בגרירה) */
+/** מעטפת עריכת quick grid — ממורכזת, ללא גלילה מיותרת */
 export const LAUNCHER_QUICK_EDIT_SCROLL_CLASS =
-  "min-h-0 w-full flex-1 overflow-hidden overscroll-contain rounded-xl md:overflow-x-auto md:overflow-y-auto";
+  "flex min-h-0 w-full flex-1 items-start justify-center overflow-hidden overscroll-contain px-1 py-2 md:overflow-x-auto md:overflow-y-auto";
 
 /** @deprecated השתמשו ב־LAUNCHER_QUICK_GRID_CONTAINER_CLASS + שורות */
 export const LAUNCHER_QUICK_GRID_CLASS = LAUNCHER_QUICK_GRID_CONTAINER_CLASS;
@@ -98,19 +100,14 @@ function emptySlot(): LauncherSlot {
  * ברירת מחדל ל-quick grid — 2×6 (7 עמודות מקס), קואורדינטות LTR.
  * סדר RTL בשורה: מרכז שליטה → … → דאשבורד (שורה 0), מרכז עזרה → … → צ'אט AI (שורה 1).
  */
+/** 6 אריחי Hub — שורה 0: פיננסים · פרויקטים · CRM; שורה 1: מסמכים · קופיילוט · AI */
 export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
-  gridSlot("project", 0, 5),
-  gridSlot("aiScanner", 0, 4),
-  gridSlot("erpArchive", 0, 3),
-  gridSlot("projectBoard", 0, 2),
-  gridSlot("crmTable", 0, 1),
-  gridSlot("dashboard", 0, 0),
-  gridSlot("helpCenter", 1, 5),
-  gridSlot("cashflow", 1, 4),
-  gridSlot("googleDrive", 1, 3),
-  gridSlot("notebookLM", 1, 2),
-  gridSlot("docCreator", 1, 1),
-  gridSlot("aiChatFull", 1, 0),
+  gridSlot("financeHub", 0, 0),
+  gridSlot("projectsHub", 0, 1),
+  gridSlot("crmTable", 0, 2),
+  gridSlot("documentsHub", 1, 0),
+  gridSlot("fieldCopilot", 1, 1),
+  gridSlot("aiHub", 1, 2),
 ];
 
 function buildDefaultQuickGrid(): LauncherSlot[] {
@@ -134,32 +131,42 @@ export function shouldUsePlatformLauncherDefault(partial: unknown): boolean {
 
 export function buildDefaultLauncherConfig(industryRaw?: string | null): UserLauncherConfig {
   const company = isCompanyMgmtIndustry(industryRaw);
+  const quickGrid = company
+    ? DEFAULT_QUICK_GRID.map((s) =>
+        s.widgetId === "fieldCopilot" ? emptySlot() : { ...s },
+      )
+    : buildDefaultQuickGrid();
+
   return {
-    version: 1,
-    quickGrid: buildDefaultQuickGrid(),
+    version: 2,
+    quickGrid,
     sidebar: [
-      slot("dashboard"),
-      slot("projectBoard"),
+      slot("financeHub"),
+      slot("projectsHub"),
       slot("crmTable"),
-      slot("erpArchive"),
-      slot("docCreator"),
-      slot("aiScanner"),
-      slot("aiChatFull"),
+      slot("documentsHub"),
+      ...(company ? [] : [slot("fieldCopilot")]),
+      slot("aiHub"),
       ...(company ? [] : [slot("meckanoReports")]),
-      slot("notebookLM"),
-      slot("settings"),
-    ],
-    mobileBarStart: [slot("dashboard"), slot("aiScanner"), slot("docCreator")],
-    mobileBarEnd: [slot("crmTable")],
-    mobileMore: [
-      slot("projectBoard"),
-      slot("erpArchive"),
-      slot("aiChatFull"),
-      slot("notebookLM"),
       slot("googleDrive"),
       slot("helpCenter"),
       slot("settings"),
       slot("accessibility"),
+    ],
+    mobileBarStart: company
+      ? [slot("financeHub"), slot("documentsHub"), slot("crmTable")]
+      : [slot("fieldCopilot"), slot("documentsHub"), slot("projectsHub")],
+    mobileBarEnd: [slot("aiHub")],
+    mobileMore: [
+      ...(company ? [] : [slot("fieldCopilot")]),
+      slot("financeHub"),
+      slot("projectsHub"),
+      slot("crmTable"),
+      slot("googleDrive"),
+      slot("helpCenter"),
+      slot("settings"),
+      slot("accessibility"),
+      ...(company ? [] : [slot("meckanoReports")]),
     ],
   };
 }
@@ -179,6 +186,9 @@ export function resolveStoredLauncherConfig(
   industryRaw?: string | null,
 ): UserLauncherConfig {
   if (!stored || typeof stored !== "object") {
+    return getDefaultLauncherConfig(industryRaw);
+  }
+  if ((stored as Partial<UserLauncherConfig>).version !== 2) {
     return getDefaultLauncherConfig(industryRaw);
   }
   return mergeLauncherConfig(stored, industryRaw);
@@ -202,7 +212,8 @@ function normalizeSlot(raw: unknown): LauncherSlot {
   if (typeof w !== "string") return emptySlot();
   if (isRemovedLauncherWidgetId(w)) return emptySlot();
   const normalized = normalizeWidgetAction(w);
-  return normalized ? { widgetId: normalized, row, col } : emptySlot();
+  const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
+  return mapped ? { widgetId: mapped, row, col } : emptySlot();
 }
 
 function normalizeZone(raw: unknown, fallback: LauncherSlot[]): LauncherSlot[] {
@@ -234,7 +245,8 @@ function scrubZoneSlots(slots: LauncherSlot[]): LauncherSlot[] {
     if (!s.widgetId) return emptySlot();
     if (isRemovedLauncherWidgetId(s.widgetId)) return emptySlot();
     const normalized = normalizeWidgetAction(s.widgetId);
-    return normalized ? { widgetId: normalized } : emptySlot();
+    const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
+    return mapped ? { widgetId: mapped } : emptySlot();
   });
 }
 
@@ -243,20 +255,21 @@ function scrubQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
     if (!s.widgetId) return emptySlot();
     if (isRemovedLauncherWidgetId(s.widgetId)) return emptySlot();
     const normalized = normalizeWidgetAction(s.widgetId);
-    if (!normalized) return emptySlot();
+    const mapped = normalized ? mapLauncherWidgetId(normalized) : null;
+    if (!mapped) return emptySlot();
     const row = typeof s.row === "number" && s.row >= 0 ? Math.floor(s.row) : undefined;
     const col = typeof s.col === "number" && s.col >= 0 ? Math.floor(s.col) : undefined;
     if (row !== undefined && col !== undefined) {
-      return { widgetId: normalized, row, col };
+      return { widgetId: mapped, row, col };
     }
-    return { widgetId: normalized };
+    return { widgetId: mapped };
   });
 }
 
 /** מנקה ווידג'טים שהוסרו / לא תקינים בכל האזורים */
 export function scrubLauncherConfig(config: UserLauncherConfig): UserLauncherConfig {
   return {
-    version: 1,
+    version: 2,
     quickGrid: scrubQuickGridSlots(config.quickGrid),
     sidebar: scrubZoneSlots(config.sidebar),
     mobileBarStart: scrubZoneSlots(config.mobileBarStart),
@@ -278,7 +291,7 @@ export function mergeLauncherConfig(
     : normalizeZone(p.quickGrid, defaults.quickGrid);
 
   return scrubLauncherConfig({
-    version: 1,
+    version: 2,
     quickGrid,
     sidebar: normalizeZone(p.sidebar, defaults.sidebar),
     mobileBarStart: normalizeZone(p.mobileBarStart, defaults.mobileBarStart),
@@ -293,10 +306,24 @@ export function parseLauncherConfigFromStorage(
 ): UserLauncherConfig {
   if (!raw) return getDefaultLauncherConfig(industryRaw);
   try {
-    return resolveStoredLauncherConfig(JSON.parse(raw), industryRaw);
+    const parsed = JSON.parse(raw) as Partial<UserLauncherConfig>;
+    if (parsed.version !== 2) {
+      return getDefaultLauncherConfig(industryRaw);
+    }
+    return resolveStoredLauncherConfig(parsed, industryRaw);
   } catch {
     return getDefaultLauncherConfig(industryRaw);
   }
+}
+
+/** טוען v2 בלבד; אין מיגרציה מ-v1 — איפוס נקי */
+export function readLauncherConfigFromBrowser(
+  industryRaw?: string | null,
+): UserLauncherConfig {
+  if (typeof window === "undefined") return getDefaultLauncherConfig(industryRaw);
+  const v2 = localStorage.getItem(LAUNCHER_STORAGE_KEY);
+  if (v2) return parseLauncherConfigFromStorage(v2, industryRaw);
+  return getDefaultLauncherConfig(industryRaw);
 }
 
 export function resolveZoneWidgets(

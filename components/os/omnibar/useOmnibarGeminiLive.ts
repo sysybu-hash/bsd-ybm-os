@@ -4,8 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
-import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
+import { formatGeminiLiveRateLimitMessage } from "@/lib/gemini-live-user-message";
+import {
+  getGeminiLiveRateLimitCooldownUntilMs,
+  isGeminiLiveRateLimited,
+} from "@/lib/gemini-live/rate-limit-cooldown";
 import {
   isGeminiLiveAllowedByContext,
   isGeminiLiveContextReady,
@@ -66,6 +70,7 @@ export function useOmnibarGeminiLive({
     locale,
     userName,
     greetOnConnect: true,
+    translate: t,
     onToolCall: async (name, args) => {
       const result = await osAssistant.onToolCall(name, args);
       const text = typeof result === "string" ? result : "Success";
@@ -74,9 +79,10 @@ export function useOmnibarGeminiLive({
       return result;
     },
     onError: (err) => {
-      toast.error(formatGeminiLiveUserMessage(err, t));
+      toast.error(err);
       if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
       setVoiceStatus("error");
+      if (isGeminiLiveRateLimited()) setOmnibarLiveOn(false);
     },
   });
 
@@ -91,9 +97,19 @@ export function useOmnibarGeminiLive({
 
   useEffect(() => {
     if (!omnibarLiveOn || !geminiLiveEligible || !liveContextReady) return;
+    if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
     if (geminiLive.isLiveActive || geminiLive.state === "connecting") return;
+    if (geminiLive.state === "fallback" || geminiLive.state === "error") return;
     void geminiLive.start();
-  }, [omnibarLiveOn, geminiLiveEligible, liveContextReady, geminiLive.isLiveActive, geminiLive.state, geminiLive.start]);
+  }, [
+    omnibarLiveOn,
+    geminiLiveEligible,
+    liveContextReady,
+    geminiLive.isLiveActive,
+    geminiLive.isRateLimited,
+    geminiLive.state,
+    geminiLive.start,
+  ]);
 
   useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
@@ -116,6 +132,12 @@ export function useOmnibarGeminiLive({
     if (geminiLive.isLiveActive) {
       geminiLive.stop();
       setOmnibarLiveOn(false);
+      return;
+    }
+    if (isGeminiLiveRateLimited()) {
+      const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
+      const retryAt = untilMs != null ? new Date(untilMs) : new Date(Date.now() + 60_000);
+      toast.error(formatGeminiLiveRateLimitMessage(retryAt, locale, t));
       return;
     }
     setOmnibarLiveOn(true);

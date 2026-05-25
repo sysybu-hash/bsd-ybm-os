@@ -64,9 +64,9 @@ function QuickGridEditCell({
   return (
     <div
       ref={setRef}
-      className={`${LAUNCHER_QUICK_TILE_WRAPPER_CLASS} rounded-lg transition ${
+      className={`${LAUNCHER_QUICK_TILE_WRAPPER_CLASS} rounded-lg ${
         isOver ? "ring-2 ring-indigo-400/80 ring-offset-1 ring-offset-[color:var(--surface-main)]" : ""
-      } ${isDragging ? "opacity-25" : ""}`}
+      } ${isDragging ? "opacity-40" : ""}`}
       role="listitem"
       data-testid={hasWidget ? `launcher-grid-cell-${cell.row}-${cell.col}` : `launcher-grid-empty-${cell.row}-${cell.col}`}
     >
@@ -78,6 +78,8 @@ function QuickGridEditCell({
         onOpen={onOpen}
         variant="quick"
         isDragging={isDragging}
+        compactEmpty={!hasWidget}
+        suppressJiggle
         dragHandleProps={hasWidget ? { ...attributes, ...listeners } : undefined}
       />
     </div>
@@ -91,7 +93,6 @@ type QuickGridEditProps = {
   slots: LauncherSlot[];
   onOpen: (type: WidgetType) => void;
   moveQuickGridCell: (from: GridCellCoord, to: GridCellCoord) => void;
-  canvas: { cols: number; rows: number };
 };
 
 export function QuickGridEdit({
@@ -99,14 +100,10 @@ export function QuickGridEdit({
   slots,
   onOpen,
   moveQuickGridCell,
-  canvas,
 }: QuickGridEditProps) {
-  const matrix = useMemo(
-    () => buildQuickGridEditMatrix(slots, true, canvas),
-    [slots, canvas],
-  );
+  const matrix = useMemo(() => buildQuickGridEditMatrix(slots, true), [slots]);
   const totalRows = matrix.length;
-  const totalCols = matrix[0]?.length ?? canvas.cols;
+  const totalCols = matrix[0]?.length ?? 0;
   const gridStyle = useMemo(
     () => quickGridInlineStyle(totalCols, totalRows),
     [totalCols, totalRows],
@@ -148,7 +145,9 @@ export function QuickGridEdit({
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      <div className={LAUNCHER_QUICK_EDIT_SCROLL_CLASS}>
+      <div
+        className={`${LAUNCHER_QUICK_EDIT_SCROLL_CLASS} relative z-10 bg-[color:var(--background-main)]`}
+      >
         <div
           className={LAUNCHER_QUICK_EDIT_GRID_CLASS}
           style={gridStyle}
@@ -181,6 +180,7 @@ export function QuickGridEdit({
               onOpen={onOpen}
               variant="quick"
               isDragging
+              suppressJiggle
             />
           </div>
         ) : null}

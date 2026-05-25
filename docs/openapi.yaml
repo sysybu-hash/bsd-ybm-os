@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: BSD-YBM OS Workspace API (subset)
+  version: 1.0.0
+  description: |
+    תיעוד חלקי לנתיבי API ציבוריים ומאומתים. רוב ה-workspace דורש session cookie (NextAuth).
+servers:
+  - url: https://app.bsd-ybm.co.il
+    description: Production
+  - url: http://localhost:3000
+    description: Local dev
+paths:
+  /api/auth/session:
+    get:
+      summary: NextAuth session (JSON)
+      responses:
+        "200":
+          description: Session object or empty
+  /api/auth/csrf:
+    get:
+      summary: CSRF token for credentials flows
+      responses:
+        "200":
+          description: `{ csrfToken }`
+  /api/field-copilot/session:
+    post:
+      summary: Create field copilot session
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: `{ draft }`
+        "500":
+          description: DB or validation error (JSON)
+    patch:
+      summary: Update field copilot session
+      security:
+        - cookieAuth: []
+  /api/knowledge-vault/items:
+    get:
+      summary: List knowledge vault items
+      security:
+        - cookieAuth: []
+  /api/knowledge-vault/ingest:
+    post:
+      summary: Upload file to knowledge vault
+      security:
+        - cookieAuth: []
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
