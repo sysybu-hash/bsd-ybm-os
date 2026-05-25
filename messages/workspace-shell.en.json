@@ -752,6 +752,7 @@
       "importEmpty": "File is empty",
       "importFailed": "Import failed",
       "importCsvError": "CSV read error",
+      "exportCsv": "Export CSV",
       "searchPlaceholder": "Search clients…",
       "syncUnlinked": "Not linked",
       "syncLinked": "Linked",

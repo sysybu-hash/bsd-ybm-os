@@ -767,6 +767,7 @@
       "importEmpty": "הקובץ ריק",
       "importFailed": "ייבוא נכשל",
       "importCsvError": "שגיאה בקריאת CSV",
+      "exportCsv": "ייצוא CSV",
       "searchPlaceholder": "חיפוש לקוחות…",
       "syncUnlinked": "לא מקושר",
       "syncLinked": "מקושר",

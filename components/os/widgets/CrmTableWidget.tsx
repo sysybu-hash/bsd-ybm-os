@@ -56,8 +56,12 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             {s.isImporting ? <Hash className="animate-spin" size={18} /> : <Upload size={18} />}
             <span>ייבוא CSV</span>
           </button>
-          <button type="button" className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5">
-            <Download size={18} />
+          <button
+            type="button"
+            aria-label={t("workspaceWidgets.crmTable.exportCsv")}
+            className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5"
+          >
+            <Download size={18} aria-hidden />
           </button>
           <button
             type="button"
