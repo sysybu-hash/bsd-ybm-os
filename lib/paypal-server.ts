@@ -1,26 +1,22 @@
 /**
  * PayPal REST API (Orders v2) — שרת בלבד. דורש PAYPAL_CLIENT_SECRET + מזהה לקוח.
  */
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("paypal-server");
 
 function paypalBaseUrl(): string {
-  const mode = process.env.PAYPAL_ENV?.trim().toLowerCase();
-  if (mode === "sandbox") return "https://api-m.sandbox.paypal.com";
+  if (env.PAYPAL_ENV === "sandbox") return "https://api-m.sandbox.paypal.com";
   return "https://api-m.paypal.com";
 }
 
 export function getPayPalClientId(): string {
-  return (
-    process.env.PAYPAL_CLIENT_ID?.trim() ||
-    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim() ||
-    ""
-  );
+  return env.PAYPAL_CLIENT_ID?.trim() || env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim() || "";
 }
 
 function getPayPalSecret(): string {
-  return process.env.PAYPAL_CLIENT_SECRET?.trim() || "";
+  return env.PAYPAL_CLIENT_SECRET?.trim() || "";
 }
 
 export function isPayPalServerConfigured(): boolean {

@@ -90,8 +90,10 @@ export default function OSHeader({
         {/* מיתוג */}
         <div className="flex min-w-0 flex-1 items-center">
           <BrandLogo
-            size="sm"
-            className="items-center"
+            size="xs"
+            variant="image"
+            tone="auto"
+            className="shrink-0 items-center"
             priority
             subtitle={t("workspaceNav.logoSubtitle")}
           />

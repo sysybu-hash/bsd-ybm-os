@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { google } from "googleapis";
 import { authOptions } from "@/lib/auth";
 import { googleOAuthScopes, getGoogleReconnectCallbackUri } from "@/lib/google-account-tokens";
+import { getGoogleIntegrationsCredentials } from "@/lib/google-oauth-env";
 import { signGoogleReconnectState, safeOAuthCallbackUrl } from "@/lib/google-reconnect-state";
 
 export const dynamic = "force-dynamic";
@@ -16,16 +17,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-  if (!clientId || !clientSecret) {
+  const creds = getGoogleIntegrationsCredentials();
+  if (!creds) {
     return NextResponse.json({ error: "Google OAuth לא מוגדר בשרת" }, { status: 503 });
   }
 
   const callbackUrl = safeOAuthCallbackUrl(request.nextUrl.searchParams.get("callbackUrl"));
   const state = signGoogleReconnectState({ userId, callbackUrl });
 
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, getGoogleReconnectCallbackUri());
+  const oauth2 = new google.auth.OAuth2(
+    creds.clientId,
+    creds.clientSecret,
+    getGoogleReconnectCallbackUri(),
+  );
   const url = oauth2.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",

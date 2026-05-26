@@ -24,7 +24,7 @@ export default function KnowledgeVaultPicker({
 
   useEffect(() => {
     if (open && vault.enabled) void vault.refresh(vaultPath);
-  }, [open, vault.enabled, vault.refresh, vaultPath]);
+  }, [open, vault, vault.enabled, vault.refresh, vaultPath]);
 
   if (!open || !vault.enabled) return null;
 

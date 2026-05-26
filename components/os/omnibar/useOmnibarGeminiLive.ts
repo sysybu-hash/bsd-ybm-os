@@ -105,6 +105,7 @@ export function useOmnibarGeminiLive({
     omnibarLiveOn,
     geminiLiveEligible,
     liveContextReady,
+    geminiLive,
     geminiLive.isLiveActive,
     geminiLive.isRateLimited,
     geminiLive.state,

@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@prisma/client";
 import { sendOrganizationTeamInviteEmail } from "@/lib/mail";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 const ASSIGNABLE: UserRole[] = ["EMPLOYEE", "PROJECT_MGR", "CLIENT", "ORG_ADMIN"];
 
@@ -57,7 +58,7 @@ export async function createOrganizationInviteAction(formData: FormData): Promis
     },
   });
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://bsd-ybm.co.il";
+  const base = getCanonicalSiteUrl().replace(/\/$/, "");
   const registerUrl = `${base}/register?orgInvite=${encodeURIComponent(token)}`;
 
   const org = await prisma.organization.findUnique({
@@ -77,7 +78,6 @@ export async function createOrganizationInviteAction(formData: FormData): Promis
     return { ok: false, error: mail.error };
   }
 
-revalidatePath("/app/settings");
   revalidatePath("/app/settings");
   return { ok: true, registerUrl };
 }

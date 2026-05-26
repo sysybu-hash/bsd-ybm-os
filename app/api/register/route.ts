@@ -8,9 +8,13 @@ import {
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import {
+  sendNewRegistrationPendingAdminEmail,
   sendRegistrationCredentialsEmail,
   sendRegistrationWelcomeEmail,
 } from "@/lib/mail";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("register");
 import {
   generateProvisionPassword,
   hashPassword,
@@ -174,8 +178,9 @@ export async function POST(req: Request) {
             data: { usedAt: new Date() },
           });
         });
-      } catch (e) {
-        console.error("register orgInvite", e);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error("register orgInvite failed", { error: msg });
         return jsonServerError("שגיאה בשמירת המשתמש");
       }
 
@@ -190,11 +195,15 @@ export async function POST(req: Request) {
         accountActive: true,
         extraNote:
           "הצטרפתם לארגון קיים כחברי צוות. ניתן להתחבר במייל וסיסמה, Google, או ביומטרי לאחר הגדרה.",
-      }).catch((err) => console.error("sendRegistrationWelcomeEmail (orgInvite)", err));
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error("sendRegistrationWelcomeEmail (orgInvite)", { error: msg });
+      });
       if (plainForEmail) {
-        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
-          console.error("sendRegistrationCredentialsEmail (orgInvite)", err),
-        );
+        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          log.error("sendRegistrationCredentialsEmail (orgInvite)", { error: msg });
+        });
       }
 
       return NextResponse.json({
@@ -282,11 +291,15 @@ export async function POST(req: Request) {
           inv.subscriptionTier === "FREE"
             ? "Welcome to BSD-YBM! You are currently on the FREE tier with an active trial window where applicable."
             : undefined,
-      }).catch((err) => console.error("sendRegistrationWelcomeEmail (invite)", err));
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error("sendRegistrationWelcomeEmail (invite)", { error: msg });
+      });
       if (plainForEmail) {
-        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
-          console.error("sendRegistrationCredentialsEmail (invite)", err),
-        );
+        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          log.error("sendRegistrationCredentialsEmail (invite)", { error: msg });
+        });
       }
 
       return NextResponse.json({
@@ -343,11 +356,22 @@ export async function POST(req: Request) {
       extraNote: shouldApprove
         ? `Welcome to BSD-YBM! Your ${tierLabelHe(tier)} account is now ACTIVE.`
         : "Welcome to BSD-YBM! You are currently on the FREE tier pending admin approval — you will receive full access once approved.",
-    }).catch((err) => console.error("sendRegistrationWelcomeEmail (signup)", err));
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error("sendRegistrationWelcomeEmail (signup)", { error: msg });
+    });
     if (plainForEmail && shouldApprove) {
-      void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err) =>
-        console.error("sendRegistrationCredentialsEmail (signup)", err),
-      );
+      void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error("sendRegistrationCredentialsEmail (signup)", { error: msg });
+      });
+    }
+    if (!shouldApprove) {
+      void sendNewRegistrationPendingAdminEmail({
+        userEmail: normalized,
+        userName: name,
+        organizationName,
+      });
     }
 
     return NextResponse.json({
@@ -358,8 +382,9 @@ export async function POST(req: Request) {
           : "ההרשמה הושלמה. התחברו במייל והסיסמה שבחרתם."
         : "הבקשה נקלטה. מנהל המערכת יאשר את המנוי; לאחר האישור התחברו במייל וסיסמה.",
     });
-  } catch (e) {
-    console.error("register", e);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error("register failed", { error: msg });
     return jsonServerError("שגיאת שרת");
   }
 }

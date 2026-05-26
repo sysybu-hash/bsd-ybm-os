@@ -12,6 +12,7 @@ const createContactSchema = z.object({
   status: z.string().optional(),
   notes: z.string().optional().nullable(),
   projectId: z.string().nullable().optional(),
+  tags: z.array(z.string().min(1).max(40)).max(20).optional(),
 });
 
 /**
@@ -22,15 +23,28 @@ const createContactSchema = z.object({
 export const GET = withWorkspacesAuth(async (req, { orgId }) => {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const tag = searchParams.get("tag")?.trim() ?? "";
+  const idsRaw = searchParams.get("ids")?.trim() ?? "";
   const skip = Math.max(0, parseInt(searchParams.get("skip") ?? "0", 10) || 0);
   const take = Math.min(200, Math.max(1, parseInt(searchParams.get("take") ?? "50", 10) || 50));
 
+  const idList = idsRaw
+    ? idsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .slice(0, 200)
+    : [];
+
   const where = {
     organizationId: orgId,
-    ...(q
+    ...(idList.length > 0 ? { id: { in: idList } } : {}),
+    ...(tag ? { tags: { has: tag } } : {}),
+    ...(q && idList.length === 0
       ? {
           OR: [
             { name: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
             { notes: { contains: q, mode: "insensitive" as const } },
             { project: { name: { contains: q, mode: "insensitive" as const } } },
           ],
@@ -53,6 +67,7 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
       status: true,
       value: true,
       notes: true,
+      tags: true,
       createdAt: true,
       project: { select: { id: true, name: true } },
       issuedDocuments: {
@@ -101,6 +116,7 @@ export const POST = withWorkspacesAuth(
           email: body.email ?? null,
           phone: body.phone ?? null,
           notes: body.notes ?? null,
+          tags: body.tags ?? [],
           status: (body.status ?? "LEAD").toUpperCase(),
           organizationId: orgId,
           projectId: null,

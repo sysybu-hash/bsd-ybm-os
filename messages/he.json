@@ -133,6 +133,10 @@
       "authTitle": "הזדהות",
       "authBody": "השתמש בחשבון Google שאושר לארגון. לאחר ההתחברות תועבר ישירות לסביבת העבודה.",
       "google": "התחבר עם Google",
+      "googleScopeNote": "בכניסה עם Google נשלחים רק מזהה, אימייל ופרופיל. Drive ואנשי קשר — רק אחרי אישור נפרד בהגדרות.",
+      "privacyLink": "פרטיות",
+      "termsLink": "תנאים",
+      "googleIntegrationsLink": "שקיפות Google",
       "backHome": "חזרה לדף הבית"
     },
     "register": {

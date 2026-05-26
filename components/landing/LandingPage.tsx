@@ -42,7 +42,7 @@ export default function LandingPage({
       </div>
 
       <header className="relative z-10 flex items-center justify-between px-4 py-6 sm:px-8">
-        <BrandHomeLink size="sm" />
+        <BrandHomeLink size="sm" variant="image" tone="auto" priority />
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
           <ThemeToggle />
@@ -61,6 +61,8 @@ export default function LandingPage({
           <div className="landing-reveal mb-6" style={revealStyle(0.1)}>
             <BrandHomeLink
               size="hero"
+              variant="image"
+              tone="auto"
               className="mx-auto pointer-events-none"
               priority
             />

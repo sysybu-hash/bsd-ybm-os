@@ -38,19 +38,6 @@ export class GoogleDriveService {
     return google.drive({ version: "v3", auth: this.auth });
   }
 
-  async listFolders(pageSize = 200) {
-    const drive = this.drive();
-    const response = await drive.files.list({
-      q: "mimeType='application/vnd.google-apps.folder' and trashed=false",
-      fields: "files(id, name, parents)",
-      pageSize,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-      orderBy: "name",
-    });
-    return (response.data.files ?? []) as DriveFileMeta[];
-  }
-
   async listFiles(folderId: string = "root") {
     const drive = this.drive();
     const response = await drive.files.list({

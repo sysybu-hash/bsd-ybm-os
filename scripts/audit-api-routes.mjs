@@ -16,6 +16,8 @@ const ALLOWLIST_NO_WRAPPER = [
   "app/api/locale/route.ts",
   "app/api/analyze-queue/process/route.ts",
   "app/api/integrations/google-calendar/route.ts",
+  "app/api/integrations/google/contacts/connect/route.ts",
+  "app/api/integrations/google/contacts/callback/route.ts",
   // OG image generator — public by design, generates share images with no sensitive data
   "app/api/og/route.tsx",
   // PWA Web Share Target — public browser endpoint that redirects to authenticated workspace

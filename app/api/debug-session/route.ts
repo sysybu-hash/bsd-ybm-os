@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withOSAdmin } from "@/lib/api-handler";
 import { jsonNotFound } from "@/lib/api-json";
+import { env } from "@/lib/env";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
@@ -10,7 +11,7 @@ import { prisma } from "@/lib/prisma";
  * לא חושף סיסמאות או מפתחות — רק email, role, id, orgId.
  */
 export const GET = withOSAdmin(async (req) => {
-  if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEBUG_SESSION !== "true") {
+  if (process.env.NODE_ENV === "production" && env.ENABLE_DEBUG_SESSION !== true) {
     return jsonNotFound("לא זמין", "debug_disabled");
   }
 
@@ -20,7 +21,7 @@ export const GET = withOSAdmin(async (req) => {
   try {
     const token = await getToken({
       req: req as NextRequest,
-      secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+      secret: env.NEXTAUTH_SECRET || env.AUTH_SECRET,
     });
     jwtEmail = typeof token?.email === "string" ? token.email : null;
     jwtRole = typeof token?.role === "string" ? token.role : null;

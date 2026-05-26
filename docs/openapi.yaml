@@ -1,54 +1,97 @@
 openapi: 3.1.0
 info:
-  title: BSD-YBM OS Workspace API (subset)
+  title: BSD-YBM OS Workspace API
   version: 1.0.0
-  description: |
-    תיעוד חלקי לנתיבי API ציבוריים ומאומתים. רוב ה-workspace דורש session cookie (NextAuth).
+  description: תת-קבוצה של endpoints ליבה — הרחבה הדרגתית ל-10/10 הנדסי.
+
 servers:
-  - url: https://app.bsd-ybm.co.il
+  - url: https://www.bsd-ybm.co.il
     description: Production
   - url: http://localhost:3000
     description: Local dev
+
 paths:
-  /api/auth/session:
+  /api/user/launcher-config:
     get:
-      summary: NextAuth session (JSON)
-      responses:
-        "200":
-          description: Session object or empty
-  /api/auth/csrf:
-    get:
-      summary: CSRF token for credentials flows
-      responses:
-        "200":
-          description: `{ csrfToken }`
-  /api/field-copilot/session:
-    post:
-      summary: Create field copilot session
+      summary: Get user launcher layout
       security:
-        - cookieAuth: []
+        - sessionCookie: []
       responses:
         "200":
-          description: `{ draft }`
-        "500":
-          description: DB or validation error (JSON)
+          description: Config or null for platform default
     patch:
-      summary: Update field copilot session
+      summary: Save user launcher layout
       security:
-        - cookieAuth: []
-  /api/knowledge-vault/items:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config:
+                  type: object
+      responses:
+        "200":
+          description: Saved
+
+  /api/crm/contacts:
     get:
-      summary: List knowledge vault items
+      summary: List CRM contacts with ERP summary
       security:
-        - cookieAuth: []
-  /api/knowledge-vault/ingest:
+        - sessionCookie: []
     post:
-      summary: Upload file to knowledge vault
+      summary: Create CRM contact
       security:
-        - cookieAuth: []
+        - sessionCookie: []
+
+  /api/crm/contacts/export:
+    get:
+      summary: Export all org contacts as CSV (UTF-8 BOM)
+      security:
+        - sessionCookie: []
+
+  /api/crm/semantic-search:
+    post:
+      summary: Semantic contact search (Gemini); fallback to text search in UI
+      security:
+        - sessionCookie: []
+
+  /api/crm/import/google:
+    post:
+      summary: Import contacts from Google People API (requires contacts OAuth)
+      security:
+        - sessionCookie: []
+
+  /api/reports/finance-csv:
+    get:
+      summary: Export finance summary CSV for accountant
+      security:
+        - sessionCookie: []
+
+  /api/reports/finance-pdf:
+    get:
+      summary: Export finance summary PDF
+      security:
+        - sessionCookie: []
+
+  /api/erp/archive/bulk-export:
+    post:
+      summary: Bulk export archive items as ZIP (max 50)
+      security:
+        - sessionCookie: []
+
+  /api/dashboard/stats:
+    get:
+      summary: Workspace dashboard KPIs
+      security:
+        - sessionCookie: []
+
 components:
   securitySchemes:
-    cookieAuth:
+    sessionCookie:
       type: apiKey
       in: cookie
       name: next-auth.session-token

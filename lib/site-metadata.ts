@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PRODUCTION_SITE_URL } from "@/lib/core/site-url";
+import { clientEnv, env } from "@/lib/env";
 import type { AppLocale } from "@/lib/i18n/config";
 import {
   getHreflangAlternates,
@@ -8,7 +10,7 @@ import {
 } from "@/lib/google-publish/seo-content";
 
 export function getCanonicalSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.bsd-ybm.co.il";
+  return clientEnv.NEXT_PUBLIC_SITE_URL?.trim() || PRODUCTION_SITE_URL;
 }
 
 function siteBaseUrl(): URL {
@@ -19,21 +21,20 @@ function siteBaseUrl(): URL {
 function verificationBlocks(): Pick<Metadata, "verification" | "other"> {
   const verification: Metadata["verification"] = {};
   const googleVerification =
-    process.env.SITE_VERIFICATION_GOOGLE?.trim() ||
-    process.env.GOOGLE_SITE_VERIFICATION?.trim();
-  const yahooVerification = process.env.SITE_VERIFICATION_YAHOO?.trim();
-  const yandexVerification = process.env.SITE_VERIFICATION_YANDEX?.trim();
+    env.SITE_VERIFICATION_GOOGLE?.trim() || env.GOOGLE_SITE_VERIFICATION?.trim();
+  const yahooVerification = env.SITE_VERIFICATION_YAHOO?.trim();
+  const yandexVerification = env.SITE_VERIFICATION_YANDEX?.trim();
 
   if (googleVerification) verification.google = googleVerification;
   if (yahooVerification) verification.yahoo = yahooVerification;
   if (yandexVerification) verification.yandex = yandexVerification;
 
   const other: Record<string, string> = {};
-  const facebookVerification = process.env.SITE_VERIFICATION_FACEBOOK?.trim();
-  const pinterestVerification = process.env.SITE_VERIFICATION_PINTEREST?.trim();
-  const bingVerification = process.env.SITE_VERIFICATION_BING?.trim();
-  const customMetaName = process.env.SITE_VERIFICATION_META_NAME?.trim();
-  const customMetaContent = process.env.SITE_VERIFICATION_META_CONTENT?.trim();
+  const facebookVerification = env.SITE_VERIFICATION_FACEBOOK?.trim();
+  const pinterestVerification = env.SITE_VERIFICATION_PINTEREST?.trim();
+  const bingVerification = env.SITE_VERIFICATION_BING?.trim();
+  const customMetaName = env.SITE_VERIFICATION_META_NAME?.trim();
+  const customMetaContent = env.SITE_VERIFICATION_META_CONTENT?.trim();
 
   if (facebookVerification) other["facebook-domain-verification"] = facebookVerification;
   if (pinterestVerification) other["p:domain_verify"] = pinterestVerification;
@@ -47,7 +48,7 @@ function verificationBlocks(): Pick<Metadata, "verification" | "other"> {
 }
 
 function productionRobots(): Metadata["robots"] {
-  return process.env.VERCEL_ENV === "preview"
+  return env.VERCEL_ENV === "preview"
     ? { index: false, follow: false, nocache: true }
     : {
         index: true,

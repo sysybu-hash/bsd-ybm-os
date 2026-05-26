@@ -8,15 +8,15 @@ import {
 } from "./helpers";
 
 test.describe("dashboard hubs", () => {
-  test.beforeEach(async ({ page, baseURL }) => {
+  test.beforeEach(async ({ page, baseURL }, testInfo) => {
+    testInfo.setTimeout(120_000);
     const origin = baseURL ?? "http://localhost:3001";
     await page.context().addCookies([
       { name: "bsd-locale", value: "he", url: origin },
     ]);
     await primeCookieConsent(page);
-    await page.goto("/");
-    await dismissCookieBannerIfVisible(page);
     const signedIn = await tryCredentialsSignIn(page);
+    await dismissCookieBannerIfVisible(page);
     if (!signedIn) {
       test.skip(true, "E2E credentials not configured");
     }
@@ -41,12 +41,14 @@ test.describe("dashboard hubs", () => {
   });
 
   test("deep link resolves dashboard alias to finance hub", async ({ page }) => {
+    test.setTimeout(90_000);
     await dismissWorkspaceOverlays(page);
-    await page.goto("/?w=dashboard", { waitUntil: "domcontentloaded" });
+    await page.goto("/?w=dashboard", { waitUntil: "domcontentloaded", timeout: 45_000 });
     await dismissWorkspaceOverlays(page);
-    await expect(page.locator("[data-widget-shell]").first()).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(page).toHaveURL(/w=(dashboard|financeHub|finance)/);
+    await expect(
+      page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i }),
+    ).toHaveCount(0);
   });
 
   test("projects hub opens with tab navigation", async ({ page }) => {

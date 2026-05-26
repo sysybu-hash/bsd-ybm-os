@@ -18,6 +18,7 @@
 | `lib/tasks/` | משימות | |
 | `lib/validation/` | Zod schemas | `schemas/` |
 | `lib/workspace-api/` | API workspace | |
+| `lib/core/` | site URL, tenant host | `site-url.ts`, `tenant-host.ts` |
 
 ## קבצי שורש `lib/` (למיגרציה הדרגתית)
 

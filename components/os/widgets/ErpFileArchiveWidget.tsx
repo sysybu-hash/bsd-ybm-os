@@ -35,6 +35,8 @@ export default function ErpFileArchiveWidget() {
     deleteTarget, setDeleteTarget,
     fetchArchive, selectArchiveScope,
     handlePreview, handleDownload, confirmDelete, handleRestore, openDeleteDialog,
+    selectionMode, setSelectionMode, selectedKeys, toggleSelected, clearSelection,
+    bulkExporting, handleBulkExport, fileKey,
   } = archive;
 
   const emptyAfterLoad = !loading && !loadError && files.length === 0;
@@ -115,7 +117,36 @@ export default function ErpFileArchiveWidget() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 md:mr-4">
+        <div className="flex flex-wrap items-center gap-2 md:mr-4">
+          {archiveView === "active" ? (
+            selectionMode ? (
+              <>
+                <button
+                  type="button"
+                  disabled={bulkExporting || selectedKeys.size === 0}
+                  onClick={() => void handleBulkExport()}
+                  className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                >
+                  {t("workspaceWidgets.erpArchive.exportSelected")} ({selectedKeys.size})
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold"
+                >
+                  {t("workspaceWidgets.erpArchive.cancelSelect")}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSelectionMode(true)}
+                className="rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold"
+              >
+                {t("workspaceWidgets.erpArchive.selectMode")}
+              </button>
+            )
+          ) : null}
           <button type="button" onClick={() => setViewMode("grid")} aria-label="תצוגת רשת"
             className={`rounded-lg p-2 transition-all ${viewMode === "grid" ? "bg-[color:var(--foreground-muted)]/20 text-[color:var(--foreground-main)]" : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}>
             <Grid size={18} />
@@ -147,6 +178,7 @@ export default function ErpFileArchiveWidget() {
               </div>
               {files.map((file) => {
                 const selected = selectedFile?.id === file.id;
+                const checked = selectedKeys.has(fileKey(file));
                 return (
                   <div
                     key={file.id}
@@ -154,6 +186,17 @@ export default function ErpFileArchiveWidget() {
                       selected ? "border-amber-500/50 bg-[color:var(--surface-card)]/90" : "border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80"
                     }`}
                   >
+                    {selectionMode ? (
+                      <div className="absolute start-2 top-1/2 -translate-y-1/2 z-10">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelected(file)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={file.name}
+                        />
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handlePreview(file)}

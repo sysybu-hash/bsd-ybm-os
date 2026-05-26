@@ -76,7 +76,7 @@ export function useLauncherActions({
         }, 400);
       }
     },
-    [permissionCtx, meckanoEnabled, userId, setConfig],
+    [permissionCtx, meckanoEnabled, organizationIndustry, isPlatformAdmin, userId, setConfig],
   );
 
   const zoneWidgets = useCallback(

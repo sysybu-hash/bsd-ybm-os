@@ -1,6 +1,9 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
+import { env } from "@/lib/env";
 import { osAdminEmails } from "@/lib/is-admin";
+import { createLogger } from "@/lib/logger";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import {
   getMailFrom,
@@ -14,6 +17,20 @@ function mailSiteUrl(): string {
   return getCanonicalSiteUrl().replace(/\/$/, "");
 }
 const TAGLINE = "BSD-YBM-OS - השדרה שמחברת בין כולם";
+const log = createLogger("mail");
+
+function createSmtpTransporter(): nodemailer.Transporter<SMTPTransport.SentMessageInfo> {
+  const port = Number(env.SMTP_PORT?.trim() || "587");
+  const secure = env.SMTP_SECURE === true || port === 465;
+  const user = env.SMTP_USER?.trim();
+  const pass = env.SMTP_PASS?.trim();
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST!.trim(),
+    port,
+    secure,
+    auth: user && pass ? { user, pass } : undefined,
+  });
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -48,7 +65,7 @@ function wrapBrandedHtml(innerBody: string): string {
 
 function createResend(): Resend | null {
   if (!isResendConfigured()) return null;
-  return new Resend(process.env.RESEND_API_KEY!.trim());
+  return new Resend(env.RESEND_API_KEY!.trim());
 }
 
 async function sendViaResend(to: string | string[], subject: string, html: string): Promise<boolean> {
@@ -64,7 +81,7 @@ async function sendViaResend(to: string | string[], subject: string, html: strin
     ...(replyTo ? { replyTo } : {}),
   });
   if (error) {
-    console.error("Resend send failed:", error);
+    log.error("Resend send failed", { error: error.message });
     return false;
   }
   return true;
@@ -72,18 +89,7 @@ async function sendViaResend(to: string | string[], subject: string, html: strin
 
 async function sendViaSmtp(to: string | string[], subject: string, html: string): Promise<boolean> {
   if (!isSmtpConfigured()) return false;
-  const host = process.env.SMTP_HOST!.trim();
-  const port = Number(process.env.SMTP_PORT?.trim() || "587");
-  const secure = process.env.SMTP_SECURE === "true" || port === 465;
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASS?.trim();
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: user && pass ? { user, pass } : undefined,
-  });
+  const transporter = createSmtpTransporter();
 
   const list = Array.isArray(to) ? to : [to];
   const replyTo = getMailReplyTo();
@@ -125,9 +131,9 @@ export async function sendTransactionalEmail(
       ok: false,
       error: "שליחת המייל נכשלה — בדקו את מפתח Resend או הגדרות SMTP ואימות הדומיין bsd-ybm.co.il",
     };
-  } catch (e) {
-    console.error("sendTransactionalEmail", e);
-    const msg = e instanceof Error ? e.message : "שליחת אימייל נכשלה";
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error("sendTransactionalEmail failed", { error: msg });
     return { ok: false, error: msg };
   }
 }
@@ -177,24 +183,14 @@ export async function sendTransactionalEmailWithAttachments(
         ...(replyTo ? { replyTo } : {}),
       });
       if (error) {
-        console.error("Resend attachments failed:", error);
+        log.error("Resend attachments failed", { error: error.message });
         return { ok: false, error: error.message ?? "שליחת מייל נכשלה (Resend)" };
       }
       return { ok: true };
     }
 
     if (isSmtpConfigured()) {
-      const host = process.env.SMTP_HOST!.trim();
-      const port = Number(process.env.SMTP_PORT?.trim() || "587");
-      const secure = process.env.SMTP_SECURE === "true" || port === 465;
-      const user = process.env.SMTP_USER?.trim();
-      const pass = process.env.SMTP_PASS?.trim();
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: user && pass ? { user, pass } : undefined,
-      });
+      const transporter = createSmtpTransporter();
       await transporter.sendMail({
         from: getMailFrom(),
         to: list.join(", "),
@@ -207,9 +203,9 @@ export async function sendTransactionalEmailWithAttachments(
     }
 
     return { ok: false, error: "חסר RESEND_API_KEY או SMTP להודעה עם קובץ מצורף" };
-  } catch (e) {
-    console.error("sendTransactionalEmailWithAttachments", e);
-    const msg = e instanceof Error ? e.message : "שליחת אימייל נכשלה";
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error("sendTransactionalEmailWithAttachments failed", { error: msg });
     return { ok: false, error: msg };
   }
 }
@@ -242,7 +238,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string | null): Pr
     </p>`;
   const r = await sendTransactionalEmail(toEmail.trim().toLowerCase(), "ברוכים הבאים ל־BSD-YBM", inner);
   if (!r.ok) {
-    console.warn("sendWelcomeEmail:", r.error);
+    log.warn("sendWelcomeEmail failed", { error: r.error });
   }
 }
 
@@ -349,7 +345,7 @@ export async function sendAccessApprovedEmail(toEmail: string): Promise<void> {
     inner,
   );
   if (!r.ok) {
-    console.warn("sendAccessApprovedEmail:", r.error);
+    log.warn("sendAccessApprovedEmail failed", { error: r.error });
   }
 }
 
@@ -374,7 +370,7 @@ export async function sendAccessApprovedAdminNotify(
     inner,
   );
   if (!r.ok) {
-    console.warn("sendAccessApprovedAdminNotify:", r.error);
+    log.warn("sendAccessApprovedAdminNotify failed", { error: r.error });
   }
 }
 
@@ -394,7 +390,7 @@ export async function sendPayPalSubscriptionConfirmationEmail(
     inner,
   );
   if (!r.ok) {
-    console.warn("sendPayPalSubscriptionConfirmationEmail:", r.error);
+    log.warn("sendPayPalSubscriptionConfirmationEmail failed", { error: r.error });
   }
 }
 
@@ -476,6 +472,60 @@ export async function sendSubscriptionTierInvitationEmail(
     `BSD-YBM-OS — הזמנת מנוי (${params.tierLabel})`,
     inner,
   );
+}
+
+/** התראה חשובה מהמערכת (גשר מ־InAppNotification) */
+export async function sendNotificationEmail(
+  toEmail: string,
+  title: string,
+  body: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const safeTitle = escapeHtml(title.trim());
+  const safeBody = escapeHtml(body.trim()).replace(/\n/g, "<br/>");
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">${safeTitle}</h1>
+    <p style="margin:0 0 20px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.65;">
+      ${safeBody}
+    </p>
+    <p style="text-align:center;margin:0;">
+      <a href="${escapeHtml(mailSiteUrl())}/app" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:12px 24px;border-radius:10px;text-decoration:none;">
+        פתיחה במערכת
+      </a>
+    </p>`;
+  return sendTransactionalEmail(
+    toEmail.trim().toLowerCase(),
+    `BSD-YBM — ${title.trim().slice(0, 80)}`,
+    inner,
+  );
+}
+
+/** מנהלי פלטפורמה: הרשמה חדשה ממתינה לאישור */
+export async function sendNewRegistrationPendingAdminEmail(params: {
+  userEmail: string;
+  userName: string | null;
+  organizationName: string;
+}): Promise<void> {
+  const admins = osAdminEmails();
+  const who = params.userName?.trim()
+    ? `${escapeHtml(params.userName.trim())} (${escapeHtml(params.userEmail)})`
+    : escapeHtml(params.userEmail);
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">הרשמה חדשה ממתינה</h1>
+    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;text-align:center;">
+      משתמש: <strong style="color:#fff;">${who}</strong>
+    </p>
+    <p style="margin:0;color:#94a3b8;font-size:14px;text-align:center;">
+      ארגון: <strong style="color:#e2e8f0;">${escapeHtml(params.organizationName)}</strong>
+    </p>
+    <p style="text-align:center;margin:28px 0 0;">
+      <a href="${escapeHtml(mailSiteUrl())}/admin" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:12px 24px;border-radius:10px;text-decoration:none;">
+        מסוף ניהול
+      </a>
+    </p>`;
+  const r = await sendTransactionalEmail(admins, "BSD-YBM-OS — הרשמה ממתינה לאישור", inner);
+  if (!r.ok) {
+    log.warn("sendNewRegistrationPendingAdminEmail failed", { error: r.error });
+  }
 }
 
 /** פרטי כניסה למשתמש שנוצר ידנית על ידי סופר-אדמין */

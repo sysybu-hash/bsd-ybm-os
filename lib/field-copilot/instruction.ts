@@ -1,5 +1,10 @@
 import type { MessageTree } from "@/lib/i18n/keys";
 import { getMergedIndustryConfig } from "@/lib/construction-trades";
+import {
+  LOCALE_AI_LANGUAGE_NAMES,
+  normalizeLocale,
+  type AppLocale,
+} from "@/lib/i18n/config";
 import { buildV5JsonInstruction } from "@/lib/scan-schema-v5";
 
 export function buildFieldCopilotInstruction(input: {
@@ -33,6 +38,8 @@ ${contextLines}
 
 ### FIELD COPILOT RULES
 - You analyze photos/video keyframes + voice transcript from a construction site visit.
+- Ground every quantity and scope line in visible evidence (photos) or the contractor transcript/notes — do not invent rooms, dimensions, or prices.
+- If something is unclear, omit it from BOQ/lineItems and list it under "assumptions" instead of guessing.
 - Populate "billOfQuantities" with measurable work items (description, quantity, unit).
 - Populate "lineItems" for priced proposal rows — set unitPrice to 0 and lineTotal to 0 (contractor fills prices manually).
 - Set "priceAlertPending": true always (manual pricing required).
@@ -42,5 +49,18 @@ ${contextLines}
 - Human-readable strings in ${input.localeLang}.`;
 }
 
-export const FIELD_COPILOT_LIVE_PROMPT =
-  "אתה עוזר לקבלן בשטח. הזמן אותו לתאר את העבודה הנדרשת: היקף, חומרים, מיקום, בעיות באתר. דבר בעברית קצרה וברורה.";
+/** הנחיית Gemini Live לשלב הקלטה קולית — לפי שפת הממשק */
+export function getFieldCopilotLivePrompt(locale: string): string {
+  const loc = normalizeLocale(locale) as AppLocale;
+  const lang = LOCALE_AI_LANGUAGE_NAMES[loc];
+  if (loc === "en") {
+    return `You assist a contractor on site. Prompt them to describe required work: scope, materials, location, site issues. Speak in clear, short ${lang}. Do not invent facts — only clarify what they report.`;
+  }
+  if (loc === "ru") {
+    return `Вы помогаете прорабу на объекте. Попросите описать требуемые работы: объём, материалы, место, проблемы на площадке. Говорите кратко и ясно на ${lang}. Не выдумывайте факты — только уточняйте то, что сообщает пользователь.`;
+  }
+  return `אתה עוזר לקבלן בשטח. הזמן אותו לתאר את העבודה הנדרשת: היקף, חומרים, מיקום, בעיות באתר. דבר ב${lang} קצרה וברורה. אל תמציא עובדות — רק הבהר מה שהמשתמש מדווח.`;
+}
+
+/** @deprecated השתמשו ב-getFieldCopilotLivePrompt(locale) */
+export const FIELD_COPILOT_LIVE_PROMPT = getFieldCopilotLivePrompt("he");

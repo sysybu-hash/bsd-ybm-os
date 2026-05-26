@@ -30,11 +30,23 @@ type RateLimitOptions = {
   windowMs: number;
 };
 
+/** ברירת מחדל לכל route מאומת workspace — ניתן לדרוס או לבטל עם `false` */
+export const DEFAULT_WORKSPACE_RATE_LIMIT: RateLimitOptions = {
+  key: "api:workspace",
+  limit: 200,
+  windowMs: 60_000,
+};
+
 type WorkspaceAuthOptionsBase = {
   /** אם מוגדר — רק תפקידים אלה עוברים (אחרת 403) */
   allowedRoles?: UserRole[];
-  /** הגבלת קצב אופציונלית — מוחלת לפי user-id לאחר אימות */
-  rateLimit?: RateLimitOptions;
+  /**
+   * הגבלת קצב לפי user-id.
+   * - אובייקט — מגבלה ייעודית
+   * - לא מוגדר — DEFAULT_WORKSPACE_RATE_LIMIT
+   * - `false` — ללא הגבלה (SSE/stream בלבד)
+   */
+  rateLimit?: RateLimitOptions | false;
 };
 
 export type WorkspaceAuthOptions = WorkspaceAuthOptionsBase & {
@@ -173,8 +185,8 @@ export function withWorkspacesAuth(
     if (!isWorkspaceContext(gate)) return gate;
 
     // rate limit — per authenticated user (more fair than IP-based for authed routes)
-    if (options?.rateLimit) {
-      const { key, limit, windowMs } = options.rateLimit;
+    if (options?.rateLimit !== false) {
+      const { key, limit, windowMs } = options?.rateLimit ?? DEFAULT_WORKSPACE_RATE_LIMIT;
       const rlKey = `rl:${key}:user:${gate.userId}`;
       const limited = await applyRateLimit(req as NextRequest, rlKey, limit, windowMs);
       if (limited) return limited;

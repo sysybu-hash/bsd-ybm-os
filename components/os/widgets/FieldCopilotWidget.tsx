@@ -104,7 +104,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
 
     },
 
-    [session.draft?.id, session.loadSession],
+    [session],
 
   );
 
@@ -140,6 +140,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
     authStatus,
     initialSessionId,
     liveData,
+    session,
     session.createSession,
     session.loadSession,
   ]);
@@ -301,7 +302,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
 
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
 
         {step === 0 ? <ClientProjectStep draft={session.draft} onUpdate={onUpdate} /> : null}
 

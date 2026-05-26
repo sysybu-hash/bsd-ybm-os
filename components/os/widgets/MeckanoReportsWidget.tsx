@@ -13,6 +13,7 @@ export default function MeckanoReportsWidget() {
     reports, employees, projects,
     isLoading, error, filters, setFilters,
     fetchReports, exportToCSV, downloadPDF,
+    lastSyncAt, autoSyncEnabled,
   } = useMeckanoReports();
 
   return (
@@ -24,8 +25,18 @@ export default function MeckanoReportsWidget() {
             <FileText size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">מחולל דוחות Meckano</h2>
-            <p className="text-xs text-[color:var(--foreground-muted)]">ניהול ומעקב שעות עובדים ופרויקטים</p>
+            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">{t("workspaceWidgets.meckano.title")}</h2>
+            <p className="text-xs text-[color:var(--foreground-muted)]">
+              {t("workspaceWidgets.meckano.subtitle")}
+              {autoSyncEnabled ? (
+                <span className="ms-2 inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  · {t("workspaceWidgets.meckano.autoSyncOn")}
+                  {lastSyncAt
+                    ? ` (${t("workspaceWidgets.meckano.lastSync")}: ${new Date(lastSyncAt).toLocaleString()})`
+                    : ""}
+                </span>
+              ) : null}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">

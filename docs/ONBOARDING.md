@@ -99,10 +99,68 @@ node scripts/check-env-essential.mjs
 ### Run Migrations
 
 ```bash
-npx prisma migrate deploy
+npm run db:migrate
+# equivalent: npx prisma migrate deploy (with .env.local)
 ```
 
 This runs all existing migrations and creates all tables.
+
+Recent product-brochure migration (contact tags + Meckano sync flags):
+
+`prisma/migrations/20260526120000_contact_tags_meckano_sync/migration.sql`
+
+### Google OAuth (Sign-in, Drive, Contacts import)
+
+```env
+# אינטגרציות (Drive reconnect, Contacts)
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+
+# אופציונלי — Client נפרד לכניסה בלבד (מומלץ להסרת אזהרת Google ב-login)
+# GOOGLE_SIGNIN_CLIENT_ID="..."
+# GOOGLE_SIGNIN_CLIENT_SECRET="..."
+```
+
+- **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.
+- **Runbook ידני:** [google-oauth-verification-runbook-he.md](./google-oauth-verification-runbook-he.md)
+- **Drive**: reconnect בהגדרות → `/api/auth/google-reconnect`
+- **Contacts (CRM)**: `/api/integrations/google/contacts/connect` — redirect: `{SITE_URL}/api/integrations/google/contacts/callback`
+
+### Email (transactional mail)
+
+Configure **one** transport in `.env.local` (see `.env.example`):
+
+| Option | Variables |
+|--------|-----------|
+| **Resend** (recommended) | `RESEND_API_KEY` |
+| **SMTP** | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, optional `SMTP_PORT`, `SMTP_SECURE` |
+
+Optional sender overrides: `MAIL_FROM`, `MAIL_REPLY_TO` (defaults in `lib/mail-config.ts`).
+
+**What sends mail automatically** (when transport is configured):
+
+| Flow | Trigger |
+|------|---------|
+| Registration welcome / credentials | `POST /api/register` |
+| Pending signup alert to platform admins | `POST /api/register` (FREE tier awaiting approval) |
+| Password reset | `POST /api/auth/forgot-password` |
+| Org team invite | Settings → invite member |
+| Subscription tier invite | Platform admin subscriptions |
+| Access approved | Admin approves pending user |
+| Document scanned (ERP) | AI scan persist / tri-engine |
+| Invoice / PayPal receipt | PayPal webhook |
+| Collection reminder (PDF) | Cron + manual send |
+| Important in-app notifications | `notifyUser` / org-wide alerts (tasks, signed quotes, price spikes) |
+
+**Verify locally:**
+
+```bash
+node scripts/test-email.mjs your@email.com
+```
+
+**Verify in production:** Platform admin → test email (`POST /api/admin/test-email`).
+
+Push to Vercel env: `npm run vercel:env:push:mail`
 
 ### Seed (Optional)
 
@@ -386,6 +444,11 @@ npm run lint                   # ESLint
 npx tsc --noEmit               # Type check
 npm test                       # Unit tests
 npm run test:e2e               # E2E tests
+npm run audit:api              # Auth wrapper audit
+npm run audit:rate-limits      # Rate limit audit
+npm run audit:process-env    # מידע: process.env שנותרו (מסלול 10/10)
+npm run verify                 # lint + tsc + audits + unit tests
+npm run premerge               # verify + E2E (CI gate)
 
 # Environment
 node scripts/check-env-essential.mjs    # Audit all 90 env vars

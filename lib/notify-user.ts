@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { publishNotificationEvent } from "@/lib/notifications-pubsub";
+import { maybeEmailUserNotification } from "@/lib/notification-email-bridge";
 
 export async function notifyUser(
   userId: string,
@@ -27,6 +28,8 @@ export async function notifyUser(
     linkType: row.linkType,
     targetId: row.targetId,
   });
+
+  void maybeEmailUserNotification(userId, title, body);
 
   return row;
 }

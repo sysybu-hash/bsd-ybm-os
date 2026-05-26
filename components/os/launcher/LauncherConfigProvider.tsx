@@ -117,7 +117,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { cancelled = true; };
-  }, [organizationIndustry, userId, launcherDefaultOptions]);
+  }, [organizationIndustry, userId, launcherDefaultOptions, permissionCtx]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -128,7 +128,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
         launcherDefaultOptions,
       ),
     );
-  }, [hydrated, meckanoEnabled, permissionCtx]);
+  }, [hydrated, meckanoEnabled, organizationIndustry, launcherDefaultOptions, permissionCtx]);
 
   const actions = useLauncherActions({
     config, editMode, permissionCtx, isPlatformAdmin, meckanoEnabled,
@@ -156,7 +156,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
       exitEditMode,
       ...restActions,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [config, hydrated, editMode, announce, picker, permissionCtx, restActions, enterEditMode, exitEditMode],
   );
 

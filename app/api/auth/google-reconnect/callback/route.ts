@@ -6,6 +6,7 @@ import {
   getGoogleReconnectCallbackUri,
   persistGoogleAccountTokens,
 } from "@/lib/google-account-tokens";
+import { getGoogleIntegrationsCredentials } from "@/lib/google-oauth-env";
 import { safeOAuthCallbackUrl, verifyGoogleReconnectState } from "@/lib/google-reconnect-state";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-  if (!clientId || !clientSecret) {
+  const creds = getGoogleIntegrationsCredentials();
+  if (!creds) {
     return NextResponse.redirect(new URL("/?google_reconnect=server_config", request.url));
   }
 
   const redirectUri = getGoogleReconnectCallbackUri();
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  const oauth2 = new google.auth.OAuth2(creds.clientId, creds.clientSecret, redirectUri);
 
   try {
     const { tokens } = await oauth2.getToken(code);

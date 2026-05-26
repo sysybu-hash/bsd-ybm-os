@@ -59,7 +59,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
     <>
       {!embedded ? (
         <div className="mb-6 flex items-center justify-between gap-3">
-          <BrandHomeLink size="sm" />
+          <BrandHomeLink size="sm" variant="image" tone="auto" />
           <LocaleSwitcher compact />
         </div>
       ) : null}

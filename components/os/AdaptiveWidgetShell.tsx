@@ -131,7 +131,7 @@ export default function AdaptiveWidgetShell({
           }`}
         >
           <div
-            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : "h-full min-h-0"}`}
+            className={`flex w-full flex-col ${zoomActive ? "min-h-full origin-top" : "min-h-0"}`}
             style={contentZoomStyle}
           >
             {children}

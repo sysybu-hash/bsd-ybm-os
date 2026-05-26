@@ -1,5 +1,7 @@
 /** הגדרות מייל מרכזיות — שולח ברירת מחדל: yb@bsd-ybm.co.il */
 
+import { env } from "@/lib/env";
+
 export const DEFAULT_MAIL_FROM = "BSD-YBM <yb@bsd-ybm.co.il>";
 export const DEFAULT_REPLY_TO = "yb@bsd-ybm.co.il";
 
@@ -13,27 +15,21 @@ export function formatMailFrom(raw: string): string {
 }
 
 export function getMailFrom(): string {
-  const raw =
-    process.env.MAIL_FROM?.trim() ||
-    process.env.EMAIL_FROM?.trim() ||
-    "yb@bsd-ybm.co.il";
+  const raw = env.MAIL_FROM?.trim() || env.EMAIL_FROM?.trim() || "yb@bsd-ybm.co.il";
   return formatMailFrom(raw);
 }
 
 export function getMailReplyTo(): string | undefined {
-  const v =
-    process.env.MAIL_REPLY_TO?.trim() ||
-    process.env.SMTP_USER?.trim() ||
-    DEFAULT_REPLY_TO;
+  const v = env.MAIL_REPLY_TO?.trim() || env.SMTP_USER?.trim() || DEFAULT_REPLY_TO;
   return v.includes("@") ? v : undefined;
 }
 
 export function isResendConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
+  return Boolean(env.RESEND_API_KEY?.trim());
 }
 
 export function isSmtpConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST?.trim());
+  return Boolean(env.SMTP_HOST?.trim());
 }
 
 export function isMailTransportConfigured(): boolean {

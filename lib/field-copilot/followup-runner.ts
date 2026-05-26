@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
+import { notifyUser } from "@/lib/notify-user";
 
 const log = createLogger("field-copilot-followup");
 
@@ -58,20 +59,9 @@ export async function runFieldCopilotFollowupsForAllOrganizations(): Promise<{
       });
       if (existing) continue;
 
-      await prisma.inAppNotification.create({
-        data: {
-          userId: session.userId,
-          title,
-          body,
-          linkType: "docCreator",
-          targetId: session.issuedDocumentId ?? session.quoteId,
-          metadata: {
-            quoteId: session.quoteId,
-            sessionId: session.id,
-            fieldCopilot: true,
-            reminderDay: days,
-          },
-        },
+      await notifyUser(session.userId, title, body, {
+        linkType: "docCreator",
+        targetId: session.issuedDocumentId ?? session.quoteId,
       });
       notified += 1;
     }

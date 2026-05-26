@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import type { ArchiveFileCategory } from "./types";
 import { buildArchiveQuery } from "./utils";
 
 export function useArchiveData() {
+  const { t } = useI18n();
   const [files, setFiles] = useState<ErpArchiveFile[]>([]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -31,6 +33,9 @@ export function useArchiveData() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ErpArchiveFile | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const [bulkExporting, setBulkExporting] = useState(false);
 
   // Sync nav
   const applyArchiveNav = useCallback((view: WidgetViewState) => {
@@ -191,6 +196,59 @@ export function useArchiveData() {
 
   const openDeleteDialog = (file: ErpArchiveFile) => { setOpenMenuId(null); setDeleteTarget(file); };
 
+  const fileKey = (file: ErpArchiveFile) => `${file.source}:${file.sourceId}`;
+
+  const toggleSelected = (file: ErpArchiveFile) => {
+    const key = fileKey(file);
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedKeys(new Set());
+    setSelectionMode(false);
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedKeys.size === 0) {
+      toast.message(t("workspaceWidgets.erpArchive.selectForExport"));
+      return;
+    }
+    setBulkExporting(true);
+    try {
+      const items = files
+        .filter((f) => selectedKeys.has(fileKey(f)))
+        .map((f) => ({ source: f.source, sourceId: f.sourceId }));
+      const res = await fetch("/api/erp/archive/bulk-export", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? t("workspaceWidgets.erpArchive.bulkExportFailed"));
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `erp-archive-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("workspaceWidgets.erpArchive.bulkExportSuccess"));
+      clearSelection();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("workspaceWidgets.erpArchive.bulkExportFailed"));
+    } finally {
+      setBulkExporting(false);
+    }
+  };
+
   return {
     files, projects, totalCount, loading, loadError,
     viewMode, setViewMode, searchQuery, setSearchQuery,
@@ -200,5 +258,7 @@ export function useArchiveData() {
     deleteTarget, setDeleteTarget,
     fetchArchive, selectArchiveScope,
     handlePreview, handleDownload, confirmDelete, handleRestore, openDeleteDialog,
+    selectionMode, setSelectionMode, selectedKeys, toggleSelected, clearSelection,
+    bulkExporting, handleBulkExport, fileKey,
   };
 }

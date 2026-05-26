@@ -159,7 +159,7 @@ export function useScanQueue({
         formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyFilePreview stable
+     
     [isProcessing, validateScanFile, engineRunMode, scanModeOverride, boundProjectId,
      userInstruction, industryId, openWorkspaceWidget, tr, applyFilePreview],
   );

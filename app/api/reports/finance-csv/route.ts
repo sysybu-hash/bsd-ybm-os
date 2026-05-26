@@ -1,19 +1,17 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { csvEscape } from "@/lib/csv-escape";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-function csvEscape(value: string | number) {
-  const s = String(value);
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
+export const GET = withWorkspacesAuth(async (req, { orgId }) => {
+  const limited = await applyRateLimit(req as NextRequest, "reports:finance-csv", 10, 60_000);
+  if (limited) return limited;
 
-export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
   try {
     const rows = await prisma.issuedDocument.findMany({
       where: { organizationId: orgId },

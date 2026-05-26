@@ -93,14 +93,14 @@ describe("buildQuickGridEditMatrix", () => {
     expect(matrix[0]?.length).toBe(4);
   });
 
-  it("sizes business mgmt 2x4 quick grid edit extents", () => {
+  it("sizes business mgmt 3x2 quick grid edit extents", () => {
     const extents = getQuickGridEditExtents(BUSINESS_MGMT_QUICK_GRID, true);
     expect(extents.rows).toBe(3);
-    expect(extents.cols).toBe(5);
+    expect(extents.cols).toBe(4);
 
     const matrix = buildQuickGridEditMatrix(BUSINESS_MGMT_QUICK_GRID, true);
     expect(matrix.length).toBe(3);
-    expect(matrix[0]?.length).toBe(5);
+    expect(matrix[0]?.length).toBe(4);
   });
 
   it("caps edit grid size and ignores viewport canvas", () => {

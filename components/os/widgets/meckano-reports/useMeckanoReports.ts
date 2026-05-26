@@ -48,6 +48,8 @@ export function useMeckanoReports() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accessAllowed, setAccessAllowed] = useState<boolean | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [filters, setFilters] = useState<Filters>({
     startDate: defaultStartDate,
     endDate: new Date().toISOString().split("T")[0]!,
@@ -60,8 +62,16 @@ export function useMeckanoReports() {
     void (async () => {
       try {
         const res = await fetch("/api/meckano/access");
-        const data = await res.json() as { allowed?: boolean; message?: string; configured?: boolean };
+        const data = await res.json() as {
+          allowed?: boolean;
+          message?: string;
+          configured?: boolean;
+          lastSyncAt?: string | null;
+          autoSyncEnabled?: boolean;
+        };
         setAccessAllowed(Boolean(data.allowed));
+        setLastSyncAt(data.lastSyncAt ?? null);
+        setAutoSyncEnabled(data.autoSyncEnabled !== false);
         if (!data.allowed && data.message) setError(data.message);
         if (!data.configured) setError(t("workspaceWidgets.meckano.noApiKey"));
       } catch {
@@ -160,5 +170,6 @@ export function useMeckanoReports() {
     reports, employees, projects,
     isLoading, error, filters, setFilters,
     fetchReports, exportToCSV, downloadPDF,
+    lastSyncAt, autoSyncEnabled,
   };
 }

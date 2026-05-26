@@ -3,6 +3,7 @@
 > **Version**: 1.0 | **Date**: 2026-05-21
 > **Owner**: yohanan.bukshpan
 > **Review cadence**: Quarterly + after any P0 incident
+> **תרגיל אחרון (PITR)**: _למלא לאחר הרצה_ — יעד מסלול 10/10: 2026-Q2
 
 ---
 

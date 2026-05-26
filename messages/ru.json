@@ -53,6 +53,10 @@
       "authTitle": "Аутентификация",
       "authBody": "Используйте Google-аккаунт, одобренный для организации. После входа вы попадёте в рабочую область.",
       "google": "Войти через Google",
+      "googleScopeNote": "При входе через Google запрашиваются только ID, email и профиль. Drive и контакты — отдельное согласие в настройках.",
+      "privacyLink": "Конфиденциальность",
+      "termsLink": "Условия",
+      "googleIntegrationsLink": "Данные Google",
       "backHome": "На главную"
     },
     "register": {

@@ -99,5 +99,5 @@ Behavior:
       return apiErrorResponse(error, "project-notebook chat-stream");
     }
   },
-  { schema: chatStreamBodySchema },
+  { schema: chatStreamBodySchema, rateLimit: false },
 );

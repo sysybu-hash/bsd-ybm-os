@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import FinanceReportDocument from "@/lib/pdf/FinanceReportDocument";
@@ -5,10 +6,14 @@ import { withWorkspacesAuth } from "@/lib/api-handler";
 import { loadFinanceForecast } from "@/lib/finance-forecast";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
+export const GET = withWorkspacesAuth(async (req, { orgId }) => {
+  const limited = await applyRateLimit(req as NextRequest, "reports:finance-pdf", 10, 60_000);
+  if (limited) return limited;
+
   try {
     const [org, pendingAgg, paidAgg, forecast] = await Promise.all([
       prisma.organization.findUnique({

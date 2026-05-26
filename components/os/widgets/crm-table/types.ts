@@ -23,7 +23,16 @@ export interface Client {
   projectId: string | null;
   projectName: string | null;
   issuedDocuments: IssuedDocumentRow[];
+  tags?: string[];
 }
+
+export type ContactTimelineEvent = {
+  id: string;
+  at: string;
+  kind: string;
+  title: string;
+  detail?: string;
+};
 
 export type ProjectOption = { id: string; name: string };
 

@@ -225,7 +225,7 @@ export function useAiChatState(
     acknowledgeContextReady();
     const ok = await start();
     if (!ok) liveAutoStartRef.current = false;
-  }, [liveContextReady, osAssistant, geminiLiveEligible, start, acknowledgeContextReady, t]);
+  }, [liveContextReady, osAssistant, geminiLiveEligible, start, acknowledgeContextReady, t, locale]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });

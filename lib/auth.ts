@@ -17,6 +17,7 @@ import {
   googleSignInScopes,
   persistGoogleOAuthAccountFromNextAuth,
 } from "@/lib/google-account-tokens";
+import { isGoogleSignInOAuthConfigured, getGoogleSignInCredentials } from "@/lib/google-oauth-env";
 import { verifyPasskeyLoginToken } from "@/lib/auth/passkey-login-token";
 import {
   SESSION_MAX_AGE_DEFAULT_SEC,
@@ -26,9 +27,8 @@ import {
 applyNextAuthUrlEnv();
 normalizeNextAuthUrlEnv();
 
-const googleOAuthConfigured =
-  Boolean(process.env.GOOGLE_CLIENT_ID?.trim()) &&
-  Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim());
+const googleOAuthConfigured = isGoogleSignInOAuthConfigured();
+const googleSignInCreds = getGoogleSignInCredentials();
 
 const nextAuthUrlIsHttps = process.env.NEXTAUTH_URL?.trim().toLowerCase().startsWith("https://");
 
@@ -61,11 +61,11 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   providers: [
-    ...(googleOAuthConfigured
+    ...(googleOAuthConfigured && googleSignInCreds
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            clientId: googleSignInCreds.clientId,
+            clientSecret: googleSignInCreds.clientSecret,
             /**
              * נדרש: משתמשים נוצרים ידנית / דרך הזמנה ללא Account record.
              * בלי הפלאג הזה NextAuth יזרוק OAuthAccountNotLinked.
@@ -74,9 +74,9 @@ export const authOptions: NextAuthOptions = {
             allowDangerousEmailAccountLinking: true,
             authorization: {
               params: {
-                prompt: "consent select_account",
+                /** select_account בלבד — consent מלא רק ב-reconnect (Drive) / Contacts */
+                prompt: "select_account",
                 access_type: "offline",
-                include_granted_scopes: "true",
                 scope: googleSignInScopes(),
               },
             },

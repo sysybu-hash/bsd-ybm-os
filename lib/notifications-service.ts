@@ -1,5 +1,6 @@
-import { prisma } from './prisma';
-import { publishNotificationEvent } from '@/lib/notifications-pubsub';
+import { prisma } from "./prisma";
+import { publishNotificationEvent } from "@/lib/notifications-pubsub";
+import { maybeEmailOrgAdminsNotification } from "@/lib/notification-email-bridge";
 
 export async function createOrganizationNotification(organizationId: string, title: string, body: string) {
   const users = await prisma.user.findMany({
@@ -23,11 +24,13 @@ export async function createOrganizationNotification(organizationId: string, tit
       publishNotificationEvent(user.id, {
         title,
         message: body,
-        severity: title.includes('נחתם') ? 'success' : 'info',
+        severity: title.includes("נחתם") ? "success" : "info",
         createdAt: new Date().toISOString(),
       }),
     ),
   );
+
+  void maybeEmailOrgAdminsNotification(organizationId, title, body);
 
   return rows;
 }

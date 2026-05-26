@@ -1,5 +1,12 @@
 import { google } from "googleapis";
 import { prisma } from "@/lib/prisma";
+import { getGoogleReconnectCallbackUri } from "@/lib/google-account-tokens";
+import {
+  accountUsesRestrictedGoogleScopes,
+  getGoogleIntegrationsCredentials,
+  getGoogleSignInCredentials,
+  type GoogleOAuthClientCredentials,
+} from "@/lib/google-oauth-env";
 
 export class GoogleOAuthNotLinkedError extends Error {
   constructor() {
@@ -25,6 +32,25 @@ export function getGoogleOAuthRedirectUri(): string {
     : `${normalized}/api/auth/callback/google`;
 }
 
+function resolveGoogleOAuthClientForAccount(scope: string | null | undefined): {
+  credentials: GoogleOAuthClientCredentials;
+  redirectUri: string;
+} {
+  if (accountUsesRestrictedGoogleScopes(scope)) {
+    const credentials = getGoogleIntegrationsCredentials();
+    if (!credentials) {
+      throw new Error("Google integrations OAuth לא מוגדר (GOOGLE_CLIENT_ID / SECRET)");
+    }
+    return { credentials, redirectUri: getGoogleReconnectCallbackUri() };
+  }
+
+  const credentials = getGoogleSignInCredentials();
+  if (!credentials) {
+    throw new Error("Google sign-in OAuth לא מוגדר");
+  }
+  return { credentials, redirectUri: getGoogleOAuthRedirectUri() };
+}
+
 /**
  * OAuth2 עם רענון access token ושמירה ב-Account (NextAuth / Prisma).
  */
@@ -48,10 +74,11 @@ export async function getGoogleOAuth2ClientForUser(userId: string) {
     }
   }
 
+  const { credentials, redirectUri } = resolveGoogleOAuthClientForAccount(account.scope);
   const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    getGoogleOAuthRedirectUri(),
+    credentials.clientId,
+    credentials.clientSecret,
+    redirectUri,
   );
 
   oauth2.setCredentials({

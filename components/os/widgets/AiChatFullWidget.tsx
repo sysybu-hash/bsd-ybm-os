@@ -32,9 +32,13 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             {t("workspaceWidgets.aiChat.tabText")}
           </button>
         </div>
-        <button type="button" onClick={() => c.setShowSettings(true)}
-          className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all">
-          <Settings2 size={18} />
+        <button
+          type="button"
+          onClick={() => c.setShowSettings(true)}
+          aria-label={t("workspaceWidgets.aiChat.chatSettings")}
+          className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"
+        >
+          <Settings2 size={18} aria-hidden />
         </button>
       </div>
 

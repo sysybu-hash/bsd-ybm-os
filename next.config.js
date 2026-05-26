@@ -80,7 +80,7 @@ const nextConfig = {
     return LEGACY_REDIRECTS;
   },
   transpilePackages: ["react-signature-canvas", "signature_pad"],
-  serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core"],
+  serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core", "archiver"],
   outputFileTracingIncludes: {
     "/api/documents/issued/[id]/export": [
       "./lib/pdf/font-data.generated.ts",

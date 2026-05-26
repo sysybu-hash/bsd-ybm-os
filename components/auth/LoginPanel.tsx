@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -172,6 +173,24 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         )}
         {t("auth.loginOs.google")}
       </button>
+
+      <p className="text-center text-xs leading-relaxed text-[color:var(--foreground-muted)]">
+        {t("auth.loginOs.googleScopeNote")}{" "}
+        <Link href="/privacy" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+          {t("auth.loginOs.privacyLink")}
+        </Link>
+        {" · "}
+        <Link href="/terms" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+          {t("auth.loginOs.termsLink")}
+        </Link>
+        {" · "}
+        <Link
+          href="/integrations/google"
+          className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline"
+        >
+          {t("auth.loginOs.googleIntegrationsLink")}
+        </Link>
+      </p>
 
       <form onSubmit={(e) => void handleCredentials(e)} className="space-y-3">
         <input

@@ -91,7 +91,7 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     if (typeof sm === "string") setScanModeOverride(sm as ScanModeV5);
     const pid = liveData?.projectId;
     if (typeof pid === "string") selectProject(pid);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [liveData, selectProject]);
 
   useEffect(() => {

@@ -32,22 +32,25 @@ export const GET = withWorkspacesAuth(async (_req, { userId, orgId }) => {
   });
 });
 
-export const PATCH = withWorkspacesAuth(async (req, { userId, orgId }) => {
-  const body = (await req.json().catch(() => null)) as { config?: unknown } | null;
-  if (!body?.config || typeof body.config !== "object") {
-    return jsonBadRequest("חסר config", "missing_config");
-  }
+export const PATCH = withWorkspacesAuth(
+  async (req, { userId, orgId }) => {
+    const body = (await req.json().catch(() => null)) as { config?: unknown } | null;
+    if (!body?.config || typeof body.config !== "object") {
+      return jsonBadRequest("חסר config", "missing_config");
+    }
 
-  const org = await prisma.organization.findUnique({
-    where: { id: orgId },
-    select: { industry: true },
-  });
-  const industry = org?.industry ?? null;
-  const merged = scrubLauncherConfig(mergeLauncherConfig(body.config, industry), industry);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { launcherConfigJson: merged },
-  });
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { industry: true },
+    });
+    const industry = org?.industry ?? null;
+    const merged = scrubLauncherConfig(mergeLauncherConfig(body.config, industry), industry);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { launcherConfigJson: merged },
+    });
 
-  return NextResponse.json({ ok: true, config: merged });
-});
+    return NextResponse.json({ ok: true, config: merged });
+  },
+  { rateLimit: { key: "user:launcher-config", limit: 30, windowMs: 60_000 } },
+);

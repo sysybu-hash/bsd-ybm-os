@@ -1,10 +1,12 @@
+import { env } from "@/lib/env";
+
 /**
  * קטלוג מודלי Gemini — עודכן לפי Google I/O 2026 (19/05).
  * @see https://ai.google.dev/gemini-api/docs/models
  * @see https://dev.to/googleai/gemini-35-flash-developer-guide-1i46
  */
 
-export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-19";
+export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-26";
 
 /** GA — Google I/O 2026 (19/05) */
 export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.5-flash";
@@ -67,7 +69,7 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
 };
 
 export function getGeminiLiveModelId(): string {
-  const fromEnv = process.env.GEMINI_LIVE_MODEL?.trim();
+  const fromEnv = env.GEMINI_LIVE_MODEL?.trim();
   if (fromEnv) {
     if (fromEnv.includes("live")) return fromEnv;
     return LEGACY_MODEL_ALIASES[fromEnv] ?? fromEnv;
@@ -89,8 +91,8 @@ function dedupeModels(ids: string[]): string[] {
 
 export function getGeminiModelId(): string {
   const fromEnv =
-    process.env.GEMINI_MODEL?.trim() ||
-    process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim();
+    env.GEMINI_MODEL?.trim() ||
+    env.GOOGLE_GENERATIVE_AI_MODEL?.trim();
   const raw = fromEnv || GEMINI_STABLE_TEXT_MODEL;
   return LEGACY_MODEL_ALIASES[raw] ?? raw;
 }
@@ -102,8 +104,8 @@ export function getGeminiModelFallbackChain(): string[] {
 
 /** שרשרת לפענוח גרמושקה / תוכניות ביצוע */
 export function getBlueprintAnalysisModelChain(): string[] {
-  const flashOnly = process.env.BLUEPRINT_USE_FLASH_ONLY === "true";
-  const fromEnv = process.env.GEMINI_BLUEPRINT_MODEL?.trim();
+  const flashOnly = env.BLUEPRINT_USE_FLASH_ONLY === true;
+  const fromEnv = env.GEMINI_BLUEPRINT_MODEL?.trim();
   const primary = flashOnly ? "gemini-2.5-flash-lite" : GEMINI_BLUEPRINT_PRIMARY_MODEL;
   return dedupeModels([
     ...(fromEnv ? [fromEnv] : []),

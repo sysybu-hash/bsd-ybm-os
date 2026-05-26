@@ -71,7 +71,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
       const signed = await tryCredentialsSignIn(page);
-      test.skip(!signed, "אין משתמש E2E");
+      expect(signed, "משתמש E2E חייב להיות זמין בבדיקות 10/10").toBeTruthy();
 
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -90,20 +90,25 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
         saveBaseline(baseline);
       }
 
-      // Fail only on violations NOT in baseline
+      const blocking = results.violations.filter((v) =>
+        CRITICAL_IMPACTS.has(v.impact ?? ""),
+      );
+
+      if (blocking.length > 0) {
+        const summary = blocking
+          .map((v) => `  [${v.impact}] ${v.id}: ${v.description}`)
+          .join("\n");
+        expect(
+          blocking,
+          `Critical/Serious ב-${label} (יעד 10/10: 0):\n${summary}`,
+        ).toHaveLength(0);
+      }
+
+      // רגרסיה: אין הופעה חדשה שלא ב-baseline (Moderate+)
       const newCritical = newViolations(key, results.violations, baseline).filter(
         (v) => CRITICAL_IMPACTS.has(v.impact ?? ""),
       );
-
-      if (newCritical.length > 0) {
-        const summary = newCritical
-          .map((v) => `  [${v.impact}] ${v.id}: ${v.description}`)
-          .join("\n");
-        expect.soft(
-          newCritical,
-          `דפקטים חדשים Critical/Serious ב-${label}:\n${summary}`,
-        ).toHaveLength(0);
-      }
+      expect(newCritical, `דפקטים Critical/Serious חדשים ב-${label}`).toHaveLength(0);
 
       // Attach full report as artifact
       await testInfo.attach(`axe-${key}.json`, {
@@ -124,7 +129,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
     const signed = await tryCredentialsSignIn(page);
-    test.skip(!signed, "אין משתמש E2E");
+    expect(signed, "משתמש E2E חייב להיות זמין לבניית baseline").toBeTruthy();
     await dismissCookieBannerIfVisible(page);
 
     const newBaseline: A11yBaseline = {};

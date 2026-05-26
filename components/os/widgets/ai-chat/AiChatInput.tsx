@@ -26,7 +26,14 @@ export function AiChatInput({
       {attachment ? (
         <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
           <span className="truncate max-w-[240px]">{attachment.name}</span>
-          <button type="button" onClick={onClearAttachment} className="text-red-500 hover:underline">הסר</button>
+          <button
+            type="button"
+            onClick={onClearAttachment}
+            className="text-red-500 hover:underline"
+            aria-label={t("workspaceWidgets.aiChat.removeAttachment")}
+          >
+            {t("workspaceWidgets.aiChat.removeAttachment")}
+          </button>
         </div>
       ) : null}
       <form onSubmit={onSubmit} className="relative flex gap-3">
@@ -41,7 +48,7 @@ export function AiChatInput({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
-          aria-label="צרף קובץ"
+          aria-label={t("workspaceWidgets.aiChat.attachFile")}
         >
           <Paperclip size={20} />
         </button>
@@ -64,9 +71,10 @@ export function AiChatInput({
           <button
             type="submit"
             disabled={isLoading || (!input.trim() && !attachment)}
+            aria-label={t("workspaceWidgets.aiChat.sendMessage")}
             className="absolute left-2 top-2 bottom-2 px-4 bg-purple-600 hover:bg-purple-500 disabled:bg-[color:var(--foreground-muted)]/20 disabled:text-[color:var(--foreground-muted)] text-white rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center justify-center"
           >
-            <Send size={18} />
+            <Send size={18} aria-hidden />
           </button>
         </div>
       </form>

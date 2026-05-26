@@ -1,18 +1,10 @@
 import type { Account } from "next-auth";
+import { GOOGLE_DRIVE_SCOPES } from "@/lib/google-drive-config";
 import { prisma } from "@/lib/prisma";
 import { PRODUCTION_SITE_URL, resolveSiteBaseUrl } from "@/lib/site-url";
 
-const GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
-
-/** התחברות בלבד — ללא Drive (Restricted); Drive נדרש רק ב-reconnect */
+/** התחברות בלבד — ללא Drive; Drive נדרש רק ב-reconnect */
 export const GOOGLE_SIGN_IN_SCOPES = ["openid", "email", "profile"].join(" ");
-
-const GOOGLE_OAUTH_SCOPES = [
-  "openid",
-  "email",
-  "profile",
-  GOOGLE_DRIVE_SCOPE,
-].join(" ");
 
 export function googleSignInScopes(): string {
   return GOOGLE_SIGN_IN_SCOPES;
@@ -30,7 +22,7 @@ export function buildGoogleReconnectUrl(callbackUrl: string): string {
 }
 
 export function googleOAuthScopes(): string {
-  return GOOGLE_OAUTH_SCOPES;
+  return GOOGLE_DRIVE_SCOPES;
 }
 
 type TokenFields = {
@@ -63,7 +55,7 @@ export async function persistGoogleAccountTokens(
     access_token: incoming.access_token ?? existing?.access_token ?? null,
     refresh_token,
     expires_at: incoming.expires_at ?? existing?.expires_at ?? null,
-    scope: incoming.scope ?? existing?.scope ?? GOOGLE_OAUTH_SCOPES,
+    scope: incoming.scope ?? existing?.scope ?? GOOGLE_DRIVE_SCOPES,
     token_type: incoming.token_type ?? existing?.token_type ?? "Bearer",
     id_token: incoming.id_token ?? existing?.id_token ?? null,
   };

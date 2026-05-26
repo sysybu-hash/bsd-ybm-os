@@ -13,6 +13,7 @@ const patchContactSchema = z.object({
   notes: z.string().optional().nullable(),
   status: z.string().optional(),
   projectId: z.string().nullable().optional(),
+  tags: z.array(z.string().min(1).max(40)).max(20).optional(),
 });
 
 const contactSelect = {
@@ -23,6 +24,7 @@ const contactSelect = {
   status: true,
   value: true,
   notes: true,
+  tags: true,
   createdAt: true,
   project: { select: { id: true, name: true } },
   issuedDocuments: {
@@ -92,7 +94,8 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchConta
         body.email !== undefined ||
         body.phone !== undefined ||
         body.notes !== undefined ||
-        body.status !== undefined
+        body.status !== undefined ||
+        body.tags !== undefined
       ) {
         await prisma.contact.updateMany({
           where: { id, organizationId: orgId },
@@ -102,6 +105,7 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchConta
             ...(body.phone !== undefined ? { phone: body.phone } : {}),
             ...(body.notes !== undefined ? { notes: body.notes } : {}),
             ...(body.status !== undefined ? { status: body.status.toUpperCase() } : {}),
+            ...(body.tags !== undefined ? { tags: body.tags } : {}),
           },
         });
       }

@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { E2E_EMAIL, E2E_PROJECT_ID, gotoWorkspaceProject, tryCredentialsSignIn } from "./helpers";
+import {
+  E2E_EMAIL,
+  E2E_PROJECT_ID,
+  dismissWorkspaceOverlays,
+  gotoWorkspaceProject,
+  hubQuickGridButton,
+  tryCredentialsSignIn,
+} from "./helpers";
 
 test.describe("mobile workspace windows", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -16,5 +23,18 @@ test.describe("mobile workspace windows", () => {
     const shell = page.locator("[data-widget-shell]").first();
     const box = await shell.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThan(300);
+  });
+
+  test("hub widget shell exposes touch scroll region", async ({ page }) => {
+    const signed = await tryCredentialsSignIn(page);
+    test.skip(!signed, "login failed");
+
+    await dismissWorkspaceOverlays(page);
+    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    const scrollHost = page.locator("[data-widget-shell] .custom-scrollbar").first();
+    await expect(scrollHost).toBeVisible({ timeout: 20_000 });
+
+    const overflowY = await scrollHost.evaluate((el) => getComputedStyle(el).overflowY);
+    expect(overflowY === "auto" || overflowY === "scroll").toBeTruthy();
   });
 });

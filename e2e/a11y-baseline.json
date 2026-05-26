@@ -5,11 +5,5 @@
   "project-board": [],
   "scanner": [],
   "drive": [],
-  "ai-chat": [
-    {
-      "ruleId": "button-name",
-      "impact": "critical",
-      "description": "Ensure buttons have discernible text"
-    }
-  ]
+  "ai-chat": []
 }

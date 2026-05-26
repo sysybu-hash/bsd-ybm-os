@@ -99,13 +99,15 @@ export default function AuthExperience() {
         <LocaleSwitcher compact />
       </div>
       <div className="absolute start-5 top-5 z-10">
-        <BrandHomeLink size="sm" priority />
+        <BrandHomeLink size="sm" variant="image" tone="auto" priority />
       </div>
 
       <section className="landing-reveal relative z-[1] grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-2xl backdrop-blur-md md:grid-cols-[0.92fr_1.08fr]">
         <div className="border-b border-[color:var(--border-main)] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-8 text-white md:border-b-0 md:border-s">
           <BrandHomeLink
             size="xl"
+            variant="image"
+            tone="night"
             className="mb-8 items-start pointer-events-none"
             priority
           />

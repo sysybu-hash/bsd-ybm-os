@@ -6,8 +6,11 @@
 ## מה כבר מוכן בפרויקט
 
 - [x] דומיין קנוני בקוד: `https://www.bsd-ybm.co.il` (`lib/site-url.ts`, `lib/legal-site.ts`)
-- [x] התחברות Google: scopes `openid email profile` בלבד (`lib/auth.ts`)
+- [x] התחברות Google: scopes `openid email profile` בלבד (`lib/auth.ts`, `prompt=select_account`)
+- [x] תמיכה ב-Client נפרד לכניסה: `GOOGLE_SIGNIN_CLIENT_ID` / `GOOGLE_SIGNIN_CLIENT_SECRET` (`lib/google-oauth-env.ts`)
 - [x] Google Drive: scope `drive` רק ב-`/api/auth/google-reconnect` (`lib/google-account-tokens.ts`)
+- [x] Google Contacts: `contacts.readonly` רק ב-`/api/integrations/google/contacts/*`
+- [x] מדריך מרכזי: `docs/GOOGLE-OAUTH.md`
 - [x] דפים ציבוריים: `/`, `/about`, `/privacy`, `/terms`, `/legal`, `/integrations/google`
 - [x] `sitemap.xml` כולל את כל הדפים לעיל (`app/sitemap.ts`)
 - [x] מטא אימות Search Console: `SITE_VERIFICATION_GOOGLE` / `GOOGLE_SITE_VERIFICATION` (`lib/site-metadata.ts`)
@@ -45,15 +48,26 @@
 - [ ] העלאת לוגו 120×120 (מפעיל Verify branding)
 - [ ] שמירה
 
+### 2.1ב — מצב Testing (פתרון מיידי לאזהרה)
+
+1. [OAuth consent screen → Audience](https://console.cloud.google.com/apis/credentials/consent)
+2. **Publishing status:** **Testing** (לא In production)
+3. **Test users** → הוסיפו `sysybu@gmail.com` וכל מייל לבדיקה
+4. שמרו — משתמשים ברשימה לא יראו את דף «לא מאומתה» המלא
+
 ### 2.2 Credentials → OAuth 2.0 Client
+
+**מומלץ:** שני Clients (ראו `docs/GOOGLE-OAUTH.md`). אחרת Client יחיד עם כל ה-URIs:
 
 **Authorized redirect URIs** (הדביקו בדיוק):
 
 ```
 https://www.bsd-ybm.co.il/api/auth/callback/google
 https://www.bsd-ybm.co.il/api/auth/google-reconnect/callback
+https://www.bsd-ybm.co.il/api/integrations/google/contacts/callback
 http://localhost:3000/api/auth/callback/google
 http://localhost:3000/api/auth/google-reconnect/callback
+http://localhost:3000/api/integrations/google/contacts/callback
 ```
 
 **Authorized JavaScript origins**:
@@ -68,10 +82,13 @@ http://localhost:3000
 
 ### 2.3 Scopes (Data access)
 
-ודאו:
+**Client Sign-in (אם נפרד):** רק `openid`, `email`, `profile`.
 
-- `openid`, `email`, `profile` (התחברות)
+**Client אינטגרציות (או Client יחיד):**
+
+- `openid`, `email`, `profile`
 - `https://www.googleapis.com/auth/drive` — **Restricted** (reconnect בלבד)
+- `https://www.googleapis.com/auth/contacts.readonly` — **Sensitive** (CRM import בלבד)
 
 ### 2.4 Submit for verification (Drive)
 

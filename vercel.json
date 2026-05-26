@@ -29,6 +29,10 @@
     {
       "path": "/api/cron/field-copilot-followups",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/meckano-sync",
+      "schedule": "0 5 * * *"
     }
   ]
 }

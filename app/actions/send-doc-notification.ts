@@ -1,13 +1,14 @@
 "use server";
 
 import { sendTransactionalEmail } from "@/lib/mail";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 export async function sendDocNotification(
   userEmail: string,
   vendor: string,
   total: number,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const erpUrl = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "https://bsd-ybm.co.il").replace(/\/$/, "")}/app/documents/erp`;
+  const erpUrl = `${getCanonicalSiteUrl().replace(/\/$/, "")}/app/documents/erp`;
   const inner = `
     <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">מסמך חדש נסרק</h1>
     <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;text-align:center;">ה-AI פענח חשבונית חדשה:</p>

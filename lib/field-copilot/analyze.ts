@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { createLogger } from "@/lib/logger";
 import { GEMINI_MODEL_FALLBACK_TIER } from "@/lib/gemini-model";
@@ -53,7 +54,7 @@ function parseAssumptions(raw: Record<string, unknown>): string[] {
 export async function analyzeFieldCapture(
   input: FieldCopilotAnalyzeInput,
 ): Promise<FieldCopilotAnalyzeResult> {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  const apiKey = env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
   if (!apiKey?.trim()) throw new Error("חסר מפתח Gemini");
 
   const instruction = buildFieldCopilotInstruction({

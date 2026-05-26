@@ -53,8 +53,11 @@ export function useAdaptiveShellDragResize({
     [size],
   );
 
-  const resizeMinWidth = (wsWidth: number) =>
-    isMobile ? Math.max(280, wsWidth) : Math.min(RESIZE_MIN_WINDOW_WIDTH, Math.max(320, wsWidth - 16));
+  const resizeMinWidth = useCallback(
+    (wsWidth: number) =>
+      isMobile ? Math.max(280, wsWidth) : Math.min(RESIZE_MIN_WINDOW_WIDTH, Math.max(320, wsWidth - 16)),
+    [isMobile],
+  );
 
   const getInitialPosition = useCallback(
     (dim: { width: number; height: number }) => {

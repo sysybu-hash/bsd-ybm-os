@@ -38,11 +38,11 @@ export function CrmContactsTable({
         <table className="w-full border-collapse min-w-[920px]">
           <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
             <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
-              <th className="px-6 py-4">לקוח / חברה</th>
-              <th className="px-6 py-4">סטטוס</th>
-              <th className="px-6 py-4">פרטי קשר</th>
-              <th className="px-6 py-4">פרויקטים</th>
-              <th className="px-6 py-4">קשר אחרון</th>
+              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnClient")}</th>
+              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnStatus")}</th>
+              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnContact")}</th>
+              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnProjects")}</th>
+              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnLastContact")}</th>
               <th className="px-6 py-4 min-w-[11rem]">{t("workspaceWidgets.crmTable.columnActions")}</th>
             </tr>
           </thead>
@@ -66,8 +66,22 @@ export function CrmContactsTable({
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-xs font-bold border border-[color:var(--border-main)] text-[color:var(--foreground-main)]">
                           {client.name?.charAt(0)}
                         </div>
-                        <div className="font-bold text-[color:var(--foreground-main)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                          {client.name}
+                        <div>
+                          <div className="font-bold text-[color:var(--foreground-main)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {client.name}
+                          </div>
+                          {(client.tags ?? []).length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(client.tags ?? []).slice(0, 3).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -103,7 +117,7 @@ export function CrmContactsTable({
                             {client.totalProjects}
                           </div>
                           <span className="text-[10px] text-[color:var(--foreground-muted)] font-bold uppercase">
-                            פרויקטים
+                            {t("workspaceWidgets.crmTable.columnProjects")}
                           </span>
                         </div>
                         {client.projectName ? (

@@ -28,6 +28,14 @@ node scripts/load-test.mjs   # BASE_URL=...
 
 Playwright מפעיל אוטומטית `next dev` על פורט **3001** (מקומי). אם `npm run dev` כבר רץ על 3000 — אין צורך; Playwright ישתמש בשרת 3001 או ב-`reuseExistingServer` אם ה-URL תואם. ל-production-like: `PLAYWRIGHT_WEB_COMMAND="npm run build && npx next start -p 3001" npm run test:e2e:workspace`.
 
+## מסעות דף מוצר (מודולים 3–9)
+
+ראו [PRODUCT-BROCHURE-TRACEABILITY.md](./PRODUCT-BROCHURE-TRACEABILITY.md). אוטומציה:
+
+```bash
+npx playwright test e2e/product-brochure-finance-export.spec.ts e2e/product-brochure-crm.spec.ts e2e/product-brochure-archive-bulk.spec.ts e2e/google-contacts-import.spec.ts
+```
+
 ## 5 מסעות ליבה (ידני — FIX-PLAN §12.4)
 
 1. התחברות (credentials / passkey) → workspace נטען.

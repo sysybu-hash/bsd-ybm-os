@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="BSD-YBM Nexus">
+  <defs>
+    <linearGradient id="n-hex" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="55%" stop-color="#4338ca"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="n-inner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <radialGradient id="n-core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="40%" stop-color="#fbbf24" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="n-y" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#a5b4fc"/>
+    </linearGradient>
+    <linearGradient id="n-b" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="n-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- Hexagon (pointy-top) with rounded corners feel via stroke -->
+  <path d="M 128 8
+           L 232 68
+           L 232 188
+           L 128 248
+           L 24 188
+           L 24 68 Z"
+        fill="url(#n-hex)"
+        stroke="rgba(255,255,255,0.22)" stroke-width="1.5"
+        stroke-linejoin="round"/>
+
+  <!-- Inner hex highlight -->
+  <path d="M 128 28
+           L 214 78
+           L 214 178
+           L 128 228
+           L 42 178
+           L 42 78 Z"
+        fill="url(#n-inner)" opacity="0.6"/>
+
+  <!-- Faint hex grid ring -->
+  <path d="M 128 50
+           L 192 88
+           L 192 168
+           L 128 206
+           L 64 168
+           L 64 88 Z"
+        fill="none"
+        stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <!-- Y as left triangular form -->
+  <g>
+    <path d="M 60 80
+             L 88 80
+             L 116 128
+             L 116 178
+             L 92 178
+             L 92 138
+             L 60 86 Z"
+          fill="url(#n-y)"/>
+  </g>
+
+  <!-- B as right form: a vertical stem with two D-bowls -->
+  <g>
+    <path fill-rule="evenodd"
+          d="M 138 80
+             L 174 80
+             C 188 80 196 90 196 102
+             C 196 112 190 118 184 121
+             C 192 124 200 132 200 144
+             C 200 158 188 178 168 178
+             L 138 178 Z
+             M 154 96
+             L 154 116
+             L 170 116
+             C 176 116 180 112 180 106
+             C 180 100 176 96 170 96 Z
+             M 154 132
+             L 154 162
+             L 166 162
+             C 176 162 184 156 184 148
+             C 184 138 176 132 168 132 Z"
+          fill="url(#n-b)"/>
+  </g>
+
+  <!-- Central glow core -->
+  <circle cx="128" cy="128" r="18" fill="url(#n-core)" opacity="0.7" filter="url(#n-glow)"/>
+  <circle cx="128" cy="128" r="4" fill="#fde68a"/>
+
+  <!-- Corner dots (chip pins feel) -->
+  <circle cx="128" cy="8" r="2.5" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="232" cy="68" r="2.5" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="232" cy="188" r="2.5" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="128" cy="248" r="2.5" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="24" cy="188" r="2.5" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="24" cy="68" r="2.5" fill="rgba(255,255,255,0.6)"/>
+</svg>

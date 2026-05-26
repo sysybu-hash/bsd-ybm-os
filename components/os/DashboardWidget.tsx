@@ -15,14 +15,16 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity, Download, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDashboardStats } from "./useDashboardStats";
+import { useFinanceReportExport } from "@/hooks/useFinanceReportExport";
 
 export default function DashboardWidget() {
   const { dir, t } = useI18n();
   const { theme } = useTheme();
   const { stats, loading, error, fetchDashboardStats } = useDashboardStats(t);
+  const { exporting, exportCsv, exportPdf } = useFinanceReportExport({ t });
 
   if (loading) return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;
   if (error) return (
@@ -46,6 +48,29 @@ export default function DashboardWidget() {
       className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
       dir={dir}
     >
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => void exportCsv()}
+          disabled={exporting !== null}
+          className="os-btn-secondary flex items-center gap-2 text-xs font-bold"
+          aria-label={t("workspaceWidgets.dashboard.exportCsv")}
+        >
+          <Download size={16} aria-hidden />
+          {t("workspaceWidgets.dashboard.exportCsv")}
+        </button>
+        <button
+          type="button"
+          onClick={() => void exportPdf()}
+          disabled={exporting !== null}
+          className="os-btn-secondary flex items-center gap-2 text-xs font-bold"
+          aria-label={t("workspaceWidgets.dashboard.exportPdf")}
+        >
+          <FileText size={16} aria-hidden />
+          {t("workspaceWidgets.dashboard.exportPdf")}
+        </button>
+      </div>
+
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">

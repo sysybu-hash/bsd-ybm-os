@@ -1,22 +1,26 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiJsonOnlyHint } from "@/lib/i18n/ai-locale";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {
+  const limited = await applyRateLimit(req as NextRequest, "crm:semantic-search", 20, 60_000);
+  if (limited) return limited;
+
   try {
-    const { query } = await req.json();
+    const { query } = (await req.json()) as { query?: string };
     const locale = await getServerLocale();
 
-    const apiKey =
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-      process.env.GEMINI_API_KEY?.trim();
+    const apiKey = env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      return NextResponse.json({ matchedIds: [] });
+      return NextResponse.json({ matchedIds: [], fallback: true });
     }
 
     const contacts = await prisma.contact.findMany({
@@ -68,8 +72,10 @@ Example: ["id1", "id2"]
       }
     }
 
-    void lastErr;
-    return NextResponse.json({ matchedIds });
+    if (lastErr && matchedIds.length === 0 && isLikelyGeminiModelUnavailable(lastErr)) {
+      return NextResponse.json({ matchedIds: [], fallback: true });
+    }
+    return NextResponse.json({ matchedIds, fallback: false });
   } catch (error) {
     return apiErrorResponse(error, "Semantic Search API Error");
   }

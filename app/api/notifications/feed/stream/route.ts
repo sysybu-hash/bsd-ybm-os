@@ -44,7 +44,8 @@ function emptyNotificationStream(): Response {
   });
 }
 
-export const GET = withWorkspacesAuth(async (_req, { userId }) => {
+export const GET = withWorkspacesAuth(
+  async (_req, { userId }) => {
   const redis = getRedis();
   if (!redis) {
     return emptyNotificationStream();
@@ -100,4 +101,6 @@ export const GET = withWorkspacesAuth(async (_req, { userId }) => {
       Connection: "keep-alive",
     },
   });
-});
+  },
+  { rateLimit: false },
+);

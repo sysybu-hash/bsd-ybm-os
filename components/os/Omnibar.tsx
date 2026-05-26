@@ -48,7 +48,7 @@ export default function Omnibar({
 
   useEffect(() => {
     if (session?.user?.id) void osAssistant.refresh();
-  }, [session?.user?.id, osAssistant.refresh]);
+  }, [session?.user?.id, osAssistant.refresh, osAssistant]);
 
   const liveUserName = osAssistant.context?.user?.name?.trim() || session?.user?.name?.trim() || undefined;
 

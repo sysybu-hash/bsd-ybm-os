@@ -1,4 +1,5 @@
 import { isAnyDocAiProcessorConfigured } from "@/lib/ai-extract-docai";
+import { env } from "@/lib/env";
 
 /**
  * ספקי AI נתמכים לפי מפתחות ב-.env / Vercel.
@@ -24,29 +25,29 @@ function has(value: string | undefined): boolean {
 }
 
 export function isGeminiConfigured(): boolean {
-  return has(process.env.GOOGLE_GENERATIVE_AI_API_KEY) || has(process.env.GEMINI_API_KEY);
+  return has(env.GOOGLE_GENERATIVE_AI_API_KEY) || has(env.GEMINI_API_KEY);
 }
 
 export function isOpenAiConfigured(): boolean {
-  return has(process.env.OPENAI_API_KEY);
+  return has(env.OPENAI_API_KEY);
 }
 
 export function isAnthropicConfigured(): boolean {
-  return has(process.env.ANTHROPIC_API_KEY);
+  return has(env.ANTHROPIC_API_KEY);
 }
 
 export function isGroqConfigured(): boolean {
-  return has(process.env.GROQ_API_KEY);
+  return has(env.GROQ_API_KEY);
 }
 
 export function isMindStudioConfigured(): boolean {
-  return has(process.env.MIND_STUDIO_API_KEY);
+  return has(env.MIND_STUDIO_API_KEY);
 }
 
 export function isDocAiConfigured(): boolean {
   const creds =
-    has(process.env.GOOGLE_DOCUMENT_AI_CREDENTIALS) ||
-    has(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    has(env.GOOGLE_DOCUMENT_AI_CREDENTIALS) ||
+    has(env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   return isAnyDocAiProcessorConfigured() && creds;
 }
 
@@ -171,14 +172,14 @@ function dedupeStrings(parts: Array<string | undefined>): string[] {
 }
 
 export function getOpenAiVisionModel(): string {
-  return process.env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL;
+  return env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL;
 }
 
 /** סדר ניסיונות ל־Chat Completions (תמונה / קובץ שאינו PDF בנתיב הישן) */
 export function getOpenAiChatVisionModelCandidates(uiOverride?: string): string[] {
   return dedupeStrings([
     uiOverride,
-    process.env.OPENAI_VISION_MODEL?.trim(),
+    env.OPENAI_VISION_MODEL?.trim(),
     OPENAI_FLAGSHIP_MODEL,
     ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
   ]);
@@ -188,8 +189,8 @@ export function getOpenAiChatVisionModelCandidates(uiOverride?: string): string[
 export function getOpenAiResponsesModelCandidates(uiOverride?: string): string[] {
   return dedupeStrings([
     uiOverride,
-    process.env.OPENAI_RESPONSES_MODEL?.trim(),
-    process.env.OPENAI_VISION_MODEL?.trim(),
+    env.OPENAI_RESPONSES_MODEL?.trim(),
+    env.OPENAI_VISION_MODEL?.trim(),
     OPENAI_FLAGSHIP_MODEL,
     ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
   ]);
@@ -217,20 +218,20 @@ export function isOpenAiEligibleForModelFallback(status: number, body: string): 
 /** צ'אט טקסט בלבד (ללא vision) — fallback דומה לסריקה */
 export function getOpenAiChatTextModelCandidates(): string[] {
   return dedupeStrings([
-    process.env.OPENAI_CHAT_MODEL?.trim(),
+    env.OPENAI_CHAT_MODEL?.trim(),
     OPENAI_FLAGSHIP_MODEL,
     ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
   ]);
 }
 
 export function getAnthropicModel(): string {
-  return process.env.ANTHROPIC_MODEL?.trim() || ANTHROPIC_FLAGSHIP_MODEL;
+  return env.ANTHROPIC_MODEL?.trim() || ANTHROPIC_FLAGSHIP_MODEL;
 }
 
 export function getAnthropicModelCandidates(uiOverride?: string): string[] {
   return dedupeStrings([
     uiOverride,
-    process.env.ANTHROPIC_MODEL?.trim(),
+    env.ANTHROPIC_MODEL?.trim(),
     ...ANTHROPIC_FALLBACK_CHAIN,
   ]);
 }
@@ -253,5 +254,5 @@ export function isAnthropicEligibleForModelFallback(status: number, body: string
 }
 
 export function getGroqModel(): string {
-  return process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
+  return env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
 }

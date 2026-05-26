@@ -53,6 +53,9 @@ model Organization {
   isVip                    Boolean                   @default(false)
   /// API key לאינטגרציית מקאנו (שעון נוכחות / HR) — מוצפן בשרת בלבד
   meckanoApiKey            String?
+  /// סנכרון אוטומטי יומי מ-Meckano (cron)
+  meckanoAutoSyncEnabled   Boolean                   @default(true)
+  meckanoLastSyncAt        DateTime?
   /// סיווג מקצועי — המערכת ממוקדת בענף הבנייה
   industry                 String                    @default("CONSTRUCTION")
   /// הגדרות ספציפיות למקצוע (שדות מותאמים, תוויות וכו')
@@ -733,6 +736,8 @@ model Contact {
   notes           String?
   phone           String?
   value           Float?
+  /// תגיות לפילוח דינמי (CRM)
+  tags            String[]         @default([])
   organization    Organization     @relation(fields: [organizationId], references: [id])
   project         Project?         @relation(fields: [projectId], references: [id])
   primaryForProjects Project[]   @relation("ProjectPrimaryContact")

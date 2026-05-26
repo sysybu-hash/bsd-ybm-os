@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { sendPasswordResetEmail } from "@/lib/mail";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-forgot-password");
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,13 +43,15 @@ export async function POST(req: NextRequest) {
       data: { userId: user.id, tokenHash, expiresAt },
     });
 
-    void sendPasswordResetEmail(email, token).catch((err) =>
-      console.error("sendPasswordResetEmail", err),
-    );
+    void sendPasswordResetEmail(email, token).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error("sendPasswordResetEmail failed", { error: msg });
+    });
 
     return generic;
-  } catch (e) {
-    console.error("forgot-password", e);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error("forgot-password failed", { error: msg });
     return jsonServerError();
   }
 }

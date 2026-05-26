@@ -54,8 +54,12 @@ const serverSchema = z.object({
   GOOGLE_GENERATIVE_AI_MODEL: optStr,
 
   // --- Google OAuth ---
+  /** אינטגרציות: Drive reconnect, Contacts import */
   GOOGLE_CLIENT_ID: optStr,
   GOOGLE_CLIENT_SECRET: optStr,
+  /** אופציונלי — Client נפרד לכניסה בלבד (openid, email, profile) ללא אזהרת scopes רגישים */
+  GOOGLE_SIGNIN_CLIENT_ID: optStr,
+  GOOGLE_SIGNIN_CLIENT_SECRET: optStr,
 
   // --- Google Cloud / Document AI ---
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optStr,
@@ -93,7 +97,17 @@ const serverSchema = z.object({
   // --- Payments: PayPal ---
   PAYPAL_CLIENT_ID: optStr,
   PAYPAL_CLIENT_SECRET: optStr,
-  PAYPAL_ENV: z.enum(["sandbox", "production"]).optional(),
+  /** sandbox | production — מקבל גם live/prod (נפוץ ב-Vercel) */
+  PAYPAL_ENV: z.preprocess(
+    (v) => {
+      if (typeof v !== "string" || !v.trim()) return undefined;
+      const n = v.trim().toLowerCase();
+      if (n === "sandbox" || n === "test") return "sandbox";
+      if (n === "production" || n === "live" || n === "prod") return "production";
+      return v;
+    },
+    z.enum(["sandbox", "production"]).optional(),
+  ),
   PAYPAL_WEBHOOK_ID: optStr,
   OS_PAYPAL_MERCHANT_EMAIL: optStr,
   OS_PAYPAL_ME_SLUG: optStr,

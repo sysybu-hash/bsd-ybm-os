@@ -2,10 +2,10 @@
 
 ## אבטחה
 
-- [ ] `npm audit` — אין critical ללא waiver
-- [ ] כל webhook עם אימות HMAC (PayPlus)
-- [ ] `orgId` בכל query מאומת (RLS לוגי)
-- [ ] Rate limits על auth + KV + field-copilot
+- [x] `npm audit` — CI (critical gate)
+- [x] כל webhook עם אימות HMAC (PayPlus)
+- [x] `orgId` בכל query מאומת (RLS לוגי) — `withWorkspacesAuth`
+- [x] Rate limits — default על workspace API + auth/KV מפורשים (`audit:rate-limits`)
 
 ## תשתית
 
@@ -22,9 +22,9 @@
 
 ## ביצועים ו-SEO
 
-- [ ] Lighthouse נחיתה ≥90 (Performance, A11y, SEO)
-- [ ] `sitemap.xml` + JSON-LD ([StructuredDataScript](../components/seo/StructuredDataScript.tsx))
-- [ ] PWA manifest + shortcuts ([public/manifest.json](../public/manifest.json))
+- [ ] Lighthouse נחיתה ≥90 (Performance, A11y, SEO) — הרצה מקומית: `npm run lighthouse:sample` + CI [lighthouse.yml](../.github/workflows/lighthouse.yml). אופטימיזציה: `LandingPage.tsx` (פונטים/עומס ראשוני).
+- [x] `sitemap.xml` + JSON-LD ([StructuredDataScript](../components/seo/StructuredDataScript.tsx))
+- [x] PWA manifest + shortcuts + screenshots אמיתיים ([public/manifest.json](../public/manifest.json), [public/screenshots/](../public/screenshots/))
 
 ## תפעול
 
@@ -34,4 +34,5 @@
 
 ## Sign-off
 
-- [ ] [KPI-SIGNOFF.md](./KPI-SIGNOFF.md) — כל עמודי 10/10 נספרו
+- [x] [KPI-SIGNOFF.md](./KPI-SIGNOFF.md) — baseline 2026-05-26 ([BASELINE-10-10](./BASELINE-10-10.md))
+- [ ] מילוי מאשר + מדידות production סופיות

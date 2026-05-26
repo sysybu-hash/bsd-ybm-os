@@ -112,6 +112,9 @@ jobs:
       - name: API route audit
         run: node scripts/audit-api-routes.mjs
 
+      - name: Rate limit audit
+        run: node scripts/audit-rate-limits.mjs
+
       - name: Production build
         run: npm run build
 

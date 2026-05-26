@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import {
   getAnthropicModelCandidates,
@@ -88,7 +89,7 @@ async function runWithRetry<T>(task: () => Promise<T>, retries = 2, baseDelayMs 
 
 async function runOpenAiPrompt(prompt: string) {
   if (!isOpenAiConfigured()) throw new Error("חסר OPENAI_API_KEY");
-  const key = process.env.OPENAI_API_KEY!.trim();
+  const key = env.OPENAI_API_KEY!.trim();
   const models = getOpenAiChatTextModelCandidates();
   let lastErr: Error | null = null;
   for (const model of models) {
@@ -120,7 +121,7 @@ async function runOpenAiPrompt(prompt: string) {
 
 async function runAnthropicPrompt(prompt: string) {
   if (!isAnthropicConfigured()) throw new Error("חסר ANTHROPIC_API_KEY");
-  const key = process.env.ANTHROPIC_API_KEY!.trim();
+  const key = env.ANTHROPIC_API_KEY!.trim();
   const models = getAnthropicModelCandidates();
   let lastErr: Error | null = null;
   for (const model of models) {
@@ -153,7 +154,7 @@ async function runAnthropicPrompt(prompt: string) {
 
 async function runGroqPrompt(prompt: string) {
   if (!isGroqConfigured()) throw new Error("חסר GROQ_API_KEY");
-  const key = process.env.GROQ_API_KEY!.trim();
+  const key = env.GROQ_API_KEY!.trim();
   const model = getGroqModel();
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -177,7 +178,7 @@ async function runGroqPrompt(prompt: string) {
 async function runGeminiPrompt(prompt: string) {
   if (!isGeminiConfigured()) throw new Error("חסר מפתח Gemini");
   const genAI = new GoogleGenerativeAI(
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "",
+    env.GOOGLE_GENERATIVE_AI_API_KEY || env.GEMINI_API_KEY || "",
   );
   let lastErr: unknown = null;
   for (const modelName of getGeminiModelFallbackChain()) {
@@ -275,7 +276,7 @@ export type AiChatStreamChunkHandler = (chunk: string) => void | Promise<void>;
 async function runGeminiPromptStreaming(prompt: string, onChunk: AiChatStreamChunkHandler) {
   if (!isGeminiConfigured()) throw new Error("חסר מפתח Gemini");
   const genAI = new GoogleGenerativeAI(
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "",
+    env.GOOGLE_GENERATIVE_AI_API_KEY || env.GEMINI_API_KEY || "",
   );
   let lastErr: unknown = null;
   for (const modelName of getGeminiModelFallbackChain()) {

@@ -21,13 +21,13 @@ const DOCS: Record<AppLocale, GoogleIntegrationDoc> = {
         heading: "הרשאות OAuth שבשימוש",
         body: [
           "התחברות (Sign in with Google): openid, email, profile — לזיהוי המשתמש ויצירת/קישור חשבון.",
-          "Google Drive (https://www.googleapis.com/auth/drive): גישה לקבצים ותיקיות ב-Drive של המשתמש שאישר את החיבור, במסגרת תכונות המערכת בלבד.",
+          "Google Drive (https://www.googleapis.com/auth/drive.file): גישה לקבצים ולתיקיית העבודה שיצרה או פתחה האפליקציה (למשל BSD-YBM), במסגרת תכונות המערכת בלבד.",
         ].join(" "),
       },
       {
-        heading: "למה נדרשת גישה מלאה ל-Drive",
+        heading: "תיקיית העבודה BSD-YBM",
         body:
-          "המערכת מסנכרנת תיקיית עבודה ייעודית (למשל BSD-YBM), מציגה קבצים ברשימה/רשת, מאפשרת העלאה ופענוח מסמכים (חשבוניות, הצעות) ל-ERP. Scope מצומצם (drive.file) אינו מספיק לסנכרון תיקייה קיימת ולניהול מבנה תיקיות — לכן נדרש scope מלא, בהתאם למדיניות Google לסקופים מוגבלים.",
+          "בחיבור Drive המערכת יוצרת או משתמשת בתיקיית עבודה ייעודית, מסנכרנת קבצים מתוכה, מציגה ברשימה/רשת, מאפשרת העלאה ופענוח מסמכים (חשבוניות, הצעות) ל-ERP. אין גישה לכל קבצי ה-Drive מחוץ לתיקייה זו.",
       },
       {
         heading: "אילו נתונים נגישים ונשמרים",
@@ -56,12 +56,12 @@ const DOCS: Record<AppLocale, GoogleIntegrationDoc> = {
     sections: [
       {
         heading: "OAuth scopes in use",
-        body: "Sign-in: openid, email, profile. Google Drive: https://www.googleapis.com/auth/drive — access files and folders the user authorized, only for in-app features.",
+        body: "Sign-in: openid, email, profile. Google Drive: https://www.googleapis.com/auth/drive.file — app-created or user-opened workspace folder only.",
       },
       {
-        heading: "Why full Drive scope",
+        heading: "Workspace folder (e.g. BSD-YBM)",
         body:
-          "We sync a dedicated workspace folder, list/upload files, and decode documents into ERP. Restricted drive.file scope cannot manage an existing folder tree — full Drive scope is required per Google restricted-scope policy.",
+          "We sync, list, upload, and decode documents within the dedicated workspace folder. We do not access your entire Google Drive.",
       },
       {
         heading: "Data accessed and stored",
@@ -85,11 +85,11 @@ const DOCS: Record<AppLocale, GoogleIntegrationDoc> = {
     sections: [
       {
         heading: "Используемые scope",
-        body: "Вход: openid, email, profile. Google Drive: полный доступ drive для синхронизации папки и документов в рамках функций приложения.",
+        body: "Вход: openid, email, profile. Google Drive: https://www.googleapis.com/auth/drive.file — только рабочая папка приложения.",
       },
       {
-        heading: "Зачем полный Drive",
-        body: "Синхронизация рабочей папки, загрузка и распознавание документов; узкий scope drive.file недостаточен.",
+        heading: "Рабочая папка",
+        body: "Синхронизация, загрузка и распознавание документов в выделенной папке (например BSD-YBM). Полный Drive не используется.",
       },
       {
         heading: "Данные",

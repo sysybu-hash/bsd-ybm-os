@@ -1,4 +1,5 @@
 import { sendTransactionalEmail } from "@/lib/mail";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 function escapeHtml(s: string): string {
   return s
@@ -13,8 +14,6 @@ export type InvoiceReceiptEmailPayload = {
   issueDate: Date;
   amount: number;
 };
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://bsd-ybm.co.il";
 
 /**
  * מייל אישור תשלום / קבלה (Resend או SMTP דרך sendTransactionalEmail).
@@ -47,7 +46,7 @@ export async function sendInvoiceEmail(
       מסמך זה מהווה אישור תשלום אלקטרוני. ניתן לצפות בהיסטוריה דרך אזור ההגדרות והחיובים.
     </p>
     <p style="text-align:center;margin:0;">
-      <a href="${escapeHtml(SITE_URL.replace(/\/$/, ""))}/app" style="display:inline-block;background:#6366f1;color:#fff;font-weight:800;padding:12px 24px;text-decoration:none;border-radius:8px;">
+      <a href="${escapeHtml(getCanonicalSiteUrl().replace(/\/$/, ""))}/app" style="display:inline-block;background:#6366f1;color:#fff;font-weight:800;padding:12px 24px;text-decoration:none;border-radius:8px;">
         מעבר למערכת
       </a>
     </p>`;

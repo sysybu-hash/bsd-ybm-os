@@ -151,7 +151,7 @@ export default function SigningPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
-            <BrandLogo size="md" className="shrink-0" />
+            <BrandLogo size="md" variant="image" tone="night" className="shrink-0" priority />
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-white">חתימה על מסמך</h1>
               <p className="text-xs text-slate-500">מערכת חתימה מאובטחת</p>

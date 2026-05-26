@@ -185,4 +185,4 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
       "Cache-Control": "no-store",
     },
   });
-});
+}, { rateLimit: false });

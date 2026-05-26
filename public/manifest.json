@@ -55,11 +55,25 @@
   "categories": ["business", "productivity", "finance"],
   "screenshots": [
     {
-      "src": "/og-image.png",
-      "sizes": "1200x630",
+      "src": "/screenshots/workspace-home.png",
+      "sizes": "2880x1800",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "BSD-YBM OS — ממשק שולחן עבודה"
+      "label": "מרחב העבודה — רשת Hub"
+    },
+    {
+      "src": "/screenshots/marketing-landing.png",
+      "sizes": "2880x1800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "דף נחיתה"
+    },
+    {
+      "src": "/screenshots/finance-hub.png",
+      "sizes": "2880x1800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Hub פיננסים"
     }
   ],
   "share_target": {

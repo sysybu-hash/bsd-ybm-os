@@ -4,7 +4,7 @@ import { Mic, MicOff } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
-import { FIELD_COPILOT_LIVE_PROMPT } from "@/lib/field-copilot/instruction";
+import { getFieldCopilotLivePrompt } from "@/lib/field-copilot/instruction";
 
 type Props = {
   transcript: string;
@@ -18,7 +18,7 @@ export default function VoiceCapturePanel({ transcript, onTranscript }: Props) {
   const live = useGeminiLiveAudio({
     enabled: liveOn,
     owner: "fieldCopilot",
-    systemInstruction: FIELD_COPILOT_LIVE_PROMPT,
+    systemInstruction: getFieldCopilotLivePrompt(locale),
     locale,
     greetOnConnect: true,
     onUserTranscript: (text, finished) => {

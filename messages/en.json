@@ -133,6 +133,10 @@
       "authTitle": "Authentication",
       "authBody": "Use the Google account approved for your organization. After sign-in you go straight to the workspace.",
       "google": "Sign in with Google",
+      "googleScopeNote": "Google sign-in requests only ID, email, and profile. Drive and Contacts require a separate consent in settings.",
+      "privacyLink": "Privacy",
+      "termsLink": "Terms",
+      "googleIntegrationsLink": "Google data use",
       "backHome": "Back to home"
     },
     "register": {

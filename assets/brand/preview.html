@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>BSD-YBM · 4 קונספטי לוגו</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #0f172a;
+    background: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  h1 {
+    font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+    margin: 0 0 6px;
+  }
+  .lead { margin: 0 0 36px; color: #64748b; font-size: 15px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .concept {
+    border-radius: 24px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(15,23,42,0.04);
+  }
+  .concept-head {
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .concept-num {
+    display: inline-block;
+    font-size: 10px; font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #6366f1;
+    margin-bottom: 4px;
+  }
+  .concept-name {
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .concept-desc {
+    margin-top: 4px;
+    font-size: 13px; color: #64748b;
+    line-height: 1.5;
+  }
+  .concept-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .stage {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .stage.light { background: #f8fafc; }
+  .stage.dark { background: #0b1020; }
+  .stage img { width: 70%; height: 70%; }
+  .stage::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 10px; right: 12px;
+    font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+  }
+  .stage.dark::after { color: rgba(255,255,255,0.45); }
+
+  .sizes {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+  }
+  .sizes img { display: block; }
+  .sizes-label {
+    margin-inline-end: 12px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+
+  .footer-cta {
+    margin-top: 48px;
+    padding: 22px 26px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+    color: #fff;
+    text-align: center;
+    font-size: 14px;
+  }
+  .footer-cta strong { font-size: 17px; display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BSD-YBM · 4 קונספטי לוגו חדשים</h1>
+  <p class="lead">
+    כל קונספט בעל שפה ויזואלית עצמאית. בחר את הכיוון שמדבר אליך — ואז אפתח אותו לסט מלא
+    (גרסאות יום/לילה, lockup אופקי, ואייקון מינימלי לפאביקון).
+  </p>
+
+  <div class="grid">
+
+    <!-- Concept 1: Nexus -->
+    <div class="concept">
+      <div class="concept-head">
+        <div class="concept-num">01 · CONCEPT</div>
+        <div class="concept-name">Nexus — AI Hex Core</div>
+        <div class="concept-desc">
+          משושה גיאומטרי עם YB מובלע, גרעין זוהר מרכזי ופינים בקצוות —
+          מרגיש כמו צ׳יפ AI/קרנל של מערכת הפעלה. תחושת עומק, טכנולוגיה ועתידנות.
+        </div>
+      </div>
+      <div class="concept-display">
+        <div class="stage light" data-label="יום"><img src="01-nexus-mark.svg" alt=""/></div>
+        <div class="stage dark" data-label="לילה"><img src="01-nexus-mark.svg" alt=""/></div>
+      </div>
+      <div class="sizes">
+        <span class="sizes-label">סקלאביליות</span>
+        <img src="01-nexus-mark.svg" alt="" style="width:64px;height:64px"/>
+        <img src="01-nexus-mark.svg" alt="" style="width:40px;height:40px"/>
+        <img src="01-nexus-mark.svg" alt="" style="width:24px;height:24px"/>
+        <img src="01-nexus-mark.svg" alt="" style="width:16px;height:16px"/>
+      </div>
+    </div>
+
+    <!-- Concept 2: Stack -->
+    <div class="concept">
+      <div class="concept-head">
+        <div class="concept-num">02 · CONCEPT</div>
+        <div class="concept-name">Stack — Architectural Blocks</div>
+        <div class="concept-desc">
+          YB בנוי מבלוקים אופקיים בצבעים שונים — כמו שכבות נתונים, מודולים מערכתיים,
+          או קומות של בניין. אזכור עדין לענף הבנייה ולמודולריות של המערכת.
+        </div>
+      </div>
+      <div class="concept-display">
+        <div class="stage light" data-label="יום"><img src="02-stack-mark.svg" alt=""/></div>
+        <div class="stage dark" data-label="לילה"><img src="02-stack-mark.svg" alt=""/></div>
+      </div>
+      <div class="sizes">
+        <span class="sizes-label">סקלאביליות</span>
+        <img src="02-stack-mark.svg" alt="" style="width:64px;height:64px"/>
+        <img src="02-stack-mark.svg" alt="" style="width:40px;height:40px"/>
+        <img src="02-stack-mark.svg" alt="" style="width:24px;height:24px"/>
+        <img src="02-stack-mark.svg" alt="" style="width:16px;height:16px"/>
+      </div>
+    </div>
+
+    <!-- Concept 3: Aurora -->
+    <div class="concept">
+      <div class="concept-head">
+        <div class="concept-num">03 · CONCEPT</div>
+        <div class="concept-name">Aurora — Liquid Gradient</div>
+        <div class="concept-desc">
+          רקע aurora רב-צבעוני (סגול / ציאן / אמרלד / ורוד) עם YB זוהר בלבן-זהב.
+          תחושה של בינה מלאכותית גנרטיבית, מודרני בסגנון Vercel / Linear / Anthropic.
+        </div>
+      </div>
+      <div class="concept-display">
+        <div class="stage light" data-label="יום"><img src="03-aurora-mark.svg" alt=""/></div>
+        <div class="stage dark" data-label="לילה"><img src="03-aurora-mark.svg" alt=""/></div>
+      </div>
+      <div class="sizes">
+        <span class="sizes-label">סקלאביליות</span>
+        <img src="03-aurora-mark.svg" alt="" style="width:64px;height:64px"/>
+        <img src="03-aurora-mark.svg" alt="" style="width:40px;height:40px"/>
+        <img src="03-aurora-mark.svg" alt="" style="width:24px;height:24px"/>
+        <img src="03-aurora-mark.svg" alt="" style="width:16px;height:16px"/>
+      </div>
+    </div>
+
+    <!-- Concept 4: Sigil -->
+    <div class="concept">
+      <div class="concept-head">
+        <div class="concept-num">04 · CONCEPT</div>
+        <div class="concept-name">Sigil — Premium Monogram</div>
+        <div class="concept-desc">
+          חותם מעוצב בסגנון פרימיום: עיגול זהב עם YB אינטרלוקינג במרכז, נקודות
+          כמו שעון/מצפן מסביב, וכיתוב bsd · ybm קמור בתחתית. יוקרתי, נצחי.
+        </div>
+      </div>
+      <div class="concept-display">
+        <div class="stage light" data-label="יום"><img src="04-sigil-mark.svg" alt=""/></div>
+        <div class="stage dark" data-label="לילה"><img src="04-sigil-mark.svg" alt=""/></div>
+      </div>
+      <div class="sizes">
+        <span class="sizes-label">סקלאביליות</span>
+        <img src="04-sigil-mark.svg" alt="" style="width:64px;height:64px"/>
+        <img src="04-sigil-mark.svg" alt="" style="width:40px;height:40px"/>
+        <img src="04-sigil-mark.svg" alt="" style="width:24px;height:24px"/>
+        <img src="04-sigil-mark.svg" alt="" style="width:16px;height:16px"/>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-cta">
+    <strong>איזה קונספט תפסת?</strong>
+    תגיד לי את המספר (01-04) ואני אבנה ממנו סט מלא: גרסה צבעונית + לבן + שחור, lockup אופקי עם wordmark, ופאביקון.
+  </div>
+</div>
+</body>
+</html>

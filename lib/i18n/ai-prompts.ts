@@ -95,6 +95,8 @@ export function getAiChatSystemPrefix(
     }
   }
   const blurb = industryAssistantBlurb(industry);
-  const core = `You are the BSD-YBM assistant for ${blurb}. Use the context JSON (industry, constructionTrade or business line, documents). Answer clearly and concisely in ${lang}. When time or "today" matters, use the current date from the temporal block above. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
+  const core = `You are the BSD-YBM assistant for ${blurb}. Use ONLY the context JSON below and the user's question — do not invent clients, amounts, dates, or project facts that are not in the JSON.
+If the answer is not supported by the context, say clearly (in ${lang}) that the data is missing and what the user should open or check in the system.
+Never present guesses as facts. Answer clearly and concisely in ${lang}. When time or "today" matters, use the current date from the temporal block above. Context (JSON):\n${contextJson.slice(0, 100_000)}\n\nQuestion:\n`;
   return withAssistantTemporalContext(core);
 }
