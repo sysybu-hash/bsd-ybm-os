@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { POST } from "@/app/api/register/route";
 import { prisma } from "@/lib/prisma";
-import { sendRegistrationWelcomeEmail } from "@/lib/mail";
+import {
+  sendNewRegistrationPendingAdminEmail,
+  sendRegistrationWelcomeEmail,
+} from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
 
 // Mock dependencies
@@ -43,6 +46,7 @@ jest.mock("@/lib/prisma", () => ({
 jest.mock("@/lib/mail", () => ({
   sendRegistrationWelcomeEmail: jest.fn().mockResolvedValue(undefined),
   sendRegistrationCredentialsEmail: jest.fn().mockResolvedValue({ ok: true }),
+  sendNewRegistrationPendingAdminEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/lib/password", () => ({
@@ -70,6 +74,8 @@ jest.mock("@/lib/platform-settings", () => ({
 // Helper to cast mocks
 const mockPrisma = prisma as any;
 const mockSendRegistrationWelcomeEmail = sendRegistrationWelcomeEmail as jest.Mock;
+const mockSendNewRegistrationPendingAdminEmail =
+  sendNewRegistrationPendingAdminEmail as jest.Mock;
 const mockTrialEndsAtFromNow = trialEndsAtFromNow as jest.Mock;
 
 function createMockRequest(body: Record<string, unknown>) {
@@ -148,6 +154,11 @@ describe("POST /api/register", () => {
         accountActive: false,
       }),
     );
+    expect(mockSendNewRegistrationPendingAdminEmail).toHaveBeenCalledWith({
+      userEmail: "owner@example.com",
+      userName: "Owner",
+      organizationName: "Example Org",
+    });
   });
 
   test("creates active signup for a direct paid plan", async () => {
