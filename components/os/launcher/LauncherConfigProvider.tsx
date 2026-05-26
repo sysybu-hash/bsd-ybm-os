@@ -21,6 +21,7 @@ import {
   LAUNCHER_STORAGE_KEY,
   parseLauncherConfigFromStorage,
   resolveStoredLauncherConfig,
+  scrubLauncherConfig,
   type LauncherSlot,
   type LauncherZone,
   type UserLauncherConfig,
@@ -101,7 +102,11 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
       }
       if (cancelled) return;
       const withGrid = { ...base, quickGrid: ensureGridPos(base.quickGrid) };
-      const sanitized = sanitizeConfig(withGrid, permissionCtx);
+      const sanitized = scrubLauncherConfig(
+        sanitizeConfig(withGrid, permissionCtx),
+        organizationIndustry,
+        launcherDefaultOptions,
+      );
       setConfig(sanitized);
       setHydrated(true);
       try {
@@ -117,7 +122,11 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     if (!hydrated) return;
     setConfig((prev) =>
-      sanitizeConfig(ensureMeckanoLauncherSlots(prev, meckanoEnabled), permissionCtx),
+      scrubLauncherConfig(
+        sanitizeConfig(ensureMeckanoLauncherSlots(prev, meckanoEnabled), permissionCtx),
+        organizationIndustry,
+        launcherDefaultOptions,
+      ),
     );
   }, [hydrated, meckanoEnabled, permissionCtx]);
 

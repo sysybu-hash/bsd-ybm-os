@@ -2,6 +2,7 @@ import {
   BUSINESS_MGMT_QUICK_GRID,
   compactZoneSlots,
   dedupeQuickGridSlots,
+  repackQuickGridLayout,
   DEFAULT_QUICK_GRID,
   ensureEditTrailingEmptySlot,
   getDefaultLauncherConfig,
@@ -34,20 +35,23 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 1 });
   });
 
-  it("uses 8-tile business grid for company mgmt industry", () => {
+  it("uses 6-tile business grid for company mgmt industry", () => {
     expect(usesBusinessMgmtQuickGrid("COMPANY_MGMT")).toBe(true);
     const cfg = getDefaultLauncherConfig("COMPANY_MGMT");
     expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
+    expect(cfg.quickGrid).toHaveLength(6);
     const ids = cfg.sidebar.map((s) => s.widgetId);
     expect(ids).not.toContain("meckanoReports");
+    expect(ids).not.toContain("helpCenter");
+    expect(ids).not.toContain("settings");
     expect(cfg.quickGrid.every((s) => s.widgetId !== "fieldCopilot")).toBe(true);
   });
 
-  it("uses 8-tile business grid for platform admin regardless of industry", () => {
+  it("uses 6-tile business grid for platform admin regardless of industry", () => {
     expect(usesBusinessMgmtQuickGrid("CONSTRUCTION", true)).toBe(true);
     const cfg = getDefaultLauncherConfig("CONSTRUCTION", { isPlatformAdmin: true });
     expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
-    expect(cfg.quickGrid).toHaveLength(8);
+    expect(cfg.quickGrid).toHaveLength(6);
   });
 
   it("includes meckano in sidebar for construction industry", () => {
@@ -85,7 +89,7 @@ describe("user-launcher-config", () => {
     };
     const resolved = resolveStoredLauncherConfig(custom, "CONSTRUCTION");
     expect(resolved.quickGrid).toHaveLength(1);
-    expect(resolved.quickGrid[0]).toEqual({ widgetId: "dashboard", row: 2, col: 1 });
+    expect(resolved.quickGrid[0]).toEqual({ widgetId: "financeHub", row: 0, col: 0 });
   });
 
   it("merges partial config", () => {
@@ -95,12 +99,12 @@ describe("user-launcher-config", () => {
     expect(merged.quickGrid[0]!.widgetId).toBe("crmTable");
   });
 
-  it("scrub keeps distinct launcher tile ids in quick grid", () => {
+  it("scrub repacks legacy aiChatFull into canonical aiHub slot", () => {
     const cfg = mergeLauncherConfig({
       quickGrid: [{ widgetId: "aiChatFull", row: 4, col: 0 }],
     });
     const scrubbed = scrubLauncherConfig(cfg);
-    expect(scrubbed.quickGrid[0]).toEqual({ widgetId: "aiChatFull", row: 4, col: 0 });
+    expect(scrubbed.quickGrid[0]).toEqual({ widgetId: "aiHub", row: 1, col: 2 });
   });
 
   it("dedupes repeated documentsHub tiles after legacy migration", () => {
@@ -112,14 +116,17 @@ describe("user-launcher-config", () => {
     expect(dedupeQuickGridSlots(slots)).toHaveLength(1);
   });
 
-  it("keeps docCreator, aiScanner, and documentsHub as separate quick tiles", () => {
-    const slots = BUSINESS_MGMT_QUICK_GRID.map((s) => ({ ...s }));
-    const deduped = dedupeQuickGridSlots(slots);
-    const ids = deduped.map((s) => s.widgetId);
-    expect(ids).toContain("docCreator");
-    expect(ids).toContain("aiScanner");
-    expect(ids).toContain("documentsHub");
-    expect(deduped).toHaveLength(8);
+  it("repack collapses legacy document shortcuts into one documentsHub tile", () => {
+    const messy = [
+      { widgetId: "docCreator" as const, row: 0, col: 0 },
+      { widgetId: "aiScanner" as const, row: 1, col: 3 },
+      { widgetId: "documentsHub" as const, row: 1, col: 1 },
+      { widgetId: "financeHub" as const, row: 0, col: 1 },
+    ];
+    const packed = repackQuickGridLayout(messy, BUSINESS_MGMT_QUICK_GRID);
+    const docTiles = packed.filter((s) => s.widgetId === "documentsHub");
+    expect(docTiles).toHaveLength(1);
+    expect(docTiles[0]).toMatchObject({ row: 1, col: 0 });
   });
 
   it("parses invalid storage safely", () => {
@@ -152,7 +159,7 @@ describe("user-launcher-config", () => {
       quickGrid: [{ widgetId: "googleAssistant" }, { widgetId: "dashboard", row: 0, col: 1 }],
     });
     expect(merged.quickGrid).toHaveLength(1);
-    expect(merged.quickGrid[0]!.widgetId).toBe("dashboard");
+    expect(merged.quickGrid[0]!.widgetId).toBe("financeHub");
   });
 
   it("trims only trailing empty slots", () => {

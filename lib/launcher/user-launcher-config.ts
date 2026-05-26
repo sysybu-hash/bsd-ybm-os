@@ -100,7 +100,11 @@ function emptySlot(): LauncherSlot {
  * ברירת מחדל ל-quick grid — קואורדינטות LTR; בתצוגה RTL השורה נקראת מימין לשמאל.
  */
 
-/** בנייה — 6 אריחי Hub: שורה 0 פיננסים · פרויקטים · CRM; שורה 1 מסמכים · קופיילוט · AI */
+/**
+ * 6 אריחי Hub — רשת 3×2 ללא חורים.
+ * שורה 0 (מימין ב-RTL): פרויקטים · CRM · פיננסים
+ * שורה 1: AI · מסמכים · (קופיילוט שטח או מרכז עזרה)
+ */
 export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("financeHub", 0, 0),
   gridSlot("projectsHub", 0, 1),
@@ -110,21 +114,22 @@ export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("aiHub", 1, 2),
 ];
 
-/**
- * ניהול עסק / מנהל פלטפורמה — 2×4.
- * שורה 0 (RTL): פרויקטים · CRM · פיננסים · הפקת מסמכים.
- * שורה 1 (RTL): סריקת AI · AI · מסמכים · מרכז עזרה.
- */
+/** ניהול עסק / מנהל פלטפורמה — אותה רשת 3×2, בלי קיצורי מסמכים כפולים */
 export const BUSINESS_MGMT_QUICK_GRID: LauncherSlot[] = [
-  gridSlot("projectsHub", 0, 3),
+  gridSlot("financeHub", 0, 0),
+  gridSlot("projectsHub", 0, 1),
   gridSlot("crmTable", 0, 2),
-  gridSlot("financeHub", 0, 1),
-  gridSlot("docCreator", 0, 0),
-  gridSlot("aiScanner", 1, 3),
-  gridSlot("aiHub", 1, 2),
-  gridSlot("documentsHub", 1, 1),
-  gridSlot("helpCenter", 1, 0),
+  gridSlot("documentsHub", 1, 0),
+  gridSlot("aiHub", 1, 1),
+  gridSlot("helpCenter", 1, 2),
 ];
+
+/** מוצגים בתחתית הסרגל — לא ברשימת האפליקציות */
+export const SIDEBAR_FOOTER_WIDGETS = new Set<WidgetType>([
+  "settings",
+  "helpCenter",
+  "platformAdmin",
+]);
 
 export type LauncherDefaultOptions = {
   isPlatformAdmin?: boolean;
@@ -181,8 +186,6 @@ export function buildDefaultLauncherConfig(
       slot("aiHub"),
       ...(company ? [] : [slot("meckanoReports")]),
       slot("googleDrive"),
-      slot("helpCenter"),
-      slot("settings"),
       slot("accessibility"),
     ],
     mobileBarStart: company
@@ -302,6 +305,65 @@ function scrubZoneSlots(slots: LauncherSlot[]): LauncherSlot[] {
   });
 }
 
+function scrubSidebarSlots(slots: LauncherSlot[]): LauncherSlot[] {
+  const seen = new Set<WidgetType>();
+  const out: LauncherSlot[] = [];
+  for (const s of scrubZoneSlots(slots)) {
+    if (!s.widgetId) continue;
+    if (SIDEBAR_FOOTER_WIDGETS.has(s.widgetId)) continue;
+    if (seen.has(s.widgetId)) continue;
+    seen.add(s.widgetId);
+    out.push(s);
+  }
+  return out;
+}
+
+const DOCUMENT_QUICK_TILES = new Set<WidgetType>([
+  "docCreator",
+  "aiScanner",
+  "erp",
+  "erpArchive",
+  "quoteGen",
+  "documentsHub",
+]);
+
+function canonicalHubTileId(id: WidgetType): WidgetType {
+  if (DOCUMENT_QUICK_TILES.has(id)) return "documentsHub";
+  return mapLauncherWidgetId(id);
+}
+
+/** מסדר מחדש לרשת 3×2 לפי תבנית — בלי חורים בעמודות */
+export function repackQuickGridLayout(slots: LauncherSlot[], template: LauncherSlot[]): LauncherSlot[] {
+  const deduped = dedupeQuickGridSlots(slots.filter((s) => s.widgetId !== null));
+  const present = new Set<WidgetType>();
+  for (const s of deduped) {
+    if (s.widgetId) present.add(canonicalHubTileId(s.widgetId));
+  }
+
+  const packed: LauncherSlot[] = [];
+  for (const t of template) {
+    if (!t.widgetId || !present.has(t.widgetId)) continue;
+    packed.push({
+      widgetId: t.widgetId,
+      row: t.row,
+      col: t.col,
+    });
+  }
+
+  const extras = [...present].filter((id) => !packed.some((p) => p.widgetId === id));
+  let idx = packed.length;
+  for (const widgetId of extras) {
+    packed.push({
+      widgetId,
+      row: Math.floor(idx / 3),
+      col: idx % 3,
+    });
+    idx++;
+  }
+
+  return packed.length > 0 ? packed : template.map((t) => ({ ...t }));
+}
+
 /** מסיר כפילויות באותו widgetId (למשל שלושה documentsHub אחרי מיגרציה ישנה) */
 export function dedupeQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
   const seen = new Set<WidgetType>();
@@ -344,11 +406,16 @@ function scrubQuickGridSlots(slots: LauncherSlot[]): LauncherSlot[] {
 }
 
 /** מנקה ווידג'טים שהוסרו / לא תקינים בכל האזורים */
-export function scrubLauncherConfig(config: UserLauncherConfig): UserLauncherConfig {
+export function scrubLauncherConfig(
+  config: UserLauncherConfig,
+  industryRaw?: string | null,
+  options?: LauncherDefaultOptions,
+): UserLauncherConfig {
+  const template = buildDefaultQuickGrid(industryRaw, options);
   return {
     version: 2,
-    quickGrid: scrubQuickGridSlots(config.quickGrid),
-    sidebar: scrubZoneSlots(config.sidebar),
+    quickGrid: repackQuickGridLayout(scrubQuickGridSlots(config.quickGrid), template),
+    sidebar: scrubSidebarSlots(config.sidebar),
     mobileBarStart: scrubZoneSlots(config.mobileBarStart),
     mobileBarEnd: scrubZoneSlots(config.mobileBarEnd),
     mobileMore: scrubZoneSlots(config.mobileMore),
@@ -368,14 +435,18 @@ export function mergeLauncherConfig(
     ? defaults.quickGrid
     : normalizeZone(p.quickGrid, defaults.quickGrid);
 
-  return scrubLauncherConfig({
-    version: 2,
-    quickGrid,
-    sidebar: normalizeZone(p.sidebar, defaults.sidebar),
-    mobileBarStart: normalizeZone(p.mobileBarStart, defaults.mobileBarStart),
-    mobileBarEnd: normalizeZone(p.mobileBarEnd, defaults.mobileBarEnd),
-    mobileMore: normalizeZone(p.mobileMore, defaults.mobileMore),
-  });
+  return scrubLauncherConfig(
+    {
+      version: 2,
+      quickGrid,
+      sidebar: normalizeZone(p.sidebar, defaults.sidebar),
+      mobileBarStart: normalizeZone(p.mobileBarStart, defaults.mobileBarStart),
+      mobileBarEnd: normalizeZone(p.mobileBarEnd, defaults.mobileBarEnd),
+      mobileMore: normalizeZone(p.mobileMore, defaults.mobileMore),
+    },
+    industryRaw,
+    options,
+  );
 }
 
 export function parseLauncherConfigFromStorage(

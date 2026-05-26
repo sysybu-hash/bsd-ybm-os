@@ -42,7 +42,8 @@ export const PATCH = withWorkspacesAuth(async (req, { userId, orgId }) => {
     where: { id: orgId },
     select: { industry: true },
   });
-  const merged = scrubLauncherConfig(mergeLauncherConfig(body.config, org?.industry ?? null));
+  const industry = org?.industry ?? null;
+  const merged = scrubLauncherConfig(mergeLauncherConfig(body.config, industry), industry);
   await prisma.user.update({
     where: { id: userId },
     data: { launcherConfigJson: merged },

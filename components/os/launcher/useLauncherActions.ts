@@ -6,6 +6,7 @@ import {
   ensureEditTrailingEmptySlot,
   ensureMeckanoLauncherSlots,
   LAUNCHER_STORAGE_KEY,
+  scrubLauncherConfig,
   LAUNCHER_ZONE_MAX_SLOTS,
   resolveZoneWidgets,
   trimTrailingEmptySlots,
@@ -56,7 +57,11 @@ export function useLauncherActions({
     (next: UserLauncherConfig) => {
       const withMeckano = ensureMeckanoLauncherSlots(next, meckanoEnabled);
       const withGrid = { ...withMeckano, quickGrid: ensureQuickGridPositions(withMeckano.quickGrid) };
-      const sanitized = sanitizeConfig(withGrid, permissionCtx);
+      const sanitized = scrubLauncherConfig(
+        sanitizeConfig(withGrid, permissionCtx),
+        organizationIndustry,
+        { isPlatformAdmin },
+      );
       setConfig(sanitized);
       try { localStorage.setItem(LAUNCHER_STORAGE_KEY, JSON.stringify(sanitized)); } catch { /* quota */ }
       if (userId) {
