@@ -1,11 +1,5 @@
-import { createRequire } from "node:module";
+import archiver from "archiver";
 import { PassThrough } from "stream";
-
-const nodeRequire = createRequire(import.meta.url);
-const createArchiver = nodeRequire("archiver") as (
-  format: "zip",
-  options?: { zlib?: { level?: number } },
-) => import("archiver").Archiver;
 import type { ErpArchiveFile } from "@/lib/erp-archive";
 import { buildInvoicePdfBuffer } from "@/lib/invoice-export";
 import { buildInvoiceExportPayload } from "@/lib/invoice-payload";
@@ -35,7 +29,7 @@ export async function buildArchiveBulkZip(
   if (items.length === 0) throw new Error("NO_ITEMS");
   if (items.length > MAX_ITEMS) throw new Error("TOO_MANY_ITEMS");
 
-  const archive = createArchiver("zip", { zlib: { level: 6 } });
+  const archive = archiver("zip", { zlib: { level: 6 } });
   const passthrough = new PassThrough();
   archive.pipe(passthrough);
 
