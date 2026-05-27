@@ -1121,7 +1121,17 @@
       "issueFailed": "Document generation failed",
       "issuedDocName": "Generated document",
       "downloadIssued": "Download document",
-      "openInDocCreator": "Open in document creator"
+      "openInDocCreator": "Open in document creator",
+      "titlePlaceholder": "Notebook title",
+      "projectLabel": "Assign to project",
+      "projectNone": "General (no project)",
+      "save": "Save",
+      "load": "Load",
+      "newNotebook": "New",
+      "noSavedNotebooks": "No saved notebooks",
+      "deleteNotebook": "Delete notebook",
+      "sourcesHeading": "Knowledge Sources",
+      "noSources": "No sources uploaded yet."
     },
     "project": {
       "loadFailed": "Failed to load project",

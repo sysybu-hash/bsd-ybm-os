@@ -1121,7 +1121,17 @@
       "issueFailed": "Не удалось создать документ",
       "issuedDocName": "Созданный документ",
       "downloadIssued": "Скачать документ",
-      "openInDocCreator": "Открыть в создателе документов"
+      "openInDocCreator": "Открыть в создателе документов",
+      "titlePlaceholder": "Название тетради",
+      "projectLabel": "Привязка к проекту",
+      "projectNone": "Общее (без проекта)",
+      "save": "Сохранить",
+      "load": "Загрузить",
+      "newNotebook": "Новый",
+      "noSavedNotebooks": "Нет сохранённых тетрадей",
+      "deleteNotebook": "Удалить тетрадь",
+      "sourcesHeading": "Источники знаний",
+      "noSources": "Источники не загружены."
     },
     "project": {
       "loadFailed": "Не удалось загрузить проект",

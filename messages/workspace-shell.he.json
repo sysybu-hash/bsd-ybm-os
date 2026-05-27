@@ -1136,7 +1136,17 @@
       "issueFailed": "הנפקת המסמך נכשלה",
       "issuedDocName": "מסמך מופק",
       "downloadIssued": "הורד מסמך",
-      "openInDocCreator": "פתח ביוצר מסמכים"
+      "openInDocCreator": "פתח ביוצר מסמכים",
+      "titlePlaceholder": "כותרת מחברת",
+      "projectLabel": "שיוך לפרויקט",
+      "projectNone": "כללי (ללא פרויקט)",
+      "save": "שמור",
+      "load": "טען",
+      "newNotebook": "חדש",
+      "noSavedNotebooks": "אין מחברות שמורות",
+      "deleteNotebook": "מחק מחברת",
+      "sourcesHeading": "מקורות ידע",
+      "noSources": "טרם הועלו מקורות."
     },
     "project": {
       "loadFailed": "שגיאה בטעינת נתוני פרויקט",

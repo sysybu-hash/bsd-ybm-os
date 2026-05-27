@@ -72,6 +72,7 @@ export default function NotebookLMWidget({
         onFileUpload={(e) => void nb.handleFileUpload(e)}
         onRenameSource={nb.renameSource}
         onRemoveSource={nb.removeSource}
+        t={t}
         onKnowledgeVaultSelect={(item) => {
           const text =
             item.parsedSummary && typeof item.parsedSummary === "object"
