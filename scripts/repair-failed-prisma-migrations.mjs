@@ -43,15 +43,26 @@ const REPAIRS = [
     },
   },
   {
-    name: "20260521120000_auth_passkey_password_reset",
+    name: "20260527120000_google_calendar_sync",
     async test() {
       const { rows } = await pool.query(
-        `SELECT EXISTS (
-           SELECT 1 FROM information_schema.tables
-           WHERE table_schema = 'public' AND table_name = 'UserPasskey'
-         ) AS e`,
+        `SELECT COUNT(*)::int AS c FROM information_schema.tables
+         WHERE table_schema = 'public'
+           AND table_name IN ('UserGoogleCalendarSettings', 'GoogleCalendarEventLink')`,
       );
-      return rows[0]?.e === true;
+      return (rows[0]?.c ?? 0) >= 2;
+    },
+  },
+  {
+    name: "20260527140000_calendar_color",
+    async test() {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'UserGoogleCalendarSettings'
+           AND column_name = 'calendarColor'`,
+      );
+      return rows.length > 0;
     },
   },
 ];
