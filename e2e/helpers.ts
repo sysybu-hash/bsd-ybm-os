@@ -280,6 +280,25 @@ export function hubQuickGridButton(page: Page, name: RegExp) {
   return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
 }
 
+/** ניווט לווידג'ט workspace אחרי התחברות (בדיקות product-brochure וכו'). */
+export async function gotoAuthenticatedWidget(
+  page: Page,
+  widgetId: string,
+): Promise<boolean> {
+  const signed = await tryCredentialsSignIn(page);
+  if (!signed) return false;
+
+  await dismissCookieBannerIfVisible(page);
+  await dismissWorkspaceOverlays(page);
+  await page.goto(workspaceUrl({ w: widgetId }), { waitUntil: "domcontentloaded" });
+  await waitForAuthenticatedWorkspace(page);
+  await dismissWorkspaceOverlays(page);
+
+  const shell = page.locator("[data-widget-shell]").first();
+  await shell.waitFor({ state: "visible", timeout: 30_000 }).catch(() => {});
+  return shell.isVisible().catch(() => false);
+}
+
 export async function dismissCookieBannerIfVisible(page: Page) {
   const accept = page.getByRole("button", { name: /קבל את כל העוגיות|Accept all cookies/i });
   if (await accept.isVisible().catch(() => false)) {
