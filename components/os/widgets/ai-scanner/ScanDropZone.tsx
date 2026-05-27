@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Upload, Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { Upload, Loader2, ArrowRight, Sparkles, Camera } from "lucide-react";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import { SCAN_ACCEPT_SUMMARY } from "@/lib/scan-mime";
 import type { QueueItem } from "./types";
@@ -19,6 +19,7 @@ type ScanDropZoneProps = {
   previewFileName: string;
   fileAccept: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  cameraInputRef?: React.RefObject<HTMLInputElement>;
   onDrop: (e: React.DragEvent) => void;
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   applyFilePreview: (file: File) => void;
@@ -38,6 +39,7 @@ export function ScanDropZone({
   previewFileName,
   fileAccept,
   fileInputRef,
+  cameraInputRef,
   onDrop,
   onFileInputChange,
   applyFilePreview,
@@ -70,7 +72,7 @@ export function ScanDropZone({
       />
 
       {isProcessing ? (
-        <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-4 px-4">
+        <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-4 px-4 py-6">
           <div className="relative">
             <div className="absolute inset-0 animate-ping rounded-full bg-orange-500/20" aria-hidden />
             <Loader2 className="relative animate-spin text-orange-500" size={44} aria-hidden />
@@ -100,24 +102,44 @@ export function ScanDropZone({
           ) : null}
         </div>
       ) : (
-        <div className="relative z-10 flex flex-col items-center px-4">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/15 to-amber-500/5 text-orange-500 shadow-inner">
-            <Upload size={28} aria-hidden />
+        <div className="relative z-10 flex w-full flex-col items-center px-4 py-4">
+          {/* Icon */}
+          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-500 shadow-inner">
+            <Upload size={30} aria-hidden />
           </div>
+
+          {/* Title */}
           <p className="flex items-center gap-1.5 text-center text-sm font-black text-[color:var(--foreground-main)]">
             <Sparkles size={14} className="text-orange-400" aria-hidden />
             {t("scanner.drop")}
           </p>
-          <p className="mt-1 max-w-xs text-center text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
+          <p className="mt-1 max-w-[18rem] text-center text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
             {tr("scanner.acceptHint", SCAN_ACCEPT_SUMMARY)}
           </p>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="mt-4 flex min-h-[44px] items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-5 py-2.5 text-xs font-bold text-orange-800 shadow-sm transition hover:bg-orange-500/20 dark:text-orange-200"
-          >
-            {tr("scanner.selectFiles", "בחר קבצים")} <ArrowRight size={14} className="rtl:rotate-180" aria-hidden />
-          </button>
+
+          {/* Action buttons — stacked on mobile, row on desktop */}
+          <div className="mt-4 flex w-full max-w-xs flex-col gap-2 sm:flex-row sm:justify-center">
+            {/* Upload from gallery/files */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-700 shadow-sm transition active:scale-95 hover:bg-orange-500/20 dark:text-orange-200"
+            >
+              <Upload size={16} aria-hidden />
+              {tr("scanner.selectFiles", "העלה קובץ")}
+            </button>
+
+            {/* Camera capture — mobile only, hidden on desktop */}
+            <button
+              type="button"
+              onClick={() => (cameraInputRef ?? fileInputRef).current?.click()}
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-indigo-700 shadow-sm transition active:scale-95 hover:bg-indigo-500/20 dark:text-indigo-200 sm:hidden"
+            >
+              <Camera size={16} aria-hidden />
+              {tr("scanner.capturePhoto", "צלם מסמך")}
+            </button>
+          </div>
+
           {queue.length > 0 ? (
             <p className="mt-2 text-[10px] font-bold text-orange-500">
               {doneCount}/{queue.length} {tr("scanner.filesQueued", "קבצים בתור")}
@@ -125,12 +147,24 @@ export function ScanDropZone({
           ) : null}
         </div>
       )}
+
+      {/* Standard file input */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
         className="hidden"
         accept={fileAccept}
+        onChange={onFileInputChange}
+      />
+
+      {/* Camera capture input — mobile only */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
         onChange={onFileInputChange}
       />
       {queue.length > 0 && !hasPendingAnalysis ? (

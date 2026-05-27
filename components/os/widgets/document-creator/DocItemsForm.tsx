@@ -61,7 +61,7 @@ export function DocItemsForm({ items, onAdd, onRemove, onUpdate }: DocItemsFormP
             </div>
             <button
               onClick={() => onRemove(item.id)}
-              className="p-3 text-[color:var(--foreground-muted)] hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+              className="p-3 text-[color:var(--foreground-muted)] hover:text-red-600 dark:hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
             >
               <Trash2 size={18} />
             </button>

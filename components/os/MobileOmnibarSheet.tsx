@@ -114,26 +114,40 @@ export default function MobileOmnibarSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-[1050] flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 bg-[color:var(--background-main)]/98 shadow-2xl backdrop-blur-xl"
+            className="fixed inset-x-0 bottom-0 z-[1050] flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 shadow-2xl"
             style={{
               paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+              background:
+                "linear-gradient(180deg, var(--surface-card) 0%, var(--background-main) 100%)",
+              backdropFilter: "blur(24px)",
             }}
           >
-            <div className="mx-auto mt-2 mb-1 flex w-12 shrink-0 justify-center py-1" aria-hidden>
-              <div className="h-1 w-10 rounded-full bg-[color:var(--foreground-muted)]/35" />
+            {/* Accent strip at the top */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-400"
+              aria-hidden
+            />
+
+            <div className="mx-auto mt-3 mb-1 flex w-12 shrink-0 justify-center py-1" aria-hidden>
+              <div className="h-1 w-10 rounded-full bg-[color:var(--foreground-muted)]/30" />
             </div>
 
-            <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2">
-              <span className="text-sm font-black tracking-wide text-[color:var(--foreground-main)]">
-                {t("workspaceWidgets.omnibar.sheetTitle")}
-              </span>
+            <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <span className="text-sm font-black tracking-wide text-[color:var(--foreground-main)]">
+                  {t("workspaceWidgets.omnibar.sheetTitle")}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)]"
+                className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)] transition active:scale-95 hover:bg-[color:var(--border-main)]/40"
                 aria-label={t("workspaceWidgets.chrome.closeLabel")}
               >
-                <X size={22} aria-hidden />
+                <X size={20} aria-hidden />
               </button>
             </div>
 

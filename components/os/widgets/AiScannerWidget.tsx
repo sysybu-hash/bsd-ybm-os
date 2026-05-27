@@ -25,7 +25,7 @@ export default function AiScannerWidget({
   });
   const {
     t, dir, tr, scannerPrefix,
-    scanModes, fileInputRef, fileAccept,
+    scanModes, fileInputRef, cameraInputRef, fileAccept,
     isDragging, setIsDragging,
     engineMeta, engineRunMode, setEngineRunMode,
     scanModeOverride, setScanModeOverride,
@@ -137,6 +137,7 @@ export default function AiScannerWidget({
                 previewFileName={previewFileName}
                 fileAccept={fileAccept}
                 fileInputRef={fileInputRef}
+                cameraInputRef={cameraInputRef}
                 onDrop={onDrop}
                 onFileInputChange={onFileInputChange}
                 applyFilePreview={applyFilePreview}
@@ -178,25 +179,39 @@ export default function AiScannerWidget({
           onCancel={resetScanState}
         />
 
-        {/* Engine status bar */}
-        <div className="grid grid-cols-1 gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 p-2 backdrop-blur-sm sm:grid-cols-3 sm:gap-2">
-          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-            <Zap size={14} className="mx-auto text-blue-500" />
-            <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">
-              {tr("scanner.engineActive", "מנוע")}
-            </div>
-            <div className="text-[10px] font-black truncate">{activeEngineLabel}</div>
+        {/* Engine status bar — compact row on mobile, 3-column on desktop */}
+        <div className="border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 backdrop-blur-sm">
+          {/* Mobile: single compact line */}
+          <div className="flex items-center gap-2 px-3 py-1.5 sm:hidden">
+            <Zap size={12} className="shrink-0 text-blue-500" />
+            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
+              {tr("scanner.engineActive", "מנוע")}:
+            </span>
+            <span className="truncate text-[10px] font-black">{activeEngineLabel}</span>
+            {engineMeta?.configured.gemini ? (
+              <span className="ms-auto shrink-0 text-[9px] font-bold text-purple-500">Gemini ✓</span>
+            ) : null}
           </div>
-          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-            <Bot size={14} className="mx-auto text-purple-500" />
-            <div className="text-[9px] font-bold">
-              {engineMeta?.configured.gemini ? "Gemini ✓" : "—"}
+          {/* Desktop: 3 cards */}
+          <div className="hidden gap-2 p-2 sm:grid sm:grid-cols-3">
+            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
+              <Zap size={14} className="mx-auto text-blue-500" />
+              <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">
+                {tr("scanner.engineActive", "מנוע")}
+              </div>
+              <div className="truncate text-[10px] font-black">{activeEngineLabel}</div>
             </div>
-          </div>
-          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-            <FileText size={14} className="mx-auto text-emerald-500" />
-            <div className="text-[9px] font-bold">
-              {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}
+            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
+              <Bot size={14} className="mx-auto text-purple-500" />
+              <div className="text-[9px] font-bold">
+                {engineMeta?.configured.gemini ? "Gemini ✓" : "—"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
+              <FileText size={14} className="mx-auto text-emerald-500" />
+              <div className="text-[9px] font-bold">
+                {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}
+              </div>
             </div>
           </div>
         </div>

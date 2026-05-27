@@ -56,70 +56,22 @@ export function ScanHeaderToolbar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {/* Switch project — icon-only on mobile, text on desktop */}
         <button
           type="button"
           onClick={clearProject}
-          className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+          className="flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+          title={t(`${scannerPrefix}.switchProject`)}
         >
-          <ArrowRight size={12} aria-hidden />
-          {t(`${scannerPrefix}.switchProject`)}
+          <ArrowRight size={13} aria-hidden />
+          <span className="hidden sm:inline">{t(`${scannerPrefix}.switchProject`)}</span>
         </button>
 
-        <input
-          type="text"
-          value={userInstruction}
-          onChange={(e) => persistInstruction(e.target.value)}
-          placeholder={tr("scanner.instructionPlaceholder", "הנחיות ל-AI…")}
-          className="max-w-[12rem] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-semibold"
-        />
-
-        <button
-          type="button"
-          onClick={() => setInstructionsOpen(true)}
-          className="rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold"
-        >
-          {tr("scanner.instructionsBtn", "הנחיות")}
-        </button>
-
-        <button
-          type="button"
-          onClick={openPreviewPanel}
-          disabled={queue.length === 0 && !previewUrl}
-          className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
-          aria-label={tr("scanner.preview", "תצוגה מקדימה")}
-        >
-          <Eye size={14} aria-hidden />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setResultsPanelOpen(true);
-            pushScannerView({ openResultsPanel: true });
-          }}
-          disabled={!lastScanV5}
-          className="rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
-          aria-label={tr("scanner.resultsPanel", "תוצאות")}
-        >
-          <FileText size={14} aria-hidden />
-        </button>
-
-        <Settings2 size={14} className="text-[color:var(--foreground-muted)]" aria-hidden />
-
-        {scanClassification && engineRunMode === "AUTO" ? (
-          <span
-            className="max-w-[8rem] truncate rounded-lg bg-indigo-500/10 px-2 py-1 text-[9px] font-bold text-indigo-700 dark:text-indigo-300"
-            title={scanClassification.rationale}
-          >
-            {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} (
-            {Math.round(scanClassification.confidence * 100)}%)
-          </span>
-        ) : null}
-
+        {/* Scan mode select — always visible but compact */}
         <select
           value={scanModeOverride}
           onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
-          className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
+          className="min-h-[36px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
           aria-label="מצב סריקה"
         >
           {scanModes.map((m) => (
@@ -127,10 +79,67 @@ export function ScanHeaderToolbar({
           ))}
         </select>
 
+        {/* Instructions — hidden on mobile, shown on desktop */}
+        <input
+          type="text"
+          value={userInstruction}
+          onChange={(e) => persistInstruction(e.target.value)}
+          placeholder={tr("scanner.instructionPlaceholder", "הנחיות ל-AI…")}
+          className="hidden max-w-[10rem] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-semibold sm:block"
+        />
+
+        {/* Instructions button — icon on mobile */}
+        <button
+          type="button"
+          onClick={() => setInstructionsOpen(true)}
+          className="flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold"
+          aria-label={tr("scanner.instructionsBtn", "הנחיות")}
+        >
+          <Settings2 size={13} aria-hidden />
+          <span className="hidden sm:inline">{tr("scanner.instructionsBtn", "הנחיות")}</span>
+        </button>
+
+        {/* Preview — only when there's content */}
+        <button
+          type="button"
+          onClick={openPreviewPanel}
+          disabled={queue.length === 0 && !previewUrl}
+          className="flex min-h-[36px] items-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+          aria-label={tr("scanner.preview", "תצוגה מקדימה")}
+        >
+          <Eye size={14} aria-hidden />
+        </button>
+
+        {/* Results — only when there's a scan result */}
+        <button
+          type="button"
+          onClick={() => {
+            setResultsPanelOpen(true);
+            pushScannerView({ openResultsPanel: true });
+          }}
+          disabled={!lastScanV5}
+          className="flex min-h-[36px] items-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+          aria-label={tr("scanner.resultsPanel", "תוצאות")}
+        >
+          <FileText size={14} aria-hidden />
+        </button>
+
+        {/* Classification badge — desktop only */}
+        {scanClassification && engineRunMode === "AUTO" ? (
+          <span
+            className="hidden max-w-[8rem] truncate rounded-lg bg-indigo-500/10 px-2 py-1 text-[9px] font-bold text-indigo-700 dark:text-indigo-300 sm:block"
+            title={scanClassification.rationale}
+          >
+            {tr("scanner.classification", "סיווג")}: {scanClassification.scanMode} (
+            {Math.round(scanClassification.confidence * 100)}%)
+          </span>
+        ) : null}
+
+        {/* Engine mode — desktop only */}
         <select
           value={engineRunMode}
           onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
-          className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
+          className="hidden min-h-[36px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold sm:block"
           aria-label={tr("scanner.configAi", "מנועים")}
         >
           {ENGINE_MODES.map((m) => (

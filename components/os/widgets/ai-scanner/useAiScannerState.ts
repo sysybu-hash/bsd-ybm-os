@@ -22,6 +22,7 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
   const industryId = industryConfig.id;
   const scanModes = useMemo(() => getScanModesForUi(industryId), [industryId]);
   const fileInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
+  const cameraInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const driveImportDoneRef = useRef<string | null>(null);
   const fileAccept = useMemo(() => buildScanFileAcceptAttribute(), []);
 
@@ -181,7 +182,7 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
 
   return {
     t, dir, scannerPrefix,
-    scanModes, fileInputRef, fileAccept,
+    scanModes, fileInputRef, cameraInputRef, fileAccept,
     isDragging, setIsDragging,
     engineMeta, engineRunMode, setEngineRunMode,
     scanModeOverride, setScanModeOverride,
