@@ -46,8 +46,6 @@ function authHostIsLoopback(): boolean {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
-  /** Vercel / proxy — NextAuth יבנה callback מ-host בפועל כש-NEXTAUTH_URL חסר או שגוי */
-  trustHost: true,
   /** עוגיית __Secure-* ב-Vercel; לא על loopback HTTP (E2E / next start מקומי). */
   useSecureCookies: Boolean(
     (process.env.VERCEL || nextAuthUrlIsHttps) && !authHostIsLoopback(),
