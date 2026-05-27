@@ -21,8 +21,9 @@ function imgDataUrl(fileName: string): string | null {
 }
 
 function loadLogo(): string | null {
-  // עדיפות לגרסה המוקטעת (ללא המסגרת הכהה)
+  // עדיפות ללוגו הרשמי החדש (BY bsd-ybm wireframe), ואז fallbacks ישנים
   const candidates = [
+    path.join(process.cwd(), "public", "logos", "logo-night.png"),
     path.join(process.cwd(), "assets", "logo-bsd-ybm-center.png"),
     path.join(process.cwd(), "assets", "logo-bsd-ybm-official.png"),
   ];
@@ -74,16 +75,16 @@ const SHOWCASES: Showcase[] = [
     num: "04",
     kicker: "פרויקטים",
     title: "ניהול פרויקטים בלי אקסלים",
-    desc: "בחירת פרויקט קלה, סטטוס פעיל/לא פעיל, ומעבר חלק ללוח המשימות או מרכז השליטה של כל אחד.",
-    features: ["לוח Kanban למשימות", "מרכז שליטה: תקציב, לוח זמנים, אבני דרך", "מחברת AI לכל פרויקט", "קישור ישיר ל-CRM ולמסמכים"],
+    desc: "בחירת פרויקט קלה, סטטוס פעיל/לא פעיל, ומעבר חלק ללוח המשימות, מרכז שליטה — או Field Copilot לעוזר AI בשטח.",
+    features: ["לוח Kanban למשימות", "מרכז שליטה: תקציב, לוח זמנים, אבני דרך", "Field Copilot — עוזר AI שדה (analyze · handoff)", "קישור ישיר ל-CRM, מסמכים ויומן"],
   },
   {
     file: "05-crm-table.png",
     num: "05",
     kicker: "CRM",
     title: "לקוחות במרכז — מתויגים, חכמים, מחוברים",
-    desc: "טבלת לקוחות מתקדמת עם חיפוש סמנטי, סינון לפי תגיות, וקישור אוטומטי לפרויקטים פעילים.",
-    features: ["חיפוש סמנטי (לפי משמעות, לא רק מילה)", "ייבוא מ-Google Contacts / CSV", "תיוג ופילוח דינמיים", "היסטוריית אינטראקציות מלאה"],
+    desc: "טבלת לקוחות מתקדמת עם חיפוש סמנטי, ייצוא/ייבוא CSV מהיר, timeline לכל איש קשר, וקישור אוטומטי לפרויקטים.",
+    features: ["חיפוש סמנטי (לפי משמעות, לא רק מילה)", "ייצוא + ייבוא CSV דו-כיווני", "Timeline אינטראקציות מלא לכל לקוח", "תיוג, פילוח וקישור לפרויקטים"],
   },
   {
     file: "06-documents-hub.png",
@@ -114,8 +115,16 @@ const SHOWCASES: Showcase[] = [
     num: "09",
     kicker: "שעות עבודה",
     title: "אינטגרציית Meckano — שעות בלי כפילויות",
-    desc: "מושכים את שעות העובדים ישירות מ-Meckano, מסננים לפי פרויקט/תאריך, ומייצאים לרואה חשבון.",
-    features: ["סנכרון אוטומטי מ-Meckano", "סינון לפי עובד/פרויקט/טווח תאריכים", "ייצוא PDF ו-CSV", "חיבור ישיר למודול פרויקטים"],
+    desc: "מושכים את שעות העובדים ישירות מ-Meckano, מסננים לפי פרויקט/תאריך, ומייצאים לרואה חשבון. סנכרון אוטומטי דרך cron.",
+    features: ["סנכרון Meckano אוטומטי (cron)", "סינון לפי עובד/פרויקט/טווח", "ייצוא PDF ו-CSV", "חיבור ישיר למודול פרויקטים"],
+  },
+  {
+    file: "12-google-calendar.png",
+    num: "10",
+    kicker: "יומן Google",
+    title: "Google Calendar שמדבר עם הפרויקטים שלך",
+    desc: "סנכרון דו-כיווני אוטומטי עם יומן Google: אירועים מהפרויקטים מוקפצים אוטומטית, וזמני פגישות חוזרים פנימה — בלי טעויות, בלי כפילויות.",
+    features: ["OAuth + drive.file scope מאובטח", "סנכרון דו-כיווני (push + sync) דרך cron", "תצוגות חודש / שבוע / יום / agenda", "קישור ישיר לפרויקטים ולקוחות"],
   },
 ];
 
@@ -1140,8 +1149,8 @@ a { color: inherit; }
     </div>
 
     <div class="stats">
-      <div class="stat"><strong>9</strong><span>מודולים מרכזיים</span></div>
-      <div class="stat"><strong>4</strong><span>ספקי AI</span></div>
+      <div class="stat"><strong>10</strong><span>מודולים מרכזיים</span></div>
+      <div class="stat"><strong>4</strong><span>ספקי AI + Gemini Live</span></div>
       <div class="stat"><strong>3</strong><span>שפות (עב/אנ/רוס)</span></div>
       <div class="stat"><strong>∞</strong><span>אפשרויות התאמה</span></div>
     </div>
@@ -1159,7 +1168,8 @@ a { color: inherit; }
   <div class="summary-card">
     <div class="lead-quote">"כל הכלים שעסק קטן-בינוני צריך — מאוחדים מאחורי כניסה אחת, בעברית, עם AI שמבין את ההקשר הארגוני שלך."</div>
     BSD-YBM OS היא פלטפורמת SaaS רב-דיירית לניהול עסקים, עם דגש על ענף הבנייה.
-    היא משלבת CRM, ERP, ניהול פרויקטים, מערך פיננסי, סריקת מסמכים והפקתם, ועוזרי AI מרובים —
+    היא משלבת CRM, ERP, ניהול פרויקטים, מערך פיננסי, סריקת מסמכים, יומן Google מסונכרן,
+    Field Copilot לעוזר AI בשטח, ועוזר קולי Gemini Live בעברית —
     בתוך ממשק יחיד בסגנון מערכת הפעלה (חלונות צפים, Hub-ים, Omnibar).
   </div>
 

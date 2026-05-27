@@ -107,6 +107,12 @@ const AUTH_SHOTS: ShotSpec[] = [
     requiresAuth: true,
     readySelector: "[data-widget-shell]",
   },
+  {
+    file: "12-google-calendar.png",
+    url: "/?w=googleCalendar",
+    requiresAuth: true,
+    readySelector: "[data-widget-shell]",
+  },
 ];
 
 const DISABLE_MOTION_CSS = `
