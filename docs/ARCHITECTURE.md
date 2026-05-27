@@ -326,6 +326,10 @@ All scheduled via `vercel.json` crons (Jerusalem timezone, UTC times):
 | `cron-task-reminders` | `0 7 * * *` (10:00 IL) | Push/email task reminders due today |
 | `cron-collection-reminders` | `0 8 * * 0` (11:00 IL Sun) | Weekly collection follow-up emails |
 | `cron-work-diary-push` | `0 16 * * *` (19:00 IL) | Daily work diary prompt push notifications |
+| `cron-meckano-sync` | `0 5 * * *` (08:00 IL) | Meckano attendance sync |
+| `cron-field-copilot-followups` | `0 8 * * *` (11:00 IL) | Field copilot follow-up prompts |
+| `cron-google-calendar-sync` | `0 4 * * *` (07:00 IL) | Pull Google Calendar into workspace |
+| `cron-google-calendar-push` | `30 4 * * *` (07:30 IL) | Push workspace events to Google Calendar |
 
 All monitored via **Sentry Crons** (check-in margin 5 min, max runtime 25 min).
 

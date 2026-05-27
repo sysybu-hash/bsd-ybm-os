@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   return withCronGuard(
     req,
     "cron-google-calendar-sync",
-    { type: "crontab", value: "*/15 * * * *" },
+    { type: "crontab", value: "0 4 * * *" },
     async () => {
       const result = await runGoogleCalendarSyncCron();
       return { ok: true, ...result };
