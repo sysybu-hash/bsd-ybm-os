@@ -17,6 +17,7 @@ import {
   resolveGeminiLiveOrgId,
 } from "@/lib/gemini-live/eligibility";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
+import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 
 type OsAssistantSlice = {
   context: OsAssistantUserContext | null;
@@ -137,6 +138,10 @@ export function useOmnibarGeminiLive({
   }, [voiceStatus, t]);
 
   const voiceActive = voiceStatus === "listening" || voiceStatus === "speaking";
+
+  useScreenWakeLock(
+    voiceActive || geminiLive.isLiveActive || geminiLive.state === "connecting",
+  );
 
   const toggleLive = () => {
     if (geminiLive.isLiveActive) {

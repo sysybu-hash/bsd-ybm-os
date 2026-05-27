@@ -96,6 +96,7 @@ export default function OSHeader({
             className="shrink-0 items-center"
             priority
             subtitle={t("workspaceNav.logoSubtitle")}
+            subtitleBelowOnMobile
           />
         </div>
 

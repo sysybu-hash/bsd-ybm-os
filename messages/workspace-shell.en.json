@@ -713,7 +713,12 @@
       "sheetTitle": "Command & search",
       "sheetAria": "Command bar and search",
       "sheetCloseAria": "Close command bar",
-      "openFullLiveChat": "Open full Live chat"
+      "openFullLiveChat": "Open full Live chat",
+      "chatVisualAria": "Assistant conversation area",
+      "chatEmptyHint": "Type a command or tap the mic — replies appear here",
+      "liveBadge": "Live",
+      "trayExpand": "Swipe up for shortcuts",
+      "trayCollapse": "Hide shortcuts"
     },
     "notificationCenter": {
       "title": "Notifications",

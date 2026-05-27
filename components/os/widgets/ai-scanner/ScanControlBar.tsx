@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, RotateCcw, Save, Square, X } from "lucide-react";
+import { ArrowRight, RotateCcw, Save, Square } from "lucide-react";
 
 export type ScanUiPhase = "idle" | "processing" | "review" | "results";
 
@@ -13,6 +13,9 @@ type ScanControlBarProps = {
   onContinueToSave?: () => void;
   onCancel?: () => void;
 };
+
+const btnBase =
+  "flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40";
 
 export function ScanControlBar({
   phase,
@@ -27,14 +30,14 @@ export function ScanControlBar({
   const prefix = "workspaceWidgets.aiScanner";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/60 px-3 py-2">
+    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/40 px-3 py-2.5 backdrop-blur-md">
       {phase === "processing" && onStop ? (
         <button
           type="button"
           onClick={onStop}
-          className="flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold text-rose-700 dark:text-rose-300"
+          className={`${btnBase} border border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300`}
         >
-          <Square size={12} aria-hidden />
+          <Square size={14} aria-hidden />
           {t(`${prefix}.stopScan`)}
         </button>
       ) : null}
@@ -43,9 +46,9 @@ export function ScanControlBar({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-3 py-1.5 text-[10px] font-bold"
+          className={`${btnBase} border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/80`}
         >
-          <ArrowRight size={12} className="rtl:rotate-180" aria-hidden />
+          <ArrowRight size={14} className="rtl:rotate-180" aria-hidden />
           {t(`${prefix}.back`)}
         </button>
       ) : null}
@@ -54,9 +57,9 @@ export function ScanControlBar({
         <button
           type="button"
           onClick={onContinueToSave}
-          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
+          className={`${btnBase} bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20`}
         >
-          <Save size={12} aria-hidden />
+          <Save size={14} aria-hidden />
           {t(`${prefix}.continueToSave`)}
         </button>
       ) : null}
@@ -65,9 +68,9 @@ export function ScanControlBar({
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-3 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)]"
+          className={`${btnBase} border border-[color:var(--border-main)] text-[color:var(--foreground-muted)]`}
         >
-          <RotateCcw size={12} aria-hidden />
+          <RotateCcw size={14} aria-hidden />
           {t(`${prefix}.cancel`)}
         </button>
       ) : null}

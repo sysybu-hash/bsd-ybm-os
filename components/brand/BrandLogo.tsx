@@ -102,6 +102,8 @@ type BrandLogoProps = {
   /** מסגרת בהירה מעוצבת סביב BY + bsd-ybm (רק lockup) */
   tile?: boolean;
   subtitle?: string;
+  /** במובייל — כותרת משנה מתחת ללוגו (לא ליד) */
+  subtitleBelowOnMobile?: boolean;
 };
 
 const IMAGE_FIT =
@@ -187,8 +189,20 @@ export default function BrandLogo({
   showIcon = false,
   tile = true,
   subtitle,
+  subtitleBelowOnMobile = false,
 }: BrandLogoProps) {
   const scale = LOCKUP[size];
+
+  const subtitleLayoutClass = subtitle
+    ? subtitleBelowOnMobile
+      ? "max-md:flex-col max-md:items-center max-md:gap-0.5 md:flex-row md:items-center md:gap-2"
+      : "flex-row items-center gap-2"
+    : "flex-col gap-1.5";
+
+  const subtitleTextClass = (base: string) =>
+    subtitleBelowOnMobile
+      ? `${base} max-md:max-w-none max-md:text-center max-md:text-[9px] max-md:font-semibold md:truncate md:max-w-[8rem]`
+      : `${base} min-w-0 max-w-[6.5rem] truncate sm:max-w-[8rem]`;
 
   if (variant === "image") {
     const subtitleSize =
@@ -200,15 +214,15 @@ export default function BrandLogo({
 
     return (
       <div
-        className={`inline-flex min-w-0 items-center gap-2 ${
-          subtitle ? "flex-row" : "flex-col gap-1.5"
-        } ${className}`.trim()}
+        className={`inline-flex min-w-0 ${subtitleLayoutClass} ${className}`.trim()}
         aria-label={subtitle ? undefined : BRAND_LOGO_ALT}
       >
         <BrandLogoImage size={size} tone={tone} priority={priority} />
         {subtitle ? (
           <span
-            className={`min-w-0 max-w-[6.5rem] truncate font-medium leading-tight text-slate-600 dark:text-[color:var(--foreground-muted)] sm:max-w-[8rem] ${subtitleSize}`}
+            className={subtitleTextClass(
+              `font-medium leading-tight text-slate-600 dark:text-[color:var(--foreground-muted)] ${subtitleSize}`,
+            )}
           >
             {subtitle}
           </span>
@@ -243,9 +257,7 @@ export default function BrandLogo({
 
   return (
     <div
-      className={`inline-flex min-w-0 items-center gap-2 ${
-        subtitle ? "flex-row" : "flex-col gap-1.5"
-      } ${className}`.trim()}
+      className={`inline-flex min-w-0 ${subtitleLayoutClass} ${className}`.trim()}
       aria-label={BRAND_LOGO_ALT}
     >
       {showIcon ? (
@@ -266,7 +278,9 @@ export default function BrandLogo({
       )}
       {subtitle ? (
         <span
-          className={`min-w-0 max-w-[6.5rem] truncate font-medium leading-tight text-slate-600 dark:text-[color:var(--foreground-muted)] sm:max-w-[8rem] ${subtitleSize}`}
+          className={subtitleTextClass(
+            `font-medium leading-tight text-slate-600 dark:text-[color:var(--foreground-muted)] ${subtitleSize}`,
+          )}
         >
           {subtitle}
         </span>

@@ -728,7 +728,12 @@
       "sheetTitle": "פקודה וחיפוש",
       "sheetAria": "שורת פקודה וחיפוש",
       "sheetCloseAria": "סגור שורת פקודה",
-      "openFullLiveChat": "פתח חלון Live מלא"
+      "openFullLiveChat": "פתח חלון Live מלא",
+      "chatVisualAria": "אזור שיחה עם העוזר",
+      "chatEmptyHint": "הקלד פקודה או הפעל מיקרופון — התשובות יופיעו כאן",
+      "liveBadge": "Live",
+      "trayExpand": "החלק למעלה לקיצורי דרך",
+      "trayCollapse": "הסתר קיצורי דרך"
     },
     "notificationCenter": {
       "title": "מרכז התראות",

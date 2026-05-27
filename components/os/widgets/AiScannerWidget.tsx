@@ -154,15 +154,15 @@ export default function AiScannerWidget({
             <Panel
               defaultSize={stackScannerPanels ? 58 : 52}
               minSize={stackScannerPanels ? 28 : 28}
-              className="flex min-h-0 flex-col p-3"
+              className="flex min-h-0 flex-col p-2 md:p-3"
             >
               <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
                 {t("scanner.results")}
               </p>
-              <p className="mb-2 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+              <p className="mb-2 rounded-lg border border-[color:var(--border-main)]/60 bg-[color:var(--surface-card)]/50 px-2 py-1 text-[10px] font-mono text-[color:var(--foreground-muted)]">
                 {tr("scanner.telemetry", "טלמטריה")}: {formatTelemetrySummaryHe(telemetry)}
               </p>
-              <pre className="custom-scrollbar flex-1 overflow-auto rounded-xl border border-[color:var(--border-main)] bg-black/20 p-3 text-[10px] leading-relaxed">
+              <pre className="custom-scrollbar flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-gradient-to-b from-black/25 to-[color:var(--surface-card)]/20 p-3 text-[10px] leading-relaxed backdrop-blur-sm">
                 {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
               </pre>
             </Panel>
@@ -179,21 +179,21 @@ export default function AiScannerWidget({
         />
 
         {/* Engine status bar */}
-        <div className="grid grid-cols-3 gap-1.5 border-t border-[color:var(--border-main)] p-2 sm:gap-2">
-          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+        <div className="grid grid-cols-1 gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 p-2 backdrop-blur-sm sm:grid-cols-3 sm:gap-2">
+          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
             <Zap size={14} className="mx-auto text-blue-500" />
             <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">
               {tr("scanner.engineActive", "מנוע")}
             </div>
             <div className="text-[10px] font-black truncate">{activeEngineLabel}</div>
           </div>
-          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
             <Bot size={14} className="mx-auto text-purple-500" />
             <div className="text-[9px] font-bold">
               {engineMeta?.configured.gemini ? "Gemini ✓" : "—"}
             </div>
           </div>
-          <div className="rounded-xl border border-[color:var(--border-main)] p-2 text-center">
+          <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
             <FileText size={14} className="mx-auto text-emerald-500" />
             <div className="text-[9px] font-bold">
               {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}

@@ -713,7 +713,12 @@
       "sheetTitle": "Команда и поиск",
       "sheetAria": "Командная строка и поиск",
       "sheetCloseAria": "Закрыть командную строку",
-      "openFullLiveChat": "Открыть полный Live-чат"
+      "openFullLiveChat": "Открыть полный Live-чат",
+      "chatVisualAria": "Область диалога с ассистентом",
+      "chatEmptyHint": "Введите команду или нажмите микрофон — ответы появятся здесь",
+      "liveBadge": "Live",
+      "trayExpand": "Проведите вверх для ярлыков",
+      "trayCollapse": "Скрыть ярлыки"
     },
     "notificationCenter": {
       "title": "Уведомления",

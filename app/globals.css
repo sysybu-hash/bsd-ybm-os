@@ -491,6 +491,17 @@
     box-shadow: none;
   }
 
+  @media (max-width: 767px) {
+    .workspace-chrome-btn {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+
+    .workspace-window-title {
+      font-size: 0.8125rem;
+    }
+  }
+
   .workspace-chrome-btn {
     display: inline-flex;
     min-height: 2rem;
