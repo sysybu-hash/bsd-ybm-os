@@ -4,15 +4,69 @@ import {
   ensureQuickGridPositions,
   getQuickGridEditExtents,
   LAUNCHER_GRID_COLS,
+  LAUNCHER_GRID_GAP_PX,
   LAUNCHER_GRID_MAX_EDIT_COLS,
   LAUNCHER_GRID_MAX_EDIT_ROWS,
   LAUNCHER_GRID_MIN_EDIT_ROWS,
+  LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX,
+  LAUNCHER_TILE_PX,
   moveQuickGridSlot,
+  packQuickGridCentered,
+  quickGridDesktopWidthPx,
+  quickGridInlineStyle,
   quickGridSlotsForView,
   quickGridUsesCoordinates,
+  QUICK_GRID_HUB_COLS,
 } from "@/lib/launcher/quick-grid";
 import { BUSINESS_MGMT_QUICK_GRID, DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
 import type { LauncherSlot } from "@/lib/launcher/user-launcher-config";
+
+describe("quickGridInlineStyle", () => {
+  it("reserves explicit column and row gaps so tiles do not overlap", () => {
+    const style = quickGridInlineStyle(4, 2);
+    expect(style.columnGap).toBe(`${LAUNCHER_GRID_GAP_PX}px`);
+    expect(style.rowGap).toBe(`${LAUNCHER_GRID_GAP_PX}px`);
+    expect(style.gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
+    expect(LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX).toBe(quickGridDesktopWidthPx(4));
+    expect(LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX).toBe(
+      4 * LAUNCHER_TILE_PX + 3 * LAUNCHER_GRID_GAP_PX,
+    );
+  });
+});
+
+describe("packQuickGridCentered", () => {
+  it("lays out 6 hubs as 4+2 centered rows", () => {
+    const packed = packQuickGridCentered(
+      ["crmTable", "projectsHub", "financeHub", "documentsHub", "fieldCopilot", "aiHub"],
+      QUICK_GRID_HUB_COLS,
+    );
+    expect(QUICK_GRID_HUB_COLS).toBe(4);
+    expect(packed).toHaveLength(6);
+    expect(packed.filter((s) => s.row === 0)).toHaveLength(4);
+    expect(packed.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 1 });
+    expect(packed.find((s) => s.widgetId === "aiHub")).toMatchObject({ row: 1, col: 2 });
+  });
+
+  it("lays out 8 hubs as full 4x2 grid", () => {
+    const packed = packQuickGridCentered(
+      [
+        "crmTable",
+        "projectsHub",
+        "financeHub",
+        "documentsHub",
+        "fieldCopilot",
+        "aiHub",
+        "googleCalendar",
+        "meckanoReports",
+      ],
+      QUICK_GRID_HUB_COLS,
+    );
+    expect(packed).toHaveLength(8);
+    expect(packed.filter((s) => s.row === 0)).toHaveLength(4);
+    expect(packed.filter((s) => s.row === 1)).toHaveLength(4);
+    expect(packed.find((s) => s.widgetId === "meckanoReports")).toMatchObject({ row: 1, col: 3 });
+  });
+});
 
 describe("ensureQuickGridPositions", () => {
   it("assigns centered rows for legacy slots", () => {
@@ -86,21 +140,21 @@ describe("buildQuickGridEditMatrix", () => {
   it("sizes default quick grid edit to content plus padding not min 6 rows", () => {
     const extents = getQuickGridEditExtents(DEFAULT_QUICK_GRID, true);
     expect(extents.rows).toBe(3);
-    expect(extents.cols).toBe(4);
+    expect(extents.cols).toBe(5);
 
     const matrix = buildQuickGridEditMatrix(DEFAULT_QUICK_GRID, true);
     expect(matrix.length).toBe(3);
-    expect(matrix[0]?.length).toBe(4);
+    expect(matrix[0]?.length).toBe(5);
   });
 
-  it("sizes business mgmt 3x2 quick grid edit extents", () => {
+  it("sizes business mgmt 4+2 quick grid edit extents", () => {
     const extents = getQuickGridEditExtents(BUSINESS_MGMT_QUICK_GRID, true);
     expect(extents.rows).toBe(3);
-    expect(extents.cols).toBe(4);
+    expect(extents.cols).toBe(5);
 
     const matrix = buildQuickGridEditMatrix(BUSINESS_MGMT_QUICK_GRID, true);
     expect(matrix.length).toBe(3);
-    expect(matrix[0]?.length).toBe(4);
+    expect(matrix[0]?.length).toBe(5);
   });
 
   it("caps edit grid size and ignores viewport canvas", () => {

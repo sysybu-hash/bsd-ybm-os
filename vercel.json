@@ -33,6 +33,14 @@
     {
       "path": "/api/cron/meckano-sync",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/google-calendar-sync",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/google-calendar-push",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

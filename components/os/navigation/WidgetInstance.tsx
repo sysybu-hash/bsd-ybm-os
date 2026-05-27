@@ -28,6 +28,7 @@ type Props = {
   onPositionChange: (pos: { x: number; y: number }) => void;
   onResize: (size: { width: number; height: number }) => void;
   onMaximize: () => void;
+  onMinimize: () => void;
   onZoomChange: (delta: number) => void;
   onRequestFocusWidget: (widgetId: string) => void;
   onViewChange?: (widgetId: string, widgetType: WidgetType, state: WidgetViewState | null) => void;
@@ -45,6 +46,7 @@ export default function WidgetInstance({
   onPositionChange,
   onResize,
   onMaximize,
+  onMinimize,
   onZoomChange,
   onRequestFocusWidget,
   onViewChange,
@@ -71,6 +73,7 @@ export default function WidgetInstance({
         onPositionChange={onPositionChange}
         onResize={onResize}
         onMaximize={onMaximize}
+        onMinimize={onMinimize}
         onZoomChange={onZoomChange}
         workspaceBoundsRef={workspaceBoundsRef}
         onRequestFocusWidget={onRequestFocusWidget}

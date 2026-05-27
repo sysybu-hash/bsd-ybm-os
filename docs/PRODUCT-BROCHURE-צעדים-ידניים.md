@@ -74,10 +74,10 @@ npm run product-brochure:build
 ### Google Cloud Console
 
 1. פרויקט OAuth קיים (אותו של `GOOGLE_CLIENT_ID` / `SECRET`).
-2. **OAuth consent screen** → הוסף scope: `https://www.googleapis.com/auth/contacts.readonly`
+2. **OAuth consent screen** → הוסף scope: `https://www.googleapis.com/auth/calendar`
 3. **Credentials** → OAuth client → **Authorized redirect URIs**:
-   - `http://localhost:3000/api/integrations/google/contacts/callback`
-   - `https://<הדומיין-שלך>/api/integrations/google/contacts/callback`
+   - `http://localhost:3000/api/integrations/google/calendar/callback`
+   - `https://<הדומיין-שלך>/api/integrations/google/calendar/callback`
 4. במצב Testing: הוסף את המייל שלך ל-Test users.
 
 ### `.env.local`

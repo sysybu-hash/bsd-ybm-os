@@ -8,7 +8,11 @@
 - ללא מפתח: המערכת מחזירה מספר הקצאה mock (`isMock: true`) ורושמת אזהרה בלוג.
 - מימוש API מלא לפי מפרט רשמי — פרויקט נפרד כשיש מפתח production מאושר.
 
-## Google Calendar — `GET /api/integrations/google-calendar`
+## Google Calendar — `/api/integrations/google-calendar/*`
+
+סנכרון opt-in: המשתמש מאשר ובוחר `READ_ONLY` או `BIDIRECTIONAL` ב-`PUT .../settings/activate`. Cron: `google-calendar-sync`, `google-calendar-push`.
+
+## Google Calendar (legacy route) — `GET /api/integrations/google-calendar`
 
 - מוגן ב-`withWorkspacesAuth`.
 - מחזיר `connected: false` והודעה «בפיתוח».

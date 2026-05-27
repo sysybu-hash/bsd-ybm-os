@@ -5,6 +5,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 import LauncherTile from "@/components/os/launcher/LauncherTile";
 import {
+  LAUNCHER_QUICK_DESKTOP_GRID_CLASS,
   LAUNCHER_QUICK_DESKTOP_WRAP_CLASS,
   LAUNCHER_QUICK_TILE_WRAPPER_CLASS,
 } from "@/lib/launcher/user-launcher-config";
@@ -33,7 +34,7 @@ export function QuickGridPositionView({ zone, slots, onOpen }: QuickGridPosition
   return (
     <div className={LAUNCHER_QUICK_DESKTOP_WRAP_CLASS}>
       <div
-        className="grid shrink-0 gap-3 [direction:ltr]"
+        className={LAUNCHER_QUICK_DESKTOP_GRID_CLASS}
         style={gridStyle}
         role="list"
         data-testid="launcher-quick-grid-view"

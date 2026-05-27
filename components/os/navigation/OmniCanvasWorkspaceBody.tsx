@@ -18,6 +18,7 @@ type Props = {
   updateWidgetPosition: (id: string, pos: { x: number; y: number }) => void;
   updateWidgetSize: (id: string, size: { width: number; height: number }) => void;
   toggleMaximize: (id: string) => void;
+  toggleMinimize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
 };
 
@@ -31,6 +32,7 @@ export default function OmniCanvasWorkspaceBody({
   updateWidgetPosition,
   updateWidgetSize,
   toggleMaximize,
+  toggleMinimize,
   updateZoom,
 }: Props) {
   const wsNav = useWorkspaceNavigation();
@@ -89,6 +91,7 @@ export default function OmniCanvasWorkspaceBody({
       updateWidgetPosition={updateWidgetPosition}
       updateWidgetSize={updateWidgetSize}
       toggleMaximize={toggleMaximize}
+      toggleMinimize={toggleMinimize}
       updateZoom={updateZoom}
       onWidgetViewChange={onWidgetViewChange}
     />

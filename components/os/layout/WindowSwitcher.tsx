@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   Users,
+  Calendar,
 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
 import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
@@ -28,6 +29,7 @@ const ICONS: Partial<Record<WidgetType, typeof LayoutDashboard>> = {
   aiScanner: ScanLine,
   aiChatFull: Sparkles,
   meckanoReports: FileText,
+  googleCalendar: Calendar,
   notebookLM: Library,
   settings: Settings,
 };
@@ -95,6 +97,11 @@ export default function WindowSwitcher({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-black text-[color:var(--foreground-main)]">
                         {widgetTitle(w.type)}
+                        {w.isMinimized ? (
+                          <span className="ms-1.5 text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                            · {t("workspaceWidgets.windowSwitcher.minimized")}
+                          </span>
+                        ) : null}
                       </span>
                       <span className="text-[10px] text-[color:var(--foreground-muted)]">{w.id.slice(0, 12)}…</span>
                     </span>

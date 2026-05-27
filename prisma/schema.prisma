@@ -93,6 +93,8 @@ model Organization {
   users                    User[]
   documentDrafts           DocumentDraft[]
   fieldCopilotSessions     FieldCopilotSession[]
+  googleCalendarSettings   UserGoogleCalendarSettings[]
+  googleCalendarEventLinks GoogleCalendarEventLink[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -278,6 +280,7 @@ model Task {
   updatedAt      DateTime     @updatedAt
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  googleCalendarEventLinks GoogleCalendarEventLink[]
 
   @@index([projectId])
   @@index([organizationId])
@@ -511,6 +514,8 @@ model User {
   passkeys           UserPasskey[]
   passwordResetTokens PasswordResetToken[]
   fieldCopilotSessions FieldCopilotSession[]
+  googleCalendarSettings UserGoogleCalendarSettings[]
+  googleCalendarEventLinks GoogleCalendarEventLink[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   @@index([lastLoginAt])
@@ -1206,6 +1211,79 @@ model FieldCopilotSession {
   @@index([organizationId, userId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt])
+}
+
+enum GoogleCalendarSyncMode {
+  OFF
+  READ_ONLY
+  BIDIRECTIONAL
+}
+
+enum GoogleCalendarEntityType {
+  TASK
+  STANDALONE
+}
+
+enum GoogleCalendarSyncSource {
+  GOOGLE
+  LOCAL
+}
+
+/// הגדרות יומן Google למשתמש — סנכרון רק אחרי אישור מפורש (opt-in)
+model UserGoogleCalendarSettings {
+  id                    String                 @id @default(cuid())
+  userId                String
+  organizationId        String
+  syncMode              GoogleCalendarSyncMode @default(OFF)
+  enabled               Boolean                @default(false)
+  consentAt             DateTime?
+  consentVersion        String?
+  calendarId            String?
+  calendarSummary       String?
+  calendarColor         String?
+  syncToken             String?
+  lastSyncAt            DateTime?
+  lastSyncError         String?
+  reminderMinutesBefore Int                    @default(15)
+  pushEnabled           Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([enabled, syncMode])
+}
+
+/// מראה מקומית לאירועי Google Calendar (סנכרון דו-כיווני)
+model GoogleCalendarEventLink {
+  id               String                   @id @default(cuid())
+  userId           String
+  organizationId   String
+  googleCalendarId String
+  googleEventId    String
+  googleEtag       String?
+  entityType       GoogleCalendarEntityType @default(STANDALONE)
+  taskId           String?
+  summary          String
+  startAt          DateTime
+  endAt            DateTime
+  allDay           Boolean                  @default(false)
+  htmlLink         String?
+  lastSyncedFrom   GoogleCalendarSyncSource @default(GOOGLE)
+  pushNotifiedAt   DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task             Task?                    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, googleCalendarId, googleEventId])
+  @@index([userId, startAt])
+  @@index([organizationId, startAt])
+  @@index([taskId])
+  @@index([pushNotifiedAt, startAt])
 }
 
 /// נכסי לכידה (תמונה / keyframe) — base64 ב-DB לסביבת serverless

@@ -8,12 +8,12 @@ import { WorkspaceNavigationProvider } from "@/components/os/navigation/Workspac
 import OmniCanvasWorkspaceBody from "@/components/os/navigation/OmniCanvasWorkspaceBody";
 import OSDock from "@/components/os/layout/OSDock";
 import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
+import MinimizedWidgetsBar from "@/components/os/layout/MinimizedWidgetsBar";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
 import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
 import LauncherPickerSheet from "@/components/os/launcher/LauncherPickerSheet";
 import FirstDayWizard from "@/components/os/onboarding/FirstDayWizard";
-import LauncherV2MigrationBanner from "@/components/os/onboarding/LauncherV2MigrationBanner";
 import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
 import NotificationCenter from "@/components/os/NotificationCenter";
 import FileDropzone from "@/components/os/FileDropzone";
@@ -112,8 +112,17 @@ export default function OmniCanvasWorkspace() {
     mobileOmnibarOpen, setMobileOmnibarOpen,
     windowSwitcherOpen, setWindowSwitcherOpen,
     bellButtonRef,
-    widgets, hasHydrated, openWidget, closeWidget, focusWidget,
-    updateWidgetPosition, updateWidgetSize, toggleMaximize, updateZoom,
+    widgets,
+    hasHydrated,
+    openWidget,
+    closeWidget,
+    focusWidget,
+    updateWidgetPosition,
+    updateWidgetSize,
+    toggleMaximize,
+    toggleMinimize,
+    restoreWidget,
+    updateZoom,
     isCleanDashboard, toggleWorkState,
     hasMaximizedWidget, sidebarRailVisible,
     openWorkspaceWidget,
@@ -146,7 +155,6 @@ export default function OmniCanvasWorkspace() {
       <PasskeyOfferModal />
       <LauncherEditBanner />
       <LauncherPickerSheet />
-      <LauncherV2MigrationBanner />
       <FirstDayWizard
         onOpenWidget={(type, data) => {
           openWorkspaceWidget(type, data);
@@ -192,6 +200,7 @@ export default function OmniCanvasWorkspace() {
               updateWidgetPosition={updateWidgetPosition}
               updateWidgetSize={updateWidgetSize}
               toggleMaximize={toggleMaximize}
+              toggleMinimize={toggleMinimize}
               updateZoom={updateZoom}
             />
           </Suspense>
@@ -208,6 +217,13 @@ export default function OmniCanvasWorkspace() {
         onSelectResult={handleSelectResult}
         openWorkspaceWidget={openWorkspaceWidget}
         assistantToolDeps={automationRunner.deps}
+      />
+
+      <MinimizedWidgetsBar
+        widgets={widgets}
+        widgetTitle={widgetTitle}
+        onRestore={restoreWidget}
+        onClose={closeWidget}
       />
 
       <WindowSwitcher

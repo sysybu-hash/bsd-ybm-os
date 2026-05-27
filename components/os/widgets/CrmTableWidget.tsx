@@ -70,15 +70,6 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             </button>
             <button
               type="button"
-              onClick={() => void s.handleImportGoogle()}
-              disabled={s.isImportingGoogle}
-              className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5 flex items-center gap-2 text-xs font-bold"
-            >
-              {s.isImportingGoogle ? <Hash className="animate-spin" size={18} /> : <Upload size={18} />}
-              <span>{t("workspaceWidgets.crmTable.importGoogle")}</span>
-            </button>
-            <button
-              type="button"
               onClick={() => void s.handleExportCsv()}
               disabled={s.isExporting}
               aria-label={t("workspaceWidgets.crmTable.exportCsv")}

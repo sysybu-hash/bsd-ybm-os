@@ -14,15 +14,21 @@ const GOOGLE_ACCOUNT_PERMISSIONS_URL = "https://myaccount.google.com/permissions
 
 const DOCS: Record<AppLocale, GoogleIntegrationDoc> = {
   he: {
-    title: "שילוב Google (התחברות ו-Google Drive)",
-    lead: `${legalSite.siteName} משתמשת ב-Google OAuth לצורך התחברות מאובטחת ולחיבור אופציונלי ל-Google Drive של הארגון. עמוד זה מפרט אילו הרשאות נדרשות, למה, ואיך לבטל גישה.`,
+    title: "שילוב Google (התחברות, Drive ויומן)",
+    lead: `${legalSite.siteName} משתמשת ב-Google OAuth לצורך התחברות מאובטחת, לחיבור אופציונלי ל-Google Drive, וליומן Google — רק אחרי אישור מפורש של המנוי בהגדרות. עמוד זה מפרט אילו הרשאות נדרשות, למה, ואיך לבטל גישה.`,
     sections: [
       {
         heading: "הרשאות OAuth שבשימוש",
         body: [
           "התחברות (Sign in with Google): openid, email, profile — לזיהוי המשתמש ויצירת/קישור חשבון.",
           "Google Drive (https://www.googleapis.com/auth/drive.file): גישה לקבצים ולתיקיית העבודה שיצרה או פתחה האפליקציה (למשל BSD-YBM), במסגרת תכונות המערכת בלבד.",
+          "Google Calendar (https://www.googleapis.com/auth/calendar): רק אחרי שהמנוי לוחץ «הפעל סנכרון» ובוחר סוג סנכרון (קריאה בלבד או דו-כיווני). אין סנכרון אוטומטי ב-OAuth.",
         ].join(" "),
+      },
+      {
+        heading: "יומן Google — opt-in",
+        body:
+          "המערכת מציעה חיבור יומן בהגדרות; סנכרון ו-Web Push לפני אירועים מתחילים רק לאחר אישור מפורש, בחירת יומן וסוג סנכרון. ניתן להשהות או לנתק בכל עת.",
       },
       {
         heading: "תיקיית העבודה BSD-YBM",
@@ -51,12 +57,16 @@ const DOCS: Record<AppLocale, GoogleIntegrationDoc> = {
     revokeNote: "קישור להסרת הרשאות בחשבון Google",
   },
   en: {
-    title: "Google integration (Sign-in & Drive)",
-    lead: `${legalSite.siteName} uses Google OAuth for secure sign-in and optional Google Drive connection per organization. This page describes scopes, purposes, and how to revoke access.`,
+    title: "Google integration (Sign-in, Drive & Calendar)",
+    lead: `${legalSite.siteName} uses Google OAuth for secure sign-in, optional Google Drive, and Google Calendar sync only after explicit subscriber consent in settings.`,
     sections: [
       {
         heading: "OAuth scopes in use",
-        body: "Sign-in: openid, email, profile. Google Drive: https://www.googleapis.com/auth/drive.file — app-created or user-opened workspace folder only.",
+        body: "Sign-in: openid, email, profile. Drive: drive.file. Calendar: calendar scope — only after user activates sync in settings (read-only or bidirectional).",
+      },
+      {
+        heading: "Google Calendar (opt-in)",
+        body: "We suggest calendar sync in settings; sync and optional Web Push reminders start only after explicit consent and sync mode selection.",
       },
       {
         heading: "Workspace folder (e.g. BSD-YBM)",

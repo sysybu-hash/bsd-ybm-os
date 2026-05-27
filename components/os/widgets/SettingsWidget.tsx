@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React from "react";
+import React, { Suspense } from "react";
 import Image from "next/image";
 import { Image as ImageIcon, Loader2, Save, Settings, ShieldCheck, Upload } from "lucide-react";
 import ProfessionSettingsPanel from "@/components/os/widgets/settings/ProfessionSettingsPanel";
@@ -9,6 +9,7 @@ import PasskeySecuritySection from "@/components/auth/PasskeySecuritySection";
 import { useSettingsWidget } from "./settings-widget/useSettingsWidget";
 import { SettingsBusinessProfile } from "./settings-widget/SettingsBusinessProfile";
 import { SettingsDriveSection } from "./settings-widget/SettingsDriveSection";
+import { SettingsCalendarSection } from "./settings-widget/SettingsCalendarSection";
 import { SettingsAssignSection } from "./settings-widget/SettingsAssignSection";
 
 const S = "workspaceWidgets.settings";
@@ -108,6 +109,10 @@ export default function SettingsWidget() {
             onSave={() => void sw.handleSaveDriveSettings()}
             t={t}
           />
+
+          <Suspense fallback={null}>
+            <SettingsCalendarSection t={t} />
+          </Suspense>
 
           {sw.showAssignPanel && (
             <SettingsAssignSection

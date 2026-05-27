@@ -4,6 +4,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome";
 import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 
@@ -54,6 +55,7 @@ export default function OsFloatingPanel({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +73,7 @@ export default function OsFloatingPanel({
     setOffset({ x: 0, y: 0 });
     setZoom(1);
     setIsMaximized(false);
+    setIsMinimized(false);
   }, [open]);
 
   useEffect(() => {
@@ -187,7 +190,16 @@ export default function OsFloatingPanel({
         onZoomOut={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
         showMaximize={showMaximize}
         isMaximized={isMaximized}
-        onMaximize={() => setIsMaximized((m) => !m)}
+        onMaximize={() => {
+          setIsMinimized(false);
+          setIsMaximized((m) => !m);
+        }}
+        onMinimize={() => {
+          setIsMinimized(true);
+          setIsMaximized(false);
+        }}
+        isMinimized={isMinimized}
+        closeTouchTarget
         canGoBack
         canGoForward={false}
         onBack={onClose}
@@ -216,6 +228,42 @@ export default function OsFloatingPanel({
       ) : null}
     </>
   );
+
+  if (open && isMinimized) {
+    return createPortal(
+      <AnimatePresence onExitComplete={onExitComplete}>
+        <motion.div
+          key="os-floating-panel-minimized"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          className="pointer-events-auto fixed start-1/2 -translate-x-1/2 workspace-minimized-chip flex items-center gap-1 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-lg backdrop-blur-md max-w-[min(100vw-1rem,24rem)]"
+          style={{
+            zIndex,
+            bottom: "calc(var(--minimized-dock-bottom, 5.75rem) + env(safe-area-inset-bottom, 0px))",
+          }}
+          dir={dir}
+        >
+          <button
+            type="button"
+            onClick={() => setIsMinimized(false)}
+            className="px-4 py-2.5 text-xs font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] rounded-s-xl min-h-11"
+          >
+            {title}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 rounded-e-xl border-s border-[color:var(--border-main)]/50"
+            aria-label={t("workspaceWidgets.chrome.closeAria", { title })}
+          >
+            <X size={14} aria-hidden />
+          </button>
+        </motion.div>
+      </AnimatePresence>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <AnimatePresence onExitComplete={onExitComplete}>

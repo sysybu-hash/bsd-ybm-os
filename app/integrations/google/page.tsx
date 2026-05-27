@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `Google | ${legalSite.siteName}`,
     description:
-      "הסבר על התחברות Google ושימוש ב-Google Drive ב-BSD-YBM OS — הרשאות, מטרות וביטול גישה.",
+      "הסבר על התחברות Google, Google Drive ויומן Google ב-BSD-YBM OS — הרשאות, opt-in לסנכרון וביטול גישה.",
     alternates: { canonical: `${base}/integrations/google` },
     robots: { index: true, follow: true },
   };

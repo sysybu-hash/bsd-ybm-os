@@ -17,6 +17,7 @@ function isWidgetAllowed(type: WidgetType, ctx: LauncherPermissionContext): bool
     if (ctx.meckanoEnabled === false) return false;
   }
   if (type === "fieldCopilot" && isCompanyMgmtIndustry(ctx.organizationIndustry)) return false;
+  if (type === "googleCalendar" && ctx.calendarGoogleEnabled === false) return false;
   return OS_ASSISTANT_WIDGETS.some((w) => w.id === type);
 }
 

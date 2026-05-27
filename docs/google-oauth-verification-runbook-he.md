@@ -9,7 +9,7 @@
 - [x] התחברות Google: scopes `openid email profile` בלבד (`lib/auth.ts`, `prompt=select_account`)
 - [x] תמיכה ב-Client נפרד לכניסה: `GOOGLE_SIGNIN_CLIENT_ID` / `GOOGLE_SIGNIN_CLIENT_SECRET` (`lib/google-oauth-env.ts`)
 - [x] Google Drive: scope `drive` רק ב-`/api/auth/google-reconnect` (`lib/google-account-tokens.ts`)
-- [x] Google Contacts: `contacts.readonly` רק ב-`/api/integrations/google/contacts/*`
+- [x] Google Calendar: `calendar` רק ב-`/api/integrations/google/calendar/*` (אחרי אישור מנוי)
 - [x] מדריך מרכזי: `docs/GOOGLE-OAUTH.md`
 - [x] דפים ציבוריים: `/`, `/about`, `/privacy`, `/terms`, `/legal`, `/integrations/google`
 - [x] `sitemap.xml` כולל את כל הדפים לעיל (`app/sitemap.ts`)
@@ -64,10 +64,10 @@
 ```
 https://www.bsd-ybm.co.il/api/auth/callback/google
 https://www.bsd-ybm.co.il/api/auth/google-reconnect/callback
-https://www.bsd-ybm.co.il/api/integrations/google/contacts/callback
+https://www.bsd-ybm.co.il/api/integrations/google/calendar/callback
 http://localhost:3000/api/auth/callback/google
 http://localhost:3000/api/auth/google-reconnect/callback
-http://localhost:3000/api/integrations/google/contacts/callback
+http://localhost:3000/api/integrations/google/calendar/callback
 ```
 
 **Authorized JavaScript origins**:
@@ -88,7 +88,7 @@ http://localhost:3000
 
 - `openid`, `email`, `profile`
 - `https://www.googleapis.com/auth/drive` — **Restricted** (reconnect בלבד)
-- `https://www.googleapis.com/auth/contacts.readonly` — **Sensitive** (CRM import בלבד)
+- `https://www.googleapis.com/auth/calendar` — **Sensitive** (סנכרון יומן opt-in בלבד)
 
 ### 2.4 Submit for verification (Drive)
 

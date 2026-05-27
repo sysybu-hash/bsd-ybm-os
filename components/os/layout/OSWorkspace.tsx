@@ -22,6 +22,7 @@ import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
 import SettingsWidget from "@/components/os/widgets/SettingsWidget";
 import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
+import GoogleCalendarWidget from "@/components/os/widgets/GoogleCalendarWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
 import FinanceHubWidget from "@/components/os/hubs/FinanceHubWidget";
 import ProjectsHubWidget from "@/components/os/hubs/ProjectsHubWidget";
@@ -68,6 +69,7 @@ interface OSWorkspaceProps {
   updateWidgetPosition: (id: string, pos: { x: number; y: number }) => void;
   updateWidgetSize: (id: string, size: { width: number; height: number }) => void;
   toggleMaximize: (id: string) => void;
+  toggleMinimize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
   onWidgetViewChange?: (widgetId: string, widgetType: WidgetType, state: WidgetViewState | null) => void;
 }
@@ -82,6 +84,7 @@ export default function OSWorkspace({
   updateWidgetPosition,
   updateWidgetSize,
   toggleMaximize,
+  toggleMinimize,
   updateZoom,
   onWidgetViewChange,
 }: OSWorkspaceProps) {
@@ -97,11 +100,15 @@ export default function OSWorkspace({
   const userName = session?.user?.name?.split(" ")[0] || t("workspaceWidgets.empty.guestUser");
 
   const widgetTitle = (type: WidgetType) => t(`workspaceWidgets.titles.${type}`);
+  const visibleWidgets = React.useMemo(
+    () => widgets.filter((w) => !w.isMinimized),
+    [widgets],
+  );
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || widgets.length === 0) return;
-      const topWidget = [...widgets].sort((a, b) => {
+      if (e.key !== "Escape" || visibleWidgets.length === 0) return;
+      const topWidget = [...visibleWidgets].sort((a, b) => {
         if (a.isMaximized && !b.isMaximized) return -1;
         if (!a.isMaximized && b.isMaximized) return 1;
         return b.zIndex - a.zIndex;
@@ -115,7 +122,7 @@ export default function OSWorkspace({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [widgets, closeWidget, toggleMaximize]);
+  }, [visibleWidgets, closeWidget, toggleMaximize]);
 
   React.useEffect(() => {
     const hour = new Date().getHours();
@@ -126,19 +133,20 @@ export default function OSWorkspace({
   }, []);
 
   const omnibarName = t("workspaceWidgets.empty.omnibarName");
-  const topZ = widgets.length > 0 ? Math.max(...widgets.map((w) => w.zIndex)) : 0;
+  const topZ =
+    visibleWidgets.length > 0 ? Math.max(...visibleWidgets.map((w) => w.zIndex)) : 0;
 
   return (
     <div ref={workspaceBoundsRef} className="relative flex h-full min-h-0 flex-1 overflow-hidden" dir={dir}>
       <AnimatePresence mode="wait">
-        {hasHydrated && widgets.length === 0 && (
+        {hasHydrated && visibleWidgets.length === 0 && (
           <motion.section
             key="empty-state"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-y-auto overscroll-contain p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:overflow-hidden md:p-6 md:pb-8 ${
-              launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5"
+            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:justify-start md:gap-6 md:px-6 md:pb-8 ${
+              launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5 md:pt-5"
             }`}
           >
             <header
@@ -150,7 +158,7 @@ export default function OSWorkspace({
                 <Bot size={28} className="text-indigo-400" aria-hidden />
               </div>
 
-              <h1 className="mb-1.5 px-4 text-2xl font-black tracking-normal text-[color:var(--foreground-main)] sm:text-3xl md:mb-2 md:text-6xl">
+              <h1 className="mb-1.5 px-4 text-2xl font-black tracking-normal text-[color:var(--foreground-main)] sm:text-3xl md:mb-2 md:text-4xl lg:text-5xl">
                 {t(greetingKey)},{" "}
                 <span className="bg-gradient-to-l from-emerald-400 to-indigo-400 bg-clip-text text-transparent">{userName}</span>
               </h1>
@@ -160,12 +168,12 @@ export default function OSWorkspace({
               </p>
             </header>
 
-            <div className="flex w-full min-h-0 flex-col items-center justify-start pt-2 md:flex-1 md:justify-center md:pt-0">
+            <div className="flex w-full min-w-0 max-w-full shrink-0 flex-col items-center justify-center px-2 pt-2 md:max-w-[min(100%,38.5rem)] md:px-4 md:pt-0">
               <SortableLauncherZone
                 zone="quickGrid"
                 variant="quick"
                 onOpen={openWidget}
-                className="w-full shrink-0"
+                className="w-full min-w-0 max-w-full shrink-0"
               />
             </div>
           </motion.section>
@@ -173,9 +181,9 @@ export default function OSWorkspace({
       </AnimatePresence>
 
       <div
-        className={`pointer-events-none absolute inset-0 ${widgets.length > 0 ? "z-[800]" : "z-20"}`}
+        className={`pointer-events-none absolute inset-0 ${visibleWidgets.length > 0 ? "z-[800]" : "z-20"}`}
       >
-        {widgets.map((widget) => (
+        {visibleWidgets.map((widget) => (
           <WidgetInstance
             key={widget.id}
             widget={widget}
@@ -187,6 +195,7 @@ export default function OSWorkspace({
             onPositionChange={(pos) => updateWidgetPosition(widget.id, pos)}
             onResize={(s) => updateWidgetSize(widget.id, s)}
             onMaximize={() => toggleMaximize(widget.id)}
+            onMinimize={() => toggleMinimize(widget.id)}
             onZoomChange={(delta) => updateZoom(widget.id, delta)}
             onRequestFocusWidget={focusWidget}
             onViewChange={onWidgetViewChange}
@@ -235,6 +244,9 @@ export default function OSWorkspace({
             {widget.type === "meckanoReports" && <MeckanoReportsWidget />}
             {widget.type === "googleDrive" && (
               <GoogleDriveWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
+            )}
+            {widget.type === "googleCalendar" && (
+              <GoogleCalendarWidget openWorkspaceWidget={openWorkspaceWidget} />
             )}
             {widget.type === "notebookLM" && (
               <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />

@@ -76,6 +76,13 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["דרייב", "drive", "קבצים", "files"],
   },
   {
+    id: "googleCalendar",
+    labelHe: "יומן Google",
+    labelEn: "Google Calendar",
+    labelRu: "Google Calendar",
+    keywords: ["יומן", "calendar", "אירועים", "events", "סנכרון"],
+  },
+  {
     id: "meckanoReports",
     labelHe: "דוחות Meckano",
     labelEn: "Meckano reports",

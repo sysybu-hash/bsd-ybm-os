@@ -171,7 +171,9 @@ export function QuickGridEdit({
       </div>
       <DragOverlay dropAnimation={null}>
         {activeDrag?.widgetId ? (
-          <div className={`${LAUNCHER_QUICK_TILE_WRAPPER_CLASS} scale-105 shadow-xl`}>
+          <div
+            className={`${LAUNCHER_QUICK_TILE_WRAPPER_CLASS} h-[140px] w-[140px] scale-105 shadow-xl`}
+          >
             <LauncherTile
               zone={zone}
               slotIndex={activeDrag.row * totalCols + activeDrag.col}

@@ -41,6 +41,8 @@ export function useOmniCanvasState() {
     updateWidgetPosition,
     updateWidgetSize,
     toggleMaximize,
+    toggleMinimize,
+    restoreWidget,
     updateZoom,
     clearLayout,
     isFirstTime,
@@ -73,7 +75,7 @@ export function useOmniCanvasState() {
     [widgets, focusWidget, openWidget, openWidgetFocused],
   );
 
-  const hasMaximizedWidget = widgets.some((w) => w.isMaximized);
+  const hasMaximizedWidget = widgets.some((w) => w.isMaximized && !w.isMinimized);
   const sidebarRailVisible = !hasMaximizedWidget || sidebarRailPeek;
 
   const handleApplyScreenLayout = useCallback(() => {
@@ -198,7 +200,8 @@ export function useOmniCanvasState() {
     bellButtonRef,
     // window manager
     widgets, hasHydrated, openWidget, closeWidget, focusWidget,
-    updateWidgetPosition, updateWidgetSize, toggleMaximize, updateZoom,
+    updateWidgetPosition, updateWidgetSize, toggleMaximize, toggleMinimize, restoreWidget,
+    updateZoom,
     isCleanDashboard, toggleWorkState,
     // computed
     hasMaximizedWidget, sidebarRailVisible,

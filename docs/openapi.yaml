@@ -59,9 +59,41 @@ paths:
       security:
         - sessionCookie: []
 
-  /api/crm/import/google:
+  /api/integrations/google-calendar/settings:
+    get:
+      summary: Google Calendar sync status (suggest-only until user activates)
+      security:
+        - sessionCookie: []
+    put:
+      summary: Update calendar settings or pause sync
+      security:
+        - sessionCookie: []
+
+  /api/integrations/google-calendar/settings/activate:
+    put:
+      summary: Activate calendar sync after explicit consent and sync mode choice
+      security:
+        - sessionCookie: []
+
+  /api/integrations/google-calendar/calendars:
+    get:
+      summary: List Google calendars for connected user
+      security:
+        - sessionCookie: []
+
+  /api/integrations/google-calendar/sync:
     post:
-      summary: Import contacts from Google People API (requires contacts OAuth)
+      summary: Manual calendar sync (eligible users only)
+      security:
+        - sessionCookie: []
+
+  /api/integrations/google-calendar:
+    get:
+      summary: Upcoming mirrored calendar events
+      security:
+        - sessionCookie: []
+    post:
+      summary: Create event (bidirectional sync mode only)
       security:
         - sessionCookie: []
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 export type WorkspaceWindowChromeProps = {
@@ -24,6 +24,8 @@ export type WorkspaceWindowChromeProps = {
   isMaximized?: boolean;
   onMaximize?: () => void;
   maximizeHiddenOnMobile?: boolean;
+  onMinimize?: () => void;
+  isMinimized?: boolean;
   closeTouchTarget?: boolean;
   showNavigation?: boolean;
   canGoBack?: boolean;
@@ -51,6 +53,8 @@ export default function WorkspaceWindowChrome({
   isMaximized = false,
   onMaximize,
   maximizeHiddenOnMobile = false,
+  onMinimize,
+  isMinimized = false,
   closeTouchTarget = false,
   showNavigation = true,
   canGoBack = false,
@@ -71,9 +75,13 @@ export default function WorkspaceWindowChrome({
     else onZoomDelta?.(0.1);
   };
 
-  const closeBtnClass = closeTouchTarget
-    ? "workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-11 min-w-11 md:min-h-8 md:min-w-8"
-    : "workspace-chrome-btn workspace-chrome-btn--danger inline-flex min-h-9 min-w-9";
+  const touchChromeBtn = closeTouchTarget
+    ? "workspace-chrome-btn inline-flex min-h-11 min-w-11 md:min-h-8 md:min-w-8"
+    : "workspace-chrome-btn inline-flex min-h-9 min-w-9";
+
+  const closeBtnClass = `${touchChromeBtn} workspace-chrome-btn--danger`;
+
+  const minimizeBtnClass = touchChromeBtn;
 
   const maximizeBtnClass = maximizeHiddenOnMobile
     ? "workspace-chrome-btn hidden md:inline-flex"
@@ -143,6 +151,20 @@ export default function WorkspaceWindowChrome({
               <ZoomIn size={14} aria-hidden />
             </button>
           </>
+        ) : null}
+        {onMinimize ? (
+          <button
+            type="button"
+            onClick={onMinimize}
+            className={minimizeBtnClass}
+            aria-label={
+              isMinimized
+                ? t("workspaceWidgets.chrome.restoreMinimizedAria", chromeTitle)
+                : t("workspaceWidgets.chrome.minimizeAria", chromeTitle)
+            }
+          >
+            <Minus size={15} aria-hidden />
+          </button>
         ) : null}
         {showMaximize && onMaximize ? (
           <button

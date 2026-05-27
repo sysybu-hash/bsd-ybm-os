@@ -124,7 +124,7 @@ GOOGLE_CLIENT_SECRET="..."
 - **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.
 - **Runbook ידני:** [google-oauth-verification-runbook-he.md](./google-oauth-verification-runbook-he.md)
 - **Drive**: reconnect בהגדרות → `/api/auth/google-reconnect`
-- **Contacts (CRM)**: `/api/integrations/google/contacts/connect` — redirect: `{SITE_URL}/api/integrations/google/contacts/callback`
+- **Google Calendar**: `/api/integrations/google/calendar/connect` — redirect: `{SITE_URL}/api/integrations/google/calendar/callback` (tokens only; activation via `PUT /api/integrations/google-calendar/settings/activate`)
 
 ### Email (transactional mail)
 

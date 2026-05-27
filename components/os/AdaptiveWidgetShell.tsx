@@ -18,6 +18,8 @@ interface ShellProps {
   onPositionChange?: (position: { x: number; y: number }) => void;
   onResize?: (size: { width: number; height: number }) => void;
   onMaximize?: () => void;
+  onMinimize?: () => void;
+  isMinimized?: boolean;
   onZoomChange?: (delta: number) => void;
   /** אזור העבודה (מתחת לכותרת, מעל ה־Omnibar) — גבולות גרירה/גודל יחושבו ממנו */
   workspaceBoundsRef?: React.RefObject<HTMLElement | null>;
@@ -43,6 +45,8 @@ export default function AdaptiveWidgetShell({
   onPositionChange,
   onResize,
   onMaximize,
+  onMinimize,
+  isMinimized = false,
   onZoomChange,
   workspaceBoundsRef,
   canGoBack = false,
@@ -104,12 +108,14 @@ export default function AdaptiveWidgetShell({
         onZoomDelta={(delta) => onZoomChange?.(delta)}
         isMaximized={isMaximized}
         onMaximize={onMaximize}
+        onMinimize={onMinimize}
+        isMinimized={isMinimized}
         maximizeHiddenOnMobile={maximizeHiddenOnMobile}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onBack={onBack}
         onForward={onForward}
-        closeTouchTarget
+        closeTouchTarget={mobileOrMaximized}
         headerClassName={
           mobileOrMaximized
             ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]"

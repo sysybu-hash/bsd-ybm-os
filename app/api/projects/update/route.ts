@@ -11,6 +11,10 @@ import {
   buildTaskDescription,
   parseClientFromDescription,
 } from "@/lib/tasks/board-mapping";
+import { syncTaskToGoogleCalendarIfEligible } from "@/lib/google-calendar-sync";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("projects-update");
 
 function parseBudgetFromDescription(description: string | null | undefined): number {
   if (!description) return 0;
@@ -185,6 +189,15 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
         });
       }
 
+      try {
+        await syncTaskToGoogleCalendarIfEligible(userId, orgId, updatedTask);
+      } catch (err: unknown) {
+        log.warn("calendar sync after task update failed", {
+          taskId: updatedTask.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+
       return NextResponse.json({ success: true, task: updatedTask });
     }
 
@@ -252,6 +265,15 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
       organizationId: orgId,
     });
 
+    try {
+      await syncTaskToGoogleCalendarIfEligible(userId, orgId, newTask);
+    } catch (err: unknown) {
+      log.warn("calendar sync after task create failed", {
+        taskId: newTask.id,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     return NextResponse.json({ success: true, task: newTask });
   } catch (error: unknown) {
     return apiErrorResponse(error, "Project/Task Update Error");
@@ -270,11 +292,29 @@ export const DELETE = withWorkspacesAuth(async (request, { orgId, userId }) => {
       return NextResponse.json({ success: false, error: "חסר מזהה משימה" }, { status: 400 });
     }
 
-    const deleted = await prisma.task.deleteMany({
+    const existing = await prisma.task.findFirst({
       where: { id, organizationId: orgId },
     });
-    if (deleted.count === 0) {
+    if (!existing) {
       return NextResponse.json({ success: false, error: "משימה לא נמצאה" }, { status: 404 });
+    }
+
+    await prisma.task.deleteMany({
+      where: { id, organizationId: orgId },
+    });
+
+    try {
+      await syncTaskToGoogleCalendarIfEligible(userId, orgId, {
+        ...existing,
+        dueDate: null,
+        endDate: null,
+        startDate: null,
+      });
+    } catch (err: unknown) {
+      log.warn("calendar sync after task delete failed", {
+        taskId: id,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
 
     await captureServerEvent(userId, "task_deleted", {

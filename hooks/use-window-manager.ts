@@ -27,6 +27,7 @@ export type WidgetType =
   | 'settings'
   | 'meckanoReports'
   | 'googleDrive'
+  | 'googleCalendar'
   | 'notebookLM'
   | 'accessibility'
   | 'platformAdmin'
@@ -45,6 +46,7 @@ export interface ActiveWidget {
   zIndex: number;
   size: { width: number; height: number };
   isMaximized?: boolean;
+  isMinimized?: boolean;
   zoom?: number;
 }
 
@@ -70,6 +72,7 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   settings: { width: 600, height: 700 },
   meckanoReports: { width: 900, height: 750 },
   googleDrive: { width: 800, height: 600 },
+  googleCalendar: { width: 900, height: 700 },
   notebookLM: { width: 720, height: 620 },
   accessibility: { width: 420, height: 560 },
   platformAdmin: { width: 1100, height: 780 },
@@ -178,6 +181,33 @@ export function useWindowManager() {
     return id;
   }, []);
 
+  const toggleMinimize = useCallback((id: string) => {
+    setWidgets((prev) => {
+      const target = prev.find((w) => w.id === id);
+      if (!target) return prev;
+      const willMinimize = !target.isMinimized;
+      return prev.map((w) => {
+        if (w.id !== id) return w;
+        if (willMinimize) {
+          return { ...w, isMinimized: true, isMaximized: false };
+        }
+        const nextZ = nextZIndexRef.current + 1;
+        nextZIndexRef.current = nextZ;
+        return { ...w, isMinimized: false, zIndex: nextZ };
+      });
+    });
+  }, []);
+
+  const restoreWidget = useCallback((id: string) => {
+    const nextZ = nextZIndexRef.current + 1;
+    nextZIndexRef.current = nextZ;
+    setWidgets((prev) =>
+      prev.map((w) =>
+        w.id === id ? { ...w, isMinimized: false, zIndex: nextZ } : w,
+      ),
+    );
+  }, []);
+
   const toggleMaximize = useCallback((id: string) => {
     setWidgets((prev) => {
       const target = prev.find((w) => w.id === id);
@@ -205,7 +235,11 @@ export function useWindowManager() {
   const focusWidget = useCallback((id: string) => {
     const nextZ = nextZIndexRef.current + 1;
     nextZIndexRef.current = nextZ;
-    setWidgets(prev => prev.map(w => w.id === id ? { ...w, zIndex: nextZ } : w));
+    setWidgets((prev) =>
+      prev.map((w) =>
+        w.id === id ? { ...w, zIndex: nextZ, isMinimized: false } : w,
+      ),
+    );
   }, []);
 
   const updateWidgetPosition = useCallback((id: string, position: { x: number; y: number }) => {
@@ -319,6 +353,8 @@ export function useWindowManager() {
     updateWidgetPosition,
     updateWidgetSize,
     toggleMaximize,
+    toggleMinimize,
+    restoreWidget,
     updateZoom,
     clearLayout,
     isFirstTime,

@@ -159,7 +159,7 @@ export default function LauncherTile({
 
   return (
     <div
-      className={`relative ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
+      className={`relative size-full min-h-0 min-w-0 ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
       data-testid={resolvedWidgetId ? `launcher-quick-${resolvedWidgetId}` : "launcher-quick-empty"}
     >
       {editMode && widgetId ? (
@@ -178,10 +178,10 @@ export default function LauncherTile({
       <button
         type="button"
         onClick={handleClick}
-        className={`quiet-surface group flex flex-none flex-col items-center justify-center text-center transition ${
+        className={`quiet-surface group flex size-full min-h-0 min-w-0 flex-col items-center justify-center text-center transition ${
           tileSize === "mobile"
             ? "h-[100px] w-full max-w-[112px] gap-1.5 p-2"
-            : "h-[140px] w-[140px] gap-3 p-4"
+            : "max-h-[140px] max-w-[140px] gap-3 p-4"
         } ${isEmpty && editMode ? "border-2 border-dashed border-indigo-400/50" : ""} ${
           isEmpty && !editMode ? "hidden" : ""
         }`}

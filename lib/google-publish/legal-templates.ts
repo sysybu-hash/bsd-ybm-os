@@ -48,7 +48,7 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         },
         {
           heading: "התחברות Google ו-Google Drive",
-          body: `בהתחברות עם Google אנו מקבלים מזהה, אימייל ושם פרופיל (openid, email, profile) בלבד. חיבור Google Drive הוא נפרד ואופציונלי — רק לאחר התחברות, דרך הגדרות המערכת, עם הרשאת ${legalSite.siteName} לקבצים ולתיקיית העבודה שיצרה או פתחה האפליקציה (scope: https://www.googleapis.com/auth/drive.file, למשל תיקיית BSD-YBM) לסנכרון, הצגת קבצים, העלאה ופענוח מסמכים ל-ERP. ייבוא אנשי קשר מ-Google Contacts הוא נפרד ואופציונלי (scope: https://www.googleapis.com/auth/contacts.readonly) — רק כשלוחצים «ייבוא מ-Google» ב-CRM. תוכן קבצים שתבחרו לעיבוד עשוי להישמר בשרתינו. לא נמכור מידע זה לצדדים שלישיים. ביטול: הגדרות במערכת, או https://myaccount.google.com/permissions — פירוט: ${legalSite.publicUrl}/integrations/google. פניות: ${legalSite.contactEmail}.`,
+          body: `בהתחברות עם Google אנו מקבלים מזהה, אימייל ושם פרופיל (openid, email, profile) בלבד. חיבור Google Drive הוא נפרד ואופציונלי — רק לאחר התחברות, דרך הגדרות המערכת, עם הרשאת ${legalSite.siteName} לקבצים ולתיקיית העבודה שיצרה או פתחה האפליקציה (scope: https://www.googleapis.com/auth/drive.file, למשל תיקיית BSD-YBM) לסנכרון, הצגת קבצים, העלאה ופענוח מסמכים ל-ERP. סנכרון Google Calendar הוא נפרד ואופציונלי (scope: https://www.googleapis.com/auth/calendar) — רק לאחר אישור מפורש ובחירת סוג סנכרון בהגדרות; המערכת מציעה בלבד ואינה מפעילה סנכרון אוטומטית. תוכן קבצים שתבחרו לעיבוד עשוי להישמר בשרתינו. לא נמכור מידע זה לצדדים שלישיים. ביטול: הגדרות במערכת, או https://myaccount.google.com/permissions — פירוט: ${legalSite.publicUrl}/integrations/google. פניות: ${legalSite.contactEmail}.`,
         },
       ],
     },
@@ -75,7 +75,7 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         { heading: "Cookies", body: "Manage preferences via the on-site consent banner." },
         {
           heading: "Google Sign-In & Google Drive",
-          body: `Sign-in uses openid, email, profile. Optional Drive uses https://www.googleapis.com/auth/drive.file (app-created or user-opened workspace folder only). Optional Google Contacts import uses https://www.googleapis.com/auth/contacts.readonly when you choose import in CRM. Selected file content may be stored on our servers. We do not sell this data. Revoke via app settings or https://myaccount.google.com/permissions. Details: ${legalSite.publicUrl}/integrations/google. Contact: ${legalSite.contactEmail}.`,
+          body: `Sign-in uses openid, email, profile. Optional Drive uses https://www.googleapis.com/auth/drive.file (app-created or user-opened workspace folder only). Optional Google Calendar sync uses https://www.googleapis.com/auth/calendar only after explicit consent and sync mode selection in settings; we suggest but never auto-enable. Selected file content may be stored on our servers. We do not sell this data. Revoke via app settings or https://myaccount.google.com/permissions. Details: ${legalSite.publicUrl}/integrations/google. Contact: ${legalSite.contactEmail}.`,
         },
       ],
     },

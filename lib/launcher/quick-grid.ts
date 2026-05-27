@@ -1,10 +1,17 @@
+import type { WidgetType } from "@/hooks/use-window-manager";
 import { splitIntoBalancedRows } from "@/lib/launcher/launcher-grid-layout";
 import type { LauncherSlot } from "@/lib/launcher/user-launcher-config";
 
+/** עמודות ברירת מחדל לרשת Hub בדסקטופ (4+2 לאריחים מרכזיים) */
+export const QUICK_GRID_HUB_COLS = 4;
+
+/** עמודות רשת quick grid במובייל */
+export const QUICK_GRID_MOBILE_COLS = 2;
+
 export const LAUNCHER_GRID_COLS = 7;
 export const LAUNCHER_TILE_PX = 140;
-/** gap-3 בין תאים */
-export const LAUNCHER_GRID_GAP_PX = 12;
+/** רווח בין אריחים (תואם gap-4) */
+export const LAUNCHER_GRID_GAP_PX = 16;
 /** שורות מינימליות במצב עריכה — קנבס גלילה כמו מסך בית נייד */
 export const LAUNCHER_GRID_MIN_EDIT_ROWS = 6;
 /** תקרת עמודות/שורות במצב עריכה — מונע מילוי מסך בתאי "הוסף אפליקציה" */
@@ -28,15 +35,35 @@ export function computeQuickGridDimensions(
   return { cols, rows };
 }
 
-export function quickGridInlineStyle(
-  cols: number,
-  rows: number,
-): { gridTemplateColumns: string; gridTemplateRows: string } {
+/** רוחב רשת דסקטופ לפי מספר עמודות (אריח + רווחים) */
+export function quickGridDesktopWidthPx(cols: number): number {
+  const safeCols = Math.max(1, cols);
+  return safeCols * LAUNCHER_TILE_PX + Math.max(0, safeCols - 1) * LAUNCHER_GRID_GAP_PX;
+}
+
+export type QuickGridInlineStyle = {
+  width: string;
+  maxWidth: string;
+  gridTemplateColumns: string;
+  columnGap: string;
+  rowGap: string;
+};
+
+/** רשת דסקטופ: עמודות גמישות + רווח קבוע; אריחים מתכווצים בתוך התא (לא חופפים) */
+export function quickGridInlineStyle(cols: number, _rows: number): QuickGridInlineStyle {
+  const gapPx = LAUNCHER_GRID_GAP_PX;
+  const maxW = quickGridDesktopWidthPx(cols);
   return {
-    gridTemplateColumns: `repeat(${cols}, ${LAUNCHER_TILE_PX}px)`,
-    gridTemplateRows: `repeat(${rows}, ${LAUNCHER_TILE_PX}px)`,
+    width: `min(100%, ${maxW}px)`,
+    maxWidth: `${maxW}px`,
+    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+    columnGap: `${gapPx}px`,
+    rowGap: `${gapPx}px`,
   };
 }
+
+/** רוחב מקסימלי לרשת 4 עמודות (Hub) */
+export const LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX = quickGridDesktopWidthPx(QUICK_GRID_HUB_COLS);
 
 export type GridCellCoord = { row: number; col: number };
 
@@ -278,6 +305,56 @@ export function quickGridSlotsInDisplayOrder(slots: LauncherSlot[]): LauncherSlo
     });
 }
 
+/**
+ * מסדר אריחים ברשת hub — שורות של עד `cols` אריחים, שורה אחרונה ממורכזת.
+ */
+export function packQuickGridCentered(
+  widgetIds: WidgetType[],
+  cols = QUICK_GRID_HUB_COLS,
+): LauncherSlot[] {
+  if (widgetIds.length === 0) return [];
+  const safeCols = Math.max(1, cols);
+  const result: LauncherSlot[] = [];
+  let index = 0;
+  let row = 0;
+
+  while (index < widgetIds.length) {
+    const remaining = widgetIds.length - index;
+    const tilesInRow = Math.min(safeCols, remaining);
+    const colStart = Math.floor((safeCols - tilesInRow) / 2);
+
+    for (let c = 0; c < tilesInRow; c++) {
+      const widgetId = widgetIds[index];
+      if (widgetId) {
+        result.push({ widgetId, row, col: colStart + c });
+      }
+      index++;
+    }
+    row++;
+  }
+
+  return result;
+}
+
+/** מיישר קואורדינטות לרשת צפופה ממורכזת (אחרי עריכה או שמירה ישנה) */
+export function normalizeQuickGridCoordinates(slots: LauncherSlot[]): LauncherSlot[] {
+  const filled = slots.filter((s) => s.widgetId !== null);
+  if (filled.length === 0) return [];
+
+  const positioned = filled.every(slotHasGridPosition)
+    ? filled
+    : ensureQuickGridPositions(filled);
+
+  const ordered = [...positioned]
+    .filter((s) => s.widgetId !== null && slotHasGridPosition(s))
+    .sort((a, b) => (a.row! - b.row!) || (a.col! - b.col!))
+    .map((s) => s.widgetId!);
+
+  return packQuickGridCentered(ordered);
+}
+
 export function finalizeQuickGridAfterEdit(slots: LauncherSlot[]): LauncherSlot[] {
-  return slots.filter((s) => s.widgetId !== null && slotHasGridPosition(s));
+  return normalizeQuickGridCoordinates(
+    slots.filter((s) => s.widgetId !== null && slotHasGridPosition(s)),
+  );
 }

@@ -10,6 +10,8 @@ import {
 
   Building2,
 
+  Calendar,
+
   FilePlus,
 
   FileText,
@@ -261,6 +263,18 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
 
   },
 
+  googleCalendar: {
+
+    type: "googleCalendar",
+
+    labelKey: "workspaceWidgets.titles.googleCalendar",
+
+    icon: Calendar,
+
+    chip: true,
+
+  },
+
   settings: {
 
     type: "settings",
@@ -410,6 +424,8 @@ export function quickActionLabelKey(type: WidgetType): string {
     aiChatFull: "workspaceWidgets.quickActions.aiChatFull.title",
 
     googleDrive: "workspaceWidgets.quickActions.googleDrive.title",
+
+    googleCalendar: "workspaceWidgets.quickActions.googleCalendar.title",
 
     notebookLM: "workspaceWidgets.quickActions.notebookLM.title",
 

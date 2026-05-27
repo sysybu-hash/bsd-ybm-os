@@ -9,7 +9,7 @@
 | CRM | חיפוש סמנטי | `POST /api/crm/semantic-search` | `useCrmTable.ts` (מצב חכם) | E2E CRM + fallback ללא מפתח | PASS |
 | CRM | תגיות | `PATCH /api/crm/contacts/[id]`, `?tag=` | `ClientDetailModal`, `CrmContactsTable` | מיגרציה `20260526120000_contact_tags_meckano_sync` | PASS |
 | CRM | היסטוריה | `GET /api/crm/contacts/[id]/timeline` | `ClientDetailModal` טאב היסטוריה | E2E CRM | PASS |
-| CRM | Google Contacts | `POST /api/crm/import/google`, OAuth connect/callback | `CrmTableWidget` | E2E `google-contacts-import.spec.ts` (skip ללא OAuth) | PASS |
+| Calendar | Google Calendar sync | `GET/PUT /api/integrations/google-calendar/*`, OAuth calendar connect | `SettingsCalendarSection`, `GoogleCalendarWidget` | E2E `google-calendar-sync.spec.ts` (skip ללא session) | PASS |
 | ארכיון | ייצוא בכמות | `POST /api/erp/archive/bulk-export` | `ErpFileArchiveWidget`, `useArchiveData.ts` | E2E `product-brochure-archive-bulk.spec.ts` | PASS |
 | Meckano | סנכרון אוטומטי | `GET /api/cron/meckano-sync` | `MeckanoReportsWidget` (סטטוס סנכרון) | Cron `vercel.json` 05:00 UTC | PASS |
 | נחיתה | CWV | — | `LandingPage.tsx` | `npm run lighthouse:sample` | ראה `LAUNCH-CHECKLIST.md` |

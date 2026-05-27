@@ -26,7 +26,6 @@ import {
   type LauncherZone,
   type UserLauncherConfig,
 } from "@/lib/launcher/user-launcher-config";
-import { ensureQuickGridPositions as ensureGridPos } from "@/lib/launcher/quick-grid";
 import { sanitizeConfig } from "./launcher-provider-utils";
 import { useLauncherActions } from "./useLauncherActions";
 
@@ -101,9 +100,8 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
         } catch { /* offline */ }
       }
       if (cancelled) return;
-      const withGrid = { ...base, quickGrid: ensureGridPos(base.quickGrid) };
       const sanitized = scrubLauncherConfig(
-        sanitizeConfig(withGrid, permissionCtx),
+        sanitizeConfig(base, permissionCtx),
         organizationIndustry,
         launcherDefaultOptions,
       );

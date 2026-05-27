@@ -66,6 +66,11 @@
     --workspace-inset-top: calc(var(--workspace-header-height) + env(safe-area-inset-top, 0px));
     --workspace-inset-bottom: var(--mobile-chrome-bottom);
     --desktop-dock-clearance: 7rem;
+    --minimized-dock-bottom: 5.75rem;
+
+    @media (min-width: 768px) {
+      --minimized-dock-bottom: 5.25rem;
+    }
     --os-sidebar-rail-width: 4.5rem;
     --os-sidebar-gap: 1.25rem;
 
@@ -510,6 +515,18 @@
   .workspace-chrome-btn--danger:hover {
     background: color-mix(in srgb, rgb(244 63 94) 14%, transparent);
     color: rgb(225 29 72);
+  }
+
+  .workspace-minimized-dock {
+    border-radius: 1rem;
+    border: 1px solid var(--border-main);
+    background: color-mix(in srgb, var(--surface-card) 92%, transparent);
+    box-shadow: var(--window-shadow);
+    backdrop-filter: var(--window-backdrop);
+  }
+
+  .workspace-minimized-chip {
+    max-width: min(100vw - 1rem, 20rem);
   }
 
   .workspace-chrome-zoom {

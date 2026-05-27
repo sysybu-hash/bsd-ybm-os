@@ -28,6 +28,7 @@ export {
 } from "./user-launcher-config.defaults";
 
 import type { LauncherDefaultOptions, LauncherSlot, LauncherZone, UserLauncherConfig } from "./user-launcher-config.types";
+import { packQuickGridCentered } from "./quick-grid";
 
 export const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 export const LAUNCHER_STORAGE_KEY_LEGACY = "bsd_ybm_launcher_v1";
@@ -35,30 +36,35 @@ export const LAUNCHER_STORAGE_KEY_LEGACY = "bsd_ybm_launcher_v1";
 /** מקסימום אריחים לאזור — מספיק לכל האפליקציות הזמינות + מרווח */
 export const LAUNCHER_ZONE_MAX_SLOTS = 48;
 
-/** מעטפת quick grid — רוחב מלא של שטח העבודה (ללא max-w מרכזי) */
+/** מעטפת quick grid — ממורכזת, בלי חיתוך אופקי */
 export const LAUNCHER_QUICK_GRID_CONTAINER_CLASS =
-  "flex w-full shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-3 md:px-4";
+  "flex w-full min-w-0 shrink-0 flex-col items-center justify-center gap-3 overflow-visible px-3 sm:px-4";
 
-/** מעטפת רשת דסקטופ — ממורכזת, בלי גלילה אופקית */
+/** מעטפת רשת דסקטופ — ממורכזת */
 export const LAUNCHER_QUICK_DESKTOP_WRAP_CLASS =
-  "hidden w-full justify-center overflow-hidden md:flex";
+  "hidden w-full min-w-0 justify-center overflow-visible px-2 md:flex md:px-4";
+
+/** רשת דסקטופ — LTR לקואורדינטות; רווח ב-inline style מ-quickGridInlineStyle */
+export const LAUNCHER_QUICK_DESKTOP_GRID_CLASS =
+  "mx-auto grid shrink-0 justify-items-stretch box-border [direction:ltr]";
 
 /** רשת 3 עמודות במובייל — ממורכזת */
 export const LAUNCHER_QUICK_MOBILE_GRID_CLASS =
-  "mx-auto grid w-full max-w-[min(100%,360px)] grid-cols-3 gap-2.5 place-items-center overflow-hidden py-1 md:hidden";
+  "mx-auto grid w-full max-w-[min(100%,19rem)] grid-cols-2 justify-items-center gap-4 overflow-x-hidden py-1 [direction:ltr] md:hidden";
 
-/** אריח מוקטן לרשת 3×N במובייל */
+/** אריח מוקטן לרשת 2×N במובייל */
 export const LAUNCHER_QUICK_MOBILE_TILE_WRAPPER_CLASS =
-  "h-[100px] w-full max-w-[112px] min-w-0 shrink-0";
+  "h-[100px] w-full max-w-[8.75rem] min-w-0 shrink-0";
 
 export const LAUNCHER_QUICK_ROW_CLASS = "flex w-full flex-wrap justify-center gap-3";
 
-/** גודל אריח קבוע — לא נמתח כשיש מעט פריטים בשורה */
-export const LAUNCHER_QUICK_TILE_WRAPPER_CLASS = "h-[140px] w-[140px] shrink-0 flex-none";
+/** תא רשת — ריבוע גמיש עד 140px; הרווח בין תאים מגיע מ-gap של הרשת */
+export const LAUNCHER_QUICK_TILE_WRAPPER_CLASS =
+  "box-border flex w-full min-w-0 max-w-[140px] aspect-square justify-self-center";
 
 /** רשת עריכה — עמודות/שורות דינמיות ב־inline style; LTR לקואורדינטות עקביות */
 export const LAUNCHER_QUICK_EDIT_GRID_CLASS =
-  "grid shrink-0 justify-items-center gap-3 rounded-xl border border-dashed border-indigo-400/30 [direction:ltr] bg-[color:var(--surface-card)]/40 p-3 shadow-sm";
+  "grid shrink-0 justify-items-stretch rounded-xl border border-dashed border-indigo-400/30 [direction:ltr] bg-[color:var(--surface-card)]/40 p-3 shadow-sm";
 
 /** מעטפת עריכת quick grid — ממורכזת, ללא גלילה מיותרת */
 export const LAUNCHER_QUICK_EDIT_SCROLL_CLASS =
@@ -207,7 +213,36 @@ function canonicalHubTileId(id: WidgetType): WidgetType {
   return mapLauncherWidgetId(id);
 }
 
-/** מסדר מחדש לרשת 3×2 לפי תבנית — בלי חורים בעמודות */
+const QUICK_GRID_EXTRA_ORDER: WidgetType[] = [
+  "googleCalendar",
+  "meckanoReports",
+  "googleDrive",
+  "notebookLM",
+  "accessibility",
+  "helpCenter",
+  "platformAdmin",
+];
+
+/** מוסיף אריחי תבנית חסרים (למשל שדרוג מ-6 ל-8 אריחים) */
+export function mergeQuickGridWithTemplate(
+  slots: LauncherSlot[],
+  template: LauncherSlot[],
+): LauncherSlot[] {
+  const deduped = dedupeQuickGridSlots(slots.filter((s) => s.widgetId !== null));
+  const present = new Set<WidgetType>();
+  for (const s of deduped) {
+    if (s.widgetId) present.add(canonicalHubTileId(s.widgetId));
+  }
+  const merged = [...deduped];
+  for (const t of template) {
+    if (!t.widgetId || present.has(t.widgetId)) continue;
+    merged.push({ widgetId: t.widgetId });
+    present.add(t.widgetId);
+  }
+  return merged;
+}
+
+/** מסדר מחדש לרשת hub ממורכזת לפי תבנית + תוספות */
 export function repackQuickGridLayout(slots: LauncherSlot[], template: LauncherSlot[]): LauncherSlot[] {
   const deduped = dedupeQuickGridSlots(slots.filter((s) => s.widgetId !== null));
   const present = new Set<WidgetType>();
@@ -215,28 +250,26 @@ export function repackQuickGridLayout(slots: LauncherSlot[], template: LauncherS
     if (s.widgetId) present.add(canonicalHubTileId(s.widgetId));
   }
 
-  const packed: LauncherSlot[] = [];
+  const ordered: WidgetType[] = [];
   for (const t of template) {
     if (!t.widgetId || !present.has(t.widgetId)) continue;
-    packed.push({
-      widgetId: t.widgetId,
-      row: t.row,
-      col: t.col,
-    });
+    ordered.push(t.widgetId);
+    present.delete(t.widgetId);
+  }
+  for (const id of QUICK_GRID_EXTRA_ORDER) {
+    if (present.has(id)) {
+      ordered.push(id);
+      present.delete(id);
+    }
+  }
+  for (const id of present) {
+    ordered.push(id);
   }
 
-  const extras = [...present].filter((id) => !packed.some((p) => p.widgetId === id));
-  let idx = packed.length;
-  for (const widgetId of extras) {
-    packed.push({
-      widgetId,
-      row: Math.floor(idx / 3),
-      col: idx % 3,
-    });
-    idx++;
+  if (ordered.length === 0) {
+    return template.map((t) => ({ ...t }));
   }
-
-  return packed.length > 0 ? packed : template.map((t) => ({ ...t }));
+  return packQuickGridCentered(ordered);
 }
 
 /** מסיר כפילויות באותו widgetId (למשל שלושה documentsHub אחרי מיגרציה ישנה) */
@@ -289,7 +322,10 @@ export function scrubLauncherConfig(
   const template = buildDefaultQuickGrid(industryRaw, options);
   return {
     version: 2,
-    quickGrid: repackQuickGridLayout(scrubQuickGridSlots(config.quickGrid), template),
+    quickGrid: repackQuickGridLayout(
+      mergeQuickGridWithTemplate(scrubQuickGridSlots(config.quickGrid), template),
+      template,
+    ),
     sidebar: scrubSidebarSlots(config.sidebar),
     mobileBarStart: scrubZoneSlots(config.mobileBarStart),
     mobileBarEnd: scrubZoneSlots(config.mobileBarEnd),

@@ -14,6 +14,7 @@ type Props = {
   onPositionChange: (pos: { x: number; y: number }) => void;
   onResize: (size: { width: number; height: number }) => void;
   onMaximize: () => void;
+  onMinimize: () => void;
   onZoomChange: (delta: number) => void;
   workspaceBoundsRef: React.RefObject<HTMLElement | null>;
   onRequestFocusWidget: (widgetId: string) => void;
@@ -29,6 +30,7 @@ export default function ManagedWidgetShell({
   onPositionChange,
   onResize,
   onMaximize,
+  onMinimize,
   onZoomChange,
   workspaceBoundsRef,
   onRequestFocusWidget,
@@ -68,6 +70,8 @@ export default function ManagedWidgetShell({
       onPositionChange={onPositionChange}
       onResize={onResize}
       onMaximize={onMaximize}
+      onMinimize={onMinimize}
+      isMinimized={widget.isMinimized}
       onZoomChange={onZoomChange}
       workspaceBoundsRef={workspaceBoundsRef}
       canGoBack={canGoBack}

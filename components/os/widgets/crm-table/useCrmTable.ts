@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import { createProjectForContact } from "@/app/actions/crm";
 import { downloadAuthenticatedFile } from "@/lib/client/download-api-file";
-import { buildGoogleContactsConnectUrl } from "@/lib/google-contacts-oauth";
 import type { Client, ProjectOption, CrmTableWidgetProps } from "./types";
 import { mapIssuedDocuments } from "./constants";
 
@@ -24,7 +23,6 @@ export function useCrmTable({
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isImportingGoogle, setIsImportingGoogle] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [page, setPage] = useState(0);
@@ -431,35 +429,6 @@ export function useCrmTable({
     }
   };
 
-  const handleImportGoogle = async () => {
-    setIsImportingGoogle(true);
-    try {
-      const res = await fetch("/api/crm/import/google", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = (await res.json()) as {
-        error?: string;
-        connectUrl?: string;
-        message?: string;
-        importedCount?: number;
-      };
-      if (res.status === 403 && data.connectUrl) {
-        window.location.href = data.connectUrl;
-        return;
-      }
-      if (!res.ok) throw new Error(data.error ?? t("workspaceWidgets.crmTable.googleImportFailed"));
-      toast.success(data.message ?? t("workspaceWidgets.crmTable.googleImportSuccess"));
-      void fetchClients();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("workspaceWidgets.crmTable.googleImportFailed"));
-    } finally {
-      setIsImportingGoogle(false);
-    }
-  };
-
-  const googleConnectUrl = buildGoogleContactsConnectUrl("/?w=crmTable");
-
   return {
     clients,
     loading,
@@ -478,7 +447,6 @@ export function useCrmTable({
     setIsAddingClient,
     isImporting,
     isExporting,
-    isImportingGoogle,
     selectedClient,
     setSelectedClient,
     isEditing,
@@ -498,7 +466,5 @@ export function useCrmTable({
     openProjectHub,
     handleImportCSV,
     handleExportCsv,
-    handleImportGoogle,
-    googleConnectUrl,
   };
 }

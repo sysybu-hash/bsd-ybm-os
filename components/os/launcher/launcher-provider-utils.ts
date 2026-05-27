@@ -73,7 +73,9 @@ export function finalizeExpandableZoneAfterEdit(
   config: UserLauncherConfig,
   zone: LauncherZone,
 ): LauncherSlot[] {
-  if (zone === "quickGrid") return finalizeQuickGridAfterEdit(ensureQuickGridPositions(config.quickGrid));
+  if (zone === "quickGrid") {
+    return finalizeQuickGridAfterEdit(ensureQuickGridPositions(config.quickGrid));
+  }
   return compactZoneSlots(config[zone], zone);
 }
 

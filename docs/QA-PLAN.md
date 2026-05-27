@@ -33,7 +33,7 @@ Playwright מפעיל אוטומטית `next dev` על פורט **3001** (מקו
 ראו [PRODUCT-BROCHURE-TRACEABILITY.md](./PRODUCT-BROCHURE-TRACEABILITY.md). אוטומציה:
 
 ```bash
-npx playwright test e2e/product-brochure-finance-export.spec.ts e2e/product-brochure-crm.spec.ts e2e/product-brochure-archive-bulk.spec.ts e2e/google-contacts-import.spec.ts
+npx playwright test e2e/product-brochure-finance-export.spec.ts e2e/product-brochure-crm.spec.ts e2e/product-brochure-archive-bulk.spec.ts e2e/google-calendar-sync.spec.ts
 ```
 
 ## 5 מסעות ליבה (ידני — FIX-PLAN §12.4)

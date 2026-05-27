@@ -19,27 +19,28 @@ import {
 } from "@/lib/launcher/user-launcher-config";
 
 describe("user-launcher-config", () => {
-  it("returns v2 defaults with 6 hub quick grid tiles", () => {
+  it("returns v2 defaults with 8 hub quick grid tiles", () => {
     const a = getDefaultLauncherConfig();
     const b = getDefaultLauncherConfig();
-    expect(a.quickGrid).toHaveLength(6);
+    expect(a.quickGrid).toHaveLength(8);
     expect(a.quickGrid).toEqual(DEFAULT_QUICK_GRID);
     expect(a.sidebar[0]!.widgetId).toBe("financeHub");
     expect(b.version).toBe(2);
   });
 
-  it("maps default quick grid to hub layout", () => {
+  it("maps default quick grid to 4x2 hub layout", () => {
     const cfg = getDefaultLauncherConfig("CONSTRUCTION");
-    expect(cfg.quickGrid.find((s) => s.widgetId === "financeHub")).toMatchObject({ row: 0, col: 0 });
-    expect(cfg.quickGrid.find((s) => s.widgetId === "projectsHub")).toMatchObject({ row: 0, col: 1 });
-    expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 1 });
+    expect(cfg.quickGrid.find((s) => s.widgetId === "financeHub")).toMatchObject({ row: 0, col: 2 });
+    expect(cfg.quickGrid.find((s) => s.widgetId === "googleCalendar")).toMatchObject({ row: 1, col: 2 });
+    expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 0 });
+    expect(cfg.quickGrid.find((s) => s.widgetId === "meckanoReports")).toMatchObject({ row: 1, col: 3 });
   });
 
-  it("uses 6-tile business grid for company mgmt industry", () => {
+  it("uses 8-tile business grid for company mgmt industry", () => {
     expect(usesBusinessMgmtQuickGrid("COMPANY_MGMT")).toBe(true);
     const cfg = getDefaultLauncherConfig("COMPANY_MGMT");
     expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
-    expect(cfg.quickGrid).toHaveLength(6);
+    expect(cfg.quickGrid).toHaveLength(8);
     const ids = cfg.sidebar.map((s) => s.widgetId);
     expect(ids).not.toContain("meckanoReports");
     expect(ids).not.toContain("helpCenter");
@@ -47,11 +48,11 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid.every((s) => s.widgetId !== "fieldCopilot")).toBe(true);
   });
 
-  it("uses 6-tile business grid for platform admin regardless of industry", () => {
+  it("uses 8-tile business grid for platform admin regardless of industry", () => {
     expect(usesBusinessMgmtQuickGrid("CONSTRUCTION", true)).toBe(true);
     const cfg = getDefaultLauncherConfig("CONSTRUCTION", { isPlatformAdmin: true });
     expect(cfg.quickGrid).toEqual(BUSINESS_MGMT_QUICK_GRID);
-    expect(cfg.quickGrid).toHaveLength(6);
+    expect(cfg.quickGrid).toHaveLength(8);
   });
 
   it("includes meckano in sidebar for construction industry", () => {
@@ -88,8 +89,8 @@ describe("user-launcher-config", () => {
       sidebar: [{ widgetId: "crmTable" }],
     };
     const resolved = resolveStoredLauncherConfig(custom, "CONSTRUCTION");
-    expect(resolved.quickGrid).toHaveLength(1);
-    expect(resolved.quickGrid[0]).toEqual({ widgetId: "financeHub", row: 0, col: 0 });
+    expect(resolved.quickGrid).toHaveLength(8);
+    expect(resolved.quickGrid.find((s) => s.widgetId === "financeHub")).toMatchObject({ row: 0, col: 2 });
   });
 
   it("merges partial config", () => {
@@ -104,7 +105,7 @@ describe("user-launcher-config", () => {
       quickGrid: [{ widgetId: "aiChatFull", row: 4, col: 0 }],
     });
     const scrubbed = scrubLauncherConfig(cfg);
-    expect(scrubbed.quickGrid[0]).toEqual({ widgetId: "aiHub", row: 1, col: 2 });
+    expect(scrubbed.quickGrid.find((s) => s.widgetId === "aiHub")).toMatchObject({ row: 1, col: 1 });
   });
 
   it("dedupes repeated documentsHub tiles after legacy migration", () => {
@@ -126,13 +127,13 @@ describe("user-launcher-config", () => {
     const packed = repackQuickGridLayout(messy, BUSINESS_MGMT_QUICK_GRID);
     const docTiles = packed.filter((s) => s.widgetId === "documentsHub");
     expect(docTiles).toHaveLength(1);
-    expect(docTiles[0]).toMatchObject({ row: 1, col: 0 });
+    expect(docTiles[0]).toMatchObject({ row: 0, col: 2 });
   });
 
   it("parses invalid storage safely", () => {
     expect(parseLauncherConfigFromStorage(null).version).toBe(2);
     expect(parseLauncherConfigFromStorage("{bad").version).toBe(2);
-    expect(parseLauncherConfigFromStorage(null).quickGrid).toHaveLength(6);
+    expect(parseLauncherConfigFromStorage(null).quickGrid).toHaveLength(8);
   });
 
   it("dedupes zone widgets", () => {
@@ -158,8 +159,8 @@ describe("user-launcher-config", () => {
     const merged = mergeLauncherConfig({
       quickGrid: [{ widgetId: "googleAssistant" }, { widgetId: "dashboard", row: 0, col: 1 }],
     });
-    expect(merged.quickGrid).toHaveLength(1);
-    expect(merged.quickGrid[0]!.widgetId).toBe("financeHub");
+    expect(merged.quickGrid).toHaveLength(8);
+    expect(merged.quickGrid.find((s) => s.widgetId === "financeHub")).toBeDefined();
   });
 
   it("trims only trailing empty slots", () => {

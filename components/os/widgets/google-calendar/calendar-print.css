@@ -1,0 +1,48 @@
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  .gcal-no-print {
+    display: none !important;
+  }
+
+  .gcal-print-only {
+    display: block !important;
+  }
+
+  #google-calendar-print-root {
+    background: #fff !important;
+    color: #111 !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #google-calendar-print-root * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  #google-calendar-print-root .gcal-print-surface {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  #google-calendar-print-root .custom-scrollbar {
+    overflow: visible !important;
+  }
+
+  #google-calendar-print-root article,
+  #google-calendar-print-root .gcal-event-chip {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+.gcal-print-only {
+  display: none;
+}
