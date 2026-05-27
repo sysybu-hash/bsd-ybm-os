@@ -11,6 +11,6 @@ test.describe("דף מוצר — CRM", () => {
       timeout: 30_000,
     });
     await expect(page.getByText(/חיפוש חכם|Smart search/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /ייבוא מ-Google|Import from Google/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /ייבוא CSV|Import CSV/i })).toBeVisible();
   });
 });
