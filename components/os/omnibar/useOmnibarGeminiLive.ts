@@ -119,16 +119,7 @@ export function useOmnibarGeminiLive({
       userRequestedLiveRef.current = false;
       setOmnibarLiveOn(false);
     }
-  }, [
-    omnibarLiveOn,
-    geminiLiveEligible,
-    liveContextReady,
-    geminiLive,
-    geminiLive.isLiveActive,
-    geminiLive.isRateLimited,
-    geminiLive.state,
-    geminiLive.start,
-  ]);
+  }, [omnibarLiveOn, geminiLiveEligible, liveContextReady, geminiLive]);
 
   useEffect(() => {
     if (!pendingLiveStartRef.current || !omnibarLiveOn) return;

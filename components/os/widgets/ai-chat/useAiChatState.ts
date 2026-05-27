@@ -85,6 +85,7 @@ export function useAiChatState(
     [automationCtx?.assistantToolDeps, openWidget],
   );
   const osAssistant = useOsAssistant(assistantToolDeps);
+  const refreshOsAssistant = osAssistant.refresh;
 
   // ── liveData effects ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -96,14 +97,15 @@ export function useAiChatState(
   }, [liveData]);
 
   useEffect(() => {
-    if (chatTab === "live" && session?.user?.id) void osAssistant.refresh({ force: true });
-  }, [chatTab, session?.user?.id, osAssistant.refresh]);
+    if (chatTab === "live" && session?.user?.id) void refreshOsAssistant({ force: true });
+  }, [chatTab, session?.user?.id, refreshOsAssistant]);
 
+  const geminiLiveFeatureEnabled = osAssistant.featureFlags.geminiLiveEnabled;
   useEffect(() => {
-    if (osAssistant.featureFlags.geminiLiveEnabled === false) {
+    if (geminiLiveFeatureEnabled === false) {
       setChatTab("text"); setIsLiveMode(false);
     }
-  }, [osAssistant.featureFlags.geminiLiveEnabled]);
+  }, [geminiLiveFeatureEnabled]);
 
   // ── Gemini Live ───────────────────────────────────────────────────────────
   const liveStatusLabels = useMemo<GeminiLiveStatusLabels>(() => ({

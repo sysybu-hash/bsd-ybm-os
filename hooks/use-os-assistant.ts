@@ -72,7 +72,7 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
 
   useEffect(() => {
     if (status === "authenticated") void refresh();
-  }, [status, session?.user?.id, locale]);
+  }, [status, session?.user?.id, locale, refresh]);
 
   const onToolCall = useCallback(
     async (name: string, args: Record<string, unknown>) =>

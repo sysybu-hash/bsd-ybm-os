@@ -125,7 +125,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { cancelled = true; };
-  }, [organizationIndustry, userId, isPlatformAdmin, meckanoEnabled]);
+  }, [organizationIndustry, userId, isPlatformAdmin, meckanoEnabled, launcherDefaultOptions, permissionCtx]);
 
   useEffect(() => {
     if (!hydrated) return;
