@@ -114,10 +114,23 @@ export function getBlueprintAnalysisModelChain(): string[] {
   ]);
 }
 
+export function isGeminiLiveModalityCombinationError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("response modalities") ||
+    lower.includes("response_modalities") ||
+    (lower.includes("not supported") &&
+      lower.includes("audio") &&
+      (lower.includes("text") || lower.includes("modality")))
+  );
+}
+
 export function isLikelyGeminiModelUnavailable(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
   return (
+    isGeminiLiveModalityCombinationError(err) ||
     lower.includes("404") ||
     lower.includes("429") ||
     lower.includes("not found") ||

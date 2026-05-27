@@ -2,7 +2,10 @@ import { Modality, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { GEMINI_LIVE_MODALITY } from "@/lib/gemini-live/api-constants";
 import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
-import { liveResponseModalityStringsForModel } from "@/lib/gemini-live/response-modalities";
+import {
+  coalesceLiveVoiceSettingsForModel,
+  liveResponseModalityStringsForModel,
+} from "@/lib/gemini-live/response-modalities";
 import { normalizeGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
@@ -65,23 +68,27 @@ export function buildFullLiveConnectConfig(
   systemInstruction: string,
   options?: { advancedFeatures?: boolean; model?: string },
 ): LiveConnectConfig {
-  const base = buildLiveConnectConfig(settings, options?.model);
+  const resolvedSettings =
+    options?.model != null
+      ? coalesceLiveVoiceSettingsForModel(settings, options.model)
+      : settings;
+  const base = buildLiveConnectConfig(resolvedSettings, options?.model);
   return {
     ...base,
     systemInstruction: { parts: [{ text: systemInstruction }] },
     tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
     speechConfig: {
       voiceConfig: {
-        prebuiltVoiceConfig: { voiceName: settings.voiceName },
+        prebuiltVoiceConfig: { voiceName: resolvedSettings.voiceName },
       },
     },
-    ...(options?.advancedFeatures && settings.affectiveDialog
+    ...(options?.advancedFeatures && resolvedSettings.affectiveDialog
       ? { enableAffectiveDialog: true }
       : {}),
-    ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
-    ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
-    realtimeInputConfig: buildRealtimeInputConfig(settings),
-    ...(options?.advancedFeatures && settings.proactiveAudio
+    ...(resolvedSettings.inputTranscription ? { inputAudioTranscription: {} } : {}),
+    ...(resolvedSettings.outputTranscription ? { outputAudioTranscription: {} } : {}),
+    realtimeInputConfig: buildRealtimeInputConfig(resolvedSettings),
+    ...(options?.advancedFeatures && resolvedSettings.proactiveAudio
       ? { proactivity: { proactiveAudio: true } }
       : {}),
   };

@@ -19,3 +19,20 @@ export function liveResponseModalityStringsForModel(
   }
   return [GEMINI_LIVE_MODALITY.AUDIO];
 }
+
+/**
+ * מודלי native-audio: טקסט בממשק (audio_text) מגיע מ-outputAudioTranscription, לא מ-TEXT ב-responseModalities.
+ */
+export function coalesceLiveVoiceSettingsForModel(
+  settings: GeminiLiveVoiceSettings,
+  model: string,
+): GeminiLiveVoiceSettings {
+  if (settings.responseMode !== "audio_text" || !isNativeAudioLiveModel(model)) {
+    return settings;
+  }
+  return {
+    ...settings,
+    inputTranscription: settings.inputTranscription || true,
+    outputTranscription: settings.outputTranscription || true,
+  };
+}

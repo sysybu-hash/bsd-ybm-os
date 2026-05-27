@@ -1,5 +1,6 @@
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
 import {
+  coalesceLiveVoiceSettingsForModel,
   isNativeAudioLiveModel,
   liveResponseModalityStringsForModel,
 } from "@/lib/gemini-live/response-modalities";
@@ -27,5 +28,19 @@ describe("gemini-live response-modalities", () => {
         responseMode: "audio_text",
       }),
     ).toEqual(["AUDIO", "TEXT"]);
+  });
+
+  it("enables transcriptions for native-audio when audio_text is selected", () => {
+    const coalesced = coalesceLiveVoiceSettingsForModel(
+      {
+        ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+        responseMode: "audio_text",
+        inputTranscription: false,
+        outputTranscription: false,
+      },
+      "gemini-2.5-flash-native-audio-latest",
+    );
+    expect(coalesced.inputTranscription).toBe(true);
+    expect(coalesced.outputTranscription).toBe(true);
   });
 });

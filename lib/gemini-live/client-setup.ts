@@ -1,6 +1,9 @@
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
-import { liveResponseModalityStringsForModel } from "@/lib/gemini-live/response-modalities";
+import {
+  coalesceLiveVoiceSettingsForModel,
+  liveResponseModalityStringsForModel,
+} from "@/lib/gemini-live/response-modalities";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
 export type GeminiLiveClientSetupMessage = {
@@ -25,6 +28,7 @@ export function buildClientLiveSetupMessage({
   embeddedSetup = false,
 }: BuildClientLiveSetupOptions): GeminiLiveClientSetupMessage {
   const modelPath = model.startsWith("models/") ? model : `models/${model}`;
+  const resolvedSettings = coalesceLiveVoiceSettingsForModel(settings, model);
 
   if (embeddedSetup) {
     return { setup: { model: modelPath } };
@@ -33,28 +37,28 @@ export function buildClientLiveSetupMessage({
   const setup: Record<string, unknown> = {
     model: modelPath,
     generationConfig: {
-      responseModalities: liveResponseModalityStringsForModel(model, settings),
-      temperature: settings.temperature,
+      responseModalities: liveResponseModalityStringsForModel(model, resolvedSettings),
+      temperature: resolvedSettings.temperature,
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: settings.voiceName },
+          prebuiltVoiceConfig: { voiceName: resolvedSettings.voiceName },
         },
       },
-      ...(advancedFeaturesEnabled && settings.affectiveDialog
+      ...(advancedFeaturesEnabled && resolvedSettings.affectiveDialog
         ? { enableAffectiveDialog: true }
         : {}),
     },
     systemInstruction: { parts: [{ text: systemInstruction }] },
     tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
-    ...(settings.inputTranscription ? { inputAudioTranscription: {} } : {}),
-    ...(settings.outputTranscription ? { outputAudioTranscription: {} } : {}),
-    realtimeInputConfig: buildRealtimeInputConfig(settings),
+    ...(resolvedSettings.inputTranscription ? { inputAudioTranscription: {} } : {}),
+    ...(resolvedSettings.outputTranscription ? { outputAudioTranscription: {} } : {}),
+    realtimeInputConfig: buildRealtimeInputConfig(resolvedSettings),
   };
 
-  if (advancedFeaturesEnabled && settings.proactiveAudio) {
+  if (advancedFeaturesEnabled && resolvedSettings.proactiveAudio) {
     setup.proactivity = { proactiveAudio: true };
   }
-  if (settings.sessionResumptionEnabled) {
+  if (resolvedSettings.sessionResumptionEnabled) {
     setup.sessionResumption = {};
   }
 

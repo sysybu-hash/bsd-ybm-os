@@ -71,6 +71,20 @@ describe("gemini-live-session-config", () => {
     expect(cfg.sessionResumption).toBeUndefined();
   });
 
+  it("buildFullLiveConnectConfig uses AUDIO-only and outputAudioTranscription for native audio_text", () => {
+    const cfg = buildFullLiveConnectConfig(
+      {
+        ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+        responseMode: "audio_text",
+        outputTranscription: false,
+      },
+      "You are BSD-YBM OS voice assistant.",
+      { model: "gemini-2.5-flash-native-audio-latest" },
+    );
+    expect(cfg.responseModalities).toEqual(["AUDIO"]);
+    expect(cfg.outputAudioTranscription).toEqual({});
+  });
+
   it("buildFullLiveConnectConfig embeds system instruction and tools", () => {
     const cfg = buildFullLiveConnectConfig(
       DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
