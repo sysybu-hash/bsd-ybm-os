@@ -191,7 +191,7 @@ export default function MeckanoReportsWidget() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <ArrowLeftRight size={14} className="text-[color:var(--foreground-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowLeftRight size={14} className="text-[color:var(--foreground-muted)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
                   </td>
                 </tr>
               ))}

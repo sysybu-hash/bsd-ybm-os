@@ -56,7 +56,7 @@ export function BoardColumn({
                 {priorityLabel(task.priority)}
               </span>
               <div className="flex items-center gap-1">
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <ItemActions
                     onEdit={() => onEdit(task)}
                     onDelete={() => onDelete(task.id)}
@@ -116,7 +116,7 @@ export function BoardColumn({
               <button
                 type="button"
                 onClick={() => onEdit(task)}
-                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-100"
+                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
               >
                 {t("workspaceWidgets.itemActions.edit")}
               </button>

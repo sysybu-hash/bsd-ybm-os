@@ -53,7 +53,7 @@ export default function ErpDocumentsWidget() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); void deleteDocument(doc.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 dark:text-rose-400 transition-opacity"
+                    className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:text-rose-600 dark:text-rose-400 transition-opacity"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

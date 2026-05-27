@@ -74,6 +74,7 @@ function readNumber(data: Record<string, unknown> | null | undefined, key: strin
 export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: FieldCopilotWidgetProps) {
 
   const { t, locale } = useI18n();
+  const prefix = "workspaceWidgets.fieldCopilot";
   const { status: authStatus } = useSession();
 
   const initialSessionId = readString(liveData, "sessionId");
@@ -254,6 +255,8 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
         showContinue={showNavContinue}
 
         continueDisabled={!canContinue || session.loading}
+
+        continueLabel={step === 2 && !hasAnalysis ? t(`${prefix}.navAnalyze`) : undefined}
 
         onBack={() => goStep(step - 1)}
 

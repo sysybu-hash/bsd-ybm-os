@@ -35,9 +35,9 @@ export function ErpDocumentDetail({
           <div>
             <button
               onClick={() => setSelectedDoc(null)}
-              className="md:hidden mb-4 flex items-center gap-2 text-sm text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+              className="mb-4 flex items-center gap-2 text-sm text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-colors"
             >
-              <ChevronRight className="w-4 h-4" /> חזרה לרשימה
+              <ChevronRight className="w-4 h-4 rtl:rotate-180" /> חזרה לרשימה
             </button>
             <h2 className="text-xl font-bold text-[color:var(--foreground-main)] mb-1">{selectedDoc.fileName}</h2>
             <div className="flex items-center gap-4 text-sm text-[color:var(--foreground-muted)]">
@@ -161,7 +161,7 @@ export function ErpDocumentDetail({
                         </button>
                       ) : (
                         <button onClick={() => startEditing(item)}
-                          className="p-1.5 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100">
+                          className="p-1.5 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                           <Edit3 className="w-4 h-4" />
                         </button>
                       )}
