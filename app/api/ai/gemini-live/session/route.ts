@@ -53,7 +53,10 @@ async function createLiveAuthToken(
       newSessionExpireTime,
       liveConnectConstraints: {
         model,
-        config: buildFullLiveConnectConfig(settings, systemInstruction, { advancedFeatures }),
+        config: buildFullLiveConnectConfig(settings, systemInstruction, {
+          advancedFeatures,
+          model,
+        }),
       },
       httpOptions: { apiVersion: "v1alpha" },
     },

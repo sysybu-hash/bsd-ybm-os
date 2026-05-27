@@ -122,11 +122,6 @@ export function useOmnibarGeminiLive({
   }, [omnibarLiveOn, geminiLiveEligible, liveContextReady, geminiLive]);
 
   useEffect(() => {
-    if (!pendingLiveStartRef.current || !omnibarLiveOn) return;
-    void tryStartLive();
-  }, [omnibarLiveOn, liveContextReady, tryStartLive]);
-
-  useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
     else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.isSpeaking ? "speaking" : "listening");
     else if (geminiLive.state === "ready") setVoiceStatus("listening");
@@ -155,6 +150,12 @@ export function useOmnibarGeminiLive({
       const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
       const retryAt = untilMs != null ? new Date(untilMs) : new Date(Date.now() + 60_000);
       toast.error(formatGeminiLiveRateLimitMessage(retryAt, locale, t));
+      return;
+    }
+    if (!liveContextReady) {
+      toast.error(t("workspaceWidgets.aiChat.liveContextLoading"));
+      pendingLiveStartRef.current = false;
+      userRequestedLiveRef.current = false;
       return;
     }
     userRequestedLiveRef.current = true;

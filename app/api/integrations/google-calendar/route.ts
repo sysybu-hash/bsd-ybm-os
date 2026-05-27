@@ -40,6 +40,8 @@ function parseEventRange(req: Request): { from: Date; to: Date } {
   return { from, to };
 }
 
+const SYNC_ON_GET_TIMEOUT_MS = 8_000;
+
 export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
   const limited = await applyRateLimit(req as NextRequest, "google:calendar-events-get", 60, 60_000);
   if (limited) return limited;
@@ -103,12 +105,32 @@ export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
   });
 
   if (links.length === 0) {
-    await runGoogleCalendarSyncForUser(userId, orgId);
-    links = await prisma.googleCalendarEventLink.findMany({
-      where: eventWhere,
-      orderBy: { startAt: "asc" },
-      take: 200,
-    });
+    const syncResult = await Promise.race([
+      runGoogleCalendarSyncForUser(userId, orgId),
+      new Promise<{ ok: false; error: string }>((resolve) => {
+        setTimeout(() => resolve({ ok: false, error: "sync_timeout" }), SYNC_ON_GET_TIMEOUT_MS);
+      }),
+    ]);
+    if (syncResult.ok) {
+      links = await prisma.googleCalendarEventLink.findMany({
+        where: eventWhere,
+        orderBy: { startAt: "asc" },
+        take: 200,
+      });
+    } else if (syncResult.error !== "sync_timeout") {
+      return NextResponse.json({
+        connected: true,
+        active: true,
+        calendarId: settings.calendarId,
+        calendarSummary: settings.calendarSummary,
+        calendarColor: settings.calendarColor,
+        canWrite: canWriteToGoogleCalendar(settings),
+        events: [],
+        message: syncResult.error,
+      });
+    } else {
+      void runGoogleCalendarSyncForUser(userId, orgId).catch(() => undefined);
+    }
   }
 
   return NextResponse.json({
@@ -119,6 +141,7 @@ export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
     calendarColor: settings.calendarColor,
     canWrite: canWriteToGoogleCalendar(settings),
     events: mapEvents(links),
+    syncPending: links.length === 0,
   });
 });
 

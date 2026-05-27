@@ -1,6 +1,6 @@
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
-import { GEMINI_LIVE_MODALITY } from "@/lib/gemini-live/api-constants";
 import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
+import { liveResponseModalityStringsForModel } from "@/lib/gemini-live/response-modalities";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
 export type GeminiLiveClientSetupMessage = {
@@ -33,10 +33,7 @@ export function buildClientLiveSetupMessage({
   const setup: Record<string, unknown> = {
     model: modelPath,
     generationConfig: {
-      responseModalities:
-        settings.responseMode === "audio_text"
-          ? [GEMINI_LIVE_MODALITY.AUDIO, GEMINI_LIVE_MODALITY.TEXT]
-          : [GEMINI_LIVE_MODALITY.AUDIO],
+      responseModalities: liveResponseModalityStringsForModel(model, settings),
       temperature: settings.temperature,
       speechConfig: {
         voiceConfig: {

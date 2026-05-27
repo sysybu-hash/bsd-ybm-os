@@ -11,12 +11,26 @@ import {
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
 
 describe("gemini-live-session-config", () => {
-  it("maps audio_text to AUDIO+TEXT modalities", () => {
-    const mods = liveModalitiesFromSettings({
-      ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
-      responseMode: "audio_text",
-    });
+  it("maps audio_text to AUDIO+TEXT modalities for non-native models", () => {
+    const mods = liveModalitiesFromSettings(
+      {
+        ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+        responseMode: "audio_text",
+      },
+      "gemini-3.1-flash-live-preview",
+    );
     expect(mods).toEqual(["AUDIO", "TEXT"]);
+  });
+
+  it("maps audio_text to AUDIO only for native-audio models", () => {
+    const mods = liveModalitiesFromSettings(
+      {
+        ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+        responseMode: "audio_text",
+      },
+      "gemini-2.5-flash-native-audio-latest",
+    );
+    expect(mods).toEqual(["AUDIO"]);
   });
 
   it("maps audio-only to AUDIO modality", () => {

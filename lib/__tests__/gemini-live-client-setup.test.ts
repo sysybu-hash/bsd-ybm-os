@@ -20,6 +20,20 @@ describe("gemini-live client setup", () => {
     });
   });
 
+  it("full setup uses AUDIO-only modalities for native-audio with audio_text", () => {
+    const msg = buildClientLiveSetupMessage({
+      model: "gemini-2.5-flash-native-audio-latest",
+      systemInstruction: "voice assistant",
+      settings: {
+        ...DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+        responseMode: "audio_text",
+      },
+      embeddedSetup: false,
+    });
+    const generationConfig = msg.setup.generationConfig as { responseModalities?: string[] };
+    expect(generationConfig.responseModalities).toEqual(["AUDIO"]);
+  });
+
   it("full setup includes realtimeInputConfig and tools", () => {
     const msg = buildClientLiveSetupMessage({
       model: "gemini-2.5-flash-native-audio-latest",

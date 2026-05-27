@@ -2,6 +2,7 @@ import { Modality, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { GEMINI_LIVE_MODALITY } from "@/lib/gemini-live/api-constants";
 import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
+import { liveResponseModalityStringsForModel } from "@/lib/gemini-live/response-modalities";
 import { normalizeGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { getOsAssistantLiveToolDeclarations } from "@/lib/os-assistant/live-tools";
 
@@ -11,17 +12,24 @@ export type GeminiLiveSessionRequest = Partial<GeminiLiveVoiceSettings> & {
 
 export { buildRealtimeInputConfig };
 
-export function liveModalitiesFromSettings(settings: GeminiLiveVoiceSettings): Modality[] {
-  if (settings.responseMode === "audio_text") {
-    return [Modality.AUDIO, Modality.TEXT];
-  }
-  return [Modality.AUDIO];
+export function liveModalitiesFromSettings(
+  settings: GeminiLiveVoiceSettings,
+  model?: string,
+): Modality[] {
+  const strings = model
+    ? liveResponseModalityStringsForModel(model, settings)
+    : liveModalitiesStringsFromSettings(settings);
+  return strings.map((value) => value as Modality);
 }
 
-/** ערכי modality כמחרוזות (לוג / בדיקות) — זהה ל-liveModalitiesFromSettings. */
+/** ערכי modality כמחרוזות (לוג / בדיקות). */
 export function liveModalitiesStringsFromSettings(
   settings: GeminiLiveVoiceSettings,
+  model?: string,
 ): string[] {
+  if (model) {
+    return liveResponseModalityStringsForModel(model, settings);
+  }
   if (settings.responseMode === "audio_text") {
     return [GEMINI_LIVE_MODALITY.AUDIO, GEMINI_LIVE_MODALITY.TEXT];
   }
@@ -40,11 +48,14 @@ export function normalizeSessionRequest(body: unknown): {
   };
 }
 
-export function buildLiveConnectConfig(settings: GeminiLiveVoiceSettings) {
+export function buildLiveConnectConfig(
+  settings: GeminiLiveVoiceSettings,
+  model?: string,
+) {
   return {
     ...(settings.sessionResumptionEnabled ? { sessionResumption: {} } : {}),
     temperature: settings.temperature,
-    responseModalities: liveModalitiesFromSettings(settings),
+    responseModalities: liveModalitiesFromSettings(settings, model),
   };
 }
 
@@ -52,9 +63,9 @@ export function buildLiveConnectConfig(settings: GeminiLiveVoiceSettings) {
 export function buildFullLiveConnectConfig(
   settings: GeminiLiveVoiceSettings,
   systemInstruction: string,
-  options?: { advancedFeatures?: boolean },
+  options?: { advancedFeatures?: boolean; model?: string },
 ): LiveConnectConfig {
-  const base = buildLiveConnectConfig(settings);
+  const base = buildLiveConnectConfig(settings, options?.model);
   return {
     ...base,
     systemInstruction: { parts: [{ text: systemInstruction }] },
