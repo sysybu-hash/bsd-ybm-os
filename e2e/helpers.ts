@@ -2,6 +2,32 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 
+/** Navigates and retries on Firefox NS_BINDING_ABORTED / "interrupted by another navigation". */
+async function safeGoto(
+  page: Page,
+  url: string,
+  waitUntil: "load" | "domcontentloaded" | "commit" = "load",
+): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(url, { waitUntil });
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const retryable =
+        msg.includes("NS_BINDING_ABORTED") ||
+        msg.includes("interrupted by another navigation") ||
+        msg.includes("frame was detached");
+      if (attempt < 2 && retryable) {
+        await page.waitForLoadState("domcontentloaded").catch(() => {});
+        await page.waitForTimeout(400);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
 
@@ -32,7 +58,7 @@ export function workspaceProjectUrl(projectId: string): string {
 const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
-const FIRST_DAY_WIZARD_KEY = "bsd_ybm_first_day_wizard_v1";
+const FIRST_DAY_WIZARD_KEY = "bsd_ybm_first_day_wizard_v2";
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 
@@ -105,8 +131,7 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
   const shellTimeout = process.env.CI ? 45_000 : 30_000;
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    await page.goto(workspaceProjectUrl(projectId));
-    await page.waitForLoadState("domcontentloaded");
+    await safeGoto(page, workspaceProjectUrl(projectId));
     await waitForAuthenticatedWorkspace(page);
     await dismissWorkspaceOverlays(page);
     try {
@@ -120,9 +145,10 @@ export async function gotoWorkspaceProject(page: Page, projectId: string) {
 
     const launcherTile = page.getByTestId("launcher-tile-project");
     if (await launcherTile.isVisible({ timeout: 5000 }).catch(() => false)) {
+      // Click, then wait for the click-triggered navigation to settle before navigating ourselves
       await launcherTile.click();
-      await page.goto(workspaceProjectUrl(projectId));
-      await page.waitForLoadState("domcontentloaded");
+      await page.waitForLoadState("domcontentloaded").catch(() => {});
+      await safeGoto(page, workspaceProjectUrl(projectId));
       await dismissWorkspaceOverlays(page);
       if (await projectWorkspaceShell(page).isVisible({ timeout: shellTimeout }).catch(() => false)) {
         if (await expectProjectDashboardReady(page, { soft: true })) return;
@@ -323,7 +349,7 @@ export async function gotoAuthenticatedWidget(
 
   await dismissCookieBannerIfVisible(page);
   await dismissWorkspaceOverlays(page);
-  await page.goto(workspaceUrl({ w: widgetId }), { waitUntil: "domcontentloaded" });
+  await safeGoto(page, workspaceUrl({ w: widgetId }));
   await waitForAuthenticatedWorkspace(page);
   await dismissWorkspaceOverlays(page);
 
@@ -375,7 +401,7 @@ export async function dismissWorkspaceOverlays(page: Page) {
   }
 
   const wizard = page.getByTestId("first-day-wizard");
-  if (await wizard.isVisible({ timeout: 2000 }).catch(() => false)) {
+  if (await wizard.isVisible({ timeout: 5000 }).catch(() => false)) {
     const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
     const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
     if (await skip.isVisible().catch(() => false)) {
@@ -383,5 +409,6 @@ export async function dismissWorkspaceOverlays(page: Page) {
     } else if (await dismiss.isVisible().catch(() => false)) {
       await dismiss.click();
     }
+    await wizard.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   }
 }

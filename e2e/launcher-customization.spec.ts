@@ -13,12 +13,17 @@ test.describe("launcher customization", () => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
 
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.waitForSelector('[data-testid="launcher-zone-quickGrid"]', { timeout: 60_000 });
 
     const zone = page.locator('[data-testid="launcher-zone-quickGrid"]');
-    await zone.dispatchEvent("pointerdown");
-    await page.waitForTimeout(600);
+    const box = await zone.boundingBox();
+    if (!box) throw new Error("launcher-zone-quickGrid bounding box not found");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
     await page.mouse.up();
 
     await expect(page.getByTestId("launcher-edit-banner")).toBeVisible();
