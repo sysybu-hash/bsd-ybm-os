@@ -228,7 +228,7 @@ export function useScanQueue({
      userInstruction, industryId, openWorkspaceWidget, tr, applyFilePreview],
   );
 
-  const confirmAnalysis = async () => {
+  const confirmAnalysis = useCallback(async () => {
     if (!pendingAnalysis) return;
     const raw = pendingAnalysis.rawAiData as DocumentAnalysis | undefined;
     const isCorrected =
@@ -283,11 +283,11 @@ export function useScanQueue({
     ]);
     setPendingAnalysis(null);
     toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
-  };
+  }, [pendingAnalysis, tr]);
 
   const continueToSaveStep = useCallback(() => {
     void confirmAnalysis();
-  }, [pendingAnalysis]);
+  }, [confirmAnalysis]);
 
   const saveToNotebook = useCallback(
     async (
