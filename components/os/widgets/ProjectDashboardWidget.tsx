@@ -113,7 +113,7 @@ export default function ProjectDashboardWidget({
         openWorkspaceWidget={openWorkspaceWidget}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
         {activeTab === "financial" && (
           <FinancialTab
             data={data}

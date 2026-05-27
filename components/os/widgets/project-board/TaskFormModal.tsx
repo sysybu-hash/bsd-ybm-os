@@ -38,7 +38,7 @@ export function TaskFormModal({
   if (!open) return null;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 overflow-y-auto">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 overflow-y-auto overscroll-y-contain">
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">

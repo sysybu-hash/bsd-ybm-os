@@ -57,7 +57,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
       </header>
 
       {s.searchResults ? (
-        <div className="flex-1 space-y-4 overflow-y-auto p-4 max-md:px-3">
+        <div className="flex-1 space-y-4 overflow-y-auto overscroll-y-contain p-4 max-md:px-3">
           {s.searchResults.guides.length === 0 && s.searchResults.faq.length === 0 ? (
             <p className="text-sm text-[color:var(--foreground-muted)]">{t("workspaceWidgets.helpCenter.noResults")}</p>
           ) : null}
@@ -138,7 +138,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
               </div>
             </nav>
 
-            <article className="min-h-0 flex-1 overflow-y-auto p-4 max-md:px-3 md:p-4">
+            <article className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 max-md:px-3 md:p-4">
               {s.activeGuide ? (
                 <>
                   <h3 className="text-xl font-black leading-snug">{s.activeGuide.title}</h3>

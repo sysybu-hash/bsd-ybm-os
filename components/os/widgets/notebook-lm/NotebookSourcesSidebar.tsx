@@ -146,8 +146,8 @@ export function NotebookSourcesSidebar({
 
       {/* Drop zone */}
       <div
-        className="group relative mb-4 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-[color:var(--border-main)] p-6 text-center transition hover:border-indigo-500/50 hover:bg-[color:var(--surface-soft)]"
-        onClick={() => fileInputRef.current?.click()}
+        className={`group relative mb-4 overflow-hidden rounded-xl border-2 border-dashed border-[color:var(--border-main)] p-6 text-center transition ${isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-indigo-500/50 hover:bg-[color:var(--surface-soft)]"}`}
+        onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
       >
         {isUploading ? (
           <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-indigo-500" />
