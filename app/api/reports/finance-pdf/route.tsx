@@ -38,12 +38,12 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
       <FinanceReportDocument
         organizationName={org?.name ?? "ארגון"}
         generatedAt={generatedAt}
-        actual={forecast.actual}
-        pending={forecast.pending}
-        forecast={forecast.forecast}
-        totalProjected={forecast.totalProjected}
+        actual={Number(forecast.actual)}
+        pending={Number(forecast.pending)}
+        forecast={Number(forecast.forecast)}
+        totalProjected={Number(forecast.totalProjected)}
         pendingDocCount={pendingAgg._count}
-        paidIssuedTotal={paidAgg._sum.total ?? 0}
+        paidIssuedTotal={Number(paidAgg._sum.total ?? 0)}
       />,
     );
 

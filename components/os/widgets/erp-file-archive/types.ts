@@ -14,6 +14,7 @@ export type ScanDocPreview = {
   id: string;
   fileName: string;
   type: string;
+  aiData?: Record<string, unknown> | null;
   lineItems?: Array<{
     id: string;
     description: string;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { ScanUiPhase } from "./ScanControlBar";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
@@ -56,6 +57,55 @@ export function useScanQueue({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewMime, setPreviewMime] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
+
+  const scanUiPhase: ScanUiPhase = useMemo(() => {
+    if (isProcessing) return "processing";
+    if (pendingAnalysis) return "review";
+    if (lastScanV5) return "results";
+    return "idle";
+  }, [isProcessing, pendingAnalysis, lastScanV5]);
+
+  const resetScanState = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setQueue([]);
+    setIsProcessing(false);
+    setQueueProgress(null);
+    setPendingAnalysis(null);
+    setResultJson("");
+    setTelemetry(null);
+    setScanClassification(null);
+    setLastScanV5(null);
+    setLastScanFileName("");
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewMime(null);
+    setPreviewFileName("");
+  }, [previewUrl]);
+
+  const stopScan = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsProcessing(false);
+    setQueueProgress(null);
+    setQueue((prev) =>
+      prev.map((q) => (q.status === "processing" ? { ...q, status: "error", error: tr("scanner.scanStopped", "הסריקה הופסקה") } : q)),
+    );
+    toast.message(tr("scanner.scanStopped", "הסריקה הופסקה"));
+  }, [tr]);
+
+  const goBackScanStep = useCallback(() => {
+    if (pendingAnalysis) {
+      setPendingAnalysis(null);
+      return;
+    }
+    if (lastScanV5) {
+      setLastScanV5(null);
+      setLastScanFileName("");
+      setResultJson("");
+    }
+  }, [pendingAnalysis, lastScanV5]);
 
   const applyFilePreview = useCallback(
     (file: File) => {
@@ -105,59 +155,73 @@ export function useScanQueue({
       }));
       setQueue(initialQueue);
       setIsProcessing(true);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       let ok = 0;
       let fail = 0;
 
-      for (let i = 0; i < valid.length; i++) {
-        const file = valid[i]!;
-        const qid = initialQueue[i]!.id;
-        setQueueProgress({ current: i + 1, total: valid.length, name: file.name });
-        setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "processing" } : q)));
-        toast.info(
-          formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
-            current: i + 1,
-            total: valid.length,
-            name: file.name,
-          }),
-        );
-
-        try {
-          const analysis = await runScanSingleFile({
-            file, engineRunMode, scanModeOverride, boundProjectId,
-            userInstruction, industryId, openWorkspaceWidget, tr,
-            setPendingAnalysis, setResultJson, setTelemetry,
-            setScanClassification, setLastScanV5, setLastScanFileName,
-            applyFilePreview,
-          });
-          ok++;
-          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "done" } : q)));
-          setHistory((prev) => [
-            {
-              id: qid,
-              fileName: file.name,
-              vendor: analysis.vendor,
-              amount: analysis.amount,
-              date: analysis.date || new Date().toISOString().split("T")[0]!,
-              status: "success",
-            },
-            ...prev,
-          ]);
-        } catch (err) {
-          fail++;
-          const msg = err instanceof Error ? err.message : tr("scanner.scanError", "שגיאה");
-          setQueue((prev) =>
-            prev.map((q) => (q.id === qid ? { ...q, status: "error", error: msg } : q)),
+      try {
+        for (let i = 0; i < valid.length; i++) {
+          if (controller.signal.aborted) break;
+          const file = valid[i]!;
+          const qid = initialQueue[i]!.id;
+          setQueueProgress({ current: i + 1, total: valid.length, name: file.name });
+          setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "processing" } : q)));
+          toast.info(
+            formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
+              current: i + 1,
+              total: valid.length,
+              name: file.name,
+            }),
           );
-          toast.error(`${file.name}: ${msg}`);
-        }
-      }
 
-      setQueueProgress(null);
-      setIsProcessing(false);
-      toast.success(
-        formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
-      );
+          try {
+            const analysis = await runScanSingleFile({
+              file, engineRunMode, scanModeOverride, boundProjectId,
+              userInstruction, industryId, openWorkspaceWidget, tr,
+              setPendingAnalysis, setResultJson, setTelemetry,
+              setScanClassification, setLastScanV5, setLastScanFileName,
+              applyFilePreview,
+              signal: controller.signal,
+            });
+            ok++;
+            setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "done" } : q)));
+            setHistory((prev) => [
+              {
+                id: qid,
+                fileName: file.name,
+                vendor: analysis.vendor,
+                amount: analysis.amount,
+                date: analysis.date || new Date().toISOString().split("T")[0]!,
+                status: "success",
+              },
+              ...prev,
+            ]);
+          } catch (err: unknown) {
+            if (err instanceof DOMException && err.name === "AbortError") {
+              break;
+            }
+            fail++;
+            const msg = err instanceof Error ? err.message : tr("scanner.scanError", "שגיאה");
+            setQueue((prev) =>
+              prev.map((q) => (q.id === qid ? { ...q, status: "error", error: msg } : q)),
+            );
+            toast.error(`${file.name}: ${msg}`);
+          }
+        }
+
+        if (!controller.signal.aborted) {
+          toast.success(
+            formatMsg(tr("scanner.scanBatchDone", "הושלם: {ok} הצליחו, {fail} נכשלו"), { ok, fail }),
+          );
+        }
+      } finally {
+        setQueueProgress(null);
+        setIsProcessing(false);
+        if (abortRef.current === controller) abortRef.current = null;
+      }
     },
      
     [isProcessing, validateScanFile, engineRunMode, scanModeOverride, boundProjectId,
@@ -221,6 +285,10 @@ export function useScanQueue({
     toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
   };
 
+  const continueToSaveStep = useCallback(() => {
+    void confirmAnalysis();
+  }, [pendingAnalysis]);
+
   const saveToNotebook = useCallback(
     async (
       onOpen?: (type: WidgetType, data?: Record<string, unknown> | null) => void,
@@ -276,6 +344,11 @@ export function useScanQueue({
     runFileQueue,
     confirmAnalysis,
     saveToNotebook,
+    scanUiPhase,
+    stopScan,
+    goBackScanStep,
+    continueToSaveStep,
+    resetScanState,
   };
 }
 

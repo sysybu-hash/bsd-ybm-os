@@ -15,7 +15,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight, ArrowDownRight, Activity, Download, FileText } from "lucide-react";
+import { Sparkles, TrendingUp, Activity, Download, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDashboardStats } from "./useDashboardStats";
 import { useFinanceReportExport } from "@/hooks/useFinanceReportExport";
@@ -78,7 +78,6 @@ export default function DashboardWidget() {
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalRevenue")}</span>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalRevenue)}</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center mb-1"><ArrowUpRight size={12} /> 12%</span>
           </div>
         </div>
 
@@ -87,7 +86,6 @@ export default function DashboardWidget() {
           <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalExpenses")}</span>
           <div className="flex items-end gap-2">
             <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalExpenses)}</span>
-            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold flex items-center mb-1"><ArrowDownRight size={12} /> 5%</span>
           </div>
         </div>
 
@@ -221,29 +219,6 @@ export default function DashboardWidget() {
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-[color:var(--border-main)]/30">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-600 dark:text-indigo-400"><TrendingUp size={20} /></div>
-            <div>
-              <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">מגמת צמיחה</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">+18.4%</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-400"><AlertTriangle size={20} /></div>
-            <div>
-              <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">חריגת תקציב פוטנציאלית</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">יוני 2026</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-400"><Activity size={20} /></div>
-            <div>
-              <div className="text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">דירוג אשראי פנימי</div>
-              <div className="text-lg font-black text-[color:var(--foreground-main)]">AA+</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

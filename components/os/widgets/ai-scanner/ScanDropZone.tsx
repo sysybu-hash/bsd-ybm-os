@@ -130,9 +130,14 @@ export function ScanDropZone({
           ))}
         </ul>
       ) : null}
-      {previewUrl && previewMime ? (
+      {previewFileName ? (
         <div className="mt-4 w-full max-w-sm px-2">
-          <ScanFilePreview url={previewUrl} mime={previewMime} fileName={previewFileName} emptyLabel="" />
+          <ScanFilePreview
+            url={previewUrl}
+            mime={previewMime}
+            fileName={previewFileName}
+            emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה לסוג קובץ זה")}
+          />
         </div>
       ) : null}
     </div>

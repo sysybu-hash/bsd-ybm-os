@@ -28,6 +28,7 @@ type DashboardHeaderProps = {
   tabs: Tab[];
   setActiveTab: (id: TabId) => void;
   clearProjectSelection: () => void;
+  resetWorkspace: () => void;
   togglePush: () => void;
   onBlueprintFile: (file: File) => void;
   openWorkspaceWidget?: ((type: WidgetType, data?: Record<string, unknown> | null) => void) | null;
@@ -36,7 +37,7 @@ type DashboardHeaderProps = {
 export function DashboardHeader({
   t, data, resolvedId, isCompanyMgmt, pushEnabled, uploadingBlueprint,
   fileRef, activeTab, tabs, setActiveTab,
-  clearProjectSelection, togglePush, onBlueprintFile, openWorkspaceWidget,
+  clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, openWorkspaceWidget,
 }: DashboardHeaderProps) {
   return (
     <header className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
@@ -55,6 +56,13 @@ export function DashboardHeader({
           >
             <ArrowRight size={14} aria-hidden />
             {t("projectDashboard.switchProject")}
+          </button>
+          <button
+            type="button"
+            onClick={resetWorkspace}
+            className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+          >
+            {t("projectDashboard.resetWorkspace")}
           </button>
           <button
             type="button"

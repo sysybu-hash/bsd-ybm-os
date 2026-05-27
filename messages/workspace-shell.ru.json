@@ -875,7 +875,11 @@
       "subtitleScoped": "Сканирование и сохранение в выбранный проект",
       "noProjects": "Нет проектов — создайте в CRM",
       "openCrm": "Открыть CRM",
-      "loadFailed": "Ошибка загрузки проектов"
+      "loadFailed": "Ошибка загрузки проектов",
+      "stopScan": "Остановить сканирование",
+      "back": "Назад",
+      "continueToSave": "Продолжить к сохранению",
+      "cancel": "Отмена"
     },
     "googleCalendar": {
       "title": "Google Calendar",
@@ -1048,7 +1052,13 @@
       "exportSelected": "Экспорт выбранных (ZIP)",
       "selectForExport": "Выберите хотя бы один документ",
       "bulkExportSuccess": "Архив загружен как ZIP",
-      "bulkExportFailed": "Массовый экспорт не удался"
+      "bulkExportFailed": "Массовый экспорт не удался",
+      "emptyRecycleBin": "Очистить корзину",
+      "emptyRecycleBinTitle": "Очистить корзину?",
+      "emptyRecycleBinMessage": "{count} документов будут удалены безвозвратно.",
+      "emptyRecycleBinConfirm": "Очистить корзину",
+      "emptyRecycleBinSuccess": "Удалено документов: {count}",
+      "emptyRecycleBinFailed": "Не удалось очистить корзину"
     },
     "meckano": {
       "title": "Отчёты Meckano",
@@ -1181,6 +1191,9 @@
     "pickProjectDesc": "Нажмите на проект, чтобы открыть центр управления",
     "pickProjectLoading": "Загрузка проектов…",
     "switchProject": "Сменить проект",
+    "resetWorkspace": "Сбросить вид",
+    "resetWorkspaceDone": "Центр проекта сброшен",
+    "boqEmptyImport": "Нет строк — импортируйте Excel (предложение, ведомость или счёт).",
     "noProjects": "В организации нет проектов — создайте в CRM или на доске",
     "openCrm": "Открыть CRM",
     "statusActive": "Активен",

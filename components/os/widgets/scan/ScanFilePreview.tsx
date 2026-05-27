@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { isOfficeMime, scanPreviewKind } from "@/lib/scan-preview";
 
 type ScanFilePreviewProps = {
@@ -32,14 +31,13 @@ export default function ScanFilePreview({
 
   if (kind === "image") {
     return (
-      <div className="relative mx-auto h-[min(60dvh,560px)] w-full max-w-full">
-        <Image
+      <div className="relative mx-auto flex h-[min(60dvh,560px)] w-full max-w-full items-center justify-center">
+        {/* blob: URLs — native img avoids Next/Image blocking preview */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={url}
           alt={fileName}
-          fill
-          unoptimized
-          sizes="(max-width: 768px) 100vw, 560px"
-          className="rounded-lg border border-[color:var(--border-main)] object-contain"
+          className="max-h-[min(60dvh,560px)] w-full rounded-lg border border-[color:var(--border-main)] object-contain"
         />
       </div>
     );

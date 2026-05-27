@@ -41,7 +41,7 @@ export default function ProjectDashboardWidget({
     diaryInitialTaskId, setDiaryInitialTaskId,
     showProjectPicker, isCompanyMgmt, industryId,
     tabs,
-    selectProject, refresh, clearProjectSelection, togglePush, onBlueprintFile,
+    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile,
   } = s;
 
   if (showProjectPicker) {
@@ -107,6 +107,7 @@ export default function ProjectDashboardWidget({
         tabs={tabs}
         setActiveTab={setActiveTab}
         clearProjectSelection={clearProjectSelection}
+        resetWorkspace={resetWorkspace}
         togglePush={togglePush}
         onBlueprintFile={onBlueprintFile}
         openWorkspaceWidget={openWorkspaceWidget}

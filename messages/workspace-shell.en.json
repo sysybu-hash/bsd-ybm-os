@@ -875,7 +875,11 @@
       "subtitleScoped": "Scan and save to the selected project",
       "noProjects": "No projects yet — create one in CRM",
       "openCrm": "Open CRM",
-      "loadFailed": "Failed to load projects"
+      "loadFailed": "Failed to load projects",
+      "stopScan": "Stop scan",
+      "back": "Back",
+      "continueToSave": "Continue to save",
+      "cancel": "Cancel"
     },
     "googleCalendar": {
       "title": "Google Calendar",
@@ -1048,7 +1052,13 @@
       "exportSelected": "Export selected (ZIP)",
       "selectForExport": "Select at least one document",
       "bulkExportSuccess": "Archive downloaded as ZIP",
-      "bulkExportFailed": "Bulk export failed"
+      "bulkExportFailed": "Bulk export failed",
+      "emptyRecycleBin": "Empty recycle bin",
+      "emptyRecycleBinTitle": "Empty the recycle bin?",
+      "emptyRecycleBinMessage": "{count} documents will be permanently deleted. This cannot be undone.",
+      "emptyRecycleBinConfirm": "Empty recycle bin",
+      "emptyRecycleBinSuccess": "{count} documents permanently deleted",
+      "emptyRecycleBinFailed": "Failed to empty recycle bin"
     },
     "meckano": {
       "title": "Meckano reports",
@@ -1181,6 +1191,9 @@
     "pickProjectDesc": "Select a project to open the control center",
     "pickProjectLoading": "Loading projects…",
     "switchProject": "Switch project",
+    "resetWorkspace": "Reset view",
+    "resetWorkspaceDone": "Project center reset to defaults",
+    "boqEmptyImport": "No rows yet — import an Excel file (quote, BOQ, or account).",
     "noProjects": "No projects in this organization — create one in CRM or the project board",
     "openCrm": "Open CRM",
     "statusActive": "Active",

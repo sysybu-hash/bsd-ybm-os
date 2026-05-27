@@ -12,6 +12,7 @@ import { ScanConfirmPanel } from "./ai-scanner/ScanConfirmPanel";
 import { ScanHistorySidebar } from "./ai-scanner/ScanHistorySidebar";
 import { ScanHeaderToolbar } from "./ai-scanner/ScanHeaderToolbar";
 import { ScanFloatingPanels } from "./ai-scanner/ScanFloatingPanels";
+import { ScanControlBar } from "./ai-scanner/ScanControlBar";
 
 export default function AiScannerWidget({
   liveData = null,
@@ -49,6 +50,7 @@ export default function AiScannerWidget({
     lastScanV5, lastScanFileName,
     savingNotebook, previewUrl, previewMime, previewFileName,
     applyFilePreview, confirmAnalysis, saveToNotebook,
+    scanUiPhase, stopScan, goBackScanStep, continueToSaveStep, resetScanState,
   } = scanQueue;
 
   if (showProjectPicker) {
@@ -166,6 +168,15 @@ export default function AiScannerWidget({
             </Panel>
           </Group>
         )}
+
+        <ScanControlBar
+          phase={scanUiPhase}
+          t={t}
+          onStop={stopScan}
+          onBack={goBackScanStep}
+          onContinueToSave={pendingAnalysis ? continueToSaveStep : undefined}
+          onCancel={resetScanState}
+        />
 
         {/* Engine status bar */}
         <div className="grid grid-cols-3 gap-1.5 border-t border-[color:var(--border-main)] p-2 sm:gap-2">

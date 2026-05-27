@@ -352,6 +352,7 @@
     "fileTooLarge": "קובץ גדול מדי (מקס׳ 25MB): {name}",
     "acceptHint": "PDF, Office, תמונות, CSV, JSON, XML, HTML, Markdown, RTF",
     "scanError": "שגיאה בסריקה",
+    "scanStopped": "הסריקה הופסקה",
     "queueStatusPending": "ממתין",
     "queueStatusProcessing": "מעבד",
     "queueStatusDone": "הושלם",

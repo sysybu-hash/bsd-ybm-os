@@ -1,12 +1,18 @@
+import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+
+const log = createLogger("dashboard-stats");
 
 export async function getDashboardStats(orgId: string) {
   const whereOrg = { organizationId: orgId };
-  const [projects, expenses, clients, quotes] = await Promise.all([
+  const [projects, expenses, clients, quotes, pendingInvoicesCount] = await Promise.all([
     prisma.project.findMany({ where: whereOrg }),
     prisma.expenseRecord.findMany({ where: whereOrg }),
     prisma.contact.findMany({ where: whereOrg }),
     prisma.quote.findMany({ where: whereOrg }),
+    prisma.issuedDocument.count({
+      where: { organizationId: orgId, status: "PENDING", deletedAt: null },
+    }),
   ]);
 
   const totalRevenue = projects.reduce((sum, p) => sum + (p.budget ?? 0), 0);
@@ -39,26 +45,28 @@ export async function getDashboardStats(orgId: string) {
   try {
     const { getCashflowForecasting } = await import("@/lib/cashflow-logic");
     cashflow = await getCashflowForecasting(orgId);
-  } catch (e) {
-    console.error("Cashflow fetch failed", e);
+  } catch (err: unknown) {
+    log.warn("Cashflow fetch failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return {
-    totalRevenue: totalRevenue > 0 ? totalRevenue : 1200000,
-    totalExpenses: totalExpenses > 0 ? totalExpenses : 450000,
+    totalRevenue,
+    totalExpenses,
     activeProjects: projects.length,
     totalClients: clients.length,
-    pendingInvoices: 12,
+    pendingInvoices: pendingInvoicesCount,
     aiInsight: insight,
     cashflow,
     analytics: {
       monthlyExpenses: [
-        { name: "חודש שעבר", value: lastMonthExpenses || 120000 },
-        { name: "החודש", value: thisMonthExpenses || 145000 },
+        { name: "חודש שעבר", value: lastMonthExpenses },
+        { name: "החודש", value: thisMonthExpenses },
       ],
       quoteStatus: [
-        { name: "ממתין", value: pendingQuotes || 5, color: "#f59e0b" },
-        { name: "נחתם", value: signedQuotes || 8, color: "#10b981" },
+        { name: "ממתין", value: pendingQuotes, color: "#f59e0b" },
+        { name: "נחתם", value: signedQuotes, color: "#10b981" },
       ],
     },
   };

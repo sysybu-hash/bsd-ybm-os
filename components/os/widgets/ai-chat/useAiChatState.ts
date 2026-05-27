@@ -134,7 +134,7 @@ export function useAiChatState(
 
   const geminiLive = useGeminiLiveAudio({
     owner: "aiChatFull",
-    enabled: (chatTab === "live" || isLiveMode) && geminiLiveEligible,
+    enabled: isLiveMode && geminiLiveEligible,
     contextReady: liveContextReady,
     systemInstruction: osAssistant.systemInstructionVoice,
     settings: geminiVoiceSettings,

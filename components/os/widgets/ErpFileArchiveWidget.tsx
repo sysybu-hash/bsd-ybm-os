@@ -37,6 +37,7 @@ export default function ErpFileArchiveWidget() {
     handlePreview, handleDownload, confirmDelete, handleRestore, openDeleteDialog,
     selectionMode, setSelectionMode, selectedKeys, toggleSelected, clearSelection,
     bulkExporting, handleBulkExport, fileKey,
+    emptyTrashTarget, setEmptyTrashTarget, emptyingTrash, confirmEmptyRecycleBin,
   } = archive;
 
   const emptyAfterLoad = !loading && !loadError && files.length === 0;
@@ -118,6 +119,16 @@ export default function ErpFileArchiveWidget() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 md:mr-4">
+          {archiveView === "trash" && trashCount > 0 ? (
+            <button
+              type="button"
+              disabled={emptyingTrash}
+              onClick={() => setEmptyTrashTarget(true)}
+              className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50 dark:text-rose-300"
+            >
+              {t("workspaceWidgets.erpArchive.emptyRecycleBin")}
+            </button>
+          ) : null}
           {archiveView === "active" ? (
             selectionMode ? (
               <>
@@ -291,6 +302,16 @@ export default function ErpFileArchiveWidget() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+      <OsConfirmDialog
+        open={emptyTrashTarget}
+        title={t("workspaceWidgets.erpArchive.emptyRecycleBinTitle")}
+        message={t("workspaceWidgets.erpArchive.emptyRecycleBinMessage", { count: String(trashCount) })}
+        destructive
+        confirmLabel={t("workspaceWidgets.erpArchive.emptyRecycleBinConfirm")}
+        onCancel={() => setEmptyTrashTarget(false)}
+        onConfirm={() => void confirmEmptyRecycleBin()}
+      />
+
       <OsConfirmDialog
         open={deleteTarget !== null}
         title={archiveView === "trash" ? "מחיקה לצמיתות?" : "להעביר לפח האשפה?"}

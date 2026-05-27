@@ -55,7 +55,7 @@ export function ArchivePreviewPanel({
               <span className="font-bold text-[color:var(--foreground-main)]">סוג: </span>{scanDoc.type}
             </div>
             {!scanDoc.lineItems?.length ? (
-              <WidgetState variant="empty" message="אין שורות מפורטות למסמך זה." />
+              <ScanDocSummary aiData={scanDoc.aiData} fileName={scanDoc.fileName} />
             ) : (
               <table className="w-full text-right text-xs">
                 <thead>
@@ -84,5 +84,52 @@ export function ArchivePreviewPanel({
         )}
       </div>
     </aside>
+  );
+}
+
+function ScanDocSummary({
+  aiData,
+  fileName,
+}: {
+  aiData?: Record<string, unknown> | null;
+  fileName: string;
+}) {
+  const vendor =
+    typeof aiData?.vendor === "string"
+      ? aiData.vendor
+      : typeof aiData?.supplier === "string"
+        ? aiData.supplier
+        : null;
+  const total = typeof aiData?.total === "number" ? aiData.total : null;
+  const summary = typeof aiData?.summary === "string" ? aiData.summary : null;
+
+  if (!vendor && total == null && !summary) {
+    return (
+      <WidgetState
+        variant="empty"
+        message="אין שורות מפורטות — ניתן להוריד או לפתוח את המסמך מהתפריט."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 text-xs">
+      <p className="font-bold text-[color:var(--foreground-main)]">{fileName}</p>
+      {vendor ? (
+        <p>
+          <span className="text-[color:var(--foreground-muted)]">ספק: </span>
+          {vendor}
+        </p>
+      ) : null}
+      {total != null ? (
+        <p>
+          <span className="text-[color:var(--foreground-muted)]">סכום: </span>
+          ₪{total.toLocaleString("he-IL")}
+        </p>
+      ) : null}
+      {summary ? (
+        <p className="text-[color:var(--foreground-muted)] leading-relaxed">{summary}</p>
+      ) : null}
+    </div>
   );
 }

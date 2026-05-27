@@ -180,7 +180,7 @@ export default function ProjectBoqPanel({
         </p>
       ) : lines.length === 0 ? (
         <p className="text-xs text-[color:var(--foreground-muted)]">
-          אין שורות — ייבאו קובץ Excel (הצעת מחיר / חשבון חיים אדלר).
+          {t("projectDashboard.boqEmptyImport")}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-[color:var(--border-main)]">

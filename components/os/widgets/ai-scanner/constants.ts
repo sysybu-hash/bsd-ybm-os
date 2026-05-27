@@ -43,12 +43,17 @@ export function mapV5ToAnalysis(
 export async function readNdjsonStream(
   res: Response,
   onLine: (obj: Record<string, unknown>) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No body");
   const dec = new TextDecoder();
   let buf = "";
   for (;;) {
+    if (signal?.aborted) {
+      await reader.cancel().catch(() => undefined);
+      throw new DOMException("Scan aborted", "AbortError");
+    }
     const { done, value } = await reader.read();
     if (done) break;
     buf += dec.decode(value, { stream: true });

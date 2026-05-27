@@ -30,6 +30,7 @@ export type RunScanArgs = {
   setLastScanV5: (v: ScanExtractionV5 | null) => void;
   setLastScanFileName: (n: string) => void;
   applyFilePreview: (file: File) => void;
+  signal?: AbortSignal;
 };
 
 export async function runScanSingleFile({
@@ -48,6 +49,7 @@ export async function runScanSingleFile({
   setLastScanV5,
   setLastScanFileName,
   applyFilePreview,
+  signal,
 }: RunScanArgs): Promise<DocumentAnalysis> {
   setPendingAnalysis(null);
   setResultJson("");
@@ -74,7 +76,11 @@ export async function runScanSingleFile({
     formData.append("engineRunMode", engineRunMode);
     if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
 
-    const res = await fetch("/api/scan/tri-engine/stream", { method: "POST", body: formData });
+    const res = await fetch("/api/scan/tri-engine/stream", {
+      method: "POST",
+      body: formData,
+      signal,
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(String((err as { error?: string }).error ?? res.status));
@@ -110,7 +116,7 @@ export async function runScanSingleFile({
       if (obj.type === "error" || (obj.error && !obj.ok)) {
         throw new Error(String(obj.error ?? "Scan failed"));
       }
-    });
+    }, signal);
 
     if (finalV5) {
       const analysis = mapV5ToAnalysis(finalV5, finalAi);
@@ -147,7 +153,10 @@ export async function runScanSingleFile({
       return analysis;
     }
     throw new Error("No extraction result");
-  } catch (err) {
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw err;
+    }
     throw err instanceof Error ? err : new Error(tr("scanner.scanError", "שגיאה בסריקה"));
   }
 }

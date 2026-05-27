@@ -890,7 +890,11 @@
       "subtitleScoped": "סריקה ושמירה לפרויקט הנבחר",
       "noProjects": "אין פרויקטים — צרו פרויקט ב-CRM",
       "openCrm": "פתיחת CRM",
-      "loadFailed": "שגיאה בטעינת פרויקטים"
+      "loadFailed": "שגיאה בטעינת פרויקטים",
+      "stopScan": "עצור סריקה",
+      "back": "חזור",
+      "continueToSave": "המשך לשמירה",
+      "cancel": "ביטול"
     },
     "googleCalendar": {
       "title": "יומן Google",
@@ -1063,7 +1067,13 @@
       "exportSelected": "ייצוא נבחרים (ZIP)",
       "selectForExport": "בחרו לפחות מסמך אחד",
       "bulkExportSuccess": "הארכיון הורד כ-ZIP",
-      "bulkExportFailed": "ייצוא בכמות נכשל"
+      "bulkExportFailed": "ייצוא בכמות נכשל",
+      "emptyRecycleBin": "ריקון סל המיחזור",
+      "emptyRecycleBinTitle": "לרוקן את סל המיחזור?",
+      "emptyRecycleBinMessage": "יימחקו לצמיתות {count} מסמכים מפח האשפה. לא ניתן לשחזר.",
+      "emptyRecycleBinConfirm": "רוקן סל מיחזור",
+      "emptyRecycleBinSuccess": "נמחקו {count} מסמכים לצמיתות",
+      "emptyRecycleBinFailed": "ריקון סל המיחזור נכשל"
     },
     "meckano": {
       "title": "מחולל דוחות Meckano",
@@ -1196,6 +1206,9 @@
     "pickProjectDesc": "לחצו על פרויקט כדי לפתוח את מרכז השליטה",
     "pickProjectLoading": "טוען פרויקטים…",
     "switchProject": "החלפת פרויקט",
+    "resetWorkspace": "ניקוי ואיפוס",
+    "resetWorkspaceDone": "מרכז הפרויקט אופס לברירת מחדל",
+    "boqEmptyImport": "אין שורות — ייבאו קובץ Excel (הצעת מחיר, כתב כמויות או חשבון).",
     "noProjects": "אין פרויקטים בארגון — צרו פרויקט ב-CRM או בלוח הפרויקטים",
     "openCrm": "פתחו CRM",
     "statusActive": "פעיל",

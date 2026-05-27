@@ -8,20 +8,23 @@ export type ConfirmExpenseInput = {
 
 export async function confirmExpense(orgId: string, body: ConfirmExpenseInput) {
   const amount = parseFloat(String(body.amount ?? ""));
-  const projectName = body.projectName || "פרויקט הרצליה";
+  const projectName = body.projectName?.trim() || "";
 
   if (Number.isNaN(amount) || amount <= 0) {
     return { ok: false as const, error: "סכום לא תקין" };
   }
 
-  let project = await prisma.project.findFirst({
-    where: { name: projectName.trim(), organizationId: orgId },
-  });
+  let project = projectName
+    ? await prisma.project.findFirst({
+        where: { name: projectName, organizationId: orgId },
+      })
+    : null;
   if (!project) {
+    const fallbackName = projectName || "כללי";
     project = await prisma.project.create({
       data: {
-        name: projectName,
-        budget: 1200000,
+        name: fallbackName,
+        budget: 0,
         organizationId: orgId,
       },
     });
@@ -38,24 +41,29 @@ export async function confirmExpense(orgId: string, body: ConfirmExpenseInput) {
     },
   });
 
-  const allExpenses = await prisma.expenseRecord.aggregate({
-    where: { organizationId: orgId },
-    _sum: { total: true },
-  });
-  const allProjects = await prisma.project.aggregate({
-    where: { organizationId: orgId },
-    _sum: { budget: true },
-    _count: { id: true },
-  });
+  const [allExpenses, allProjects, pendingInvoices] = await Promise.all([
+    prisma.expenseRecord.aggregate({
+      where: { organizationId: orgId },
+      _sum: { total: true },
+    }),
+    prisma.project.aggregate({
+      where: { organizationId: orgId },
+      _sum: { budget: true },
+      _count: { id: true },
+    }),
+    prisma.issuedDocument.count({
+      where: { organizationId: orgId, status: "PENDING", deletedAt: null },
+    }),
+  ]);
 
   return {
     ok: true as const,
     success: true,
     newStats: {
-      totalRevenue: allProjects._sum.budget || 1200000,
-      totalExpenses: allExpenses._sum.total || 450000,
-      activeProjects: allProjects._count.id || 5,
-      pendingInvoices: 12,
+      totalRevenue: allProjects._sum.budget ?? 0,
+      totalExpenses: allExpenses._sum.total ?? 0,
+      activeProjects: allProjects._count.id,
+      pendingInvoices,
     },
   };
 }

@@ -128,6 +128,13 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     void loadProjectsList();
   }, [loadProjectsList]);
 
+  const resetWorkspace = useCallback(() => {
+    setActiveTab("financial");
+    setDiaryInitialDesc(undefined);
+    setDiaryInitialTaskId(undefined);
+    toast.success(t("projectDashboard.resetWorkspaceDone"));
+  }, [t]);
+
   const tabs = useMemo(() => {
     const all: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
       { id: "financial", label: isCompanyMgmt ? t("projectDashboard.tabs.financialBusiness") : t("projectDashboard.tabs.financial"), icon: BarChart3 },
@@ -150,7 +157,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     diaryInitialTaskId, setDiaryInitialTaskId,
     showProjectPicker, isCompanyMgmt, industryId,
     tabs,
-    selectProject, refresh, clearProjectSelection, togglePush, onBlueprintFile, loadProjectsList,
+    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, loadProjectsList,
     openWorkspaceWidget,
   };
 }

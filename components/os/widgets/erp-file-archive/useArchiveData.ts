@@ -36,6 +36,8 @@ export function useArchiveData() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [bulkExporting, setBulkExporting] = useState(false);
+  const [emptyTrashTarget, setEmptyTrashTarget] = useState(false);
+  const [emptyingTrash, setEmptyingTrash] = useState(false);
 
   // Sync nav
   const applyArchiveNav = useCallback((view: WidgetViewState) => {
@@ -118,9 +120,21 @@ export function useArchiveData() {
       try {
         const res = await fetch(`/api/erp/documents/${selectedFile.sourceId}`, { credentials: "include", cache: "no-store" });
         if (!res.ok) throw new Error("מסמך לא נמצא");
-        const data = (await res.json()) as { document?: ScanDocPreview };
+        const data = (await res.json()) as {
+          document?: ScanDocPreview & { aiData?: unknown };
+        };
         if (cancelled) return;
-        setScanDoc(data.document ?? null);
+        const doc = data.document;
+        if (!doc) {
+          setScanDoc(null);
+        } else {
+          const aiRaw = doc.aiData;
+          const aiData =
+            aiRaw && typeof aiRaw === "object" && !Array.isArray(aiRaw)
+              ? (aiRaw as Record<string, unknown>)
+              : null;
+          setScanDoc({ ...doc, aiData });
+        }
       } catch { if (!cancelled) setPreviewError("לא ניתן לטעון פרטי סריקה"); }
       finally { if (!cancelled) setPreviewLoading(false); }
     })();
@@ -213,6 +227,33 @@ export function useArchiveData() {
     setSelectionMode(false);
   };
 
+  const confirmEmptyRecycleBin = async () => {
+    setEmptyingTrash(true);
+    try {
+      const res = await fetch("/api/erp/archive/empty-trash", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? t("workspaceWidgets.erpArchive.emptyRecycleBinFailed"));
+      }
+      const body = (await res.json()) as { total?: number };
+      toast.success(
+        t("workspaceWidgets.erpArchive.emptyRecycleBinSuccess", {
+          count: String(body.total ?? 0),
+        }),
+      );
+      setSelectedFile(null);
+      setEmptyTrashTarget(false);
+      void fetchArchive();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("workspaceWidgets.erpArchive.emptyRecycleBinFailed"));
+    } finally {
+      setEmptyingTrash(false);
+    }
+  };
+
   const handleBulkExport = async () => {
     if (selectedKeys.size === 0) {
       toast.message(t("workspaceWidgets.erpArchive.selectForExport"));
@@ -260,5 +301,6 @@ export function useArchiveData() {
     handlePreview, handleDownload, confirmDelete, handleRestore, openDeleteDialog,
     selectionMode, setSelectionMode, selectedKeys, toggleSelected, clearSelection,
     bulkExporting, handleBulkExport, fileKey,
+    emptyTrashTarget, setEmptyTrashTarget, emptyingTrash, confirmEmptyRecycleBin,
   };
 }
