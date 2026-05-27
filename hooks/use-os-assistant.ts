@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { fetchOsAssistantContextShared } from "@/lib/client/os-assistant-context-fetch";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { handleOsAssistantToolCall, type OsAssistantToolDeps } from "@/lib/os-assistant/tool-handler";
 
@@ -31,53 +32,47 @@ export function useOsAssistant(deps: OsAssistantToolDeps) {
     geminiLiveEnabled: true,
   });
 
-  const refresh = useCallback(async (): Promise<boolean> => {
-    if (!session?.user?.id) {
-      setContext(null);
-      setSystemInstruction(fallbackInstruction(locale));
-      setSystemInstructionVoice(fallbackInstruction(locale, true));
-      return false;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/os/assistant/context", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!res.ok) {
+  const refresh = useCallback(
+    async (options?: { force?: boolean }): Promise<boolean> => {
+      if (!session?.user?.id) {
+        setContext(null);
+        setSystemInstruction(fallbackInstruction(locale));
         setSystemInstructionVoice(fallbackInstruction(locale, true));
-        return fallbackInstruction(locale, true).trim().length >= 80;
+        return false;
       }
-      const data = (await res.json()) as {
-        context?: OsAssistantUserContext;
-        systemInstruction?: string;
-        systemInstructionVoice?: string;
-        featureFlags?: Partial<typeof featureFlags>;
-      };
-      if (data.context) setContext(data.context);
-      if (typeof data.systemInstruction === "string") setSystemInstruction(data.systemInstruction);
-      if (data.featureFlags) {
-        setFeatureFlags((prev) => ({ ...prev, ...data.featureFlags }));
+      setLoading(true);
+      try {
+        const data = await fetchOsAssistantContextShared({ force: options?.force });
+        if (!data) {
+          setSystemInstructionVoice(fallbackInstruction(locale, true));
+          return fallbackInstruction(locale, true).trim().length >= 80;
+        }
+        if (data.context) setContext(data.context);
+        if (typeof data.systemInstruction === "string") setSystemInstruction(data.systemInstruction);
+        if (data.featureFlags) {
+          setFeatureFlags((prev) => ({ ...prev, ...data.featureFlags }));
+        }
+        if (typeof data.systemInstructionVoice === "string") {
+          setSystemInstructionVoice(data.systemInstructionVoice);
+          return data.systemInstructionVoice.trim().length >= 80;
+        }
+        const voice = fallbackInstruction(locale, true);
+        setSystemInstructionVoice(voice);
+        return voice.trim().length >= 80;
+      } catch {
+        const voice = fallbackInstruction(locale, true);
+        setSystemInstructionVoice(voice);
+        return voice.trim().length >= 80;
+      } finally {
+        setLoading(false);
       }
-      if (typeof data.systemInstructionVoice === "string") {
-        setSystemInstructionVoice(data.systemInstructionVoice);
-        return data.systemInstructionVoice.trim().length >= 80;
-      }
-      const voice = fallbackInstruction(locale, true);
-      setSystemInstructionVoice(voice);
-      return voice.trim().length >= 80;
-    } catch {
-      const voice = fallbackInstruction(locale, true);
-      setSystemInstructionVoice(voice);
-      return voice.trim().length >= 80;
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id, locale]);
+    },
+    [session?.user?.id, locale],
+  );
 
   useEffect(() => {
     if (status === "authenticated") void refresh();
-  }, [status, refresh, locale]);
+  }, [status, session?.user?.id, locale]);
 
   const onToolCall = useCallback(
     async (name: string, args: Record<string, unknown>) =>

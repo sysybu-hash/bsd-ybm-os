@@ -28,6 +28,12 @@ import {
 } from "@/lib/launcher/user-launcher-config";
 import { sanitizeConfig } from "./launcher-provider-utils";
 import { useLauncherActions } from "./useLauncherActions";
+import {
+  isApiCooldown,
+  markApiCooldownFromResponse,
+} from "@/lib/client/api-rate-limit-backoff";
+
+const LAUNCHER_CONFIG_KEY = "api:user/launcher-config";
 
 type PickerState = { zone: LauncherZone; slotIndex: number; row?: number; col?: number } | null;
 
@@ -90,12 +96,16 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
       );
       if (userId) {
         try {
-          const res = await fetch("/api/user/launcher-config", { credentials: "include" });
-          if (res.ok) {
-            const data = (await res.json()) as { config?: unknown };
-            base = data.config
-              ? resolveStoredLauncherConfig(data.config, organizationIndustry, launcherDefaultOptions)
-              : getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions);
+          if (!isApiCooldown(LAUNCHER_CONFIG_KEY)) {
+            const res = await fetch("/api/user/launcher-config", { credentials: "include" });
+            if (markApiCooldownFromResponse(LAUNCHER_CONFIG_KEY, res)) {
+              /* use local storage only during cooldown */
+            } else if (res.ok) {
+              const data = (await res.json()) as { config?: unknown };
+              base = data.config
+                ? resolveStoredLauncherConfig(data.config, organizationIndustry, launcherDefaultOptions)
+                : getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions);
+            }
           }
         } catch { /* offline */ }
       }
@@ -115,7 +125,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
     }
     void hydrate();
     return () => { cancelled = true; };
-  }, [organizationIndustry, userId, launcherDefaultOptions, permissionCtx]);
+  }, [organizationIndustry, userId, isPlatformAdmin, meckanoEnabled]);
 
   useEffect(() => {
     if (!hydrated) return;

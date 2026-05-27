@@ -96,8 +96,8 @@ export function useAiChatState(
   }, [liveData]);
 
   useEffect(() => {
-    if (chatTab === "live" && session?.user?.id) void osAssistant.refresh();
-  }, [chatTab, session?.user?.id, osAssistant]);
+    if (chatTab === "live" && session?.user?.id) void osAssistant.refresh({ force: true });
+  }, [chatTab, session?.user?.id, osAssistant.refresh]);
 
   useEffect(() => {
     if (osAssistant.featureFlags.geminiLiveEnabled === false) {
@@ -158,9 +158,10 @@ export function useAiChatState(
       return result;
     },
     onError: (message) => {
+      if (!liveAutoStartRef.current) return;
+      liveAutoStartRef.current = false;
       toast.error(message);
       if (isGeminiLiveRateLimited()) {
-        liveAutoStartRef.current = false;
         setIsLiveMode(false);
       }
     },
@@ -172,6 +173,7 @@ export function useAiChatState(
   useEffect(() => {
     if (liveData?.startLive !== true || !isLiveMode || isLiveActive || !liveContextReady) return;
     if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
+    liveAutoStartRef.current = true;
     void start();
   }, [
     liveData?.startLive,
@@ -181,29 +183,6 @@ export function useAiChatState(
     geminiLive.isRateLimited,
     start,
   ]);
-  useEffect(() => {
-    if (chatTab !== "live") {
-      liveAutoStartRef.current = false;
-      return;
-    }
-    if (!isLiveMode || !geminiLiveEligible || !liveContextReady) return;
-    if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
-    if (isLiveActive || geminiLive.state === "connecting") return;
-    if (geminiLive.state === "fallback" || geminiLive.state === "error") return;
-    if (liveAutoStartRef.current) return;
-    liveAutoStartRef.current = true;
-    void start();
-  }, [
-    chatTab,
-    isLiveMode,
-    geminiLiveEligible,
-    liveContextReady,
-    isLiveActive,
-    geminiLive.isRateLimited,
-    geminiLive.state,
-    start,
-  ]);
-
   const beginLiveSession = useCallback(async () => {
     if (isGeminiLiveRateLimited()) {
       const untilMs = getGeminiLiveRateLimitCooldownUntilMs();

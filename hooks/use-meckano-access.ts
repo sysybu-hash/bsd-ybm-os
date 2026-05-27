@@ -4,6 +4,12 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
+import {
+  isApiCooldown,
+  markApiCooldownFromResponse,
+} from "@/lib/client/api-rate-limit-backoff";
+
+const MECKANO_ACCESS_KEY = "api:meckano/access";
 
 export function useMeckanoAccess() {
   const { data: session, status } = useSession();
@@ -23,8 +29,16 @@ export function useMeckanoAccess() {
 
     let cancelled = false;
     void (async () => {
+      if (isApiCooldown(MECKANO_ACCESS_KEY)) {
+        if (!cancelled) setAllowed(false);
+        return;
+      }
       try {
         const res = await fetch("/api/meckano/access", { credentials: "same-origin" });
+        if (markApiCooldownFromResponse(MECKANO_ACCESS_KEY, res)) {
+          if (!cancelled) setAllowed(false);
+          return;
+        }
         const data = (await res.json()) as { allowed?: boolean };
         if (!cancelled) setAllowed(Boolean(data.allowed));
       } catch {

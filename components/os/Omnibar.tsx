@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Loader2, Mic, Send, SlidersHorizontal, Volume2, HardHat } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
@@ -45,10 +45,6 @@ export default function Omnibar({
   const [input, setInput] = useState("");
 
   const osAssistant = useOsAssistant(assistantToolDeps);
-
-  useEffect(() => {
-    if (session?.user?.id) void osAssistant.refresh();
-  }, [session?.user?.id, osAssistant.refresh, osAssistant]);
 
   const liveUserName = osAssistant.context?.user?.name?.trim() || session?.user?.name?.trim() || undefined;
 
@@ -119,8 +115,14 @@ export default function Omnibar({
               <SlidersHorizontal size={18} aria-hidden />
             </button>
             <button type="button" onClick={live.toggleLive}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition ${live.voiceActive ? "bg-indigo-600 text-white shadow-sm" : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
-              title={live.voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition ${live.voiceActive ? "bg-indigo-600 text-white shadow-sm" : live.rateLimitActive ? "border border-rose-500/40 bg-rose-500/10 text-rose-300" : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
+              title={
+                live.rateLimitActive && live.voiceStatus === "idle" && live.rateLimitLabel
+                  ? live.rateLimitLabel
+                  : live.voiceStatus !== "idle"
+                    ? t("workspaceWidgets.omnibar.voiceOff")
+                    : t("workspaceWidgets.omnibar.voiceOn")
+              }
               aria-label={live.voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
               aria-pressed={live.voiceStatus !== "idle"}>
               {live.voiceStatus === "connecting" ? <Loader2 size={18} className="animate-spin" aria-hidden /> :

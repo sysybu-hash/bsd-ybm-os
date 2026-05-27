@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
@@ -45,6 +45,10 @@ export function useOmnibarGeminiLive({
   const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("idle");
   const [omnibarLiveOn, setOmnibarLiveOn] = useState(false);
+  /** true רק אחרי לחיצה מפורשת על המיקרופון — מונע toast על שגיאות שלא ביקש המשתמש */
+  const userRequestedLiveRef = useRef(false);
+  /** המשתמש לחץ מיקרופון לפני שההקשר מוכן — מחכים ל-contextReady ואז מתחברים פעם אחת */
+  const pendingLiveStartRef = useRef(false);
 
   useEffect(() => { setGeminiVoiceSettings(loadGeminiLiveVoiceSettings()); }, []);
 
@@ -79,9 +83,12 @@ export function useOmnibarGeminiLive({
       return result;
     },
     onError: (err) => {
-      toast.error(err);
       if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
       setVoiceStatus("error");
+      pendingLiveStartRef.current = false;
+      if (!userRequestedLiveRef.current) return;
+      userRequestedLiveRef.current = false;
+      toast.error(err);
       if (isGeminiLiveRateLimited()) setOmnibarLiveOn(false);
     },
   });
@@ -89,18 +96,29 @@ export function useOmnibarGeminiLive({
   useEffect(() => {
     const onOwnerChange = (ev: Event) => {
       const detail = (ev as CustomEvent<{ owner?: string | null }>).detail;
-      if (detail?.owner === "aiChatFull") { geminiLive.stop(); setOmnibarLiveOn(false); }
+      if (detail?.owner === "aiChatFull") {
+        geminiLive.stop();
+        pendingLiveStartRef.current = false;
+        userRequestedLiveRef.current = false;
+        setOmnibarLiveOn(false);
+      }
     };
     window.addEventListener("gemini-live:owner-changed", onOwnerChange);
     return () => window.removeEventListener("gemini-live:owner-changed", onOwnerChange);
   }, [geminiLive]);
 
-  useEffect(() => {
-    if (!omnibarLiveOn || !geminiLiveEligible || !liveContextReady) return;
+  const tryStartLive = useCallback(async () => {
+    if (!pendingLiveStartRef.current || !omnibarLiveOn || !geminiLiveEligible) return;
+    if (!liveContextReady) return;
     if (isGeminiLiveRateLimited() || geminiLive.isRateLimited) return;
     if (geminiLive.isLiveActive || geminiLive.state === "connecting") return;
     if (geminiLive.state === "fallback" || geminiLive.state === "error") return;
-    void geminiLive.start();
+    pendingLiveStartRef.current = false;
+    const ok = await geminiLive.start();
+    if (!ok) {
+      userRequestedLiveRef.current = false;
+      setOmnibarLiveOn(false);
+    }
   }, [
     omnibarLiveOn,
     geminiLiveEligible,
@@ -111,6 +129,11 @@ export function useOmnibarGeminiLive({
     geminiLive.state,
     geminiLive.start,
   ]);
+
+  useEffect(() => {
+    if (!pendingLiveStartRef.current || !omnibarLiveOn) return;
+    void tryStartLive();
+  }, [omnibarLiveOn, liveContextReady, tryStartLive]);
 
   useEffect(() => {
     if (geminiLive.state === "connecting") setVoiceStatus("connecting");
@@ -132,6 +155,8 @@ export function useOmnibarGeminiLive({
   const toggleLive = () => {
     if (geminiLive.isLiveActive) {
       geminiLive.stop();
+      pendingLiveStartRef.current = false;
+      userRequestedLiveRef.current = false;
       setOmnibarLiveOn(false);
       return;
     }
@@ -141,15 +166,32 @@ export function useOmnibarGeminiLive({
       toast.error(formatGeminiLiveRateLimitMessage(retryAt, locale, t));
       return;
     }
+    userRequestedLiveRef.current = true;
+    pendingLiveStartRef.current = true;
     setOmnibarLiveOn(true);
     geminiLive.acknowledgeContextReady();
+    void tryStartLive();
   };
+
+  const rateLimitActive =
+    isGeminiLiveRateLimited() ||
+    (geminiLive.isRateLimited && !geminiLive.isLiveActive);
+
+  const rateLimitLabel = useMemo(() => {
+    if (!rateLimitActive) return null;
+    const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
+    const retryAt =
+      untilMs != null
+        ? new Date(untilMs)
+        : geminiLive.rateLimitedUntil ?? new Date(Date.now() + 60_000);
+    return formatGeminiLiveRateLimitMessage(retryAt, locale, t);
+  }, [rateLimitActive, geminiLive.rateLimitedUntil, locale, t]);
 
   return {
     geminiLiveSettingsOpen, setGeminiLiveSettingsOpen,
     geminiVoiceSettings, setGeminiVoiceSettings,
     voiceStatus, voiceActive, statusLabel,
-    geminiLive, toggleLive,
+    geminiLive, toggleLive, rateLimitActive, rateLimitLabel,
     advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
   };
 }

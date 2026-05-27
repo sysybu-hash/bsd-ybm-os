@@ -16,6 +16,11 @@ import {
 import { moveQuickGridSlot, type GridCellCoord } from "@/lib/launcher/quick-grid";
 import type { LauncherPermissionContext } from "@/lib/launcher/launcher-permissions";
 import {
+  isApiCooldown,
+  markApiCooldownFromResponse,
+} from "@/lib/client/api-rate-limit-backoff";
+
+import {
   sanitizeConfig,
   padMobileStart,
   padMobileEnd,
@@ -29,6 +34,8 @@ import {
   prepareExpandableZoneForEdit,
   finalizeExpandableZoneAfterEdit,
 } from "./launcher-provider-utils";
+
+const LAUNCHER_SAVE_KEY = "api:user/launcher-config";
 
 type PickerState = { zone: LauncherZone; slotIndex: number; row?: number; col?: number } | null;
 
@@ -67,12 +74,17 @@ export function useLauncherActions({
       if (userId) {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
+          if (isApiCooldown(LAUNCHER_SAVE_KEY)) return;
           void fetch("/api/user/launcher-config", {
             method: "PATCH",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ config: sanitized }),
-          }).catch(() => { /* network */ });
+          })
+            .then((res) => {
+              markApiCooldownFromResponse(LAUNCHER_SAVE_KEY, res);
+            })
+            .catch(() => { /* network */ });
         }, 400);
       }
     },
