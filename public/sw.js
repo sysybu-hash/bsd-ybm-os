@@ -1,54 +1,106 @@
-const CACHE_NAME = 'bsd-ybm-os-v6';
-const ASSETS_TO_CACHE = [
-  '/',
+/** PWA + Web Push — אל תיירט fetch ל-API, Next, או דומיינים חיצוניים */
+const CACHE_NAME = 'bsd-ybm-os-v7';
+
+const PRECACHE_URLS = [
+  '/offline.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/og-image.png',
-  '/offline.html'
 ];
 
+function isSameOrigin(url) {
+  return url.origin === self.location.origin;
+}
+
+/** בקשות שלא אמורות לעבור דרך ה-SW */
+function shouldBypass(request) {
+  const url = new URL(request.url);
+
+  if (!isSameOrigin(url)) {
+    return true;
+  }
+
+  if (request.method !== 'GET') {
+    return true;
+  }
+
+  const path = url.pathname;
+  if (path.startsWith('/api/')) return true;
+  if (path.startsWith('/_next/')) return true;
+  if (path.startsWith('/auth/')) return true;
+
+  return false;
+}
+
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(PRECACHE_URLS).catch(() => undefined),
+    ),
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      caches.keys().then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => caches.delete(name)),
+        ),
+      ),
+      self.clients.claim(),
+    ]),
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/')) {
+  if (shouldBypass(event.request)) {
     return;
   }
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/offline.html');
-      })
+      fetch(event.request)
+        .then((response) => response)
+        .catch(() =>
+          caches.match('/offline.html').then(
+            (offline) =>
+              offline ||
+              new Response('Offline', {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+              }),
+          ),
+        ),
     );
     return;
   }
 
+  const url = new URL(event.request.url);
+  const isPrecacheAsset = PRECACHE_URLS.includes(url.pathname);
+  if (!isPrecacheAsset) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() =>
+        caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            new Response('', { status: 504, statusText: 'Gateway Timeout' }),
+        ),
+      ),
   );
 });
 
@@ -69,7 +121,7 @@ self.addEventListener('push', (event) => {
       badge: '/icon-192.png',
       tag: data.tag || 'bsd-ybm',
       data: { url: data.url || '/os' },
-    })
+    }),
   );
 });
 
@@ -87,6 +139,6 @@ self.addEventListener('notificationclick', (event) => {
       if (clients.openWindow) {
         return clients.openWindow(url);
       }
-    })
+    }),
   );
 });

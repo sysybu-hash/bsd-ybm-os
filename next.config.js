@@ -5,7 +5,19 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 });
 
 /** Legacy `/os` workspace path → root workspace (query preserved). */
-const LEGACY_REDIRECTS = [{ source: "/os", destination: "/", permanent: false }];
+const LEGACY_REDIRECTS = [
+  { source: "/os", destination: "/", permanent: false },
+  /**
+   * OAuth / NextAuth: עוגיות state/PKCE חייבות להיות על אותו host כמו NEXTAUTH_URL (www).
+   * גישה ל-apex בלי www גורמת ל-error=OAuthCallback אחרי Google.
+   */
+  {
+    source: "/:path*",
+    has: [{ type: "host", value: "bsd-ybm.co.il" }],
+    destination: "https://www.bsd-ybm.co.il/:path*",
+    permanent: true,
+  },
+];
 
 /** Allow common local dev ports to avoid Next dev cross-origin warnings. */
 function buildAllowedDevOrigins() {

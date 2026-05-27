@@ -8,6 +8,10 @@ export const loginErrorMessages: Record<string, string> = {
     "האימייל כבר קיים במערכת — נסה שוב להתחבר עם Google (אמור להיקשר אוטומטית).",
   Callback:
     "התחברות עם Google נכשלה בשלב החזרה לשרת. נסו שוב בעוד דקה; אם נמשך — פנו למנהל המערכת.",
+  OAuthCallback:
+    "התחברות עם Google נכשלה (בדרך כלל בגלל כתובת לא עקבית או Service Worker ישן). נסו מ-www.bsd-ybm.co.il, נקו SW בדפדפן, או נסו שוב בעוד דקה.",
+  OAuthSignin:
+    "לא ניתן להתחיל התחברות עם Google. נסו שוב או פנו למנהל המערכת.",
   CredentialsSignin: "התחברות נכשלה — בדקו אימייל וסיסמה.",
   Default: "התחברות נכשלה. נסה שוב.",
 };
