@@ -41,9 +41,11 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
   }, [prefilledEmail]);
 
   const authError = params.get("error");
+  const oauthHint = params.get("hint");
   const reason = params.get("reason") ?? authError;
 
   const bannerText =
+    (oauthHint === "redirect_uri" ? loginErrorMessages.redirect_uri_mismatch : null) ||
     (authError && loginErrorMessages[authError]) ||
     (reason && loginReasonMessages[reason as keyof typeof loginReasonMessages]) ||
     null;

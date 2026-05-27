@@ -12,6 +12,8 @@ export const loginErrorMessages: Record<string, string> = {
     "התחברות עם Google נכשלה (בדרך כלל בגלל כתובת לא עקבית או Service Worker ישן). נסו מ-www.bsd-ybm.co.il, נקו SW בדפדפן, או נסו שוב בעוד דקה.",
   OAuthSignin:
     "לא ניתן להתחיל התחברות עם Google. נסו שוב או פנו למנהל המערכת.",
+  redirect_uri_mismatch:
+    "כתובת החזרה ל-Google לא תואמת (redirect_uri_mismatch). התחברו דרך https://www.bsd-ybm.co.il בלבד.",
   CredentialsSignin: "התחברות נכשלה — בדקו אימייל וסיסמה.",
   Default: "התחברות נכשלה. נסה שוב.",
 };

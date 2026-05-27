@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { parseJsonResponse } from "@/lib/client/parse-json-response";
 import type { ReviewEditableItem } from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
 import type { GoogleFile, WorkspaceInfo } from "./types";
 
@@ -26,8 +27,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     setSyncing(true);
     try {
       const res = await fetch("/api/os/google-drive/sync", { method: "POST", credentials: "include" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "סנכרון נכשל");
+      const { ok, data } = await parseJsonResponse<{ error?: string; lastSyncAt?: string }>(res);
+      if (!ok) throw new Error(data.error ?? "סנכרון נכשל");
       setLastSyncAt(data.lastSyncAt ?? new Date().toISOString());
       if (!silent) toast.success("סנכרון הושלם");
       return true;
@@ -50,8 +51,14 @@ export function useDriveData(autoDecodeOnSync: boolean) {
           `/api/os/google-drive/files?folderId=${encodeURIComponent(folderId)}`,
           { credentials: "include", cache: "no-store" },
         );
-        const data = await res.json();
-        if (res.ok) {
+        const { ok, data } = await parseJsonResponse<{
+          error?: string;
+          reauthUrl?: string;
+          files?: GoogleFile[];
+          workspaceFolderId?: string;
+          workspaceFolderName?: string;
+        }>(res);
+        if (ok) {
           setFiles(data.files ?? []);
           if (data.workspaceFolderId && data.workspaceFolderName) {
             setWorkspace({ folderId: data.workspaceFolderId, folderName: data.workspaceFolderName });
@@ -77,14 +84,22 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     setLoading(true);
     try {
       const res = await fetch("/api/os/google-drive/workspace", { credentials: "include", cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) {
+      const { ok, data } = await parseJsonResponse<{
+        error?: string;
+        reauthUrl?: string;
+        workspace?: WorkspaceInfo;
+        sync?: { lastSyncAt?: string };
+      }>(res);
+      if (!ok) {
         const msg = typeof data.error === "string" ? data.error : "שגיאה באתחול Drive";
         setDriveError(msg);
         if (typeof data.reauthUrl === "string") setReauthUrl(data.reauthUrl);
         throw new Error(msg);
       }
-      const ws = data.workspace as WorkspaceInfo;
+      const ws = data.workspace;
+      if (!ws?.folderId || !ws.folderName) {
+        throw new Error("שגיאה באתחול Drive");
+      }
       setWorkspace(ws);
       setFolderPath([{ id: ws.folderId, name: ws.folderName }]);
       setCurrentFolderId(ws.folderId);
@@ -105,7 +120,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         `/api/os/google-drive/files?folderId=${encodeURIComponent(currentFolderId)}`,
         { credentials: "include", cache: "no-store" },
       );
-      const data = await res.json();
+      const { data } = await parseJsonResponse<{ files?: GoogleFile[] }>(res);
       const pending = (data.files as GoogleFile[] | undefined)?.filter(
         (f) =>
           f.mimeType !== "application/vnd.google-apps.folder" &&
@@ -149,8 +164,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         const res = await fetch("/api/os/google-drive/upload", {
           method: "POST", credentials: "include", body: form,
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "העלאה נכשלה");
+        const { ok, data } = await parseJsonResponse<{ error?: string }>(res);
+        if (!ok) throw new Error(data.error ?? "העלאה נכשלה");
         toast.success(`הועלה: ${file.name}`);
         await handleRefresh();
       } catch (error: unknown) {
@@ -174,8 +189,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: "preview", fileIds }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "פענוח נכשל");
+        const { ok, data } = await parseJsonResponse<{ error?: string; results?: ReviewEditableItem[] }>(res);
+        if (!ok) throw new Error(data.error ?? "פענוח נכשל");
         const results = (data.results ?? []) as ReviewEditableItem[];
         const editable: ReviewEditableItem[] = results.map((r) => ({
           ...r,
@@ -223,8 +238,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
           })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
+      const { ok, data } = await parseJsonResponse<{ error?: string }>(res);
+      if (!ok) throw new Error(data.error ?? "שמירה נכשלה");
       toast.success("המסמכים נשמרו");
       setReviewOpen(false);
       setReviewItems([]);

@@ -46,7 +46,7 @@ export default function WidgetHubShell({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[color:var(--background-main)]">
+    <div className="flex h-full min-h-[280px] flex-1 flex-col bg-[color:var(--background-main)]">
       <div
         className="shrink-0 border-b border-[color:var(--border-main)] px-2 pb-2 pt-2"
         style={{ paddingInlineEnd: "max(0.5rem, env(safe-area-inset-inline-end))" }}
@@ -83,19 +83,8 @@ export default function WidgetHubShell({
           </p>
         ) : null}
       </div>
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            role="tabpanel"
-            className={`absolute inset-0 flex min-h-0 flex-col overflow-y-auto overscroll-contain ${
-              tab.id === activeTab ? "z-10" : "pointer-events-none invisible"
-            }`}
-            aria-hidden={tab.id !== activeTab}
-          >
-            {renderTab(tab.id)}
-          </div>
-        ))}
+      <div className="relative flex min-h-[240px] flex-1 flex-col overflow-hidden">
+        {renderTab(activeTab)}
       </div>
     </div>
   );

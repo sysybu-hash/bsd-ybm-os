@@ -1,4 +1,4 @@
-# BSD-YBM Intelligence — Production Runbook
+﻿# BSD-YBM Intelligence ג€” Production Runbook
 
 > **Last updated**: 2026-05-21  
 > This document is for **on-call engineers and deployment owners**.  
@@ -30,12 +30,25 @@
 git push origin main
 # Vercel auto-deploys; monitor at https://vercel.com/dashboard
 ```
+### Duplicate Vercel deployments (avoid)
+
+The repo uses **Vercel Git integration** on project `bsd-ybm-os`. A normal `git push origin main` is enough — do **not** also run `npm run vercel:deploy:prod` or `vercel deploy --prod` for the same change.
+
+| Dashboard label | Typical source |
+|-----------------|----------------|
+| `sysybu-hash` (Git icon) | Push to GitHub → auto deploy |
+| `sysybu-2933` | Manual CLI / agent `vercel deploy` |
+
+**Verify:** after one push, only **one** new Production deployment should appear for `bsd-ybm-os`.
+
+If duplicates persist: Vercel → project **bsd-ybm-os** → Settings → Git; ensure legacy project **bsd-ybm** is not also connected to `sysybu-hash/bsd-ybm-os`.
+
 
 ### Pre-deploy Checks (mandatory)
 
 ```bash
-npm run lint          # ESLint — must be 0 warnings
-npx tsc --noEmit      # TypeScript — must be 0 errors
+npm run lint          # ESLint ג€” must be 0 warnings
+npx tsc --noEmit      # TypeScript ג€” must be 0 errors
 npm test              # Unit tests
 npx prisma migrate status  # Confirm no pending migrations
 ```
@@ -53,7 +66,7 @@ npx prisma migrate deploy
 git push origin main
 ```
 
-> ⚠️ **Never deploy code that requires a new schema column before running the migration.**  
+> ג ן¸ **Never deploy code that requires a new schema column before running the migration.**  
 > Neon supports zero-downtime schema changes (ADD COLUMN with DEFAULT is instant).
 
 ### Preview Deployments
@@ -61,7 +74,7 @@ git push origin main
 Every PR gets a Vercel Preview URL. Preview environments:
 - Have `VERCEL_ENV=preview` (bots blocked in robots.txt)
 - Use the **same production database** unless `DATABASE_URL` is overridden
-- Use real external APIs — be careful with payment testing
+- Use real external APIs ג€” be careful with payment testing
 
 ---
 
@@ -73,26 +86,40 @@ Every PR gets a Vercel Preview URL. Preview environments:
 node scripts/check-env-essential.mjs
 ```
 
-Outputs a colored table of all 90 vars: `✓ OK` / `⚠ WARN` / `✗ MISSING` / `– optional`.
+Outputs a colored table of all 90 vars: `ג“ OK` / `ג  WARN` / `ג— MISSING` / `ג€“ optional`.
 
 ### Critical Variables
 
 | Variable | What happens if missing |
 |---|---|
 | `DATABASE_URL` | Build fails at prisma generate |
-| `NEXTAUTH_SECRET` or `AUTH_SECRET` | All auth broken — 500 on every page |
+| `NEXTAUTH_SECRET` or `AUTH_SECRET` | All auth broken ג€” 500 on every page |
 | `GEMINI_API_KEY` | AI scan/chat degraded to OpenAI fallback |
-| `CRON_SECRET` | Cron routes return 401 — jobs don't run |
+| `CRON_SECRET` | Cron routes return 401 ג€” jobs don't run |
 | `SENTRY_DSN` | Errors not captured (app still works) |
-| `PAYPAL_WEBHOOK_ID` | PayPal webhooks rejected — manual payment marking needed |
-| `PAYPLUS_SECRET_KEY` | PayPlus webhooks rejected in prod — payments not auto-applied |
+| `PAYPAL_WEBHOOK_ID` | PayPal webhooks rejected ג€” manual payment marking needed |
+| `PAYPLUS_SECRET_KEY` | PayPlus webhooks rejected in prod ג€” payments not auto-applied |
+
+### Google OAuth redirect URIs (production)
+
+Register **all** of these in Google Cloud Console → Credentials → OAuth 2.0 Client:
+
+| Flow | Redirect URI |
+|------|----------------|
+| NextAuth sign-in | `https://www.bsd-ybm.co.il/api/auth/callback/google` |
+| Drive reconnect | `https://www.bsd-ybm.co.il/api/auth/google-reconnect/callback` |
+| Calendar connect | `https://www.bsd-ybm.co.il/api/integrations/google/calendar/callback` |
+
+Set `NEXTAUTH_URL` and `AUTH_URL` on Vercel to `https://www.bsd-ybm.co.il` (**with www**). Apex redirects to www in `next.config.js`, but Google OAuth URIs must match exactly.
+
+After scope errors: Settings → reconnect Google (Drive) or Calendar wizard.
 
 ### Rotating a Secret
 
 1. Generate new value
-2. Update in Vercel dashboard → Settings → Environment Variables
+2. Update in Vercel dashboard ג†’ Settings ג†’ Environment Variables
 3. Trigger a redeploy: `vercel --prod` or push a dummy commit
-4. If rotating `NEXTAUTH_SECRET`: **all existing sessions are invalidated** — users will be logged out
+4. If rotating `NEXTAUTH_SECRET`: **all existing sessions are invalidated** ג€” users will be logged out
 
 ---
 
@@ -114,7 +141,7 @@ npx prisma migrate deploy
 ### Reset Database (dev only!)
 
 ```bash
-npx prisma migrate reset  # ⚠️ DELETES ALL DATA
+npx prisma migrate reset  # ג ן¸ DELETES ALL DATA
 ```
 
 ### Schema Status Check
@@ -156,7 +183,7 @@ ORDER BY "paidAt" DESC LIMIT 10;
 
 - Dashboard: https://sentry.io (project: `bsd-ybm-os`)
 - Error threshold alerts: `P95 > 2s` or `error rate > 1%`
-- Cron monitors: check each cron job health at Sentry → Crons
+- Cron monitors: check each cron job health at Sentry ג†’ Crons
 
 **Key alert conditions to set:**
 - Any `500` error rate > 0.5% over 5 minutes
@@ -182,7 +209,7 @@ vercel logs --follow --filter "api/webhooks"
 
 ## 5. Incident Response
 
-### P0 — Site Down
+### P0 ג€” Site Down
 
 1. Check Vercel status page: https://www.vercel-status.com/
 2. Check Neon status: https://neonstatus.com/
@@ -190,7 +217,7 @@ vercel logs --follow --filter "api/webhooks"
 4. If DB issue: check `DATABASE_URL` is set correctly in Vercel env
 5. Rollback: see [Section 8](#8-rollback-procedure)
 
-### P1 — Payments Not Processing
+### P1 ג€” Payments Not Processing
 
 1. Check PayPal/PayPlus status pages
 2. Check `/api/webhooks/paypal` and `/api/webhooks/payplus` logs in Sentry
@@ -199,7 +226,7 @@ vercel logs --follow --filter "api/webhooks"
 5. Check Sentry for `payplus_webhook_rejected` or `paypal_webhook_rejected` events
 6. **Manual fallback**: find the transaction in PayPlus/PayPal dashboard, manually update `Invoice.status = 'PAID'` in DB
 
-### P1 — AI Features Degraded
+### P1 ג€” AI Features Degraded
 
 1. Check Gemini API status: https://status.cloud.google.com/
 2. Check `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` is set
@@ -207,7 +234,7 @@ vercel logs --follow --filter "api/webhooks"
 4. Check scan queue: `SELECT status, COUNT(*) FROM "DocumentScanJob" GROUP BY status`
 5. If queue is stuck: manually re-queue with `status = 'pending'` update
 
-### P2 — Auth Issues
+### P2 ג€” Auth Issues
 
 1. Check `NEXTAUTH_SECRET` / `AUTH_SECRET` is set
 2. Check `NEXTAUTH_URL` matches the actual domain (no trailing slash)
@@ -245,14 +272,14 @@ curl -X GET https://bsd-ybm.co.il/api/cron/financial-insights \
 
 ### PayPal Webhook Setup
 
-In PayPal Developer Dashboard → Webhooks:
+In PayPal Developer Dashboard ג†’ Webhooks:
 1. Endpoint URL: `https://bsd-ybm.co.il/api/webhooks/paypal`
 2. Events: `PAYMENT.CAPTURE.COMPLETED`
-3. Copy the **Webhook ID** → set `PAYPAL_WEBHOOK_ID` in Vercel env
+3. Copy the **Webhook ID** ג†’ set `PAYPAL_WEBHOOK_ID` in Vercel env
 
 ### PayPlus Webhook Setup
 
-In PayPlus dashboard → Settings → Webhooks:
+In PayPlus dashboard ג†’ Settings ג†’ Webhooks:
 1. Endpoint URL: `https://bsd-ybm.co.il/api/webhooks/payplus`
 2. The shared secret should match `PAYPLUS_SECRET_KEY`
 3. Events: payment completion (IPN)
@@ -279,7 +306,7 @@ git revert HEAD --no-edit
 git push origin main
 
 # Option B: Vercel instant rollback
-# Go to Vercel dashboard → Deployments → pick previous → Promote to Production
+# Go to Vercel dashboard ג†’ Deployments ג†’ pick previous ג†’ Promote to Production
 ```
 
 ### Database Rollback
@@ -297,7 +324,7 @@ psql "$DATABASE_URL" -c "DELETE FROM _prisma_migrations WHERE migration_name = '
 # 3. Run prisma migrate deploy to re-sync
 ```
 
-> ⚠️ **Always test down-migrations in a staging environment first.**
+> ג ן¸ **Always test down-migrations in a staging environment first.**
 
 ---
 
@@ -307,7 +334,7 @@ psql "$DATABASE_URL" -c "DELETE FROM _prisma_migrations WHERE migration_name = '
 
 Neon provides **point-in-time recovery (PITR)** up to 7 days (Free) / 30 days (Pro):
 
-1. Go to Neon Console → Project → Branches
+1. Go to Neon Console ג†’ Project ג†’ Branches
 2. Create a new branch from a historical point: "Create branch at time"
 3. Test recovery on the branch
 4. If needed: dump from branch and restore to main
@@ -316,7 +343,7 @@ Neon provides **point-in-time recovery (PITR)** up to 7 days (Free) / 30 days (P
 # Dump from recovery branch
 pg_dump "$RECOVERY_BRANCH_URL" > backup.sql
 
-# Restore to main (⚠️ destructive — coordinate with team first)
+# Restore to main (ג ן¸ destructive ג€” coordinate with team first)
 psql "$DATABASE_URL" < backup.sql
 ```
 

@@ -36,4 +36,12 @@ describe("resolveSiteBaseUrl", () => {
     expect(resolveSiteBaseUrl()).toBe("https://www.bsd-ybm.co.il");
     (process.env as { NODE_ENV?: string }).NODE_ENV = prev;
   });
+
+  it("canonicalizes apex bsd-ybm.co.il to www in production", () => {
+    const prev = process.env.NODE_ENV;
+    (process.env as { NODE_ENV?: string }).NODE_ENV = "production";
+    process.env.NEXTAUTH_URL = "https://bsd-ybm.co.il";
+    expect(resolveSiteBaseUrl()).toBe("https://www.bsd-ybm.co.il");
+    (process.env as { NODE_ENV?: string }).NODE_ENV = prev;
+  });
 });

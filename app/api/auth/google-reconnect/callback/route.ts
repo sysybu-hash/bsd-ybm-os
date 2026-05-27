@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { google } from "googleapis";
 import { authOptions } from "@/lib/auth";
+import { mergeGoogleOAuthScopeStrings } from "@/lib/google-calendar-config";
 import {
   getGoogleReconnectCallbackUri,
   persistGoogleAccountTokens,
 } from "@/lib/google-account-tokens";
 import { getGoogleIntegrationsCredentials } from "@/lib/google-oauth-env";
 import { safeOAuthCallbackUrl, verifyGoogleReconnectState } from "@/lib/google-reconnect-state";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +60,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(dest);
     }
 
+    const existing = await prisma.account.findFirst({
+      where: { userId: state.userId, provider: "google" },
+      select: { scope: true },
+    });
+    const mergedScope = mergeGoogleOAuthScopeStrings(existing?.scope, tokens.scope ?? null);
+
     await persistGoogleAccountTokens(
       state.userId,
       {
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
         expires_at: tokens.expiry_date
           ? Math.floor(tokens.expiry_date / 1000)
           : null,
-        scope: tokens.scope,
+        scope: mergedScope,
         token_type: tokens.token_type,
         id_token: tokens.id_token,
       },
