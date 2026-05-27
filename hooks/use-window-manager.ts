@@ -9,6 +9,7 @@ import {
 import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generator';
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
 import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
+import { resolveWidgetOpen } from '@/lib/os-assistant/resolve-widget-open';
 
 export type WidgetType =
   | 'project'
@@ -48,6 +49,26 @@ export interface ActiveWidget {
   isMaximized?: boolean;
   isMinimized?: boolean;
   zoom?: number;
+}
+
+function migrateRestoredWidget(w: ActiveWidget): ActiveWidget {
+  const rawType = String(w.type);
+  const live =
+    w.liveData && typeof w.liveData === 'object'
+      ? (w.liveData as Record<string, unknown>)
+      : null;
+  const resolved = resolveWidgetOpen(rawType, live);
+  const type = resolved?.type ?? normalizeWidgetAction(rawType);
+  if (!type) return w;
+  const mergedLive =
+    resolved?.liveData != null
+      ? { ...live, ...resolved.liveData }
+      : live;
+  return normalizeWidgetForViewport({
+    ...w,
+    type,
+    liveData: mergedLive && Object.keys(mergedLive).length > 0 ? mergedLive : null,
+  });
 }
 
 const STORAGE_KEY = 'bsd_ybm_layout_quiet_v6';
@@ -124,7 +145,7 @@ export function useWindowManager() {
                 typeof w.type === 'string' &&
                 normalizeWidgetAction(w.type),
             )
-            .map((w) => normalizeWidgetForViewport(w as ActiveWidget)) as ActiveWidget[];
+            .map((w) => migrateRestoredWidget(w as ActiveWidget)) as ActiveWidget[];
           setWidgets(restored);
           const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
           nextZIndexRef.current = maxZ + 1;
@@ -149,20 +170,24 @@ export function useWindowManager() {
   }, [widgets, hasHydrated]);
 
   const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null): string => {
-    const id = `${type}-${Date.now()}`;
+    const resolved = resolveWidgetOpen(type, data);
+    if (!resolved) return '';
+    const { type: openType, liveData } = resolved;
+
+    const id = `${openType}-${Date.now()}`;
     const nextZ = nextZIndexRef.current + 1;
     nextZIndexRef.current = nextZ;
 
-    const defaultSize = DEFAULT_WIDGET_SIZES[type] || { width: 750, height: 550 };
+    const defaultSize = DEFAULT_WIDGET_SIZES[openType] || { width: 750, height: 550 };
     const mobile = typeof window !== 'undefined' && isMobileViewport();
 
     setWidgets((prev) => {
       const stackIndex = mobile ? 0 : prev.length;
-      const layout = buildWidgetLayout(type, defaultSize, stackIndex);
+      const layout = buildWidgetLayout(openType, defaultSize, stackIndex);
       const next: ActiveWidget = {
         id,
-        type,
-        liveData: data,
+        type: openType,
+        liveData,
         position: layout.position,
         size: layout.size,
         zIndex: nextZ,
@@ -176,7 +201,7 @@ export function useWindowManager() {
     });
 
     void import("@/lib/analytics/workspace-events").then(({ trackWidgetOpened }) => {
-      trackWidgetOpened(type, { source: "launcher", mobile });
+      trackWidgetOpened(openType, { source: "launcher", mobile });
     });
     return id;
   }, []);

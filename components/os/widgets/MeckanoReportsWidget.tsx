@@ -5,6 +5,7 @@ import {
   ArrowLeftRight, Briefcase, Calendar, Clock, Download,
   FileDown, FileText, Loader2, MapPin, Search, User,
 } from "lucide-react";
+import WidgetState from "@/components/os/WidgetState";
 import { useMeckanoReports } from "./meckano-reports/useMeckanoReports";
 
 export default function MeckanoReportsWidget() {
@@ -15,6 +16,17 @@ export default function MeckanoReportsWidget() {
     fetchReports, exportToCSV, downloadPDF,
     lastSyncAt, autoSyncEnabled,
   } = useMeckanoReports();
+
+  if (!isLoading && error && reports.length === 0 && !error.includes("API Key")) {
+    return (
+      <WidgetState
+        variant="error"
+        message={error}
+        onRetry={() => void fetchReports()}
+        retryLabel={t("workspaceWidgets.meckano.retry")}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>

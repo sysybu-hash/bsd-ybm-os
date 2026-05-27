@@ -340,6 +340,8 @@
       "documentsHub": "מסמכים",
       "aiHub": "בינה מלאכותית"
     },
+    "unsupportedWidget": "סוג חלון לא נתמך ({type})",
+    "retry": "נסה שוב",
     "hubs": {
       "tabListAria": "טאבים בחלון",
       "tabCount": "{count} פעולות",

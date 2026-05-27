@@ -20,6 +20,17 @@ describe("resolveWidgetOpen", () => {
     expect(req?.liveData?.tab).toBe("project");
     expect(req?.liveData?.projectId).toBe("p1");
   });
+
+  it("maps quoteGen to documentsHub create tab", () => {
+    const req = resolveWidgetOpen("quoteGen", null);
+    expect(req?.type).toBe("documentsHub");
+    expect(req?.liveData?.tab).toBe("create");
+  });
+
+  it("maps googleCalendar without hub redirect", () => {
+    const req = resolveWidgetOpen("googleCalendar", null);
+    expect(req?.type).toBe("googleCalendar");
+  });
 });
 
 describe("mapLauncherWidgetId", () => {

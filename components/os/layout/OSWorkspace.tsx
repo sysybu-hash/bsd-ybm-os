@@ -30,6 +30,7 @@ import DocumentsHubWidget from "@/components/os/hubs/DocumentsHubWidget";
 import AiHubWidget from "@/components/os/hubs/AiHubWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
+import WidgetState from "@/components/os/WidgetState";
 import { registerWorkspaceBoundsRef } from "@/lib/workspace/workspace-bounds-registry";
 const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
@@ -58,6 +59,34 @@ function WidgetLoadingPlaceholder() {
     </div>
   );
 }
+
+const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
+  "project",
+  "crm",
+  "dashboard",
+  "aiChat",
+  "cashflow",
+  "erp",
+  "projectBoard",
+  "crmTable",
+  "erpArchive",
+  "docCreator",
+  "aiScanner",
+  "fieldCopilot",
+  "aiChatFull",
+  "settings",
+  "meckanoReports",
+  "googleDrive",
+  "googleCalendar",
+  "notebookLM",
+  "accessibility",
+  "platformAdmin",
+  "helpCenter",
+  "financeHub",
+  "projectsHub",
+  "documentsHub",
+  "aiHub",
+]);
 
 interface OSWorkspaceProps {
   widgets: ActiveWidget[];
@@ -265,6 +294,14 @@ export default function OSWorkspace({
             )}
             {widget.type === "aiHub" && (
               <AiHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
+            )}
+            {!RENDERED_WIDGET_TYPES.has(widget.type) && (
+              <WidgetState
+                variant="error"
+                message={t("workspaceWidgets.unsupportedWidget", { type: widget.type })}
+                onRetry={() => openWorkspaceWidget(widget.type, widget.liveData)}
+                retryLabel={t("workspaceWidgets.retry")}
+              />
             )}
           </WidgetInstance>
         ))}

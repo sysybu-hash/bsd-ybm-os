@@ -339,6 +339,8 @@
       "documentsHub": "Documents",
       "aiHub": "AI"
     },
+    "unsupportedWidget": "Unsupported window type ({type})",
+    "retry": "Try again",
     "hubs": {
       "tabListAria": "Window tabs",
       "tabCount": "{count} actions",

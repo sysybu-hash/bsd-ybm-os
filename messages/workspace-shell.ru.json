@@ -339,6 +339,8 @@
       "documentsHub": "Документы",
       "aiHub": "ИИ"
     },
+    "unsupportedWidget": "Неподдерживаемый тип окна ({type})",
+    "retry": "Повторить",
     "hubs": {
       "tabListAria": "Вкладки окна",
       "tabCount": "{count} действий",
