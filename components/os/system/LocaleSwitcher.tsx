@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Languages } from "lucide-react";
-import { useI18n } from "@/components/os/system/I18nProvider";
+import { useI18n, useSetLocale } from "@/components/os/system/I18nProvider";
 import { SELECTABLE_LOCALES, type AppLocale } from "@/lib/i18n/config";
 
 const LOCALE_LABELS: Record<AppLocale, string> = {
@@ -26,6 +26,7 @@ type LocaleSwitcherProps = {
 
 export default function LocaleSwitcher({ compact = false, embedded = false, className = "" }: LocaleSwitcherProps) {
   const { locale, t } = useI18n();
+  const setLocale = useSetLocale();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -46,17 +47,16 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
     if (next === current || pending) return;
     setOpen(false);
     setPending(true);
-    try {
-      await fetch("/api/locale", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: next }),
-        credentials: "include",
-      });
-      window.location.reload();
-    } catch {
-      setPending(false);
-    }
+    // Update UI instantly — no reload needed
+    setLocale?.(next);
+    setPending(false);
+    // Persist to cookie in background for future visits
+    void fetch("/api/locale", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: next }),
+      credentials: "include",
+    });
   };
 
   return (

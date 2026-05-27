@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useMemo } from "react";
+import { createContext, useContext, ReactNode, useMemo, useCallback, useState } from "react";
 import { isRtlLocale } from "@/lib/i18n/config";
 import { createTranslator } from "@/lib/i18n/translate";
+import { getMessages } from "@/lib/i18n/load-messages";
 import type { MessageTree } from "@/lib/i18n/keys";
 
 type I18nContextType = {
@@ -12,32 +13,37 @@ type I18nContextType = {
   messages: MessageTree;
 };
 
+type SetLocaleFn = (locale: string) => void;
+
 const I18nContext = createContext<I18nContextType | null>(null);
+const SetLocaleContext = createContext<SetLocaleFn | null>(null);
 
 export function I18nProvider({
   children,
-  messages = {} as MessageTree,
-  locale = "he",
+  messages: initialMessages = {} as MessageTree,
+  locale: initialLocale = "he",
 }: {
   children: ReactNode;
   messages?: MessageTree;
   locale?: string;
 }) {
+  const [locale, setLocaleState] = useState(initialLocale);
+  const [messages, setMessages] = useState(initialMessages);
+
+  const setLocale = useCallback((next: string) => {
+    setLocaleState(next);
+    setMessages(getMessages(next));
+  }, []);
+
   const dir = (isRtlLocale(locale) ? "rtl" : "ltr") as "rtl" | "ltr";
-  
   const t = useMemo(() => createTranslator(messages), [messages]);
+  const value = useMemo(() => ({ t, locale, dir, messages }), [t, locale, dir, messages]);
 
-  const value = useMemo(
-    () => ({
-      t,
-      locale,
-      dir,
-      messages,
-    }),
-    [t, locale, dir, messages]
+  return (
+    <SetLocaleContext.Provider value={setLocale}>
+      <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+    </SetLocaleContext.Provider>
   );
-
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {
@@ -46,9 +52,13 @@ export function useI18n() {
     return {
       t: (key: string) => key,
       locale: "he",
-      dir: "rtl",
+      dir: "rtl" as const,
       messages: {} as MessageTree,
     };
   }
   return ctx;
+}
+
+export function useSetLocale(): SetLocaleFn | null {
+  return useContext(SetLocaleContext);
 }
