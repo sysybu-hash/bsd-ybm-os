@@ -112,7 +112,6 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
       {/* Recorded video preview */}
       {hasVideo && videoAssetId && !previewOpen ? (
         <div className="px-4 pb-4">
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video
             src={`/api/field-copilot/assets/${videoAssetId}`}
             controls
