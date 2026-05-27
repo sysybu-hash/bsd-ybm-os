@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import { Languages } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { SELECTABLE_LOCALES, type AppLocale } from "@/lib/i18n/config";
@@ -27,9 +26,8 @@ type LocaleSwitcherProps = {
 
 export default function LocaleSwitcher({ compact = false, embedded = false, className = "" }: LocaleSwitcherProps) {
   const { locale, t } = useI18n();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
   const current = (SELECTABLE_LOCALES.includes(locale as AppLocale) ? locale : "he") as AppLocale;
   const aria =
@@ -47,6 +45,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
   const changeLocale = async (next: AppLocale) => {
     if (next === current || pending) return;
     setOpen(false);
+    setPending(true);
     try {
       await fetch("/api/locale", {
         method: "POST",
@@ -54,11 +53,9 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
         body: JSON.stringify({ locale: next }),
         credentials: "include",
       });
-      startTransition(() => {
-        router.refresh();
-      });
+      window.location.reload();
     } catch {
-      /* ignore */
+      setPending(false);
     }
   };
 
