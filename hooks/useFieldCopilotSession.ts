@@ -11,6 +11,49 @@ async function parseJsonRes<T>(res: Response): Promise<T> {
   return data;
 }
 
+/** Fast base64 using FileReader — avoids slow byte-by-byte btoa loop */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Compress photos to max 1920px / 85% quality before upload */
+async function compressPhoto(file: File): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1920;
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const scale = Math.min(1, MAX / Math.max(w, h));
+      const cw = Math.round(w * scale);
+      const ch = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(img, 0, 0, cw, ch);
+      canvas.toBlob(
+        (blob) => resolve(blob ?? file),
+        "image/jpeg",
+        0.85,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 export function useFieldCopilotSession(initialSessionId?: string) {
   const [draft, setDraft] = useState<FieldCopilotDraft | null>(null);
   const [loading, setLoading] = useState(false);
@@ -101,16 +144,17 @@ export function useFieldCopilotSession(initialSessionId?: string) {
   const uploadAsset = useCallback(
     async (file: Blob, kind: "photo" | "video" | "keyframe", mimeType: string) => {
       if (!draft?.id) throw new Error("אין סשן פעיל");
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]!);
-      }
-      const dataBase64 = btoa(binary);
+
+      // Compress photos before encoding
+      const toEncode = kind === "photo" && file instanceof File
+        ? await compressPhoto(file)
+        : file;
+
+      // Fast base64 via FileReader — avoids O(n) btoa loop
+      const dataBase64 = await blobToBase64(toEncode);
 
       const data = await parseJsonRes<{
-        asset: { id: string };
+        asset: { id: string; kind: string; mimeType: string };
         driveSaved?: boolean;
         driveWarning?: string;
       }>(
@@ -121,12 +165,55 @@ export function useFieldCopilotSession(initialSessionId?: string) {
           body: JSON.stringify({ sessionId: draft.id, kind, mimeType, dataBase64 }),
         }),
       );
+
       if (data.driveSaved === true) setDriveNotice("saved");
       else if (kind === "photo" || kind === "video") setDriveNotice("failed");
-      await loadSession(draft.id);
+
+      // Optimistic update — avoid full loadSession round-trip
+      setDraft((prev) => {
+        if (!prev) return prev;
+        if (kind === "photo" || kind === "keyframe") {
+          return {
+            ...prev,
+            capture: {
+              ...prev.capture,
+              photoAssetIds: [...prev.capture.photoAssetIds, data.asset.id],
+            },
+          };
+        }
+        if (kind === "video") {
+          return {
+            ...prev,
+            capture: { ...prev.capture, videoAssetId: data.asset.id },
+          };
+        }
+        return prev;
+      });
+
       return data.asset;
     },
-    [draft?.id, loadSession],
+    [draft?.id],
+  );
+
+  const deleteAsset = useCallback(
+    async (assetId: string) => {
+      if (!draft?.id) throw new Error("אין סשן פעיל");
+      setError(null);
+      try {
+        const data = await parseJsonRes<{ draft: FieldCopilotDraft }>(
+          await fetch(
+            `/api/field-copilot/assets?assetId=${encodeURIComponent(assetId)}&sessionId=${encodeURIComponent(draft.id)}`,
+            { method: "DELETE", credentials: "include" },
+          ),
+        );
+        setDraft(data.draft);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        throw err;
+      }
+    },
+    [draft?.id],
   );
 
   const analyze = useCallback(
@@ -186,6 +273,7 @@ export function useFieldCopilotSession(initialSessionId?: string) {
     createSession,
     patchSession,
     uploadAsset,
+    deleteAsset,
     analyze,
     handoff,
     initialSessionId,

@@ -11,24 +11,35 @@ type Props = {
   draft: FieldCopilotDraft | null;
   onUpdate: (patch: Record<string, unknown>) => Promise<void>;
   uploadAsset: (file: Blob, kind: "photo" | "video" | "keyframe", mimeType: string) => Promise<{ id: string }>;
+  deleteAsset: (id: string) => Promise<void>;
 };
 
-export default function CaptureStep({ draft, onUpdate, uploadAsset }: Props) {
+export default function CaptureStep({ draft, onUpdate, uploadAsset, deleteAsset }: Props) {
   const { t } = useI18n();
   const [uploading, setUploading] = useState(false);
-  const photoCount = draft?.capture.photoAssetIds.length ?? 0;
+
+  const photoAssetIds = draft?.capture.photoAssetIds ?? [];
+
+  const handleTranscriptSet = (text: string) => {
+    void onUpdate({ transcript: text });
+  };
+
+  const handleTranscriptAppend = (text: string) => {
+    const prev = draft?.capture.transcript ?? "";
+    void onUpdate({ transcript: prev ? `${prev}\n${text}` : text });
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
       <VoiceCapturePanel
         transcript={draft?.capture.transcript ?? ""}
-        onTranscript={(text) => {
-          const prev = draft?.capture.transcript ?? "";
-          void onUpdate({ transcript: prev ? `${prev}\n${text}` : text });
-        }}
+        onTranscript={handleTranscriptSet}
+        onAppendTranscript={handleTranscriptAppend}
+        onClearTranscript={() => void onUpdate({ transcript: "" })}
       />
+
       <PhotoCaptureGrid
-        photoCount={photoCount}
+        photoAssetIds={photoAssetIds}
         uploading={uploading}
         onPhoto={async (file) => {
           setUploading(true);
@@ -38,9 +49,12 @@ export default function CaptureStep({ draft, onUpdate, uploadAsset }: Props) {
             setUploading(false);
           }
         }}
+        onDeletePhoto={deleteAsset}
       />
+
       <VideoCapturePanel
         hasVideo={Boolean(draft?.capture.videoAssetId)}
+        videoAssetId={draft?.capture.videoAssetId}
         uploading={uploading}
         onVideo={async (blob) => {
           setUploading(true);
@@ -50,13 +64,16 @@ export default function CaptureStep({ draft, onUpdate, uploadAsset }: Props) {
             setUploading(false);
           }
         }}
+        onDeleteVideo={() => deleteAsset(draft?.capture.videoAssetId ?? "")}
       />
+
       <label className="block text-sm">
         <span className="mb-1 block font-bold">{t("workspaceWidgets.fieldCopilot.notesLabel")}</span>
         <textarea
-          className="min-h-[80px] w-full rounded-xl border border-[color:var(--border-main)] p-3"
+          className="min-h-[80px] w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
           value={draft?.capture.userNotes ?? ""}
           onChange={(e) => void onUpdate({ userNotes: e.target.value })}
+          dir="auto"
         />
       </label>
     </div>

@@ -83,6 +83,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
 
 
   const session = useFieldCopilotSession(initialSessionId);
+  const { deleteAsset } = session;
 
   const [step, setStep] = useState(initialStep);
 
@@ -315,6 +316,8 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
             onUpdate={onUpdate}
 
             uploadAsset={session.uploadAsset}
+
+            deleteAsset={deleteAsset}
 
           />
 

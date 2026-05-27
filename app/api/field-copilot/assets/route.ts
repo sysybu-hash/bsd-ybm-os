@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
 import { archiveFieldCopilotAsset } from "@/lib/field-copilot/archive-to-drive";
 import { fieldCopilotAssetUploadSchema } from "@/lib/validation/schemas/field-copilot";
+import { mapSessionToDraft } from "@/lib/field-copilot/session-mapper";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -89,5 +90,54 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   } catch (err: unknown) {
     log.error("asset upload failed", { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "שגיאה בהעלאה" }, { status: 500 });
+  }
+});
+
+export const DELETE = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  const limited = await applyRateLimit(req as NextRequest, "field-copilot:assets:delete", 30, 60_000);
+  if (limited) return limited;
+
+  const blocked = await guardConstructionOnlyApi(orgId);
+  if (blocked) return blocked;
+
+  if (!(await isFieldCopilotEnabled())) {
+    return NextResponse.json({ error: "קופיילוט שטח מושבת" }, { status: 403 });
+  }
+
+  const url = new URL(req.url);
+  const assetId = url.searchParams.get("assetId");
+  const sessionId = url.searchParams.get("sessionId");
+  if (!assetId || !sessionId) return jsonBadRequest("חסרים פרמטרים", "missing_params");
+
+  const session = await prisma.fieldCopilotSession.findFirst({
+    where: { id: sessionId, organizationId: orgId, userId },
+  });
+  if (!session) return NextResponse.json({ error: "סשן לא נמצא" }, { status: 404 });
+
+  const asset = await prisma.fieldCopilotAsset.findFirst({
+    where: { id: assetId, sessionId, organizationId: orgId },
+  });
+  if (!asset) return NextResponse.json({ error: "asset לא נמצא" }, { status: 404 });
+
+  try {
+    await prisma.fieldCopilotAsset.delete({ where: { id: assetId } });
+
+    if (asset.kind === "video" && session.videoAssetId === assetId) {
+      await prisma.fieldCopilotSession.update({
+        where: { id: sessionId },
+        data: { videoAssetId: null },
+      });
+    }
+
+    const updated = await prisma.fieldCopilotSession.findFirst({
+      where: { id: sessionId, organizationId: orgId, userId },
+      include: { assets: true },
+    });
+    if (!updated) return NextResponse.json({ error: "לא נמצא" }, { status: 404 });
+
+    return NextResponse.json({ draft: mapSessionToDraft(updated, updated.assets) });
+  } catch (err: unknown) {
+    log.error("asset delete failed", { error: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "שגיאה במחיקה" }, { status: 500 });
   }
 });
