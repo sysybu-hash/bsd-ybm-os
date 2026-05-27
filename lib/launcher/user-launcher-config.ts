@@ -48,13 +48,13 @@ export const LAUNCHER_QUICK_DESKTOP_WRAP_CLASS =
 export const LAUNCHER_QUICK_DESKTOP_GRID_CLASS =
   "mx-auto grid shrink-0 justify-items-stretch box-border [direction:ltr]";
 
-/** רשת 3 עמודות במובייל — ממורכזת */
+/** רשת 2 עמודות במובייל — ממורכזת, אריחים גדולים */
 export const LAUNCHER_QUICK_MOBILE_GRID_CLASS =
-  "mx-auto grid w-full max-w-[min(100%,19rem)] grid-cols-2 justify-items-center gap-4 overflow-x-hidden py-1 [direction:ltr] md:hidden";
+  "mx-auto grid w-full max-w-[min(100%,17.75rem)] grid-cols-2 justify-items-center gap-4 overflow-x-hidden py-1 [direction:ltr] md:hidden";
 
-/** אריח מוקטן לרשת 2×N במובייל */
+/** אריח לרשת 2×N במובייל — מטרת מגע ~124px */
 export const LAUNCHER_QUICK_MOBILE_TILE_WRAPPER_CLASS =
-  "h-[100px] w-full max-w-[8.75rem] min-w-0 shrink-0";
+  "box-border h-[124px] w-full max-w-[124px] min-w-[120px] shrink-0 justify-self-center";
 
 export const LAUNCHER_QUICK_ROW_CLASS = "flex w-full flex-wrap justify-center gap-3";
 

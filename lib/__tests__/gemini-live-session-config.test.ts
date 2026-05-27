@@ -60,7 +60,7 @@ describe("gemini-live-session-config", () => {
     });
     expect(cfg.temperature).toBe(0.55);
     expect(cfg.sessionResumption).toEqual({});
-    expect(cfg.responseModalities).toEqual(["AUDIO"]);
+    expect(cfg.responseModalities).toEqual(["AUDIO", "TEXT"]);
   });
 
   it("buildLiveConnectConfig omits session resumption when disabled", () => {

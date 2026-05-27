@@ -197,7 +197,7 @@ export default function OSWorkspace({
               </p>
             </header>
 
-            <div className="flex w-full min-w-0 max-w-full shrink-0 flex-col items-center justify-center px-2 pt-2 md:max-w-[min(100%,38.5rem)] md:px-4 md:pt-0">
+            <div className="flex w-full min-w-0 max-w-[min(100%,17.75rem)] shrink-0 flex-col items-center justify-center px-2 pt-2 md:max-w-[min(100%,38.5rem)] md:px-4 md:pt-0">
               <SortableLauncherZone
                 zone="quickGrid"
                 variant="quick"

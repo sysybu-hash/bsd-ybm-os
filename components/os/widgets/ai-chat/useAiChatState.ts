@@ -159,8 +159,8 @@ export function useAiChatState(
       else if (text && !text.startsWith("לא ") && !text.startsWith("שגיאה") && !text.toLowerCase().startsWith("error")) toast.success(text);
       return result;
     },
+    shouldNotifyError: () => liveAutoStartRef.current,
     onError: (message) => {
-      if (!liveAutoStartRef.current) return;
       liveAutoStartRef.current = false;
       toast.error(message);
       if (isGeminiLiveRateLimited()) {

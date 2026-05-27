@@ -9,7 +9,10 @@ import {
   LAUNCHER_GRID_MAX_EDIT_ROWS,
   LAUNCHER_GRID_MIN_EDIT_ROWS,
   LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX,
+  LAUNCHER_QUICK_MOBILE_MAX_WIDTH_PX,
+  LAUNCHER_QUICK_MOBILE_TILE_PX,
   LAUNCHER_TILE_PX,
+  quickGridMobileWidthPx,
   moveQuickGridSlot,
   packQuickGridCentered,
   quickGridDesktopWidthPx,
@@ -20,6 +23,15 @@ import {
 } from "@/lib/launcher/quick-grid";
 import { BUSINESS_MGMT_QUICK_GRID, DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
 import type { LauncherSlot } from "@/lib/launcher/user-launcher-config";
+
+describe("quickGridMobileWidthPx", () => {
+  it("sizes two mobile columns with gap", () => {
+    expect(quickGridMobileWidthPx(2)).toBe(
+      2 * LAUNCHER_QUICK_MOBILE_TILE_PX + LAUNCHER_GRID_GAP_PX,
+    );
+    expect(LAUNCHER_QUICK_MOBILE_MAX_WIDTH_PX).toBe(quickGridMobileWidthPx(2));
+  });
+});
 
 describe("quickGridInlineStyle", () => {
   it("reserves explicit column and row gaps so tiles do not overlap", () => {

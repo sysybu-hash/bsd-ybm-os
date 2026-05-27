@@ -8,6 +8,9 @@ export const QUICK_GRID_HUB_COLS = 4;
 /** עמודות רשת quick grid במובייל */
 export const QUICK_GRID_MOBILE_COLS = 2;
 
+/** גודל אריח במובייל (מטרת מגע ~120px+) */
+export const LAUNCHER_QUICK_MOBILE_TILE_PX = 124;
+
 export const LAUNCHER_GRID_COLS = 7;
 export const LAUNCHER_TILE_PX = 140;
 /** רווח בין אריחים (תואם gap-4) */
@@ -40,6 +43,18 @@ export function quickGridDesktopWidthPx(cols: number): number {
   const safeCols = Math.max(1, cols);
   return safeCols * LAUNCHER_TILE_PX + Math.max(0, safeCols - 1) * LAUNCHER_GRID_GAP_PX;
 }
+
+/** רוחב רשת מובייל (2 עמודות ממורכזות) */
+export function quickGridMobileWidthPx(cols: number = QUICK_GRID_MOBILE_COLS): number {
+  const safeCols = Math.max(1, cols);
+  return (
+    safeCols * LAUNCHER_QUICK_MOBILE_TILE_PX +
+    Math.max(0, safeCols - 1) * LAUNCHER_GRID_GAP_PX
+  );
+}
+
+/** מקסימום רוחב מעטפת quick grid במובייל */
+export const LAUNCHER_QUICK_MOBILE_MAX_WIDTH_PX = quickGridMobileWidthPx(QUICK_GRID_MOBILE_COLS);
 
 export type QuickGridInlineStyle = {
   width: string;

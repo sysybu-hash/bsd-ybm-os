@@ -58,6 +58,14 @@ export function buildOsAssistantSystemInstruction(
     "- Open and manage workspace windows (widgets) when the user asks.",
     "- Search clients and projects in the system (tool: search_site).",
     "- Answer general knowledge questions (weather, facts, etc.) directly in conversation when no app action is needed.",
+    "",
+    "## Product context (current release)",
+    `- Canonical site / OAuth redirect host: ${siteUrl} (production uses www.bsd-ybm.co.il — not bare apex).`,
+    "- Hub launcher tiles: financeHub, projectsHub, documentsHub, aiHub (plus crmTable, fieldCopilot, googleCalendar, googleDrive, meckanoReports, settings, helpCenter).",
+    "- googleCalendar widget: Google Calendar sync and events inside the OS.",
+    "- Google sign-in / Drive: reconnect via settings when tokens expire; use googleDrive widget.",
+    "- CRM: add clients with create_contact or execute_user_command — bulk contacts file import was removed.",
+    "- Desktop quick grid: up to 4 tiles per row, centered; mobile launcher: 2 columns.",
     voice
       ? [
           "## Gemini Live voice mode (BSD-YBM OS)",
@@ -72,13 +80,14 @@ export function buildOsAssistantSystemInstruction(
           "",
           "### Actions in the app (MANDATORY)",
           `- You HAVE live access to BSD-YBM OS via function calls — never claim you lack permissions or cannot see their data.`,
+          `- Priority: questions about BSD-YBM OS and performing actions here — always use tools for in-app work.`,
           `- For ANY in-app request you MUST call a tool before saying it was done.`,
           `- \`execute_user_command\`: PRIMARY — pass the user's full sentence in ${lang} for create/edit/open/multi-step requests.`,
           `- \`run_automation\`: when you know the exact intent id (create_invoice, create_task, open_scanner, meckano_clock_in, etc.).`,
-          `- \`execute_os_command\`: open a screen only (widget id).`,
+          `- \`execute_os_command\`: open a screen only (widget id: hubs financeHub/projectsHub/documentsHub/aiHub, googleCalendar, googleDrive, crmTable, fieldCopilot, settings, helpCenter, …).`,
           `- \`search_site\`: find client/project by name before ambiguous creates.`,
           `- After success: one short confirmation in ${lang}. On failure: explain briefly and suggest what to try.`,
-          `- If the user asks a general question with no app action, answer fully in ${lang} without calling tools.`,
+          `- Off-topic general knowledge: answer briefly and helpfully in ${lang}; mention today's date from context when time-sensitive.`,
         ].join("\n")
       : `- In text mode: be clear and structured when helpful.`,
     ...(compactForLiveToken

@@ -49,6 +49,9 @@ export function getBsdYbmSiteCapabilitiesBlockHe(): string {
     "",
     "דפים ציבוריים: / (נחיתה), /login, /about, /privacy, /terms, /legal.",
     "ממשק מחובר: סיידבר ודוק לפתיחת ווידג'טים, Omnibar (חיפוש/פקודות), פעמון התראות, מצב «דשבורד נקי», שמירת פריסת חלונות, החלפת שפה וערכת בהיר/כהה.",
+    "רשת Hub (דשבורד נקי): financeHub, projectsHub, documentsHub, aiHub, crmTable, fieldCopilot, googleCalendar, googleDrive, meckanoReports, settings, helpCenter.",
+    "OAuth / כניסה: כתובת קנונית www.bsd-ybm.co.il; חידוש Google Drive בהגדרות.",
+    "CRM: הוספת לקוח ב-create_contact — אין ייבוא אנשי קשר מקובץ.",
   ].join("\n");
 }
 

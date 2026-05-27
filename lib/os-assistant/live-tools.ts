@@ -43,7 +43,7 @@ export function getOsAssistantLiveToolDeclarations(): FunctionDeclaration[] {
     {
       name: "execute_os_command",
       description:
-        "Opens a workspace widget only (navigation, no data creation). Widget ids: dashboard, projectBoard, crmTable, docCreator, aiScanner, fieldCopilot, erpArchive, googleDrive, notebookLM, aiChatFull, meckanoReports, settings, helpCenter, and all OS_ASSISTANT_WIDGETS ids.",
+        "Opens a workspace widget only (navigation, no data creation). Prefer hub ids when relevant: financeHub, projectsHub, documentsHub, aiHub. Also: crmTable, googleCalendar, googleDrive, fieldCopilot, meckanoReports, dashboard, projectBoard, docCreator, aiScanner, erpArchive, notebookLM, aiChatFull, settings, helpCenter, and other OS_ASSISTANT_WIDGETS ids.",
       parameters: {
         type: GEMINI_SCHEMA_TYPE.OBJECT,
         properties: {

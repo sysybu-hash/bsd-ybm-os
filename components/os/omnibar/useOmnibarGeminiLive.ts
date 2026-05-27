@@ -82,11 +82,11 @@ export function useOmnibarGeminiLive({
       else if (!text.startsWith("לא ") && !text.startsWith("שגיאה")) toast.success(text);
       return result;
     },
+    shouldNotifyError: () => userRequestedLiveRef.current,
     onError: (err) => {
       if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
       setVoiceStatus("error");
       pendingLiveStartRef.current = false;
-      if (!userRequestedLiveRef.current) return;
       userRequestedLiveRef.current = false;
       toast.error(err);
       if (isGeminiLiveRateLimited()) setOmnibarLiveOn(false);

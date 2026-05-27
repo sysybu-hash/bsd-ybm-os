@@ -45,7 +45,7 @@ export const DEFAULT_GEMINI_LIVE_VOICE_SETTINGS: GeminiLiveVoiceSettings = {
   prefixPaddingMs: 350,
   inputTranscription: true,
   outputTranscription: true,
-  responseMode: "audio",
+  responseMode: "audio_text",
   proactiveAudio: false,
   affectiveDialog: false,
   sessionResumptionEnabled: true,
@@ -98,6 +98,11 @@ type GeminiLiveOptions = {
   userName?: string;
   /** ברכה קולית מיד אחרי חיבור (ברירת מחדל: כן) */
   greetOnConnect?: boolean;
+  /**
+   * כשמוגדר — onError נקרא רק כשהפונקציה מחזירה true (למשל אחרי לחיצת מיקרופון).
+   * מונע toast/UI על שגיאות חיבור שלא ביקש המשתמש במפורש.
+   */
+  shouldNotifyError?: () => boolean;
   /** כש-false — לא מתחיל חיבור (ממתין להקשר מערכת מהשרת) */
   contextReady?: boolean;
   /** תרגום i18n להודעות שגיאה (מפתחות workspaceWidgets.aiChat.*) */
@@ -351,6 +356,7 @@ export function useGeminiLiveAudio({
   locale,
   userName,
   greetOnConnect = true,
+  shouldNotifyError,
   contextReady = true,
   translate,
 }: GeminiLiveOptions) {
@@ -421,9 +427,11 @@ export function useGeminiLiveAudio({
       intentionalStopRef.current = true;
       setState(nextState);
       setStatusText(friendly);
-      onError?.(friendly);
+      if (onError && (!shouldNotifyError || shouldNotifyError())) {
+        onError(friendly);
+      }
     },
-    [applyRateLimitCooldown, locale, onError, translate],
+    [applyRateLimitCooldown, locale, onError, shouldNotifyError, translate],
   );
 
   const clearSetupWaiter = useCallback((rejectReason?: Error) => {

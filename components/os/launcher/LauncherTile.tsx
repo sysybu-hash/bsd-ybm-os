@@ -180,7 +180,7 @@ export default function LauncherTile({
         onClick={handleClick}
         className={`quiet-surface group flex size-full min-h-0 min-w-0 flex-col items-center justify-center text-center transition ${
           tileSize === "mobile"
-            ? "h-[100px] w-full max-w-[112px] gap-1.5 p-2"
+            ? "h-[124px] w-full max-w-[124px] min-w-[120px] gap-2 p-2.5"
             : "max-h-[140px] max-w-[140px] gap-3 p-4"
         } ${isEmpty && editMode ? "border-2 border-dashed border-indigo-400/50" : ""} ${
           isEmpty && !editMode ? "hidden" : ""
@@ -209,23 +209,23 @@ export default function LauncherTile({
             <div className="shrink-0">
               <div
                 className={`flex items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)} ${
-                  tileSize === "mobile" ? "h-8 w-8" : "h-11 w-11"
+                  tileSize === "mobile" ? "h-10 w-10" : "h-11 w-11"
                 }`}
               >
-                <Icon size={tileSize === "mobile" ? 18 : 22} strokeWidth={2} aria-hidden />
+                <Icon size={tileSize === "mobile" ? 20 : 22} strokeWidth={2} aria-hidden />
               </div>
             </div>
             <div className="min-w-0 w-full px-0.5">
               <div
                 className={`font-black leading-tight text-[color:var(--foreground-main)] ${
-                  tileSize === "mobile" ? "text-[10px]" : "text-sm"
+                  tileSize === "mobile" ? "text-[11px]" : "text-sm"
                 }`}
               >
                 {label}
               </div>
               <div
                 className={`font-semibold leading-tight text-[color:var(--foreground-muted)] ${
-                  tileSize === "mobile" ? "mt-0.5 line-clamp-2 text-[8px]" : "mt-1 text-[11px]"
+                  tileSize === "mobile" ? "mt-0.5 line-clamp-2 text-[9px]" : "mt-1 text-[11px]"
                 }`}
               >
                 {t(quickActionSubtitleKey(resolvedWidgetId))}
