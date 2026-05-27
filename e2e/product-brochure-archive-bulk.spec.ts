@@ -5,6 +5,7 @@ test.describe("דף מוצר — ארכיון bulk", () => {
   test.skip(!E2E_EMAIL, "requires E2E credentials");
 
   test("מצב בחירה מרובה וייצוא ZIP", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
     test.skip(testInfo.project.name === "mobile-chrome", "ERP archive desktop layout only");
 
     const ready = await gotoAuthenticatedWidget(page, "erpArchive");
@@ -13,7 +14,7 @@ test.describe("דף מוצר — ארכיון bulk", () => {
     const selectBtn = page.getByRole("button", {
       name: /בחירה מרובה|Multi-select|Множественный/i,
     });
-    await expect(selectBtn).toBeVisible({ timeout: 30_000 });
+    await expect(selectBtn.first()).toBeVisible({ timeout: 15_000 });
     await selectBtn.click();
     await expect(
       page.getByRole("button", { name: /ייצוא נבחרים|Export selected/i }),

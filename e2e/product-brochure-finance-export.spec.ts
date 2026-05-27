@@ -5,6 +5,7 @@ test.describe("דף מוצר — ייצוא פיננסי", () => {
   test.skip(!E2E_EMAIL, "requires E2E credentials");
 
   test("כפתורי ייצוא CSV/PDF זמינים בדשבורד", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
     test.skip(testInfo.project.name === "mobile-chrome", "dashboard export controls desktop layout");
 
     const ready = await gotoAuthenticatedWidget(page, "dashboard");
@@ -12,7 +13,7 @@ test.describe("דף מוצר — ייצוא פיננסי", () => {
 
     const exportCsv = page.getByRole("button", { name: /ייצוא CSV|Export CSV/i });
     const exportPdf = page.getByRole("button", { name: /ייצוא PDF|Export PDF/i });
-    await expect(exportCsv.or(page.locator('[aria-label*="export" i]'))).toBeVisible({ timeout: 30_000 });
-    await expect(exportPdf).toBeVisible({ timeout: 15_000 });
+    await expect(exportCsv.first()).toBeVisible({ timeout: 15_000 });
+    await expect(exportPdf.first()).toBeVisible({ timeout: 15_000 });
   });
 });

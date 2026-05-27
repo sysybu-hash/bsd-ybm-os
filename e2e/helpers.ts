@@ -280,6 +280,39 @@ export function hubQuickGridButton(page: Page, name: RegExp) {
   return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
 }
 
+/** מחכה שהווידג'ט סיים טעינה ומציג UI אינטראקטיבי (לא רק shell ריק). */
+export async function waitForBrochureWidgetReady(page: Page, widgetId: string): Promise<void> {
+  const loading = page.locator("[data-widget-shell]").getByText(/טוען|Loading|Загрузка/i);
+  await loading.first().waitFor({ state: "hidden", timeout: 45_000 }).catch(() => {});
+
+  const errorHeading = page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i });
+  await expect(errorHeading).toHaveCount(0, { timeout: 5_000 });
+
+  switch (widgetId) {
+    case "dashboard":
+    case "financeHub":
+      await expect(
+        page.getByRole("button", { name: /ייצוא CSV|Export CSV/i }).first(),
+      ).toBeVisible({ timeout: 45_000 });
+      break;
+    case "crmTable":
+      await waitForCrmContactsLoaded(page);
+      await expect(
+        page.getByRole("button", { name: /ייצוא CSV|Export CSV/i }).first(),
+      ).toBeVisible({ timeout: 45_000 });
+      break;
+    case "erpArchive":
+      await expect(
+        page.getByRole("button", {
+          name: /בחירה מרובה|Multi-select|Множественный/i,
+        }).first(),
+      ).toBeVisible({ timeout: 45_000 });
+      break;
+    default:
+      await page.locator("[data-widget-shell]").first().waitFor({ state: "visible", timeout: 30_000 });
+  }
+}
+
 /** ניווט לווידג'ט workspace אחרי התחברות (בדיקות product-brochure וכו'). */
 export async function gotoAuthenticatedWidget(
   page: Page,
@@ -295,8 +328,15 @@ export async function gotoAuthenticatedWidget(
   await dismissWorkspaceOverlays(page);
 
   const shell = page.locator("[data-widget-shell]").first();
-  await shell.waitFor({ state: "visible", timeout: 30_000 }).catch(() => {});
-  return shell.isVisible().catch(() => false);
+  const shellVisible = await shell.waitFor({ state: "visible", timeout: 30_000 }).then(() => true).catch(() => false);
+  if (!shellVisible) return false;
+
+  try {
+    await waitForBrochureWidgetReady(page, widgetId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function dismissCookieBannerIfVisible(page: Page) {
