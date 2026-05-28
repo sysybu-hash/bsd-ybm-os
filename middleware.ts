@@ -38,6 +38,7 @@ const publicApiPrefixes = [
   "/api/sign",
   "/api/org-invite",
   "/api/locale",
+  "/api/feedback",
   "/api/analyze-queue/process",
   "/api/marketing",
 ] as const;
