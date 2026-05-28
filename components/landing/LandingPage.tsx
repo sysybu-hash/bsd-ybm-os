@@ -4,6 +4,8 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { BrainCircuit, BarChart3, Fingerprint, ChevronLeft, ChevronRight, Mic } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
+import BesiyataStrip from "@/components/landing/BesiyataStrip";
+import { SITE_CONTACT, siteContactAddress, siteContactAvailability } from "@/lib/site-contact";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -22,7 +24,7 @@ export default function LandingPage({
   onRegister?: () => void;
 }) {
   const router = useRouter();
-  const { t, dir } = useI18n();
+  const { t, dir, locale } = useI18n();
   const CtaIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   const features = [0, 1, 2, 3].map((i) => ({
@@ -41,6 +43,7 @@ export default function LandingPage({
         <div className="absolute bottom-0 end-0 h-[400px] w-[400px] rounded-full bg-emerald-500/10 blur-[100px]" />
       </div>
 
+      <BesiyataStrip variant="landing" />
       <header className="relative z-20 flex items-center justify-between px-4 py-6 sm:px-8">
         <BrandHomeLink size="sm" variant="image" tone="auto" priority />
         <div className="flex items-center gap-3">
@@ -78,6 +81,13 @@ export default function LandingPage({
             </span>
             {t("marketingHome.osLanding.badge")}
           </div>
+
+          <p
+            className="landing-reveal mb-6 text-xl font-bold text-amber-600 dark:text-amber-300 sm:text-2xl"
+            style={revealStyle(0.25)}
+          >
+            {t("marketingHome.hero.motto")}
+          </p>
 
           <h1
             className="landing-reveal mb-8 text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl"
@@ -143,6 +153,15 @@ export default function LandingPage({
             {t("marketingHome.osLanding.footerCookies")}
           </a>
         </nav>
+        <p className="mb-3 text-[color:var(--foreground-muted)]">
+          <a href={`mailto:${SITE_CONTACT.email}`} className="font-semibold hover:underline">
+            {SITE_CONTACT.email}
+          </a>
+          {" · "}
+          {siteContactAddress(locale)}
+          {" · "}
+          {siteContactAvailability(locale)}
+        </p>
         <p>{t("marketingHome.osLanding.footerCopyright", { year: String(new Date().getFullYear()) })}</p>
       </footer>
     </div>

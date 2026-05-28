@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
+import { SITE_CONTACT } from "@/lib/site-contact";
 import {
   applyAccessibilitySettings,
   type AccessibilityFontScale,
@@ -103,6 +105,22 @@ export default function AccessibilityPanelContent({
             onChange={(v) => onChange({ ...value, lineSpacing: v })}
           />
         </div>
+        <p className="mt-4 text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
+          {t("accessibility.standardNote")}
+        </p>
+        <p className="mt-2 text-[10px] text-[color:var(--foreground-muted)]">{t("accessibility.keyboardHint")}</p>
+        <p className="mt-3 text-[10px]">
+          <Link href="/legal" className="font-bold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400">
+            {t("accessibility.statementLink")}
+          </Link>
+          {" · "}
+          <a
+            href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent("נגישות האתר")}`}
+            className="font-bold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+          >
+            {t("accessibility.feedbackEmail")}
+          </a>
+        </p>
       </div>
       {showSaveButton ? (
         <div className="border-t border-[color:var(--border-main)] p-3">

@@ -8,8 +8,8 @@ import {
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import {
+  sendAccessApprovedEmail,
   sendNewRegistrationPendingAdminEmail,
-  sendRegistrationCredentialsEmail,
   sendRegistrationWelcomeEmail,
 } from "@/lib/mail";
 import { createLogger } from "@/lib/logger";
@@ -189,22 +189,14 @@ export async function POST(req: Request) {
         select: { subscriptionTier: true },
       });
       const tier = joinedOrg?.subscriptionTier ?? "FREE";
-      void sendRegistrationWelcomeEmail(normalized, name, {
+      void sendAccessApprovedEmail(normalized, name, {
+        variant: "registration_active",
+        temporaryPassword: plainForEmail ?? undefined,
         tierLabelHe: tierLabelHe(tier),
-        tierKey: tier,
-        accountActive: true,
-        extraNote:
-          "הצטרפתם לארגון קיים כחברי צוות. ניתן להתחבר במייל וסיסמה, Google, או ביומטרי לאחר הגדרה.",
       }).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        log.error("sendRegistrationWelcomeEmail (orgInvite)", { error: msg });
+        log.error("sendAccessApprovedEmail (orgInvite)", { error: msg });
       });
-      if (plainForEmail) {
-        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          log.error("sendRegistrationCredentialsEmail (orgInvite)", { error: msg });
-        });
-      }
 
       return NextResponse.json({
         ok: true,
@@ -283,24 +275,14 @@ export async function POST(req: Request) {
         });
       });
 
-      void sendRegistrationWelcomeEmail(normalized, name, {
+      void sendAccessApprovedEmail(normalized, name, {
+        variant: "registration_active",
+        temporaryPassword: plainForEmail ?? undefined,
         tierLabelHe: tierLabelHe(inv.subscriptionTier),
-        tierKey: inv.subscriptionTier,
-        accountActive: true,
-        extraNote:
-          inv.subscriptionTier === "FREE"
-            ? "Welcome to BSD-YBM! You are currently on the FREE tier with an active trial window where applicable."
-            : undefined,
       }).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        log.error("sendRegistrationWelcomeEmail (invite)", { error: msg });
+        log.error("sendAccessApprovedEmail (invite)", { error: msg });
       });
-      if (plainForEmail) {
-        void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          log.error("sendRegistrationCredentialsEmail (invite)", { error: msg });
-        });
-      }
 
       return NextResponse.json({
         ok: true,
@@ -349,21 +331,23 @@ export async function POST(req: Request) {
       },
     });
 
-    void sendRegistrationWelcomeEmail(normalized, name, {
-      tierLabelHe: tierLabelHe(tier),
-      tierKey: tier,
-      accountActive: shouldApprove,
-      extraNote: shouldApprove
-        ? `Welcome to BSD-YBM! Your ${tierLabelHe(tier)} account is now ACTIVE.`
-        : "Welcome to BSD-YBM! You are currently on the FREE tier pending admin approval — you will receive full access once approved.",
-    }).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      log.error("sendRegistrationWelcomeEmail (signup)", { error: msg });
-    });
-    if (plainForEmail && shouldApprove) {
-      void sendRegistrationCredentialsEmail(normalized, name, plainForEmail).catch((err: unknown) => {
+    if (shouldApprove) {
+      void sendAccessApprovedEmail(normalized, name, {
+        variant: "registration_active",
+        temporaryPassword: plainForEmail ?? undefined,
+        tierLabelHe: tierLabelHe(tier),
+      }).catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        log.error("sendRegistrationCredentialsEmail (signup)", { error: msg });
+        log.error("sendAccessApprovedEmail (signup)", { error: msg });
+      });
+    } else {
+      void sendRegistrationWelcomeEmail(normalized, name, {
+        tierLabelHe: tierLabelHe(tier),
+        tierKey: tier,
+        accountActive: false,
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error("sendRegistrationWelcomeEmail (signup pending)", { error: msg });
       });
     }
     if (!shouldApprove) {

@@ -1,0 +1,26 @@
+ffconcat version 1.0
+file '01-marketing-landing.png'
+duration 2.5
+file '02-workspace-home.png'
+duration 2.5
+file '03-finance-hub.png'
+duration 2.5
+file '04-projects-hub.png'
+duration 2.5
+file '05-crm-table.png'
+duration 2.5
+file '06-documents-hub.png'
+duration 2.5
+file '07-ai-hub.png'
+duration 2.5
+file '08-project-board.png'
+duration 2.5
+file '09-erp-archive.png'
+duration 2.5
+file '10-notebook-lm.png'
+duration 2.5
+file '11-meckano-reports.png'
+duration 2.5
+file '12-google-calendar.png'
+duration 2.5
+file '01-marketing-landing.png'

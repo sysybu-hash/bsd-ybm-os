@@ -29,6 +29,7 @@ import Script from "next/script";
 import StructuredDataScript from "@/components/seo/StructuredDataScript";
 import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
 import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
+import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -158,6 +159,7 @@ export default async function RootLayout({
                 {children}
                 <CookieConsentBanner />
                 <AccessibilityToolbar />
+                <SiteFeedbackFab />
                 <AppToaster />
                 <Script id="pwa-ios" strategy="afterInteractive">
                   {`

@@ -1,4 +1,4 @@
-export type GeminiLiveOwner = "omnibar" | "aiChatFull" | "fieldCopilot";
+export type GeminiLiveOwner = "omnibar" | "aiChatFull" | "fieldCopilot" | "marketingOmnibar";
 
 type Lease = {
   owner: GeminiLiveOwner;

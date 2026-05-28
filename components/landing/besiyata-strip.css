@@ -1,0 +1,123 @@
+/* בסיעתא דשמיא — פס עליון מקובע (דף שיווק + נחיתה) */
+.mkt-besiyata,
+.besiyata-strip {
+  border-bottom: 1px solid rgba(212, 168, 83, 0.45);
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -40%, rgba(212, 168, 83, 0.22), transparent 55%),
+    linear-gradient(
+      180deg,
+      rgba(15, 23, 42, 0.98) 0%,
+      rgba(2, 6, 23, 0.96) 48%,
+      rgba(15, 23, 42, 0.98) 100%
+    );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 8px 32px -12px rgba(0, 0, 0, 0.55),
+    0 0 40px -16px rgba(212, 168, 83, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mkt-besiyata::before,
+.besiyata-strip::before {
+  content: "";
+  position: absolute;
+  inset-inline: 8%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(252, 211, 77, 0.65) 20%,
+    rgba(212, 168, 83, 0.9) 50%,
+    rgba(252, 211, 77, 0.65) 80%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+html.light .mkt-besiyata,
+html.light .besiyata-strip {
+  border-bottom-color: rgba(146, 64, 14, 0.22);
+  background:
+    radial-gradient(ellipse 100% 70% at 50% 0%, rgba(254, 243, 199, 0.9), transparent 60%),
+    linear-gradient(180deg, #fffbeb 0%, #fef3c7 42%, #fffbeb 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 20px -8px rgba(120, 53, 15, 0.12);
+}
+
+html.light .mkt-besiyata::before,
+html.light .besiyata-strip::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 134, 46, 0.35) 25%,
+    rgba(146, 64, 14, 0.5) 50%,
+    rgba(180, 134, 46, 0.35) 75%,
+    transparent
+  );
+}
+
+.besiyata-strip__text {
+  position: relative;
+  margin: 0;
+  padding: 0.65rem 1.25rem 0.7rem;
+  text-align: center;
+  font-family: "Frank Ruhl Libre", "David Libre", "Noto Serif Hebrew", "Times New Roman", serif;
+  font-size: clamp(1.25rem, 3.2vw, 1.65rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  text-shadow:
+    0 0 24px rgba(252, 211, 77, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(
+    105deg,
+    #fff7ed 0%,
+    #fde68a 22%,
+    #fbbf24 45%,
+    #d4a853 68%,
+    #fcd34d 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html.light .besiyata-strip__text {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: linear-gradient(105deg, #78350f 0%, #92400e 30%, #b45309 55%, #a16207 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.besiyata-strip__ornament {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.35em;
+  color: rgba(212, 168, 83, 0.55);
+  text-align: center;
+  user-select: none;
+}
+
+html.light .besiyata-strip__ornament {
+  color: rgba(146, 64, 14, 0.35);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mkt-besiyata .besiyata-strip__text,
+  .besiyata-strip .besiyata-strip__text {
+    animation: mkt-besiyata-glow 4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes mkt-besiyata-glow {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.08);
+  }
+}

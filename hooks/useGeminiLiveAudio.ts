@@ -107,6 +107,10 @@ type GeminiLiveOptions = {
   contextReady?: boolean;
   /** תרגום i18n להודעות שגיאה (מפתחות workspaceWidgets.aiChat.*) */
   translate?: (key: string) => string;
+  /** נתיב מותאם לטוקן Live (למשל דף שיווק ציבורי) */
+  sessionTokenUrl?: string;
+  /** ברכת פתיחה מותאמת (למשל דף שיווק — לא workspace) */
+  buildSessionStartUserTurn?: (locale?: string, userName?: string) => string;
 };
 
 type TokenResponse = {
@@ -246,10 +250,12 @@ async function fetchLiveSessionToken(
   settings: GeminiLiveVoiceSettings,
   advancedFeaturesEnabled: boolean,
   locale: string | undefined,
+  sessionTokenUrl = "/api/ai/gemini-live/session",
 ): Promise<LiveSessionTokenPayload> {
-  const tokenResponse = await fetch("/api/ai/gemini-live/session", {
+  const isPublicMarketingSession = sessionTokenUrl.includes("/api/marketing/");
+  const tokenResponse = await fetch(sessionTokenUrl, {
     method: "POST",
-    credentials: "include",
+    credentials: isPublicMarketingSession ? "same-origin" : "include",
     cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -359,6 +365,8 @@ export function useGeminiLiveAudio({
   shouldNotifyError,
   contextReady = true,
   translate,
+  sessionTokenUrl,
+  buildSessionStartUserTurn,
 }: GeminiLiveOptions) {
   const statusLabels = useMemo(
     () => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }),
@@ -494,20 +502,39 @@ export function useGeminiLiveAudio({
     if (socket?.readyState !== WebSocket.OPEN) return;
     greetingSentRef.current = true;
     log.info("session greeting sent");
+    const turnText = buildSessionStartUserTurn
+      ? buildSessionStartUserTurn(locale, userName)
+      : buildGeminiLiveSessionStartUserTurn(locale, userName);
     socket.send(
       JSON.stringify({
         clientContent: {
           turns: [
             {
               role: "user",
-              parts: [{ text: buildGeminiLiveSessionStartUserTurn(locale, userName) }],
+              parts: [{ text: turnText }],
             },
           ],
           turnComplete: true,
         },
       }),
     );
-  }, [greetOnConnect, locale, userName]);
+  }, [buildSessionStartUserTurn, greetOnConnect, locale, userName]);
+
+  const sendUserTextTurn = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+    const socket = webSocketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN || !sessionReadyRef.current) return false;
+    socket.send(
+      JSON.stringify({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text: trimmed }] }],
+          turnComplete: true,
+        },
+      }),
+    );
+    return true;
+  }, []);
 
   const cleanup = useCallback(() => {
     clearSetupWaiter();
@@ -767,7 +794,12 @@ export function useGeminiLiveAudio({
         playbackContext.audioWorklet.addModule(
           `/gemini-live/playback.worklet.js?v=${GEMINI_LIVE_WORKLET_VERSION}`,
         ),
-        fetchLiveSessionToken(settings, advancedFeaturesEnabled, locale),
+        fetchLiveSessionToken(
+          settings,
+          advancedFeaturesEnabled,
+          locale,
+          sessionTokenUrl,
+        ),
       ]);
 
       const playbackNode = new AudioWorkletNode(playbackContext, "gemini-live-playback");
@@ -948,6 +980,7 @@ export function useGeminiLiveAudio({
     owner,
     waitForSetupComplete,
     locale,
+    sessionTokenUrl,
   ]);
 
   const stop = useCallback(() => {
@@ -1014,6 +1047,7 @@ export function useGeminiLiveAudio({
     rateLimitedUntil,
     start,
     stop,
+    sendUserTextTurn,
     acknowledgeContextReady,
   };
 }

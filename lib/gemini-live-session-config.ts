@@ -66,17 +66,20 @@ export function buildLiveConnectConfig(
 export function buildFullLiveConnectConfig(
   settings: GeminiLiveVoiceSettings,
   systemInstruction: string,
-  options?: { advancedFeatures?: boolean; model?: string },
+  options?: { advancedFeatures?: boolean; model?: string; includeTools?: boolean },
 ): LiveConnectConfig {
   const resolvedSettings =
     options?.model != null
       ? coalesceLiveVoiceSettingsForModel(settings, options.model)
       : settings;
   const base = buildLiveConnectConfig(resolvedSettings, options?.model);
+  const includeTools = options?.includeTools !== false;
   return {
     ...base,
     systemInstruction: { parts: [{ text: systemInstruction }] },
-    tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }],
+    ...(includeTools
+      ? { tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }] }
+      : {}),
     speechConfig: {
       voiceConfig: {
         prebuiltVoiceConfig: { voiceName: resolvedSettings.voiceName },

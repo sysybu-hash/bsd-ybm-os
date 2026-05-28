@@ -377,6 +377,10 @@
   },
   "accessibility": {
     "toolbar": "Accessibility",
+    "standardNote": "We aim for EN 301 549 / WCAG 2.1 AA and EAA compliance. Updated 28.05.2026.",
+    "statementLink": "Accessibility & legal info",
+    "feedbackEmail": "Report an accessibility barrier",
+    "keyboardHint": "Esc — close. Tab — move between options.",
     "brandColor": "Brand color",
     "fontScale": "Text size",
     "fontDefault": "Default",
@@ -953,6 +957,22 @@
       "document": "Contract / Deed",
       "inventory": "Listings"
     }
+  },
+  "siteFeedback": {
+    "fabLabel": "Feedback",
+    "title": "Send feedback",
+    "subtitle": "We read every message. Your details are emailed directly to the BSD-YBM team.",
+    "name": "Full name",
+    "email": "Email",
+    "phone": "Phone (optional)",
+    "message": "Message",
+    "submit": "Send feedback",
+    "sending": "Sending…",
+    "success": "Thank you — we received your feedback.",
+    "error": "Could not send. Please try again later.",
+    "close": "Close",
+    "marketingSectionTitle": "Feedback & inquiries",
+    "marketingSectionLead": "Questions, ideas or reports—leave your details and we will reply by email."
   },
   "documentCreatorContact": {
     "enterClientName": "Please enter client name",

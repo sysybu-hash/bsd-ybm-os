@@ -8,7 +8,7 @@
   },
   "brand": {
     "name": "BSD-YBM פתרונות AI",
-    "tagline": "CRM · ERP · בינה מלאכותית — במערכת אחת לעסקים ישראלים"
+    "tagline": "השדרה שמחברת בין כולם — CRM · ERP · AI"
   },
   "nav": {
     "main": "השדרה המרכזית",
@@ -402,6 +402,10 @@
   },
   "accessibility": {
     "toolbar": "נגישות",
+    "standardNote": "האתר שואף לעמידה ב-EN 301 549 / WCAG 2.1 AA ו-EAA. עודכן 28.05.2026.",
+    "statementLink": "הצהרת נגישות ומידע משפטי",
+    "feedbackEmail": "דיווח על מכשול נגישות",
+    "keyboardHint": "Esc — סגירת החלון. Tab — ניווט בין אפשרויות.",
     "brandColor": "צבע מותג",
     "fontScale": "גודל טקסט",
     "fontDefault": "רגיל",
@@ -987,6 +991,22 @@
       "document": "חוזה / נסח טאבו",
       "inventory": "מאגר נכסים"
     }
+  },
+  "siteFeedback": {
+    "fabLabel": "משוב",
+    "title": "שליחת משוב",
+    "subtitle": "נשמח לשמוע. הפרטים וההודעה יישלחו ישירות לצוות BSD-YBM.",
+    "name": "שם מלא",
+    "email": "אימייל",
+    "phone": "טלפון (אופציונלי)",
+    "message": "הודעה",
+    "submit": "שליחת משוב",
+    "sending": "שולח…",
+    "success": "תודה — קיבלנו את המשוב.",
+    "error": "לא הצלחנו לשלוח. נסו שוב מאוחר יותר.",
+    "close": "סגירה",
+    "marketingSectionTitle": "משוב ובירורים",
+    "marketingSectionLead": "שאלה, הצעה או דיווח — השאירו פרטים ונחזור אליכם במייל."
   },
   "documentCreatorContact": {
     "enterClientName": "אנא הזן שם לקוח",

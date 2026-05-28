@@ -286,6 +286,10 @@
   },
   "accessibility": {
     "toolbar": "Доступность",
+    "standardNote": "Сайт ориентирован на EN 301 549 / WCAG 2.1 AA и EAA. Обновлено 28.05.2026.",
+    "statementLink": "Доступность и правовая информация",
+    "feedbackEmail": "Сообщить о барьере доступности",
+    "keyboardHint": "Esc — закрыть. Tab — навигация.",
     "brandColor": "Цвет бренда",
     "fontScale": "Размер текста",
     "fontDefault": "Обычный",
@@ -581,6 +585,22 @@
       "document": "Контракт / Выписка",
       "inventory": "База объектов"
     }
+  },
+  "siteFeedback": {
+    "fabLabel": "Отзыв",
+    "title": "Отправить отзыв",
+    "subtitle": "Мы читаем каждое сообщение. Данные отправляются команде BSD-YBM по email.",
+    "name": "Имя",
+    "email": "Email",
+    "phone": "Телефон (необязательно)",
+    "message": "Сообщение",
+    "submit": "Отправить",
+    "sending": "Отправка…",
+    "success": "Спасибо — мы получили ваш отзыв.",
+    "error": "Не удалось отправить. Попробуйте позже.",
+    "close": "Закрыть",
+    "marketingSectionTitle": "Отзывы и вопросы",
+    "marketingSectionLead": "Вопрос, идея или сообщение — оставьте контакты, ответим по email."
   },
   "documentCreatorContact": {
     "enterClientName": "Введите имя клиента",

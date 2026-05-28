@@ -6,6 +6,11 @@ import { osAdminEmails } from "@/lib/is-admin";
 import { createLogger } from "@/lib/logger";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import {
+  EMAIL_DIGEST_CATEGORY,
+  type DigestLineItem,
+} from "@/lib/email-digest-types";
+import type { SiteFeedbackInput } from "@/lib/validation/schemas/site-feedback";
+import {
   getMailFrom,
   getMailReplyTo,
   isMailTransportConfigured,
@@ -254,11 +259,14 @@ export async function sendRegistrationWelcomeEmail(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const greeting = name?.trim() ? `שלום ${name.trim()},` : "שלום,";
   const statusLine = params.accountActive
-    ? "החשבון שלך פעיל — ניתן להתחבר עם Google באותו אימייל."
-    : "החשבון ממתין לאישור מנהל המערכת; לאחר האישור תוכלו להתחבר.";
+    ? "החשבון שלך פעיל — ניתן להתחבר עם האימייל והסיסמה שבחרתם, או עם Google באותו אימייל."
+    : "ההרשמה התקבלה. החשבון ממתין לאישור מנהל המערכת — תקבלו מייל נוסף עם קישור כניסה מיד לאחר האישור.";
   const extra = params.extraNote?.trim()
     ? `<p style="margin:12px 0 0;color:#94a3b8;font-size:13px;text-align:center;line-height:1.6;">${escapeHtml(params.extraNote)}</p>`
     : "";
+  const subject = params.accountActive
+    ? "ברוכים הבאים ל־BSD-YBM-OS — הרשמה הושלמה"
+    : "BSD-YBM-OS — ההרשמה התקבלה, ממתינה לאישור";
   const inner = `
     <h1 style="margin:0 0 12px;font-size:24px;font-weight:800;color:#f8fafc;text-align:center;">ברוכים הבאים ל־BSD-YBM</h1>
     <p style="margin:0 0 16px;color:#cbd5e1;font-size:15px;text-align:center;">${greeting}</p>
@@ -274,11 +282,7 @@ export async function sendRegistrationWelcomeEmail(
         כניסה למערכת
       </a>
     </p>`;
-  return sendTransactionalEmail(
-    toEmail.trim().toLowerCase(),
-    "ברוכים הבאים ל־BSD-YBM-OS — הרשמה הושלמה",
-    inner,
-  );
+  return sendTransactionalEmail(toEmail.trim().toLowerCase(), subject, inner);
 }
 
 export async function sendRegistrationCredentialsEmail(
@@ -326,52 +330,104 @@ export async function sendPasswordResetEmail(
   return sendTransactionalEmail(toEmail.trim().toLowerCase(), "איפוס סיסמה — BSD-YBM", inner);
 }
 
-export async function sendAccessApprovedEmail(toEmail: string): Promise<void> {
+export type AccountActiveEmailOptions = {
+  /** הרשמה/יצירה ישירה עם חשבון פעיל, לעומת אישור מנהל לאחר המתנה */
+  variant?: "admin_approved" | "registration_active";
+  /** סיסמה זמנית (מוצגת במייל) */
+  temporaryPassword?: string;
+  /** רמת מנוי — בהרשמה ציבורית */
+  tierLabelHe?: string;
+  /** שם ארגון — ביצירה ידנית על ידי מנהל */
+  organizationName?: string;
+};
+
+export async function sendAccessApprovedEmail(
+  toEmail: string,
+  name: string | null,
+  options?: AccountActiveEmailOptions,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const base = mailSiteUrl();
+  const loginUrl = `${base}/login`;
+  const greeting = name?.trim() ? `שלום ${escapeHtml(name.trim())},` : "שלום,";
+  const variant = options?.variant ?? "admin_approved";
+  const isRegistration = variant === "registration_active";
+
+  const headline = isRegistration
+    ? "ההרשמה הושלמה — החשבון פעיל"
+    : "החשבון אושר — ברוכים הבאים";
+  const intro = isRegistration
+    ? "ההרשמה שלכם ל־BSD-YBM-OS הושלמה. החשבון פעיל וניתן להתחבר למערכת."
+    : "מנהל המערכת אישר את ההרשמה שלכם. מעכשיו ניתן להתחבר ל־BSD-YBM-OS ולנהל את הארגון.";
+
+  const tierBlock = options?.tierLabelHe?.trim()
+    ? `<p style="margin:0 0 12px;color:#e2e8f0;font-size:15px;text-align:center;">רמת מנוי: <strong style="color:#fde68a;">${escapeHtml(options.tierLabelHe.trim())}</strong></p>`
+    : "";
+
+  const orgBlock = options?.organizationName?.trim()
+    ? `<p style="margin:0 0 12px;color:#94a3b8;font-size:14px;text-align:center;">ארגון: <strong style="color:#e2e8f0;">${escapeHtml(options.organizationName.trim())}</strong></p>`
+    : "";
+
+  const tempPassword = options?.temporaryPassword?.trim();
+  const passwordBlock = tempPassword
+    ? `<p style="margin:16px 0 8px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;">
+        סיסמה זמנית להתחברות ראשונה:
+      </p>
+      <p style="margin:0 auto 16px;max-width:320px;padding:14px 18px;background:#0f172a;border:1px solid #334155;border-radius:12px;font-family:monospace;font-size:15px;color:#f8fafc;text-align:center;letter-spacing:0.04em;">
+        ${escapeHtml(tempPassword)}
+      </p>`
+    : "";
+
+  const loginStep = tempPassword
+    ? "התחברו עם האימייל שבו נרשמתם והסיסמה למעלה, או עם Google באותו אימייל."
+    : "התחברו עם האימייל שבו נרשמתם והסיסמה שבחרתם, או עם Google באותו אימייל.";
+
   const inner = `
-    <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">הגישה הופעלה</h1>
-    <p style="margin:0;color:#e2e8f0;font-size:15px;text-align:center;line-height:1.7;">
-      שלום, הגישה שלך למערכת BSD-YBM הופעלה בהצלחה.
-      <a href="${escapeHtml(base)}" style="color:#60a5fa;font-weight:700;">${escapeHtml(base)}</a>
+    <h1 style="margin:0 0 12px;font-size:22px;font-weight:800;color:#f8fafc;text-align:center;">${headline}</h1>
+    <p style="margin:0 0 16px;color:#cbd5e1;font-size:15px;text-align:center;">${greeting}</p>
+    <p style="margin:0 0 16px;color:#e2e8f0;font-size:15px;text-align:center;line-height:1.75;">
+      ${intro}
     </p>
+    ${tierBlock}
+    ${orgBlock}
+    ${passwordBlock}
+    <ol style="margin:0 auto 20px;max-width:400px;padding:0 1.25rem 0 0;color:#94a3b8;font-size:14px;line-height:1.7;text-align:right;">
+      <li style="margin-bottom:8px;">לחצו על «כניסה למערכת» למטה (או פתחו: <a href="${escapeHtml(loginUrl)}" style="color:#60a5fa;">${escapeHtml(loginUrl)}</a>)</li>
+      <li style="margin-bottom:8px;">${loginStep}</li>
+      <li>לאחר הכניסה — עדכנו סיסמה בהגדרות אם קיבלתם סיסמה זמנית.</li>
+    </ol>
     <p style="text-align:center;margin:28px 0 0;">
-      <a href="${escapeHtml(base)}/login" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
+      <a href="${escapeHtml(loginUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none;">
         כניסה למערכת
       </a>
     </p>`;
-  const r = await sendTransactionalEmail(
-    toEmail.trim().toLowerCase(),
-    "הגישה ל־BSD-YBM-OS הופעלה",
-    inner,
-  );
+
+  const subject = isRegistration
+    ? "BSD-YBM-OS — ההרשמה הושלמה, ניתן להתחבר"
+    : "BSD-YBM-OS — החשבון אושר, ניתן להתחבר";
+
+  const r = await sendTransactionalEmail(toEmail.trim().toLowerCase(), subject, inner);
   if (!r.ok) {
     log.warn("sendAccessApprovedEmail failed", { error: r.error });
   }
+  return r;
 }
 
 export async function sendAccessApprovedAdminNotify(
   approvedUserEmail: string,
   approvedUserName: string | null,
 ): Promise<void> {
+  const { enqueueDigestEmailToMany } = await import("@/lib/email-digest");
   const admins = osAdminEmails();
   const who = approvedUserName?.trim()
     ? `${approvedUserName.trim()} (${approvedUserEmail})`
     : approvedUserEmail;
 
-  const inner = `
-    <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">עדכון אישור גישה</h1>
-    <p style="margin:0;color:#cbd5e1;font-size:14px;text-align:center;">
-      אושרה גישה למערכת עבור: <strong style="color:#fff;">${who}</strong>
-    </p>`;
-
-  const r = await sendTransactionalEmail(
+  await enqueueDigestEmailToMany(
     admins,
-    "BSD-YBM-OS: הגישה למערכת אושרה",
-    inner,
+    EMAIL_DIGEST_CATEGORY.ADMIN_ALERT,
+    "אושרה הרשמה",
+    `אושרה גישה למערכת עבור: ${who}`,
   );
-  if (!r.ok) {
-    log.warn("sendAccessApprovedAdminNotify failed", { error: r.error });
-  }
 }
 
 export async function sendPayPalSubscriptionConfirmationEmail(
@@ -499,7 +555,7 @@ export async function sendNotificationEmail(
   );
 }
 
-/** מנהלי פלטפורמה: הרשמה חדשה ממתינה לאישור */
+/** מנהלי פלטפורמה: הרשמה חדשה ממתינה לאישור (מיידי; איגוד רק ב־enqueueAdminPendingRegistrationsDigest) */
 export async function sendNewRegistrationPendingAdminEmail(params: {
   userEmail: string;
   userName: string | null;
@@ -510,22 +566,96 @@ export async function sendNewRegistrationPendingAdminEmail(params: {
     ? `${escapeHtml(params.userName.trim())} (${escapeHtml(params.userEmail)})`
     : escapeHtml(params.userEmail);
   const inner = `
-    <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">הרשמה חדשה ממתינה</h1>
+    <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">הרשמה חדשה ממתינה לאישור</h1>
     <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;text-align:center;">
       משתמש: <strong style="color:#fff;">${who}</strong>
     </p>
-    <p style="margin:0;color:#94a3b8;font-size:14px;text-align:center;">
-      ארגון: <strong style="color:#e2e8f0;">${escapeHtml(params.organizationName)}</strong>
+    <p style="margin:0 0 16px;color:#94a3b8;font-size:14px;text-align:center;line-height:1.6;">
+      ארגון: <strong style="color:#e2e8f0;">${escapeHtml(params.organizationName)}</strong><br/>
+      סטטוס: <strong style="color:#fde68a;">ממתין לאישור מנהל</strong>
+    </p>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-align:center;">
+      לאחר האישור — המשתמש יקבל מייל עם קישור כניסה למערכת.
     </p>
     <p style="text-align:center;margin:28px 0 0;">
       <a href="${escapeHtml(mailSiteUrl())}/admin" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:12px 24px;border-radius:10px;text-decoration:none;">
-        מסוף ניהול
+        אישור במסוף הניהול
       </a>
     </p>`;
   const r = await sendTransactionalEmail(admins, "BSD-YBM-OS — הרשמה ממתינה לאישור", inner);
   if (!r.ok) {
     log.warn("sendNewRegistrationPendingAdminEmail failed", { error: r.error });
   }
+}
+
+/** איגוד מספר הרשמות ממתינות למייל סיכום אחד (קריאה ידנית או ממקור עתידי) */
+export async function enqueueAdminPendingRegistrationsDigest(params: {
+  userEmail: string;
+  userName: string | null;
+  organizationName: string;
+}): Promise<void> {
+  const { enqueueDigestEmailToMany } = await import("@/lib/email-digest");
+  const admins = osAdminEmails();
+  const who = params.userName?.trim()
+    ? `${params.userName.trim()} (${params.userEmail})`
+    : params.userEmail;
+  await enqueueDigestEmailToMany(
+    admins,
+    EMAIL_DIGEST_CATEGORY.ADMIN_PENDING_REGISTRATION,
+    "הרשמה ממתינה לאישור",
+    `משתמש: ${who} · ארגון: ${params.organizationName}`,
+  );
+}
+
+/** מייל סיכום — מספר התראות/עדכונים במייל אחד */
+export async function sendDigestSummaryEmail(
+  toEmail: string,
+  params: {
+    subject: string;
+    items: DigestLineItem[];
+    category: string;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const count = params.items.length;
+  const adminCta =
+    params.category === EMAIL_DIGEST_CATEGORY.ADMIN_PENDING_REGISTRATION
+      ? `${mailSiteUrl()}/admin`
+      : `${mailSiteUrl()}/app`;
+
+  const listHtml = params.items
+    .map((item) => {
+      const title = escapeHtml(item.title.trim());
+      const body = escapeHtml(item.body.trim());
+      const bodyBlock =
+        body && body !== title
+          ? `<p style="margin:4px 0 0;color:#94a3b8;font-size:13px;line-height:1.55;">${body}</p>`
+          : "";
+      return `<li style="margin-bottom:14px;color:#e2e8f0;font-size:14px;line-height:1.5;">
+        <strong style="color:#f8fafc;">${title}</strong>${bodyBlock}
+      </li>`;
+    })
+    .join("");
+
+  const headline =
+    count === 1
+      ? "עדכון מהמערכת"
+      : `סיכום ${count} עדכונים`;
+
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:800;color:#f8fafc;text-align:center;">${escapeHtml(headline)}</h1>
+    <p style="margin:0 0 20px;color:#94a3b8;font-size:13px;text-align:center;line-height:1.6;">
+      כדי לא להציף את תיבת הדואר, עדכונים רבים נשלחים במייל סיכום אחד.
+    </p>
+    <ul style="margin:0;padding:0 1.25rem 0 0;list-style:decimal;text-align:right;">
+      ${listHtml}
+    </ul>
+    <p style="text-align:center;margin:28px 0 0;">
+      <a href="${escapeHtml(adminCta)}" style="display:inline-block;background:#2563eb;color:#fff;font-weight:800;padding:12px 24px;border-radius:10px;text-decoration:none;">
+        פתיחה במערכת
+      </a>
+    </p>`;
+
+  return sendTransactionalEmail(toEmail.trim().toLowerCase(), params.subject, inner);
 }
 
 /** פרטי כניסה למשתמש שנוצר ידנית על ידי סופר-אדמין */
@@ -558,4 +688,46 @@ export async function sendProvisionCredentialsEmail(
     "פרטי כניסה ל־BSD-YBM",
     inner,
   );
+}
+
+/** משוב מהאתר / מהמערכת — נשלח לכל מנהלי הפלטפורמה */
+export async function sendSiteFeedbackEmail(
+  input: SiteFeedbackInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admins = osAdminEmails();
+  if (admins.length === 0) {
+    return { ok: false, error: "no_admin_recipients" };
+  }
+
+  const phoneBlock = input.phone
+    ? `<p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;"><strong>טלפון:</strong> ${escapeHtml(input.phone)}</p>`
+    : "";
+  const pageBlock = input.pageUrl
+    ? `<p style="margin:0 0 8px;color:#94a3b8;font-size:13px;word-break:break-all;"><strong>עמוד:</strong> ${escapeHtml(input.pageUrl)}</p>`
+    : "";
+  const ctxLabel =
+    input.context === "marketing"
+      ? "דף שיווקי"
+      : input.context === "app"
+        ? "מערכת"
+        : "כללי";
+
+  const inner = `
+    <h1 style="margin:0 0 12px;font-size:18px;font-weight:800;color:#f8fafc;text-align:center;">משוב חדש — BSD-YBM</h1>
+    <p style="margin:0 0 16px;color:#94a3b8;font-size:13px;text-align:center;">מקור: ${escapeHtml(ctxLabel)}</p>
+    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;"><strong>שם:</strong> ${escapeHtml(input.name)}</p>
+    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;"><strong>אימייל:</strong> ${escapeHtml(input.email)}</p>
+    ${phoneBlock}
+    ${pageBlock}
+    <div style="margin:16px 0 0;padding:14px 16px;background:#1e293b;border-radius:10px;border:1px solid #334155;">
+      <p style="margin:0;color:#e2e8f0;font-size:14px;line-height:1.65;white-space:pre-wrap;">${escapeHtml(input.message)}</p>
+    </div>
+    <p style="margin:20px 0 0;color:#64748b;font-size:12px;text-align:center;">${escapeHtml(TAGLINE)}</p>`;
+
+  const subject = `משוב מהאתר — ${input.name.trim().slice(0, 40)}`;
+  const r = await sendTransactionalEmail(admins, subject, inner);
+  if (!r.ok) {
+    log.warn("sendSiteFeedbackEmail failed", { error: r.error });
+  }
+  return r;
 }

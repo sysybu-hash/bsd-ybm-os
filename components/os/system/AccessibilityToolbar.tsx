@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Accessibility } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Accessibility, X } from "lucide-react";
 import {
   applyAccessibilitySettings,
   readStoredAccessibilitySettings,
@@ -16,6 +16,7 @@ export default function AccessibilityToolbar() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<AccessibilitySettings>(() => readStoredAccessibilitySettings());
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
@@ -27,6 +28,21 @@ export default function AccessibilityToolbar() {
     applyAccessibilitySettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   const label =
     t("accessibility.toolbar") !== "accessibility.toolbar" ? t("accessibility.toolbar") : "נגישות";
 
@@ -35,24 +51,44 @@ export default function AccessibilityToolbar() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-20 start-4 z-[99980] flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 text-indigo-600 shadow-lg backdrop-blur-md transition hover:scale-105 dark:text-indigo-400 sm:bottom-6"
+        className="accessibility-toolbar-fab fixed bottom-20 end-4 z-[99980] flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 text-indigo-600 shadow-lg backdrop-blur-md transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400 sm:bottom-6"
         aria-label={label}
         aria-expanded={open}
+        aria-controls="accessibility-panel-dialog"
         title={label}
       >
         <Accessibility size={22} aria-hidden />
       </button>
       {open ? (
-        <div
-          role="dialog"
-          aria-label={label}
-          className="fixed bottom-36 start-4 z-[99981] flex h-[min(70vh,520px)] w-[min(calc(100vw-2rem),380px)] flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl sm:bottom-20"
-        >
-          <div className="border-b border-[color:var(--border-main)] px-4 py-3">
-            <h2 className="text-sm font-black text-[color:var(--foreground-main)]">{label}</h2>
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[99980] bg-black/40"
+            aria-label={t("accessibility.toolbar")}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            id="accessibility-panel-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={label}
+            className="accessibility-toolbar-panel fixed bottom-36 end-4 z-[99981] flex h-[min(70vh,520px)] w-[min(calc(100vw-2rem),380px)] flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl sm:bottom-20"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
+              <h2 className="text-sm font-black text-[color:var(--foreground-main)]">{label}</h2>
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg p-2 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+                aria-label={t("siteFeedback.close")}
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <AccessibilityPanelContent value={settings} onChange={setSettings} />
           </div>
-          <AccessibilityPanelContent value={settings} onChange={setSettings} />
-        </div>
+        </>
       ) : null}
     </>
   );

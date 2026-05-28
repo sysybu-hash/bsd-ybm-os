@@ -1,0 +1,18 @@
+/* כפתור משוב צף — מרווח מעל סרגל מובייל בשיווק */
+body:has(.marketing-cinematic) .site-feedback-fab {
+  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+body:has(.marketing-cinematic) .accessibility-toolbar-fab {
+  bottom: calc(9.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  body:has(.marketing-cinematic) .site-feedback-fab {
+    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  body:has(.marketing-cinematic) .accessibility-toolbar-fab {
+    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  }
+}

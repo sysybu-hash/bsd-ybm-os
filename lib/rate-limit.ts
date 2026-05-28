@@ -105,3 +105,28 @@ export async function applyRateLimit(
 
   return null;
 }
+
+/** מצב מכסה בלי להגדיל מונה — לתצוגת "נותרו X סריקות" */
+export async function getRateLimitStatus(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<{ used: number; remaining: number; resetAt: Date }> {
+  const now = new Date();
+  const rateLimitKey = `rl:${key}`;
+  const row = await prisma.rateLimit.findUnique({ where: { key: rateLimitKey } });
+
+  if (!row || now > row.resetAt) {
+    return {
+      used: 0,
+      remaining: limit,
+      resetAt: new Date(now.getTime() + windowMs),
+    };
+  }
+
+  return {
+    used: row.count,
+    remaining: Math.max(0, limit - row.count),
+    resetAt: row.resetAt,
+  };
+}

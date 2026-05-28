@@ -85,6 +85,15 @@ describe("gemini-live-session-config", () => {
     expect(cfg.outputAudioTranscription).toEqual({});
   });
 
+  it("buildFullLiveConnectConfig omits tools when includeTools is false", () => {
+    const cfg = buildFullLiveConnectConfig(
+      DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+      "Marketing only.",
+      { includeTools: false },
+    );
+    expect(cfg.tools).toBeUndefined();
+  });
+
   it("buildFullLiveConnectConfig embeds system instruction and tools", () => {
     const cfg = buildFullLiveConnectConfig(
       DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,

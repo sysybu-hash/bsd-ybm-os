@@ -8,13 +8,16 @@
       "about": "About",
       "contact": "Contact"
     },
-    "header": { "tagline": "Intelligent operations for professional businesses" },
+    "header": { "tagline": "The avenue that connects everyone — operations for professional businesses" },
     "hero": {
-      "kicker": "BSD-YBM v2",
-      "title": "One system that organizes your work, documents and decisions.",
-      "subtitle": "BSD-YBM connects CRM, documents, billing, control and AI in one workspace built for professional businesses.",
+      "kicker": "BSD-YBM OS",
+      "motto": "The avenue that connects everyone!",
+      "titleBlessing": "With God's help we will act and succeed",
+      "titleLine1": "Business OS",
+      "titleLine2": "and command center",
+      "subtitle": "One platform connecting CRM, documents, billing and control—with AI inside the workflow. Built for teams that need operational clarity, not another isolated tool.",
       "ctaRegister": "Create account",
-      "ctaDemo": "View demo"
+      "ctaDemo": "Sign in to demo"
     },
     "features": [
       { "title": "CRM that moves work forward", "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools." },
@@ -31,12 +34,68 @@
       "suggestTitle": "7 documents identified and ready to auto-assign",
       "suggestBody": "The system detected clients, amounts and statuses and suggests the next step for each item.",
       "financeLabel": "Financial control",
+      "demoNavHint": "Click a sidebar icon to explore the demo",
       "stats": [
         { "label": "Open collections", "value": "₪48,200" },
         { "label": "Invoices this week", "value": "32" },
         { "label": "Urgent tasks", "value": "11" },
         { "label": "New inquiries", "value": "19" }
-      ]
+      ],
+      "sidebar": {
+        "dashboard": "Dashboard",
+        "crm": "Clients",
+        "documents": "Documents",
+        "billing": "Billing",
+        "analytics": "Insights",
+        "settings": "Settings"
+      },
+      "views": {
+        "crm": {
+          "title": "Clients & tasks",
+          "lead": "Active relationships across the organization.",
+          "items": [
+            "Ramat Aviv residential project — pending approval",
+            "Returning client: 2 open tasks",
+            "Follow-up call scheduled today at 4:00 PM"
+          ]
+        },
+        "documents": {
+          "title": "Documents & scans",
+          "lead": "Recently identified documents ready for action.",
+          "items": [
+            "Vendor invoice #4421 — identified, awaiting assignment",
+            "Subcontract — signed, saved to project file",
+            "7 new documents — ready for auto-assignment"
+          ]
+        },
+        "billing": {
+          "title": "Billing & collections",
+          "lead": "Real-time financial tracking.",
+          "items": [
+            "Open collections: ₪48,200",
+            "32 invoices this week — 4 pending approval",
+            "Collection reminder: 2 overdue clients"
+          ]
+        },
+        "analytics": {
+          "title": "Insights & decisions",
+          "lead": "Key trends from the past week.",
+          "items": [
+            "Task load down 12% vs. last week",
+            "Average document handling time: 4.2 min",
+            "3 financial anomalies need review"
+          ]
+        },
+        "settings": {
+          "title": "Organization settings",
+          "lead": "Central configuration — without leaving the OS.",
+          "items": [
+            "Team roles & permissions",
+            "Integrations: email, calendar, payments",
+            "Alerts & service availability"
+          ]
+        }
+      }
     },
     "modulesSection": {
       "label": "One product, clear work layers",
@@ -63,9 +122,18 @@
     },
     "industries": {
       "label": "Industry fit",
-      "title": "Built for real operational load.",
-      "body": "Offices, clinics, contractors and service businesses need a system that works with documents, clients and money—not just lists.",
-      "tags": ["Law firms", "Accountants", "Contractors", "Clinics", "Real estate", "Service businesses"]
+      "title": "Construction, site and company ops—in one system.",
+      "body": "Contractors, developers, project managers and construction firms need control over projects, documents, clients and cash—from the field and site office through company management.",
+      "tags": [
+        "Residential construction",
+        "Infrastructure & civil",
+        "Renovation & fit-out",
+        "Site & field management",
+        "General & sub-contractors",
+        "Company & business management",
+        "Project management offices",
+        "Development & real estate"
+      ]
     },
     "why": {
       "label": "Why it works",
@@ -78,10 +146,46 @@
     },
     "proofPoints": [
       "Fewer duplicates across CRM, documents and billing",
-      "Less manual admin for the team",
-      "Fewer missed tasks and collections",
-      "More decisions from one clear picture"
+      "Less manual admin work",
+      "Consistent tracking of tasks and collections",
+      "Decisions from one operational picture"
     ],
+    "principles": {
+      "sectionTitle": "How the product is built",
+      "lead": "Three principles that guide the product—without marketing fluff.",
+      "items": [
+        {
+          "title": "Connected, not stacked",
+          "body": "Every module serves the same workflow. The goal is to move information between steps without copy-paste."
+        },
+        {
+          "title": "Operational transparency",
+          "body": "What came in, what changed and what is waiting—visible to the team, not scattered across files and chats."
+        },
+        {
+          "title": "AI as assistant",
+          "body": "The system suggests and drafts—you decide, with full context from your data."
+        }
+      ]
+    },
+    "modularity": {
+      "sectionTitle": "Full modularity across your stack",
+      "lead": "Turn on only what you need — and connect tools you already use, without replacing everything at once.",
+      "items": [
+        {
+          "title": "Activate on demand",
+          "body": "CRM, documents, billing, AI and control — each module switches on separately, by org size and maturity."
+        },
+        {
+          "title": "Plugs into existing systems",
+          "body": "Sync with Google Calendar, email, storage and ops tools — data flows through one source of truth."
+        },
+        {
+          "title": "Same core, flexible extensions",
+          "body": "Add capabilities, roles and workflows without breaking what already runs — built for growth and change."
+        }
+      ]
+    },
     "plans": {
       "label": "Plans & signup",
       "title": "A clear path for every stage—with direct signup.",
@@ -95,6 +199,121 @@
       "body": "Start with an account, connect the flows that matter, and get a workspace that fits your complexity.",
       "primary": "Start now",
       "secondary": "Talk to us"
+    },
+    "cinematic": {
+      "besiyata": "בסיעתא דשמיא",
+      "previewBanner": "Preview — experimental marketing page. The main homepage is at the root URL.",
+      "backToHome": "Back to current homepage",
+      "menuAria": "Open navigation menu",
+      "closeMenuAria": "Close menu",
+      "omnibarLabel": "Command the OS",
+      "omnibarInputLabel": "Ask about BSD-YBM OS",
+      "omnibarPlaceholder": "Ask about product, modules, or plans…",
+      "omnibarPlaceholderVoice": "Listening — ask about the product…",
+      "omnibarSend": "Send",
+      "omnibarSendAria": "Send question",
+      "omnibarVoiceOn": "Start voice chat",
+      "omnibarVoiceOff": "Stop voice chat",
+      "omnibarStatusReady": "Ready — product questions only",
+      "omnibarStatusThinking": "Thinking…",
+      "omnibarStatusConnecting": "Connecting to Gemini Live…",
+      "omnibarStatusConnected": "Connected — you can speak",
+      "omnibarStatusListening": "Listening…",
+      "omnibarStatusSpeaking": "Assistant speaking…",
+      "omnibarStatusDisconnected": "Session ended",
+      "omnibarLiveUnavailable": "Voice chat is unavailable right now",
+      "omnibarChatError": "Could not get an answer. Try again.",
+      "omnibarHint": "Marketing assistant only — no access to internal data.",
+      "omnibarJoinCta": "Open account",
+      "omnibarSessionEndedTitle": "Voice session ended",
+      "omnibarSessionEnded": "Thanks for chatting! For the full workspace, Gemini Live, and your data — open an account and continue there.",
+      "omnibarSessionEndedHint": "Preview voice chats are limited to 120 seconds.",
+      "omnibarPhrases": [
+        "Generate profitability report for Project TLV…",
+        "Scan invoice and assign to client Cohen…",
+        "Show urgent billing tasks this week…",
+        "Open project board with budget exceptions…",
+        "Start Gemini Live for team meeting recap…"
+      ],
+      "fieldCopilotTitle": "Field Copilot on site",
+      "fieldCopilotScan": "Analyzing document…",
+      "fieldCopilotResult": "Detected: ₪12,400 · concrete supplier · linked to Sharon Towers",
+      "fieldScanTitle": "Live document scan",
+      "fieldScanSubtitle": "Upload an invoice or photo — Gemini decodes in real time",
+      "fieldScanQuota": "{remaining} of {limit} demo scans left today",
+      "fieldScanPickHint": "Take a photo or upload a business document (image / PDF)",
+      "fieldScanDropHint": "Drag a file here · JPEG · PNG · PDF",
+      "fieldScanDropActive": "Drop to scan",
+      "fieldScanPick": "Upload file",
+      "fieldScanCamera": "Camera",
+      "fieldScanAnalyze": "Decode with Gemini",
+      "fieldScanAnalyzing": "Analyzing document…",
+      "fieldScanTeaser": "Public demo — real results from your document. No login required.",
+      "fieldScanRetry": "Scan again",
+      "fieldScanQuotaExceeded": "You used 2 demo scans today. Open an account for unlimited scanning.",
+      "fieldScanError": "We could not decode this document. Try a clearer image.",
+      "fieldScanFileTooLarge": "File is too large (max 4MB).",
+      "fieldScanFileType": "Unsupported file type. Use JPEG, PNG, or PDF.",
+      "fieldScanDisclaimer": "Gemini Vision demo — we do not persist your file after this session.",
+      "fieldScanRegisterCta": "Open account for full scanning",
+      "fieldScanResultBadge": "Extraction results",
+      "fieldScanResultAmount": "Amount detected",
+      "fieldScanResultVendor": "Vendor",
+      "fieldScanResultClient": "Client",
+      "fieldScanResultProject": "Project",
+      "fieldScanResultDate": "Date",
+      "fieldScanResultTaxId": "Tax ID",
+      "fieldScanResultLines": "Line items",
+      "fieldScanResultSummary": "Summary",
+      "fieldScanResultUnknown": "Not detected",
+      "fieldScanConfidenceLow": "Low confidence — verify manually",
+      "bentoNotebook": {
+        "title": "AI project notebook",
+        "body": "Kanban plus a dedicated notebook per project — full site-to-office context."
+      },
+      "bentoCalendar": {
+        "title": "Google Calendar",
+        "body": "Two-way Calendar sync, events and cron — tied to CRM and tasks."
+      },
+      "bottomNav": {
+        "aria": "Quick page navigation",
+        "home": "Home",
+        "demo": "Demo",
+        "explore": "Explore",
+        "omnibarAria": "Open AI assistant — chat and voice",
+        "menu": "Menu"
+      },
+      "omnibarSheetClose": "Close AI assistant"
+    },
+    "contact": {
+      "stripTitle": "Contact",
+      "phoneLabel": "WhatsApp",
+      "whatsappAria": "Open WhatsApp chat",
+      "emailLabel": "Email",
+      "addressLabel": "Address",
+      "hoursLabel": "Availability"
+    },
+    "panels": {
+      "hubTitle": "What would you like to explore?",
+      "hubLead": "Pick a topic — details open in a panel, without a long scroll.",
+      "closeAria": "Close panel",
+      "modules": { "title": "Modules & capabilities", "description": "CRM, documents, billing, AI — clear work layers." },
+      "workflow": { "title": "Workflow", "description": "What happens when new information enters the system." },
+      "industries": { "title": "Industries", "description": "Construction, site and office operations." },
+      "why": { "title": "Why one system", "description": "Single source of truth, fewer tools, contextual AI." },
+      "pricing": { "title": "Plans & pricing", "description": "Direct signup and sizing for your organization." },
+      "principles": { "title": "Product principles", "description": "Connection, transparency, AI as assistant." },
+      "demo": {
+        "title": "Live demo",
+        "description": "Document scan and UI preview — no login.",
+        "intro": "Try a public document scan or view the desktop preview."
+      },
+      "feedback": { "title": "Feedback", "description": "Questions or ideas — we reply by email." },
+      "contact": { "title": "Contact & get started", "description": "Details, hours and account signup." },
+      "modularity": {
+        "title": "Full modularity",
+        "description": "Connect and extend every system you already run."
+      }
     },
     "footer": {
       "brand": "BSD-YBM",
@@ -143,23 +362,8 @@
         { "title": "Insights & decisions" },
         { "title": "Automation & AI" }
       ],
-      "quotesSectionTitle": "What teams say",
-      "quotes": [
-        {
-          "body": "Fewer duplicates across CRM, documents and billing — we finally see the same number in one place.",
-          "role": "Operations lead, contractor"
-        },
-        {
-          "body": "The team doesn’t need five tools just to move the week forward.",
-          "role": "Project manager"
-        },
-        {
-          "body": "Recommendations come from our data, not a generic chat.",
-          "role": "CFO"
-        }
-      ],
-      "featuredTitle": "Featured capabilities",
-      "featuredLead": "Product layers connect clients, documents and money — one picture per project, from proposal to supplier invoice.",
+      "featuredTitle": "Product capabilities",
+      "featuredLead": "Clients, documents and money — one status picture per project, from quote to supplier invoice.",
       "featuredCta": "Product overview",
       "footerProductTitle": "Product",
       "footerCompanyTitle": "Company",

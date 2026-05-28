@@ -1053,6 +1053,18 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+/// תור לאיגוד מיילי התראה — נשלחים כמייל סיכום אחד לנמען
+model EmailDigestItem {
+  id        String   @id @default(cuid())
+  recipient String
+  category  String
+  title     String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([recipient, category, createdAt])
+}
+
 enum CustomerType {
   HOME
   FREELANCER

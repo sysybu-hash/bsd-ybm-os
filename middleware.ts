@@ -39,6 +39,7 @@ const publicApiPrefixes = [
   "/api/org-invite",
   "/api/locale",
   "/api/analyze-queue/process",
+  "/api/marketing",
 ] as const;
 
 function isPublicApi(pathname: string): boolean {

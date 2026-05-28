@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
 import { isMailTransportConfigured } from "@/lib/mail-config";
-import { sendNotificationEmail } from "@/lib/mail";
+import {
+  EMAIL_DIGEST_CATEGORY,
+  enqueueDigestEmail,
+} from "@/lib/email-digest";
 
 const log = createLogger("notification-email");
 
@@ -42,10 +45,12 @@ export async function maybeEmailUserNotification(
     if (!email || !email.includes("@")) return;
     if (user.accountStatus !== "ACTIVE") return;
 
-    const result = await sendNotificationEmail(email, title, body);
-    if (!result.ok) {
-      log.warn("user notification email failed", { userId, error: result.error });
-    }
+    await enqueueDigestEmail({
+      recipient: email,
+      category: EMAIL_DIGEST_CATEGORY.NOTIFICATION,
+      title,
+      body,
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     log.error("maybeEmailUserNotification failed", { userId, error: msg });
@@ -81,17 +86,16 @@ export async function maybeEmailOrgAdminsNotification(
     ];
     if (emails.length === 0) return;
 
-    const results = await Promise.all(
-      emails.map((email) => sendNotificationEmail(email, title, body)),
+    await Promise.all(
+      emails.map((email) =>
+        enqueueDigestEmail({
+          recipient: email,
+          category: EMAIL_DIGEST_CATEGORY.NOTIFICATION,
+          title,
+          body,
+        }),
+      ),
     );
-    const failed = results.filter((r) => !r.ok);
-    if (failed.length > 0) {
-      log.warn("org admin notification email partial failure", {
-        organizationId,
-        failed: failed.length,
-        total: emails.length,
-      });
-    }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     log.error("maybeEmailOrgAdminsNotification failed", { organizationId, error: msg });

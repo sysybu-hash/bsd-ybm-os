@@ -6,7 +6,6 @@ import { AccountStatus, type SubscriptionTier, type UserRole } from "@prisma/cli
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, generateProvisionPassword } from "@/lib/password";
-import { sendProvisionCredentialsEmail } from "@/app/actions/send-credentials-email";
 import {
   sendAccessApprovedAdminNotify,
   sendAccessApprovedEmail,
@@ -143,9 +142,12 @@ export async function approvePendingRegistrationAction(
     revalidatePath("/app/settings/overview");
 
     void Promise.all([
-      sendAccessApprovedEmail(user.email),
+      sendAccessApprovedEmail(user.email, user.name, { variant: "admin_approved" }),
       sendAccessApprovedAdminNotify(user.email, user.name),
-    ]).catch((err) => console.error("access-approved emails", err));
+    ]).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error("access-approved emails", { error: msg });
+    });
 
     return { ok: true };
   } catch (err: unknown) {
@@ -293,9 +295,13 @@ export async function provisionUserAction(formData: FormData): Promise<
 
   let emailed = false;
   if (sendEmail) {
-    const r = await sendProvisionCredentialsEmail(emailRaw, name, plain, org.name);
-    if (!r.ok) {
-      return { ok: false, error: r.error };
+    const mail = await sendAccessApprovedEmail(emailRaw, name, {
+      variant: "registration_active",
+      temporaryPassword: plain,
+      organizationName: org.name,
+    });
+    if (!mail.ok) {
+      return { ok: false, error: mail.error };
     }
     emailed = true;
   }

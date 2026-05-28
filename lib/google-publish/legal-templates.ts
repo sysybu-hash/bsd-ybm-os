@@ -151,6 +151,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         { heading: "יצירת קשר", body: legalSite.contactEmail },
         { heading: "נציג GDPR באיחוד", body: legalSite.euRepresentative },
         { heading: "מסמכים", body: "מדיניות פרטיות, תנאי שימוש ומדיניות עוגיות זמינים באתר." },
+        {
+          heading: "נגישות דיגיטלית (תקן אירופי)",
+          body: `האתר שואף לעמידה ב-EN 301 549 V3.2.1 (מיושר ל-WCAG 2.1 רמה AA) ובדרישות נגישות שירותים דיגיטליים לפי European Accessibility Act (EAA), ובנוסף לחוק שוויון זכויות לאנשים עם מוגבלות (ישראל). עדכון מדיניות נגישות: ${legalSite.accessibilityStandardUpdated}. סרגל הנגישות באתר מאפשר התאמת טקסט, ניגודיות, צמצום תנועה ועוד. פניות נגישות: ${legalSite.contactEmail}. ${legalSite.supportAvailabilityHe}.`,
+        },
       ],
     },
     en: {
@@ -161,6 +165,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         { heading: "Contact", body: legalSite.contactEmail },
         { heading: "EU GDPR representative", body: legalSite.euRepresentative },
         { heading: "Documents", body: "Privacy, Terms, and Cookie policy on this site." },
+        {
+          heading: "Digital accessibility (EU standard)",
+          body: `We aim to meet EN 301 549 V3.2.1 (aligned with WCAG 2.1 Level AA) and the European Accessibility Act (EAA) for digital services, alongside applicable Israeli accessibility law. Accessibility statement last updated: ${legalSite.accessibilityStandardUpdated}. Use the on-site accessibility toolbar for text size, contrast, reduced motion, and more. Accessibility feedback: ${legalSite.contactEmail}. Support: 24/6 excluding Shabbat and Jewish holidays.`,
+        },
       ],
     },
     ru: {
@@ -171,6 +179,10 @@ const DOCS: Record<LegalDocKind, Record<AppLocale, LegalDoc>> = {
         { heading: "Контакт", body: legalSite.contactEmail },
         { heading: "Представитель в ЕС", body: legalSite.euRepresentative },
         { heading: "Документы", body: "Политика конфиденциальности и условия на сайте." },
+        {
+          heading: "Цифровая доступность (европейский стандарт)",
+          body: `Сайт ориентирован на EN 301 549 V3.2.1 (WCAG 2.1 AA) и European Accessibility Act (EAA), а также на применимое израильское законодательство. Обновление: ${legalSite.accessibilityStandardUpdated}. Панель доступности на сайте. Обратная связь: ${legalSite.contactEmail}. Поддержка: 24/6, кроме шабата и праздников.`,
+        },
       ],
     },
   },

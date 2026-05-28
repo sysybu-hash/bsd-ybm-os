@@ -15,8 +15,7 @@ export const legalSite = {
   entityRegistrationId: envStr("NEXT_PUBLIC_LEGAL_ENTITY_ID"),
   /** כתובת רשומה / משרדים — חובה למלא בפרודקשן לצורכי שקיפות GDPR */
   registeredAddress:
-    envStr("NEXT_PUBLIC_LEGAL_REGISTERED_ADDRESS") ??
-    "[יש למלא: כתובת רשומה / מיקום מפעיל — NEXT_PUBLIC_LEGAL_REGISTERED_ADDRESS]",
+    envStr("NEXT_PUBLIC_LEGAL_REGISTERED_ADDRESS") ?? "גבעת זאב, ישראל",
   /** כתובת אתר רשמית */
   publicUrl: "https://www.bsd-ybm.co.il",
   /** אימייל לפניות משפטיות ו-GDPR */
@@ -27,5 +26,8 @@ export const legalSite = {
     envStr("NEXT_PUBLIC_EU_REPRESENTATIVE") ??
     "[אם חל — פרטי נציג באיחוד; אחרת ציון \"לא חל\" לאחר בדיקת יועץ]",
   /** תאריך עדכון אחרון של מסמכים (מחרוזת להצגה) */
-  documentsLastUpdated: "מאי 2026",
+  documentsLastUpdated: "28 במאי 2026",
+  /** תקן נגישות — עדכון מדיניות (EN 301 549 / WCAG 2.1 AA / EAA) */
+  accessibilityStandardUpdated: "28.05.2026",
+  supportAvailabilityHe: "זמינות תמיכה: 24/6 (לא כולל שבתות וחגים)",
 } as const;

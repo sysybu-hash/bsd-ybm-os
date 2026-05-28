@@ -16,8 +16,7 @@ import {
 import { OS_UNLIMITED_CREDITS } from "@/lib/platform-developers";
 import { hashPassword, generateProvisionPassword } from "@/lib/password";
 import { logActivity } from "@/lib/activity-log";
-import { sendProvisionCredentialsEmail } from "@/app/actions/send-credentials-email";
-import { sendSubscriptionTierInvitationEmail } from "@/lib/mail";
+import { sendAccessApprovedEmail, sendSubscriptionTierInvitationEmail } from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import { normalizeBusinessLine } from "@/lib/business-lines";
 import { normalizeConstructionTrade } from "@/lib/construction-trades";
@@ -219,7 +218,13 @@ export async function manageSubsCreateManualUserAction(
       });
     }
 
-    const mail = await sendProvisionCredentialsEmail(email, name, plain, organizationName);
+    const tierForMail = vip ? "CORPORATE" : (parseSubscriptionTier(tierRaw) ?? "FREE");
+    const mail = await sendAccessApprovedEmail(email, name, {
+      variant: "registration_active",
+      temporaryPassword: plain,
+      organizationName,
+      tierLabelHe: tierLabelHe(tierForMail),
+    });
 
     if (s.user?.id) {
       const createdOrg = await prisma.organization.findFirst({

@@ -41,6 +41,10 @@
     {
       "path": "/api/cron/google-calendar-push",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/email-digest",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
