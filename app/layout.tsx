@@ -131,7 +131,10 @@ export default async function RootLayout({
         data-tenant-id={tenant?.organizationId ?? undefined}
         data-tenant-host={tenant?.host ?? undefined}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <Script id="marketing-home-theme" strategy="beforeInteractive">
+          {`try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}`}
+        </Script>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SessionProvider session={session}>
             <CSPostHogProvider>
             <PostHogIdentify />

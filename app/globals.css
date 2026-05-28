@@ -766,3 +766,15 @@
   }
 }
 
+/* Marketing cinematic — critical first-paint (before route CSS chunk) */
+html:has(.marketing-cinematic) {
+  color-scheme: dark;
+}
+
+body:has(.marketing-cinematic) {
+  background-color: #020617 !important;
+}
+
+#site-main:has(.marketing-cinematic) {
+  background: transparent !important;
+}

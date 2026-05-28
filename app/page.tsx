@@ -1,13 +1,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import MarketingCinematicPage from "@/components/landing/marketing/MarketingCinematicPage";
+import MarketingCinematicShell from "@/components/landing/marketing/MarketingCinematicShell";
 import OmniCanvasWorkspace from "@/components/os/OmniCanvasWorkspace";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    return <MarketingCinematicPage />;
+    return <MarketingCinematicShell />;
   }
 
   return <OmniCanvasWorkspace />;

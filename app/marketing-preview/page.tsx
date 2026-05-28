@@ -1,7 +1,5 @@
-"use client";
-
-import MarketingCinematicPage from "@/components/landing/marketing/MarketingCinematicPage";
+import MarketingCinematicShell from "@/components/landing/marketing/MarketingCinematicShell";
 
 export default function MarketingPreviewPage() {
-  return <MarketingCinematicPage />;
+  return <MarketingCinematicShell />;
 }

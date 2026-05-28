@@ -2,8 +2,6 @@
 
 
 
-import "./marketing-cinematic.css";
-
 import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
@@ -84,6 +82,8 @@ export default function MarketingCinematicPage() {
 
         style={{
           ["--mkt-banner-offset" as string]: "0px",
+          minHeight: "100dvh",
+          backgroundColor: "#020617",
         }}
 
       >
