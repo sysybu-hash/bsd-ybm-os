@@ -61,7 +61,7 @@ export function NotebookSourcesSidebar({
   t,
 }: NotebookSourcesSidebarProps) {
   return (
-    <div className="flex w-full flex-col overflow-hidden border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:w-1/3 md:border-l">
+    <div className="flex h-full w-full flex-col overflow-hidden border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:border-l">
       {/* Title / project / controls */}
       <div className="mb-4 space-y-2">
         <input

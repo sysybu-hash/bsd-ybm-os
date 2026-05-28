@@ -1177,7 +1177,8 @@
       "retry": "Retry",
       "searchPlaceholder": "Search documents…",
       "loadDocFailed": "Failed to load document",
-      "loadListFailed": "Failed to load documents"
+      "loadListFailed": "Failed to load documents",
+      "selectDoc": "Select a document from the list to view details and edit lines"
     },
     "erpArchive": {
       "selectMode": "Multi-select",

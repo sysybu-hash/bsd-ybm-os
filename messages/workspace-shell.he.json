@@ -1177,7 +1177,8 @@
       "retry": "נסה שוב",
       "searchPlaceholder": "חיפוש מסמכים…",
       "loadDocFailed": "שגיאה בטעינת פרטי מסמך",
-      "loadListFailed": "שגיאה בטעינת מסמכים"
+      "loadListFailed": "שגיאה בטעינת מסמכים",
+      "selectDoc": "בחר מסמך מהרשימה כדי לצפות בפרטים ולערוך שורות"
     },
     "erpArchive": {
       "selectMode": "בחירה מרובה",

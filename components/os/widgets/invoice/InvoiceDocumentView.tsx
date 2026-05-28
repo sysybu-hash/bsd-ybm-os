@@ -165,7 +165,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
   }
 
   return (
-    <div className="custom-scrollbar flex h-full flex-col overflow-y-auto p-4">
+    <div className="custom-scrollbar flex h-full min-h-0 flex-col overflow-y-auto p-4">
       <header className="mb-4">
         <h2 className="text-lg font-black">
           {t("workspaceWidgets.invoice.title")} #{doc.number}

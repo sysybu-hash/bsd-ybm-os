@@ -77,7 +77,7 @@ export function NotebookChatPanel({
   t,
 }: NotebookChatPanelProps) {
   return (
-    <div className="relative flex h-full w-full flex-col md:w-2/3">
+    <div className="relative flex h-full w-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/30 px-4 py-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-indigo-600 shadow-md">

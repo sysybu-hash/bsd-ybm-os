@@ -96,7 +96,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
+          <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
             <div className="flex gap-2 max-md:flex-row md:flex-col" role="tablist" aria-label={t("workspaceWidgets.helpCenter.guidesSection")}>
               {s.content.categories.map((c) => (
                 <button
@@ -120,7 +120,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
-            <nav className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-56 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
+            <nav className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-56 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
               <div className="flex gap-2 max-md:flex-row md:flex-col">
                 {s.guidesInCategory.map((g) => (
                   <button
