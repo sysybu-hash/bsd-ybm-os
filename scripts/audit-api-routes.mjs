@@ -22,6 +22,11 @@ const ALLOWLIST_NO_WRAPPER = [
   "app/api/og/route.tsx",
   // PWA Web Share Target — public browser endpoint that redirects to authenticated workspace
   "app/api/scan/share/route.ts",
+  // Public marketing landing — rate-limited, no workspace session
+  "app/api/feedback/route.ts",
+  "app/api/marketing/assistant/chat/route.ts",
+  "app/api/marketing/assistant/gemini-live/session/route.ts",
+  "app/api/marketing/demo-scan/route.ts",
 ];
 
 async function walk(dir, acc = []) {
