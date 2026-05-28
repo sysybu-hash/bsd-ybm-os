@@ -41,7 +41,7 @@ export default function LandingPage({
         <div className="absolute bottom-0 end-0 h-[400px] w-[400px] rounded-full bg-emerald-500/10 blur-[100px]" />
       </div>
 
-      <header className="relative z-10 flex items-center justify-between px-4 py-6 sm:px-8">
+      <header className="relative z-20 flex items-center justify-between px-4 py-6 sm:px-8">
         <BrandHomeLink size="sm" variant="image" tone="auto" priority />
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
