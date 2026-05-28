@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Languages } from "lucide-react";
 import { useI18n, useSetLocale } from "@/components/os/system/I18nProvider";
 import { SELECTABLE_LOCALES, type AppLocale } from "@/lib/i18n/config";
@@ -29,6 +29,19 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
   const setLocale = useSetLocale();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside — avoids fixed-overlay z-index / stacking-context issues
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
 
   const current = (SELECTABLE_LOCALES.includes(locale as AppLocale) ? locale : "he") as AppLocale;
   const aria =
@@ -60,7 +73,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${className}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -79,47 +92,40 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
         <Languages size={compact ? 14 : 16} aria-hidden />
         <span>{LOCALE_LABELS[current]}</span>
       </button>
+
       {open ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[1100] cursor-default bg-transparent"
-            aria-label="סגור"
-            onClick={() => setOpen(false)}
-          />
-          <ul
-            role="listbox"
-            aria-label={aria}
-            onKeyDown={(e) => {
-              const idx = SELECTABLE_LOCALES.indexOf(current);
-              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                e.preventDefault();
-                const next =
-                  e.key === "ArrowDown"
-                    ? SELECTABLE_LOCALES[(idx + 1) % SELECTABLE_LOCALES.length]!
-                    : SELECTABLE_LOCALES[(idx - 1 + SELECTABLE_LOCALES.length) % SELECTABLE_LOCALES.length]!;
-                void changeLocale(next);
-              }
-              if (e.key === "Escape") setOpen(false);
-            }}
-            className="absolute end-0 top-[calc(100%+6px)] z-[1210] min-w-[140px] overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] py-1 shadow-xl"
-          >
-            {SELECTABLE_LOCALES.map((loc) => (
-              <li key={loc} role="option" aria-selected={loc === current}>
-                <button
-                  type="button"
-                  onClick={() => void changeLocale(loc)}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm font-bold transition hover:bg-[color:var(--surface-soft)] ${
-                    loc === current ? "text-indigo-500" : "text-[color:var(--foreground-main)]"
-                  }`}
-                >
-                  <span>{pickName(loc)}</span>
-                  <span className="text-[10px] text-[color:var(--foreground-muted)]">{LOCALE_LABELS[loc]}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+        <ul
+          role="listbox"
+          aria-label={aria}
+          onKeyDown={(e) => {
+            const idx = SELECTABLE_LOCALES.indexOf(current);
+            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+              e.preventDefault();
+              const next =
+                e.key === "ArrowDown"
+                  ? SELECTABLE_LOCALES[(idx + 1) % SELECTABLE_LOCALES.length]!
+                  : SELECTABLE_LOCALES[(idx - 1 + SELECTABLE_LOCALES.length) % SELECTABLE_LOCALES.length]!;
+              void changeLocale(next);
+            }
+            if (e.key === "Escape") setOpen(false);
+          }}
+          className="absolute end-0 top-[calc(100%+6px)] z-50 min-w-[140px] overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] py-1 shadow-xl"
+        >
+          {SELECTABLE_LOCALES.map((loc) => (
+            <li key={loc} role="option" aria-selected={loc === current}>
+              <button
+                type="button"
+                onClick={() => void changeLocale(loc)}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm font-bold transition hover:bg-[color:var(--surface-soft)] ${
+                  loc === current ? "text-indigo-500" : "text-[color:var(--foreground-main)]"
+                }`}
+              >
+                <span>{pickName(loc)}</span>
+                <span className="text-[10px] text-[color:var(--foreground-muted)]">{LOCALE_LABELS[loc]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );
