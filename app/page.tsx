@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import LandingPage from "@/components/landing/LandingPage";
+import MarketingCinematicPage from "@/components/landing/marketing/MarketingCinematicPage";
 import OmniCanvasWorkspace from "@/components/os/OmniCanvasWorkspace";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 export default function OmniCanvas() {
   const { data: session, status: sessionStatus } = useSession();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { t, dir } = useI18n();
 
@@ -30,12 +28,7 @@ export default function OmniCanvas() {
   }
 
   if (sessionStatus === "unauthenticated" || !session) {
-    return (
-      <LandingPage
-        onLogin={() => router.push("/login")}
-        onRegister={() => router.push("/login?mode=register")}
-      />
-    );
+    return <MarketingCinematicPage />;
   }
 
   return <OmniCanvasWorkspace />;
