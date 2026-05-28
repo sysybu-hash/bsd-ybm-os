@@ -97,14 +97,14 @@ export function usePlatformAdmin() {
     if (!res.ok) { toast.error(data.error ?? t("platformAdmin.loadSettingsFailed")); return; }
     setPlatformConfig(data.config);
     setEnvStatus(data.envStatus);
-  }, []);
+  }, [t]);
 
   const loadHealth = useCallback(async () => {
     const res = await fetch("/api/admin/system-health", { credentials: "include" });
     const data = await res.json();
     if (!res.ok) { toast.error(t("platformAdmin.loadHealthFailed")); return; }
     setHealth(data);
-  }, []);
+  }, [t]);
 
   const refreshAll = useCallback(async () => {
     setLoading(true);

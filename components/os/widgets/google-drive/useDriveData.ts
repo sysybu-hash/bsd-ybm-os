@@ -52,7 +52,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     } finally {
       setSyncing(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchFiles = useCallback(
     async (folderId: string = "workspace") => {
@@ -95,7 +95,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   const initWorkspace = useCallback(async () => {
@@ -131,7 +131,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     } finally {
       setLoading(false);
     }
-  }, [fetchFiles]);
+  }, [fetchFiles, t]);
 
   const handleRefresh = useCallback(async () => {
     const ok = await runSync(false);
@@ -196,7 +196,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         if (e.target) e.target.value = "";
       }
     },
-    [currentFolderId, handleRefresh],
+    [currentFolderId, handleRefresh, t],
   );
 
   const runDecodeBatch = useCallback(
@@ -233,7 +233,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         setDecoding(false);
       }
     },
-    [fetchFiles, currentFolderId],
+    [fetchFiles, currentFolderId, t],
   );
 
   const saveReviewItems = useCallback(async () => {
@@ -271,7 +271,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     } finally {
       setReviewSaving(false);
     }
-  }, [reviewItems, fetchFiles, currentFolderId]);
+  }, [reviewItems, fetchFiles, currentFolderId, t]);
 
   // Init on mount
   useEffect(() => { void initWorkspace(); }, [initWorkspace]);
@@ -293,7 +293,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
       params.delete("google_reconnect");
       window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
     }
-  }, [initWorkspace]);
+  }, [initWorkspace, t]);
 
   // Auto-sync every 90 seconds
   useEffect(() => {

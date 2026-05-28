@@ -20,7 +20,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     const data = await res.json();
     if (!res.ok) { toast.error(data.error ?? t("platformAdmin.searchFailed")); return; }
     setUserLookup(data);
-  }, [userEmail]);
+  }, [userEmail, t]);
 
   const handleBroadcast = useCallback(async () => {
     const res = await fetch("/api/admin/broadcast-notification", {
@@ -33,7 +33,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     toast.success(t("platformAdmin.broadcastSentN").replace("{n}", String(data.count ?? 0)));
     setBroadcastTitle("");
     setBroadcastBody("");
-  }, [broadcastTitle, broadcastBody]);
+  }, [broadcastTitle, broadcastBody, t]);
 
   const handleTestEmail = useCallback(async () => {
     setTestingEmail(true);
@@ -50,7 +50,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     } finally {
       setTestingEmail(false);
     }
-  }, [loadHealth]);
+  }, [loadHealth, t]);
 
   return {
     userEmail, setUserEmail, userLookup, setUserLookup,

@@ -123,7 +123,7 @@ export function useMeckanoReports() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters, t]);
 
   useEffect(() => {
     if (accessAllowed !== true) return;

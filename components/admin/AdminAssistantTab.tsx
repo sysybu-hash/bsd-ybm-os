@@ -101,7 +101,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
         setTimeout(scrollToEnd, 50);
       }
     },
-    [loading, messages, onNavigateTab, scrollToEnd],
+    [loading, messages, onNavigateTab, scrollToEnd, t],
   );
 
   const executePending = useCallback(
@@ -127,7 +127,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
         setExecutingId(null);
       }
     },
-    [],
+    [t],
   );
 
   return (
