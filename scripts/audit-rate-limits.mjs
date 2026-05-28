@@ -31,6 +31,9 @@ const PUBLIC_ALLOWLIST = [
   "app/api/scan/share/route.ts",
   "app/api/og/route.tsx",
   "app/api/locale/route.ts",
+  // Marketing demo — per-visitor cookie quota via checkRateLimit (not IP applyRateLimit)
+  "app/api/marketing/demo-scan/route.ts",
+  "app/api/marketing/assistant/gemini-live/session/route.ts",
 ];
 
 async function walk(dir, acc = []) {
