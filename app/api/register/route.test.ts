@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { POST } from "@/app/api/register/route";
 import { prisma } from "@/lib/prisma";
 import {
+  sendAccessApprovedEmail,
   sendNewRegistrationPendingAdminEmail,
   sendRegistrationWelcomeEmail,
 } from "@/lib/mail";
@@ -47,6 +48,7 @@ jest.mock("@/lib/mail", () => ({
   sendRegistrationWelcomeEmail: jest.fn().mockResolvedValue(undefined),
   sendRegistrationCredentialsEmail: jest.fn().mockResolvedValue({ ok: true }),
   sendNewRegistrationPendingAdminEmail: jest.fn().mockResolvedValue(undefined),
+  sendAccessApprovedEmail: jest.fn().mockResolvedValue({ ok: true }),
 }));
 
 jest.mock("@/lib/password", () => ({
@@ -74,6 +76,7 @@ jest.mock("@/lib/platform-settings", () => ({
 // Helper to cast mocks
 const mockPrisma = prisma as any;
 const mockSendRegistrationWelcomeEmail = sendRegistrationWelcomeEmail as jest.Mock;
+const mockSendAccessApprovedEmail = sendAccessApprovedEmail as jest.Mock;
 const mockSendNewRegistrationPendingAdminEmail =
   sendNewRegistrationPendingAdminEmail as jest.Mock;
 const mockTrialEndsAtFromNow = trialEndsAtFromNow as jest.Mock;
@@ -197,14 +200,15 @@ describe("POST /api/register", () => {
         },
       }),
     });
-    expect(mockSendRegistrationWelcomeEmail).toHaveBeenCalledWith(
+    expect(mockSendAccessApprovedEmail).toHaveBeenCalledWith(
       "pro@example.com",
       "Pro User",
       expect.objectContaining({
-        tierKey: "COMPANY",
-        accountActive: true,
+        variant: "registration_active",
+        temporaryPassword: "GeneratedPass1!",
       }),
     );
+    expect(mockSendRegistrationWelcomeEmail).not.toHaveBeenCalled();
   });
 
   test("creates COMPANY_MGMT org when industry is business", async () => {

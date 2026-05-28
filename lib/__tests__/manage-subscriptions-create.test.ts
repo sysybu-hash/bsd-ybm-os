@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { manageSubsCreateManualUserAction } from "@/app/actions/manage-subscriptions";
 import { prisma } from "@/lib/prisma";
-import { sendProvisionCredentialsEmail } from "@/app/actions/send-credentials-email";
+import { sendAccessApprovedEmail } from "@/lib/mail";
 
 jest.mock("next-auth", () => ({
   getServerSession: jest.fn(),
@@ -23,8 +23,8 @@ jest.mock("@/lib/password", () => ({
   hashPassword: jest.fn(async () => "hashed"),
 }));
 
-jest.mock("@/app/actions/send-credentials-email", () => ({
-  sendProvisionCredentialsEmail: jest.fn(async () => ({ ok: true })),
+jest.mock("@/lib/mail", () => ({
+  sendAccessApprovedEmail: jest.fn(async () => ({ ok: true })),
 }));
 
 jest.mock("@/lib/activity-log", () => ({
@@ -40,7 +40,7 @@ const mockPrisma = prisma as unknown as {
   user: { findFirst: jest.Mock };
   organization: { create: jest.Mock; findFirst: jest.Mock };
 };
-const mockMail = sendProvisionCredentialsEmail as jest.Mock;
+const mockMail = sendAccessApprovedEmail as jest.Mock;
 
 describe("manageSubsCreateManualUserAction", () => {
   beforeEach(() => {
