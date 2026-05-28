@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Activity, Loader2, RefreshCw, Shield } from "lucide-react";
 import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
-import { normalizeIndustryType } from "@/lib/professions/config";
+import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -141,7 +141,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                         {u.organizationName ?? t("platformAdmin.pending.noOrg")}
                         {u.organizationIndustry ? (
                           <span className="me-1 rounded bg-[color:var(--surface-soft)] px-1.5 py-0.5 font-bold">
-                            {normalizeIndustryType(u.organizationIndustry) === "COMPANY_MGMT" ? "ניהול עסק" : "בנייה"}
+                            {industryLabelHe(u.organizationIndustry)}
                           </span>
                         ) : null}
                         {" · "}{new Date(u.createdAt).toLocaleString("he-IL")}

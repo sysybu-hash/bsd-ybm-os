@@ -23,6 +23,7 @@ type UseScheduleDataParams = {
   labels: ScheduleLabels;
   onRefresh: () => Promise<void>;
   hideConstructionFeatures: boolean;
+  organizationIndustry?: string | null;
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   onOpenDiary?: (opts?: { taskId?: string; description?: string }) => void;
 };
@@ -37,6 +38,7 @@ export function useScheduleData({
   labels,
   onRefresh,
   hideConstructionFeatures,
+  organizationIndustry,
   openWorkspaceWidget,
   onOpenDiary,
 }: UseScheduleDataParams) {
@@ -94,14 +96,14 @@ export function useScheduleData({
         endDate: t.endDate,
         progress: t.progress,
         dependencies: t.dependencies,
-        tradeId: resolveTaskTradeId(t.description ?? null, t.title),
+        tradeId: resolveTaskTradeId(t.description ?? null, t.title, organizationIndustry),
         linkedBoqLineId: t.linkedBoqLineId ?? null,
         linkedBoqLabel: t.linkedBoqLineId
           ? boqById.get(t.linkedBoqLineId)?.description?.slice(0, 40) ?? t.linkedBoqLineId
           : null,
         linkedWorkDiaryId: t.linkedWorkDiaryId ?? null,
       })),
-    [rawTasks, boqById],
+    [rawTasks, boqById, organizationIndustry],
   );
 
   const counts = useMemo(() => {

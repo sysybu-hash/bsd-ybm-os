@@ -55,7 +55,7 @@ export const POST = withWorkspacesAuth(
         where: { id: projectId, organizationId: orgId },
         include: {
           contacts: { take: 1, orderBy: { createdAt: "asc" } },
-          organization: { select: { constructionTrade: true } },
+          organization: { select: { constructionTrade: true, industry: true } },
         },
       });
       if (!project) {
@@ -64,7 +64,8 @@ export const POST = withWorkspacesAuth(
 
       const clientName = project.contacts[0]?.name ?? getApiMessage("unassigned_client", locale);
       const trade = project.organization?.constructionTrade ?? null;
-      const specializedPrompt = getTradeSpecializedPrompt(trade);
+      const industry = project.organization?.industry ?? null;
+      const specializedPrompt = getTradeSpecializedPrompt(trade, industry);
       const boqContext = await loadRecentBillOfQuantitiesContext(orgId);
 
       let systemPrompt = withAssistantTemporalContext(`${specializedPrompt}

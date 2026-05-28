@@ -246,7 +246,7 @@ export function isConstructionSubDomainId(id: string): id is ConstructionSubDoma
   return (CONSTRUCTION_PROJECT_SUB_DOMAINS as ProjectSubDomain[]).some((d) => d.id === id);
 }
 
-export function defaultSubDomainForIndustry(industryRaw?: string | null): ProjectSubDomainId {
-  return isCompanyMgmtIndustry(industryRaw) ? "GENERAL" : "GENERAL";
+export function defaultSubDomainForIndustry(_industryRaw?: string | null): ProjectSubDomainId {
+  return "GENERAL";
 }
 

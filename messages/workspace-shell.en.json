@@ -345,21 +345,46 @@
       "tabListAria": "Window tabs",
       "tabCount": "{count} actions",
       "actionsBadge": "{count} hub actions",
-      "finance": { "tabs": { "overview": "Overview", "cashflow": "Cash flow" } },
+      "finance": {
+        "tabs": {
+          "overview": "Overview",
+          "cashflow": "Cash flow"
+        }
+      },
       "projects": {
-        "tabs": { "board": "Project board", "project": "Project hub" },
+        "tabs": {
+          "board": "Project board",
+          "project": "Project hub"
+        },
         "pickerTitle": "Choose a project",
         "pickerDesc": "Select a project before opening the control center",
         "openCrm": "Open CRM"
       },
-      "documents": { "tabs": { "archive": "Archive", "create": "Create", "scan": "Scan" } },
-      "ai": { "tabs": { "chat": "Chat", "notebook": "Notebook" } }
+      "documents": {
+        "tabs": {
+          "archive": "Archive",
+          "create": "Create",
+          "scan": "Scan"
+        }
+      },
+      "ai": {
+        "tabs": {
+          "chat": "Chat",
+          "notebook": "Notebook"
+        }
+      }
     },
     "fieldCopilot": {
       "title": "Field Copilot",
       "subtitle": "Site quote — voice, photos, AI analysis",
       "stepperAria": "Field Copilot steps",
-      "steps": { "client": "Client", "capture": "Capture", "analysis": "Analysis", "review": "Review", "produce": "Produce" },
+      "steps": {
+        "client": "Client",
+        "capture": "Capture",
+        "analysis": "Analysis",
+        "review": "Review",
+        "produce": "Produce"
+      },
       "clientTitle": "Client & project",
       "clientSubtitle": "Pick a CRM client or project before the site visit",
       "searchClient": "Search client or project…",
@@ -554,32 +579,104 @@
         "assigned": "User assigned to organization",
         "assignedHint": "For Gemini Live and permissions to refresh immediately, ask the user to sign out and back in."
       },
-      "confirmUnverifiedEmail": "Email {email} is not verified yet. Resend verification email?"
+      "confirmUnverifiedEmail": "Email {email} is not verified yet. Resend verification email?",
+      "savedSuccess": "Industry and specialization updated — consider refreshing the page",
+      "savedError": "Save failed",
+      "speechSaved": "Speech settings saved"
     },
     "quickActions": {
-      "dashboard": { "title": "Dashboard", "subtitle": "Financial overview & metrics" },
-      "project": { "title": "Project control center", "subtitle": "Budget, Gantt & diary" },
-      "cashflow": { "title": "Cash flow", "subtitle": "Forecast & revenue" },
-      "erp": { "title": "ERP documents", "subtitle": "Invoices & records" },
-      "projectBoard": { "title": "Project board", "subtitle": "Task management" },
-      "crmTable": { "title": "Clients", "subtitle": "CRM database" },
-      "erpArchive": { "title": "ERP archive", "subtitle": "File management" },
-      "docCreator": { "title": "Documents", "subtitle": "Quotes & invoices" },
-      "aiScanner": { "title": "AI scan", "subtitle": "Document decode" },
-      "aiChatFull": { "title": "AI chat", "subtitle": "Personal assistant" },
-      "googleDrive": { "title": "Google Drive", "subtitle": "Cloud files" },
-      "googleCalendar": { "title": "Google Calendar", "subtitle": "Events & sync" },
-      "notebookLM": { "title": "NotebookLM", "subtitle": "AI notebook" },
-      "meckanoReports": { "title": "Meckano reports", "subtitle": "Attendance & hours" },
-      "settings": { "title": "Settings", "subtitle": "Org & branding" },
-      "helpCenter": { "title": "Help center", "subtitle": "Guides & support" },
-      "fieldCopilot": { "title": "Field Copilot", "subtitle": "Quick site quote" },
-      "accessibility": { "title": "Accessibility", "subtitle": "Display & accessibility settings" },
-      "platformAdmin": { "title": "Platform admin", "subtitle": "Platform & organization settings" },
-      "financeHub": { "title": "Finance", "subtitle": "Dashboard & cash flow" },
-      "projectsHub": { "title": "Projects", "subtitle": "Board & control center" },
-      "documentsHub": { "title": "Documents", "subtitle": "Archive · create · scan" },
-      "aiHub": { "title": "AI", "subtitle": "Chat & notebook" }
+      "dashboard": {
+        "title": "Dashboard",
+        "subtitle": "Financial overview & metrics"
+      },
+      "project": {
+        "title": "Project control center",
+        "subtitle": "Budget, Gantt & diary"
+      },
+      "cashflow": {
+        "title": "Cash flow",
+        "subtitle": "Forecast & revenue"
+      },
+      "erp": {
+        "title": "ERP documents",
+        "subtitle": "Invoices & records"
+      },
+      "projectBoard": {
+        "title": "Project board",
+        "subtitle": "Task management"
+      },
+      "crmTable": {
+        "title": "Clients",
+        "subtitle": "CRM database"
+      },
+      "erpArchive": {
+        "title": "ERP archive",
+        "subtitle": "File management"
+      },
+      "docCreator": {
+        "title": "Documents",
+        "subtitle": "Quotes & invoices"
+      },
+      "aiScanner": {
+        "title": "AI scan",
+        "subtitle": "Document decode"
+      },
+      "aiChatFull": {
+        "title": "AI chat",
+        "subtitle": "Personal assistant"
+      },
+      "googleDrive": {
+        "title": "Google Drive",
+        "subtitle": "Cloud files"
+      },
+      "googleCalendar": {
+        "title": "Google Calendar",
+        "subtitle": "Events & sync"
+      },
+      "notebookLM": {
+        "title": "NotebookLM",
+        "subtitle": "AI notebook"
+      },
+      "meckanoReports": {
+        "title": "Meckano reports",
+        "subtitle": "Attendance & hours"
+      },
+      "settings": {
+        "title": "Settings",
+        "subtitle": "Org & branding"
+      },
+      "helpCenter": {
+        "title": "Help center",
+        "subtitle": "Guides & support"
+      },
+      "fieldCopilot": {
+        "title": "Field Copilot",
+        "subtitle": "Quick site quote"
+      },
+      "accessibility": {
+        "title": "Accessibility",
+        "subtitle": "Display & accessibility settings"
+      },
+      "platformAdmin": {
+        "title": "Platform admin",
+        "subtitle": "Platform & organization settings"
+      },
+      "financeHub": {
+        "title": "Finance",
+        "subtitle": "Dashboard & cash flow"
+      },
+      "projectsHub": {
+        "title": "Projects",
+        "subtitle": "Board & control center"
+      },
+      "documentsHub": {
+        "title": "Documents",
+        "subtitle": "Archive · create · scan"
+      },
+      "aiHub": {
+        "title": "AI",
+        "subtitle": "Chat & notebook"
+      }
     },
     "empty": {
       "greetingNight": "Good night",
@@ -746,17 +843,13 @@
       "confirmFailed": "Could not confirm"
     },
     "chrome": {
-      "zoomOutAria": "Zoom out in {title}",
-      "zoomInAria": "Zoom in in {title}",
-      "zoomLevel": "{level}%",
-      "backAria": "Back in {title}",
-      "forwardAria": "Forward in {title}",
-      "restoreAria": "Restore {title}",
-      "maximizeAria": "Maximize {title}",
-      "minimizeAria": "Minimize {title}",
-      "restoreMinimizedAria": "Restore {title}",
       "closeAria": "Close {title}",
-      "closeLabel": "Close"
+      "closeLabel": "Close",
+      "maximizeAria": "Maximize {title}",
+      "restoreAria": "Restore {title}",
+      "zoomInAria": "Zoom in {title}",
+      "zoomOutAria": "Zoom out {title}",
+      "zoomLevel": "Zoom {level}%"
     },
     "minimizedDock": {
       "aria": "Minimized windows"
@@ -865,6 +958,14 @@
       "syncSyncing": "Syncing…",
       "syncStatusHint": "CRM ↔ project sync status",
       "columnActions": "Actions",
+      "addClientTitle": "Add new client",
+      "addClientName": "Full name",
+      "addClientNamePlaceholder": "John Smith",
+      "addClientStatus": "Status",
+      "addClientStatusLead": "Lead",
+      "addClientStatusActive": "Active",
+      "addClientStatusInactive": "Inactive",
+      "addClientSave": "Add client",
       "openControlCenter": "Open control center",
       "openFieldCopilot": "Field Copilot"
     },
@@ -932,7 +1033,25 @@
       "browseOrg": "Browse entire organization (no project)",
       "noProjects": "No projects yet — create one in CRM",
       "openCrm": "Open CRM",
-      "loadFailed": "Failed to load projects"
+      "loadFailed": "Failed to load projects",
+      "addToNotebook": "Add to notebook",
+      "aiDecode": "AI decode",
+      "openInDrive": "Open in Google Drive",
+      "syncDone": "Sync complete",
+      "loadError": "Error loading files",
+      "initError": "Initialization error",
+      "uploaded": "Uploaded",
+      "uploadFailed": "Upload failed",
+      "decodedN": "Decoded {n} files",
+      "decodeFailed": "Decode failed",
+      "docsSaved": "Documents saved",
+      "saveFailed": "Save failed",
+      "googleUpdated": "Google connection updated — reloading Drive",
+      "notebookOpenError": "Cannot open notebook",
+      "addToNotebookFailed": "Add to notebook failed",
+      "folderDecodeError": "For AI decode select a single file, not a folder",
+      "scannerOpenError": "Cannot open scanner",
+      "aiDecodeOpening": "Opening AI decode for"
     },
     "projectBoard": {
       "headerTitle": "Project management board",
@@ -1085,7 +1204,25 @@
       "retry": "Try again",
       "noApiKey": "MECKANO_API_KEY is not set on the server",
       "noAccess": "Cannot verify Meckano access",
-      "filter": "Filter results"
+      "filter": "Filter results",
+      "exportCsv": "Export CSV",
+      "downloadPdf": "Download PDF",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "filterEmployee": "Employee",
+      "allEmployees": "All employees",
+      "filterProject": "Project",
+      "allProjects": "All projects",
+      "generalProject": "General / Office",
+      "colDate": "Date",
+      "colEmployee": "Employee",
+      "colProject": "Project",
+      "colLocation": "Location",
+      "colHours": "Hours",
+      "loadFailed": "Failed to load reports",
+      "networkError": "Network error loading reports",
+      "csvExported": "CSV exported successfully",
+      "pdfDownloaded": "PDF downloaded successfully"
     },
     "docCreator": {
       "draftTitle": "Summary before issue",
@@ -1131,7 +1268,10 @@
       "noSavedNotebooks": "No saved notebooks",
       "deleteNotebook": "Delete notebook",
       "sourcesHeading": "Knowledge Sources",
-      "noSources": "No sources uploaded yet."
+      "noSources": "No sources uploaded yet.",
+      "loaded": "Notebook loaded",
+      "saved": "Notebook saved",
+      "deleted": "Deleted"
     },
     "project": {
       "loadFailed": "Failed to load project",
@@ -1146,14 +1286,41 @@
       "zoomOutAria": "Zoom out",
       "zoomLevel": "Zoom level {level}%"
     },
-    "chrome": {
-      "closeAria": "Close {title}",
-      "closeLabel": "Close",
-      "maximizeAria": "Maximize {title}",
-      "restoreAria": "Restore {title}",
-      "zoomInAria": "Zoom in {title}",
-      "zoomOutAria": "Zoom out {title}",
-      "zoomLevel": "Zoom {level}%"
+    "erpDocuments": {
+      "rowUpdated": "Row updated",
+      "rowUpdateError": "Row update failed",
+      "serverError": "Server connection error",
+      "deleted": "Document deleted",
+      "deleteError": "Delete failed"
+    },
+    "fileArchive": {
+      "permanentlyDeleted": "Document permanently deleted",
+      "movedToTrash": "Document moved to trash",
+      "deleteFailed": "Delete failed",
+      "restored": "Document restored",
+      "restoreFailed": "Restore failed",
+      "downloading": "Downloading"
+    },
+    "documentCreator": {
+      "fillAllItems": "Please fill all item details",
+      "serverResponseError": "Invalid server response",
+      "docGenerationSuccess": "Generated successfully",
+      "docGenerationFailed": "Document generation failed",
+      "serverConnectionError": "Server connection error",
+      "pdfRequired": "Generate the document before downloading PDF",
+      "pdfDownloaded": "PDF downloaded",
+      "urlCopied": "Copied",
+      "selectedFromVault": "Selected from vault"
+    },
+    "projectBoq": {
+      "importFailed": "Import failed",
+      "importedLines": "Imported {n} lines",
+      "rowUpdateFailed": "Row update failed"
+    },
+    "projectDashboard": {
+      "meckanoSyncFailed": "Meckano sync failed",
+      "meckanoSyncDone": "Meckano: {c} new, {u} updated",
+      "pushNotAvailable": "Push unavailable — check VAPID and permissions"
     }
   },
   "geminiLive": {

@@ -23,6 +23,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
     orgName, setOrgName,
     password, setPassword, passwordConfirm, setPasswordConfirm,
     industry, setIndustry,
+    specialization, setSpecialization, specializationOptions,
     busy, done, pendingApproval,
     goLogin, goNext, submit,
   } = s;
@@ -82,6 +83,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
       </p>
 
       <div className={`mt-4 flex-1 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-5 ${embedded ? "" : "shadow-sm"}`}>
+        {/* Step 0: Industry + org type */}
         {step === 0 && (
           <div className="space-y-4">
             <div>
@@ -109,7 +111,25 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           </div>
         )}
 
+        {/* Step 1: Specialization */}
         {step === 1 && (
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-[color:var(--foreground-muted)]">
+              {industry === "CONSTRUCTION" ? t("auth.register.specializationConstruction") : t("auth.register.specializationBusiness")}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {specializationOptions.map((opt) => (
+                <button key={opt.id} type="button" onClick={() => setSpecialization(opt.id)}
+                  className={`rounded-xl border p-3 text-start text-sm transition ${specialization === opt.id ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10" : "border-[color:var(--border-main)] hover:bg-[color:var(--surface-card)]"}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Personal info */}
+        {step === 2 && (
           <div className="space-y-4">
             <label className="block text-sm font-bold">
               {t("auth.register.labels.fullName")}
@@ -127,7 +147,8 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           </div>
         )}
 
-        {step === 2 && (
+        {/* Step 3: Org name */}
+        {step === 3 && (
           <label className="block text-sm font-bold">
             {orgNameLabel}
             <input value={orgName} onChange={(e) => setOrgName(e.target.value)}
@@ -136,7 +157,8 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           </label>
         )}
 
-        {step === 3 && (
+        {/* Step 4: Password */}
+        {step === 4 && (
           <PasswordFields
             password={password} confirm={passwordConfirm}
             onPasswordChange={setPassword} onConfirmChange={setPasswordConfirm}
@@ -146,13 +168,17 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
               generate: t("auth.hub.register.generatePassword"),
               copy: t("auth.hub.register.copyPassword"),
               requirements: t("auth.hub.register.passwordRequirements"),
+              generateSuccess: t("auth.hub.register.passwordGenerated"),
+              passwordMismatch: t("auth.hub.register.passwordMismatch"),
             }}
           />
         )}
 
-        {step === 4 && (
+        {/* Step 5: Confirmation summary */}
+        {step === 5 && (
           <ul className="space-y-3 text-sm">
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.type")}: </span><strong>{t(`auth.register.types.${orgType}.label`)}</strong></li>
+            <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.specialization")}: </span><strong>{specializationOptions.find((o) => o.id === specialization)?.label ?? specialization}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.name")}: </span><strong>{name || "—"}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.email")}: </span><strong>{email}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.orgName")}: </span><strong>{orgName}</strong></li>

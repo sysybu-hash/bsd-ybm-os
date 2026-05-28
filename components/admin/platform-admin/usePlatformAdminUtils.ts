@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { toast } from "sonner";
 
 /** User lookup, broadcast notification, and test-email — independent of org/subscription state. */
 export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
+  const { t } = useI18n();
   const [userEmail, setUserEmail] = useState("");
   const [userLookup, setUserLookup] = useState<Record<string, unknown> | null>(null);
   const [broadcastTitle, setBroadcastTitle] = useState("");
@@ -16,7 +18,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     if (!email) return;
     const res = await fetch(`/api/admin/check-user?email=${encodeURIComponent(email)}`, { credentials: "include" });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "חיפוש נכשל"); return; }
+    if (!res.ok) { toast.error(data.error ?? t("platformAdmin.searchFailed")); return; }
     setUserLookup(data);
   }, [userEmail]);
 
@@ -27,8 +29,8 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
       body: JSON.stringify({ title: broadcastTitle, body: broadcastBody }),
     });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "שידור נכשל"); return; }
-    toast.success(`שודר ל-${data.count ?? 0} משתמשים`);
+    if (!res.ok) { toast.error(data.error ?? t("platformAdmin.broadcastFailed")); return; }
+    toast.success(t("platformAdmin.broadcastSentN").replace("{n}", String(data.count ?? 0)));
     setBroadcastTitle("");
     setBroadcastBody("");
   }, [broadcastTitle, broadcastBody]);
@@ -42,8 +44,8 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
         body: "{}",
       });
       const j = (await res.json()) as { ok?: boolean; to?: string; error?: string };
-      if (j.ok) toast.success(`מייל בדיקה נשלח ל־${j.to ?? "תיבתך"}`);
-      else toast.error(j.error ?? "שליחת מייל בדיקה נכשלה");
+      if (j.ok) toast.success(t("platformAdmin.testEmailSentTo"));
+      else toast.error(j.error ?? t("platformAdmin.testEmailFailed"));
       void loadHealth();
     } finally {
       setTestingEmail(false);

@@ -39,7 +39,7 @@ export function AiChatSidebar({ provider, onSetProvider, onClear, t }: AiChatSid
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4">
         <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest px-2 block mb-4">
           {t("workspaceWidgets.aiChat.recentChats")}
         </span>

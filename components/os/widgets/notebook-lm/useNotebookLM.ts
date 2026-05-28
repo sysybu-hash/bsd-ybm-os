@@ -129,7 +129,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
       setMessages(uiMessagesFromStored(nb.messages));
       setAudioScript(nb.audioOverview?.scriptText ?? null);
       setShowSavedPanel(false);
-      toast.success("המחברת נטענה");
+      toast.success(t("workspaceWidgets.notebookLM.loaded"));
     } catch { toast.error(t("workspaceWidgets.notebookLM.loadFailed")); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
@@ -177,7 +177,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
       if (data.notebook?.id) {
         setSavedNotebookId(data.notebook.id);
         if (data.notebook.audioOverview?.scriptText) setAudioScript(data.notebook.audioOverview.scriptText);
-        toast.success("המחברת נשמרה");
+        toast.success(t("workspaceWidgets.notebookLM.saved"));
         void refreshSavedList();
         sessionStorage.removeItem(DRAFT_KEY);
       }
@@ -252,7 +252,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     setDeleteNotebookId(null);
     try {
       const res = await fetch(`/api/notebooklm/notebooks/${id}`, { method: "DELETE", credentials: "include" });
-      if (res.ok) { if (savedNotebookId === id) handleNewNotebook(); void refreshSavedList(); toast.success("נמחק"); }
+      if (res.ok) { if (savedNotebookId === id) handleNewNotebook(); void refreshSavedList(); toast.success(t("workspaceWidgets.notebookLM.deleted")); }
     } catch { toast.error(t("workspaceWidgets.notebookLM.deleteFailed")); }
   };
 

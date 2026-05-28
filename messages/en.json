@@ -58,7 +58,10 @@
       "bullet1": "Strong password with built-in generator",
       "bullet2": "Remember me — fewer repeat sign-ins",
       "bullet3": "Fingerprint / Face ID after first login",
-      "tabs": { "login": "Sign in", "register": "Register" },
+      "tabs": {
+        "login": "Sign in",
+        "register": "Register"
+      },
       "loginTitle": "Sign in",
       "loginSubtitle": "Choose how you want to authenticate",
       "registerSubtitle": "Create a new organization or join with an invite",
@@ -67,7 +70,9 @@
         "passkey": "Sign in with fingerprint / Face ID",
         "forgot": "Forgot password",
         "errorEmpty": "Enter email and password",
-        "errorInvalid": "Invalid email or password"
+        "errorInvalid": "Invalid email or password",
+        "updateError": "Error",
+        "updateSuccess": "Password updated"
       },
       "forgot": {
         "title": "Reset password",
@@ -93,7 +98,11 @@
         "passwordInvalid": "Check password and confirmation",
         "pendingTitle": "Request received",
         "pendingDesc": "After admin approval, sign in with your email and password.",
-        "successDesc": "Account created. Sign in with your email and password."
+        "successDesc": "Account created. Sign in with your email and password.",
+        "passwordGenerated": "Strong password generated",
+        "passwordMismatch": "Passwords do not match",
+        "registerFailed": "Registration failed",
+        "networkError": "Network error"
       },
       "passkey": {
         "offerTitle": "Faster biometric sign-in",
@@ -107,7 +116,11 @@
         "unsupported": "Biometric sign-in not supported in this browser",
         "delete": "Remove",
         "deleted": "Device removed",
-        "deleteFailed": "Remove failed"
+        "deleteFailed": "Remove failed",
+        "loginUnavailable": "Biometric sign-in unavailable",
+        "verifyFailed": "Biometric verification failed",
+        "loginFailed": "Sign-in failed",
+        "loginCancelled": "Biometric sign-in cancelled or failed"
       },
       "security": {
         "passwordTitle": "Sign-in password",
@@ -155,13 +168,26 @@
         "password": "Password",
         "confirm": "Confirm & Submit",
         "of": "of",
-        "step": "Step"
+        "step": "Step",
+        "specialization": "Specialization"
       },
       "types": {
-        "home": { "label": "Household", "desc": "Personal and family management" },
-        "freelancer": { "label": "Freelancer", "desc": "Consultant, sole trader, pro" },
-        "company": { "label": "Company", "desc": "Private company, startup" },
-        "enterprise": { "label": "Enterprise", "desc": "Corporation, large organization" }
+        "home": {
+          "label": "Household",
+          "desc": "Personal and family management"
+        },
+        "freelancer": {
+          "label": "Freelancer",
+          "desc": "Consultant, sole trader, pro"
+        },
+        "company": {
+          "label": "Company",
+          "desc": "Private company, startup"
+        },
+        "enterprise": {
+          "label": "Enterprise",
+          "desc": "Corporation, large organization"
+        }
       },
       "labels": {
         "fullName": "Full Name",
@@ -186,7 +212,8 @@
         "name": "Name",
         "email": "Email",
         "joining": "Joining ",
-        "trade": "Trade"
+        "trade": "Trade",
+        "specialization": "Specialization"
       },
       "construction": {
         "lead": "BSD-YBM is built for construction and allied trades. Pick your trade to align AI scanning and documents.",
@@ -201,7 +228,9 @@
         "desc": "We received your request — admin will approve within 24 hours.",
         "descTeam": "You joined effectively. You can now sign in.",
         "cta": "Proceed to Login"
-      }
+      },
+      "specializationConstruction": "Select construction trade",
+      "specializationBusiness": "Select business line"
     }
   },
   "dashboard": {
@@ -343,7 +372,8 @@
     "chatInvalid": "No valid AI request to run.",
     "chatServerError": "Server error",
     "chatNoReply": "No reply from AI.",
-    "chatNetworkError": "Could not reach the server."
+    "chatNetworkError": "Could not reach the server.",
+    "actionsApplied": "Actions completed"
   },
   "accessibility": {
     "toolbar": "Accessibility",
@@ -849,15 +879,86 @@
       "removeConfirm": "Remove registration for {email}? This cannot be undone.",
       "removed": "Registration removed",
       "approved": "Registration approved"
-    }
+    },
+    "assistantError": "Admin assistant error",
+    "assistantContactError": "Cannot reach admin assistant",
+    "actionFailed": "Action failed",
+    "actionSuccess": "Action completed",
+    "actionError": "Cannot perform action",
+    "loadSettingsFailed": "Failed to load settings",
+    "loadHealthFailed": "Failed to load system health",
+    "subscriptionUpdated": "Subscription updated",
+    "scanCreditsUpdated": "Scan credits updated",
+    "newSubscriptionEmailed": "New subscription created — login details emailed",
+    "orgDeleted": "Organization deleted",
+    "userDeleted": "User deleted",
+    "selectOrg": "Select an organization",
+    "userCreatedEmailed": "User created — details emailed",
+    "userCreated": "User created",
+    "platformSettingsSaved": "Platform settings saved",
+    "saveFailed": "Save failed",
+    "searchFailed": "Search failed",
+    "broadcastFailed": "Broadcast failed",
+    "broadcastSentN": "Sent to {n} users",
+    "testEmailSentTo": "Test email sent",
+    "testEmailFailed": "Test email failed"
   },
   "professions": {
-    "GENERAL": { "label": "General Management", "client": "Client", "project": "Project", "document": "Document", "inventory": "Inventory" },
-    "LAWYER": { "label": "Law Firm", "client": "Client / Represented", "project": "Legal Case", "document": "Legal Filing", "inventory": "Library" },
-    "ACCOUNTANT": { "label": "Accounting / Tax", "client": "Taxpayer / Client", "project": "Audit / Report", "document": "Accounting Doc", "inventory": "Archive" },
-    "CONTRACTOR": { "label": "Contracting / Construction", "client": "Developer / Client", "project": "Worksite / Project", "document": "Bill of Quantities", "inventory": "Equipment" },
-    "HEALTH": { "label": "Health / Clinic", "client": "Patient", "project": "Treatment Series", "document": "Medical File", "inventory": "Medical Supply" },
-    "RETAIL": { "label": "Retail / Store", "client": "End Customer", "project": "Supplier / Order", "document": "Delivery Note", "inventory": "Stock" },
-    "REAL_ESTATE": { "label": "Real Estate / Brokerage", "client": "Buyer / Tenant", "project": "Property / Asset", "document": "Contract / Deed", "inventory": "Listings" }
+    "GENERAL": {
+      "label": "General Management",
+      "client": "Client",
+      "project": "Project",
+      "document": "Document",
+      "inventory": "Inventory"
+    },
+    "LAWYER": {
+      "label": "Law Firm",
+      "client": "Client / Represented",
+      "project": "Legal Case",
+      "document": "Legal Filing",
+      "inventory": "Library"
+    },
+    "ACCOUNTANT": {
+      "label": "Accounting / Tax",
+      "client": "Taxpayer / Client",
+      "project": "Audit / Report",
+      "document": "Accounting Doc",
+      "inventory": "Archive"
+    },
+    "CONTRACTOR": {
+      "label": "Contracting / Construction",
+      "client": "Developer / Client",
+      "project": "Worksite / Project",
+      "document": "Bill of Quantities",
+      "inventory": "Equipment"
+    },
+    "HEALTH": {
+      "label": "Health / Clinic",
+      "client": "Patient",
+      "project": "Treatment Series",
+      "document": "Medical File",
+      "inventory": "Medical Supply"
+    },
+    "RETAIL": {
+      "label": "Retail / Store",
+      "client": "End Customer",
+      "project": "Supplier / Order",
+      "document": "Delivery Note",
+      "inventory": "Stock"
+    },
+    "REAL_ESTATE": {
+      "label": "Real Estate / Brokerage",
+      "client": "Buyer / Tenant",
+      "project": "Property / Asset",
+      "document": "Contract / Deed",
+      "inventory": "Listings"
+    }
+  },
+  "documentCreatorContact": {
+    "enterClientName": "Please enter client name",
+    "invalidEmail": "Invalid email address",
+    "createClientFailed": "Failed to create client",
+    "clientAdded": "New client added to CRM",
+    "createClientError": "Error creating client"
   }
 }

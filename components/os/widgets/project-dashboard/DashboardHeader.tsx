@@ -21,6 +21,7 @@ type DashboardHeaderProps = {
   data: DashboardData;
   resolvedId: string;
   isCompanyMgmt: boolean;
+  hasConstructionPlan: boolean;
   pushEnabled: boolean;
   uploadingBlueprint: boolean;
   fileRef: React.RefObject<HTMLInputElement | null>;
@@ -35,7 +36,7 @@ type DashboardHeaderProps = {
 };
 
 export function DashboardHeader({
-  t, data, resolvedId, isCompanyMgmt, pushEnabled, uploadingBlueprint,
+  t, data, resolvedId, isCompanyMgmt, hasConstructionPlan, pushEnabled, uploadingBlueprint,
   fileRef, activeTab, tabs, setActiveTab,
   clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, openWorkspaceWidget,
 }: DashboardHeaderProps) {
@@ -77,7 +78,7 @@ export function DashboardHeader({
           <p className="w-full text-[10px] text-[color:var(--foreground-muted)]">
             {t("projectDashboard.pushNote")}
           </p>
-          {!isCompanyMgmt ? (
+          {hasConstructionPlan ? (
             <>
               <input
                 ref={fileRef as React.RefObject<HTMLInputElement>}
@@ -106,7 +107,7 @@ export function DashboardHeader({
 
       {openWorkspaceWidget && resolvedId ? (
         <div className="mt-2 flex flex-wrap gap-1">
-          {!isCompanyMgmt ? (
+          {hasConstructionPlan ? (
             <button
               type="button"
               onClick={() => openWorkspaceWidget("aiScanner", { projectId: resolvedId, scanMode: "DRAWING_BOQ" })}

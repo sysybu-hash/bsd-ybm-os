@@ -272,7 +272,7 @@ export default function ClientProjectStep({ draft, onUpdate }: Props) {
     !listLoading && !isSearching && trimmedQuery.length === 0 && defaultProjects.length === 0 && !searchError;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
       <div>
         <h3 className="text-base font-black">{t("workspaceWidgets.fieldCopilot.clientTitle")}</h3>
         <p className="text-sm text-[color:var(--foreground-muted)]">

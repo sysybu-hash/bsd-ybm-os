@@ -100,15 +100,15 @@ export function useErpDocuments() {
         body: JSON.stringify({ ...editValues, lineTotal, priceAlertPending: false }),
       });
       if (res.ok) {
-        toast.success("השורה עודכנה בהצלחה");
+        toast.success(t("workspaceWidgets.erpDocuments.rowUpdated"));
         setEditingLineId(null);
         if (selectedDoc) void fetchDocDetails(selectedDoc.id);
         void fetchPriceComparison();
       } else {
-        toast.error("שגיאה בעדכון השורה");
+        toast.error(t("workspaceWidgets.erpDocuments.rowUpdateError"));
       }
     } catch {
-      toast.error("שגיאה בחיבור לשרת");
+      toast.error(t("workspaceWidgets.erpDocuments.serverError"));
     } finally {
       setIsUpdating(false);
     }
@@ -119,12 +119,12 @@ export function useErpDocuments() {
     try {
       const res = await fetch(`/api/erp/documents/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("המסמך נמחק");
+        toast.success(t("workspaceWidgets.erpDocuments.deleted"));
         setDocuments((docs) => docs.filter((d) => d.id !== id));
         if (selectedDoc?.id === id) setSelectedDoc(null);
       }
     } catch {
-      toast.error("שגיאה במחיקת המסמך");
+      toast.error(t("workspaceWidgets.erpDocuments.deleteError"));
     }
   };
 

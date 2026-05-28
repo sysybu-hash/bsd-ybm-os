@@ -68,7 +68,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`נבחר ממאגר: ${item.name}`)} />
+          <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`${t("workspaceWidgets.documentCreator.selectedFromVault")}: ${item.name}`)} />
           <div className="text-left space-y-0.5">
             <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">
               לפני מע״מ · מע״מ {formatVatPercent(d.vatRatePercent)}%
@@ -82,7 +82,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-8">
         <IssuedDocumentsList
           issuedList={d.issuedList}
           issuedListLoading={d.issuedListLoading}

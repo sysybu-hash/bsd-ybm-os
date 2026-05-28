@@ -48,24 +48,24 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
       <div className="w-full max-w-md shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <UserPlus className="text-emerald-600 dark:text-emerald-400" size={24} /> הוספת לקוח חדש
+            <UserPlus className="text-emerald-600 dark:text-emerald-400" size={24} /> {t("workspaceWidgets.crmTable.addClientTitle")}
           </h3>
           <button
             type="button"
             onClick={onClose}
             className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-500 transition-all"
           >
-            <X size={20} />
+            <X size={20} aria-label={t("workspaceWidgets.crmTable.deleteTitle")} />
           </button>
         </div>
 
         <div className="space-y-4 mb-8">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">שם מלא</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("workspaceWidgets.crmTable.addClientName")}</label>
             <div className="relative">
               <User className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
-                placeholder="ישראל ישראלי"
+                placeholder={t("workspaceWidgets.crmTable.addClientNamePlaceholder")}
                 className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-slate-900 dark:text-slate-200"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -73,7 +73,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">אימייל</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("workspaceWidgets.crmTable.emailLabel")}</label>
             <div className="relative">
               <Mail className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -86,7 +86,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">טלפון</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("workspaceWidgets.crmTable.phoneLabel")}</label>
             <div className="relative">
               <Phone className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -98,7 +98,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">סטטוס</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t("workspaceWidgets.crmTable.addClientStatus")}</label>
             <select
               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none text-slate-900 dark:text-slate-200"
               value={form.status}
@@ -107,9 +107,9 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
                 if (v === "active" || v === "lead" || v === "inactive") setForm({ ...form, status: v });
               }}
             >
-              <option value="lead">ליד (Lead)</option>
-              <option value="active">פעיל (Active)</option>
-              <option value="inactive">לא פעיל (Inactive)</option>
+              <option value="lead">{t("workspaceWidgets.crmTable.addClientStatusLead")}</option>
+              <option value="active">{t("workspaceWidgets.crmTable.addClientStatusActive")}</option>
+              <option value="inactive">{t("workspaceWidgets.crmTable.addClientStatusInactive")}</option>
             </select>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
           onClick={() => void handleAdd()}
           className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
         >
-          <Save size={18} /> שמור לקוח
+          <Save size={18} /> {t("workspaceWidgets.crmTable.addClientSave")}
         </button>
       </div>
     </CrmOverlayPortal>

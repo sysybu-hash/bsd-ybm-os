@@ -11,6 +11,7 @@ import {
   SPEECH_STYLE_OPTIONS,
   type NotebookSpeechSettings,
 } from "@/lib/notebook-speech-settings";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = {
   settings: NotebookSpeechSettings;
@@ -25,6 +26,7 @@ export default function NotebookSpeechSettingsPanel({
   onPreview,
   previewSnippet,
 }: Props) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(settings);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [expanded, setExpanded] = useState(false);
@@ -46,7 +48,7 @@ export default function NotebookSpeechSettingsPanel({
     const normalized = normalizeNotebookSpeechSettings(draft);
     saveNotebookSpeechSettings(normalized);
     onChange(normalized);
-    toast.success("הגדרות הדיבור נשמרו");
+    toast.success(t("workspaceWidgets.settings.speechSaved"));
   };
 
   const handleReset = () => {

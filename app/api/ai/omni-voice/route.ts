@@ -12,6 +12,8 @@ import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { prisma } from "@/lib/prisma";
+import { getMergedIndustryConfig } from "@/lib/construction-trades";
 
 export const maxDuration = 90;
 
@@ -26,18 +28,18 @@ const omniBodySchema = z.object({
   messageId: z.string().optional(),
 });
 
-function buildOmniVoiceSystemPrompt(locale: string): string {
-  return withAssistantTemporalContext(`You are an intelligent voice assistant for BSD-YBM, a construction ERP.
+function buildOmniVoiceSystemPrompt(locale: string, industryLabel: string, aiInstructions: string): string {
+  return withAssistantTemporalContext(`You are an intelligent voice assistant for BSD-YBM, a ${industryLabel} management system.
 The user speaks via microphone.
 
 Voice conversation rules:
 1. Answer briefly, clearly, and professionally.
-2. Sound like a senior project manager.
+2. Sound like a senior professional in ${industryLabel}.
 3. Focus on the bottom line.
 4. ${aiReplyLanguageRule(locale)}
 5. No asterisks, bold, or headings — text is read aloud.
 
-Capabilities (do not list unless asked): ERP invoices, CRM, Meckano attendance.
+${aiInstructions ? `Domain context: ${aiInstructions}\n` : ""}Capabilities (do not list unless asked): ERP invoices, CRM, Meckano attendance.
 
 Goal: fast, accurate answers with current date when time is relevant.`);
 }
@@ -57,6 +59,12 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
       return jsonTooManyRequests(getApiMessage("rate_limited", locale), "rate_limited", { resetAt: rl.resetAt });
     }
 
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { industry: true, constructionTrade: true },
+    });
+    const industryConfig = getMergedIndustryConfig(org?.industry, org?.constructionTrade);
+
     const rawMessages = data.messages;
     const forModel: Array<Omit<UIMessage, "id">> = rawMessages.map((m) => {
       const { id: _id, ...rest } = m;
@@ -67,7 +75,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId }, data) => {
 
     const result = streamText({
       model: google(MODEL),
-      system: buildOmniVoiceSystemPrompt(locale),
+      system: buildOmniVoiceSystemPrompt(locale, industryConfig.label, industryConfig.aiInstructions ?? ""),
       messages: modelMessages,
     });
 

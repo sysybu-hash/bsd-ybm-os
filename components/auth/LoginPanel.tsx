@@ -107,10 +107,10 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
       });
       const data = (await res.json()) as { message?: string; error?: string };
       if (!res.ok) {
-        toast.error(data.error ?? data.message ?? "שגיאה");
+        toast.error(data.error ?? data.message ?? t("auth.hub.login.updateError"));
         return;
       }
-      toast.success(data.message ?? "הסיסמה עודכנה");
+      toast.success(data.message ?? t("auth.hub.login.updateSuccess"));
       router.replace("/login");
     } finally {
       setResetBusy(false);

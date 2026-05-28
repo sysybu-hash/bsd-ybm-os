@@ -101,7 +101,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
       </div>
 
       {/* Board */}
-      <div className="flex-1 overflow-x-auto p-6 flex gap-6 custom-scrollbar relative">
+      <div className="flex-1 min-h-0 overflow-x-auto p-6 flex gap-6 custom-scrollbar relative">
         <TaskFormModal
           open={isAddingProject}
           title={t(`${boardPrefix}.addTitle`)}

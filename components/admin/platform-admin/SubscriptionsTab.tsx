@@ -6,7 +6,7 @@ import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
 import { BUSINESS_LINE_IDS, businessLineLabelHe } from "@/lib/business-lines";
 import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construction-trades";
-import { normalizeIndustryType } from "@/lib/professions/config";
+import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
 import type { PlatformConfig } from "@/lib/platform-settings";
 import { osFieldClassName, osFieldInlineClassName } from "@/components/os/ui/os-field";
 
@@ -118,7 +118,7 @@ export function SubscriptionsTab({
                   onClick={() => setSelectedOrgId(o.id)}>
                   <td className="p-2 font-semibold">{o.name}</td>
                   <td className="p-2 text-xs text-[color:var(--foreground-muted)]">{o.primaryEmail ?? "—"}</td>
-                  <td className="p-2 text-xs">{normalizeIndustryType(o.industry) === "COMPANY_MGMT" ? "ניהול עסק" : "בנייה"}</td>
+                  <td className="p-2 text-xs">{industryLabelHe(o.industry)}</td>
                   <td className="p-2 text-xs">
                     {normalizeIndustryType(o.industry) === "COMPANY_MGMT"
                       ? businessLineLabelHe((o.constructionTrade ?? "GENERAL_BUSINESS") as (typeof BUSINESS_LINE_IDS)[number])

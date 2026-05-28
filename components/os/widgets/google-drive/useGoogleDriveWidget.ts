@@ -92,7 +92,7 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
   }, [boundProjectId, nav?.currentView?.projectId, fetchFiles, orgBrowseMode]);
 
   const addToNotebook = async (file: GoogleFile) => {
-    if (!openWorkspaceWidget) { toast.error("לא ניתן לפתוח את המחברת"); return; }
+    if (!openWorkspaceWidget) { toast.error(t("workspaceWidgets.googleDrive.notebookOpenError")); return; }
     setActionFileId(file.id);
     try {
       const res = await fetch("/api/os/google-drive/to-notebook", {
@@ -107,7 +107,7 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
         ? `תיקייה «${file.name}» נוספה למחברת`
         : `«${file.name}» נוסף למחברת`);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "הוספה למחברת נכשלה");
+      toast.error(error instanceof Error ? error.message : t("workspaceWidgets.googleDrive.addToNotebookFailed"));
     } finally {
       setActionFileId(null);
     }
@@ -115,15 +115,15 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
 
   const runAiScan = (file: GoogleFile) => {
     if (file.mimeType === "application/vnd.google-apps.folder") {
-      toast.error("לפענוח AI בחרו קובץ בודד, לא תיקייה");
+      toast.error(t("workspaceWidgets.googleDrive.folderDecodeError"));
       return;
     }
-    if (!openWorkspaceWidget) { toast.error("לא ניתן לפתוח את הסורק"); return; }
+    if (!openWorkspaceWidget) { toast.error(t("workspaceWidgets.googleDrive.scannerOpenError")); return; }
     openWorkspaceWidget("aiScanner", {
       projectId: boundProjectId || nav?.currentView?.projectId,
       driveImportFile: { fileId: file.id, fileName: file.name, mimeType: file.mimeType },
     });
-    toast.success(`פותח פענוח AI עבור «${file.name}»`);
+    toast.success(`${t("workspaceWidgets.googleDrive.aiDecodeOpening")} «${file.name}»`);
   };
 
   const handleSelectProject = (id: string) => {

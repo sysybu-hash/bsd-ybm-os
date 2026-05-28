@@ -51,10 +51,10 @@ export function DiaryTab({
           });
           const json = await res.json();
           if (!res.ok) {
-            toast.error(json.error ?? "סנכרון מקאנו נכשל");
+            toast.error(json.error ?? t("workspaceWidgets.projectDashboard.meckanoSyncFailed"));
             return;
           }
-          toast.success(`מקאנו: ${json.created} חדש, ${json.updated} עודכן`);
+          toast.success(t("workspaceWidgets.projectDashboard.meckanoSyncDone").replace("{c}", String(json.created)).replace("{u}", String(json.updated)));
           await refresh();
         }}
       >

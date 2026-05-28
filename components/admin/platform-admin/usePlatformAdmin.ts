@@ -94,7 +94,7 @@ export function usePlatformAdmin() {
   const loadSettings = useCallback(async () => {
     const res = await fetch("/api/admin/platform-settings", { credentials: "include" });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "טעינת הגדרות נכשלה"); return; }
+    if (!res.ok) { toast.error(data.error ?? t("platformAdmin.loadSettingsFailed")); return; }
     setPlatformConfig(data.config);
     setEnvStatus(data.envStatus);
   }, []);
@@ -102,7 +102,7 @@ export function usePlatformAdmin() {
   const loadHealth = useCallback(async () => {
     const res = await fetch("/api/admin/system-health", { credentials: "include" });
     const data = await res.json();
-    if (!res.ok) { toast.error("טעינת בריאות מערכת נכשלה"); return; }
+    if (!res.ok) { toast.error(t("platformAdmin.loadHealthFailed")); return; }
     setHealth(data);
   }, []);
 
@@ -146,7 +146,7 @@ export function usePlatformAdmin() {
     fd.set("industry", editIndustry); fd.set("constructionTrade", editConstructionTrade);
     const r = await manageSubsUpdateSubscriptionAction(fd);
     if (!r.ok) { toast.error(r.error); return; }
-    toast.success("מנוי עודכן");
+    toast.success(t("platformAdmin.subscriptionUpdated"));
     await loadOrgs();
   };
 
@@ -156,7 +156,7 @@ export function usePlatformAdmin() {
     fd.set("organizationId", selectedOrgId); fd.set("cheapDelta", String(cheapDelta)); fd.set("premiumDelta", String(premiumDelta));
     const r = await manageSubsAdjustScansAction(fd);
     if (!r.ok) { toast.error(r.error); return; }
-    toast.success("יתרות סריקה עודכנו");
+    toast.success(t("platformAdmin.scanCreditsUpdated"));
     setCheapDelta(0); setPremiumDelta(0);
     await loadOrgs();
   };
@@ -191,7 +191,7 @@ export function usePlatformAdmin() {
       if (createVip) fd.set("vip", "on");
       const r = await manageSubsCreateManualUserAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
-      if (r.emailed) toast.success("מנוי חדש נוצר — פרטי התחברות נשלחו במייל");
+      if (r.emailed) toast.success(t("platformAdmin.newSubscriptionEmailed"));
       else toast.warning(r.mailError ? `מנוי נוצר, אך המייל לא נשלח: ${r.mailError}` : "מנוי נוצר, אך שליחת המייל נכשלה — בדקו RESEND_API_KEY או SMTP ב-Vercel");
       setShowCreateOrg(false); setCreateEmail(""); setCreateName(""); setCreateOrgName(""); setCreateTier("FREE"); setCreateVip(false);
       setCreateIndustry(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION"));
@@ -209,7 +209,7 @@ export function usePlatformAdmin() {
       fd.set("organizationId", selectedOrg.id); fd.set("confirmation", deleteOrgConfirm.trim());
       const r = await manageSubsDeleteOrganizationAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
-      toast.success("הארגון נמחק"); setSelectedOrgId(null); setDeleteOrgConfirm("");
+      toast.success(t("platformAdmin.orgDeleted")); setSelectedOrgId(null); setDeleteOrgConfirm("");
       await loadOrgs(); await loadUsers();
     } finally { setBusyAction(false); }
   };
@@ -222,14 +222,14 @@ export function usePlatformAdmin() {
       fd.set("email", email.trim().toLowerCase());
       const r = await manageSubsDeleteUserByEmailAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
-      toast.success("המשתמש נמחק"); utils.setUserLookup(null); utils.setUserEmail("");
+      toast.success(t("platformAdmin.userDeleted")); utils.setUserLookup(null); utils.setUserEmail("");
       await loadUsers(); await loadOrgs();
     } finally { setBusyAction(false); }
   };
 
   const handleProvisionUser = async () => {
     const orgId = provisionOrgId || selectedOrgId;
-    if (!orgId) { toast.error("בחרו ארגון"); return; }
+    if (!orgId) { toast.error(t("platformAdmin.selectOrg")); return; }
     setBusyAction(true);
     try {
       const fd = new FormData();
@@ -238,7 +238,7 @@ export function usePlatformAdmin() {
       if (provisionSendEmail) fd.set("sendEmail", "on");
       const r = await provisionUserAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
-      toast.success(r.emailed ? "משתמש נוצר — פרטים נשלחו במייל" : "משתמש נוצר");
+      toast.success(r.emailed ? t("platformAdmin.userCreatedEmailed") : t("platformAdmin.userCreated"));
       setProvisionEmail(""); setProvisionName(""); await loadUsers();
     } finally { setBusyAction(false); }
   };
@@ -255,8 +255,8 @@ export function usePlatformAdmin() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
       setPlatformConfig(data.config);
-      toast.success("הגדרות פלטפורמה נשמרו");
-    } catch (e) { toast.error(e instanceof Error ? e.message : "שמירה נכשלה"); }
+      toast.success(t("platformAdmin.platformSettingsSaved"));
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("platformAdmin.saveFailed")); }
     finally { setSavingSettings(false); }
   };
 

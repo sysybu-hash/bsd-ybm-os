@@ -54,11 +54,11 @@ export default function MeckanoReportsWidget() {
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button onClick={exportToCSV}
             className="flex-1 md:flex-none p-2 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 rounded-xl text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-all border border-[color:var(--border-main)] flex items-center justify-center gap-2 text-xs font-bold">
-            <Download size={16} /> ייצוא CSV
+            <Download size={16} /> {t("workspaceWidgets.meckano.exportCsv")}
           </button>
           <button onClick={downloadPDF}
             className="flex-1 md:flex-none p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20">
-            <FileDown size={16} /> הורד PDF
+            <FileDown size={16} /> {t("workspaceWidgets.meckano.downloadPdf")}
           </button>
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function MeckanoReportsWidget() {
       <div className="p-4 bg-[color:var(--background-main)]/30 border-b border-[color:var(--border-main)] grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
-            <Calendar size={10} /> מתאריך
+            <Calendar size={10} /> {t("workspaceWidgets.meckano.dateFrom")}
           </label>
           <input type="date" value={filters.startDate}
             onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
@@ -75,7 +75,7 @@ export default function MeckanoReportsWidget() {
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
-            <Calendar size={10} /> עד תאריך
+            <Calendar size={10} /> {t("workspaceWidgets.meckano.dateTo")}
           </label>
           <input type="date" value={filters.endDate}
             onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
@@ -83,24 +83,24 @@ export default function MeckanoReportsWidget() {
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
-            <User size={10} /> עובד
+            <User size={10} /> {t("workspaceWidgets.meckano.filterEmployee")}
           </label>
           <select value={filters.employeeId}
             onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
             className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]">
-            <option value="all">כל העובדים</option>
+            <option value="all">{t("workspaceWidgets.meckano.allEmployees")}</option>
             {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
           </select>
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-widest flex items-center gap-1">
-            <Briefcase size={10} /> פרויקט
+            <Briefcase size={10} /> {t("workspaceWidgets.meckano.filterProject")}
           </label>
           <select value={filters.projectId}
             onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
             className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none text-[color:var(--foreground-main)]">
-            <option value="all">כל הפרויקטים</option>
-            <option value="general">כללי / משרד</option>
+            <option value="all">{t("workspaceWidgets.meckano.allProjects")}</option>
+            <option value="general">{t("workspaceWidgets.meckano.generalProject")}</option>
             {projects.map((proj) => <option key={proj.id} value={proj.id}>{proj.name}</option>)}
           </select>
         </div>
@@ -113,7 +113,7 @@ export default function MeckanoReportsWidget() {
       </div>
 
       {/* Data Area */}
-      <div className="flex-1 overflow-auto custom-scrollbar relative">
+      <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative">
         {isLoading ? (
           <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--background-main)]/50 backdrop-blur-[1px] z-20">
             <div className="flex flex-col items-center gap-3">
@@ -145,11 +145,11 @@ export default function MeckanoReportsWidget() {
           <table className="w-full border-collapse min-w-[600px]">
             <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
               <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
-                <th className="px-6 py-4">תאריך</th>
-                <th className="px-6 py-4">עובד</th>
-                <th className="px-6 py-4">פרויקט</th>
-                <th className="px-6 py-4">מיקום</th>
-                <th className="px-6 py-4">שעות</th>
+                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colDate")}</th>
+                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colEmployee")}</th>
+                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colProject")}</th>
+                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colLocation")}</th>
+                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colHours")}</th>
                 <th className="px-6 py-4 w-10"></th>
               </tr>
             </thead>

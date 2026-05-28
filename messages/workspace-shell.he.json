@@ -334,7 +334,6 @@
       "accessibility": "נגישות",
       "platformAdmin": "ניהול מערכת",
       "helpCenter": "מרכז עזרה",
-      "fieldCopilot": "קופיילוט שטח",
       "financeHub": "פיננסים",
       "projectsHub": "פרויקטים",
       "documentsHub": "מסמכים",
@@ -347,19 +346,32 @@
       "tabCount": "{count} פעולות",
       "actionsBadge": "{count} פעולות ב-Hub",
       "finance": {
-        "tabs": { "overview": "סקירה", "cashflow": "תזרים" }
+        "tabs": {
+          "overview": "סקירה",
+          "cashflow": "תזרים"
+        }
       },
       "projects": {
-        "tabs": { "board": "לוח פרויקטים", "project": "מרכז פרויקט" },
+        "tabs": {
+          "board": "לוח פרויקטים",
+          "project": "מרכז פרויקט"
+        },
         "pickerTitle": "בחרו פרויקט",
         "pickerDesc": "בחרו פרויקט לפני כניסה למרכז השליטה",
         "openCrm": "פתח CRM"
       },
       "documents": {
-        "tabs": { "archive": "ארכיון", "create": "הפקה", "scan": "סריקה" }
+        "tabs": {
+          "archive": "ארכיון",
+          "create": "הפקה",
+          "scan": "סריקה"
+        }
       },
       "ai": {
-        "tabs": { "chat": "צ׳אט", "notebook": "מחברת" }
+        "tabs": {
+          "chat": "צ׳אט",
+          "notebook": "מחברת"
+        }
       }
     },
     "fieldCopilot": {
@@ -567,33 +579,104 @@
         "assigned": "המשתמש שוייך לארגון בהצלחה",
         "assignedHint": "כדי ש-Gemini Live והרשאות יתעדכנו מיד — מומלץ שהמשתמש יצא ויכנס שוב למערכת."
       },
-      "confirmUnverifiedEmail": "האימייל {email} עדיין לא אומת. לשלוח שוב מייל אימות?"
+      "confirmUnverifiedEmail": "האימייל {email} עדיין לא אומת. לשלוח שוב מייל אימות?",
+      "savedSuccess": "תחום העסק וההתמחות עודכנו — מומלץ לרענן את הדף",
+      "savedError": "שמירה נכשלה",
+      "speechSaved": "הגדרות הדיבור נשמרו"
     },
     "quickActions": {
-      "dashboard": { "title": "דאשבורד", "subtitle": "סקירה פיננסית ומדדים" },
-      "project": { "title": "מרכז שליטה לפרויקט", "subtitle": "תקציב, גנט ויומן" },
-      "cashflow": { "title": "תזרים מזומנים", "subtitle": "תחזית והכנסות" },
-      "erp": { "title": "מסמכי ERP", "subtitle": "חשבוניות ומסמכים" },
-      "projectBoard": { "title": "לוח פרויקטים", "subtitle": "ניהול משימות" },
-      "crmTable": { "title": "ניהול לקוחות", "subtitle": "מאגר CRM" },
-      "erpArchive": { "title": "ארכיון ERP", "subtitle": "ניהול קבצים" },
-      "docCreator": { "title": "הפקת מסמכים", "subtitle": "הצעות וחשבוניות" },
-      "aiScanner": { "title": "סריקת AI", "subtitle": "פענוח מסמכים" },
-      "fieldCopilot": { "title": "קופיילוט שטח", "subtitle": "הצעה מהירה מהאתר" },
-      "aiChatFull": { "title": "צ׳אט AI", "subtitle": "עוזר אישי" },
-      "googleDrive": { "title": "Google Drive", "subtitle": "קבצים בענן" },
-      "googleCalendar": { "title": "יומן Google", "subtitle": "אירועים וסנכרון" },
-      "notebookLM": { "title": "NotebookLM", "subtitle": "מחברת AI" },
-      "meckanoReports": { "title": "דוחות Meckano", "subtitle": "נוכחות ושעות" },
-      "settings": { "title": "הגדרות", "subtitle": "ארגון ומיתוג" },
-      "helpCenter": { "title": "מרכז עזרה", "subtitle": "מדריכים ותמיכה" },
-      "fieldCopilot": { "title": "קופיילוט שטח", "subtitle": "הצעה מהירה מהאתר" },
-      "accessibility": { "title": "נגישות", "subtitle": "הגדרות תצוגה ונגישות" },
-      "platformAdmin": { "title": "ניהול מערכת", "subtitle": "הגדרות פלטפורמה וארגונים" },
-      "financeHub": { "title": "פיננסים", "subtitle": "דאשבורד ותזרים" },
-      "projectsHub": { "title": "פרויקטים", "subtitle": "לוח ומרכז שליטה" },
-      "documentsHub": { "title": "מסמכים", "subtitle": "ארכיון · הפקה · סריקה" },
-      "aiHub": { "title": "AI", "subtitle": "צ׳אט ומחברת" }
+      "dashboard": {
+        "title": "דאשבורד",
+        "subtitle": "סקירה פיננסית ומדדים"
+      },
+      "project": {
+        "title": "מרכז שליטה לפרויקט",
+        "subtitle": "תקציב, גנט ויומן"
+      },
+      "cashflow": {
+        "title": "תזרים מזומנים",
+        "subtitle": "תחזית והכנסות"
+      },
+      "erp": {
+        "title": "מסמכי ERP",
+        "subtitle": "חשבוניות ומסמכים"
+      },
+      "projectBoard": {
+        "title": "לוח פרויקטים",
+        "subtitle": "ניהול משימות"
+      },
+      "crmTable": {
+        "title": "ניהול לקוחות",
+        "subtitle": "מאגר CRM"
+      },
+      "erpArchive": {
+        "title": "ארכיון ERP",
+        "subtitle": "ניהול קבצים"
+      },
+      "docCreator": {
+        "title": "הפקת מסמכים",
+        "subtitle": "הצעות וחשבוניות"
+      },
+      "aiScanner": {
+        "title": "סריקת AI",
+        "subtitle": "פענוח מסמכים"
+      },
+      "fieldCopilot": {
+        "title": "קופיילוט שטח",
+        "subtitle": "הצעה מהירה מהאתר"
+      },
+      "aiChatFull": {
+        "title": "צ׳אט AI",
+        "subtitle": "עוזר אישי"
+      },
+      "googleDrive": {
+        "title": "Google Drive",
+        "subtitle": "קבצים בענן"
+      },
+      "googleCalendar": {
+        "title": "יומן Google",
+        "subtitle": "אירועים וסנכרון"
+      },
+      "notebookLM": {
+        "title": "NotebookLM",
+        "subtitle": "מחברת AI"
+      },
+      "meckanoReports": {
+        "title": "דוחות Meckano",
+        "subtitle": "נוכחות ושעות"
+      },
+      "settings": {
+        "title": "הגדרות",
+        "subtitle": "ארגון ומיתוג"
+      },
+      "helpCenter": {
+        "title": "מרכז עזרה",
+        "subtitle": "מדריכים ותמיכה"
+      },
+      "accessibility": {
+        "title": "נגישות",
+        "subtitle": "הגדרות תצוגה ונגישות"
+      },
+      "platformAdmin": {
+        "title": "ניהול מערכת",
+        "subtitle": "הגדרות פלטפורמה וארגונים"
+      },
+      "financeHub": {
+        "title": "פיננסים",
+        "subtitle": "דאשבורד ותזרים"
+      },
+      "projectsHub": {
+        "title": "פרויקטים",
+        "subtitle": "לוח ומרכז שליטה"
+      },
+      "documentsHub": {
+        "title": "מסמכים",
+        "subtitle": "ארכיון · הפקה · סריקה"
+      },
+      "aiHub": {
+        "title": "AI",
+        "subtitle": "צ׳אט ומחברת"
+      }
     },
     "empty": {
       "greetingNight": "לילה טוב",
@@ -669,7 +752,6 @@
       "notebookLM": "NotebookLM",
       "settings": "הגדרות",
       "help": "עזרה",
-      "fieldCopilot": "קופיילוט שטח",
       "platformAdmin": "ניהול",
       "adminFull": "ניהול מלא"
     },
@@ -761,17 +843,13 @@
       "confirmFailed": "לא ניתן לאשר"
     },
     "chrome": {
-      "zoomOutAria": "הקטן זום ב-{title}",
-      "zoomInAria": "הגדל זום ב-{title}",
-      "zoomLevel": "{level}%",
-      "backAria": "חזור ב-{title}",
-      "forwardAria": "קדימה ב-{title}",
-      "restoreAria": "הקטן {title}",
-      "maximizeAria": "הגדל {title}",
-      "minimizeAria": "מזער {title}",
-      "restoreMinimizedAria": "שחזר {title}",
       "closeAria": "סגור {title}",
-      "closeLabel": "סגור"
+      "closeLabel": "סגור",
+      "maximizeAria": "הגדל {title}",
+      "restoreAria": "הקטן {title}",
+      "zoomInAria": "הגדל תצוגה ב־{title}",
+      "zoomOutAria": "הקטן תצוגה ב־{title}",
+      "zoomLevel": "רמת זום {level}%"
     },
     "minimizedDock": {
       "aria": "חלונות מזוערים"
@@ -880,6 +958,14 @@
       "syncSyncing": "מסנכרן…",
       "syncStatusHint": "סטטוס סנכרון CRM ↔ פרויקט",
       "columnActions": "פעולות",
+      "addClientTitle": "הוספת לקוח חדש",
+      "addClientName": "שם מלא",
+      "addClientNamePlaceholder": "ישראל ישראלי",
+      "addClientStatus": "סטטוס",
+      "addClientStatusLead": "ליד (Lead)",
+      "addClientStatusActive": "פעיל (Active)",
+      "addClientStatusInactive": "לא פעיל (Inactive)",
+      "addClientSave": "הוסף לקוח",
       "openControlCenter": "פתח מרכז שליטה",
       "openFieldCopilot": "קופיילוט שטח"
     },
@@ -947,7 +1033,25 @@
       "browseOrg": "דפדוף בכל הארגון (ללא פרויקט)",
       "noProjects": "אין פרויקטים — צרו פרויקט ב-CRM",
       "openCrm": "פתיחת CRM",
-      "loadFailed": "שגיאה בטעינת פרויקטים"
+      "loadFailed": "שגיאה בטעינת פרויקטים",
+      "addToNotebook": "הוסף למחברת",
+      "aiDecode": "פענוח AI",
+      "openInDrive": "פתח ב-Google Drive",
+      "syncDone": "סנכרון הושלם",
+      "loadError": "שגיאה בטעינת קבצים",
+      "initError": "שגיאה באתחול",
+      "uploaded": "הועלה",
+      "uploadFailed": "העלאה נכשלה",
+      "decodedN": "פוענחו {n} קבצים",
+      "decodeFailed": "פענוח נכשל",
+      "docsSaved": "המסמכים נשמרו",
+      "saveFailed": "שמירה נכשלה",
+      "googleUpdated": "חיבור Google עודכן — טוען מחדש את Drive",
+      "notebookOpenError": "לא ניתן לפתוח את המחברת",
+      "addToNotebookFailed": "הוספה למחברת נכשלה",
+      "folderDecodeError": "לפענוח AI בחרו קובץ בודד, לא תיקייה",
+      "scannerOpenError": "לא ניתן לפתוח את הסורק",
+      "aiDecodeOpening": "פותח פענוח AI עבור"
     },
     "projectBoard": {
       "headerTitle": "לוח ניהול פרויקטים",
@@ -1100,7 +1204,25 @@
       "retry": "נסה שוב",
       "noApiKey": "מפתח MECKANO_API_KEY לא מוגדר בשרת",
       "noAccess": "לא ניתן לבדוק הרשאות Meckano",
-      "filter": "סנן תוצאות"
+      "filter": "סנן תוצאות",
+      "exportCsv": "ייצוא CSV",
+      "downloadPdf": "הורד PDF",
+      "dateFrom": "מתאריך",
+      "dateTo": "עד תאריך",
+      "filterEmployee": "עובד",
+      "allEmployees": "כל העובדים",
+      "filterProject": "פרויקט",
+      "allProjects": "כל הפרויקטים",
+      "generalProject": "כללי / משרד",
+      "colDate": "תאריך",
+      "colEmployee": "עובד",
+      "colProject": "פרויקט",
+      "colLocation": "מיקום",
+      "colHours": "שעות",
+      "loadFailed": "נכשל בטעינת דוחות",
+      "networkError": "שגיאת תקשורת בטעינת דוחות",
+      "csvExported": "דוח CSV יוצא בהצלחה",
+      "pdfDownloaded": "דוח PDF הורד בהצלחה"
     },
     "docCreator": {
       "draftTitle": "סיכום לפני הנפקה",
@@ -1146,7 +1268,10 @@
       "noSavedNotebooks": "אין מחברות שמורות",
       "deleteNotebook": "מחק מחברת",
       "sourcesHeading": "מקורות ידע",
-      "noSources": "טרם הועלו מקורות."
+      "noSources": "טרם הועלו מקורות.",
+      "loaded": "המחברת נטענה",
+      "saved": "המחברת נשמרה",
+      "deleted": "נמחק"
     },
     "project": {
       "loadFailed": "שגיאה בטעינת נתוני פרויקט",
@@ -1161,14 +1286,41 @@
       "zoomOutAria": "הקטן תצוגה",
       "zoomLevel": "רמת זום {level}%"
     },
-    "chrome": {
-      "closeAria": "סגור {title}",
-      "closeLabel": "סגור",
-      "maximizeAria": "הגדל {title}",
-      "restoreAria": "הקטן {title}",
-      "zoomInAria": "הגדל תצוגה ב־{title}",
-      "zoomOutAria": "הקטן תצוגה ב־{title}",
-      "zoomLevel": "רמת זום {level}%"
+    "erpDocuments": {
+      "rowUpdated": "השורה עודכנה בהצלחה",
+      "rowUpdateError": "שגיאה בעדכון השורה",
+      "serverError": "שגיאה בחיבור לשרת",
+      "deleted": "המסמך נמחק",
+      "deleteError": "שגיאה במחיקת המסמך"
+    },
+    "fileArchive": {
+      "permanentlyDeleted": "המסמך נמחק לצמיתות",
+      "movedToTrash": "המסמך הועבר לפח האשפה",
+      "deleteFailed": "מחיקה נכשלה",
+      "restored": "המסמך שוחזר לארכיון",
+      "restoreFailed": "שחזור נכשל",
+      "downloading": "הורדה"
+    },
+    "documentCreator": {
+      "fillAllItems": "אנא מלא את כל פרטי הפריטים",
+      "serverResponseError": "תגובת שרת לא תקינה",
+      "docGenerationSuccess": "הופק בהצלחה",
+      "docGenerationFailed": "שגיאה בהפקת המסמך",
+      "serverConnectionError": "שגיאה בחיבור לשרת",
+      "pdfRequired": "יש להפיק את המסמך לפני הורדת PDF",
+      "pdfDownloaded": "PDF הורד בהצלחה",
+      "urlCopied": "הועתק",
+      "selectedFromVault": "נבחר ממאגר"
+    },
+    "projectBoq": {
+      "importFailed": "ייבוא נכשל",
+      "importedLines": "יובאו {n} שורות",
+      "rowUpdateFailed": "עדכון שורה נכשל"
+    },
+    "projectDashboard": {
+      "meckanoSyncFailed": "סנכרון מקאנו נכשל",
+      "meckanoSyncDone": "מקאנו: {c} חדש, {u} עודכן",
+      "pushNotAvailable": "Push לא זמין — בדקו VAPID והרשאות"
     }
   },
   "geminiLive": {

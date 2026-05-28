@@ -163,7 +163,7 @@ export default function AiScannerWidget({
               <p className="mb-2 rounded-lg border border-[color:var(--border-main)]/60 bg-[color:var(--surface-card)]/50 px-2 py-1 text-[10px] font-mono text-[color:var(--foreground-muted)]">
                 {tr("scanner.telemetry", "טלמטריה")}: {formatTelemetrySummaryHe(telemetry)}
               </p>
-              <pre className="custom-scrollbar flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-gradient-to-b from-black/25 to-[color:var(--surface-card)]/20 p-3 text-[10px] leading-relaxed backdrop-blur-sm">
+              <pre className="custom-scrollbar flex-1 min-h-0 overflow-auto overflow-x-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-gradient-to-b from-black/25 to-[color:var(--surface-card)]/20 p-3 text-[10px] leading-relaxed backdrop-blur-sm">
                 {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
               </pre>
             </Panel>

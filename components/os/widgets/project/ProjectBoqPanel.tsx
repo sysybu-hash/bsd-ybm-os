@@ -73,7 +73,7 @@ export default function ProjectBoqPanel({
     });
     const prev = await preview.json();
     if (!preview.ok) {
-      toast.error(prev.error ?? "ייבוא נכשל");
+      toast.error(prev.error ?? t("workspaceWidgets.projectBoq.importFailed"));
       return;
     }
     if (!confirm(`לייבא ${prev.lineCount} שורות ו-${prev.billCount} חשבונות?`)) return;
@@ -85,10 +85,10 @@ export default function ProjectBoqPanel({
     });
     const json = await res.json();
     if (!res.ok) {
-      toast.error(json.error ?? "ייבוא נכשל");
+      toast.error(json.error ?? t("workspaceWidgets.projectBoq.importFailed"));
       return;
     }
-    toast.success(`יובאו ${json.linesImported} שורות`);
+    toast.success(t("workspaceWidgets.projectBoq.importedLines").replace("{n}", String(json.linesImported)));
     await load();
   };
 
@@ -104,7 +104,7 @@ export default function ProjectBoqPanel({
       body: JSON.stringify({ id, ...patch }),
     });
     if (!res.ok) {
-      toast.error("עדכון שורה נכשל");
+      toast.error(t("workspaceWidgets.projectBoq.rowUpdateFailed"));
       return;
     }
     await load();

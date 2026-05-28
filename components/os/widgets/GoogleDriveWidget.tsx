@@ -39,7 +39,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
         disabled={actionFileId === file.id}
         onClick={(e) => { e.stopPropagation(); void addToNotebook(file); }}
         className="p-2 hover:bg-amber-500/10 rounded-lg text-amber-600 transition-all disabled:opacity-50"
-        title="הוסף למחברת" aria-label="הוסף למחברת"
+        title={t("workspaceWidgets.googleDrive.addToNotebook")} aria-label={t("workspaceWidgets.googleDrive.addToNotebook")}
       >
         {actionFileId === file.id ? <Loader2 size={16} className="animate-spin" /> : <Library size={16} />}
       </button>
@@ -47,7 +47,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
         type="button"
         onClick={(e) => { e.stopPropagation(); runAiScan(file); }}
         className="p-2 hover:bg-violet-500/10 rounded-lg text-violet-600 transition-all"
-        title="פענוח AI" aria-label="פענוח AI"
+        title={t("workspaceWidgets.googleDrive.aiDecode")} aria-label={t("workspaceWidgets.googleDrive.aiDecode")}
       >
         <Sparkles size={16} />
       </button>
@@ -55,7 +55,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
         type="button"
         onClick={(e) => { e.stopPropagation(); window.open(file.webViewLink, "_blank"); }}
         className="p-2 hover:bg-blue-500/10 rounded-lg text-blue-600 transition-all"
-        title="פתח ב-Google Drive" aria-label="פתח ב-Google Drive"
+        title={t("workspaceWidgets.googleDrive.openInDrive")} aria-label={t("workspaceWidgets.googleDrive.openInDrive")}
       >
         <ExternalLink size={16} />
       </button>
@@ -91,7 +91,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
   }
 
   return (
-    <div className="flex flex-col h-full bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex flex-col h-full overflow-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <DriveHeader
         t={t} drivePrefix={drivePrefix}
         boundProjectName={boundProjectName}

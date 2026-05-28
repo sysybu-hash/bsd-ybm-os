@@ -115,11 +115,11 @@ export function useMeckanoReports() {
         setReports(data.reports ?? []);
       } else {
         setError(data.error ?? null);
-        toast.error(data.error ?? "נכשל בטעינת דוחות");
+        toast.error(data.error ?? t("workspaceWidgets.meckano.loadFailed"));
       }
     } catch {
       setError("שגיאת תקשורת בטעינת דוחות");
-      toast.error("שגיאת תקשורת בטעינת דוחות");
+      toast.error(t("workspaceWidgets.meckano.networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +144,7 @@ export function useMeckanoReports() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("דוח CSV יוצא בהצלחה");
+    toast.success(t("workspaceWidgets.meckano.csvExported"));
   };
 
   const downloadPDF = () => {
@@ -162,7 +162,7 @@ export function useMeckanoReports() {
       headStyles: { fillColor: [16, 185, 129] },
     });
     doc.save(`meckano_report_${filters.startDate}_to_${filters.endDate}.pdf`);
-    toast.success("דוח PDF הורד בהצלחה");
+    toast.success(t("workspaceWidgets.meckano.pdfDownloaded"));
   };
 
   return {

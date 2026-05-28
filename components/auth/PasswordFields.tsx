@@ -19,6 +19,8 @@ type Props = {
     generate: string;
     copy: string;
     requirements: string;
+    generateSuccess?: string;
+    passwordMismatch?: string;
   };
 };
 
@@ -43,7 +45,7 @@ export default function PasswordFields({
     const p = generateClientPassword();
     onPasswordChange(p);
     onConfirmChange(p);
-    toast.success("נוצרה סיסמה חזקה");
+    toast.success(labels.generateSuccess ?? "נוצרה סיסמה חזקה");
   };
 
   return (
@@ -101,7 +103,7 @@ export default function PasswordFields({
         />
       </label>
       {confirm && password !== confirm ? (
-        <p className="text-xs font-semibold text-rose-600">הסיסמאות אינן תואמות</p>
+        <p className="text-xs font-semibold text-rose-600">{labels.passwordMismatch ?? "הסיסמאות אינן תואמות"}</p>
       ) : null}
       {password && !passwordMeetsRules(password) ? (
         <p className="text-xs font-semibold text-amber-600">{labels.requirements}</p>

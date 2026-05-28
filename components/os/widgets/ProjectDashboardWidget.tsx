@@ -39,7 +39,7 @@ export default function ProjectDashboardWidget({
     fileRef,
     diaryInitialDesc, setDiaryInitialDesc,
     diaryInitialTaskId, setDiaryInitialTaskId,
-    showProjectPicker, isCompanyMgmt, industryId,
+    showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
     selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile,
   } = s;
@@ -100,6 +100,7 @@ export default function ProjectDashboardWidget({
         data={data}
         resolvedId={resolvedId}
         isCompanyMgmt={isCompanyMgmt}
+        hasConstructionPlan={features.hasConstructionPlan ?? false}
         pushEnabled={pushEnabled}
         uploadingBlueprint={uploadingBlueprint}
         fileRef={fileRef}

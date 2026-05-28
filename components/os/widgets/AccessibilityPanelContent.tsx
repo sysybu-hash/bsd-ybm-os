@@ -51,54 +51,54 @@ export default function AccessibilityPanelContent({
   const save = () => {
     writeStoredAccessibilitySettings(value);
     applyAccessibilitySettings(value);
-    toast.success(t("accessibility.saved") !== "accessibility.saved" ? t("accessibility.saved") : "נשמר");
+    toast.success(t("accessibility.saved"));
   };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
+      <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto p-4">
         <section className="mb-4">
           <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-            {t("accessibility.fontScale") !== "accessibility.fontScale" ? t("accessibility.fontScale") : "גודל טקסט"}
+            {t("accessibility.fontScale")}
           </label>
           <select
             value={value.fontScale}
             onChange={(e) => onChange({ ...value, fontScale: e.target.value as AccessibilityFontScale })}
             className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-xs font-bold"
           >
-            <option value="default">{t("accessibility.fontDefault") !== "accessibility.fontDefault" ? t("accessibility.fontDefault") : "רגיל"}</option>
-            <option value="large">{t("accessibility.fontLarge") !== "accessibility.fontLarge" ? t("accessibility.fontLarge") : "גדול"}</option>
-            <option value="xlarge">{t("accessibility.fontXlarge") !== "accessibility.fontXlarge" ? t("accessibility.fontXlarge") : "גדול מאוד"}</option>
+            <option value="default">{t("accessibility.fontDefault")}</option>
+            <option value="large">{t("accessibility.fontLarge")}</option>
+            <option value="xlarge">{t("accessibility.fontXlarge")}</option>
           </select>
         </section>
         <div className="grid gap-2 sm:grid-cols-2">
           <ToggleRow
-            label={t("accessibility.highContrast") !== "accessibility.highContrast" ? t("accessibility.highContrast") : "ניגודיות גבוהה"}
+            label={t("accessibility.highContrast")}
             checked={value.highContrast}
             onChange={(v) => onChange({ ...value, highContrast: v })}
           />
           <ToggleRow
-            label={t("accessibility.bigCursor") !== "accessibility.bigCursor" ? t("accessibility.bigCursor") : "סמן גדול"}
+            label={t("accessibility.bigCursor")}
             checked={value.bigCursor}
             onChange={(v) => onChange({ ...value, bigCursor: v })}
           />
           <ToggleRow
-            label={t("accessibility.grayscale") !== "accessibility.grayscale" ? t("accessibility.grayscale") : "גווני אפור"}
+            label={t("accessibility.grayscale")}
             checked={value.grayscale}
             onChange={(v) => onChange({ ...value, grayscale: v })}
           />
           <ToggleRow
-            label={t("accessibility.reducedMotion") !== "accessibility.reducedMotion" ? t("accessibility.reducedMotion") : "צמצום תנועה"}
+            label={t("accessibility.reducedMotion")}
             checked={value.reducedMotion}
             onChange={(v) => onChange({ ...value, reducedMotion: v })}
           />
           <ToggleRow
-            label={t("accessibility.focusRing") !== "accessibility.focusRing" ? t("accessibility.focusRing") : "מסגרת מיקוד"}
+            label={t("accessibility.focusRing")}
             checked={value.focusRing}
             onChange={(v) => onChange({ ...value, focusRing: v })}
           />
           <ToggleRow
-            label={t("accessibility.lineSpacing") !== "accessibility.lineSpacing" ? t("accessibility.lineSpacing") : "ריווח שורות"}
+            label={t("accessibility.lineSpacing")}
             checked={value.lineSpacing}
             onChange={(v) => onChange({ ...value, lineSpacing: v })}
           />
@@ -109,10 +109,10 @@ export default function AccessibilityPanelContent({
           <button
             type="button"
             onClick={save}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-indigo-500"
           >
             <Save size={16} aria-hidden />
-            {t("accessibility.save") !== "accessibility.save" ? t("accessibility.save") : "שמור"}
+            {t("accessibility.save")}
           </button>
         </div>
       ) : null}

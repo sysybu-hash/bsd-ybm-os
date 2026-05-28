@@ -19,6 +19,7 @@ export function buildTaskTradeDescription(
 export function resolveTaskTradeId(
   description: string | null | undefined,
   title: string,
+  industryRaw?: string | null,
 ): ProjectSubDomainId | null {
-  return getTaskTradeId(description) ?? guessSubDomainFromText(title);
+  return getTaskTradeId(description) ?? guessSubDomainFromText(title, industryRaw);
 }

@@ -13,11 +13,13 @@ import {
 import type { NewClientDetails } from "@/components/os/widgets/invoice/DocumentClientPicker";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { DocItem, GeneratedDocState } from "./types";
 import { useDocumentData } from "./useDocumentData";
 import { resolveContactForIssue } from "./resolveContactForIssue";
 
 export function useDocumentCreator(liveData: Record<string, unknown> | null | undefined) {
+  const { t } = useI18n();
   const [showDraft, setShowDraft] = useState(false);
   const [docType, setDocType] = useState<DocType>("QUOTE");
   const [clientNameInput, setClientNameInput] = useState("");
@@ -166,11 +168,11 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
   const generateDocument = async () => {
     const contact = await resolveContactForIssue({
       contacts, selectedContactId, clientNameInput, isNewClient, newClient,
-      setContacts, setSelectedContactId, setClientNameInput, setIsNewClient,
+      setContacts, setSelectedContactId, setClientNameInput, setIsNewClient, t,
     });
     if (!contact) return;
     if (items.some((item) => !item.description || item.price <= 0)) {
-      toast.error("אנא מלא את כל פרטי הפריטים"); return;
+      toast.error(t("workspaceWidgets.documentCreator.fillAllItems")); return;
     }
     setLoading(true);
     try {
@@ -191,11 +193,11 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
       type CreateIssuedResponse = { document?: IssuedDocBody; error?: string; signUrl?: string; itaError?: string };
       let data: CreateIssuedResponse = {};
       try { data = (await res.json()) as CreateIssuedResponse; } catch {
-        toast.error(res.ok ? "תגובת שרת לא תקינה" : `שגיאת שרת (${res.status})`); return;
+        toast.error(res.ok ? t("workspaceWidgets.documentCreator.serverResponseError") : `${t("workspaceWidgets.documentCreator.serverResponseError")} (${res.status})`); return;
       }
       if (res.ok) {
         const doc = data.document;
-        if (!doc?.id) { toast.error("תגובת שרת לא תקינה — חסר מזהה מסמך"); return; }
+        if (!doc?.id) { toast.error(t("workspaceWidgets.documentCreator.serverResponseError")); return; }
         await waitForFloatingPanelExit(FLOATING_PANEL_EXIT_MS + 80);
         setGeneratedDoc({
           id: doc.id,
@@ -208,13 +210,13 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
         });
         navigateIssued(doc.id);
         if (data.itaError) toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
-        toast.success(`${selectedTypeMeta?.labelHe ?? "המסמך"} הופק בהצלחה`);
+        toast.success(`${selectedTypeMeta?.labelHe ?? t("workspaceWidgets.documentCreator.docGenerationSuccess")}`);
         void fetchIssuedDocuments();
       } else {
-        toast.error(data.error || `שגיאה בהפקת המסמך (${res.status})`);
+        toast.error(data.error || `${t("workspaceWidgets.documentCreator.docGenerationFailed")} (${res.status})`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "שגיאה בחיבור לשרת");
+      toast.error(error instanceof Error ? error.message : t("workspaceWidgets.documentCreator.serverConnectionError"));
     } finally {
       setLoading(false);
     }
@@ -222,10 +224,10 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
 
   // ── PDF download ──────────────────────────────────────────────────────────
   const downloadPDF = async () => {
-    if (!generatedDoc?.id) { toast.error("יש להפיק את המסמך לפני הורדת PDF"); return; }
+    if (!generatedDoc?.id) { toast.error(t("workspaceWidgets.documentCreator.pdfRequired")); return; }
     const result = await downloadIssuedDocumentExport(generatedDoc.id, "pdf");
     if (!result.ok) { toast.error(result.error); return; }
-    toast.success("PDF הורד בהצלחה");
+    toast.success(t("workspaceWidgets.documentCreator.pdfDownloaded"));
   };
 
   return {

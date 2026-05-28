@@ -160,7 +160,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
         />
       )}
 
-      <div className="flex-1 min-w-0 overflow-auto custom-scrollbar relative">
+      <div className="flex-1 min-h-0 min-w-0 overflow-auto custom-scrollbar relative">
         <CrmContactsTable
           clients={s.clients}
           loading={s.loading}

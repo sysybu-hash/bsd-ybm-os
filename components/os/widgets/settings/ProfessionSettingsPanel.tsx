@@ -60,10 +60,10 @@ export default function ProfessionSettingsPanel({
     startTransition(async () => {
       const res = await updateIndustryProfileAction(fd);
       if (!res.ok) {
-        toast.error("error" in res ? res.error : "שמירה נכשלה");
+        toast.error("error" in res ? res.error : t("workspaceWidgets.settings.savedError"));
         return;
       }
-      toast.success("תחום העסק וההתמחות עודכנו — מומלץ לרענן את הדף");
+      toast.success(t("workspaceWidgets.settings.savedSuccess"));
       await updateSession?.();
     });
   };

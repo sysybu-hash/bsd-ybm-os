@@ -212,7 +212,7 @@ export default function OSWorkspace({
       <div
         className={`pointer-events-none absolute inset-0 ${visibleWidgets.length > 0 ? "z-[800]" : "z-20"}`}
       >
-        {visibleWidgets.map((widget) => (
+        {widgets.map((widget) => (
           <WidgetInstance
             key={widget.id}
             widget={widget}

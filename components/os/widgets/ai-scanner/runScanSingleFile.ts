@@ -144,7 +144,7 @@ export async function runScanSingleFile({
           openWorkspaceWidget,
         });
         if (post.applied.length > 0) {
-          toast.success(`פעולות הושלמו: ${post.applied.join(", ")}`);
+          toast.success(`${tr("scanner.actionsApplied", "פעולות הושלמו")}: ${post.applied.join(", ")}`);
         }
       } else if (postPolicy.postActions.length > 0 && !boundProjectId) {
         toast.message("נדרש projectId לפעולות אוטומטיות אחרי הסריקה");

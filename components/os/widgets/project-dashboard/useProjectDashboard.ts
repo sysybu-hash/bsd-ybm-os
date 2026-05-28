@@ -11,7 +11,7 @@ import { PUSH_KEY } from "./utils";
 
 export function useProjectDashboard({ projectId, projectName, openWorkspaceWidget }: ProjectDashboardWidgetProps) {
   const { t, dir } = useI18n();
-  const { isCompanyMgmt, industryId } = useTradeProfile();
+  const { isCompanyMgmt, industryId, features } = useTradeProfile();
   const [resolvedId, setResolvedId] = useState(projectId ?? "");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(Boolean(projectId || projectName));
@@ -90,7 +90,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     const next = !pushEnabled;
     if (next) {
       const ok = await registerWebPush();
-      if (!ok) { toast.error("התראות Push לא זמינות — בדקו VAPID והרשאות דפדפן"); return; }
+      if (!ok) { toast.error(t("workspaceWidgets.projectDashboard.pushNotAvailable")); return; }
     } else {
       await unregisterWebPush().catch(() => undefined);
     }
@@ -155,7 +155,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     fileRef,
     diaryInitialDesc, setDiaryInitialDesc,
     diaryInitialTaskId, setDiaryInitialTaskId,
-    showProjectPicker, isCompanyMgmt, industryId,
+    showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
     selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, loadProjectsList,
     openWorkspaceWidget,

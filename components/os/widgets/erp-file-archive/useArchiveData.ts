@@ -180,7 +180,7 @@ export function useArchiveData() {
     setOpenMenuId(null);
     if (file.source === "issued") {
       const r = await downloadIssuedDocumentExport(file.sourceId, "pdf");
-      if (!r.ok) toast.error(r.error); else toast.success(`הורדה: ${r.filename}`);
+      if (!r.ok) toast.error(r.error); else toast.success(`${t("workspaceWidgets.fileArchive.downloading")}: ${r.filename}`);
       return;
     }
     toast.message("בקרוב", { description: "הורדת קובץ מקור לסריקות תתווסף בהמשך." });
@@ -192,20 +192,20 @@ export function useArchiveData() {
     setDeleteTarget(null);
     try {
       await archiveItemAction(file, archiveView === "trash" ? "purge" : "trash");
-      toast.success(archiveView === "trash" ? "המסמך נמחק לצמיתות" : "המסמך הועבר לפח האשפה");
+      toast.success(archiveView === "trash" ? t("workspaceWidgets.fileArchive.permanentlyDeleted") : t("workspaceWidgets.fileArchive.movedToTrash"));
       if (selectedFile?.id === file.id) setSelectedFile(null);
       void fetchArchive();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "מחיקה נכשלה"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("workspaceWidgets.fileArchive.deleteFailed")); }
   };
 
   const handleRestore = async (file: ErpArchiveFile) => {
     setOpenMenuId(null);
     try {
       await archiveItemAction(file, "restore");
-      toast.success("המסמך שוחזר לארכיון");
+      toast.success(t("workspaceWidgets.fileArchive.restored"));
       if (selectedFile?.id === file.id) setSelectedFile(null);
       void fetchArchive();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "שחזור נכשל"); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : t("workspaceWidgets.fileArchive.restoreFailed")); }
   };
 
   const openDeleteDialog = (file: ErpArchiveFile) => { setOpenMenuId(null); setDeleteTarget(file); };

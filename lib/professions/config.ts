@@ -297,3 +297,7 @@ export function getIndustryConfig(id?: string): IndustryConfig {
   const normalized = normalizeIndustryType(id);
   return INDUSTRY_CONFIGS[normalized] || INDUSTRY_CONFIGS.GENERAL;
 }
+
+export function industryLabelHe(id?: string | null): string {
+  return getIndustryConfig(id ?? undefined).label;
+}

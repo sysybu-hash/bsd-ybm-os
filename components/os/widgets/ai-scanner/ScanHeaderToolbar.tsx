@@ -72,7 +72,7 @@ export function ScanHeaderToolbar({
           value={scanModeOverride}
           onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
           className="min-h-[36px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
-          aria-label="מצב סריקה"
+          aria-label={tr("scanner.scanMode", "מצב סריקה")}
         >
           {scanModes.map((m) => (
             <option key={m.id} value={m.id}>{m.label}</option>

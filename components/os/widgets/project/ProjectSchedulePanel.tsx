@@ -56,6 +56,7 @@ export default function ProjectSchedulePanel({
     labels,
     onRefresh,
     hideConstructionFeatures,
+    organizationIndustry,
     openWorkspaceWidget,
     onOpenDiary,
   });

@@ -21,7 +21,7 @@ const COPY: Record<
   { title: string; lead: string; features: string[]; cta: string }
 > = {  he: {
     title: "אודות BSD-YBM OS",
-    lead: `${legalSite.siteName} — מערכת תפעול לעסקי בנייה: לקוחות, מסמכים, סריקת AI, חיוב ודוחות במקום אחד.`,
+    lead: `${legalSite.siteName} — מערכת תפעול לעסקים ויזמים: לקוחות, מסמכים, סריקת AI, חיוב ודוחות במקום אחד.`,
     features: [
       "ניהול לקוחות ופרויקטים (CRM)",
       "ארכיון ERP ומסמכים",
@@ -33,7 +33,7 @@ const COPY: Record<
   },
   en: {
     title: "About BSD-YBM OS",
-    lead: `${legalSite.siteName} — operations workspace for construction businesses: CRM, documents, AI scanning, billing and reports.`,
+    lead: `${legalSite.siteName} — operations workspace for businesses and entrepreneurs: CRM, documents, AI scanning, billing and reports.`,
     features: [
       "CRM & project boards",
       "ERP archive",
@@ -45,7 +45,7 @@ const COPY: Record<
   },
   ru: {
     title: "О BSD-YBM OS",
-    lead: `${legalSite.siteName} — рабочая среда для строительного бизнеса.`,
+    lead: `${legalSite.siteName} — рабочая среда для бизнеса и предпринимателей: CRM, документы, AI-сканирование и отчёты.`,
     features: [
       "CRM и проекты",
       "Архив ERP",

@@ -58,7 +58,10 @@
       "bullet1": "סיסמה חזקה עם מחולל מובנה",
       "bullet2": "זכור אותי — פחות התחברויות חוזרות",
       "bullet3": "טביעת אצבע / Face ID אחרי כניסה ראשונה",
-      "tabs": { "login": "כניסה", "register": "הרשמה" },
+      "tabs": {
+        "login": "כניסה",
+        "register": "הרשמה"
+      },
       "loginTitle": "כניסה למערכת",
       "loginSubtitle": "בחרו את שיטת ההזדהות המועדפת עליכם",
       "registerSubtitle": "פתיחת ארגון חדש או הצטרפות עם הזמנה",
@@ -67,7 +70,9 @@
         "passkey": "כניסה בטביעת אצבע / Face ID",
         "forgot": "שכחתי סיסמה",
         "errorEmpty": "מלאו אימייל וסיסמה",
-        "errorInvalid": "אימייל או סיסמה שגויים"
+        "errorInvalid": "אימייל או סיסמה שגויים",
+        "updateError": "שגיאה",
+        "updateSuccess": "הסיסמה עודכנה"
       },
       "forgot": {
         "title": "איפוס סיסמה",
@@ -93,7 +98,11 @@
         "passwordInvalid": "בדקו את הסיסמה ואימותה",
         "pendingTitle": "הבקשה נקלטה",
         "pendingDesc": "לאחר אישור מנהל המערכת התחברו במייל והסיסמה.",
-        "successDesc": "החשבון נוצר. התחברו עם האימייל והסיסמה."
+        "successDesc": "החשבון נוצר. התחברו עם האימייל והסיסמה.",
+        "passwordGenerated": "נוצרה סיסמה חזקה",
+        "passwordMismatch": "הסיסמאות אינן תואמות",
+        "registerFailed": "הרשמה נכשלה",
+        "networkError": "שגיאת רשת"
       },
       "passkey": {
         "offerTitle": "כניסה מהירה ביומטרי",
@@ -107,7 +116,11 @@
         "unsupported": "הדפדפן לא תומך בכניסה ביומטרית",
         "delete": "הסרה",
         "deleted": "המכשיר הוסר",
-        "deleteFailed": "הסרה נכשלה"
+        "deleteFailed": "הסרה נכשלה",
+        "loginUnavailable": "כניסה ביומטרית לא זמינה",
+        "verifyFailed": "אימות ביומטרי נכשל",
+        "loginFailed": "כניסה נכשלה",
+        "loginCancelled": "כניסה ביומטרית בוטלה או נכשלה"
       },
       "security": {
         "passwordTitle": "סיסמת כניסה",
@@ -155,7 +168,8 @@
         "password": "סיסמה",
         "confirm": "אישור ושליחה",
         "of": "מתוך",
-        "step": "שלב"
+        "step": "שלב",
+        "specialization": "התמחות"
       },
       "types": {
         "home": {
@@ -198,7 +212,8 @@
         "name": "שם",
         "email": "אימייל",
         "joining": "הצטרפות ל",
-        "trade": "התמחות בענף"
+        "trade": "התמחות בענף",
+        "specialization": "התמחות"
       },
       "industrySection": "תחום העסק במערכת",
       "industryConstruction": "בנייה וקבלנות",
@@ -217,7 +232,9 @@
         "desc": "אפשר להתחבר ולהתחיל לעבוד עם 30 סריקות רגילות למשך 30 יום.",
         "descTeam": "הצטרפתם לצוות בהצלחה. כעת ניתן להיכנס למערכת.",
         "cta": "מעבר לכניסה"
-      }
+      },
+      "specializationConstruction": "בחר מקצוע בנייה",
+      "specializationBusiness": "בחר קו עסקי"
     }
   },
   "dashboard": {
@@ -333,7 +350,18 @@
     "configAi": "בחירת מנועים",
     "preview": "תצוגה מקדימה",
     "noPreview": "אין תצוגה מקדימה",
-    "results": "תוצאות פענוח",
+    "results": {
+      "summary": "סיכום",
+      "telemetry": "מנועים",
+      "lineDesc": "תיאור",
+      "qty": "כמות",
+      "amount": "סכום",
+      "copied": "הועתק",
+      "copyJson": "העתק JSON",
+      "exportCsv": "ייצוא CSV",
+      "saveNotebook": "שמור במחברת",
+      "confirmErp": "אשר ל-ERP"
+    },
     "source": "ספק / מקור",
     "document": "סוג מסמך",
     "modeAuto": "אוטומטי",
@@ -370,18 +398,7 @@
     "saveToNotebookFailed": "שמירה נכשלה",
     "noScanYet": "אין סריקה לשמירה",
     "classification": "סיווג",
-    "results": {
-      "summary": "סיכום",
-      "telemetry": "מנועים",
-      "lineDesc": "תיאור",
-      "qty": "כמות",
-      "amount": "סכום",
-      "copied": "הועתק",
-      "copyJson": "העתק JSON",
-      "exportCsv": "ייצוא CSV",
-      "saveNotebook": "שמור במחברת",
-      "confirmErp": "אשר ל-ERP"
-    }
+    "actionsApplied": "פעולות הושלמו"
   },
   "accessibility": {
     "toolbar": "נגישות",
@@ -889,7 +906,29 @@
       "removeConfirm": "להסיר את ההרשמה של {email}? פעולה בלתי הפיכה.",
       "removed": "ההרשמה הוסרה",
       "approved": "הרשמה אושרה"
-    }
+    },
+    "assistantError": "שגיאה בעוזר הניהול",
+    "assistantContactError": "לא ניתן ליצור קשר עם עוזר הניהול",
+    "actionFailed": "ביצוע הפעולה נכשל",
+    "actionSuccess": "הפעולה בוצעה בהצלחה",
+    "actionError": "לא ניתן לבצע את הפעולה",
+    "loadSettingsFailed": "טעינת הגדרות נכשלה",
+    "loadHealthFailed": "טעינת בריאות מערכת נכשלה",
+    "subscriptionUpdated": "מנוי עודכן",
+    "scanCreditsUpdated": "יתרות סריקה עודכנו",
+    "newSubscriptionEmailed": "מנוי חדש נוצר — פרטי התחברות נשלחו במייל",
+    "orgDeleted": "הארגון נמחק",
+    "userDeleted": "המשתמש נמחק",
+    "selectOrg": "בחרו ארגון",
+    "userCreatedEmailed": "משתמש נוצר — פרטים נשלחו במייל",
+    "userCreated": "משתמש נוצר",
+    "platformSettingsSaved": "הגדרות פלטפורמה נשמרו",
+    "saveFailed": "שמירה נכשלה",
+    "searchFailed": "חיפוש נכשל",
+    "broadcastFailed": "שידור נכשל",
+    "broadcastSentN": "שודר ל-{n} משתמשים",
+    "testEmailSentTo": "מייל בדיקה נשלח",
+    "testEmailFailed": "שליחת מייל בדיקה נכשלה"
   },
   "professions": {
     "GENERAL": {
@@ -948,5 +987,12 @@
       "document": "חוזה / נסח טאבו",
       "inventory": "מאגר נכסים"
     }
+  },
+  "documentCreatorContact": {
+    "enterClientName": "אנא הזן שם לקוח",
+    "invalidEmail": "כתובת אימייל לא תקינה",
+    "createClientFailed": "יצירת לקוח חדש נכשלה",
+    "clientAdded": "לקוח חדש נוסף ל-CRM",
+    "createClientError": "שגיאה ביצירת לקוח"
   }
 }

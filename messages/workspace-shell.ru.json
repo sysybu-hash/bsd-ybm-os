@@ -345,21 +345,46 @@
       "tabListAria": "Вкладки окна",
       "tabCount": "{count} действий",
       "actionsBadge": "{count} действий в Hub",
-      "finance": { "tabs": { "overview": "Обзор", "cashflow": "Денежный поток" } },
+      "finance": {
+        "tabs": {
+          "overview": "Обзор",
+          "cashflow": "Денежный поток"
+        }
+      },
       "projects": {
-        "tabs": { "board": "Доска", "project": "Центр проекта" },
+        "tabs": {
+          "board": "Доска",
+          "project": "Центр проекта"
+        },
         "pickerTitle": "Выберите проект",
         "pickerDesc": "Выберите проект перед открытием центра",
         "openCrm": "Открыть CRM"
       },
-      "documents": { "tabs": { "archive": "Архив", "create": "Создание", "scan": "Скан" } },
-      "ai": { "tabs": { "chat": "Чат", "notebook": "Блокнот" } }
+      "documents": {
+        "tabs": {
+          "archive": "Архив",
+          "create": "Создание",
+          "scan": "Скан"
+        }
+      },
+      "ai": {
+        "tabs": {
+          "chat": "Чат",
+          "notebook": "Блокнот"
+        }
+      }
     },
     "fieldCopilot": {
       "title": "Полевой копilot",
       "subtitle": "Смета с объекта — голос, фото, AI",
       "stepperAria": "Шаги",
-      "steps": { "client": "Клиент", "capture": "Захват", "analysis": "Анализ", "review": "Проверка", "produce": "Документ" },
+      "steps": {
+        "client": "Клиент",
+        "capture": "Захват",
+        "analysis": "Анализ",
+        "review": "Проверка",
+        "produce": "Документ"
+      },
       "clientTitle": "Клиент и проект",
       "clientSubtitle": "Выберите клиента или проект из CRM",
       "searchClient": "Поиск клиента или проекта…",
@@ -554,32 +579,104 @@
         "assigned": "Пользователь привязан к организации",
         "assignedHint": "Чтобы обновить Gemini Live и права, попросите пользователя выйти и войти снова."
       },
-      "confirmUnverifiedEmail": "Email {email} ещё не подтверждён. Отправить письмо подтверждения снова?"
+      "confirmUnverifiedEmail": "Email {email} ещё не подтверждён. Отправить письмо подтверждения снова?",
+      "savedSuccess": "Отрасль и специализация обновлены — рекомендуется обновить страницу",
+      "savedError": "Ошибка сохранения",
+      "speechSaved": "Настройки речи сохранены"
     },
     "quickActions": {
-      "dashboard": { "title": "Дашборд", "subtitle": "Финансовый обзор и метрики" },
-      "project": { "title": "Центр управления проектом", "subtitle": "Бюджет, Гант и журнал" },
-      "cashflow": { "title": "Денежный поток", "subtitle": "Прогноз и доходы" },
-      "erp": { "title": "Документы ERP", "subtitle": "Счета и записи" },
-      "projectBoard": { "title": "Доска проектов", "subtitle": "Управление задачами" },
-      "crmTable": { "title": "Клиенты", "subtitle": "База CRM" },
-      "erpArchive": { "title": "Архив ERP", "subtitle": "Управление файлами" },
-      "docCreator": { "title": "Документы", "subtitle": "Счета и КП" },
-      "aiScanner": { "title": "AI-скан", "subtitle": "Распознавание" },
-      "aiChatFull": { "title": "AI-чат", "subtitle": "Личный ассистент" },
-      "googleDrive": { "title": "Google Drive", "subtitle": "Облачные файлы" },
-      "googleCalendar": { "title": "Google Calendar", "subtitle": "События и синхронизация" },
-      "notebookLM": { "title": "NotebookLM", "subtitle": "AI-блокнот" },
-      "meckanoReports": { "title": "Отчёты Meckano", "subtitle": "Учёт времени" },
-      "settings": { "title": "Настройки", "subtitle": "Организация и бренд" },
-      "helpCenter": { "title": "Справка", "subtitle": "Руководства и поддержка" },
-      "fieldCopilot": { "title": "Полевой копilot", "subtitle": "Быстрая смета" },
-      "accessibility": { "title": "Доступность", "subtitle": "Настройки отображения и доступности" },
-      "platformAdmin": { "title": "Админ платформы", "subtitle": "Настройки платформы и организаций" },
-      "financeHub": { "title": "Финансы", "subtitle": "Панель и поток" },
-      "projectsHub": { "title": "Проекты", "subtitle": "Доска и центр" },
-      "documentsHub": { "title": "Документы", "subtitle": "Архив · создание · скан" },
-      "aiHub": { "title": "ИИ", "subtitle": "Чат и блокнот" }
+      "dashboard": {
+        "title": "Дашборд",
+        "subtitle": "Финансовый обзор и метрики"
+      },
+      "project": {
+        "title": "Центр управления проектом",
+        "subtitle": "Бюджет, Гант и журнал"
+      },
+      "cashflow": {
+        "title": "Денежный поток",
+        "subtitle": "Прогноз и доходы"
+      },
+      "erp": {
+        "title": "Документы ERP",
+        "subtitle": "Счета и записи"
+      },
+      "projectBoard": {
+        "title": "Доска проектов",
+        "subtitle": "Управление задачами"
+      },
+      "crmTable": {
+        "title": "Клиенты",
+        "subtitle": "База CRM"
+      },
+      "erpArchive": {
+        "title": "Архив ERP",
+        "subtitle": "Управление файлами"
+      },
+      "docCreator": {
+        "title": "Документы",
+        "subtitle": "Счета и КП"
+      },
+      "aiScanner": {
+        "title": "AI-скан",
+        "subtitle": "Распознавание"
+      },
+      "aiChatFull": {
+        "title": "AI-чат",
+        "subtitle": "Личный ассистент"
+      },
+      "googleDrive": {
+        "title": "Google Drive",
+        "subtitle": "Облачные файлы"
+      },
+      "googleCalendar": {
+        "title": "Google Calendar",
+        "subtitle": "События и синхронизация"
+      },
+      "notebookLM": {
+        "title": "NotebookLM",
+        "subtitle": "AI-блокнот"
+      },
+      "meckanoReports": {
+        "title": "Отчёты Meckano",
+        "subtitle": "Учёт времени"
+      },
+      "settings": {
+        "title": "Настройки",
+        "subtitle": "Организация и бренд"
+      },
+      "helpCenter": {
+        "title": "Справка",
+        "subtitle": "Руководства и поддержка"
+      },
+      "fieldCopilot": {
+        "title": "Полевой копilot",
+        "subtitle": "Быстрая смета"
+      },
+      "accessibility": {
+        "title": "Доступность",
+        "subtitle": "Настройки отображения и доступности"
+      },
+      "platformAdmin": {
+        "title": "Админ платформы",
+        "subtitle": "Настройки платформы и организаций"
+      },
+      "financeHub": {
+        "title": "Финансы",
+        "subtitle": "Панель и поток"
+      },
+      "projectsHub": {
+        "title": "Проекты",
+        "subtitle": "Доска и центр"
+      },
+      "documentsHub": {
+        "title": "Документы",
+        "subtitle": "Архив · создание · скан"
+      },
+      "aiHub": {
+        "title": "ИИ",
+        "subtitle": "Чат и блокнот"
+      }
     },
     "empty": {
       "greetingNight": "Доброй ночи",
@@ -746,17 +843,13 @@
       "confirmFailed": "Не удалось подтвердить"
     },
     "chrome": {
-      "zoomOutAria": "Уменьшить масштаб в {title}",
-      "zoomInAria": "Увеличить масштаб в {title}",
-      "zoomLevel": "{level}%",
-      "backAria": "Назад в {title}",
-      "forwardAria": "Вперёд в {title}",
-      "restoreAria": "Восстановить {title}",
-      "maximizeAria": "Развернуть {title}",
-      "minimizeAria": "Свернуть {title}",
-      "restoreMinimizedAria": "Восстановить {title}",
       "closeAria": "Закрыть {title}",
-      "closeLabel": "Закрыть"
+      "closeLabel": "Закрыть",
+      "maximizeAria": "Развернуть {title}",
+      "restoreAria": "Свернуть {title}",
+      "zoomInAria": "Увеличить {title}",
+      "zoomOutAria": "Уменьшить {title}",
+      "zoomLevel": "Масштаб {level}%"
     },
     "minimizedDock": {
       "aria": "Свёрнутые окна"
@@ -865,6 +958,14 @@
       "syncSyncing": "Синхронизация…",
       "syncStatusHint": "Статус синхронизации CRM ↔ проект",
       "columnActions": "Действия",
+      "addClientTitle": "Добавить клиента",
+      "addClientName": "Полное имя",
+      "addClientNamePlaceholder": "Иван Иванов",
+      "addClientStatus": "Статус",
+      "addClientStatusLead": "Лид",
+      "addClientStatusActive": "Активный",
+      "addClientStatusInactive": "Неактивный",
+      "addClientSave": "Добавить",
       "openControlCenter": "Открыть центр управления",
       "openFieldCopilot": "Полевой копilot"
     },
@@ -932,7 +1033,25 @@
       "browseOrg": "Вся организация (без проекта)",
       "noProjects": "Нет проектов — создайте в CRM",
       "openCrm": "Открыть CRM",
-      "loadFailed": "Ошибка загрузки проектов"
+      "loadFailed": "Ошибка загрузки проектов",
+      "addToNotebook": "Добавить в блокнот",
+      "aiDecode": "ИИ-расшифровка",
+      "openInDrive": "Открыть в Google Drive",
+      "syncDone": "Синхронизация завершена",
+      "loadError": "Ошибка загрузки файлов",
+      "initError": "Ошибка инициализации",
+      "uploaded": "Загружен",
+      "uploadFailed": "Ошибка загрузки",
+      "decodedN": "Расшифровано файлов: {n}",
+      "decodeFailed": "Ошибка расшифровки",
+      "docsSaved": "Документы сохранены",
+      "saveFailed": "Ошибка сохранения",
+      "googleUpdated": "Подключение Google обновлено — перезагрузка Drive",
+      "notebookOpenError": "Не удаётся открыть блокнот",
+      "addToNotebookFailed": "Ошибка добавления в блокнот",
+      "folderDecodeError": "Для ИИ-расшифровки выберите файл, а не папку",
+      "scannerOpenError": "Не удаётся открыть сканер",
+      "aiDecodeOpening": "Открытие ИИ-расшифровки для"
     },
     "projectBoard": {
       "headerTitle": "Доска управления проектами",
@@ -1085,7 +1204,25 @@
       "retry": "Повторить",
       "noApiKey": "MECKANO_API_KEY не задан",
       "noAccess": "Нет доступа к Meckano",
-      "filter": "Фильтр"
+      "filter": "Фильтр",
+      "exportCsv": "Экспорт CSV",
+      "downloadPdf": "Скачать PDF",
+      "dateFrom": "С даты",
+      "dateTo": "По дату",
+      "filterEmployee": "Сотрудник",
+      "allEmployees": "Все сотрудники",
+      "filterProject": "Проект",
+      "allProjects": "Все проекты",
+      "generalProject": "Общий / Офис",
+      "colDate": "Дата",
+      "colEmployee": "Сотрудник",
+      "colProject": "Проект",
+      "colLocation": "Место",
+      "colHours": "Часы",
+      "loadFailed": "Ошибка загрузки отчётов",
+      "networkError": "Сетевая ошибка при загрузке отчётов",
+      "csvExported": "CSV экспортирован",
+      "pdfDownloaded": "PDF скачан"
     },
     "docCreator": {
       "draftTitle": "Сводка перед выпуском",
@@ -1131,7 +1268,10 @@
       "noSavedNotebooks": "Нет сохранённых тетрадей",
       "deleteNotebook": "Удалить тетрадь",
       "sourcesHeading": "Источники знаний",
-      "noSources": "Источники не загружены."
+      "noSources": "Источники не загружены.",
+      "loaded": "Блокнот загружен",
+      "saved": "Блокнот сохранён",
+      "deleted": "Удалено"
     },
     "project": {
       "loadFailed": "Не удалось загрузить проект",
@@ -1146,14 +1286,41 @@
       "zoomOutAria": "Уменьшить",
       "zoomLevel": "Масштаб {level}%"
     },
-    "chrome": {
-      "closeAria": "Закрыть {title}",
-      "closeLabel": "Закрыть",
-      "maximizeAria": "Развернуть {title}",
-      "restoreAria": "Свернуть {title}",
-      "zoomInAria": "Увеличить {title}",
-      "zoomOutAria": "Уменьшить {title}",
-      "zoomLevel": "Масштаб {level}%"
+    "erpDocuments": {
+      "rowUpdated": "Строка обновлена",
+      "rowUpdateError": "Ошибка обновления строки",
+      "serverError": "Ошибка соединения с сервером",
+      "deleted": "Документ удалён",
+      "deleteError": "Ошибка удаления"
+    },
+    "fileArchive": {
+      "permanentlyDeleted": "Документ удалён навсегда",
+      "movedToTrash": "Документ перемещён в корзину",
+      "deleteFailed": "Ошибка удаления",
+      "restored": "Документ восстановлен",
+      "restoreFailed": "Ошибка восстановления",
+      "downloading": "Загрузка"
+    },
+    "documentCreator": {
+      "fillAllItems": "Пожалуйста, заполните все поля товаров",
+      "serverResponseError": "Неверный ответ сервера",
+      "docGenerationSuccess": "Успешно сформирован",
+      "docGenerationFailed": "Ошибка формирования документа",
+      "serverConnectionError": "Ошибка соединения с сервером",
+      "pdfRequired": "Сначала сформируйте документ",
+      "pdfDownloaded": "PDF скачан",
+      "urlCopied": "Скопировано",
+      "selectedFromVault": "Выбрано из хранилища"
+    },
+    "projectBoq": {
+      "importFailed": "Ошибка импорта",
+      "importedLines": "Импортировано: {n}",
+      "rowUpdateFailed": "Ошибка обновления"
+    },
+    "projectDashboard": {
+      "meckanoSyncFailed": "Ошибка Meckano",
+      "meckanoSyncDone": "Meckano: {c} новых, {u} обновлено",
+      "pushNotAvailable": "Push недоступен — проверьте VAPID"
     }
   },
   "geminiLive": {

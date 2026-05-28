@@ -29,7 +29,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true },
+      select: { email: true, organization: { select: { industry: true, constructionTrade: true } } },
     });
     const dev = isAdmin(user?.email);
     const limit = dev ? QUEUE_ENQUEUE_PER_HOUR_PLATFORM : QUEUE_ENQUEUE_PER_HOUR;
@@ -61,7 +61,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       mimeType: file.type || "application/octet-stream",
       provider: String(formData.get("provider") ?? "gemini"),
       analysisType: String(formData.get("analysisType") ?? "INVOICE"),
-      industry: String(formData.get("industry") ?? "CONSTRUCTION"),
+      industry: user?.organization?.industry ?? "CONSTRUCTION",
       language: String(formData.get("language") ?? "auto"),
       model: String(formData.get("model") ?? ""),
       persist,

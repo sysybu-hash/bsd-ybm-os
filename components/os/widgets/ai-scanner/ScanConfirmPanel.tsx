@@ -20,7 +20,7 @@ export function ScanConfirmPanel({
   tr,
 }: ScanConfirmPanelProps) {
   return (
-    <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
+    <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto p-4">
       <div className="mx-auto max-w-xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-6">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold">

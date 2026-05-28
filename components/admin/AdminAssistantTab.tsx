@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Bot, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -35,6 +36,7 @@ const QUICK_PROMPTS = [
 ];
 
 export default function AdminAssistantTab({ onNavigateTab }: Props) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -71,7 +73,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
         });
         const data = await res.json();
         if (!res.ok) {
-          toast.error(data.error ?? "שגיאה בעוזר הניהול");
+          toast.error(data.error ?? t("platformAdmin.assistantError"));
           return;
         }
 
@@ -93,7 +95,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
           toast.message(data.navigation.hint ?? "מעבר לטאב המבוקש");
         }
       } catch {
-        toast.error("לא ניתן ליצור קשר עם עוזר הניהול");
+        toast.error(t("platformAdmin.assistantContactError"));
       } finally {
         setLoading(false);
         setTimeout(scrollToEnd, 50);
@@ -114,13 +116,13 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
         });
         const data = await res.json();
         if (!res.ok) {
-          toast.error(data.error ?? "ביצוע הפעולה נכשל");
+          toast.error(data.error ?? t("platformAdmin.actionFailed"));
           return;
         }
-        toast.success("הפעולה בוצעה בהצלחה");
+        toast.success(t("platformAdmin.actionSuccess"));
         setPendingActions((prev) => prev.filter((p) => p.actionId !== action.actionId));
       } catch {
-        toast.error("לא ניתן לבצע את הפעולה");
+        toast.error(t("platformAdmin.actionError"));
       } finally {
         setExecutingId(null);
       }

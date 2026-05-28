@@ -61,7 +61,7 @@ export function NotebookSourcesSidebar({
   t,
 }: NotebookSourcesSidebarProps) {
   return (
-    <div className="flex w-full flex-col border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:w-1/3 md:border-l">
+    <div className="flex w-full flex-col overflow-hidden border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:w-1/3 md:border-l">
       {/* Title / project / controls */}
       <div className="mb-4 space-y-2">
         <input
@@ -172,7 +172,7 @@ export function NotebookSourcesSidebar({
       </div>
 
       {/* Source list */}
-      <div className="custom-scrollbar flex-1 space-y-2 overflow-y-auto pr-1">
+      <div className="custom-scrollbar flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
         <AnimatePresence>
           {sources.map((source) => (
             <motion.div

@@ -11,7 +11,7 @@ export type LocalizedSeo = {
 
 const SEO: Record<AppLocale, LocalizedSeo> = {
   he: {
-    title: "BSD-YBM OS | מערכת תפעול חכמה לעסקי בנייה וקבלנים",
+    title: "BSD-YBM OS | מערכת תפעול חכמה לעסקים ויזמות",
     description:
       `${legalSite.siteName} — CRM, ERP, סריקת מסמכים ב-AI, חיוב ודוחות במקום אחד. מיועד לעסקים מקצועיים בישראל.`,
     keywords: [
@@ -19,19 +19,19 @@ const SEO: Record<AppLocale, LocalizedSeo> = {
       "מערכת ניהול",
       "CRM",
       "ERP",
-      "בנייה",
+      "ניהול עסקי",
       "סריקת חשבוניות",
       "AI",
     ],
     ogLocale: "he_IL",
   },
   en: {
-    title: "BSD-YBM OS | Smart operations for construction businesses",
+    title: "BSD-YBM OS | Smart business & project management platform",
     description:
       `${legalSite.siteName} — CRM, ERP, AI document scanning, billing and reports in one workspace for professional contractors.`,
     keywords: [
       "BSD-YBM",
-      "construction software",
+      "business management software",
       "CRM",
       "ERP",
       "AI invoice scan",
@@ -40,12 +40,12 @@ const SEO: Record<AppLocale, LocalizedSeo> = {
     ogLocale: "en_US",
   },
   ru: {
-    title: "BSD-YBM OS | Умная система для строительного бизнеса",
+    title: "BSD-YBM OS | Умная система управления бизнесом",
     description:
       `${legalSite.siteName} — CRM, ERP, AI-сканирование документов, биллинг и отчёты в одной рабочей среде.`,
     keywords: [
       "BSD-YBM",
-      "строительство",
+      "управление бизнесом",
       "CRM",
       "ERP",
       "сканирование документов",
@@ -74,15 +74,15 @@ const PAGE_SEO: Record<PublicPageId, Record<AppLocale, { title: string; descript
   about: {
     he: {
       title: "אודות",
-      description: "מי אנחנו, מה עושה BSD-YBM OS ולמי המערכת מיועדת — עסקי בנייה וקבלנים בישראל.",
+      description: "מי אנחנו, מה עושה BSD-YBM OS ולמי המערכת מיועדת — עסקים וארגונים מקצועיים בישראל.",
     },
     en: {
       title: "About",
-      description: "About BSD-YBM OS — CRM, ERP, AI document scanning for construction businesses.",
+      description: "About BSD-YBM OS — CRM, ERP, AI document scanning for professional businesses.",
     },
     ru: {
       title: "О нас",
-      description: "О BSD-YBM OS — CRM, ERP и AI-сканирование для строительного бизнеса.",
+      description: "О BSD-YBM OS — CRM, ERP и AI-сканирование для профессионального бизнеса.",
     },
   },
   privacy: {

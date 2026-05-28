@@ -151,7 +151,7 @@ export function ClientDetailModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto p-8 custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-auto p-8 custom-scrollbar">
           {activeTab === "timeline" ? (
             <div className="space-y-4">
               {timelineLoading ? (

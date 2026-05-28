@@ -30,7 +30,7 @@ export default function CaptureStep({ draft, onUpdate, uploadAsset, deleteAsset 
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
       <VoiceCapturePanel
         transcript={draft?.capture.transcript ?? ""}
         onTranscript={handleTranscriptSet}

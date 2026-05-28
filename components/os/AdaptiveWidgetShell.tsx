@@ -86,7 +86,7 @@ export default function AdaptiveWidgetShell({
       }`}
       style={
         mobileOrMaximized
-          ? { zIndex }
+          ? { zIndex, display: isMinimized ? "none" : undefined }
           : {
               width: `${currentSize.width}px`,
               height: `${currentSize.height}px`,
@@ -95,9 +95,11 @@ export default function AdaptiveWidgetShell({
               left: `${clampedLeft}px`,
               top: `${clampedTop}px`,
               zIndex,
+              display: isMinimized ? "none" : undefined,
             }
       }
       dir={dir}
+      aria-hidden={isMinimized || undefined}
       aria-labelledby={`${id}-title`}
     >
       <WorkspaceWindowChrome

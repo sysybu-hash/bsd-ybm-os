@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   readRememberPreference,
   SESSION_MAX_AGE_DEFAULT_SEC,
@@ -19,6 +20,7 @@ export default function PasskeyLoginButton({
   email?: string;
   label: string;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   if (typeof window !== "undefined" && !window.PublicKeyCredential) {
@@ -41,7 +43,7 @@ export default function PasskeyLoginButton({
         error?: string;
       };
       if (!optRes.ok || !optData.options || !optData.challengeKey) {
-        toast.error(optData.error ?? "כניסה ביומטרית לא זמינה");
+        toast.error(optData.error ?? t("auth.hub.passkey.loginUnavailable"));
         return;
       }
       const authResp = await startAuthentication(optData.options);
@@ -58,7 +60,7 @@ export default function PasskeyLoginButton({
         error?: string;
       };
       if (!verifyRes.ok || !verifyData.signInToken) {
-        toast.error(verifyData.error ?? "אימות ביומטרי נכשל");
+        toast.error(verifyData.error ?? t("auth.hub.passkey.verifyFailed"));
         return;
       }
       const remember = readRememberPreference();
@@ -73,14 +75,14 @@ export default function PasskeyLoginButton({
         { maxAge: String(maxAge) },
       );
       if (result?.error) {
-        toast.error("כניסה נכשלה");
+        toast.error(t("auth.hub.passkey.loginFailed"));
         return;
       }
       writeRememberPreference(remember);
       window.location.href = "/";
     } catch (e) {
       console.error("passkey login", e);
-      toast.error("כניסה ביומטרית בוטלה או נכשלה");
+      toast.error(t("auth.hub.passkey.loginCancelled"));
     } finally {
       setBusy(false);
     }

@@ -12,14 +12,15 @@ type ResolveArgs = {
   setSelectedContactId: (id: string) => void;
   setClientNameInput: (name: string) => void;
   setIsNewClient: (v: boolean) => void;
+  t: (key: string) => string;
 };
 
 export async function resolveContactForIssue({
   contacts, selectedContactId, clientNameInput, isNewClient, newClient,
-  setContacts, setSelectedContactId, setClientNameInput, setIsNewClient,
+  setContacts, setSelectedContactId, setClientNameInput, setIsNewClient, t,
 }: ResolveArgs): Promise<DocumentClientContact | null> {
   const trimmedName = clientNameInput.trim();
-  if (!trimmedName) { toast.error("אנא הזן שם לקוח"); return null; }
+  if (!trimmedName) { toast.error(t("documentCreatorContact.enterClientName")); return null; }
 
   const fromList =
     contacts.find((c) => c.id === selectedContactId && !c.id.startsWith("draft-")) ??
@@ -30,7 +31,7 @@ export async function resolveContactForIssue({
 
   const emailTrim = newClient.email.trim();
   if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-    toast.error("כתובת אימייל לא תקינה");
+    toast.error(t("documentCreatorContact.invalidEmail"));
     return null;
   }
 
@@ -48,9 +49,9 @@ export async function resolveContactForIssue({
       }),
     });
     const data = (await res.json()) as { contact?: DocumentClientContact; error?: string };
-    if (!res.ok) { toast.error(data.error || "יצירת לקוח חדש נכשלה"); return null; }
+    if (!res.ok) { toast.error(data.error || t("documentCreatorContact.createClientFailed")); return null; }
     const created = data.contact;
-    if (!created?.id) { toast.error("יצירת לקוח חדש נכשלה"); return null; }
+    if (!created?.id) { toast.error(t("documentCreatorContact.createClientFailed")); return null; }
     const row: DocumentClientContact = {
       id: created.id,
       name: created.name,
@@ -61,10 +62,10 @@ export async function resolveContactForIssue({
     setSelectedContactId(row.id);
     setClientNameInput(row.name);
     setIsNewClient(false);
-    toast.success("לקוח חדש נוסף ל-CRM");
+    toast.success(t("documentCreatorContact.clientAdded"));
     return row;
   } catch {
-    toast.error("שגיאה ביצירת לקוח");
+    toast.error(t("documentCreatorContact.createClientError"));
     return null;
   }
 }

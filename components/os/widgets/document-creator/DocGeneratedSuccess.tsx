@@ -3,6 +3,7 @@
 import React from "react";
 import { CheckCircle2, Copy, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { GeneratedDocState } from "./types";
 
 type DocGeneratedSuccessProps = {
@@ -13,6 +14,7 @@ type DocGeneratedSuccessProps = {
 };
 
 export function DocGeneratedSuccess({ generatedDoc, docTypeLabel, onDownloadPDF, onReset }: DocGeneratedSuccessProps) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 bg-transparent text-[color:var(--foreground-main)]">
       <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
@@ -44,7 +46,7 @@ export function DocGeneratedSuccess({ generatedDoc, docTypeLabel, onDownloadPDF,
               className="flex-1 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-lg px-3 py-2 text-xs text-[color:var(--foreground-muted)] outline-none"
             />
             <button
-              onClick={() => { navigator.clipboard.writeText(generatedDoc.signUrl || ""); toast.success("הועתק"); }}
+              onClick={() => { navigator.clipboard.writeText(generatedDoc.signUrl || ""); toast.success(t("workspaceWidgets.documentCreator.urlCopied")); }}
               className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors border border-emerald-500/20"
             >
               <Copy size={16} />
