@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   return withCronGuard(
     req,
     "cron-email-digest",
-    { type: "crontab", value: "*/5 * * * *" },
+    { type: "crontab", value: "0 9 * * *" },
     async () => await flushAllEmailDigests(),
   );
 }
