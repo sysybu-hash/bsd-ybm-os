@@ -68,4 +68,49 @@ run("ffmpeg", [
 ]);
 
 fs.unlinkSync(sourceFile);
+
+const mobileFile = path.join(marketingDir, "hero-cinematic-mobile.mp4");
+const posterFile = path.join(marketingDir, "hero-cinematic-poster.jpg");
+
+console.log("Encoding mobile loop (1280×720)…");
+run("ffmpeg", [
+  "-y",
+  "-i",
+  outFile,
+  "-t",
+  "20",
+  "-vf",
+  "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,format=yuv420p",
+  "-c:v",
+  "libx264",
+  "-preset",
+  "fast",
+  "-crf",
+  "28",
+  "-pix_fmt",
+  "yuv420p",
+  "-movflags",
+  "+faststart",
+  "-an",
+  mobileFile,
+]);
+
+console.log("Extracting poster frame…");
+run("ffmpeg", [
+  "-y",
+  "-i",
+  outFile,
+  "-ss",
+  "00:00:02",
+  "-frames:v",
+  "1",
+  "-update",
+  "1",
+  "-q:v",
+  "3",
+  posterFile,
+]);
+
 console.log(`Wrote ${outFile}`);
+console.log(`Wrote ${mobileFile}`);
+console.log(`Wrote ${posterFile}`);

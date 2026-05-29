@@ -1025,4 +1025,8 @@ html.light .marketing-cinematic .mkt-mobile-menu-contact {
   .marketing-cinematic .mkt-video-bg {
     display: none;
   }
+
+  .marketing-cinematic .mkt-video-poster-fallback {
+    display: block;
+  }
 }
