@@ -132,7 +132,7 @@ export default async function RootLayout({
         data-tenant-host={tenant?.host ?? undefined}
       >
         <Script id="marketing-home-theme" strategy="beforeInteractive">
-          {`try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}`}
+          {`try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){var t=null;try{t=localStorage.getItem('theme');}catch(e){}var mode=t==='light'?'light':'dark';var root=document.documentElement;root.classList.remove(mode==='light'?'dark':'light');root.classList.add(mode);root.style.colorScheme=mode;}}catch(e){}`}
         </Script>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SessionProvider session={session}>

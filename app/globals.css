@@ -768,11 +768,19 @@
 
 /* Marketing cinematic — critical first-paint (before route CSS chunk) */
 html:has(.marketing-cinematic) {
-  color-scheme: dark;
+  color-scheme: dark light;
 }
 
 body:has(.marketing-cinematic) {
   background-color: #020617 !important;
+}
+
+html.light:has(.marketing-cinematic) {
+  color-scheme: light;
+}
+
+html.light body:has(.marketing-cinematic) {
+  background-color: #f1f5f9 !important;
 }
 
 #site-main:has(.marketing-cinematic) {

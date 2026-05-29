@@ -36,7 +36,7 @@ export default function HeroSection({ onRegister, onLogin, omnibar }: Props) {
             <span className="mkt-hero-title-line1 block">{t("marketingHome.hero.titleLine1")}</span>
             <span className="mkt-hero-title-line2 block">{t("marketingHome.hero.titleLine2")}</span>
           </h1>
-          <p className="mkt-body-lead mt-3 max-w-2xl text-base leading-relaxed text-slate-300 sm:mt-6 sm:text-lg md:text-xl">
+          <p className="mkt-body-lead mt-3 max-w-2xl text-base leading-relaxed sm:mt-6 sm:text-lg md:text-xl">
             {t("marketingHome.hero.subtitle")}
           </p>
         </ScrollReveal>

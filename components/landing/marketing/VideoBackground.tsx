@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Live stock loop (typing / laptop). Regenerate: `npm run marketing:hero-video`. */
 const VIDEO_DESKTOP = "/marketing/hero-cinematic.mp4";
 const VIDEO_MOBILE = "/marketing/hero-cinematic-mobile.mp4";
 const VIDEO_POSTER = "/marketing/hero-cinematic-poster.jpg";
+
+const PAGE_SHOW_RESTORE = "marketing:pageshow-restore";
 
 function prefersReducedMotionNow(): boolean {
   if (typeof window === "undefined") return false;
@@ -21,36 +22,25 @@ function pickVideoSrc(): string {
   return window.matchMedia("(max-width: 767px)").matches ? VIDEO_MOBILE : VIDEO_DESKTOP;
 }
 
+function primeVideoElement(el: HTMLVideoElement) {
+  el.muted = true;
+  el.defaultMuted = true;
+  el.playsInline = true;
+  el.setAttribute("muted", "");
+  el.setAttribute("playsinline", "");
+  el.setAttribute("webkit-playsinline", "");
+  el.setAttribute("disablepictureinpicture", "");
+}
+
 export default function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoSrc, setVideoSrc] = useState(VIDEO_DESKTOP);
-  const [mounted, setMounted] = useState(false);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [staticOnly, setStaticOnly] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    setVideoSrc(pickVideoSrc());
-
-    const mobileQuery = window.matchMedia("(max-width: 767px)");
-    const onViewportChange = () => setVideoSrc(pickVideoSrc());
-    mobileQuery.addEventListener("change", onViewportChange);
-    return () => mobileQuery.removeEventListener("change", onViewportChange);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (prefersReducedMotionNow()) {
-      setStaticOnly(true);
-      setIsPlaying(false);
-      return;
-    }
-
-    setStaticOnly(false);
-
+  const bindPlayback = useCallback(() => {
     const el = videoRef.current;
-    if (!el) return;
+    if (!el || staticOnly) return () => undefined;
 
     let cancelled = false;
     let retryTimer: number | undefined;
@@ -60,27 +50,22 @@ export default function VideoBackground() {
     };
 
     const tryPlay = () => {
-      if (cancelled || !el) return;
-      el.muted = true;
-      el.defaultMuted = true;
-      el.playsInline = true;
-      void el
-        .play()
-        .then(markPlaying)
-        .catch(() => {
-          /* keep poster until playback actually starts */
-        });
+      if (cancelled) return;
+      primeVideoElement(el);
+      void el.play().then(markPlaying).catch(() => {
+        /* poster stays until playing */
+      });
     };
 
     const scheduleRetry = () => {
       if (retryTimer !== undefined) window.clearInterval(retryTimer);
       retryTimer = window.setInterval(() => {
-        if (cancelled || el.paused === false) {
+        if (cancelled || !el.paused) {
           if (retryTimer !== undefined) window.clearInterval(retryTimer);
           return;
         }
         tryPlay();
-      }, 700);
+      }, 600);
     };
 
     const onPlaying = () => {
@@ -88,49 +73,79 @@ export default function VideoBackground() {
       if (retryTimer !== undefined) window.clearInterval(retryTimer);
     };
 
-    const onCanPlay = () => tryPlay();
-    const onLoadedData = () => tryPlay();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") tryPlay();
-    };
-    const onPageShow = () => {
+    const restart = () => {
+      if (cancelled) return;
       setIsPlaying(false);
-      el.load();
+      primeVideoElement(el);
+      if (el.src) {
+        el.load();
+      }
       tryPlay();
       scheduleRetry();
     };
-    const onInteraction = () => tryPlay();
 
     el.addEventListener("playing", onPlaying);
-    el.addEventListener("canplay", onCanPlay);
-    el.addEventListener("loadeddata", onLoadedData);
+    el.addEventListener("canplay", tryPlay);
+    el.addEventListener("loadeddata", tryPlay);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") tryPlay();
+    };
+    const onPageShow = () => restart();
+    const onRestore = () => restart();
+    const onInteraction = () => tryPlay();
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onPageShow);
+    window.addEventListener(PAGE_SHOW_RESTORE, onRestore);
     document.addEventListener("touchstart", onInteraction, { passive: true });
     document.addEventListener("click", onInteraction);
 
-    el.load();
-    tryPlay();
-    scheduleRetry();
+    restart();
 
     const stopRetry = window.setTimeout(() => {
       if (retryTimer !== undefined) window.clearInterval(retryTimer);
-    }, 20_000);
+    }, 25_000);
 
     return () => {
       cancelled = true;
       if (retryTimer !== undefined) window.clearInterval(retryTimer);
       window.clearTimeout(stopRetry);
       el.removeEventListener("playing", onPlaying);
-      el.removeEventListener("canplay", onCanPlay);
-      el.removeEventListener("loadeddata", onLoadedData);
+      el.removeEventListener("canplay", tryPlay);
+      el.removeEventListener("loadeddata", tryPlay);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener(PAGE_SHOW_RESTORE, onRestore);
       document.removeEventListener("touchstart", onInteraction);
       document.removeEventListener("click", onInteraction);
     };
-  }, [mounted, videoSrc]);
+  }, [staticOnly]);
+
+  useEffect(() => {
+    setVideoSrc(pickVideoSrc());
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const onViewportChange = () => {
+      setVideoSrc(pickVideoSrc());
+      setIsPlaying(false);
+    };
+    mobileQuery.addEventListener("change", onViewportChange);
+    return () => mobileQuery.removeEventListener("change", onViewportChange);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotionNow()) {
+      setStaticOnly(true);
+      setIsPlaying(false);
+      return;
+    }
+    setStaticOnly(false);
+  }, []);
+
+  useEffect(() => {
+    if (!videoSrc || staticOnly) return;
+    return bindPlayback();
+  }, [videoSrc, staticOnly, bindPlayback]);
 
   const posterLayer = (
     <div
@@ -141,17 +156,15 @@ export default function VideoBackground() {
     />
   );
 
-  const layer = (
-    <div
-      className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#020617]"
-      aria-hidden
-    >
-      {staticOnly ? (
+  return (
+    <div className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
+      {staticOnly || !videoSrc ? (
         posterLayer
       ) : (
         <>
           {posterLayer}
           <video
+            key={videoSrc}
             ref={videoRef}
             src={videoSrc}
             className={`mkt-video-bg absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
@@ -167,24 +180,7 @@ export default function VideoBackground() {
         </>
       )}
       <div className="mkt-video-overlay absolute inset-0" />
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,168,83,0.15), transparent 60%), radial-gradient(ellipse 60% 40% at 100% 100%, rgba(52,211,153,0.12), transparent 55%)",
-        }}
-      />
+      <div className="mkt-video-tint absolute inset-0 opacity-40" />
     </div>
   );
-
-  if (!mounted) {
-    return (
-      <div
-        className="pointer-events-none fixed inset-0 z-0 bg-[#020617]"
-        aria-hidden
-      />
-    );
-  }
-
-  return createPortal(layer, document.body);
 }

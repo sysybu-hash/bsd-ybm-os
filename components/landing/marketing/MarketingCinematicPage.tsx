@@ -61,25 +61,31 @@ export default function MarketingCinematicPage() {
 
 
   useEffect(() => {
-
     if ("scrollRestoration" in history) {
-
       history.scrollRestoration = "manual";
-
     }
 
     const resetScroll = () => {
-
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
+      });
     };
 
     resetScroll();
 
-    window.addEventListener("pageshow", resetScroll);
+    const onPageShow = (event: PageTransitionEvent) => {
+      resetScroll();
+      if (event.persisted) {
+        window.dispatchEvent(new Event("marketing:pageshow-restore"));
+      }
+    };
 
-    return () => window.removeEventListener("pageshow", resetScroll);
-
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
 
@@ -107,7 +113,7 @@ export default function MarketingCinematicPage() {
         style={{
           ["--mkt-banner-offset" as string]: "0px",
           minHeight: "100dvh",
-          backgroundColor: "#020617",
+          backgroundColor: "var(--mkt-body-bg)",
         }}
 
       >
