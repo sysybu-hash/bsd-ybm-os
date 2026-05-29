@@ -120,7 +120,7 @@ export default function MarketingCinematicPage() {
 
           <main className="relative pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
 
-            <HeroSection onRegister={goRegister} onDemo={goLiveDemo} omnibar={omnibar} />
+            <HeroSection onRegister={goRegister} onLogin={goLogin} omnibar={omnibar} />
 
             <MarketingLiveDemoSection />
 

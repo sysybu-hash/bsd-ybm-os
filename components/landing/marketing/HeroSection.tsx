@@ -8,11 +8,11 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = Readonly<{
   onRegister: () => void;
-  onDemo: () => void;
+  onLogin: () => void;
   omnibar: MarketingHeroOmnibarState;
 }>;
 
-export default function HeroSection({ onRegister, onDemo, omnibar }: Props) {
+export default function HeroSection({ onRegister, onLogin, omnibar }: Props) {
   const { t, dir } = useI18n();
   const CtaIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
@@ -56,10 +56,10 @@ export default function HeroSection({ onRegister, onDemo, omnibar }: Props) {
           </button>
           <button
             type="button"
-            onClick={onDemo}
+            onClick={onLogin}
             className="rounded-2xl mkt-btn-ghost px-8 py-4 text-lg font-bold"
           >
-            {t("marketingHome.hero.ctaDemo")}
+            {t("marketingHome.osLanding.signIn")}
           </button>
         </ScrollReveal>
 
