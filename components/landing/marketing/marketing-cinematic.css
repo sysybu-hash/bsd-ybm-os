@@ -59,14 +59,23 @@ html.light .marketing-cinematic {
 /* רקע גוף — עוקב אחרי ערכת נושא (כהה/בהיר) */
 body:has(.marketing-cinematic) {
   background-color: var(--mkt-body-bg) !important;
+  overflow-x: clip;
+}
+
+html:has(.marketing-cinematic) {
+  overflow-x: clip;
 }
 
 #site-main:has(.marketing-cinematic) {
   background: transparent !important;
 }
 
-/* מרכוז אופקי אחיד לכל דף השיווק */
+/* מרכוז אופקי — רק לתוכן ראשי; לא על עטיפת fixed chrome */
 .marketing-cinematic > .relative.z-10 {
+  width: 100%;
+}
+
+.marketing-cinematic main {
   margin-inline: auto;
   width: 100%;
   max-width: var(--mkt-page-max);
@@ -656,16 +665,15 @@ html.light .marketing-cinematic .mkt-mobile-nav-item.text-blue-400 {
 }
 
 .marketing-cinematic .mkt-mobile-menu-panel {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: transparent;
+  border-radius: 0;
   background: linear-gradient(
     165deg,
-    rgba(15, 23, 42, 0.97) 0%,
-    rgba(2, 6, 23, 0.98) 55%,
-    rgba(15, 23, 42, 0.96) 100%
+    rgba(15, 23, 42, 0.98) 0%,
+    rgba(2, 6, 23, 0.99) 55%,
+    rgba(15, 23, 42, 0.98) 100%
   );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-    0 24px 64px rgba(0, 0, 0, 0.55);
+  box-shadow: none;
 }
 
 .marketing-cinematic .mkt-mobile-menu-header,
@@ -714,11 +722,18 @@ html.light .marketing-cinematic .mkt-mobile-menu-backdrop {
 }
 
 html.light .marketing-cinematic .mkt-mobile-menu-panel {
-  border-color: rgba(15, 23, 42, 0.1);
+  border-color: transparent;
   background: linear-gradient(165deg, #ffffff 0%, #f8fafc 48%, #f1f5f9 100%);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.9) inset,
-    0 20px 50px rgba(15, 23, 42, 0.14);
+  box-shadow: none;
+}
+
+/* מסתיר FAB וסרגל תחתון כשמודאל שיווקי פתוח */
+body.marketing-mobile-overlay-open .mkt-mobile-nav,
+body.marketing-mobile-overlay-open .site-feedback-fab,
+body.marketing-mobile-overlay-open .accessibility-toolbar-fab {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 html.light .marketing-cinematic .mkt-mobile-menu-header,

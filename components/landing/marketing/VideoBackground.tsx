@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /** Live stock loop (typing / laptop). Regenerate: `npm run marketing:hero-video`. */
 const VIDEO_DESKTOP = "/marketing/hero-cinematic.mp4";
@@ -22,82 +23,127 @@ function pickVideoSrc(): string {
 
 export default function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoSrc] = useState(pickVideoSrc);
-  const [videoReady, setVideoReady] = useState(false);
+  const [videoSrc, setVideoSrc] = useState(VIDEO_DESKTOP);
+  const [mounted, setMounted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [staticOnly, setStaticOnly] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setVideoSrc(pickVideoSrc());
+
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const onViewportChange = () => setVideoSrc(pickVideoSrc());
+    mobileQuery.addEventListener("change", onViewportChange);
+    return () => mobileQuery.removeEventListener("change", onViewportChange);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     if (prefersReducedMotionNow()) {
       setStaticOnly(true);
+      setIsPlaying(false);
       return;
     }
+
+    setStaticOnly(false);
 
     const el = videoRef.current;
     if (!el) return;
 
     let cancelled = false;
+    let retryTimer: number | undefined;
 
-    const markReady = () => {
-      if (!cancelled) setVideoReady(true);
+    const markPlaying = () => {
+      if (!cancelled) setIsPlaying(true);
     };
 
     const tryPlay = () => {
-      void el.play()
-        .then(markReady)
+      if (cancelled || !el) return;
+      el.muted = true;
+      el.defaultMuted = true;
+      el.playsInline = true;
+      void el
+        .play()
+        .then(markPlaying)
         .catch(() => {
-          if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            markReady();
-          }
+          /* keep poster until playback actually starts */
         });
     };
 
-    const onLoadedData = () => {
-      markReady();
-      tryPlay();
+    const scheduleRetry = () => {
+      if (retryTimer !== undefined) window.clearInterval(retryTimer);
+      retryTimer = window.setInterval(() => {
+        if (cancelled || el.paused === false) {
+          if (retryTimer !== undefined) window.clearInterval(retryTimer);
+          return;
+        }
+        tryPlay();
+      }, 700);
+    };
+
+    const onPlaying = () => {
+      markPlaying();
+      if (retryTimer !== undefined) window.clearInterval(retryTimer);
     };
 
     const onCanPlay = () => tryPlay();
-
+    const onLoadedData = () => tryPlay();
     const onVisibility = () => {
       if (document.visibilityState === "visible") tryPlay();
     };
+    const onPageShow = () => {
+      setIsPlaying(false);
+      el.load();
+      tryPlay();
+      scheduleRetry();
+    };
+    const onInteraction = () => tryPlay();
 
-    const onFirstInteraction = () => tryPlay();
-
-    el.addEventListener("loadeddata", onLoadedData);
+    el.addEventListener("playing", onPlaying);
     el.addEventListener("canplay", onCanPlay);
-    el.addEventListener("playing", markReady);
+    el.addEventListener("loadeddata", onLoadedData);
 
     document.addEventListener("visibilitychange", onVisibility);
-    document.addEventListener("touchstart", onFirstInteraction, { once: true, passive: true });
-    document.addEventListener("click", onFirstInteraction, { once: true });
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("touchstart", onInteraction, { passive: true });
+    document.addEventListener("click", onInteraction);
 
     el.load();
-    if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      onLoadedData();
-    }
+    tryPlay();
+    scheduleRetry();
+
+    const stopRetry = window.setTimeout(() => {
+      if (retryTimer !== undefined) window.clearInterval(retryTimer);
+    }, 20_000);
 
     return () => {
       cancelled = true;
-      el.removeEventListener("loadeddata", onLoadedData);
+      if (retryTimer !== undefined) window.clearInterval(retryTimer);
+      window.clearTimeout(stopRetry);
+      el.removeEventListener("playing", onPlaying);
       el.removeEventListener("canplay", onCanPlay);
-      el.removeEventListener("playing", markReady);
+      el.removeEventListener("loadeddata", onLoadedData);
       document.removeEventListener("visibilitychange", onVisibility);
-      document.removeEventListener("touchstart", onFirstInteraction);
-      document.removeEventListener("click", onFirstInteraction);
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("touchstart", onInteraction);
+      document.removeEventListener("click", onInteraction);
     };
-  }, [videoSrc]);
+  }, [mounted, videoSrc]);
 
   const posterLayer = (
     <div
-      className="mkt-video-poster-fallback absolute inset-0 bg-cover bg-center"
+      className={`mkt-video-poster-fallback absolute inset-0 bg-cover bg-center transition-opacity duration-700 ${
+        isPlaying ? "opacity-0" : "opacity-100"
+      }`}
       style={{ backgroundImage: `url(${VIDEO_POSTER})` }}
     />
   );
 
-  return (
+  const layer = (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#020617]"
+      className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#020617]"
       aria-hidden
     >
       {staticOnly ? (
@@ -109,13 +155,14 @@ export default function VideoBackground() {
             ref={videoRef}
             src={videoSrc}
             className={`mkt-video-bg absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-              videoReady ? "opacity-100" : "opacity-0"
+              isPlaying ? "opacity-100" : "opacity-0"
             }`}
             autoPlay
             loop
             muted
             playsInline
             preload="auto"
+            disablePictureInPicture
           />
         </>
       )}
@@ -129,4 +176,15 @@ export default function VideoBackground() {
       />
     </div>
   );
+
+  if (!mounted) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-0 z-0 bg-[#020617]"
+        aria-hidden
+      />
+    );
+  }
+
+  return createPortal(layer, document.body);
 }

@@ -60,6 +60,30 @@ export default function MarketingCinematicPage() {
 
 
 
+  useEffect(() => {
+
+    if ("scrollRestoration" in history) {
+
+      history.scrollRestoration = "manual";
+
+    }
+
+    const resetScroll = () => {
+
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
+    };
+
+    resetScroll();
+
+    window.addEventListener("pageshow", resetScroll);
+
+    return () => window.removeEventListener("pageshow", resetScroll);
+
+  }, []);
+
+
+
   const goLogin = () => router.push("/login");
 
   const goRegister = () => router.push("/login?mode=register");

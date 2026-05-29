@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import MarketingHeroOmnibarUI from "@/components/landing/marketing/MarketingHeroOmnibarUI";
 import type { MarketingHeroOmnibarState } from "@/hooks/useMarketingHeroOmnibar";
+import { setMarketingMobileOverlayOpen } from "@/lib/marketing/mobile-overlay-body";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = Readonly<{
@@ -15,6 +16,11 @@ type Props = Readonly<{
 
 export default function MarketingMobileOmnibarSheet({ open, onClose, omnibar }: Props) {
   const { t, dir } = useI18n();
+
+  useEffect(() => {
+    setMarketingMobileOverlayOpen(open);
+    return () => setMarketingMobileOverlayOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +45,7 @@ export default function MarketingMobileOmnibarSheet({ open, onClose, omnibar }: 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[2590] bg-slate-950/70 backdrop-blur-sm md:hidden"
             aria-label={t("marketingHome.cinematic.omnibarSheetClose")}
             onClick={onClose}
           />
@@ -51,7 +57,7 @@ export default function MarketingMobileOmnibarSheet({ open, onClose, omnibar }: 
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-[80] mkt-glass-strong border-t border-white/10 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
+            className="fixed inset-x-0 bottom-0 z-[2600] mkt-glass-strong border-t border-white/10 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
             dir={dir}
           >
             <div className="mx-auto flex max-w-lg items-center justify-between gap-2 pb-2">

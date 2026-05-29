@@ -777,4 +777,6 @@ body:has(.marketing-cinematic) {
 
 #site-main:has(.marketing-cinematic) {
   background: transparent !important;
+  position: relative;
+  z-index: 1;
 }
