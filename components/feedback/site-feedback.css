@@ -1,18 +1,30 @@
-/* כפתור משוב צף — מרווח מעל סרגל מובייל בשיווק */
-body:has(.marketing-cinematic) .site-feedback-fab {
-  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+/* כפתורי תמיכה צפים — מיקום סימטרי מעל סרגל מובייל */
+:root {
+  --fab-stack-offset: calc(var(--mobile-chrome-bottom, 5.5rem) + 0.625rem);
 }
 
-body:has(.marketing-cinematic) .accessibility-toolbar-fab {
-  bottom: calc(9.5rem + env(safe-area-inset-bottom, 0px));
+body:has(.marketing-cinematic) {
+  --fab-stack-offset: calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {
-  body:has(.marketing-cinematic) .site-feedback-fab {
-    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  :root,
+  body:has(.marketing-cinematic) {
+    --fab-stack-offset: max(1.5rem, env(safe-area-inset-bottom, 0px));
   }
+}
 
-  body:has(.marketing-cinematic) .accessibility-toolbar-fab {
-    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+.site-feedback-fab,
+.accessibility-toolbar-fab {
+  bottom: var(--fab-stack-offset);
+}
+
+.accessibility-toolbar-panel {
+  bottom: calc(var(--fab-stack-offset) + 3.75rem);
+}
+
+@media (min-width: 768px) {
+  .accessibility-toolbar-panel {
+    bottom: calc(var(--fab-stack-offset) + 4rem);
   }
 }

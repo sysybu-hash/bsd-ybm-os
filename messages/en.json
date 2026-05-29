@@ -970,6 +970,11 @@
     "sending": "Sending…",
     "success": "Thank you — we received your feedback.",
     "error": "Could not send. Please try again later.",
+    "errorMail": "We could not deliver your email right now. Please try again later or contact us directly.",
+    "messageTooShort": "Message is too short — at least {min} characters.",
+    "messageHint": "At least {min} characters.",
+    "emailInvalid": "Please enter a valid email address.",
+    "nameRequired": "Please enter your full name.",
     "close": "Close",
     "marketingSectionTitle": "Feedback & inquiries",
     "marketingSectionLead": "Questions, ideas or reports—leave your details and we will reply by email."

@@ -94,7 +94,7 @@ export default function MarketingCinematicPage() {
 
           <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
 
-          <main className="relative pb-28 md:pb-8">
+          <main className="relative pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
 
             <HeroSection onRegister={goRegister} onDemo={goLiveDemo} omnibar={omnibar} />
 

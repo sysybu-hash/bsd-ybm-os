@@ -86,9 +86,9 @@ export default function OSHeader({
 
   return (
     <header className="fixed inset-x-0 top-0 z-[1200] max-w-[100vw] border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">
-      <div className="mx-auto flex min-h-[3.25rem] max-w-[88rem] items-center gap-2 sm:gap-3">
+      <div className="mx-auto flex min-h-[3.25rem] max-w-[88rem] items-center gap-1.5 sm:gap-3">
         {/* מיתוג */}
-        <div className="flex min-w-0 flex-1 items-center">
+        <div className="flex min-w-0 flex-1 items-center overflow-hidden">
           <BrandLogo
             size="xs"
             variant="image"
@@ -178,11 +178,11 @@ export default function OSHeader({
             <ThemeToggle variant="toolbar" />
           </nav>
         ) : (
-          <div className="h-11 w-[min(12rem,42vw)] shrink-0 rounded-xl border border-[color:var(--border-main)]/50 bg-[color:var(--surface-card)]/40" aria-hidden />
+          <div className="h-11 w-11 shrink-0 rounded-xl border border-[color:var(--border-main)]/50 bg-[color:var(--surface-card)]/40" aria-hidden />
         )}
 
         {/* משתמש */}
-        <div className="flex min-w-0 flex-1 items-center justify-end">
+        <div className="flex shrink-0 items-center justify-end">
           <div className="flex max-w-full items-center gap-0.5 rounded-xl border border-[color:var(--border-main)]/90 bg-[color:var(--surface-card)]/80 p-1 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
             <button
               type="button"

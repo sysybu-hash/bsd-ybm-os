@@ -2,20 +2,24 @@
 
 import "./site-feedback.css";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageSquare, X } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import SiteFeedbackForm from "@/components/feedback/SiteFeedbackForm";
 
 export default function SiteFeedbackFab() {
   const { t } = useI18n();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const feedbackContext =
+    pathname === "/" || pathname.startsWith("/marketing-preview") ? "marketing" : "app";
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="site-feedback-fab fixed bottom-[max(1rem,env(safe-area-inset-bottom))] start-4 z-[2400] flex items-center gap-2 rounded-full border border-indigo-400/40 bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-900/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 md:bottom-6"
+        className="site-feedback-fab fixed start-4 z-[2400] flex h-12 w-12 items-center justify-center rounded-full border border-indigo-400/40 bg-indigo-600 text-white shadow-lg shadow-indigo-900/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm sm:font-bold"
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -53,7 +57,7 @@ export default function SiteFeedbackFab() {
                 <X size={18} aria-hidden />
               </button>
             </div>
-            <SiteFeedbackForm context="app" onSuccess={() => setOpen(false)} />
+            <SiteFeedbackForm context={feedbackContext} onSuccess={() => setOpen(false)} />
           </div>
         </div>
       ) : null}
