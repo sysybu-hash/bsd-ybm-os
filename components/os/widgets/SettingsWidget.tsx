@@ -49,7 +49,7 @@ export default function SettingsWidget() {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-8">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 sm:p-8">
         <div className="max-w-2xl mx-auto space-y-10">
 
           <ProfessionSettingsPanel

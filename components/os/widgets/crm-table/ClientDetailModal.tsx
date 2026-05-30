@@ -74,7 +74,7 @@ export function ClientDetailModal({
   return (
     <CrmOverlayPortal>
       <div className="my-auto flex w-full max-w-4xl max-h-[min(90vh,calc(100vh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-2xl">
-        <div className="p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start">
+        <div className="p-4 sm:p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-3xl font-black text-white shadow-xl">
               {client.name?.charAt(0)}
@@ -151,7 +151,7 @@ export function ClientDetailModal({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto p-8 custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-8 custom-scrollbar">
           {activeTab === "timeline" ? (
             <div className="space-y-4">
               {timelineLoading ? (

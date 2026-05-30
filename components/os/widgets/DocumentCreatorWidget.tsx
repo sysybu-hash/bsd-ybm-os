@@ -82,7 +82,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 space-y-8">
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-4 sm:p-6 sm:space-y-8">
         <IssuedDocumentsList
           issuedList={d.issuedList}
           issuedListLoading={d.issuedListLoading}

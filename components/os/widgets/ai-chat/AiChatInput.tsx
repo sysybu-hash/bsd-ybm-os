@@ -22,7 +22,7 @@ export function AiChatInput({
   onAttachFile, onSubmit, fileInputRef, t,
 }: AiChatInputProps) {
   return (
-    <div className="p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
+    <div className="p-3 sm:p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
       {attachment ? (
         <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
           <span className="truncate max-w-[240px]">{attachment.name}</span>
@@ -36,7 +36,7 @@ export function AiChatInput({
           </button>
         </div>
       ) : null}
-      <form onSubmit={onSubmit} className="relative flex gap-3">
+      <form onSubmit={onSubmit} className="relative flex gap-2 sm:gap-3">
         <input
           ref={fileInputRef as React.RefObject<HTMLInputElement>}
           type="file"
@@ -47,10 +47,10 @@ export function AiChatInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
+          className="p-2.5 sm:p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
           aria-label={t("workspaceWidgets.aiChat.attachFile")}
         >
-          <Paperclip size={20} />
+          <Paperclip size={18} />
         </button>
         <KnowledgeVaultAttachButton
           onSelect={(item) => {
@@ -66,19 +66,20 @@ export function AiChatInput({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t("workspaceWidgets.aiChat.placeholder")}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl py-4 pr-6 pl-14 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-sm dark:shadow-none"
+            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl py-2.5 pe-4 ps-12 sm:py-4 sm:pe-6 sm:ps-14 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] shadow-sm dark:shadow-none"
           />
           <button
             type="submit"
             disabled={isLoading || (!input.trim() && !attachment)}
             aria-label={t("workspaceWidgets.aiChat.sendMessage")}
-            className="absolute left-2 top-2 bottom-2 px-4 bg-purple-600 hover:bg-purple-500 disabled:bg-[color:var(--foreground-muted)]/20 disabled:text-[color:var(--foreground-muted)] text-white rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center justify-center"
+            className="absolute start-1.5 top-1.5 bottom-1.5 sm:start-2 sm:top-2 sm:bottom-2 px-3 sm:px-4 bg-purple-600 hover:bg-purple-500 disabled:bg-[color:var(--foreground-muted)]/20 disabled:text-[color:var(--foreground-muted)] text-white rounded-xl transition-all shadow-lg shadow-purple-900/20 flex items-center justify-center"
           >
-            <Send size={18} aria-hidden />
+            <Send size={16} aria-hidden />
           </button>
         </div>
       </form>
-      <div className="mt-3 flex justify-center gap-6 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
+      {/* Footer labels — hidden on mobile to save vertical space */}
+      <div className="mt-2 hidden sm:flex justify-center gap-6 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
         <span>{t("workspaceWidgets.aiChat.footerMarkdown")}</span>
         <span>•</span>
         <span>{t("workspaceWidgets.aiChat.footerMemory")}</span>

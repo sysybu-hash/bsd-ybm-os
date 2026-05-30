@@ -44,7 +44,7 @@ export default function CrmWidget() {
   };
 
   return (
-    <div className="w-full h-full p-6 flex flex-col gap-6 text-start bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="w-full h-full p-3 sm:p-6 flex flex-col gap-3 sm:gap-6 text-start bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <div className="flex justify-between items-center w-full">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">

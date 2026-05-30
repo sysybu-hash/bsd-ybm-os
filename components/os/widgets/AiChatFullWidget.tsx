@@ -19,7 +19,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const chatArea = (
     <div className="flex min-h-0 flex-1 flex-col relative">
       {/* Tab header */}
-      <div className="px-6 py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
+      <div className="px-3 py-2 sm:px-6 sm:py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
         <div className="flex items-center gap-2">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
             <button type="button" onClick={c.handleLiveTab}

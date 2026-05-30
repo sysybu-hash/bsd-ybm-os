@@ -29,7 +29,7 @@ export function ArchiveSidebar({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-1 min-h-0 flex-col overflow-auto p-6">
+      <div className="flex flex-1 min-h-0 flex-col overflow-auto p-3 sm:p-6">
         <div className="mb-8 flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <HardDrive size={20} aria-hidden />
           <span className="text-sm font-black uppercase tracking-widest">ארכיון ERP</span>
