@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import type { MarketingChatMessage } from "@/hooks/useMarketingHeroOmnibar";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -10,6 +11,7 @@ type Props = Readonly<{
   registerHref: string;
   lastTranscript?: string;
   voiceActive: boolean;
+  onClear?: () => void;
 }>;
 
 export default function MarketingHeroOmnibarPanel({
@@ -18,11 +20,25 @@ export default function MarketingHeroOmnibarPanel({
   registerHref,
   lastTranscript,
   voiceActive,
+  onClear,
 }: Props) {
   const { t, dir } = useI18n();
 
   return (
     <div className="mkt-glass mt-3 w-full max-w-2xl rounded-2xl border border-white/10 p-4" dir={dir}>
+      {messages.length > 0 && onClear ? (
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+            aria-label={t("marketingHome.cinematic.clearChat")}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            {t("marketingHome.cinematic.clearChat")}
+          </button>
+        </div>
+      ) : null}
       <ul className="max-h-56 space-y-3 overflow-y-auto pe-1 text-sm" aria-live="polite">
         {messages.map((msg) => (
           <li

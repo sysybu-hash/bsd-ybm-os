@@ -14,7 +14,12 @@ type Props = Readonly<{
 export default function ScrollReveal({ children, className = "", delay = 0, eager = false }: Props) {
   const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const [revealed, setRevealed] = useState(eager);
+  /**
+   * SSR-safe: התוכן גלוי כברירת מחדל (opacity:1 ב-HTML). את ההסתרה+אנימציה
+   * מפעילים רק בצד הלקוח, ורק לאלמנטים שמתחת לקיפול — כך גם אם ה-JS נכשל
+   * או IntersectionObserver לא יורה, התוכן לעולם לא נשאר מוסתר (באג מסך ריק במובייל).
+   */
+  const [revealed, setRevealed] = useState(true);
 
   useEffect(() => {
     if (eager || reduceMotion) {
@@ -25,6 +30,15 @@ export default function ScrollReveal({ children, className = "", delay = 0, eage
     const el = ref.current;
     if (!el) return;
 
+    // אלמנט שכבר בתוך ה-viewport נשאר גלוי (ללא הבהוב); רק מה שמתחת לקיפול מוסתר ומונפש.
+    const rect = el.getBoundingClientRect();
+    const inViewNow = rect.top < window.innerHeight && rect.bottom > 0;
+    if (inViewNow) {
+      setRevealed(true);
+      return;
+    }
+
+    setRevealed(false);
     const markVisible = () => setRevealed(true);
 
     const observer = new IntersectionObserver(

@@ -121,6 +121,7 @@ export default function MarketingHeroOmnibarUI({ omnibar, variant = "hero" }: Pr
           registerHref={omnibar.registerHref}
           lastTranscript={omnibar.lastTranscript}
           voiceActive={omnibar.voiceActive}
+          onClear={omnibar.clearChat}
         />
       ) : showHint ? (
         <p className="mkt-omnibar-hint mt-2 text-center text-xs text-slate-500">

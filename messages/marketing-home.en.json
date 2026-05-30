@@ -225,6 +225,7 @@
       "omnibarChatError": "Could not get an answer. Try again.",
       "omnibarHint": "Marketing assistant only — no access to internal data.",
       "omnibarJoinCta": "Open account",
+      "clearChat": "Clear chat",
       "omnibarSessionEndedTitle": "Voice session ended",
       "omnibarSessionEnded": "Thanks for chatting! For the full workspace, Gemini Live, and your data — open an account and continue there.",
       "omnibarSessionEndedHint": "Preview voice chats are limited to 120 seconds.",

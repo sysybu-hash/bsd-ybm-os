@@ -176,6 +176,11 @@ export default function VideoBackground() {
             playsInline
             preload="auto"
             disablePictureInPicture
+            onError={() => {
+              // כשל טעינת וידאו (למשל קודק לא נתמך במובייל) — נשארים על ה-poster בלבד, לא זורקים.
+              setStaticOnly(true);
+              setIsPlaying(false);
+            }}
           />
         </>
       )}

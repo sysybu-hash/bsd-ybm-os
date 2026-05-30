@@ -24,10 +24,6 @@ import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import GoogleCalendarWidget from "@/components/os/widgets/GoogleCalendarWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
-import FinanceHubWidget from "@/components/os/hubs/FinanceHubWidget";
-import ProjectsHubWidget from "@/components/os/hubs/ProjectsHubWidget";
-import DocumentsHubWidget from "@/components/os/hubs/DocumentsHubWidget";
-import AiHubWidget from "@/components/os/hubs/AiHubWidget";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import WidgetState from "@/components/os/WidgetState";
@@ -49,6 +45,19 @@ const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/Platfo
   loading: () => <WidgetLoadingPlaceholder />,
 });
 const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+// Hub widgets — lazy-loaded כדי שלא יחסמו את ה-bundle הראשוני ואת פתיחת החלונות.
+const FinanceHubWidget = dynamic(() => import("@/components/os/hubs/FinanceHubWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const ProjectsHubWidget = dynamic(() => import("@/components/os/hubs/ProjectsHubWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const DocumentsHubWidget = dynamic(() => import("@/components/os/hubs/DocumentsHubWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
+const AiHubWidget = dynamic(() => import("@/components/os/hubs/AiHubWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
 

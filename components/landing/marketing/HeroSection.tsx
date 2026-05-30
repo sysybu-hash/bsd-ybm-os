@@ -29,7 +29,7 @@ export default function HeroSection({ onRegister, onLogin, omnibar }: Props) {
           <p className="mkt-eyebrow mb-1.5 text-sm font-bold tracking-widest uppercase sm:mb-3">
             {t("marketingHome.hero.kicker")}
           </p>
-          <p className="mkt-hero-motto mb-2 text-lg font-bold text-amber-200/95 sm:mb-4 sm:text-2xl md:text-3xl">
+          <p className="mkt-hero-motto mb-3 sm:mb-5">
             {t("marketingHome.hero.motto")}
           </p>
           <h1 className="mkt-hero-title">

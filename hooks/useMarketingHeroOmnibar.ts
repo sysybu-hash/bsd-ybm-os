@@ -284,6 +284,18 @@ export function useMarketingHeroOmnibar(t: TranslateFn, localeInput: string) {
     }
   }, [appendAssistantMessage, input, isBusy, locale, messages, t, voiceActive]);
 
+  const clearChat = useCallback(() => {
+    if (liveOn) {
+      userRequestedLiveRef.current = false;
+      endLiveSessionRef.current(false);
+    }
+    clearLiveTimers();
+    setMessages([]);
+    setInput("");
+    setSessionEnded(false);
+    setIsBusy(false);
+  }, [liveOn, clearLiveTimers]);
+
   const registerHref = buildMarketingPublicUrls().register;
 
   return {
@@ -297,6 +309,7 @@ export function useMarketingHeroOmnibar(t: TranslateFn, localeInput: string) {
     sessionEnded,
     toggleLive,
     sendMessage,
+    clearChat,
     registerHref,
     lastTranscript: geminiLive.lastTranscript,
     showPanel: messages.length > 0 || voiceActive || sessionEnded || liveOn,
