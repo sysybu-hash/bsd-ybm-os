@@ -29,7 +29,7 @@ export function SettingsBusinessProfile({ settings, onChange, t }: SettingsBusin
             <input
               value={settings.name}
               onChange={(e) => onChange({ name: e.target.value })}
-              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pe-10 ps-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
               placeholder={t(`${S}.businessNamePlaceholder`)}
             />
           </div>
@@ -41,7 +41,7 @@ export function SettingsBusinessProfile({ settings, onChange, t }: SettingsBusin
             <input
               value={settings.taxId}
               onChange={(e) => onChange({ taxId: e.target.value })}
-              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pe-10 ps-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
               placeholder={t(`${S}.taxIdPlaceholder`)}
             />
           </div>
@@ -68,7 +68,7 @@ export function SettingsBusinessProfile({ settings, onChange, t }: SettingsBusin
             <input
               value={settings.email}
               onChange={(e) => onChange({ email: e.target.value })}
-              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pe-10 ps-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
               placeholder="your@email.com"
             />
           </div>
@@ -80,7 +80,7 @@ export function SettingsBusinessProfile({ settings, onChange, t }: SettingsBusin
             <input
               value={settings.website}
               onChange={(e) => onChange({ website: e.target.value })}
-              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pe-10 ps-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
+              className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-[color:var(--foreground-main)]"
               placeholder="www.example.com"
             />
           </div>
