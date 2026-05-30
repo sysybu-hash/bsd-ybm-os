@@ -338,7 +338,7 @@ export function ClientDetailModal({
                     {t("workspaceWidgets.crmTable.financialHistory")}
                   </h4>
                   <div className="bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-100 dark:border-white/5 overflow-x-auto min-w-0">
-                    <table className="w-full min-w-[480px] text-right text-xs">
+                    <table className="w-full min-w-[480px] text-start text-xs">
                       <thead>
                         <tr className="bg-slate-100 dark:bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
                           <th className="px-6 py-3">תאריך</th>
