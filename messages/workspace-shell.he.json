@@ -946,6 +946,10 @@
       "noLinkedProject": "אין פרויקט משויך",
       "financialHistory": "היסטוריה פיננסית",
       "noFinancialDocs": "אין מסמכים פיננסיים",
+      "colDate": "תאריך",
+      "colDescription": "תיאור",
+      "colAmount": "סכום",
+      "colStatus": "סטטוס",
       "columnClient": "לקוח / חברה",
       "columnStatus": "סטטוס",
       "columnContact": "פרטי קשר",
@@ -1051,7 +1055,13 @@
       "addToNotebookFailed": "הוספה למחברת נכשלה",
       "folderDecodeError": "לפענוח AI בחרו קובץ בודד, לא תיקייה",
       "scannerOpenError": "לא ניתן לפתוח את הסורק",
-      "aiDecodeOpening": "פותח פענוח AI עבור"
+      "aiDecodeOpening": "פותח פענוח AI עבור",
+      "table": {
+        "name": "שם",
+        "type": "סוג",
+        "status": "סטטוס",
+        "updated": "עודכן"
+      }
     },
     "projectBoard": {
       "headerTitle": "לוח ניהול פרויקטים",

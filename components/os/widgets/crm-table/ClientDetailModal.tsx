@@ -341,10 +341,10 @@ export function ClientDetailModal({
                     <table className="w-full min-w-[480px] text-start text-xs">
                       <thead>
                         <tr className="bg-slate-100 dark:bg-white/5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          <th className="px-6 py-3">תאריך</th>
-                          <th className="px-6 py-3">תיאור</th>
-                          <th className="px-6 py-3">סכום</th>
-                          <th className="px-6 py-3">סטטוס</th>
+                          <th className="px-6 py-3">{t("workspaceWidgets.crmTable.colDate")}</th>
+                          <th className="px-6 py-3">{t("workspaceWidgets.crmTable.colDescription")}</th>
+                          <th className="px-6 py-3">{t("workspaceWidgets.crmTable.colAmount")}</th>
+                          <th className="px-6 py-3">{t("workspaceWidgets.crmTable.colStatus")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-white/5">

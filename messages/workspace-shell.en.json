@@ -946,6 +946,10 @@
       "noLinkedProject": "No linked project",
       "financialHistory": "Financial history",
       "noFinancialDocs": "No financial documents",
+      "colDate": "Date",
+      "colDescription": "Description",
+      "colAmount": "Amount",
+      "colStatus": "Status",
       "columnClient": "Client / company",
       "columnStatus": "Status",
       "columnContact": "Contact",
@@ -1051,7 +1055,13 @@
       "addToNotebookFailed": "Add to notebook failed",
       "folderDecodeError": "For AI decode select a single file, not a folder",
       "scannerOpenError": "Cannot open scanner",
-      "aiDecodeOpening": "Opening AI decode for"
+      "aiDecodeOpening": "Opening AI decode for",
+      "table": {
+        "name": "Name",
+        "type": "Type",
+        "status": "Status",
+        "updated": "Updated"
+      }
     },
     "projectBoard": {
       "headerTitle": "Project management board",

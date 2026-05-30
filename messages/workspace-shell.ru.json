@@ -946,6 +946,10 @@
       "noLinkedProject": "Проект не связан",
       "financialHistory": "Финансовая история",
       "noFinancialDocs": "Нет финансовых документов",
+      "colDate": "Дата",
+      "colDescription": "Описание",
+      "colAmount": "Сумма",
+      "colStatus": "Статус",
       "columnClient": "Клиент / компания",
       "columnStatus": "Статус",
       "columnContact": "Контакты",
@@ -1051,7 +1055,13 @@
       "addToNotebookFailed": "Ошибка добавления в блокнот",
       "folderDecodeError": "Для ИИ-расшифровки выберите файл, а не папку",
       "scannerOpenError": "Не удаётся открыть сканер",
-      "aiDecodeOpening": "Открытие ИИ-расшифровки для"
+      "aiDecodeOpening": "Открытие ИИ-расшифровки для",
+      "table": {
+        "name": "Название",
+        "type": "Тип",
+        "status": "Статус",
+        "updated": "Обновлено"
+      }
     },
     "projectBoard": {
       "headerTitle": "Доска управления проектами",
