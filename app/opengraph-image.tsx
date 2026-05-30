@@ -5,6 +5,11 @@
  *
  * Accessible at: GET /opengraph-image
  * Referenced automatically by Next.js metadata system.
+ *
+ * NOTE: Satori (the rendering engine) requires an explicit Hebrew font to correctly
+ * render RTL text. Without it, Hebrew characters appear in reversed (LTR) order.
+ * We fetch Heebo Bold from Google Fonts CDN at request-time and pass it to
+ * ImageResponse so Satori can properly shape Hebrew glyphs.
  */
 import { ImageResponse } from "next/og";
 
@@ -13,7 +18,22 @@ export const alt = "BSD-YBM Intelligence — מערכת ניהול עסקים ו
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
 
-export default function RootOgImage() {
+/** טעינת פונט Heebo Bold מ-Google Fonts לצורך רנדור עברית תקין ב-Satori */
+async function loadHeeboFont(): Promise<ArrayBuffer | null> {
+  try {
+    const url =
+      "https://fonts.gstatic.com/s/heebo/v26/NGSpv5_NC0k9P_v6ZUCbLRAHxK1EiSysd0mm_00.woff2";
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+export default async function RootOgImage() {
+  const heeboData = await loadHeeboFont();
+
   return new ImageResponse(
     (
       <div
@@ -23,7 +43,7 @@ export default function RootOgImage() {
           width: "100%",
           height: "100%",
           background: "linear-gradient(135deg, #0a0c10 0%, #0f172a 50%, #0a0c10 100%)",
-          fontFamily: "sans-serif",
+          fontFamily: "Heebo, sans-serif",
           position: "relative",
           overflow: "hidden",
         }}
@@ -139,6 +159,14 @@ export default function RootOgImage() {
         </div>
       </div>
     ),
-    { ...size },
+    {
+      ...size,
+      // פונט Heebo — חיוני כדי ש-Satori ירנדר עברית בסדר הנכון (RTL text shaping)
+      fonts: heeboData
+        ? [
+            { name: "Heebo", data: heeboData, style: "normal" as const, weight: 800 },
+          ]
+        : [],
+    },
   );
 }
