@@ -38,7 +38,7 @@ export function SettingsDriveSection({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
         <div className="space-y-2">
-          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">
+          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pe-1">
             {t(`${S}.driveFolder`)}
           </label>
           {driveFolders.length > 0 ? (

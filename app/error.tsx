@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { captureProductEvent } from "@/lib/analytics/posthog-client";
 
@@ -15,6 +16,11 @@ export default function RootError({ error, reset }: Props) {
   const showDetail = process.env.NODE_ENV === "development" && Boolean(error?.message);
 
   useEffect(() => {
+    try {
+      Sentry.captureException(error, { extra: { digest: error.digest, route: "/" } });
+    } catch {
+      /* Sentry not configured */
+    }
     captureProductEvent("$exception", {
       message: error.message,
       digest: error.digest ?? "",

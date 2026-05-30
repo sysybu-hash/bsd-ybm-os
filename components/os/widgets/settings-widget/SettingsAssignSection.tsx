@@ -35,7 +35,7 @@ export function SettingsAssignSection({
       </p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         <div className="space-y-2 md:col-span-1">
-          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.assignEmail`)}</label>
+          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pe-1">{t(`${S}.assignEmail`)}</label>
           <input
             type="email"
             value={assignEmail}
@@ -46,7 +46,7 @@ export function SettingsAssignSection({
           />
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pr-1">{t(`${S}.assignRole`)}</label>
+          <label className="text-xs font-bold text-[color:var(--foreground-muted)] pe-1">{t(`${S}.assignRole`)}</label>
           <select
             value={assignRole}
             onChange={(e) => setAssignRole(e.target.value)}
