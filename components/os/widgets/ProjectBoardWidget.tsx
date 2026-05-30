@@ -6,7 +6,6 @@ import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPane
 import ItemActions from "@/components/os/ItemActions";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import { TaskFormModal } from "./project-board/TaskFormModal";
-import { BoardColumn } from "./project-board/BoardColumn";
 import { useProjectBoard } from "./project-board/useProjectBoard";
 import { columns, emptyForm } from "./project-board/constants";
 import { formatBoardDueDate, type BoardColumnId } from "@/lib/tasks/board-mapping";
@@ -34,8 +33,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
     filteredTasks, priorityLabel,
   } = s;
 
-  // Mobile: which column is selected in the list view
-  const [mobileCol, setMobileCol] = useState<BoardColumnId>("todo");
+  const [activeCol, setActiveCol] = useState<BoardColumnId>("todo");
 
   if (showProjectPicker) {
     return (
@@ -136,41 +134,20 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
         </div>
       </div>
 
-      {/* ── Desktop: horizontal kanban board ───────────────── */}
-      <div className="hidden min-h-0 flex-1 overflow-x-auto md:flex gap-6 p-6 custom-scrollbar relative">
-        {modals}
-        {columns.map((column) => (
-          <BoardColumn
-            key={column.id}
-            column={column}
-            tasks={filteredTasks.filter((item) => item.status === column.id)}
-            boardPrefix={boardPrefix}
-            t={t}
-            priorityLabel={priorityLabel}
-            onEdit={openEdit}
-            onDelete={(id) => void handleDeleteTask(id)}
-            onStatusChange={(id, status) => void updateTaskStatus(id, status)}
-            onBudgetChange={(id, budget) => void updateTaskBudget(id, budget)}
-            onAddInColumn={(form) => { setAddForm(form); setIsAddingProject(true); }}
-            selectedProjectName={selectedProjectName}
-          />
-        ))}
-      </div>
-
-      {/* ── Mobile: tab selector + vertical list ───────────── */}
-      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+      {/* ── Unified: tab selector + grid list (mobile + desktop) ── */}
+      <div className="flex min-h-0 flex-1 flex-col">
         {modals}
 
         {/* Column tabs */}
         <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-[color:var(--border-main)] px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {columns.map((col) => {
             const count = filteredTasks.filter((task) => task.status === col.id).length;
-            const active = mobileCol === col.id;
+            const active = activeCol === col.id;
             return (
               <button
                 key={col.id}
                 type="button"
-                onClick={() => setMobileCol(col.id)}
+                onClick={() => setActiveCol(col.id)}
                 className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                   active
                     ? "bg-indigo-600 text-white shadow-sm"
@@ -186,103 +163,99 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
           })}
         </div>
 
-        {/* Task list for selected column */}
-        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
-          {filteredTasks
-            .filter((task) => task.status === mobileCol)
-            .map((task) => (
-              <div
-                key={task.id}
-                className="flex items-start gap-3 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 transition-all active:bg-[color:var(--surface-card)]/80"
-              >
-                {/* Left: content */}
-                <div className="min-w-0 flex-1">
-                  {/* Priority + due date */}
-                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
-                      task.priority === "high"
-                        ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                        : task.priority === "medium"
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]"
-                    }`}>
-                      {priorityLabel(task.priority)}
-                    </span>
-                    {task.dueDate ? (
-                      <span className="flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)]">
-                        <Clock size={9} aria-hidden />
-                        {formatBoardDueDate(task.dueDate)}
+        {/* Task grid — 1 col on mobile, 2 cols on desktop */}
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {filteredTasks
+              .filter((task) => task.status === activeCol)
+              .map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-start gap-3 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 transition-all hover:bg-[color:var(--surface-card)]/80"
+                >
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
+                        task.priority === "high"
+                          ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                          : task.priority === "medium"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]"
+                      }`}>
+                        {priorityLabel(task.priority)}
+                      </span>
+                      {task.dueDate ? (
+                        <span className="flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)]">
+                          <Clock size={9} aria-hidden />
+                          {formatBoardDueDate(task.dueDate)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h4 className="text-sm font-bold leading-snug text-[color:var(--foreground-main)] line-clamp-2">
+                      {task.title}
+                    </h4>
+                    {task.description ? (
+                      <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--foreground-muted)] line-clamp-2">
+                        {task.description}
+                      </p>
+                    ) : null}
+                    {task.clientName ? (
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)]">
+                        <User size={10} aria-hidden />
+                        {task.clientName}
+                      </div>
+                    ) : null}
+                    <div className="mt-2">
+                      <select
+                        value={task.status}
+                        onChange={(e) => void updateTaskStatus(task.id, e.target.value as BoardColumnId)}
+                        className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] outline-none focus:ring-1 focus:ring-indigo-500/50"
+                        aria-label={t(`${boardPrefix}.fields.status`)}
+                      >
+                        {columns.map((col) => (
+                          <option key={col.id} value={col.id}>
+                            {t(`${boardPrefix}.columns.${col.titleKey}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <ItemActions
+                      onEdit={() => openEdit(task)}
+                      onDelete={() => void handleDeleteTask(task.id)}
+                      deleteConfirmMessage={t(`${boardPrefix}.deleteConfirm`)}
+                      deleteTitle={t(`${boardPrefix}.deleteTitle`)}
+                    />
+                    {task.budget ? (
+                      <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        ₪{task.budget.toLocaleString()}
                       </span>
                     ) : null}
                   </div>
-                  {/* Title */}
-                  <h4 className="text-sm font-bold leading-snug text-[color:var(--foreground-main)] line-clamp-2">
-                    {task.title}
-                  </h4>
-                  {/* Description */}
-                  {task.description ? (
-                    <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--foreground-muted)] line-clamp-1">
-                      {task.description}
-                    </p>
-                  ) : null}
-                  {/* Client */}
-                  {task.clientName ? (
-                    <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)]">
-                      <User size={10} aria-hidden />
-                      {task.clientName}
-                    </div>
-                  ) : null}
-                  {/* Status change */}
-                  <div className="mt-2">
-                    <select
-                      value={task.status}
-                      onChange={(e) => void updateTaskStatus(task.id, e.target.value as BoardColumnId)}
-                      className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] outline-none focus:ring-1 focus:ring-indigo-500/50"
-                      aria-label={t(`${boardPrefix}.fields.status`)}
-                    >
-                      {columns.map((col) => (
-                        <option key={col.id} value={col.id}>
-                          {t(`${boardPrefix}.columns.${col.titleKey}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
+              ))}
+          </div>
 
-                {/* Right: actions */}
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <ItemActions
-                    onEdit={() => openEdit(task)}
-                    onDelete={() => void handleDeleteTask(task.id)}
-                    deleteConfirmMessage={t(`${boardPrefix}.deleteConfirm`)}
-                    deleteTitle={t(`${boardPrefix}.deleteTitle`)}
-                  />
-                  {task.budget ? (
-                    <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      ₪{task.budget.toLocaleString()}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-
-          {filteredTasks.filter((task) => task.status === mobileCol).length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center py-12 text-center opacity-50">
+          {filteredTasks.filter((task) => task.status === activeCol).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center opacity-40">
               <p className="text-sm font-bold text-[color:var(--foreground-muted)]">
-                {t(`${boardPrefix}.columns.${columns.find((c) => c.id === mobileCol)?.titleKey ?? "todo"}`)}
+                {t(`${boardPrefix}.columns.${columns.find((c) => c.id === activeCol)?.titleKey ?? "todo"}`)}
               </p>
               <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">אין משימות</p>
             </div>
           ) : null}
 
-          {/* Add task in this column */}
           <button
             type="button"
             onClick={() => {
-              setAddForm({ ...emptyForm(selectedProjectName ?? ""), status: mobileCol });
+              setAddForm({ ...emptyForm(selectedProjectName ?? ""), status: activeCol });
               setIsAddingProject(true);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border-main)] py-3 text-xs font-bold text-[color:var(--foreground-muted)] transition-all hover:border-indigo-500/50 hover:text-indigo-500"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[color:var(--border-main)] py-3 text-xs font-bold text-[color:var(--foreground-muted)] transition-all hover:border-indigo-500/50 hover:text-indigo-500"
           >
             <Plus size={14} aria-hidden />
             {t(`${boardPrefix}.addCard`)}
