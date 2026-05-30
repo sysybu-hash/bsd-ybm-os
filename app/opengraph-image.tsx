@@ -52,7 +52,7 @@ export default function RootOgImage() {
           }}
         />
 
-        {/* Main content */}
+        {/* Main content — direction:rtl חיוני כדי ש-Satori ירנדר עברית נכון */}
         <div
           style={{
             display: "flex",
@@ -60,10 +60,11 @@ export default function RootOgImage() {
             flex: 1,
             padding: "64px 80px",
             justifyContent: "space-between",
+            direction: "rtl",
           }}
         >
-          {/* Top: Logo area */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* Top: Logo area — LTR כי יש אנגלית בלבד */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, direction: "ltr" }}>
             <div
               style={{
                 width: 52,
@@ -85,8 +86,8 @@ export default function RootOgImage() {
             </span>
           </div>
 
-          {/* Middle: Headline */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Middle: Headline — RTL לעברית */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, direction: "rtl" }}>
             <div
               style={{
                 fontSize: 62,
@@ -94,6 +95,8 @@ export default function RootOgImage() {
                 color: "white",
                 lineHeight: 1.1,
                 letterSpacing: -1,
+                direction: "rtl",
+                textAlign: "right",
               }}
             >
               מערכת הפעלה לעסקים בישראל
@@ -105,14 +108,16 @@ export default function RootOgImage() {
                 fontWeight: 400,
                 maxWidth: 760,
                 lineHeight: 1.4,
+                direction: "rtl",
+                textAlign: "right",
               }}
             >
               לקוחות · מסמכים · AI · חיוב · דוחות — במקום אחד
             </div>
           </div>
 
-          {/* Bottom: Feature pills */}
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          {/* Bottom: Feature pills — flexDirection:row-reverse כדי שה-pills יהיו בסדר RTL */}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flexDirection: "row-reverse" }}>
             {["AI רב-מנועי", "חתימה דיגיטלית", "PayPlus / PayPal", "WebAuthn Passkeys", "ישראלי-100%"].map((f) => (
               <div
                 key={f}
@@ -124,6 +129,7 @@ export default function RootOgImage() {
                   color: "#a5b4fc",
                   fontSize: 18,
                   fontWeight: 600,
+                  direction: "rtl",
                 }}
               >
                 {f}
