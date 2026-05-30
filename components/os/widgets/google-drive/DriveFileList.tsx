@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   Folder,
   File,
@@ -79,6 +80,7 @@ export function DriveFileList({
   onToggleSelect,
   fileActionsSlot,
 }: FileListProps) {
+  const { t } = useI18n();
   if (driveError && !loading) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
@@ -167,10 +169,10 @@ export function DriveFileList({
         <thead className="sticky top-0 bg-[color:var(--background-main)] border-b border-[color:var(--border-main)] text-[10px] uppercase tracking-wider text-[color:var(--foreground-muted)]">
           <tr>
             <th className="p-3 w-10" />
-            <th className="p-3 text-start">שם</th>
-            <th className="p-3 text-start">סוג</th>
-            <th className="p-3 text-start">סטטוס</th>
-            <th className="p-3 text-start">עודכן</th>
+            <th className="p-3 text-start">{t("workspaceWidgets.googleDrive.table.name")}</th>
+            <th className="p-3 text-start">{t("workspaceWidgets.googleDrive.table.type")}</th>
+            <th className="p-3 text-start">{t("workspaceWidgets.googleDrive.table.status")}</th>
+            <th className="p-3 text-start">{t("workspaceWidgets.googleDrive.table.updated")}</th>
             <th className="p-3 w-28" />
           </tr>
         </thead>
