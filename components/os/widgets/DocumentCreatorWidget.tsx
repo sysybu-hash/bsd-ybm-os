@@ -71,9 +71,9 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
           <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`${t("workspaceWidgets.documentCreator.selectedFromVault")}: ${item.name}`)} />
           <div className="text-left space-y-0.5">
             <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">
-              לפני מע״מ · מע״מ {formatVatPercent(d.vatRatePercent)}%
+              {t("workspaceWidgets.documentCreator.preVatLabel", { vat: String(formatVatPercent(d.vatRatePercent)) })}
             </span>
-            <span className="text-xs text-[color:var(--foreground-muted)]">מע״מ: ₪{billing.vat.toLocaleString()}</span>
+            <span className="text-xs text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.vatAmountLabel", { amount: billing.vat.toLocaleString() })}</span>
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block">
               ₪{billing.total.toLocaleString()}
             </span>

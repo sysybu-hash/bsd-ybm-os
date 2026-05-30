@@ -1310,7 +1310,12 @@
       "deleteFailed": "Ошибка удаления",
       "restored": "Документ восстановлен",
       "restoreFailed": "Ошибка восстановления",
-      "downloading": "Загрузка"
+      "downloading": "Загрузка",
+      "typeLabel": "Тип: ",
+      "colDescription": "Описание",
+      "colQuantity": "Кол-во",
+      "colPrice": "Цена",
+      "colTotal": "Итого"
     },
     "documentCreator": {
       "fillAllItems": "Пожалуйста, заполните все поля товаров",
@@ -1321,7 +1326,9 @@
       "pdfRequired": "Сначала сформируйте документ",
       "pdfDownloaded": "PDF скачан",
       "urlCopied": "Скопировано",
-      "selectedFromVault": "Выбрано из хранилища"
+      "selectedFromVault": "Выбрано из хранилища",
+      "preVatLabel": "До НДС · НДС {vat}%",
+      "vatAmountLabel": "НДС: ₪{amount}"
     },
     "projectBoq": {
       "importFailed": "Ошибка импорта",

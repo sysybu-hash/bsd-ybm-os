@@ -1310,7 +1310,12 @@
       "deleteFailed": "Delete failed",
       "restored": "Document restored",
       "restoreFailed": "Restore failed",
-      "downloading": "Downloading"
+      "downloading": "Downloading",
+      "typeLabel": "Type: ",
+      "colDescription": "Description",
+      "colQuantity": "Quantity",
+      "colPrice": "Price",
+      "colTotal": "Total"
     },
     "documentCreator": {
       "fillAllItems": "Please fill all item details",
@@ -1321,7 +1326,9 @@
       "pdfRequired": "Generate the document before downloading PDF",
       "pdfDownloaded": "PDF downloaded",
       "urlCopied": "Copied",
-      "selectedFromVault": "Selected from vault"
+      "selectedFromVault": "Selected from vault",
+      "preVatLabel": "Pre-VAT · VAT {vat}%",
+      "vatAmountLabel": "VAT: ₪{amount}"
     },
     "projectBoq": {
       "importFailed": "Import failed",

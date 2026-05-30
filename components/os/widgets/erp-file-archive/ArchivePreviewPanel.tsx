@@ -2,6 +2,7 @@
 
 import React from "react";
 import { X } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import type { ErpArchiveFile, ScanDocPreview } from "./types";
 
@@ -22,6 +23,7 @@ export function ArchivePreviewPanel({
   previewError,
   onClose,
 }: ArchivePreviewPanelProps) {
+  const { t } = useI18n();
   return (
     <aside className="flex max-h-[55vh] w-full shrink-0 flex-col border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/40 lg:max-h-none lg:w-[min(100%,420px)] lg:border-r lg:border-t-0">
       <div className="flex items-start justify-between gap-2 border-b border-[color:var(--border-main)] p-4">
@@ -52,7 +54,7 @@ export function ArchivePreviewPanel({
         ) : file.source === "document" && scanDoc ? (
           <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-auto">
             <div className="mb-3 text-xs text-[color:var(--foreground-muted)]">
-              <span className="font-bold text-[color:var(--foreground-main)]">סוג: </span>{scanDoc.type}
+              <span className="font-bold text-[color:var(--foreground-main)]">{t("workspaceWidgets.fileArchive.typeLabel")}</span>{scanDoc.type}
             </div>
             {!scanDoc.lineItems?.length ? (
               <ScanDocSummary aiData={scanDoc.aiData} fileName={scanDoc.fileName} />
@@ -60,10 +62,10 @@ export function ArchivePreviewPanel({
               <table className="w-full text-start text-xs">
                 <thead>
                   <tr className="border-b border-[color:var(--border-main)] text-[color:var(--foreground-muted)]">
-                    <th className="py-2 font-bold">תיאור</th>
-                    <th className="py-2 font-bold">כמות</th>
-                    <th className="py-2 font-bold">מחיר</th>
-                    <th className="py-2 font-bold">סה״כ</th>
+                    <th className="py-2 font-bold">{t("workspaceWidgets.fileArchive.colDescription")}</th>
+                    <th className="py-2 font-bold">{t("workspaceWidgets.fileArchive.colQuantity")}</th>
+                    <th className="py-2 font-bold">{t("workspaceWidgets.fileArchive.colPrice")}</th>
+                    <th className="py-2 font-bold">{t("workspaceWidgets.fileArchive.colTotal")}</th>
                   </tr>
                 </thead>
                 <tbody>
