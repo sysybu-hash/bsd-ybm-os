@@ -57,7 +57,7 @@ export default function KnowledgeVaultPicker({
                     onSelect(item);
                     onClose();
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-right text-xs hover:bg-[color:var(--surface-soft)]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start text-xs hover:bg-[color:var(--surface-soft)]"
                 >
                   <FolderOpen size={14} className="shrink-0 text-indigo-400" />
                   <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>

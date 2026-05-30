@@ -167,10 +167,10 @@ export function DriveFileList({
         <thead className="sticky top-0 bg-[color:var(--background-main)] border-b border-[color:var(--border-main)] text-[10px] uppercase tracking-wider text-[color:var(--foreground-muted)]">
           <tr>
             <th className="p-3 w-10" />
-            <th className="p-3 text-right">שם</th>
-            <th className="p-3 text-right">סוג</th>
-            <th className="p-3 text-right">סטטוס</th>
-            <th className="p-3 text-right">עודכן</th>
+            <th className="p-3 text-start">שם</th>
+            <th className="p-3 text-start">סוג</th>
+            <th className="p-3 text-start">סטטוס</th>
+            <th className="p-3 text-start">עודכן</th>
             <th className="p-3 w-28" />
           </tr>
         </thead>

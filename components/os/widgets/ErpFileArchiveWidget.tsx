@@ -54,26 +54,26 @@ export default function ErpFileArchiveWidget() {
       <div data-archive-menu className={menuClassName} dir={dir}>
         {archiveView !== "trash" ? (
           <>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs hover:bg-[color:var(--foreground-muted)]/10"
               onClick={(e) => { e.stopPropagation(); handlePreview(file); }}>
               <Eye size={14} aria-hidden /> תצוגה מקדימה
             </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs hover:bg-[color:var(--foreground-muted)]/10"
               onClick={(e) => { e.stopPropagation(); void handleDownload(file); }}>
               <Download size={14} aria-hidden /> הורדה
             </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
               onClick={(e) => { e.stopPropagation(); openDeleteDialog(file); }}>
               <Trash2 size={14} aria-hidden /> העבר לפח
             </button>
           </>
         ) : (
           <>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs hover:bg-[color:var(--foreground-muted)]/10"
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs hover:bg-[color:var(--foreground-muted)]/10"
               onClick={(e) => { e.stopPropagation(); void handleRestore(file); }}>
               <RotateCcw size={14} aria-hidden /> שחזור לארכיון
             </button>
-            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+            <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-start text-xs text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
               onClick={(e) => { e.stopPropagation(); openDeleteDialog(file); }}>
               <Trash2 size={14} aria-hidden /> מחיקה לצמיתות
             </button>
