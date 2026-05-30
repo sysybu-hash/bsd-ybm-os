@@ -35,7 +35,7 @@ export function IssuedDocumentsList({ issuedList, issuedListLoading, onOpen, onR
               <button
                 type="button"
                 onClick={() => onOpen(doc.id)}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-right text-xs transition-colors hover:border-[color:var(--border-main)] hover:bg-[color:var(--background-main)]/60"
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-start text-xs transition-colors hover:border-[color:var(--border-main)] hover:bg-[color:var(--background-main)]/60"
               >
                 <span className="font-bold text-[color:var(--foreground-main)]">
                   {documentTypeLabel(doc.type)} #{doc.number}

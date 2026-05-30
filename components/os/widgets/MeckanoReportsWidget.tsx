@@ -144,7 +144,7 @@ export default function MeckanoReportsWidget() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse min-w-[600px]">
             <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
-              <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
+              <tr className="text-start text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
                 <th className="px-6 py-4">{t("workspaceWidgets.meckano.colDate")}</th>
                 <th className="px-6 py-4">{t("workspaceWidgets.meckano.colEmployee")}</th>
                 <th className="px-6 py-4">{t("workspaceWidgets.meckano.colProject")}</th>

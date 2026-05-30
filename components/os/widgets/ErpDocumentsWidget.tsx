@@ -44,7 +44,7 @@ export default function ErpDocumentsWidget() {
               key={doc.id}
               type="button"
               onClick={() => void fetchDocDetails(doc.id)}
-              className={`w-full text-right p-4 border-b border-[color:var(--border-main)]/30 hover:bg-[color:var(--foreground-muted)]/5 transition-colors group ${selectedDoc?.id === doc.id ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-r-2 border-r-emerald-600 dark:border-r-emerald-500" : ""}`}
+              className={`w-full text-start p-4 border-b border-[color:var(--border-main)]/30 hover:bg-[color:var(--foreground-muted)]/5 transition-colors group ${selectedDoc?.id === doc.id ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-e-2 border-e-emerald-600 dark:border-e-emerald-500" : ""}`}
             >
               <div className="flex items-center gap-3 mb-1">
                 <FileText className={`w-4 h-4 ${selectedDoc?.id === doc.id ? "text-emerald-600 dark:text-emerald-400" : "text-[color:var(--foreground-muted)]"}`} />

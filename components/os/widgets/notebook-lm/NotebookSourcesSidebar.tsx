@@ -131,7 +131,7 @@ export function NotebookSourcesSidebar({
                 >
                   <button
                     type="button"
-                    className="flex-1 truncate text-right text-xs font-medium text-[color:var(--foreground-main)]"
+                    className="flex-1 truncate text-start text-xs font-medium text-[color:var(--foreground-main)]"
                     onClick={() => onLoadNotebook(nb.id)}
                   >
                     {nb.title}

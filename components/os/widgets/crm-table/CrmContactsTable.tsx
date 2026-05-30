@@ -37,7 +37,7 @@ export function CrmContactsTable({
       <div className="overflow-x-auto min-w-0">
         <table className="w-full border-collapse min-w-[920px]">
           <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
-            <tr className="text-right text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
+            <tr className="text-start text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
               <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnClient")}</th>
               <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnStatus")}</th>
               <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnContact")}</th>

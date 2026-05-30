@@ -304,7 +304,7 @@ export default function Omnibar({
                 onSelectResult?.(result);
                 setInput("");
               }}
-              className="flex min-h-[44px] w-full items-center justify-between border-b border-[color:var(--border-main)]/50 p-3 text-right transition last:border-0 hover:bg-[color:var(--surface-soft)]"
+              className="flex min-h-[44px] w-full items-center justify-between border-b border-[color:var(--border-main)]/50 p-3 text-start transition last:border-0 hover:bg-[color:var(--surface-soft)]"
             >
               <div className="flex items-center gap-3">
                 <div

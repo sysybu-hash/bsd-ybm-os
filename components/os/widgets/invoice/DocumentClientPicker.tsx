@@ -158,7 +158,7 @@ export default function DocumentClientPicker({
                   type="button"
                   role="option"
                   aria-selected={c.id === selectedContactId}
-                  className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-right text-sm hover:bg-[color:var(--background-main)]/60"
+                  className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-start text-sm hover:bg-[color:var(--background-main)]/60"
                   onPointerDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
