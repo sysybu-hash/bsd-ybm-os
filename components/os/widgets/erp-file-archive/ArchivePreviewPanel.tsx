@@ -57,7 +57,7 @@ export function ArchivePreviewPanel({
             {!scanDoc.lineItems?.length ? (
               <ScanDocSummary aiData={scanDoc.aiData} fileName={scanDoc.fileName} />
             ) : (
-              <table className="w-full text-right text-xs">
+              <table className="w-full text-start text-xs">
                 <thead>
                   <tr className="border-b border-[color:var(--border-main)] text-[color:var(--foreground-muted)]">
                     <th className="py-2 font-bold">תיאור</th>
