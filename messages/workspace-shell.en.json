@@ -1315,7 +1315,15 @@
       "colDescription": "Description",
       "colQuantity": "Quantity",
       "colPrice": "Price",
-      "colTotal": "Total"
+      "colTotal": "Total",
+      "previewTitle": "Document preview",
+      "closeAria": "Close preview",
+      "loadingPreview": "Loading preview…",
+      "pdfTitle": "PDF preview",
+      "noPreview": "No preview available.",
+      "noLineItems": "No line items — download or open the document from the menu.",
+      "vendorLabel": "Vendor: ",
+      "totalLabel": "Total: "
     },
     "documentCreator": {
       "fillAllItems": "Please fill all item details",

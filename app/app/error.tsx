@@ -3,11 +3,12 @@
 /**
  * app/app/error.tsx
  * Error boundary for the workspace (app) route segment.
- * Captures to Sentry and shows a friendly Hebrew recovery UI.
+ * Captures to Sentry and shows a localised recovery UI.
  */
 import { useEffect } from "react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = Readonly<{
   error: Error & { digest?: string };
@@ -15,6 +16,8 @@ type Props = Readonly<{
 }>;
 
 export default function WorkspaceError({ error, reset }: Props) {
+  const { t, dir } = useI18n();
+
   useEffect(() => {
     Sentry.captureException(error, {
       extra: { digest: error.digest, route: "app/*" },
@@ -25,11 +28,10 @@ export default function WorkspaceError({ error, reset }: Props) {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="flex min-h-screen flex-col items-center justify-center bg-[#0a0c10] px-6 py-16 text-white"
     >
       <div className="flex w-full max-w-md flex-col gap-6 text-center">
-        {/* Icon */}
         <div className="flex justify-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-400">
             <svg
@@ -51,12 +53,12 @@ export default function WorkspaceError({ error, reset }: Props) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-bold">משהו השתבש בסביבת העבודה</h1>
+          <h1 className="text-xl font-bold">{t("siteErrors.workspaceErrorTitle")}</h1>
           <p className="text-sm leading-relaxed text-white/50">
-            אירעה שגיאה בלתי צפויה. הצוות קיבל התראה אוטומטית.
+            {t("siteErrors.workspaceErrorBody")}
           </p>
           {isDev && error?.message && (
-            <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-white/[0.04] p-3 text-right text-xs text-red-300">
+            <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-white/[0.04] p-3 text-start text-xs text-red-300">
               {error.message}
             </pre>
           )}
@@ -68,13 +70,13 @@ export default function WorkspaceError({ error, reset }: Props) {
             onClick={() => reset()}
             className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            נסה שוב
+            {t("siteErrors.retry")}
           </button>
           <Link
             href="/app"
             className="rounded-xl border border-white/10 bg-white/[0.04] px-6 py-2.5 text-sm font-bold text-white/80 transition hover:bg-white/[0.07]"
           >
-            חזור לדשבורד
+            {t("siteErrors.backToDashboard")}
           </Link>
         </div>
       </div>

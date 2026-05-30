@@ -36,6 +36,9 @@
     "workspace": "Workspace",
     "notFoundCode": "404",
     "notFoundTitle": "Page not found",
-    "notFoundBody": "The link may be wrong or the page moved. You can go home, open the workspace, or sign in."
+    "notFoundBody": "The link may be wrong or the page moved. You can go home, open the workspace, or sign in.",
+    "workspaceErrorTitle": "Something went wrong in the workspace",
+    "workspaceErrorBody": "An unexpected error occurred. The team has been automatically notified.",
+    "backToDashboard": "Back to dashboard"
   }
 }

@@ -24,11 +24,12 @@ export function ArchivePreviewPanel({
   onClose,
 }: ArchivePreviewPanelProps) {
   const { t } = useI18n();
+  const FA = "workspaceWidgets.fileArchive";
   return (
     <aside className="flex max-h-[55vh] w-full shrink-0 flex-col border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/40 lg:max-h-none lg:w-[min(100%,420px)] lg:border-r lg:border-t-0">
       <div className="flex items-start justify-between gap-2 border-b border-[color:var(--border-main)] p-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">תצוגה מקדימה</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">{t(`${FA}.previewTitle`)}</p>
           <p className="mt-1 truncate text-sm font-bold text-[color:var(--foreground-main)]">{file.name}</p>
           <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
             {file.projectName}{file.clientName ? ` · ${file.clientName}` : ""}
@@ -37,7 +38,7 @@ export function ArchivePreviewPanel({
         <button
           type="button"
           className="rounded-lg p-2 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/10"
-          aria-label="סגור תצוגה"
+          aria-label={t(`${FA}.closeAria`)}
           onClick={onClose}
         >
           <X size={18} />
@@ -46,18 +47,18 @@ export function ArchivePreviewPanel({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
         {previewLoading ? (
-          <WidgetState variant="loading" message="טוען תצוגה…" />
+          <WidgetState variant="loading" message={t(`${FA}.loadingPreview`)} />
         ) : previewError ? (
           <WidgetState variant="error" message={previewError} />
         ) : file.source === "issued" && pdfBlobUrl ? (
-          <iframe title="תצוגת PDF" src={pdfBlobUrl} className="h-full min-h-[480px] w-full rounded-xl border border-[color:var(--border-main)] bg-white" />
+          <iframe title={t(`${FA}.pdfTitle`)} src={pdfBlobUrl} className="h-full min-h-[480px] w-full rounded-xl border border-[color:var(--border-main)] bg-white" />
         ) : file.source === "document" && scanDoc ? (
           <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-auto">
             <div className="mb-3 text-xs text-[color:var(--foreground-muted)]">
-              <span className="font-bold text-[color:var(--foreground-main)]">{t("workspaceWidgets.fileArchive.typeLabel")}</span>{scanDoc.type}
+              <span className="font-bold text-[color:var(--foreground-main)]">{t(`${FA}.typeLabel`)}</span>{scanDoc.type}
             </div>
             {!scanDoc.lineItems?.length ? (
-              <ScanDocSummary aiData={scanDoc.aiData} fileName={scanDoc.fileName} />
+              <ScanDocSummary aiData={scanDoc.aiData} fileName={scanDoc.fileName} t={t} />
             ) : (
               <table className="w-full text-start text-xs">
                 <thead>
@@ -82,7 +83,7 @@ export function ArchivePreviewPanel({
             )}
           </div>
         ) : (
-          <WidgetState variant="empty" message="אין תצוגה זמינה." />
+          <WidgetState variant="empty" message={t(`${FA}.noPreview`)} />
         )}
       </div>
     </aside>
@@ -92,10 +93,13 @@ export function ArchivePreviewPanel({
 function ScanDocSummary({
   aiData,
   fileName,
+  t,
 }: {
   aiData?: Record<string, unknown> | null;
   fileName: string;
+  t: (key: string) => string;
 }) {
+  const FA = "workspaceWidgets.fileArchive";
   const vendor =
     typeof aiData?.vendor === "string"
       ? aiData.vendor
@@ -109,7 +113,7 @@ function ScanDocSummary({
     return (
       <WidgetState
         variant="empty"
-        message="אין שורות מפורטות — ניתן להוריד או לפתוח את המסמך מהתפריט."
+        message={t(`${FA}.noLineItems`)}
       />
     );
   }
@@ -119,13 +123,13 @@ function ScanDocSummary({
       <p className="font-bold text-[color:var(--foreground-main)]">{fileName}</p>
       {vendor ? (
         <p>
-          <span className="text-[color:var(--foreground-muted)]">ספק: </span>
+          <span className="text-[color:var(--foreground-muted)]">{t(`${FA}.vendorLabel`)}</span>
           {vendor}
         </p>
       ) : null}
       {total != null ? (
         <p>
-          <span className="text-[color:var(--foreground-muted)]">סכום: </span>
+          <span className="text-[color:var(--foreground-muted)]">{t(`${FA}.totalLabel`)}</span>
           ₪{total.toLocaleString("he-IL")}
         </p>
       ) : null}

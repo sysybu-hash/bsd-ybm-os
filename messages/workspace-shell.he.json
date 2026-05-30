@@ -1315,7 +1315,15 @@
       "colDescription": "תיאור",
       "colQuantity": "כמות",
       "colPrice": "מחיר",
-      "colTotal": "סה״כ"
+      "colTotal": "סה״כ",
+      "previewTitle": "תצוגה מקדימה",
+      "closeAria": "סגור תצוגה",
+      "loadingPreview": "טוען תצוגה…",
+      "pdfTitle": "תצוגת PDF",
+      "noPreview": "אין תצוגה זמינה.",
+      "noLineItems": "אין שורות מפורטות — ניתן להוריד או לפתוח את המסמך מהתפריט.",
+      "vendorLabel": "ספק: ",
+      "totalLabel": "סכום: "
     },
     "documentCreator": {
       "fillAllItems": "אנא מלא את כל פרטי הפריטים",

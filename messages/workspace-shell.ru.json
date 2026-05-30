@@ -1315,7 +1315,15 @@
       "colDescription": "Описание",
       "colQuantity": "Кол-во",
       "colPrice": "Цена",
-      "colTotal": "Итого"
+      "colTotal": "Итого",
+      "previewTitle": "Предварительный просмотр",
+      "closeAria": "Закрыть просмотр",
+      "loadingPreview": "Загрузка просмотра…",
+      "pdfTitle": "Просмотр PDF",
+      "noPreview": "Предварительный просмотр недоступен.",
+      "noLineItems": "Нет детальных строк — скачайте или откройте документ через меню.",
+      "vendorLabel": "Поставщик: ",
+      "totalLabel": "Сумма: "
     },
     "documentCreator": {
       "fillAllItems": "Пожалуйста, заполните все поля товаров",
