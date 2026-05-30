@@ -318,7 +318,8 @@
     },
     "footer": {
       "brand": "BSD-YBM",
-      "lead": "An intelligent operations system that connects clients, documents, billing, management control and AI in one workspace."
+      "lead": "An intelligent operations system that connects clients, documents, billing, management control and AI in one workspace.",
+      "navTitle": "Quick links"
     },
     "osLanding": {
       "signIn": "Sign in",

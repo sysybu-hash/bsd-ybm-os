@@ -50,6 +50,7 @@ export default function MarketingContactStrip({ embedded = false, inPanel = fals
                   <a
                     href={`mailto:${SITE_CONTACT.email}`}
                     className="break-all text-amber-200/90 underline-offset-2 hover:underline"
+                    aria-label={`${t("marketingHome.contact.emailLabel")}: ${SITE_CONTACT.email}`}
                   >
                     {SITE_CONTACT.email}
                   </a>
