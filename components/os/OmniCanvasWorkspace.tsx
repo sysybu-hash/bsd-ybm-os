@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense } from "react";
+import { PanelRightOpen } from "lucide-react";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
 import OSSidebar from "@/components/os/layout/OSSidebar";
@@ -49,16 +50,24 @@ function OmniCanvasSidebarRail({
   const hideForHomeGridEdit = editMode && widgetsCount === 0;
   const railVisible = sidebarRailVisible && !hideForHomeGridEdit;
 
+  // לשונית ההצצה: מוצגת כשיש widget ממוקסם והסרגל מכווץ —
+  // אינה תלויה ב-railVisible (שתלוי בעצמו ב-peek → תלות מעגלית).
+  const showPeekTab = hasMaximizedWidget && !sidebarRailPeek && !hideForHomeGridEdit;
+
   return (
     <>
-      {hasMaximizedWidget && !sidebarRailPeek && railVisible ? (
+      {showPeekTab ? (
         <button
           type="button"
-          className="os-sidebar-peek-rail fixed z-[1190] hidden md:block"
+          className="os-sidebar-peek-rail fixed z-[1190] hidden md:flex items-center justify-center"
           onMouseEnter={() => setSidebarRailPeek(true)}
+          onClick={() => setSidebarRailPeek(true)}
           onFocus={() => setSidebarRailPeek(true)}
           aria-label={sidebarAria}
-        />
+          title={sidebarAria}
+        >
+          <PanelRightOpen size={16} aria-hidden className="rtl:rotate-180" />
+        </button>
       ) : null}
 
       <OSSidebar
