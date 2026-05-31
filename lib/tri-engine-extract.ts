@@ -246,6 +246,26 @@ export async function runTriEngineExtraction(params: {
     }
   }
 
+  if (runMode === "SINGLE_MISTRAL") {
+    telemetry.documentAI = { phase: "skipped" };
+    telemetry.gemini = { phase: "skipped" };
+    telemetry.gpt = { phase: "skipped" };
+    telemetry.mistral = { phase: "running" };
+    await emitTelemetry();
+    const t0 = Date.now();
+    try {
+      v5 = await runMistralOnly();
+      telemetry.mistral = { phase: "ok", ms: Date.now() - t0 };
+      await emitTelemetry();
+      await emitPartial(v5, "mistral_single");
+      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+    } catch (e) {
+      telemetry.mistral = { phase: "error", detail: compactError(e, 200) };
+      await emitTelemetry();
+      throw e;
+    }
+  }
+
   if (runMode === "SINGLE_OPENAI") {
     telemetry.documentAI = { phase: "skipped" };
     telemetry.gemini = { phase: "skipped" };

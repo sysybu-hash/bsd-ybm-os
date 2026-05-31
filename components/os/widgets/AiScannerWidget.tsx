@@ -191,6 +191,9 @@ export default function AiScannerWidget({
             {engineMeta?.configured.gemini ? (
               <span className="ms-auto shrink-0 text-[9px] font-bold text-purple-500">Gemini ✓</span>
             ) : null}
+            {engineMeta?.configured.mistral ? (
+              <span className="shrink-0 text-[9px] font-bold text-orange-500">Pixtral ✓</span>
+            ) : null}
           </div>
           {/* Desktop: 3 cards */}
           <div className="hidden gap-2 p-2 sm:grid sm:grid-cols-3">
@@ -213,6 +216,12 @@ export default function AiScannerWidget({
                 {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}
               </div>
             </div>
+            {engineMeta?.configured.mistral ? (
+              <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
+                <span className="mx-auto block text-[10px]">🟠</span>
+                <div className="text-[9px] font-bold text-orange-500">Pixtral ✓</div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

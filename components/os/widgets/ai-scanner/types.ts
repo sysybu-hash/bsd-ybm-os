@@ -2,9 +2,10 @@ import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 export type EngineMeta = {
-  configured: { documentAI: boolean; gemini: boolean; openai: boolean };
+  configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean };
   gemini?: { primaryLabel?: string };
   openai?: { defaultModelId?: string };
+  mistral?: { primaryLabel?: string };
 };
 
 export interface DocumentAnalysis {

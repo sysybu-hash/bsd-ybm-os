@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   ANTHROPIC_FLAGSHIP_MODEL,
+  MISTRAL_VISION_FLAGSHIP,
+  getMistralVisionModel,
   getOpenAiResponsesModelCandidates,
   getOpenAiVisionModel,
   isDocAiConfigured,
   isGeminiConfigured,
+  isMistralConfigured,
   isOpenAiConfigured,
 } from "@/lib/ai-providers";
 import { getDocAiProcessorConfigs } from "@/lib/ai-extract-docai";
@@ -55,6 +58,7 @@ export const GET = withWorkspacesAuth(async () => {
       documentAI: isDocAiConfigured(),
       gemini: isGeminiConfigured(),
       openai: isOpenAiConfigured(),
+      mistral: isMistralConfigured(),
     },
     documentAI: {
       processors: getDocAiProcessorConfigs(),
@@ -69,6 +73,14 @@ export const GET = withWorkspacesAuth(async () => {
     },
     anthropic: {
       flagshipModelId: ANTHROPIC_FLAGSHIP_MODEL,
+    },
+    mistral: {
+      flagshipModelId: MISTRAL_VISION_FLAGSHIP,
+      primaryModelId: getMistralVisionModel(),
+      primaryLabel: getMistralVisionModel()
+        .replace("pixtral-large-latest", "Pixtral Large")
+        .replace("pixtral-12b-2409", "Pixtral 12B")
+        .replace("mistral-large-latest", "Mistral Large"),
     },
     openai: {
       defaultModelId: openaiDefaultModelId,

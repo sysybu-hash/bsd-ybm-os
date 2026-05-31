@@ -28,9 +28,10 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
 
   const [isDragging, setIsDragging] = useState(false);
   const [engineMeta, setEngineMeta] = useState<{
-    configured: { documentAI: boolean; gemini: boolean; openai: boolean };
+    configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean };
     gemini?: { primaryLabel?: string };
     openai?: { defaultModelId?: string };
+    mistral?: { primaryLabel?: string };
   } | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
   const [scanModeOverride, setScanModeOverride] = useState<ScanModeV5>(() => defaultScanModeForIndustry(industryId));
@@ -164,6 +165,7 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
     if (engineRunMode === "SINGLE_OPENAI") return engineMeta.openai?.defaultModelId ?? "OpenAI";
     if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
+    if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Pixtral";
     if (engineRunMode === "MULTI_PARALLEL") return tr("scanner.modeMulti", "ריבוי מנועים");
     return tr("scanner.modeAuto", "אוטומטי");
   }, [engineMeta, engineRunMode, tr]);

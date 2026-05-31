@@ -18,7 +18,7 @@ import type { MessageTree } from "@/lib/i18n/keys";
 import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
-import { isDocAiConfigured, isGeminiConfigured, isOpenAiConfigured } from "@/lib/ai-providers";
+import { isDocAiConfigured, isGeminiConfigured, isMistralConfigured, isOpenAiConfigured } from "@/lib/ai-providers";
 import { notifyUser } from "@/lib/notify-user";
 
 export const TRI_ENGINE_RATE_PER_HOUR = 40;
@@ -32,7 +32,8 @@ export type TriEngineRunMode =
   | "MULTI_PARALLEL"
   | "SINGLE_DOCUMENT_AI"
   | "SINGLE_GEMINI"
-  | "SINGLE_OPENAI";
+  | "SINGLE_OPENAI"
+  | "SINGLE_MISTRAL";
 
 export function parseScanMode(raw: string | null): ScanModeV5 {
   const u = String(raw ?? "").toUpperCase();
@@ -57,14 +58,15 @@ export function parseTriEngineRunMode(raw: string | null): TriEngineRunMode {
     u === "MULTI_PARALLEL" ||
     u === "SINGLE_DOCUMENT_AI" ||
     u === "SINGLE_GEMINI" ||
-    u === "SINGLE_OPENAI"
+    u === "SINGLE_OPENAI" ||
+    u === "SINGLE_MISTRAL"
   ) {
     return u;
   }
   return "AUTO";
 }
 
-type TriEngineProvider = "docai" | "gemini" | "openai";
+type TriEngineProvider = "docai" | "gemini" | "openai" | "mistral";
 
 function selectedProvidersForTriEngine(
   scanMode: ScanModeV5,
@@ -73,6 +75,7 @@ function selectedProvidersForTriEngine(
   if (engineRunMode === "SINGLE_DOCUMENT_AI") return ["docai"];
   if (engineRunMode === "SINGLE_GEMINI") return ["gemini"];
   if (engineRunMode === "SINGLE_OPENAI") return ["openai"];
+  if (engineRunMode === "SINGLE_MISTRAL") return ["mistral"];
   if (engineRunMode === "MULTI_PARALLEL") {
     return scanMode === "INVOICE_FINANCIAL" ? ["docai", "gemini", "openai"] : ["gemini", "openai"];
   }
@@ -95,6 +98,7 @@ export function triEngineCreditKindFor(
 function isProviderConfigured(provider: TriEngineProvider): boolean {
   if (provider === "docai") return isDocAiConfigured();
   if (provider === "openai") return isOpenAiConfigured();
+  if (provider === "mistral") return isMistralConfigured();
   return isGeminiConfigured();
 }
 
