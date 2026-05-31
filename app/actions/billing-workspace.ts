@@ -10,6 +10,8 @@ import type {
   InsuranceExpenseLine,
   QuickPaymentPreset,
 } from "@/lib/billing-workspace";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("billing-workspace");
 
 function canEdit(role: string): boolean {
   return role === UserRole.ORG_ADMIN || role === UserRole.SUPER_ADMIN;
@@ -79,7 +81,7 @@ export async function saveBillingWorkspaceAction(
     revalidatePath("/app/settings/overview");
     return { ok: true };
   } catch (e) {
-    console.error("saveBillingWorkspaceAction", e);
+    log.error("saveBillingWorkspaceAction", e);
     return { ok: false, error: "׳©׳׳™׳¨׳” ׳ ׳›׳©׳׳”" };
   }
 }

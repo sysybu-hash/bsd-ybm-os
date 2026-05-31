@@ -2,6 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("financial-insights");
 
 export async function generateAndStoreInsightForOrganization(
   organizationId: string,
@@ -88,7 +90,7 @@ export async function runDailyInsightsForAllOrganizations(): Promise<void> {
     try {
       await generateAndStoreInsightForOrganization(o.id);
     } catch (e) {
-      console.error("Insight failed for org", o.id, e);
+      log.error("insight_failed", e, { orgId: o.id });
     }
   }
 }

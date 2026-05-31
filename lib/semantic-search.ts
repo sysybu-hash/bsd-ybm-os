@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { askAI } from "@/lib/ai-orchestrator";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("semantic-search");
 
 export interface SemanticSearchResult {
   type: 'project' | 'contact' | 'unknown';
@@ -40,7 +42,7 @@ export async function semanticSearch(query: string, organizationId: string): Pro
     const cleanedResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
     return JSON.parse(cleanedResponse);
   } catch (err) {
-    console.error("Semantic search AI error:", err);
+    log.error("Semantic search AI error:", err);
     // Fallback to simple text search
     const results: SemanticSearchResult[] = [];
     const lowerQuery = query.toLowerCase();

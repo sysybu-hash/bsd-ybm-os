@@ -37,6 +37,8 @@ import {
   isTextLikeMime,
   isDocxMime,
 } from "@/lib/scan-mime";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("process-document");
 
 function getGeminiKey(): string | undefined {
   return env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
@@ -446,7 +448,7 @@ export async function processDocumentAction(
       },
     };
   } catch (error) {
-    console.error("processDocumentAction error:", error);
+    log.error("processDocumentAction error:", error);
     const msg = error instanceof Error ? error.message : String(error);
     if (looksLikeAuthFailure(msg)) {
       const prov = effectiveProviderForError ?? "gemini";

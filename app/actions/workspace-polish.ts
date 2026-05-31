@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth";
 import type { ActionResponse } from "@/lib/polish/action-response";
 import { needsIndustryConfigPolish } from "@/lib/polish/industry-config";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("workspace-polish");
 
 const DEFAULT_INDUSTRY_CONFIG: Prisma.JsonObject = {
   theme: "system",
@@ -61,7 +63,7 @@ export async function polishOrganizationState(orgId: string): Promise<ActionResp
     return { success: true, data: { patched: true } };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    console.error("[workspace-polish]", message);
+    log.error("[workspace-polish]", message);
     return { success: false, error: message };
   }
 }

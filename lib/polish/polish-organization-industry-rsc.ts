@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { needsIndustryConfigPolish } from "@/lib/polish/industry-config";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("polish-organization-industry-rsc");
 
 const DEFAULT_INDUSTRY_CONFIG: Prisma.JsonObject = {
   theme: "system",
@@ -39,7 +41,7 @@ export async function polishOrganizationIndustryConfigFromRsc(
     });
     return true;
   } catch (e) {
-    console.error("[polishOrganizationIndustryConfigFromRsc]", e);
+    log.error("[polishOrganizationIndustryConfigFromRsc]", e);
     return false;
   }
 }

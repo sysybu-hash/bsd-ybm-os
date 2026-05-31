@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { VAT_RATE } from "@/lib/billing-calculations";
 import { getExpectedTierOrderAmountIls } from "@/lib/billing-pricing";
 import { tierLabelHe, defaultScanBalancesForTier, parseSubscriptionTier } from "@/lib/subscription-tier-config";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("paypal-capture-apply");
 
 export type ApplyPayPalCaptureOk =
   | { ok: true; duplicate: true }
@@ -225,7 +227,7 @@ export async function applyPayPalCaptureResult(params: {
       return { ok: false, status: 400, error: "סוג הזמנה לא מוכר" };
     }
   } catch (e) {
-    console.error("[applyPayPalCaptureResult]", e);
+    log.error("[applyPayPalCaptureResult]", e);
     return {
       ok: false,
       status: 500,

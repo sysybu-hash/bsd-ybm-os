@@ -3,6 +3,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("get-issued-documents");
 
 export async function getIssuedDocumentsAction() {
   const session = await getServerSession(authOptions);
@@ -41,7 +43,7 @@ export async function getIssuedDocumentsAction() {
       })),
     };
   } catch (error) {
-    console.error("Error fetching issued documents:", error);
+    log.error("Error fetching issued documents:", error);
     return { success: false, error: "Failed to fetch documents" };
   }
 }

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("billing-invoice");
 
 export async function createTestInvoiceAction(): Promise<
   { ok: true } | { ok: false; error: string }
@@ -34,7 +36,7 @@ export async function createTestInvoiceAction(): Promise<
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
-    console.error("createTestInvoiceAction", e);
+    log.error("createTestInvoiceAction", e);
     return { ok: false, error: "׳™׳¦׳™׳¨׳× ׳—׳©׳‘׳•׳ ׳™׳× ׳ ׳›׳©׳׳”" };
   }
 }
@@ -81,7 +83,7 @@ export async function createQuickPaymentInvoiceAction(
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
-    console.error("createQuickPaymentInvoiceAction", e);
+    log.error("createQuickPaymentInvoiceAction", e);
     return { ok: false, error: "׳™׳¦׳™׳¨׳× ׳‘׳§׳©׳× ׳×׳©׳׳•׳ ׳ ׳›׳©׳׳”" };
   }
 }

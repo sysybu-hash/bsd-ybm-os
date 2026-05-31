@@ -3,6 +3,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("get-executive-data");
 
 export async function getExecutiveDataAction() {
   const session = await getServerSession(authOptions);
@@ -42,7 +44,7 @@ export async function getExecutiveDataAction() {
       }
     };
   } catch (error) {
-    console.error("Executive data error:", error);
+    log.error("Executive data error:", error);
     return { success: false, error: "Failed to load executive data" };
   }
 }

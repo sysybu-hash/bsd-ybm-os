@@ -23,6 +23,8 @@ export class GoogleOAuthRefreshError extends Error {
 }
 
 import { PRODUCTION_SITE_URL, resolveSiteBaseUrl } from "@/lib/site-url";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("google-oauth-client");
 
 export function getGoogleOAuthRedirectUri(): string {
   const base = resolveSiteBaseUrl() ?? PRODUCTION_SITE_URL;
@@ -102,7 +104,7 @@ export async function getGoogleOAuth2ClientForUser(userId: string) {
         where: { id: account.id },
         data,
       })
-      .catch((err) => console.error("[google-oauth] token persist failed", err));
+      .catch((err) => log.error("[google-oauth] token persist failed", err));
   });
 
   const expiresAtMs = account.expires_at ? account.expires_at * 1000 : 0;

@@ -23,6 +23,8 @@ import { normalizeConstructionTrade } from "@/lib/construction-trades";
 import { normalizeIndustryType } from "@/lib/professions/config";
 import { deleteOrganizationCascade } from "@/lib/organization-delete-cascade";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("manage-subscriptions");
 
 async function requireSuperAdmin() {
   const session = await getServerSession(authOptions);
@@ -123,7 +125,7 @@ export async function manageSubsSaveTenantDomainAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {
-    console.error("manageSubsSaveTenantDomainAction", e);
+    log.error("manageSubsSaveTenantDomainAction", e);
     return { ok: false, error: "׳©׳׳™׳¨׳× ׳“׳•׳׳™׳™׳ ׳ ׳›׳©׳׳”" };
   }
 }
@@ -242,7 +244,7 @@ export async function manageSubsCreateManualUserAction(
       ? { ok: true, emailed: true }
       : { ok: true, emailed: false, mailError: mail.error };
   } catch (e) {
-    console.error("manageSubsCreateManualUserAction", e);
+    log.error("manageSubsCreateManualUserAction", e);
     return { ok: false, error: "יצירת ארגון נכשלה" };
   }
 }
@@ -326,7 +328,7 @@ export async function manageSubsSendTierInviteAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {
-    console.error("manageSubsSendTierInviteAction", e);
+    log.error("manageSubsSendTierInviteAction", e);
     return { ok: false, error: "׳©׳׳™׳¨׳× ׳”׳–׳׳ ׳” ׳׳• ׳©׳׳™׳—׳× ׳׳™׳™׳ ׳ ׳›׳©׳׳”" };
   }
 }
@@ -384,7 +386,7 @@ export async function manageSubsUpdateSubscriptionAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {
-    console.error("manageSubsUpdateSubscriptionAction", e);
+    log.error("manageSubsUpdateSubscriptionAction", e);
     return { ok: false, error: "׳¢׳“׳›׳•׳ ׳׳ ׳•׳™ ׳ ׳›׳©׳" };
   }
 }
@@ -418,7 +420,7 @@ export async function manageSubsDeleteUserByEmailAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {
-    console.error("manageSubsDeleteUserByEmailAction", e);
+    log.error("manageSubsDeleteUserByEmailAction", e);
     return { ok: false, error: "׳׳—׳™׳§׳× ׳׳©׳×׳׳© ׳ ׳›׳©׳׳”" };
   }
 }
@@ -454,7 +456,7 @@ export async function manageSubsDeleteOrganizationAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch (e) {
-    console.error("manageSubsDeleteOrganizationAction", e);
+    log.error("manageSubsDeleteOrganizationAction", e);
     return { ok: false, error: "׳׳—׳™׳§׳× ׳׳¨׳’׳•׳ ׳ ׳›׳©׳׳”" };
   }
 }

@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { CONSTRUCTION_TRADE_IDS, type ConstructionTradeId } from "@/lib/construction-trades";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("organization-actions");
 
 export type UpdateOrganizationTradeResult =
   | { success: true }
@@ -34,7 +36,7 @@ export async function updateOrganizationTrade(tradeId: string): Promise<UpdateOr
 
     return { success: true };
   } catch (error) {
-    console.error("updateOrganizationTrade:", error);
+    log.error("updateOrganizationTrade:", error);
     return { success: false, error: "עדכון המקצוע נכשל." };
   }
 }

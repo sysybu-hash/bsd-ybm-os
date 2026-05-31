@@ -3,6 +3,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("get-dashboard-stats");
 
 export async function getDashboardStatsAction() {
   const session = await getServerSession(authOptions);
@@ -32,7 +34,7 @@ export async function getDashboardStatsAction() {
       }
     };
   } catch (error) {
-    console.error("Dashboard stats error:", error);
+    log.error("Dashboard stats error:", error);
     return { success: false, error: "Failed to load stats" };
   }
 }

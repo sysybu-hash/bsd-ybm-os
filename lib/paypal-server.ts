@@ -73,7 +73,7 @@ export async function paypalCreateOrderBody(params: {
   });
   const j = (await res.json()) as { id?: string; message?: string; details?: unknown };
   if (!res.ok || !j.id) {
-    console.error("[PayPal create order]", j);
+    log.error("[PayPal create order]", j);
     throw new Error(j.message || `PayPal create order ${res.status}`);
   }
   return { id: j.id };
@@ -90,7 +90,7 @@ export async function paypalCaptureOrder(orderId: string): Promise<Record<string
   });
   const j = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    console.error("[PayPal capture]", j);
+    log.error("[PayPal capture]", j);
     throw new Error(typeof j.message === "string" ? j.message : `PayPal capture ${res.status}`);
   }
   return j;
@@ -107,7 +107,7 @@ export async function paypalFetchOrder(orderId: string): Promise<Record<string, 
   });
   const j = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    console.error("[PayPal get order]", j);
+    log.error("[PayPal get order]", j);
     throw new Error(typeof j.message === "string" ? j.message : `PayPal get order ${res.status}`);
   }
   return j;

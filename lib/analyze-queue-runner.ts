@@ -3,6 +3,8 @@ import type { DocumentScanJob } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { processDocumentAction } from "@/app/actions/process-document";
 import { isDocumentScanRateLimitError, parseJobFileData, type DocumentScanFilePayload } from "@/lib/analyze-queue";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("analyze-queue-runner");
 
 /** אחרי timeout / קריסה — משימה עלולה להישאר ב־PROCESSING */
 const STALE_PROCESSING_MS = 10 * 60 * 1000;
@@ -118,7 +120,7 @@ export async function executeDocumentScanJob(job: DocumentScanJob): Promise<void
       },
     });
   } catch (e) {
-    console.error("[analyze-queue-runner] job", job.id, e);
+    log.error("analyze_queue_job_failed", e, { jobId: job.id });
     if (isDocumentScanRateLimitError(e)) {
       await prisma.documentScanJob.update({
         where: { id: job.id },

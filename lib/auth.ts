@@ -24,6 +24,8 @@ import {
   SESSION_MAX_AGE_DEFAULT_SEC,
   SESSION_MAX_AGE_REMEMBER_SEC,
 } from "@/lib/auth/remember-preference";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("auth");
 
 applyNextAuthUrlEnv();
 normalizeNextAuthUrlEnv();
@@ -383,7 +385,7 @@ export const authOptions: NextAuthOptions = {
           await persistGoogleOAuthAccountFromNextAuth(user.id, account);
         }
       } catch (e) {
-        console.error("[auth] persist Google tokens", e);
+        log.error("[auth] persist Google tokens", e);
       }
 
       try {
@@ -404,11 +406,11 @@ export const authOptions: NextAuthOptions = {
 
         if (isFirstAppLogin) {
           void sendWelcomeEmail(emailRaw, before.name ?? null).catch((err) =>
-            console.error("sendWelcomeEmail (first login)", err),
+            log.error("sendWelcomeEmail (first login)", err),
           );
         }
       } catch (e) {
-        console.error("signIn welcome / notification", e);
+        log.error("signIn welcome / notification", e);
       }
     },
   },

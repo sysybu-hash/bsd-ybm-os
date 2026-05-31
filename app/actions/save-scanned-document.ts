@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import { extractAiDataFromScanJobResult } from "@/lib/scan-job-result";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { saveScannedDocumentSchema } from "@/lib/validation/save-scanned-document";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("save-scanned-document");
 
 export type SaveScanResult = {
   success: boolean;
@@ -275,7 +277,7 @@ export async function saveScannedDocumentAction(
 
     return { success: true, documentId: doc.id };
   } catch (e: unknown) {
-    console.error("Failed to save scanned document:", e);
+    log.error("Failed to save scanned document:", e);
     const msg = e instanceof Error ? e.message : "Failed to save";
     return { success: false, error: msg };
   }

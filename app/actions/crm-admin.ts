@@ -17,6 +17,8 @@ import {
 import { isAdmin } from "@/lib/is-admin";
 
 export type { ClientAiTableRow, ClientAiResult } from "@/lib/crm-client-ai";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("crm-admin");
 
 /** ׳ ׳™׳×׳•׳— AI ׳׳׳§׳•׳— ג€” Gemini Flash (FREE) / Pro (PRO+ ׳׳• SUPER_ADMIN) */
 export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
@@ -114,7 +116,7 @@ ${JSON.stringify(tableData, null, 0)}
         "string"
           ? (data as { error: { message: string } }).error.message
           : "׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”";
-      console.error("Gemini HTTP:", response.status, data);
+      log.error("Gemini HTTP:", response.status, data);
       return {
         ok: false,
         error: `׳©׳’׳™׳׳” ׳-Gemini (${response.status}): ${msg}`,
@@ -162,7 +164,7 @@ ${JSON.stringify(tableData, null, 0)}
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("analyzeClientAI:", message);
+    log.error("analyzeClientAI:", message);
     return { ok: false, error: "׳©׳’׳™׳׳× ׳¨׳©׳× ׳׳• ׳©׳¨׳× ׳‘׳ ׳™׳×׳•׳— AI." };
   }
 }

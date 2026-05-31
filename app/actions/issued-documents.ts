@@ -7,6 +7,8 @@ import { DocStatus, DocType } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateIssuedDocumentTotals } from "@/lib/billing-calculations";
+import { createLogger } from "@/lib/logger";
+const log = createLogger("issued-documents");
 
 export type CreateIssuedDocumentInput = {
   type: DocType;
@@ -93,7 +95,7 @@ export async function createIssuedDocument(
 revalidatePath("/app/settings/billing");
     return { ok: true, docNumber: newDoc.number };
   } catch (e) {
-    console.error("createIssuedDocument", e);
+    log.error("createIssuedDocument", e);
     return { ok: false, error: "׳©׳׳™׳¨׳× ׳”׳׳¡׳׳ ׳ ׳›׳©׳׳”." };
   }
 }
@@ -183,7 +185,7 @@ export async function updateIssuedDocument(
 revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
-    console.error("updateIssuedDocument", e);
+    log.error("updateIssuedDocument", e);
     return { ok: false, error: "׳¢׳“׳›׳•׳ ׳”׳׳¡׳׳ ׳ ׳›׳©׳." };
   }
 }
@@ -210,7 +212,7 @@ export async function deleteIssuedDocument(id: string): Promise<DeleteIssuedDocu
 revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
-    console.error("deleteIssuedDocument", e);
+    log.error("deleteIssuedDocument", e);
     return { ok: false, error: "׳׳—׳™׳§׳× ׳”׳׳¡׳׳ ׳ ׳›׳©׳׳”." };
   }
 }
