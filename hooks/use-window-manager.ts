@@ -184,6 +184,9 @@ export function useWindowManager() {
     setWidgets((prev) => {
       const stackIndex = mobile ? 0 : prev.length;
       const layout = buildWidgetLayout(openType, defaultSize, stackIndex);
+      // אם כבר עובדים על חלון במצב מלא — החלון החדש נפתח גם הוא ממוקסם
+      // וממוקם אחרון (סדר DOM) כך שיופיע מעל החלון המלא הקיים במקום להיחבא מאחוריו.
+      const anyMaximized = !mobile && prev.some((w) => w.isMaximized && !w.isMinimized);
       const next: ActiveWidget = {
         id,
         type: openType,
@@ -192,7 +195,7 @@ export function useWindowManager() {
         size: layout.size,
         zIndex: nextZ,
         zoom: 1,
-        isMaximized: layout.isMaximized,
+        isMaximized: layout.isMaximized || anyMaximized,
       };
       if (mobile) {
         return [next];
@@ -361,11 +364,15 @@ export function useWindowManager() {
         options?.maximize ?? (typeof window !== 'undefined' && isMobileViewport());
       window.setTimeout(() => {
         focusWidget(id);
-        if (shouldMaximize) toggleMaximize(id);
+        // השמה אידמפוטנטית (לא toggle) — אחרת אם openWidget כבר מיקסם את החלון
+        // (כי כבר עבדו על חלון מלא), ה-toggle היה מבטל את המיקסום ומחביא אותו.
+        if (shouldMaximize) {
+          setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, isMaximized: true } : w)));
+        }
       }, 0);
       return id;
     },
-    [openWidget, focusWidget, toggleMaximize],
+    [openWidget, focusWidget],
   );
 
   return {
