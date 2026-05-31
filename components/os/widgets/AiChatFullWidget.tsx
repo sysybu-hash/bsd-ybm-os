@@ -50,6 +50,8 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         chatTab={c.chatTab}
         chatEndRef={c.chatEndRef}
         inputRef={inputAreaRef}
+        inputValue={c.input}
+        onSubmit={() => void c.handleSend()}
         t={t}
       >
         {c.chatTab === "live" && (

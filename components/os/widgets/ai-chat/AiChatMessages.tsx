@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Bot, ChevronDown, Loader2, User } from "lucide-react";
+import { Bot, Loader2, Send, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import type { Message } from "./types";
@@ -11,8 +11,12 @@ type AiChatMessagesProps = {
   isLoading: boolean;
   chatTab: "live" | "text";
   chatEndRef: React.RefObject<HTMLDivElement | null>;
-  /** ref שעובר מ-AiChatInput — מאפשר לנו לדעת מתי הקלט נראה */
+  /** ref של קונטיינר שדה הקלט — לניטור נראות */
   inputRef?: React.RefObject<HTMLElement | null>;
+  /** ערך הקלט הנוכחי — מוצג בבר הסטטוס */
+  inputValue?: string;
+  /** קריאה לשליחה מבר הסטטוס */
+  onSubmit?: () => void;
   t: (key: string) => string;
   children?: React.ReactNode;
 };
@@ -23,17 +27,17 @@ export function AiChatMessages({
   chatTab,
   chatEndRef,
   inputRef,
+  inputValue = "",
+  onSubmit,
   t,
   children,
 }: AiChatMessagesProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [inputVisible, setInputVisible] = useState(true);
 
-  /** עקוב אחר נראות שדה הקלט עם IntersectionObserver */
+  /** עקוב אחר נראות שדה הקלט */
   useEffect(() => {
     const el = inputRef?.current;
     if (!el) return;
-
     const obs = new IntersectionObserver(
       ([entry]) => setInputVisible(entry?.isIntersecting ?? true),
       { threshold: 0.1 },
@@ -42,48 +46,55 @@ export function AiChatMessages({
     return () => obs.disconnect();
   }, [inputRef]);
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
-      {/* ── Sticky status bar — מופיע רק כשהקלט מחוץ לתצוגה ── */}
+
+      {/* ── Sticky status bar ──
+          מוצג כשהמשתמש גלל למעלה ושדה הקלט נעלם מהמסך התחתון.
+          מציג: סטטוס AI + תוכן הקלד + כפתור שלח לשימוש מהראש. ── */}
       {!inputVisible && messages.length > 0 && (
-        <div className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]/90 px-3 py-2 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
-            {isLoading ? (
-              <>
-                <Loader2 size={12} className="animate-spin text-purple-500" />
-                <span>{t("workspaceWidgets.aiChat.typing")}</span>
-              </>
-            ) : (
-              <>
-                <Bot size={12} className="text-purple-500" />
-                <span className="truncate max-w-[12rem]">
-                  {messages[messages.length - 1]?.role === "assistant"
-                    ? t("workspaceWidgets.aiChat.statusReady")
-                    : t("workspaceWidgets.aiChat.statusWaiting")}
-                </span>
-              </>
-            )}
+        <div
+          className="sticky top-0 z-20 flex items-center gap-2 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]/95 px-3 py-2 backdrop-blur-sm"
+          aria-live="polite"
+        >
+          {/* סטטוס AI */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isLoading ? "animate-pulse bg-purple-500" : "bg-emerald-500"
+              }`}
+            />
+            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] whitespace-nowrap">
+              {isLoading
+                ? t("workspaceWidgets.aiChat.typing")
+                : t("workspaceWidgets.aiChat.statusReady")}
+            </span>
           </div>
+
+          {/* תצוגת הקלד הנוכחי */}
+          <div className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2.5 py-1 text-xs text-[color:var(--foreground-muted)] truncate">
+            {inputValue.trim()
+              ? inputValue
+              : <span className="opacity-50">{t("workspaceWidgets.aiChat.placeholder")}</span>
+            }
+          </div>
+
+          {/* כפתור שלח מהראש */}
           <button
             type="button"
-            onClick={scrollToBottom}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-purple-500"
+            onClick={onSubmit}
+            disabled={isLoading || !inputValue.trim()}
+            className="flex shrink-0 items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-purple-500 disabled:opacity-40"
+            aria-label={t("workspaceWidgets.omnibar.send")}
           >
-            <ChevronDown size={12} />
-            {t("workspaceWidgets.aiChat.scrollToBottom")}
+            <Send size={11} aria-hidden />
+            {t("workspaceWidgets.omnibar.send")}
           </button>
         </div>
       )}
 
       {/* ── Message list ── */}
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-4 sm:space-y-6"
-      >
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-4 sm:space-y-6">
         {children}
 
         {messages.length === 0 && chatTab === "text" && (
