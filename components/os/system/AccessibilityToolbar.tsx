@@ -48,10 +48,11 @@ export default function AccessibilityToolbar() {
 
   return (
     <>
+      {/* כפתור FAB — מוסתר במובייל (הלשונית בסרגל התחתון מחליפה אותו) */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="accessibility-toolbar-fab fixed end-4 z-[2401] flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 text-indigo-600 shadow-lg backdrop-blur-md transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
+        className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 text-indigo-600 shadow-lg backdrop-blur-md transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
         aria-label={label}
         aria-expanded={open}
         aria-controls="accessibility-panel-dialog"
@@ -72,7 +73,7 @@ export default function AccessibilityToolbar() {
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="accessibility-toolbar-panel fixed end-4 z-[99981] flex h-[min(70vh,520px)] w-[min(calc(100vw-2rem),380px)] flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl"
+            className="accessibility-toolbar-panel fixed end-4 z-[99981] flex h-[min(70vh,520px)] w-[min(calc(100vw-2rem),380px)] flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl max-md:bottom-[calc(var(--mobile-chrome-bottom)+0.25rem)] max-md:end-1"
           >
             <div className="flex items-center justify-between gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
               <h2 className="text-sm font-black text-[color:var(--foreground-main)]">{label}</h2>

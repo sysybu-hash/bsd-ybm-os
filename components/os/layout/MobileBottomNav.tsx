@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Grid3x3, Layers, Mic, Shield, X } from "lucide-react";
+import { Accessibility, Grid3x3, Layers, MessageSquare, Mic, Shield, X } from "lucide-react";
+import { OPEN_FEEDBACK_FAB_EVENT } from "@/components/feedback/SiteFeedbackFab";
+import { OPEN_ACCESSIBILITY_PANEL_EVENT } from "@/components/os/system/AccessibilityToolbar";
 import { WidgetType } from "@/hooks/use-window-manager";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
@@ -163,11 +165,39 @@ export default function MobileBottomNav({
         />
       ) : null}
 
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-[100] flex min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md md:hidden"
-        aria-label={t("workspaceWidgets.mobileNav.aria")}
+      {/* ── עטיפה: קונטיינר fixed שמכיל גם את הלשוניות וגם את הסרגל ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[100] md:hidden"
         data-testid="mobile-bottom-nav"
         dir={dir}
+      >
+        {/* ── לשוניות FAB מעל הסרגל ── */}
+        <div className="flex items-end justify-between px-1 pointer-events-none" aria-hidden="true">
+          {/* צד שמאל (start) — משוב */}
+          <button
+            type="button"
+            aria-label={t("siteFeedback.fabLabel")}
+            onClick={() => window.dispatchEvent(new Event(OPEN_FEEDBACK_FAB_EVENT))}
+            className="pointer-events-auto flex items-center gap-1 rounded-t-xl border border-b-0 border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-3 py-1.5 text-[9px] font-bold text-[color:var(--foreground-muted)] backdrop-blur-md transition hover:text-indigo-500 active:scale-95"
+          >
+            <MessageSquare size={11} aria-hidden />
+            {t("siteFeedback.fabLabel")}
+          </button>
+          {/* צד ימין (end) — נגישות */}
+          <button
+            type="button"
+            aria-label={t("accessibility.toolbar")}
+            onClick={() => window.dispatchEvent(new Event(OPEN_ACCESSIBILITY_PANEL_EVENT))}
+            className="pointer-events-auto flex items-center gap-1 rounded-t-xl border border-b-0 border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-3 py-1.5 text-[9px] font-bold text-indigo-600 backdrop-blur-md transition hover:text-indigo-500 active:scale-95 dark:text-indigo-400"
+          >
+            {t("accessibility.toolbar")}
+            <Accessibility size={11} aria-hidden />
+          </button>
+        </div>
+
+      <nav
+        className="flex min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
+        aria-label={t("workspaceWidgets.mobileNav.aria")}
       >
         <NavSideGrid>
           <SortableLauncherZone
@@ -211,6 +241,7 @@ export default function MobileBottomNav({
           />
         </NavSideGrid>
       </nav>
+      </div>{/* סוף עטיפת fixed */}
     </>
   );
 }
