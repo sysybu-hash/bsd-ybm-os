@@ -12,6 +12,8 @@ import type { Source, SavedNotebookSummary, ProjectOption } from "./types";
 const P = "workspaceWidgets.notebookLM";
 
 type NotebookSourcesSidebarProps = {
+  /** במובייל: גובה טבעי (ללא h-full), רשימת מקורות עם max-h קבוע */
+  mobileFlow?: boolean;
   notebookTitle: string;
   setNotebookTitle: (v: string) => void;
   projectId: string;
@@ -37,6 +39,7 @@ type NotebookSourcesSidebarProps = {
 };
 
 export function NotebookSourcesSidebar({
+  mobileFlow = false,
   notebookTitle,
   setNotebookTitle,
   projectId,
@@ -61,7 +64,7 @@ export function NotebookSourcesSidebar({
   t,
 }: NotebookSourcesSidebarProps) {
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:border-l">
+    <div className={`flex w-full flex-col border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 p-4 md:border-l ${mobileFlow ? "" : "h-full overflow-y-auto"}`}>
       {/* Title / project / controls */}
       <div className="mb-4 space-y-2">
         <input
@@ -171,8 +174,8 @@ export function NotebookSourcesSidebar({
         />
       </div>
 
-      {/* Source list */}
-      <div className="custom-scrollbar flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
+      {/* Source list — על מובייל: max-h קבוע + גלילה; על דסקטופ: flex-1 */}
+      <div className={`custom-scrollbar space-y-2 overflow-y-auto pr-1 ${mobileFlow ? "max-h-48" : "flex-1 min-h-0"}`}>
         <AnimatePresence>
           {sources.map((source) => (
             <motion.div

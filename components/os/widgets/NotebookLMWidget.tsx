@@ -19,6 +19,50 @@ export default function NotebookLMWidget({
 
   const nb = useNotebookLM({ liveData, t });
 
+  // sidebar למובייל — גובה טבעי, ללא h-full
+  const sourcesSidebarMobile = (
+    <NotebookSourcesSidebar
+      mobileFlow
+      notebookTitle={nb.notebookTitle}
+      setNotebookTitle={nb.setNotebookTitle}
+      projectId={nb.projectId}
+      setProjectId={nb.setProjectId}
+      projects={nb.projects}
+      isSaving={nb.isSaving}
+      onSave={() => void nb.handleSave()}
+      showSavedPanel={nb.showSavedPanel}
+      onToggleSavedPanel={() => {
+        nb.setShowSavedPanel((v) => !v);
+        void nb.refreshSavedList();
+      }}
+      onNewNotebook={nb.handleNewNotebook}
+      savedList={nb.savedList}
+      onLoadNotebook={(id) => void nb.handleLoadNotebook(id)}
+      onDeleteSaved={nb.handleDeleteSaved}
+      sources={nb.sources}
+      isUploading={nb.isUploading}
+      fileInputRef={nb.fileInputRef}
+      fileAccept={nb.fileAccept}
+      onFileUpload={(e) => void nb.handleFileUpload(e)}
+      onRenameSource={nb.renameSource}
+      onRemoveSource={nb.removeSource}
+      t={t}
+      onKnowledgeVaultSelect={(item) => {
+        const text =
+          item.parsedSummary && typeof item.parsedSummary === "object"
+            ? String((item.parsedSummary as { textPreview?: string }).textPreview ?? "")
+            : "";
+        if (text.trim()) {
+          nb.setSources((prev) => [
+            ...prev,
+            { id: `vault-${item.id}`, name: item.name, content: text.slice(0, 12000), type: "text" },
+          ]);
+        }
+        toast.success(item.name);
+      }}
+    />
+  );
+
   const sourcesSidebar = (
     <NotebookSourcesSidebar
       notebookTitle={nb.notebookTitle}
@@ -125,9 +169,9 @@ export default function NotebookLMWidget({
       {/* ── מובייל: sources בגובה טבעי מלא → גלילה חיצונית, ── */}
       {/* ── דסקטופ: split panels כרגיל                     ── */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        {/* sources sidebar — גובה טבעי (לא panel מוגבל) */}
-        <div className="shrink-0 border-b border-[color:var(--border-main)]">
-          {sourcesSidebar}
+        {/* sources sidebar — גובה טבעי מלא, ללא h-full */}
+        <div className="border-b border-[color:var(--border-main)]">
+          {sourcesSidebarMobile}
         </div>
         {/* chat panel — min-height סביר */}
         <div className="min-h-[55vh]">
