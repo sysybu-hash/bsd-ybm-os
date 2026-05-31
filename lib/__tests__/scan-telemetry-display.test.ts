@@ -16,6 +16,7 @@ describe("scan-telemetry-display", () => {
       documentAI: { phase: "ok" },
       gemini: { phase: "running" },
       gpt: { phase: "idle" },
+      mistral: { phase: "idle" },
     };
     const summary = formatTelemetrySummaryHe(t);
     expect(summary).toContain("Document AI");
@@ -29,6 +30,7 @@ describe("scan-telemetry-display", () => {
         documentAI: { phase: "skipped" },
         gemini: { phase: "ok" },
         gpt: { phase: "error" },
+        mistral: { phase: "skipped" },
       }),
     ).toBe(true);
   });

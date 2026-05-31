@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { extractDocumentWithOpenAI } from "@/lib/ai-extract-openai";
+import { extractDocumentWithMistral } from "@/lib/ai-extract-mistral";
 import { normalizeDocAiResultWithGemini, processDocumentAiRawForScanMode } from "@/lib/ai-extract-docai";
-import { assertProviderConfigured, normalizeAiProviderId } from "@/lib/ai-providers";
+import { assertProviderConfigured, isMistralConfigured, normalizeAiProviderId } from "@/lib/ai-providers";
 import { mapDocAiEntitiesToInvoiceV5 } from "@/lib/docai-invoice-mapper";
 import {
   getBlueprintAnalysisModelChain,
@@ -35,6 +36,7 @@ export type TriEngineTelemetry = {
   documentAI: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
   gemini: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
   gpt: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
+  mistral: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
 };
 
 /** אירועי סטרימינג ללקוח (NDJSON) — טלמטריה ופלטי ביניים */
@@ -47,6 +49,7 @@ function snapTriTelemetry(t: TriEngineTelemetry): TriEngineTelemetry {
     documentAI: { ...t.documentAI },
     gemini: { ...t.gemini },
     gpt: { ...t.gpt },
+    mistral: { ...t.mistral },
   };
 }
 
@@ -156,6 +159,7 @@ export async function runTriEngineExtraction(params: {
     documentAI: { phase: "idle" },
     gemini: { phase: "idle" },
     gpt: { phase: "idle" },
+    mistral: { phase: "idle" },
   };
 
   let v5: ScanExtractionV5;
@@ -192,6 +196,15 @@ export async function runTriEngineExtraction(params: {
     const raw = await extractDocumentWithOpenAI(base64, mimeType, fileName, fullInstruction, openAiModel);
     const out = coerceLegacyAiToV5(raw, fileName, scanMode);
     out.enginesUsed = ["openai"];
+    return out;
+  };
+
+  const runMistralOnly = async (): Promise<ScanExtractionV5> => {
+    const mErr = assertProviderConfigured("mistral");
+    if (mErr) throw new Error(mErr);
+    const raw = await extractDocumentWithMistral(base64, mimeType, fileName, fullInstruction, scanMode);
+    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
+    out.enginesUsed = ["mistral-pixtral"];
     return out;
   };
 
@@ -374,36 +387,63 @@ export async function runTriEngineExtraction(params: {
         if (docAiV5) {
           v5 = docAiV5;
         } else {
-          const tG = Date.now();
-          telemetry.gemini = { phase: "running", detail: "fallback_after_openai_error" };
-          await emitTelemetry();
-          try {
-            const gErr = assertProviderConfigured("gemini");
-            if (gErr) throw new Error(gErr);
-            const rawGemini = await geminiMultimodal(base64, mimeType, fullInstruction, getModelChainForScanMode(scanMode));
-            v5 = coerceLegacyAiToV5(rawGemini, fileName, scanMode);
-            v5.enginesUsed = ["gemini-fallback"];
-            telemetry.gemini = { phase: "ok", ms: Date.now() - tG, detail: "fallback_after_openai_error" };
+          // Mistral fallback — לפני Gemini
+          if (isMistralConfigured()) {
+            const tM = Date.now();
+            telemetry.mistral = { phase: "running", detail: "fallback_after_openai_error" };
             await emitTelemetry();
-            await emitPartial(v5, "gemini_fallback");
-          } catch (geminiError) {
-            telemetry.gemini = {
-              phase: "error",
-              detail: geminiError instanceof Error ? geminiError.message.slice(0, 200) : String(geminiError),
-            };
+            try {
+              v5 = await runMistralOnly();
+              telemetry.mistral = { phase: "ok", ms: Date.now() - tM, detail: "fallback_after_openai_error" };
+              telemetry.gemini = { phase: "skipped" };
+              await emitTelemetry();
+              await emitPartial(v5, "mistral_fallback");
+            } catch (mistralError) {
+              telemetry.mistral = {
+                phase: "error",
+                detail: mistralError instanceof Error ? mistralError.message.slice(0, 200) : String(mistralError),
+              };
+              await emitTelemetry();
+              // ממשיכים ל-Gemini
+            }
+          } else {
+            telemetry.mistral = { phase: "skipped" };
+          }
+
+          // Gemini — fallback אחרון אם Mistral נכשל / לא מוגדר
+          if (!v5!) {
+            const tG = Date.now();
+            telemetry.gemini = { phase: "running", detail: "fallback_after_openai_mistral_error" };
             await emitTelemetry();
-            const docAiDetail =
-              telemetry.documentAI.phase === "error"
-                ? `Document AI: ${telemetry.documentAI.detail ?? "failed"}`
-                : "Document AI: no invoice line items extracted";
-            const openAiDetail = e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500);
-            const geminiDetail =
-              geminiError instanceof Error
-                ? geminiError.message.slice(0, 500)
-                : String(geminiError).slice(0, 500);
-            throw new Error(
-              `All extraction engines failed. ${docAiDetail} | OpenAI: ${openAiDetail} | Gemini fallback: ${geminiDetail}`,
-            );
+            try {
+              const gErr = assertProviderConfigured("gemini");
+              if (gErr) throw new Error(gErr);
+              const rawGemini = await geminiMultimodal(base64, mimeType, fullInstruction, getModelChainForScanMode(scanMode));
+              v5 = coerceLegacyAiToV5(rawGemini, fileName, scanMode);
+              v5.enginesUsed = ["gemini-fallback"];
+              telemetry.gemini = { phase: "ok", ms: Date.now() - tG, detail: "final_fallback" };
+              await emitTelemetry();
+              await emitPartial(v5, "gemini_fallback");
+            } catch (geminiError) {
+              telemetry.gemini = {
+                phase: "error",
+                detail: geminiError instanceof Error ? geminiError.message.slice(0, 200) : String(geminiError),
+              };
+              await emitTelemetry();
+              const docAiDetail =
+                telemetry.documentAI.phase === "error"
+                  ? `Document AI: ${telemetry.documentAI.detail ?? "failed"}`
+                  : "Document AI: no invoice line items extracted";
+              const openAiDetail = e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500);
+              const mistralDetail = telemetry.mistral.detail ?? "skipped";
+              const geminiDetail =
+                geminiError instanceof Error
+                  ? geminiError.message.slice(0, 500)
+                  : String(geminiError).slice(0, 500);
+              throw new Error(
+                `All extraction engines failed. ${docAiDetail} | OpenAI: ${openAiDetail} | Mistral: ${mistralDetail} | Gemini: ${geminiDetail}`,
+              );
+            }
           }
         }
       }
@@ -487,12 +527,33 @@ export async function runTriEngineExtraction(params: {
         detail: e instanceof Error ? e.message.slice(0, 200) : String(e),
       };
       await emitTelemetry();
-      throw e;
+      // Mistral fallback — כשGemini נכשל בנתיב הכללי
+      if (!isMistralConfigured()) throw e;
+      const tM2 = Date.now();
+      telemetry.mistral = { phase: "running", detail: "fallback_after_gemini_error" };
+      await emitTelemetry();
+      try {
+        v5 = await runMistralOnly();
+        v5.enginesUsed = ["mistral-fallback"];
+        telemetry.mistral = { phase: "ok", ms: Date.now() - tM2 };
+        telemetry.documentAI = { phase: "skipped" };
+        telemetry.gpt = { phase: "skipped" };
+        await emitTelemetry();
+        await emitPartial(v5, "mistral_fallback");
+        const aiData = v5ToPersistableAiData(v5);
+        aiData._triEngineTelemetry = telemetry;
+        return { aiData, v5, telemetry };
+      } catch (mistralErr) {
+        telemetry.mistral = { phase: "error", detail: mistralErr instanceof Error ? mistralErr.message.slice(0, 200) : String(mistralErr) };
+        await emitTelemetry();
+        throw e; // זורקים את שגיאת ה-Gemini המקורית
+      }
     }
     v5 = coerceLegacyAiToV5(raw, fileName, scanMode);
     v5.enginesUsed = ["gemini-flash"];
     telemetry.documentAI = { phase: "skipped" };
     telemetry.gpt = { phase: "skipped" };
+    telemetry.mistral = { phase: "skipped" };
     await emitTelemetry();
     await emitPartial(v5, "gemini_flash");
   }

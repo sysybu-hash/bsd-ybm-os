@@ -9,17 +9,19 @@ import {
   isAnthropicEligibleForModelFallback,
   isGeminiConfigured,
   isGroqConfigured,
+  isMistralConfigured,
   isOpenAiConfigured,
   isOpenAiEligibleForModelFallback,
   normalizeAiProviderId,
   type AiProviderId,
 } from "@/lib/ai-providers";
+import { runMistralTextChat } from "@/lib/ai-extract-mistral";
 import { getAiChatSystemPrefix } from "@/lib/i18n/ai-prompts";
 import { getUserFacingAiErrorMessageForLocale } from "@/lib/i18n/ai-locale";
 
 const RETRYABLE_STATUS_CODES = [429, 500, 503, 504];
-/** אחרי Gemini (ברירת מחדל): OpenAI → Anthropic → Groq — תואם שרשראות fallback מרכזיות */
-const FALLBACK_PROVIDER_ORDER: AiProviderId[] = ["openai", "anthropic", "groq"];
+/** אחרי Gemini (ברירת מחדל): OpenAI → Mistral → Anthropic → Groq */
+const FALLBACK_PROVIDER_ORDER: AiProviderId[] = ["openai", "mistral", "anthropic", "groq"];
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -152,6 +154,11 @@ async function runAnthropicPrompt(prompt: string) {
   throw lastErr ?? new Error("Anthropic chat: כל המודלים נכשלו");
 }
 
+async function runMistralPrompt(prompt: string) {
+  if (!isMistralConfigured()) throw new Error("חסר MISTRAL_API_KEY");
+  return runMistralTextChat(prompt);
+}
+
 async function runGroqPrompt(prompt: string) {
   if (!isGroqConfigured()) throw new Error("חסר GROQ_API_KEY");
   const key = env.GROQ_API_KEY!.trim();
@@ -199,6 +206,8 @@ async function executeProvider(provider: AiProviderId, prompt: string) {
   switch (provider) {
     case "openai":
       return runOpenAiPrompt(prompt);
+    case "mistral":
+      return runMistralPrompt(prompt);
     case "anthropic":
       return runAnthropicPrompt(prompt);
     case "groq":
@@ -213,6 +222,8 @@ function canUseProvider(provider: AiProviderId) {
   switch (provider) {
     case "openai":
       return isOpenAiConfigured();
+    case "mistral":
+      return isMistralConfigured();
     case "anthropic":
       return isAnthropicConfigured();
     case "groq":

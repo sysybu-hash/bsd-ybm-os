@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
  * שים לב: MindStudio נשאר כסוג שמור לאחור, אבל לא נחשף ב-UI עד שתהיה אינטגרציית runtime אמיתית.
  */
 
-export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mindstudio" | "docai";
+export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "mindstudio" | "docai";
 
 export type AiProviderPublic = {
   id: AiProviderId;
@@ -38,6 +38,10 @@ export function isAnthropicConfigured(): boolean {
 
 export function isGroqConfigured(): boolean {
   return has(env.GROQ_API_KEY);
+}
+
+export function isMistralConfigured(): boolean {
+  return has(env.MISTRAL_API_KEY);
 }
 
 export function isMindStudioConfigured(): boolean {
@@ -75,6 +79,13 @@ export function getAiProvidersPublic(): AiProviderPublic[] {
       supportsDocumentScan: true,
     },
     {
+      id: "mistral",
+      label: "Mistral / Pixtral",
+      description: "Pixtral Large — vision חזק, עברית מצוינת, מחיר תחרותי",
+      configured: isMistralConfigured(),
+      supportsDocumentScan: true,
+    },
+    {
       id: "groq",
       label: "Groq (Llama)",
       description: "מנוע מהיר במיוחד לטקסט ול-fallback בזמן עומס",
@@ -98,6 +109,7 @@ export function normalizeAiProviderId(raw: string | null | undefined): AiProvide
     value === "anthropic" ||
     value === "groq" ||
     value === "gemini" ||
+    value === "mistral" ||
     value === "mindstudio" ||
     value === "docai"
   ) {
@@ -112,6 +124,7 @@ export function isAnyAiChatProviderConfigured(): boolean {
     isGeminiConfigured() ||
     isOpenAiConfigured() ||
     isAnthropicConfigured() ||
+    isMistralConfigured() ||
     isGroqConfigured()
   );
 }
@@ -126,6 +139,8 @@ export function assertProviderConfigured(id: AiProviderId): string | null {
       return isAnthropicConfigured() ? null : "חסר ANTHROPIC_API_KEY";
     case "groq":
       return isGroqConfigured() ? null : "חסר GROQ_API_KEY";
+    case "mistral":
+      return isMistralConfigured() ? null : "חסר MISTRAL_API_KEY";
     case "mindstudio":
       return "MindStudio עדיין לא מחובר ב-runtime בפרויקט הזה";
     case "docai":
@@ -255,4 +270,42 @@ export function isAnthropicEligibleForModelFallback(status: number, body: string
 
 export function getGroqModel(): string {
   return env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
+}
+
+/** Mistral / Pixtral model catalog */
+export const MISTRAL_VISION_FLAGSHIP = "pixtral-large-latest";
+export const MISTRAL_TEXT_FLAGSHIP = "mistral-small-latest";
+
+/** מודל ל-vision / סריקת מסמכים (Pixtral) */
+export function getMistralVisionModel(): string {
+  return env.MISTRAL_VISION_MODEL?.trim() || MISTRAL_VISION_FLAGSHIP;
+}
+
+/** מודל לצ'אט טקסט */
+export function getMistralModel(): string {
+  return env.MISTRAL_MODEL?.trim() || MISTRAL_TEXT_FLAGSHIP;
+}
+
+/** fallback: נסה pixtral קודם, אחרי זה mistral-large */
+export function getMistralVisionModelCandidates(uiOverride?: string): string[] {
+  return dedupeStrings([
+    uiOverride,
+    env.MISTRAL_VISION_MODEL?.trim(),
+    MISTRAL_VISION_FLAGSHIP,
+    "pixtral-12b-2409",          // גרסה קלה יותר
+    "mistral-large-latest",      // fallback ללא vision (PDF text)
+  ]);
+}
+
+export function isMistralModelNotFound(status: number, body: string): boolean {
+  if (status === 404) return true;
+  const b = body.toLowerCase();
+  return b.includes("model not found") || b.includes("unknown model");
+}
+
+export function isMistralEligibleForModelFallback(status: number, body: string): boolean {
+  if (isMistralModelNotFound(status, body)) return true;
+  if (status === 429) return true;
+  const b = body.toLowerCase();
+  return b.includes("rate_limit") || b.includes("too many requests");
 }

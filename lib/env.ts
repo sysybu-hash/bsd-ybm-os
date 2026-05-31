@@ -98,6 +98,10 @@ const serverSchema = z.object({
   GROQ_API_KEY: optStr,
   GROQ_MODEL: optStr,
   MIND_STUDIO_API_KEY: optStr,
+  // Mistral / Pixtral
+  MISTRAL_API_KEY: optStr,
+  MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
+  MISTRAL_VISION_MODEL: optStr, // default: pixtral-large-latest (vision/scan)
 
   // --- Email ---
   RESEND_API_KEY: optStr,
