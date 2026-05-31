@@ -68,10 +68,10 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
   ];
 
   return (
-    <div className="relative h-full overflow-hidden bg-transparent p-3 md:p-6 text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="relative bg-transparent p-3 md:p-6 text-[color:var(--foreground-main)]" dir={dir}>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-emerald-600/60 dark:via-emerald-300/60 to-transparent" />
 
-      <div className="relative z-10 flex h-full flex-col gap-5">
+      <div className="relative z-10 flex flex-col gap-5">
         <div className="flex items-start justify-between gap-4 border-b border-[color:var(--border-main)] pb-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-200/70">סקירה חודשית</p>
@@ -83,7 +83,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {monthlyStats.map((stat) => (
             <div
               key={stat.label}
@@ -146,7 +146,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
           </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/10 px-4 py-3">
               <p className="text-xs text-emerald-700 dark:text-emerald-100/70">אופק תזרימי</p>
               <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-200">{cashflow.overview.runwayMonths} חודשים</p>

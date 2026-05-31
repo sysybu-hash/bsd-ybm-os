@@ -31,33 +31,33 @@ export function DriveHeader({
   handleRefresh, handleUpload, navigateToFolder,
 }: DriveHeaderProps) {
   return (
-    <div className="p-4 border-b border-[color:var(--border-main)] flex items-center justify-between bg-[color:var(--background-main)]/50 backdrop-blur-md sticky top-0 z-10">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
-          <HardDrive size={24} />
+    <div className="p-3 md:p-4 border-b border-[color:var(--border-main)] flex flex-wrap items-center justify-between gap-2 bg-[color:var(--background-main)]/50 backdrop-blur-md sticky top-0 z-10">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 shrink-0 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+          <HardDrive size={20} />
         </div>
         <div className="min-w-0">
           <h3 className="font-black text-sm uppercase tracking-widest truncate">
             {boundProjectName && !orgBrowseMode ? boundProjectName : "Google Drive"}
           </h3>
-          <div className="flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)] font-bold">
+          <div className="flex items-center gap-1 text-[10px] text-[color:var(--foreground-muted)] font-bold overflow-hidden">
             {folderPath.map((folder, i) => (
               <React.Fragment key={folder.id}>
                 <button
                   type="button"
                   onClick={() => navigateToFolder(i)}
-                  className="hover:text-[color:var(--foreground-main)] transition-colors"
+                  className="hover:text-[color:var(--foreground-main)] transition-colors truncate max-w-[8rem]"
                 >
                   {folder.name}
                 </button>
-                {i < folderPath.length - 1 && <ChevronLeft size={10} />}
+                {i < folderPath.length - 1 && <ChevronLeft size={10} className="shrink-0" />}
               </React.Fragment>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         {boundProjectId && !orgBrowseMode ? (
           <button
             type="button"
@@ -99,10 +99,10 @@ export function DriveHeader({
           type="button"
           disabled={uploading || Boolean(driveError)}
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-900/20 transition-all"
+          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-900/20 transition-all"
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          העלה קובץ
+          <span>העלה קובץ</span>
         </button>
       </div>
     </div>

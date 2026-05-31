@@ -30,9 +30,9 @@ export function GanttTaskForm({
       <p className="mb-2 text-xs font-semibold text-amber-200">
         {editingId ? labels.editTask : labels.newTaskTitle}
       </p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 md:grid-cols-2">
         <input
-          className={`${osFieldClassName} sm:col-span-2`}
+          className={`${osFieldClassName} md:col-span-2`}
           placeholder={labels.task}
           value={draft.title}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -71,7 +71,7 @@ export function GanttTaskForm({
             </select>
           </label>
         ) : null}
-        <label className="text-[10px] text-[color:var(--foreground-muted)] sm:col-span-2">
+        <label className="text-[10px] text-[color:var(--foreground-muted)] md:col-span-2">
           {labels.dependencies}
           <select multiple className={`${osFieldClassName} mt-0.5 min-h-[4rem] w-full`}
             value={draft.dependencies.split(/,\s*/).filter(Boolean)}
@@ -88,11 +88,11 @@ export function GanttTaskForm({
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <button type="button" disabled={saving || !draft.title.trim()} onClick={onSave}
-          className="rounded-lg bg-indigo-600 px-3 py-1 text-xs text-white disabled:opacity-50">
+          className="min-h-[44px] rounded-lg bg-indigo-600 px-4 py-2 text-xs text-white disabled:opacity-50 md:min-h-0 md:py-1">
           {labels.save}
         </button>
         <button type="button" onClick={onCancel}
-          className="rounded-lg border border-[color:var(--border-main)] px-3 py-1 text-xs">
+          className="min-h-[44px] rounded-lg border border-[color:var(--border-main)] px-4 py-2 text-xs md:min-h-0 md:py-1">
           {labels.cancel}
         </button>
       </div>

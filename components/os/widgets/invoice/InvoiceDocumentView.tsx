@@ -178,7 +178,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
         ) : null}
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <label className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
           {t("workspaceWidgets.invoice.client")}
           <input

@@ -1,6 +1,6 @@
 # BSD-YBM Intelligence — Developer Onboarding
 
-> **Last updated**: 2026-05-21  
+> **Last updated**: 2026-05-31  
 > Welcome! This guide gets you from zero to a running local environment.  
 > Estimated time: **30–45 minutes** for a clean setup.
 
@@ -126,6 +126,52 @@ GOOGLE_CLIENT_SECRET="..."
 - **Drive**: reconnect בהגדרות → `/api/auth/google-reconnect`
 - **Google Calendar**: `/api/integrations/google/calendar/connect` — redirect: `{SITE_URL}/api/integrations/google/calendar/callback` (tokens only; activation via `PUT /api/integrations/google-calendar/settings/activate`)
 
+### AI Providers (optional)
+
+Beyond Gemini, the system supports additional AI engines as fallbacks or primary scan engines:
+
+| Provider | Variables | Use |
+|----------|-----------|-----|
+| **OpenAI** | `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `OPENAI_VISION_MODEL` | Chat fallback, vision scan |
+| **Anthropic** | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Claude fallback |
+| **Mistral / Pixtral** | `MISTRAL_API_KEY`, `MISTRAL_MODEL`, `MISTRAL_VISION_MODEL` | 4th scan engine (Pixtral vision) |
+| **Groq** | `GROQ_API_KEY`, `GROQ_MODEL` | Fast inference fallback |
+
+The AI scanner (Tri-Engine) tries: Gemini → OpenAI → DocumentAI → Mistral. At least one must be configured.
+
+### Google Document AI (OCR — optional)
+
+High-accuracy OCR for scanned documents. Requires a Google Cloud project with Document AI API enabled.
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS_JSON={"type":"service_account",...}
+GOOGLE_DOCUMENT_AI_PROJECT_ID=your-gcp-project-id
+GOOGLE_DOCUMENT_AI_LOCATION=eu           # or us
+# Per-type processor IDs (recommended over single PROCESSOR_ID):
+GOOGLE_DOCUMENT_AI_INVOICE_PROCESSOR_ID=
+GOOGLE_DOCUMENT_AI_EXPENSE_PROCESSOR_ID=
+GOOGLE_DOCUMENT_AI_FORM_PROCESSOR_ID=
+GOOGLE_DOCUMENT_AI_OCR_PROCESSOR_ID=
+```
+
+Setup: GCP Console → Document AI → Create Processor (Invoice Parser, Expense Parser, Form Parser, OCR Processor).
+
+### Meckano (employee time reports — optional)
+
+```env
+MECKANO_API_KEY=    # from Meckano → Settings → API
+```
+
+Without this key, the Meckano widget shows a "missing API key" placeholder.
+
+### PayPlus (Israeli payment gateway — optional)
+
+```env
+PAYPLUS_API_KEY=
+PAYPLUS_SECRET_KEY=
+PAYPLUS_PAYMENT_PAGE_UID=
+```
+
 ### Email (transactional mail)
 
 Configure **one** transport in `.env.local` (see `.env.example`):
@@ -162,9 +208,23 @@ node scripts/test-email.mjs your@email.com
 
 Push to Vercel env: `npm run vercel:env:push:mail`
 
-### Seed (Optional)
+### Seed (E2E test data)
 
-There is no seed script yet. To create a test organization:
+```bash
+npm run seed:test
+```
+
+Creates a full demo organization (`demo.bsd-ybm.test`) with:
+- 4 users (owner / PM / finance / client), password: `Demo!2026`
+- 3 projects with contacts, documents, invoices, milestones
+- Writes `E2E_PROJECT_ID` + `E2E_CONTACT_ID` to `.e2e-demo-seeded.json` for Playwright
+
+To run E2E tests against the freshly-seeded DB:
+```bash
+npm run verify:e2e:seeded   # seed + playwright
+```
+
+To create a test organization manually (without seed):
 1. Start the app (`npm run dev`)
 2. Go to `/register` and create an account
 3. Your org is auto-created on first login

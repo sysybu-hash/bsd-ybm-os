@@ -216,7 +216,7 @@ export default function ProjectDocumentGeneratorModal({
               <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">
                 {domain.labelHe}
               </h3>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
                 {entries.map((entry) => (
                   <button
                     key={`${domain.id}-${entry.id}`}

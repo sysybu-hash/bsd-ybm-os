@@ -51,23 +51,23 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
   return (
     <div className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden" dir={dir}>
       {/* Header */}
-      <div className="p-6 border-b border-[color:var(--border-main)] flex justify-between items-center bg-[color:var(--background-main)]/50">
-        <div className="flex items-center gap-4">
+      <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-[color:var(--background-main)]/50">
+        <div className="flex items-center gap-3 min-w-0">
           <select
             value={d.docType}
             onChange={(e) => d.setDocType(e.target.value as DocType)}
-            className="max-w-[220px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
+            className="w-full max-w-[200px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
           >
             {ISSUED_DOCUMENT_TYPES.map((dt) => (
               <option key={dt.id} value={dt.id}>{dt.labelHe}</option>
             ))}
           </select>
-          <div>
-            <h2 className="text-lg font-bold text-[color:var(--foreground-main)]">מחולל מסמכים חכם</h2>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-[color:var(--foreground-main)] md:text-lg">מחולל מסמכים חכם</h2>
             <p className="text-[10px] text-[color:var(--foreground-muted)] uppercase tracking-widest font-bold">BSD-YBM Financial Engine</p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:items-end">
           <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`${t("workspaceWidgets.documentCreator.selectedFromVault")}: ${item.name}`)} />
           <div className="text-left space-y-0.5">
             <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">

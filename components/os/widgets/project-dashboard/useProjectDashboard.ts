@@ -25,7 +25,17 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
 
   useEffect(() => {
-    try { setPushEnabled(localStorage.getItem(PUSH_KEY) === "1"); } catch { setPushEnabled(false); }
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.getRegistration("/sw.js")
+      .then((reg) => reg?.pushManager.getSubscription())
+      .then((sub) => {
+        const active = Boolean(sub);
+        setPushEnabled(active);
+        try { localStorage.setItem(PUSH_KEY, active ? "1" : "0"); } catch { /* ignore */ }
+      })
+      .catch(() => {
+        try { setPushEnabled(localStorage.getItem(PUSH_KEY) === "1"); } catch { /* ignore */ }
+      });
   }, []);
 
   useEffect(() => { if (projectId) setResolvedId(projectId); }, [projectId]);

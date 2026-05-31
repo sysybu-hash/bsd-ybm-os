@@ -118,7 +118,7 @@ export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto
                 type="button"
                 onClick={() => void handleDelete(id)}
                 disabled={deletingId === id || uploading}
-                className="absolute end-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-rose-600 disabled:opacity-60"
+                className="absolute end-1 top-1 flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-rose-600 disabled:opacity-60"
                 aria-label={t("workspaceWidgets.fieldCopilot.photoDelete")}
               >
                 {deletingId === id

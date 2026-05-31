@@ -191,8 +191,8 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex items-center justify-between text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
-        <div className="flex gap-4">
+      <div className="p-3 md:p-4 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
+        <div className="flex flex-wrap gap-2">
           <span>{files.length} פריטים</span>
           <span>•</span>
           <span>סנכרון אוטומטי כל 90 שנ׳{lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>

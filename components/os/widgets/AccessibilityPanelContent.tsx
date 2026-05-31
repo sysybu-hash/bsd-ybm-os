@@ -73,7 +73,7 @@ export default function AccessibilityPanelContent({
             <option value="xlarge">{t("accessibility.fontXlarge")}</option>
           </select>
         </section>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-2">
           <ToggleRow
             label={t("accessibility.highContrast")}
             checked={value.highContrast}

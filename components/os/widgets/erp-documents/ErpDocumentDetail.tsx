@@ -40,7 +40,7 @@ export function ErpDocumentDetail({
               <ChevronRight className="w-4 h-4 rtl:rotate-180" /> חזרה לרשימה
             </button>
             <h2 className="text-xl font-bold text-[color:var(--foreground-main)] mb-1">{selectedDoc.fileName}</h2>
-            <div className="flex items-center gap-4 text-sm text-[color:var(--foreground-muted)]">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[color:var(--foreground-muted)]">
               <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(selectedDoc.createdAt).toLocaleDateString("he-IL")}</span>
               <span className="flex items-center gap-1.5"><Layers className="w-4 h-4" /> {selectedDoc.type}</span>
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${selectedDoc.status === "PROCESSED" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}>

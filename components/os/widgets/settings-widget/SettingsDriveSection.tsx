@@ -80,7 +80,7 @@ export function SettingsDriveSection({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         {(
           [
             { key: "driveAutoDecodeOnSync", labelKey: `${S}.driveAutoDecode` },

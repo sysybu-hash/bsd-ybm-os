@@ -38,9 +38,9 @@ export function TaskFormModal({
   if (!open) return null;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 overflow-y-auto overscroll-y-contain">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
-        <div className="flex items-center justify-between mb-8">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto overscroll-y-contain">
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl my-auto">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
             <Plus className="text-indigo-600 dark:text-indigo-400" size={24} /> {title}
           </h3>
@@ -102,7 +102,7 @@ export function TaskFormModal({
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.status")}</label>
               <select
@@ -130,7 +130,7 @@ export function TaskFormModal({
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className={labelClass}>{t("workspaceWidgets.projectBoard.fields.budget")}</label>
               <input

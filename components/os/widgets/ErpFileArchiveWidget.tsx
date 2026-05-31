@@ -108,7 +108,7 @@ export default function ErpFileArchiveWidget() {
           <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-1 md:w-auto">
             {(["all", "invoice", "quote", "contract", "SIGNED_QUOTE"] as const).map((t) => (
               <button key={t} type="button" onClick={() => setCategory(t)}
-                className={`rounded-lg px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                className={`min-h-[44px] touch-manipulation rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all md:min-h-0 md:py-1.5 ${
                   category === t
                     ? "bg-[color:var(--surface-card)]/80 text-[color:var(--foreground-main)] shadow-sm dark:shadow-lg"
                     : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"

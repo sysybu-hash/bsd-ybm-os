@@ -98,8 +98,36 @@ warnIf("GEMINI_MODEL",
 
 // ─── OPTIONAL AI ─────────────────────────────────────────────────────────────
 optional("ANTHROPIC_API_KEY", "Claude AI features");
-optional("OPENAI_API_KEY", "OpenAI features");
+optional("OPENAI_API_KEY", "OpenAI features (scan fallback)");
 optional("GROQ_API_KEY", "Groq fast inference");
+optional("MISTRAL_API_KEY", "Mistral / Pixtral — 4th scan engine");
+
+warnIf("MISTRAL_API_KEY",
+  !has("MISTRAL_API_KEY") && !has("OPENAI_API_KEY") && !has("ANTHROPIC_API_KEY"),
+  "No secondary AI engine — Gemini-only mode; scan fallback disabled");
+
+// ─── DOCUMENT AI (OCR) ───────────────────────────────────────────────────────
+const hasDocAiCreds = has("GOOGLE_APPLICATION_CREDENTIALS_JSON") || has("GOOGLE_DOCUMENT_AI_CREDENTIALS");
+const hasDocAiProject = has("GOOGLE_DOCUMENT_AI_PROJECT_ID") || has("GOOGLE_CLOUD_PROJECT");
+const hasAnyDocAiProcessor =
+  has("GOOGLE_DOCUMENT_AI_PROCESSOR_ID") ||
+  has("GOOGLE_DOCUMENT_AI_INVOICE_PROCESSOR_ID") ||
+  has("GOOGLE_DOCUMENT_AI_EXPENSE_PROCESSOR_ID") ||
+  has("GOOGLE_DOCUMENT_AI_FORM_PROCESSOR_ID") ||
+  has("GOOGLE_DOCUMENT_AI_OCR_PROCESSOR_ID");
+
+const docAiConfigured = hasDocAiCreds && hasDocAiProject && hasAnyDocAiProcessor;
+checks.push({
+  key: "Google Document AI",
+  status: docAiConfigured ? ok : info,
+  note: docAiConfigured
+    ? "Document AI configured (OCR engine active)"
+    : "Not configured — OCR engine disabled (Gemini/OpenAI/Mistral used instead)",
+  masked: hasDocAiCreds ? C.gray + "creds…" + C.reset : C.gray + "(empty)" + C.reset,
+});
+
+// ─── MECKANO ─────────────────────────────────────────────────────────────────
+optional("MECKANO_API_KEY", "Meckano time reports — widget shows placeholder without this");
 
 // ─── GOOGLE OAUTH ────────────────────────────────────────────────────────────
 optional("GOOGLE_CLIENT_ID", "Google Sign-In");
@@ -119,6 +147,12 @@ if (!mailOk) warnings.push("No email provider configured — password reset, inv
 optional("PAYPAL_CLIENT_ID", "PayPal payments");
 optional("PAYPAL_CLIENT_SECRET", "PayPal payments");
 optional("PAYPLUS_API_KEY", "PayPlus payments (IL)");
+optional("PAYPLUS_SECRET_KEY", "PayPlus webhook HMAC verification");
+optional("PAYPLUS_PAYMENT_PAGE_UID", "PayPlus payment page");
+
+warnIf("PAYPLUS_API_KEY",
+  has("PAYPLUS_API_KEY") && !has("PAYPLUS_SECRET_KEY"),
+  "PAYPLUS_API_KEY set but PAYPLUS_SECRET_KEY missing — webhook verification will fail in prod");
 
 // ─── CRON / SECURITY ─────────────────────────────────────────────────────────
 optional("CRON_SECRET", "Cron route auth — required in prod");

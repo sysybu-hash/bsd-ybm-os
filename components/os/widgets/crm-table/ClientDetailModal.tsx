@@ -73,14 +73,14 @@ export function ClientDetailModal({
 
   return (
     <CrmOverlayPortal>
-      <div className="my-auto flex w-full max-w-4xl max-h-[min(90vh,calc(100vh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-2xl">
-        <div className="p-4 sm:p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-3xl font-black text-white shadow-xl">
+      <div className="my-auto flex w-full max-w-4xl max-h-[min(90vh,calc(100vh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl">
+        <div className="p-4 sm:p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start gap-3">
+          <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+            <div className="w-12 h-12 shrink-0 rounded-2xl sm:w-20 sm:h-20 sm:rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-xl sm:text-3xl font-black text-white shadow-xl">
               {client.name?.charAt(0)}
             </div>
-            <div>
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-2">{client.name}</h3>
+            <div className="min-w-0">
+              <h3 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mb-1 sm:mb-2 truncate">{client.name}</h3>
               <div className="flex flex-wrap gap-2 items-center">
                 <span
                   className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
@@ -126,7 +126,7 @@ export function ClientDetailModal({
           </div>
         </div>
 
-        <div className="px-8 pt-4 flex gap-2 border-b border-slate-100 dark:border-white/5">
+        <div className="px-4 sm:px-8 pt-4 flex gap-2 border-b border-slate-100 dark:border-white/5">
           <button
             type="button"
             onClick={() => setActiveTab("details")}
