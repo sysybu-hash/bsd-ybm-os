@@ -1,4 +1,5 @@
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { env } from "@/lib/env";
 import {
   getOpenAiChatVisionModelCandidates,
   getOpenAiResponsesModelCandidates,
@@ -91,7 +92,7 @@ export async function extractDocumentWithOpenAI(
   documentInstruction: string,
   modelId?: string,
 ): Promise<Record<string, unknown>> {
-  const key = process.env.OPENAI_API_KEY?.trim();
+  const key = env.OPENAI_API_KEY?.trim();
   if (!key) throw new Error("חסר OPENAI_API_KEY");
 
   if (mimeType === "application/pdf") {

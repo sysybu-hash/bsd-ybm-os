@@ -1,9 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { env } from "@/lib/env";
 
 const PURPOSE = "passkey-login-v1";
 
 function secret(): string {
-  const s = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+  const s = env.NEXTAUTH_SECRET ?? env.AUTH_SECRET;
   if (!s?.trim()) throw new Error("NEXTAUTH_SECRET missing");
   return s.trim();
 }

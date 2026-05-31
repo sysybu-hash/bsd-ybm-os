@@ -1,10 +1,11 @@
 import { Redis } from "@upstash/redis";
+import { env } from "@/lib/env";
 
 let redisClient: Redis | null = null;
 
 function getRedis(): Redis | null {
   if (redisClient) return redisClient;
-  if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) {
+  if (!env.UPSTASH_REDIS_REST_URL && !env.KV_REST_API_URL) {
     return null;
   }
   try {

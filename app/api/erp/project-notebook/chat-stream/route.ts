@@ -1,4 +1,5 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { env } from "@/lib/env";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
@@ -21,7 +22,7 @@ import { getApiMessage } from "@/lib/i18n/api-messages";
 export const maxDuration = 120;
 
 const NOTEBOOK_MODEL =
-  process.env.GEMINI_NOTEBOOK_MODEL?.trim() || "gemini-2.5-flash-lite";
+  env.GEMINI_NOTEBOOK_MODEL?.trim() || "gemini-2.5-flash-lite";
 const REQUESTS_PER_HOUR = 40;
 
 const chatStreamBodySchema = z.object({

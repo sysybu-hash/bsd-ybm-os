@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { env } from "@/lib/env";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -18,7 +19,7 @@ import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
 import { LOCALE_AI_LANGUAGE_NAMES, normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 
-const MODEL = process.env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
+const MODEL = env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
 
 const audioOverviewBodySchema = z.object({
   scriptText: z.string().optional(),

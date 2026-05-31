@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import { isAdmin } from "@/lib/is-admin";
 
 export const MECKANO_SUBSCRIBER_EMAIL = "jbuildgca@gmail.com";
@@ -78,7 +79,7 @@ export async function getMeckanoAttendanceForProject(projectId: string, organiza
   if (!project || !project.meckanoZoneId) return [];
 
   // 2. Mock some attendance data based on the zone
-  // In a real implementation, we would use process.env.MECKANO_API_KEY
+  // In a real implementation, we would use env.MECKANO_API_KEY
   return [
     { id: 1, employeeName: 'משה כהן', date: new Date().toISOString(), hours: 8.5, status: 'חתימה בשטח' },
     { id: 2, employeeName: 'אבי לוי', date: new Date().toISOString(), hours: 7.2, status: 'חתימה בשטח' },

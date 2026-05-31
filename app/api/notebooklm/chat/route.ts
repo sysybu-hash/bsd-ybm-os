@@ -1,4 +1,5 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { env } from "@/lib/env";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
@@ -18,7 +19,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 export const maxDuration = 120;
 
 const MODEL =
-  process.env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
+  env.GEMINI_NOTEBOOKLM_MODEL?.trim() || GEMINI_NOTEBOOKLM_DEFAULT_MODEL;
 const REQUESTS_PER_HOUR = 80;
 
 const notebookChatBodySchema = z.object({

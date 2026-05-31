@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
@@ -17,7 +18,7 @@ import { getMergedIndustryConfig } from "@/lib/construction-trades";
 
 export const maxDuration = 90;
 
-const MODEL = process.env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_FLAGSHIP_MODEL;
+const MODEL = env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_FLAGSHIP_MODEL;
 const REQUESTS_PER_HOUR = 60;
 
 const omniBodySchema = z.object({

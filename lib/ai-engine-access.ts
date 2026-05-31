@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import type { AiProviderId } from "@/lib/ai-providers";
 
@@ -30,8 +31,8 @@ export function getAllowedAiProvidersForPlan(
  */
 export async function generateAiResponse(prompt: string): Promise<string> {
   const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-    process.env.GEMINI_API_KEY?.trim();
+    env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
+    env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return "מומלץ לעקוב אחר מגמת המחיר מול ספקים חלופיים ולוודא שההזמנה עומדת בתקציב.";
   }

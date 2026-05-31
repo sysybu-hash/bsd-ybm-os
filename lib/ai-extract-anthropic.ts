@@ -1,4 +1,5 @@
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { env } from "@/lib/env";
 import {
   getAnthropicModelCandidates,
   isAnthropicEligibleForModelFallback,
@@ -11,7 +12,7 @@ export async function extractDocumentWithAnthropic(
   documentInstruction: string,
   modelId?: string,
 ): Promise<Record<string, unknown>> {
-  const key = process.env.ANTHROPIC_API_KEY?.trim();
+  const key = env.ANTHROPIC_API_KEY?.trim();
   if (!key) throw new Error("חסר ANTHROPIC_API_KEY");
 
   const models = getAnthropicModelCandidates(modelId);

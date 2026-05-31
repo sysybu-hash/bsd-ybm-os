@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 /**
  * PayPal של מפעיל ה-OS בלבד — משתני סביבה.
  * נפרד מ־paypalMerchantEmail / paypalMeSlug של כל ארגון (לקוחות קצה).
@@ -14,8 +15,8 @@ function normalizeMeSlug(raw: string): string {
 }
 
 export function getOSPayPalConfig(): OSPayPalConfig {
-  const merchantEmail = process.env.OS_PAYPAL_MERCHANT_EMAIL?.trim() || null;
-  const slugRaw = process.env.OS_PAYPAL_ME_SLUG?.trim();
+  const merchantEmail = env.OS_PAYPAL_MERCHANT_EMAIL?.trim() || null;
+  const slugRaw = env.OS_PAYPAL_ME_SLUG?.trim();
   const meSlug = slugRaw ? normalizeMeSlug(slugRaw) : null;
   return { merchantEmail, meSlug };
 }

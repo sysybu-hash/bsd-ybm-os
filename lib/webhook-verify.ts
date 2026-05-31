@@ -11,6 +11,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("webhook-verify");
@@ -64,7 +65,7 @@ export function verifyPayPlusWebhook(
   headers: Headers,
   rawBody: Buffer,
 ): WebhookVerifyResult {
-  const secretKey = process.env.PAYPLUS_SECRET_KEY?.trim();
+  const secretKey = env.PAYPLUS_SECRET_KEY?.trim();
 
   if (!secretKey) {
     log.warn("payplus_webhook_no_secret", {

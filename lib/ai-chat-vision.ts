@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 
@@ -16,7 +17,7 @@ export async function chatWithAttachment(
   }
 
   const genAI = new GoogleGenerativeAI(
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "",
+    env.GOOGLE_GENERATIVE_AI_API_KEY || env.GEMINI_API_KEY || "",
   );
 
   let lastErr: unknown = null;

@@ -1,6 +1,7 @@
 ﻿"use server";
 
 import { getServerSession } from "next-auth";
+import { env } from "@/lib/env";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -20,8 +21,8 @@ export type { ClientAiTableRow, ClientAiResult } from "@/lib/crm-client-ai";
 /** ׳ ׳™׳×׳•׳— AI ׳׳׳§׳•׳— ג€” Gemini Flash (FREE) / Pro (PRO+ ׳׳• SUPER_ADMIN) */
 export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
   const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
-    process.env.GEMINI_API_KEY?.trim();
+    env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
+    env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return {
       ok: false,

@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, type Content, type Part } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
 import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
@@ -27,13 +28,13 @@ function dedupeModels(models: string[]): string[] {
 
 function getNotebookModelChain(): string[] {
   return dedupeModels([
-    process.env.GEMINI_NOTEBOOK_MODEL?.trim() || NOTEBOOK_DEFAULT_MODEL,
+    env.GEMINI_NOTEBOOK_MODEL?.trim() || NOTEBOOK_DEFAULT_MODEL,
     ...NOTEBOOK_FALLBACK_MODELS,
   ]);
 }
 
 function getGeminiKey(): string | undefined {
-  return process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  return env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
 }
 
 export type NotebookChatMessage = { role: "user" | "model"; content: string };

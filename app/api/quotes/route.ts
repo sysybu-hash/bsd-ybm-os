@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import { randomBytes } from "crypto";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
@@ -32,8 +33,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   });
 
   const base =
-    process.env.NEXTAUTH_URL ||
-    process.env.AUTH_URL ||
+    env.NEXTAUTH_URL ||
+    env.AUTH_URL ||
     "http://localhost:3000";
   const signUrl = `${base.replace(/\/$/, "")}/sign/${token}`;
 

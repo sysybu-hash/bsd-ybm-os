@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { env } from "@/lib/env";
 
 const TTL_MS = 10 * 60 * 1000;
 
@@ -26,8 +27,8 @@ const store = new Map<string, StoredAction>();
 
 function signingSecret(): string {
   return (
-    process.env.NEXTAUTH_SECRET?.trim() ||
-    process.env.AUTH_SECRET?.trim() ||
+    env.NEXTAUTH_SECRET?.trim() ||
+    env.AUTH_SECRET?.trim() ||
     "dev-admin-pending-actions"
   );
 }

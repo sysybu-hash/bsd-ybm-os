@@ -1,4 +1,5 @@
 import type { UserRole } from "@prisma/client";
+import { env } from "@/lib/env";
 
 /** סופר-אדמינים קבועים בפלטפורמה */
 export const DEFAULT_OS_ADMIN_EMAILS = [
@@ -20,8 +21,8 @@ function parseEmailList(raw: string | undefined): string[] {
 /** כל כתובות הסופר-אדמין (env: OS_ADMIN_EMAILS או OS_ADMIN_EMAIL, מופרד בפסיק) */
 export function osAdminEmails(): string[] {
   const fromEnv = [
-    ...parseEmailList(process.env.OS_ADMIN_EMAILS),
-    ...parseEmailList(process.env.OS_ADMIN_EMAIL),
+    ...parseEmailList(env.OS_ADMIN_EMAILS),
+    ...parseEmailList(env.OS_ADMIN_EMAIL),
   ];
   const merged = [...fromEnv, ...DEFAULT_OS_ADMIN_EMAILS.map((e) => e.toLowerCase())];
   return [...new Set(merged)];

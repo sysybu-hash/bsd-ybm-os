@@ -1,4 +1,5 @@
 import { parseSubscriptionTier } from "@/lib/subscription-tier-config";
+import { env } from "@/lib/env";
 
 /**
  * בחירת מודל Gemini לניתוח CRM: FREE → Flash; מנוי בתשלום או SUPER_ADMIN → Pro.
@@ -13,8 +14,8 @@ export function resolveCrmGeminiModel(
   callerIsOSOwner?: boolean,
 ): string {
   const flash =
-    process.env.CRM_ANALYSIS_GEMINI_MODEL?.trim() || CRM_FLASH_MODEL_DEFAULT;
-  const pro = process.env.PREMIUM_GEMINI_MODEL?.trim() || CRM_PREMIUM_MODEL_DEFAULT;
+    env.CRM_ANALYSIS_GEMINI_MODEL?.trim() || CRM_FLASH_MODEL_DEFAULT;
+  const pro = env.PREMIUM_GEMINI_MODEL?.trim() || CRM_PREMIUM_MODEL_DEFAULT;
 
   const tier = parseSubscriptionTier(orgTier) ?? "FREE";
   const orgPremium = tier !== "FREE";

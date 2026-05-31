@@ -1,4 +1,5 @@
 import { generateText, stepCountIs } from "ai";
+import { env } from "@/lib/env";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,8 +20,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MODEL =
-  process.env.GEMINI_ADMIN_ASSISTANT_MODEL?.trim() ||
-  process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
+  env.GEMINI_ADMIN_ASSISTANT_MODEL?.trim() ||
+  env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
   getGeminiModelId();
 
 const bodySchema = z.object({

@@ -1,11 +1,12 @@
 import { withWorkspacesAuth } from "@/lib/api-handler";
+import { env } from "@/lib/env";
 import { Redis } from "@upstash/redis";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function getRedis(): Redis | null {
-  if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) {
+  if (!env.UPSTASH_REDIS_REST_URL && !env.KV_REST_API_URL) {
     return null;
   }
   try {

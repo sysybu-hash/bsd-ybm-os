@@ -1,12 +1,13 @@
 import { canonicalizeLoginEmail } from "@/lib/email-canonicalize";
+import { env } from "@/lib/env";
 
 let cache: { key: string; set: Set<string> } | null = null;
 
 /** LOGIN_ALLOWLIST_EMAILS דורס; אחרת ALLOWED_LOGIN_EMAILS (תאימות ל-.env קיים) */
 function rawAllowlist(): string {
-  const primary = process.env.LOGIN_ALLOWLIST_EMAILS?.trim();
+  const primary = env.LOGIN_ALLOWLIST_EMAILS?.trim();
   if (primary) return primary;
-  return process.env.ALLOWED_LOGIN_EMAILS?.trim() ?? "";
+  return env.ALLOWED_LOGIN_EMAILS?.trim() ?? "";
 }
 
 function allowlistSet(): Set<string> | null {

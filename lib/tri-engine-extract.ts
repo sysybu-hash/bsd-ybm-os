@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { extractDocumentWithOpenAI } from "@/lib/ai-extract-openai";
 import { extractDocumentWithMistral } from "@/lib/ai-extract-mistral";
@@ -71,7 +72,7 @@ export async function geminiMultimodal(
   instruction: string,
   modelChain: readonly string[],
 ): Promise<Record<string, unknown>> {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  const apiKey = env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
   if (!apiKey?.trim()) throw new Error("חסר מפתח Gemini");
   const genAI = new GoogleGenerativeAI(apiKey);
   let lastErr: unknown = null;

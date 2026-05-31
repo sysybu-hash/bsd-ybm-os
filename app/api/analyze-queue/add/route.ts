@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { env } from "@/lib/env";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import {
   jsonBadRequest,
@@ -20,7 +21,7 @@ export const maxDuration = 300;
 
 export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
   try {
-    if (process.env.NODE_ENV === "production" && !process.env.ANALYZE_QUEUE_SECRET?.trim()) {
+    if (process.env.NODE_ENV === "production" && !env.ANALYZE_QUEUE_SECRET?.trim()) {
       return jsonServiceUnavailable(
         "חסר ANALYZE_QUEUE_SECRET — לא ניתן להריץ את תור הסריקה בייצור.",
         "queue_secret_missing",

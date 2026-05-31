@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
+import { env } from "@/lib/env";
 
-const isVercel = Boolean(process.env.VERCEL);
+const isVercel = Boolean(env.VERCEL);
 
 const LAUNCH_ARGS = [
   "--no-sandbox",
@@ -11,8 +12,8 @@ const LAUNCH_ARGS = [
 
 function findLocalChromeExecutable(): string | null {
   const candidates = [
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    process.env.CHROME_PATH,
+    env.PUPPETEER_EXECUTABLE_PATH,
+    env.CHROME_PATH,
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",

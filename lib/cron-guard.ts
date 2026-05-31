@@ -8,6 +8,7 @@
  */
 
 import type { NextRequest } from "next/server";
+import { env } from "@/lib/env";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "./logger";
@@ -41,7 +42,7 @@ export async function withCronGuard(
   handler: () => Promise<CronRunResult>,
 ): Promise<NextResponse> {
   // ── Auth ──────────────────────────────────────────────────────────────────
-  const secret = process.env.CRON_SECRET?.trim();
+  const secret = env.CRON_SECRET?.trim();
   const auth = req.headers.get("authorization");
   if (!secret || auth !== `Bearer ${secret}`) {
     log.warn("cron_auth_failed", { slug: monitorSlug });

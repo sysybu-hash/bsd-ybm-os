@@ -3,13 +3,14 @@
  * סף לפני מע״מ: 10,000 ₪ (מ-1.1.2026), 5,000 ₪ (מ-1.6.2026)
  */
 import type { DocType } from "@prisma/client";
+import { env } from "@/lib/env";
 import {
   getItaAllocationThresholdNis,
   requiresItaAllocation,
 } from "@/lib/ita-allocation-rules";
 
 export function isItaProductionConfigured(): boolean {
-  const key = process.env.ITA_PRODUCTION_KEY?.trim();
+  const key = env.ITA_PRODUCTION_KEY?.trim();
   return Boolean(key && key.length > 0);
 }
 

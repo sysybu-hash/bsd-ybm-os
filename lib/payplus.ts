@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 
 const PAYPLUS_API_URL = "https://restapi.payplus.co.il/api/v1.0";
 
 function getPayPlusKey(): string {
-  return process.env.PAYPLUS_API_KEY?.trim() || "";
+  return env.PAYPLUS_API_KEY?.trim() || "";
 }
 
 function getPayPlusSecret(): string {
-  return process.env.PAYPLUS_SECRET_KEY?.trim() || "";
+  return env.PAYPLUS_SECRET_KEY?.trim() || "";
 }
 
 export function isPayPlusConfigured(): boolean {
@@ -36,7 +37,7 @@ export async function createPayPlusPaymentPage(params: {
   }
 
   const body = {
-    payment_page_uid: process.env.PAYPLUS_PAYMENT_PAGE_UID, // Defined in PayPlus dashboard
+    payment_page_uid: env.PAYPLUS_PAYMENT_PAGE_UID, // Defined in PayPlus dashboard
     amount: params.amount,
     currency_code: params.currencyCode || "ILS",
     items: [

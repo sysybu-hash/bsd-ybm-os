@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import type { WorkspaceAuthContext } from "@/lib/api-handler";
 import { canAccessMeckano, MECKANO_ACCESS_ERROR, type SessionLike } from "@/lib/meckano-access";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +37,7 @@ export async function requireMeckanoSession(session: SessionLike): Promise<Mecka
       ),
     };
   }
-  const apiKey = process.env.MECKANO_API_KEY?.trim();
+  const apiKey = env.MECKANO_API_KEY?.trim();
   if (!apiKey) {
     return {
       error: NextResponse.json(

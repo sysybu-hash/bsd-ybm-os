@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google";
+import { env } from "@/lib/env";
 import { convertToModelMessages, streamText, tool, type UIMessage } from "ai";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
@@ -16,8 +17,8 @@ import { getGeminiModelId } from "@/lib/gemini-model";
 export const maxDuration = 30;
 
 const AGENT_MODEL =
-  process.env.GEMINI_AGENT_MODEL?.trim() ||
-  process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
+  env.GEMINI_AGENT_MODEL?.trim() ||
+  env.GOOGLE_GENERATIVE_AI_MODEL?.trim() ||
   getGeminiModelId();
 
 const chatBodySchema = z.object({

@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 
@@ -6,7 +7,7 @@ export async function generateAndStoreInsightForOrganization(
   organizationId: string,
 ): Promise<void> {
   const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    env.GOOGLE_GENERATIVE_AI_API_KEY || env.GEMINI_API_KEY;
   if (!apiKey || !organizationId) return;
 
   const [docs, contacts] = await Promise.all([

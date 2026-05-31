@@ -4,6 +4,7 @@
  * Pixtral Large: vision מצוין לגרמושקות, חשבוניות סרוקות, כתב יד, עברית.
  */
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { env } from "@/lib/env";
 import {
   getMistralVisionModelCandidates,
   getMistralModel,
@@ -14,7 +15,7 @@ import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 const MISTRAL_API_BASE = "https://api.mistral.ai/v1";
 
 function getMistralKey(): string {
-  const key = process.env.MISTRAL_API_KEY?.trim();
+  const key = env.MISTRAL_API_KEY?.trim();
   if (!key) throw new Error("חסר MISTRAL_API_KEY");
   return key;
 }

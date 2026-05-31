@@ -1,4 +1,5 @@
 import type { DocumentScanJobStatus } from "@prisma/client";
+import { env } from "@/lib/env";
 
 export type PublicAnalyzeJobStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -118,13 +119,13 @@ export function isDocumentScanRateLimitError(err: unknown): boolean {
  * - בפיתוח בלי ANALYZE_QUEUE_SECRET — מותר (נוחות מקומית)
  */
 export function assertAnalyzeQueueProcessAuthorized(req: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET?.trim();
+  const cronSecret = env.CRON_SECRET?.trim();
   const auth = req.headers.get("authorization");
   if (cronSecret && auth === `Bearer ${cronSecret}`) {
     return true;
   }
 
-  const queueSecret = process.env.ANALYZE_QUEUE_SECRET?.trim();
+  const queueSecret = env.ANALYZE_QUEUE_SECRET?.trim();
   if (!queueSecret) {
     return process.env.NODE_ENV === "development";
   }

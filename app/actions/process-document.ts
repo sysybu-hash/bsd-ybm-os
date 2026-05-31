@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash } from "crypto";
+import { env } from "@/lib/env";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -38,7 +39,7 @@ import {
 } from "@/lib/scan-mime";
 
 function getGeminiKey(): string | undefined {
-  return process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  return env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
 }
 
 export type ProcessDocumentResult =
