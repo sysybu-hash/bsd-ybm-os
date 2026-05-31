@@ -1,8 +1,8 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React, { useRef } from "react";
-import { Settings2 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Settings2, Trash2 } from "lucide-react";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
 import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
@@ -17,30 +17,71 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   const c = useAiChatState(liveData, openWorkspaceWidget);
   const inputAreaRef = useRef<HTMLDivElement>(null);
 
+  // ── שעון שיחה — מתחיל כשנשלחת ההודעה הראשונה ──
+  const [sessionStart] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState("00:00");
+  useEffect(() => {
+    if (c.messages.length === 0) { setElapsed("00:00"); return; }
+    const tick = () => {
+      const s = Math.floor((Date.now() - sessionStart) / 1000);
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      setElapsed(`${mm}:${ss}`);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [c.messages.length, sessionStart]);
+
   const chatArea = (
     <div className="flex min-h-0 flex-1 flex-col relative">
-      {/* Tab header */}
-      <div className="px-3 py-2 sm:px-6 sm:py-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-2">
+      {/* ── כותרת sticky — תמיד נראית, גם בגלילה ── */}
+      <div className="sticky top-0 z-10 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 backdrop-blur-sm px-3 py-2 flex items-center gap-2">
+        {/* טאבים */}
+        <div className="flex items-center gap-1.5 min-w-0">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
             <button type="button" onClick={c.handleLiveTab}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
               {t("workspaceWidgets.aiChat.tabLive")}
             </button>
           ) : null}
           <button type="button" onClick={c.handleTextTab}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "text" ? "bg-purple-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "text" ? "bg-purple-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
             {t("workspaceWidgets.aiChat.tabText")}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => c.setShowSettings(true)}
-          aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-          className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"
-        >
-          <Settings2 size={18} aria-hidden />
-        </button>
+
+        {/* שעון שיחה */}
+        {c.messages.length > 0 && (
+          <span className="flex-1 text-center font-mono text-[11px] font-bold text-[color:var(--foreground-muted)]">
+            🕐 {elapsed}
+          </span>
+        )}
+
+        {/* כפתורי ניהול */}
+        <div className="flex shrink-0 items-center gap-1">
+          {/* הגדרות Gemini */}
+          <button
+            type="button"
+            onClick={() => c.setShowSettings(true)}
+            aria-label={t("workspaceWidgets.aiChat.chatSettings")}
+            className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
+          >
+            <Settings2 size={17} aria-hidden />
+          </button>
+          {/* סיום שיחה */}
+          {c.messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => c.setMessages([])}
+              aria-label={t("workspaceWidgets.aiChat.clearHistory")}
+              title={t("workspaceWidgets.aiChat.clearHistory")}
+              className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
+            >
+              <Trash2 size={17} aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

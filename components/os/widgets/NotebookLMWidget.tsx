@@ -122,10 +122,21 @@ export default function NotebookLMWidget({
         onCancel={() => nb.setDeleteNotebookId(null)}
       />
 
+      {/* ── מובייל: sources בגובה טבעי מלא → גלילה חיצונית, ── */}
+      {/* ── דסקטופ: split panels כרגיל                     ── */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        {/* sources sidebar — גובה טבעי (לא panel מוגבל) */}
+        <div className="shrink-0 border-b border-[color:var(--border-main)]">
+          {sourcesSidebar}
+        </div>
+        {/* chat panel — min-height סביר */}
+        <div className="min-h-[55vh]">
+          {chatPanel}
+        </div>
+      </div>
       <WidgetSplitPanels
-        className="min-h-0 flex-1"
+        className="hidden min-h-0 flex-1 md:flex"
         direction="horizontal"
-        stackBelowPx={768}
         panels={[
           { id: "notebook-sources", defaultSize: 33, minSize: 20, children: sourcesSidebar },
           { id: "notebook-chat",    defaultSize: 67, minSize: 40, children: chatPanel },

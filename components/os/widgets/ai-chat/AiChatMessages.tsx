@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, User } from "lucide-react";
+
 import ReactMarkdown from "react-markdown";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import type { Message } from "./types";
@@ -49,43 +50,18 @@ export function AiChatMessages({
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
 
-      {/* ── Sticky status bar ──
-          מוצג כשהמשתמש גלל למעלה ושדה הקלט נעלם מהמסך התחתון.
-          מציג: סטטוס AI + תוכן הקלד + כפתור שלח לשימוש מהראש. ── */}
-      {!inputVisible && messages.length > 0 && (
-        <div
-          className="sticky top-0 z-20 flex items-center gap-2 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]/95 px-3 py-2 backdrop-blur-sm"
-          aria-live="polite"
-        >
-          {/* סטטוס AI */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isLoading ? "animate-pulse bg-purple-500" : "bg-emerald-500"
-              }`}
-            />
-            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] whitespace-nowrap">
-              {isLoading
-                ? t("workspaceWidgets.aiChat.typing")
-                : t("workspaceWidgets.aiChat.statusReady")}
-            </span>
-          </div>
-
-          {/* תצוגת הקלד הנוכחי */}
-          <div className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2.5 py-1 text-xs text-[color:var(--foreground-muted)] truncate">
-            {inputValue.trim()
-              ? inputValue
-              : <span className="opacity-50">{t("workspaceWidgets.aiChat.placeholder")}</span>
-            }
-          </div>
-
-          {/* כפתור שלח מהראש */}
+      {/* ── mini send bar — מוצג כשגוללים למעלה (קלט נעלם) ──
+          הכותרת הקבועה כבר מציגה הגדרות + סיום שיחה.
+          הבר מציג רק כפתור שלח מהיר כשיש טקסט מוקלד. ── */}
+      {!inputVisible && inputValue.trim() && (
+        <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]/95 px-3 py-1.5 backdrop-blur-sm">
+          <span className={`h-2 w-2 shrink-0 rounded-full ${isLoading ? "animate-pulse bg-purple-500" : "bg-emerald-500"}`} />
+          <span className="min-w-0 flex-1 truncate text-xs text-[color:var(--foreground-muted)]">{inputValue}</span>
           <button
             type="button"
             onClick={onSubmit}
-            disabled={isLoading || !inputValue.trim()}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-purple-600 px-3 py-1.5 text-[10px] font-bold text-white transition hover:bg-purple-500 disabled:opacity-40"
-            aria-label={t("workspaceWidgets.omnibar.send")}
+            disabled={isLoading}
+            className="flex shrink-0 items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-40"
           >
             <Send size={11} aria-hidden />
             {t("workspaceWidgets.omnibar.send")}
