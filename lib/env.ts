@@ -267,6 +267,13 @@ function getEnv() {
  */
 export const env = new Proxy({} as ReturnType<typeof validateEnv>, {
   get(_, key: string) {
+    // הגנה: אם המודול דלף ל-bundle של הלקוח, server vars נעדרים שם לגיטימית.
+    // אין להריץ את ה-validation של ה-server schema בדפדפן — היה זורק על
+    // DATABASE_URL/NEXTAUTH_SECRET חסרים ומפיל את כל האפליקציה. במקום זאת
+    // מחזירים את הערך הגולמי (בד"כ undefined ל-server-only), בלי קריסה.
+    if (typeof window !== "undefined") {
+      return (process.env as Record<string, string | undefined>)[key];
+    }
     return getEnv()[key as keyof ReturnType<typeof validateEnv>];
   },
 });
