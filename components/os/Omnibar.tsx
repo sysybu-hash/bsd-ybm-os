@@ -123,12 +123,18 @@ export default function Omnibar({
     </div>
   );
 
+  // על מובייל (stacked) — כפתורי אייקון מקבלים flex-1 כדי למלא את הרוחב
+  const iconBtnClass =
+    layout === "stacked"
+      ? "flex flex-1 min-h-[44px] items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] transition"
+      : "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] transition";
+
   const actionButtons = (
     <>
       <button
         type="button"
         onClick={() => openWorkspaceWidget("fieldCopilot")}
-        className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-amber-600 transition hover:bg-amber-500/10 dark:text-amber-300"
+        className={`${iconBtnClass} text-amber-600 hover:bg-amber-500/10 dark:text-amber-300`}
         title={t("workspaceWidgets.sidebar.fieldCopilot")}
         aria-label={t("workspaceWidgets.sidebar.fieldCopilot")}
       >
@@ -137,7 +143,7 @@ export default function Omnibar({
       <button
         type="button"
         onClick={() => live.setGeminiLiveSettingsOpen(true)}
-        className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-indigo-300"
+        className={`${iconBtnClass} text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-indigo-300`}
         title={t("workspaceWidgets.omnibar.voiceSettingsTitle")}
         aria-label={t("workspaceWidgets.omnibar.voiceSettingsAria")}
         aria-expanded={live.geminiLiveSettingsOpen}
@@ -148,12 +154,12 @@ export default function Omnibar({
       <button
         type="button"
         onClick={live.toggleLive}
-        className={`flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl transition ${
+        className={`${iconBtnClass} ${
           live.voiceActive
-            ? "bg-indigo-600 text-white shadow-sm"
+            ? "border-transparent bg-indigo-600 text-white shadow-sm"
             : live.rateLimitActive
-              ? "border border-rose-500/40 bg-rose-500/10 text-rose-300"
-              : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+              ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
+              : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
         }`}
         title={
           live.rateLimitActive && live.voiceStatus === "idle" && live.rateLimitLabel
@@ -179,7 +185,9 @@ export default function Omnibar({
       </button>
       <button
         type="submit"
-        className="quiet-button quiet-button-primary flex min-h-[44px] shrink-0 items-center gap-1.5 px-4 text-xs"
+        className={`quiet-button quiet-button-primary flex min-h-[44px] items-center gap-1.5 text-xs ${
+          layout === "stacked" ? "flex-[2] justify-center px-3" : "shrink-0 px-4"
+        }`}
         aria-label={t("workspaceWidgets.omnibar.sendAria")}
       >
         <Send size={15} aria-hidden />
@@ -242,7 +250,7 @@ export default function Omnibar({
           >
             <div className="flex w-full items-center justify-between gap-2">{statusBadge}</div>
             <div className="w-full min-w-0">{inputField}</div>
-            <div className="flex flex-wrap items-center justify-end gap-2">{actionButtons}</div>
+            <div className="flex w-full items-center gap-2">{actionButtons}</div>
           </div>
         ) : (
           <div
