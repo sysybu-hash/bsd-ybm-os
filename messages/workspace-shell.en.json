@@ -1178,7 +1178,11 @@
       "removeAttachment": "Remove attachment",
       "tabLive": "Live",
       "tabText": "Text",
-      "chatSettings": "Chat settings"
+      "chatSettings": "Chat settings",
+      "scrollToBottom": "Jump to bottom",
+      "statusReady": "Ready for your question",
+      "statusWaiting": "Waiting for response",
+      "typing": "Typing…"
     },
     "erp": {
       "loading": "Loading documents…",

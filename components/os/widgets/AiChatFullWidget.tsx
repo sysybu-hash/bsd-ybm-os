@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
-import React from "react";
+import React, { useRef } from "react";
 import { Settings2 } from "lucide-react";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
 import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
@@ -15,6 +15,7 @@ import type { AiChatFullWidgetProps } from "./ai-chat/types";
 export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget }: AiChatFullWidgetProps) {
   const { dir, t } = useI18n();
   const c = useAiChatState(liveData, openWorkspaceWidget);
+  const inputAreaRef = useRef<HTMLDivElement>(null);
 
   const chatArea = (
     <div className="flex min-h-0 flex-1 flex-col relative">
@@ -48,6 +49,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         isLoading={c.isLoading}
         chatTab={c.chatTab}
         chatEndRef={c.chatEndRef}
+        inputRef={inputAreaRef}
         t={t}
       >
         {c.chatTab === "live" && (
@@ -73,6 +75,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
           onAttachFile={c.handleAttachmentPick}
           onSubmit={(e) => void c.handleSend(e)}
           fileInputRef={c.fileInputRef}
+          containerRef={inputAreaRef}
           t={t}
         />
       )}

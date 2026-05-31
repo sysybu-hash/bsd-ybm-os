@@ -14,15 +14,17 @@ type AiChatInputProps = {
   onAttachFile: (file: File | null) => void;
   onSubmit: (e?: React.FormEvent) => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  /** ref שמועבר כלפי מעלה כדי ש-AiChatMessages יוכל לנטר נראות */
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   t: (key: string) => string;
 };
 
 export function AiChatInput({
   input, setInput, isLoading, attachment, onClearAttachment,
-  onAttachFile, onSubmit, fileInputRef, t,
+  onAttachFile, onSubmit, fileInputRef, containerRef, t,
 }: AiChatInputProps) {
   return (
-    <div className="p-3 sm:p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
+    <div ref={containerRef as React.RefObject<HTMLDivElement>} className="p-3 sm:p-6 bg-[color:var(--background-main)]/50 border-t border-[color:var(--border-main)]">
       {attachment ? (
         <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
           <span className="truncate max-w-[240px]">{attachment.name}</span>

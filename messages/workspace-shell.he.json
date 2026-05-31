@@ -1178,7 +1178,11 @@
       "removeAttachment": "הסר קובץ מצורף",
       "tabLive": "Live",
       "tabText": "טקסט",
-      "chatSettings": "הגדרות צ׳אט"
+      "chatSettings": "הגדרות צ׳אט",
+      "scrollToBottom": "לתחתית",
+      "statusReady": "מוכן לשאלה הבאה",
+      "statusWaiting": "ממתין לתשובה",
+      "typing": "כותב…"
     },
     "erp": {
       "loading": "טוען מסמכים…",

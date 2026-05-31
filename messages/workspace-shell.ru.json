@@ -1178,7 +1178,11 @@
       "removeAttachment": "Удалить вложение",
       "tabLive": "Live",
       "tabText": "Текст",
-      "chatSettings": "Настройки чата"
+      "chatSettings": "Настройки чата",
+      "scrollToBottom": "В конец",
+      "statusReady": "Готов к следующему вопросу",
+      "statusWaiting": "Ожидание ответа",
+      "typing": "Печатает…"
     },
     "erp": {
       "loading": "Загрузка документов…",
