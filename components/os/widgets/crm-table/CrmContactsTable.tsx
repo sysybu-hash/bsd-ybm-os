@@ -35,15 +35,15 @@ export function CrmContactsTable({
   return (
     <>
       <div className="overflow-x-auto min-w-0">
-        <table className="w-full border-collapse min-w-[920px]">
+        <table className="w-full border-collapse min-w-[480px]">
           <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
             <tr className="text-start text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
-              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnClient")}</th>
-              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnStatus")}</th>
-              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnContact")}</th>
-              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnProjects")}</th>
-              <th className="px-6 py-4">{t("workspaceWidgets.crmTable.columnLastContact")}</th>
-              <th className="px-6 py-4 min-w-[11rem]">{t("workspaceWidgets.crmTable.columnActions")}</th>
+              <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnClient")}</th>
+              <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnStatus")}</th>
+              <th className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnContact")}</th>
+              <th className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">{t("workspaceWidgets.crmTable.columnProjects")}</th>
+              <th className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">{t("workspaceWidgets.crmTable.columnLastContact")}</th>
+              <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[color:var(--border-main)]/30">
@@ -61,7 +61,7 @@ export function CrmContactsTable({
                     onClick={() => onSelect(client)}
                     className="group hover:bg-[color:var(--foreground-muted)]/5 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-xs font-bold border border-[color:var(--border-main)] text-[color:var(--foreground-main)]">
                           {client.name?.charAt(0)}
@@ -85,7 +85,7 @@ export function CrmContactsTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
                           client.status === "active"
@@ -98,7 +98,7 @@ export function CrmContactsTable({
                         {client.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-[11px] text-[color:var(--foreground-main)] opacity-80">
                           <Mail size={12} className="text-[color:var(--foreground-muted)]" />{" "}
@@ -110,7 +110,7 @@ export function CrmContactsTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-xs font-bold text-[color:var(--foreground-main)] border border-[color:var(--border-main)]">
@@ -130,12 +130,12 @@ export function CrmContactsTable({
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">
                       <div className="text-[11px] text-[color:var(--foreground-main)] opacity-70 font-medium">
                         {new Date(client.lastContact).toLocaleDateString("he-IL")}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center justify-end gap-2 flex-wrap">
                         {openWorkspaceWidget ? (
                           <button

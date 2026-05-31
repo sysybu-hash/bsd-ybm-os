@@ -115,7 +115,7 @@ export default function CashflowWidget({ data }: { data?: unknown }) {
           </div>
 
           <div className="min-w-0 overflow-x-auto pb-1">
-          <div className="flex h-36 min-w-[520px] items-end justify-between gap-3 border-b border-[color:var(--border-main)]/30 pb-3" dir="ltr">
+          <div className="flex h-36 min-w-[300px] items-end justify-between gap-1.5 sm:gap-3 border-b border-[color:var(--border-main)]/30 pb-3" dir="ltr">
             {cashflow.trend.map((item) => {
               const isSelected = selectedPoint?.month === item.month;
 

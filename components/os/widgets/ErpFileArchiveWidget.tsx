@@ -179,7 +179,8 @@ export default function ErpFileArchiveWidget() {
           ) : emptyAfterLoad ? (
             <WidgetState variant="empty" message={emptyMessage} />
           ) : viewMode === "list" ? (
-            <div className="min-w-[600px] space-y-2">
+            <div className="overflow-x-auto">
+            <div className="min-w-[420px] space-y-2">
               <div className="mb-2 grid grid-cols-12 border-b border-[color:var(--border-main)]/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
                 <div className="col-span-5">שם</div>
                 <div className="col-span-2 text-center">פרויקט</div>
@@ -241,6 +242,7 @@ export default function ErpFileArchiveWidget() {
                   </div>
                 );
               })}
+            </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

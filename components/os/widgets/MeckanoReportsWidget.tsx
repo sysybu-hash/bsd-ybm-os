@@ -142,27 +142,27 @@ export default function MeckanoReportsWidget() {
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[600px]">
+          <table className="w-full border-collapse min-w-[360px]">
             <thead className="sticky top-0 z-10 bg-[color:var(--background-main)]/80 backdrop-blur-md">
               <tr className="text-start text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]/30">
-                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colDate")}</th>
-                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colEmployee")}</th>
-                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colProject")}</th>
-                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colLocation")}</th>
-                <th className="px-6 py-4">{t("workspaceWidgets.meckano.colHours")}</th>
-                <th className="px-6 py-4 w-10"></th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.meckano.colDate")}</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.meckano.colEmployee")}</th>
+                <th className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">{t("workspaceWidgets.meckano.colProject")}</th>
+                <th className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">{t("workspaceWidgets.meckano.colLocation")}</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.meckano.colHours")}</th>
+                <th className="px-3 py-3 sm:px-6 sm:py-4 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[color:var(--border-main)]/10">
               {reports.map((report, idx) => (
                 <tr key={report.id ?? idx} className="group hover:bg-[color:var(--foreground-muted)]/5 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--foreground-main)]">
                       <Calendar size={12} className="text-[color:var(--foreground-muted)]" />
                       {new Date(report.date).toLocaleDateString("he-IL")}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-600">
                         {report.employeeName?.charAt(0) ?? "U"}
@@ -170,19 +170,19 @@ export default function MeckanoReportsWidget() {
                       <span className="text-xs font-bold text-[color:var(--foreground-main)]">{report.employeeName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
                       <Briefcase size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
                       {report.project}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">
                     <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
                       <MapPin size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
                       {report.location}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2">
                       <div className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-black">
                         {report.hours}
@@ -190,7 +190,7 @@ export default function MeckanoReportsWidget() {
                       <Clock size={12} className="text-[color:var(--foreground-muted)] opacity-50" />
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <ArrowLeftRight size={14} className="text-[color:var(--foreground-muted)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
                   </td>
                 </tr>
