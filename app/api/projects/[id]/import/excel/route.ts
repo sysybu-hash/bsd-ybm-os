@@ -27,7 +27,7 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgI
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = parseExcelProjectWorkbook(buffer, file.name);
+    const parsed = await parseExcelProjectWorkbook(buffer, file.name);
 
     if (!confirm) {
       return NextResponse.json({

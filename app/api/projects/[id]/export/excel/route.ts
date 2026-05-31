@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
@@ -32,12 +32,12 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId
       orderBy: { sortOrder: "asc" },
     });
 
-    const wb = XLSX.utils.book_new();
+    let sheetName: string;
+    let rows: unknown[][];
 
     if (type === "quote") {
-      const rows: unknown[][] = [
-        ["תיאור סעיף", "יחידה", "כמות", "מחיר יחידה", 'סה"כ', "האם בוצע עבודה?", "מקדם"],
-      ];
+      sheetName = "הצעת מחיר";
+      rows = [["תיאור סעיף", "יחידה", "כמות", "מחיר יחידה", 'סה"כ', "האם בוצע עבודה?", "מקדם"]];
       for (const l of lines) {
         rows.push([
           l.description,
@@ -49,13 +49,13 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId
           l.progressCoefficient ?? "",
         ]);
       }
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "הצעת מחיר");
     } else if (type === "progress" && billNumber > 0) {
       const bill = await prisma.progressBill.findFirst({
         where: { projectId, billNumber },
         include: { lines: true },
       });
-      const rows: unknown[][] = [["תיאור", "כמות חוזה", "מחיר", "בוצע", "מקדם", 'סה"כ']];
+      sheetName = `חשבון ${billNumber}`;
+      rows = [["תיאור", "כמות חוזה", "מחיר", "בוצע", "מקדם", 'סה"כ']];
       for (const bl of bill?.lines ?? []) {
         rows.push([
           bl.description ?? "",
@@ -66,19 +66,22 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId
           bl.lineTotal,
         ]);
       }
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), `חשבון ${billNumber}`);
     } else {
-      const rows: unknown[][] = [["תיאור סעיף", "יחידה", "כמות", "מחיר יחידה", 'סה"כ']];
+      sheetName = "כתב כמויות";
+      rows = [["תיאור סעיף", "יחידה", "כמות", "מחיר יחידה", 'סה"כ']];
       for (const l of lines) {
         rows.push([l.description, l.unit ?? "", l.quantity ?? "", l.unitPrice ?? "", l.lineTotal]);
       }
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "כתב כמויות");
     }
 
-    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(sheetName);
+    ws.addRows(rows);
+
+    const buf = await wb.xlsx.writeBuffer();
     const filename = `${project?.name ?? "project"}-${type}.xlsx`;
 
-    return new NextResponse(new Uint8Array(buf), {
+    return new NextResponse(new Uint8Array(buf as ArrayBuffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export type ExcelWorkbookKind = "quote" | "account" | "unknown";
 
@@ -51,8 +51,36 @@ function numCell(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function sheetNames(wb: XLSX.WorkBook): string[] {
-  return wb.SheetNames ?? [];
+/** מחלץ ערך תא בודד מ-exceljs ומנרמל לטיפוס פשוט (כמו defval:"" ב-sheet_to_json). */
+function cellValue(cell: ExcelJS.Cell): unknown {
+  const v = cell.value;
+  if (v == null) return "";
+  if (typeof v === "object") {
+    if (v instanceof Date) return v;
+    // נוסחה → תוצאה מחושבת
+    if ("result" in v) return (v as { result?: unknown }).result ?? "";
+    // היפר-קישור → טקסט מוצג
+    if ("text" in v) return (v as { text?: unknown }).text ?? "";
+    // טקסט עשיר → איחוד מקטעים
+    if ("richText" in v) {
+      return (v as { richText: Array<{ text: string }> }).richText.map((r) => r.text).join("");
+    }
+    return "";
+  }
+  return v;
+}
+
+/** ממיר worksheet של exceljs למבנה שורות-כמערכים (תחליף ל-sheet_to_json{header:1,defval:""}). */
+function worksheetToRows(ws: ExcelJS.Worksheet): unknown[][] {
+  const rows: unknown[][] = [];
+  const colCount = Math.max(1, ws.columnCount);
+  ws.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+    const arr: unknown[] = [];
+    for (let c = 1; c <= colCount; c++) arr.push(cellValue(row.getCell(c)));
+    rows[rowNumber - 1] = arr; // exceljs 1-indexed → מערך 0-indexed
+  });
+  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = [];
+  return rows;
 }
 
 function detectKind(names: string[]): ExcelWorkbookKind {
@@ -100,8 +128,7 @@ function findHeaderRow(rows: unknown[][]): { row: number; map: Record<string, nu
   return { row: 2, map: { description: 1, unit: 2, quantity: 3, unitPrice: 4, lineTotal: 5 } };
 }
 
-function parseBoqSheet(sheet: XLSX.WorkSheet, sheetName: string): ParsedBoqLine[] {
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) as unknown[][];
+function parseBoqSheet(rows: unknown[][], sheetName: string): ParsedBoqLine[] {
   const { row: headerRow, map } = findHeaderRow(rows);
   const lines: ParsedBoqLine[] = [];
   let sortOrder = 0;
@@ -160,13 +187,12 @@ function parseBoqSheet(sheet: XLSX.WorkSheet, sheetName: string): ParsedBoqLine[
   return lines;
 }
 
-function parseProgressBillSheet(sheet: XLSX.WorkSheet, sheetName: string): ParsedProgressBill | null {
+function parseProgressBillSheet(rows: unknown[][], sheetName: string): ParsedProgressBill | null {
   const m = sheetName.match(/חשבון\s*(\d+)/i);
   if (!m) return null;
   const billNumber = Number(m[1]);
   if (!Number.isFinite(billNumber)) return null;
 
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) as unknown[][];
   const lines: ParsedProgressBill["lines"] = [];
   let subtotal = 0;
 
@@ -195,12 +221,14 @@ function parseProgressBillSheet(sheet: XLSX.WorkSheet, sheetName: string): Parse
   };
 }
 
-export function parseExcelProjectWorkbook(
+export async function parseExcelProjectWorkbook(
   buffer: Buffer,
   sourceFileName: string,
-): ParsedExcelProject {
-  const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
-  const names = sheetNames(wb);
+): Promise<ParsedExcelProject> {
+  const wb = new ExcelJS.Workbook();
+  // cast מגשר על אי-התאמת טיפוסי Buffer בין @types/node ל-exceljs (אותו טיפוס בזמן ריצה)
+  await wb.xlsx.load(buffer as unknown as Parameters<typeof wb.xlsx.load>[0]);
+  const names = wb.worksheets.map((ws) => ws.name);
   const kind = detectKind(names);
 
   let boqLines: ParsedBoqLine[] = [];
@@ -209,12 +237,14 @@ export function parseExcelProjectWorkbook(
   const mainSheet =
     names.find((n) => /הצעת\s*מחיר|כתב|חשבון(?!\s*\d)/i.test(n)) ?? names[0];
   if (mainSheet) {
-    const sheet = wb.Sheets[mainSheet];
-    if (sheet) boqLines = parseBoqSheet(sheet, mainSheet);
+    const ws = wb.getWorksheet(mainSheet);
+    if (ws) boqLines = parseBoqSheet(worksheetToRows(ws), mainSheet);
   }
 
   for (const name of names) {
-    const bill = parseProgressBillSheet(wb.Sheets[name]!, name);
+    const ws = wb.getWorksheet(name);
+    if (!ws) continue;
+    const bill = parseProgressBillSheet(worksheetToRows(ws), name);
     if (bill) progressBills.push(bill);
   }
 

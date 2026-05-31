@@ -1,7 +1,23 @@
 import pdfParse from "pdf-parse";
+import type { CellValue } from "exceljs";
 import { inferMimeFromFileName } from "@/lib/scan-mime";
 
 const MAX_NOTEBOOK_TEXT = 120_000;
+
+/** ממיר ערך תא של exceljs למחרוזת CSV בטוחה (עוטף בגרשיים אם יש פסיק/ציטוט/שורה). */
+function toCsvCell(value: CellValue): string {
+  let s: string;
+  if (value == null) s = "";
+  else if (value instanceof Date) s = value.toISOString();
+  else if (typeof value === "object") {
+    const o = value as { result?: unknown; text?: unknown; richText?: Array<{ text: string }> };
+    if (o.richText) s = o.richText.map((r) => r.text).join("");
+    else if (o.text != null) s = String(o.text);
+    else if (o.result != null) s = String(o.result);
+    else s = "";
+  } else s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 export async function extractTextForNotebook(
   buffer: Buffer,
@@ -30,14 +46,19 @@ export async function extractTextForNotebook(
     fileName.toLowerCase().endsWith(".xls")
   ) {
     try {
-      const XLSX = await import("xlsx");
-      const wb = XLSX.read(buffer, { type: "buffer" });
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer as unknown as Parameters<typeof wb.xlsx.load>[0]);
       const parts: string[] = [];
-      for (const name of wb.SheetNames.slice(0, 8)) {
-        const sheet = wb.Sheets[name];
-        if (!sheet) continue;
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        parts.push(`## ${name}\n${csv}`);
+      for (const ws of wb.worksheets.slice(0, 8)) {
+        const colCount = Math.max(1, ws.columnCount);
+        const lines: string[] = [];
+        ws.eachRow({ includeEmpty: false }, (row) => {
+          const cells: string[] = [];
+          for (let c = 1; c <= colCount; c++) cells.push(toCsvCell(row.getCell(c).value));
+          lines.push(cells.join(","));
+        });
+        parts.push(`## ${ws.name}\n${lines.join("\n")}`);
       }
       return parts.join("\n\n").trim().slice(0, MAX_NOTEBOOK_TEXT);
     } catch {
