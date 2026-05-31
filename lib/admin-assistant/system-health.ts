@@ -1,4 +1,5 @@
 import { hasOSPayPalConfigured } from "@/lib/platform-paypal";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import {
   getMailFrom,
@@ -30,18 +31,18 @@ export async function getAdminSystemHealth(): Promise<{
   statuses.push({
     name: "AI Engine",
     ok: Boolean(
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-        process.env.GEMINI_API_KEY ||
-        process.env.OPENAI_API_KEY ||
-        process.env.ANTHROPIC_API_KEY,
+      env.GOOGLE_GENERATIVE_AI_API_KEY ||
+        env.GEMINI_API_KEY ||
+        env.OPENAI_API_KEY ||
+        env.ANTHROPIC_API_KEY,
     ),
     detail: "בדיקת מפתחות API",
   });
 
   const payplusOk = Boolean(
-    process.env.PAYPLUS_API_KEY?.trim() &&
-      process.env.PAYPLUS_SECRET_KEY?.trim() &&
-      process.env.PAYPLUS_PAYMENT_PAGE_UID?.trim(),
+    env.PAYPLUS_API_KEY?.trim() &&
+      env.PAYPLUS_SECRET_KEY?.trim() &&
+      env.PAYPLUS_PAYMENT_PAGE_UID?.trim(),
   );
   const platformPaypal = hasOSPayPalConfigured();
   const mailOk = isMailTransportConfigured();

@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 /** כתובת אתר ראשית בפרודקשן */
 /** דומיין קנוני ל-OAuth / מדיניות (תואם legal-site.publicUrl) */
 export const PRODUCTION_SITE_URL = "https://www.bsd-ybm.co.il";
@@ -31,8 +33,8 @@ export function canonicalizeSiteBaseUrl(raw: string): string {
  */
 export function resolveSiteBaseUrl(): string | undefined {
   const candidates: (string | undefined)[] = [
-    process.env.NEXTAUTH_URL,
-    process.env.AUTH_URL,
+    env.NEXTAUTH_URL,
+    env.AUTH_URL,
   ];
   if (process.env.NODE_ENV === "production") {
     candidates.push(process.env.NEXT_PUBLIC_SITE_URL);
@@ -41,7 +43,7 @@ export function resolveSiteBaseUrl(): string | undefined {
     const t = raw?.trim();
     if (t) return canonicalizeSiteBaseUrl(t);
   }
-  const vercel = process.env.VERCEL_URL?.trim();
+  const vercel = env.VERCEL_URL?.trim();
   if (vercel) return canonicalizeSiteBaseUrl(`https://${vercel.replace(/^https?:\/\//, "")}`);
   return undefined;
 }
@@ -49,6 +51,6 @@ export function resolveSiteBaseUrl(): string | undefined {
 export function applyNextAuthUrlEnv(): void {
   const base = resolveSiteBaseUrl();
   if (!base) return;
-  process.env.NEXTAUTH_URL = base;
-  process.env.AUTH_URL = canonicalizeSiteBaseUrl(process.env.AUTH_URL?.trim() || base);
+  env.NEXTAUTH_URL = base;
+  env.AUTH_URL = canonicalizeSiteBaseUrl(env.AUTH_URL?.trim() || base);
 }

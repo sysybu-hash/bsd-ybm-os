@@ -1,4 +1,5 @@
 import { v1 } from "@google-cloud/documentai";
+import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getModelChainForScanMode, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
@@ -51,7 +52,7 @@ export function getDocAiProcessorConfigs() {
   return (Object.keys(DOC_AI_PROCESSORS) as DocAiProcessorKind[]).map((kind) => ({
     kind,
     ...DOC_AI_PROCESSORS[kind],
-    configured: Boolean(resolveDocAiProcessorRaw(kind) || process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim()),
+    configured: Boolean(resolveDocAiProcessorRaw(kind) || env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim()),
   }));
 }
 
@@ -60,7 +61,7 @@ export function isAnyDocAiProcessorConfigured(): boolean {
 }
 
 export function isDocAiProcessorConfigured(kind: DocAiProcessorKind): boolean {
-  return Boolean(resolveDocAiProcessorRaw(kind) || process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim());
+  return Boolean(resolveDocAiProcessorRaw(kind) || env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim());
 }
 
 export function docAiProcessorFallbackOrder(scanMode: ScanModeV5): DocAiProcessorKind[] {
@@ -83,15 +84,15 @@ function resolveDocAiProcessorResourceName(
   }
 
   const projectId =
-    process.env.GOOGLE_DOCUMENT_AI_PROJECT_ID?.trim() ||
+    env.GOOGLE_DOCUMENT_AI_PROJECT_ID?.trim() ||
     credentials.project_id?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    process.env.GCLOUD_PROJECT?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
+    env.GOOGLE_CLOUD_PROJECT?.trim() ||
+    env.GCLOUD_PROJECT?.trim() ||
+    env.GOOGLE_CLOUD_PROJECT_ID?.trim();
 
   const location =
-    process.env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() ||
-    process.env.GOOGLE_CLOUD_LOCATION?.trim() ||
+    env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() ||
+    env.GOOGLE_CLOUD_LOCATION?.trim() ||
     "us";
 
   if (!projectId) {
@@ -106,11 +107,11 @@ function resolveDocAiProcessorResourceName(
 
 function resolveDocAiProjectId(credentials: ServiceAccountCredentials): string {
   const projectId =
-    process.env.GOOGLE_DOCUMENT_AI_PROJECT_ID?.trim() ||
+    env.GOOGLE_DOCUMENT_AI_PROJECT_ID?.trim() ||
     credentials.project_id?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    process.env.GCLOUD_PROJECT?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
+    env.GOOGLE_CLOUD_PROJECT?.trim() ||
+    env.GCLOUD_PROJECT?.trim() ||
+    env.GOOGLE_CLOUD_PROJECT_ID?.trim();
   if (!projectId) {
     throw new Error("Document AI: missing project id for processor auto-discovery.");
   }
@@ -118,7 +119,7 @@ function resolveDocAiProjectId(credentials: ServiceAccountCredentials): string {
 }
 
 function resolveDocAiLocation(): string {
-  return process.env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() || process.env.GOOGLE_CLOUD_LOCATION?.trim() || "us";
+  return env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() || env.GOOGLE_CLOUD_LOCATION?.trim() || "us";
 }
 
 async function discoverDocAiProcessorResourceName(
@@ -257,8 +258,8 @@ export async function processDocumentAiRaw(
   processorKind: DocAiProcessorKind = "INVOICE",
 ): Promise<DocAiRawResult> {
   const credentialsJson =
-    process.env.GOOGLE_DOCUMENT_AI_CREDENTIALS?.trim() ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
+    env.GOOGLE_DOCUMENT_AI_CREDENTIALS?.trim() ||
+    env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
 
   if (!credentialsJson) {
     throw new Error(
@@ -276,7 +277,7 @@ export async function processDocumentAiRaw(
   }
 
   const dedicatedRaw = resolveDocAiProcessorRaw(processorKind);
-  const legacyRaw = process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim() || "";
+  const legacyRaw = env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim() || "";
   const discoveryLocation = resolveDocAiLocation();
   const initialEndpoint = `${discoveryLocation}-documentai.googleapis.com`;
 
@@ -400,7 +401,7 @@ ${JSON.stringify(tables, null, 2)}
   `;
 
   // Secondary pass with Gemini for 100% schema compliance
-  const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY;
+  const geminiKey = env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
   if (!geminiKey) {
      // If no Gemini key, we try a basic manual mapping (not ideal for "Premium")
      throw new Error("Google Document AI requires Gemini for schema normalization in this version.");

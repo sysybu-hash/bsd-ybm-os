@@ -1,4 +1,5 @@
 import { tool } from "ai";
+import { env } from "@/lib/env";
 import { z } from "zod";
 import { listPendingRegistrationsAction } from "@/app/actions/admin-console";
 import { manageSubsListOrganizationsAction } from "@/app/actions/manage-subscriptions";
@@ -24,18 +25,18 @@ export function consumeAdminNavigationHint(): AdminNavigationHint | null {
 
 function getEnvStatusRecord(): Record<string, boolean> {
   return {
-    cronSecret: Boolean(process.env.CRON_SECRET?.trim()),
-    analyzeQueueSecret: Boolean(process.env.ANALYZE_QUEUE_SECRET?.trim()),
+    cronSecret: Boolean(env.CRON_SECRET?.trim()),
+    analyzeQueueSecret: Boolean(env.ANALYZE_QUEUE_SECRET?.trim()),
     googleAi: Boolean(
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim(),
+      env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim(),
     ),
-    openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
-    anthropic: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
-    groq: Boolean(process.env.GROQ_API_KEY?.trim()),
-    nextAuthSecret: Boolean(process.env.NEXTAUTH_SECRET?.trim() || process.env.AUTH_SECRET?.trim()),
-    resend: Boolean(process.env.RESEND_API_KEY?.trim()),
-    smtpHost: Boolean(process.env.SMTP_HOST?.trim()),
-    databaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
+    openai: Boolean(env.OPENAI_API_KEY?.trim()),
+    anthropic: Boolean(env.ANTHROPIC_API_KEY?.trim()),
+    groq: Boolean(env.GROQ_API_KEY?.trim()),
+    nextAuthSecret: Boolean(env.NEXTAUTH_SECRET?.trim() || env.AUTH_SECRET?.trim()),
+    resend: Boolean(env.RESEND_API_KEY?.trim()),
+    smtpHost: Boolean(env.SMTP_HOST?.trim()),
+    databaseUrl: Boolean(env.DATABASE_URL?.trim()),
   };
 }
 

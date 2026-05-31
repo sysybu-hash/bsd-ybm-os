@@ -1,4 +1,5 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { env } from "@/lib/env";
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -30,10 +31,10 @@ normalizeNextAuthUrlEnv();
 const googleOAuthConfigured = isGoogleSignInOAuthConfigured();
 const googleSignInCreds = getGoogleSignInCredentials();
 
-const nextAuthUrlIsHttps = process.env.NEXTAUTH_URL?.trim().toLowerCase().startsWith("https://");
+const nextAuthUrlIsHttps = env.NEXTAUTH_URL?.trim().toLowerCase().startsWith("https://");
 
 function authHostIsLoopback(): boolean {
-  const raw = process.env.NEXTAUTH_URL?.trim();
+  const raw = env.NEXTAUTH_URL?.trim();
   if (!raw) return false;
   try {
     const h = new URL(raw).hostname.toLowerCase();
@@ -45,10 +46,10 @@ function authHostIsLoopback(): boolean {
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  secret: env.NEXTAUTH_SECRET ?? env.AUTH_SECRET,
   /** עוגיית __Secure-* ב-Vercel; לא על loopback HTTP (E2E / next start מקומי). */
   useSecureCookies: Boolean(
-    (process.env.VERCEL || nextAuthUrlIsHttps) && !authHostIsLoopback(),
+    (env.VERCEL || nextAuthUrlIsHttps) && !authHostIsLoopback(),
   ),
   session: {
     strategy: "jwt",

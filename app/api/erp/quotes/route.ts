@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { createNumberedDocument } from "@/lib/finance-numbering";

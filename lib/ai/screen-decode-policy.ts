@@ -1,4 +1,5 @@
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
+import { env } from "@/lib/env";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 
 export type ScreenType =
@@ -20,9 +21,9 @@ export type ScreenDecodePolicy = {
 };
 
 // המודל בפועל נקבע ע"י getModelChainForScanMode() — primaryModel הוא שדה תצוגה בלבד.
-const SCAN_DISPLAY_FLASH = process.env.GEMINI_INVOICE_MODEL?.trim() ?? "gemini-3.5-flash";
+const SCAN_DISPLAY_FLASH = env.GEMINI_INVOICE_MODEL?.trim() ?? "gemini-3.5-flash";
 const SCAN_DISPLAY_BLUEPRINT =
-  process.env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() ?? "gemini-3.5-flash";
+  env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() ?? "gemini-3.5-flash";
 
 export const SCREEN_AI_POLICY: Record<ScreenType, ScreenDecodePolicy> = {
   invoice: {
@@ -42,32 +43,32 @@ export const SCREEN_AI_POLICY: Record<ScreenType, ScreenDecodePolicy> = {
   quote_boq: {
     screenType: "quote_boq",
     scanMode: "QUOTE_BOQ",
-    primaryModel: process.env.GEMINI_QUOTE_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    primaryModel: env.GEMINI_QUOTE_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     fallbackModel: SCAN_DISPLAY_FLASH,
     postActions: ["boq"],
   },
   progress_bill: {
     screenType: "progress_bill",
     scanMode: "PROGRESS_BILL",
-    primaryModel: process.env.GEMINI_PROGRESS_BILL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    primaryModel: env.GEMINI_PROGRESS_BILL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["boq"],
   },
   general: {
     screenType: "general",
     scanMode: "GENERAL_DOCUMENT",
-    primaryModel: process.env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    primaryModel: env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["notebook", "erp"],
   },
   site_log: {
     screenType: "site_log",
     scanMode: "SITE_LOG",
-    primaryModel: process.env.GEMINI_SITE_LOG_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    primaryModel: env.GEMINI_SITE_LOG_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["work_diary", "boq", "notebook"],
   },
   drive_auto: {
     screenType: "drive_auto",
     scanMode: "GENERAL_DOCUMENT",
-    primaryModel: process.env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    primaryModel: env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["notebook", "erp"],
   },
 };
