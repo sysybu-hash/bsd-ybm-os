@@ -321,6 +321,7 @@
       "docCreator": "יוצר מסמכים",
       "aiScanner": "סורק חשבוניות AI",
       "fieldCopilot": "קופיילוט שטח",
+      "appBuilder": "מחולל אפליקציות",
       "projectBoard": "לוח פרויקטים",
       "crmTable": "טבלת לקוחות",
       "erpArchive": "ארכיון קבצי ERP",
@@ -370,7 +371,8 @@
       "ai": {
         "tabs": {
           "chat": "צ׳אט",
-          "notebook": "מחברת"
+          "notebook": "מחברת",
+          "builder": "מחולל אפליקציות"
         }
       }
     },
@@ -462,6 +464,81 @@
       "produceContract": "חוזה / הסכם",
       "constructionOnly": "קופיילוט שטח זמין רק לענף בנייה וקבלנות",
       "loading": "טוען קופיילוט…"
+    },
+    "appBuilder": {
+      "title": "מחולל אפליקציות AI",
+      "subtitle": "תארו כל רעיון — המחולל יבנה UI מותאם או יפעיל את הפלטפורמה (CRM, חשבוניות, סריקה, משימות…)",
+      "promptLabel": "תיאור האפליקציה",
+      "promptPlaceholder": "לדוגמה: טופס רישום לקוח עם שם, טלפון, תאריך פגישה וסכום הצעה",
+      "promptTooShort": "יש להזין לפחות 3 תווים",
+      "generate": "צור ממשק",
+      "generating": "יוצר…",
+      "generateError": "יצירת הממשק נכשלה — נסו לנסח מחדש",
+      "previewTitle": "תצוגה מקדימה",
+      "emptyPreview": "כתבו בצ׳אט מה לבנות — לדוגמה: «דשבורד עם 5 כרטיסי מטריקה להוצאות ופרויקטים»",
+      "previewUpdated": "התצוגה עודכנה — לחצו «שמור אפליקציה» כדי לשמור",
+      "tabLive": "Live",
+      "tabText": "צ׳אט",
+      "chatHint": "שיחה עם עוזר המחולל",
+      "chatSend": "שלח",
+      "chatSendFailed": "שליחת ההודעה נכשלה",
+      "chatEmptyReply": "לא התקבלה תשובה",
+      "chatEmptyTitle": "מה לבנות או לשנות?",
+      "chatEmptySubtitle": "תארו רעיון — טופס, דשבורד, פתיחת CRM, חשבונית, סריקה, משימה… המחולל יבנה UI או יפעיל את הפלטפורמה בשבילכם.",
+      "chatPlaceholder": "לדוגמה: דשבורד לקוחות, טופס ביקורת, פתח CRM, צור חשבונית…",
+      "clearChat": "נקה שיחה",
+      "liveStatusReady": "Gemini Live מוכן",
+      "liveStatusConnected": "מחובר — אפשר לדבר",
+      "liveStatusListening": "מקשיב…",
+      "liveStatusSpeaking": "העוזר מדבר…",
+      "liveStatusInterrupted": "הופסק — מקשיב להמשך",
+      "liveStatusTool": "מבצע פעולה…",
+      "liveStatusDisconnected": "נותק",
+      "liveStatusPreparing": "מכין חיבור…",
+      "liveStatusFallback": "Live זמין אחרי התחברות",
+      "appNameLabel": "שם האפליקציה",
+      "appDescriptionLabel": "תיאור (אופציונלי)",
+      "saveApp": "שמור אפליקציה",
+      "saving": "שומר…",
+      "saveSchemaSuccess": "האפליקציה נשמרה — ניתן לשלוח את הטופס",
+      "saveDashboardSuccess": "הדשבורד נשמר — ניתן לפתוח אותו מ«האפליקציות שלי»",
+      "saveSchemaError": "שמירת האפליקציה נכשלה",
+      "loadSchemaError": "טעינת האפליקציה נכשלה",
+      "savedAppsTitle": "האפליקציות שלי",
+      "refreshSavedApps": "רענון",
+      "loadingSavedApps": "טוען אפליקציות…",
+      "noSavedApps": "אין אפליקציות שמורות עדיין",
+      "newApp": "חדש",
+      "updateApp": "עדכן אפליקציה",
+      "editingApp": "עריכת אפליקציה קיימת",
+      "editPromptHint": "לשינוי הממשק: כתבו מה לשנות ולחצו «עדכן עם AI» (או «צור ממשק» לתצוגה מקדימה). בלי prompt — «עדכן אפליקציה» שומר רק שם ותיאור.",
+      "updateWithAi": "עדכן עם AI",
+      "updateWithAiSuccess": "האפליקציה עודכנה עם השינויים החדשים",
+      "updateSchemaSuccess": "האפליקציה עודכנה בהצלחה",
+      "updateSchemaError": "עדכון האפליקציה נכשל",
+      "deleteSchemaSuccess": "האפליקציה נמחקה",
+      "deleteSchemaError": "מחיקת האפליקציה נכשלה",
+      "deleteAppConfirm": "למחוק את «{name}»? פעולה זו אינה ניתנת לביטול.",
+      "deleteAppAria": "מחק {name}",
+      "globalBadge": "גלובלי",
+      "globalAppReadOnly": "אפליקציה גלובלית — ניתן לצפות בלבד",
+      "appType": {
+        "form": "טופס",
+        "table": "טבלה",
+        "dashboard": "דשבורד",
+        "composer": "מרכז שליטה",
+        "unknown": "אחר"
+      },
+      "invalidAction": "פעולה לא נתמכת",
+      "actionRunnerUnavailable": "לא ניתן להפעיל פעולות מהתצוגה הזו",
+      "nameRequired": "יש להזין שם לאפליקציה",
+      "noPreview": "אין תצוגה לשמירה — צרו ממשק קודם",
+      "submitForm": "שלח",
+      "saveDataSuccess": "הנתונים נשמרו בהצלחה",
+      "saveDataError": "שמירת הנתונים נכשלה",
+      "saveSchemaFirst": "שמרו את האפליקציה לפני שליחת נתונים",
+      "tablePreviewHint": "תצוגת עמודות — שורות נתונים יוצגו לאחר שמירה",
+      "dashboardLoading": "טוען נתונים…"
     },
     "helpCenter": {
       "title": "מרכז עזרה",
@@ -625,6 +702,10 @@
         "title": "קופיילוט שטח",
         "subtitle": "הצעה מהירה מהאתר"
       },
+      "appBuilder": {
+        "title": "מחולל אפליקציות",
+        "subtitle": "טפסים · דשבורד · מרכז שליטה"
+      },
       "aiChatFull": {
         "title": "צ׳אט AI",
         "subtitle": "עוזר אישי"
@@ -675,7 +756,7 @@
       },
       "aiHub": {
         "title": "AI",
-        "subtitle": "צ׳אט ומחברת"
+        "subtitle": "צ׳אט · מחברת · מחולל"
       }
     },
     "empty": {
@@ -747,6 +828,7 @@
       "docCreator": "מסמכים",
       "aiScanner": "סורק AI",
       "fieldCopilot": "קופיילוט שטח",
+      "appBuilder": "מחולל אפליקציות",
       "aiChatFull": "צ׳אט AI",
       "meckanoReports": "דוחות Meckano",
       "notebookLM": "NotebookLM",

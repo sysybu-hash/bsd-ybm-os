@@ -83,7 +83,7 @@ export default function WidgetHubShell({
           </p>
         ) : null}
       </div>
-      <div className="relative flex min-h-[240px] flex-1 flex-col overflow-x-hidden">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {renderTab(activeTab)}
       </div>
     </div>

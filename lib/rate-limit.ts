@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { createLogger } from "./logger";
 
 const logger = createLogger("rate-limit");
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
+
+async function getOrCreateRateLimitRow(key: string, windowMs: number) {
+  const now = Date.now();
+  const existing = await prisma.rateLimit.findUnique({ where: { key } });
+  if (existing) return existing;
+
+  try {
+    return await prisma.rateLimit.create({
+      data: {
+        key,
+        count: 0,
+        resetAt: new Date(now + windowMs),
+      },
+    });
+  } catch (err: unknown) {
+    if (isUniqueConstraintError(err)) {
+      const row = await prisma.rateLimit.findUnique({ where: { key } });
+      if (row) return row;
+    }
+    throw err;
+  }
+}
 
 /**
  * מנהל הגבלת קצב (Rate Limiting) מבוסס בסיס נתונים לשימוש ב-Serverless.
@@ -14,16 +41,7 @@ export async function checkRateLimit(
 ): Promise<{ success: boolean; remaining: number; resetAt: Date }> {
   const now = new Date();
   
-  // מציאת הרשומה או יצירתה
-  const rateLimit = await prisma.rateLimit.upsert({
-    where: { key },
-    update: {},
-    create: {
-      key,
-      count: 0,
-      resetAt: new Date(now.getTime() + windowMs),
-    },
-  });
+  const rateLimit = await getOrCreateRateLimitRow(key, windowMs);
 
   // אם עבר הזמן — לאפס
   if (now > rateLimit.resetAt) {

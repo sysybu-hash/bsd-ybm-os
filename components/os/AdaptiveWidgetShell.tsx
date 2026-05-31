@@ -133,37 +133,20 @@ export default function AdaptiveWidgetShell({
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
-        {mobileOrMaximized ? (
-          /* ── Mobile: children rendered directly in the scroll container.
-             • Content widgets (min-h-full at root) grow past screen → parent scrolls.
-             • Frame widgets (h-full at root) reference THIS container's defined
-               flex height → fill screen exactly, with their own internal scroll. ── */
+        <div
+          className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] ${
+            zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
+          }`}
+        >
           <div
-            className={`custom-scrollbar flex-1 min-h-0 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] ${
-              zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
+            className={`flex w-full flex-col ${
+              zoomActive || mobileOrMaximized ? "min-h-full origin-top" : "h-full"
             }`}
+            style={contentZoomStyle}
           >
-            {zoomActive ? (
-              <div className="min-h-full origin-top" style={contentZoomStyle}>
-                {children}
-              </div>
-            ) : children}
+            {children}
           </div>
-        ) : (
-          /* ── Desktop: original nested structure with h-full content wrapper ── */
-          <div
-            className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain md:pb-0 ${
-              zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
-            }`}
-          >
-            <div
-              className={`flex w-full flex-col ${zoomActive ? "min-h-full origin-top" : "h-full"}`}
-              style={contentZoomStyle}
-            >
-              {children}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {!mobileOrMaximized && <ResizeHandles onStartResize={startResize} />}

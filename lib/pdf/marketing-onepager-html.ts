@@ -55,7 +55,7 @@ const FEATURES = [
   { icon: I.hardHat, title: "Field Copilot", desc: "עוזר AI לשטח — ניתוח, אססטים, handoff" },
   { icon: I.calendar, title: "יומן Google", desc: "סנכרון Calendar דו-כיווני, אירועים, cron" },
   { icon: I.wallet, title: "פיננסים + מסמכים", desc: "KPI חי, סורק OCR, ייצוא לרואה חשבון" },
-  { icon: I.mic, title: "Gemini Live + AI", desc: "קול חי בעברית · Claude · OpenAI · NotebookLM" },
+  { icon: I.mic, title: "AI Hub + מחולל", desc: "צ'אט · מחברת · מחולל אפליקציות · Composer · פקודות CRM" },
 ];
 
 const SHARED_CSS = (variant: "portrait" | "mobile") => `

@@ -98,6 +98,7 @@ export function buildDefaultLauncherConfig(
       slot("documentsHub"),
       ...(company ? [] : [slot("fieldCopilot")]),
       slot("aiHub"),
+      slot("appBuilder"),
       ...(company ? [] : [slot("meckanoReports")]),
       slot("googleDrive"),
       slot("accessibility"),

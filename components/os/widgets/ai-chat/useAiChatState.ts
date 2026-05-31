@@ -208,10 +208,6 @@ export function useAiChatState(
     if (!ok) liveAutoStartRef.current = false;
   }, [liveContextReady, osAssistant, geminiLiveEligible, start, acknowledgeContextReady, t, locale]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // ── handlers ──────────────────────────────────────────────────────────────
   const handleLiveTab = () => {
     setChatTab("live");

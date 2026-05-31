@@ -37,7 +37,8 @@ export type WidgetType =
   | 'financeHub'
   | 'projectsHub'
   | 'documentsHub'
-  | 'aiHub';
+  | 'aiHub'
+  | 'appBuilder';
 
 export interface ActiveWidget {
   id: string;
@@ -103,6 +104,7 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   projectsHub: { width: 1120, height: 780 },
   documentsHub: { width: 1040, height: 780 },
   aiHub: { width: 720, height: 750 },
+  appBuilder: { width: 1100, height: 780 },
 };
 
 export function useWindowManager() {

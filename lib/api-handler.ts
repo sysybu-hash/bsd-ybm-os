@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import type { z } from "zod";
 import { authOptions } from "@/lib/auth";
-import { jsonBadRequest, jsonForbidden, jsonUnauthorized, jsonValidationFailed } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden, jsonTooManyRequests, jsonUnauthorized, jsonValidationFailed } from "@/lib/api-json";
 import { isAdmin } from "@/lib/is-admin";
-import { applyRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export type WorkspaceAuthContext = {
   orgId: string;
@@ -188,8 +188,12 @@ export function withWorkspacesAuth(
     if (options?.rateLimit !== false) {
       const { key, limit, windowMs } = options?.rateLimit ?? DEFAULT_WORKSPACE_RATE_LIMIT;
       const rlKey = `rl:${key}:user:${gate.userId}`;
-      const limited = await applyRateLimit(req as NextRequest, rlKey, limit, windowMs);
-      if (limited) return limited;
+      const result = await checkRateLimit(rlKey, limit, windowMs);
+      if (!result.success) {
+        return jsonTooManyRequests("יותר מדי בקשות. נסה שוב בעוד כמה דקות.", "rate_limited", {
+          resetAt: result.resetAt,
+        });
+      }
     }
 
     if (options?.schema) {

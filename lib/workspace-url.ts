@@ -36,6 +36,7 @@ const WIDGET_TYPES = new Set<string>([
   "projectsHub",
   "documentsHub",
   "aiHub",
+  "appBuilder",
 ]);
 
 export function parseWidgetType(raw: string | null): WidgetType | null {

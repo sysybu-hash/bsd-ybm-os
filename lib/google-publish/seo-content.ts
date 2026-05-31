@@ -13,7 +13,7 @@ const SEO: Record<AppLocale, LocalizedSeo> = {
   he: {
     title: "BSD-YBM OS | מערכת תפעול חכמה לעסקים ויזמות",
     description:
-      `${legalSite.siteName} — CRM, ERP, סריקת מסמכים ב-AI, חיוב ודוחות במקום אחד. מיועד לעסקים מקצועיים בישראל.`,
+      `${legalSite.siteName} — CRM, ERP, סריקת מסמכים ב-AI, AI Hub, מחולל אפליקציות, חיוב ודוחות במקום אחד.`,
     keywords: [
       "BSD-YBM",
       "מערכת ניהול",
@@ -22,19 +22,23 @@ const SEO: Record<AppLocale, LocalizedSeo> = {
       "ניהול עסקי",
       "סריקת חשבוניות",
       "AI",
+      "מחולל אפליקציות",
+      "AI Hub",
     ],
     ogLocale: "he_IL",
   },
   en: {
     title: "BSD-YBM OS | Smart business & project management platform",
     description:
-      `${legalSite.siteName} — CRM, ERP, AI document scanning, billing and reports in one workspace for professional contractors.`,
+      `${legalSite.siteName} — CRM, ERP, AI document scanning, AI Hub, app builder, billing and reports in one workspace.`,
     keywords: [
       "BSD-YBM",
       "business management software",
       "CRM",
       "ERP",
       "AI invoice scan",
+      "app builder",
+      "AI Hub",
       "Israel",
     ],
     ogLocale: "en_US",
@@ -42,13 +46,15 @@ const SEO: Record<AppLocale, LocalizedSeo> = {
   ru: {
     title: "BSD-YBM OS | Умная система управления бизнесом",
     description:
-      `${legalSite.siteName} — CRM, ERP, AI-сканирование документов, биллинг и отчёты в одной рабочей среде.`,
+      `${legalSite.siteName} — CRM, ERP, AI-сканирование, AI Hub, конструктор приложений, биллинг и отчёты в одной среде.`,
     keywords: [
       "BSD-YBM",
       "управление бизнесом",
       "CRM",
       "ERP",
       "сканирование документов",
+      "конструктор приложений",
+      "AI Hub",
     ],
     ogLocale: "ru_RU",
   },
@@ -74,15 +80,15 @@ const PAGE_SEO: Record<PublicPageId, Record<AppLocale, { title: string; descript
   about: {
     he: {
       title: "אודות",
-      description: "מי אנחנו, מה עושה BSD-YBM OS ולמי המערכת מיועדת — עסקים וארגונים מקצועיים בישראל.",
+      description: "מי אנחנו, מה עושה BSD-YBM OS — CRM, AI Hub, מחולל אפליקציות ומנוע רעיונות — לעסקים מקצועיים בישראל.",
     },
     en: {
       title: "About",
-      description: "About BSD-YBM OS — CRM, ERP, AI document scanning for professional businesses.",
+      description: "About BSD-YBM OS — CRM, AI Hub, app builder and idea engine for professional businesses.",
     },
     ru: {
       title: "О нас",
-      description: "О BSD-YBM OS — CRM, ERP и AI-сканирование для профессионального бизнеса.",
+      description: "О BSD-YBM OS — CRM, AI Hub, конструктор приложений и движок идей для профессионального бизнеса.",
     },
   },
   privacy: {

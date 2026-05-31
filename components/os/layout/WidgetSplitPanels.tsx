@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import React, { useEffect, useMemo, useState } from "react";
+import { Group, Panel, Separator, useDefaultLayout, type Layout } from "react-resizable-panels";
 
 const MOBILE_BREAKPOINT_PX = 768;
 
 export type WidgetSplitPanelSpec = {
   id: string;
-  defaultSize: number;
-  minSize: number;
+  defaultSize: number | string;
+  minSize: number | string;
+  maxSize?: number | string;
+  groupResizeBehavior?: "preserve-relative-size" | "preserve-pixel-size";
   className?: string;
   children: React.ReactNode;
 };
@@ -18,24 +20,64 @@ type WidgetSplitPanelsProps = {
   stackBelowPx?: number;
   className?: string;
   separatorClassName?: string;
+  layoutStorageKey?: string;
   panels: WidgetSplitPanelSpec[];
 };
 
-export default function WidgetSplitPanels({
+/** In v4, bare numbers are pixels — our API uses numbers as percentages. */
+function toPanelSize(value: number | string | undefined): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    if (trimmed.endsWith("%") || trimmed.endsWith("px") || /[a-z]+$/i.test(trimmed)) {
+      return trimmed;
+    }
+    return `${trimmed}%`;
+  }
+  return `${value}%`;
+}
+
+type SplitGroupProps = Omit<WidgetSplitPanelsProps, "layoutStorageKey"> & {
+  defaultLayout?: Layout;
+  onLayoutChanged?: (layout: Layout) => void;
+};
+
+function WidgetSplitPanelsGroup({
   direction = "horizontal",
   stackBelowPx = MOBILE_BREAKPOINT_PX,
   className = "min-h-0 flex-1",
   separatorClassName,
   panels,
-}: WidgetSplitPanelsProps) {
+  defaultLayout,
+  onLayoutChanged,
+}: SplitGroupProps) {
   const [stacked, setStacked] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${stackBelowPx - 1}px)`);
-    const apply = () => setStacked(mq.matches);
+    const readWidth = () => window.visualViewport?.width ?? window.innerWidth;
+    let stackedNow = mq.matches || readWidth() < stackBelowPx;
+
+    const apply = () => {
+      const width = readWidth();
+      if (stackedNow) {
+        if (width >= stackBelowPx + 48) stackedNow = false;
+      } else if (width < stackBelowPx) {
+        stackedNow = true;
+      }
+      setStacked(stackedNow);
+    };
+
     apply();
     mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    window.addEventListener("resize", apply);
+    window.visualViewport?.addEventListener("resize", apply);
+    return () => {
+      mq.removeEventListener("change", apply);
+      window.removeEventListener("resize", apply);
+      window.visualViewport?.removeEventListener("resize", apply);
+    };
   }, [stackBelowPx]);
 
   if (panels.length === 0) return null;
@@ -53,17 +95,25 @@ export default function WidgetSplitPanels({
   const separator =
     separatorClassName ??
     (orientation === "vertical"
-      ? "h-1.5 shrink-0 bg-[color:var(--border-main)] transition-colors hover:bg-indigo-500/35"
-      : "w-1.5 shrink-0 bg-[color:var(--border-main)] transition-colors hover:bg-indigo-500/35");
+      ? "h-1.5 shrink-0 bg-[color:var(--border-main)] transition-colors hover:bg-indigo-500/35 active:bg-indigo-500/50"
+      : "w-1.5 shrink-0 cursor-col-resize bg-[color:var(--border-main)] transition-colors hover:bg-indigo-500/35 active:bg-indigo-500/50");
 
   return (
-    <Group orientation={orientation} className={className}>
+    <Group
+      orientation={orientation}
+      className={className}
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+    >
       {panels.map((panel, index) => (
         <React.Fragment key={panel.id}>
           {index > 0 ? <Separator className={separator} /> : null}
           <Panel
-            defaultSize={panel.defaultSize}
-            minSize={panel.minSize}
+            id={panel.id}
+            defaultSize={toPanelSize(panel.defaultSize)}
+            minSize={toPanelSize(panel.minSize)}
+            maxSize={toPanelSize(panel.maxSize)}
+            groupResizeBehavior={panel.groupResizeBehavior}
             className={panel.className ?? "flex min-h-0 min-w-0 flex-col"}
           >
             {panel.children}
@@ -72,4 +122,33 @@ export default function WidgetSplitPanels({
       ))}
     </Group>
   );
+}
+
+function WidgetSplitPanelsPersisted({
+  layoutStorageKey,
+  panels,
+  ...rest
+}: WidgetSplitPanelsProps & { layoutStorageKey: string }) {
+  const panelIds = useMemo(() => panels.map((panel) => panel.id), [panels]);
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: layoutStorageKey,
+    panelIds,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  });
+
+  return (
+    <WidgetSplitPanelsGroup
+      {...rest}
+      panels={panels}
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+    />
+  );
+}
+
+export default function WidgetSplitPanels(props: WidgetSplitPanelsProps) {
+  if (props.layoutStorageKey) {
+    return <WidgetSplitPanelsPersisted {...props} layoutStorageKey={props.layoutStorageKey} />;
+  }
+  return <WidgetSplitPanelsGroup {...props} />;
 }

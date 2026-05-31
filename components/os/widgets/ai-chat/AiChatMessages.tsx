@@ -18,6 +18,9 @@ type AiChatMessagesProps = {
   inputValue?: string;
   /** קריאה לשליחה מבר הסטטוס */
   onSubmit?: () => void;
+  /** מפתחות i18n למצב ריק (ברירת מחדל: צ׳אט AI כללי) */
+  emptyTitleKey?: string;
+  emptySubtitleKey?: string;
   t: (key: string) => string;
   children?: React.ReactNode;
 };
@@ -30,10 +33,14 @@ export function AiChatMessages({
   inputRef,
   inputValue = "",
   onSubmit,
+  emptyTitleKey = "workspaceWidgets.aiChat.emptyTitle",
+  emptySubtitleKey = "workspaceWidgets.aiChat.emptySubtitle",
   t,
   children,
 }: AiChatMessagesProps) {
   const [inputVisible, setInputVisible] = useState(true);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   /** עקוב אחר נראות שדה הקלט */
   useEffect(() => {
@@ -47,8 +54,15 @@ export function AiChatMessages({
     return () => obs.disconnect();
   }, [inputRef]);
 
+  /** גלילה פנימית — לא scrollIntoView שדוחף את גבולות החלון */
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, isLoading]);
+
   return (
-    <div className="relative flex-1 min-h-0 flex flex-col">
+    <div className="relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
 
       {/* ── mini send bar — מוצג כשגוללים למעלה (קלט נעלם) ──
           הכותרת הקבועה כבר מציגה הגדרות + סיום שיחה.
@@ -70,19 +84,22 @@ export function AiChatMessages({
       )}
 
       {/* ── Message list ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div
+        ref={scrollContainerRef}
+        className="custom-scrollbar h-0 min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain p-3 sm:space-y-6 sm:p-6"
+      >
         {children}
 
         {messages.length === 0 && chatTab === "text" && (
-          <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+          <div className="flex min-h-[10rem] flex-col items-center justify-center py-6 text-center opacity-40">
             <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
               <Bot size={40} className="text-purple-600 dark:text-purple-400" />
             </div>
             <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">
-              {t("workspaceWidgets.aiChat.emptyTitle")}
+              {t(emptyTitleKey)}
             </h3>
             <p className="text-sm text-[color:var(--foreground-muted)] max-w-xs leading-relaxed">
-              {t("workspaceWidgets.aiChat.emptySubtitle")}
+              {t(emptySubtitleKey)}
             </p>
           </div>
         )}

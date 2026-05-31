@@ -334,6 +334,7 @@
       "platformAdmin": "Platform admin",
       "helpCenter": "Help center",
       "fieldCopilot": "Field Copilot",
+      "appBuilder": "AI App Builder",
       "financeHub": "Finance",
       "projectsHub": "Projects",
       "documentsHub": "Documents",
@@ -370,7 +371,8 @@
       "ai": {
         "tabs": {
           "chat": "Chat",
-          "notebook": "Notebook"
+          "notebook": "Notebook",
+          "builder": "App Builder"
         }
       }
     },
@@ -462,6 +464,81 @@
       "produceContract": "Contract",
       "constructionOnly": "Field Copilot is for construction trades only",
       "loading": "Loading Field Copilot…"
+    },
+    "appBuilder": {
+      "title": "AI App Builder",
+      "subtitle": "Describe any idea — the builder creates custom UI or runs the platform (CRM, invoices, scan, tasks…)",
+      "promptLabel": "App description",
+      "promptPlaceholder": "e.g. Client intake form with name, phone, meeting date and quote amount",
+      "promptTooShort": "Enter at least 3 characters",
+      "generate": "Generate UI",
+      "generating": "Generating…",
+      "generateError": "Failed to generate UI — try rephrasing",
+      "previewTitle": "Live preview",
+      "emptyPreview": "Chat what to build — e.g. “Dashboard with 5 expense and project metric cards”",
+      "previewUpdated": "Preview updated — click Save app to persist",
+      "tabLive": "Live",
+      "tabText": "Chat",
+      "chatHint": "App Builder assistant",
+      "chatSend": "Send",
+      "chatSendFailed": "Failed to send message",
+      "chatEmptyReply": "No reply received",
+      "chatEmptyTitle": "What should we build or change?",
+      "chatEmptySubtitle": "Describe any idea — form, dashboard, open CRM, invoice, scan, task… The builder creates UI or runs the platform for you.",
+      "chatPlaceholder": "e.g. contacts dashboard, site checklist form, open CRM, create invoice…",
+      "clearChat": "Clear chat",
+      "liveStatusReady": "Gemini Live ready",
+      "liveStatusConnected": "Connected — you can speak",
+      "liveStatusListening": "Listening…",
+      "liveStatusSpeaking": "Assistant speaking…",
+      "liveStatusInterrupted": "Interrupted — listening for more",
+      "liveStatusTool": "Running action…",
+      "liveStatusDisconnected": "Disconnected",
+      "liveStatusPreparing": "Preparing connection…",
+      "liveStatusFallback": "Live available after sign-in",
+      "appNameLabel": "App name",
+      "appDescriptionLabel": "Description (optional)",
+      "saveApp": "Save app",
+      "saving": "Saving…",
+      "saveSchemaSuccess": "App saved — you can submit the form",
+      "saveDashboardSuccess": "Dashboard saved — open it from My apps",
+      "saveSchemaError": "Failed to save app",
+      "loadSchemaError": "Failed to load app",
+      "savedAppsTitle": "My apps",
+      "refreshSavedApps": "Refresh",
+      "loadingSavedApps": "Loading apps…",
+      "noSavedApps": "No saved apps yet",
+      "newApp": "New",
+      "updateApp": "Update app",
+      "editingApp": "Editing saved app",
+      "editPromptHint": "To change the UI: describe what to change and click “Update with AI” (or “Generate UI” to preview). Without a prompt, “Update app” saves name and description only.",
+      "updateWithAi": "Update with AI",
+      "updateWithAiSuccess": "App updated with your changes",
+      "updateSchemaSuccess": "App updated successfully",
+      "updateSchemaError": "Failed to update app",
+      "deleteSchemaSuccess": "App deleted",
+      "deleteSchemaError": "Failed to delete app",
+      "deleteAppConfirm": "Delete “{name}”? This cannot be undone.",
+      "deleteAppAria": "Delete {name}",
+      "globalBadge": "Global",
+      "globalAppReadOnly": "Global app — view only",
+      "appType": {
+        "form": "Form",
+        "table": "Table",
+        "dashboard": "Dashboard",
+        "composer": "Control center",
+        "unknown": "Other"
+      },
+      "invalidAction": "Unsupported action",
+      "actionRunnerUnavailable": "Cannot run actions from this view",
+      "nameRequired": "App name is required",
+      "noPreview": "Nothing to save — generate UI first",
+      "submitForm": "Submit",
+      "saveDataSuccess": "Data saved successfully",
+      "saveDataError": "Failed to save data",
+      "saveSchemaFirst": "Save the app before submitting data",
+      "tablePreviewHint": "Column preview — data rows will appear after saving",
+      "dashboardLoading": "Loading data…"
     },
     "helpCenter": {
       "title": "Help center",
@@ -653,6 +730,10 @@
         "title": "Field Copilot",
         "subtitle": "Quick site quote"
       },
+      "appBuilder": {
+        "title": "AI App Builder",
+        "subtitle": "Forms · dashboards · control center"
+      },
       "accessibility": {
         "title": "Accessibility",
         "subtitle": "Display & accessibility settings"
@@ -675,7 +756,7 @@
       },
       "aiHub": {
         "title": "AI",
-        "subtitle": "Chat & notebook"
+        "subtitle": "Chat · notebook · builder"
       }
     },
     "empty": {
@@ -752,6 +833,7 @@
       "settings": "Settings",
       "help": "Help",
       "fieldCopilot": "Field Copilot",
+      "appBuilder": "AI App Builder",
       "platformAdmin": "Admin",
       "adminFull": "Full admin"
     },

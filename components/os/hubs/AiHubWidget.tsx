@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
+import AppBuilderWidget from "@/components/os/widgets/AppBuilderWidget";
 import NotebookLMWidget from "@/components/os/widgets/NotebookLMWidget";
 import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubShell";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -12,6 +13,7 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 const TABS: HubTabDef[] = [
   { id: "chat", labelKey: "workspaceWidgets.hubs.ai.tabs.chat" },
   { id: "notebook", labelKey: "workspaceWidgets.hubs.ai.tabs.notebook" },
+  { id: "builder", labelKey: "workspaceWidgets.hubs.ai.tabs.builder" },
 ];
 
 type OpenWorkspaceWidgetFn = (
@@ -59,6 +61,8 @@ export default function AiHubWidget({ liveData, openWorkspaceWidget }: Props) {
       renderTab={(tabId) =>
         tabId === "notebook" ? (
           <NotebookLMWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />
+        ) : tabId === "builder" ? (
+          <AppBuilderWidget />
         ) : (
           <AiChatFullWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />
         )

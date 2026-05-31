@@ -41,6 +41,9 @@ const DocumentCreatorWidget = dynamic(
 const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCopilotWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
+const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), {
+  loading: () => <WidgetLoadingPlaceholder />,
+});
 const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), {
   loading: () => <WidgetLoadingPlaceholder />,
 });
@@ -95,6 +98,7 @@ const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "projectsHub",
   "documentsHub",
   "aiHub",
+  "appBuilder",
 ]);
 
 interface OSWorkspaceProps {
@@ -275,6 +279,7 @@ export default function OSWorkspace({
             {widget.type === "fieldCopilot" && (
               <FieldCopilotWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}
+            {widget.type === "appBuilder" && <AppBuilderWidget />}
             {widget.type === "aiChatFull" && (
               <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />
             )}

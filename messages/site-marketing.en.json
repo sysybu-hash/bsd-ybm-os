@@ -9,7 +9,7 @@
       "clients": { "title": "Clients & work relationships", "body": "CRM that connects statuses, tasks, notes, progress and operational history." },
       "docs": { "title": "Smart documents", "body": "Intake, scan, analyze, assign and create documents from business context." },
       "finance": { "title": "Finance & collections", "body": "Cash flow hub, issued documents, ERP links and OS billing settings — separate from the AI screen." },
-      "ai": { "title": "AI & insights", "body": "One AI hub: recommendations, intelligence and a management snapshot tied to clients and documents." },
+      "ai": { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — forms, dashboards, Composer, natural-language CRM/docs/scan, and Gemini Live." },
       "operations": { "title": "Operations & field", "body": "Workflows, inbox and team tools aligned with construction projects." }
     }
   },

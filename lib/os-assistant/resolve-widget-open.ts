@@ -23,6 +23,7 @@ const HUB_OPEN_MAP: Record<
   aiChat: { hub: "aiHub", tab: "chat" },
   aiChatFull: { hub: "aiHub", tab: "chat" },
   notebookLM: { hub: "aiHub", tab: "notebook" },
+  appBuilder: { hub: "aiHub", tab: "builder" },
   crm: { hub: "crmTable", tab: "" },
 };
 

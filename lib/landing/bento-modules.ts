@@ -7,6 +7,7 @@ import {
   FileText,
   HardHat,
   Layers,
+  LayoutGrid,
   Mic,
   ScanLine,
   Wallet,
@@ -68,5 +69,10 @@ export const BENTO_MODULES: readonly BentoModule[] = [
     titleKey: "marketingHome.cinematic.bentoCalendar.title",
     bodyKey: "marketingHome.cinematic.bentoCalendar.body",
     icon: Calendar,
+  },
+  {
+    titleKey: "marketingHome.cinematic.bentoAppBuilder.title",
+    bodyKey: "marketingHome.cinematic.bentoAppBuilder.body",
+    icon: LayoutGrid,
   },
 ] as const;

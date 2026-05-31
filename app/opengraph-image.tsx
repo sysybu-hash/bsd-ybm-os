@@ -132,13 +132,13 @@ export default async function RootOgImage() {
                 textAlign: "right",
               }}
             >
-              לקוחות · מסמכים · AI · חיוב · דוחות — במקום אחד
+              לקוחות · מסמכים · AI Hub · מחולל · חיוב — במקום אחד
             </div>
           </div>
 
           {/* Bottom: Feature pills — flexDirection:row-reverse כדי שה-pills יהיו בסדר RTL */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flexDirection: "row-reverse" }}>
-            {["AI רב-מנועי", "חתימה דיגיטלית", "PayPlus / PayPal", "WebAuthn Passkeys", "ישראלי-100%"].map((f) => (
+            {["AI Hub + מחולל", "חתימה דיגיטלית", "PayPlus / PayPal", "WebAuthn Passkeys", "ישראלי-100%"].map((f) => (
               <div
                 key={f}
                 style={{

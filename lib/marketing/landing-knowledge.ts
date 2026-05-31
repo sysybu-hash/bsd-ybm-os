@@ -133,7 +133,8 @@ export function buildMarketingLandingKnowledge(locale: AppLocale): string {
     "• Billing & finance: invoices, collections, subscriptions, cashflow tracking",
     "• Operational control: tasks, workflows, internal processes, action alerts",
     "• Management insights: live revenue, workload, exceptions, opportunities",
-    "• Unified AI layer: suggestions, drafts, analysis in business context (demo only here — no real org data)",
+    "• Unified AI layer: AI Hub (chat, notebook, app builder), idea engine, Composer workspaces, platform actions (CRM, scan, invoices, tasks)",
+    "• App builder: custom forms, tables, dashboards and Composer — or natural-language commands to run the OS",
     "• Smart documents module + field copilot (voice) for site/field teams",
     "• Notebook & calendar integrations (shown on marketing page)",
     "• Workflow: intake → context & risks → CRM/docs/billing update → team gets next action",
@@ -186,6 +187,12 @@ export function buildMarketingLandingKnowledge(locale: AppLocale): string {
       ? (() => {
           const cal = asRecord(cinematic.bentoCalendar);
           return cal ? `Calendar: ${asString(cal.title)} — ${asString(cal.body)}` : "";
+        })()
+      : "",
+    cinematic?.bentoAppBuilder
+      ? (() => {
+          const ab = asRecord(cinematic.bentoAppBuilder);
+          return ab ? `App builder: ${asString(ab.title)} — ${asString(ab.body)}` : "";
         })()
       : "",
     "",

@@ -311,6 +311,18 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
 
   },
 
+  appBuilder: {
+
+    type: "appBuilder",
+
+    labelKey: "workspaceWidgets.sidebar.appBuilder",
+
+    icon: LayoutGrid,
+
+    chip: true,
+
+  },
+
   platformAdmin: {
 
     type: "platformAdmin",

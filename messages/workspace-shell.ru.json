@@ -334,6 +334,7 @@
       "platformAdmin": "Админ",
       "helpCenter": "Справка",
       "fieldCopilot": "Полевой копilot",
+      "appBuilder": "AI конструктор",
       "financeHub": "Финансы",
       "projectsHub": "Проекты",
       "documentsHub": "Документы",
@@ -370,7 +371,8 @@
       "ai": {
         "tabs": {
           "chat": "Чат",
-          "notebook": "Блокнот"
+          "notebook": "Блокнот",
+          "builder": "Конструктор"
         }
       }
     },
@@ -462,6 +464,81 @@
       "produceContract": "Договор",
       "constructionOnly": "Только для строительства",
       "loading": "Загрузка Field Copilot…"
+    },
+    "appBuilder": {
+      "title": "AI конструктор приложений",
+      "subtitle": "Опишите любую идею — конструктор создаст UI или выполнит действие (CRM, счета, скан, задачи…)",
+      "promptLabel": "Описание приложения",
+      "promptPlaceholder": "Например: форма клиента с именем, телефоном, датой встречи и суммой",
+      "promptTooShort": "Введите не менее 3 символов",
+      "generate": "Создать интерфейс",
+      "generating": "Создание…",
+      "generateError": "Не удалось создать интерфейс — переформулируйте запрос",
+      "previewTitle": "Предпросмотр",
+      "emptyPreview": "Напишите в чате, что создать — например: «Дашборд с 5 метриками расходов и проектов»",
+      "previewUpdated": "Предпросмотр обновлён — нажмите «Сохранить»",
+      "tabLive": "Live",
+      "tabText": "Чат",
+      "chatHint": "Помощник конструктора",
+      "chatSend": "Отправить",
+      "chatSendFailed": "Не удалось отправить сообщение",
+      "chatEmptyReply": "Ответ не получен",
+      "chatEmptyTitle": "Что создать или изменить?",
+      "chatEmptySubtitle": "Опишите идею — форма, дашборд, CRM, счёт, скан, задача… Конструктор создаст UI или выполнит действие в системе.",
+      "chatPlaceholder": "напр.: дашборд клиентов, форма проверки, открыть CRM, создать счёт…",
+      "clearChat": "Очистить чат",
+      "liveStatusReady": "Gemini Live готов",
+      "liveStatusConnected": "Подключено — можно говорить",
+      "liveStatusListening": "Слушаю…",
+      "liveStatusSpeaking": "Ассистент говорит…",
+      "liveStatusInterrupted": "Прервано — слушаю дальше",
+      "liveStatusTool": "Выполняю действие…",
+      "liveStatusDisconnected": "Отключено",
+      "liveStatusPreparing": "Подготовка подключения…",
+      "liveStatusFallback": "Live доступен после входа",
+      "appNameLabel": "Название приложения",
+      "appDescriptionLabel": "Описание (необязательно)",
+      "saveApp": "Сохранить приложение",
+      "saving": "Сохранение…",
+      "saveSchemaSuccess": "Приложение сохранено — можно отправлять форму",
+      "saveDashboardSuccess": "Дашборд сохранён — откройте его в «Мои приложения»",
+      "saveSchemaError": "Не удалось сохранить приложение",
+      "loadSchemaError": "Не удалось загрузить приложение",
+      "savedAppsTitle": "Мои приложения",
+      "refreshSavedApps": "Обновить",
+      "loadingSavedApps": "Загрузка приложений…",
+      "noSavedApps": "Сохранённых приложений пока нет",
+      "newApp": "Новое",
+      "updateApp": "Обновить приложение",
+      "editingApp": "Редактирование сохранённого приложения",
+      "editPromptHint": "Чтобы изменить интерфейс: опишите изменения и нажмите «Обновить с AI» (или «Создать интерфейс» для предпросмотра). Без prompt «Обновить» сохраняет только имя и описание.",
+      "updateWithAi": "Обновить с AI",
+      "updateWithAiSuccess": "Приложение обновлено с вашими изменениями",
+      "updateSchemaSuccess": "Приложение обновлено",
+      "updateSchemaError": "Не удалось обновить приложение",
+      "deleteSchemaSuccess": "Приложение удалено",
+      "deleteSchemaError": "Не удалось удалить приложение",
+      "deleteAppConfirm": "Удалить «{name}»? Это действие необратимо.",
+      "deleteAppAria": "Удалить {name}",
+      "globalBadge": "Глобальное",
+      "globalAppReadOnly": "Глобальное приложение — только просмотр",
+      "appType": {
+        "form": "Форма",
+        "table": "Таблица",
+        "dashboard": "Дашборд",
+        "composer": "Центр управления",
+        "unknown": "Другое"
+      },
+      "invalidAction": "Действие не поддерживается",
+      "actionRunnerUnavailable": "Нельзя выполнить действия из этого просмотра",
+      "nameRequired": "Укажите название приложения",
+      "noPreview": "Нечего сохранять — сначала создайте интерфейс",
+      "submitForm": "Отправить",
+      "saveDataSuccess": "Данные сохранены",
+      "saveDataError": "Не удалось сохранить данные",
+      "saveSchemaFirst": "Сохраните приложение перед отправкой данных",
+      "tablePreviewHint": "Предпросмотр колонок — строки данных появятся после сохранения",
+      "dashboardLoading": "Загрузка данных…"
     },
     "helpCenter": {
       "title": "Справочный центр",
@@ -653,6 +730,10 @@
         "title": "Полевой копilot",
         "subtitle": "Быстрая смета"
       },
+      "appBuilder": {
+        "title": "AI конструктор",
+        "subtitle": "Формы · дашборды · центр управления"
+      },
       "accessibility": {
         "title": "Доступность",
         "subtitle": "Настройки отображения и доступности"
@@ -675,7 +756,7 @@
       },
       "aiHub": {
         "title": "ИИ",
-        "subtitle": "Чат и блокнот"
+        "subtitle": "Чат · блокнот · конструктор"
       }
     },
     "empty": {
@@ -752,6 +833,7 @@
       "settings": "Настройки",
       "help": "Помощь",
       "fieldCopilot": "Полевой копilot",
+      "appBuilder": "AI конструктор",
       "platformAdmin": "Админ",
       "adminFull": "Полный админ"
     },

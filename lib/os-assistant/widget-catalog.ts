@@ -139,6 +139,13 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["שטח", "field", "copilot", "הצעה מהירה", "אתר", "site", "קבלן"],
   },
   {
+    id: "appBuilder",
+    labelHe: "מחולל אפליקציות AI",
+    labelEn: "AI App Builder",
+    labelRu: "AI конструктор приложений",
+    keywords: ["app", "builder", "form", "טופס", "ai", "מחולל", "אפליקציה"],
+  },
+  {
     id: "financeHub",
     labelHe: "פיננסים",
     labelEn: "Finance hub",

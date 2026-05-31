@@ -95,6 +95,8 @@ model Organization {
   fieldCopilotSessions     FieldCopilotSession[]
   googleCalendarSettings   UserGoogleCalendarSettings[]
   googleCalendarEventLinks GoogleCalendarEventLink[]
+  customAppSchemas         CustomAppSchema[]
+  customAppData            CustomAppData[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -1316,4 +1318,38 @@ model FieldCopilotAsset {
 
   @@index([sessionId])
   @@index([organizationId])
+}
+
+/// סכמת UI שנוצרה ע"י AI App Builder — מבנה טופס/טבלה בלבד (לא נתוני משתמש)
+model CustomAppSchema {
+  id             String           @id @default(cuid())
+  organizationId String?
+  name           String
+  description    String?
+  uiSchema       Json
+  isGlobal       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dataRows       CustomAppData[]
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([isGlobal])
+}
+
+/// נתונים שהוזנו דרך טופס דינמי — מופרד מסכמת ה-UI
+model CustomAppData {
+  id             String          @id @default(cuid())
+  organizationId String
+  schemaId       String
+  data           Json
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schema         CustomAppSchema @relation(fields: [schemaId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([schemaId])
+  @@index([organizationId, schemaId, createdAt])
 }

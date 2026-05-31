@@ -15,14 +15,14 @@
       "titleBlessing": "With God's help we will act and succeed",
       "titleLine1": "Business OS",
       "titleLine2": "and command center",
-      "subtitle": "One platform connecting CRM, documents, billing and control—with AI inside the workflow. Built for teams that need operational clarity, not another isolated tool.",
+      "subtitle": "One platform connecting CRM, documents, billing and control—with AI Hub, app builder and an idea engine inside the workflow.",
       "ctaRegister": "Create account",
       "ctaDemo": "Sign in to demo"
     },
     "features": [
       { "title": "CRM that moves work forward", "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools." },
       { "title": "Billing & business documents", "body": "Invoices, collections, subscriptions and cash flow inside the same workspace." },
-      { "title": "AI inside the workflow", "body": "Not a detached chat—AI works inside clients, documents, control and decisions." }
+      { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — forms, dashboards, Composer, and natural-language CRM, documents and scan actions." }
     ],
     "mock": {
       "attentionLabel": "Management attention",
@@ -106,7 +106,7 @@
       { "title": "Smart documents", "body": "Scan, extract, classify and create documents from real business activity." },
       { "title": "Operational control", "body": "Tasks, follow-ups, internal processes and action items in one clear place." },
       { "title": "Management insights", "body": "A live picture of revenue, load, exceptions and opportunities—without detached reports." },
-      { "title": "Unified AI layer", "body": "Suggested actions, drafts, analysis and answers in your organization's context." }
+      { "title": "AI Hub & builder", "body": "Org chat, notebook, app builder and platform actions — KPIs, forms and shortcuts on one screen." }
     ],
     "workflow": {
       "label": "Live workflow",
@@ -141,7 +141,7 @@
       "rows": [
         { "title": "Single source of truth", "body": "Clients, documents, tasks, billing and insights share one operational picture." },
         { "title": "One language", "body": "The team doesn't learn five different tools to move work forward." },
-        { "title": "Contextual AI", "body": "Recommendations come from your business data—not a generic prompt." }
+        { "title": "Contextual AI", "body": "Idea engine, drafts and CRM/document actions from your org data—not a generic chatbot." }
       ]
     },
     "proofPoints": [
@@ -234,7 +234,8 @@
         "Scan invoice and assign to client Cohen…",
         "Show urgent billing tasks this week…",
         "Open project board with budget exceptions…",
-        "Start Gemini Live for team meeting recap…"
+        "Build a control center with KPIs, audit form and CRM button…",
+        "Create a client registration form…"
       ],
       "fieldCopilotTitle": "Field Copilot on site",
       "fieldCopilotScan": "Analyzing document…",
@@ -276,6 +277,10 @@
         "title": "Google Calendar",
         "body": "Two-way Calendar sync, events and cron — tied to CRM and tasks."
       },
+      "bentoAppBuilder": {
+        "title": "AI app builder",
+        "body": "Describe any idea — forms, dashboards, Composer with KPIs and action buttons, or CRM and scan commands."
+      },
       "bottomNav": {
         "aria": "Quick page navigation",
         "home": "Home",
@@ -298,7 +303,7 @@
       "hubTitle": "What would you like to explore?",
       "hubLead": "Pick a topic — details open in a panel, without a long scroll.",
       "closeAria": "Close panel",
-      "modules": { "title": "Modules & capabilities", "description": "CRM, documents, billing, AI — clear work layers." },
+      "modules": { "title": "Modules & capabilities", "description": "CRM, documents, billing, AI Hub, app builder — clear work layers." },
       "workflow": { "title": "Workflow", "description": "What happens when new information enters the system." },
       "industries": { "title": "Industries", "description": "Construction, site and office operations." },
       "why": { "title": "Why one system", "description": "Single source of truth, fewer tools, contextual AI." },
@@ -318,7 +323,7 @@
     },
     "footer": {
       "brand": "BSD-YBM",
-      "lead": "An intelligent operations system that connects clients, documents, billing, management control and AI in one workspace.",
+      "lead": "An intelligent operations system—clients, documents, billing, AI Hub, app builder and control in one workspace.",
       "navTitle": "Quick links"
     },
     "osLanding": {
@@ -332,6 +337,7 @@
       "features": [
         { "title": "AI document scanner", "body": "Automatic extraction from invoices with advanced vision, straight into your database." },
         { "title": "Gemini Live", "body": "A voice assistant to command and navigate the workspace with natural speech." },
+        { "title": "AI Hub & builder", "body": "Chat, notebook and app builder — builds custom UI or runs platform automations." },
         { "title": "Unified ERP & CRM", "body": "Visual project board, budgets and cash flow under one roof." },
         { "title": "Digital signature", "body": "Branded quotes sent to clients for fast, secure signing." }
       ],
@@ -362,7 +368,7 @@
         { "title": "Billing & collections" },
         { "title": "Field operations" },
         { "title": "Insights & decisions" },
-        { "title": "Automation & AI" }
+        { "title": "AI Hub & idea engine" }
       ],
       "featuredTitle": "Product capabilities",
       "featuredLead": "Clients, documents and money — one status picture per project, from quote to supplier invoice.",

@@ -2,7 +2,7 @@
   "id": "/",
   "name": "BSD-YBM Intelligence OS",
   "short_name": "BY",
-  "description": "מערכת ניהול AI מתקדמת לעסקים - ERP, CRM וניהול פרויקטים",
+  "description": "מערכת ניהול AI מתקדמת — ERP, CRM, AI Hub, מחולל אפליקציות וניהול פרויקטים",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -49,6 +49,12 @@
       "name": "עוזר AI",
       "short_name": "AI",
       "url": "/?w=aiHub&tab=chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "מחולל אפליקציות",
+      "short_name": "מחולל",
+      "url": "/?w=aiHub&tab=builder",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],
