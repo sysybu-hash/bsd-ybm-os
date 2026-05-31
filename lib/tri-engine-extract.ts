@@ -7,10 +7,11 @@ import { mapDocAiEntitiesToInvoiceV5 } from "@/lib/docai-invoice-mapper";
 import {
   getBlueprintAnalysisModelChain,
   getGeminiModelFallbackChain,
+  getModelChainForScanMode,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import {
-  buildV5JsonInstruction,
+  buildV5JsonInstructionWithExtras,
   coerceLegacyAiToV5,
   emptyV5Base,
   type ScanExtractionV5,
@@ -143,12 +144,13 @@ export async function runTriEngineExtraction(params: {
   };
 
   const lang = localeLang(locale);
-  const v5Instruction = buildV5JsonInstruction(lang, scanMode, industry);
   const extra = industryInstructionExtras(industry, orgTrade, messages);
+  // buildV5JsonInstructionWithExtras — הוראות JSON schema + הנחיות ענף/מקצוע ייעודיות
+  const v5Instruction = buildV5JsonInstructionWithExtras(lang, scanMode, industry, extra);
   const userInstructionBlock = userInstruction?.trim()
     ? `\n\n### USER REQUEST\nThe user added these extra instructions. Follow them when they do not conflict with the required JSON schema or safety constraints:\n${userInstruction.trim().slice(0, 1200)}`
     : "";
-  const fullInstruction = `${v5Instruction}\n\n${extra}${userInstructionBlock}`;
+  const fullInstruction = `${v5Instruction}${userInstructionBlock}`;
 
   const telemetry: TriEngineTelemetry = {
     documentAI: { phase: "idle" },
@@ -177,10 +179,7 @@ export async function runTriEngineExtraction(params: {
   const runGeminiOnly = async (): Promise<ScanExtractionV5> => {
     const gErr = assertProviderConfigured("gemini");
     if (gErr) throw new Error(gErr);
-    const modelChain =
-      scanMode === "DRAWING_BOQ"
-        ? getBlueprintAnalysisModelChain()
-        : [...new Set([...GEMINI_FLASH_PREFERRED, ...getGeminiModelFallbackChain()])];
+    const modelChain = getModelChainForScanMode(scanMode);
     const raw = await geminiMultimodal(base64, mimeType, fullInstruction, modelChain);
     const out = coerceLegacyAiToV5(raw, fileName, scanMode);
     out.enginesUsed = [scanMode === "DRAWING_BOQ" ? "gemini-pro" : "gemini-flash"];
@@ -381,10 +380,7 @@ export async function runTriEngineExtraction(params: {
           try {
             const gErr = assertProviderConfigured("gemini");
             if (gErr) throw new Error(gErr);
-            const rawGemini = await geminiMultimodal(base64, mimeType, fullInstruction, [
-              ...GEMINI_FLASH_PREFERRED,
-              ...getGeminiModelFallbackChain(),
-            ]);
+            const rawGemini = await geminiMultimodal(base64, mimeType, fullInstruction, getModelChainForScanMode(scanMode));
             v5 = coerceLegacyAiToV5(rawGemini, fileName, scanMode);
             v5.enginesUsed = ["gemini-fallback"];
             telemetry.gemini = { phase: "ok", ms: Date.now() - tG, detail: "fallback_after_openai_error" };
@@ -482,10 +478,7 @@ export async function runTriEngineExtraction(params: {
     try {
       const gErr2 = assertProviderConfigured("gemini");
       if (gErr2) throw new Error(gErr2);
-      raw = await geminiMultimodal(base64, mimeType, fullInstruction, [
-        ...GEMINI_FLASH_PREFERRED,
-        ...getGeminiModelFallbackChain(),
-      ]);
+      raw = await geminiMultimodal(base64, mimeType, fullInstruction, getModelChainForScanMode(scanMode));
       telemetry.gemini = { phase: "ok", ms: Date.now() - tF };
       await emitTelemetry();
     } catch (e) {

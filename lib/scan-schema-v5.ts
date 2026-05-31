@@ -325,3 +325,20 @@ RULES:
 - "priceAlertPending": false unless unclear pricing.
 - Human-readable strings in ${localeLang}.`;
 }
+
+/**
+ * גרסה מורחבת של buildV5JsonInstruction שמצרפת הנחיות ענף+מקצוע מ-getMergedIndustryConfig.
+ * משמשת בתוך tri-engine-extract.ts כדי שה-AI יידע מה השדות המדויקים לחלץ לפי המקצוע.
+ *
+ * @param industryExtras - הפלט של industryInstructionExtras() מ-tri-engine-extract (כבר מחושב שם).
+ *                         מועבר כפרמטר כדי לא לדרוש import מעגלי.
+ */
+export function buildV5JsonInstructionWithExtras(
+  localeLang: string,
+  scanMode: ScanModeV5,
+  industryRaw: string | null,
+  industryExtras: string,
+): string {
+  const base = buildV5JsonInstruction(localeLang, scanMode, industryRaw);
+  return industryExtras ? `${base}\n\n${industryExtras}` : base;
+}

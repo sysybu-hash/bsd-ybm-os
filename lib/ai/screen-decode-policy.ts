@@ -19,53 +19,55 @@ export type ScreenDecodePolicy = {
   postActions: Array<"erp" | "crm" | "tasks" | "boq" | "work_diary" | "notebook">;
 };
 
-const DEFAULT_FLASH = "gemini-3.5-flash";
-const DEFAULT_PRO = "gemini-3.5-pro";
+// המודל בפועל נקבע ע"י getModelChainForScanMode() — primaryModel הוא שדה תצוגה בלבד.
+const SCAN_DISPLAY_FLASH = process.env.GEMINI_INVOICE_MODEL?.trim() ?? "gemini-3.5-flash";
+const SCAN_DISPLAY_BLUEPRINT =
+  process.env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() ?? "gemini-3.5-flash";
 
 export const SCREEN_AI_POLICY: Record<ScreenType, ScreenDecodePolicy> = {
   invoice: {
     screenType: "invoice",
     scanMode: "INVOICE_FINANCIAL",
-    primaryModel: DEFAULT_FLASH,
+    primaryModel: SCAN_DISPLAY_FLASH,
     postActions: ["erp", "crm"],
   },
   blueprint: {
     screenType: "blueprint",
     scanMode: "DRAWING_BOQ",
-    primaryModel: process.env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() || DEFAULT_PRO,
-    fallbackModel: DEFAULT_FLASH,
+    primaryModel: SCAN_DISPLAY_BLUEPRINT,
+    fallbackModel: SCAN_DISPLAY_FLASH,
     thinkingLevel: "medium",
     postActions: ["tasks", "boq", "notebook"],
   },
   quote_boq: {
     screenType: "quote_boq",
     scanMode: "QUOTE_BOQ",
-    primaryModel: DEFAULT_PRO,
-    fallbackModel: DEFAULT_FLASH,
+    primaryModel: process.env.GEMINI_QUOTE_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
+    fallbackModel: SCAN_DISPLAY_FLASH,
     postActions: ["boq"],
   },
   progress_bill: {
     screenType: "progress_bill",
     scanMode: "PROGRESS_BILL",
-    primaryModel: DEFAULT_FLASH,
+    primaryModel: process.env.GEMINI_PROGRESS_BILL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["boq"],
   },
   general: {
     screenType: "general",
     scanMode: "GENERAL_DOCUMENT",
-    primaryModel: DEFAULT_FLASH,
+    primaryModel: process.env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["notebook", "erp"],
   },
   site_log: {
     screenType: "site_log",
     scanMode: "SITE_LOG",
-    primaryModel: DEFAULT_FLASH,
+    primaryModel: process.env.GEMINI_SITE_LOG_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["work_diary", "boq", "notebook"],
   },
   drive_auto: {
     screenType: "drive_auto",
     scanMode: "GENERAL_DOCUMENT",
-    primaryModel: DEFAULT_FLASH,
+    primaryModel: process.env.GEMINI_GENERAL_MODEL?.trim() ?? SCAN_DISPLAY_FLASH,
     postActions: ["notebook", "erp"],
   },
 };
