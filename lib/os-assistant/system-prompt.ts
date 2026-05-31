@@ -12,6 +12,7 @@ import { formatUserContextForPrompt } from "@/lib/os-assistant/user-context";
 import { automationCatalogForPrompt } from "@/lib/os-automations/catalog";
 import { widgetCatalogForPrompt } from "@/lib/os-assistant/widget-catalog";
 import { resolveSiteBaseUrl, PRODUCTION_SITE_URL } from "@/lib/site-url";
+import { getMergedIndustryConfig } from "@/lib/construction-trades";
 
 export function buildOsAssistantSystemInstruction(
   ctx: OsAssistantUserContext,
@@ -38,8 +39,24 @@ export function buildOsAssistantSystemInstruction(
         "",
       ];
 
+  // הנחיות ענף+מקצוע ייעודיות — מוזרקות ל-prompt כדי שהעוזר ידע את שפת המקצוע של הלקוח
+  const industryConfig = getMergedIndustryConfig(
+    ctx.organization?.industry,
+    ctx.organization?.constructionTrade,
+    null,
+  );
+  const industryBlock = industryConfig.aiInstructions?.trim()
+    ? [
+        "## Domain expertise",
+        `The user works in: **${industryConfig.label}**`,
+        `Use the following professional context, vocabulary, and terminology when answering questions or performing actions related to documents, invoices, materials, and site management:`,
+        industryConfig.aiInstructions.trim(),
+        "",
+      ].join("\n")
+    : "";
+
   return withAssistantTemporalContext([
-    `You are the personal assistant for BSD-YBM OS — a management workspace for construction contractors and for general business / company management (CRM, ERP, projects, documents). Adapt vocabulary to the user's industry in context.`,
+    `You are the personal assistant for BSD-YBM OS — a professional management workspace for ${industryConfig.label} (CRM, ERP, projects, documents, AI scanning). Adapt all vocabulary to the user's specific trade.`,
     `The user's interface language is ${lang}. Always reply in ${lang} unless they explicitly ask for another language.`,
     "",
     "## Where you run (MANDATORY)",
@@ -52,6 +69,7 @@ export function buildOsAssistantSystemInstruction(
     "## User / subscription context",
     formatUserContextForPrompt(ctx),
     "",
+    ...(industryBlock ? [industryBlock] : []),
     "## Your capabilities",
     `- Answer in ${lang} on ANY topic: product help, construction/business questions, general knowledge, and the user's org context (not formal legal/tax advice).`,
     "- Execute real actions inside BSD-YBM OS via tools — do not only describe what the user could do manually.",

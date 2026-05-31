@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { canAccessMeckano } from "@/lib/meckano-access";
-import { isCompanyMgmtIndustry } from "@/lib/business-lines";
+import { isCompanyMgmtIndustry, businessLineLabelHe } from "@/lib/business-lines";
+import { constructionTradeLabelHe, normalizeConstructionTrade } from "@/lib/construction-trades";
+import { getMergedIndustryConfig } from "@/lib/construction-trades";
 import { getPlatformConfig } from "@/lib/platform-settings";
 import type { Session } from "next-auth";
 
@@ -88,7 +90,13 @@ export function formatUserContextForPrompt(ctx: OsAssistantUserContext): string 
     ? [
         `ארגון: ${org.name}`,
         `תוכנית: ${org.subscriptionTier} (${org.subscriptionStatus})`,
-        `ענף: ${org.industry} / ${isCompanyMgmtIndustry(org.industry) ? `קו עסק: ${org.constructionTrade}` : `מקצוע בנייה: ${org.constructionTrade}`}`,
+        `ענף: ${getMergedIndustryConfig(org.industry, org.constructionTrade, null).label}${
+          isCompanyMgmtIndustry(org.industry)
+            ? ` — קו עסק: ${businessLineLabelHe(normalizeConstructionTrade(org.constructionTrade) as never ?? "GENERAL_BUSINESS" as never)}`
+            : org.constructionTrade
+              ? ` — מקצוע: ${constructionTradeLabelHe(normalizeConstructionTrade(org.constructionTrade))}`
+              : ""
+        }`,
         `סריקות זמינות: זולות ${org.cheapScansRemaining}, פרימיום ${org.premiumScansRemaining}`,
         org.isVip ? "מנוי VIP" : null,
         org.trialEndsAt ? `ניסיון עד: ${org.trialEndsAt.slice(0, 10)}` : null,
