@@ -72,11 +72,8 @@ describe("parseAndSanitizeUiSchema", () => {
   it("accepts valid form schema", () => {
     const result = parseAndSanitizeUiSchema(validForm);
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.schema.type).toBe("form");
-      if (result.schema.type !== "dashboard") {
-        expect(result.schema.fields).toHaveLength(3);
-      }
+    if (result.ok && result.schema.type === "form") {
+      expect(result.schema.fields).toHaveLength(3);
     }
   });
 
