@@ -332,15 +332,25 @@ export async function processDocumentAction(
               scanModel,
             );
             break;
-          case "docai":
+          case "docai": {
             const { extractDocumentWithDocAI } = await import("@/lib/ai-extract-docai");
+            // נגזור scanMode מ-analysisId כדי לבחור פרוססור DocAI נכון (INVOICE/FORM/OCR)
+            const docAiScanMode = /invoice|חשבונית|receipt|קבלה|expense|tax/i.test(analysisId)
+              ? "INVOICE_FINANCIAL" as const
+              : /boq|כמויות|blueprint|גרמושקה|drawing|תוכנית/i.test(analysisId)
+                ? "DRAWING_BOQ" as const
+                : /site.?log|יומן|progress|חשבון.?חלקי/i.test(analysisId)
+                  ? "SITE_LOG" as const
+                  : "GENERAL_DOCUMENT" as const;
             aiData = await extractDocumentWithDocAI(
               base64Data,
               mimeType,
               file.name,
               documentInstruction,
+              docAiScanMode,
             );
             break;
+          }
           default:
             aiData = await extractWithGemini(base64Data, mimeType, documentInstruction);
         }

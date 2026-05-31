@@ -1,7 +1,7 @@
 import { v1 } from "@google-cloud/documentai";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import { getModelChainForScanMode, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 
 const { DocumentProcessorServiceClient } = v1;
@@ -39,7 +39,7 @@ const DOC_AI_PROCESSORS: Record<DocAiProcessorKind, { env: string; nameEnv: stri
     nameEnv: "GOOGLE_DOCUMENT_AI_FORM_PROCESSOR_NAME",
     label: "Form Parser",
     consoleType: "FORM_PARSER_PROCESSOR",
-    defaultNames: ["dsd-ybm", "bsd-ybm Form Parser"],
+    defaultNames: ["bsd-ybm", "bsd-ybm Form Parser"],
   },
 };
 
@@ -362,25 +362,26 @@ export async function processDocumentAiRawForScanMode(
 /**
  * 🚀 BSD-YBM Active: PREMIUM GOOGLE DOCUMENT AI EXTRACTOR
  * Uses the dedicated Document AI service for ultra-high precision.
+ * scanMode קובע: (1) סדר פרוססורים (INVOICE→EXPENSE→FORM→OCR לחשבוניות; FORM→OCR לגרמושקה),
+ * ו-(2) מודל ה-Gemini לנורמליזציה (invoice chain / blueprint chain וכד').
  */
 export async function extractDocumentWithDocAI(
   base64: string,
   mimeType: string,
   fileName: string,
   documentInstruction: string,
+  scanMode: ScanModeV5 = "GENERAL_DOCUMENT",
 ): Promise<Record<string, unknown>> {
-  const result = await processDocumentAiRawForScanMode(
-    base64,
-    mimeType,
-    "GENERAL_DOCUMENT",
-  );
-  return normalizeDocAiResultWithGemini(result, fileName, documentInstruction);
+  const result = await processDocumentAiRawForScanMode(base64, mimeType, scanMode);
+  return normalizeDocAiResultWithGemini(result, fileName, documentInstruction, scanMode);
 }
 
 export async function normalizeDocAiResultWithGemini(
   result: Pick<DocAiRawResult, "fullText" | "entities" | "formFields" | "tables" | "processorKind">,
   fileName: string,
   documentInstruction: string,
+  /** סוג הסריקה — קובע איזה מודל Gemini ישמש לנורמליזציה */
+  scanMode: ScanModeV5 = "GENERAL_DOCUMENT",
 ): Promise<Record<string, unknown>> {
   const { fullText, entities, formFields, tables, processorKind } = result;
 
@@ -419,8 +420,10 @@ Please convert this into the required JSON format.
 ${aiSummary}
   `;
 
+  // בחירת מודל לפי סוג הסריקה — חשבונית ← invoice chain, גרמושקה ← blueprint chain וכד'
+  const modelChain = getModelChainForScanMode(scanMode);
   let lastErr: unknown = null;
-  for (const modelName of getGeminiModelFallbackChain()) {
+  for (const modelName of modelChain) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       const geminiResult = await model.generateContent(prompt);

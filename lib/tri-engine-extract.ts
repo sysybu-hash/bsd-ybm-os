@@ -170,7 +170,7 @@ export async function runTriEngineExtraction(params: {
       out.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`];
       return out;
     }
-    const normalized = await normalizeDocAiResultWithGemini(raw, fileName, fullInstruction);
+    const normalized = await normalizeDocAiResultWithGemini(raw, fileName, fullInstruction, scanMode);
     const out = coerceLegacyAiToV5(normalized, fileName, scanMode);
     out.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`, "gemini-normalizer"];
     return out;
@@ -326,7 +326,7 @@ export async function runTriEngineExtraction(params: {
         docAiV5 = mapDocAiEntitiesToInvoiceV5(raw.entities, raw.fullText, fileName, scanMode);
         docAiV5.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`];
       } else {
-        const normalized = await normalizeDocAiResultWithGemini(raw, fileName, fullInstruction);
+        const normalized = await normalizeDocAiResultWithGemini(raw, fileName, fullInstruction, scanMode);
         docAiV5 = coerceLegacyAiToV5(normalized, fileName, scanMode);
         docAiV5.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`, "gemini-normalizer"];
       }
