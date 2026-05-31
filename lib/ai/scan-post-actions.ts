@@ -96,6 +96,25 @@ export async function runScanPostActions(
     if (action === "crm") {
       openWorkspaceWidget?.("crmTable", {});
       applied.push("crm");
+      continue;
+    }
+
+    if (action === "tasks") {
+      if (!projectId || !openWorkspaceWidget) {
+        skipped.push("tasks");
+        continue;
+      }
+      openWorkspaceWidget("projectBoard", {
+        projectId,
+        preloadTask: {
+          title: (v5.summary?.slice(0, 120) || v5.docType || "משימה מסריקה") as string,
+          description: (v5.summary?.slice(120, 620) ?? "") as string,
+          status: "todo",
+          priority: "medium",
+        },
+      });
+      applied.push("tasks");
+      continue;
     }
   }
 

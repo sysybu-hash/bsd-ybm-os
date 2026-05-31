@@ -50,6 +50,12 @@ const serverSchema = z.object({
   GEMINI_BLUEPRINT_MODEL: optStr,
   GEMINI_BLUEPRINT_PRIMARY_MODEL: optStr,
   GEMINI_OMNI_VOICE_MODEL: optStr,
+  // Per-scan-type model overrides — allows env-based tuning without redeploy
+  GEMINI_INVOICE_MODEL: optStr,
+  GEMINI_QUOTE_MODEL: optStr,
+  GEMINI_SITE_LOG_MODEL: optStr,
+  GEMINI_PROGRESS_BILL_MODEL: optStr,
+  GEMINI_GENERAL_MODEL: optStr,
   CRM_ANALYSIS_GEMINI_MODEL: optStr,
   GOOGLE_GENERATIVE_AI_MODEL: optStr,
 

@@ -114,6 +114,44 @@ export function getBlueprintAnalysisModelChain(): string[] {
   ]);
 }
 
+/** שרשרות לפי סוג סריקה — ניתנות לדריסה דרך env vars */
+export function getInvoiceModelChain(): string[] {
+  const fromEnv = env.GEMINI_INVOICE_MODEL?.trim();
+  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+export function getQuoteModelChain(): string[] {
+  const fromEnv = env.GEMINI_QUOTE_MODEL?.trim();
+  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+export function getSiteLogModelChain(): string[] {
+  const fromEnv = env.GEMINI_SITE_LOG_MODEL?.trim();
+  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+export function getProgressBillModelChain(): string[] {
+  const fromEnv = env.GEMINI_PROGRESS_BILL_MODEL?.trim();
+  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+export function getGeneralModelChain(): string[] {
+  const fromEnv = env.GEMINI_GENERAL_MODEL?.trim();
+  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+}
+
+/** בוחר שרשרת מודל לפי סוג סריקה */
+export function getModelChainForScanMode(scanMode: string): string[] {
+  switch (scanMode) {
+    case "INVOICE_FINANCIAL": return getInvoiceModelChain();
+    case "DRAWING_BOQ":       return getBlueprintAnalysisModelChain();
+    case "QUOTE_BOQ":         return getQuoteModelChain();
+    case "SITE_LOG":          return getSiteLogModelChain();
+    case "PROGRESS_BILL":     return getProgressBillModelChain();
+    default:                  return getGeneralModelChain();
+  }
+}
+
 export function isGeminiLiveModalityCombinationError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();

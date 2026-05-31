@@ -56,7 +56,18 @@ const LINE_PATCHES: Record<BusinessLineId, BusinessLinePatch | null> = {
       project: "פרויקט שירות",
       document: "הצעה, חוזה ודוח ביצוע",
     },
-    aiInstructionsSuffix: "Emphasize service delivery, milestones, and client billing.",
+    scanner: {
+      resultColumns: [
+        { key: "service_description", label: "תיאור שירות" },
+        { key: "milestone", label: "אבן דרך / שלב" },
+        { key: "hours_or_days", label: "שעות / ימים" },
+        { key: "hourly_rate", label: "תעריף שעתי (₪)" },
+        { key: "milestone_amount", label: "סכום אבן דרך" },
+        { key: "due_date", label: "תאריך יעד" },
+      ],
+    },
+    aiInstructionsSuffix:
+      "Extract professional service billing with full detail. Identify: service_description (exact wording), milestone_name or phase_name if present, hours_count and hourly_rate or day_rate, milestone_amount, payment_schedule (dates and amounts), retainer_amount_monthly if applicable, expense_reimbursements itemized, project_manager_name, contract_start_date and end_date, deliverable_list. Distinguish recurring retainer from project-based billing. For time-and-materials: extract each session/date separately.",
   },
   TECH: {
     vocabulary: {
@@ -66,8 +77,17 @@ const LINE_PATCHES: Record<BusinessLineId, BusinessLinePatch | null> = {
     },
     scanner: {
       subtitle: "חוזי SaaS, הצעות מחיר וחשבוניות מנוי",
+      resultColumns: [
+        { key: "product_name", label: "שם מוצר / מודול" },
+        { key: "license_type", label: "סוג רישיון (seat/org/API)" },
+        { key: "quantity", label: "כמות משתמשים / calls" },
+        { key: "unit_price", label: "מחיר ליחידה / חודש" },
+        { key: "subscription_period", label: "תקופת מנוי" },
+        { key: "overage_charges", label: "חיובי עודף" },
+      ],
     },
-    aiInstructionsSuffix: "Focus on software/SaaS contracts, subscriptions, and deliverables.",
+    aiInstructionsSuffix:
+      "Extract SaaS/tech billing with precision. Identify: product_name and module/tier (e.g. Starter/Pro/Enterprise), license_type (per-seat/per-org/API-calls/storage-GB), quantity and unit_price, billing_period (monthly/annual), subscription_start_date and renewal_date, discount_percent and discount_reason, overage_charges (extra usage beyond plan), setup_fee, implementation_services_amount, support_tier, auto-renewal clause (yes/no). Separate one-time fees from recurring. For API invoices: extract call_volume and per-call rate.",
   },
   TRADE: {
     vocabulary: {
@@ -76,7 +96,18 @@ const LINE_PATCHES: Record<BusinessLineId, BusinessLinePatch | null> = {
       document: "חשבונית רכש / מכירה",
       inventory: "מלאי ומחסן",
     },
-    aiInstructionsSuffix: "Focus on purchase orders, inventory, and supplier invoices.",
+    scanner: {
+      resultColumns: [
+        { key: "sku", label: "מק\"ט / ברקוד" },
+        { key: "product_description", label: "תיאור מוצר" },
+        { key: "quantity", label: "כמות" },
+        { key: "unit", label: "יחידה (יח'/ק\"ג/מ'" },
+        { key: "unit_price", label: "מחיר ליחידה" },
+        { key: "supplier_ref", label: "מספר הזמנת ספק" },
+      ],
+    },
+    aiInstructionsSuffix:
+      "Extract trade/inventory purchase data with full SKU detail. For each line item: sku or barcode, product_description (Hebrew), quantity, unit (יחידה/ק\"ג/ליטר/קרטון/פלטה/מטר), unit_price, line_total. Also capture: supplier_po_number, delivery_date or requested_date, warehouse_destination, payment_terms (e.g. שוטף+30), currency if not ILS, customs_declaration_number for imports, country_of_origin, import_tax_amount, freight_cost. For delivery notes: match SKU to PO line, note quantity_received vs quantity_ordered, condition (תקין/פגום), receiver_signature.",
   },
   AGENCY: {
     vocabulary: {
@@ -84,7 +115,18 @@ const LINE_PATCHES: Record<BusinessLineId, BusinessLinePatch | null> = {
       project: "קמפיין / ריטיינר",
       document: "בריף, הצעה ודוח ביצוע",
     },
-    aiInstructionsSuffix: "Focus on campaigns, retainers, and marketing deliverables.",
+    scanner: {
+      resultColumns: [
+        { key: "campaign_name", label: "שם קמפיין" },
+        { key: "channel", label: "ערוץ (Meta/Google/OOH)" },
+        { key: "budget_amount", label: "תקציב מדיה" },
+        { key: "retainer_amount", label: "ריטיינר חודשי" },
+        { key: "production_cost", label: "עלות הפקה" },
+        { key: "period", label: "תקופת פעילות" },
+      ],
+    },
+    aiInstructionsSuffix:
+      "Extract marketing/agency billing with campaign granularity. Identify: campaign_name, channel or platform (Meta Ads/Google Ads/LinkedIn/OOH/TV/Radio/SEO), media_budget and agency_commission_percent, retainer_amount_monthly and included_services list, production_cost itemized (photography/video/design/copywriting), period (start_date to end_date), deliverables (number of creatives/posts/reports), performance_metrics if mentioned (impressions/clicks/ROAS), client_brand_name, account_manager_name. Distinguish media spend from agency fee.",
   },
   HOLDING: {
     vocabulary: {
@@ -92,7 +134,18 @@ const LINE_PATCHES: Record<BusinessLineId, BusinessLinePatch | null> = {
       project: "יוזמה קבוצתית",
       document: "דוח הנהלה / אישור קבוצה",
     },
-    aiInstructionsSuffix: "Focus on group reporting, approvals, and multi-entity context.",
+    scanner: {
+      resultColumns: [
+        { key: "entity_name", label: "שם ישות / חברה בת" },
+        { key: "cost_center", label: "מרכז עלות / תקציב" },
+        { key: "intercompany_amount", label: "עסקה בין-חברתית" },
+        { key: "approval_level", label: "רמת אישור" },
+        { key: "reporting_period", label: "תקופת דיווח" },
+        { key: "currency", label: "מטבע" },
+      ],
+    },
+    aiInstructionsSuffix:
+      "Extract holding/group company documents with inter-entity precision. Identify: entity_name (legal company name), cost_center or budget_code, intercompany_transaction_amount and counterparty_entity, approval_authority_level (CEO/CFO/Board), reporting_period (quarter/year), currency and exchange_rate if non-ILS, consolidation_adjustments if visible. For management reports: extract KPI table (revenue/EBITDA/headcount per entity), variance_vs_budget_percent. For board approvals: resolution_number, approval_date, authorized_signatory. Distinguish operational from financing transactions.",
   },
 };
 

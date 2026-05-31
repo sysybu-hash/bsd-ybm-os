@@ -85,15 +85,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "BOQ_DOCUMENT", label: "כתב כמויות חשמל", description: "סעיפי ביצוע, אומדן מחירי נקודות ותשתיות" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "site_or_panel", label: "אתר / לוח" },
-        { key: "total_items", label: "כמות / היקף" },
-        { key: "standard_ref", label: "תקן / אישור" },
-        { key: "approval_status", label: "סטטוס מסמך" },
+        { key: "cable_type", label: "סוג כבל (NYY/NYM/…)" },
+        { key: "cable_length_meters", label: "מטר כבל" },
+        { key: "socket_count", label: "כמות שקעים" },
+        { key: "circuit_breaker_specs", label: "מפסקים (A)" },
+        { key: "conduit_meters", label: "מטר תעלה" },
+        { key: "panel_name", label: "שם לוח חשמל" },
       ],
     },
     aiInstructionsSuffix:
-      "Focus on electrical installation context: panels, circuits, standards (Israeli norms when visible), and safety-related notes.",
+      "Extract electrical quantities with maximum precision. For each line item identify: cable_type (e.g. NYY 3×2.5mm², NYM 5×6mm²), cable_length_meters per cable type, socket_count and socket_type (שקע רגיל/מחשב/חיצוני), circuit_breaker_specs including amperage (A) and number of poles, panel_name or panel_id (e.g. לוח ראשי, לוח קומה 3), conduit_type and conduit_meters (תעלת PVC/מתכת), spotlight_count, junction_box_count, earthing_rod_count. Note Israeli standard SI 900 references, inspection certificate number, and inspector name if visible. Output numeric quantities only — never estimate.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / לוח חשמל",
@@ -145,14 +146,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "BOQ_DOCUMENT", label: "כתב כמויות אינסטלציה", description: "פירוט נקודות מים, ביוב וכלים סניטריים" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "system_type", label: "מערכת (קולט/ביוב/מים)" },
-        { key: "total_items", label: "כמות פריטים" },
-        { key: "supplier", label: "ספק / מבצע" },
-        { key: "approval_status", label: "סטטוס מסמך" }
+        { key: "pipe_material", label: "חומר צנרת (PPR/PVC/נחושת)" },
+        { key: "pipe_diameter_mm", label: "קוטר (מ\"מ)" },
+        { key: "pipe_length_meters", label: "מטר צנרת" },
+        { key: "fitting_type", label: "סוג אביזר (מרפק/גיא…)" },
+        { key: "fitting_count", label: "כמות אביזרים" },
+        { key: "system_type", label: "מערכת (קר/חם/ביוב)" },
       ],
     },
-    aiInstructionsSuffix: "Emphasize plumbing systems: water, drainage, fixtures, and supplier invoices.",
+    aiInstructionsSuffix:
+      "Extract plumbing quantities with full precision. For each line item identify: pipe_material (PPR/PVC/copper/stainless/ductile), pipe_diameter_mm (e.g. 20mm, 25mm, 32mm, 40mm, 50mm, 63mm, 90mm, 110mm, 160mm), pipe_length_meters per diameter and material combination, system_type (מים קרים/מים חמים/ביוב/גשם), fitting_type (מרפק 90°/45°, גיא, מפחית, שסתום כדורי, ברז, ממסר, קולט רצפה), fitting_count per type. Also capture: water_heater_capacity_liters, pump_model and flow_rate_m3h, pressure_test_result_bar if present, connection_to_main (inch size). Separate hot/cold water runs. Israeli standard SI 1205 references if visible. Never estimate quantities.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / מערכת (מים/ביוב/קולטים)",
@@ -203,14 +206,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "BOQ_DOCUMENT", label: "כתב כמויות מיזוג אוויר", description: "פירוט תעלות, גרילים, ויחידות לפי חללים" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "equipment_tag", label: "ציוד / דגם" },
-        { key: "capacity", label: "הספק / נפח" },
-        { key: "location", label: "מיקום באתר" },
-        { key: "status", label: "סטטוס התקנה" }
+        { key: "unit_model", label: "דגם יחידה" },
+        { key: "unit_type", label: "סוג (split/VRF/chiller)" },
+        { key: "capacity_kw", label: "קיבולת (kW/BTU)" },
+        { key: "refrigerant_type", label: "גז קירור (R410A…)" },
+        { key: "indoor_count", label: "כמות יחידות פנים" },
+        { key: "pipe_set_meters", label: "מטר צנרת נחושת" },
       ],
     },
-    aiInstructionsSuffix: "Focus on HVAC equipment tags, capacities, and installation milestones.",
+    aiInstructionsSuffix:
+      "Extract HVAC equipment data with full precision. For each unit identify: unit_model (exact catalog number), unit_type (split/multi-split/VRF/chiller/AHU/FCU/cassette), capacity_kw or BTU (both if available), refrigerant_type (R410A/R32/R22/R407C), indoor_unit_count and outdoor_unit_count per system, copper_pipe_set_meters and pipe_set_diameter_mm (e.g. 6mm+10mm for split). Also capture: duct_area_m2 or duct_length_m per section, diffuser_count and grille_count, commissioning_date, pressure_test_result_bar, refrigerant_charge_kg, warranty_months, electrical_supply_specs (kW/phase). Tag each unit by location (room/floor/zone). Never estimate — use only visible data.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / מערכת מיזוג",
@@ -260,14 +265,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור סיום שלב גמר", description: "אישור מסירת שטח צבוע או שליכט" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "area_sqm", label: "שטח (מ״ר) / היקף" },
-        { key: "layers", label: "סוג עבודה / שכבות" },
-        { key: "color_code", label: "גוון / קוד צבע" },
-        { key: "status", label: "סטטוס שלב" }
+        { key: "surface_type", label: "סוג משטח (פנים/חוץ/תקרה)" },
+        { key: "surface_area_m2", label: "שטח (מ\"ר)" },
+        { key: "paint_product", label: "שם מוצר צבע" },
+        { key: "coating_layers", label: "שכבות ציפוי" },
+        { key: "shading_count", label: "מספר גוונים" },
+        { key: "liter_count", label: "ליטרים" },
       ],
     },
-    aiInstructionsSuffix: "Highlight surface areas, paint systems, and finishing scope.",
+    aiInstructionsSuffix:
+      "Extract painting quantities with full detail. For each item identify: surface_type (קיר פנים/קיר חוץ/תקרה/מתכת/עץ), surface_area_m2 per surface type and location, paint_product_name (exact brand and product, e.g. Tambour Duco 20 White), paint_manufacturer, coating_system (number of coats: primer/undercoat/topcoat + technique e.g. רולר/ריסוס), shading_count (number of distinct color shades ordered), liter_count or kg_count per product, RAL_or_color_code if visible, texture_type (חלק/פיסול/פסים) if applicable, surface_prep_method (קרצוף/שפכטל/שליכט). Distinguish interior from exterior. Note any scaffolding mentions.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / קומה וחלל",
@@ -317,14 +324,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור סיום ריצוף", description: "מסירת חלל או דירה לאחר רובה" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "tile_sku", label: "דגם / מידה" },
-        { key: "qty_sqm", label: "כמות מ״ר / יחידות" },
-        { key: "batch", label: "אצווה / גוון" },
-        { key: "status", label: "סטטוס ביצוע" }
+        { key: "material_type", label: "חומר (פורצלן/שיש/עץ)" },
+        { key: "tile_size_cm", label: "מידת אריח (ס\"מ)" },
+        { key: "area_m2", label: "שטח (מ\"ר)" },
+        { key: "sku", label: "מק\"ט / קטלוג" },
+        { key: "batch_number", label: "אצווה" },
+        { key: "box_count", label: "כמות קרטונים" },
       ],
     },
-    aiInstructionsSuffix: "Focus on flooring quantities, SKUs, and delivery batches.",
+    aiInstructionsSuffix:
+      "Extract flooring quantities with full precision. For each item identify: material_type (פורצלן/קרמיקה/שיש/גרניט/פרקט עץ/ויניל/פלורא), tile_size_cm (e.g. 60×60, 120×60, 30×60), area_m2 per material per location, sku or catalog_number (exact code from supplier), batch_number or lot_number (critical for color matching), box_count and tiles_per_box, grout_color and grout_brand, adhesive_type (דבק רגיל/דבק אפוקסי/מונטז'). Also note: wastage_percent if stated, laying_pattern (ישר/אלכסוני/הרינגבון), floor_heating_underneath (yes/no). Separate floor tiles from wall tiles and exterior tiles.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / חלל ורצפה",
@@ -375,14 +384,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור מסירת פתחים", description: "בדיקת אטימות, תריסים, ומסירה למזמין" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "opening_ref", label: "מספר פתח / חלל" },
-        { key: "profile", label: "סוג פרופיל / פירזול" },
-        { key: "glass_spec", label: "מפרט זכוכית / כמות" },
-        { key: "status", label: "סטטוס התקנה" }
+        { key: "opening_type", label: "סוג פתח (חלון/דלת/ויטרינה)" },
+        { key: "profile_system", label: "מערכת פרופיל" },
+        { key: "dimensions_cm", label: "מידות (רוחב×גובה ס\"מ)" },
+        { key: "glass_spec", label: "מפרט זכוכית" },
+        { key: "quantity", label: "כמות פתחים" },
+        { key: "ral_color", label: "גוון RAL / גימור" },
       ],
     },
-    aiInstructionsSuffix: "Emphasize openings, profiles, glass specs, and installation notes.",
+    aiInstructionsSuffix:
+      "Extract aluminum and glazing items with full technical precision. For each opening identify: opening_type (חלון נפתח/הזזה/ציר/ויטרינה/דלת כניסה/מעקה/פרגולה), profile_system brand (קליל/אקסטל/TECHNAL/ALUPROF/Schuco/Cortizo), opening_width_cm and opening_height_cm (exact), glass_spec (e.g. 4+16Ar+4 low-E, U=1.1, G=0.35; or 6mm tempered; or triple glazing), quantity per type, hardware_type (ציר/מנגנון הזזה/נעילה רב-נקודתית), RAL_color_code or surface_finish (אנודייז/צבע אלקטרוסטטי/עץ). Also note: mosquito_net (yes/no), roller_shutter (yes/no), apartment_or_floor_reference. If measurement schedule: extract table with opening_id, width, height, quantity.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / פתחים וקומות",
@@ -432,14 +443,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור מסירת גמר", description: "טופס בדיקת איכות ומסירת חללים ללקוח קצה" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "room_ref", label: "חלל / דירה" },
-        { key: "item_desc", label: "סוג פריט / מפרט" },
-        { key: "supplier", label: "ספק / חברת נגרות" },
-        { key: "status", label: "סטטוס התקנה" }
+        { key: "item_type", label: "סוג פריט (מטבח/ארון/דלת)" },
+        { key: "dimensions_cm", label: "מידות (W×H×D ס\"מ)" },
+        { key: "material", label: "חומר (MDF/עץ מלא/לכה)" },
+        { key: "quantity", label: "כמות" },
+        { key: "color_finish", label: "גוון / גימור" },
+        { key: "hardware_brand", label: "פירזול (Blum/Hettich…)" },
       ],
     },
-    aiInstructionsSuffix: "Focus on interior finishing orders: kitchens, doors, built-ins.",
+    aiInstructionsSuffix:
+      "Extract interior finishing items with full specification detail. For each item identify: item_type (מטבח/ארון בגדים/דלת פנים/ארון אמבטיה/ספרייה מובנית/חיפוי קיר MDF), dimensions_cm (W×H×D — exact if stated), material (MDF גולמי/MDF לכה/עץ מלא/פורמייקה/אקריליק/בטון), color_finish (RAL code or descriptive color name), quantity of each item, hardware_brand (Blum/Hettich/Grass/Sugatsune/MEPLA), door_type if relevant (חלוקה/ללא ידית/ריקוע), room_reference (מטבח דירה 3/חדר שינה ראשי). For kitchens: extract separately uppers vs. lowers, island if present, countertop_material and countertop_length_cm. Note manufacturer and lead_time_weeks if visible.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / חלל פנים",
@@ -489,14 +502,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור מסירת שטח חוץ", description: "בדיקת גינון, השקיה ופיתוח פיתוח סביבתי" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "zone_ref", label: "שטח / גינה" },
-        { key: "item_desc", label: "צמחייה / ציוד השקיה" },
-        { key: "quantity", label: "כמות / שטח" },
-        { key: "status", label: "סטטוס ביצוע" }
+        { key: "plant_species", label: "מין צמח (עברי+לטיני)" },
+        { key: "plant_quantity", label: "כמות צמחים / עצים" },
+        { key: "area_m2", label: "שטח (מ\"ר)" },
+        { key: "irrigation_type", label: "סוג השקיה (טפטוף/ממטרה)" },
+        { key: "paving_material", label: "חומר ריצוף חוץ" },
+        { key: "soil_m3", label: "קוב אדמה" },
       ],
     },
-    aiInstructionsSuffix: "Emphasize landscaping scope, irrigation, and hardscape elements.",
+    aiInstructionsSuffix:
+      "Extract landscaping quantities with botanical and technical precision. For plants: plant_species (Hebrew common name + botanical Latin name if visible), pot_size_liters or height_cm, plant_quantity per species, planting_zone. For areas: lawn_area_m2 (דשא/דשא סינטטי), planting_bed_area_m2, hardscape_area_m2 per material (paving_stone/concrete/gravel), paving_material type and thickness_cm. For irrigation: irrigation_type (טפטוף/ממטרת פופ-אפ/מיקרו), irrigation_pipe_meters by diameter (16mm/20mm/25mm), drip_emitter_count, control_unit_zones_count, filter_and_pressure_reducer (yes/no). Soil: soil_type (גן/שחור/גיר), soil_m3 and compost_m3. Tree staking, mulch_m3 if mentioned. Hardscape items: pergola_m2, planter_wall_m_linear.",
     vocabulary: {
       client: "מזמין / קבלן ראשי",
       project: "אתר / אזור גינון",
@@ -546,14 +561,16 @@ const TRADE_PATCHES: Record<ConstructionTradeId, ConstructionTradePatch | null> 
         { id: "APPROVAL_CERT", label: "אישור שלב / טופס איכות", description: "אישור מפקח או יזם לסיום שלב עבודה" }
       ],
       resultColumns: [
-        { key: "doc_type", label: "סוג מסמך" },
-        { key: "project_site", label: "אתר / מזמין" },
-        { key: "phase", label: "שלב / אחוז ביצוע" },
-        { key: "total", label: "סכום כולל / כמות" },
-        { key: "status", label: "סטטוס מסמך" }
+        { key: "work_description", label: "תיאור עבודה" },
+        { key: "unit", label: "יחידה (מ/מ\"ר/יח'/יום)" },
+        { key: "quantity", label: "כמות" },
+        { key: "unit_price", label: "מחיר יחידה" },
+        { key: "cumulative_percent", label: "% ביצוע מצטבר" },
+        { key: "retention_percent", label: "% ניכוי בטחון" },
       ],
     },
-    aiInstructionsSuffix: "Focus on subcontractor quotes, progress billing, and site reporting.",
+    aiInstructionsSuffix:
+      "Extract subcontractor billing and BOQ data with financial precision. For each line item: work_description (full Hebrew text), unit (מ/מ\"ר/מ\"ק/יחידה/יום/סל), quantity, unit_price, line_total. For progress invoices: cumulative_billed_percent, current_period_amount, previous_billed_amount, retention_percent and retention_amount, advance_deduction, net_payable. For site logs: crew_count per trade, equipment_list (טרקטור/מנוף/מחפר model if visible), work_done_description, materials_delivered_list, weather_note, safety_incidents (none/description). Always extract: invoice_number, billing_period_dates, project_name, contractor_name, project_manager_name if visible. Distinguish חשבון ביניים vs חשבון סופי.",
     vocabulary: {
       client: "קבלן ראשי / מזמין",
       project: "אתר / תיק משנה",
