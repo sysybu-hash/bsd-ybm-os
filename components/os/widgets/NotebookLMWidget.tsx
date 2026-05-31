@@ -137,7 +137,7 @@ export default function NotebookLMWidget({
 
   return (
     <div
-      className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl"
+      className="flex w-full flex-col overflow-x-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl md:h-full md:overflow-hidden"
       dir={dir}
     >
       {/* Dialogs render as portals — unaffected by split layout */}
@@ -166,15 +166,16 @@ export default function NotebookLMWidget({
         onCancel={() => nb.setDeleteNotebookId(null)}
       />
 
-      {/* ── מובייל: sources בגובה טבעי מלא → גלילה חיצונית, ── */}
-      {/* ── דסקטופ: split panels כרגיל                     ── */}
-      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+      {/* ── מובייל: זרימה טבעית — הכל נגלל דרך מיכל ה-shell ── */}
+      {/* ── דסקטופ: split panels כרגיל                       ── */}
+      <div className="flex flex-col md:hidden">
         {/* sources sidebar — גובה טבעי מלא, ללא h-full */}
         <div className="border-b border-[color:var(--border-main)]">
           {sourcesSidebarMobile}
         </div>
-        {/* chat panel — min-height סביר */}
-        <div className="min-h-[55vh]">
+        {/* chat panel — גובה מוגדר (לא min-h) כדי ש-h-full הפנימי יעבוד;
+            אזור ההודעות גולל פנימית, שאר העמוד גולל דרך ה-shell */}
+        <div className="h-[60vh]">
           {chatPanel}
         </div>
       </div>
