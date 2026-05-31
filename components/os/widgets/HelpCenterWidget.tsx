@@ -31,7 +31,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
   const s = useHelpCenter(locale);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex min-h-full flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <header className="shrink-0 border-b border-[color:var(--border-main)] p-4 max-md:px-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">

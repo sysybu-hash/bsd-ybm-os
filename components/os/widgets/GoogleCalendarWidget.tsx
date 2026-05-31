@@ -203,7 +203,7 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
 
       id="google-calendar-print-root"
 
-      className="flex flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden"
+      className="flex flex-col min-h-full bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden"
 
       dir={layoutDir}
 

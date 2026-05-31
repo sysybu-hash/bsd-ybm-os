@@ -71,7 +71,7 @@ export default function AiScannerWidget({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] md:flex-row ${
+      className={`flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] md:h-full md:overflow-hidden ${
         embeddedInHub ? "[&_.workspace-window]:hidden" : ""
       }`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
@@ -83,7 +83,7 @@ export default function AiScannerWidget({
         tr={tr}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className={stackScannerPanels ? "flex flex-col" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
         <ScanHeaderToolbar
           t={t} tr={tr} scannerPrefix={scannerPrefix}
           boundProjectName={boundProjectName ?? ""}
@@ -115,14 +115,52 @@ export default function AiScannerWidget({
             onConfirm={() => void confirmAnalysis()}
             tr={tr}
           />
+        ) : stackScannerPanels ? (
+          /* Mobile: natural-height panels — parent scrolls */
+          <div className="flex flex-col">
+            <div className="min-h-[42vh]">
+              <ScanDropZone
+                isDragging={isDragging}
+                setIsDragging={setIsDragging}
+                isProcessing={isProcessing}
+                queue={queue}
+                queueProgress={queueProgress}
+                hasPendingAnalysis={!!pendingAnalysis}
+                previewUrl={previewUrl}
+                previewMime={previewMime}
+                previewFileName={previewFileName}
+                fileAccept={fileAccept}
+                fileInputRef={fileInputRef}
+                cameraInputRef={cameraInputRef}
+                onDrop={onDrop}
+                onFileInputChange={onFileInputChange}
+                applyFilePreview={applyFilePreview}
+                t={t}
+                tr={tr}
+              />
+            </div>
+            <div className="h-1.5 bg-[color:var(--border-main)]" />
+            <div className="flex min-h-[40vh] flex-col p-2">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                {t("scanner.results")}
+              </p>
+              <p className="mb-2 rounded-lg border border-[color:var(--border-main)]/60 bg-[color:var(--surface-card)]/50 px-2 py-1 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                {tr("scanner.telemetry", "טלמטריה")}: {formatTelemetrySummaryHe(telemetry)}
+              </p>
+              <pre className="custom-scrollbar min-h-[20vh] overflow-auto rounded-2xl border border-[color:var(--border-main)]/80 bg-gradient-to-b from-black/25 to-[color:var(--surface-card)]/20 p-3 text-[10px] leading-relaxed backdrop-blur-sm">
+                {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
+              </pre>
+            </div>
+          </div>
         ) : (
+          /* Desktop: fixed resizable panels */
           <Group
-            orientation={stackScannerPanels ? "vertical" : "horizontal"}
+            orientation="horizontal"
             className="min-h-0 flex-1"
           >
             <Panel
-              defaultSize={stackScannerPanels ? 42 : 48}
-              minSize={stackScannerPanels ? 24 : 28}
+              defaultSize={48}
+              minSize={28}
               className="flex min-h-0 flex-col"
             >
               <ScanDropZone
@@ -145,17 +183,11 @@ export default function AiScannerWidget({
                 tr={tr}
               />
             </Panel>
-            <Separator
-              className={
-                stackScannerPanels
-                  ? "h-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40"
-                  : "w-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40"
-              }
-            />
+            <Separator className="w-1.5 bg-[color:var(--border-main)] hover:bg-orange-500/40" />
             <Panel
-              defaultSize={stackScannerPanels ? 58 : 52}
-              minSize={stackScannerPanels ? 28 : 28}
-              className="flex min-h-0 flex-col p-2 md:p-3"
+              defaultSize={52}
+              minSize={28}
+              className="flex min-h-0 flex-col p-3"
             >
               <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
                 {t("scanner.results")}

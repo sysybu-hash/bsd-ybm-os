@@ -94,7 +94,7 @@ export default function ErpDocumentsWidget() {
   );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <WidgetSplitPanels
         className="min-h-0 flex-1"
         direction="horizontal"

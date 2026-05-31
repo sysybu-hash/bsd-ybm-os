@@ -32,7 +32,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
 
   return (
     <div
-      className="flex min-h-0 flex-1 w-full min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] overflow-hidden"
+      className="flex min-h-full w-full min-w-0 flex-col bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden"
       dir={dir}
     >
       <OsConfirmDialog

@@ -17,7 +17,7 @@ export default function AccessibilityWidget() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
+    <div className="flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]">
       <AccessibilityPanelContent value={settings} onChange={handleChange} />
     </div>
   );
