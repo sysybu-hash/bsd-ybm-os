@@ -53,13 +53,27 @@ npm run product-brochure:capture
 
 ### ייצור PDF מעודכן
 
+לאחר שינוי תוכן ב-`lib/pdf/*-html.ts` (בלי צילומים חדשים):
+
 ```powershell
-npm run product-brochure:pdf
-# או הכל ביחד:
+npm run docs:marketing-pdf
+```
+
+פקודות נפרדות:
+
+| פקודה | פלט ב-`docs/` |
+|--------|----------------|
+| `npm run marketing:onepagers` | `BSD-YBM-OS-one-pager-portrait.{pdf,png}`, `…-mobile.{pdf,png}` |
+| `npm run product-brochure:pdf` | `BSD-YBM-OS-דף-מוצר.pdf` (דורש `.env.local` — Chromium) |
+| `npm run product-brochure:v2-pdf` | `BSD-YBM-OS-דף-מוצר-v2.pdf` |
+
+עם צילומי מסך חדשים:
+
+```powershell
 npm run product-brochure:build
 ```
 
-קובץ סופי: `docs/BSD-YBM-OS-דף-מוצר.pdf` (או הנתיב שהסקריפט מדפיס).
+> `product-brochure:pdf` משתמש ב-`dotenv -e .env.local` כי מנוע Chromium נטען דרך `lib/env.ts`.
 
 ### אם הצילום נכשל
 

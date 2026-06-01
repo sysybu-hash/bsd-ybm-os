@@ -82,7 +82,10 @@
     "tutorials:encode": "node scripts/generate-tutorial-videos.mjs",
     "lighthouse:sample": "node scripts/lighthouse-sample.mjs",
     "product-brochure:capture": "npx tsx scripts/capture-product-brochure-screenshots.ts",
-    "product-brochure:pdf": "npx tsx scripts/generate-product-brochure-pdf.ts",
+    "product-brochure:pdf": "dotenv -e .env.local -- npx tsx scripts/generate-product-brochure-pdf.ts",
+    "product-brochure:v2-pdf": "npx tsx scripts/generate-product-brochure-v2-pdf.ts",
+    "marketing:onepagers": "npx tsx scripts/generate-marketing-onepagers.ts",
+    "docs:marketing-pdf": "npm run marketing:onepagers && npm run product-brochure:pdf && npm run product-brochure:v2-pdf",
     "product-brochure:build": "npm run product-brochure:capture && npm run product-brochure:pdf",
     "brand:prepare-assets": "node scripts/prepare-brand-assets.mjs",
     "load-test": "node scripts/load-test.mjs"
