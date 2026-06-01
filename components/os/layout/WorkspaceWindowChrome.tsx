@@ -100,8 +100,8 @@ export default function WorkspaceWindowChrome({
       onPointerCancel={onHeaderPointerUp}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        {showNavigation ? (
-          <div className="flex shrink-0 items-center gap-0.5">
+        {showNavigation && !closeTouchTarget ? (
+          <div className="hidden shrink-0 items-center gap-0.5 sm:flex">
             <button
               type="button"
               onClick={onBack}
@@ -129,8 +129,8 @@ export default function WorkspaceWindowChrome({
       </div>
 
       <div className="workspace-chrome-toolbar">
-        {showZoom ? (
-          <>
+        {showZoom && !closeTouchTarget ? (
+          <div className="hidden items-center gap-0.5 md:inline-flex">
             <button
               type="button"
               onClick={handleZoomOut}
@@ -150,7 +150,7 @@ export default function WorkspaceWindowChrome({
             >
               <ZoomIn size={14} aria-hidden />
             </button>
-          </>
+          </div>
         ) : null}
         {onMinimize ? (
           <button

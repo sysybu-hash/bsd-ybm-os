@@ -472,15 +472,15 @@ export function quickActionSubtitleKey(type: WidgetType): string {
 export function mobileNavLabelKey(type: WidgetType): string {
 
   const mobileKeys: Partial<Record<WidgetType, string>> = {
-
     dashboard: "workspaceWidgets.mobileNav.dashboard",
-
     aiScanner: "workspaceWidgets.mobileNav.aiScanner",
-
     docCreator: "workspaceWidgets.mobileNav.docCreator",
-
     crmTable: "workspaceWidgets.mobileNav.crmTable",
-
+    aiHub: "workspaceWidgets.mobileNav.aiHub",
+    fieldCopilot: "workspaceWidgets.mobileNav.fieldCopilot",
+    documentsHub: "workspaceWidgets.mobileNav.documentsHub",
+    projectsHub: "workspaceWidgets.mobileNav.projectsHub",
+    financeHub: "workspaceWidgets.mobileNav.financeHub",
   };
 
   const meta = getLauncherNavMeta(type);

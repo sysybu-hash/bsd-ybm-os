@@ -372,7 +372,8 @@
         "tabs": {
           "chat": "צ׳אט",
           "notebook": "מחברת",
-          "builder": "מחולל אפליקציות"
+          "builder": "מחולל אפליקציות",
+          "builderShort": "מחולל"
         }
       }
     },
@@ -475,6 +476,9 @@
       "generating": "יוצר…",
       "generateError": "יצירת הממשק נכשלה — נסו לנסח מחדש",
       "previewTitle": "תצוגה מקדימה",
+      "mobilePaneAria": "אזורי מחולל האפליקציות",
+      "mobilePaneBuild": "בנייה וצ׳אט",
+      "mobilePanePreview": "תצוגה מקדימה",
       "emptyPreview": "כתבו בצ׳אט מה לבנות — לדוגמה: «דשבורד עם 5 כרטיסי מטריקה להוצאות ופרויקטים»",
       "previewUpdated": "התצוגה עודכנה — לחצו «שמור אפליקציה» כדי לשמור",
       "tabLive": "Live",
@@ -772,7 +776,11 @@
       "aria": "ניווט מהיר במובייל",
       "dashboard": "דאשבורד",
       "aiScanner": "סורק AI",
-      "fieldCopilot": "קופיילוט שטח",
+      "aiHub": "AI",
+      "fieldCopilot": "קופיילוט",
+      "documentsHub": "מסמכים",
+      "projectsHub": "פרויקטים",
+      "financeHub": "פיננסים",
       "meckanoReports": "דוחות Meckano",
       "crmTable": "לקוחות",
       "omnibarAria": "פתח שורת פקודה וחיפוש",

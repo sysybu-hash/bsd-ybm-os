@@ -13,7 +13,11 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 const TABS: HubTabDef[] = [
   { id: "chat", labelKey: "workspaceWidgets.hubs.ai.tabs.chat" },
   { id: "notebook", labelKey: "workspaceWidgets.hubs.ai.tabs.notebook" },
-  { id: "builder", labelKey: "workspaceWidgets.hubs.ai.tabs.builder" },
+  {
+    id: "builder",
+    labelKey: "workspaceWidgets.hubs.ai.tabs.builder",
+    shortLabelKey: "workspaceWidgets.hubs.ai.tabs.builderShort",
+  },
 ];
 
 type OpenWorkspaceWidgetFn = (

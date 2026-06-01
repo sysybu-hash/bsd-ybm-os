@@ -372,7 +372,8 @@
         "tabs": {
           "chat": "Chat",
           "notebook": "Notebook",
-          "builder": "App Builder"
+          "builder": "App Builder",
+          "builderShort": "Builder"
         }
       }
     },
@@ -475,6 +476,9 @@
       "generating": "Generating…",
       "generateError": "Failed to generate UI — try rephrasing",
       "previewTitle": "Live preview",
+      "mobilePaneAria": "App builder areas",
+      "mobilePaneBuild": "Build & chat",
+      "mobilePanePreview": "Preview",
       "emptyPreview": "Chat what to build — e.g. “Dashboard with 5 expense and project metric cards”",
       "previewUpdated": "Preview updated — click Save app to persist",
       "tabLive": "Live",
@@ -772,7 +776,11 @@
       "aria": "Mobile quick navigation",
       "dashboard": "Dashboard",
       "aiScanner": "AI scan",
-      "fieldCopilot": "Field Copilot",
+      "aiHub": "AI",
+      "fieldCopilot": "Copilot",
+      "documentsHub": "Docs",
+      "projectsHub": "Projects",
+      "financeHub": "Finance",
       "meckanoReports": "Meckano reports",
       "crmTable": "Clients",
       "omnibarAria": "Open command bar and search",

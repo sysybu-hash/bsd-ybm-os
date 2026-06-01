@@ -6,6 +6,8 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 export type HubTabDef = {
   id: string;
   labelKey: string;
+  /** תווית קצרה למובייל (אופציונלי) */
+  shortLabelKey?: string;
 };
 
 type Props = {
@@ -66,19 +68,20 @@ export default function WidgetHubShell({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => selectTab(tab.id)}
-                className={`shrink-0 rounded-lg px-3 py-2.5 text-xs font-bold transition-colors min-h-[44px] md:text-sm ${
+                className={`shrink-0 rounded-lg px-2.5 py-2.5 text-xs font-bold transition-colors min-h-[44px] max-md:px-2 md:px-3 md:text-sm ${
                   selected
                     ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
                     : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
               >
-                {t(tab.labelKey)}
+                <span className="md:hidden">{t(tab.shortLabelKey ?? tab.labelKey)}</span>
+                <span className="hidden md:inline">{t(tab.labelKey)}</span>
               </button>
             );
           })}
         </nav>
         {tabCountLabel ? (
-          <p className="mt-1 px-1 text-[10px] font-semibold text-[color:var(--foreground-muted)]">
+          <p className="mt-1 hidden px-1 text-[10px] font-semibold text-[color:var(--foreground-muted)] md:block">
             {tabCountLabel}
           </p>
         ) : null}

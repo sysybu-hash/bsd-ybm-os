@@ -372,7 +372,8 @@
         "tabs": {
           "chat": "Чат",
           "notebook": "Блокнот",
-          "builder": "Конструктор"
+          "builder": "Конструктор приложений",
+          "builderShort": "Конструктор"
         }
       }
     },
@@ -475,6 +476,9 @@
       "generating": "Создание…",
       "generateError": "Не удалось создать интерфейс — переформулируйте запрос",
       "previewTitle": "Предпросмотр",
+      "mobilePaneAria": "Области конструктора",
+      "mobilePaneBuild": "Сборка и чат",
+      "mobilePanePreview": "Предпросмотр",
       "emptyPreview": "Напишите в чате, что создать — например: «Дашборд с 5 метриками расходов и проектов»",
       "previewUpdated": "Предпросмотр обновлён — нажмите «Сохранить»",
       "tabLive": "Live",
@@ -772,7 +776,11 @@
       "aria": "Быстрая навигация (мобильный)",
       "dashboard": "Панель",
       "aiScanner": "AI-скан",
-      "fieldCopilot": "Копилот на объекте",
+      "aiHub": "AI",
+      "fieldCopilot": "Копилот",
+      "documentsHub": "Документы",
+      "projectsHub": "Проекты",
+      "financeHub": "Финансы",
       "meckanoReports": "Отчёты Meckano",
       "crmTable": "Клиенты",
       "omnibarAria": "Открыть командную строку и поиск",

@@ -45,7 +45,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
           </button>
         </div>
 
-        <span className="min-w-0 flex-1 truncate text-[11px] text-[color:var(--foreground-muted)]">
+        <span className="hidden min-w-0 flex-1 truncate text-[11px] text-[color:var(--foreground-muted)] sm:inline">
           {t("workspaceWidgets.appBuilder.chatHint")}
         </span>
 

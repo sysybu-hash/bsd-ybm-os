@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
   FileText,
@@ -68,6 +68,7 @@ export default function AppBuilderWidget() {
   const [success, setSuccess] = useState<string | null>(null);
   const [readOnlyLoaded, setReadOnlyLoaded] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(0);
+  const [mobilePane, setMobilePane] = useState<"build" | "preview">("build");
 
   const isEditing = Boolean(savedSchemaId);
 
@@ -94,6 +95,7 @@ export default function AppBuilderWidget() {
     if (schema.title && !appName.trim()) {
       setAppName(schema.title);
     }
+    setMobilePane("preview");
     setSuccess(t(`${prefix}.previewUpdated`));
   }, [appName, prefix, t]);
 
@@ -276,7 +278,7 @@ export default function AppBuilderWidget() {
             </button>
           </div>
         </div>
-        <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-[color:var(--foreground-muted)]">
+        <p className="mt-1 hidden line-clamp-2 text-[11px] leading-snug text-[color:var(--foreground-muted)] sm:block">
           {t(`${prefix}.subtitle`)}
         </p>
       </div>
@@ -296,7 +298,7 @@ export default function AppBuilderWidget() {
           ) : savedApps.length === 0 ? (
             <p className="py-1 text-xs text-[color:var(--foreground-muted)]">{t(`${prefix}.noSavedApps`)}</p>
           ) : (
-            <ul className="flex max-h-24 flex-col gap-0.5 overflow-y-auto">
+            <ul className="flex max-h-20 flex-col gap-0.5 overflow-y-auto sm:max-h-24">
             {savedApps.map((app) => {
               const Icon = schemaTypeIcon(app.appType);
               const isActive = savedSchemaId === app.id;
@@ -439,30 +441,71 @@ export default function AppBuilderWidget() {
     </div>
   );
 
+  const mobilePaneSwitcher = (
+    <div
+      className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 p-2 md:hidden"
+      role="tablist"
+      aria-label={t(`${prefix}.mobilePaneAria`)}
+    >
+      {(["build", "preview"] as const).map((pane) => {
+        const selected = mobilePane === pane;
+        const label =
+          pane === "build" ? t(`${prefix}.mobilePaneBuild`) : t(`${prefix}.mobilePanePreview`);
+        return (
+          <button
+            key={pane}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => setMobilePane(pane)}
+            className={`min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${
+              selected
+                ? "bg-indigo-600 text-white"
+                : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderMobileLayout = (body: ReactNode) => (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:hidden">
+      {mobilePaneSwitcher}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>
+    </div>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden text-[color:var(--foreground-main)]" dir={dir}>
-      <WidgetSplitPanels
-        className="min-h-0 flex-1"
-        direction="horizontal"
-        stackBelowPx={768}
-        layoutStorageKey="bsd-app-builder-split-v3"
-        panels={[
-          {
-            id: "app-builder-sidebar",
-            defaultSize: 32,
-            minSize: 24,
-            maxSize: 44,
-            className: "flex min-h-0 min-w-0 flex-col border-s border-[color:var(--border-main)] bg-[color:var(--background-main)]/40",
-            children: promptPane,
-          },
-          {
-            id: "app-builder-preview",
-            defaultSize: 68,
-            minSize: 40,
-            children: previewPane,
-          },
-        ]}
-      />
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <WidgetSplitPanels
+          className="min-h-0 flex-1"
+          direction="horizontal"
+          stackBelowPx={768}
+          layoutStorageKey="bsd-app-builder-split-v3"
+          panels={[
+            {
+              id: "app-builder-sidebar",
+              defaultSize: 32,
+              minSize: 24,
+              maxSize: 44,
+              className:
+                "flex min-h-0 min-w-0 flex-col border-s border-[color:var(--border-main)] bg-[color:var(--background-main)]/40",
+              children: promptPane,
+            },
+            {
+              id: "app-builder-preview",
+              defaultSize: 68,
+              minSize: 40,
+              children: previewPane,
+            },
+          ]}
+        />
+      </div>
+      {renderMobileLayout(mobilePane === "build" ? promptPane : previewPane)}
     </div>
   );
 }
