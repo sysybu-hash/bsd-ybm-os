@@ -82,6 +82,8 @@ const AUTH_SHOTS: ShotSpec[] = [
     url: "/?w=aiHub&tab=chat",
     requiresAuth: true,
     readySelector: "[data-widget-shell]",
+    extraReadySelector: '[role="tablist"]',
+    captureSelector: "[data-widget-shell]",
   },
   {
     file: "08-project-board.png",
@@ -266,8 +268,16 @@ async function runShot(page: Page, shot: ShotSpec) {
   console.log(`✓ ${shot.file}`);
 }
 
+function filterShots<T extends { file: string }>(shots: T[]): T[] {
+  const only = process.env.PRODUCT_CAPTURE_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!only?.length) return shots;
+  return shots.filter((s) => only.includes(s.file));
+}
+
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  const authShots = filterShots(AUTH_SHOTS);
+  const runPublic = !process.env.PRODUCT_CAPTURE_ONLY || process.env.PRODUCT_CAPTURE_ONLY.includes(PUBLIC_SHOT.file);
 
   try {
     const health = await fetch(`${baseUrl}/api/auth/session`);
@@ -288,16 +298,17 @@ async function main() {
       reducedMotion: "reduce",
     });
     const publicPage = await publicCtx.newPage();
-    try {
-      await primeCookieConsent(publicPage);
-      await runShot(publicPage, PUBLIC_SHOT);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      failures.push(`${PUBLIC_SHOT.file}: ${msg}`);
-      console.error(`✗ ${PUBLIC_SHOT.file}: ${msg}`);
-    } finally {
-      await publicCtx.close();
+    if (runPublic) {
+      try {
+        await primeCookieConsent(publicPage);
+        await runShot(publicPage, PUBLIC_SHOT);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        failures.push(`${PUBLIC_SHOT.file}: ${msg}`);
+        console.error(`✗ ${PUBLIC_SHOT.file}: ${msg}`);
+      }
     }
+    await publicCtx.close();
 
     const authCtx = await browser.newContext({
       viewport,
@@ -313,7 +324,7 @@ async function main() {
       if (!(await tryCredentialsSignIn(authPage))) {
         throw new Error("התחברות דמו נכשלה — הריצו: node scripts/seed-test-data.mjs");
       }
-      for (const shot of AUTH_SHOTS) {
+      for (const shot of authShots) {
         try {
           await runShot(authPage, shot);
         } catch (err: unknown) {
@@ -333,7 +344,10 @@ async function main() {
     await browser.close();
   }
 
-  const allFiles = [PUBLIC_SHOT.file, ...AUTH_SHOTS.map((s) => s.file)];
+  const allFiles = [
+    ...(runPublic ? [PUBLIC_SHOT.file] : []),
+    ...authShots.map((s) => s.file),
+  ];
   const captured = allFiles.filter((f) => fs.existsSync(path.join(OUT_DIR, f))).length;
   console.log(`\nנשמרו ${captured}/${allFiles.length} תמונות ב-${OUT_DIR}`);
 

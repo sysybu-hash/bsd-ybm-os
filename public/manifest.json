@@ -61,6 +61,11 @@
   "categories": ["business", "productivity", "finance"],
   "screenshots": [
     {
+      "src": "/screenshots/ai-hub.png",
+      "form_factor": "wide",
+      "label": "BSD-YBM OS — AI Hub"
+    },
+    {
       "src": "/screenshots/workspace-home.png",
       "sizes": "2880x1800",
       "type": "image/png",

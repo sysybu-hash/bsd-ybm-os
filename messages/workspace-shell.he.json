@@ -359,7 +359,32 @@
         },
         "pickerTitle": "בחרו פרויקט",
         "pickerDesc": "בחרו פרויקט לפני כניסה למרכז השליטה",
-        "openCrm": "פתח CRM"
+        "openCrm": "פתח CRM",
+        "addProject": {
+          "cta": "הוסף פרויקט",
+          "title": "פרויקט חדש",
+          "projectName": "שם הפרויקט",
+          "projectNamePlaceholder": "לדוגמה: וילה הרצליה",
+          "projectNameRequired": "יש להזין שם פרויקט",
+          "clientSection": "לקוח",
+          "clientMode": {
+            "existing": "לקוח קיים",
+            "new": "לקוח חדש"
+          },
+          "existingContact": "בחרו לקוח",
+          "contactPlaceholder": "בחרו מהרשימה…",
+          "contactsLoading": "טוען לקוחות…",
+          "contactRequired": "יש לבחור לקוח",
+          "newContactName": "שם הלקוח",
+          "newContactNamePlaceholder": "שם מלא או חברה",
+          "newContactNameRequired": "יש להזין שם לקוח",
+          "newContactPhone": "טלפון",
+          "newContactEmail": "אימייל (אופציונלי)",
+          "save": "צור פרויקט",
+          "saving": "יוצר…",
+          "success": "הפרויקט נוצר בהצלחה",
+          "saveFailed": "יצירת הפרויקט נכשלה"
+        }
       },
       "documents": {
         "tabs": {

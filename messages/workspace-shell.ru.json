@@ -359,7 +359,32 @@
         },
         "pickerTitle": "Выберите проект",
         "pickerDesc": "Выберите проект перед открытием центра",
-        "openCrm": "Открыть CRM"
+        "openCrm": "Открыть CRM",
+        "addProject": {
+          "cta": "Добавить проект",
+          "title": "Новый проект",
+          "projectName": "Название проекта",
+          "projectNamePlaceholder": "например: Вилла в Герцлии",
+          "projectNameRequired": "Укажите название проекта",
+          "clientSection": "Клиент",
+          "clientMode": {
+            "existing": "Существующий клиент",
+            "new": "Новый клиент"
+          },
+          "existingContact": "Выберите клиента",
+          "contactPlaceholder": "Выберите из списка…",
+          "contactsLoading": "Загрузка клиентов…",
+          "contactRequired": "Выберите клиента",
+          "newContactName": "Имя клиента",
+          "newContactNamePlaceholder": "ФИО или компания",
+          "newContactNameRequired": "Укажите имя клиента",
+          "newContactPhone": "Телефон",
+          "newContactEmail": "Email (необязательно)",
+          "save": "Создать проект",
+          "saving": "Создание…",
+          "success": "Проект создан",
+          "saveFailed": "Не удалось создать проект"
+        }
       },
       "documents": {
         "tabs": {

@@ -7,6 +7,10 @@ import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { prisma } from "@/lib/prisma";
 import { assignContactProject, syncProjectCrmContact } from "@/lib/workspace-api/project-crm-sync";
 import { seedDefaultPaymentMilestonesIfEmpty } from "@/lib/workspace-api/seed-project-milestones";
+import {
+  createProjectWithClientSchema,
+  type CreateProjectWithClientInput,
+} from "@/lib/validation/schemas/project-create";
 
 function revalidateCrmAndRelated() {
   revalidatePath("/app/clients");
@@ -147,6 +151,42 @@ export async function createProjectForContact(input: {
 
   revalidateCrmAndRelated();
   return { ok: true as const, projectId: project.id, projectName: project.name };
+}
+
+/** פרויקט חדש + לקוח קיים או לקוח חדש (מרכז פרויקטים / בורר פרויקט) */
+export async function createProjectWithClientAction(raw: CreateProjectWithClientInput) {
+  const parsed = createProjectWithClientSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false as const, error: "נתונים לא תקינים" };
+  }
+  const input = parsed.data;
+
+  if (input.clientMode === "existing") {
+    return createProjectForContact({
+      contactId: input.contactId,
+      projectName: input.projectName,
+    });
+  }
+
+  const ctx = await getOrgContext();
+  if ("error" in ctx) return { ok: false as const, error: ctx.error };
+
+  const contact = await prisma.contact.create({
+    data: {
+      name: input.contactName,
+      email: input.contactEmail ?? null,
+      phone: input.contactPhone?.trim() || null,
+      organizationId: ctx.orgId,
+      status: "LEAD",
+      projectId: null,
+    },
+    select: { id: true, name: true },
+  });
+
+  return createProjectForContact({
+    contactId: contact.id,
+    projectName: input.projectName,
+  });
 }
 
 export async function updateProjectAction(formData: FormData) {

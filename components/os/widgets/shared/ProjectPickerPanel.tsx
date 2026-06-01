@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FolderPlus } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 
@@ -16,6 +16,8 @@ type ProjectPickerPanelProps = {
   emptyKey: string;
   openCrmKey?: string;
   onOpenCrm?: () => void;
+  onAddProject?: () => void;
+  addProjectLabelKey?: string;
   statusActiveKey?: string;
   statusInactiveKey?: string;
 };
@@ -30,10 +32,24 @@ export default function ProjectPickerPanel({
   emptyKey,
   openCrmKey,
   onOpenCrm,
+  onAddProject,
+  addProjectLabelKey = "workspaceWidgets.hubs.projects.addProject.cta",
   statusActiveKey = "workspaceWidgets.projectPicker.statusActive",
   statusInactiveKey = "workspaceWidgets.projectPicker.statusInactive",
 }: ProjectPickerPanelProps) {
   const { t, dir } = useI18n();
+
+  const addProjectButton =
+    onAddProject != null ? (
+      <button
+        type="button"
+        onClick={onAddProject}
+        className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-indigo-500 sm:w-auto"
+      >
+        <FolderPlus size={16} aria-hidden />
+        {t(addProjectLabelKey)}
+      </button>
+    ) : null;
 
   if (loading) {
     return <WidgetState variant="loading" message={t(loadingKey)} />;
@@ -45,15 +61,18 @@ export default function ProjectPickerPanel({
         variant="empty"
         message={t(emptyKey)}
         action={
-          onOpenCrm && openCrmKey ? (
-            <button
-              type="button"
-              onClick={onOpenCrm}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
-            >
-              {t(openCrmKey)}
-            </button>
-          ) : undefined
+          <div className="flex w-full max-w-xs flex-col gap-2">
+            {addProjectButton}
+            {onOpenCrm && openCrmKey ? (
+              <button
+                type="button"
+                onClick={onOpenCrm}
+                className="rounded-lg border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+              >
+                {t(openCrmKey)}
+              </button>
+            ) : null}
+          </div>
         }
       />
     );
@@ -62,8 +81,13 @@ export default function ProjectPickerPanel({
   return (
     <div className="flex h-full min-h-0 flex-col text-[color:var(--foreground-main)]" dir={dir}>
       <header className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-3">
-        <h2 className="text-sm font-bold text-[color:var(--foreground-main)]">{t(titleKey)}</h2>
-        <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">{t(descKey)}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-bold text-[color:var(--foreground-main)]">{t(titleKey)}</h2>
+            <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">{t(descKey)}</p>
+          </div>
+          {addProjectButton}
+        </div>
       </header>
       <div
         role="listbox"

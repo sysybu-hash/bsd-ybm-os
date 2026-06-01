@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ProjectWidget from "@/components/os/ProjectWidget";
 import ProjectBoardWidget from "@/components/os/widgets/ProjectBoardWidget";
+import AddProjectDialog from "@/components/os/widgets/shared/AddProjectDialog";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubShell";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -44,6 +45,23 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
   );
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
+
+  const reloadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      const data = (await res.json()) as { projects?: ProjectListItem[] };
+      const list = Array.isArray(data?.projects) ? data.projects : [];
+      setProjects(list);
+      return list;
+    } catch {
+      setProjects([]);
+      return [];
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof liveData?.projectId === "string") {
@@ -53,25 +71,8 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
   }, [liveData?.projectId, liveData?.name]);
 
   useEffect(() => {
-    let cancelled = false;
-    setProjectsLoading(true);
-    void fetch("/api/projects")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { projects?: ProjectListItem[] } | null) => {
-        if (cancelled) return;
-        const list = data?.projects;
-        setProjects(Array.isArray(list) ? list : []);
-      })
-      .catch(() => {
-        if (!cancelled) setProjects([]);
-      })
-      .finally(() => {
-        if (!cancelled) setProjectsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void reloadProjects();
+  }, [reloadProjects]);
 
   const applyView = useCallback((view: WidgetViewState) => {
     const tab = view.tab;
@@ -99,17 +100,36 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
   );
 
   const selectProject = useCallback(
-    (id: string) => {
+    (id: string, nameOverride?: string) => {
       const picked = projects.find((p) => p.id === id);
+      const name = nameOverride ?? picked?.name;
       setProjectId(id);
-      setProjectName(picked?.name);
+      setProjectName(name);
       setActiveTab("project");
-      pushView({ tab: "project", projectId: id, name: picked?.name ?? null });
+      pushView({ tab: "project", projectId: id, name: name ?? null });
     },
     [projects, pushView],
   );
 
+  const handleProjectCreated = useCallback(
+    (created: { id: string; name: string }) => {
+      setProjects((prev) => {
+        if (prev.some((p) => p.id === created.id)) return prev;
+        return [{ id: created.id, name: created.name, isActive: true }, ...prev];
+      });
+      selectProject(created.id, created.name);
+      void reloadProjects();
+    },
+    [selectProject, reloadProjects],
+  );
+
   return (
+    <>
+    <AddProjectDialog
+      open={addProjectOpen}
+      onClose={() => setAddProjectOpen(false)}
+      onCreated={handleProjectCreated}
+    />
     <WidgetHubShell
       tabs={TABS}
       initialTab={activeTab}
@@ -136,6 +156,7 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
               emptyKey="workspaceWidgets.projectPicker.empty"
               openCrmKey={openWorkspaceWidget ? "workspaceWidgets.hubs.projects.openCrm" : undefined}
               onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
+              onAddProject={() => setAddProjectOpen(true)}
             />
           );
         }
@@ -148,5 +169,6 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
         );
       }}
     />
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { BarChart3, Plus, Search, ArrowRight, Clock, User } from "lucide-react";
+import AddProjectDialog from "@/components/os/widgets/shared/AddProjectDialog";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import ItemActions from "@/components/os/ItemActions";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
@@ -34,22 +35,35 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
   } = s;
 
   const [activeCol, setActiveCol] = useState<BoardColumnId>("todo");
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   if (showProjectPicker) {
     return (
-      <ProjectPickerPanel
-        projects={projectsList}
-        loading={projectsListLoading}
-        onSelect={selectProject}
-        titleKey={`${boardPrefix}.pickProjectTitle`}
-        descKey={`${boardPrefix}.pickProjectDesc`}
-        loadingKey={`${boardPrefix}.pickProjectLoading`}
-        emptyKey={`${boardPrefix}.noProjects`}
-        openCrmKey={openWorkspaceWidget ? `${boardPrefix}.openCrm` : undefined}
-        onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
-        statusActiveKey="projectDashboard.statusActive"
-        statusInactiveKey="projectDashboard.statusInactive"
-      />
+      <>
+        <AddProjectDialog
+          open={addProjectOpen}
+          onClose={() => setAddProjectOpen(false)}
+          onCreated={(created) => {
+            void loadProjectsList().then((list) => {
+              selectProject(created.id, list);
+            });
+          }}
+        />
+        <ProjectPickerPanel
+          projects={projectsList}
+          loading={projectsListLoading}
+          onSelect={selectProject}
+          titleKey={`${boardPrefix}.pickProjectTitle`}
+          descKey={`${boardPrefix}.pickProjectDesc`}
+          loadingKey={`${boardPrefix}.pickProjectLoading`}
+          emptyKey={`${boardPrefix}.noProjects`}
+          openCrmKey={openWorkspaceWidget ? `${boardPrefix}.openCrm` : undefined}
+          onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
+          onAddProject={() => setAddProjectOpen(true)}
+          statusActiveKey="projectDashboard.statusActive"
+          statusInactiveKey="projectDashboard.statusInactive"
+        />
+      </>
     );
   }
 
