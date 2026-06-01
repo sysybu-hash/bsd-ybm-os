@@ -144,7 +144,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--border-main)]">
+      <div className="grid content-start grid-cols-7 gap-px overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--border-main)]">
         {cells.map((day, i) => {
           if (!day) return <div key={i} className="min-h-[52px] bg-[color:var(--background-main)]/60 p-1" />;
           const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
