@@ -129,26 +129,30 @@ export default function WorkspaceWindowChrome({
       </div>
 
       <div className="workspace-chrome-toolbar">
-        {showZoom && !closeTouchTarget ? (
-          <div className="hidden items-center gap-0.5 md:inline-flex">
+        {showZoom ? (
+          <div className="inline-flex shrink-0 items-center gap-0.5">
             <button
               type="button"
               onClick={handleZoomOut}
-              className="workspace-chrome-btn inline-flex"
+              className={touchChromeBtn}
               aria-label={t("workspaceWidgets.chrome.zoomOutAria", chromeTitle)}
             >
-              <ZoomOut size={14} aria-hidden />
+              <ZoomOut size={closeTouchTarget ? 16 : 14} aria-hidden />
             </button>
-            <span className="workspace-chrome-zoom" aria-live="polite" aria-atomic="true">
+            <span
+              className={`workspace-chrome-zoom ${closeTouchTarget ? "min-w-[2.25rem] text-[10px]" : ""}`}
+              aria-live="polite"
+              aria-atomic="true"
+            >
               {t("workspaceWidgets.chrome.zoomLevel", { level: String(Math.round(zoom * 100)) })}
             </span>
             <button
               type="button"
               onClick={handleZoomIn}
-              className="workspace-chrome-btn inline-flex"
+              className={touchChromeBtn}
               aria-label={t("workspaceWidgets.chrome.zoomInAria", chromeTitle)}
             >
-              <ZoomIn size={14} aria-hidden />
+              <ZoomIn size={closeTouchTarget ? 16 : 14} aria-hidden />
             </button>
           </div>
         ) : null}

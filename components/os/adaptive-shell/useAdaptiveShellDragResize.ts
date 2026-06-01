@@ -270,13 +270,12 @@ export function useAdaptiveShellDragResize({
   };
 
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";
-  const displayZoom = mobileOrMaximized ? 1 : zoom;
-  const zoomActive = Math.abs(displayZoom - 1) > 0.001;
+  const zoomActive = Math.abs(zoom - 1) > 0.001;
   const contentZoomStyle = zoomActive
     ? {
-        transform: `scale(${displayZoom})`,
+        transform: `scale(${zoom})`,
         transformOrigin: zoomOrigin,
-        width: `${100 / displayZoom}%`,
+        width: `${100 / zoom}%`,
       }
     : undefined;
 
