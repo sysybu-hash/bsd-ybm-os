@@ -110,7 +110,7 @@ export default function OmniCanvasWorkspace() {
   const s = useOmniCanvasState();
   const {
     t, dir,
-    mounted, sessionStatus,
+    mounted, sessionStatus, everAuthenticated,
     notifications, setNotifications, isNotificationsOpen, setIsNotificationsOpen,
     apiLatency, setApiLatency,
     systemMessage,
@@ -143,7 +143,8 @@ export default function OmniCanvasWorkspace() {
     automationRunner, automationContextValue,
   } = s;
 
-  if (!mounted || sessionStatus === "loading") {
+  // Show spinner only on first load, NOT on silent background session refetches
+  if (!mounted || (!everAuthenticated && sessionStatus === "loading")) {
     return (
       <div
         className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"

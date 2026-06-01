@@ -17,6 +17,8 @@ import { useOmniCanvasHandlers } from "./useOmniCanvasHandlers";
 export function useOmniCanvasState() {
   const { data: session, status: sessionStatus } = useSession();
   const [mounted, setMounted] = useState(false);
+  // Track if session was ever authenticated — prevents spinner on silent background refetches
+  const [everAuthenticated, setEverAuthenticated] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [apiLatency, setApiLatency] = useState<number | null>(null);
   const { t, dir, locale } = useI18n();
@@ -148,6 +150,9 @@ export function useOmniCanvasState() {
 
   // ── effects ───────────────────────────────────────────────────────────────
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    if (sessionStatus === "authenticated") setEverAuthenticated(true);
+  }, [sessionStatus]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -187,7 +192,7 @@ export function useOmniCanvasState() {
 
   return {
     t, dir, locale,
-    mounted, sessionStatus,
+    mounted, sessionStatus, everAuthenticated,
     notifications, setNotifications, isNotificationsOpen, setIsNotificationsOpen,
     apiLatency, setApiLatency,
     systemMessage,
