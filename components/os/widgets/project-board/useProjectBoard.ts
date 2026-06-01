@@ -6,7 +6,10 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import { useProjectPicker } from "@/hooks/use-project-picker";
 import type { BoardColumnId } from "@/lib/tasks/board-mapping";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
+import { createLogger } from "@/lib/logger";
 import { emptyForm, taskToForm, syncTask, initialTasks } from "./constants";
+
+const log = createLogger("project-board");
 import type { Task, Contact, TaskFormState } from "./types";
 
 const boardPrefix = "workspaceWidgets.projectBoard";
@@ -59,7 +62,7 @@ export function useProjectBoard({
       const rows = Array.isArray(data.contacts) ? data.contacts : [];
       setContacts(rows.map((c) => ({ id: c.id, name: c.name })));
     } catch (error) {
-      console.error("Failed to fetch contacts:", error);
+      log.error("fetch_contacts_failed", { message: error instanceof Error ? error.message : String(error) });
     }
   }, []);
 
@@ -83,7 +86,7 @@ export function useProjectBoard({
         setTasks([]);
       }
     } catch (error) {
-      console.error("Failed to fetch tasks:", error);
+      log.error("fetch_tasks_failed", { message: error instanceof Error ? error.message : String(error) });
       toast.error(t(`${boardPrefix}.loadFailed`));
     }
   }, [resolvedProjectId, t]);
