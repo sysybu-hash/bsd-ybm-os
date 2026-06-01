@@ -192,6 +192,16 @@ export function parseAndSanitizeUiSchema(raw: unknown): SanitizeUiSchemaResult {
     return { ok: true, schema: parsed.data };
   }
 
+  // these types pass through — their items/inputs/columns are already validated by Zod
+  if (
+    parsed.data.type === "checklist" ||
+    parsed.data.type === "calculator" ||
+    parsed.data.type === "kanban" ||
+    parsed.data.type === "calendar"
+  ) {
+    return { ok: true, schema: parsed.data };
+  }
+
   const contentError = validateFormTableContent(parsed.data);
   if (contentError) {
     return { ok: false, error: contentError };

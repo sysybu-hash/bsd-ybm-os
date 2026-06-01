@@ -12,6 +12,7 @@ import { usePlatformAdmin } from "./platform-admin/usePlatformAdmin";
 import { SubscriptionsTab } from "./platform-admin/SubscriptionsTab";
 import { UsersTab } from "./platform-admin/UsersTab";
 import { SettingsTab } from "./platform-admin/SettingsTab";
+import { IdeasTab } from "./platform-admin/IdeasTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
@@ -240,6 +241,8 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             ) : null}
           </div>
         )}
+
+        {p.tab === "ideas" && <IdeasTab />}
 
         {p.tab === "assistant" && (
           <AdminAssistantTab onNavigateTab={(id) => p.selectTab(id as TabId)} />

@@ -3,9 +3,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { saveAppDataAction } from "@/app/actions/app-builder";
+import DynamicCalculatorRenderer from "@/components/AppBuilder/DynamicCalculatorRenderer";
+import DynamicCalendarRenderer from "@/components/AppBuilder/DynamicCalendarRenderer";
+import DynamicChecklistRenderer from "@/components/AppBuilder/DynamicChecklistRenderer";
 import DynamicComposerRenderer from "@/components/AppBuilder/DynamicComposerRenderer";
 import DynamicDashboardRenderer from "@/components/AppBuilder/DynamicDashboardRenderer";
 import DynamicFullAppRenderer from "@/components/AppBuilder/DynamicFullAppRenderer";
+import DynamicKanbanRenderer from "@/components/AppBuilder/DynamicKanbanRenderer";
 import FieldInput from "@/components/AppBuilder/FieldInput";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
@@ -175,6 +179,18 @@ export default function DynamicRenderer(props: Props) {
         onSaved={onSaved}
       />
     );
+  }
+  if (props.uiSchema.type === "checklist") {
+    return <DynamicChecklistRenderer schema={props.uiSchema} schemaId={props.schemaId} />;
+  }
+  if (props.uiSchema.type === "calculator") {
+    return <DynamicCalculatorRenderer schema={props.uiSchema} />;
+  }
+  if (props.uiSchema.type === "kanban") {
+    return <DynamicKanbanRenderer schema={props.uiSchema} schemaId={props.schemaId} />;
+  }
+  if (props.uiSchema.type === "calendar") {
+    return <DynamicCalendarRenderer schema={props.uiSchema} schemaId={props.schemaId} />;
   }
   return <FormTableDynamicRenderer {...props} uiSchema={props.uiSchema} />;
 }

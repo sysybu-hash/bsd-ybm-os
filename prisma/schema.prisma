@@ -1353,3 +1353,18 @@ model CustomAppData {
   @@index([schemaId])
   @@index([organizationId, schemaId, createdAt])
 }
+
+/// רעיון אפליקציה שמנוי בחר לשתף עם הפלטפורמה — מושב ממידע אישי, מושב מנתוני ארגון
+model AppIdeaSubmission {
+  id          String   @id @default(cuid())
+  uiSchema    Json
+  appName     String
+  appType     String
+  status      String   @default("pending") // pending | approved | rejected
+  orgIndustry String?
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([status, createdAt])
+}

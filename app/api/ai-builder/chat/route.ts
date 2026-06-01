@@ -144,18 +144,26 @@ export const POST = withWorkspacesAuth(
       });
 
       let uiSchema: z.infer<typeof appBuilderUiSchema> | undefined;
+      let schemaError: string | undefined;
 
-      if (intent.generateApp && intent.appPrompt?.trim()) {
+      // Fallback: model wanted to build/refine but forgot to fill appPrompt.
+      // Use the last user message so an edit request never silently no-ops.
+      const effectiveAppPrompt =
+        intent.appPrompt?.trim() ||
+        (intent.generateApp ? lastUser.content.trim() : "");
+
+      if (intent.generateApp && effectiveAppPrompt) {
         const generatorPrompt =
           data.currentUiSchema != null
-            ? buildRefinePrompt(intent.appPrompt.trim(), data.currentUiSchema)
-            : intent.appPrompt.trim();
+            ? buildRefinePrompt(effectiveAppPrompt, data.currentUiSchema)
+            : effectiveAppPrompt;
 
         const sanitized = await generateUiSchemaFromPrompt(generatorPrompt, locale);
         if (sanitized.ok) {
           uiSchema = sanitized.schema;
         } else {
           log.warn("chat_ui_schema_rejected", { error: sanitized.error, orgId });
+          schemaError = "schema_rejected";
         }
       }
 
@@ -172,6 +180,7 @@ export const POST = withWorkspacesAuth(
         reply: intent.reply,
         uiSchema,
         schemaApplied: uiSchema != null,
+        schemaError,
         clientActions,
         actionsExecuted: clientActions.length,
       });

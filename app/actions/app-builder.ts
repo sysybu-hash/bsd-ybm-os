@@ -20,7 +20,7 @@ export type AppSchemaListItem = {
   id: string;
   name: string;
   description: string | null;
-  appType: "form" | "table" | "full_app" | "dashboard" | "composer" | "unknown";
+  appType: "form" | "table" | "full_app" | "checklist" | "calculator" | "kanban" | "calendar" | "dashboard" | "composer" | "unknown";
   isGlobal: boolean;
   createdAt: Date;
 };

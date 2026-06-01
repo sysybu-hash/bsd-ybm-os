@@ -49,6 +49,111 @@ export const appBuilderFormTableSchema = z
   })
   .strict();
 
+/** צ'ק-ליסט: רשימת פריטים עם checkboxes + אופציית הערות לכל פריט */
+export const appBuilderChecklistSchema = z
+  .object({
+    type: z.literal("checklist"),
+    title: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    items: z
+      .array(
+        z.object({
+          id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/),
+          label: z.string().min(1).max(200),
+          required: z.boolean().optional(),
+          allowNote: z.boolean().optional(),
+        }),
+      )
+      .min(1)
+      .max(50),
+  })
+  .strict();
+
+/** מחשבון: שדות קלט + שדות פלט מחושבים (נוסחה בטוחה) */
+export const appBuilderCalculatorSchema = z
+  .object({
+    type: z.literal("calculator"),
+    title: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    inputs: z
+      .array(
+        z.object({
+          id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
+          label: z.string().min(1).max(120),
+          unit: z.string().max(20).optional(),
+          defaultValue: z.number().optional(),
+        }),
+      )
+      .min(1)
+      .max(20),
+    outputs: z
+      .array(
+        z.object({
+          id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
+          label: z.string().min(1).max(120),
+          formula: z.string().min(1).max(500),
+          unit: z.string().max(20).optional(),
+          decimals: z.number().int().min(0).max(6).optional(),
+        }),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+
+/** קנבן: עמודות + כרטיסיות (נתונים ב-CustomAppData עם שדה _columnId) */
+export const appBuilderKanbanSchema = z
+  .object({
+    type: z.literal("kanban"),
+    title: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    columns: z
+      .array(
+        z.object({
+          id: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/),
+          label: z.string().min(1).max(80),
+          color: z.string().max(30).optional(),
+        }),
+      )
+      .min(2)
+      .max(8),
+    cardFields: z
+      .array(
+        z.object({
+          name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
+          label: z.string().min(1).max(120),
+          type: z.enum(["text", "textarea", "date", "select", "number"]),
+          required: z.boolean().optional(),
+          options: z.array(z.string().min(1).max(80)).max(20).optional(),
+        }),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+
+/** לוח שנה: אירועים עם תאריך (נתונים ב-CustomAppData) */
+export const appBuilderCalendarSchema = z
+  .object({
+    type: z.literal("calendar"),
+    title: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    eventFields: z
+      .array(
+        z.object({
+          name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
+          label: z.string().min(1).max(120),
+          type: z.enum(["text", "textarea", "date", "select", "number"]),
+          required: z.boolean().optional(),
+          options: z.array(z.string().min(1).max(80)).max(20).optional(),
+          isDate: z.boolean().optional(),
+        }),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+
 /** מיני-אפליקציית No-Code: טופס הזנה + טבלת רשומות (נתונים ב-CustomAppData) */
 export const appBuilderFullAppSchema = z
   .object({
@@ -135,6 +240,10 @@ export const appBuilderUiSchema = z.discriminatedUnion("type", [
   appBuilderFormTableSchema.extend({ type: z.literal("form") }),
   appBuilderFormTableSchema.extend({ type: z.literal("table") }),
   appBuilderFullAppSchema,
+  appBuilderChecklistSchema,
+  appBuilderCalculatorSchema,
+  appBuilderKanbanSchema,
+  appBuilderCalendarSchema,
   appBuilderDashboardSchema,
   appBuilderComposerSchema,
 ]);
@@ -167,6 +276,10 @@ export type ComposerAction = z.infer<typeof composerActionSchema>;
 export type AppBuilderFieldType = z.infer<typeof appBuilderFieldTypeSchema>;
 export type AppBuilderField = z.infer<typeof appBuilderFieldSchema>;
 export type AppBuilderFullAppUI = z.infer<typeof appBuilderFullAppSchema>;
+export type AppBuilderChecklistUI = z.infer<typeof appBuilderChecklistSchema>;
+export type AppBuilderCalculatorUI = z.infer<typeof appBuilderCalculatorSchema>;
+export type AppBuilderKanbanUI = z.infer<typeof appBuilderKanbanSchema>;
+export type AppBuilderCalendarUI = z.infer<typeof appBuilderCalendarSchema>;
 export type AppBuilderUiSchema = z.infer<typeof appBuilderUiSchema>;
 
 /** @deprecated alias for dashboard UI */

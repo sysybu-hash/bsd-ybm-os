@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
+  Calculator,
+  CalendarDays,
+  CheckSquare,
   Database,
   FileText,
   FolderOpen,
+  Kanban,
   LayoutGrid,
   Loader2,
   Plus,
@@ -13,6 +17,7 @@ import {
   Sparkles,
   Table2,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import DynamicRenderer from "@/components/AppBuilder/DynamicRenderer";
 import AppBuilderAssistantPanel from "@/components/os/widgets/app-builder/AppBuilderAssistantPanel";
@@ -26,21 +31,36 @@ import {
   updateAppSchemaAction,
   type AppSchemaListItem,
 } from "@/app/actions/app-builder";
+import { submitAppIdeaAction } from "@/app/actions/app-ideas";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 function schemaTypeIcon(appType: AppSchemaListItem["appType"]) {
   if (appType === "dashboard") return BarChart3;
   if (appType === "composer") return LayoutGrid;
   if (appType === "full_app") return Database;
+  if (appType === "checklist") return CheckSquare;
+  if (appType === "calculator") return Calculator;
+  if (appType === "kanban") return Kanban;
+  if (appType === "calendar") return CalendarDays;
   if (appType === "table") return Table2;
   return FileText;
 }
 
 function syncUiSchemaTitle(schema: AppBuilderUiSchema, title: string): AppBuilderUiSchema {
-  if (schema.type === "dashboard" || schema.type === "composer" || schema.type === "full_app") {
-    return { ...schema, title };
+  // All non-form/table types have a required `title`
+  if (
+    schema.type === "dashboard" ||
+    schema.type === "composer" ||
+    schema.type === "full_app" ||
+    schema.type === "checklist" ||
+    schema.type === "calculator" ||
+    schema.type === "kanban" ||
+    schema.type === "calendar"
+  ) {
+    return { ...schema, title } as AppBuilderUiSchema;
   }
-  return { ...schema, title: title || schema.title };
+  // form / table have optional title
+  return { ...schema, title: title || schema.title } as AppBuilderUiSchema;
 }
 
 function mapActionError(error: string, t: (key: string) => string, prefix: string): string {
@@ -66,6 +86,7 @@ export default function AppBuilderWidget() {
   const [loadingSchemaId, setLoadingSchemaId] = useState<string | null>(null);
   const [deletingSchemaId, setDeletingSchemaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [shareIdea, setShareIdea] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [readOnlyLoaded, setReadOnlyLoaded] = useState(false);
@@ -100,6 +121,24 @@ export default function AppBuilderWidget() {
     setMobilePane("preview");
     setSuccess(t(`${prefix}.previewUpdated`));
   }, [appName, prefix, t]);
+
+  /** טוען תבנית גלובלית לעריכה — יוצר עותק חדש בשמירה (לא עורך המקור) */
+  const handleUseTemplate = useCallback(
+    async (schemaId: string) => {
+      setError(null);
+      const result = await loadAppSchemaAction(schemaId);
+      if (!result.ok) { setError(t(`${prefix}.loadSchemaError`)); return; }
+      setUiSchema(result.schema.uiSchema);
+      setAppName(result.schema.name);
+      setAppDescription(result.schema.description ?? "");
+      setSavedSchemaId(undefined); // clone — not editing the global original
+      setReadOnlyLoaded(false);
+      setPreviewVersion((v) => v + 1);
+      setMobilePane("preview");
+      setSuccess(t(`${prefix}.templateLoaded`));
+    },
+    [prefix, t],
+  );
 
   const handleNewApp = useCallback(() => {
     setAppName("");
@@ -233,6 +272,17 @@ export default function AppBuilderWidget() {
                 : `${prefix}.saveSchemaSuccess`,
           ),
         );
+
+        if (shareIdea) {
+          void submitAppIdeaAction({
+            appName: name,
+            appType: schemaToSave.type,
+            uiSchema: schemaToSave,
+          }).then((res) => {
+            if (res.ok) setSuccess(t(`${prefix}.shareIdeaSuccess`));
+          });
+          setShareIdea(false);
+        }
       }
 
       await refreshSavedApps();
@@ -288,6 +338,38 @@ export default function AppBuilderWidget() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
+
+        {/* ── גלריית השראה ── */}
+        {(() => {
+          const templates = savedApps.filter((a) => a.isGlobal);
+          if (templates.length === 0) return null;
+          return (
+            <section className="shrink-0 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2">
+              <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
+                <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                {t(`${prefix}.galleryTitle`)}
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {templates.map((tpl) => {
+                  const Icon = schemaTypeIcon(tpl.appType);
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => void handleUseTemplate(tpl.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-[color:var(--surface-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--foreground-main)] transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                      title={tpl.name}
+                    >
+                      <Icon className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden />
+                      <span className="max-w-[8rem] truncate">{tpl.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
+
         <section className="shrink-0 rounded-lg border border-[color:var(--border-main)] p-2">
           <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--foreground-main)]">
             <FolderOpen className="h-3.5 w-3.5 text-indigo-400" aria-hidden />
@@ -394,6 +476,24 @@ export default function AppBuilderWidget() {
                 className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-1.5 text-sm"
               />
             </label>
+            {!isEditing ? (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={shareIdea}
+                  onChange={(e) => setShareIdea(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 accent-indigo-500"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-xs font-medium text-[color:var(--foreground-main)]">
+                    {t(`${prefix}.shareIdeaLabel`)}
+                  </span>
+                  <span className="text-[10px] text-[color:var(--foreground-muted)]">
+                    {t(`${prefix}.shareIdeaHint`)}
+                  </span>
+                </span>
+              </label>
+            ) : null}
             <button
               type="button"
               onClick={() => void handleSaveSchema()}

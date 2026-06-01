@@ -242,6 +242,7 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
         const data = (await res.json()) as {
           reply?: string;
           uiSchema?: AppBuilderUiSchema;
+          schemaError?: string;
           error?: string;
           clientActions?: AutomationAction[];
         };
@@ -263,6 +264,8 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
 
         if (data.uiSchema) {
           onSchemaApplied(data.uiSchema);
+        } else if (data.schemaError) {
+          toast.error(t("workspaceWidgets.appBuilder.refineFailed"));
         }
 
         if (data.clientActions?.length && automationCtx?.runActions) {
