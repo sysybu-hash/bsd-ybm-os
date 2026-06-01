@@ -16,8 +16,7 @@ function evalFormula(formula: string, values: Record<string, number>): number | 
     }
     // Whitelist: digits, dot, operators, parens, spaces, and Math identifiers
     if (!/^[\d\s+\-*/().,Matha-z_]+$/.test(expr)) return null;
-    // eslint-disable-next-line no-new-func
-    const result = new Function(`"use strict"; return (${expr})`)() as unknown;
+    const result = new Function(`"use strict"; return (${expr})`)() as unknown; // safe: whitelist-validated
     return typeof result === "number" && isFinite(result) ? result : null;
   } catch {
     return null;

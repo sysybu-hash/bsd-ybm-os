@@ -298,6 +298,7 @@ export default function AppBuilderWidget() {
     readOnlyLoaded,
     refreshSavedApps,
     savedSchemaId,
+    shareIdea,
     t,
     uiSchema,
   ]);
