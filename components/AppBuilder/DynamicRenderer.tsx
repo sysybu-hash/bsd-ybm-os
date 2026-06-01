@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { saveAppDataAction } from "@/app/actions/app-builder";
 import DynamicComposerRenderer from "@/components/AppBuilder/DynamicComposerRenderer";
 import DynamicDashboardRenderer from "@/components/AppBuilder/DynamicDashboardRenderer";
+import DynamicFullAppRenderer from "@/components/AppBuilder/DynamicFullAppRenderer";
 import FieldInput from "@/components/AppBuilder/FieldInput";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
@@ -163,6 +164,17 @@ export default function DynamicRenderer(props: Props) {
   }
   if (props.uiSchema.type === "composer") {
     return <DynamicComposerRenderer schema={props.uiSchema} {...props} />;
+  }
+  if (props.uiSchema.type === "full_app") {
+    const { uiSchema, schemaId, readOnly, onSaved } = props;
+    return (
+      <DynamicFullAppRenderer
+        uiSchema={uiSchema}
+        schemaId={schemaId}
+        readOnly={readOnly}
+        onSaved={onSaved}
+      />
+    );
   }
   return <FormTableDynamicRenderer {...props} uiSchema={props.uiSchema} />;
 }

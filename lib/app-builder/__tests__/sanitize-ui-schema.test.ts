@@ -31,6 +31,22 @@ const validDashboard = {
   ],
 };
 
+const validFullApp = {
+  type: "full_app" as const,
+  title: "מערכת מנופים",
+  description: "רישום השכרות",
+  fields: [
+    { name: "craneId", label: "מספר מנוף", type: "text" as const, required: true },
+    { name: "rentalDate", label: "תאריך", type: "date" as const },
+    {
+      name: "status",
+      label: "סטטוס",
+      type: "select" as const,
+      options: ["פנוי", "מושכר"],
+    },
+  ],
+};
+
 const validComposer = {
   type: "composer" as const,
   title: "מרכז שליטה",
@@ -91,6 +107,23 @@ describe("parseAndSanitizeUiSchema", () => {
     if (result.ok && result.schema.type === "composer") {
       expect(result.schema.blocks).toHaveLength(4);
     }
+  });
+
+  it("accepts valid full_app schema", () => {
+    const result = parseAndSanitizeUiSchema(validFullApp);
+    expect(result.ok).toBe(true);
+    if (result.ok && result.schema.type === "full_app") {
+      expect(result.schema.fields).toHaveLength(3);
+      expect(result.schema.title).toBe("מערכת מנופים");
+    }
+  });
+
+  it("rejects admin paths in full_app title", () => {
+    const result = parseAndSanitizeUiSchema({
+      ...validFullApp,
+      title: "Go to /admin",
+    });
+    expect(result.ok).toBe(false);
   });
 
   it("rejects composer with two form blocks", () => {
@@ -208,6 +241,18 @@ describe("buildPayloadFromFormData", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.payload.note).toBe("hello");
+    }
+  });
+
+  it("coerces full_app fields", () => {
+    const result = buildPayloadFromFormData(
+      { craneId: "  M-12  ", rentalDate: "2026-05-01", status: "פנוי" },
+      validFullApp,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.payload.craneId).toBe("M-12");
+      expect(result.payload.status).toBe("פנוי");
     }
   });
 });

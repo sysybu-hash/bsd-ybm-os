@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
+  Database,
   FileText,
   FolderOpen,
   LayoutGrid,
@@ -30,12 +31,13 @@ import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 function schemaTypeIcon(appType: AppSchemaListItem["appType"]) {
   if (appType === "dashboard") return BarChart3;
   if (appType === "composer") return LayoutGrid;
+  if (appType === "full_app") return Database;
   if (appType === "table") return Table2;
   return FileText;
 }
 
 function syncUiSchemaTitle(schema: AppBuilderUiSchema, title: string): AppBuilderUiSchema {
-  if (schema.type === "dashboard" || schema.type === "composer") {
+  if (schema.type === "dashboard" || schema.type === "composer" || schema.type === "full_app") {
     return { ...schema, title };
   }
   return { ...schema, title: title || schema.title };
@@ -226,7 +228,9 @@ export default function AppBuilderWidget() {
           t(
             schemaToSave.type === "dashboard"
               ? `${prefix}.saveDashboardSuccess`
-              : `${prefix}.saveSchemaSuccess`,
+              : schemaToSave.type === "full_app"
+                ? `${prefix}.saveFullAppSuccess`
+                : `${prefix}.saveSchemaSuccess`,
           ),
         );
       }

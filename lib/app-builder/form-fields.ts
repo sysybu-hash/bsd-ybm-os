@@ -1,8 +1,8 @@
 import type { AppBuilderField, AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
-/** שדות טופס מתוך form/table/composer (בלוק form ראשון) */
+/** שדות טופס מתוך form/table/full_app/composer (בלוק form ראשון) */
 export function getFormFieldsFromUiSchema(schema: AppBuilderUiSchema): AppBuilderField[] | null {
-  if (schema.type === "form" || schema.type === "table") {
+  if (schema.type === "form" || schema.type === "table" || schema.type === "full_app") {
     return schema.fields;
   }
   if (schema.type === "composer") {

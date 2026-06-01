@@ -18,7 +18,7 @@ export function buildRefinePrompt(userRequest: string, existing: AppBuilderUiSch
     "Apply ONLY the requested changes; keep other blocks/components/fields unless the user asked to change them.",
     existing.type === "composer"
       ? "Keep type composer; you may add/remove/reorder blocks (dashboard, form, actions, text)."
-      : "Keep the same app type (form/table/dashboard/composer).",
+      : "Keep the same app type (full_app/form/table/dashboard/composer).",
     "For dashboard/composer dashboard blocks: metric_card uses count or sum correctly.",
     "Return the complete updated JSON only.",
     "",

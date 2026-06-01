@@ -49,6 +49,16 @@ export const appBuilderFormTableSchema = z
   })
   .strict();
 
+/** מיני-אפליקציית No-Code: טופס הזנה + טבלת רשומות (נתונים ב-CustomAppData) */
+export const appBuilderFullAppSchema = z
+  .object({
+    type: z.literal("full_app"),
+    title: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    fields: z.array(appBuilderFieldSchema).min(1).max(30),
+  })
+  .strict();
+
 export const appBuilderDashboardSchema = z
   .object({
     type: z.literal("dashboard"),
@@ -124,6 +134,7 @@ export const appBuilderComposerSchema = z
 export const appBuilderUiSchema = z.discriminatedUnion("type", [
   appBuilderFormTableSchema.extend({ type: z.literal("form") }),
   appBuilderFormTableSchema.extend({ type: z.literal("table") }),
+  appBuilderFullAppSchema,
   appBuilderDashboardSchema,
   appBuilderComposerSchema,
 ]);
@@ -155,6 +166,7 @@ export type ComposerBlock = z.infer<typeof composerBlockSchema>;
 export type ComposerAction = z.infer<typeof composerActionSchema>;
 export type AppBuilderFieldType = z.infer<typeof appBuilderFieldTypeSchema>;
 export type AppBuilderField = z.infer<typeof appBuilderFieldSchema>;
+export type AppBuilderFullAppUI = z.infer<typeof appBuilderFullAppSchema>;
 export type AppBuilderUiSchema = z.infer<typeof appBuilderUiSchema>;
 
 /** @deprecated alias for dashboard UI */

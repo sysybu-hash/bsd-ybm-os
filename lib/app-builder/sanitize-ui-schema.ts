@@ -25,7 +25,9 @@ function containsDangerousText(value: string): boolean {
   return DANGEROUS_PATTERNS.some((pattern) => pattern.test(value));
 }
 
-function validateFormTableContent(schema: Extract<AppBuilderUiSchema, { type: "form" | "table" }>): string | null {
+function validateFormTableContent(
+  schema: Extract<AppBuilderUiSchema, { type: "form" | "table" | "full_app" }>,
+): string | null {
   if (schema.title && containsDangerousText(schema.title)) {
     return "title_contains_forbidden_content";
   }
@@ -176,6 +178,14 @@ export function parseAndSanitizeUiSchema(raw: unknown): SanitizeUiSchemaResult {
 
   if (parsed.data.type === "composer") {
     const contentError = validateComposerContent(parsed.data);
+    if (contentError) {
+      return { ok: false, error: contentError };
+    }
+    return { ok: true, schema: parsed.data };
+  }
+
+  if (parsed.data.type === "full_app") {
+    const contentError = validateFormTableContent(parsed.data);
     if (contentError) {
       return { ok: false, error: contentError };
     }
