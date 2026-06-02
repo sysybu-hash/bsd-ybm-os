@@ -10,6 +10,7 @@ const DEST_DIR = path.join(process.cwd(), "public", "screenshots");
 const MAP = [
   ["02-workspace-home.png", "workspace-home.png"],
   ["07-ai-hub.png", "ai-hub.png"],
+  ["13-app-builder.png", "app-builder.png"],
   ["03-finance-hub.png", "finance-hub.png"],
   ["01-marketing-landing.png", "marketing-landing.png"],
 ];

@@ -22,7 +22,7 @@
     "features": [
       { "title": "CRM that moves work forward", "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools." },
       { "title": "Billing & business documents", "body": "Invoices, collections, subscriptions and cash flow inside the same workspace." },
-      { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — forms, dashboards, Composer, and natural-language CRM, documents and scan actions." }
+      { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — data apps, checklists, calculators, kanban, Hebrew calendar and dashboards, plus natural-language CRM, documents and scan actions." }
     ],
     "mock": {
       "attentionLabel": "Management attention",
@@ -279,7 +279,7 @@
       },
       "bentoAppBuilder": {
         "title": "AI app builder",
-        "body": "Describe any idea — forms, dashboards, Composer with KPIs and action buttons, or CRM and scan commands."
+        "body": "Describe any idea, get a working tool — full data app, checklist, calculator, kanban board, Hebrew calendar, dashboard or Composer. Iterative chat editing, an inspiration gallery and community idea sharing."
       },
       "bottomNav": {
         "aria": "Quick page navigation",

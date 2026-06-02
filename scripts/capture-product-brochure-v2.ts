@@ -115,6 +115,14 @@ const AUTH_SHOTS: ShotSpec[] = [
     requiresAuth: true,
     readySelector: "[data-widget-shell]",
   },
+  {
+    file: "13-app-builder.png",
+    url: "/?w=aiHub&tab=builder",
+    requiresAuth: true,
+    readySelector: "[data-widget-shell]",
+    extraReadySelector: '[role="tablist"]',
+    captureSelector: "[data-widget-shell]",
+  },
 ];
 
 const DISABLE_MOTION_CSS = `
