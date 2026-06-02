@@ -138,14 +138,17 @@ export default function AdaptiveWidgetShell({
             zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
           }`}
         >
-          <div
-            className={`flex h-0 w-full min-h-full flex-col ${
-              zoomActive || mobileOrMaximized ? "origin-top" : ""
-            }`}
-            style={contentZoomStyle}
-          >
-            {children}
-          </div>
+          {zoomActive ? (
+            // Zoom mode: scale wrapper that can grow in both axes
+            <div className="flex w-full min-h-full flex-col origin-top" style={contentZoomStyle}>
+              {children}
+            </div>
+          ) : (
+            // Normal mode: children sit directly in the scroll container so that
+            // h-full / flex-1 widget roots resolve against its definite height
+            // (fills the viewport) while tall content still scrolls the container.
+            children
+          )}
         </div>
       </div>
 

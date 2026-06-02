@@ -215,7 +215,7 @@ export default function OsFloatingPanel({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <motion.div
-            className={`flex h-0 min-h-full w-full flex-col ${zoomActive ? "origin-top" : ""}`}
+            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : ""}`}
             style={contentZoomStyle}
           >
             {children}

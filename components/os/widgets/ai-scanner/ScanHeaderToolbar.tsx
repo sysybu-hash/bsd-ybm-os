@@ -135,11 +135,11 @@ export function ScanHeaderToolbar({
           </span>
         ) : null}
 
-        {/* Engine mode — desktop only */}
+        {/* Engine mode — visible on all sizes (wraps to new row on mobile) */}
         <select
           value={engineRunMode}
           onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
-          className="hidden min-h-[44px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold sm:block"
+          className="min-h-[44px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
           aria-label={tr("scanner.configAi", "מנועים")}
         >
           {ENGINE_MODES.map((m) => (
