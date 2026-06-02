@@ -65,7 +65,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
             type="button"
             onClick={() => c.setShowSettings(true)}
             aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-            className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
           >
             <Settings2 size={17} aria-hidden />
           </button>
@@ -76,7 +76,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
               onClick={() => c.setMessages([])}
               aria-label={t("workspaceWidgets.aiChat.clearHistory")}
               title={t("workspaceWidgets.aiChat.clearHistory")}
-              className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
             >
               <Trash2 size={17} aria-hidden />
             </button>

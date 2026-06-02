@@ -54,7 +54,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
             type="button"
             onClick={() => c.setShowSettings(true)}
             aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-            className="flex min-h-[32px] min-w-[32px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
           >
             <Settings2 size={16} aria-hidden />
           </button>
@@ -63,7 +63,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
               type="button"
               onClick={() => c.setMessages([])}
               aria-label={t("workspaceWidgets.appBuilder.clearChat")}
-              className="flex min-h-[32px] min-w-[32px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
             >
               <Trash2 size={16} aria-hidden />
             </button>

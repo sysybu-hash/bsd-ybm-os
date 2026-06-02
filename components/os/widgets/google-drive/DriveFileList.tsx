@@ -165,7 +165,8 @@ export function DriveFileList({
 
   if (viewMode === "details") {
     return (
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto custom-scrollbar">
+      <table className="w-full min-w-[480px] text-sm">
         <thead className="sticky top-0 bg-[color:var(--background-main)] border-b border-[color:var(--border-main)] text-[10px] uppercase tracking-wider text-[color:var(--foreground-muted)]">
           <tr>
             <th className="p-3 w-10" />
@@ -215,6 +216,7 @@ export function DriveFileList({
           ))}
         </tbody>
       </table>
+      </div>
     );
   }
 
