@@ -122,7 +122,7 @@ export const appBuilderKanbanSchema = z
         z.object({
           name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
           label: z.string().min(1).max(120),
-          type: z.enum(["text", "textarea", "date", "select", "number"]),
+          type: z.enum(["text", "textarea", "date", "time", "select", "number"]),
           required: z.boolean().optional(),
           options: z.array(z.string().min(1).max(80)).max(20).optional(),
         }),
@@ -143,7 +143,7 @@ export const appBuilderCalendarSchema = z
         z.object({
           name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
           label: z.string().min(1).max(120),
-          type: z.enum(["text", "textarea", "date", "select", "number"]),
+          type: z.enum(["text", "textarea", "date", "time", "select", "number"]),
           required: z.boolean().optional(),
           options: z.array(z.string().min(1).max(80)).max(20).optional(),
           isDate: z.boolean().optional(),

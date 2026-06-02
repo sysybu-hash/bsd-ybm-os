@@ -49,7 +49,8 @@ eventFields: MUST include exactly one field with "isDate": true (the event date)
   "type": "calendar",
   "title": "...",
   "description": "optional",
-  "eventFields": [ { "name": "fieldName", "label": "...", "type": "text|textarea|date|select|number", "required": true|false, "isDate": true|false } ]
+  "eventFields": [ { "name": "fieldName", "label": "...", "type": "text|textarea|date|time|select|number", "required": true|false, "isDate": true|false } ]
+Hebrew calendar note: the calendar grid ALWAYS shows Hebrew dates alongside Gregorian. No need to add a hebrewDate field — it is built-in. For time support, add a field with type "time".
 }
 
 ## F) Form or table (legacy — prefer full_app for new inventions)

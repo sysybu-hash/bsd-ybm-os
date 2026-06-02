@@ -21,6 +21,19 @@ const MONTHS_HE = [
   "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
 ];
 
+const hebrewDayFmt = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", { day: "numeric" });
+const hebrewMonthFmt = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", { month: "long", year: "numeric" });
+
+function toHebrewDay(year: number, month: number, day: number): string {
+  try { return hebrewDayFmt.format(new Date(year, month, day)); }
+  catch { return ""; }
+}
+
+function hebrewMonthYear(year: number, month: number): string {
+  try { return hebrewMonthFmt.format(new Date(year, month, 1)); }
+  catch { return ""; }
+}
+
 function toYMD(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -136,6 +149,10 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
           </button>
           {loading && <Loader2 size={12} className="animate-spin text-[color:var(--foreground-muted)]" />}
         </div>
+        {/* Hebrew month name */}
+        <p className="text-[10px] text-[color:var(--foreground-muted)] text-end pe-1">
+          {hebrewMonthYear(viewYear, viewMonth)}
+        </p>
       </div>
 
       {/* Day headers */}
@@ -146,31 +163,44 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
       {/* Calendar grid */}
       <div className="grid content-start grid-cols-7 gap-px overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--border-main)]">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} className="min-h-[52px] bg-[color:var(--background-main)]/60 p-1" />;
+          if (!day) return <div key={i} className="min-h-[56px] bg-[color:var(--background-main)]/60 p-1" />;
           const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayEvents = eventsOnDay(day);
           const isToday = ymd === todayYMD;
+          const hebDay = toHebrewDay(viewYear, viewMonth, day);
           return (
             <button
               key={i}
               type="button"
               onClick={() => openAddForm(day)}
-              className={`group flex min-h-[52px] flex-col gap-0.5 bg-[color:var(--background-main)] p-1 text-start transition hover:bg-[color:var(--surface-soft)] ${
+              className={`group flex min-h-[56px] flex-col gap-0.5 bg-[color:var(--background-main)] p-1 text-start transition hover:bg-[color:var(--surface-soft)] ${
                 isToday ? "ring-1 ring-inset ring-indigo-500" : ""
               }`}
             >
-              <span className={`text-[11px] font-bold ${isToday ? "text-indigo-400" : "text-[color:var(--foreground-muted)]"}`}>
-                {day}
-              </span>
-              {dayEvents.slice(0, 3).map((ev) => (
-                <span
-                  key={ev.id}
-                  className="block truncate rounded bg-indigo-500/20 px-1 py-0.5 text-[9px] font-medium text-indigo-300"
-                  title={ev.title}
-                >
-                  {ev.title}
+              <div className="flex items-start justify-between w-full">
+                <span className={`text-[11px] font-bold ${isToday ? "text-indigo-400" : "text-[color:var(--foreground-muted)]"}`}>
+                  {day}
                 </span>
-              ))}
+                {hebDay ? (
+                  <span className="text-[9px] text-[color:var(--foreground-muted)]/70 font-medium leading-tight">
+                    {hebDay}
+                  </span>
+                ) : null}
+              </div>
+              {dayEvents.slice(0, 3).map((ev) => {
+                const timeVal = schema.eventFields.find((f) => f.type === "time");
+                const evTime = timeVal ? String(ev.data[timeVal.name] ?? "") : "";
+                return (
+                  <span
+                    key={ev.id}
+                    className="flex items-center gap-0.5 truncate rounded bg-indigo-500/20 px-1 py-0.5 text-[9px] font-medium text-indigo-300"
+                    title={ev.title}
+                  >
+                    {evTime ? <span className="shrink-0 opacity-80">{evTime}</span> : null}
+                    <span className="truncate">{ev.title}</span>
+                  </span>
+                );
+              })}
               {dayEvents.length > 3 && (
                 <span className="text-[9px] text-[color:var(--foreground-muted)]">+{dayEvents.length - 3}</span>
               )}
@@ -213,7 +243,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
                     </select>
                   ) : (
                     <input
-                      type={f.isDate || f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                      type={f.isDate || f.type === "date" ? "date" : f.type === "time" ? "time" : f.type === "number" ? "number" : "text"}
                       value={form[f.name] ?? ""}
                       onChange={(e) => setForm((p) => ({ ...p, [f.name]: e.target.value }))}
                       className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
