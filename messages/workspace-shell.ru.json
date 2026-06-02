@@ -1329,9 +1329,13 @@
       "searchPlaceholder": "Поиск документов…",
       "loadDocFailed": "Не удалось загрузить документ",
       "loadListFailed": "Не удалось загрузить список",
-      "selectDoc": "Выберите документ из списка для просмотра деталей"
+      "selectDoc": "Выберите документ из списка для просмотра деталей",
+      "mobileTabList": "Список",
+      "mobileTabDetail": "Документ"
     },
     "erpArchive": {
+      "mobileTabNav": "Навигация",
+      "mobileTabFiles": "Файлы",
       "selectMode": "Множественный выбор",
       "cancelSelect": "Отменить выбор",
       "exportSelected": "Экспорт выбранных (ZIP)",

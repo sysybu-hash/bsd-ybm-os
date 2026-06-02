@@ -1329,9 +1329,13 @@
       "searchPlaceholder": "Search documents…",
       "loadDocFailed": "Failed to load document",
       "loadListFailed": "Failed to load documents",
-      "selectDoc": "Select a document from the list to view details and edit lines"
+      "selectDoc": "Select a document from the list to view details and edit lines",
+      "mobileTabList": "List",
+      "mobileTabDetail": "Document"
     },
     "erpArchive": {
+      "mobileTabNav": "Navigation",
+      "mobileTabFiles": "Files",
       "selectMode": "Multi-select",
       "cancelSelect": "Cancel selection",
       "exportSelected": "Export selected (ZIP)",

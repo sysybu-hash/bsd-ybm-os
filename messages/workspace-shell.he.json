@@ -1329,9 +1329,13 @@
       "searchPlaceholder": "חיפוש מסמכים…",
       "loadDocFailed": "שגיאה בטעינת פרטי מסמך",
       "loadListFailed": "שגיאה בטעינת מסמכים",
-      "selectDoc": "בחר מסמך מהרשימה כדי לצפות בפרטים ולערוך שורות"
+      "selectDoc": "בחר מסמך מהרשימה כדי לצפות בפרטים ולערוך שורות",
+      "mobileTabList": "רשימה",
+      "mobileTabDetail": "מסמך"
     },
     "erpArchive": {
+      "mobileTabNav": "ניווט",
+      "mobileTabFiles": "קבצים",
       "selectMode": "בחירה מרובה",
       "cancelSelect": "ביטול בחירה",
       "exportSelected": "ייצוא נבחרים (ZIP)",

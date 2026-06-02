@@ -3,7 +3,7 @@
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
-import React from "react";
+import React, { useState } from "react";
 import {
   Download,
   Eye,
@@ -25,6 +25,7 @@ import { CategoryGlyph, categoryChipLabel } from "./erp-file-archive/utils";
 export default function ErpFileArchiveWidget() {
   const { dir, t } = useI18n();
   const archive = useArchiveData();
+  const [mobilePane, setMobilePane] = useState<"nav" | "files">("files");
 
   const {
     files, projects, totalCount, loading, loadError,
@@ -302,6 +303,19 @@ export default function ErpFileArchiveWidget() {
     </div>
   );
 
+  const archiveSidebar = (
+    <ArchiveSidebar
+      archiveView={archiveView}
+      recentOnly={recentOnly}
+      projectId={projectId}
+      projects={projects}
+      totalCount={totalCount}
+      filesCount={files.length}
+      trashCount={trashCount}
+      onSelectScope={(scope) => { selectArchiveScope(scope); setMobilePane("files"); }}
+    />
+  );
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <OsConfirmDialog
@@ -338,18 +352,7 @@ export default function ErpFileArchiveWidget() {
               defaultSize: 22,
               minSize: 16,
               className: "flex min-h-0 min-w-0 flex-col border-l border-[color:var(--border-main)] bg-[color:var(--background-main)]/50",
-              children: (
-                <ArchiveSidebar
-                  archiveView={archiveView}
-                  recentOnly={recentOnly}
-                  projectId={projectId}
-                  projects={projects}
-                  totalCount={totalCount}
-                  filesCount={files.length}
-                  trashCount={trashCount}
-                  onSelectScope={selectArchiveScope}
-                />
-              ),
+              children: archiveSidebar,
             },
             {
               id: "erp-archive-main",
@@ -361,7 +364,36 @@ export default function ErpFileArchiveWidget() {
           ]}
         />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col md:hidden">{archiveMain}</div>
+      {/* Mobile: switcher between nav scopes and files */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] p-1.5" role="tablist">
+          {(["nav", "files"] as const).map((pane) => (
+            <button
+              key={pane}
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === pane}
+              onClick={() => setMobilePane(pane)}
+              className={`min-h-[44px] flex-1 rounded-lg text-sm font-bold transition ${
+                mobilePane === pane
+                  ? "bg-amber-600 text-white"
+                  : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"
+              }`}
+            >
+              {pane === "nav"
+                ? t("workspaceWidgets.erpArchive.mobileTabNav")
+                : t("workspaceWidgets.erpArchive.mobileTabFiles")}
+            </button>
+          ))}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {mobilePane === "nav" ? (
+            <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">{archiveSidebar}</div>
+          ) : (
+            archiveMain
+          )}
+        </div>
+      </div>
     </div>
   );
 }
