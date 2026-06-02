@@ -172,7 +172,7 @@ export function ScanDropZone({
           {queue.map((item) => (
             <li
               key={item.id}
-              className="flex min-h-[36px] items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/70 px-3 py-2 text-[10px] backdrop-blur-sm"
+              className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/70 px-3 py-2 text-[10px] backdrop-blur-sm"
             >
               <span className="truncate font-bold">{item.file.name}</span>
               <span

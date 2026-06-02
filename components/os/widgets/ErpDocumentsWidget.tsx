@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { FileText, Package, Search, Trash2 } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
@@ -8,6 +8,7 @@ import { useErpDocuments } from "./erp-documents/useErpDocuments";
 import { ErpDocumentDetail } from "./erp-documents/ErpDocumentDetail";
 
 export default function ErpDocumentsWidget() {
+  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list");
   const {
     t, dir,
     documents, selectedDoc, setSelectedDoc,
@@ -43,7 +44,7 @@ export default function ErpDocumentsWidget() {
             <button
               key={doc.id}
               type="button"
-              onClick={() => void fetchDocDetails(doc.id)}
+              onClick={() => { void fetchDocDetails(doc.id); setMobilePane("detail"); }}
               className={`w-full text-start p-4 border-b border-[color:var(--border-main)]/30 hover:bg-[color:var(--foreground-muted)]/5 transition-colors group ${selectedDoc?.id === doc.id ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-e-2 border-e-emerald-600 dark:border-e-emerald-500" : ""}`}
             >
               <div className="flex items-center gap-3 mb-1">
@@ -95,15 +96,44 @@ export default function ErpDocumentsWidget() {
 
   return (
     <div className="flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
-      <WidgetSplitPanels
-        className="min-h-0 flex-1"
-        direction="horizontal"
-        stackBelowPx={768}
-        panels={[
-          { id: "erp-docs-sidebar", defaultSize: 28, minSize: 18, children: sidebar },
-          { id: "erp-docs-detail",  defaultSize: 72, minSize: 40, children: detail  },
-        ]}
-      />
+      {/* Mobile pane switcher */}
+      <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] p-1.5 md:hidden" role="tablist">
+        {(["list", "detail"] as const).map((pane) => {
+          const label = pane === "list" ? t("workspaceWidgets.erp.mobileTabList") || "רשימה" : t("workspaceWidgets.erp.mobileTabDetail") || "מסמך";
+          return (
+            <button
+              key={pane}
+              type="button"
+              role="tab"
+              aria-selected={mobilePane === pane}
+              onClick={() => setMobilePane(pane)}
+              className={`min-h-[44px] flex-1 rounded-lg text-sm font-bold transition ${
+                mobilePane === pane ? "bg-emerald-600 text-white" : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop: split panels */}
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <WidgetSplitPanels
+          className="min-h-0 flex-1"
+          direction="horizontal"
+          stackBelowPx={768}
+          panels={[
+            { id: "erp-docs-sidebar", defaultSize: 28, minSize: 18, children: sidebar },
+            { id: "erp-docs-detail",  defaultSize: 72, minSize: 40, children: detail  },
+          ]}
+        />
+      </div>
+
+      {/* Mobile: single pane */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:hidden">
+        {mobilePane === "list" ? sidebar : detail}
+      </div>
     </div>
   );
 }

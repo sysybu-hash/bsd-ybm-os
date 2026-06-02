@@ -160,10 +160,10 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
         {DAYS_HE.map((d) => <div key={d}>{d}</div>)}
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar grid — min-h adapts to screen: taller cells on larger screens */}
       <div className="grid content-start grid-cols-7 gap-px overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--border-main)]">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} className="min-h-[56px] bg-[color:var(--background-main)]/60 p-1" />;
+          if (!day) return <div key={i} className="min-h-[44px] sm:min-h-[56px] bg-[color:var(--background-main)]/60 p-0.5 sm:p-1" />;
           const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayEvents = eventsOnDay(day);
           const isToday = ymd === todayYMD;
@@ -173,7 +173,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
               key={i}
               type="button"
               onClick={() => openAddForm(day)}
-              className={`group flex min-h-[56px] flex-col gap-0.5 bg-[color:var(--background-main)] p-1 text-start transition hover:bg-[color:var(--surface-soft)] ${
+              className={`group flex min-h-[44px] sm:min-h-[56px] flex-col gap-0.5 bg-[color:var(--background-main)] p-0.5 sm:p-1 text-start transition hover:bg-[color:var(--surface-soft)] ${
                 isToday ? "ring-1 ring-inset ring-indigo-500" : ""
               }`}
             >

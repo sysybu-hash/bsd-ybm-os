@@ -60,7 +60,7 @@ export function ScanHeaderToolbar({
         <button
           type="button"
           onClick={clearProject}
-          className="flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
           title={t(`${scannerPrefix}.switchProject`)}
         >
           <ArrowRight size={13} aria-hidden />
@@ -71,7 +71,7 @@ export function ScanHeaderToolbar({
         <select
           value={scanModeOverride}
           onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
-          className="min-h-[36px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
+          className="min-h-[44px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold"
           aria-label={tr("scanner.scanMode", "מצב סריקה")}
         >
           {scanModes.map((m) => (
@@ -92,7 +92,7 @@ export function ScanHeaderToolbar({
         <button
           type="button"
           onClick={() => setInstructionsOpen(true)}
-          className="flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold"
           aria-label={tr("scanner.instructionsBtn", "הנחיות")}
         >
           <Settings2 size={13} aria-hidden />
@@ -104,7 +104,7 @@ export function ScanHeaderToolbar({
           type="button"
           onClick={openPreviewPanel}
           disabled={queue.length === 0 && !previewUrl}
-          className="flex min-h-[36px] items-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
           aria-label={tr("scanner.preview", "תצוגה מקדימה")}
         >
           <Eye size={14} aria-hidden />
@@ -118,7 +118,7 @@ export function ScanHeaderToolbar({
             pushScannerView({ openResultsPanel: true });
           }}
           disabled={!lastScanV5}
-          className="flex min-h-[36px] items-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[color:var(--border-main)] p-1.5 disabled:opacity-40"
           aria-label={tr("scanner.resultsPanel", "תוצאות")}
         >
           <FileText size={14} aria-hidden />
@@ -139,7 +139,7 @@ export function ScanHeaderToolbar({
         <select
           value={engineRunMode}
           onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
-          className="hidden min-h-[36px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold sm:block"
+          className="hidden min-h-[44px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1.5 text-[10px] font-bold sm:block"
           aria-label={tr("scanner.configAi", "מנועים")}
         >
           {ENGINE_MODES.map((m) => (
