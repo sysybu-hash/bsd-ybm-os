@@ -154,7 +154,7 @@ export default function AppBuilderWidget() {
         setLoadingSchemaId(null);
       }
     },
-    [prefix, t],
+    [codeHistory, prefix, t],
   );
 
   const handleDeleteSaved = useCallback(
@@ -277,6 +277,7 @@ export default function AppBuilderWidget() {
   }, [
     appDescription,
     appName,
+    generatedCode,
     prefix,
     readOnlyLoaded,
     refreshSavedApps,
