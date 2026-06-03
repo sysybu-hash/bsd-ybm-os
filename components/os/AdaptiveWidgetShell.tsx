@@ -137,13 +137,13 @@ export default function AdaptiveWidgetShell({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
           <div
-            className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] ${
+            className={`custom-scrollbar min-h-0 flex-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior-y:auto] ${
               zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
             }`}
           >
             {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
           <div
-            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex min-h-full w-full flex-col"}
+            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex h-full w-full flex-col"}
             style={zoomActive ? contentZoomStyle : undefined}
           >
             {children}
