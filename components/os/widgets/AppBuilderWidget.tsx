@@ -54,10 +54,17 @@ export default function AppBuilderWidget() {
   const refreshSavedApps = useCallback(async () => {
     setLoadingSaved(true);
     try {
-      const result = await listAppSchemasAction();
+      // Race against an 8-second timeout — Neon serverless cold-starts can hang
+      // the Promise indefinitely without throwing, leaving the spinner forever.
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 8_000),
+      );
+      const result = await Promise.race([listAppSchemasAction(), timeout]);
       if (result.ok) {
         setSavedApps(result.schemas);
       }
+    } catch {
+      // silently ignore — user can retry with the refresh button in SavedAppsPanel
     } finally {
       setLoadingSaved(false);
     }
