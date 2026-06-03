@@ -28,6 +28,7 @@ import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
 import { validateScanV5, buildRetryInstruction, type ScanValidationResult } from "@/lib/scan-validate";
 import { extractDocumentWithAnthropic } from "@/lib/ai-extract-anthropic";
 import { isAnthropicConfigured } from "@/lib/ai-providers";
+import { analysePdfPages, buildMultiPagePromptPrefix } from "@/lib/scan-pdf-split";
 
 /** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
 const GEMINI_FLASH_PREFERRED = [
@@ -161,7 +162,22 @@ export async function runTriEngineExtraction(params: {
   const userInstructionBlock = userInstruction?.trim()
     ? `\n\n### USER REQUEST\nThe user added these extra instructions. Follow them when they do not conflict with the required JSON schema or safety constraints:\n${userInstruction.trim().slice(0, 1200)}`
     : "";
-  const fullInstruction = `${v5Instruction}${userInstructionBlock}`;
+
+  // ── Multi-page PDF prefix (Step 6) ──────────────────────────────────────
+  // For PDFs with ≥3 pages, prepend a text-enriched prompt prefix so the
+  // model understands page structure and collects data across all pages.
+  let multiPagePrefix = "";
+  if (mimeType === "application/pdf") {
+    try {
+      const buffer = Buffer.from(base64, "base64");
+      const pageInfo = await analysePdfPages(buffer);
+      multiPagePrefix = buildMultiPagePromptPrefix(pageInfo);
+    } catch {
+      // non-blocking — proceed without prefix
+    }
+  }
+
+  const fullInstruction = `${multiPagePrefix}${v5Instruction}${userInstructionBlock}`;
 
   const telemetry: TriEngineTelemetry = {
     documentAI: { phase: "idle" },

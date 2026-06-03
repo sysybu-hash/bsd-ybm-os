@@ -14,6 +14,12 @@ const DRAWING_HINTS = /drawing|תוכנית|boq|כמותיות|מפרט|plan|blu
 const QUOTE_HINTS = /הצעת\s*מחיר|quote|כתב\s*כמויות|price\s*offer/i;
 const PROGRESS_HINTS = /חשבון\s*\d|progress|חלקי|אחוז\s*ביצוע|התקדמות/i;
 const SITE_LOG_HINTS = /יומן|site\s*log|דוח\s*יום|יומן\s*עבודה|שטח/i;
+// Step 7 — new document type hints
+const PAYSLIP_HINTS = /תלוש|payslip|pay\s*slip|שכר\s*נטו|שכר\s*ברוטו|ניכויים|מעסיק/i;
+const BANK_HINTS = /תדפיס\s*בנק|bank\s*statement|bank\s*account|חשבון\s*בנק|יתרה|תנועות/i;
+const DELIVERY_HINTS = /תעודת\s*משלוח|delivery\s*note|ת"ח|תעודה\s*מס|פתק\s*אריזה/i;
+const PO_HINTS = /הזמנת\s*רכש|purchase\s*order|\bP\.?O\.?\b|הזמנה\s*מס/i;
+const CONTRACT_HINTS = /חוזה|הסכם|contract|agreement|התחייבות|צדדים/i;
 
 const EXPLICIT_CLIENT_SCAN_MODES = new Set([
   "INVOICE_FINANCIAL",
@@ -21,6 +27,11 @@ const EXPLICIT_CLIENT_SCAN_MODES = new Set([
   "QUOTE_BOQ",
   "PROGRESS_BILL",
   "SITE_LOG",
+  "PAYSLIP",
+  "BANK_STATEMENT",
+  "DELIVERY_NOTE",
+  "PURCHASE_ORDER",
+  "CONTRACT",
 ]);
 
 export function isExplicitClientScanMode(scanMode: string): boolean {
@@ -55,6 +66,23 @@ export function classifyScanDocumentHeuristic(input: {
       return finish("GENERAL_DOCUMENT", 0.78, "heuristic: business contract/quote", ["contract"]);
     }
     return finish("GENERAL_DOCUMENT", 0.55, "heuristic: default business document", ["default"]);
+  }
+
+  // Step 7 — new document types (high confidence on explicit keywords)
+  if (PAYSLIP_HINTS.test(instr) || PAYSLIP_HINTS.test(name)) {
+    return finish("PAYSLIP", 0.88, "heuristic: payslip keywords", ["payslip"]);
+  }
+  if (BANK_HINTS.test(instr) || BANK_HINTS.test(name)) {
+    return finish("BANK_STATEMENT", 0.85, "heuristic: bank statement keywords", ["bank"]);
+  }
+  if (DELIVERY_HINTS.test(instr) || DELIVERY_HINTS.test(name)) {
+    return finish("DELIVERY_NOTE", 0.85, "heuristic: delivery note keywords", ["delivery"]);
+  }
+  if (PO_HINTS.test(instr) || PO_HINTS.test(name)) {
+    return finish("PURCHASE_ORDER", 0.85, "heuristic: purchase order keywords", ["po"]);
+  }
+  if (CONTRACT_HINTS.test(instr) || CONTRACT_HINTS.test(name)) {
+    return finish("CONTRACT", 0.82, "heuristic: contract keywords", ["contract"]);
   }
 
   if (SITE_LOG_HINTS.test(instr) || SITE_LOG_HINTS.test(name)) {

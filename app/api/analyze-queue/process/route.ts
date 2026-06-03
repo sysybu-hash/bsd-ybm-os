@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { assertAnalyzeQueueProcessAuthorized } from "@/lib/analyze-queue";
 import { jsonUnauthorized } from "@/lib/api-json";
 import { drainDocumentScanQueue } from "@/lib/analyze-queue-runner";
+import { cleanupOldScanJobFileData } from "@/lib/scan-job-cleanup";
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
 
@@ -19,8 +20,9 @@ async function runDrain(req: NextRequest) {
     async () => {
       const start = Date.now();
       const count = await drainDocumentScanQueue(30);
-      log.info("analyze_queue_drained", { count, ms: Date.now() - start });
-      return Response.json({ ok: true, processed: count > 0, count });
+      const cleaned = await cleanupOldScanJobFileData();
+      log.info("analyze_queue_drained", { count, cleaned, ms: Date.now() - start });
+      return Response.json({ ok: true, processed: count > 0, count, cleaned });
     },
     { schedule: { type: "crontab", value: "15 6 * * *" }, timezone: "Asia/Jerusalem" },
   );

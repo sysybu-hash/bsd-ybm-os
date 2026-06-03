@@ -19,6 +19,11 @@ import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
 import { archiveScanToDrive } from "@/lib/scan-archive-to-drive";
+import { runScanInsights } from "@/lib/scan-insights";
+import {
+  getRecentCorrectionExamples,
+  buildCorrectionPromptBlock,
+} from "@/lib/scan-corrections-prompt";
 import { isDocAiConfigured, isGeminiConfigured, isMistralConfigured, isOpenAiConfigured } from "@/lib/ai-providers";
 import { notifyUser } from "@/lib/notify-user";
 
@@ -294,6 +299,20 @@ export async function loadTriEngineExtractionInput(
   const industry = userRow?.organization?.industry ?? "CONSTRUCTION";
   const orgTrade = userRow?.organization?.constructionTrade ?? null;
 
+  // ── Step 9b: few-shot correction examples ───────────────────────────────
+  const orgId = userRow?.organization
+    ? (await prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }))?.organizationId ?? null
+    : null;
+  let correctionBlock = "";
+  if (orgId) {
+    const examples = await getRecentCorrectionExamples(orgId).catch(() => []);
+    correctionBlock = buildCorrectionPromptBlock(examples);
+  }
+
+  const enrichedInstruction = correctionBlock
+    ? `${correctionBlock}\n${userInstruction ?? ""}`.trim()
+    : userInstruction ?? "";
+
   return {
     base64,
     mimeType,
@@ -305,7 +324,7 @@ export async function loadTriEngineExtractionInput(
     messages,
     openAiModel,
     engineRunMode,
-    userInstruction,
+    userInstruction: enrichedInstruction || null,
   };
 }
 
@@ -341,7 +360,7 @@ export async function persistTriEngineToErp(params: {
   aiData: Record<string, unknown>;
   userId: string;
   organizationId: string;
-}): Promise<{ documentId: string; priceSpikes: PriceSpikeAlert[]; driveWebViewLink?: string | null }> {
+}): Promise<{ documentId: string; priceSpikes: PriceSpikeAlert[]; driveWebViewLink?: string | null; insights?: import("@/lib/scan-insights").ScanInsights | null }> {
   const { file, aiData, userId, organizationId } = params;
 
   // ── 1. שמירה ל-Google Drive (לא חוסמת — מכשל שקט אם Drive לא מחובר) ──────
@@ -393,7 +412,22 @@ export async function persistTriEngineToErp(params: {
     );
   }
 
-  return { documentId: doc.id, priceSpikes, driveWebViewLink: fileDriveWebViewLink };
+  // ── 5. תובנות עסקיות (כפילויות, ספק↔פרויקט, תנאי תשלום) ──────────────────
+  const insights = await runScanInsights({
+    organizationId,
+    vendor: String(aiData.vendor ?? ""),
+    total: Number(aiData.total ?? 0),
+    date: typeof aiData.date === "string" ? aiData.date : null,
+    summary: typeof aiData.summary === "string" ? aiData.summary : "",
+    documentId: doc.id,
+  }).catch(() => null);
+
+  return {
+    documentId: doc.id,
+    priceSpikes,
+    driveWebViewLink: fileDriveWebViewLink,
+    insights,
+  };
 }
 
 async function detectAndNotifyPriceSpikes(params: {

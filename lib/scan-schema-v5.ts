@@ -9,7 +9,13 @@ export type ScanModeV5 =
   | "GENERAL_DOCUMENT"
   | "QUOTE_BOQ"
   | "PROGRESS_BILL"
-  | "SITE_LOG";
+  | "SITE_LOG"
+  // Step 7 — new document types
+  | "PAYSLIP"           // תלוש שכר
+  | "BANK_STATEMENT"    // דוח בנק / תדפיס
+  | "DELIVERY_NOTE"     // תעודת משלוח / ת"ח
+  | "PURCHASE_ORDER"    // הזמנת רכש (PO)
+  | "CONTRACT";         // חוזה / הסכם
 
 export type DocumentMetadataV5 = {
   project: string | null;
@@ -315,6 +321,74 @@ RULES:
 - Fill "lineItems" with section descriptions, cumulative %, amounts billed this period.
 - "billOfQuantities" for BOQ lines with progress % and quantities.
 - "total" = amount due this bill; note retention/advance in "summary" if visible.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  // ── Step 7: New document types ────────────────────────────────────────────
+
+  if (scanMode === "PAYSLIP") {
+    return `You are extracting an Israeli payslip (תלוש שכר).
+${baseShape}
+RULES:
+- "vendor" = employer name; "taxId" = employer tax ID (מספר עוסק/ח"פ) if present.
+- "total" = net pay (שכר נטו) as numeric value in ILS.
+- "lineItems": each salary component as a row — base salary (שכר בסיס), overtime (שעות נוספות), deductions (ניכויים), social insurance (ביטוח לאומי), income tax (מס הכנסה), pension (פנסיה), etc. Use description + lineTotal for each.
+- "documentMetadata.documentDate" = pay period end date.
+- "summary": employee name, ID number (תעודת זהות — REDACT in logs), employer, gross/net.
+- "docType": "PAYSLIP".
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "BANK_STATEMENT") {
+    return `You are extracting an Israeli bank statement (תדפיס בנק / דוח חשבון).
+${baseShape}
+RULES:
+- "vendor" = bank name + branch; "total" = closing balance (יתרה סופית) as numeric.
+- "lineItems": each transaction row — description, date in description field, debit or credit amount in lineTotal (positive = credit, negative = debit).
+- "documentMetadata.documentDate" = statement end date; "project" = account number if visible.
+- "summary": account holder name, account number, opening/closing balance, period.
+- "docType": "BANK_STATEMENT".
+- "billOfQuantities" empty.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "DELIVERY_NOTE") {
+    return `You are extracting a delivery note / תעודת משלוח (also called ת"ח or delivery order).
+${baseShape}
+RULES:
+- "vendor" = supplier/shipper name; "total" = total value if shown (may be 0 if prices omitted).
+- "lineItems": each delivered item — description, quantity, unit, unit price if shown.
+- "taxId" = supplier tax ID if present.
+- "documentMetadata.documentDate" = delivery date.
+- "summary": from/to parties, delivery number, destination address, notes.
+- "docType": "DELIVERY_NOTE".
+- "priceAlertPending": true if any item lacks a price and this looks like a priced document.
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "PURCHASE_ORDER") {
+    return `You are extracting a purchase order (הזמנת רכש / PO).
+${baseShape}
+RULES:
+- "vendor" = supplier name; "total" = total PO value; "taxId" = supplier tax ID if present.
+- "lineItems": each ordered item — description, quantity, unit price, line total, SKU if visible.
+- "documentMetadata.project" = PO number or project reference.
+- "summary": buyer, supplier, PO number, delivery terms, payment terms.
+- "docType": "PURCHASE_ORDER".
+- Human-readable strings in ${localeLang}.`;
+  }
+
+  if (scanMode === "CONTRACT") {
+    return `You are extracting a contract or legal agreement (חוזה / הסכם).
+${baseShape}
+RULES:
+- "vendor" = service provider / contractor name; "taxId" = their tax ID if present.
+- "total" = total contract value or monthly fee as numeric; 0 if not specified.
+- "lineItems": key financial obligations — each fee, payment milestone, or price item.
+- "documentMetadata.documentDate" = contract signing date.
+- "summary": parties (first party, second party), contract scope, duration, key obligations, payment terms, termination conditions (all in ${localeLang}).
+- "docType": "CONTRACT".
+- "billOfQuantities" empty unless it's a construction contract with BOQ.
 - Human-readable strings in ${localeLang}.`;
   }
 

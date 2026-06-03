@@ -27,6 +27,11 @@ const SCAN_MODES: ScanModeV5[] = [
   "QUOTE_BOQ",
   "PROGRESS_BILL",
   "SITE_LOG",
+  "PAYSLIP",
+  "BANK_STATEMENT",
+  "DELIVERY_NOTE",
+  "PURCHASE_ORDER",
+  "CONTRACT",
   "GENERAL_DOCUMENT",
 ];
 
@@ -41,12 +46,17 @@ Look at this document and classify it. Return ONLY a JSON object (no markdown):
 }
 
 Classification guide:
-- INVOICE_FINANCIAL: invoices (חשבונית), receipts (קבלה), tax docs, bills, delivery orders with prices
+- INVOICE_FINANCIAL: invoices (חשבונית), receipts (קבלה), tax docs, bills with prices
 - DRAWING_BOQ: construction drawings, BOQ (כתב כמויות), quantity survey sheets, architect plans
 - QUOTE_BOQ: contractor quotes (הצעת מחיר), price lists, tender documents
 - PROGRESS_BILL: interim payment certificates (חשבון התקדמות/חלקי), progress claims
 - SITE_LOG: daily site reports (יומן עבודה/שטח), inspection reports, daily diaries
-- GENERAL_DOCUMENT: contracts, agreements, letters, anything that doesn't fit above
+- PAYSLIP: employee payslips (תלוש שכר), salary documents, wage statements
+- BANK_STATEMENT: bank account statements (תדפיס בנק), transaction lists, account summaries
+- DELIVERY_NOTE: delivery notes (תעודת משלוח/ת"ח), packing slips, goods received notes
+- PURCHASE_ORDER: purchase orders (הזמנת רכש/PO), buying orders, procurement documents
+- CONTRACT: contracts (חוזה), agreements (הסכם), legal documents with parties and obligations
+- GENERAL_DOCUMENT: letters, forms, memos, anything that doesn't fit the above
 
 Be decisive. If it clearly looks like an invoice, confidence should be 0.90+.`;
 
