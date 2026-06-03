@@ -490,6 +490,8 @@
       "produceContract": "Contract",
       "constructionOnly": "Field Copilot is for construction trades only",
       "loading": "Loading Field Copilot…",
+      "shareWhatsApp": "Send via WhatsApp",
+      "sharePdf": "Print / PDF",
       "analysisProgress0": "Reading images…",
       "analysisProgress1": "Analyzing materials…",
       "analysisProgress2": "Building quantities…",

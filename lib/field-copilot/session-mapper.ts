@@ -31,6 +31,8 @@ export function mapSessionToDraft(
     scopeSummary: session.scopeSummary,
     assumptions,
     status: session.status,
+    createdAt: session.createdAt.toISOString(),
+    updatedAt: session.updatedAt.toISOString(),
   };
 }
 

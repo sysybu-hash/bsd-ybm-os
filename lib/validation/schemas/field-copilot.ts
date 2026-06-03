@@ -38,6 +38,8 @@ export const fieldCopilotDraftSchema = z.object({
   scopeSummary: z.string().nullable().optional(),
   assumptions: z.array(z.string()).default([]),
   status: fieldCopilotSessionStatusSchema,
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
 });
 
 export const createFieldCopilotSessionSchema = z.object({

@@ -490,6 +490,8 @@
       "produceContract": "Договор",
       "constructionOnly": "Только для строительства",
       "loading": "Загрузка Field Copilot…",
+      "shareWhatsApp": "Отправить в WhatsApp",
+      "sharePdf": "Печать / PDF",
       "analysisProgress0": "Читаю изображения…",
       "analysisProgress1": "Анализирую материалы…",
       "analysisProgress2": "Составляю объёмы…",

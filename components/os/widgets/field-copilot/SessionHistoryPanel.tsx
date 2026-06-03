@@ -103,8 +103,7 @@ export default function SessionHistoryPanel({
             const isLoading = loadingSessionId === s.id;
             const statusColor = STATUS_COLORS[s.status ?? "DRAFT"] ?? STATUS_COLORS["DRAFT"]!;
             const clientLabel = s.contactName ?? s.projectName ?? t(`${PREFIX}.unknownClient` as Parameters<typeof t>[0]);
-            // createdAt comes from the assets array via mapSessionToDraft — use id as fallback date
-            const dateLabel = formatDate((s as unknown as Record<string, unknown>).createdAt as string | undefined);
+            const dateLabel = formatDate(s.createdAt);
 
             return (
               <li key={s.id}>
