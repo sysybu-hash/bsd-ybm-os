@@ -28,6 +28,8 @@ const ENGINE_ROWS = [
   { key: "documentAI" as const, label: "Document AI" },
   { key: "gemini" as const, label: "Gemini" },
   { key: "gpt" as const, label: "GPT" },
+  { key: "mistral" as const, label: "Mistral" },
+  { key: "anthropic" as const, label: "Claude (Anthropic)" },
 ];
 
 export default function ScanResultsPanel({

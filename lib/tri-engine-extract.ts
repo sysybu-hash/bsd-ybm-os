@@ -26,6 +26,8 @@ import type { MessageTree } from "@/lib/i18n/keys";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
 import { validateScanV5, buildRetryInstruction, type ScanValidationResult } from "@/lib/scan-validate";
+import { extractDocumentWithAnthropic } from "@/lib/ai-extract-anthropic";
+import { isAnthropicConfigured } from "@/lib/ai-providers";
 
 /** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
 const GEMINI_FLASH_PREFERRED = [
@@ -39,6 +41,7 @@ export type TriEngineTelemetry = {
   gemini: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
   gpt: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
   mistral: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
+  anthropic: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
 };
 
 /** אירועי סטרימינג ללקוח (NDJSON) — טלמטריה ופלטי ביניים */
@@ -52,6 +55,7 @@ function snapTriTelemetry(t: TriEngineTelemetry): TriEngineTelemetry {
     gemini: { ...t.gemini },
     gpt: { ...t.gpt },
     mistral: { ...t.mistral },
+    anthropic: { ...t.anthropic },
   };
 }
 
@@ -164,6 +168,7 @@ export async function runTriEngineExtraction(params: {
     gemini: { phase: "idle" },
     gpt: { phase: "idle" },
     mistral: { phase: "idle" },
+    anthropic: { phase: "idle" },
   };
 
   let v5: ScanExtractionV5;
@@ -211,6 +216,36 @@ export async function runTriEngineExtraction(params: {
     out.enginesUsed = ["mistral-pixtral"];
     return out;
   };
+
+  const runAnthropicOnly = async (): Promise<ScanExtractionV5> => {
+    const aErr = assertProviderConfigured("anthropic");
+    if (aErr) throw new Error(aErr);
+    const raw = await extractDocumentWithAnthropic(base64, mimeType, fileName, fullInstruction);
+    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
+    out.enginesUsed = ["claude-sonnet"];
+    return out;
+  };
+
+  if (runMode === "SINGLE_ANTHROPIC") {
+    telemetry.documentAI = { phase: "skipped" };
+    telemetry.gemini = { phase: "skipped" };
+    telemetry.gpt = { phase: "skipped" };
+    telemetry.mistral = { phase: "skipped" };
+    telemetry.anthropic = { phase: "running" };
+    await emitTelemetry();
+    const t0 = Date.now();
+    try {
+      v5 = await runAnthropicOnly();
+      telemetry.anthropic = { phase: "ok", ms: Date.now() - t0 };
+      await emitTelemetry();
+      await emitPartial(v5, "anthropic_single");
+      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+    } catch (e) {
+      telemetry.anthropic = { phase: "error", detail: compactError(e, 200) };
+      await emitTelemetry();
+      throw e;
+    }
+  }
 
   if (runMode === "SINGLE_DOCUMENT_AI") {
     telemetry.documentAI = { phase: "running" };
@@ -292,15 +327,18 @@ export async function runTriEngineExtraction(params: {
   if (runMode === "MULTI_PARALLEL") {
     const startedAt = Date.now();
     const includeDocAi = scanMode === "INVOICE_FINANCIAL";
+    const includeAnthropic = isAnthropicConfigured();
     telemetry.documentAI = includeDocAi ? { phase: "running" } : { phase: "skipped" };
     telemetry.gemini = { phase: "running" };
     telemetry.gpt = { phase: "running" };
+    telemetry.anthropic = includeAnthropic ? { phase: "running" } : { phase: "skipped" };
     await emitTelemetry();
 
-    const [docAiResult, geminiResult, openAiResult] = await Promise.allSettled([
+    const [docAiResult, geminiResult, openAiResult, anthropicResult] = await Promise.allSettled([
       includeDocAi ? runDocAiOnly() : Promise.reject(new Error("Document AI skipped for this scan mode.")),
       runGeminiOnly(),
       runOpenAiOnly(),
+      includeAnthropic ? runAnthropicOnly() : Promise.reject(new Error("Anthropic not configured.")),
     ]);
 
     const fulfilled: ScanExtractionV5[] = [];
@@ -334,6 +372,15 @@ export async function runTriEngineExtraction(params: {
     } else {
       failures.push(`OpenAI: ${compactError(openAiResult.reason)}`);
       telemetry.gpt = { phase: "error", detail: compactError(openAiResult.reason, 200) };
+    }
+
+    if (includeAnthropic && anthropicResult.status === "fulfilled") {
+      telemetry.anthropic = { phase: "ok", ms: Date.now() - startedAt };
+      fulfilled.push(anthropicResult.value);
+      await emitPartial(anthropicResult.value, "anthropic_parallel");
+    } else if (includeAnthropic) {
+      failures.push(`Anthropic: ${compactError(anthropicResult.status === "rejected" ? anthropicResult.reason : "failed")}`);
+      telemetry.anthropic = { phase: "error", detail: compactError(anthropicResult.status === "rejected" ? anthropicResult.reason : "failed", 200) };
     }
     await emitTelemetry();
 
@@ -562,6 +609,7 @@ export async function runTriEngineExtraction(params: {
         telemetry.mistral = { phase: "ok", ms: Date.now() - tM2 };
         telemetry.documentAI = { phase: "skipped" };
         telemetry.gpt = { phase: "skipped" };
+        telemetry.anthropic = { phase: "skipped" };
         await emitTelemetry();
         await emitPartial(v5, "mistral_fallback");
         const aiData = v5ToPersistableAiData(v5);
@@ -570,7 +618,27 @@ export async function runTriEngineExtraction(params: {
       } catch (mistralErr) {
         telemetry.mistral = { phase: "error", detail: mistralErr instanceof Error ? mistralErr.message.slice(0, 200) : String(mistralErr) };
         await emitTelemetry();
-        throw e; // זורקים את שגיאת ה-Gemini המקורית
+        // Anthropic fallback — אחרי Gemini + Mistral נכשלו
+        if (!isAnthropicConfigured()) throw e;
+        const tA = Date.now();
+        telemetry.anthropic = { phase: "running", detail: "fallback_after_gemini_mistral_error" };
+        await emitTelemetry();
+        try {
+          v5 = await runAnthropicOnly();
+          v5.enginesUsed = ["anthropic-fallback"];
+          telemetry.anthropic = { phase: "ok", ms: Date.now() - tA };
+          telemetry.documentAI = { phase: "skipped" };
+          telemetry.gpt = { phase: "skipped" };
+          await emitTelemetry();
+          await emitPartial(v5, "anthropic_fallback");
+          const aiDataA = v5ToPersistableAiData(v5);
+          aiDataA._triEngineTelemetry = telemetry;
+          return { aiData: aiDataA, v5, telemetry };
+        } catch (anthropicErr) {
+          telemetry.anthropic = { phase: "error", detail: anthropicErr instanceof Error ? anthropicErr.message.slice(0, 200) : String(anthropicErr) };
+          await emitTelemetry();
+          throw e; // זורקים את שגיאת ה-Gemini המקורית
+        }
       }
     }
     v5 = coerceLegacyAiToV5(raw, fileName, scanMode);
@@ -578,6 +646,7 @@ export async function runTriEngineExtraction(params: {
     telemetry.documentAI = { phase: "skipped" };
     telemetry.gpt = { phase: "skipped" };
     telemetry.mistral = { phase: "skipped" };
+    telemetry.anthropic = { phase: "skipped" };
     await emitTelemetry();
     await emitPartial(v5, "gemini_flash");
   }

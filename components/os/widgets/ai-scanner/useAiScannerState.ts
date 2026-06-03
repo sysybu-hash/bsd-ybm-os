@@ -143,6 +143,43 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     return () => { cancelled = true; };
   }, [liveData?.driveImportFile, runFileQueue]);
 
+  // ── PWA Share Target: auto-load file shared from another app ─────────────
+  // When the user shares a file to BSD-YBM from Android/iOS, the server saves it
+  // to Drive and redirects with ?sharedDriveId=<fileId>&sharedFileName=<name>.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sharedDriveId = params.get("sharedDriveId");
+    const sharedFileName = params.get("sharedFileName") ?? "shared-document";
+    if (!sharedDriveId) return;
+    if (driveImportDoneRef.current === sharedDriveId) return;
+    driveImportDoneRef.current = sharedDriveId;
+    // Clean URL so refresh doesn't re-trigger
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete("sharedDriveId");
+    clean.searchParams.delete("sharedFileName");
+    window.history.replaceState(null, "", clean.toString());
+    // Download and scan
+    void (async () => {
+      const { toast } = await import("sonner");
+      toast.info(`טוען קובץ משותף: ${sharedFileName}`);
+      try {
+        const { inferMimeFromFileName } = await import("@/lib/scan-mime");
+        const urlParams = new URLSearchParams({ fileId: sharedDriveId, fileName: sharedFileName, mimeType: inferMimeFromFileName(sharedFileName, "") });
+        const res = await fetch(`/api/os/google-drive/download?${urlParams}`, { credentials: "include" });
+        if (!res.ok) throw new Error("הורדת קובץ משותף נכשלה");
+        const blob = await res.blob();
+        const resolvedMime = inferMimeFromFileName(sharedFileName, blob.type);
+        const file = new File([blob], sharedFileName, { type: resolvedMime });
+        await runFileQueue([file]);
+      } catch (err) {
+        driveImportDoneRef.current = null;
+        const { toast: t2 } = await import("sonner");
+        t2.error(err instanceof Error ? err.message : "טעינת קובץ משותף נכשלה");
+      }
+    })();
+  }, [runFileQueue]);
+
   useEffect(() => { if (showProjectPicker) void loadProjectsList(); }, [showProjectPicker, loadProjectsList]);
 
   // ── handlers ──────────────────────────────────────────────────────────────

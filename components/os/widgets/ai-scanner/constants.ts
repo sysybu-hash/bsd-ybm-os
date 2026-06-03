@@ -9,6 +9,7 @@ export const ENGINE_MODES: { id: TriEngineRunMode; labelKey: string; fallback: s
   { id: "MULTI_PARALLEL", labelKey: "scanner.modeMulti", fallback: "ריבוי מנועים" },
   { id: "SINGLE_GEMINI", labelKey: "scanner.modeGemini", fallback: "Gemini" },
   { id: "SINGLE_OPENAI", labelKey: "scanner.modeOpenai", fallback: "OpenAI" },
+  { id: "SINGLE_ANTHROPIC", labelKey: "scanner.modeAnthropic", fallback: "Claude (Anthropic)" },
   { id: "SINGLE_DOCUMENT_AI", labelKey: "scanner.modeDocAi", fallback: "Document AI" },
   { id: "SINGLE_MISTRAL", labelKey: "scanner.modeMistral", fallback: "Mistral / Pixtral" },
 ];

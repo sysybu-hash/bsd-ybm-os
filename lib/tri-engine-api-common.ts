@@ -34,7 +34,8 @@ export type TriEngineRunMode =
   | "SINGLE_DOCUMENT_AI"
   | "SINGLE_GEMINI"
   | "SINGLE_OPENAI"
-  | "SINGLE_MISTRAL";
+  | "SINGLE_MISTRAL"
+  | "SINGLE_ANTHROPIC";
 
 export function parseScanMode(raw: string | null): ScanModeV5 {
   const u = String(raw ?? "").toUpperCase();
@@ -60,7 +61,8 @@ export function parseTriEngineRunMode(raw: string | null): TriEngineRunMode {
     u === "SINGLE_DOCUMENT_AI" ||
     u === "SINGLE_GEMINI" ||
     u === "SINGLE_OPENAI" ||
-    u === "SINGLE_MISTRAL"
+    u === "SINGLE_MISTRAL" ||
+    u === "SINGLE_ANTHROPIC"
   ) {
     return u;
   }
