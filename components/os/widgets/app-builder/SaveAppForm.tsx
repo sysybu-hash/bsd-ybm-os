@@ -1,5 +1,6 @@
 "use client";
 
+import { Share2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 const PREFIX = "workspaceWidgets.appBuilder";
@@ -10,10 +11,12 @@ interface SaveAppFormProps {
   isEditing: boolean;
   readOnlyLoaded: boolean;
   shareIdea: boolean;
+  sharingIdea?: boolean;
   saving: boolean;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onShareIdeaChange: (value: boolean) => void;
+  onShareNow?: () => void;
   onSave: () => void;
 }
 
@@ -24,10 +27,12 @@ export function SaveAppForm({
   isEditing,
   readOnlyLoaded,
   shareIdea,
+  sharingIdea = false,
   saving,
   onNameChange,
   onDescriptionChange,
   onShareIdeaChange,
+  onShareNow,
   onSave,
 }: SaveAppFormProps) {
   const { t } = useI18n();
@@ -58,6 +63,16 @@ export function SaveAppForm({
             <span className="text-[10px] text-[color:var(--foreground-muted)]">{t(`${PREFIX}.shareIdeaHint`)}</span>
           </span>
         </label>
+      ) : onShareNow && !readOnlyLoaded ? (
+        <button
+          type="button"
+          onClick={onShareNow}
+          disabled={sharingIdea}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/15 disabled:opacity-60"
+        >
+          <Share2 size={12} aria-hidden />
+          {sharingIdea ? "שולח…" : t(`${PREFIX}.shareIdeaLabel`)}
+        </button>
       ) : null}
       <button type="button" onClick={onSave} disabled={saving || readOnlyLoaded}
         className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-indigo-600 text-white hover:bg-indigo-500" : "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"}`}>

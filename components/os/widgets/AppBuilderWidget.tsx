@@ -48,6 +48,7 @@ export default function AppBuilderWidget() {
   const generatedCode = codeHistory.current;
   const [mobilePane, setMobilePane] = useState<"build" | "preview">("build");
   const [regenerating, setRegenerating] = useState(false);
+  const [sharingIdea, setSharingIdea] = useState(false);
 
   const isEditing = Boolean(savedSchemaId);
 
@@ -163,6 +164,28 @@ export default function AppBuilderWidget() {
       setRegenerating(false);
     }
   }, [codeHistory, locale, prefix, t]);
+
+  /** Shares the currently-loaded saved app to the community ideas pool. */
+  const handleShareNow = useCallback(async () => {
+    if (!uiSchema || !appName.trim()) return;
+    setSharingIdea(true);
+    try {
+      const res = await submitAppIdeaAction({
+        appName: appName.trim(),
+        appType: uiSchema.type,
+        uiSchema,
+      });
+      if (res.ok) {
+        setSuccess(t(`${prefix}.shareIdeaSuccess`));
+      } else {
+        setError(res.error ?? t(`${prefix}.saveSchemaError`));
+      }
+    } catch {
+      setError(t(`${prefix}.saveSchemaError`));
+    } finally {
+      setSharingIdea(false);
+    }
+  }, [appName, prefix, t, uiSchema]);
 
   const handleLoadSaved = useCallback(
     async (schemaId: string) => {
@@ -363,10 +386,12 @@ export default function AppBuilderWidget() {
           isEditing={isEditing}
           readOnlyLoaded={readOnlyLoaded}
           shareIdea={shareIdea}
+          sharingIdea={sharingIdea}
           saving={saving}
           onNameChange={setAppName}
           onDescriptionChange={setAppDescription}
           onShareIdeaChange={setShareIdea}
+          onShareNow={() => void handleShareNow()}
           onSave={() => void handleSaveSchema()}
         />
       ) : null}
