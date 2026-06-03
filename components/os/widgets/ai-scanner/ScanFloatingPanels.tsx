@@ -120,6 +120,7 @@ export function ScanFloatingPanels({
             v5={lastScanV5}
             fileName={lastScanFileName}
             telemetry={telemetry}
+            validation={pendingAnalysis?.validation}
             onConfirmErp={() => pendingAnalysis && void confirmAnalysis()}
             onSaveNotebook={() => void saveToNotebook()}
             savingNotebook={savingNotebook}
