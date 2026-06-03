@@ -37,6 +37,7 @@ export function buildGanttLabels(t: (key: string) => string) {
     cancel: t("projectDashboard.cancel"),
     delete: t("projectDashboard.delete"),
     deleteConfirm: t("projectDashboard.deleteConfirm"),
+    scaleDays: t("projectDashboard.scaleDays"),
     scaleWeeks: t("projectDashboard.scaleWeeks"),
     scaleMonths: t("projectDashboard.scaleMonths"),
     trade: t("projectDashboard.trade"),

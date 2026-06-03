@@ -358,6 +358,7 @@ model ProjectBoqLine {
   progressCoefficient Float?
   billedAmount       Float?
   isWorkDone         Boolean               @default(false)
+  source             String?               @default("MANUAL")
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   project            Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)

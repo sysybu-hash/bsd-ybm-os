@@ -20,6 +20,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [activeTab, setActiveTab] = useState<TabId>("financial");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [uploadingBlueprint, setUploadingBlueprint] = useState(false);
+  const [blueprintPreview, setBlueprintPreview] = useState<import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [diaryInitialDesc, setDiaryInitialDesc] = useState<string | undefined>();
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
@@ -116,16 +117,38 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       const fd = new FormData();
       fd.append("file", file);
       fd.append("projectId", resolvedId);
+      fd.append("preview", "true");
       const res = await fetch("/api/projects/analyze-blueprint", { method: "POST", credentials: "include", body: fd });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error ?? t("projectDashboard.errors.blueprint")); return; }
-      toast.success(json.message ?? t("projectDashboard.blueprintSuccess"));
-      await refresh();
+      setBlueprintPreview(json as import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis);
     } catch {
       toast.error(t("projectDashboard.errors.blueprint"));
     } finally {
       setUploadingBlueprint(false);
     }
+  };
+
+  const confirmBlueprintImport = async (selected: import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis) => {
+    if (!resolvedId) return;
+    const res = await fetch("/api/projects/analyze-blueprint", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: resolvedId, ...selected }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      toast.error(json.error ?? t("projectDashboard.errors.blueprint"));
+      return;
+    }
+    const parts: string[] = [];
+    if ((json.tasksCreated as number) > 0) parts.push(`${json.tasksCreated as number} משימות`);
+    if ((json.milestonesCreated as number) > 0) parts.push(`${json.milestonesCreated as number} אבני דרך`);
+    if ((json.boqItemsCreated as number) > 0) parts.push(`${json.boqItemsCreated as number} סעיפי BOQ`);
+    toast.success(parts.length > 0 ? `יובאו: ${parts.join(", ")}` : (json.message as string ?? t("projectDashboard.blueprintSuccess")));
+    setBlueprintPreview(null);
+    await refresh();
   };
 
   useEffect(() => {
@@ -162,12 +185,14 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     projectsList, projectsListLoading,
     activeTab, setActiveTab,
     pushEnabled, uploadingBlueprint,
+    blueprintPreview, setBlueprintPreview,
     fileRef,
     diaryInitialDesc, setDiaryInitialDesc,
     diaryInitialTaskId, setDiaryInitialTaskId,
     showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
-    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, loadProjectsList,
+    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush,
+    onBlueprintFile, confirmBlueprintImport, loadProjectsList,
     openWorkspaceWidget,
   };
 }

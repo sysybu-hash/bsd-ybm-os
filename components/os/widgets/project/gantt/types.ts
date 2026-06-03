@@ -7,11 +7,13 @@ export type GanttTask = {
   startDate: string | null;
   endDate: string | null;
   progress: number;
+  status?: string | null;
   dependencies?: string | null;
   tradeId?: ProjectSubDomainId | null;
   linkedBoqLineId?: string | null;
   linkedBoqLabel?: string | null;
   linkedWorkDiaryId?: string | null;
+  parentTaskId?: string | null;
 };
 
 export type GanttTaskDraft = {
@@ -50,6 +52,7 @@ export type GanttLabels = {
   ganttToday?: string;
   ganttProgress?: string;
   ganttDependency?: string;
+  scaleDays?: string;
 };
 
 export type GanttProps = {
@@ -66,4 +69,4 @@ export type GanttProps = {
   hideConstructionFeatures?: boolean;
 };
 
-export type Scale = "weeks" | "months";
+export type Scale = "days" | "weeks" | "months";

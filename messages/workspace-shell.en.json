@@ -1648,6 +1648,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "deleteConfirm": "Delete this task?",
+    "scaleDays": "Days",
     "scaleWeeks": "Weeks",
     "scaleMonths": "Months",
     "trade": "Sub-domain",

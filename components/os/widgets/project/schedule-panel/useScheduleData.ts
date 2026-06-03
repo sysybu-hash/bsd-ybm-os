@@ -102,6 +102,8 @@ export function useScheduleData({
           ? boqById.get(t.linkedBoqLineId)?.description?.slice(0, 40) ?? t.linkedBoqLineId
           : null,
         linkedWorkDiaryId: t.linkedWorkDiaryId ?? null,
+        parentTaskId: t.parentTaskId ?? null,
+        status: t.status ?? null,
       })),
     [rawTasks, boqById, organizationIndustry],
   );

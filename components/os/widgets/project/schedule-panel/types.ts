@@ -6,10 +6,12 @@ export type ScheduleTaskRow = {
   startDate: string | null;
   endDate: string | null;
   progress: number;
+  status?: string | null;
   dependencies: string | null;
   description?: string | null;
   linkedBoqLineId?: string | null;
   linkedWorkDiaryId?: string | null;
+  parentTaskId?: string | null;
 };
 
 export type ScheduleLabels = {
@@ -34,6 +36,7 @@ export type ScheduleLabels = {
   cancel: string;
   delete: string;
   deleteConfirm: string;
+  scaleDays: string;
   scaleWeeks: string;
   scaleMonths: string;
   trade: string;

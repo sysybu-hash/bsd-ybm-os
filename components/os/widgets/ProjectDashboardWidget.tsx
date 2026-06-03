@@ -8,6 +8,7 @@ import ProjectSchedulePanel from "@/components/os/widgets/project/ProjectSchedul
 import WidgetState from "@/components/os/WidgetState";
 import type { ProjectDashboardWidgetProps } from "./project-dashboard/types";
 import { buildGanttLabels } from "./project-dashboard/utils";
+import BlueprintPreviewModal from "./project-dashboard/BlueprintPreviewModal";
 import { FinancialTab } from "./project-dashboard/FinancialTab";
 import { DiaryTab } from "./project-dashboard/DiaryTab";
 import { SettingsTab } from "./project-dashboard/SettingsTab";
@@ -36,6 +37,7 @@ export default function ProjectDashboardWidget({
     projectsList, projectsListLoading,
     activeTab, setActiveTab,
     pushEnabled, uploadingBlueprint,
+    blueprintPreview, setBlueprintPreview, confirmBlueprintImport,
     fileRef,
     diaryInitialDesc, setDiaryInitialDesc,
     diaryInitialTaskId, setDiaryInitialTaskId,
@@ -113,6 +115,14 @@ export default function ProjectDashboardWidget({
         onBlueprintFile={onBlueprintFile}
         openWorkspaceWidget={openWorkspaceWidget}
       />
+
+      {blueprintPreview ? (
+        <BlueprintPreviewModal
+          data={blueprintPreview}
+          onConfirm={confirmBlueprintImport}
+          onClose={() => setBlueprintPreview(null)}
+        />
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
         {activeTab === "financial" && (

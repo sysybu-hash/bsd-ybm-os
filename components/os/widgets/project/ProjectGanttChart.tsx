@@ -6,7 +6,7 @@ import { getProjectSubDomainsForIndustry } from "@/lib/project-sub-domains";
 import { GanttTaskForm } from "./gantt/GanttTaskForm";
 import { GanttChartView } from "./gantt/GanttChartView";
 import { GanttTableView } from "./gantt/GanttTableView";
-import { buildTicks, draftFromTask, emptyDraft } from "./gantt/utils";
+import { buildTicks, draftFromTask, emptyDraft, autoScale } from "./gantt/utils";
 import type { GanttProps, GanttTask, GanttTaskDraft, Scale } from "./gantt/types";
 
 // Re-export types for external consumers
@@ -29,7 +29,16 @@ export default function ProjectGanttChart({
 }: GanttProps) {
   const projectSubDomains = useMemo(() => getProjectSubDomainsForIndustry(organizationIndustry), [organizationIndustry]);
   const [view, setView] = useState<View>("chart");
-  const [scale, setScale] = useState<Scale>("weeks");
+  const [scale, setScale] = useState<Scale>(() => {
+    if (tasks.length === 0) return "weeks";
+    let min = Infinity, max = -Infinity;
+    for (const t of tasks) {
+      const s = new Date(t.startDate ?? "").getTime() || Date.now();
+      const e = new Date(t.endDate ?? "").getTime() || s + 7 * 86400000;
+      min = Math.min(min, s); max = Math.max(max, e);
+    }
+    return autoScale(max - min);
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<GanttTaskDraft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -100,6 +109,10 @@ export default function ProjectGanttChart({
         {view === "chart" ? (
           <>
             <span className="text-[color:var(--foreground-muted)]">|</span>
+            <button type="button" onClick={() => setScale("days")}
+              className={`rounded px-2 py-1 ${scale === "days" ? "bg-indigo-500/20" : "border border-[color:var(--border-main)]"}`}>
+              {labels.scaleDays ?? "ימים"}
+            </button>
             <button type="button" onClick={() => setScale("weeks")}
               className={`rounded px-2 py-1 ${scale === "weeks" ? "bg-indigo-500/20" : "border border-[color:var(--border-main)]"}`}>
               {labels.scaleWeeks}
@@ -134,8 +147,10 @@ export default function ProjectGanttChart({
         <GanttChartView
           tasks={tasks} range={range} ticks={ticks} todayLeft={todayLeft}
           taskById={taskById} hideConstructionFeatures={hideConstructionFeatures}
+          scale={scale}
           labels={labels}
           onEdit={openEdit}
+          onProgressChange={onProgressChange}
           onOpenDiary={onOpenDiary}
           onCreateDiary={onCreateDiary}
         />
