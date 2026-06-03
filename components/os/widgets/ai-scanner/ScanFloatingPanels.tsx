@@ -121,6 +121,7 @@ export function ScanFloatingPanels({
             fileName={lastScanFileName}
             telemetry={telemetry}
             validation={pendingAnalysis?.validation}
+            driveWebViewLink={pendingAnalysis?.driveWebViewLink}
             onConfirmErp={() => pendingAnalysis && void confirmAnalysis()}
             onSaveNotebook={() => void saveToNotebook()}
             savingNotebook={savingNotebook}

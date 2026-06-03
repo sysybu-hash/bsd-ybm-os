@@ -91,6 +91,7 @@ export async function runScanSingleFile({
     let finalAi: Record<string, unknown> | undefined;
     let lastTelemetry: TriEngineTelemetry | null = null;
     let finalValidation: ScanValidationResult | undefined;
+    let finalDriveWebViewLink: string | null | undefined;
 
     await readNdjsonStream(res, (obj) => {
       if (obj.type === "telemetry" && obj.telemetry) {
@@ -117,6 +118,9 @@ export async function runScanSingleFile({
         if (obj.validation && typeof obj.validation === "object") {
           finalValidation = obj.validation as ScanValidationResult;
         }
+        if (typeof obj.driveWebViewLink === "string") {
+          finalDriveWebViewLink = obj.driveWebViewLink;
+        }
       }
       if (obj.type === "error" || (obj.error && !obj.ok)) {
         throw new Error(String(obj.error ?? "Scan failed"));
@@ -124,7 +128,11 @@ export async function runScanSingleFile({
     }, signal);
 
     if (finalV5) {
-      const analysis = { ...mapV5ToAnalysis(finalV5, finalAi), validation: finalValidation };
+      const analysis = {
+        ...mapV5ToAnalysis(finalV5, finalAi),
+        validation: finalValidation,
+        driveWebViewLink: finalDriveWebViewLink,
+      };
       setPendingAnalysis(analysis);
       setResultJson(JSON.stringify(finalV5, null, 2));
       setLastScanV5(finalV5);

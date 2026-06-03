@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Download, Library, Save } from "lucide-react";
+import { Copy, Download, ExternalLink, Library, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
@@ -18,6 +18,7 @@ export type ScanResultsPanelProps = {
   fileName: string;
   telemetry?: TriEngineTelemetry | null;
   validation?: ScanValidationResult | null;
+  driveWebViewLink?: string | null;
   onConfirmErp?: () => void;
   onSaveNotebook?: () => void;
   savingNotebook?: boolean;
@@ -34,6 +35,7 @@ export default function ScanResultsPanel({
   fileName,
   telemetry,
   validation,
+  driveWebViewLink,
   onConfirmErp,
   onSaveNotebook,
   savingNotebook,
@@ -202,6 +204,18 @@ export default function ScanResultsPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      {driveWebViewLink && (
+        <a
+          href={driveWebViewLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-50/60 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100/80 dark:border-blue-400/20 dark:bg-blue-900/10 dark:text-blue-400 dark:hover:bg-blue-900/20"
+        >
+          <ExternalLink size={13} aria-hidden />
+          צפה במסמך ב-Drive
+        </a>
       )}
 
       <div className="flex flex-wrap gap-2">

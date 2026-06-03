@@ -911,6 +911,10 @@ model Document {
   type                     String
   status                   String                    @default("PROCESSED")
   aiData                   Json?
+  /// Google Drive file ID of the original scanned document (null if not archived or Drive not linked)
+  fileDriveId              String?
+  /// Direct browser URL to view the original file in Google Drive
+  fileDriveWebViewLink     String?
   userId                   String
   organizationId           String
   createdAt                DateTime                  @default(now())
@@ -923,6 +927,7 @@ model Document {
 
   @@index([organizationId, createdAt])
   @@index([organizationId, deletedAt])
+  @@index([fileDriveId])
 }
 
 /// תוצאת סריקת AI לפי גיבוב קובץ — חיסכון במכסה ובעלות API

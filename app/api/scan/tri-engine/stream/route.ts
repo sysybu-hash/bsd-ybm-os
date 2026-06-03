@@ -160,7 +160,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
         return;
       }
 
-      const { documentId } = await persistTriEngineToErp({
+      const { documentId, driveWebViewLink } = await persistTriEngineToErp({
         file: parsed.file,
         aiData,
         userId: gate.userId,
@@ -171,6 +171,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
         type: "done",
         ok: true,
         documentId,
+        driveWebViewLink,
         aiData,
         telemetry,
         validation,

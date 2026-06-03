@@ -22,6 +22,8 @@ export interface DocumentAnalysis {
   v5?: ScanExtractionV5;
   /** תוצאת אימות מהשרת — בעיות שנמצאו + ציון ביטחון */
   validation?: ScanValidationResult;
+  /** קישור לקובץ המקורי ב-Google Drive (null אם Drive לא מחובר) */
+  driveWebViewLink?: string | null;
 }
 
 export interface ScanHistoryItem {

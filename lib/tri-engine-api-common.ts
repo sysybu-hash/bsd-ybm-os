@@ -18,6 +18,7 @@ import type { MessageTree } from "@/lib/i18n/keys";
 import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
+import { archiveScanToDrive } from "@/lib/scan-archive-to-drive";
 import { isDocAiConfigured, isGeminiConfigured, isMistralConfigured, isOpenAiConfigured } from "@/lib/ai-providers";
 import { notifyUser } from "@/lib/notify-user";
 
@@ -338,15 +339,23 @@ export async function persistTriEngineToErp(params: {
   aiData: Record<string, unknown>;
   userId: string;
   organizationId: string;
-}): Promise<{ documentId: string; priceSpikes: PriceSpikeAlert[] }> {
+}): Promise<{ documentId: string; priceSpikes: PriceSpikeAlert[]; driveWebViewLink?: string | null }> {
   const { file, aiData, userId, organizationId } = params;
 
+  // ── 1. שמירה ל-Google Drive (לא חוסמת — מכשל שקט אם Drive לא מחובר) ──────
+  const driveResult = await archiveScanToDrive(userId, file);
+  const fileDriveId = driveResult.ok ? driveResult.driveFileId : null;
+  const fileDriveWebViewLink = driveResult.ok ? driveResult.driveWebViewLink : null;
+
+  // ── 2. יצירת רשומת Document ב-DB ──────────────────────────────────────────
   const doc = await prisma.document.create({
     data: {
       fileName: file.name,
       type: String(aiData.docType ?? "UNKNOWN"),
       status: "PROCESSED",
       aiData: aiData as Prisma.InputJsonValue,
+      fileDriveId,
+      fileDriveWebViewLink,
       userId,
       organizationId,
     },
@@ -382,7 +391,7 @@ export async function persistTriEngineToErp(params: {
     );
   }
 
-  return { documentId: doc.id, priceSpikes };
+  return { documentId: doc.id, priceSpikes, driveWebViewLink: fileDriveWebViewLink };
 }
 
 async function detectAndNotifyPriceSpikes(params: {
