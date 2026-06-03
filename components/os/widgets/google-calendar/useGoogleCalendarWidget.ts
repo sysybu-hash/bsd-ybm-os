@@ -35,6 +35,7 @@ export function useGoogleCalendarWidget(
   const [ready, setReady] = useState(false);
   const [suggested, setSuggested] = useState(false);
   const [active, setActive] = useState(false);
+  const [localOnly, setLocalOnly] = useState(false);
   const [events, setEvents] = useState<CalendarEventRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [calendarSummary, setCalendarSummary] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function useGoogleCalendarWidget(
         return;
       }
       setActive(Boolean(data.active));
+      setLocalOnly(Boolean((data as Record<string, unknown>).localOnly));
       setSuggested(Boolean(data.suggested));
       setEvents(data.events ?? []);
       setCalendarSummary(data.calendarSummary ?? null);
@@ -181,6 +183,7 @@ export function useGoogleCalendarWidget(
     loading,
     suggested,
     active,
+    localOnly,
     events,
     error,
     calendarSummary,

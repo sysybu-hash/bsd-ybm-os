@@ -64,12 +64,18 @@ export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
   const ctx = await loadCalendarEligibilityContext(userId, orgId);
 
   if (!ctx.eligible) {
+    // Google Calendar not connected — show local tasks/projects as calendar events
+    const range = parseEventRange(req);
+    const localEvents = await buildLocalCalendarEvents(userId, orgId, range.from, range.to);
     return NextResponse.json({
-      connected: ctx.scope ? true : false,
-      active: false,
+      connected: false,
+      active: true,       // ← always show the calendar UI
+      localOnly: true,    // ← hint to UI: show "connect Google" banner
       suggested: Boolean(org?.calendarGoogleEnabled && ctx.org && ctx.org.subscriptionStatus === "ACTIVE"),
       connectUrl: buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard"),
-      events: [],
+      calendarSummary: "יומן מקומי",
+      canWrite: false,
+      events: localEvents,
     });
   }
 
@@ -199,3 +205,103 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }, data) => {
     throw e;
   }
 }, { schema: createEventSchema });
+
+// ── Local calendar events (tasks + projects) shown when Google not connected ──
+
+async function buildLocalCalendarEvents(
+  userId: string,
+  orgId: string,
+  from: Date,
+  to: Date,
+) {
+  type LocalEvent = {
+    id: string;
+    summary: string;
+    start: string;
+    end: string;
+    allDay: boolean;
+    entityType: string;
+    htmlLink: null;
+    googleEventId: null;
+    taskId: string | null;
+    local: true;
+  };
+
+  const events: LocalEvent[] = [];
+
+  // 1. Tasks with dueDate or startDate in range
+  const tasks = await prisma.task.findMany({
+    where: {
+      organizationId: orgId,
+      status: { notIn: ["DONE", "ARCHIVED"] },
+      OR: [
+        { dueDate: { gte: from, lte: to } },
+        { startDate: { gte: from, lte: to } },
+      ],
+    },
+    select: { id: true, title: true, dueDate: true, startDate: true, status: true },
+    take: 100,
+    orderBy: { dueDate: "asc" },
+  }).catch(() => []);
+
+  for (const t of tasks) {
+    const date = t.dueDate ?? t.startDate;
+    if (!date) continue;
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    events.push({
+      id: `task-${t.id}`,
+      summary: t.title,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      allDay: true,
+      entityType: "task",
+      htmlLink: null,
+      googleEventId: null,
+      taskId: t.id,
+      local: true,
+    });
+  }
+
+  // 2. Projects with activeFrom/activeTo in range
+  const projects = await prisma.project.findMany({
+    where: {
+      organizationId: orgId,
+      isActive: true,
+      OR: [
+        { activeFrom: { gte: from, lte: to } },
+        { activeTo: { gte: from, lte: to } },
+      ],
+    },
+    select: { id: true, name: true, activeFrom: true, activeTo: true },
+    take: 50,
+    orderBy: { activeFrom: "asc" },
+  }).catch(() => []);
+
+  for (const p of projects) {
+    const date = p.activeFrom ?? p.activeTo;
+    if (!date) continue;
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    events.push({
+      id: `project-${p.id}`,
+      summary: `📁 ${p.name}`,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      allDay: true,
+      entityType: "project",
+      htmlLink: null,
+      googleEventId: null,
+      taskId: null,
+      local: true,
+    });
+  }
+
+  // Sort by date
+  events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  return events;
+}

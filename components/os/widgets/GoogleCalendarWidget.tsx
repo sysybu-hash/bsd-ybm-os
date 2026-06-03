@@ -57,6 +57,8 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
 
     active,
 
+    localOnly,
+
     error,
 
     calendarSummary,
@@ -208,6 +210,23 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
       dir={layoutDir}
 
     >
+
+      {/* Banner: local-only mode — invite user to connect Google Calendar */}
+      {localOnly && (
+        <div className="shrink-0 flex items-center gap-2 border-b border-blue-400/20 bg-blue-50/60 px-3 py-2 text-xs dark:bg-blue-900/10">
+          <span className="text-blue-600 dark:text-blue-400 shrink-0">📅</span>
+          <span className="text-blue-800 dark:text-blue-300 flex-1">
+            מציג משימות ופרויקטים בלבד. לסנכרון עם Google Calendar —
+          </span>
+          <button
+            type="button"
+            onClick={() => openWorkspaceWidget?.("settings", { tab: "calendar" })}
+            className="shrink-0 rounded-lg bg-blue-600 px-2 py-1 font-bold text-white hover:bg-blue-500"
+          >
+            חבר
+          </button>
+        </div>
+      )}
 
       <div className="gcal-print-only px-4 py-3 border-b border-neutral-300">
 
