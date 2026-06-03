@@ -27,7 +27,7 @@ export type RunScanArgs = {
   setPendingAnalysis: (a: DocumentAnalysis | null) => void;
   setResultJson: (s: string) => void;
   setTelemetry: (t: TriEngineTelemetry | null) => void;
-  setScanClassification: (c: { scanMode: string; confidence: number; rationale?: string } | null) => void;
+  setScanClassification: (c: { scanMode: string; confidence: number; rationale?: string; uncertain?: boolean } | null) => void;
   setLastScanV5: (v: ScanExtractionV5 | null) => void;
   setLastScanFileName: (n: string) => void;
   applyFilePreview: (file: File) => void;
@@ -103,6 +103,7 @@ export async function runScanSingleFile({
           scanMode: String(obj.scanMode ?? ""),
           confidence: Number(obj.confidence) || 0,
           rationale: typeof obj.rationale === "string" ? obj.rationale : undefined,
+          uncertain: obj.uncertain === true,
         });
       }
       if (obj.type === "partial_v5" && obj.v5) {

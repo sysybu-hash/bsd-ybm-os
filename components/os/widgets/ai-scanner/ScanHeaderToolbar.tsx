@@ -8,7 +8,7 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { ENGINE_MODES } from "./constants";
 import type { EngineMeta, QueueItem } from "./types";
 
-type ScanClassification = { scanMode: string; confidence: number; rationale?: string };
+type ScanClassification = { scanMode: string; confidence: number; rationale?: string; uncertain?: boolean };
 
 type ScanHeaderToolbarProps = {
   t: (key: string) => string;
@@ -153,6 +153,21 @@ export function ScanHeaderToolbar({
           ))}
         </select>
       </div>
+
+      {/* ── Banner: סיווג לא-ודאי — שאל את המשתמש ──────────────────────── */}
+      {scanClassification?.uncertain && (
+        <div className="w-full mt-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50/80 px-3 py-2 text-xs dark:border-amber-400/20 dark:bg-amber-900/10">
+          <span className="text-amber-600 dark:text-amber-400 shrink-0" aria-hidden>⚠</span>
+          <span className="text-amber-800 dark:text-amber-300">
+            {tr("scanner.classificationUncertain",
+              `זוהה כ-${scanClassification.scanMode} (${Math.round(scanClassification.confidence * 100)}% ביטחון) — `
+            )}
+            <strong>{scanClassification.scanMode}</strong>
+            {" — "}
+            {tr("scanner.classificationUncertainHint", "ניתן לשנות סוג מסמך בבורר למעלה")}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

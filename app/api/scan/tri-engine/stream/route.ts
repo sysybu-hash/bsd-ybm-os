@@ -13,8 +13,8 @@ import {
   triEngineNdjsonErrorResponse,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-api-common";
-import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
-import { isExplicitClientScanMode } from "@/lib/scan-classify";
+import { classifyScanDocumentHeuristic, isExplicitClientScanMode } from "@/lib/scan-classify";
+import { classifyScanDocumentByContent } from "@/lib/scan-classify-ai";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createLogger } from "@/lib/logger";
@@ -69,20 +69,42 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   });
   const orgIndustry = orgRow?.industry ?? "CONSTRUCTION";
 
+  // ── סיווג היברידי (הוריסטיקה → AI לפי confidence) ──────────────────────
+  // רץ לפני authorize כי משפיע על credit kind
+  const HEURISTIC_CONFIDENCE_THRESHOLD = 0.8; // מעל זה → לא צריך AI
+  const AI_UNCERTAIN_THRESHOLD = 0.6;          // מתחת לזה → שאל את המשתמש
+
   let scanMode = parsed.scanMode;
   let engineRunMode = parsed.engineRunMode;
-  if (engineRunMode === "AUTO") {
-    const clientExplicit = isExplicitClientScanMode(parsed.scanMode);
-    if (!clientExplicit) {
-      const mime = parsed.file.type || "application/octet-stream";
-      const classification = classifyScanDocumentHeuristic({
-        fileName: parsed.file.name,
+  let resolvedClassification = null as Awaited<ReturnType<typeof classifyScanDocumentByContent>>;
+
+  if (engineRunMode === "AUTO" && !isExplicitClientScanMode(parsed.scanMode)) {
+    const mime = parsed.file.type || "application/octet-stream";
+    const heuristic = classifyScanDocumentHeuristic({
+      fileName: parsed.file.name,
+      mimeType: mime,
+      userInstruction: parsed.userInstruction,
+      industry: orgIndustry,
+    });
+
+    if (heuristic.confidence >= HEURISTIC_CONFIDENCE_THRESHOLD) {
+      // הוריסטיקה בטוחה — לא צריך AI call
+      scanMode = heuristic.scanMode;
+      resolvedClassification = heuristic;
+    } else {
+      // ביטחון נמוך → Gemini Flash מסווג לפי תוכן
+      const fileBuffer = await parsed.file.arrayBuffer();
+      const base64 = Buffer.from(fileBuffer).toString("base64");
+      const aiClass = await classifyScanDocumentByContent({
+        base64,
         mimeType: mime,
-        userInstruction: parsed.userInstruction,
         industry: orgIndustry,
       });
-      scanMode = classification.scanMode;
+      // שמור base64 כדי לא לקרוא שוב — ניצרף ל-input
+      resolvedClassification = aiClass ?? heuristic;
+      scanMode = resolvedClassification.scanMode;
     }
+
     const plan = resolveTriEnginePlan(scanMode, "AUTO");
     engineRunMode = plan.effectiveRunMode;
   }
@@ -119,21 +141,18 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   (async () => {
     try {
       await writeLine({ type: "start", usageWarnings: gate.usageWarnings });
-      if (parsed.engineRunMode === "AUTO") {
-        const classification = classifyScanDocumentHeuristic({
-          fileName: parsed.file.name,
-          mimeType: parsed.file.type || "application/octet-stream",
-          userInstruction: parsed.userInstruction,
-          industry: orgIndustry,
-        });
-        const plan = resolveTriEnginePlan(classification.scanMode, "AUTO");
+
+      if (parsed.engineRunMode === "AUTO" && resolvedClassification) {
+        const plan = resolveTriEnginePlan(resolvedClassification.scanMode, "AUTO");
         await writeLine({
           type: "classification",
-          scanMode: classification.scanMode,
-          confidence: classification.confidence,
-          rationale: classification.rationale,
+          scanMode: resolvedClassification.scanMode,
+          confidence: resolvedClassification.confidence,
+          rationale: resolvedClassification.rationale,
           engineRunMode: plan.effectiveRunMode,
           providerChain: plan.providerChain,
+          // סף לא-ודאי: הלקוח יכול להציג "זוהה כ-X, האם נכון?"
+          uncertain: resolvedClassification.confidence < AI_UNCERTAIN_THRESHOLD,
         });
       }
 

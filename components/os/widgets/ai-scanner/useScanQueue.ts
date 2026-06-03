@@ -48,6 +48,7 @@ export function useScanQueue({
     scanMode: string;
     confidence: number;
     rationale?: string;
+    uncertain?: boolean;
   } | null>(null);
   const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
   const [lastScanFileName, setLastScanFileName] = useState("");
