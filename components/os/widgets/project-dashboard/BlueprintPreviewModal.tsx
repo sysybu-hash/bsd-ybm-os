@@ -70,8 +70,8 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
   const totalSelected = selectedTasks.size + selectedMilestones.size + selectedBoq.size;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" dir="rtl">
-      <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-t-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl sm:rounded-2xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm" dir="rtl">
+      <div className="flex h-full max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-[color:var(--border-main)] px-4 py-3">
           <div className="flex-1">
@@ -89,7 +89,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
         </div>
 
         {/* Body — scrollable */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
 
           {/* Tasks */}
           {data.tasks.length > 0 ? (
