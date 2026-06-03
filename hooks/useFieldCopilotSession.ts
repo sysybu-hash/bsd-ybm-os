@@ -31,23 +31,28 @@ async function compressPhoto(file: File): Promise<Blob> {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1920;
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      const scale = Math.min(1, MAX / Math.max(w, h));
-      const cw = Math.round(w * scale);
-      const ch = Math.round(h * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = cw;
-      canvas.height = ch;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { resolve(file); return; }
-      ctx.drawImage(img, 0, 0, cw, ch);
-      canvas.toBlob(
-        (blob) => resolve(blob ?? file),
-        "image/jpeg",
-        0.85,
-      );
+      try {
+        const MAX = 1920;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const scale = Math.min(1, MAX / Math.max(w, h));
+        const cw = Math.round(w * scale);
+        const ch = Math.round(h * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(file); return; }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        canvas.toBlob(
+          (blob) => resolve(blob ?? file),
+          "image/jpeg",
+          0.85,
+        );
+      } catch {
+        // HEIC / unsupported format: fallback to original file
+        resolve(file);
+      }
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
@@ -59,6 +64,23 @@ export function useFieldCopilotSession(initialSessionId?: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [driveNotice, setDriveNotice] = useState<"saved" | "failed" | null>(null);
+
+  const listSessions = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await parseJsonRes<{ sessions: FieldCopilotDraft[] }>(
+        await fetch("/api/field-copilot/session", { credentials: "include" }),
+      );
+      return data.sessions;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const loadSession = useCallback(async (sessionId: string) => {
     setLoading(true);
@@ -269,6 +291,7 @@ export function useFieldCopilotSession(initialSessionId?: string) {
     setDraft,
     loading,
     error,
+    listSessions,
     loadSession,
     createSession,
     patchSession,

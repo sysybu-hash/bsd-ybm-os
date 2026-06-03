@@ -16,11 +16,13 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { FieldCopilotHandoffTarget } from "@/lib/field-copilot/handoff";
 import FieldCopilotStepper from "./field-copilot/FieldCopilotStepper";
 import FieldCopilotNavBar from "./field-copilot/FieldCopilotNavBar";
+import SessionHistoryPanel from "./field-copilot/SessionHistoryPanel";
 import ClientProjectStep from "./field-copilot/steps/ClientProjectStep";
 import CaptureStep from "./field-copilot/steps/CaptureStep";
 import AnalysisStep from "./field-copilot/steps/AnalysisStep";
 import ReviewStep from "./field-copilot/steps/ReviewStep";
 import ProduceStep from "./field-copilot/steps/ProduceStep";
+import type { FieldCopilotDraft } from "@/lib/validation/schemas/field-copilot";
 
 export type FieldCopilotWidgetProps = {
   liveData?: Record<string, unknown> | null;
@@ -50,6 +52,10 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
 
   const [step, setStep] = useState(initialStep);
   const [handoffBusy, setHandoffBusy] = useState(false);
+  const [showHistory, setShowHistory] = useState(!initialSessionId);
+  const [sessionList, setSessionList] = useState<FieldCopilotDraft[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const bootstrappedRef = useRef(false);
 
   const applyView = useCallback(
@@ -70,20 +76,24 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
     void (async () => {
       try {
         if (initialSessionId) {
+          // Opened from a direct link / liveData — load the session directly
           await session.loadSession(initialSessionId);
+          setShowHistory(false);
           return;
         }
-        await session.createSession({
-          contactId: readString(liveData, "contactId"),
-          contactName: readString(liveData, "contactName"),
-          projectId: readString(liveData, "projectId"),
-          projectName: readString(liveData, "projectName"),
-        });
+        // No specific session — show history list
+        setHistoryLoading(true);
+        try {
+          const list = await session.listSessions();
+          setSessionList(list ?? []);
+        } finally {
+          setHistoryLoading(false);
+        }
       } catch {
         /* surfaced via session.error */
       }
     })();
-  }, [authStatus, initialSessionId, liveData, session, session.createSession, session.loadSession]);
+  }, [authStatus, initialSessionId, session]);
 
   const goStep = (next: number) => {
     setStep(next);
@@ -108,6 +118,13 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
     }
   };
 
+  const onReopen = useCallback(async () => {
+    await session.patchSession({ status: "READY" });
+    goStep(3);
+  // goStep uses session.draft?.id and pushView — both stable within this scope
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
   const hasAnalysis =
     session.draft?.status === "READY" ||
     session.draft?.status === "HANDED_OFF" ||
@@ -124,11 +141,72 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
   const showNavContinue = step < 4;
   const showNavBack = step > 0;
 
-  if (authStatus === "loading" || (!session.draft && session.loading)) {
+  if (authStatus === "loading" || (!session.draft && session.loading && !showHistory)) {
     return (
       <div className="flex h-full min-h-[200px] items-center justify-center gap-2 text-sm text-[color:var(--foreground-muted)]">
         <Loader2 className="animate-spin" size={20} />
         {t("workspaceWidgets.fieldCopilot.loading")}
+      </div>
+    );
+  }
+
+  // ── History screen ───────────────────────────────────────────────────────
+  if (showHistory) {
+    const handleLoadFromHistory = async (sessionId: string) => {
+      setLoadingSessionId(sessionId);
+      try {
+        await session.loadSession(sessionId);
+        setShowHistory(false);
+        setStep(0);
+      } catch {
+        /* session.error will surface */
+      } finally {
+        setLoadingSessionId(null);
+      }
+    };
+
+    const handleNewSession = async () => {
+      try {
+        await session.createSession({
+          contactId: readString(liveData, "contactId"),
+          contactName: readString(liveData, "contactName"),
+          projectId: readString(liveData, "projectId"),
+          projectName: readString(liveData, "projectName"),
+        });
+        setShowHistory(false);
+        setStep(0);
+      } catch {
+        /* session.error will surface */
+      }
+    };
+
+    const handleRefreshHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const list = await session.listSessions();
+        setSessionList(list ?? []);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-[color:var(--background-main)]">
+        {session.error ? (
+          <p className="mx-4 mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+            {session.error}
+          </p>
+        ) : null}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-4">
+          <SessionHistoryPanel
+            sessions={sessionList}
+            loading={historyLoading}
+            loadingSessionId={loadingSessionId}
+            onLoad={(id) => void handleLoadFromHistory(id)}
+            onNew={() => void handleNewSession()}
+            onRefresh={() => void handleRefreshHistory()}
+          />
+        </div>
       </div>
     );
   }
@@ -181,7 +259,12 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
         ) : null}
         {step === 3 ? <ReviewStep draft={session.draft} onUpdate={onUpdate} /> : null}
         {step === 4 ? (
-          <ProduceStep busy={handoffBusy} onHandoff={(target) => void onHandoff(target)} />
+          <ProduceStep
+            busy={handoffBusy}
+            onHandoff={(target) => void onHandoff(target)}
+            isHandedOff={session.draft?.status === "HANDED_OFF"}
+            onReopen={() => void onReopen()}
+          />
         ) : null}
       </div>
     </div>

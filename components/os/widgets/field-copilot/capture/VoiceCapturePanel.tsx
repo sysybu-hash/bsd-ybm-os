@@ -11,9 +11,11 @@ type Props = {
   onTranscript: (text: string) => void;
   onAppendTranscript: (text: string) => void;
   onClearTranscript: () => void;
+  /** Custom token endpoint — defaults to the dedicated field-copilot session route */
+  sessionTokenUrl?: string;
 };
 
-export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTranscript, onClearTranscript }: Props) {
+export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTranscript, onClearTranscript, sessionTokenUrl }: Props) {
   const { t, locale } = useI18n();
   const [liveOn, setLiveOn] = useState(false);
   const [liveBuffer, setLiveBuffer] = useState("");
@@ -22,6 +24,7 @@ export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTr
     enabled: liveOn,
     owner: "fieldCopilot",
     systemInstruction: getFieldCopilotLivePrompt(locale),
+    sessionTokenUrl: sessionTokenUrl ?? "/api/ai/gemini-live/field-copilot-session",
     locale,
     greetOnConnect: true,
     onUserTranscript: (text, finished) => {

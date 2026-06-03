@@ -35,6 +35,13 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   });
   if (!session) return NextResponse.json({ error: "סשן לא נמצא" }, { status: 404 });
 
+  if (session.status === "HANDED_OFF") {
+    return NextResponse.json(
+      { error: "סשן כבר הועבר — לא ניתן להעביר שוב", code: "already_handed_off" },
+      { status: 409 },
+    );
+  }
+
   const extraction = parseAnalysisJson(session.analysisJson);
   if (!extraction) {
     return jsonBadRequest("חסר ניתוח — הרץ ניתוח קודם", "missing_analysis");

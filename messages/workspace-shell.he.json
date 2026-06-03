@@ -489,7 +489,25 @@
       "produceBoq": "כתב כמויות",
       "produceContract": "חוזה / הסכם",
       "constructionOnly": "קופיילוט שטח זמין רק לענף בנייה וקבלנות",
-      "loading": "טוען קופיילוט…"
+      "loading": "טוען קופיילוט…",
+      "analysisProgress0": "קורא תמונות…",
+      "analysisProgress1": "מנתח חומרים…",
+      "analysisProgress2": "בונה כמויות…",
+      "analysisProgress3": "מסכם…",
+      "videoUnsupportedIos": "צילום וידאו אינו נתמך בדפדפן זה — נסו Safari עדכני",
+      "reopenSession": "ערוך מחדש",
+      "history": {
+        "title": "סשנים קודמים",
+        "subtitle": "בחרו סשן קיים או פתחו חדש",
+        "newSession": "חדש",
+        "refresh": "רענן",
+        "empty": "אין סשנים קודמים — לחצו חדש",
+        "loading": "טוען סשנים…",
+        "unknownClient": "לקוח לא ידוע",
+        "statusDraft": "טיוטה",
+        "statusReady": "מוכן",
+        "statusHandedOff": "הועבר"
+      }
     },
     "appBuilder": {
       "title": "מחולל אפליקציות AI",

@@ -489,7 +489,25 @@
       "produceBoq": "BOQ",
       "produceContract": "Contract",
       "constructionOnly": "Field Copilot is for construction trades only",
-      "loading": "Loading Field Copilot…"
+      "loading": "Loading Field Copilot…",
+      "analysisProgress0": "Reading images…",
+      "analysisProgress1": "Analyzing materials…",
+      "analysisProgress2": "Building quantities…",
+      "analysisProgress3": "Summarizing…",
+      "videoUnsupportedIos": "Video recording is not supported in this browser — try updated Safari",
+      "reopenSession": "Edit again",
+      "history": {
+        "title": "Previous sessions",
+        "subtitle": "Select an existing session or start new",
+        "newSession": "New",
+        "refresh": "Refresh",
+        "empty": "No previous sessions — click New",
+        "loading": "Loading sessions…",
+        "unknownClient": "Unknown client",
+        "statusDraft": "Draft",
+        "statusReady": "Ready",
+        "statusHandedOff": "Transferred"
+      }
     },
     "appBuilder": {
       "title": "AI App Builder",

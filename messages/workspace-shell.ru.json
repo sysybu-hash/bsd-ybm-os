@@ -489,7 +489,25 @@
       "produceBoq": "BOQ",
       "produceContract": "Договор",
       "constructionOnly": "Только для строительства",
-      "loading": "Загрузка Field Copilot…"
+      "loading": "Загрузка Field Copilot…",
+      "analysisProgress0": "Читаю изображения…",
+      "analysisProgress1": "Анализирую материалы…",
+      "analysisProgress2": "Составляю объёмы…",
+      "analysisProgress3": "Подвожу итоги…",
+      "videoUnsupportedIos": "Запись видео не поддерживается в этом браузере — попробуйте Safari",
+      "reopenSession": "Редактировать снова",
+      "history": {
+        "title": "Предыдущие сессии",
+        "subtitle": "Выберите существующую или создайте новую",
+        "newSession": "Новая",
+        "refresh": "Обновить",
+        "empty": "Нет предыдущих сессий — нажмите Новая",
+        "loading": "Загрузка сессий…",
+        "unknownClient": "Неизвестный клиент",
+        "statusDraft": "Черновик",
+        "statusReady": "Готово",
+        "statusHandedOff": "Передано"
+      }
     },
     "appBuilder": {
       "title": "AI конструктор приложений",

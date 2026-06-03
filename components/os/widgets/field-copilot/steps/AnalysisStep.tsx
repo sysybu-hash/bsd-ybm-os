@@ -1,7 +1,10 @@
 "use client";
 
 import { Loader2, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+
+const PROGRESS_COUNT = 4;
 
 type Props = {
   loading: boolean;
@@ -11,6 +14,13 @@ type Props = {
 
 export default function AnalysisStep({ loading, onAnalyze, scopeSummary }: Props) {
   const { t } = useI18n();
+  const [progressIdx, setProgressIdx] = useState(0);
+
+  useEffect(() => {
+    if (!loading) { setProgressIdx(0); return; }
+    const id = setInterval(() => setProgressIdx((i) => (i + 1) % PROGRESS_COUNT), 5_000);
+    return () => clearInterval(id);
+  }, [loading]);
 
   return (
     <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
@@ -28,7 +38,9 @@ export default function AnalysisStep({ loading, onAnalyze, scopeSummary }: Props
         className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-indigo-600 font-bold text-white disabled:opacity-50"
       >
         {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
-        {loading ? t("workspaceWidgets.fieldCopilot.analyzing") : t("workspaceWidgets.fieldCopilot.analyzeCta")}
+        {loading
+          ? t(`workspaceWidgets.fieldCopilot.analysisProgress${progressIdx}` as Parameters<typeof t>[0])
+          : t("workspaceWidgets.fieldCopilot.analyzeCta")}
       </button>
 
       {scopeSummary ? (

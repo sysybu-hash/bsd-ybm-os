@@ -18,6 +18,7 @@ type Props = {
 
 export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onDeleteVideo, uploading }: Props) {
   const { t } = useI18n();
+  const mediaRecorderSupported = typeof window !== "undefined" && typeof MediaRecorder !== "undefined";
   const { videoRef, streamRef, active, opening, previewOpen, error, setError, start, stop, flip } =
     useCameraStream({ audio: true });
   const [recording, setRecording] = useState(false);
@@ -196,20 +197,28 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
       {/* Start recording button — when no video and camera not open */}
       {!hasVideo && !previewOpen ? (
         <div className="px-4 pb-4">
-          <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">
-            {t("workspaceWidgets.fieldCopilot.videoHint")}
-          </p>
-          <button
-            type="button"
-            disabled={uploading || opening}
-            onClick={() => void openPreview()}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-violet-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
-          >
-            <Video size={20} />
-            {opening
-              ? t("workspaceWidgets.fieldCopilot.cameraOpening")
-              : t("workspaceWidgets.fieldCopilot.cameraOpenVideo")}
-          </button>
+          {!mediaRecorderSupported ? (
+            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+              {t("workspaceWidgets.fieldCopilot.videoUnsupportedIos")}
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">
+                {t("workspaceWidgets.fieldCopilot.videoHint")}
+              </p>
+              <button
+                type="button"
+                disabled={uploading || opening}
+                onClick={() => void openPreview()}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-violet-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
+              >
+                <Video size={20} />
+                {opening
+                  ? t("workspaceWidgets.fieldCopilot.cameraOpening")
+                  : t("workspaceWidgets.fieldCopilot.cameraOpenVideo")}
+              </button>
+            </>
+          )}
         </div>
       ) : null}
     </section>
