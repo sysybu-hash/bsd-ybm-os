@@ -143,7 +143,7 @@ export default function AdaptiveWidgetShell({
           >
             {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
           <div
-            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex h-full w-full flex-col"}
+            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex min-h-full w-full flex-col"}
             style={zoomActive ? contentZoomStyle : undefined}
           >
             {children}
