@@ -103,11 +103,16 @@ export default function AppBuilderWidget() {
       setAppDescription(result.schema.description ?? "");
       setSavedSchemaId(undefined); // clone — not editing the global original
       setReadOnlyLoaded(false);
+      if (result.schema.jsxCode) {
+        codeHistory.push(result.schema.jsxCode);
+      } else {
+        codeHistory.reset();
+      }
       setPreviewVersion((v) => v + 1);
       setMobilePane("preview");
       setSuccess(t(`${prefix}.templateLoaded`));
     },
-    [prefix, t],
+    [codeHistory, prefix, t],
   );
 
   const handleNewApp = useCallback(() => {
@@ -118,7 +123,8 @@ export default function AppBuilderWidget() {
     setReadOnlyLoaded(false);
     setError(null);
     setSuccess(null);
-  }, []);
+    codeHistory.reset();
+  }, [codeHistory]);
 
   const handleLoadSaved = useCallback(
     async (schemaId: string) => {
@@ -136,6 +142,11 @@ export default function AppBuilderWidget() {
         setAppDescription(result.schema.description ?? "");
         setSavedSchemaId(result.schema.id);
         setReadOnlyLoaded(result.schema.isGlobal);
+        if (result.schema.jsxCode) {
+          codeHistory.push(result.schema.jsxCode);
+        } else {
+          codeHistory.reset();
+        }
         setPreviewVersion((v) => v + 1);
       } catch {
         setError(t(`${prefix}.loadSchemaError`));
@@ -208,6 +219,7 @@ export default function AppBuilderWidget() {
           name,
           description: appDescription.trim() || undefined,
           uiSchema: schemaToSave,
+          jsxCode: generatedCode ?? undefined,
         });
 
         if (!result.ok) {
@@ -223,6 +235,7 @@ export default function AppBuilderWidget() {
           name,
           description: appDescription.trim() || undefined,
           uiSchema: schemaToSave,
+          jsxCode: generatedCode ?? undefined,
         });
 
         if (!result.ok) {

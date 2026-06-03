@@ -26,15 +26,25 @@ const STATUS_COLORS: Record<string, string> = {
 export function IdeasTab() {
   const [ideas, setIdeas] = useState<AppIdeaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<StatusFilter>("pending");
   const [busy, setBusy] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await listAppIdeasAction(filter === "all" ? undefined : filter);
-      if (res.ok) setIdeas(res.ideas);
+      if (res.ok) {
+        setIdeas(res.ideas);
+      } else {
+        setLoadError(res.error ?? "טעינת הרעיונות נכשלה");
+        setIdeas([]);
+      }
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : "שגיאה בטעינת רעיונות");
+      setIdeas([]);
     } finally {
       setLoading(false);
     }
@@ -107,6 +117,10 @@ export function IdeasTab() {
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-[color:var(--foreground-muted)]">
           <Loader2 size={16} className="animate-spin" /> טוען רעיונות…
+        </div>
+      ) : loadError ? (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-400">
+          {loadError}
         </div>
       ) : ideas.length === 0 ? (
         <p className="py-8 text-center text-sm text-[color:var(--foreground-muted)]">

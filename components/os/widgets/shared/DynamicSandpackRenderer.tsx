@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface DynamicSandpackRendererProps {
   /** Raw React component source (JSX/TSX). Must default-export a component. */
@@ -99,6 +100,7 @@ function buildSrcDoc(code: string): string {
 
 export function DynamicSandpackRenderer({ code }: DynamicSandpackRendererProps) {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [iframeReady, setIframeReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const problem = useMemo(() => findCodeProblem(code), [code]);
@@ -106,6 +108,7 @@ export function DynamicSandpackRenderer({ code }: DynamicSandpackRendererProps) 
 
   useEffect(() => {
     setRuntimeError(null);
+    setIframeReady(false);
     function onMessage(e: MessageEvent) {
       const d = e.data as { __dynRender?: boolean; error?: string } | null;
       if (d && typeof d === "object" && d.__dynRender && d.error) {
@@ -126,8 +129,14 @@ export function DynamicSandpackRenderer({ code }: DynamicSandpackRendererProps) 
           title="Dynamic Preview"
           sandbox="allow-scripts"
           srcDoc={srcDoc}
-          className="w-full h-full border-0 bg-white"
+          onLoad={() => setIframeReady(true)}
+          className={`w-full h-full border-0 bg-white transition-opacity duration-200 ${iframeReady ? "opacity-100" : "opacity-0"}`}
         />
+      )}
+      {!problem && !iframeReady && !showError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          <Loader2 size={24} className="animate-spin text-gray-300" />
+        </div>
       )}
       {showError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 p-6 text-center">

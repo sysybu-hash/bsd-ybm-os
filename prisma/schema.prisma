@@ -1332,6 +1332,7 @@ model CustomAppSchema {
   name           String
   description    String?
   uiSchema       Json
+  jsxCode        String?
   isGlobal       Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt

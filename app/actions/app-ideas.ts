@@ -82,22 +82,28 @@ export async function listAppIdeasAction(status?: string) {
   const auth = await requireAdmin();
   if ("error" in auth) return { ok: false as const, error: auth.error };
 
-  const ideas = await prisma.appIdeaSubmission.findMany({
-    where: status ? { status } : undefined,
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      id: true,
-      appName: true,
-      appType: true,
-      status: true,
-      orgIndustry: true,
-      createdAt: true,
-      uiSchema: true,
-    },
-  });
-
-  return { ok: true as const, ideas: ideas as AppIdeaItem[] };
+  try {
+    const ideas = await prisma.appIdeaSubmission.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        appName: true,
+        appType: true,
+        status: true,
+        orgIndustry: true,
+        createdAt: true,
+        uiSchema: true,
+      },
+    });
+    return { ok: true as const, ideas: ideas as AppIdeaItem[] };
+  } catch (err: unknown) {
+    log.error("list_ideas_failed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return { ok: false as const, error: "טעינת הרעיונות נכשלה. ייתכן שהטבלה לא קיימת עדיין." };
+  }
 }
 
 export async function updateAppIdeaStatusAction(id: string, status: "pending" | "approved" | "rejected") {

@@ -247,12 +247,16 @@ export const POST = withWorkspacesAuth(
         }
       }
 
-      let clientActions = await resolvePlatformActions(intent.platformActions);
-
-      if (clientActions.length === 0 && lastUser.content.trim()) {
-        const parsed = await parseOsActionMessage(userId, orgId, role, lastUser.content);
-        if (parsed.actions?.length) {
-          clientActions = await filterEnabledActions(parsed.actions);
+      // When the AI decided to build a UI, never trigger OS automation actions —
+      // the user is in the App Builder and wants to BUILD, not navigate the OS.
+      let clientActions: AutomationAction[] = [];
+      if (!intent.generateApp) {
+        clientActions = await resolvePlatformActions(intent.platformActions);
+        if (clientActions.length === 0 && lastUser.content.trim()) {
+          const parsed = await parseOsActionMessage(userId, orgId, role, lastUser.content);
+          if (parsed.actions?.length) {
+            clientActions = await filterEnabledActions(parsed.actions);
+          }
         }
       }
 

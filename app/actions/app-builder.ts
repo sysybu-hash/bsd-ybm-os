@@ -108,6 +108,7 @@ export async function loadAppSchemaAction(schemaId: string) {
       name: true,
       description: true,
       uiSchema: true,
+      jsxCode: true,
       isGlobal: true,
     },
   });
@@ -129,6 +130,7 @@ export async function loadAppSchemaAction(schemaId: string) {
       description: row.description,
       isGlobal: row.isGlobal,
       uiSchema: sanitized.schema,
+      jsxCode: row.jsxCode ?? null,
     },
   };
 }
@@ -137,6 +139,7 @@ export async function saveAppSchemaAction(input: {
   name: string;
   description?: string;
   uiSchema: AppBuilderUiSchema;
+  jsxCode?: string;
 }) {
   const ctx = await getOrgContext();
   if ("error" in ctx) return { ok: false as const, error: ctx.error };
@@ -158,6 +161,7 @@ export async function saveAppSchemaAction(input: {
         name: parsed.data.name.trim(),
         description: parsed.data.description?.trim() || null,
         uiSchema: toPrismaJson(sanitized.schema),
+        jsxCode: parsed.data.jsxCode ?? null,
         isGlobal: false,
       },
       select: { id: true },
@@ -185,6 +189,7 @@ export async function updateAppSchemaAction(input: {
   name: string;
   description?: string;
   uiSchema: AppBuilderUiSchema;
+  jsxCode?: string;
 }) {
   const ctx = await getOrgContext();
   if ("error" in ctx) return { ok: false as const, error: ctx.error };
@@ -218,6 +223,7 @@ export async function updateAppSchemaAction(input: {
         name: parsed.data.name.trim(),
         description: parsed.data.description?.trim() || null,
         uiSchema: toPrismaJson(sanitized.schema),
+        jsxCode: parsed.data.jsxCode ?? null,
       },
     });
     return { ok: true as const, id: existing.id };

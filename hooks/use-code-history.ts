@@ -19,6 +19,8 @@ export interface CodeHistory {
   undo: () => void;
   /** Step forward one version (no-op at the end). */
   redo: () => void;
+  /** Clear all history (used when loading a saved app with no code). */
+  reset: () => void;
 }
 
 /**
@@ -45,6 +47,11 @@ export function useCodeHistory(): CodeHistory {
     setCursor((i) => Math.min(versions.length - 1, i + 1));
   }, [versions.length]);
 
+  const reset = useCallback(() => {
+    setVersions([]);
+    setCursor(-1);
+  }, []);
+
   return {
     current: cursor >= 0 ? (versions[cursor] ?? null) : null,
     canUndo: cursor > 0,
@@ -54,5 +61,6 @@ export function useCodeHistory(): CodeHistory {
     push,
     undo,
     redo,
+    reset,
   };
 }
