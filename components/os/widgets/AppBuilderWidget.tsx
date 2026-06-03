@@ -1,28 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  Calculator,
-  CalendarDays,
-  CheckSquare,
-  Database,
-  FileText,
-  FolderOpen,
-  Kanban,
-  LayoutGrid,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Sparkles,
-  Table2,
-  Trash2,
-  Wand2,
-} from "lucide-react";
-import DynamicRenderer from "@/components/AppBuilder/DynamicRenderer";
+import { DynamicSandpackRenderer } from "@/components/os/widgets/shared/DynamicSandpackRenderer";
+import { PreviewToolbar } from "@/components/os/widgets/app-builder/PreviewToolbar";
+import { SavedAppsPanel } from "@/components/os/widgets/app-builder/SavedAppsPanel";
+import { SaveAppForm } from "@/components/os/widgets/app-builder/SaveAppForm";
 import AppBuilderAssistantPanel from "@/components/os/widgets/app-builder/AppBuilderAssistantPanel";
+import { useCodeHistory } from "@/hooks/use-code-history";
+import {
+  SANDPACK_PLACEHOLDER,
+  mapActionError,
+  syncUiSchemaTitle,
+} from "@/components/os/widgets/app-builder/app-builder-helpers";
 import { useI18n } from "@/components/os/system/I18nProvider";
-import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
 import {
   deleteAppSchemaAction,
   listAppSchemasAction,
@@ -33,45 +23,6 @@ import {
 } from "@/app/actions/app-builder";
 import { submitAppIdeaAction } from "@/app/actions/app-ideas";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
-
-function schemaTypeIcon(appType: AppSchemaListItem["appType"]) {
-  if (appType === "dashboard") return BarChart3;
-  if (appType === "composer") return LayoutGrid;
-  if (appType === "full_app") return Database;
-  if (appType === "checklist") return CheckSquare;
-  if (appType === "calculator") return Calculator;
-  if (appType === "kanban") return Kanban;
-  if (appType === "calendar") return CalendarDays;
-  if (appType === "table") return Table2;
-  return FileText;
-}
-
-function syncUiSchemaTitle(schema: AppBuilderUiSchema, title: string): AppBuilderUiSchema {
-  // All non-form/table types have a required `title`
-  if (
-    schema.type === "dashboard" ||
-    schema.type === "composer" ||
-    schema.type === "full_app" ||
-    schema.type === "checklist" ||
-    schema.type === "calculator" ||
-    schema.type === "kanban" ||
-    schema.type === "calendar"
-  ) {
-    return { ...schema, title } as AppBuilderUiSchema;
-  }
-  // form / table have optional title
-  return { ...schema, title: title || schema.title } as AppBuilderUiSchema;
-}
-
-function mapActionError(error: string, t: (key: string) => string, prefix: string): string {
-  if (error === "schema_not_found_or_readonly") {
-    return t(`${prefix}.globalAppReadOnly`);
-  }
-  if (error === "generate_failed") {
-    return t(`${prefix}.generateError`);
-  }
-  return error;
-}
 
 export default function AppBuilderWidget() {
   const { t, dir, locale } = useI18n();
@@ -91,6 +42,9 @@ export default function AppBuilderWidget() {
   const [success, setSuccess] = useState<string | null>(null);
   const [readOnlyLoaded, setReadOnlyLoaded] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(0);
+  // Undo/redo history of AI-generated code versions.
+  const codeHistory = useCodeHistory();
+  const generatedCode = codeHistory.current;
   const [mobilePane, setMobilePane] = useState<"build" | "preview">("build");
 
   const isEditing = Boolean(savedSchemaId);
@@ -110,6 +64,22 @@ export default function AppBuilderWidget() {
   useEffect(() => {
     void refreshSavedApps();
   }, [refreshSavedApps]);
+
+  const applyCodeFromAssistant = useCallback((code: string) => {
+    codeHistory.push(code);
+    setPreviewVersion((v) => v + 1);
+    setMobilePane("preview");
+  }, [codeHistory]);
+
+  const handleUndo = useCallback(() => {
+    codeHistory.undo();
+    setPreviewVersion((v) => v + 1);
+  }, [codeHistory]);
+
+  const handleRedo = useCallback(() => {
+    codeHistory.redo();
+    setPreviewVersion((v) => v + 1);
+  }, [codeHistory]);
 
   const applySchemaFromAssistant = useCallback((schema: AppBuilderUiSchema) => {
     setUiSchema(schema);
@@ -306,269 +276,87 @@ export default function AppBuilderWidget() {
   const formatDate = (date: Date) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(date));
 
-  const promptPane = (
-    <div dir={dir} className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="min-w-0 truncate text-sm font-bold text-[color:var(--foreground-main)]">
-            {t(`${prefix}.title`)}
-          </h2>
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={handleNewApp}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/10"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              {t(`${prefix}.newApp`)}
-            </button>
-            <button
-              type="button"
-              onClick={() => void refreshSavedApps()}
-              disabled={loadingSaved}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] disabled:opacity-60"
-              aria-label={t(`${prefix}.refreshSavedApps`)}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${loadingSaved ? "animate-spin" : ""}`} aria-hidden />
-            </button>
-          </div>
-        </div>
-        <p className="mt-1 hidden line-clamp-2 text-[11px] leading-snug text-[color:var(--foreground-muted)] sm:block">
-          {t(`${prefix}.subtitle`)}
-        </p>
-      </div>
+  // ── Raw content fragments — no wrapper divs, no scroll containers ────────
+  // Each pane's scroll container is defined ONCE in the return below.
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
+  const buildContent = (
+    <>
+      <SavedAppsPanel
+        savedApps={savedApps}
+        loadingSaved={loadingSaved}
+        savedSchemaId={savedSchemaId}
+        loadingSchemaId={loadingSchemaId}
+        deletingSchemaId={deletingSchemaId}
+        onNewApp={handleNewApp}
+        onRefresh={() => void refreshSavedApps()}
+        onUseTemplate={(id) => void handleUseTemplate(id)}
+        onLoadSaved={(id) => void handleLoadSaved(id)}
+        onDeleteSaved={(app) => void handleDeleteSaved(app)}
+        formatDate={formatDate}
+      />
 
-        {/* ── גלריית השראה ── */}
-        {(() => {
-          const templates = savedApps.filter((a) => a.isGlobal);
-          if (templates.length === 0) return null;
-          return (
-            <section className="shrink-0 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2">
-              <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
-                <Wand2 className="h-3.5 w-3.5" aria-hidden />
-                {t(`${prefix}.galleryTitle`)}
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {templates.map((tpl) => {
-                  const Icon = schemaTypeIcon(tpl.appType);
-                  return (
-                    <button
-                      key={tpl.id}
-                      type="button"
-                      onClick={() => void handleUseTemplate(tpl.id)}
-                      className="flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-[color:var(--surface-card)] px-2.5 py-1.5 text-xs font-medium text-[color:var(--foreground-main)] transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
-                      title={tpl.name}
-                    >
-                      <Icon className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden />
-                      <span className="max-w-[8rem] truncate">{tpl.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
+      {/* Chat — embedded (flat) mode: grows naturally, no internal scroll */}
+      <AppBuilderAssistantPanel
+        embedded
+        currentUiSchema={uiSchema}
+        onSchemaApplied={applySchemaFromAssistant}
+        onCodeApplied={applyCodeFromAssistant}
+      />
 
-        <section className="shrink-0 rounded-lg border border-[color:var(--border-main)] p-2">
-          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--foreground-main)]">
-            <FolderOpen className="h-3.5 w-3.5 text-indigo-400" aria-hidden />
-            {t(`${prefix}.savedAppsTitle`)}
-          </h3>
+      {/* Save form */}
+      {uiSchema ? (
+        <SaveAppForm
+          appName={appName}
+          appDescription={appDescription}
+          isEditing={isEditing}
+          readOnlyLoaded={readOnlyLoaded}
+          shareIdea={shareIdea}
+          saving={saving}
+          onNameChange={setAppName}
+          onDescriptionChange={setAppDescription}
+          onShareIdeaChange={setShareIdea}
+          onSave={() => void handleSaveSchema()}
+        />
+      ) : null}
 
-          {loadingSaved ? (
-            <div className="flex items-center gap-2 py-1 text-xs text-[color:var(--foreground-muted)]">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              {t(`${prefix}.loadingSavedApps`)}
-            </div>
-          ) : savedApps.length === 0 ? (
-            <p className="py-1 text-xs text-[color:var(--foreground-muted)]">{t(`${prefix}.noSavedApps`)}</p>
-          ) : (
-            <ul className="flex max-h-20 flex-col gap-0.5 overflow-y-auto sm:max-h-24">
-            {savedApps.map((app) => {
-              const Icon = schemaTypeIcon(app.appType);
-              const isActive = savedSchemaId === app.id;
-              const isLoading = loadingSchemaId === app.id;
-              const isDeleting = deletingSchemaId === app.id;
-              return (
-                <li key={app.id} className="flex items-stretch gap-1">
-                  <button
-                    type="button"
-                    onClick={() => void handleLoadSaved(app.id)}
-                    disabled={isLoading || isDeleting}
-                    className={`flex min-w-0 flex-1 items-start gap-2 rounded-lg border px-3 py-2 text-start transition ${
-                      isActive
-                        ? "border-indigo-500/50 bg-indigo-500/10"
-                        : "border-transparent hover:border-[color:var(--border-main)] hover:bg-[color:var(--surface-soft)]"
-                    }`}
-                  >
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-[color:var(--foreground-main)]">
-                        {app.name}
-                      </span>
-                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[color:var(--foreground-muted)]">
-                        <span>{t(`${prefix}.appType.${app.appType}`)}</span>
-                        {app.isGlobal ? (
-                          <>
-                            <span aria-hidden>·</span>
-                            <span>{t(`${prefix}.globalBadge`)}</span>
-                          </>
-                        ) : null}
-                        <span aria-hidden>·</span>
-                        <span>{formatDate(app.createdAt)}</span>
-                      </span>
-                    </span>
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-400" aria-hidden />
-                    ) : null}
-                  </button>
-                  {!app.isGlobal ? (
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteSaved(app)}
-                      disabled={isDeleting || isLoading}
-                      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent px-2 text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10 disabled:opacity-60"
-                      aria-label={t(`${prefix}.deleteAppAria`, { name: app.name })}
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      )}
-                    </button>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-        <div className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
-          <AppBuilderAssistantPanel currentUiSchema={uiSchema} onSchemaApplied={applySchemaFromAssistant} />
-        </div>
-      </div>
-
-      <div className="shrink-0 space-y-2 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/80 p-3">
-        {uiSchema ? (
-          <div className="space-y-2">
-            {isEditing ? (
-              <p className="text-[10px] font-medium text-indigo-300">
-                {readOnlyLoaded ? t(`${prefix}.globalAppReadOnly`) : t(`${prefix}.editingApp`)}
-              </p>
-            ) : null}
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium">{t(`${prefix}.appNameLabel`)}</span>
-              <input
-                type="text"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-1.5 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium">{t(`${prefix}.appDescriptionLabel`)}</span>
-              <input
-                type="text"
-                value={appDescription}
-                onChange={(e) => setAppDescription(e.target.value)}
-                className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-1.5 text-sm"
-              />
-            </label>
-            {!isEditing ? (
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={shareIdea}
-                  onChange={(e) => setShareIdea(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 accent-indigo-500"
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium text-[color:var(--foreground-main)]">
-                    {t(`${prefix}.shareIdeaLabel`)}
-                  </span>
-                  <span className="text-[10px] text-[color:var(--foreground-muted)]">
-                    {t(`${prefix}.shareIdeaHint`)}
-                  </span>
-                </span>
-              </label>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void handleSaveSchema()}
-              disabled={saving || readOnlyLoaded}
-              className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                isEditing
-                  ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                  : "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"
-              }`}
-            >
-              {saving ? t(`${prefix}.saving`) : isEditing ? t(`${prefix}.updateApp`) : t(`${prefix}.saveApp`)}
-            </button>
-          </div>
-        ) : null}
-
-        {success ? (
-          <p className="text-xs text-emerald-400" role="status">
-            {success}
-          </p>
-        ) : null}
-        {error ? (
-          <p className="text-xs text-red-400" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    </div>
+      {success ? <p className="text-xs text-emerald-400" role="status">{success}</p> : null}
+      {error   ? <p className="text-xs text-red-400"     role="alert">{error}</p>    : null}
+    </>
   );
 
-  const previewPane = (
-    <div dir={dir} className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="border-b border-[color:var(--border-main)] px-4 py-3">
-        <h3 className="text-sm font-semibold text-[color:var(--foreground-main)]">{t(`${prefix}.previewTitle`)}</h3>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {uiSchema ? (
-          <DynamicRenderer
-            key={`app-preview-${previewVersion}`}
-            uiSchema={uiSchema}
-            schemaId={savedSchemaId}
-          />
-        ) : (
-          <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-2 p-6 text-center">
-            <Sparkles className="h-8 w-8 text-[color:var(--foreground-muted)]" aria-hidden />
-            <p className="text-sm text-[color:var(--foreground-muted)]">{t(`${prefix}.emptyPreview`)}</p>
-          </div>
-        )}
-      </div>
+  // Undo/redo toolbar — lets the user revert a generation that made things worse.
+  const previewToolbar = codeHistory.total > 0 ? (
+    <PreviewToolbar
+      canUndo={codeHistory.canUndo}
+      canRedo={codeHistory.canRedo}
+      index={codeHistory.index}
+      total={codeHistory.total}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+    />
+  ) : null;
+
+  // previewContent is used only on mobile (build/preview toggle)
+  const previewContent = (
+    <div className="flex h-full min-h-0 flex-col">
+      {previewToolbar}
+      <DynamicSandpackRenderer
+        key={`sandbox-mobile-${previewVersion}`}
+        code={generatedCode ?? SANDPACK_PLACEHOLDER}
+      />
     </div>
   );
 
   const mobilePaneSwitcher = (
-    <div
-      className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 p-2 md:hidden"
-      role="tablist"
-      aria-label={t(`${prefix}.mobilePaneAria`)}
-    >
+    <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 p-2"
+      role="tablist" aria-label={t(`${prefix}.mobilePaneAria`)}>
       {(["build", "preview"] as const).map((pane) => {
         const selected = mobilePane === pane;
-        const label =
-          pane === "build" ? t(`${prefix}.mobilePaneBuild`) : t(`${prefix}.mobilePanePreview`);
+        const label = pane === "build" ? t(`${prefix}.mobilePaneBuild`) : t(`${prefix}.mobilePanePreview`);
         return (
-          <button
-            key={pane}
-            type="button"
-            role="tab"
-            aria-selected={selected}
+          <button key={pane} type="button" role="tab" aria-selected={selected}
             onClick={() => setMobilePane(pane)}
-            className={`min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${
-              selected
-                ? "bg-indigo-600 text-white"
-                : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"
-            }`}
-          >
+            className={`min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${selected ? "bg-indigo-600 text-white" : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"}`}>
             {label}
           </button>
         );
@@ -576,41 +364,40 @@ export default function AppBuilderWidget() {
     </div>
   );
 
-  const renderMobileLayout = (body: ReactNode) => (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:hidden">
-      {mobilePaneSwitcher}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{body}</div>
-    </div>
-  );
-
+  // ── Full structural reset — exact boilerplate as specified ────────────────
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden text-[color:var(--foreground-main)]" dir={dir}>
-      <div className="hidden min-h-0 flex-1 md:flex">
-        <WidgetSplitPanels
-          className="min-h-0 flex-1"
-          direction="horizontal"
-          stackBelowPx={768}
-          layoutStorageKey="bsd-app-builder-split-v3"
-          panels={[
-            {
-              id: "app-builder-sidebar",
-              defaultSize: 32,
-              minSize: 24,
-              maxSize: 44,
-              className:
-                "flex min-h-0 min-w-0 flex-col border-s border-[color:var(--border-main)] bg-[color:var(--background-main)]/40",
-              children: promptPane,
-            },
-            {
-              id: "app-builder-preview",
-              defaultSize: 68,
-              minSize: 40,
-              children: previewPane,
-            },
-          ]}
-        />
+    <div className="flex flex-row w-full h-full min-h-0 min-w-0 overflow-hidden bg-surface-bg" dir={dir}>
+
+      {/* RIGHT PANE (Builder / Chat): Fixed width, never shrinks, internal scrolling only */}
+      <div className="flex flex-col w-[350px] shrink-0 h-full min-h-0 border-s border-border-main">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
+          {buildContent}
+        </div>
       </div>
-      {renderMobileLayout(mobilePane === "build" ? promptPane : previewPane)}
+
+      {/* LEFT PANE (Preview): Takes remaining space — NO extra scroll wrapper,
+          Sandpack owns its own iframe scroll context */}
+      <div className="flex flex-col flex-1 min-w-0 h-full min-h-0 relative">
+        {/* Mobile: pane switcher */}
+        <div className="shrink-0 md:hidden">{mobilePaneSwitcher}</div>
+
+        {/* Mobile content area (scrollable for build list, flex for preview) */}
+        <div className="flex-1 min-h-0 md:hidden overflow-y-auto custom-scrollbar p-4">
+          {mobilePane === "build" ? buildContent : previewContent}
+        </div>
+
+        {/* Desktop: toolbar + Sandpack fill the pane directly */}
+        <div className="hidden md:flex flex-col flex-1 min-h-0">
+          {previewToolbar}
+          <div className="flex flex-col flex-1 min-h-0 p-4">
+            <DynamicSandpackRenderer
+              key={`sandbox-${previewVersion}`}
+              code={generatedCode ?? SANDPACK_PLACEHOLDER}
+            />
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

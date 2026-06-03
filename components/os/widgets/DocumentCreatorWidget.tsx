@@ -49,7 +49,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   // ── main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-full bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden" dir={dir}>
+    <div className="flex h-full min-h-0 flex-col bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden" dir={dir}>
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-[color:var(--background-main)]/50">
         <div className="flex items-center gap-3 min-w-0">

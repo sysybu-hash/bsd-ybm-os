@@ -6,6 +6,9 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("crm-semantic-search");
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiJsonOnlyHint } from "@/lib/i18n/ai-locale";
 import { applyRateLimit } from "@/lib/rate-limit";
@@ -67,7 +70,7 @@ Example: ["id1", "id2"]
       } catch (e) {
         lastErr = e;
         if (isLikelyGeminiModelUnavailable(e)) continue;
-        console.error("Semantic Search model error:", modelName, e);
+        log.error("semantic search model error", { modelName, error: e instanceof Error ? e.message : String(e) });
         break;
       }
     }

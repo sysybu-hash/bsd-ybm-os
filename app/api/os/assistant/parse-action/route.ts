@@ -6,6 +6,9 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { runAiChat, getUserFacingAiErrorMessage } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("os-assistant-parse-action");
 import { getApiMessage } from "@/lib/i18n/api-messages";
 import { buildParseActionTaskPrompt } from "@/lib/os-automations/prompts";
 import type { ParseActionResponse } from "@/lib/os-automations/types";
@@ -63,7 +66,7 @@ export const POST = withWorkspacesAuth(
         actions: [],
       } satisfies ParseActionResponse);
     } catch (err) {
-      console.error("parse-action:", err);
+      log.error("parse-action failed", { error: err instanceof Error ? err.message : String(err) });
       return Response.json(
         { error: getUserFacingAiErrorMessage(err, locale), actions: [], reply: "" },
         { status: 500 },

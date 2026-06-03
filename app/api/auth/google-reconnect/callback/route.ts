@@ -10,6 +10,9 @@ import {
 import { getGoogleIntegrationsCredentials } from "@/lib/google-oauth-env";
 import { safeOAuthCallbackUrl, verifyGoogleReconnectState } from "@/lib/google-reconnect-state";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-google-reconnect-callback");
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
     dest.searchParams.set("google_reconnected", "1");
     return NextResponse.redirect(dest);
   } catch (err) {
-    console.error("[google-reconnect] callback failed", err);
+    log.error("google-reconnect callback failed", { error: err instanceof Error ? err.message : String(err) });
     const msg = err instanceof Error ? err.message : String(err);
     const dest = new URL(safeOAuthCallbackUrl(state.callbackUrl), request.url);
     dest.searchParams.set("google_reconnect", "error");

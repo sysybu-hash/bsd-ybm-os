@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -46,11 +46,18 @@ const chatIntentSchema = z.object({
   reply: z.string().describe("Friendly reply to the user in their language"),
   generateApp: z
     .boolean()
-    .describe("True when the user wants to create or modify the app UI in the preview"),
+    .describe(
+      "ALWAYS true whenever the user requests ANY visual component, app, UI, widget, game, " +
+      "clock, calculator, chart, animation, dashboard, form, table, kanban, calendar, or " +
+      "ANY creative/visual thing. Only false for pure questions with no UI request.",
+    ),
   appPrompt: z
     .string()
     .optional()
-    .describe("Detailed instructions for the JSON UI generator when generateApp is true"),
+    .describe(
+      "Precise description of the component/app to build. Required when generateApp=true. " +
+      "Include visual style, behavior, and any data. Be explicit and detailed.",
+    ),
   platformActions: z
     .array(
       z.object({
@@ -127,6 +134,16 @@ export const POST = withWorkspacesAuth(
       }
 
       const system = [
+        // ── New identity: unrestricted visual/UI expert ───────────────────────
+        "You are an elite, unrestricted frontend React and Tailwind CSS expert inside the BSD-YBM App Builder.",
+        "You are capable of building ANY visual component or application the user requests —",
+        "including clocks, calculators, games, charts, animations, intricate visual layouts,",
+        "and traditional enterprise tools like forms, tables, dashboards, and kanban boards.",
+        "NEVER refuse a UI request. NEVER say something is 'beyond capabilities'.",
+        "If the user asks for a clock, build a beautiful animated analog clock.",
+        "If the user asks for a game, build a working game. Always set generateApp=true for ANY visual request.",
+        "",
+        // ── Platform routing (still relevant for CRM/scan/invoice shortcuts) ──
         APP_BUILDER_CHAT_SYSTEM_PROMPT,
         "",
         appBuilderCapabilitiesForPrompt(locale),
@@ -145,6 +162,7 @@ export const POST = withWorkspacesAuth(
 
       let uiSchema: z.infer<typeof appBuilderUiSchema> | undefined;
       let schemaError: string | undefined;
+      let jsxCode: string | undefined;
 
       // Fallback: model wanted to build/refine but forgot to fill appPrompt.
       // Use the last user message so an edit request never silently no-ops.
@@ -153,6 +171,7 @@ export const POST = withWorkspacesAuth(
         (intent.generateApp ? lastUser.content.trim() : "");
 
       if (intent.generateApp && effectiveAppPrompt) {
+        // ── 1. JSON schema path (legacy, for schema-typed apps) ──────────────
         const generatorPrompt =
           data.currentUiSchema != null
             ? buildRefinePrompt(effectiveAppPrompt, data.currentUiSchema)
@@ -164,6 +183,67 @@ export const POST = withWorkspacesAuth(
         } else {
           log.warn("chat_ui_schema_rejected", { error: sanitized.error, orgId });
           schemaError = "schema_rejected";
+        }
+
+        // ── 2. JSX code path (Sandpack dynamic renderer) ─────────────────────
+        try {
+          const jsxSystemPrompt = [
+            "You are an elite React and Tailwind CSS engineer.",
+            "Build ANYTHING the user requests: clocks, games, calculators, animations, charts, dashboards, forms, or any creative UI.",
+            "Never refuse. Never say it is too complex.",
+            "",
+            "STRICT OUTPUT RULES — violating any rule will break the renderer:",
+            "1. Return ONLY the raw React component code. No markdown. No backticks. No ```jsx or ``` fences of any kind.",
+            "2. Do NOT include any explanatory text, comments about the code, or prose before or after the component.",
+            "3. Start the response with exactly 'import React' or 'export default function' — nothing else before it.",
+            "4. Export a single default functional component.",
+            "5. Use Tailwind CSS classes exclusively for styling (Tailwind CDN is injected, all classes work).",
+            "6. Use only React (useState, useEffect, useRef, etc. are available). Do NOT import any other library.",
+            "7. Ensure all parentheses, brackets, and braces are perfectly balanced — no syntax errors.",
+            "8. For animations (clocks, loaders) inject a <style> tag with @keyframes inside the JSX, or use inline style={{animation:...}}.",
+          ].join("\n");
+
+          const { text } = await generateText({
+            model: google(MODEL),
+            system: jsxSystemPrompt,
+            prompt: effectiveAppPrompt,
+            maxOutputTokens: 8192,
+          });
+
+          // ── Robust markdown fence extractor ──────────────────────────────────
+          // Priority 1: extract content from inside ```lang ... ``` blocks
+          // Priority 2: strip any leading/trailing fence lines
+          // Priority 3: trim whitespace
+          let cleanCode = text;
+
+          // Greedy match: opening fence → LAST closing fence (prevents stopping early on template literals)
+          const fenceMatch = cleanCode.match(/```(?:jsx?|tsx?|typescript|javascript|react)?\s*([\s\S]*)```/i);
+          if (fenceMatch?.[1]) {
+            cleanCode = fenceMatch[1];
+          } else {
+            // No closing fence — strip any opening fence line if present
+            cleanCode = cleanCode
+              .replace(/^```(?:jsx?|tsx?|typescript|javascript|react)?\s*/im, "")
+              .replace(/```\s*$/m, "");
+          }
+          // Strip any residual lone trailing backtick left by partial fence extraction
+          cleanCode = cleanCode.replace(/(?<![`])(`)\s*$/, "").trim();
+
+          // Safety: ensure the code starts with a valid React statement
+          if (!cleanCode.startsWith("import") && !cleanCode.startsWith("export") && !cleanCode.startsWith("const") && !cleanCode.startsWith("function")) {
+            // Model prepended prose — find the first real code line
+            const codeStart = cleanCode.search(/^(?:import |export |const |function )/m);
+            if (codeStart !== -1) cleanCode = cleanCode.slice(codeStart).trim();
+          }
+
+          jsxCode = cleanCode;
+          log.info("chat_jsx_generated", { orgId, chars: jsxCode.length });
+        } catch (jsxErr: unknown) {
+          log.warn("chat_jsx_generation_failed", {
+            error: jsxErr instanceof Error ? jsxErr.message : String(jsxErr),
+            orgId,
+          });
+          // Non-fatal — the uiSchema path can still serve the preview
         }
       }
 
@@ -179,6 +259,7 @@ export const POST = withWorkspacesAuth(
       return NextResponse.json({
         reply: intent.reply,
         uiSchema,
+        jsxCode,                        // ← NEW: raw JSX for Sandpack renderer
         schemaApplied: uiSchema != null,
         schemaError,
         clientActions,

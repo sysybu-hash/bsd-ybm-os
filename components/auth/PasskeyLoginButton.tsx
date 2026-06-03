@@ -12,6 +12,9 @@ import {
   SESSION_MAX_AGE_REMEMBER_SEC,
   writeRememberPreference,
 } from "@/lib/auth/remember-preference";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("passkey-login-button");
 
 export default function PasskeyLoginButton({
   email,
@@ -81,7 +84,7 @@ export default function PasskeyLoginButton({
       writeRememberPreference(remember);
       window.location.href = "/";
     } catch (e) {
-      console.error("passkey login", e);
+      log.error("passkey login failed", { error: e instanceof Error ? e.message : String(e) });
       toast.error(t("auth.hub.passkey.loginCancelled"));
     } finally {
       setBusy(false);

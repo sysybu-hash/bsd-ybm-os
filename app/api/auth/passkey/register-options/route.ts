@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { jsonUnauthorized, jsonServerError } from "@/lib/api-json";
 import { createPasskeyRegistrationOptions } from "@/lib/auth/passkey-server";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-passkey-register-options");
 
 export async function POST(req: NextRequest) {
   const limited = await applyRateLimit(req, "auth:passkey-register-options", 5, 60_000);
@@ -16,7 +19,7 @@ export async function POST(req: NextRequest) {
     const options = await createPasskeyRegistrationOptions(userId, email);
     return NextResponse.json({ ok: true, options });
   } catch (e) {
-    console.error("passkey register-options", e);
+    log.error("passkey register-options failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError("שגיאה בהכנת רישום Passkey");
   }
 }

@@ -5,6 +5,9 @@ import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
 import { buildInvoiceDocxHtml, buildInvoicePdfBuffer } from "@/lib/invoice-export";
 import { buildInvoiceExportPayload } from "@/lib/invoice-payload";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("invoice-export");
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -59,7 +62,7 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(
       buffer = await buildInvoicePdfBuffer(payload);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      console.error("[invoice-export] PDF render failed:", detail, err);
+      log.error("PDF render failed", { detail, error: err instanceof Error ? err.message : String(err) });
       return NextResponse.json(
         {
           error: "יצירת קובץ PDF נכשלה. נסו שוב בעוד רגע.",

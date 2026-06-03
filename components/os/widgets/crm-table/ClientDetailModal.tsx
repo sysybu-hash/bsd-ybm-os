@@ -73,7 +73,7 @@ export function ClientDetailModal({
 
   return (
     <CrmOverlayPortal>
-      <div className="my-auto flex w-full max-w-4xl max-h-[min(90vh,calc(100vh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl">
+      <div className="my-auto flex w-full max-w-4xl max-h-[min(90dvh,calc(100dvh-2rem))] shrink-0 flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl">
         <div className="p-4 sm:p-8 border-b border-slate-100 dark:border-white/5 flex justify-between items-start gap-3">
           <div className="flex items-center gap-3 sm:gap-6 min-w-0">
             <div className="w-12 h-12 shrink-0 rounded-2xl sm:w-20 sm:h-20 sm:rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-xl sm:text-3xl font-black text-white shadow-xl">

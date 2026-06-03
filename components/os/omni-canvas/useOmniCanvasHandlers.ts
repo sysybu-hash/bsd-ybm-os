@@ -5,6 +5,9 @@ import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import type { SearchResult } from "./types";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("omni-canvas-handlers");
 
 type AutomationRunner = {
   handleCommandWithAutomations: (cmd: string) => Promise<boolean>;
@@ -66,7 +69,7 @@ export function useOmniCanvasHandlers({
         setSearchResults(Array.isArray(data.results) ? data.results : []);
       }
     } catch (err) {
-      console.error("Search preview failed", err);
+      log.error("search preview failed", { error: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -113,7 +116,7 @@ export function useOmniCanvasHandlers({
         setSystemMessage(t("workspaceWidgets.page.commands.openingAiChat"));
       }
     } catch (err) {
-      console.error("Command Error:", err);
+      log.error("command failed", { error: err instanceof Error ? err.message : String(err) });
       setSystemMessage(t("workspaceWidgets.page.commands.commandError"));
     } finally {
       setIsBusy(false);
@@ -135,7 +138,7 @@ export function useOmniCanvasHandlers({
         body: JSON.stringify({ ids: [id] }),
       });
     } catch (err) {
-      console.error("Failed to mark notification as read", err);
+      log.error("mark notification read failed", { error: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -149,7 +152,7 @@ export function useOmniCanvasHandlers({
       });
       setNotifications([]);
     } catch (err) {
-      console.error("Failed to clear notifications", err);
+      log.error("clear notifications failed", { error: err instanceof Error ? err.message : String(err) });
       toast.error(t("workspaceWidgets.page.notifications.clearFailed"));
     }
   };

@@ -31,7 +31,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
   const s = useHelpCenter(locale);
 
   return (
-    <div className="flex min-h-full flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <header className="shrink-0 border-b border-[color:var(--border-main)] p-4 max-md:px-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">
@@ -84,8 +84,8 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                 {t("workspaceWidgets.helpCenter.faqSection")}
               </h3>
               <ul className="space-y-2">
-                {s.searchResults.faq.map((f, i) => (
-                  <li key={i} className="rounded-xl border border-[color:var(--border-main)] p-3 text-sm">
+                {s.searchResults.faq.map((f) => (
+                  <li key={f.question} className="rounded-xl border border-[color:var(--border-main)] p-3 text-sm">
                     <p className="font-bold">{f.question}</p>
                     <p className="mt-1 text-[color:var(--foreground-muted)]">{f.answer}</p>
                   </li>
@@ -148,7 +148,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   </p>
                   <ol className="mt-4 space-y-4">
                     {s.activeGuide.steps.map((step, i) => (
-                      <li key={i} className="flex gap-3">
+                      <li key={step.title} className="flex gap-3">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-black text-sky-700">
                           {i + 1}
                         </span>
@@ -163,7 +163,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                     <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
                       <p className="text-xs font-bold text-amber-800">{t("workspaceWidgets.helpCenter.tips")}</p>
                       <ul className="mt-1 list-disc ps-4 text-sm text-amber-900/90">
-                        {s.activeGuide.tips.map((tip, i) => <li key={i}>{tip}</li>)}
+                        {s.activeGuide.tips.map((tip) => <li key={tip}>{tip}</li>)}
                       </ul>
                     </div>
                   ) : null}

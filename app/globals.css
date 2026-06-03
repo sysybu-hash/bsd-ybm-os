@@ -13,8 +13,9 @@
     --surface-soft: #f1f4f8;
     --border-main: #dfe5ee;
     --border-strong: #c8d1de;
-    --glass-bg: rgba(255, 255, 255, 0.92);
-    --glass-border: rgba(17, 24, 39, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(226, 232, 240, 0.6);
+    --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 
     --brand-accent: #4f46e5;
     --brand-accent-strong: #4338ca;
@@ -43,26 +44,22 @@
     --workspace-chrome-bg: var(--glass-bg);
     --workspace-chrome-border: var(--glass-border);
     --workspace-chrome-omnibar-offset: 4.25rem;
-    --workspace-header-height: 4rem;
+    --workspace-header-height: 4.5rem;
 
     /* Spatial Glass OS — מסגרות חלונות workspace */
     --window-radius: 22px;
     --window-header-height: 2.75rem;
     --window-ring: color-mix(in srgb, var(--brand-accent) 7%, transparent);
     --window-ring-focus: color-mix(in srgb, var(--brand-accent) 14%, transparent);
-    --window-shadow-rest:
-      0 1px 2px rgba(15, 23, 42, 0.04),
-      0 8px 24px rgba(15, 23, 42, 0.07),
-      0 24px 48px rgba(15, 23, 42, 0.06);
+    --window-shadow-rest: var(--glass-shadow);
     --window-shadow-focus:
-      0 2px 4px rgba(15, 23, 42, 0.05),
-      0 12px 32px rgba(15, 23, 42, 0.1),
-      0 28px 56px rgba(79, 70, 229, 0.08);
+      0 20px 40px -8px rgba(0, 0, 0, 0.14),
+      0 4px 12px rgba(79, 70, 229, 0.10);
     --window-backdrop: blur(20px) saturate(1.12);
     --window-surface: color-mix(in srgb, var(--surface-card) 94%, transparent);
 
   /* גובה סרגל תחתון במובייל (ניווט + לשוניות FAB + safe area) */
-    --mobile-chrome-bottom: calc(6.25rem + env(safe-area-inset-bottom, 0px));
+    --mobile-chrome-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
     --workspace-inset-top: calc(var(--workspace-header-height) + env(safe-area-inset-top, 0px));
     --workspace-inset-bottom: var(--mobile-chrome-bottom);
     --desktop-dock-clearance: 7rem;
@@ -125,8 +122,9 @@
     --surface-soft: #111827;
     --border-main: #263449;
     --border-strong: #3a4a63;
-    --glass-bg: rgba(15, 23, 42, 0.88);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(15, 23, 42, 0.65);
+    --glass-border: rgba(51, 65, 85, 0.5);
+    --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     --brand-accent-soft: rgba(99, 102, 241, 0.16);
     --brand-teal-soft: rgba(20, 184, 166, 0.14);
     --brand-amber-soft: rgba(245, 158, 11, 0.14);
@@ -146,10 +144,7 @@
     --sidebar-text: #d0d7e5;
     --sidebar-muted: #8996aa;
     --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
-    --window-shadow-rest:
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      0 8px 28px rgba(0, 0, 0, 0.28),
-      0 24px 52px rgba(0, 0, 0, 0.22);
+    --window-shadow-rest: var(--glass-shadow);
     --window-shadow-focus:
       0 2px 6px rgba(0, 0, 0, 0.25),
       0 14px 36px rgba(0, 0, 0, 0.32),
@@ -652,15 +647,17 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    border: 3px solid transparent;
-    border-radius: 999px;
-    background: rgba(102, 112, 133, 0.45);
-    background-clip: padding-box;
+    border-radius: 20px;
+    background-color: rgba(102, 112, 133, 0.45);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(102, 112, 133, 0.7);
   }
 
   .no-scrollbar {

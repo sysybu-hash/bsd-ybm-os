@@ -288,7 +288,7 @@ export const authOptions: NextAuthOptions = {
               token.email = row.email.trim().toLowerCase();
             }
           } catch (e) {
-            console.warn("[auth/jwt] DB unreachable — skipping email recovery from id", e);
+            log.warn("DB unreachable — skipping email recovery from id", { error: e instanceof Error ? e.message : String(e) });
           }
         }
       }
@@ -373,7 +373,7 @@ export const authOptions: NextAuthOptions = {
         return token;
       } catch (e) {
         /** DB לא זמין (רשת, Neon במצב שינה, וכו') — לא מפילים את כל האפליקציה */
-        console.warn("[auth/jwt] DB unreachable — returning stale JWT without refresh", e);
+        log.warn("DB unreachable — returning stale JWT without refresh", { error: e instanceof Error ? e.message : String(e) });
         return token;
       }
     },

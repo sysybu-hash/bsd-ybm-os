@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("project-detail");
 
 export async function listProjects(orgId: string) {
   const projects = await prisma.project.findMany({
@@ -32,7 +35,7 @@ export async function getProjectByName(orgId: string, query: string) {
       const { getMeckanoAttendanceForProject } = await import("@/lib/meckano-access");
       attendance = await getMeckanoAttendanceForProject(project.id, orgId);
     } catch (e) {
-      console.warn("Meckano sync failed for project", e);
+      log.warn("Meckano sync failed for project", { error: e instanceof Error ? e.message : String(e) });
     }
 
     const primaryContact = project.primaryContact ?? project.contacts[0] ?? null;

@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonNotFound, jsonUnauthorized, jsonServerError } from "@/lib/api-json";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-passkey-delete");
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,7 +22,7 @@ export async function DELETE(_req: Request, { params }: Params) {
     await prisma.userPasskey.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("passkey delete", e);
+    log.error("passkey delete failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError();
   }
 }

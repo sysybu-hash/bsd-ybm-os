@@ -5,6 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonUnauthorized, jsonServerError } from "@/lib/api-json";
 import { verifyPasskeyRegistration } from "@/lib/auth/passkey-server";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-passkey-register-verify");
 
 export async function POST(req: NextRequest) {
   const limited = await applyRateLimit(req, "auth:passkey-register-verify", 5, 60_000);
@@ -25,7 +28,7 @@ export async function POST(req: NextRequest) {
     if (msg === "challenge_expired" || msg === "verification_failed") {
       return jsonBadRequest("אימות Passkey נכשל. נסו שוב.");
     }
-    console.error("passkey register-verify", e);
+    log.error("passkey register-verify failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError("שגיאה ברישום Passkey");
   }
 }

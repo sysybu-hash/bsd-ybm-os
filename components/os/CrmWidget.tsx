@@ -2,6 +2,9 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, SlidersHorizontal } from 'lucide-react';
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("crm-widget");
 
 export default function CrmWidget() {
   const { dir, t } = useI18n();
@@ -23,7 +26,7 @@ export default function CrmWidget() {
       const data = await res.json();
       setClients(Array.isArray(data.contacts) ? data.contacts : []);
     } catch (err) {
-      console.error(err);
+      log.error("fetch clients failed", { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setLoading(false);
     }
@@ -44,7 +47,7 @@ export default function CrmWidget() {
   };
 
   return (
-    <div className="w-full h-full p-3 sm:p-6 flex flex-col gap-3 sm:gap-6 text-start bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="w-full h-full min-h-0 p-3 sm:p-6 flex flex-col gap-3 sm:gap-6 text-start bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <div className="flex justify-between items-center w-full">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -74,26 +77,26 @@ export default function CrmWidget() {
           <WidgetState variant="loading" message={t("workspaceWidgets.crmMini.loading")} />
         ) : clients.length > 0 ? (
           clients.map(client => (
-            <div key={client.id} className="w-full p-4 bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-2xl hover:bg-[color:var(--foreground-muted)]/10 transition-all flex justify-between items-center group cursor-pointer shadow-sm dark:shadow-none">
+            <div key={client.id} className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 flex justify-between items-center group cursor-pointer shadow-sm">
               <div className="text-start flex items-center gap-2">
-                 <button className="p-2 bg-[color:var(--foreground-muted)]/10 hover:bg-[color:var(--foreground-muted)]/20 rounded-lg text-[color:var(--foreground-muted)] transition-colors opacity-0 group-hover:opacity-100">
-                    <SlidersHorizontal size={14} />
-                 </button>
+                <button className="p-2 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-300 transition-colors opacity-0 group-hover:opacity-100">
+                  <SlidersHorizontal size={14} />
+                </button>
               </div>
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[color:var(--foreground-muted)]/10 flex items-center justify-center font-bold text-[color:var(--foreground-muted)] text-xs border border-[color:var(--border-main)]">
-                   {client.name?.charAt(0) || 'U'}
+                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 text-sm border border-slate-200 dark:border-slate-700/60">
+                  {client.name?.charAt(0) || 'U'}
                 </div>
                 <div className="flex flex-col">
-                  <div className="font-bold text-[color:var(--foreground-main)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{client.name}</div>
-                  <div className="text-[11px] text-[color:var(--foreground-muted)] font-medium uppercase tracking-wider">{client.phone || 'ללא טלפון'}</div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{client.name}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{client.phone || 'ללא טלפון'}</div>
                 </div>
               </div>
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-[color:var(--border-main)]/30 rounded-3xl">
-             <p className="text-[color:var(--foreground-muted)] text-sm">{t("workspaceWidgets.crmMini.empty")}</p>
+          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.crmMini.empty")}</p>
           </div>
         )}
       </div>

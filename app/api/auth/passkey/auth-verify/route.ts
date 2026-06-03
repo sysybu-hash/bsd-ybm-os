@@ -5,6 +5,9 @@ import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { verifyPasskeyAuthentication } from "@/lib/auth/passkey-server";
 import { createPasskeyLoginToken } from "@/lib/auth/passkey-login-token";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-passkey-auth-verify");
 
 export async function POST(req: NextRequest) {
   // 10 ניסיונות ל-5 דקות per IP — מגן על brute-force
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (msg === "challenge_expired" || msg === "unknown_credential" || msg === "verification_failed") {
       return jsonBadRequest("כניסה ביומטרית נכשלה. נסו אימייל וסיסמה או Google.");
     }
-    console.error("passkey auth-verify", e);
+    log.error("passkey auth-verify failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError("שגיאה בכניסה ביומטרית");
   }
 }

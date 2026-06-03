@@ -8,7 +8,6 @@ import { useI18n } from "@/components/os/system/I18nProvider";import { useGemini
 import type { GeminiLiveStatusLabels, GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
-import { APP_BUILDER_CHAT_SYSTEM_PROMPT } from "@/lib/app-builder/chat-system-prompt";
 import {
   isGeminiLiveAllowedByContext,
   isGeminiLiveContextReady,
@@ -51,9 +50,11 @@ function upsertLiveTranscriptMessage(
 type UseAppBuilderAssistantOptions = {
   currentUiSchema: AppBuilderUiSchema | null;
   onSchemaApplied: (schema: AppBuilderUiSchema) => void;
+  /** Called when the API returns a jsxCode string for Sandpack rendering */
+  onCodeApplied?: (code: string) => void;
 };
 
-export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: UseAppBuilderAssistantOptions) {
+export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCodeApplied }: UseAppBuilderAssistantOptions) {
   const { t, locale } = useI18n();
   const { data: session } = useSession();
   const automationCtx = useAutomationRunnerContext();
@@ -117,16 +118,18 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
     context: osAssistant.context,
   });
 
-  const appBuilderLiveInstruction = useMemo(() => {
-    const base = osAssistant.systemInstructionVoice?.trim() ?? "";
-    return `${base}\n\n${APP_BUILDER_CHAT_SYSTEM_PROMPT}\n\nYou are in voice mode inside the App Builder. Give concise spoken advice about forms, tables, and dashboards. For applying UI changes, tell the user to describe the change clearly in text chat.`;
-  }, [osAssistant.systemInstructionVoice]);
+  // מסלול ייעודי למחולל — פרומפט מכוון UI/JSX בלבד, ללא פעולות פלטפורמה.
+  // הפרומפט נבנה בצד השרת; כאן אנו מעבירים רק את הגדרות הקול.
+  const APP_BUILDER_LIVE_SESSION_URL = "/api/ai/gemini-live/app-builder-session";
 
   const geminiLive = useGeminiLiveAudio({
     owner: "appBuilder",
     enabled: isLiveMode && geminiLiveEligible,
-    contextReady: liveContextReady,
-    systemInstruction: appBuilderLiveInstruction,
+    // contextReady: always true for the builder — no OS assistant context needed
+    contextReady: true,
+    // systemInstruction is built server-side in app-builder-session route; pass empty here.
+    systemInstruction: "",
+    sessionTokenUrl: APP_BUILDER_LIVE_SESSION_URL,
     settings: geminiVoiceSettings,
     advancedFeaturesEnabled: osAssistant.featureFlags.geminiLiveAdvancedFeatures,
     locale,
@@ -146,6 +149,8 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
         upsertLiveTranscriptMessage(prev, LIVE_ASSISTANT_DRAFT_ID, "assistant", visible, finished, locale),
       );
     },
+    // onToolCall intentionally omitted — the app-builder voice assistant does NOT
+    // execute any platform actions (CRM, invoices, scan, etc.)
     shouldNotifyError: () => liveAutoStartRef.current,
     onError: (message) => {
       liveAutoStartRef.current = false;
@@ -242,6 +247,7 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
         const data = (await res.json()) as {
           reply?: string;
           uiSchema?: AppBuilderUiSchema;
+          jsxCode?: string;
           schemaError?: string;
           error?: string;
           clientActions?: AutomationAction[];
@@ -262,9 +268,13 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
           },
         ]);
 
+        if (data.jsxCode) {
+          onCodeApplied?.(data.jsxCode);
+        }
         if (data.uiSchema) {
           onSchemaApplied(data.uiSchema);
-        } else if (data.schemaError) {
+        } else if (data.schemaError && !data.jsxCode) {
+          // Only show schema error if we also have no JSX fallback
           toast.error(t("workspaceWidgets.appBuilder.refineFailed"));
         }
 
@@ -280,7 +290,8 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied }: Use
         setIsLoading(false);
       }
     },
-    [automationCtx, input, isLoading, locale, messages, onSchemaApplied, t],  );
+    [automationCtx, input, isLoading, locale, messages, onCodeApplied, onSchemaApplied, t],
+  );
 
   const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =
     geminiLive.state === "connecting" || (chatTab === "live" && osAssistant.loading && !isLiveActive)

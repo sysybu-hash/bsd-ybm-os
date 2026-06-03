@@ -91,7 +91,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
   }
 
   return (
-    <div className="flex flex-col min-h-full overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <DriveHeader
         t={t} drivePrefix={drivePrefix}
         boundProjectName={boundProjectName}

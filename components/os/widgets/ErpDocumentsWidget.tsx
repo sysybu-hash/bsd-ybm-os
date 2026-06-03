@@ -95,7 +95,7 @@ export default function ErpDocumentsWidget() {
   );
 
   return (
-    <div className="flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       {/* Mobile pane switcher */}
       <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] p-1.5 md:hidden" role="tablist">
         {(["list", "detail"] as const).map((pane) => {

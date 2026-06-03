@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonServerError } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("admin-logs");
 
 export const GET = withWorkspacesAuth(
   async (_req, { orgId }) => {
@@ -22,7 +25,7 @@ export const GET = withWorkspacesAuth(
 
       return NextResponse.json({ logs });
     } catch (error) {
-      console.error("Audit log API error:", error);
+      log.error("audit log API error", { error: error instanceof Error ? error.message : String(error) });
       return jsonServerError("שגיאת שרת פנימית.");
     }
   },
@@ -47,7 +50,7 @@ export const DELETE = withWorkspacesAuth(
 
       return NextResponse.json({ ok: true, deleted: deleted.count });
     } catch (error) {
-      console.error("Audit log clear API error:", error);
+      log.error("audit log clear API error", { error: error instanceof Error ? error.message : String(error) });
       return jsonServerError("שגיאת שרת פנימית.");
     }
   },

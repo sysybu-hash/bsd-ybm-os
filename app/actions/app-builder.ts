@@ -306,6 +306,53 @@ export async function saveAppDataAction(input: {
   return { ok: true as const, id: row.id };
 }
 
+/**
+ * Moves a kanban card to another column by updating the `_columnId` marker
+ * stored inside the row's data JSON. Used by DynamicKanbanRenderer drag/move.
+ */
+export async function updateAppDataColumnAction(input: {
+  schemaId: string;
+  dataId: string;
+  columnId: string;
+}) {
+  const ctx = await getOrgContext();
+  if ("error" in ctx) return { ok: false as const, error: ctx.error };
+
+  if (!input.dataId || !input.columnId) {
+    return { ok: false as const, error: "נתונים חסרים" };
+  }
+
+  // Verify the schema is accessible to this org.
+  const schemaRow = await prisma.customAppSchema.findFirst({
+    where: { id: input.schemaId, ...schemaAccessFilter(ctx.orgId) },
+    select: { id: true },
+  });
+  if (!schemaRow) {
+    return { ok: false as const, error: "סכמה לא נמצאה" };
+  }
+
+  // Load the org-owned data row.
+  const dataRow = await prisma.customAppData.findFirst({
+    where: { id: input.dataId, organizationId: ctx.orgId, schemaId: schemaRow.id },
+    select: { id: true, data: true },
+  });
+  if (!dataRow) {
+    return { ok: false as const, error: "כרטיסייה לא נמצאה" };
+  }
+
+  const existing =
+    dataRow.data && typeof dataRow.data === "object" && !Array.isArray(dataRow.data)
+      ? (dataRow.data as Record<string, unknown>)
+      : {};
+
+  await prisma.customAppData.update({
+    where: { id: dataRow.id },
+    data: { data: toPrismaJson({ ...existing, _columnId: input.columnId }) },
+  });
+
+  return { ok: true as const };
+}
+
 export async function listAppDataAction(schemaId: string) {
   const ctx = await getOrgContext();
   if ("error" in ctx) return { ok: false as const, error: ctx.error };

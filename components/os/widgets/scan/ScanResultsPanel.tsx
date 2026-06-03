@@ -147,7 +147,7 @@ export default function ScanResultsPanel({
             </thead>
             <tbody>
               {v5.lineItems!.map((row, i) => (
-                <tr key={i} className="border-t border-[color:var(--border-main)]">
+                <tr key={`${row.description ?? ''}-${i}`} className="border-t border-[color:var(--border-main)]">
                   <td className="p-2">{row.description}</td>
                   <td className="p-2 text-center">{row.quantity ?? 1}</td>
                   <td className="p-2 text-end">{row.lineTotal ?? row.unitPrice}</td>

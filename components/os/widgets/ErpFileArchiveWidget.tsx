@@ -317,7 +317,7 @@ export default function ErpFileArchiveWidget() {
   );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <OsConfirmDialog
         open={emptyTrashTarget}
         title={t("workspaceWidgets.erpArchive.emptyRecycleBinTitle")}

@@ -50,27 +50,52 @@ module.exports = {
           500: "#1e1e2a",
           border: "rgba(255,255,255,0.07)",
         },
-        /* Dashboard surfaces (light work environment) */
+        /* ─── Semantic OS design tokens (CSS variable–backed) ─────────── *
+         * Classes: bg-surface-card, text-foreground-main, border-border-main …
+         * Automatically adapt to light / dark via :root / .dark in globals.css */
         surface: {
-          bg:     "#f8f9fb",
-          card:   "#ffffff",
-          border: "#e8eaf0",
-          muted:  "#f1f3f7",
+          bg:     "var(--background-main)",
+          card:   "var(--surface-card)",
+          soft:   "var(--surface-soft)",
+          border: "var(--border-main)",   // legacy alias — prefer border-border-main
+          muted:  "var(--surface-soft)",  // legacy alias
+        },
+        foreground: {
+          main:   "var(--foreground-main)",
+          muted:  "var(--foreground-muted)",
+        },
+        border: {
+          main:   "var(--border-main)",
+          strong: "var(--border-strong)",
+        },
+        glass: {
+          bg:     "var(--glass-bg)",
+          border: "var(--glass-border)",
         },
       },
       /* ─── Shadows ────────────────────────────────────────────────────── */
       boxShadow: {
-        "brand-sm": "0 1px 3px 0 rgba(79,70,229,0.15)",
-        "brand-md": "0 4px 16px 0 rgba(79,70,229,0.20)",
-        "brand-lg": "0 8px 32px 0 rgba(79,70,229,0.25)",
-        "card":     "0 10px 40px -10px rgba(0,0,0,0.04)",
+        "brand-sm":   "0 1px 3px 0 rgba(79,70,229,0.15)",
+        "brand-md":   "0 4px 16px 0 rgba(79,70,229,0.20)",
+        "brand-lg":   "0 8px 32px 0 rgba(79,70,229,0.25)",
+        "card":       "0 10px 40px -10px rgba(0,0,0,0.04)",
         "card-hover": "0 4px 16px 0 rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06)",
+        // CSS variable–backed shadows — adapt to light/dark automatically
+        "glass":      "var(--glass-shadow)",
+        "window":     "var(--window-shadow-rest)",
+        "window-focus": "var(--window-shadow-focus)",
       },
       /* ─── Border radius ──────────────────────────────────────────────── */
       borderRadius: {
         "2xl": "1.25rem",
         "3xl": "1.5rem",
         "4xl": "2rem",
+        // CSS variable–backed radii
+        "window": "var(--window-radius)",   // 22px — OS window chrome
+        "sm-token": "var(--radius-sm)",     // 8px
+        "md-token": "var(--radius-md)",     // 10px
+        "lg-token": "var(--radius-lg)",     // 12px
+        "xl-token": "var(--radius-xl)",     // 16px
       },
       minHeight: {
         screen: "100vh",

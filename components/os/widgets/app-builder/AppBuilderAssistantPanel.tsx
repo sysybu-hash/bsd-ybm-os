@@ -12,15 +12,26 @@ import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 type Props = {
   currentUiSchema: AppBuilderUiSchema | null;
   onSchemaApplied: (schema: AppBuilderUiSchema) => void;
+  /** Called when the API returns jsxCode — passed straight to Sandpack */
+  onCodeApplied?: (code: string) => void;
+  /**
+   * Embedded mode — renders without internal flex-1/overflow so the parent
+   * scroll container handles all overflow. Pass to AiChatMessages too.
+   */
+  embedded?: boolean;
 };
 
-export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaApplied }: Props) {
+export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaApplied, onCodeApplied, embedded = false }: Props) {
   const { t } = useI18n();
-  const c = useAppBuilderAssistant({ currentUiSchema, onSchemaApplied });
+  const c = useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCodeApplied });
   const inputAreaRef = useRef<HTMLDivElement>(null);
 
+  const sectionClass = embedded
+    ? "flex flex-col rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30"
+    : "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30";
+
   return (
-    <section className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30">
+    <section className={sectionClass}>
       <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 px-3 py-2 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-1.5">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
@@ -82,6 +93,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
         emptyTitleKey="workspaceWidgets.appBuilder.chatEmptyTitle"
         emptySubtitleKey="workspaceWidgets.appBuilder.chatEmptySubtitle"
         t={t}
+        embedded={embedded}
       >
         {c.chatTab === "live" ? (
           <GeminiLivePanel

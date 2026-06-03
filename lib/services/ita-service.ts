@@ -8,6 +8,9 @@ import {
   getItaAllocationThresholdNis,
   requiresItaAllocation,
 } from "@/lib/ita-allocation-rules";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("ita-service");
 
 export function isItaProductionConfigured(): boolean {
   const key = env.ITA_PRODUCTION_KEY?.trim();
@@ -39,7 +42,7 @@ export async function requestItaAllocation(
 
   try {
     if (!isItaProductionConfigured()) {
-      console.warn("BSD-YBM: Missing ITA_PRODUCTION_KEY. Using 2026 mock allocation number.");
+      log.warn("Missing ITA_PRODUCTION_KEY — using 2026 mock allocation number");
       const mockNumber = Math.floor(100000000 + Math.random() * 900000000).toString();
       return {
         success: true,

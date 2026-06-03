@@ -20,6 +20,20 @@ import {
   releaseGeminiLiveLease,
   type GeminiLiveOwner,
 } from "@/lib/gemini-live/session-coordinator";
+import {
+  arrayBufferToBase64,
+  base64PcmToFloat32,
+  float32ToPcm16,
+  getAudioContextCtor,
+  resumeAudioContext,
+} from "@/lib/gemini-live/audio-codec";
+import {
+  deliverModelTranscript,
+  deliverUserTranscript,
+  flushUserTranscriptTurn,
+} from "@/lib/gemini-live/transcript-delivery";
+
+const liveLog = createLogger("gemini-live-audio");
 
 type GeminiLiveState = "idle" | "connecting" | "ready" | "streaming" | "fallback" | "error";
 
@@ -196,7 +210,7 @@ async function executeLiveToolCalls(
     const result =
       typeof raw === "string" ? raw : raw == null ? "Success" : JSON.stringify(raw);
     if (process.env.NODE_ENV === "development") {
-      console.info("[gemini-live] tool call", { name, args, result });
+      liveLog.info("tool call", { name, args, result });
     }
     responses.push({
       id: call.id,
@@ -207,38 +221,7 @@ async function executeLiveToolCalls(
   return responses;
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let index = 0; index < bytes.byteLength; index += 1) {
-    binary += String.fromCharCode(bytes[index]!);
-  }
-  return window.btoa(binary);
-}
-
-function float32ToPcm16(float32: Float32Array): ArrayBuffer {
-  const pcm = new Int16Array(float32.length);
-  for (let index = 0; index < float32.length; index += 1) {
-    const sample = Math.max(-1, Math.min(1, float32[index]!));
-    pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-  }
-  return pcm.buffer;
-}
-
-function base64PcmToFloat32(base64Audio: string): Float32Array {
-  const binary = window.atob(base64Audio);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  const pcm = new Int16Array(bytes.buffer);
-  const audio = new Float32Array(pcm.length);
-  for (let index = 0; index < pcm.length; index += 1) {
-    audio[index] = pcm[index]! / 32768;
-  }
-  return audio;
-}
+// arrayBufferToBase64, float32ToPcm16, base64PcmToFloat32 → lib/gemini-live/audio-codec.ts
 
 type LiveSessionTokenPayload = {
   token: string;
@@ -296,57 +279,8 @@ async function fetchLiveSessionToken(
   };
 }
 
-function getAudioContextCtor(): typeof AudioContext | null {
-  if (typeof window === "undefined") return null;
-  const win = window as typeof window & { webkitAudioContext?: typeof AudioContext };
-  return window.AudioContext || win.webkitAudioContext || null;
-}
-
-async function resumeAudioContext(ctx: AudioContext | null | undefined) {
-  if (!ctx || ctx.state === "closed") return;
-  if (ctx.state === "suspended") {
-    try {
-      await ctx.resume();
-    } catch {
-      /* ignore */
-    }
-  }
-}
-
-function deliverModelTranscript(
-  raw: string,
-  deliveredRef: { current: string },
-  onModelTranscript?: (text: string, finished: boolean) => void,
-) {
-  const visible = getAssistantVisibleTranscript(raw);
-  if (!visible || visible === deliveredRef.current) return;
-  deliveredRef.current = visible;
-  onModelTranscript?.(visible, true);
-}
-
-function deliverUserTranscript(
-  raw: string,
-  deliveredRef: { current: string },
-  onUserTranscript?: (text: string, finished: boolean) => void,
-) {
-  const text = raw.trim();
-  if (!text || text === deliveredRef.current) return;
-  deliveredRef.current = text;
-  onUserTranscript?.(text, true);
-}
-
-function flushUserTranscriptTurn(
-  latestUserTextRef: { current: string },
-  deliveredUserTextRef: { current: string },
-  onUserTranscript?: (text: string, finished: boolean) => void,
-) {
-  const finalUser = latestUserTextRef.current.trim();
-  if (finalUser) {
-    deliverUserTranscript(finalUser, deliveredUserTextRef, onUserTranscript);
-  }
-  latestUserTextRef.current = "";
-  deliveredUserTextRef.current = "";
-}
+// getAudioContextCtor, resumeAudioContext → lib/gemini-live/audio-codec.ts
+// deliverModelTranscript, deliverUserTranscript, flushUserTranscriptTurn → lib/gemini-live/transcript-delivery.ts
 
 export function useGeminiLiveAudio({
   enabled,

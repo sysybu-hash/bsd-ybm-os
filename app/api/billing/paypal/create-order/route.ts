@@ -14,6 +14,9 @@ import {
 import { getExpectedTierOrderAmountIls } from "@/lib/billing-pricing";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("billing-paypal-create-order");
 
 const createOrderBodySchema = z.object({
   tier: z.string().optional(),
@@ -51,7 +54,7 @@ export const POST = withWorkspacesAuth(
           });
           return NextResponse.json({ id });
         } catch (e) {
-          console.error("[create-order bundle]", e);
+          log.error("create-order bundle failed", { error: e instanceof Error ? e.message : String(e) });
           return jsonBadGateway(e instanceof Error ? e.message : "יצירת הזמנה נכשלה");
         }
       }

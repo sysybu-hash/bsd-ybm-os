@@ -29,7 +29,7 @@ export default async function HelpPage() {
         <Link href="/" className="mb-4 inline-block text-sm font-bold text-blue-600 hover:underline">
           {BACK_LABEL[locale] ?? BACK_LABEL.he}
         </Link>
-        <div className="h-[calc(100vh-6rem)] overflow-hidden rounded-2xl border border-[color:var(--border-main)] shadow-lg">
+        <div className="h-[calc(100vh-6rem)] h-[calc(100dvh-6rem)] overflow-hidden rounded-2xl border border-[color:var(--border-main)] shadow-lg">
           <HelpCenterWidget />
         </div>
       </div>

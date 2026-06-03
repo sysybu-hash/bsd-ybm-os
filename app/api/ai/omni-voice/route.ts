@@ -8,7 +8,7 @@ import { jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
-import { GEMINI_FLAGSHIP_MODEL } from "@/lib/gemini-model";
+import { GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
@@ -18,7 +18,7 @@ import { getMergedIndustryConfig } from "@/lib/construction-trades";
 
 export const maxDuration = 90;
 
-const MODEL = env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_FLAGSHIP_MODEL;
+const MODEL = env.GEMINI_OMNI_VOICE_MODEL?.trim() || GEMINI_STABLE_TEXT_MODEL;
 const REQUESTS_PER_HOUR = 60;
 
 const omniBodySchema = z.object({

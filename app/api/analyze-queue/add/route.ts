@@ -10,6 +10,9 @@ import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { DocumentScanFilePayload } from "@/lib/analyze-queue";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("analyze-queue-add");
 import { drainDocumentScanQueue } from "@/lib/analyze-queue-runner";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 
@@ -81,7 +84,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       try {
         await drainDocumentScanQueue(40);
       } catch (e) {
-        console.error("[analyze-queue/add] after() drain", e);
+        log.error("after() drain failed", { error: e instanceof Error ? e.message : String(e) });
       }
     });
 

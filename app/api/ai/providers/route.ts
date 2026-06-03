@@ -5,6 +5,9 @@ import { getAiProvidersPublic } from "@/lib/ai-providers";
 import { getAllowedAiProvidersForPlan } from "@/lib/ai-engine-access";
 import { isAdmin } from "@/lib/is-admin";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("ai-providers");
 
 export const GET = withWorkspacesAuth(async (_req, { orgId, userId }) => {
   try {
@@ -28,7 +31,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId, userId }) => {
       platformAiBypass = !!(userEmailRow?.email && isAdmin(userEmailRow.email));
       allowedIds = getAllowedAiProvidersForPlan(plan, platformAiBypass);
     } catch (dbErr) {
-      console.error("[AI PROVIDERS] Database connection failed, using fallback mode:", dbErr);
+      log.error("database connection failed — using fallback mode", { error: dbErr instanceof Error ? dbErr.message : String(dbErr) });
     }
 
     const providers = getAiProvidersPublic().map((p) => ({
@@ -44,7 +47,7 @@ export const GET = withWorkspacesAuth(async (_req, { orgId, userId }) => {
       stabilityMode: true,
     });
   } catch (err: unknown) {
-    console.error("[AI PROVIDERS] Critical failure:", err);
+    log.error("critical failure", { error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({
       providers: getAiProvidersPublic().map((p) => ({ ...p, allowedByPlan: true })),
       plan: "GUEST",

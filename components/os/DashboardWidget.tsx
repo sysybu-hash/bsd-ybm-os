@@ -16,6 +16,7 @@ import {
   Bar,
 } from "recharts";
 import { Sparkles, TrendingUp, Activity, Download, FileText } from "lucide-react";
+import { StatCard, ChartContainer, StatusBadge } from "@/components/os/widgets/shared/WidgetCard";
 import { motion } from "framer-motion";
 import { useDashboardStats } from "./useDashboardStats";
 import { useFinanceReportExport } from "@/hooks/useFinanceReportExport";
@@ -45,7 +46,7 @@ export default function DashboardWidget() {
       role="region"
       aria-label={t("workspaceWidgets.quickActions.dashboard.title")}
       tabIndex={0}
-      className="flex min-w-0 flex-col h-full bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 overflow-y-auto custom-scrollbar gap-4 md:gap-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+      className="flex min-w-0 min-h-0 flex-1 flex-col bg-transparent text-[color:var(--foreground-main)] p-3 md:p-6 gap-4 md:gap-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
       dir={dir}
     >
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -72,154 +73,128 @@ export default function DashboardWidget() {
       </div>
 
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalRevenue")}</span>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalRevenue)}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title={t("workspaceWidgets.dashboard.totalRevenue")} value={formatCurrency(stats.totalRevenue)} valueClassName="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title={t("workspaceWidgets.dashboard.totalExpenses")} value={formatCurrency(stats.totalExpenses)} valueClassName="text-rose-600 dark:text-rose-400" />
+        <StatCard
+          title={t("workspaceWidgets.dashboard.netProfit")}
+          value={formatCurrency(netProfit)}
+          valueClassName={netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}
+        />
+        <StatCard title={t("workspaceWidgets.dashboard.activeProjects")} value={stats.activeProjects}>
+          <div className="mt-3">
+            <StatusBadge variant="indigo">{stats.pendingInvoices} בטיפול</StatusBadge>
           </div>
-        </div>
-
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-rose-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.totalExpenses")}</span>
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(stats.totalExpenses)}</span>
-          </div>
-        </div>
-
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-blue-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.netProfit")}</span>
-          <div className="text-2xl font-black text-[color:var(--foreground-main)]">{formatCurrency(netProfit)}</div>
-        </div>
-
-        <div className="bg-[color:var(--background-main)]/50 border border-[color:var(--border-main)] p-4 md:p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden group shadow-sm dark:shadow-none">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
-          <span className="text-[color:var(--foreground-muted)] text-[10px] font-bold uppercase tracking-widest">{t("workspaceWidgets.dashboard.activeProjects")}</span>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black text-[color:var(--foreground-main)]">{stats.activeProjects}</span>
-            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">{stats.pendingInvoices} בטיפול</span>
-          </div>
-        </div>
+        </StatCard>
       </div>
 
       {/* AI Insight */}
       {stats.aiInsight && (
-        <div className="bg-emerald-500/[0.03] border border-emerald-500/20 p-4 md:p-5 rounded-[2rem] flex flex-col sm:flex-row items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-lg shadow-emerald-500/5">
-            <Sparkles size={22} />
+        <div className="flex flex-col sm:flex-row items-start gap-4 p-5 bg-white dark:bg-slate-800 rounded-xl border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <Sparkles size={20} />
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.2em] mb-1">AI Financial Intelligence</span>
-            <p className="text-sm text-[color:var(--foreground-main)] opacity-90 leading-relaxed font-medium">{stats.aiInsight}</p>
+          <div className="flex flex-col gap-1 min-w-0">
+            <StatusBadge variant="green">AI Financial Intelligence</StatusBadge>
+            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{stats.aiInsight}</p>
           </div>
         </div>
       )}
 
       {/* Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
-          <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
-            <TrendingUp size={16} className="text-emerald-500 dark:text-emerald-400" /> סיכום הוצאות חודשי
-          </h3>
-          <div className="h-48 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.analytics.monthlyExpenses}>
-                <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff05" : "#00000005"} vertical={false} />
-                <XAxis dataKey="name" stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₪${v / 1000}k`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff", border: "1px solid var(--border-main)", borderRadius: "12px", fontSize: "12px" }}
-                  itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
-                  formatter={(v: number) => formatCurrency(v)}
-                />
-                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartContainer
+          title={<span className="flex items-center gap-2"><TrendingUp size={15} className="text-emerald-500 dark:text-emerald-400" />סיכום הוצאות חודשי</span>}
+          minHeight={192}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.analytics.monthlyExpenses}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff08" : "#00000008"} vertical={false} />
+              <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `₪${v / 1000}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: theme === "dark" ? "#1e293b" : "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: "12px" }}
+                itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
+                formatter={(v: number) => formatCurrency(v)}
+              />
+              <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
 
-        <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-6 shadow-sm dark:shadow-none min-w-0">
-          <h3 className="text-sm font-bold text-[color:var(--foreground-muted)] mb-6 flex items-center gap-2">
-            <Activity size={16} className="text-indigo-500 dark:text-indigo-400" /> סטטוס הצעות מחיר
-          </h3>
+        <ChartContainer
+          title={<span className="flex items-center gap-2"><Activity size={15} className="text-indigo-500 dark:text-indigo-400" />סטטוס הצעות מחיר</span>}
+          minHeight={192}
+        >
           <div className="flex flex-col gap-4">
-            {stats.analytics.quoteStatus.map((status, i) => (
-              <div key={i} className="flex flex-col gap-2">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                  <span className="text-[color:var(--foreground-muted)]">{status.name}</span>
-                  <span className="text-[color:var(--foreground-main)]">{status.value} מסמכים</span>
+            {stats.analytics.quoteStatus.map((status) => (
+              <div key={status.name} className="flex flex-col gap-2">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-500 dark:text-slate-400">{status.name}</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-semibold">{status.value} מסמכים</span>
                 </div>
-                <div className="h-2 w-full bg-[color:var(--foreground-muted)]/10 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(status.value / (stats.analytics.quoteStatus.reduce((a, b) => a + b.value, 0) || 1)) * 100}%` }}
-                    className="h-full"
+                    className="h-full rounded-full"
                     style={{ backgroundColor: status.color }}
                   />
                 </div>
               </div>
             ))}
-            <div className="mt-4 p-4 bg-[color:var(--surface-card)]/50 rounded-xl border border-[color:var(--border-main)]">
-              <p className="text-[10px] text-[color:var(--foreground-muted)] leading-relaxed text-center">
+            <div className="mt-2 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700/60">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-center">
                 המערכת מזהה {stats.analytics.quoteStatus.find((s) => s.name === "ממתין")?.value ?? 0} הצעות מחיר שטרם נחתמו. מומלץ לשלוח תזכורת אוטומטית.
               </p>
             </div>
           </div>
-        </div>
+        </ChartContainer>
       </div>
 
       {/* Cashflow Chart */}
-      <div className="bg-[color:var(--background-main)]/30 border border-[color:var(--border-main)] rounded-[2rem] p-4 md:p-8 flex flex-col shadow-sm dark:shadow-none min-w-0">
-        <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6 md:mb-8">
-          <div>
-            <h3 className="text-lg font-bold text-[color:var(--foreground-main)] flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> תחזית תזרים מזומנים חכמה
-            </h3>
-            <p className="text-xs text-[color:var(--foreground-muted)] mt-1 uppercase tracking-wider">ניתוח היסטורי + תחזית רבעונית קדימה</p>
-          </div>
-          <div className="flex flex-wrap gap-3 md:gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-indigo-500" />
-              <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase">ביצוע בפועל</span>
+      <ChartContainer
+        title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />תחזית תזרים מזומנים חכמה</span>}
+        subtitle="ניתוח היסטורי + תחזית רבעונית קדימה"
+        actionElement={
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">ביצוע בפועל</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-indigo-500/30 border border-dashed border-indigo-600 dark:border-indigo-400" />
-              <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase">תחזית AI</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-300 border border-dashed border-indigo-400" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">תחזית AI</span>
             </div>
           </div>
-        </div>
-
-        <div className="h-64 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff05" : "#00000005"} vertical={false} />
-              <XAxis dataKey="name" stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-              <YAxis stroke="var(--foreground-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `₪${value / 1000}k`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: theme === "dark" ? "#0f172a" : "#ffffff", border: "1px solid var(--border-main)", borderRadius: "12px", fontSize: "12px" }}
-                itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" strokeLinecap="round" connectNulls />
-              <Area type="monotone" dataKey="forecast" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorForecast)" connectNulls />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-      </div>
+        }
+        minHeight={256}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff08" : "#00000008"} vertical={false} />
+            <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dy={10} />
+            <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `₪${value / 1000}k`} />
+            <Tooltip
+              contentStyle={{ backgroundColor: theme === "dark" ? "#1e293b" : "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", fontSize: "12px" }}
+              itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
+              formatter={(value: number) => formatCurrency(value)}
+            />
+            <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" strokeLinecap="round" connectNulls />
+            <Area type="monotone" dataKey="forecast" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorForecast)" connectNulls />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartContainer>
     </div>
   );
 }

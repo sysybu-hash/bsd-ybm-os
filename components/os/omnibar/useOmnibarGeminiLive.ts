@@ -18,6 +18,9 @@ import {
 } from "@/lib/gemini-live/eligibility";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("omnibar-gemini-live");
 
 type OsAssistantSlice = {
   context: OsAssistantUserContext | null;
@@ -85,7 +88,7 @@ export function useOmnibarGeminiLive({
     },
     shouldNotifyError: () => userRequestedLiveRef.current,
     onError: (err) => {
-      if (process.env.NODE_ENV === "development") console.warn("Gemini Live:", err);
+      log.warn("gemini live error", { error: String(err) });
       setVoiceStatus("error");
       pendingLiveStartRef.current = false;
       userRequestedLiveRef.current = false;

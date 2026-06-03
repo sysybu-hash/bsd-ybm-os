@@ -8,6 +8,9 @@ import {
   markApiCooldownFromResponse,
   markApiCooldownMs,
 } from "@/lib/client/api-rate-limit-backoff";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("notifications-feed");
 import { mapFeedItemToNotification } from "./types";
 
 const FEED_KEY = "api:notifications/feed";
@@ -79,7 +82,7 @@ export function useNotificationsFeed(
           err instanceof TypeError &&
           (err.message === "Failed to fetch" || err.message.includes("NetworkError"));
         if (process.env.NODE_ENV === "development" && !isNetworkFailure) {
-          console.warn("Notifications feed unavailable", err);
+          log.warn("notifications feed unavailable", { error: err instanceof Error ? err.message : String(err) });
         }
         setNotifications([]);
         schedulePoll(BASE_POLL_MS);

@@ -5,6 +5,9 @@ import { startRegistration } from "@simplewebauthn/browser";
 import { Fingerprint, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("passkey-offer-modal");
 
 const STORAGE_KEY = "bsd-passkey-offer-dismissed";
 
@@ -51,7 +54,7 @@ export default function PasskeyOfferModal() {
       toast.success(t("auth.hub.passkey.registerSuccess"));
       dismiss();
     } catch (e) {
-      console.error("passkey offer", e);
+      log.error("passkey offer failed", { error: e instanceof Error ? e.message : String(e) });
       toast.error(t("auth.hub.passkey.registerFailed"));
     } finally {
       setBusy(false);

@@ -17,6 +17,9 @@ import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
 import { isExplicitClientScanMode } from "@/lib/scan-classify";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("scan-tri-engine-stream");
 
 export const dynamic = "force-dynamic";
 /** ליטרל בלבד — Next.js לא מקבל ייבוא ל־maxDuration */
@@ -171,7 +174,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
         usageWarnings: gate.usageWarnings,
       });
     } catch (e) {
-      console.error("[tri-engine stream]", e);
+      log.error("tri-engine stream failed", { error: e instanceof Error ? e.message : String(e) });
       const msg = e instanceof Error ? e.message : String(e);
       await writeLine({ type: "error", error: msg.slice(0, 500) });
     } finally {

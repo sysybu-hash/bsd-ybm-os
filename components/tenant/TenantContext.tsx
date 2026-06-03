@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import type { ResolvedTenant } from "@/lib/tenant-host";
+import type { ResolvedTenant } from "@/lib/core/tenant-host";
 
 const TenantCtx = createContext<ResolvedTenant | null>(null);
 

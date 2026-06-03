@@ -71,7 +71,7 @@ export default function AiScannerWidget({
 
   return (
     <div
-      className={`flex min-h-full flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] md:h-full md:overflow-hidden ${
+      className={`flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] ${
         embeddedInHub ? "[&_.workspace-window]:hidden" : ""
       }`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}

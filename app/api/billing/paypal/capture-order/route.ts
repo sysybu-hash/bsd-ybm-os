@@ -9,6 +9,9 @@ import { parseCapturePayload } from "@/lib/paypal-order-parse";
 import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("billing-paypal-capture-order");
 
 const captureOrderBodySchema = z.object({
   orderID: z.string().min(1),
@@ -36,7 +39,7 @@ export const POST = withWorkspacesAuth(
       try {
         raw = await paypalCaptureOrder(orderID);
       } catch (e) {
-        console.error("[capture-order] capture", e);
+        log.error("capture-order capture failed", { error: e instanceof Error ? e.message : String(e) });
         return jsonBadGateway(e instanceof Error ? e.message : "Capture נכשל");
       }
 

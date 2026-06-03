@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { localeToSpeechLang } from "@/lib/i18n/speech-locale";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("speech-services");
 
 /** תואם Web Speech API — ללא `SpeechRecognitionEvent` בחלק מגרסאות `lib` של TypeScript */
 type SpeechResultLike = { readonly 0: { transcript: string }; isFinal: boolean };
@@ -71,7 +74,7 @@ export function useSpeechServices(
     };
 
     recognition.onerror = (ev: Event) => {
-      console.error("Speech Recognition Error:", ev);
+      log.error("speech recognition error", { event: String(ev) });
       setError("לא הצלחתי לשמוע. נסה שוב.");
       setIsListening(false);
     };

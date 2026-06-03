@@ -11,7 +11,7 @@ import {
   normalizeHostname,
   resolveTenantByHost,
   tenantBrandingCssVars,
-} from "@/lib/tenant-host";
+} from "@/lib/core/tenant-host";
 import { TenantProvider } from "@/components/tenant/TenantContext";
 import SessionProvider from "@/components/os/system/SessionProvider";
 import { CSPostHogProvider } from "@/components/providers/posthog-provider";
@@ -30,6 +30,9 @@ import StructuredDataScript from "@/components/seo/StructuredDataScript";
 import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
 import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
 import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("root-layout");
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -95,7 +98,7 @@ export default async function RootLayout({
   try {
     session = await getServerSession(authOptions);
   } catch (e) {
-    console.warn("[layout] getServerSession failed — continuing without session", e);
+    log.warn("getServerSession failed — continuing without session", { error: e instanceof Error ? e.message : String(e) });
   }
   const jar = await cookies();
   const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
@@ -111,7 +114,7 @@ export default async function RootLayout({
   try {
     tenant = await resolveTenantByHost(host);
   } catch (e) {
-    console.warn("[layout] resolveTenantByHost failed — continuing as platform", e);
+    log.warn("resolveTenantByHost failed — continuing as platform", { error: e instanceof Error ? e.message : String(e) });
   }
   if (host && !isPlatformHost(host) && !tenant) {
     redirect(process.env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");

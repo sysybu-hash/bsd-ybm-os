@@ -10,6 +10,9 @@ import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generat
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
 import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
 import { resolveWidgetOpen } from '@/lib/os-assistant/resolve-widget-open';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger("window-manager");
 
 export type WidgetType =
   | 'project'
@@ -157,7 +160,7 @@ export function useWindowManager() {
         setIsFirstTime(true);
       }
     } catch (e) {
-      console.warn("LocalStorage load error:", e);
+      log.warn("localStorage load error", { error: e instanceof Error ? e.message : String(e) });
       setIsFirstTime(true);
     } finally {
       setHasHydrated(true);
@@ -305,7 +308,7 @@ export function useWindowManager() {
             nextZIndexRef.current = maxZ + 1;
           }
         } catch (e) {
-          console.warn('Snapshot restore failed:', e);
+          log.warn("snapshot restore failed", { error: e instanceof Error ? e.message : String(e) });
         }
         sessionStorage.removeItem(SNAPSHOT_KEY);
       }

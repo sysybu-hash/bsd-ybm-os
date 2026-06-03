@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonUnauthorized, jsonServerError } from "@/lib/api-json";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-passkey-list");
 
 export async function GET() {
   try {
@@ -16,7 +19,7 @@ export async function GET() {
     });
     return NextResponse.json({ ok: true, passkeys: rows });
   } catch (e) {
-    console.error("passkey list", e);
+    log.error("passkey list failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError();
   }
 }

@@ -77,7 +77,7 @@ export default function AdaptiveWidgetShell({
       ref={shellRef as React.RefObject<HTMLElement>}
       id={id}
       onMouseDown={onFocus}
-      className={`workspace-window pointer-events-auto flex min-h-0 flex-col overflow-hidden transition-[box-shadow,border-color,transform] duration-200 ${
+      className={`workspace-window pointer-events-auto transition-[box-shadow,border-color,transform] duration-200 ${
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
@@ -102,56 +102,58 @@ export default function AdaptiveWidgetShell({
       aria-hidden={isMinimized || undefined}
       aria-labelledby={`${id}-title`}
     >
-      <WorkspaceWindowChrome
-        title={title}
-        titleId={`${id}-title`}
-        onClose={onClose}
-        zoom={zoom}
-        onZoomDelta={(delta) => onZoomChange?.(delta)}
-        isMaximized={isMaximized}
-        onMaximize={onMaximize}
-        onMinimize={onMinimize}
-        isMinimized={isMinimized}
-        maximizeHiddenOnMobile={maximizeHiddenOnMobile}
-        canGoBack={canGoBack}
-        canGoForward={canGoForward}
-        onBack={onBack}
-        onForward={onForward}
-        closeTouchTarget={mobileOrMaximized}
-        headerClassName={
-          mobileOrMaximized
-            ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]"
-            : "cursor-move touch-none"
-        }
-        onHeaderMouseDown={(e) => {
-          if (mobileOrMaximized) return;
-          if ((e.target as HTMLElement).closest("button")) return;
-          e.preventDefault();
-          dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
-          setIsDragging(true);
-        }}
-      />
+      {/* Content wrapper — overflow-hidden here clips content to rounded corners
+          but ResizeHandles lives OUTSIDE this div so it is never clipped. */}
+      <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-[inherit]">
+        <WorkspaceWindowChrome
+          title={title}
+          titleId={`${id}-title`}
+          onClose={onClose}
+          zoom={zoom}
+          onZoomDelta={(delta) => onZoomChange?.(delta)}
+          isMaximized={isMaximized}
+          onMaximize={onMaximize}
+          onMinimize={onMinimize}
+          isMinimized={isMinimized}
+          maximizeHiddenOnMobile={maximizeHiddenOnMobile}
+          canGoBack={canGoBack}
+          canGoForward={canGoForward}
+          onBack={onBack}
+          onForward={onForward}
+          closeTouchTarget={mobileOrMaximized}
+          headerClassName={
+            mobileOrMaximized
+              ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]"
+              : "cursor-move touch-none"
+          }
+          onHeaderMouseDown={(e) => {
+            if (mobileOrMaximized) return;
+            if ((e.target as HTMLElement).closest("button")) return;
+            e.preventDefault();
+            dragStartRef.current = { mouseX: e.clientX, mouseY: e.clientY, x: position.x, y: position.y };
+            setIsDragging(true);
+          }}
+        />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
-        <div
-          className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] ${
-            zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
-          }`}
-        >
-          {zoomActive ? (
-            // Zoom mode: scale wrapper that can grow in both axes
-            <div className="flex w-full min-h-full flex-col origin-top" style={contentZoomStyle}>
-              {children}
-            </div>
-          ) : (
-            // Normal mode: children sit directly in the scroll container so that
-            // h-full / flex-1 widget roots resolve against its definite height
-            // (fills the viewport) while tall content still scrolls the container.
-            children
-          )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
+          <div
+            className={`custom-scrollbar min-h-0 flex-1 overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] ${
+              zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
+            }`}
+          >
+            {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
+          <div
+            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex h-full w-full flex-col"}
+            style={zoomActive ? contentZoomStyle : undefined}
+          >
+            {children}
+          </div>
+          </div>
         </div>
       </div>
 
+      {/* Resize handles are OUTSIDE the overflow-hidden wrapper so they are
+          never clipped, and their z-[100] sits above all widget content. */}
       {!mobileOrMaximized && <ResizeHandles onStartResize={startResize} />}
     </section>
   );

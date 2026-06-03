@@ -6,6 +6,9 @@ import { Fingerprint, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { passwordMeetsRules } from "@/lib/auth/client-password";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("passkey-security-section");
 
 type PasskeyRow = {
   id: string;
@@ -64,7 +67,7 @@ export default function PasskeySecuritySection() {
       toast.success(t("auth.hub.passkey.registerSuccess"));
       await load();
     } catch (e) {
-      console.error(e);
+      log.error("passkey security action failed", { error: e instanceof Error ? e.message : String(e) });
       toast.error(t("auth.hub.passkey.registerFailed"));
     } finally {
       setBusy(false);

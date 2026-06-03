@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonServerError } from "@/lib/api-json";
 import { hashPassword, validatePasswordStrength } from "@/lib/password";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("auth-reset-password");
 
 export async function POST(req: NextRequest) {
   // 10 ניסיונות ל-15 דקות per IP
@@ -37,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, message: "הסיסמה עודכנה. ניתן להתחבר." });
   } catch (e) {
-    console.error("reset-password", e);
+    log.error("reset-password failed", { error: e instanceof Error ? e.message : String(e) });
     return jsonServerError();
   }
 }

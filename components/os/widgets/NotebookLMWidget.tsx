@@ -137,7 +137,7 @@ export default function NotebookLMWidget({
 
   return (
     <div
-      className="flex w-full flex-col overflow-x-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl md:h-full md:overflow-hidden"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/90 font-sans backdrop-blur-xl"
       dir={dir}
     >
       {/* Dialogs render as portals — unaffected by split layout */}

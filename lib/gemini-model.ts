@@ -14,11 +14,6 @@ export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.5-flash";
 /** מיושן; נשמר לתאימות env */
 export const GEMINI_LEGACY_PREVIEW_MODEL = "gemini-3-flash-preview";
 
-/** @deprecated השתמשו ב-GEMINI_STABLE_TEXT_MODEL */
-export const GEMINI_FLAGSHIP_PREVIEW_MODEL = GEMINI_LEGACY_PREVIEW_MODEL;
-
-/** @deprecated השתמשו ב-GEMINI_STABLE_TEXT_MODEL */
-export const GEMINI_FLAGSHIP_MODEL = GEMINI_STABLE_TEXT_MODEL;
 
 /** גרמושקה / BOQ — אותו מודל GA (קוד + סוכנים) */
 export const GEMINI_BLUEPRINT_PRIMARY_MODEL = "gemini-3.5-flash";

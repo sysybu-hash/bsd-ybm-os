@@ -16,7 +16,7 @@ import {
   AI_ENGINE_CATALOG_UPDATED_AT,
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
   GEMINI_STABLE_TEXT_MODEL,
-  GEMINI_FLAGSHIP_PREVIEW_MODEL,
+  GEMINI_LEGACY_PREVIEW_MODEL,
   getGeminiModelId,
 } from "@/lib/gemini-model";
 
@@ -65,7 +65,7 @@ export const GET = withWorkspacesAuth(async () => {
     },
     gemini: {
       stableTextModelId: GEMINI_STABLE_TEXT_MODEL,
-      previewModelId: GEMINI_FLAGSHIP_PREVIEW_MODEL,
+      previewModelId: GEMINI_LEGACY_PREVIEW_MODEL,
       liveModelId: GEMINI_LIVE_NATIVE_AUDIO_MODEL,
       liveLabel: geminiUiLabel(GEMINI_LIVE_NATIVE_AUDIO_MODEL),
       primaryModelId: geminiPrimaryModelId,

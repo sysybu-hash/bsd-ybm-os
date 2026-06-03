@@ -6,6 +6,9 @@ import { createNumberedDocument } from "@/lib/finance-numbering";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { createPayPlusPaymentPage, isPayPlusConfigured } from "@/lib/payplus";
 import { v4 as uuidv4 } from "uuid";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("erp-quotes");
 
 export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
   const body = await req.json();
@@ -66,7 +69,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
           metadata: { organizationId: orgId, quoteId: quote.id }
         });
       } catch (payplusError) {
-        console.error("PayPlus link generation failed:", payplusError);
+        log.error("PayPlus link generation failed", { error: payplusError instanceof Error ? payplusError.message : String(payplusError) });
       }
     }
 

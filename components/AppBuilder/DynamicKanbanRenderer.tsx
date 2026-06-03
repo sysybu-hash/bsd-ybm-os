@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { GripVertical, Loader2, Plus, X } from "lucide-react";
-import { saveAppDataAction, listAppDataAction } from "@/app/actions/app-builder";
+import { saveAppDataAction, listAppDataAction, updateAppDataColumnAction } from "@/app/actions/app-builder";
 import { toast } from "sonner";
 import type { AppBuilderKanbanUI } from "@/lib/validation/schemas/app-builder";
 
@@ -98,12 +98,20 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
 
   const moveCard = async (card: Card, toColId: string) => {
     if (!schemaId || card.columnId === toColId) return;
+    const fromColId = card.columnId;
     // Optimistic update
     setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: toColId } : c));
-    // Re-save with new columnId — requires update action; for now save duplicate and note
-    // TODO: add updateAppDataAction for move
-    toast.info("העברת כרטיסיות תהיה זמינה בגרסה הבאה");
-    setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: card.columnId } : c));
+    try {
+      const res = await updateAppDataColumnAction({ schemaId, dataId: card.id, columnId: toColId });
+      if (!res.ok) {
+        // Rollback on failure
+        setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: fromColId } : c));
+        toast.error(res.error ?? "העברה נכשלה");
+      }
+    } catch {
+      setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: fromColId } : c));
+      toast.error("העברה נכשלה");
+    }
   };
 
   return (

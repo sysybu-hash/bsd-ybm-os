@@ -58,7 +58,7 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
               </tr>
             ) : (
               payload.items.map((item, i) => (
-                <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                <tr key={`${item.desc}-${i}`} className="border-b border-slate-100 dark:border-slate-800">
                   <td className="p-2 text-right">{item.desc}</td>
                   <td className="p-2 text-center">{item.qty}</td>
                   <td className="p-2 text-center">{money(item.price)}</td>

@@ -6,6 +6,9 @@ import { runAiChat, getUserFacingAiErrorMessage } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("os-assistant-interpret");
 import { buildParseActionTaskPrompt } from "@/lib/os-automations/prompts";
 import { actionsToOpenWidgets, parseActionsJson } from "@/lib/os-automations/parse-response";
 import type { AutomationAction } from "@/lib/os-automations/types";
@@ -73,7 +76,7 @@ export const POST = withWorkspacesAuth(
         actions: [],
       } satisfies InterpretResult);
     } catch (err) {
-      console.error("api/os/assistant/interpret:", err);
+      log.error("interpret failed", { error: err instanceof Error ? err.message : String(err) });
       return Response.json(
         { error: getUserFacingAiErrorMessage(err, locale) },
         { status: 500 },

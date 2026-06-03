@@ -62,7 +62,7 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
   const themeColor = engineColors[provider] ?? "bg-blue-400 text-blue-400 border-blue-500/30";
 
   return (
-    <div className="flex h-full w-full flex-col gap-4 rounded-2xl bg-transparent p-6 text-[color:var(--foreground-main)]">
+    <div className="flex h-full min-h-0 w-full flex-col gap-4 rounded-2xl bg-transparent p-6 text-[color:var(--foreground-main)]">
       <div className="flex items-center justify-between border-b border-[color:var(--border-main)] pb-3">
         <div className="flex items-center gap-3">
           <div
