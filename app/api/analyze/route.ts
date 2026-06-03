@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtraction } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { getMessages } from "@/lib/i18n/load-messages";
 import { normalizeLocale } from "@/lib/i18n/config";
@@ -32,7 +32,7 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
     const locale = normalizeLocale(cookieJar.get("bsd-locale")?.value);
     const messages = getMessages(locale);
 
-    const extraction = await runTriEngineExtraction({
+    const extraction = await runTriEngineExtractionValidated({
       base64,
       mimeType,
       fileName: file.name,

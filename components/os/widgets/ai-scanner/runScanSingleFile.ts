@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
+import type { ScanValidationResult } from "@/lib/scan-validate";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { clampScanModeForIndustry } from "@/lib/scan-modes-for-ui";
 import {
@@ -89,6 +90,7 @@ export async function runScanSingleFile({
     let finalV5: ScanExtractionV5 | null = null;
     let finalAi: Record<string, unknown> | undefined;
     let lastTelemetry: TriEngineTelemetry | null = null;
+    let finalValidation: ScanValidationResult | undefined;
 
     await readNdjsonStream(res, (obj) => {
       if (obj.type === "telemetry" && obj.telemetry) {
@@ -112,6 +114,9 @@ export async function runScanSingleFile({
           const nested = (obj.aiData as { v5?: ScanExtractionV5 }).v5;
           if (nested) finalV5 = nested;
         }
+        if (obj.validation && typeof obj.validation === "object") {
+          finalValidation = obj.validation as ScanValidationResult;
+        }
       }
       if (obj.type === "error" || (obj.error && !obj.ok)) {
         throw new Error(String(obj.error ?? "Scan failed"));
@@ -119,7 +124,7 @@ export async function runScanSingleFile({
     }, signal);
 
     if (finalV5) {
-      const analysis = mapV5ToAnalysis(finalV5, finalAi);
+      const analysis = { ...mapV5ToAnalysis(finalV5, finalAi), validation: finalValidation };
       setPendingAnalysis(analysis);
       setResultJson(JSON.stringify(finalV5, null, 2));
       setLastScanV5(finalV5);

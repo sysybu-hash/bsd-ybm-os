@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
+import type { ScanValidationResult } from "@/lib/scan-validate";
 import {
   enginePhaseBadgeClass,
   enginePhaseLabelHe,
@@ -16,6 +17,7 @@ export type ScanResultsPanelProps = {
   v5: ScanExtractionV5;
   fileName: string;
   telemetry?: TriEngineTelemetry | null;
+  validation?: ScanValidationResult | null;
   onConfirmErp?: () => void;
   onSaveNotebook?: () => void;
   savingNotebook?: boolean;
@@ -31,6 +33,7 @@ export default function ScanResultsPanel({
   v5,
   fileName,
   telemetry,
+  validation,
   onConfirmErp,
   onSaveNotebook,
   savingNotebook,
@@ -92,6 +95,49 @@ export default function ScanResultsPanel({
           </dl>
         ) : null}
       </div>
+
+      {/* ── ציון ביטחון + אזהרות אימות ──────────────────────────────── */}
+      {validation && (validation.issues.length > 0 || validation.confidence < 1) && (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-50/60 dark:bg-amber-900/10 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              ביטחון פענוח
+            </p>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
+                validation.confidence >= 0.85
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  : validation.confidence >= 0.6
+                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              }`}
+            >
+              {Math.round(validation.confidence * 100)}%
+            </span>
+          </div>
+          {validation.issues.length > 0 && (
+            <ul className="space-y-1.5">
+              {validation.issues.map((issue) => (
+                <li
+                  key={issue.code}
+                  className={`flex items-start gap-2 text-[11px] leading-snug ${
+                    issue.severity === "error"
+                      ? "text-red-700 dark:text-red-400"
+                      : issue.severity === "warning"
+                        ? "text-amber-700 dark:text-amber-300"
+                        : "text-[color:var(--foreground-muted)]"
+                  }`}
+                >
+                  <span aria-hidden className="mt-0.5 shrink-0">
+                    {issue.severity === "error" ? "✗" : issue.severity === "warning" ? "⚠" : "ℹ"}
+                  </span>
+                  <span>{issue.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {telemetry ? (
         <div className="rounded-xl border border-[color:var(--border-main)] p-3">

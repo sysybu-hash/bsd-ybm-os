@@ -1,4 +1,5 @@
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import type { ScanValidationResult } from "@/lib/scan-validate";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 export type EngineMeta = {
@@ -19,6 +20,8 @@ export interface DocumentAnalysis {
   documentId?: string;
   rawAiData?: Record<string, unknown>;
   v5?: ScanExtractionV5;
+  /** תוצאת אימות מהשרת — בעיות שנמצאו + ציון ביטחון */
+  validation?: ScanValidationResult;
 }
 
 export interface ScanHistoryItem {

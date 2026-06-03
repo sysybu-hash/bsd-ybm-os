@@ -1,7 +1,7 @@
 import type { Session } from "next-auth";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtraction, type TriEngineProgressEvent } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated, type TriEngineProgressEvent } from "@/lib/tri-engine-extract";
 import {
   buildTriEngineAiDataRecord,
   loadTriEngineExtractionInput,
@@ -137,7 +137,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
         });
       }
 
-      const { v5, telemetry } = await runTriEngineExtraction({
+      const { v5, telemetry, validation } = await runTriEngineExtractionValidated({
         ...input,
         onProgress: async (e: TriEngineProgressEvent) => {
           await writeLine(e);
@@ -146,6 +146,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
 
       const v5Merged = mergeProjectClientIntoV5(v5, parsed.projectLabel, parsed.clientLabel);
       const aiData = buildTriEngineAiDataRecord(v5Merged, telemetry);
+      if (validation) aiData._validation = validation;
 
       if (!parsed.persist) {
         await writeLine({
@@ -153,6 +154,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
           ok: true,
           aiData,
           telemetry,
+          validation,
           usageWarnings: gate.usageWarnings,
         });
         return;
@@ -171,6 +173,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
         documentId,
         aiData,
         telemetry,
+        validation,
         usageWarnings: gate.usageWarnings,
       });
     } catch (e) {

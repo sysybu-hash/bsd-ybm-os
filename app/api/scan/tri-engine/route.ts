@@ -4,7 +4,7 @@ import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest } from "@/lib/api-json";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtraction } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract";
 import {
   buildTriEngineAiDataRecord,
   loadTriEngineExtractionInput,
@@ -47,9 +47,9 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
       return jsonBadRequest("לא נמצא קובץ", "missing_file");
     }
 
-    const validation = validateTriEngineRequest(parsed);
-    if (!validation.ok) {
-      return NextResponse.json({ error: validation.error, code: validation.code }, { status: validation.status });
+    const reqValidation = validateTriEngineRequest(parsed);
+    if (!reqValidation.ok) {
+      return NextResponse.json({ error: reqValidation.error, code: reqValidation.code }, { status: reqValidation.status });
     }
 
     const gate = await triEngineAuthorizeAndCharge(
@@ -72,18 +72,20 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
       parsed.userInstruction,
     );
 
-    const { v5, telemetry } = await runTriEngineExtraction({
+    const { v5, telemetry, validation } = await runTriEngineExtractionValidated({
       ...input,
     });
 
     const v5Merged = mergeProjectClientIntoV5(v5, parsed.projectLabel, parsed.clientLabel);
     const aiData = buildTriEngineAiDataRecord(v5Merged, telemetry);
+    if (validation) aiData._validation = validation;
 
     if (!parsed.persist) {
       return NextResponse.json({
         ok: true,
         aiData,
         telemetry,
+        validation,
         usageWarnings: gate.usageWarnings,
       });
     }
@@ -100,6 +102,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
       documentId,
       aiData,
       telemetry,
+      validation,
       usageWarnings: gate.usageWarnings,
     });
   } catch (e) {

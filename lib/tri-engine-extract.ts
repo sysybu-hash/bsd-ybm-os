@@ -25,6 +25,7 @@ import { LOCALE_AI_LANGUAGE_NAMES, normalizeLocale, type AppLocale } from "@/lib
 import type { MessageTree } from "@/lib/i18n/keys";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
+import { validateScanV5, buildRetryInstruction, type ScanValidationResult } from "@/lib/scan-validate";
 
 /** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
 const GEMINI_FLASH_PREFERRED = [
@@ -59,6 +60,8 @@ export type TriEngineResult = {
   aiData: Record<string, unknown>;
   v5: ScanExtractionV5;
   telemetry: TriEngineTelemetry;
+  /** תוצאת אימות sanity (שלב 3) — בעיות שנמצאו + ציון ביטחון. נוסף ע"י הwrapper המאומת. */
+  validation?: ScanValidationResult;
 };
 
 function localeLang(locale: string): string {
@@ -582,4 +585,52 @@ export async function runTriEngineExtraction(params: {
   const aiData = v5ToPersistableAiData(v5);
   aiData._triEngineTelemetry = telemetry;
   return { aiData, v5, telemetry };
+}
+
+/**
+ * עוטף את runTriEngineExtraction עם שכבת אימות (שלב 3):
+ *   1. מריץ פענוח רגיל.
+ *   2. מאמת sanity (validateScanV5).
+ *   3. אם נמצאו בעיות ניתנות-לתיקון במסמך פיננסי — מריץ retry ממוקד אחד
+ *      (SINGLE_GEMINI + משוב הבעיות) ושומר את התוצאה עם ציון הביטחון הגבוה יותר.
+ *   4. מצרף את תוצאת האימות ל-aiData (תחת `_validation`) ולשדה `validation`.
+ *
+ * הקריאה מ-API routes צריכה להשתמש בפונקציה הזו במקום בפונקציה הגולמית.
+ */
+export async function runTriEngineExtractionValidated(
+  params: Parameters<typeof runTriEngineExtraction>[0],
+): Promise<TriEngineResult> {
+  const result = await runTriEngineExtraction(params);
+  const validation = validateScanV5(result.v5);
+
+  const isFinancial =
+    params.scanMode === "INVOICE_FINANCIAL" || params.scanMode === "PROGRESS_BILL";
+  const hasFixableIssues = validation.issues.some((i) => i.severity !== "info");
+  const alreadyRetried = params.engineRunMode === "SINGLE_GEMINI";
+
+  if (isFinancial && hasFixableIssues && !alreadyRetried) {
+    const retryInstruction = buildRetryInstruction(validation.issues);
+    if (retryInstruction) {
+      try {
+        const retry = await runTriEngineExtraction({
+          ...params,
+          engineRunMode: "SINGLE_GEMINI", // re-read ממוקד וזול עם המשוב
+          userInstruction: [params.userInstruction?.trim(), retryInstruction]
+            .filter(Boolean)
+            .join("\n\n"),
+        });
+        const retryValidation = validateScanV5(retry.v5);
+        // שומרים את התוצאה עם ציון הביטחון הגבוה יותר
+        if (retryValidation.confidence > validation.confidence) {
+          const aiData = { ...retry.aiData, _validation: retryValidation, _validationRetried: true };
+          return { ...retry, validation: retryValidation, aiData };
+        }
+      } catch {
+        // retry נכשל — נשמור את התוצאה המקורית עם האזהרות
+      }
+    }
+  }
+
+  const aiData = { ...result.aiData, _validation: validation };
+  return { ...result, validation, aiData };
 }
