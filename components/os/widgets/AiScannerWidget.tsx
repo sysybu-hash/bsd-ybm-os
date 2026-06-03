@@ -8,7 +8,7 @@ import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPane
 import type { AiScannerWidgetProps } from "./ai-scanner/types";
 import { useAiScannerState } from "./ai-scanner/useAiScannerState";
 import { ScanDropZone } from "./ai-scanner/ScanDropZone";
-import { ScanConfirmPanel } from "./ai-scanner/ScanConfirmPanel";
+import { ScanFullEditor } from "./ai-scanner/ScanFullEditor";
 import { ScanHistorySidebar } from "./ai-scanner/ScanHistorySidebar";
 import { ScanHeaderToolbar } from "./ai-scanner/ScanHeaderToolbar";
 import { ScanFloatingPanels } from "./ai-scanner/ScanFloatingPanels";
@@ -108,7 +108,7 @@ export default function AiScannerWidget({
 
         {/* Body */}
         {pendingAnalysis ? (
-          <ScanConfirmPanel
+          <ScanFullEditor
             analysis={pendingAnalysis}
             onChange={setPendingAnalysis}
             onClose={() => setPendingAnalysis(null)}
