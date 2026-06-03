@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { DynamicSandpackRenderer } from "@/components/os/widgets/shared/DynamicSandpackRenderer";
 import { PreviewToolbar } from "@/components/os/widgets/app-builder/PreviewToolbar";
 import { SavedAppsPanel } from "@/components/os/widgets/app-builder/SavedAppsPanel";
@@ -46,6 +47,7 @@ export default function AppBuilderWidget() {
   const codeHistory = useCodeHistory();
   const generatedCode = codeHistory.current;
   const [mobilePane, setMobilePane] = useState<"build" | "preview">("build");
+  const [regenerating, setRegenerating] = useState(false);
 
   const isEditing = Boolean(savedSchemaId);
 
@@ -125,6 +127,35 @@ export default function AppBuilderWidget() {
     setSuccess(null);
     codeHistory.reset();
   }, [codeHistory]);
+
+  /** Regenerates JSX from the currently-loaded uiSchema + name via the AI chat route. */
+  const handleRegenerate = useCallback(async (schema: AppBuilderUiSchema, name: string) => {
+    setRegenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai-builder/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locale,
+          currentUiSchema: schema,
+          messages: [{ role: "user", content: `בנה מחדש את האפליקציה "${name}" לפי הסכמה הנוכחית` }],
+        }),
+      });
+      const data = (await res.json()) as { jsxCode?: string; uiSchema?: AppBuilderUiSchema };
+      if (data.jsxCode) {
+        codeHistory.push(data.jsxCode);
+        setPreviewVersion((v) => v + 1);
+        setMobilePane("preview");
+      } else {
+        setError(t(`${prefix}.loadSchemaError`));
+      }
+    } catch {
+      setError(t(`${prefix}.loadSchemaError`));
+    } finally {
+      setRegenerating(false);
+    }
+  }, [codeHistory, locale, prefix, t]);
 
   const handleLoadSaved = useCallback(
     async (schemaId: string) => {
@@ -350,14 +381,44 @@ export default function AppBuilderWidget() {
     />
   ) : null;
 
+  // When app loaded but no jsxCode — show a "rebuild preview" prompt
+  const noCodeCanvas = uiSchema && !generatedCode ? (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] text-center">
+      {regenerating ? (
+        <>
+          <Loader2 size={28} className="animate-spin text-indigo-400" />
+          <p className="text-sm font-medium text-[color:var(--foreground-muted)]">בונה תצוגה מקדימה…</p>
+        </>
+      ) : (
+        <>
+          <RefreshCw size={28} className="text-indigo-400" />
+          <div>
+            <p className="text-sm font-semibold text-[color:var(--foreground-main)]">{appName || "האפליקציה נטענה"}</p>
+            <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">הקוד לא נשמר — יש לבנות תצוגה מקדימה</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleRegenerate(uiSchema, appName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-500"
+          >
+            <RefreshCw size={14} />
+            בנה תצוגה מקדימה
+          </button>
+        </>
+      )}
+    </div>
+  ) : null;
+
   // previewContent is used only on mobile (build/preview toggle)
   const previewContent = (
     <div className="flex h-full min-h-0 flex-col">
       {previewToolbar}
-      <DynamicSandpackRenderer
-        key={`sandbox-mobile-${previewVersion}`}
-        code={generatedCode ?? SANDPACK_PLACEHOLDER}
-      />
+      {noCodeCanvas ?? (
+        <DynamicSandpackRenderer
+          key={`sandbox-mobile-${previewVersion}`}
+          code={generatedCode ?? SANDPACK_PLACEHOLDER}
+        />
+      )}
     </div>
   );
 
@@ -404,10 +465,12 @@ export default function AppBuilderWidget() {
         <div className="hidden md:flex flex-col flex-1 min-h-0">
           {previewToolbar}
           <div className="flex flex-col flex-1 min-h-0 p-4">
-            <DynamicSandpackRenderer
-              key={`sandbox-${previewVersion}`}
-              code={generatedCode ?? SANDPACK_PLACEHOLDER}
-            />
+            {noCodeCanvas ?? (
+              <DynamicSandpackRenderer
+                key={`sandbox-${previewVersion}`}
+                code={generatedCode ?? SANDPACK_PLACEHOLDER}
+              />
+            )}
           </div>
         </div>
       </div>
