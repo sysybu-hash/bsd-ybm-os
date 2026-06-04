@@ -43,7 +43,8 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
               key={item.id}
               type="button"
               onClick={() => openPanel(item.id)}
-              className="mkt-nav-link text-sm font-semibold transition-colors"
+              aria-label={t(item.titleKey)}
+              className="mkt-nav-link text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {t(item.titleKey)}
             </button>

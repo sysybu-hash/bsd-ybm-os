@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { subscribeAnalyticsConsent } from "@/lib/analytics/posthog-consent";
 import {
   identifyPostHogUser,
   initPostHog,
@@ -14,10 +15,13 @@ import { trackFunnelActivated } from "@/lib/analytics/marketing-funnel";
 export default function PostHogIdentify() {
   const { data: session, status } = useSession();
   const activatedTracked = useRef(false);
+  const [consent, setConsent] = useState(false);
+
+  useEffect(() => subscribeAnalyticsConsent(setConsent), []);
 
   useEffect(() => {
-    if (!getPostHogProjectKey()) return;
-    initPostHog();
+    if (!getPostHogProjectKey() || !consent) return;
+    initPostHog({ skipConsentCheck: true });
 
     if (status === "unauthenticated") {
       activatedTracked.current = false;
@@ -38,7 +42,7 @@ export default function PostHogIdentify() {
       activatedTracked.current = true;
       trackFunnelActivated({ organizationId, tier: "session" });
     }
-  }, [session?.user?.id, session?.user?.email, session?.user?.organizationId, status]);
+  }, [session?.user?.id, session?.user?.email, session?.user?.organizationId, status, consent]);
 
   return null;
 }

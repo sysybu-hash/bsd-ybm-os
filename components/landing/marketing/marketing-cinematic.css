@@ -122,9 +122,9 @@ html.light .marketing-cinematic .mkt-glass-strong {
 .marketing-cinematic .mkt-video-overlay {
   background: linear-gradient(
     180deg,
-    rgba(2, 6, 23, 0.45) 0%,
-    rgba(2, 6, 23, 0.72) 40%,
-    rgba(2, 6, 23, 0.88) 100%
+    rgba(2, 6, 23, 0.52) 0%,
+    rgba(2, 6, 23, 0.78) 40%,
+    rgba(2, 6, 23, 0.92) 100%
   );
 }
 
@@ -191,6 +191,9 @@ html.light .marketing-cinematic .mkt-hero-blessing {
   font-family: var(--font-heebo), "Heebo", system-ui, sans-serif;
   font-size: clamp(2.25rem, 4.5vw + 1rem, 4.5rem);
   font-weight: 900;
+  text-shadow:
+    0 2px 24px rgba(2, 6, 23, 0.85),
+    0 0 1px rgba(2, 6, 23, 0.95);
   letter-spacing: -0.025em;
   line-height: 1.05;
 }

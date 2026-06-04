@@ -135,7 +135,12 @@ export default async function middleware(request: NextRequest, _event: NextFetch
     }
   }
 
-  const res = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
+  const res = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
   patchLocaleCookie(request, res);
   return res;
 }

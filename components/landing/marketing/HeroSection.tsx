@@ -49,7 +49,8 @@ export default function HeroSection({ onRegister, onLogin, omnibar }: Props) {
           <button
             type="button"
             onClick={onRegister}
-            className="group inline-flex items-center justify-center gap-2 rounded-2xl mkt-btn-primary px-8 py-4 text-lg font-bold"
+            aria-label={t("marketingHome.hero.ctaRegister")}
+            className="group inline-flex items-center justify-center gap-2 rounded-2xl mkt-btn-primary px-8 py-4 text-lg font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {t("marketingHome.hero.ctaRegister")}
             <CtaIcon className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 rtl:rotate-180" />
@@ -57,7 +58,8 @@ export default function HeroSection({ onRegister, onLogin, omnibar }: Props) {
           <button
             type="button"
             onClick={onLogin}
-            className="rounded-2xl mkt-btn-ghost px-8 py-4 text-lg font-bold"
+            aria-label={t("marketingHome.osLanding.signIn")}
+            className="rounded-2xl mkt-btn-ghost px-8 py-4 text-lg font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {t("marketingHome.osLanding.signIn")}
           </button>

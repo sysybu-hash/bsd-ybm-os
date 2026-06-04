@@ -58,6 +58,7 @@ playwright-report/
 
 # Jest coverage + קבצי בדיקה מקומיים
 coverage/
+reports/
 /test-*.pdf
 
 .env*.local

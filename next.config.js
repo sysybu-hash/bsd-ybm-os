@@ -86,7 +86,14 @@ const nextConfig = {
       ].join("; ");
       security.push({ key: "Content-Security-Policy", value: csp });
     }
+    const longCache = "public, max-age=31536000, immutable";
+    const assetCache = [
+      { source: "/marketing/:path*", headers: [{ key: "Cache-Control", value: longCache }] },
+      { source: "/screenshots/:path*", headers: [{ key: "Cache-Control", value: longCache }] },
+      { source: "/fonts/:path*", headers: [{ key: "Cache-Control", value: longCache }] },
+    ];
     return [
+      ...assetCache,
       {
         source: "/:path*",
         headers: security,

@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Live stock loop (typing / laptop). Regenerate: `npm run marketing:hero-video`. */
 const VIDEO_DESKTOP = "/marketing/hero-cinematic.mp4";
+const VIDEO_DESKTOP_WEBM = "/marketing/hero-cinematic.webm";
 const VIDEO_MOBILE = "/marketing/hero-cinematic-mobile.mp4";
-const VIDEO_POSTER = "/marketing/hero-cinematic-poster.jpg";
+const VIDEO_MOBILE_WEBM = "/marketing/hero-cinematic-mobile.webm";
+const POSTER_WEBP = "/marketing/hero-cinematic-poster.webp";
+const POSTER_JPG = "/marketing/hero-cinematic-poster.jpg";
 
 const PAGE_SHOW_RESTORE = "marketing:pageshow-restore";
 
@@ -17,9 +19,14 @@ function prefersReducedMotionNow(): boolean {
   );
 }
 
-function pickVideoSrc(): string {
-  if (typeof window === "undefined") return VIDEO_DESKTOP;
-  return window.matchMedia("(max-width: 767px)").matches ? VIDEO_MOBILE : VIDEO_DESKTOP;
+function pickVideoSources(): { mp4: string; webm: string | null } {
+  if (typeof window === "undefined") {
+    return { mp4: VIDEO_DESKTOP, webm: VIDEO_DESKTOP_WEBM };
+  }
+  const mobile = window.matchMedia("(max-width: 767px)").matches;
+  return mobile
+    ? { mp4: VIDEO_MOBILE, webm: VIDEO_MOBILE_WEBM }
+    : { mp4: VIDEO_DESKTOP, webm: VIDEO_DESKTOP_WEBM };
 }
 
 function primeVideoElement(el: HTMLVideoElement) {
@@ -32,15 +39,33 @@ function primeVideoElement(el: HTMLVideoElement) {
   el.setAttribute("disablepictureinpicture", "");
 }
 
+function scheduleDeferredPlay(run: () => void) {
+  if (typeof window === "undefined") return;
+  const start = () => {
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(() => run(), { timeout: 4000 });
+    } else {
+      globalThis.setTimeout(run, 800);
+    }
+  };
+  if (document.readyState === "complete") {
+    start();
+  } else {
+    window.addEventListener("load", start, { once: true });
+  }
+}
+
 export default function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [sources, setSources] = useState<{ mp4: string; webm: string | null } | null>(null);
+  const [mountVideo, setMountVideo] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [staticOnly, setStaticOnly] = useState(false);
 
   const bindPlayback = useCallback(() => {
     const el = videoRef.current;
-    if (!el || staticOnly) return () => undefined;
+    if (!el || staticOnly || !mountVideo) return () => undefined;
 
     let cancelled = false;
     let retryTimer: number | undefined;
@@ -52,9 +77,7 @@ export default function VideoBackground() {
     const tryPlay = () => {
       if (cancelled) return;
       primeVideoElement(el);
-      void el.play().then(markPlaying).catch(() => {
-        /* poster stays until playing */
-      });
+      void el.play().then(markPlaying).catch(() => undefined);
     };
 
     const scheduleRetry = () => {
@@ -77,16 +100,13 @@ export default function VideoBackground() {
       if (cancelled) return;
       setIsPlaying(false);
       primeVideoElement(el);
-      if (el.src) {
-        el.load();
-      }
+      el.load();
       tryPlay();
       scheduleRetry();
     };
 
     el.addEventListener("playing", onPlaying);
     el.addEventListener("canplay", tryPlay);
-    el.addEventListener("loadeddata", tryPlay);
 
     const onVisibility = () => {
       if (document.visibilityState === "visible") tryPlay();
@@ -113,21 +133,22 @@ export default function VideoBackground() {
       window.clearTimeout(stopRetry);
       el.removeEventListener("playing", onPlaying);
       el.removeEventListener("canplay", tryPlay);
-      el.removeEventListener("loadeddata", tryPlay);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener(PAGE_SHOW_RESTORE, onRestore);
       document.removeEventListener("touchstart", onInteraction);
       document.removeEventListener("click", onInteraction);
     };
-  }, [staticOnly]);
+  }, [staticOnly, mountVideo]);
 
   useEffect(() => {
-    setVideoSrc(pickVideoSrc());
+    setSources(pickVideoSources());
     const mobileQuery = window.matchMedia("(max-width: 767px)");
     const onViewportChange = () => {
-      setVideoSrc(pickVideoSrc());
+      setSources(pickVideoSources());
       setIsPlaying(false);
+      setMountVideo(false);
+      scheduleDeferredPlay(() => setMountVideo(true));
     };
     mobileQuery.addEventListener("change", onViewportChange);
     return () => mobileQuery.removeEventListener("change", onViewportChange);
@@ -137,53 +158,56 @@ export default function VideoBackground() {
     if (prefersReducedMotionNow()) {
       setStaticOnly(true);
       setIsPlaying(false);
+      setMountVideo(false);
       return;
     }
     setStaticOnly(false);
+    scheduleDeferredPlay(() => setMountVideo(true));
   }, []);
 
   useEffect(() => {
-    if (!videoSrc || staticOnly) return;
+    if (!sources || staticOnly || !mountVideo) return;
     return bindPlayback();
-  }, [videoSrc, staticOnly, bindPlayback]);
-
-  const posterLayer = (
-    <div
-      className={`mkt-video-poster-fallback absolute inset-0 bg-cover bg-center transition-opacity duration-700 ${
-        isPlaying ? "opacity-0" : "opacity-100"
-      }`}
-      style={{ backgroundImage: `url(${VIDEO_POSTER})` }}
-    />
-  );
+  }, [sources, staticOnly, mountVideo, bindPlayback]);
 
   return (
     <div className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      {staticOnly || !videoSrc ? (
-        posterLayer
-      ) : (
-        <>
-          {posterLayer}
-          <video
-            key={videoSrc}
-            ref={videoRef}
-            src={videoSrc}
-            className={`mkt-video-bg absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-              isPlaying ? "opacity-100" : "opacity-0"
-            }`}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            onError={() => {
-              // כשל טעינת וידאו (למשל קודק לא נתמך במובייל) — נשארים על ה-poster בלבד, לא זורקים.
-              setStaticOnly(true);
-              setIsPlaying(false);
-            }}
-          />
-        </>
-      )}
+      <picture>
+        <source srcSet={POSTER_WEBP} type="image/webp" />
+        <img
+          src={POSTER_JPG}
+          alt=""
+          width={1920}
+          height={1080}
+          decoding="async"
+          fetchPriority="high"
+          className={`mkt-video-poster-img absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            isPlaying ? "opacity-0" : "opacity-100"
+          }`}
+        />
+      </picture>
+      {mountVideo && sources && !staticOnly ? (
+        <video
+          key={sources.mp4}
+          ref={videoRef}
+          className={`mkt-video-bg absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            isPlaying ? "opacity-100" : "opacity-0"
+          }`}
+          loop
+          muted
+          playsInline
+          preload="none"
+          disablePictureInPicture
+          onError={() => {
+            setStaticOnly(true);
+            setIsPlaying(false);
+            setMountVideo(false);
+          }}
+        >
+          {sources.webm ? <source src={sources.webm} type="video/webm" /> : null}
+          <source src={sources.mp4} type="video/mp4" />
+        </video>
+      ) : null}
       <div className="mkt-video-overlay absolute inset-0" />
       <div className="mkt-video-tint absolute inset-0 opacity-40" />
     </div>

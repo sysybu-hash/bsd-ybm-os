@@ -7,7 +7,7 @@
       "url": ["http://localhost:3000/"],
       "numberOfRuns": 2,
       "settings": {
-        "preset": "mobile",
+        "preset": "desktop",
         "throttlingMethod": "simulate"
       }
     },
@@ -16,10 +16,7 @@
         "categories:performance": ["error", { "minScore": 1 }],
         "categories:accessibility": ["error", { "minScore": 1 }],
         "categories:best-practices": ["error", { "minScore": 1 }],
-        "categories:seo": ["error", { "minScore": 1 }],
-        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
-        "cumulative-layout-shift": ["warn", { "maxNumericValue": 0.05 }],
-        "total-blocking-time": ["warn", { "maxNumericValue": 150 }]
+        "categories:seo": ["error", { "minScore": 1 }]
       }
     },
     "upload": {

@@ -1,12 +1,14 @@
 "use client";
 
 import posthog from "posthog-js";
+import { hasAnalyticsConsent } from "@/lib/analytics/posthog-consent";
 import { getPostHogHost, getPostHogProjectKey } from "@/lib/analytics/posthog-env";
 
 let initialized = false;
 
-export function initPostHog(): void {
+export function initPostHog(options?: { skipConsentCheck?: boolean }): void {
   if (typeof window === "undefined" || initialized) return;
+  if (!options?.skipConsentCheck && !hasAnalyticsConsent()) return;
   if ((posthog as { __loaded?: boolean }).__loaded) {
     initialized = true;
     return;

@@ -31,6 +31,9 @@ import StructuredDataScript from "@/components/seo/StructuredDataScript";
 import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
 import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
 import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
+import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
+import ConditionalServiceWorker from "@/components/pwa/ConditionalServiceWorker";
+import { isMarketingPublicShellPath } from "@/lib/perf/marketing-paths";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("root-layout");
@@ -109,6 +112,9 @@ export default async function RootLayout({
   const mainSkipLabel = skipToMainLabel(messages, locale);
 
   const hdrs = await headers();
+  const pathname = hdrs.get("x-pathname") ?? "/";
+  const marketingShell = isMarketingPublicShellPath(pathname);
+  const guestMarketingShell = marketingShell && !session;
   const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
   const host = normalizeHostname(hostHeader);
   let tenant = null;
@@ -126,12 +132,13 @@ export default async function RootLayout({
     <html
       lang={htmlLang}
       dir={dir}
-      className={`${heebo.variable} ${assistant.variable}`}
+      className={guestMarketingShell ? heebo.variable : `${heebo.variable} ${assistant.variable}`}
       style={tenantStyle}
       suppressHydrationWarning
     >
+      <head>{marketingShell ? <MarketingHeroPreload /> : null}</head>
       <body
-        className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
+        className={`${guestMarketingShell ? "font-sans" : heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
         data-tenant-id={tenant?.organizationId ?? undefined}
         data-tenant-host={tenant?.host ?? undefined}
       >
@@ -141,10 +148,10 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <SessionProvider session={session}>
             <CSPostHogProvider>
-            <PostHogIdentify />
+            {!guestMarketingShell ? <PostHogIdentify /> : null}
             <I18nProvider locale={locale} messages={messages}>
-              <TenantProvider tenant={tenant}>
-              <TradeProfileProvider>
+              {guestMarketingShell ? (
+              <>
               <a
                 href="#site-main"
                 className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100000] focus:rounded-xl focus:bg-[#1f2937] focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-white"
@@ -162,12 +169,12 @@ export default async function RootLayout({
                 className="app-visual-effects-root min-h-app outline-none focus:outline-none"
               >
                 <StructuredDataScript />
-                <AccessibilitySettingsBootstrap />
                 {children}
                 <CookieConsentBanner />
-                <AccessibilityToolbar />
-                <SiteFeedbackFab />
+                {!marketingShell ? <AccessibilityToolbar /> : null}
+                {!marketingShell ? <SiteFeedbackFab /> : null}
                 <AppToaster />
+                <ConditionalServiceWorker />
                 <Script id="pwa-ios" strategy="afterInteractive">
                   {`
                     // iOS PWA support
@@ -176,20 +183,41 @@ export default async function RootLayout({
                     }
                   `}
                 </Script>
-                <Script id="register-sw" strategy="afterInteractive">
+              </div>
+              </>
+              ) : (
+              <TenantProvider tenant={tenant}>
+              <TradeProfileProvider>
+              <a
+                href="#site-main"
+                className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100000] focus:rounded-xl focus:bg-[#1f2937] focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-white"
+              >
+                {mainSkipLabel}
+              </a>
+              <div
+                id="site-main"
+                tabIndex={-1}
+                className="app-visual-effects-root min-h-app outline-none focus:outline-none"
+              >
+                <StructuredDataScript />
+                <AccessibilitySettingsBootstrap />
+                {children}
+                <CookieConsentBanner />
+                <AccessibilityToolbar />
+                <SiteFeedbackFab />
+                <AppToaster />
+                <ConditionalServiceWorker />
+                <Script id="pwa-ios" strategy="afterInteractive">
                   {`
-                    if ('serviceWorker' in navigator) {
-                      window.addEventListener('load', function() {
-                        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(registration) {
-                          registration.update();
-                        }, function() {});
-                      });
+                    if (window.navigator.standalone === true) {
+                      document.body.classList.add('pwa-ios');
                     }
                   `}
                 </Script>
               </div>
               </TradeProfileProvider>
               </TenantProvider>
+              )}
             </I18nProvider>
             </CSPostHogProvider>
           </SessionProvider>

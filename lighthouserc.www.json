@@ -1,10 +1,7 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "npm run start",
-      "startServerReadyPattern": "Ready",
-      "startServerReadyTimeout": 180000,
-      "url": ["http://localhost:3000/"],
+      "url": ["https://www.bsd-ybm.co.il/"],
       "numberOfRuns": 2,
       "settings": {
         "preset": "mobile",
