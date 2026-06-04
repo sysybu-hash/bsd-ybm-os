@@ -77,7 +77,7 @@ export default function MarketingFooter() {
           </div>
         </div>
 
-        <p className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
+        <p className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-400">
           {t("marketingHome.osLanding.footerCopyright", { year })}
         </p>
       </div>

@@ -4,16 +4,17 @@ import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMarketingHeroOmnibar } from "@/hooks/useMarketingHeroOmnibar";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import MarketingNavbar from "@/components/landing/marketing/MarketingNavbar";
-import HeroOmnibarSection from "@/components/landing/marketing/HeroOmnibarSection";
 import MarketingContactStrip from "@/components/landing/marketing/MarketingContactStrip";
 import MarketingFooter from "@/components/landing/marketing/MarketingFooter";
 import MarketingMobileMenu from "@/components/landing/marketing/MarketingMobileMenu";
-import MarketingMobileOmnibarSheet from "@/components/landing/marketing/MarketingMobileOmnibarSheet";
 import MobileBottomNav from "@/components/landing/marketing/MobileBottomNav";
+import { openMarketingOmnibarSheet } from "@/components/landing/marketing/marketing-omnibar-events";
+import MarketingOmnibarPlaceholder from "@/components/landing/marketing/MarketingOmnibarPlaceholder";
 import { MarketingPanelProvider } from "@/components/landing/marketing/MarketingPanelContext";
+import DeferUntilVisible from "@/components/layout/DeferUntilVisible";
+import type { AppLocale } from "@/lib/i18n/config";
 
 const VideoBackground = dynamic(() => import("@/components/landing/marketing/VideoBackground"), {
   ssr: false,
@@ -35,21 +36,31 @@ const MarketingExploreHub = dynamic(
   },
 );
 
-const MarketingPanelHost = dynamic(
-  () => import("@/components/landing/marketing/MarketingPanelHost"),
-  { ssr: false },
+const MarketingOmnibarIsland = dynamic(
+  () => import("@/components/landing/marketing/MarketingOmnibarIsland"),
+  { ssr: false, loading: () => <MarketingOmnibarPlaceholder /> },
 );
 
 type Props = Readonly<{
   hero: React.ReactNode;
+  locale?: AppLocale;
 }>;
 
 export default function MarketingCinematicClient({ hero }: Props) {
   const router = useRouter();
   const { dir, locale, t } = useI18n();
-  const omnibar = useMarketingHeroOmnibar(t, locale);
-  const [mobileOmnibarOpen, setMobileOmnibarOpen] = useState(false);
+  const [mountOmnibar, setMountOmnibar] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const run = () => setMountOmnibar(true);
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      globalThis.setTimeout(run, 1200);
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.dir = dir;
@@ -108,25 +119,36 @@ export default function MarketingCinematicClient({ hero }: Props) {
           <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
           <main className="relative pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
             {hero}
-            <HeroOmnibarSection omnibar={omnibar} />
-            <MarketingLiveDemoSection />
-            <MarketingExploreHub />
+            {mountOmnibar ? (
+              <MarketingOmnibarIsland onLogin={goLogin} onRegister={goRegister} />
+            ) : (
+              <MarketingOmnibarPlaceholder />
+            )}
+            <DeferUntilVisible
+              rootMargin="-45% 0px 0px 0px"
+              minHeight="28rem"
+              fallback={<div className="min-h-[28rem] w-full" aria-hidden />}
+            >
+              <MarketingLiveDemoSection />
+            </DeferUntilVisible>
+            <DeferUntilVisible minHeight="24rem" fallback={<div className="min-h-[24rem] w-full" aria-hidden />}>
+              <MarketingExploreHub />
+            </DeferUntilVisible>
             <MarketingContactStrip />
             <MarketingFooter />
           </main>
           <MobileBottomNav
             menuOpen={mobileMenuOpen}
             onDismissOverlays={() => {
-              setMobileOmnibarOpen(false);
               setMobileMenuOpen(false);
             }}
             onOpenMenu={() => {
-              setMobileOmnibarOpen(false);
               setMobileMenuOpen(true);
             }}
             onOpenOmnibar={() => {
               setMobileMenuOpen(false);
-              setMobileOmnibarOpen(true);
+              setMountOmnibar(true);
+              globalThis.setTimeout(() => openMarketingOmnibarSheet(), 0);
             }}
           />
           <MarketingMobileMenu
@@ -135,12 +157,6 @@ export default function MarketingCinematicClient({ hero }: Props) {
             onLogin={goLogin}
             onRegister={goRegister}
           />
-          <MarketingMobileOmnibarSheet
-            open={mobileOmnibarOpen}
-            onClose={() => setMobileOmnibarOpen(false)}
-            omnibar={omnibar}
-          />
-          <MarketingPanelHost onLogin={goLogin} onRegister={goRegister} />
         </div>
       </div>
     </MarketingPanelProvider>

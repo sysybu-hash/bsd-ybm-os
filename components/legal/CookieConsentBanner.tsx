@@ -112,7 +112,6 @@ export default function CookieConsentBanner() {
             type="button"
             onClick={() => persist(false, false)}
             className="rounded-xl border border-[color:var(--border-main)] px-4 py-2.5 text-xs font-black text-[color:var(--foreground-main)]"
-            aria-label={t("cookie.ariaReject")}
           >
             {t("cookie.essentialOnly")}
           </button>

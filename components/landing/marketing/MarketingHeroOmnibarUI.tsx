@@ -46,7 +46,7 @@ export default function MarketingHeroOmnibarUI({ omnibar, variant = "hero" }: Pr
               }`}
               aria-hidden
             />
-            <span className="max-w-[9rem] truncate text-[10px] font-semibold text-slate-400 sm:max-w-none">
+            <span className="mkt-omnibar-status max-w-[9rem] truncate text-[10px] font-semibold sm:max-w-none">
               {omnibar.statusLabel}
             </span>
           </div>

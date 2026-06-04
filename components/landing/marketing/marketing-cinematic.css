@@ -295,6 +295,22 @@ html.light .marketing-cinematic .mkt-omnibar-glow {
   color: var(--mkt-accent-strong);
 }
 
+.marketing-cinematic .mkt-omnibar-status {
+  color: #cbd5e1;
+}
+
+html.light .marketing-cinematic .mkt-omnibar-status {
+  color: #334155;
+}
+
+.marketing-cinematic .mkt-mobile-nav-item {
+  color: #cbd5e1;
+}
+
+.marketing-cinematic .mkt-mobile-nav-item.text-blue-400 {
+  color: #93c5fd;
+}
+
 /* ניווט */
 .marketing-cinematic .mkt-nav-link {
   color: var(--mkt-nav-link);

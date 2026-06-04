@@ -9,12 +9,6 @@ export default function MarketingHeroPreload() {
         type="image/webp"
         fetchPriority="high"
       />
-      <link
-        rel="preload"
-        as="image"
-        href="/marketing/hero-cinematic-poster.jpg"
-        fetchPriority="high"
-      />
     </>
   );
 }

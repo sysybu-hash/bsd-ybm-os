@@ -55,6 +55,29 @@ export default async function middleware(request: NextRequest, _event: NextFetch
 
   const pathname = request.nextUrl.pathname;
 
+  if (pathname === "/") {
+    const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+    if (secret) {
+      const forwardedProto = request.nextUrl.protocol === "https:" ? "https" : request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+      const secureCookie =
+        request.nextUrl.protocol === "https:" ||
+        forwardedProto === "https" ||
+        Boolean(process.env.VERCEL);
+      const token = (await getToken({
+        req: request,
+        secret,
+        secureCookie,
+      })) as Record<string, unknown> | null;
+      if (hasAuthenticatedJwtPayload(token)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/workspace";
+        const res = NextResponse.rewrite(url);
+        patchLocaleCookie(request, res);
+        return res;
+      }
+    }
+  }
+
   const requiresSession = pathname.startsWith("/api/") && !isPublicApi(pathname);
   const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 

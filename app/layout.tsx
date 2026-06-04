@@ -1,42 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Assistant, Heebo } from "next/font/google";
+import { Heebo } from "next/font/google";
 import "./globals.css";
-import { unstable_noStore as noStore } from "next/cache";
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import {
-  isPlatformHost,
-  normalizeHostname,
-  resolveTenantByHost,
-  tenantBrandingCssVars,
-} from "@/lib/core/tenant-host";
-import { TenantProvider } from "@/components/tenant/TenantContext";
-import SessionProvider from "@/components/os/system/SessionProvider";
-import { CSPostHogProvider } from "@/components/providers/posthog-provider";
-import PostHogIdentify from "@/components/providers/posthog-identify";
-import { I18nProvider } from "@/components/os/system/I18nProvider";
-import { TradeProfileProvider } from "@/components/os/system/TradeProfileProvider";
-import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
-import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
-import { getMessages } from "@/lib/i18n/load-messages";
-import { skipToMainLabel } from "@/lib/skip-to-main-label";
-import { buildLocalizedMetadata } from "@/lib/site-metadata";
-import { env } from "@/lib/env";
-import AppToaster from "@/components/os/system/AppToaster";
-import { ThemeProvider } from "@/components/theme-provider";
-import Script from "next/script";
-import StructuredDataScript from "@/components/seo/StructuredDataScript";
-import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
-import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
-import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
-import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
-import ConditionalServiceWorker from "@/components/pwa/ConditionalServiceWorker";
-import { isMarketingPublicShellPath } from "@/lib/perf/marketing-paths";
-import { createLogger } from "@/lib/logger";
-
-const log = createLogger("root-layout");
+import { buildRootMetadata } from "@/lib/site-metadata";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -45,45 +10,13 @@ const heebo = Heebo({
   variable: "--font-heebo",
 });
 
-const assistant = Assistant({
-  subsets: ["latin", "latin-ext"],
-  display: "swap",
-  adjustFontFallback: true,
-  variable: "--font-assistant",
-});
-
-export async function generateMetadata(): Promise<Metadata> {
-  const jar = await cookies();
-  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
-  const base = buildLocalizedMetadata(locale);
-  return {
-    ...base,
-    title: {
-      default: base.title as string,
-      template: "%s | BSD-YBM-OS",
-    },
-    verification: {
-      google: "kwq2iIvUlcCLM7Ji2E5WBzFpV7WQ8rsNaOb5EYWMvcE",
-    },
-    manifest: "/manifest.json",
-    formatDetection: { email: false, address: false, telephone: false },
-    appleWebApp: { capable: true, statusBarStyle: "default", title: "BSD-YBM-OS" },
-    icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
-  };
-}
-
-/** סשן משתמש — חייב להתעדכן בכל בקשה; אחרת RSC עלול להציג משתמש קודם ב-SessionProvider */
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
+export const metadata: Metadata = buildRootMetadata();
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  /** לא נועלים זום — נגישות ותאימות iOS/Android */
   maximumScale: 5,
   viewportFit: "cover",
-  /** מקלדת צפה: התאמת גובה תוכן (Chrome/Android ועוד) */
   interactiveWidget: "resizes-content",
   colorScheme: "dark light",
   themeColor: [
@@ -92,136 +25,21 @@ export const viewport: Viewport = {
   ],
 };
 
-export default async function RootLayout({
+const MARKETING_THEME_BOOT = `try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){var t=null;try{t=localStorage.getItem('theme');}catch(e){}var mode=t==='light'?'light':'dark';var root=document.documentElement;root.classList.remove(mode==='light'?'dark':'light');root.classList.add(mode);root.style.colorScheme=mode;}}catch(e){}`;
+
+/** מעטפת HTML סטטית — סשן/טננט ב-(platform)/layout בלבד */
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  noStore();
-  let session = null;
-  try {
-    session = await getServerSession(authOptions);
-  } catch (e) {
-    log.warn("getServerSession failed — continuing without session", { error: e instanceof Error ? e.message : String(e) });
-  }
-  const jar = await cookies();
-  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
-  const messages = getMessages(locale);
-  const dir = isRtlLocale(locale) ? "rtl" : "ltr";
-  const htmlLang = locale;
-  const mainSkipLabel = skipToMainLabel(messages, locale);
-
-  const hdrs = await headers();
-  const pathname = hdrs.get("x-pathname") ?? "/";
-  const marketingShell = isMarketingPublicShellPath(pathname);
-  const guestMarketingShell = marketingShell && !session;
-  const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
-  const host = normalizeHostname(hostHeader);
-  let tenant = null;
-  try {
-    tenant = await resolveTenantByHost(host);
-  } catch (e) {
-    log.warn("resolveTenantByHost failed — continuing as platform", { error: e instanceof Error ? e.message : String(e) });
-  }
-  if (host && !isPlatformHost(host) && !tenant) {
-    redirect(env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");
-  }
-  const tenantStyle = tenant ? tenantBrandingCssVars(tenant.branding) : undefined;
-
   return (
-    <html
-      lang={htmlLang}
-      dir={dir}
-      className={guestMarketingShell ? heebo.variable : `${heebo.variable} ${assistant.variable}`}
-      style={tenantStyle}
-      suppressHydrationWarning
-    >
-      <head>{marketingShell ? <MarketingHeroPreload /> : null}</head>
-      <body
-        className={`${guestMarketingShell ? "font-sans" : heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
-        data-tenant-id={tenant?.organizationId ?? undefined}
-        data-tenant-host={tenant?.host ?? undefined}
-      >
-        <Script id="marketing-home-theme" strategy="beforeInteractive">
-          {`try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){var t=null;try{t=localStorage.getItem('theme');}catch(e){}var mode=t==='light'?'light':'dark';var root=document.documentElement;root.classList.remove(mode==='light'?'dark':'light');root.classList.add(mode);root.style.colorScheme=mode;}}catch(e){}`}
-        </Script>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <SessionProvider session={session}>
-            <CSPostHogProvider>
-            {!guestMarketingShell ? <PostHogIdentify /> : null}
-            <I18nProvider locale={locale} messages={messages}>
-              {guestMarketingShell ? (
-              <>
-              <a
-                href="#site-main"
-                className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100000] focus:rounded-xl focus:bg-[#1f2937] focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-white"
-              >
-                {mainSkipLabel}
-              </a>
-              {/*
-                עטיפת אפקטים ויזואליים (ניגודיות/אפור) — לא על body:
-                filter על body יוצר containing block ל-fixed וגורם לדוק הצף "לגלול" עם העמוד.
-                id=site-main — יעד לדילוג לתוכן (נגישות) בכל דפי האתר.
-              */}
-              <div
-                id="site-main"
-                tabIndex={-1}
-                className="app-visual-effects-root min-h-app outline-none focus:outline-none"
-              >
-                <StructuredDataScript />
-                {children}
-                <CookieConsentBanner />
-                {!marketingShell ? <AccessibilityToolbar /> : null}
-                {!marketingShell ? <SiteFeedbackFab /> : null}
-                <AppToaster />
-                <ConditionalServiceWorker />
-                <Script id="pwa-ios" strategy="afterInteractive">
-                  {`
-                    // iOS PWA support
-                    if (window.navigator.standalone === true) {
-                      document.body.classList.add('pwa-ios');
-                    }
-                  `}
-                </Script>
-              </div>
-              </>
-              ) : (
-              <TenantProvider tenant={tenant}>
-              <TradeProfileProvider>
-              <a
-                href="#site-main"
-                className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100000] focus:rounded-xl focus:bg-[#1f2937] focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-white"
-              >
-                {mainSkipLabel}
-              </a>
-              <div
-                id="site-main"
-                tabIndex={-1}
-                className="app-visual-effects-root min-h-app outline-none focus:outline-none"
-              >
-                <StructuredDataScript />
-                <AccessibilitySettingsBootstrap />
-                {children}
-                <CookieConsentBanner />
-                <AccessibilityToolbar />
-                <SiteFeedbackFab />
-                <AppToaster />
-                <ConditionalServiceWorker />
-                <Script id="pwa-ios" strategy="afterInteractive">
-                  {`
-                    if (window.navigator.standalone === true) {
-                      document.body.classList.add('pwa-ios');
-                    }
-                  `}
-                </Script>
-              </div>
-              </TradeProfileProvider>
-              </TenantProvider>
-              )}
-            </I18nProvider>
-            </CSPostHogProvider>
-          </SessionProvider>
-        </ThemeProvider>
+    <html lang="he" dir="rtl" className={heebo.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MARKETING_THEME_BOOT }} />
+      </head>
+      <body className={`${heebo.className} min-h-screen bg-[#0f172a] font-sans text-slate-100 antialiased`}>
+        {children}
       </body>
     </html>
   );

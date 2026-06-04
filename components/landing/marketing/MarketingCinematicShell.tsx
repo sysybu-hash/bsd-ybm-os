@@ -1,19 +1,25 @@
-import { cookies } from "next/headers";
 import "./marketing-cinematic.css";
 import HeroSectionStatic from "@/components/landing/marketing/HeroSectionStatic";
+import MarketingHeroPoster from "@/components/landing/marketing/MarketingHeroPoster";
 import MarketingCinematicClient from "@/components/landing/marketing/MarketingCinematicClient";
-import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
+import type { AppLocale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/load-messages";
 
+type Props = Readonly<{
+  locale?: AppLocale;
+}>;
+
 /** Server shell — Hero HTML ב-RSC; אינטראקציה (וידאו, omnibar) ב-client island. */
-export default async function MarketingCinematicShell() {
-  const jar = await cookies();
-  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
+export default function MarketingCinematicShell({ locale = "he" }: Props) {
   const messages = getMessages(locale);
 
   return (
-    <MarketingCinematicClient
-      hero={<HeroSectionStatic locale={locale} messages={messages} />}
-    />
+    <>
+      <MarketingHeroPoster />
+      <MarketingCinematicClient
+        locale={locale}
+        hero={<HeroSectionStatic locale={locale} messages={messages} />}
+      />
+    </>
   );
 }

@@ -100,7 +100,7 @@ export default function MarketingFieldScanDemo() {
               <div
                 role="button"
                 tabIndex={canInteract ? 0 : -1}
-                aria-label={t("marketingHome.cinematic.fieldScanPickHint")}
+                aria-labelledby="mkt-scan-hint-primary mkt-scan-hint-secondary"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
@@ -145,10 +145,13 @@ export default function MarketingFieldScanDemo() {
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10">
                         <Upload className="h-8 w-8 text-emerald-400/80" aria-hidden />
                       </div>
-                      <p className="max-w-[16rem] text-sm font-medium leading-relaxed text-slate-200">
+                      <p
+                        id="mkt-scan-hint-primary"
+                        className="max-w-[16rem] text-sm font-medium leading-relaxed text-slate-200"
+                      >
                         {t("marketingHome.cinematic.fieldScanPickHint")}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p id="mkt-scan-hint-secondary" className="text-[11px] text-slate-400">
                         {t("marketingHome.cinematic.fieldScanDropHint")}
                       </p>
                     </>
@@ -179,7 +182,7 @@ export default function MarketingFieldScanDemo() {
                       e.stopPropagation();
                       openCamera();
                     }}
-                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-600 px-3 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-500"
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-emerald-400/50 bg-emerald-700 px-3 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-600"
                   >
                     <Camera className="h-4 w-4 shrink-0" aria-hidden />
                     {t("marketingHome.cinematic.fieldScanCamera")}
@@ -250,7 +253,11 @@ export default function MarketingFieldScanDemo() {
         </div>
       </div>
 
+      <label htmlFor="mkt-field-scan-file" className="sr-only">
+        {t("marketingHome.cinematic.fieldScanPick")}
+      </label>
       <input
+        id="mkt-field-scan-file"
         ref={fileRef}
         type="file"
         accept={ACCEPT}
@@ -261,7 +268,11 @@ export default function MarketingFieldScanDemo() {
           e.target.value = "";
         }}
       />
+      <label htmlFor="mkt-field-scan-camera" className="sr-only">
+        {t("marketingHome.cinematic.fieldScanCamera")}
+      </label>
       <input
+        id="mkt-field-scan-camera"
         ref={cameraRef}
         type="file"
         accept="image/*"

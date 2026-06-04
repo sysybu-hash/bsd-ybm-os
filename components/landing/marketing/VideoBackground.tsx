@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const VIDEO_DESKTOP = "/marketing/hero-cinematic.mp4";
-const VIDEO_DESKTOP_WEBM = "/marketing/hero-cinematic.webm";
 const VIDEO_MOBILE = "/marketing/hero-cinematic-mobile.mp4";
-const VIDEO_MOBILE_WEBM = "/marketing/hero-cinematic-mobile.webm";
-const POSTER_WEBP = "/marketing/hero-cinematic-poster.webp";
-const POSTER_JPG = "/marketing/hero-cinematic-poster.jpg";
-
 const PAGE_SHOW_RESTORE = "marketing:pageshow-restore";
 
 function prefersReducedMotionNow(): boolean {
@@ -19,14 +14,12 @@ function prefersReducedMotionNow(): boolean {
   );
 }
 
-function pickVideoSources(): { mp4: string; webm: string | null } {
+function pickVideoSources(): { mp4: string } {
   if (typeof window === "undefined") {
-    return { mp4: VIDEO_DESKTOP, webm: VIDEO_DESKTOP_WEBM };
+    return { mp4: VIDEO_DESKTOP };
   }
   const mobile = window.matchMedia("(max-width: 767px)").matches;
-  return mobile
-    ? { mp4: VIDEO_MOBILE, webm: VIDEO_MOBILE_WEBM }
-    : { mp4: VIDEO_DESKTOP, webm: VIDEO_DESKTOP_WEBM };
+  return { mp4: mobile ? VIDEO_MOBILE : VIDEO_DESKTOP };
 }
 
 function primeVideoElement(el: HTMLVideoElement) {
@@ -58,7 +51,7 @@ function scheduleDeferredPlay(run: () => void) {
 
 export default function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [sources, setSources] = useState<{ mp4: string; webm: string | null } | null>(null);
+  const [sources, setSources] = useState<{ mp4: string } | null>(null);
   const [mountVideo, setMountVideo] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [staticOnly, setStaticOnly] = useState(false);
@@ -148,14 +141,17 @@ export default function VideoBackground() {
       setSources(pickVideoSources());
       setIsPlaying(false);
       setMountVideo(false);
-      scheduleDeferredPlay(() => setMountVideo(true));
+      if (!mobileQuery.matches && !prefersReducedMotionNow()) {
+        scheduleDeferredPlay(() => setMountVideo(true));
+      }
     };
     mobileQuery.addEventListener("change", onViewportChange);
     return () => mobileQuery.removeEventListener("change", onViewportChange);
   }, []);
 
   useEffect(() => {
-    if (prefersReducedMotionNow()) {
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    if (prefersReducedMotionNow() || mobile) {
       setStaticOnly(true);
       setIsPlaying(false);
       setMountVideo(false);
@@ -171,21 +167,7 @@ export default function VideoBackground() {
   }, [sources, staticOnly, mountVideo, bindPlayback]);
 
   return (
-    <div className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      <picture>
-        <source srcSet={POSTER_WEBP} type="image/webp" />
-        <img
-          src={POSTER_JPG}
-          alt=""
-          width={1920}
-          height={1080}
-          decoding="async"
-          fetchPriority="high"
-          className={`mkt-video-poster-img absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-            isPlaying ? "opacity-0" : "opacity-100"
-          }`}
-        />
-      </picture>
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
       {mountVideo && sources && !staticOnly ? (
         <video
           key={sources.mp4}
@@ -204,7 +186,6 @@ export default function VideoBackground() {
             setMountVideo(false);
           }}
         >
-          {sources.webm ? <source src={sources.webm} type="video/webm" /> : null}
           <source src={sources.mp4} type="video/mp4" />
         </video>
       ) : null}

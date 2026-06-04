@@ -36,10 +36,10 @@ export default function MarketingContactStrip({ embedded = false, inPanel = fals
                     href={siteContactWhatsAppUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-amber-200/90 underline-offset-2 hover:underline"
-                    aria-label={t("marketingHome.contact.whatsappAria")}
+                    className="text-amber-100 underline-offset-2 hover:underline"
                   >
                     {siteContactPhoneDisplay(locale)}
+                    <span className="sr-only"> — {t("marketingHome.contact.whatsappAria")}</span>
                   </a>
                 </span>
               </li>
@@ -49,8 +49,7 @@ export default function MarketingContactStrip({ embedded = false, inPanel = fals
                   <span className="block font-bold text-white">{t("marketingHome.contact.emailLabel")}</span>
                   <a
                     href={`mailto:${SITE_CONTACT.email}`}
-                    className="break-all text-amber-200/90 underline-offset-2 hover:underline"
-                    aria-label={`${t("marketingHome.contact.emailLabel")}: ${SITE_CONTACT.email}`}
+                    className="break-all text-amber-100 underline-offset-2 hover:underline"
                   >
                     {SITE_CONTACT.email}
                   </a>

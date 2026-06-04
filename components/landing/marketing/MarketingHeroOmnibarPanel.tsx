@@ -39,20 +39,22 @@ export default function MarketingHeroOmnibarPanel({
           </button>
         </div>
       ) : null}
-      <ul className="max-h-56 space-y-3 overflow-y-auto pe-1 text-sm" aria-live="polite">
-        {messages.map((msg) => (
-          <li
-            key={msg.id}
-            className={`rounded-xl px-3 py-2 leading-relaxed ${
-              msg.role === "user"
-                ? "ms-8 bg-slate-900/50 text-slate-100"
-                : "me-8 border border-emerald-500/20 bg-emerald-950/30 text-slate-200"
-            }`}
-          >
-            {msg.content}
-          </li>
-        ))}
-      </ul>
+      {messages.length > 0 ? (
+        <ul className="max-h-56 space-y-3 overflow-y-auto pe-1 text-sm" aria-live="polite">
+          {messages.map((msg) => (
+            <li
+              key={msg.id}
+              className={`rounded-xl px-3 py-2 leading-relaxed ${
+                msg.role === "user"
+                  ? "ms-8 bg-slate-900/50 text-slate-100"
+                  : "me-8 border border-emerald-500/20 bg-emerald-950/30 text-slate-200"
+              }`}
+            >
+              {msg.content}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {voiceActive && lastTranscript?.trim() ? (
         <p className="mt-3 text-center text-xs text-slate-400">{lastTranscript}</p>
