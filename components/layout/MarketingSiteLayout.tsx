@@ -7,9 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
 import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
 import StructuredDataScript from "@/components/seo/StructuredDataScript";
-import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
-import AppToaster from "@/components/os/system/AppToaster";
 import { MarketingAnalyticsClient } from "@/components/layout/MarketingAnalyticsClient";
+import MarketingLayoutExtras from "@/components/layout/MarketingLayoutExtras";
 
 type Props = Readonly<{
   locale: AppLocale;
@@ -41,8 +40,7 @@ export default function MarketingSiteLayout({ locale, children }: Props) {
           <div id="site-main" tabIndex={-1} className="outline-none focus:outline-none">
             <StructuredDataScript />
             {children}
-            <CookieConsentBanner />
-            <AppToaster />
+            <MarketingLayoutExtras />
           </div>
         </I18nProvider>
       </ThemeProvider>

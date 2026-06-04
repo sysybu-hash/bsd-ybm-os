@@ -6,14 +6,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import MarketingNavbar from "@/components/landing/marketing/MarketingNavbar";
-import MarketingContactStrip from "@/components/landing/marketing/MarketingContactStrip";
-import MarketingFooter from "@/components/landing/marketing/MarketingFooter";
-import MarketingMobileMenu from "@/components/landing/marketing/MarketingMobileMenu";
-import MobileBottomNav from "@/components/landing/marketing/MobileBottomNav";
 import { openMarketingOmnibarSheet } from "@/components/landing/marketing/marketing-omnibar-events";
 import MarketingOmnibarPlaceholder from "@/components/landing/marketing/MarketingOmnibarPlaceholder";
 import { MarketingPanelProvider } from "@/components/landing/marketing/MarketingPanelContext";
 import DeferUntilVisible from "@/components/layout/DeferUntilVisible";
+import MarketingDeferredChrome from "@/components/layout/MarketingDeferredChrome";
 import type { AppLocale } from "@/lib/i18n/config";
 
 const VideoBackground = dynamic(() => import("@/components/landing/marketing/VideoBackground"), {
@@ -39,6 +36,16 @@ const MarketingExploreHub = dynamic(
 const MarketingOmnibarIsland = dynamic(
   () => import("@/components/landing/marketing/MarketingOmnibarIsland"),
   { ssr: false, loading: () => <MarketingOmnibarPlaceholder /> },
+);
+
+const MobileBottomNav = dynamic(() => import("@/components/landing/marketing/MobileBottomNav"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-x-0 bottom-0 z-50 h-16 md:hidden" aria-hidden />,
+});
+
+const MarketingMobileMenu = dynamic(
+  () => import("@/components/landing/marketing/MarketingMobileMenu"),
+  { ssr: false },
 );
 
 type Props = Readonly<{
@@ -134,8 +141,7 @@ export default function MarketingCinematicClient({ hero }: Props) {
             <DeferUntilVisible minHeight="24rem" fallback={<div className="min-h-[24rem] w-full" aria-hidden />}>
               <MarketingExploreHub />
             </DeferUntilVisible>
-            <MarketingContactStrip />
-            <MarketingFooter />
+            <MarketingDeferredChrome />
           </main>
           <MobileBottomNav
             menuOpen={mobileMenuOpen}
@@ -151,12 +157,14 @@ export default function MarketingCinematicClient({ hero }: Props) {
               globalThis.setTimeout(() => openMarketingOmnibarSheet(), 0);
             }}
           />
-          <MarketingMobileMenu
-            open={mobileMenuOpen}
-            onClose={() => setMobileMenuOpen(false)}
-            onLogin={goLogin}
-            onRegister={goRegister}
-          />
+          {mobileMenuOpen ? (
+            <MarketingMobileMenu
+              open={mobileMenuOpen}
+              onClose={() => setMobileMenuOpen(false)}
+              onLogin={goLogin}
+              onRegister={goRegister}
+            />
+          ) : null}
         </div>
       </div>
     </MarketingPanelProvider>

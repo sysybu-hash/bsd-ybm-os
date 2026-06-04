@@ -1,6 +1,7 @@
-import "./marketing-cinematic.css";
+import "./marketing-cinematic-critical.css";
 import HeroSectionStatic from "@/components/landing/marketing/HeroSectionStatic";
 import MarketingHeroPoster from "@/components/landing/marketing/MarketingHeroPoster";
+import MarketingDeferredStyles from "@/components/landing/marketing/MarketingDeferredStyles";
 import MarketingCinematicClient from "@/components/landing/marketing/MarketingCinematicClient";
 import type { AppLocale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/load-messages";
@@ -15,6 +16,7 @@ export default function MarketingCinematicShell({ locale = "he" }: Props) {
 
   return (
     <>
+      <MarketingDeferredStyles />
       <MarketingHeroPoster />
       <MarketingCinematicClient
         locale={locale}
