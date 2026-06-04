@@ -20,6 +20,8 @@ const customJestConfig = {
     'lib/ai-orchestrator.ts',
     'lib/core/site-url.ts',
     'lib/launcher/**/*.ts',
+    'lib/field-copilot/client-step.ts',
+    'lib/project-payment-milestones.ts',
     '!lib/launcher/hub-meta.ts',
     '!lib/launcher/launcher-permissions.ts',
     '!lib/launcher/picker-catalog.ts',
@@ -27,10 +29,10 @@ const customJestConfig = {
   ],
   coverageThreshold: {
     global: {
-      statements: 65,
-      branches: 55,
-      functions: 65,
-      lines: 65,
+      statements: 75,
+      branches: 60,
+      functions: 75,
+      lines: 75,
     },
   },
 }
