@@ -1549,6 +1549,8 @@
     "searchPlaceholder": "Search vault…",
     "loading": "Loading items…",
     "empty": "No vault items",
+    "semanticSearching": "Semantic search…",
+    "semanticActive": "Semantic vault search",
     "attachFromVault": "Attach from knowledge vault",
     "attachShort": "Vault"
   },

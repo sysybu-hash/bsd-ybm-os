@@ -1549,6 +1549,8 @@
     "searchPlaceholder": "חיפוש במאגר…",
     "loading": "טוען פריטים…",
     "empty": "אין פריטים במאגר",
+    "semanticSearching": "מחפש לפי משמעות…",
+    "semanticActive": "חיפוש סמנטי במאגר",
     "attachFromVault": "צרף ממאגר הידע",
     "attachShort": "מאגר"
   },

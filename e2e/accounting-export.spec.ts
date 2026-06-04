@@ -1,0 +1,37 @@
+import { test, expect } from "@playwright/test";
+import { tryCredentialsSignIn } from "./helpers";
+
+test.describe("accounting export API", () => {
+  test("GET formats requires auth", async ({ request }) => {
+    const res = await request.get("/api/accounting/export");
+    expect([401, 403]).toContain(res.status());
+  });
+
+  test("authenticated GET lists formats", async ({ page }) => {
+    const signedIn = await tryCredentialsSignIn(page);
+    test.skip(!signedIn, "E2E credentials not available");
+
+    const res = await page.request.get("/api/accounting/export");
+    expect(res.status()).toBe(200);
+    const json = (await res.json()) as { formats?: string[] };
+    expect(json.formats).toEqual(expect.arrayContaining(["bkmvdata", "priority", "hashavshevet"]));
+  });
+
+  test("POST export with empty range returns file or validation", async ({ page }) => {
+    const signedIn = await tryCredentialsSignIn(page);
+    test.skip(!signedIn, "E2E credentials not available");
+
+    const from = new Date(Date.now() - 86400000).toISOString();
+    const to = new Date().toISOString();
+    const res = await page.request.post("/api/accounting/export", {
+      data: {
+        format: "bkmvdata",
+        fromDate: from,
+        toDate: to,
+        includeDocuments: false,
+        includeExpenses: false,
+      },
+    });
+    expect([200, 400, 422, 429]).toContain(res.status());
+  });
+});

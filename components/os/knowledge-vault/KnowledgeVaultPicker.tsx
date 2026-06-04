@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FolderOpen, Loader2, X } from "lucide-react";
-import { useKnowledgeVault, type VaultItem } from "@/components/os/KnowledgeVaultProvider";
+import React, { useEffect, useMemo, useState } from "react";
+import { FolderOpen, Loader2, Sparkles, X } from "lucide-react";
+import {
+  useKnowledgeVault,
+  type VaultItem,
+  type VaultSearchHit,
+} from "@/components/os/KnowledgeVaultProvider";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 type KnowledgeVaultPickerProps = {
@@ -19,18 +23,60 @@ export default function KnowledgeVaultPicker({
   vaultPath,
 }: KnowledgeVaultPickerProps) {
   const { t } = useI18n();
-  const vault = useKnowledgeVault();
+  const {
+    items,
+    semanticHits,
+    semanticSearching,
+    loading,
+    enabled,
+    refresh,
+    clearSemanticSearch,
+    semanticSearch,
+  } = useKnowledgeVault();
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (open && vault.enabled) void vault.refresh(vaultPath);
-  }, [open, vault, vault.enabled, vault.refresh, vaultPath]);
+    if (open && enabled) void refresh(vaultPath);
+  }, [open, enabled, refresh, vaultPath]);
 
-  if (!open || !vault.enabled) return null;
+  useEffect(() => {
+    if (!open) {
+      clearSemanticSearch();
+      return;
+    }
+    const q = search.trim();
+    if (q.length < 3) {
+      clearSemanticSearch();
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void semanticSearch(q);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [open, search, clearSemanticSearch, semanticSearch]);
 
-  const filtered = vault.items.filter((i) =>
-    !search.trim() ? true : i.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const semanticByFileId = useMemo(() => {
+    const map = new Map<string, VaultSearchHit>();
+    for (const hit of semanticHits) {
+      if (!map.has(hit.driveFileId)) map.set(hit.driveFileId, hit);
+    }
+    return map;
+  }, [semanticHits]);
+
+  const displayItems = useMemo((): VaultItem[] => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    if (semanticHits.length > 0) {
+      const ids = new Set(semanticHits.map((h) => h.driveFileId));
+      const fromVault = items.filter((i) => ids.has(i.driveFileId));
+      if (fromVault.length > 0) return fromVault;
+    }
+    return items.filter((i) => i.name.toLowerCase().includes(q));
+  }, [search, items, semanticHits]);
+
+  if (!open || !enabled) return null;
+
+  const useSemantic = search.trim().length >= 3;
 
   return (
     <>
@@ -43,32 +89,48 @@ export default function KnowledgeVaultPicker({
           placeholder={t("knowledgeVault.searchPlaceholder")}
           className="mb-3 w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm"
         />
-        {vault.loading ? (
+        {useSemantic ? (
+          <p className="mb-2 flex items-center gap-1 text-[10px] text-indigo-500">
+            <Sparkles size={12} />
+            {semanticSearching ? t("knowledgeVault.semanticSearching") : t("knowledgeVault.semanticActive")}
+          </p>
+        ) : null}
+        {loading || (useSemantic && semanticSearching) ? (
           <VaultPickerLoading label={t("knowledgeVault.loading")} />
-        ) : filtered.length === 0 ? (
+        ) : displayItems.length === 0 ? (
           <p className="text-center text-xs text-[color:var(--foreground-muted)]">{t("knowledgeVault.empty")}</p>
         ) : (
           <ul className="max-h-64 space-y-1 overflow-y-auto">
-            {filtered.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelect(item);
-                    onClose();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start text-xs hover:bg-[color:var(--surface-soft)]"
-                >
-                  <FolderOpen size={14} className="shrink-0 text-indigo-400" />
-                  <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>
-                  {item.decodeStatus ? (
-                    <span className="shrink-0 text-[10px] text-[color:var(--foreground-muted)]">
-                      {item.decodeStatus}
+            {displayItems.map((item) => {
+              const hit = semanticByFileId.get(item.driveFileId);
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelect(item);
+                      onClose();
+                    }}
+                    className="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-2 text-start text-xs hover:bg-[color:var(--surface-soft)]"
+                  >
+                    <span className="flex w-full items-center gap-2">
+                      <FolderOpen size={14} className="shrink-0 text-indigo-400" />
+                      <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>
+                      {item.decodeStatus ? (
+                        <span className="shrink-0 text-[10px] text-[color:var(--foreground-muted)]">
+                          {item.decodeStatus}
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
+                    {hit?.snippet ? (
+                      <span className="line-clamp-2 ps-6 text-[10px] text-[color:var(--foreground-muted)]">
+                        {hit.snippet}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </VaultPickerDialog>

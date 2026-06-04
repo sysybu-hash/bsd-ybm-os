@@ -10,7 +10,12 @@
 | ייבוא XML/CSV + Excel | בוצע | בדיקות unit + fixtures |
 | E2E project/CRM/mobile/live | בוצע | `test:e2e:project`, `test:e2e:crm` |
 | MPP ישיר (mpxj) | לא נכלל | ייצוא ל-XML/CSV בלבד |
-| Gemini Live E2E מלא (מיקרופון) | נותר (ידני) | smoke בלבד ב-CI |
+| Growth (blog, contact, leads, lifecycle, unsubscribe) | בוצע בקוד | QA: `e2e/growth-public.spec.ts` |
+| Phase 3–4 (BOQ agent, accounting export, CRM semantic, Voice diary) | בוצע בקוד | QA ידני + E2E API; embeddings cron Sun 03:00 UTC |
+| Knowledge Vault RAG + UI חיפוש סמנטי | בוצע | `KnowledgeVaultPicker` + `/api/knowledge-vault/search` |
+| PayPal capture via gateway | בוצע | `capturePayPalOrder` → `PayPalGateway` |
+| pgvector ב-Neon | נדחה | JSON embeddings + JS cosine — מספיק לעתיד הקרוב |
+| Gemini Live E2E מלא (מיקרופון) | נותר (ידני) | smoke בלבד ב-CI; VoiceActivityLogger ≠ Live (מכוון) |
 | מצב ניהול עסק (`COMPANY_MGMT`) | בוצע | `docs/company-management-mode.md` — launcher, CRM, פרויקטים בלי BOQ, סריקה עסקית, הרשמה ומנוי באדמין |
 
 ## סביבה

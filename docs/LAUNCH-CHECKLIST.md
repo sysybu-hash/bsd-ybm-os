@@ -28,11 +28,13 @@
 
 ## תפעול
 
-- [ ] [RUNBOOK.md](./RUNBOOK.md) — on-call ידוע
-- [ ] [DR-PLAN.md](./DR-PLAN.md) — תרגיל שחזור בוצע ב-90 יום
+- [x] [VERCEL-ENV-CHECKLIST.md](./VERCEL-ENV-CHECKLIST.md) — רשימת env + crons
+- [x] [RUNBOOK.md](./RUNBOOK.md) — טבלת 13 crons (2026-06-04)
+- [ ] [RUNBOOK.md](./RUNBOOK.md) — on-call ידוע (אנושי)
+- [x] [DR-PLAN.md](./DR-PLAN.md) — drill מקומי 2026-06-04; PITR מלא בקונסולה — ידני
 - [ ] [SLO.md](./SLO.md) — alerts מחוברים
 
 ## Sign-off
 
-- [x] [KPI-SIGNOFF.md](./KPI-SIGNOFF.md) — baseline 2026-05-26 ([BASELINE-10-10](./BASELINE-10-10.md))
+- [x] [KPI-SIGNOFF.md](./KPI-SIGNOFF.md) — baseline 2026-06-04 ([BASELINE-10-10](./BASELINE-10-10.md)); CI gates מתועדים
 - [ ] מילוי מאשר + מדידות production סופיות

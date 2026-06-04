@@ -23,6 +23,22 @@ test.describe("Growth — public blog & contact", () => {
     await expect(page.getByRole("heading", { name: /צור קשר/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /שלח הודעה/i })).toBeVisible();
   });
+
+  test("contact form submits successfully", async ({ page }) => {
+    await page.goto("/contact");
+    const email = `e2e-contact-${Date.now()}@example.invalid`;
+    await page.getByLabel(/שם מלא/i).fill("E2E Contact");
+    await page.getByLabel(/אימייל/i).fill(email);
+    await page.getByRole("button", { name: /שלח הודעה/i }).click();
+    await expect(page.getByRole("heading", { name: /קיבלנו/i })).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+test.describe("Growth — unsubscribe", () => {
+  test("unsubscribe page loads", async ({ page }) => {
+    await page.goto("/unsubscribe");
+    await expect(page.getByRole("heading")).toBeVisible();
+  });
 });
 
 test.describe("Growth — leads API", () => {

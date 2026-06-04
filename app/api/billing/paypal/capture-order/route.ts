@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadGateway } from "@/lib/api-json";
-import { isPayPalServerConfigured, paypalCaptureOrder } from "@/lib/paypal-server";
+import { isPayPalServerConfigured } from "@/lib/paypal-server";
+import { capturePayPalOrder } from "@/lib/billing/paypal-order";
 import { sendPayPalSubscriptionConfirmationEmail } from "@/lib/mail";
 import { parseCapturePayload } from "@/lib/paypal-order-parse";
 import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
@@ -41,7 +42,7 @@ export const POST = withWorkspacesAuth(
 
       let raw: Record<string, unknown>;
       try {
-        raw = await paypalCaptureOrder(orderID);
+        raw = await capturePayPalOrder(orderID);
       } catch (e) {
         log.error("capture-order capture failed", { error: e instanceof Error ? e.message : String(e) });
         return jsonBadGateway(e instanceof Error ? e.message : "Capture נכשל");

@@ -3,7 +3,7 @@
 > **Version**: 1.0 | **Date**: 2026-05-21
 > **Owner**: yohanan.bukshpan
 > **Review cadence**: Quarterly + after any P0 incident
-> **תרגיל אחרון (PITR)**: _למלא לאחר הרצה_ — יעד מסלול 10/10: 2026-Q2
+> **תרגיל אחרון (PITR)**: 2026-06-04 — `npm run ops:neon-dr-drill` (חיבור + checklist); תרגיל PITR מלא בקונסולת Neon — לסמן ב-[KPI-SIGNOFF](./KPI-SIGNOFF.md) לאחר השלמה ידנית
 
 ---
 

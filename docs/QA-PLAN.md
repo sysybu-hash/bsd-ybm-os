@@ -20,11 +20,15 @@
 ## אוטומציה
 
 ```bash
+npm run test:e2e:ci-gate     # CI gate — כולל growth, KV search, BOQ agent, accounting export
 npm run test:e2e:workspace   # hubs, launcher, field-copilot, a11y
 npm run test                 # Jest unit
+npm run test:coverage        # CI threshold 75%
 node scripts/i18n-key-parity.mjs
 node scripts/load-test.mjs   # BASE_URL=...
 ```
+
+Growth / Phase 3–4 (API smoke): `e2e/growth-public.spec.ts`, `e2e/knowledge-vault-search.spec.ts`, `e2e/boq-agent-api.spec.ts`, `e2e/accounting-export.spec.ts`.
 
 Playwright מפעיל אוטומטית `next dev` על פורט **3001** (מקומי). אם `npm run dev` כבר רץ על 3000 — אין צורך; Playwright ישתמש בשרת 3001 או ב-`reuseExistingServer` אם ה-URL תואם. ל-production-like: `PLAYWRIGHT_WEB_COMMAND="npm run build && npx next start -p 3001" npm run test:e2e:workspace`.
 

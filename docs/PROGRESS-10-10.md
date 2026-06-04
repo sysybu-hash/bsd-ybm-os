@@ -1,33 +1,40 @@
 # התקדמות מסלול 10/10 — 2026-06-04
 
-## הושלם בסשן (סגירת סעיפים פתוחים)
+## הושלם (קוד + CI + תיעוד תפעול)
 
 | שלב | פריטים |
 |-----|--------|
-| Growth / Phase 3–4 | BOQ agent, Voice diary, CRM embeddings, PayPal gateway, accounting CSV/BKMVDATA (commits קודמים) |
-| Knowledge Vault RAG | `KnowledgeVaultChunk`, `chunk-index.ts`, אינדוקס אחרי `parseAsset`, `GET /api/knowledge-vault/search` |
-| תשלומים | `create-order` → `lib/billing/paypal-order` + gateway; ERP quotes → `getGateway("payplus")` |
-| אבטחה | `CSP_STRICT` ב-env + CSP ללא `unsafe-eval` ב-staging/production כשמופעל |
-| env | `TENANT_FALLBACK_REDIRECT`, PostHog, PayPal public id, layout redirect, structured-data `sameAs` |
-| lib split | `lib/auth/nextauth-callbacks.ts`, `lib/tri-engine-gemini.ts` |
-| תפעול | `npm run ops:neon-dr-drill`, `npm run ops:10-10-status` |
-| E2E | `knowledge-vault-search.spec.ts`, `boq-agent-api.spec.ts` |
+| Growth / Phase 3–4 | blog, contact, leads, lifecycle cron, unsubscribe, BOQ agent, Voice diary, CRM embeddings + **cron** `contact-embeddings` |
+| Knowledge Vault RAG | chunks, index, `GET /api/knowledge-vault/search`, **UI סמנטי** ב-`KnowledgeVaultPicker` |
+| תשלומים | create-order + **capture-order** דרך `PayPalGateway.captureOrder` / `capturePayPalOrder` |
+| lib split P0 | `product-brochure-v2-data.ts`, `product-brochure-v2-assets.ts`, `auth/nextauth-callbacks`, `tri-engine-gemini` |
+| E2E ci-gate | `growth-public`, `knowledge-vault-search`, `boq-agent-api`, `accounting-export` |
+| Ops docs | [VERCEL-ENV-CHECKLIST](./VERCEL-ENV-CHECKLIST.md), RUNBOOK crons, DR drill date |
 
-## פקודות שימושיות
+## פקודות
 
 ```bash
-npm run db:migrate          # KnowledgeVaultChunk + embeddings (אם עדיין לא)
+npm run db:migrate
 npm run verify
-npm run ops:neon-dr-drill   # בדיקת חיבור Neon + checklist DR
-npm run ops:10-10-status    # קבצים ≥300 שורות + תזכורת שערים
-npm run lib:line-count      # אותו ספירה
+npm run test:coverage    # CI threshold 75%
+npm run test:e2e:ci-gate
+npm run ops:neon-dr-drill
+npm run ops:10-10-status
+npm run lib:line-count
 ```
 
-## נותר (הדרגתי / ידני)
+## נותר (ידני / הדרגתי)
 
-- פיצול ~30+ קבצים ≥300 שורות — `product-brochure-v2-html.ts` עדיין הגדול ביותר ([LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md))
-- pgvector native ב-Neon (כיום JSON + cosine ב-JS — מספיק ל-RAG קטן)
-- `CSP_STRICT=true` ב-Vercel Preview אחרי smoke מלא
-- Lighthouse ≥90 ב-production (`npm run lighthouse:sample`)
-- תרגיל DR מלא בקונסולת Neon + תיעוד תאריך ב-[KPI-SIGNOFF](./KPI-SIGNOFF.md)
-- `git push origin main` — אם ענף מקומי עדיין ahead of remote
+| פריט | הערות |
+|------|--------|
+| `db:migrate` ב-Vercel Production + Preview | אחרי env — [VERCEL-ENV-CHECKLIST](./VERCEL-ENV-CHECKLIST.md) |
+| 5 מסעות ליבה + Phase 3–4 QA ידני | [QA-PLAN](./QA-PLAN.md) |
+| Lighthouse ≥90 production | `npm run lighthouse:sample` |
+| KPI מאשר אנושי | [KPI-SIGNOFF](./KPI-SIGNOFF.md) |
+| PITR מלא ב-Neon | קונסולה — אחרי drill מקומי |
+| `CSP_STRICT=true` | Preview → smoke → Production |
+| פיצול קבצים ≥300 | **~34** קבצים (אחרי brochure split) — [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
+| pgvector native | **נדחה** — JSON + cosine ב-JS מספיק ל-RAG קטן |
+| Refunds API | **ידני** בדשבורד PayPal/PayPlus — RUNBOOK §7 |
+| VoiceActivityLogger + Gemini Live | **הפרדה מכוונת** — Live ב-Omnibar/Chat; יומן שטח = Web Speech |
+| MPP (mpxj) | לא ב-scope |

@@ -14,12 +14,25 @@ export type VaultItem = {
   modifiedTime: string | null;
 };
 
+export type VaultSearchHit = {
+  driveEntryId: string;
+  driveFileId: string;
+  name: string;
+  chunkIndex: number;
+  snippet: string;
+  score: number;
+};
+
 type KnowledgeVaultContextValue = {
   enabled: boolean;
   loading: boolean;
   items: VaultItem[];
   refresh: (vaultPath?: string) => Promise<void>;
   ingestFile: (file: File, sourceWidgetId?: string) => Promise<{ driveFileId: string } | null>;
+  semanticSearching: boolean;
+  semanticHits: VaultSearchHit[];
+  semanticSearch: (query: string) => Promise<VaultSearchHit[]>;
+  clearSemanticSearch: () => void;
 };
 
 const KnowledgeVaultContext = createContext<KnowledgeVaultContextValue | null>(null);
@@ -33,6 +46,8 @@ export function KnowledgeVaultProvider({
 }) {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<VaultItem[]>([]);
+  const [semanticSearching, setSemanticSearching] = useState(false);
+  const [semanticHits, setSemanticHits] = useState<VaultSearchHit[]>([]);
 
   const refresh = useCallback(
     async (vaultPath?: string) => {
@@ -50,6 +65,38 @@ export function KnowledgeVaultProvider({
     },
     [knowledgeVaultEnabled],
   );
+
+  const semanticSearch = useCallback(
+    async (query: string) => {
+      const q = query.trim();
+      if (!knowledgeVaultEnabled || q.length < 2) {
+        setSemanticHits([]);
+        return [];
+      }
+      setSemanticSearching(true);
+      try {
+        const res = await fetch(
+          `/api/knowledge-vault/search?q=${encodeURIComponent(q)}&limit=12`,
+          { credentials: "include", cache: "no-store" },
+        );
+        if (!res.ok) {
+          setSemanticHits([]);
+          return [];
+        }
+        const data = (await res.json()) as { hits?: VaultSearchHit[] };
+        const hits = data.hits ?? [];
+        setSemanticHits(hits);
+        return hits;
+      } finally {
+        setSemanticSearching(false);
+      }
+    },
+    [knowledgeVaultEnabled],
+  );
+
+  const clearSemanticSearch = useCallback(() => {
+    setSemanticHits([]);
+  }, []);
 
   useEffect(() => {
     if (knowledgeVaultEnabled) void refresh();
@@ -81,8 +128,22 @@ export function KnowledgeVaultProvider({
       items,
       refresh,
       ingestFile,
+      semanticSearching,
+      semanticHits,
+      semanticSearch,
+      clearSemanticSearch,
     }),
-    [knowledgeVaultEnabled, loading, items, refresh, ingestFile],
+    [
+      knowledgeVaultEnabled,
+      loading,
+      items,
+      refresh,
+      ingestFile,
+      semanticSearching,
+      semanticHits,
+      semanticSearch,
+      clearSemanticSearch,
+    ],
   );
 
   return <KnowledgeVaultContext.Provider value={value}>{children}</KnowledgeVaultContext.Provider>;
@@ -97,6 +158,10 @@ export function useKnowledgeVault() {
       items: [],
       refresh: async () => undefined,
       ingestFile: async () => null,
+      semanticSearching: false,
+      semanticHits: [],
+      semanticSearch: async () => [],
+      clearSemanticSearch: () => undefined,
     }
   );
 }

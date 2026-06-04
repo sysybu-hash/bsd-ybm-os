@@ -1,6 +1,8 @@
 # Backlog — קבצים ≥300 שורות
 
-נוצר: `node scripts/lib-line-count.mjs --min 300`
+עדכון: 2026-06-04 — `npm run lib:line-count`
+
+**P0 הושלם:** `lib/pdf/product-brochure-v2-html.ts` → `product-brochure-v2-data.ts` + `product-brochure-v2-assets.ts` (thin builder).
 
 | שורות | קובץ | שלב מוצע |
 |------|------|----------|

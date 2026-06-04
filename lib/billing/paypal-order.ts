@@ -1,5 +1,6 @@
 import "@/lib/payments/register-gateways";
 import { getGateway } from "@/lib/payments/gateway-interface";
+import { payPalGateway } from "@/lib/payments/paypal-gateway";
 import { isPayPalServerConfigured } from "@/lib/paypal-server";
 
 export async function createPayPalOrderId(params: {
@@ -23,4 +24,11 @@ export async function createPayPalOrderId(params: {
     idempotencyKey: params.customId,
   });
   return result.providerRef;
+}
+
+export async function capturePayPalOrder(orderId: string): Promise<Record<string, unknown>> {
+  if (!isPayPalServerConfigured()) {
+    throw new Error("PayPal לא מוגדר בשרת");
+  }
+  return payPalGateway.captureOrder(orderId);
 }

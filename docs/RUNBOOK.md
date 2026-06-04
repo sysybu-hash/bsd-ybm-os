@@ -1,6 +1,6 @@
 ﻿# BSD-YBM Intelligence ג€” Production Runbook
 
-> **Last updated**: 2026-05-21  
+> **Last updated**: 2026-06-04  
 > This document is for **on-call engineers and deployment owners**.  
 > For architecture details see `docs/ARCHITECTURE.md`.  
 > For onboarding see `docs/ONBOARDING.md`.
@@ -253,13 +253,23 @@ curl -X GET https://bsd-ybm.co.il/api/cron/financial-insights \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-| Cron | Path | Manual Trigger |
+| Cron | Path | Schedule (UTC) |
 |---|---|---|
-| Financial Insights | `/api/cron/financial-insights` | GET with auth header |
-| Analyze Queue | `/api/analyze-queue/process` | GET or POST with auth header |
-| Task Reminders | `/api/cron/task-reminders` | GET with auth header |
-| Collection Reminders | `/api/cron/collection-reminders` | GET with auth header |
-| Work Diary Push | `/api/cron/work-diary-push` | GET with auth header |
+| Financial Insights | `/api/cron/financial-insights` | 06:00 |
+| Analyze Queue | `/api/analyze-queue/process` | 06:15 |
+| Task Reminders | `/api/cron/task-reminders` | 07:00 |
+| Cashflow Guardian | `/api/cron/cashflow-guardian` | 08:00 |
+| Field Copilot Followups | `/api/cron/field-copilot-followups` | 08:00 |
+| Collection Reminders | `/api/cron/collection-reminders` | Sun 08:00 |
+| Work Diary Push | `/api/cron/work-diary-push` | 16:00 |
+| Meckano Sync | `/api/cron/meckano-sync` | 05:00 |
+| Google Calendar Sync | `/api/cron/google-calendar-sync` | 04:00 |
+| Google Calendar Push | `/api/cron/google-calendar-push` | 04:30 |
+| Email Digest | `/api/cron/email-digest` | 09:00 |
+| Lifecycle Emails | `/api/cron/lifecycle-emails` | 10:00 |
+| Contact Embeddings | `/api/cron/contact-embeddings` | Sun 03:00 |
+
+Env checklist: [VERCEL-ENV-CHECKLIST.md](./VERCEL-ENV-CHECKLIST.md). Manual trigger: GET any path with `Authorization: Bearer $CRON_SECRET`.
 
 **If a cron is consistently failing:**
 1. Check Sentry for the `cron_failure` event and its `error` field

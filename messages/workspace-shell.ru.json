@@ -1549,6 +1549,8 @@
     "searchPlaceholder": "Поиск…",
     "loading": "Загрузка…",
     "empty": "Нет элементов",
+    "semanticSearching": "Семантический поиск…",
+    "semanticActive": "Семантический поиск",
     "attachFromVault": "Из хранилища знаний",
     "attachShort": "Хранилище"
   },

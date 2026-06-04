@@ -13,6 +13,7 @@ import {
 } from "./gateway-interface";
 import {
   isPayPalServerConfigured,
+  paypalCaptureOrder,
   paypalCreateOrderBody,
   verifyPayPalWebhookSignature,
 } from "@/lib/paypal-server";
@@ -78,6 +79,11 @@ export class PayPalGateway extends PaymentGateway {
     }
 
     return { valid, eventType, transactionId, amount, payload };
+  }
+
+  /** Capture an approved PayPal order (Orders v2). */
+  async captureOrder(orderId: string): Promise<Record<string, unknown>> {
+    return paypalCaptureOrder(orderId);
   }
 
   async refund(_params: RefundParams): Promise<RefundResult> {

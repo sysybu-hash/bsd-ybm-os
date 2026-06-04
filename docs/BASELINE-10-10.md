@@ -1,23 +1,29 @@
-# Baseline 10/10 — 2026-05-26
+# Baseline 10/10 — 2026-06-04
 
-מדידה ראשונית לפני מסלול [KPI-SIGNOFF](./KPI-SIGNOFF.md).
+מדידה לסגירת מסלול [KPI-SIGNOFF](./KPI-SIGNOFF.md).
 
 | מדד | תוצאה |
 |-----|--------|
-| קבצי TS/TSX (ללא node_modules) | ~1410 |
-| קבצים ≥300 שורות | 27 — ראה [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
-| API audit (`audit-api-routes.mjs`) | 0 unprotected, 0 details leak |
-| i18n parity en/ru vs he | 100% (918 keys) |
-| Unit tests | 228/229 pass (לפני תיקון quick-grid) |
-| ESLint | 16 warnings (0 errors) |
-| `applyRateLimit` / `rateLimit:` ב-API | ~17 routes מפורשים → default ב-`withWorkspacesAuth` |
+| קבצי TS/TSX (ללא node_modules) | ~1410+ |
+| קבצים ≥300 שורות | ~34 — `npm run lib:line-count` · [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
+| Unit tests | 324+ (כולל chunk-index, contact-embedding-cron, brochure modules) |
+| Coverage CI | ≥75% statements/functions (`jest.config.js`) |
+| `test:e2e:ci-gate` | + growth, KV search, BOQ agent, accounting export |
+| i18n parity en/ru vs he | 100% workspace-shell keys |
+| API audit | 0 unprotected (ידני: `npm run audit:api`) |
 
-## Blockers ידועים
+## החלטות ארכיטקטורה (2026-06-04)
 
-- Lighthouse ≥90 — לא נמדד מקומית בסשן זה; CI [lighthouse.yml](../.github/workflows/lighthouse.yml)
-- Sentry 5xx% — דורש dashboard
-- axe Critical/Serious — `e2e/workspace-a11y`
+| נושא | החלטה |
+|------|--------|
+| pgvector ב-Neon | נדחה — JSON + cosine ב-JS |
+| Refunds | ידני בדשבורד PayPal/PayPlus |
+| VoiceActivityLogger | Web Speech; Gemini Live נפרד (Omnibar/Chat) |
+| MPP (mpxj) | לא ב-scope |
 
-## שינויים לא committed
+## Blockers ידני
 
-- `assets/` — לוגו רשמי (אם נדרש ב-UI)
+- Lighthouse ≥90 production — `npm run lighthouse:sample`
+- Sentry 5xx% — dashboard
+- 5 מסעות ליבה — [QA-PLAN](./QA-PLAN.md)
+- PITR מלא בקונסולת Neon

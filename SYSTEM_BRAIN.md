@@ -112,17 +112,20 @@ FREE tier
 | Tri-engine סריקה | `lib/ai/scan-post-actions.ts`, `app/api/scan/tri-engine/*` |
 | גרמושקה → BOQ | `app/api/projects/analyze-blueprint` → `ProjectBoqLine` |
 | סוכן BOQ (AI) | `app/api/projects/[id]/boq/agent`, `lib/boq/boq-agent.ts`, `BoqAgentPanel` |
-| CRM חיפוש embedding | `ContactSearchEmbedding`, `lib/crm/contact-embedding-index.ts` |
+| CRM חיפוש embedding | `ContactSearchEmbedding`, `lib/crm/contact-embedding-index.ts`, cron `contact-embeddings` |
+| Knowledge Vault RAG | `KnowledgeVaultChunk`, `lib/knowledge-vault/chunk-index.ts`, `GET /api/knowledge-vault/search`, UI ב-`KnowledgeVaultPicker` |
 | אסיסטנט אדמין (propose→execute) | `lib/admin-assistant/` |
 | Field Copilot + קול | `FieldCopilotWidget`, Gemini Live sessions |
 | תזרים / Guardian | `lib/finance-forecast`, `app/api/cron/cashflow-guardian` |
-| יומן קולי מהיר | `VoiceActivityLogger` + `hooks/useWebSpeechFallback` (Field Copilot) |
+| יומן קולי מהיר | `VoiceActivityLogger` + Web Speech — **לא** Gemini Live (Live ב-Omnibar/Chat בלבד) |
 
 ## 6b. Local Moat (Phase 4)
 
 | רכיב | נתיב |
 |------|------|
-| PaymentGateway | `lib/payments/gateway-interface.ts` — PayPlus + PayPal |
+| PaymentGateway | `lib/payments/gateway-interface.ts` — PayPlus + PayPal; capture: `PayPalGateway.captureOrder` / `lib/billing/paypal-order.ts` |
+| Refunds | Gateway `refund()` → מדיניות ידנית בדשבורד ספק (RUNBOOK) |
+| pgvector | **לא בשימוש** — embeddings ב-JSON + cosine ב-JS |
 | ייצוא חשבונאות | `app/api/accounting/export` — bkmvdata, priority, hashavshevet |
 | UI ייצוא | `AccountingExportPanel` (סרגל ארכיון ERP) |
 
@@ -140,11 +143,12 @@ FREE tier
 
 ```bash
 npm run verify          # lint + tsc + audit:api + audit:rate-limits + jest
-npm run verify:all      # + Playwright
+npm run verify:all      # + Playwright (premerge)
+npm run test:e2e:ci-gate  # כולל growth-public, knowledge-vault-search, boq-agent-api, accounting-export
 npm run audit:rate-limits
 ```
 
-E2E קריטי: `e2e/tenant-isolation.spec.ts`, `e2e/financial-flow.spec.ts`, `e2e/document-scan-flow.spec.ts`.
+E2E קריטי: `e2e/tenant-isolation.spec.ts`, `e2e/financial-flow.spec.ts`, `e2e/document-scan-flow.spec.ts`, `e2e/growth-public.spec.ts`.
 
 ## 9. עדכון מסמך זה
 
