@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useCallback, useRef, useState } from "react";
-import { BookOpen, ChevronDown, ChevronRight, Link2, ListTree, Pencil } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, ListTree, Pencil } from "lucide-react";
 import { PROJECT_SUB_DOMAIN_BY_ID } from "@/lib/project-sub-domains";
 import {
-  TRADE_BAR,
   buildWeekendBands,
   flattenTaskTree,
   computeAggregateProgress,
-  parseDependencyIds,
   parseTime,
   type FlatTask,
 } from "./utils";
 import type { GanttTask, GanttLabels, Scale } from "./types";
+import { GanttDependencyArrows } from "./GanttDependencyArrows";
+import { GanttChartRow } from "./GanttChartRow";
 
 type GanttChartViewProps = {
   tasks: GanttTask[];
@@ -238,44 +238,7 @@ export function GanttChartView({
           </div>
 
           {/* SVG dependency arrows */}
-          <svg
-            className="pointer-events-none absolute inset-x-0 z-[5]"
-            style={{ top: ROW_H, height: flatTasks.length * ROW_H }}
-            overflow="visible"
-          >
-            {flatTasks.flatMap((task) => {
-              const deps = parseDependencyIds(task.dependencies);
-              return deps.map((depId) => {
-                const pred = taskById.get(depId);
-                if (!pred) return null;
-                const predRowIdx = rowIndexMap.get(depId);
-                const taskRowIdx = rowIndexMap.get(task.id);
-                if (predRowIdx === undefined || taskRowIdx === undefined) return null;
-
-                const predEnd   = parseTime(pred.endDate,   range.min);
-                const taskStart = parseTime(task.startDate, range.min);
-                const x1pct = ((predEnd   - range.min) / span) * 100;
-                const x2pct = ((taskStart - range.min) / span) * 100;
-
-                const y1 = predRowIdx * ROW_H + ROW_H / 2;
-                const y2 = taskRowIdx * ROW_H + ROW_H / 2;
-                const cx = (x1pct + x2pct) / 2;
-
-                return (
-                  <g key={`${task.id}-${depId}`}>
-                    <path
-                      d={`M ${x1pct}% ${y1} C ${cx}% ${y1}, ${cx}% ${y2}, ${x2pct}% ${y2}`}
-                      fill="none"
-                      className="stroke-amber-400/60 dark:stroke-amber-400/50"
-                      strokeWidth="1.5"
-                      strokeDasharray="5 3"
-                    />
-                    <circle cx={`${x2pct}%`} cy={y2} r="3" className="fill-amber-400/70" />
-                  </g>
-                );
-              });
-            })}
-          </svg>
+          <GanttDependencyArrows flatTasks={flatTasks} taskById={taskById} range={range} rowH={ROW_H} />
 
           {/* Tick vertical lines behind rows */}
           <div className="pointer-events-none absolute inset-x-0 z-0" style={{ top: ROW_H, bottom: 0 }}>
@@ -294,54 +257,13 @@ export function GanttChartView({
               const end   = Math.max(parseTime(task.endDate, start + 86400000), start + 86400000);
               const left  = ((start - range.min) / span) * 100;
               const width = Math.max(1, ((end - start) / span) * 100);
-
-              const baseCls = (task.tradeId && TRADE_BAR[task.tradeId]) ?? TRADE_BAR.GENERAL ?? "bg-indigo-500";
-              const colorCls = barColorClass(task, baseCls);
-
               const displayProgress = task.hasChildren
                 ? computeAggregateProgress(task.id, tasks)
                 : dragging?.taskId === task.id ? dragging.progress : task.progress;
-
-              const deps = parseDependencyIds(task.dependencies);
-              const isEven = idx % 2 === 0;
-
               return (
-                <div
-                  key={task.id}
-                  className={`relative border-b border-[color:var(--border-main)]/40 transition-colors hover:bg-[color:var(--surface-soft)]/70 ${isEven ? "" : "bg-[color:var(--surface-soft)]/40"}`}
-                  style={{ height: ROW_H }}
-                >
-                  {/* Bar */}
-                  <div
-                    data-bar-id={task.id}
-                    className={`absolute top-3 bottom-3 z-[2] flex items-center overflow-hidden rounded-md shadow-sm ${colorCls} ${task.hasChildren ? "cursor-default" : "cursor-ew-resize"}`}
-                    style={{ left: `${left}%`, width: `${width}%`, minWidth: 4 }}
-                    onMouseDown={task.hasChildren ? undefined : (e) => handleDragStart(e, task)}
-                    title={`${task.title} · ${displayProgress}%`}
-                  >
-                    {/* Progress fill overlay */}
-                    <div
-                      className="absolute inset-0 rounded-md bg-black/20"
-                      style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
-                    />
-                    {/* Label */}
-                    {width > 5 ? (
-                      <span className="pointer-events-none relative z-[1] w-full select-none text-center text-[9px] font-semibold text-white drop-shadow-sm">
-                        {displayProgress}%
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/* Dependency badge */}
-                  {deps.length > 0 ? (
-                    <span
-                      className="absolute top-1 end-1 z-[3] flex items-center gap-0.5 rounded bg-amber-100 px-1 text-[8px] text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                      title={deps.map(id => taskById.get(id)?.title ?? id).join(" → ")}
-                    >
-                      <Link2 size={8} />{deps.length}
-                    </span>
-                  ) : null}
-                </div>
+                <GanttChartRow key={task.id} task={task} idx={idx} rowH={ROW_H}
+                  left={left} width={width} displayProgress={displayProgress}
+                  taskById={taskById} onDragStart={handleDragStart} />
               );
             })}
           </div>

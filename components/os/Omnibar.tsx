@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, Mic, Send, SlidersHorizontal, Volume2, HardHat } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { useAutomationRunnerContext } from "@/components/os/AutomationRunnerContext";
@@ -12,6 +12,8 @@ import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useOmnibarGeminiLive } from "./omnibar/useOmnibarGeminiLive";
 import OmnibarChatVisual, { type OmnibarChatEntry } from "./omnibar/OmnibarChatVisual";
+import { OmnibarSearchDropdown } from "./omnibar/OmnibarSearchDropdown";
+import { OmnibarActionButtons } from "./omnibar/OmnibarActionButtons";
 
 type SearchResult = {
   type: "project" | "contact";
@@ -123,79 +125,14 @@ export default function Omnibar({
     </div>
   );
 
-  // על מובייל (stacked) — כפתורי אייקון מקבלים flex-1 כדי למלא את הרוחב
-  const iconBtnClass =
-    layout === "stacked"
-      ? "flex flex-1 min-h-[44px] items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] transition"
-      : "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] transition";
-
   const actionButtons = (
-    <>
-      <button
-        type="button"
-        onClick={() => openWorkspaceWidget("fieldCopilot")}
-        className={`${iconBtnClass} text-amber-600 hover:bg-amber-500/10 dark:text-amber-300`}
-        title={t("workspaceWidgets.sidebar.fieldCopilot")}
-        aria-label={t("workspaceWidgets.sidebar.fieldCopilot")}
-      >
-        <HardHat size={18} aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={() => live.setGeminiLiveSettingsOpen(true)}
-        className={`${iconBtnClass} text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-indigo-300`}
-        title={t("workspaceWidgets.omnibar.voiceSettingsTitle")}
-        aria-label={t("workspaceWidgets.omnibar.voiceSettingsAria")}
-        aria-expanded={live.geminiLiveSettingsOpen}
-        aria-haspopup="dialog"
-      >
-        <SlidersHorizontal size={18} aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={live.toggleLive}
-        className={`${iconBtnClass} ${
-          live.voiceActive
-            ? "border-transparent bg-indigo-600 text-white shadow-sm"
-            : live.rateLimitActive
-              ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
-              : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
-        }`}
-        title={
-          live.rateLimitActive && live.voiceStatus === "idle" && live.rateLimitLabel
-            ? live.rateLimitLabel
-            : live.voiceStatus !== "idle"
-              ? t("workspaceWidgets.omnibar.voiceOff")
-              : t("workspaceWidgets.omnibar.voiceOn")
-        }
-        aria-label={
-          live.voiceStatus !== "idle"
-            ? t("workspaceWidgets.omnibar.voiceOff")
-            : t("workspaceWidgets.omnibar.voiceOn")
-        }
-        aria-pressed={live.voiceStatus !== "idle"}
-      >
-        {live.voiceStatus === "connecting" ? (
-          <Loader2 size={18} className="animate-spin" aria-hidden />
-        ) : live.voiceStatus === "speaking" ? (
-          <Volume2 size={18} aria-hidden />
-        ) : (
-          <Mic size={18} aria-hidden />
-        )}
-      </button>
-      <button
-        type="submit"
-        className={`quiet-button quiet-button-primary flex min-h-[44px] items-center gap-1.5 text-xs ${
-          layout === "stacked" ? "flex-[2] justify-center px-3" : "shrink-0 px-4"
-        }`}
-        aria-label={t("workspaceWidgets.omnibar.sendAria")}
-      >
-        <Send size={15} aria-hidden />
-        <span className={layout === "stacked" ? "inline" : "hidden sm:inline"}>
-          {t("workspaceWidgets.omnibar.send")}
-        </span>
-      </button>
-    </>
+    <OmnibarActionButtons
+      layout={layout} voiceStatus={live.voiceStatus} voiceActive={live.voiceActive}
+      rateLimitActive={live.rateLimitActive} rateLimitLabel={live.rateLimitLabel} t={t}
+      openWorkspaceWidget={openWorkspaceWidget}
+      onOpenSettings={() => live.setGeminiLiveSettingsOpen(true)}
+      onToggleLive={live.toggleLive}
+    />
   );
 
   const inputField = (
@@ -298,52 +235,10 @@ export default function Omnibar({
         </button>
       ) : null}
 
-      {searchResults.length > 0 && input.trim() ? (
-        <div
-          className={`absolute w-full overflow-hidden rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg ${
-            layout === "stacked" ? "relative mt-2" : "bottom-full mb-3 w-[calc(100%-2rem)]"
-          }`}
-        >
-          {searchResults.map((result, idx) => (
-            <button
-              key={`${result.type}-${result.name}-${idx}`}
-              type="button"
-              onClick={() => {
-                onSelectResult?.(result);
-                setInput("");
-              }}
-              className="flex min-h-[44px] w-full items-center justify-between border-b border-[color:var(--border-main)]/50 p-3 text-start transition last:border-0 hover:bg-[color:var(--surface-soft)]"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-md text-[10px] font-black ${
-                    result.type === "contact"
-                      ? "bg-indigo-500/15 text-indigo-200"
-                      : "bg-emerald-500/15 text-emerald-300"
-                  }`}
-                >
-                  {result.type === "contact" ? "CRM" : "PRJ"}
-                </div>
-                <div>
-                  <div className="text-xs font-black text-[color:var(--foreground-main)]">
-                    {result.name}
-                  </div>
-                  {result.taxId ? (
-                    <div className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">
-                      {t("workspaceWidgets.omnibar.taxId", { id: result.taxId })}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              {typeof result.relevance === "number" ? (
-                <div className="text-[10px] font-mono text-[color:var(--foreground-muted)]">
-                  {Math.round(result.relevance * 100)}%
-                </div>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <OmnibarSearchDropdown
+        results={searchResults} input={input} layout={layout} t={t}
+        onSelect={(r) => onSelectResult?.(r)} onClearInput={() => setInput("")}
+      />
 
       {message && layout !== "stacked" ? (
         <div className="mx-auto mt-1 max-w-2xl truncate rounded-md border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/90 px-3 py-1 text-center text-[10px] font-semibold text-[color:var(--foreground-muted)] shadow-sm">
