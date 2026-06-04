@@ -1,4 +1,21 @@
-"use server";
+import fs from "node:fs";
+
+const src = fs.readFileSync("app/actions/dashboard-data.ts", "utf8");
+const lines = src.split(/\r?\n/);
+
+const fetchers = lines.slice(22, 441).join("\n");
+const fetchersFile = `"use server";
+
+import {
+  type ChartDataPoint,
+} from "@/lib/app-builder/dashboard-allowlists";
+import { prisma } from "@/lib/prisma";
+import type { DataConfig } from "@/lib/validation/schemas/app-builder";
+
+${fetchers}
+`;
+
+const mainFile = `"use server";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -107,3 +124,14 @@ export async function fetchDashboardComponentDataAction(
   }
   return fetchDynamicChartDataAction(configInput);
 }
+`;
+
+// Prefix fetch functions with export
+const fixedFetchers = fetchersFile.replace(
+  /^async function fetch/gm,
+  "export async function fetch",
+).replace(/^async function sum/gm, "async function sum");
+
+fs.writeFileSync("app/actions/dashboard-data-fetchers.ts", fixedFetchers);
+fs.writeFileSync("app/actions/dashboard-data.ts", mainFile);
+console.log("dashboard-data split ok");

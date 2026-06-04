@@ -92,7 +92,12 @@ export default function MarketingCinematicPage() {
 
   const goLogin = () => router.push("/login");
 
-  const goRegister = () => router.push("/login?mode=register");
+  const goRegister = () => {
+    void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelCtaRegister }) => {
+      trackFunnelCtaRegister("marketing_hero");
+    });
+    router.push("/login?mode=register");
+  };
 
   const goLiveDemo = () => {
     document.getElementById("live-demo")?.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -142,8 +142,12 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
       // Clear prelogin cookie after successful registration
       try { document.cookie = `${PRELOGIN_TRADE_COOKIE}=; max-age=0; path=/`; } catch { /* ignore */ }
       const msg = data.message ?? "";
-      setPendingApproval(msg.includes("מנהל") || msg.includes("אישור"));
+      const pendingApproval = msg.includes("מנהל") || msg.includes("אישור");
+      setPendingApproval(pendingApproval);
       setDone(true);
+      void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelRegisterCompleted }) => {
+        trackFunnelRegisterCompleted({ pendingApproval, source: "register_wizard" });
+      });
     } catch {
       toast.error(t("auth.hub.register.networkError"));
     } finally {

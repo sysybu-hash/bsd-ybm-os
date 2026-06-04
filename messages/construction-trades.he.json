@@ -1,0 +1,14 @@
+{
+  "constructionTradeLabels": {
+    "GENERAL_CONTRACTOR": "קבלן ראשי / ליווי פרויקט",
+    "ELECTRICAL": "חשמלאי / עבודות חשמל",
+    "PLUMBING": "אינסטלציה ותברואה",
+    "HVAC": "מיזוג אוויר",
+    "PAINTING": "צבע, טיח ושליכט",
+    "FLOORING": "ריצוף, אבן וקרמיקה",
+    "ALUMINUM": "אלומיניום וזכוכית",
+    "FINISHING": "גמר פנים (דלתות, מטבח…)",
+    "LANDSCAPING": "גינון קשיח / חוץ",
+    "SUBCONTRACTOR_OTHER": "קבלן משנה / אחר"
+  }
+}

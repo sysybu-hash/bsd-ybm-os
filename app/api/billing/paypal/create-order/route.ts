@@ -15,6 +15,10 @@ import { getExpectedTierOrderAmountIls } from "@/lib/billing-pricing";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { createLogger } from "@/lib/logger";
+import {
+  FUNNEL_EVENTS,
+  trackFunnelServer,
+} from "@/lib/analytics/marketing-funnel-server";
 
 const log = createLogger("billing-paypal-create-order");
 
@@ -25,7 +29,7 @@ const createOrderBodySchema = z.object({
 });
 
 export const POST = withWorkspacesAuth(
-  async (_req, { orgId }, data) => {
+  async (_req, { orgId, userId }, data) => {
     try {
       if (!isPayPalServerConfigured()) {
         return jsonServiceUnavailable(
@@ -51,6 +55,10 @@ export const POST = withWorkspacesAuth(
             amountValue: value,
             description: `BSD-YBM — ${bundle.name}`,
             customId,
+          });
+          trackFunnelServer(userId, FUNNEL_EVENTS.payStarted, {
+            provider: "paypal",
+            tier: "bundle",
           });
           return NextResponse.json({ id });
         } catch (e) {
@@ -83,6 +91,10 @@ export const POST = withWorkspacesAuth(
         amountValue: value,
         description: desc,
         customId,
+      });
+      trackFunnelServer(userId, FUNNEL_EVENTS.payStarted, {
+        provider: "paypal",
+        tier,
       });
       return NextResponse.json({ id });
     } catch (err: unknown) {

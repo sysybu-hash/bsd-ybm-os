@@ -38,6 +38,13 @@ export default function AuthExperience() {
   }, [initialTab]);
 
   useEffect(() => {
+    if (tab !== "register") return;
+    void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelRegisterStarted }) => {
+      trackFunnelRegisterStarted(params.get("plan") ? "register_plan" : "login_tab");
+    });
+  }, [tab, params]);
+
+  useEffect(() => {
     if (status === "authenticated") {
       router.push("/");
     }

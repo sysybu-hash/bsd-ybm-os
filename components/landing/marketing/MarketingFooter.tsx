@@ -59,8 +59,13 @@ export default function MarketingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/#contact" className="transition-colors hover:text-white">
-                  {t("marketingHome.nav.contact")}
+                <Link href="/blog" className="transition-colors hover:text-white">
+                  {t("marketingHome.editorial.nav.blog")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="transition-colors hover:text-white">
+                  {t("marketingHome.editorial.nav.contact")}
                 </Link>
               </li>
               <li>

@@ -1,3 +1,4 @@
+import type { BlogPost } from "@/lib/blog/blog-content";
 import { legalSite } from "@/lib/legal-site";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
@@ -60,6 +61,28 @@ export function buildSoftwareApplicationJsonLd() {
       price: "0",
       priceCurrency: "ILS",
       description: "Trial and subscription plans available",
+    },
+  };
+}
+
+export function buildArticleJsonLd(post: Pick<BlogPost, "slug" | "titleHe" | "summaryHe" | "publishedAt" | "author">) {
+  const base = getCanonicalSiteUrl().replace(/\/$/, "");
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.titleHe,
+    description: post.summaryHe,
+    datePublished: post.publishedAt,
+    inLanguage: "he-IL",
+    mainEntityOfPage: `${base}/blog/${post.slug}`,
+    url: `${base}/blog/${post.slug}`,
+    author: post.author
+      ? { "@type": "Person", name: post.author }
+      : { "@type": "Organization", name: legalSite.siteName },
+    publisher: {
+      "@type": "Organization",
+      name: legalSite.siteName,
+      logo: { "@type": "ImageObject", url: `${base}/logo.png` },
     },
   };
 }

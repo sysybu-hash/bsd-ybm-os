@@ -29,6 +29,9 @@ const ALLOWLIST_NO_WRAPPER = [
   "app/api/marketing/assistant/chat/route.ts",
   "app/api/marketing/assistant/gemini-live/session/route.ts",
   "app/api/marketing/demo-scan/route.ts",
+  // Public lead capture + email unsubscribe (rate-limited, no workspace session)
+  "app/api/leads/route.ts",
+  "app/api/unsubscribe/route.ts",
 ];
 
 async function walk(dir, acc = []) {

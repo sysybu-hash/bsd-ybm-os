@@ -58,7 +58,9 @@ export function workspaceProjectUrl(projectId: string): string {
 const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
-const FIRST_DAY_WIZARD_KEY = "bsd_ybm_first_day_wizard_v2";
+import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-constants";
+
+const FIRST_DAY_WIZARD_KEY = FIRST_DAY_WIZARD_STORAGE_KEY;
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 

@@ -862,6 +862,7 @@
     "onboarding": {
       "title": "Первый день в BSD-YBM",
       "eyebrow": "Быстрый старт",
+      "stepCounter": "Шаг {current} из {total}",
       "dismiss": "Закрыть",
       "next": "Далее",
       "finish": "Готово",

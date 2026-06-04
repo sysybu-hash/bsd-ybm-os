@@ -10,6 +10,10 @@ import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
 import { prisma } from "@/lib/prisma";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { createLogger } from "@/lib/logger";
+import {
+  FUNNEL_EVENTS,
+  trackFunnelServer,
+} from "@/lib/analytics/marketing-funnel-server";
 
 const log = createLogger("billing-paypal-capture-order");
 
@@ -61,6 +65,10 @@ export const POST = withWorkspacesAuth(
       }
 
       if (!applied.duplicate) {
+        trackFunnelServer(userId, FUNNEL_EVENTS.payCompleted, {
+          provider: "paypal",
+          plan: applied.planLabel,
+        });
         void sendPayPalSubscriptionConfirmationEmail(userEmail, {
           planLabel: applied.planLabel,
           amountIls: applied.paidTotal.toLocaleString("he-IL", { minimumFractionDigits: 2 }),

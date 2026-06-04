@@ -862,6 +862,7 @@
     "onboarding": {
       "title": "יום ראשון ב-BSD-YBM",
       "eyebrow": "התחלה מהירה",
+      "stepCounter": "שלב {current} מתוך {total}",
       "dismiss": "סגור",
       "next": "המשך",
       "finish": "סיום",

@@ -14,8 +14,10 @@ import {
   sendRegistrationWelcomeEmail,
 } from "@/lib/mail";
 import { createLogger } from "@/lib/logger";
-
-const log = createLogger("register");
+import {
+  FUNNEL_EVENTS,
+  trackFunnelServer,
+} from "@/lib/analytics/marketing-funnel-server";
 import {
   generateProvisionPassword,
   hashPassword,
@@ -31,6 +33,15 @@ import {
   getPlatformConfig,
   isRegistrationOpen,
 } from "@/lib/platform-settings";
+
+const log = createLogger("register");
+
+function trackRegisterCompleted(
+  email: string,
+  props: { pending_approval: string; path: string },
+): void {
+  trackFunnelServer(email, FUNNEL_EVENTS.registerCompleted, props);
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -64,8 +75,8 @@ async function resolveRegistrationPassword(
 }
 
 export async function POST(req: NextRequest) {
-  // 10 הרשמות לשעה per IP — מגן על יצירת חשבונות-ספאם וברוט-פורס
-  const limited = await applyRateLimit(req, "register", 10, 60 * 60 * 1000);
+  // 5 הרשמות לשעה per IP — מגן על יצירת חשבונות-ספאם וברוט-פורס
+  const limited = await applyRateLimit(req, "register", 5, 60 * 60 * 1000);
   if (limited) return limited;
   try {
     const body = (await req.json()) as {
@@ -202,6 +213,10 @@ export async function POST(req: NextRequest) {
         log.error("sendAccessApprovedEmail (orgInvite)", { error: msg });
       });
 
+      trackRegisterCompleted(normalized, {
+        pending_approval: "0",
+        path: "org_invite",
+      });
       return NextResponse.json({
         ok: true,
         message: plainForEmail
@@ -288,6 +303,10 @@ export async function POST(req: NextRequest) {
         log.error("sendAccessApprovedEmail (invite)", { error: msg });
       });
 
+      trackRegisterCompleted(normalized, {
+        pending_approval: "0",
+        path: "sub_invite",
+      });
       return NextResponse.json({
         ok: true,
         message: plainForEmail
@@ -362,6 +381,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    trackRegisterCompleted(normalized, {
+      pending_approval: shouldApprove ? "0" : "1",
+      path: isDirectPlan ? "direct_plan" : "general_signup",
+    });
     return NextResponse.json({
       ok: true,
       message: shouldApprove

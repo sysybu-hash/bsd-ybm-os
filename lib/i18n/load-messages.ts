@@ -14,6 +14,7 @@ import brandBriefHe from "@/messages/brand-brief.he.json";
 import brandBriefEn from "@/messages/brand-brief.en.json";
 import brandBriefRu from "@/messages/brand-brief.ru.json";
 import constructionTradesEn from "@/messages/construction-trades.en.json";
+import constructionTradesHe from "@/messages/construction-trades.he.json";
 import constructionTradesRu from "@/messages/construction-trades.ru.json";
 import businessLinesHe from "@/messages/business-lines.he.json";
 import businessLinesEn from "@/messages/business-lines.en.json";
@@ -128,11 +129,13 @@ export function getMessages(locale: string): MessageTree {
   const base = PACKS[code] ?? PACKS.en;
   const extra = siteExtras(code);
   const tradePack =
-    code === "en"
-      ? (constructionTradesEn as unknown as Record<string, unknown>)
-      : code === "ru"
-        ? (constructionTradesRu as unknown as Record<string, unknown>)
-        : {};
+    code === "he"
+      ? (constructionTradesHe as unknown as Record<string, unknown>)
+      : code === "en"
+        ? (constructionTradesEn as unknown as Record<string, unknown>)
+        : code === "ru"
+          ? (constructionTradesRu as unknown as Record<string, unknown>)
+          : {};
   const businessPack =
     code === "he"
       ? (businessLinesHe as unknown as Record<string, unknown>)

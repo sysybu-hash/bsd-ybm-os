@@ -2,6 +2,7 @@
 
 > This file is read automatically by Claude Code and Cursor when working in this repo.
 > Keep it up-to-date so AI assistance stays aligned with our patterns.
+> Architecture map & tenant/billing overview: **[SYSTEM_BRAIN.md](./SYSTEM_BRAIN.md)**.
 
 ---
 

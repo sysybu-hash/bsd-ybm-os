@@ -6,6 +6,7 @@ import { COOKIE_LOCALE } from "@/lib/i18n/config";
 import { negotiateLocale } from "@/lib/i18n/negotiate";
 import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
 import { applyNextAuthUrlEnv } from "@/lib/site-url";
+import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limit";
 
 applyNextAuthUrlEnv();
 normalizeNextAuthUrlEnv();
@@ -41,16 +42,65 @@ const publicApiPrefixes = [
   "/api/feedback",
   "/api/analyze-queue/process",
   "/api/marketing",
+  "/api/health",
+  "/api/leads",
+  "/api/unsubscribe",
 ] as const;
+
+/** הגנת קצב שנייה — POST ציבורי בלבד (לידים, הרשמה, feedback) */
+const PUBLIC_POST_RATE_LIMITS: ReadonlyArray<{
+  prefix: string;
+  key: string;
+  limit: number;
+  windowMs: number;
+}> = [
+  { prefix: "/api/register", key: "mw:register", limit: 6, windowMs: 60 * 60 * 1000 },
+  { prefix: "/api/leads", key: "mw:leads", limit: 6, windowMs: 60 * 60 * 1000 },
+  { prefix: "/api/feedback", key: "mw:feedback", limit: 20, windowMs: 60 * 60 * 1000 },
+];
 
 function isPublicApi(pathname: string): boolean {
   return publicApiPrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+async function applyPublicPostRateLimit(request: NextRequest): Promise<NextResponse | null> {
+  if (request.method !== "POST") return null;
+  const pathname = request.nextUrl.pathname;
+  const rule = PUBLIC_POST_RATE_LIMITS.find(
+    (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`),
+  );
+  if (!rule) return null;
+  const rlKey = getRateLimitKey(request, rule.key);
+  const rl = await checkRateLimit(rlKey, rule.limit, rule.windowMs);
+  if (rl.success) return null;
+  const retryAfter = Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000);
+  return new NextResponse(
+    JSON.stringify({
+      error: "יותר מדי בקשות. נסה שוב בעוד כמה דקות.",
+      code: "rate_limited",
+      retryAfter,
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(retryAfter),
+      },
+    },
+  );
 }
 
 export default async function middleware(request: NextRequest, _event: NextFetchEvent) {
   normalizeNextAuthUrlEnv();
 
   const pathname = request.nextUrl.pathname;
+
+  const publicLimited = await applyPublicPostRateLimit(request);
+  if (publicLimited) {
+    patchLocaleCookie(request, publicLimited);
+    return publicLimited;
+  }
+
   const requiresSession = pathname.startsWith("/api/") && !isPublicApi(pathname);
   const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
 
