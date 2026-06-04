@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 const API_ROOT = join(process.cwd(), "app", "api");
 
-const SKIP_DIRS = new Set(["cron"]);
+const SKIP_DIRS = new Set(["cron"]); // cron routes are guarded by withCronGuard (secret token)
 
 /** routes שחייבים applyRateLimit מפורש (IP) או rateLimit ב-wrapper */
 const PUBLIC_SENSITIVE = new Set([
