@@ -6,6 +6,7 @@ import type { FieldCopilotDraft } from "@/lib/validation/schemas/field-copilot";
 import VoiceCapturePanel from "../capture/VoiceCapturePanel";
 import PhotoCaptureGrid from "../capture/PhotoCaptureGrid";
 import VideoCapturePanel from "../capture/VideoCapturePanel";
+import { VoiceActivityLogger } from "../capture/VoiceActivityLogger";
 
 type Props = {
   draft: FieldCopilotDraft | null;
@@ -29,8 +30,17 @@ export default function CaptureStep({ draft, onUpdate, uploadAsset, deleteAsset 
     void onUpdate({ transcript: prev ? `${prev}\n${text}` : text });
   };
 
+  const projectId = draft?.projectId;
+  const projectName = draft?.projectName;
+
   return (
     <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
+      {projectId ? (
+        <VoiceActivityLogger
+          apiBase={`/api/projects/${projectId}`}
+          projectName={projectName}
+        />
+      ) : null}
       <VoiceCapturePanel
         transcript={draft?.capture.transcript ?? ""}
         onTranscript={handleTranscriptSet}

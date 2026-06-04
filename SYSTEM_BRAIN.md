@@ -111,9 +111,20 @@ FREE tier
 |--------|-----|
 | Tri-engine סריקה | `lib/ai/scan-post-actions.ts`, `app/api/scan/tri-engine/*` |
 | גרמושקה → BOQ | `app/api/projects/analyze-blueprint` → `ProjectBoqLine` |
+| סוכן BOQ (AI) | `app/api/projects/[id]/boq/agent`, `lib/boq/boq-agent.ts`, `BoqAgentPanel` |
+| CRM חיפוש embedding | `ContactSearchEmbedding`, `lib/crm/contact-embedding-index.ts` |
 | אסיסטנט אדמין (propose→execute) | `lib/admin-assistant/` |
 | Field Copilot + קול | `FieldCopilotWidget`, Gemini Live sessions |
 | תזרים / Guardian | `lib/finance-forecast`, `app/api/cron/cashflow-guardian` |
+| יומן קולי מהיר | `VoiceActivityLogger` + `hooks/useWebSpeechFallback` (Field Copilot) |
+
+## 6b. Local Moat (Phase 4)
+
+| רכיב | נתיב |
+|------|------|
+| PaymentGateway | `lib/payments/gateway-interface.ts` — PayPlus + PayPal |
+| ייצוא חשבונאות | `app/api/accounting/export` — bkmvdata, priority, hashavshevet |
+| UI ייצוא | `AccountingExportPanel` (סרגל ארכיון ERP) |
 
 ## 7. ציר צמיחה (Growth — B)
 

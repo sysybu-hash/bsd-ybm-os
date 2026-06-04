@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import '@/lib/payments/register-gateways';
+import { getGateway } from '@/lib/payments/gateway-interface';
 import { processPayPlusWebhook } from '@/lib/payplus';
 import { createLogger } from '@/lib/logger';
-import { readRawBody, verifyPayPlusWebhook, shouldRejectPayPlusRequest } from '@/lib/webhook-verify';
+import { readRawBody } from '@/lib/webhook-verify';
 
 const log = createLogger("webhooks/payplus");
 
@@ -17,10 +19,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to read request body" }, { status: 400 });
   }
 
-  // ── 2. Verify PayPlus HMAC-SHA256 signature ───────────────────────────────
-  const sigResult = verifyPayPlusWebhook(request.headers, rawBody);
-  if (shouldRejectPayPlusRequest(sigResult)) {
-    log.warn("payplus_webhook_rejected", { reason: sigResult });
+  // ── 2. Verify PayPlus HMAC-SHA256 signature (via gateway abstraction) ─────
+  const gateway = getGateway("payplus");
+  const verified = await gateway.verifyWebhook(request.headers, rawBody);
+  if (!verified.valid) {
+    log.warn("payplus_webhook_rejected", { eventType: verified.eventType });
     return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
   }
 
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
       ? String((payload as Record<string, unknown>).event_type ?? "unknown")
       : "unknown";
 
-  log.info("received", { type: eventType, sigResult });
+  log.info("received", { type: eventType, valid: verified.valid });
 
   // ── 4. Process ────────────────────────────────────────────────────────────
   try {

@@ -10,11 +10,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { jsonTooManyRequests } from "@/lib/api-json";
 // Self-register exporters
 import "@/lib/accounting/bkmvdata-exporter";
+import "@/lib/accounting/csv-accounting-exporter";
 
 export const dynamic = "force-dynamic";
 
 const exportSchema = z.object({
-  format: z.enum(["bkmvdata"]),
+  format: z.enum(["bkmvdata", "priority", "hashavshevet"]),
   fromDate: z.string().datetime(),
   toDate: z.string().datetime(),
   includeDocuments: z.boolean().default(true),

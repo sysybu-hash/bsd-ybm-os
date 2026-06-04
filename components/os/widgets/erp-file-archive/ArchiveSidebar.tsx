@@ -3,6 +3,7 @@
 import React from "react";
 import { ArrowUpRight, Clock, Folder, HardDrive, Trash2 } from "lucide-react";
 import type { ArchiveView, ErpArchiveFile, ProjectRow } from "./types";
+import AccountingExportPanel from "@/components/os/widgets/AccountingExportPanel";
 
 type ArchiveSidebarProps = {
   archiveView: ArchiveView;
@@ -117,6 +118,10 @@ export function ArchiveSidebar({
             )}
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-[color:var(--border-main)] p-4">
+        <AccountingExportPanel />
       </div>
 
       <div className="border-t border-[color:var(--border-main)] p-6">

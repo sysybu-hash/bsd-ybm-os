@@ -68,6 +68,7 @@ model Organization {
   cloudIntegrations        CloudIntegration[]
   driveSyncEntries         DriveSyncEntry[]
   contacts                 Contact[]
+  contactSearchEmbeddings  ContactSearchEmbedding[]
   documents                Document[]
   documentLineItems        DocumentLineItem[]
   documentScanCaches       DocumentScanCache[]
@@ -752,11 +753,26 @@ model Contact {
   expenseRecords  ExpenseRecord[]
   issuedDocuments IssuedDocument[]
   quotes          Quote[]
+  searchEmbedding ContactSearchEmbedding?
 
   @@index([organizationId])
   @@index([projectId])
   @@index([status, value])
   @@index([createdAt])
+}
+
+/// וקטור חיפוש סמנטי ל-CRM (Gemini embeddings, cosine ב-JS)
+model ContactSearchEmbedding {
+  id             String       @id @default(cuid())
+  organizationId String
+  contactId      String       @unique
+  textHash       String
+  embedding      Json
+  updatedAt      DateTime     @updatedAt
+  contact        Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 
 /// תובנות AI יומיות (מצב חיסכון) – רשומה אחת לכל ארגון

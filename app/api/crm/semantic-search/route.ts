@@ -12,6 +12,11 @@ const log = createLogger("crm-semantic-search");
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiJsonOnlyHint } from "@/lib/i18n/ai-locale";
 import { applyRateLimit } from "@/lib/rate-limit";
+import {
+  searchContactsByEmbedding,
+  syncContactEmbeddingsForOrg,
+} from "@/lib/crm/contact-embedding-index";
+import { isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
 
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   const limited = await applyRateLimit(req as NextRequest, "crm:semantic-search", 20, 60_000);
@@ -19,7 +24,18 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
 
   try {
     const { query } = (await req.json()) as { query?: string };
+    const q = typeof query === "string" ? query.trim() : "";
+    if (!q) return NextResponse.json({ matchedIds: [], fallback: false });
+
     const locale = await getServerLocale();
+
+    if (isEmbeddingConfigured()) {
+      await syncContactEmbeddingsForOrg(orgId);
+      const vectorIds = await searchContactsByEmbedding(orgId, q, 30);
+      if (vectorIds.length > 0) {
+        return NextResponse.json({ matchedIds: vectorIds, fallback: false, mode: "embedding" });
+      }
+    }
 
     const apiKey = env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
@@ -39,7 +55,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
     const systemPrompt = `
 You are a semantic search engine for a CRM.
 You receive a JSON list of contacts. Return only the string IDs of contacts matching the user description.
-User query: "${query}"
+User query: "${q}"
 
 ${aiJsonOnlyHint(locale)}
 Example: ["id1", "id2"]

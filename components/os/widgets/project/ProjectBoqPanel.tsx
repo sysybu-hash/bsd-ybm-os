@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import BoqAgentPanel from "@/components/os/widgets/project/BoqAgentPanel";
 
 type BoqLine = {
   id: string;
@@ -178,6 +179,66 @@ export default function ProjectBoqPanel({
         <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
           {loadError}
         </p>
+      ) : subTab === "boq" ? (
+        <>
+          <BoqAgentPanel apiBase={apiBase} onApplied={() => void load()} />
+          {lines.length === 0 ? (
+            <p className="text-xs text-[color:var(--foreground-muted)]">
+              {t("projectDashboard.boqEmptyImport")}
+            </p>
+          ) : (
+        <div className="overflow-x-auto rounded-lg border border-[color:var(--border-main)]">
+          <table className="w-full min-w-[520px] text-xs">
+            <thead>
+              <tr className="bg-[color:var(--surface-elevated)] text-[color:var(--foreground-muted)]">
+                <th className="p-2 text-start">תיאור</th>
+                <th className="p-2">יחידה</th>
+                <th className="p-2">כמות</th>
+                <th className="p-2">מחיר</th>
+                <th className="p-2">סה״כ</th>
+                <th className="p-2">בוצע</th>
+                <th className="p-2">מקדם</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) => (
+                <tr
+                  key={l.id}
+                  className={l.isSectionSubtotal ? "font-bold bg-amber-500/5" : ""}
+                >
+                  <td className="p-2">{l.description}</td>
+                  <td className="p-2 text-center">{l.unit ?? "—"}</td>
+                  <td className="p-2 text-center">{l.quantity ?? "—"}</td>
+                  <td className="p-2 text-center">{l.unitPrice ?? "—"}</td>
+                  <td className="p-2 text-center">{l.lineTotal}</td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={l.isWorkDone}
+                      onChange={(e) => void patchLine(l.id, { isWorkDone: e.target.checked })}
+                    />
+                  </td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      className="w-14 rounded border border-[color:var(--border-main)] bg-transparent px-1"
+                      value={l.progressCoefficient ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : Number(e.target.value);
+                        void patchLine(l.id, { progressCoefficient: v ?? undefined });
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+          )}
+        </>
       ) : lines.length === 0 ? (
         <p className="text-xs text-[color:var(--foreground-muted)]">
           {t("projectDashboard.boqEmptyImport")}
