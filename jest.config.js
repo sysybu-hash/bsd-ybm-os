@@ -24,6 +24,7 @@ const customJestConfig = {
     'lib/project-payment-milestones.ts',
     '!lib/launcher/hub-meta.ts',
     '!lib/launcher/launcher-permissions.ts',
+    '!lib/launcher/launcher-icons.ts',
     '!lib/launcher/picker-catalog.ts',
     '!lib/**/__tests__/**',
   ],

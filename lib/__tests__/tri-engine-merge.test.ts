@@ -1,5 +1,5 @@
 import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
-import { emptyV5Base } from "@/lib/scan-schema-v5";
+import { emptyV5Base, type ScanExtractionV5 } from "@/lib/scan-schema-v5";
 
 describe("tri-engine-merge", () => {
   it("mergeScanResults deduplicates line items for invoices", () => {
@@ -28,5 +28,71 @@ describe("tri-engine-merge", () => {
     const enriched = enrichInvoiceV5(v5);
     expect(enriched.documentMetadata.client).toBe("ספק בע״מ");
     expect(enriched.total).toBe(100);
+  });
+
+  it("enrichInvoiceV5 is a no-op for non-invoice scan modes", () => {
+    const v5 = emptyV5Base("drawing.pdf", "DRAWING_BOQ", { total: 10 });
+    expect(enrichInvoiceV5(v5)).toBe(v5);
+  });
+
+  it("mergeScanResults merges DRAWING_BOQ with deduplicated BOQ rows", () => {
+    const boqRow = (description: string, unit: string, quantity: number, itemRef: string | null = null) => ({
+      itemRef,
+      description,
+      material: null,
+      dimensions: null,
+      mepPoints: null,
+      quantity,
+      unit,
+      notes: null,
+    });
+    const a = emptyV5Base("plan.pdf", "DRAWING_BOQ", {
+      billOfQuantities: [boqRow("בטון", "מ\"ק", 2)],
+      lineItems: [{ description: "קיר", quantity: 1 }],
+      documentMetadata: { project: "פרויקט א", drawingRefs: ["A-1"] },
+      total: 100,
+      summary: "מנוע א",
+    } as Partial<ScanExtractionV5>);
+    const b = emptyV5Base("plan.pdf", "DRAWING_BOQ", {
+      billOfQuantities: [
+        boqRow("בטון", "מ\"ק", 2),
+        boqRow("פלדה", "ק\"ג", 5),
+      ],
+      lineItems: [{ description: "קיר", quantity: 1 }],
+      documentMetadata: { client: "לקוח ב", drawingRefs: ["B-2"] },
+      total: 80,
+      summary: "מנוע ב",
+    } as Partial<ScanExtractionV5>);
+    const merged = mergeScanResults(a, b, "plan.pdf", "DRAWING_BOQ");
+    expect(merged.billOfQuantities).toHaveLength(2);
+    expect(merged.lineItems).toHaveLength(1);
+    expect(merged.documentMetadata.project).toBe("פרויקט א");
+    expect(merged.documentMetadata.client).toBe("לקוח ב");
+    expect(merged.total).toBe(100);
+    expect(merged.enginesUsed).toEqual(["gemini", "openai"]);
+  });
+
+  it("mergeScanResults deduplicates billOfQuantities for standard scan modes", () => {
+    const boqRow = (itemRef: string, description: string, quantity: number) => ({
+      itemRef,
+      description,
+      material: null,
+      dimensions: null,
+      mepPoints: null,
+      quantity,
+      unit: null,
+      notes: null,
+    });
+    const a = emptyV5Base("quote.pdf", "QUOTE_BOQ", {
+      billOfQuantities: [boqRow("1", "עבודה", 3)],
+    });
+    const b = emptyV5Base("quote.pdf", "QUOTE_BOQ", {
+      billOfQuantities: [
+        boqRow("1", "עבודה", 3),
+        boqRow("2", "חומר", 1),
+      ],
+    });
+    const merged = mergeScanResults(a, b, "quote.pdf", "QUOTE_BOQ");
+    expect(merged.billOfQuantities).toHaveLength(2);
   });
 });

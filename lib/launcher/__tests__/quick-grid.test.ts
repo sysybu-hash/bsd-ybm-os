@@ -19,6 +19,11 @@ import {
   quickGridInlineStyle,
   quickGridSlotsForView,
   quickGridUsesCoordinates,
+  getQuickGridViewExtents,
+  parseQuickGridCellId,
+  parseQuickGridDragId,
+  quickGridCellId,
+  slotHasGridPosition,
   QUICK_GRID_HUB_COLS,
 } from "@/lib/launcher/quick-grid";
 import { BUSINESS_MGMT_QUICK_GRID, DEFAULT_QUICK_GRID } from "@/lib/launcher/user-launcher-config";
@@ -193,5 +198,35 @@ describe("buildQuickGridEditMatrix", () => {
       { row: 5, col: 0 },
     );
     expect(moved[0]).toEqual({ widgetId: "aiChatFull", row: 5, col: 0 });
+  });
+});
+
+describe("quick grid helpers", () => {
+  it("slotHasGridPosition and parseQuickGridCellId round-trip", () => {
+    expect(slotHasGridPosition({ widgetId: "crm", row: 1, col: 2 })).toBe(true);
+    expect(slotHasGridPosition({ widgetId: "crm", row: -1, col: 0 })).toBe(false);
+    expect(quickGridCellId(2, 3)).toBe("cell-2-3");
+    expect(parseQuickGridCellId("cell-2-3")).toEqual({ row: 2, col: 3 });
+    expect(parseQuickGridDragId("drag-0-1")).toEqual({ row: 0, col: 1 });
+    expect(parseQuickGridCellId("bad")).toBeNull();
+  });
+
+  it("ensureQuickGridPositions assigns coordinates to legacy slots", () => {
+    const legacy: LauncherSlot[] = [
+      { widgetId: "crmTable" },
+      { widgetId: "financeHub" },
+    ];
+    const positioned = ensureQuickGridPositions(legacy);
+    expect(quickGridUsesCoordinates(positioned)).toBe(true);
+    expect(positioned.every((s) => slotHasGridPosition(s))).toBe(true);
+  });
+
+  it("getQuickGridViewExtents returns unit grid when empty", () => {
+    expect(getQuickGridViewExtents([])).toEqual({
+      rows: 1,
+      cols: 1,
+      minRow: 0,
+      minCol: 0,
+    });
   });
 });
