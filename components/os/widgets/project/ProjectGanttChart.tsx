@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Link2, ListTree, Plus } from "lucide-react";
+import {
+  BarChart2, List, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
+} from "lucide-react";
 import { getProjectSubDomainsForIndustry } from "@/lib/project-sub-domains";
 import { GanttTaskForm } from "./gantt/GanttTaskForm";
 import { GanttChartView } from "./gantt/GanttChartView";
@@ -9,7 +11,6 @@ import { GanttTableView } from "./gantt/GanttTableView";
 import { buildTicks, draftFromTask, emptyDraft, autoScale } from "./gantt/utils";
 import type { GanttProps, GanttTask, GanttTaskDraft, Scale } from "./gantt/types";
 
-// Re-export types for external consumers
 export type { GanttTask, GanttTaskDraft } from "./gantt/types";
 
 type View = "chart" | "table";
@@ -21,13 +22,18 @@ export default function ProjectGanttChart({
   onProgressChange,
   onSaveTask,
   onDeleteTask,
+  onClearAll,
   onCreateDiary,
   onOpenDiary,
   labels,
   organizationIndustry,
   hideConstructionFeatures = false,
 }: GanttProps) {
-  const projectSubDomains = useMemo(() => getProjectSubDomainsForIndustry(organizationIndustry), [organizationIndustry]);
+  const projectSubDomains = useMemo(
+    () => getProjectSubDomainsForIndustry(organizationIndustry),
+    [organizationIndustry],
+  );
+
   const [view, setView] = useState<View>("chart");
   const [scale, setScale] = useState<Scale>(() => {
     if (tasks.length === 0) return "weeks";
@@ -40,11 +46,15 @@ export default function ProjectGanttChart({
     return autoScale(max - min);
   });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<GanttTaskDraft | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [draft, setDraft]         = useState<GanttTaskDraft | null>(null);
+  const [saving, setSaving]       = useState(false);
+  const [clearing, setClearing]   = useState(false);
 
   const range = useMemo(() => {
-    if (tasks.length === 0) { const now = Date.now(); return { min: now, max: now + 14 * 86400000 }; }
+    if (tasks.length === 0) {
+      const now = Date.now();
+      return { min: now, max: now + 14 * 86400000 };
+    }
     let min = Infinity, max = -Infinity;
     for (const t of tasks) {
       const s = new Date(t.startDate ?? "").getTime() || Date.now();
@@ -56,15 +66,15 @@ export default function ProjectGanttChart({
     return { min: min - pad, max: max + pad };
   }, [tasks]);
 
-  const span = range.max - range.min || 1;
-  const ticks = useMemo(() => buildTicks(range.min, range.max, scale), [range.min, range.max, scale]);
+  const span      = range.max - range.min || 1;
+  const ticks     = useMemo(() => buildTicks(range.min, range.max, scale), [range.min, range.max, scale]);
   const todayLeft = ((Date.now() - range.min) / span) * 100;
   const linkTasks = allTasks ?? tasks;
-  const taskById = useMemo(() => new Map(linkTasks.map((t) => [t.id, t])), [linkTasks]);
+  const taskById  = useMemo(() => new Map(linkTasks.map(t => [t.id, t])), [linkTasks]);
 
   const openCreate = () => { setEditingId(null); setDraft(emptyDraft()); };
-  const openEdit = (task: GanttTask) => { setEditingId(task.id); setDraft(draftFromTask(task)); };
-  const closeForm = () => { setEditingId(null); setDraft(null); };
+  const openEdit   = (task: GanttTask) => { setEditingId(task.id); setDraft(draftFromTask(task)); };
+  const closeForm  = () => { setEditingId(null); setDraft(null); };
 
   const submitForm = async () => {
     if (!draft?.title.trim()) return;
@@ -73,63 +83,141 @@ export default function ProjectGanttChart({
     finally { setSaving(false); }
   };
 
+  const handleClearAll = async () => {
+    if (!onClearAll) return;
+    if (!confirm("למחוק את כל המשימות? פעולה זו אינה הפיכה.")) return;
+    setClearing(true);
+    try { await onClearAll(); } finally { setClearing(false); }
+  };
+
+  // Empty state
   if (tasks.length === 0 && draft == null) {
     return (
-      <div className="space-y-3">
-        <p className="py-4 text-center text-xs text-[color:var(--foreground-muted)]">{labels.noTasks}</p>
-        <button type="button" onClick={openCreate}
-          className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-amber-500/40 py-2 text-xs text-amber-200">
-          <Plus size={14} />{labels.addTask}
+      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 py-14 text-center">
+        <div className="rounded-full bg-indigo-100 p-4 dark:bg-indigo-900/30">
+          <BarChart2 size={28} className="text-indigo-500" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[color:var(--foreground-main)]">
+            {labels.noTasks}
+          </p>
+          <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
+            הוסף משימות ידנית או ייבא קובץ XML / CSV
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+        >
+          <Plus size={14} />
+          {labels.addTask}
         </button>
       </div>
     );
   }
 
+  const scaleButtons: { key: Scale; label: string; icon: typeof CalendarDays }[] = [
+    { key: "days",   label: labels.scaleDays   ?? "ימים",   icon: CalendarDays },
+    { key: "weeks",  label: labels.scaleWeeks  ?? "שבועות", icon: CalendarRange },
+    { key: "months", label: labels.scaleMonths ?? "חודשים", icon: Calendar },
+  ];
+
   return (
-    <div className="space-y-2">
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[color:var(--border-main)]/60 bg-[color:var(--surface-elevated)]/40 px-2 py-1.5 text-[9px] text-[color:var(--foreground-muted)]">
-        <span className="font-semibold text-[color:var(--foreground)]">{labels.ganttLegend ?? "מקרא"}</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-6 rounded bg-gradient-to-r from-indigo-600 to-violet-600" />{labels.ganttProgress ?? "התקדמות"}</span>
-        <span className="inline-flex items-center gap-1"><span className="h-3 w-px bg-rose-400" />{labels.ganttToday ?? "היום"}</span>
-        <span className="inline-flex items-center gap-1"><Link2 size={10} />{labels.ganttDependency ?? "תלות"}</span>
-        <span className="inline-flex items-center gap-1"><ListTree size={10} />BOQ</span>
-      </div>
+    <div className="flex flex-col gap-3">
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <button type="button" onClick={() => setView("chart")}
-          className={`rounded px-2 py-1 ${view === "chart" ? "bg-amber-500/20 text-amber-100" : "border border-[color:var(--border-main)]"}`}>
-          {labels.chartView}
-        </button>
-        <button type="button" onClick={() => setView("table")}
-          className={`rounded px-2 py-1 ${view === "table" ? "bg-amber-500/20 text-amber-100" : "border border-[color:var(--border-main)]"}`}>
-          {labels.listView}
-        </button>
+      {/* ── Toolbar ── */}
+      <div className="flex flex-wrap items-center gap-2">
+
+        {/* View toggle — segmented control */}
+        <div className="flex overflow-hidden rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)]">
+          <button
+            type="button"
+            onClick={() => setView("chart")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+              view === "chart"
+                ? "bg-[color:var(--surface-card)] text-[color:var(--foreground-main)] shadow-sm"
+                : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+            }`}
+          >
+            <BarChart2 size={13} />
+            {labels.chartView}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+              view === "table"
+                ? "bg-[color:var(--surface-card)] text-[color:var(--foreground-main)] shadow-sm"
+                : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+            }`}
+          >
+            <List size={13} />
+            {labels.listView}
+          </button>
+        </div>
+
+        {/* Scale — only in chart mode */}
         {view === "chart" ? (
-          <>
-            <span className="text-[color:var(--foreground-muted)]">|</span>
-            <button type="button" onClick={() => setScale("days")}
-              className={`rounded px-2 py-1 ${scale === "days" ? "bg-indigo-500/20" : "border border-[color:var(--border-main)]"}`}>
-              {labels.scaleDays ?? "ימים"}
-            </button>
-            <button type="button" onClick={() => setScale("weeks")}
-              className={`rounded px-2 py-1 ${scale === "weeks" ? "bg-indigo-500/20" : "border border-[color:var(--border-main)]"}`}>
-              {labels.scaleWeeks}
-            </button>
-            <button type="button" onClick={() => setScale("months")}
-              className={`rounded px-2 py-1 ${scale === "months" ? "bg-indigo-500/20" : "border border-[color:var(--border-main)]"}`}>
-              {labels.scaleMonths}
-            </button>
-          </>
+          <div className="flex overflow-hidden rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)]">
+            {scaleButtons.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setScale(key)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  scale === key
+                    ? "bg-indigo-600 text-white"
+                    : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
+                }`}
+              >
+                <Icon size={12} />
+                {label}
+              </button>
+            ))}
+          </div>
         ) : null}
-        <button type="button" onClick={openCreate}
-          className="mr-auto flex items-center gap-1 rounded-lg bg-indigo-600/90 px-2 py-1 text-white">
-          <Plus size={12} />{labels.addTask}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Secondary: clear all */}
+        {onClearAll && tasks.length > 0 ? (
+          <button
+            type="button"
+            disabled={clearing}
+            onClick={() => void handleClearAll()}
+            className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/40"
+          >
+            <Trash2 size={12} />
+            נקה הכל
+          </button>
+        ) : null}
+
+        {/* Primary: add task */}
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
+        >
+          <Plus size={13} />
+          {labels.addTask}
         </button>
       </div>
 
-      {draft != null && (
+      {/* Task count pill */}
+      {tasks.length > 0 ? (
+        <div className="flex items-center gap-2 text-[11px] text-[color:var(--foreground-muted)]">
+          <span className="rounded-full bg-[color:var(--surface-soft)] px-2 py-0.5 font-medium text-[color:var(--foreground-main)]">
+            {tasks.length}
+          </span>
+          <span>משימות בפרויקט</span>
+          <LegendRow labels={labels} />
+        </div>
+      ) : null}
+
+      {/* Form */}
+      {draft != null ? (
         <GanttTaskForm
           draft={draft} setDraft={setDraft}
           editingId={editingId} saving={saving}
@@ -141,14 +229,14 @@ export default function ProjectGanttChart({
           onSave={() => void submitForm()}
           onCancel={closeForm}
         />
-      )}
+      ) : null}
 
+      {/* Chart / Table */}
       {view === "chart" ? (
         <GanttChartView
           tasks={tasks} range={range} ticks={ticks} todayLeft={todayLeft}
           taskById={taskById} hideConstructionFeatures={hideConstructionFeatures}
-          scale={scale}
-          labels={labels}
+          scale={scale} labels={labels}
           onEdit={openEdit}
           onProgressChange={onProgressChange}
           onOpenDiary={onOpenDiary}
@@ -162,6 +250,29 @@ export default function ProjectGanttChart({
           onProgressChange={onProgressChange}
         />
       )}
+    </div>
+  );
+}
+
+function LegendRow({ labels }: { labels: GanttProps["labels"] }) {
+  return (
+    <div className="ms-auto flex items-center gap-3">
+      <span className="flex items-center gap-1">
+        <span className="h-2 w-4 rounded-sm bg-indigo-500" />
+        {labels.ganttProgress ?? "בביצוע"}
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-2 w-4 rounded-sm bg-emerald-500" />
+        הושלם
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-2 w-4 rounded-sm bg-rose-500" />
+        באיחור
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="inline-block h-3 w-0.5 rounded-full bg-blue-500" />
+        {labels.ganttToday ?? "היום"}
+      </span>
     </div>
   );
 }

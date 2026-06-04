@@ -15,18 +15,16 @@ type GanttTableViewProps = {
   onProgressChange: (taskId: string, progress: number) => Promise<void>;
 };
 
-function statusBadge(task: GanttTask): { label: string; cls: string } | null {
+type StatusMeta = { label: string; cls: string };
+function getStatusMeta(task: GanttTask): StatusMeta | null {
   const now = Date.now();
   const end = new Date(task.endDate ?? "").getTime();
-  if (task.status === "DONE" || task.progress >= 100) {
-    return { label: "הושלם", cls: "bg-emerald-500/20 text-emerald-200" };
-  }
-  if (end && end < now && task.progress < 100) {
-    return { label: "באיחור", cls: "bg-rose-500/20 text-rose-300" };
-  }
-  if (task.status === "IN_PROGRESS") {
-    return { label: "בביצוע", cls: "bg-indigo-500/20 text-indigo-200" };
-  }
+  if (task.status === "DONE" || task.progress >= 100)
+    return { label: "הושלם", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
+  if (end && end < now && task.progress < 100)
+    return { label: "באיחור", cls: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" };
+  if (task.status === "IN_PROGRESS")
+    return { label: "בביצוע", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
   return null;
 }
 
@@ -34,54 +32,75 @@ export function GanttTableView({ tasks, labels, onEdit, onDelete, onProgressChan
   const flatTasks = useMemo(() => flattenTaskTree(tasks, new Set()), [tasks]);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[color:var(--border-main)]">
-      <table className="w-full min-w-[520px] text-xs">
+    <div className="overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
+      <table className="w-full min-w-[540px] text-xs">
         <thead>
-          <tr className="bg-[color:var(--surface-elevated)]/60 text-[color:var(--foreground-muted)]">
-            <th className="p-2 text-start">{labels.task}</th>
-            <th className="p-2 text-start">{labels.trade}</th>
-            <th className="p-2 text-start">{labels.start}</th>
-            <th className="p-2 text-start">{labels.end}</th>
-            <th className="p-2 text-start">{labels.progress}</th>
-            <th className="p-2 text-start" />
+          <tr className="border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)]">
+            <th className="px-3 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">{labels.task}</th>
+            <th className="px-3 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">{labels.trade}</th>
+            <th className="px-3 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">{labels.start}</th>
+            <th className="px-3 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">{labels.end}</th>
+            <th className="px-3 py-2.5 text-start text-[11px] font-semibold uppercase tracking-wide text-[color:var(--foreground-muted)]">{labels.progress}</th>
+            <th className="px-2 py-2.5" />
           </tr>
         </thead>
         <tbody>
           {flatTasks.map((task, idx) => {
-            const badge = statusBadge(task);
+            const badge = getStatusMeta(task);
             return (
               <tr
                 key={task.id}
-                className={`border-t border-[color:var(--border-main)]/50 ${idx % 2 === 1 ? "bg-[color:var(--surface-elevated)]/10" : ""}`}
+                className={`border-b border-[color:var(--border-main)]/40 transition-colors hover:bg-[color:var(--surface-soft)]/60 ${idx % 2 === 1 ? "bg-[color:var(--surface-soft)]/40" : ""}`}
               >
-                <td className="p-2" style={{ paddingInlineStart: 8 + task.depth * 14 }}>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium">{task.title}</span>
+                <td className="px-3 py-2.5" style={{ paddingInlineStart: 12 + task.depth * 16 }}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[color:var(--foreground-main)]">{task.title}</span>
                     {badge ? (
-                      <span className={`rounded px-1 text-[9px] ${badge.cls}`}>{badge.label}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${badge.cls}`}>
+                        {badge.label}
+                      </span>
                     ) : null}
                   </div>
                 </td>
-                <td className="p-2 text-[color:var(--foreground-muted)]">
+                <td className="px-3 py-2.5 text-[color:var(--foreground-muted)]">
                   {task.tradeId ? PROJECT_SUB_DOMAIN_BY_ID[task.tradeId]?.labelHe : "—"}
                 </td>
-                <td className="p-2">{formatDateHe(task.startDate)}</td>
-                <td className="p-2">{formatDateHe(task.endDate)}</td>
-                <td className="p-2">
-                  <input
-                    type="number" min={0} max={100}
-                    className={`${osFieldClassName} w-14`}
-                    defaultValue={task.progress}
-                    onBlur={(e) => void onProgressChange(task.id, Number(e.target.value))}
-                  />
+                <td className="px-3 py-2.5 tabular-nums text-[color:var(--foreground-muted)]">
+                  {formatDateHe(task.startDate)}
                 </td>
-                <td className="p-2">
+                <td className="px-3 py-2.5 tabular-nums text-[color:var(--foreground-muted)]">
+                  {formatDateHe(task.endDate)}
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min={0} max={100}
+                      className={`${osFieldClassName} w-16`}
+                      defaultValue={task.progress}
+                      onBlur={(e) => void onProgressChange(task.id, Number(e.target.value))}
+                    />
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:var(--border-main)]">
+                      <div
+                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        style={{ width: `${Math.min(100, task.progress)}%` }}
+                      />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-2 py-2.5">
                   <div className="flex gap-1">
-                    <button type="button" className="rounded border border-[color:var(--border-main)] p-1" onClick={() => onEdit(task)}>
+                    <button
+                      type="button"
+                      className="rounded-md border border-[color:var(--border-main)] p-1.5 text-[color:var(--foreground-muted)] transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-700 dark:hover:text-indigo-400"
+                      onClick={() => onEdit(task)}
+                    >
                       <Pencil size={12} />
                     </button>
-                    <button type="button" className="rounded border border-rose-500/40 p-1 text-rose-300"
-                      onClick={() => { if (confirm(labels.deleteConfirm)) onDelete(task.id); }}>
+                    <button
+                      type="button"
+                      className="rounded-md border border-[color:var(--border-main)] p-1.5 text-[color:var(--foreground-muted)] transition-colors hover:border-rose-300 hover:text-rose-600 dark:hover:border-rose-700 dark:hover:text-rose-400"
+                      onClick={() => { if (confirm(labels.deleteConfirm)) onDelete(task.id); }}
+                    >
                       <Trash2 size={12} />
                     </button>
                   </div>

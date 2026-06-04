@@ -173,9 +173,18 @@ export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { or
 
     const url = new URL(req.url);
     let taskId = url.searchParams.get("id");
-    if (!taskId) {
-      const body = (await req.json().catch(() => ({}))) as { id?: string };
+    const clearAll = url.searchParams.get("clearAll") === "true";
+    if (!taskId && !clearAll) {
+      const body = (await req.json().catch(() => ({}))) as { id?: string; clearAll?: boolean };
       taskId = body.id ?? null;
+      if (body.clearAll) {
+        const result = await prisma.task.deleteMany({ where: { projectId, organizationId: orgId } });
+        return NextResponse.json({ success: true, deleted: result.count });
+      }
+    }
+    if (clearAll) {
+      const result = await prisma.task.deleteMany({ where: { projectId, organizationId: orgId } });
+      return NextResponse.json({ success: true, deleted: result.count });
     }
     if (!taskId) {
       return NextResponse.json({ error: "חסר מזהה משימה" }, { status: 400 });

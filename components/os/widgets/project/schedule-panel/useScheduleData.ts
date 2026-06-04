@@ -236,6 +236,20 @@ export function useScheduleData({
     onOpenDiary?.({ taskId: task.id, description: task.title });
   };
 
+  const clearAllTasks = async () => {
+    const res = await fetch(`${apiBase}/tasks?clearAll=true`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      toast.error(json.error ?? labels.taskSaveFailed);
+      return;
+    }
+    toast.success(`${(json.deleted as number) ?? 0} משימות נמחקו`);
+    await onRefresh();
+  };
+
   const onProgressChange = async (taskId: string, progress: number) => {
     await fetch(`${apiBase}/tasks/schedule`, {
       method: "PATCH",
@@ -254,6 +268,7 @@ export function useScheduleData({
     onImportFile,
     saveTask,
     deleteTask,
+    clearAllTasks,
     openDoc,
     createDiaryForTask,
     onProgressChange,

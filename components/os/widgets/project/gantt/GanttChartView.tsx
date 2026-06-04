@@ -29,87 +29,64 @@ type GanttChartViewProps = {
   onCreateDiary?: (task: GanttTask) => Promise<void>;
 };
 
-function taskBarColor(task: GanttTask, defaultGrad: string): string {
+const NAME_W = 220;
+const ROW_H  = 44;
+
+function barColorClass(task: FlatTask, defaultCls: string): string {
   const now = Date.now();
   const end = new Date(task.endDate ?? "").getTime();
-  if (task.status === "DONE" || task.progress >= 100) {
-    return "from-emerald-600/90 to-green-500/80";
-  }
-  if (end && end < now && task.progress < 100) {
-    return "from-rose-600/90 to-red-500/80";
-  }
-  return defaultGrad;
+  if (task.status === "DONE" || task.progress >= 100) return "bg-emerald-500";
+  if (end && end < now && task.progress < 100) return "bg-rose-500";
+  return defaultCls;
 }
 
-function statusChip(task: GanttTask): { label: string; cls: string } | null {
+type StatusMeta = { label: string; dot: string };
+function getStatusMeta(task: FlatTask): StatusMeta | null {
   const now = Date.now();
   const end = new Date(task.endDate ?? "").getTime();
-  if (task.status === "DONE" || task.progress >= 100) {
-    return { label: "הושלם", cls: "bg-emerald-500/20 text-emerald-200" };
-  }
-  if (end && end < now && task.progress < 100) {
-    return { label: "באיחור", cls: "bg-rose-500/20 text-rose-300" };
-  }
-  if (task.status === "IN_PROGRESS") {
-    return { label: "בביצוע", cls: "bg-indigo-500/20 text-indigo-200" };
-  }
+  if (task.status === "DONE" || task.progress >= 100)
+    return { label: "הושלם", dot: "bg-emerald-500" };
+  if (end && end < now && task.progress < 100)
+    return { label: "באיחור", dot: "bg-rose-500" };
+  if (task.status === "IN_PROGRESS")
+    return { label: "בביצוע", dot: "bg-blue-500" };
   return null;
 }
 
 export function GanttChartView({
-  tasks,
-  range,
-  ticks,
-  todayLeft,
-  taskById,
-  hideConstructionFeatures,
-  scale,
-  labels,
-  onEdit,
-  onProgressChange,
-  onOpenDiary,
-  onCreateDiary,
+  tasks, range, ticks, todayLeft, taskById,
+  hideConstructionFeatures, scale, labels,
+  onEdit, onProgressChange, onOpenDiary, onCreateDiary,
 }: GanttChartViewProps) {
   const span = range.max - range.min || 1;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState<{ taskId: string; progress: number } | null>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
 
   const weekendBands = scale === "days" ? buildWeekendBands(range.min, range.max) : [];
   const flatTasks = flattenTaskTree(tasks, collapsed);
 
-  const toggleCollapse = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const toggleCollapse = (id: string) =>
+    setCollapsed(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const handleProgressDragStart = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, task: FlatTask, barLeft: number, barWidth: number) => {
-      if (task.hasChildren) return; // aggregate — not draggable
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, task: FlatTask) => {
+      if (task.hasChildren) return;
       e.preventDefault();
-      const rect = e.currentTarget.closest<HTMLDivElement>("[data-bar-container]")?.getBoundingClientRect();
-      if (!rect) return;
-      const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-      const clamped = Math.min(100, Math.max(0, pct));
-      setDragging({ taskId: task.id, progress: clamped });
+      const bar = document.querySelector<HTMLDivElement>(`[data-bar-id="${task.id}"]`);
+      if (!bar) return;
 
-      const onMove = (mv: MouseEvent) => {
-        const r = document.querySelector<HTMLDivElement>(`[data-bar-id="${task.id}"]`)?.getBoundingClientRect();
-        if (!r) return;
-        const p = Math.round(((mv.clientX - r.left) / r.width) * 100);
-        setDragging({ taskId: task.id, progress: Math.min(100, Math.max(0, p)) });
+      const getProgress = (clientX: number) => {
+        const r = bar.getBoundingClientRect();
+        return Math.min(100, Math.max(0, Math.round(((clientX - r.left) / r.width) * 100)));
       };
-      const onUp = (uv: MouseEvent) => {
-        const r = document.querySelector<HTMLDivElement>(`[data-bar-id="${task.id}"]`)?.getBoundingClientRect();
-        const finalPct = r
-          ? Math.min(100, Math.max(0, Math.round(((uv.clientX - r.left) / r.width) * 100)))
-          : clamped;
+
+      setDragging({ taskId: task.id, progress: getProgress(e.clientX) });
+
+      const onMove = (mv: MouseEvent) => setDragging({ taskId: task.id, progress: getProgress(mv.clientX) });
+      const onUp   = (uv: MouseEvent) => {
+        const p = getProgress(uv.clientX);
         setDragging(null);
-        void onProgressChange(task.id, finalPct);
+        void onProgressChange(task.id, p);
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
       };
@@ -119,125 +96,154 @@ export function GanttChartView({
     [onProgressChange],
   );
 
-  // Build SVG dependency arrows
   const rowIndexMap = new Map(flatTasks.map((t, i) => [t.id, i]));
-  const ROW_H = 36; // px per row
-  const NAME_W = 168; // px — must match the sticky column width
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 shadow-inner">
-      <div className="flex min-w-[600px]" ref={chartRef}>
+    <div className="overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
+      <div className="flex" style={{ minWidth: 560 }}>
 
         {/* ── Sticky name column ── */}
         <div
-          className="sticky start-0 z-20 flex shrink-0 flex-col border-e border-[color:var(--border-main)]/60 bg-[color:var(--surface-card)]"
+          className="sticky start-0 z-20 shrink-0 border-e border-[color:var(--border-main)] bg-[color:var(--surface-card)]"
           style={{ width: NAME_W }}
         >
-          {/* Tick header spacer */}
-          <div className="h-7 border-b border-[color:var(--border-main)]/60 bg-[color:var(--surface-elevated)]/60" />
+          {/* Header */}
+          <div
+            className="flex items-center border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3"
+            style={{ height: ROW_H }}
+          >
+            <span className="text-[11px] font-semibold text-[color:var(--foreground-muted)] tracking-wide uppercase">
+              {labels.task}
+            </span>
+          </div>
 
           {flatTasks.map((task, idx) => {
-            const chip = statusChip(task);
+            const statusMeta = getStatusMeta(task);
             const trade = task.tradeId ? PROJECT_SUB_DOMAIN_BY_ID[task.tradeId] : null;
+            const isEven = idx % 2 === 0;
             return (
               <div
                 key={task.id}
                 dir="rtl"
-                className={`flex items-center gap-1 border-b border-[color:var(--border-main)]/30 px-1 text-xs transition-colors hover:bg-indigo-500/5 ${idx % 2 === 1 ? "bg-[color:var(--surface-elevated)]/10" : ""}`}
-                style={{ height: ROW_H, paddingInlineStart: 4 + task.depth * 12 }}
+                className={`group flex items-center gap-1.5 border-b border-[color:var(--border-main)]/40 px-2 transition-colors hover:bg-[color:var(--surface-soft)] ${isEven ? "" : "bg-[color:var(--surface-soft)]/50"}`}
+                style={{ height: ROW_H, paddingInlineStart: 8 + task.depth * 14 }}
               >
+                {/* Expand/collapse */}
                 {task.hasChildren ? (
                   <button
                     type="button"
-                    className="shrink-0 rounded p-0.5 hover:bg-[color:var(--surface-elevated)]"
+                    className="shrink-0 rounded p-0.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--border-main)] hover:text-[color:var(--foreground-main)]"
                     onClick={() => toggleCollapse(task.id)}
-                    aria-label={collapsed.has(task.id) ? "הרחב" : "כווץ"}
                   >
-                    {collapsed.has(task.id) ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                    {collapsed.has(task.id) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
                   </button>
                 ) : (
-                  <span className="w-[15px] shrink-0" />
+                  <span className="shrink-0" style={{ width: 21 }} />
                 )}
-                <span className="min-w-0 flex-1 truncate font-medium leading-tight" title={task.title}>
-                  {task.title}
-                </span>
-                {chip ? (
-                  <span className={`shrink-0 rounded px-1 text-[8px] ${chip.cls}`}>{chip.label}</span>
-                ) : null}
-                {trade ? (
-                  <span className="shrink-0 rounded bg-[color:var(--surface-elevated)] px-1 text-[8px] text-amber-200/90 hidden xl:inline">
-                    {trade.labelHe}
-                  </span>
-                ) : null}
-                {!hideConstructionFeatures && task.linkedBoqLineId ? (
-                  <span className="shrink-0 rounded bg-emerald-500/15 p-0.5 text-emerald-200" title={task.linkedBoqLabel ?? labels.linkedBoq}>
-                    <ListTree size={9} />
-                  </span>
-                ) : null}
-                {!hideConstructionFeatures && task.linkedWorkDiaryId ? (
-                  <button type="button" className="shrink-0 rounded bg-sky-500/15 p-0.5 text-sky-200" title={labels.workDiary} onClick={() => onOpenDiary?.(task)}>
-                    <BookOpen size={9} />
+
+                {/* Name */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-[color:var(--foreground-main)]" title={task.title}>
+                    {task.title}
+                  </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {statusMeta ? (
+                      <span className="flex items-center gap-0.5 text-[9px] text-[color:var(--foreground-muted)]">
+                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+                        {statusMeta.label}
+                      </span>
+                    ) : null}
+                    {trade ? (
+                      <span className="text-[9px] text-[color:var(--foreground-muted)]">{trade.labelHe}</span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Actions — shown on hover */}
+                <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  {!hideConstructionFeatures && task.linkedBoqLineId ? (
+                    <span className="rounded bg-emerald-100 p-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                      title={task.linkedBoqLabel ?? labels.linkedBoq}>
+                      <ListTree size={10} />
+                    </span>
+                  ) : null}
+                  {!hideConstructionFeatures && task.linkedWorkDiaryId ? (
+                    <button type="button"
+                      className="rounded bg-sky-100 p-0.5 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                      title={labels.workDiary} onClick={() => onOpenDiary?.(task)}>
+                      <BookOpen size={10} />
+                    </button>
+                  ) : !hideConstructionFeatures && onCreateDiary ? (
+                    <button type="button"
+                      className="rounded p-0.5 text-[color:var(--foreground-muted)] hover:text-sky-600"
+                      title={labels.createDiary} onClick={() => void onCreateDiary(task)}>
+                      <BookOpen size={10} />
+                    </button>
+                  ) : null}
+                  <button type="button"
+                    className="rounded p-0.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--border-main)] hover:text-[color:var(--foreground-main)]"
+                    onClick={() => onEdit(task)} aria-label={labels.editTask}>
+                    <Pencil size={11} />
                   </button>
-                ) : !hideConstructionFeatures && onCreateDiary ? (
-                  <button type="button" className="shrink-0 rounded p-0.5 text-[color:var(--foreground-muted)] hover:text-sky-300" title={labels.createDiary} onClick={() => void onCreateDiary(task)}>
-                    <BookOpen size={9} />
-                  </button>
-                ) : null}
-                <button type="button" className="shrink-0 rounded p-0.5 hover:bg-[color:var(--surface-elevated)]" onClick={() => onEdit(task)} aria-label={labels.editTask}>
-                  <Pencil size={10} />
-                </button>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* ── Scrollable chart area ── */}
-        <div className="relative flex-1 overflow-x-auto" dir="ltr">
-          {/* Weekend shade bands */}
+        {/* ── Scrollable chart ── */}
+        <div className="relative min-w-0 flex-1 overflow-x-auto" dir="ltr">
+
+          {/* Weekend shade */}
           {weekendBands.map((band, i) => (
-            <span
-              key={i}
-              className="pointer-events-none absolute top-0 bottom-0 bg-[color:var(--surface-elevated)]/25"
+            <span key={i}
+              className="pointer-events-none absolute top-0 bottom-0 bg-[color:var(--surface-soft)]/60"
               style={{ left: `${band.left}%`, width: `${band.width}%` }}
             />
           ))}
 
-          {/* Today line — full height */}
+          {/* Today line */}
           {todayLeft >= 0 && todayLeft <= 100 ? (
-            <>
-              <span
-                className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-rose-400/70"
-                style={{ left: `${todayLeft}%` }}
-              />
-              <span
-                className="pointer-events-none absolute top-1 z-10 rounded bg-rose-500/80 px-1 text-[8px] text-white -translate-x-1/2"
-                style={{ left: `${todayLeft}%` }}
-              >
+            <span
+              className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-blue-500/70"
+              style={{ left: `${todayLeft}%` }}
+            >
+              <span className="absolute top-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-blue-500 px-1.5 py-0.5 text-[8px] font-semibold text-white shadow">
                 {labels.ganttToday ?? "היום"}
               </span>
-            </>
+            </span>
           ) : null}
 
           {/* Tick header */}
-          <div className="relative h-7 border-b border-[color:var(--border-main)]/60 bg-[color:var(--surface-elevated)]/60">
+          <div
+            className="relative border-b border-[color:var(--border-main)] bg-[color:var(--surface-soft)]"
+            style={{ height: ROW_H }}
+          >
+            <div className="absolute inset-0 flex items-center">
+              {ticks.map((tick, i) => (
+                <span key={`${tick.label}-${i}`}
+                  className="absolute -translate-x-1/2 select-none whitespace-nowrap text-[10px] font-medium text-[color:var(--foreground-muted)]"
+                  style={{ left: `${tick.left}%` }}>
+                  {tick.label}
+                </span>
+              ))}
+            </div>
+            {/* Tick lines */}
             {ticks.map((tick, i) => (
-              <span
-                key={`${tick.label}-${i}`}
-                className="absolute top-1 -translate-x-1/2 whitespace-nowrap text-[9px] text-[color:var(--foreground-muted)]"
+              <span key={`line-${i}`}
+                className="pointer-events-none absolute top-0 bottom-0 w-px bg-[color:var(--border-main)]/50"
                 style={{ left: `${tick.left}%` }}
-              >
-                {tick.label}
-              </span>
+              />
             ))}
           </div>
 
-          {/* SVG dependency arrows overlay */}
+          {/* SVG dependency arrows */}
           <svg
-            className="pointer-events-none absolute top-7 start-0 w-full"
-            style={{ height: flatTasks.length * ROW_H }}
+            className="pointer-events-none absolute inset-x-0 z-[5]"
+            style={{ top: ROW_H, height: flatTasks.length * ROW_H }}
             overflow="visible"
           >
-            {flatTasks.map((task) => {
+            {flatTasks.flatMap((task) => {
               const deps = parseDependencyIds(task.dependencies);
               return deps.map((depId) => {
                 const pred = taskById.get(depId);
@@ -246,74 +252,95 @@ export function GanttChartView({
                 const taskRowIdx = rowIndexMap.get(task.id);
                 if (predRowIdx === undefined || taskRowIdx === undefined) return null;
 
-                const predEnd = parseTime(pred.endDate, range.min);
+                const predEnd   = parseTime(pred.endDate,   range.min);
                 const taskStart = parseTime(task.startDate, range.min);
-                const predLeft = ((predEnd - range.min) / span) * 100;
-                const taskLeft = ((taskStart - range.min) / span) * 100;
+                const x1pct = ((predEnd   - range.min) / span) * 100;
+                const x2pct = ((taskStart - range.min) / span) * 100;
 
-                const x1 = `${predLeft}%`;
                 const y1 = predRowIdx * ROW_H + ROW_H / 2;
-                const x2 = `${taskLeft}%`;
                 const y2 = taskRowIdx * ROW_H + ROW_H / 2;
+                const cx = (x1pct + x2pct) / 2;
 
                 return (
                   <g key={`${task.id}-${depId}`}>
                     <path
-                      d={`M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`}
+                      d={`M ${x1pct}% ${y1} C ${cx}% ${y1}, ${cx}% ${y2}, ${x2pct}% ${y2}`}
                       fill="none"
-                      stroke="rgb(251 191 36 / 0.6)"
+                      className="stroke-amber-400/60 dark:stroke-amber-400/50"
                       strokeWidth="1.5"
-                      strokeDasharray="4 3"
+                      strokeDasharray="5 3"
                     />
-                    <circle cx={x2} cy={y2} r="3" fill="rgb(251 191 36 / 0.7)" />
+                    <circle cx={`${x2pct}%`} cy={y2} r="3" className="fill-amber-400/70" />
                   </g>
                 );
               });
             })}
           </svg>
 
+          {/* Tick vertical lines behind rows */}
+          <div className="pointer-events-none absolute inset-x-0 z-0" style={{ top: ROW_H, bottom: 0 }}>
+            {ticks.map((tick, i) => (
+              <span key={`vline-${i}`}
+                className="absolute top-0 bottom-0 w-px bg-[color:var(--border-main)]/30"
+                style={{ left: `${tick.left}%` }}
+              />
+            ))}
+          </div>
+
           {/* Rows */}
-          <div>
+          <div className="relative z-[1]">
             {flatTasks.map((task, idx) => {
               const start = parseTime(task.startDate, range.min);
-              const end = Math.max(parseTime(task.endDate, start + 86400000), start + 86400000);
-              const left = ((start - range.min) / span) * 100;
-              const width = Math.max(1.5, ((end - start) / span) * 100);
+              const end   = Math.max(parseTime(task.endDate, start + 86400000), start + 86400000);
+              const left  = ((start - range.min) / span) * 100;
+              const width = Math.max(1, ((end - start) / span) * 100);
 
-              const barGrad = (task.tradeId && TRADE_BAR[task.tradeId]) || TRADE_BAR.GENERAL || "from-indigo-600/90 to-violet-600/80";
-              const coloredGrad = taskBarColor(task, barGrad);
+              const baseCls = (task.tradeId && TRADE_BAR[task.tradeId]) ?? TRADE_BAR.GENERAL ?? "bg-indigo-500";
+              const colorCls = barColorClass(task, baseCls);
 
               const displayProgress = task.hasChildren
                 ? computeAggregateProgress(task.id, tasks)
-                : dragging?.taskId === task.id
-                  ? dragging.progress
-                  : task.progress;
+                : dragging?.taskId === task.id ? dragging.progress : task.progress;
+
+              const deps = parseDependencyIds(task.dependencies);
+              const isEven = idx % 2 === 0;
 
               return (
                 <div
                   key={task.id}
-                  className={`relative border-b border-[color:var(--border-main)]/30 transition-colors hover:bg-indigo-500/5 ${idx % 2 === 1 ? "bg-[color:var(--surface-elevated)]/10" : ""}`}
+                  className={`relative border-b border-[color:var(--border-main)]/40 transition-colors hover:bg-[color:var(--surface-soft)]/70 ${isEven ? "" : "bg-[color:var(--surface-soft)]/40"}`}
                   style={{ height: ROW_H }}
                 >
+                  {/* Bar */}
                   <div
-                    data-bar-container
                     data-bar-id={task.id}
-                    className={`absolute top-1.5 bottom-1.5 z-[1] rounded-md border border-white/10 bg-gradient-to-r shadow-sm ${coloredGrad} ${task.hasChildren ? "" : "cursor-ew-resize"}`}
-                    style={{ left: `${left}%`, width: `${width}%` }}
-                    onMouseDown={
-                      task.hasChildren ? undefined : (e) => handleProgressDragStart(e, task, left, width)
-                    }
+                    className={`absolute top-3 bottom-3 z-[2] flex items-center overflow-hidden rounded-md shadow-sm ${colorCls} ${task.hasChildren ? "cursor-default" : "cursor-ew-resize"}`}
+                    style={{ left: `${left}%`, width: `${width}%`, minWidth: 4 }}
+                    onMouseDown={task.hasChildren ? undefined : (e) => handleDragStart(e, task)}
+                    title={`${task.title} · ${displayProgress}%`}
                   >
+                    {/* Progress fill overlay */}
                     <div
-                      className="h-full rounded-md bg-white/20"
+                      className="absolute inset-0 rounded-md bg-black/20"
                       style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
                     />
-                    {width > 4 ? (
-                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[8px] font-semibold text-white drop-shadow select-none">
+                    {/* Label */}
+                    {width > 5 ? (
+                      <span className="pointer-events-none relative z-[1] w-full select-none text-center text-[9px] font-semibold text-white drop-shadow-sm">
                         {displayProgress}%
                       </span>
                     ) : null}
                   </div>
+
+                  {/* Dependency badge */}
+                  {deps.length > 0 ? (
+                    <span
+                      className="absolute top-1 end-1 z-[3] flex items-center gap-0.5 rounded bg-amber-100 px-1 text-[8px] text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      title={deps.map(id => taskById.get(id)?.title ?? id).join(" → ")}
+                    >
+                      <Link2 size={8} />{deps.length}
+                    </span>
+                  ) : null}
                 </div>
               );
             })}

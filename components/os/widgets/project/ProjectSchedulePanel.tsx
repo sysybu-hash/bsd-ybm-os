@@ -43,6 +43,7 @@ export default function ProjectSchedulePanel({
     onImportFile,
     saveTask,
     deleteTask,
+    clearAllTasks,
     openDoc,
     createDiaryForTask,
     onProgressChange,
@@ -134,6 +135,7 @@ export default function ProjectSchedulePanel({
         onProgressChange={onProgressChange}
         onSaveTask={saveTask}
         onDeleteTask={deleteTask}
+        onClearAll={clearAllTasks}
         onCreateDiary={hideConstructionFeatures ? undefined : createDiaryForTask}
         onOpenDiary={
           hideConstructionFeatures

@@ -1,19 +1,20 @@
 import type { ProjectSubDomainId } from "@/lib/project-sub-domains";
 import type { GanttTask, GanttTaskDraft, Scale } from "./types";
 
+// Single solid color per trade — works in both light and dark mode
 export const TRADE_BAR: Partial<Record<ProjectSubDomainId, string>> = {
-  SKELETON: "from-stone-600/90 to-stone-500/80",
-  PLUMBING: "from-cyan-600/90 to-blue-600/80",
-  ELECTRICAL: "from-amber-500/90 to-orange-600/80",
-  HVAC: "from-sky-600/90 to-indigo-600/80",
-  PAINTING: "from-pink-600/90 to-rose-600/80",
-  SALES: "from-emerald-600/90 to-teal-600/80",
-  OPERATIONS: "from-cyan-600/90 to-sky-600/80",
-  FINANCE: "from-amber-600/90 to-yellow-600/80",
-  HR: "from-violet-600/90 to-purple-600/80",
-  PRODUCT: "from-indigo-600/90 to-blue-600/80",
-  MARKETING: "from-rose-600/90 to-pink-600/80",
-  GENERAL: "from-indigo-600/90 to-violet-600/80",
+  SKELETON:    "bg-stone-500",
+  PLUMBING:    "bg-cyan-600",
+  ELECTRICAL:  "bg-amber-500",
+  HVAC:        "bg-sky-500",
+  PAINTING:    "bg-pink-500",
+  SALES:       "bg-emerald-600",
+  OPERATIONS:  "bg-teal-600",
+  FINANCE:     "bg-yellow-500",
+  HR:          "bg-violet-600",
+  PRODUCT:     "bg-blue-600",
+  MARKETING:   "bg-rose-500",
+  GENERAL:     "bg-indigo-500",
 };
 
 export function parseTime(iso: string | null, fallback: number): number {

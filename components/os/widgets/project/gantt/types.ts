@@ -63,6 +63,7 @@ export type GanttProps = {
   onProgressChange: (taskId: string, progress: number) => Promise<void>;
   onSaveTask: (draft: GanttTaskDraft, taskId?: string) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
+  onClearAll?: () => Promise<void>;
   onCreateDiary?: (task: GanttTask) => Promise<void>;
   onOpenDiary?: (task: GanttTask) => void;
   organizationIndustry?: string | null;
