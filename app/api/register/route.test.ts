@@ -18,6 +18,10 @@ jest.mock("next/server", () => ({
   },
 }));
 
+jest.mock("@/lib/rate-limit", () => ({
+  applyRateLimit: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
@@ -84,7 +88,8 @@ const mockTrialEndsAtFromNow = trialEndsAtFromNow as jest.Mock;
 function createMockRequest(body: Record<string, unknown>) {
   return {
     json: async () => body,
-  } as Request;
+    headers: new Headers({ "x-forwarded-for": "127.0.0.1" }),
+  } as unknown as Parameters<typeof POST>[0];
 }
 
 describe("POST /api/register", () => {

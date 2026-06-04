@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,9 @@ function appendSetCookie(response: NextResponse, setCookie: string | null) {
 }
 
 export async function GET(request: NextRequest) {
+  // 30 לדקה per IP — מגן על שרשור ה-OAuth מפני abuse
+  const limited = await applyRateLimit(request, "auth:google-start", 30, 60_000);
+  if (limited) return limited;
   const callbackUrl = safeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl"));
   const origin = request.nextUrl.origin;
   const incomingCookie = request.headers.get("cookie");

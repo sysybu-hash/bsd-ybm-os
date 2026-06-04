@@ -14,6 +14,8 @@ const SKIP_DIRS = new Set(["auth", "webhooks", "cron", "register", "sign", "org-
 /** routes ספציפיים ללא wrapper — חייב להיות מתועד */
 const ALLOWLIST_NO_WRAPPER = [
   "app/api/locale/route.ts",
+  // Public health probe — intentionally unauthenticated for uptime monitors / LB checks
+  "app/api/health/route.ts",
   "app/api/analyze-queue/process/route.ts",
   "app/api/integrations/google-calendar/route.ts",
   "app/api/integrations/google/calendar/connect/route.ts",

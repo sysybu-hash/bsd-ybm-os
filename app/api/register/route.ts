@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   jsonBadRequest,
   jsonConflict,
   jsonServerError,
 } from "@/lib/api-json";
+import { applyRateLimit } from "@/lib/rate-limit";
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import {
@@ -62,7 +63,10 @@ async function resolveRegistrationPassword(
   };
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 10 הרשמות לשעה per IP — מגן על יצירת חשבונות-ספאם וברוט-פורס
+  const limited = await applyRateLimit(req, "register", 10, 60 * 60 * 1000);
+  if (limited) return limited;
   try {
     const body = (await req.json()) as {
       email?: string;

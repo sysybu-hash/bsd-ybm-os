@@ -2,6 +2,9 @@
   "name": "bsd-ybm-os",
   "version": "1.0.0",
   "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --max-warnings 0 --no-warn-ignored"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
@@ -91,7 +94,8 @@
     "docs:marketing-pdf": "npm run marketing:onepagers && npm run product-brochure:pdf && npm run product-brochure:v2-pdf",
     "product-brochure:build": "npm run product-brochure:capture && npm run product-brochure:pdf",
     "brand:prepare-assets": "node scripts/prepare-brand-assets.mjs",
-    "load-test": "node scripts/load-test.mjs"
+    "load-test": "node scripts/load-test.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.75",
@@ -201,9 +205,11 @@
     "dotenv-cli": "^11.0.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.18",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "lighthouse": "^13.1.0",
+    "lint-staged": "^17.0.7",
     "pg": "^8.21.0",
     "postcss": "^8.5.10",
     "prisma": "^6.19.3",

@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonBadRequest, jsonGone, jsonNotFound } from "@/lib/api-json";
+import { applyRateLimit } from "@/lib/rate-limit";
 
 /** תצוגה בלבד לטופס הרשמה — ללא מידע רגיש מעבר לשם הארגון */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  // 20 לדקה per IP — מונע enumeration של טוקני הזמנה
+  const limited = await applyRateLimit(req, "org-invite:preview", 20, 60_000);
+  if (limited) return limited;
   const url = new URL(req.url);
   const token = String(url.searchParams.get("token") ?? "").trim();
   if (!token) {
