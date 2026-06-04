@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { createNumberedDocument } from "@/lib/finance-numbering";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
-import { createPayPlusPaymentPage, isPayPlusConfigured } from "@/lib/payplus";
+import "@/lib/payments/register-gateways";
+import { getGateway } from "@/lib/payments/gateway-interface";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import { v4 as uuidv4 } from "uuid";
 import { createLogger } from "@/lib/logger";
 
@@ -56,18 +58,22 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
 
     // 3. Generate PayPlus link if configured
     let paymentLink = null;
-    if (isPayPlusConfigured() && clientEmail) {
+    const siteBase = getCanonicalSiteUrl().replace(/\/$/, "");
+    const payplus = getGateway("payplus");
+    if (payplus.isConfigured() && clientEmail) {
       try {
-        paymentLink = await createPayPlusPaymentPage({
+        const checkout = await payplus.createCheckout({
           amount: totals.total,
+          currencyCode: "ILS",
           itemName: `הצעת מחיר #${issuedDoc.number} - ${clientName}`,
           customerName: clientName,
           customerEmail: clientEmail,
-          successUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/sign/success`,
-          errorUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/sign/error`,
-          callbackUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/payplus`,
-          metadata: { organizationId: orgId, quoteId: quote.id }
+          successUrl: `${siteBase}/sign/success`,
+          errorUrl: `${siteBase}/sign/error`,
+          callbackUrl: `${siteBase}/api/webhooks/payplus`,
+          metadata: { organizationId: orgId, quoteId: quote.id },
         });
+        paymentLink = { url: checkout.checkoutUrl, paymentPageUid: checkout.providerRef };
       } catch (payplusError) {
         log.error("PayPlus link generation failed", { error: payplusError instanceof Error ? payplusError.message : String(payplusError) });
       }
@@ -79,7 +85,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       token: quote.token,
       documentNumber: issuedDoc.number,
       paymentLink,
-      signUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/sign/${token}`
+      signUrl: `${siteBase}/sign/${token}`,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to generate quote";

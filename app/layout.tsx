@@ -23,6 +23,7 @@ import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { buildLocalizedMetadata } from "@/lib/site-metadata";
+import { env } from "@/lib/env";
 import AppToaster from "@/components/os/system/AppToaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import Script from "next/script";
@@ -117,7 +118,7 @@ export default async function RootLayout({
     log.warn("resolveTenantByHost failed — continuing as platform", { error: e instanceof Error ? e.message : String(e) });
   }
   if (host && !isPlatformHost(host) && !tenant) {
-    redirect(process.env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");
+    redirect(env.TENANT_FALLBACK_REDIRECT?.trim() || "https://bsd-ybm.co.il");
   }
   const tenantStyle = tenant ? tenantBrandingCssVars(tenant.branding) : undefined;
 

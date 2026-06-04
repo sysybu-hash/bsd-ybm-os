@@ -1,9 +1,10 @@
 import type { BlogPost } from "@/lib/blog/blog-content";
+import { clientEnv } from "@/lib/env";
 import { legalSite } from "@/lib/legal-site";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 function parseSameAs(): string[] {
-  const raw = process.env.NEXT_PUBLIC_SAME_AS?.trim();
+  const raw = clientEnv.NEXT_PUBLIC_SAME_AS?.trim();
   if (!raw) return [];
   return raw
     .split(",")

@@ -63,12 +63,17 @@ const nextConfig = {
         key: "Strict-Transport-Security",
         value: "max-age=63072000; includeSubDomains; preload",
       });
+      const cspStrict =
+        process.env.CSP_STRICT === "true" || process.env.CSP_STRICT === "1";
+      const scriptSrc = cspStrict
+        ? "script-src 'self' 'unsafe-inline' https://www.paypal.com https://*.paypal.com https://*.posthog.com https://*.i.posthog.com https://unpkg.com"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.paypal.com https://*.posthog.com https://*.i.posthog.com https://unpkg.com https://cdn.tailwindcss.com";
       const csp = [
         "default-src 'self'",
         "base-uri 'self'",
         "object-src 'none'",
         "frame-ancestors 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.paypal.com https://*.posthog.com https://*.i.posthog.com https://unpkg.com https://cdn.tailwindcss.com",
+        scriptSrc,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",

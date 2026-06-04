@@ -315,7 +315,8 @@ export async function manageSubsSendTierInviteAction(
       },
     });
 
-    const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://bsd-ybm.co.il";
+    const { getCanonicalSiteUrl } = await import("@/lib/site-metadata");
+    const base = getCanonicalSiteUrl().replace(/\/$/, "");
     const registerUrl = `${base}/register?invite=${encodeURIComponent(token)}`;
 
     const mail = await sendSubscriptionTierInvitationEmail(email, {

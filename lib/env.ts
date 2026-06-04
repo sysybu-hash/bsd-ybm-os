@@ -103,6 +103,9 @@ const serverSchema = z.object({
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: pixtral-large-latest (vision/scan)
 
+  // --- Analytics ---
+  POSTHOG_API_KEY: optStr,
+
   // --- Email ---
   RESEND_API_KEY: optStr,
   SMTP_HOST: optStr,
@@ -172,6 +175,8 @@ const serverSchema = z.object({
   // --- Feature flags ---
   BLUEPRINT_USE_FLASH_ONLY: optBool,
   ENABLE_DEBUG_SESSION: optBool,
+  /** CSP ללא unsafe-eval (staging) — Next.js עדיין דורש unsafe-inline לרוב ה-builds */
+  CSP_STRICT: optBool,
   PRISMA_USE_NEON_DRIVER: optBool,
 
   // --- Site verification (SEO) ---

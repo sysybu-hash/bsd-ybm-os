@@ -6,7 +6,8 @@ import {
   jsonBadRequest,
   jsonServiceUnavailable,
 } from "@/lib/api-json";
-import { isPayPalServerConfigured, paypalCreateOrderBody } from "@/lib/paypal-server";
+import { isPayPalServerConfigured } from "@/lib/paypal-server";
+import { createPayPalOrderId } from "@/lib/billing/paypal-order";
 import {
   parseSubscriptionTier,
   tierLabelHe,
@@ -51,7 +52,7 @@ export const POST = withWorkspacesAuth(
         const value = bundle.priceIls.toFixed(2);
         const customId = `${orgId}|BUNDLE|${bundle.id}`.slice(0, 127);
         try {
-          const { id } = await paypalCreateOrderBody({
+          const id = await createPayPalOrderId({
             amountValue: value,
             description: `BSD-YBM — ${bundle.name}`,
             customId,
@@ -87,7 +88,7 @@ export const POST = withWorkspacesAuth(
           ? `BSD-YBM — מנוי ${tierLabelHe(tier)} (שנתי)`
           : `BSD-YBM — מנוי ${tierLabelHe(tier)}`;
 
-      const { id } = await paypalCreateOrderBody({
+      const id = await createPayPalOrderId({
         amountValue: value,
         description: desc,
         customId,

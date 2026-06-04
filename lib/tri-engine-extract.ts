@@ -1,6 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { env } from "@/lib/env";
-import { parseModelJsonText } from "@/lib/ai-document-json";
+import { geminiMultimodal, GEMINI_FLASH_PREFERRED } from "@/lib/tri-engine-gemini";
+export { geminiMultimodal } from "@/lib/tri-engine-gemini";
 import { extractDocumentWithOpenAI } from "@/lib/ai-extract-openai";
 import { extractDocumentWithMistral } from "@/lib/ai-extract-mistral";
 import { normalizeDocAiResultWithGemini, processDocumentAiRawForScanMode } from "@/lib/ai-extract-docai";
@@ -10,7 +9,6 @@ import {
   getBlueprintAnalysisModelChain,
   getGeminiModelFallbackChain,
   getModelChainForScanMode,
-  isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import {
   buildV5JsonInstructionWithExtras,
@@ -29,13 +27,6 @@ import { validateScanV5, buildRetryInstruction, type ScanValidationResult } from
 import { extractDocumentWithAnthropic } from "@/lib/ai-extract-anthropic";
 import { isAnthropicConfigured } from "@/lib/ai-providers";
 import { analysePdfPages, buildMultiPagePromptPrefix } from "@/lib/scan-pdf-split";
-
-/** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
-const GEMINI_FLASH_PREFERRED = [
-  "gemini-3.5-flash",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-] as const;
 
 export type TriEngineTelemetry = {
   documentAI: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
@@ -72,33 +63,6 @@ export type TriEngineResult = {
 function localeLang(locale: string): string {
   const loc = normalizeLocale(locale) as AppLocale;
   return LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
-}
-
-export async function geminiMultimodal(
-  base64: string,
-  mimeType: string,
-  instruction: string,
-  modelChain: readonly string[],
-): Promise<Record<string, unknown>> {
-  const apiKey = env.GOOGLE_GENERATIVE_AI_API_KEY ?? env.GEMINI_API_KEY;
-  if (!apiKey?.trim()) throw new Error("חסר מפתח Gemini");
-  const genAI = new GoogleGenerativeAI(apiKey);
-  let lastErr: unknown = null;
-  for (const modelId of modelChain) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent([
-        `${instruction}\nReturn a single JSON object only, no markdown.`,
-        { inlineData: { data: base64, mimeType } },
-      ]);
-      return parseModelJsonText(result.response.text());
-    } catch (err: unknown) {
-      lastErr = err;
-      if (isLikelyGeminiModelUnavailable(err)) continue;
-      throw err;
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 function industryInstructionExtras(

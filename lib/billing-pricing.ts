@@ -1,4 +1,5 @@
 import type { SubscriptionTier } from "@prisma/client";
+import { clientEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { parseSubscriptionTier, tierAllowance, type SubscriptionTierKey } from "@/lib/subscription-tier-config";
 
@@ -49,5 +50,5 @@ export async function getPayPalClientIdPublic(): Promise<string> {
   });
   const fromDb = row?.paypalClientIdPublic?.trim();
   if (fromDb) return fromDb;
-  return process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim() ?? "";
+  return clientEnv.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim() ?? "";
 }

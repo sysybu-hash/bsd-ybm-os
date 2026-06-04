@@ -69,6 +69,7 @@ model Organization {
   driveSyncEntries         DriveSyncEntry[]
   contacts                 Contact[]
   contactSearchEmbeddings  ContactSearchEmbedding[]
+  knowledgeVaultChunks     KnowledgeVaultChunk[]
   documents                Document[]
   documentLineItems        DocumentLineItem[]
   documentScanCaches       DocumentScanCache[]
@@ -688,12 +689,30 @@ model DriveSyncEntry {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  knowledgeChunks    KnowledgeVaultChunk[]
 
   @@unique([organizationId, driveFileId])
   @@index([organizationId, parentDriveId])
   @@index([organizationId, trashed])
   @@index([organizationId, decodeStatus])
   @@index([organizationId, vaultPath])
+}
+
+/// קטעי טקסט + embedding לחיפוש RAG במאגר ידע (Gemini + cosine ב-JS)
+model KnowledgeVaultChunk {
+  id             String         @id @default(cuid())
+  organizationId String
+  driveEntryId   String
+  chunkIndex     Int
+  content        String         @db.Text
+  embedding      Json?
+  textHash       String
+  updatedAt      DateTime       @updatedAt @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driveEntry     DriveSyncEntry @relation(fields: [driveEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([driveEntryId, chunkIndex])
+  @@index([organizationId])
 }
 
 /// OAuth / NextAuth — נדרש עבור PrismaAdapter (התחברות Google)

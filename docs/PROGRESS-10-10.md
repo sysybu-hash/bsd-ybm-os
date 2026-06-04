@@ -1,35 +1,33 @@
-# התקדמות מסלול 10/10 — 2026-05-26
+# התקדמות מסלול 10/10 — 2026-06-04
 
-## הושלם בסשן זה (עדכון 2026-05-26 — המשך)
-
-| שלב | פריטים |
-|-----|--------|
-| דף מוצר PDF | HTML+Chromium, צילומי מסך אמיתיים, עיצוב עמוד-לצילום |
-| env | `site-metadata.ts`, `mail-config.ts`, `mail.ts` → `env` + logger |
-| env (AI) | `ai-providers.ts`, `ai-chat.ts`, `gemini-model.ts`, `field-copilot/analyze.ts` → `env` |
-| PWA | `manifest.json` screenshots מ-`public/screenshots/` |
-| מובייל | תיקון גלילה ב-`AdaptiveWidgetShell`; קופיילוט שטח; E2E scroll region |
-| AI / קופיילוט | קטלוג 2026-05-26; grounding ב-prompts; Live לפי locale |
-| lib split | `user-launcher-config` → types + defaults (~548→~420 שורות בקובץ ראשי) |
-| audit | `npm run audit:process-env` (מידע) |
-| שערים | `npm run verify` ירוק (233 tests) |
-
-## הושלם קודם
+## הושלם בסשן (סגירת סעיפים פתוחים)
 
 | שלב | פריטים |
 |-----|--------|
-| Baseline | [BASELINE-10-10.md](./BASELINE-10-10.md), [KPI-SIGNOFF](./KPI-SIGNOFF.md), [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
-| אבטחה | `DEFAULT_WORKSPACE_RATE_LIMIT` ב-[api-handler.ts](../lib/api-handler.ts), `audit:rate-limits`, SSE `rateLimit: false`, debug-session → `env` |
-| lib/ | `lib/core/site-url.ts`, `lib/core/tenant-host.ts` + shims |
-| בדיקות | תיקון `quick-grid.test.ts`, `api-handler-rate-limit` contract, coverage רחב יותר ב-jest |
-| תיעוד | [openapi.yaml](./openapi.yaml), [I18N-EN-FULL.md](./I18N-EN-FULL.md), LAUNCH-CHECKLIST עודכן, ONBOARDING פקודות audit |
-| CI | `quality-gate.yml` — שלב rate-limit audit |
+| Growth / Phase 3–4 | BOQ agent, Voice diary, CRM embeddings, PayPal gateway, accounting CSV/BKMVDATA (commits קודמים) |
+| Knowledge Vault RAG | `KnowledgeVaultChunk`, `chunk-index.ts`, אינדוקס אחרי `parseAsset`, `GET /api/knowledge-vault/search` |
+| תשלומים | `create-order` → `lib/billing/paypal-order` + gateway; ERP quotes → `getGateway("payplus")` |
+| אבטחה | `CSP_STRICT` ב-env + CSP ללא `unsafe-eval` ב-staging/production כשמופעל |
+| env | `TENANT_FALLBACK_REDIRECT`, PostHog, PayPal public id, layout redirect, structured-data `sameAs` |
+| lib split | `lib/auth/nextauth-callbacks.ts`, `lib/tri-engine-gemini.ts` |
+| תפעול | `npm run ops:neon-dr-drill`, `npm run ops:10-10-status` |
+| E2E | `knowledge-vault-search.spec.ts`, `boq-agent-api.spec.ts` |
 
-## נותר לביצוע ידני / PRים עתידיים
+## פקודות שימושיות
 
-- פיצול 27 קבצים ≥300 שורות ([LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md))
-- מיגרציית `process.env` → `env` ב-~90 קבצים (הדרגתי)
-- CSP ללא `unsafe-inline` / `unsafe-eval` (staging)
-- Lighthouse ≥90 מאומת ב-production
-- תרגיל DR ב-Neon ([DR-PLAN](./DR-PLAN.md))
-- צמצום עברית קשיחה (`audit:hebrew-hardcode` — informational)
+```bash
+npm run db:migrate          # KnowledgeVaultChunk + embeddings (אם עדיין לא)
+npm run verify
+npm run ops:neon-dr-drill   # בדיקת חיבור Neon + checklist DR
+npm run ops:10-10-status    # קבצים ≥300 שורות + תזכורת שערים
+npm run lib:line-count      # אותו ספירה
+```
+
+## נותר (הדרגתי / ידני)
+
+- פיצול ~30+ קבצים ≥300 שורות — `product-brochure-v2-html.ts` עדיין הגדול ביותר ([LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md))
+- pgvector native ב-Neon (כיום JSON + cosine ב-JS — מספיק ל-RAG קטן)
+- `CSP_STRICT=true` ב-Vercel Preview אחרי smoke מלא
+- Lighthouse ≥90 ב-production (`npm run lighthouse:sample`)
+- תרגיל DR מלא בקונסולת Neon + תיעוד תאריך ב-[KPI-SIGNOFF](./KPI-SIGNOFF.md)
+- `git push origin main` — אם ענף מקומי עדיין ahead of remote

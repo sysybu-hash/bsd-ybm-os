@@ -50,6 +50,8 @@
     "i18n:parity": "node scripts/i18n-key-parity.mjs",
     "load-test:smoke": "node scripts/load-test.mjs",
     "lib:line-count": "node scripts/lib-line-count.mjs --min 300",
+    "ops:neon-dr-drill": "node scripts/neon-dr-drill.mjs",
+    "ops:10-10-status": "node scripts/refresh-10-10-status.mjs",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:migrate:prod": "dotenv -e .env.local -- prisma migrate deploy",
     "vercel:integration:posthog": "vercel integration add posthog -m data_region=EU -e production --plan posthog-usage-based",

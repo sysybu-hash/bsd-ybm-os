@@ -9,6 +9,7 @@ import {
   ensureKnowledgeVaultFolders,
   vaultFolderIdForPath,
 } from "@/lib/knowledge-vault/folders";
+import { indexKnowledgeVaultEntry } from "@/lib/knowledge-vault/chunk-index";
 
 export type VaultListFilters = {
   vaultPath?: KnowledgeVaultPath;
@@ -180,7 +181,7 @@ export async function parseAsset(userId: string, organizationId: string, driveFi
 
   const summary = buildParsedSummary(preview);
 
-  return prisma.driveSyncEntry.update({
+  const updated = await prisma.driveSyncEntry.update({
     where: { organizationId_driveFileId: { organizationId, driveFileId } },
     data: {
       parsedSummary: summary,
@@ -189,6 +190,12 @@ export async function parseAsset(userId: string, organizationId: string, driveFi
       detectedDocType: preview.detectedDocType || row.detectedDocType,
     },
   });
+
+  void indexKnowledgeVaultEntry(organizationId, updated.id, summary, updated.name).catch(
+    () => undefined,
+  );
+
+  return updated;
 }
 
 export async function issueAsset(
