@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import MarketingCinematicShell from "@/components/landing/marketing/MarketingCinematicShell";
-import OmniCanvasWorkspace from "@/components/os/OmniCanvasWorkspace";
+import OmniCanvasWorkspaceLoader from "@/components/os/OmniCanvasWorkspaceLoader";
 import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
 import { buildLocalizedMetadata } from "@/lib/site-metadata";
 
@@ -20,5 +20,5 @@ export default async function HomePage() {
     return <MarketingCinematicShell />;
   }
 
-  return <OmniCanvasWorkspace />;
+  return <OmniCanvasWorkspaceLoader />;
 }
