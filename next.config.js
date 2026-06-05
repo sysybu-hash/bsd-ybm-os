@@ -103,7 +103,7 @@ const nextConfig = {
   async redirects() {
     return LEGACY_REDIRECTS;
   },
-  transpilePackages: ["react-signature-canvas", "signature_pad"],
+  transpilePackages: ["react-signature-canvas", "signature_pad", "@hebcal/core"],
   serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core", "archiver"],
   outputFileTracingIncludes: {
     "/api/documents/issued/[id]/export": [

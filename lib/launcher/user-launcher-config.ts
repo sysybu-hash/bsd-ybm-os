@@ -214,6 +214,7 @@ function canonicalHubTileId(id: WidgetType): WidgetType {
 }
 
 const QUICK_GRID_EXTRA_ORDER: WidgetType[] = [
+  "jewishCalendar",
   "googleCalendar",
   "meckanoReports",
   "googleDrive",

@@ -331,6 +331,7 @@
       "quoteGen": "מחולל הצעות מחיר",
       "googleDrive": "Google Drive",
       "googleCalendar": "יומן Google",
+      "jewishCalendar": "לוח עברי וזמנים",
       "notebookLM": "NotebookLM",
       "accessibility": "נגישות",
       "platformAdmin": "ניהול מערכת",
@@ -792,6 +793,10 @@
         "title": "יומן Google",
         "subtitle": "אירועים וסנכרון"
       },
+      "jewishCalendar": {
+        "title": "לוח עברי",
+        "subtitle": "תאריך וזמני היום"
+      },
       "notebookLM": {
         "title": "NotebookLM",
         "subtitle": "מחברת AI"
@@ -1160,6 +1165,26 @@
       "back": "חזור",
       "continueToSave": "המשך לשמירה",
       "cancel": "ביטול"
+    },
+    "jewishCalendar": {
+      "title": "לוח עברי וזמנים",
+      "subtitle": "תאריך עברי, לועזי וזמני היום",
+      "loading": "טוען זמנים…",
+      "loadFailed": "שגיאה בטעינת הלוח",
+      "retry": "נסה שוב",
+      "refresh": "רענון",
+      "today": "היום",
+      "prevDay": "יום קודם",
+      "nextDay": "יום הבא",
+      "useMyLocation": "השתמש במיקום שלי",
+      "geoDenied": "גישה למיקום נדחתה — מוצגות זמנים לירושלים. אפשר לבחור עיר.",
+      "nextZman": "הזמן הבא: {name} בעוד {minutes} דק׳",
+      "parasha": "פרשת",
+      "shabbatTitle": "זמני שבת",
+      "candleLighting": "כניסת שבת",
+      "havdalah": "יציאת שבת",
+      "credit": "זמנים מחושבים באמצעות Hebcal",
+      "openWidget": "פתיחת לוח עברי וזמנים"
     },
     "googleCalendar": {
       "title": "יומן Google",

@@ -83,6 +83,13 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["יומן", "calendar", "אירועים", "events", "סנכרון"],
   },
   {
+    id: "jewishCalendar",
+    labelHe: "לוח עברי וזמנים",
+    labelEn: "Hebrew calendar & zmanim",
+    labelRu: "Еврейский календарь и зманим",
+    keywords: ["עברי", "זמנים", "שבת", "תאריך", "שעון", "zmanim", "luach", "hebrew"],
+  },
+  {
     id: "meckanoReports",
     labelHe: "דוחות Meckano",
     labelEn: "Meckano reports",

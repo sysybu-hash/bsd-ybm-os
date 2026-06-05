@@ -329,6 +329,7 @@
       "quoteGen": "Генератор предложений",
       "googleDrive": "Google Drive",
       "googleCalendar": "Google Calendar",
+      "jewishCalendar": "Еврейский календарь и зманим",
       "notebookLM": "NotebookLM",
       "accessibility": "Доступность",
       "platformAdmin": "Админ",
@@ -784,6 +785,10 @@
         "title": "Google Calendar",
         "subtitle": "События и синхронизация"
       },
+      "jewishCalendar": {
+        "title": "Еврейский календарь",
+        "subtitle": "Даты и зманим"
+      },
       "notebookLM": {
         "title": "NotebookLM",
         "subtitle": "AI-блокнот"
@@ -1160,6 +1165,26 @@
       "back": "Назад",
       "continueToSave": "Продолжить к сохранению",
       "cancel": "Отмена"
+    },
+    "jewishCalendar": {
+      "title": "Еврейский календарь и зманим",
+      "subtitle": "Еврейская и григорианская дата, галахические времена",
+      "loading": "Загрузка зманим…",
+      "loadFailed": "Не удалось загрузить календарь",
+      "retry": "Повторить",
+      "refresh": "Обновить",
+      "today": "Сегодня",
+      "prevDay": "Предыдущий день",
+      "nextDay": "Следующий день",
+      "useMyLocation": "Использовать моё местоположение",
+      "geoDenied": "Доступ к геолокации отклонён — показан Иерусалим. Можно выбрать город.",
+      "nextZman": "Следующее: {name} через {minutes} мин",
+      "parasha": "Парашат",
+      "shabbatTitle": "Время Шаббата",
+      "candleLighting": "Зажигание свечей",
+      "havdalah": "Авдала",
+      "credit": "Времена рассчитаны с Hebcal",
+      "openWidget": "Открыть еврейский календарь"
     },
     "googleCalendar": {
       "title": "Google Calendar",

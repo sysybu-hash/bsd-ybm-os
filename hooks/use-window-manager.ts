@@ -32,6 +32,7 @@ export type WidgetType =
   | 'meckanoReports'
   | 'googleDrive'
   | 'googleCalendar'
+  | 'jewishCalendar'
   | 'notebookLM'
   | 'accessibility'
   | 'platformAdmin'
@@ -98,6 +99,7 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   meckanoReports: { width: 900, height: 750 },
   googleDrive: { width: 800, height: 600 },
   googleCalendar: { width: 900, height: 700 },
+  jewishCalendar: { width: 520, height: 720 },
   notebookLM: { width: 720, height: 620 },
   accessibility: { width: 420, height: 560 },
   platformAdmin: { width: 1100, height: 780 },

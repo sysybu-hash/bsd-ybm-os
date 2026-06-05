@@ -114,6 +114,7 @@
     "@google/genai": "^1.51.0",
     "@google/generative-ai": "^0.24.1",
     "@headlessui/react": "^2.2.9",
+    "@hebcal/core": "^6.5.2",
     "@neondatabase/serverless": "^1.1.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@next/eslint-plugin-next": "^16.2.2",

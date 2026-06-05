@@ -329,6 +329,7 @@
       "quoteGen": "Quote generator",
       "googleDrive": "Google Drive",
       "googleCalendar": "Google Calendar",
+      "jewishCalendar": "Hebrew calendar & zmanim",
       "notebookLM": "NotebookLM",
       "accessibility": "Accessibility",
       "platformAdmin": "Platform admin",
@@ -784,6 +785,10 @@
         "title": "Google Calendar",
         "subtitle": "Events & sync"
       },
+      "jewishCalendar": {
+        "title": "Hebrew calendar",
+        "subtitle": "Dates & zmanim"
+      },
       "notebookLM": {
         "title": "NotebookLM",
         "subtitle": "AI notebook"
@@ -1160,6 +1165,26 @@
       "back": "Back",
       "continueToSave": "Continue to save",
       "cancel": "Cancel"
+    },
+    "jewishCalendar": {
+      "title": "Hebrew calendar & zmanim",
+      "subtitle": "Hebrew and Gregorian dates with halachic times",
+      "loading": "Loading zmanim…",
+      "loadFailed": "Failed to load calendar",
+      "retry": "Retry",
+      "refresh": "Refresh",
+      "today": "Today",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "useMyLocation": "Use my location",
+      "geoDenied": "Location access denied — showing Jerusalem. You can pick a city.",
+      "nextZman": "Next: {name} in {minutes} min",
+      "parasha": "Parashat",
+      "shabbatTitle": "Shabbat times",
+      "candleLighting": "Candle lighting",
+      "havdalah": "Havdalah",
+      "credit": "Times calculated with Hebcal",
+      "openWidget": "Open Hebrew calendar & zmanim"
     },
     "googleCalendar": {
       "title": "Google Calendar",

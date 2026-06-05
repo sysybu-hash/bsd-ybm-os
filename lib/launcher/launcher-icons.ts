@@ -12,6 +12,8 @@ import {
 
   Calendar,
 
+  Clock,
+
   FilePlus,
 
   FileText,
@@ -275,6 +277,18 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
 
   },
 
+  jewishCalendar: {
+
+    type: "jewishCalendar",
+
+    labelKey: "workspaceWidgets.titles.jewishCalendar",
+
+    icon: Clock,
+
+    chip: true,
+
+  },
+
   settings: {
 
     type: "settings",
@@ -438,6 +452,8 @@ export function quickActionLabelKey(type: WidgetType): string {
     googleDrive: "workspaceWidgets.quickActions.googleDrive.title",
 
     googleCalendar: "workspaceWidgets.quickActions.googleCalendar.title",
+
+    jewishCalendar: "workspaceWidgets.quickActions.jewishCalendar.title",
 
     notebookLM: "workspaceWidgets.quickActions.notebookLM.title",
 

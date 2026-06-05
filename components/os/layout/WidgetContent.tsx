@@ -40,11 +40,12 @@ const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCo
 const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
 const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
 const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
+const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
 
 export const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "project", "crm", "dashboard", "aiChat", "cashflow", "erp", "projectBoard", "crmTable",
   "erpArchive", "docCreator", "aiScanner", "fieldCopilot", "aiChatFull", "settings",
-  "meckanoReports", "googleDrive", "googleCalendar", "notebookLM", "accessibility",
+  "meckanoReports", "googleDrive", "googleCalendar", "jewishCalendar", "notebookLM", "accessibility",
   "platformAdmin", "helpCenter", "financeHub", "projectsHub", "documentsHub", "aiHub", "appBuilder",
 ]);
 
@@ -74,6 +75,7 @@ export function WidgetContent({
   if (widget.type === "meckanoReports") return <MeckanoHubWidget />;
   if (widget.type === "googleDrive") return <GoogleDriveWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "googleCalendar") return <GoogleCalendarWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  if (widget.type === "jewishCalendar") return <JewishCalendarWidget />;
   if (widget.type === "notebookLM") return <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "accessibility") return <AccessibilityWidget />;
   if (widget.type === "platformAdmin") return <PlatformAdminWidget />;

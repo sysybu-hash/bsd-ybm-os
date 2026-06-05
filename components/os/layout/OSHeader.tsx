@@ -10,6 +10,7 @@ import { WidgetType } from "@/hooks/use-window-manager";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import JewishClockHeaderChip from "@/components/os/jewish-calendar/JewishClockHeaderChip";
 
 interface OSHeaderProps {
   openWidget?: (type: WidgetType) => void;
@@ -99,6 +100,8 @@ export default function OSHeader({
             subtitleBelowOnMobile
           />
         </div>
+
+        <JewishClockHeaderChip openWidget={openWidget} />
 
         {/* כלי עבודה מרכזיים */}
         {mounted ? (
