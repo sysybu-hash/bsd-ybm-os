@@ -312,7 +312,7 @@
       "demo": {
         "title": "Live demo",
         "description": "Document scan and UI preview — no login.",
-        "intro": "Try a public document scan, or view a real workspace screenshot (AI Hub, chat, zoom).",
+        "intro": "Try a public document scan. On desktop — interactive mock UI; on mobile — a real product screenshot.",
         "workspaceScreenshotAlt": "Live screenshot of BSD-YBM OS — AI Hub with chat, notebook, and app builder",
         "workspaceScreenshotCaption": "Actual product screenshot · AI Hub · recently updated"
       },

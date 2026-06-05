@@ -9,13 +9,15 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const DISMISS_KEY = "bsd-ybm-pwa-install-dismissed";
-const SEEN_KEY = "bsd-ybm-pwa-install-seen";
 /** מפתח ישן — נשמר לתאימות לאחור */
 const LEGACY_DISMISS_KEY = "bsd:pwa-install-dismissed";
+const LEGACY_SEEN_KEY = "bsd-ybm-pwa-install-seen";
+const WAS_INSTALLED_KEY = "bsd-ybm-pwa-was-installed";
 
 function isStandaloneDisplay(): boolean {
   if (typeof window === "undefined") return false;
-  return window.matchMedia("(display-mode: standalone)").matches;
+  const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
 }
 
 function readStorageFlag(key: string): boolean {
@@ -34,29 +36,44 @@ function writeStorageFlag(key: string): void {
   }
 }
 
-function shouldSuppressPrompt(): boolean {
-  return (
-    readStorageFlag(DISMISS_KEY) ||
-    readStorageFlag(SEEN_KEY) ||
-    readStorageFlag(LEGACY_DISMISS_KEY)
-  );
+function removeStorageFlag(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* private mode / quota */
+  }
 }
 
-function markPromptSeen(): void {
-  writeStorageFlag(SEEN_KEY);
+/** אם הוסרו מהמסך הבית — מאפסים דחייה כדי להציג שוב את ההתקנה */
+function syncInstallRemovalState(): void {
+  const standalone = isStandaloneDisplay();
+  const wasInstalled = readStorageFlag(WAS_INSTALLED_KEY);
+
+  if (standalone) {
+    writeStorageFlag(WAS_INSTALLED_KEY);
+    return;
+  }
+
+  if (wasInstalled) {
+    removeStorageFlag(WAS_INSTALLED_KEY);
+    removeStorageFlag(DISMISS_KEY);
+    removeStorageFlag(LEGACY_DISMISS_KEY);
+    removeStorageFlag(LEGACY_SEEN_KEY);
+  }
+}
+
+function shouldSuppressPrompt(): boolean {
+  if (isStandaloneDisplay()) return true;
+  return readStorageFlag(DISMISS_KEY) || readStorageFlag(LEGACY_DISMISS_KEY);
 }
 
 function markPromptDismissed(): void {
   writeStorageFlag(DISMISS_KEY);
-  writeStorageFlag(SEEN_KEY);
 }
 
 function isIosDevice(): boolean {
   const ua = window.navigator.userAgent;
-  return (
-    /iPad|iPhone|iPod/.test(ua) &&
-    !(window as Window & { MSStream?: unknown }).MSStream
-  );
+  return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
 }
 
 export default function PwaInstallBanner() {
@@ -68,16 +85,15 @@ export default function PwaInstallBanner() {
   const revealOnce = useCallback(() => {
     if (shownThisMount.current) return;
     if (shouldSuppressPrompt()) return;
-    if (isStandaloneDisplay()) return;
 
     shownThisMount.current = true;
-    markPromptSeen();
     setVisible(true);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isStandaloneDisplay()) return;
+
+    syncInstallRemovalState();
     if (shouldSuppressPrompt()) return;
 
     const ios = isIosDevice();
@@ -97,6 +113,22 @@ export default function PwaInstallBanner() {
     return () => window.removeEventListener("beforeinstallprompt", onBip);
   }, [revealOnce]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onDisplayMode = () => {
+      syncInstallRemovalState();
+      if (isStandaloneDisplay()) {
+        setVisible(false);
+        setDeferred(null);
+      }
+    };
+
+    const mq = window.matchMedia("(display-mode: standalone)");
+    mq.addEventListener("change", onDisplayMode);
+    return () => mq.removeEventListener("change", onDisplayMode);
+  }, []);
+
   const dismiss = () => {
     markPromptDismissed();
     setVisible(false);
@@ -107,10 +139,13 @@ export default function PwaInstallBanner() {
     if (!deferred) return;
     await deferred.prompt();
     const { outcome } = await deferred.userChoice;
-    markPromptDismissed();
     setDeferred(null);
     setVisible(false);
-    if (outcome === "accepted") return;
+    if (outcome === "accepted") {
+      writeStorageFlag(WAS_INSTALLED_KEY);
+      return;
+    }
+    markPromptDismissed();
   };
 
   if (!visible) return null;

@@ -1323,6 +1323,28 @@
       "timelineTab": "History",
       "timelineEmpty": "No events yet"
     },
+    "cashflowView": {
+      "loading": "Syncing cash flow…",
+      "retry": "Try again",
+      "emptyMessage": "No cash-flow data for this organization yet. Add projects, expenses, or invoices to see a live forecast.",
+      "eyebrow": "Monthly overview",
+      "title": "Cash flow",
+      "liveBadge": "Live update",
+      "revenueDetail": "Project budgets",
+      "expensesDetail": "Cumulative expenses",
+      "netDetail": "Net margin",
+      "chartTitle": "Cash trend",
+      "chartSubtitle": "Tap a month for details",
+      "legendRevenue": "Revenue",
+      "legendExpenses": "Expenses",
+      "runwayLabel": "Cash runway",
+      "runwayMonths": "{count} months",
+      "runwayUnknown": "Not enough data",
+      "payablesLabel": "This month expenses",
+      "detailLabel": "Details",
+      "netMonth": "{amount} net",
+      "pickColumn": "Pick a column"
+    },
     "aiChat": {
       "title": "AI Assistant",
       "activeEngine": "Active engine",

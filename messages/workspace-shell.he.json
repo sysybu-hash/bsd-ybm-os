@@ -1323,6 +1323,28 @@
       "timelineTab": "היסטוריה",
       "timelineEmpty": "אין אירועים עדיין"
     },
+    "cashflowView": {
+      "loading": "מסנכרן תזרים מזומנים…",
+      "retry": "נסה שוב",
+      "emptyMessage": "אין עדיין נתוני תזרים בארגון. הוסיפו פרויקטים, הוצאות או חשבוניות כדי לראות תחזית חיה.",
+      "eyebrow": "סקירה חודשית",
+      "title": "תזרים מזומנים",
+      "liveBadge": "עדכון חי",
+      "revenueDetail": "תקציבי פרויקטים",
+      "expensesDetail": "הוצאות מצטברות",
+      "netDetail": "מרווח נטו",
+      "chartTitle": "מגמת מזומנים",
+      "chartSubtitle": "לחצו על חודש לפירוט",
+      "legendRevenue": "הכנסות",
+      "legendExpenses": "הוצאות",
+      "runwayLabel": "אופק תזרימי",
+      "runwayMonths": "{count} חודשים",
+      "runwayUnknown": "אין מספיק נתונים",
+      "payablesLabel": "הוצאות החודש",
+      "detailLabel": "פירוט",
+      "netMonth": "{amount} נטו",
+      "pickColumn": "בחרו עמודה"
+    },
     "aiChat": {
       "title": "עוזר AI",
       "activeEngine": "מנוע פעיל",

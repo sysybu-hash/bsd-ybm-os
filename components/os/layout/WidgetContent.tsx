@@ -61,7 +61,7 @@ export function WidgetContent({
   if (widget.type === "crm") return <CrmWidget />;
   if (widget.type === "dashboard") return <DashboardWidget />;
   if (widget.type === "aiChat") return <AiChatWidget provider={String(widget.liveData?.provider || "gemini")} prompt={String(widget.liveData?.prompt || "")} />;
-  if (widget.type === "cashflow") return <CashflowWidget data={widget.liveData} />;
+  if (widget.type === "cashflow") return <CashflowWidget />;
   if (widget.type === "erp") return <ErpDocumentsWidget />;
   if (widget.type === "projectBoard") return <ProjectBoardWidget projectId={typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "crmTable") return <CrmTableWidget openWorkspaceWidget={openWorkspaceWidget} />;

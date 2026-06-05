@@ -1323,6 +1323,28 @@
       "timelineTab": "История",
       "timelineEmpty": "Событий пока нет"
     },
+    "cashflowView": {
+      "loading": "Синхронизация денежного потока…",
+      "retry": "Повторить",
+      "emptyMessage": "В организации пока нет данных о денежном потоке. Добавьте проекты, расходы или счета, чтобы увидеть прогноз.",
+      "eyebrow": "Месячный обзор",
+      "title": "Денежный поток",
+      "liveBadge": "Обновление в реальном времени",
+      "revenueDetail": "Бюджеты проектов",
+      "expensesDetail": "Накопленные расходы",
+      "netDetail": "Чистая маржа",
+      "chartTitle": "Динамика денежного потока",
+      "chartSubtitle": "Нажмите на месяц для деталей",
+      "legendRevenue": "Доходы",
+      "legendExpenses": "Расходы",
+      "runwayLabel": "Запас по cash flow",
+      "runwayMonths": "{count} мес.",
+      "runwayUnknown": "Недостаточно данных",
+      "payablesLabel": "Расходы за месяц",
+      "detailLabel": "Детали",
+      "netMonth": "{amount} нетто",
+      "pickColumn": "Выберите столбец"
+    },
     "aiChat": {
       "title": "AI‑ассистент",
       "activeEngine": "Активный движок",

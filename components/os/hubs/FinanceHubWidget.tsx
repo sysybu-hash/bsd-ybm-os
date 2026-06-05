@@ -49,7 +49,7 @@ export default function FinanceHubWidget({ liveData }: Props) {
       onTabChange={handleTabChange}
       tabCountLabel={t("workspaceWidgets.hubs.tabCount", { count: String(TABS.length) })}
       renderTab={(tabId) =>
-        tabId === "cashflow" ? <CashflowWidget data={liveData} /> : <DashboardWidget />
+        tabId === "cashflow" ? <CashflowWidget /> : <DashboardWidget />
       }
     />
   );

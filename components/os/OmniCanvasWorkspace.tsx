@@ -143,6 +143,14 @@ export default function OmniCanvasWorkspace() {
     automationRunner, automationContextValue,
   } = s;
 
+  React.useEffect(() => {
+    if (!mounted || (!everAuthenticated && sessionStatus === "loading")) return;
+    document.documentElement.dataset.workspaceActive = "true";
+    return () => {
+      delete document.documentElement.dataset.workspaceActive;
+    };
+  }, [mounted, everAuthenticated, sessionStatus]);
+
   // Show spinner only on first load, NOT on silent background session refetches
   if (!mounted || (!everAuthenticated && sessionStatus === "loading")) {
     return (
