@@ -33,7 +33,7 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid.find((s) => s.widgetId === "financeHub")).toMatchObject({ row: 0, col: 2 });
     expect(cfg.quickGrid.find((s) => s.widgetId === "googleCalendar")).toMatchObject({ row: 1, col: 2 });
     expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 0 });
-    expect(cfg.quickGrid.find((s) => s.widgetId === "meckanoReports")).toMatchObject({ row: 1, col: 3 });
+    expect(cfg.quickGrid.find((s) => s.widgetId === "helpCenter")).toMatchObject({ row: 1, col: 3 });
   });
 
   it("uses 8-tile business grid for company mgmt industry", () => {
@@ -55,9 +55,9 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid).toHaveLength(8);
   });
 
-  it("includes meckano in sidebar for construction industry", () => {
+  it("does not include meckano in default sidebar (subscriber-only via ensureMeckanoLauncherSlots)", () => {
     const cfg = getDefaultLauncherConfig("CONSTRUCTION");
-    expect(cfg.sidebar.some((s) => s.widgetId === "meckanoReports")).toBe(true);
+    expect(cfg.sidebar.some((s) => s.widgetId === "meckanoReports")).toBe(false);
   });
 
   it("uses platform default when quickGrid is empty or missing", () => {

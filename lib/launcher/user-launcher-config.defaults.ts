@@ -17,7 +17,8 @@ function gridSlot(id: WidgetType, row: number, col: number): LauncherSlot {
 /**
  * 8 אריחי Hub — רשת 4×2 (קואורדינטות LTR על המסך).
  * שורה 0: CRM · פרויקטים · פיננסים · מסמכים
- * שורה 1: קופיילוט שטח · AI · יומן Google · Meckano
+ * שורה 1: קופיילוט שטח · AI · יומן Google · עזרה
+ * (Meckano נוסף רק למנוי מורשה דרך ensureMeckanoLauncherSlots)
  */
 export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("crmTable", 0, 0),
@@ -27,7 +28,7 @@ export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("fieldCopilot", 1, 0),
   gridSlot("aiHub", 1, 1),
   gridSlot("googleCalendar", 1, 2),
-  gridSlot("meckanoReports", 1, 3),
+  gridSlot("helpCenter", 1, 3),
 ];
 
 /** ניהול עסק / מנהל פלטפורמה — 4×2 ללא שטח/Meckano */
@@ -99,7 +100,6 @@ export function buildDefaultLauncherConfig(
       ...(company ? [] : [slot("fieldCopilot")]),
       slot("aiHub"),
       slot("appBuilder"),
-      ...(company ? [] : [slot("meckanoReports")]),
       slot("googleDrive"),
       slot("accessibility"),
     ],
@@ -116,7 +116,6 @@ export function buildDefaultLauncherConfig(
       slot("helpCenter"),
       slot("settings"),
       slot("accessibility"),
-      ...(company ? [] : [slot("meckanoReports")]),
     ],
   };
 }

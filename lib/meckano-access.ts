@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { isAdmin } from "@/lib/is-admin";
 
 export const MECKANO_SUBSCRIBER_EMAIL = "jbuildgca@gmail.com";
 export const MECKANO_ACCESS_ERROR = `Meckano זמין רק למנוי ${MECKANO_SUBSCRIBER_EMAIL}.`;
@@ -39,21 +38,9 @@ export async function isMeckanoEnabledForOrganization(organizationId: string | n
   return Boolean(subscriber);
 }
 
+/** UI + API — רק המנוי המורשה (לא כל הארגון). */
 export async function canAccessMeckano(session: SessionLike) {
-  if (isAdmin(session?.user?.email)) {
-    return true;
-  }
-
-  const organizationId = session?.user?.organizationId ?? null;
-  if (!organizationId) {
-    return false;
-  }
-
-  if (isMeckanoSubscriberEmail(session?.user?.email)) {
-    return true;
-  }
-
-  return isMeckanoEnabledForOrganization(organizationId);
+  return isMeckanoSubscriberEmail(session?.user?.email);
 }
 
 export async function getAuthorizedMeckanoOrganizationId(session: SessionLike) {

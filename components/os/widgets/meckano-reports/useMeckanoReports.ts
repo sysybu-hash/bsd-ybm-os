@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Papa from "papaparse";
@@ -41,6 +43,7 @@ const defaultStartDate = new Date(new Date().setDate(new Date().getDate() - 30))
   .split("T")[0]!;
 
 export function useMeckanoReports() {
+  const { data: session } = useSession();
   const { dir, t } = useI18n();
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -59,6 +62,10 @@ export function useMeckanoReports() {
   });
 
   useEffect(() => {
+    if (!isMeckanoSubscriberEmail(session?.user?.email)) {
+      setAccessAllowed(false);
+      return;
+    }
     void (async () => {
       try {
         const res = await fetch("/api/meckano/access");
@@ -79,7 +86,7 @@ export function useMeckanoReports() {
         setError(t("workspaceWidgets.meckano.noAccess"));
       }
     })();
-  }, [t]);
+  }, [session?.user?.email, t]);
 
   const fetchEmployees = useCallback(async () => {
     if (!accessAllowed) return;
@@ -113,7 +120,7 @@ export function useMeckanoReports() {
       const data = await res.json() as { reports?: ReportEntry[]; error?: string };
       if (res.ok) {
         setReports(data.reports ?? []);
-      } else {
+      } else if (res.status !== 403) {
         setError(data.error ?? null);
         toast.error(data.error ?? t("workspaceWidgets.meckano.loadFailed"));
       }

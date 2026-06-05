@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useWorkspaceNavigation } from "@/components/os/navigation/WorkspaceNavigationProvider";
 import { useWorkspaceUrlSync } from "@/hooks/use-workspace-url-sync";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
+import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
+import { parseWidgetType } from "@/lib/workspace-url";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import OSWorkspace from "@/components/os/layout/OSWorkspace";
@@ -36,6 +40,34 @@ export default function OmniCanvasWorkspaceBody({
   updateZoom,
 }: Props) {
   const wsNav = useWorkspaceNavigation();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const userEmail = session?.user?.email ?? null;
+
+  const guardedOpenWidget = useCallback(
+    (type: WidgetType, data?: Record<string, unknown> | null) => {
+      if (!isSubscriberWidgetVisible(type, userEmail)) {
+        router.replace("/", { scroll: false });
+        return "";
+      }
+      return openWidget(type, data ?? null);
+    },
+    [openWidget, userEmail, router],
+  );
+
+  useEffect(() => {
+    if (!hasHydrated || session === undefined) return;
+    const blocked = widgets.filter((w) => !isSubscriberWidgetVisible(w.type, userEmail));
+    if (blocked.length === 0) return;
+    for (const w of blocked) closeWidget(w.id);
+    if (typeof window !== "undefined") {
+      const raw = new URLSearchParams(window.location.search).get("w");
+      const fromUrl = parseWidgetType(raw);
+      if (fromUrl && !isSubscriberWidgetVisible(fromUrl, userEmail)) {
+        router.replace("/", { scroll: false });
+      }
+    }
+  }, [hasHydrated, session, userEmail, widgets, closeWidget, router]);
 
   const findWidgetByType = useCallback(
     (type: WidgetType) => widgets.find((w) => w.type === type),
@@ -51,7 +83,7 @@ export default function OmniCanvasWorkspaceBody({
   const { syncUrlFromFocusedWidget } = useWorkspaceUrlSync({
     hasHydrated,
     widgets,
-    openWidget,
+    openWidget: guardedOpenWidget,
     focusWidget,
     findWidgetByType,
     getWidgetViewState: wsNav.getWidgetViewState,

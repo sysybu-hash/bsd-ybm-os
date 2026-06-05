@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useMeckanoAccess } from "@/hooks/use-meckano-access";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import type { DashboardData } from "./types";
 import { formatDate } from "./utils";
@@ -25,6 +26,7 @@ export function DiaryTab({
   initialDesc,
   initialTaskId,
 }: DiaryTabProps) {
+  const { allowed: meckanoAllowed } = useMeckanoAccess();
   const [desc, setDesc] = useState(initialDesc ?? "");
   const [linkTaskId, setLinkTaskId] = useState<string | null>(initialTaskId ?? null);
   const [workers, setWorkers] = useState("1");
@@ -41,25 +43,27 @@ export function DiaryTab({
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs"
-        onClick={async () => {
-          const res = await fetch(`${apiBase}/sync-meckano`, {
-            method: "POST",
-            credentials: "include",
-          });
-          const json = await res.json();
-          if (!res.ok) {
-            toast.error(json.error ?? t("workspaceWidgets.projectDashboard.meckanoSyncFailed"));
-            return;
-          }
-          toast.success(t("workspaceWidgets.projectDashboard.meckanoSyncDone").replace("{c}", String(json.created)).replace("{u}", String(json.updated)));
-          await refresh();
-        }}
-      >
-        סנכרון ממקאנו ליומן
-      </button>
+      {meckanoAllowed ? (
+        <button
+          type="button"
+          className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs"
+          onClick={async () => {
+            const res = await fetch(`${apiBase}/sync-meckano`, {
+              method: "POST",
+              credentials: "include",
+            });
+            const json = await res.json();
+            if (!res.ok) {
+              toast.error(json.error ?? t("workspaceWidgets.projectDashboard.meckanoSyncFailed"));
+              return;
+            }
+            toast.success(t("workspaceWidgets.projectDashboard.meckanoSyncDone").replace("{c}", String(json.created)).replace("{u}", String(json.updated)));
+            await refresh();
+          }}
+        >
+          סנכרון ממקאנו ליומן
+        </button>
+      ) : null}
 
       <form
         className="space-y-2 rounded-lg border border-[color:var(--border-main)] p-2"

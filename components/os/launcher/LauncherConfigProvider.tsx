@@ -81,9 +81,10 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const [announce, setAnnounce] = useState("");
   const userId = session?.user?.id ?? null;
 
+  const userEmail = session?.user?.email ?? null;
   const permissionCtx = useMemo<LauncherPermissionContext>(
-    () => ({ isPlatformAdmin, meckanoEnabled, organizationIndustry }),
-    [isPlatformAdmin, meckanoEnabled, organizationIndustry],
+    () => ({ isPlatformAdmin, meckanoEnabled, organizationIndustry, userEmail }),
+    [isPlatformAdmin, meckanoEnabled, organizationIndustry, userEmail],
   );
 
   useEffect(() => {

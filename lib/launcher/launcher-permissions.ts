@@ -1,16 +1,19 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
 import { OS_ASSISTANT_WIDGETS } from "@/lib/os-assistant/widget-catalog";
+import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 
 export type LauncherPermissionContext = {
   isPlatformAdmin: boolean;
   organizationIndustry?: string | null;
+  userEmail?: string | null;
   /** מוסתר כשאין הרשאת מקאנו */
   meckanoEnabled?: boolean;
   calendarGoogleEnabled?: boolean;
 };
 
 function isWidgetAllowed(type: WidgetType, ctx: LauncherPermissionContext): boolean {
+  if (!isSubscriberWidgetVisible(type, ctx.userEmail)) return false;
   if (type === "platformAdmin" && !ctx.isPlatformAdmin) return false;
   if (type === "meckanoReports") {
     if (isCompanyMgmtIndustry(ctx.organizationIndustry)) return false;

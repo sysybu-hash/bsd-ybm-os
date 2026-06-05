@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import WidgetState from "@/components/os/WidgetState";
+import { useMeckanoAccess } from "@/hooks/use-meckano-access";
 import { useMeckanoReports } from "./meckano-reports/useMeckanoReports";
 
 type TabId = "overview" | "reports" | "people" | "zones" | "punch" | "settings";
 
 export default function MeckanoHubWidget() {
+  const { allowed, loading: accessLoading } = useMeckanoAccess();
   const hub = useMeckanoReports();
   const { dir, t, reports, employees, projects, isLoading, error, filters, setFilters, fetchReports, exportToCSV, downloadPDF, lastSyncAt, autoSyncEnabled } = hub;
 
@@ -96,6 +98,8 @@ export default function MeckanoHubWidget() {
       void fetchReports();
     }
   }, [tab, reports.length, isLoading, fetchReports]);
+
+  if (!accessLoading && !allowed) return null;
 
   if (!isLoading && error && reports.length === 0 && !error.includes("API Key")) {
     return (

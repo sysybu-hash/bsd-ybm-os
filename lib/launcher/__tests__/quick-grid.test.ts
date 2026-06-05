@@ -74,14 +74,14 @@ describe("packQuickGridCentered", () => {
         "fieldCopilot",
         "aiHub",
         "googleCalendar",
-        "meckanoReports",
+        "helpCenter",
       ],
       QUICK_GRID_HUB_COLS,
     );
     expect(packed).toHaveLength(8);
     expect(packed.filter((s) => s.row === 0)).toHaveLength(4);
     expect(packed.filter((s) => s.row === 1)).toHaveLength(4);
-    expect(packed.find((s) => s.widgetId === "meckanoReports")).toMatchObject({ row: 1, col: 3 });
+    expect(packed.find((s) => s.widgetId === "helpCenter")).toMatchObject({ row: 1, col: 3 });
   });
 });
 

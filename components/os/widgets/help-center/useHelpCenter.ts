@@ -1,13 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { getHelpCenterContent } from "@/lib/help-center/get-content";
 import type { HelpGuide } from "@/lib/help-center/types";
+import type { WidgetType } from "@/hooks/use-window-manager";
+import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 
 export function useHelpCenter(locale: string) {
-  const content = useMemo(() => getHelpCenterContent(locale), [locale]);
+  const { data: session } = useSession();
+  const userEmail = session?.user?.email ?? null;
+  const rawContent = useMemo(() => getHelpCenterContent(locale), [locale]);
+  const content = useMemo(() => {
+    const guides = rawContent.guides.filter(
+      (g) =>
+        !g.openWidget ||
+        isSubscriberWidgetVisible(g.openWidget as WidgetType, userEmail),
+    );
+    const guideIds = new Set(guides.map((g) => g.id));
+    const categories = rawContent.categories.filter(
+      (c) => c.guideIds.some((id) => guideIds.has(id)),
+    );
+    return { ...rawContent, guides, categories };
+  }, [rawContent, userEmail]);
 
   const [categoryId, setCategoryId] = useState(content.categories[0]?.id ?? "start");
   const [guideId, setGuideId] = useState<string | null>(content.guides[0]?.id ?? null);

@@ -9,6 +9,7 @@ import { useAutomationRunner } from "@/hooks/useAutomationRunner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
+import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { SearchResult } from "./types";
 import { useNotificationsFeed } from "./useNotificationsFeed";
@@ -62,6 +63,7 @@ export function useOmniCanvasState() {
       const resolved = resolveWidgetOpen(type, data ?? null);
       if (!resolved) return "";
       const { type: openType, liveData } = resolved;
+      if (!isSubscriberWidgetVisible(openType, session?.user?.email)) return "";
       if (openType === "fieldCopilot") {
         const existing = widgets.find((w) => w.type === "fieldCopilot");
         if (existing) {
@@ -74,7 +76,7 @@ export function useOmniCanvasState() {
       }
       return openWidget(openType, liveData);
     },
-    [widgets, focusWidget, openWidget, openWidgetFocused],
+    [widgets, focusWidget, openWidget, openWidgetFocused, session?.user?.email],
   );
 
   const hasMaximizedWidget = widgets.some((w) => w.isMaximized && !w.isMinimized);
