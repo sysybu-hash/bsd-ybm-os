@@ -151,7 +151,7 @@ export default function MobileOmnibarSheet({
               </button>
             </div>
 
-            <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-4">
+            <div className="custom-scrollbar flex h-0 min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain px-4 [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
               <Omnibar
                 layout="stacked"
                 embedInSheet

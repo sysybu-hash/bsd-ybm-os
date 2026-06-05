@@ -32,6 +32,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
 
   return (
     <div
+      data-widget-sticky-chrome
       className="flex h-full min-h-0 w-full min-w-0 flex-col bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden"
       dir={dir}
     >
@@ -160,7 +161,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
         />
       )}
 
-      <div className="flex-1 min-h-0 min-w-0 overflow-auto custom-scrollbar relative">
+      <div data-widget-scroll-pane className="flex-1 min-h-0 min-w-0 overflow-auto custom-scrollbar relative">
         <CrmContactsTable
           clients={s.clients}
           loading={s.loading}

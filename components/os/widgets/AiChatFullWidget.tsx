@@ -11,10 +11,19 @@ import { AiChatSidebar } from "./ai-chat/AiChatSidebar";
 import { AiChatMessages } from "./ai-chat/AiChatMessages";
 import { AiChatInput } from "./ai-chat/AiChatInput";
 import type { AiChatFullWidgetProps } from "./ai-chat/types";
+import { isMobileViewport } from "@/lib/workspace/window-layout-policy";
 
 export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget }: AiChatFullWidgetProps) {
   const { dir, t } = useI18n();
   const c = useAiChatState(liveData, openWorkspaceWidget);
+  const [mobileViewport, setMobileViewport] = React.useState(
+    () => typeof window !== "undefined" && isMobileViewport(),
+  );
+  React.useEffect(() => {
+    const onResize = () => setMobileViewport(isMobileViewport());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const inputAreaRef = useRef<HTMLDivElement>(null);
 
   // ── שעון שיחה — מתחיל כשנשלחת ההודעה הראשונה ──
@@ -93,6 +102,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         inputRef={inputAreaRef}
         inputValue={c.input}
         onSubmit={() => void c.handleSend()}
+        embedded={mobileViewport}
         t={t}
       >
         {c.chatTab === "live" && (
@@ -126,7 +136,11 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
   );
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div
+      {...(mobileViewport ? {} : { "data-widget-sticky-chrome": true })}
+      className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
+      dir={dir}
+    >
       <div className="hidden min-h-0 flex-1 md:flex">
         <WidgetSplitPanels
           className="min-h-0 flex-1"

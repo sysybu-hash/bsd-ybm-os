@@ -114,7 +114,7 @@ export default function ErpFileArchiveWidget() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <OsConfirmDialog
         open={emptyTrashTarget}
         title={t("workspaceWidgets.erpArchive.emptyRecycleBinTitle")}
@@ -148,7 +148,7 @@ export default function ErpFileArchiveWidget() {
             </button>
           ))}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div data-widget-scroll-pane className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {mobilePane === "nav" ? <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">{archiveSidebar}</div> : archiveMain}
         </div>
       </div>

@@ -732,8 +732,64 @@
 }
 
 .workspace-window--mobile {
-  touch-action: manipulation;
+  touch-action: pan-y pinch-zoom;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile: shell owns scroll; nested h-full chains break touch scrolling at 100% zoom */
+@media (max-width: 767px) {
+  [data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host {
+    flex: 1 1 0%;
+    height: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
+  }
+
+  [data-scroll-owner="shell"] [data-shell-content] {
+    height: auto !important;
+    min-height: 100%;
+    flex: none;
+  }
+
+  /* Simple widgets: flatten to shell scroll (no nested overflow traps) */
+  [data-scroll-owner="shell"] [data-shell-content] > :not([data-widget-sticky-chrome]) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Sticky chrome: header/footer fixed, inner pane scrolls */
+  [data-scroll-owner="shell"] [data-shell-content] > [data-widget-sticky-chrome] {
+    display: flex;
+    flex-direction: column;
+    height: 100% !important;
+    min-height: 0;
+    overflow: hidden !important;
+  }
+
+  [data-widget-sticky-chrome] [data-widget-scroll-pane] {
+    flex: 1 1 0%;
+    height: 0;
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
+  }
+
+  .os-floating-panel.workspace-window [data-shell-scroll],
+  .os-floating-panel.workspace-window .custom-scrollbar.min-h-0.flex-1.overflow-y-auto {
+    flex: 1 1 0%;
+    height: 0;
+    min-height: 0;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y;
+  }
 }
 
 @media (min-width: 768px) {

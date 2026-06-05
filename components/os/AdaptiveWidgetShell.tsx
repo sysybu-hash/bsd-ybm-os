@@ -82,7 +82,7 @@ export default function AdaptiveWidgetShell({
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
-          ? "workspace-window--mobile fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !z-[950] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full"
+          ? "workspace-window--mobile flex min-h-0 flex-col fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !z-[950] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full md:flex-none"
           : "absolute max-w-[100dvw]"
       }`}
       style={
@@ -105,7 +105,13 @@ export default function AdaptiveWidgetShell({
     >
       {/* Content wrapper — overflow-hidden here clips content to rounded corners
           but ResizeHandles lives OUTSIDE this div so it is never clipped. */}
-      <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-[inherit]">
+      <div
+        className={
+          mobileOrMaximized
+            ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
+            : "absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-[inherit]"
+        }
+      >
         <WorkspaceWindowChrome
           title={title}
           titleId={`${id}-title`}
@@ -138,21 +144,19 @@ export default function AdaptiveWidgetShell({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
           <div
-            className={`custom-scrollbar min-h-0 flex-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior-y:auto] ${
+            data-shell-scroll
+            className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 max-md:h-0 max-md:min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${
               zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
             }`}
           >
             {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
-          <div
-            className={
-              zoomActive
-                ? "flex w-full min-h-full flex-col origin-top"
-                : "flex h-full min-h-0 w-full flex-col"
-            }
-            style={zoomActive ? contentZoomStyle : undefined}
-          >
-            {children}
-          </div>
+            <div
+              data-shell-content
+              className={`flex w-full min-h-full flex-col ${zoomActive ? "origin-top" : ""}`}
+              style={zoomActive ? contentZoomStyle : undefined}
+            >
+              {children}
+            </div>
           </div>
         </div>
       </div>

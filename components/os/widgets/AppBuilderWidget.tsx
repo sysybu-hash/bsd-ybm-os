@@ -143,7 +143,7 @@ export default function AppBuilderWidget() {
   );
 
   return (
-    <div className="flex flex-row w-full h-full min-h-0 min-w-0 overflow-hidden bg-surface-bg" dir={dir}>
+    <div data-widget-sticky-chrome className="flex flex-row w-full h-full min-h-0 min-w-0 overflow-hidden bg-surface-bg" dir={dir}>
 
       {/* RIGHT PANE (Builder / Chat): Fixed width on desktop, hidden on mobile */}
       <div className="hidden md:flex flex-col w-[350px] shrink-0 h-full min-h-0 border-s border-border-main">
@@ -159,7 +159,7 @@ export default function AppBuilderWidget() {
         <div className="shrink-0 md:hidden">{mobilePaneSwitcher}</div>
 
         {/* Mobile content area (scrollable for build list, flex for preview) */}
-        <div className="flex-1 min-h-0 md:hidden overflow-y-auto custom-scrollbar p-2">
+        <div data-widget-scroll-pane className="flex-1 min-h-0 md:hidden overflow-y-auto custom-scrollbar p-2">
           {mobilePane === "build" ? buildContent : previewContent}
         </div>
 

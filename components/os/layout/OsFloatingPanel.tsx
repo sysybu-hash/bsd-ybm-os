@@ -109,8 +109,15 @@ export default function OsFloatingPanel({
         onHeaderPointerUp={onHeaderPointerUp}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <motion.div className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : ""}`} style={contentZoomStyle}>
+        <div
+          data-shell-scroll
+          className="shell-scroll-host custom-scrollbar min-h-0 flex-1 max-md:h-0 max-md:min-h-0 overflow-y-auto overflow-x-hidden p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+        >
+          <motion.div
+            data-shell-content
+            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : ""}`}
+            style={contentZoomStyle}
+          >
             {children}
           </motion.div>
         </div>

@@ -191,13 +191,13 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
     };
 
     return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
+      <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
         {session.error ? (
           <p className="shrink-0 mx-4 mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
             {session.error}
           </p>
         ) : null}
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 [-webkit-overflow-scrolling:touch]">
+        <div data-widget-scroll-pane className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 [-webkit-overflow-scrolling:touch]">
           <SessionHistoryPanel
             sessions={sessionList}
             loading={historyLoading}
@@ -212,7 +212,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
+    <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
       <div className="sticky top-0 z-10 shrink-0 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]">
         <FieldCopilotStepper current={step} />
         <FieldCopilotNavBar
@@ -242,7 +242,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
           {t("workspaceWidgets.fieldCopilot.driveNotSaved")}
         </p>
       ) : null}
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+      <div data-widget-scroll-pane className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
         {step === 0 ? <ClientProjectStep draft={session.draft} onUpdate={onUpdate} /> : null}
         {step === 1 ? (
           <CaptureStep

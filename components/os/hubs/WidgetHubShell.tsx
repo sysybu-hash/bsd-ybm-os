@@ -50,7 +50,7 @@ export default function WidgetHubShell({
   const showTabBar = tabs.length > 0;
 
   return (
-    <div className="flex h-full min-h-[280px] flex-1 flex-col overflow-hidden bg-[color:var(--background-main)]">
+    <div data-widget-sticky-chrome className="flex h-full min-h-[280px] flex-1 flex-col overflow-hidden bg-[color:var(--background-main)]">
       {showTabBar ? (
       <div
         className="shrink-0 border-b border-[color:var(--border-main)] px-2 pb-1.5 pt-1.5"
@@ -90,7 +90,7 @@ export default function WidgetHubShell({
         ) : null}
       </div>
       ) : null}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div data-widget-scroll-pane className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {renderTab(activeTab)}
       </div>
     </div>

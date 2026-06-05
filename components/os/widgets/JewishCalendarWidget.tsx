@@ -68,7 +68,7 @@ export default function JewishCalendarWidget() {
       : data.gregorian.displayEn;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-3 sm:p-4" dir={layoutDir}>
+    <div className="flex w-full min-h-0 flex-col gap-3 p-3 sm:p-4 md:h-full" dir={layoutDir}>
       <div className="flex flex-wrap items-center gap-2">
         <LocationCombobox
           label={locName}
@@ -153,7 +153,7 @@ export default function JewishCalendarWidget() {
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-[color:var(--border-main)]">
+      <div className="min-h-0 flex-1 rounded-xl border border-[color:var(--border-main)] md:overflow-y-auto">
         <table className="w-full text-sm">
           <tbody>
             {data.zmanim.map((z) => {
