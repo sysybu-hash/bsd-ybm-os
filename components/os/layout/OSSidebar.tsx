@@ -42,7 +42,7 @@ export default function OSSidebar({ openWidget, isOpen = false, closeSidebar, hi
         className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-transform duration-200 md:flex
           bottom-0 left-0 right-0 h-auto w-full items-stretch border-t px-3 py-2
           ${isOpen ? "translate-y-0" : "translate-y-0"}
-          md:bottom-28 md:start-5 md:end-auto md:top-24 md:max-h-[calc(100vh-12rem)] md:min-h-0 md:w-[var(--os-sidebar-rail-width)] md:max-w-[var(--os-sidebar-rail-width)] md:rounded-xl md:border md:px-1.5 md:py-3`}
+          md:bottom-28 md:start-3 md:end-auto md:top-24 md:max-h-[calc(100vh-12rem)] md:min-h-0 md:w-[var(--os-sidebar-rail-width)] md:max-w-[var(--os-sidebar-rail-width)] md:rounded-xl md:border md:px-1.5 md:py-3`}
         aria-label={t("workspaceWidgets.sidebar.aria")}
         dir={dir}
       >

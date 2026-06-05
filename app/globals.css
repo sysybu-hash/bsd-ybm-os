@@ -159,6 +159,16 @@
     scrollbar-gutter: stable;
   }
 
+  /* Workspace מלא מסך — בלי פס גלילה/רקע כהה בצדדים */
+  html:has(.quiet-shell),
+  body:has(.quiet-shell) {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    scrollbar-gutter: auto;
+    background: var(--background-main);
+  }
+
   /* העדפות נגישות — מופעלות מ-applyAccessibilitySettings על <html> */
   html[data-accessibility-font-scale="large"] {
     font-size: 106.25%;
