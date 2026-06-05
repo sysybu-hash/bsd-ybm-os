@@ -98,3 +98,77 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  lighthouse-mobile:
+    name: Lighthouse CI (local)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
+      PORT: "3000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare build env
+        run: node scripts/ci-prepare-build-env.mjs
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Production build
+        run: npm run build
+
+      - name: Lighthouse CI (mobile, local)
+        run: npx @lhci/cli@latest autorun --config=lighthouserc.json
+
+      - name: Lighthouse CI (desktop, local)
+        run: npx @lhci/cli@latest autorun --config=lighthouserc.desktop.json
+
+  lighthouse-www:
+    name: Lighthouse CI (production)
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lighthouse CI (mobile, production)
+        run: npx @lhci/cli@latest autorun --config=lighthouserc.www.json
+
+      - name: Lighthouse CI (desktop, production)
+        run: |
+          node -e "
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('lighthouserc.www.json','utf8'));
+          j.ci.collect.settings.preset='desktop';
+          fs.writeFileSync('lighthouserc.www.desktop.json', JSON.stringify(j,null,2));
+          "
+          npx @lhci/cli@latest autorun --config=lighthouserc.www.desktop.json
