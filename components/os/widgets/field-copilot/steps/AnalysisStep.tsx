@@ -23,7 +23,7 @@ export default function AnalysisStep({ loading, onAnalyze, scopeSummary }: Props
   }, [loading]);
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
+    <div className="flex flex-col gap-4 p-4">
       <div>
         <h3 className="text-base font-black">{t("workspaceWidgets.fieldCopilot.analysisTitle")}</h3>
         <p className="text-sm text-[color:var(--foreground-muted)]">

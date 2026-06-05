@@ -23,9 +23,11 @@ type SubTab = "quote" | "boq" | "bills" | "milestones";
 export default function ProjectBoqPanel({
   projectId,
   apiBase,
+  milestonesSection,
 }: {
   projectId: string;
   apiBase: string;
+  milestonesSection?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const [subTab, setSubTab] = useState<SubTab>("boq");
@@ -168,9 +170,9 @@ export default function ProjectBoqPanel({
       </div>
 
       {subTab === "milestones" ? (
-        <p className="text-xs text-[color:var(--foreground-muted)]">
-          אבני דרך — ראו סעיף למעלה בטאב הפיננסי.
-        </p>
+        milestonesSection ?? (
+          <p className="text-xs text-[color:var(--foreground-muted)]">אין נתוני אבני דרך.</p>
+        )
       ) : loading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="animate-spin text-amber-500" size={20} />
@@ -181,7 +183,9 @@ export default function ProjectBoqPanel({
         </p>
       ) : subTab === "boq" ? (
         <>
-          <BoqAgentPanel apiBase={apiBase} onApplied={() => void load()} />
+          <div className="max-h-[40vh] min-h-0 overflow-y-auto rounded-lg border border-[color:var(--border-main)]/50">
+            <BoqAgentPanel apiBase={apiBase} onApplied={() => void load()} />
+          </div>
           {lines.length === 0 ? (
             <p className="text-xs text-[color:var(--foreground-muted)]">
               {t("projectDashboard.boqEmptyImport")}

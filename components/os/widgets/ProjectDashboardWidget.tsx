@@ -94,7 +94,7 @@ export default function ProjectDashboardWidget({
 
   return (
     <div
-      className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col text-[color:var(--foreground-main)]"
+      className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden text-[color:var(--foreground-main)]"
       dir={dir}
     >
       <DashboardHeader
@@ -124,7 +124,7 @@ export default function ProjectDashboardWidget({
         />
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3">
+      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-2 md:p-3">
         {activeTab === "financial" && (
           <FinancialTab
             data={data}
@@ -173,7 +173,7 @@ export default function ProjectDashboardWidget({
           <SettingsTab data={data} resolvedId={resolvedId} refresh={refresh} t={t} />
         )}
         {activeTab === "ai" && (
-          <div className="h-[min(520px,60vh)] min-h-[280px]">
+          <div className="flex min-h-[280px] flex-1 flex-col">
             <NotebookLMWidget liveData={{ projectId: resolvedId, name: data.name }} />
           </div>
         )}

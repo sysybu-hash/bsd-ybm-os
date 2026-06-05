@@ -24,7 +24,8 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgI
 
 const createSchema = z.object({
   name: z.string().min(1),
-  amount: z.number().nonnegative(),
+  amount: z.number().nonnegative().optional().default(0),
+  percent: z.number().min(0).max(100).optional(),
   sortOrder: z.number().int().optional(),
 });
 
@@ -34,12 +35,14 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchem
     try {
       const gate = await requireProjectForOrg(id, orgId);
       if (!gate.ok) return gate.response;
+      const usePercent = body.percent != null && Number.isFinite(body.percent);
       const row = await prisma.paymentMilestone.create({
         data: {
           projectId: id,
           organizationId: orgId,
           name: body.name,
-          amount: body.amount,
+          amount: usePercent ? 0 : (body.amount ?? 0),
+          percent: usePercent ? body.percent : null,
           sortOrder: body.sortOrder ?? 0,
         },
       });

@@ -24,6 +24,7 @@ export type DashboardData = {
     id: string;
     name: string;
     amount: number;
+    percent?: number | null;
     isPaid: boolean;
     datePaid: string | null;
   }>;

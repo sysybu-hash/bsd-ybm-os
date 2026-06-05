@@ -74,6 +74,7 @@ export default function AdaptiveWidgetShell({
   return (
     <section
       data-widget-shell
+      data-scroll-owner="shell"
       ref={shellRef as React.RefObject<HTMLElement>}
       id={id}
       onMouseDown={onFocus}
@@ -143,7 +144,11 @@ export default function AdaptiveWidgetShell({
           >
             {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
           <div
-            className={zoomActive ? "flex w-full min-h-full flex-col origin-top" : "flex h-full w-full flex-col"}
+            className={
+              zoomActive
+                ? "flex w-full min-h-full flex-col origin-top"
+                : "flex h-full min-h-0 w-full flex-col"
+            }
             style={zoomActive ? contentZoomStyle : undefined}
           >
             {children}

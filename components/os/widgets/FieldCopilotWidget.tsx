@@ -191,13 +191,13 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
     };
 
     return (
-      <div className="flex h-full min-h-0 flex-col bg-[color:var(--background-main)]">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
         {session.error ? (
-          <p className="mx-4 mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+          <p className="shrink-0 mx-4 mt-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
             {session.error}
           </p>
         ) : null}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-4">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 [-webkit-overflow-scrolling:touch]">
           <SessionHistoryPanel
             sessions={sessionList}
             loading={historyLoading}
@@ -212,35 +212,37 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[color:var(--background-main)]">
-      <FieldCopilotStepper current={step} />
-      <FieldCopilotNavBar
-        showBack={showNavBack}
-        showContinue={showNavContinue}
-        continueDisabled={!canContinue || session.loading}
-        continueLabel={step === 2 && !hasAnalysis ? t(`${prefix}.navAnalyze`) : undefined}
-        onBack={() => goStep(step - 1)}
-        onContinue={() => {
-          if (step === 2 && !hasAnalysis) { void onAnalyze(); return; }
-          goStep(step + 1);
-        }}
-      />
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)]">
+      <div className="sticky top-0 z-10 shrink-0 border-b border-[color:var(--border-main)]/60 bg-[color:var(--background-main)]">
+        <FieldCopilotStepper current={step} />
+        <FieldCopilotNavBar
+          showBack={showNavBack}
+          showContinue={showNavContinue}
+          continueDisabled={!canContinue || session.loading}
+          continueLabel={step === 2 && !hasAnalysis ? t(`${prefix}.navAnalyze`) : undefined}
+          onBack={() => goStep(step - 1)}
+          onContinue={() => {
+            if (step === 2 && !hasAnalysis) { void onAnalyze(); return; }
+            goStep(step + 1);
+          }}
+        />
+      </div>
       {session.error ? (
-        <p className="mx-4 mt-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+        <p className="shrink-0 mx-4 mt-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
           {session.error}
         </p>
       ) : null}
       {session.driveNotice === "saved" ? (
-        <p className="mx-4 mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
+        <p className="shrink-0 mx-4 mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
           {t("workspaceWidgets.fieldCopilot.driveSaved")}
         </p>
       ) : null}
       {session.driveNotice === "failed" ? (
-        <p className="mx-4 mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+        <p className="shrink-0 mx-4 mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
           {t("workspaceWidgets.fieldCopilot.driveNotSaved")}
         </p>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
         {step === 0 ? <ClientProjectStep draft={session.draft} onUpdate={onUpdate} /> : null}
         {step === 1 ? (
           <CaptureStep

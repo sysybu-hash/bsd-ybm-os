@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { resolveLinkedBoqLineId } from "@/lib/project-task-metadata";
 import { filterPaymentMilestonesForDisplay } from "@/lib/project-payment-milestones";
+import { resolveMilestoneIls } from "@/lib/payment-milestone-amounts";
 
 export async function getProjectDashboard(orgId: string, projectId: string) {
   const org = await prisma.organization.findUnique({
@@ -46,16 +47,25 @@ export async function getProjectDashboard(orgId: string, projectId: string) {
   const extrasPending = project.projectExtras
     .filter((e) => !e.isApproved)
     .reduce((s, e) => s + e.cost, 0);
+  const budget = project.budget || 0;
   const visibleMilestones = filterPaymentMilestonesForDisplay(
     orgIndustry,
     project.paymentMilestones,
   );
-  const milestonesTotal = visibleMilestones.reduce((s, m) => s + m.amount, 0);
+  const milestoneRows = visibleMilestones.map((m) => ({
+    amount: m.amount,
+    percent: m.percent,
+  }));
+  const milestonesTotal = visibleMilestones.reduce(
+    (s, m) => s + resolveMilestoneIls({ amount: m.amount, percent: m.percent }, budget, milestoneRows),
+    0,
+  );
   const milestonesPaid = visibleMilestones
     .filter((m) => m.isPaid)
-    .reduce((s, m) => s + m.amount, 0);
-
-  const budget = project.budget || 0;
+    .reduce(
+      (s, m) => s + resolveMilestoneIls({ amount: m.amount, percent: m.percent }, budget, milestoneRows),
+      0,
+    );
   const utilized = erpExpenses + plannedExpenses + extrasApproved;
   const budgetUtilizationPercent =
     budget > 0 ? Math.min(100, Math.round((utilized / budget) * 100)) : 0;
@@ -86,7 +96,14 @@ export async function getProjectDashboard(orgId: string, projectId: string) {
       milestonesPaid,
       utilized,
     },
-    milestones: visibleMilestones,
+    milestones: visibleMilestones.map((m) => ({
+      id: m.id,
+      name: m.name,
+      amount: m.amount,
+      percent: m.percent,
+      isPaid: m.isPaid,
+      datePaid: m.datePaid?.toISOString() ?? null,
+    })),
     hiddenConstructionMilestones: Math.max(
       0,
       project.paymentMilestones.length - visibleMilestones.length,

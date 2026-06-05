@@ -17,12 +17,16 @@ type FinancialTabProps = {
 };
 
 export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: FinancialTabProps) {
+  const milestonesSection = (
+    <FinancialMilestonesSection data={data} apiBase={apiBase} isCompanyMgmt={isCompanyMgmt} refresh={refresh} t={t} />
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {!isCompanyMgmt ? (
         <section>
           <h3 className="mb-2 text-xs font-semibold">{t("projectDashboard.financialBoqTitle")}</h3>
-          <ProjectBoqPanel projectId={data.id} apiBase={apiBase} />
+          <ProjectBoqPanel projectId={data.id} apiBase={apiBase} milestonesSection={milestonesSection} />
         </section>
       ) : null}
 
@@ -39,7 +43,7 @@ export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: Finan
         </p>
       </section>
 
-      <FinancialMilestonesSection data={data} apiBase={apiBase} isCompanyMgmt={isCompanyMgmt} refresh={refresh} t={t} />
+      {isCompanyMgmt ? milestonesSection : null}
 
       <FinancialExtrasSection data={data} apiBase={apiBase} refresh={refresh} t={t} />
 

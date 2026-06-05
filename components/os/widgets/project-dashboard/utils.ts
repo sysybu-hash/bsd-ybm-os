@@ -1,4 +1,26 @@
+import {
+  formatMilestonePercent,
+  resolveMilestoneIls,
+  resolveMilestonePercent,
+  type MilestoneAmountRow,
+} from "@/lib/payment-milestone-amounts";
+
 export const PUSH_KEY = "project-dashboard-push-enabled";
+
+export function formatMilestoneLabel(
+  m: MilestoneAmountRow & { name: string },
+  budget: number,
+  all: MilestoneAmountRow[],
+): string {
+  const pct = resolveMilestonePercent(m, all);
+  if (pct != null) {
+    const ils = budget > 0 ? resolveMilestoneIls(m, budget, all) : null;
+    const pctStr = formatMilestonePercent(pct);
+    return ils != null && ils > 0 ? `${pctStr} (${formatMoney(ils)})` : pctStr;
+  }
+  if (m.amount > 0) return formatMoney(m.amount);
+  return "—";
+}
 
 export function formatMoney(n: number) {
   return new Intl.NumberFormat("he-IL", {

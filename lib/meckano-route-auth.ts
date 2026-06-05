@@ -37,7 +37,17 @@ export async function requireMeckanoSession(session: SessionLike): Promise<Mecka
       ),
     };
   }
-  const apiKey = env.MECKANO_API_KEY?.trim();
+  const orgId = session.user?.organizationId;
+  let apiKey = env.MECKANO_API_KEY?.trim() ?? "";
+  if (orgId) {
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { meckanoApiKey: true },
+    });
+    if (org?.meckanoApiKey?.trim()) {
+      apiKey = org.meckanoApiKey.trim();
+    }
+  }
   if (!apiKey) {
     return {
       error: NextResponse.json(

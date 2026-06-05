@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   ArrowRight,
   Bell,
   BellOff,
   BookOpen,
+  ChevronDown,
   FolderOpen,
   Loader2,
   Scan,
@@ -40,44 +41,41 @@ export function DashboardHeader({
   fileRef, activeTab, tabs, setActiveTab,
   clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, openWorkspaceWidget,
 }: DashboardHeaderProps) {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
   return (
-    <header className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-bold">{data.name}</h2>
-          <p className="text-xs text-[color:var(--foreground-muted)]">
+    <header className="shrink-0 border-b border-[color:var(--border-main)] px-2 py-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-bold">{data.name}</h2>
+          <p className="truncate text-[10px] text-[color:var(--foreground-muted)]">
             {data.client ?? t("projectDashboard.noClient")} · {data.status}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
             onClick={clearProjectSelection}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
           >
-            <ArrowRight size={14} aria-hidden />
+            <ArrowRight size={12} aria-hidden />
             {t("projectDashboard.switchProject")}
           </button>
           <button
             type="button"
             onClick={resetWorkspace}
-            className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
+            className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)]"
           >
             {t("projectDashboard.resetWorkspace")}
           </button>
           <button
             type="button"
             onClick={togglePush}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs"
-            title={t("projectDashboard.pushToggle")}
+            className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px]"
+            title={t("projectDashboard.pushNote")}
           >
-            {pushEnabled ? <Bell size={14} /> : <BellOff size={14} />}
-            <span className="sr-only">{t("projectDashboard.pushToggle")}</span>
-            {t("projectDashboard.pushToggle")}
+            {pushEnabled ? <Bell size={12} /> : <BellOff size={12} />}
           </button>
-          <p className="w-full text-[10px] text-[color:var(--foreground-muted)]">
-            {t("projectDashboard.pushNote")}
-          </p>
           {hasConstructionPlan ? (
             <>
               <input
@@ -95,9 +93,9 @@ export function DashboardHeader({
                 type="button"
                 disabled={uploadingBlueprint}
                 onClick={() => (fileRef.current as HTMLInputElement | null)?.click()}
-                className="flex items-center gap-1 rounded-lg bg-amber-600/90 px-2 py-1 text-xs text-white disabled:opacity-50"
+                className="flex items-center gap-1 rounded-lg bg-amber-600/90 px-2 py-1 text-[10px] text-white disabled:opacity-50"
               >
-                {uploadingBlueprint ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {uploadingBlueprint ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                 {t("projectDashboard.uploadBlueprint")}
               </button>
             </>
@@ -106,41 +104,53 @@ export function DashboardHeader({
       </div>
 
       {openWorkspaceWidget && resolvedId ? (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {hasConstructionPlan ? (
-            <button
-              type="button"
-              onClick={() => openWorkspaceWidget("aiScanner", { projectId: resolvedId, scanMode: "DRAWING_BOQ" })}
-              className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
-            >
-              <Scan size={12} aria-hidden /> סורק AI
-            </button>
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setShortcutsOpen((v) => !v)}
+            className="flex items-center gap-1 text-[10px] font-bold text-[color:var(--foreground-muted)]"
+          >
+            <ChevronDown size={12} className={shortcutsOpen ? "rotate-180" : ""} />
+            קיצורי דרך
+          </button>
+          {shortcutsOpen ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {hasConstructionPlan ? (
+                <button
+                  type="button"
+                  onClick={() => openWorkspaceWidget("aiScanner", { projectId: resolvedId, scanMode: "DRAWING_BOQ" })}
+                  className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-0.5 text-[10px] font-bold"
+                >
+                  <Scan size={10} aria-hidden /> סורק AI
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => openWorkspaceWidget("notebookLM", { projectId: resolvedId, title: data.name })}
+                className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-0.5 text-[10px] font-bold"
+              >
+                <BookOpen size={10} aria-hidden /> מחברת
+              </button>
+              <button
+                type="button"
+                onClick={() => openWorkspaceWidget("googleDrive", { projectId: resolvedId })}
+                className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-0.5 text-[10px] font-bold"
+              >
+                <FolderOpen size={10} aria-hidden /> Drive
+              </button>
+              <button
+                type="button"
+                onClick={() => openWorkspaceWidget("crmTable", null)}
+                className="rounded-lg border border-[color:var(--border-main)] px-2 py-0.5 text-[10px] font-bold"
+              >
+                CRM
+              </button>
+            </div>
           ) : null}
-          <button
-            type="button"
-            onClick={() => openWorkspaceWidget("notebookLM", { projectId: resolvedId, title: data.name })}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
-          >
-            <BookOpen size={12} aria-hidden /> מחברת
-          </button>
-          <button
-            type="button"
-            onClick={() => openWorkspaceWidget("googleDrive", { projectId: resolvedId })}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
-          >
-            <FolderOpen size={12} aria-hidden /> Drive
-          </button>
-          <button
-            type="button"
-            onClick={() => openWorkspaceWidget("crmTable", null)}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold"
-          >
-            CRM
-          </button>
         </div>
       ) : null}
 
-      <div className="mt-2 flex gap-1 overflow-x-auto">
+      <div className="mt-1.5 flex gap-0.5 overflow-x-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -148,13 +158,13 @@ export function DashboardHeader({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs ${
+              className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
                 activeTab === tab.id
                   ? "bg-amber-500/20 text-amber-200"
                   : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
               }`}
             >
-              <Icon size={12} aria-hidden />
+              <Icon size={11} aria-hidden />
               {tab.label}
             </button>
           );

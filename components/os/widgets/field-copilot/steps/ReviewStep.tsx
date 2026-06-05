@@ -42,7 +42,7 @@ export default function ReviewStep({ draft, onUpdate }: Props) {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain p-4">
+    <div className="flex flex-col gap-4 p-4">
       <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
         {t("workspaceWidgets.fieldCopilot.disclaimer")}
       </p>

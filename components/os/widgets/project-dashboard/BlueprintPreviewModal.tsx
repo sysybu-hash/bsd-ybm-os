@@ -180,9 +180,17 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                       </button>
                       <span className="flex-1 truncate">{m.name}</span>
                       <span className="shrink-0 font-mono text-amber-200">
-                        {typeof m.amount === "number"
-                          ? m.amount.toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 })
-                          : String(m.amount)}
+                        {"percent" in m && m.percent != null
+                          ? `${m.percent}%`
+                          : typeof m.amount === "number" && m.amount > 0 && m.amount <= 100
+                            ? `${m.amount}%`
+                            : typeof m.amount === "number"
+                              ? m.amount.toLocaleString("he-IL", {
+                                  style: "currency",
+                                  currency: "ILS",
+                                  maximumFractionDigits: 0,
+                                })
+                              : String(m.amount ?? "—")}
                       </span>
                     </div>
                   );

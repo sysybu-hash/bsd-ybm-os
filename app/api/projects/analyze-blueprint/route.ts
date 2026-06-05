@@ -53,14 +53,31 @@ async function saveAnalysis(
 
     if (data.milestones.length > 0) {
       await tx.paymentMilestone.createMany({
-        data: data.milestones.map((m, i) => ({
-          projectId,
-          organizationId: orgId,
-          name: m.name,
-          amount:
-            typeof m.amount === "number" ? m.amount : parseFloat(String(m.amount)) || 0,
-          sortOrder: i,
-        })),
+        data: data.milestones.map((m, i) => {
+          const pctRaw = m.percent;
+          const pct =
+            pctRaw != null
+              ? typeof pctRaw === "number"
+                ? pctRaw
+                : parseFloat(String(pctRaw))
+              : null;
+          const amtRaw = m.amount;
+          const amt =
+            amtRaw != null
+              ? typeof amtRaw === "number"
+                ? amtRaw
+                : parseFloat(String(amtRaw)) || 0
+              : 0;
+          const usePercent = pct != null && Number.isFinite(pct) && pct >= 0 && pct <= 100;
+          return {
+            projectId,
+            organizationId: orgId,
+            name: m.name,
+            amount: usePercent ? 0 : amt,
+            percent: usePercent ? pct : null,
+            sortOrder: i,
+          };
+        }),
       });
     }
 

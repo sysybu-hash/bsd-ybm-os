@@ -446,6 +446,8 @@ model PaymentMilestone {
   organizationId String
   name           String
   amount         Float
+  /// אחוז מסכום החוזה (0–100) כשהשדה amount הוא 0 או כשלשלב יש אחוז מפורש
+  percent        Float?
   isPaid         Boolean   @default(false)
   datePaid       DateTime?
   sortOrder      Int       @default(0)

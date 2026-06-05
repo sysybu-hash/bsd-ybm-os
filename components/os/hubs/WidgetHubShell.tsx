@@ -47,10 +47,13 @@ export default function WidgetHubShell({
     [onTabChange],
   );
 
+  const showTabBar = tabs.length > 0;
+
   return (
-    <div className="flex h-full min-h-[280px] flex-1 flex-col bg-[color:var(--background-main)]">
+    <div className="flex h-full min-h-[280px] flex-1 flex-col overflow-hidden bg-[color:var(--background-main)]">
+      {showTabBar ? (
       <div
-        className="shrink-0 border-b border-[color:var(--border-main)] px-2 pb-2 pt-2"
+        className="shrink-0 border-b border-[color:var(--border-main)] px-2 pb-1.5 pt-1.5"
         style={{ paddingInlineEnd: "max(0.5rem, env(safe-area-inset-inline-end))" }}
       >
         <nav
@@ -68,7 +71,7 @@ export default function WidgetHubShell({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => selectTab(tab.id)}
-                className={`shrink-0 rounded-lg px-2.5 py-2.5 text-xs font-bold transition-colors min-h-[44px] max-md:px-2 md:px-3 md:text-sm ${
+                className={`shrink-0 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors md:px-2.5 md:text-xs ${
                   selected
                     ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
                     : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
@@ -86,6 +89,7 @@ export default function WidgetHubShell({
           </p>
         ) : null}
       </div>
+      ) : null}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {renderTab(activeTab)}
       </div>

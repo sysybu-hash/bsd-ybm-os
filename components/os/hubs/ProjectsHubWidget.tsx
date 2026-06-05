@@ -131,11 +131,20 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
       onCreated={handleProjectCreated}
     />
     <WidgetHubShell
-      tabs={TABS}
-      initialTab={activeTab}
+      tabs={projectId ? [] : TABS}
+      initialTab={projectId ? undefined : activeTab}
       onTabChange={handleTabChange}
       tabCountLabel={t("workspaceWidgets.hubs.tabCount", { count: String(TABS.length) })}
       renderTab={(tabId) => {
+        if (projectId) {
+          return (
+            <ProjectWidget
+              projectId={projectId}
+              projectName={projectName}
+              openWorkspaceWidget={openWorkspaceWidget}
+            />
+          );
+        }
         if (tabId === "board") {
           return (
             <ProjectBoardWidget

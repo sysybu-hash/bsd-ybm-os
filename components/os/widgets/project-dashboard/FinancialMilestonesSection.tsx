@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import { BUSINESS_PAYMENT_MILESTONE_PRESETS } from "@/lib/project-payment-milestones";
 import type { DashboardData } from "./types";
-import { formatMoney } from "./utils";
+import { formatMilestoneLabel } from "./utils";
 
 type Props = {
   data: DashboardData;
@@ -19,6 +19,12 @@ type Props = {
 export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refresh, t }: Props) {
   const [milestoneName, setMilestoneName] = useState("");
   const [milestoneAmount, setMilestoneAmount] = useState("");
+  const [milestonePercent, setMilestonePercent] = useState("");
+
+  const amountRows = data.milestones.map((m) => ({
+    amount: m.amount,
+    percent: m.percent ?? null,
+  }));
 
   return (
     <section>
@@ -77,7 +83,7 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
               />
               <span>{m.name}</span>
             </label>
-            <span>{formatMoney(m.amount)}</span>
+            <span>{formatMilestoneLabel(m, data.budget, amountRows)}</span>
           </li>
         ))}
       </ul>
@@ -91,6 +97,15 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
         <input
           className={osFieldClassName}
           type="number"
+          min={0}
+          max={100}
+          placeholder="אחוז (0–100)"
+          value={milestonePercent}
+          onChange={(e) => setMilestonePercent(e.target.value)}
+        />
+        <input
+          className={osFieldClassName}
+          type="number"
           placeholder={t("projectDashboard.amount")}
           value={milestoneAmount}
           onChange={(e) => setMilestoneAmount(e.target.value)}
@@ -99,14 +114,22 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
           type="button"
           className="rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
           onClick={async () => {
-            if (!milestoneName || !milestoneAmount) return;
+            if (!milestoneName) return;
+            const pct = milestonePercent ? Number(milestonePercent) : undefined;
+            const amt = milestoneAmount ? Number(milestoneAmount) : 0;
+            if (pct == null && !amt) return;
             await fetch(`${apiBase}/milestones`, {
               method: "POST", credentials: "include",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: milestoneName, amount: Number(milestoneAmount) }),
+              body: JSON.stringify({
+                name: milestoneName,
+                amount: pct != null && Number.isFinite(pct) ? 0 : amt,
+                percent: pct != null && Number.isFinite(pct) ? pct : undefined,
+              }),
             });
             setMilestoneName("");
             setMilestoneAmount("");
+            setMilestonePercent("");
             await refresh();
           }}
         >

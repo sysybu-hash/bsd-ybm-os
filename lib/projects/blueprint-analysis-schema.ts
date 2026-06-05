@@ -8,7 +8,10 @@ export const blueprintTaskSchema = z.object({
 
 export const blueprintMilestoneSchema = z.object({
   name: z.string().min(1),
-  amount: z.union([z.number(), z.string()]),
+  /** אחוז מחוזה (0–100) — מועדף */
+  percent: z.union([z.number(), z.string()]).optional(),
+  /** סכום בשקלים — רק אם ידוע סכום מוחלט */
+  amount: z.union([z.number(), z.string()]).optional(),
 });
 
 export const blueprintBoqLineSchema = z.object({
@@ -44,9 +47,12 @@ export function parseBlueprintAnalysis(raw: Record<string, unknown>): BlueprintA
     }).filter((t) => t.name.length > 0),
     milestones: milestonesRaw.map((m) => {
       const row = m as Record<string, unknown>;
+      const pctRaw = row.percent ?? row.percentage ?? row.share;
+      const amountRaw = row.amount ?? row.amountIls ?? row.value;
       return {
         name: String(row.name ?? "").trim(),
-        amount: row.amount ?? row.value ?? 0,
+        percent: pctRaw != null ? pctRaw : undefined,
+        amount: amountRaw != null ? amountRaw : undefined,
       };
     }).filter((m) => m.name.length > 0),
     boqLineItems: boqRaw.map((b) => {

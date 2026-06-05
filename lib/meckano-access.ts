@@ -65,23 +65,17 @@ export async function getAuthorizedMeckanoOrganizationId(session: SessionLike) {
   return (await canAccessMeckano(session)) ? organizationId : null;
 }
 
-/**
- * Fetches attendance logs from Meckano API (mocked for now).
- * In production, this would call Meckano's reports/get_attendance endpoint.
- */
+/** Fetches attendance logs from Meckano API for a project with a linked zone. */
 export async function getMeckanoAttendanceForProject(projectId: string, organizationId: string) {
-  // 1. Find the linked MeckanoZone
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: { meckanoZone: true }
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { meckanoApiKey: true },
   });
+  const apiKey = org?.meckanoApiKey?.trim() || env.MECKANO_API_KEY?.trim();
+  if (!apiKey) return [];
 
-  if (!project || !project.meckanoZoneId) return [];
-
-  // 2. Mock some attendance data based on the zone
-  // In a real implementation, we would use env.MECKANO_API_KEY
-  return [
-    { id: 1, employeeName: 'משה כהן', date: new Date().toISOString(), hours: 8.5, status: 'חתימה בשטח' },
-    { id: 2, employeeName: 'אבי לוי', date: new Date().toISOString(), hours: 7.2, status: 'חתימה בשטח' },
-  ];
+  const { getMeckanoAttendanceForProject: fetchAttendance } = await import(
+    "@/lib/meckano/attendance"
+  );
+  return fetchAttendance(projectId, organizationId, apiKey);
 }

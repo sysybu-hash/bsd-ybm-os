@@ -13,7 +13,7 @@ import CrmTableWidget, { type OpenWorkspaceWidgetFn } from "@/components/os/widg
 import ErpFileArchiveWidget from "@/components/os/widgets/ErpFileArchiveWidget";
 import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
 import SettingsWidget from "@/components/os/widgets/SettingsWidget";
-import MeckanoReportsWidget from "@/components/os/widgets/MeckanoReportsWidget";
+import MeckanoHubWidget from "@/components/os/widgets/MeckanoHubWidget";
 import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
 import GoogleCalendarWidget from "@/components/os/widgets/GoogleCalendarWidget";
 import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
@@ -71,7 +71,7 @@ export function WidgetContent({
   if (widget.type === "appBuilder") return <AppBuilderWidget />;
   if (widget.type === "aiChatFull") return <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "settings") return <SettingsWidget />;
-  if (widget.type === "meckanoReports") return <MeckanoReportsWidget />;
+  if (widget.type === "meckanoReports") return <MeckanoHubWidget />;
   if (widget.type === "googleDrive") return <GoogleDriveWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "googleCalendar") return <GoogleCalendarWidget openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "notebookLM") return <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
