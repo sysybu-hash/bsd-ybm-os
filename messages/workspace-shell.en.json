@@ -921,6 +921,33 @@
       "platformAdmin": "Admin",
       "adminFull": "Full admin"
     },
+    "utilityRail": {
+      "title": "Utilities",
+      "closeAria": "Close utilities panel",
+      "tabs": {
+        "zmanim": "Daily times",
+        "calculator": "Calculator",
+        "currency": "Currency"
+      },
+      "zmanim": {
+        "openFullWidget": "Open full calendar"
+      },
+      "calculator": {
+        "basic": "Basic",
+        "scientific": "Scientific"
+      },
+      "currency": {
+        "loading": "Loading rates…",
+        "loadFailed": "Failed to load exchange rates",
+        "refresh": "Refresh",
+        "from": "From",
+        "to": "To",
+        "amount": "Amount",
+        "result": "Result",
+        "swap": "Swap currencies",
+        "updated": "Rates updated for {date}"
+      }
+    },
     "page": {
       "loading": "Loading workspace…",
       "systemReady": "System ready",

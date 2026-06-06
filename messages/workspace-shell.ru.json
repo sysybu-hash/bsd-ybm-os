@@ -921,6 +921,33 @@
       "platformAdmin": "Админ",
       "adminFull": "Полный админ"
     },
+    "utilityRail": {
+      "title": "Утилиты",
+      "closeAria": "Закрыть панель утилит",
+      "tabs": {
+        "zmanim": "Время дня",
+        "calculator": "Калькулятор",
+        "currency": "Валюта"
+      },
+      "zmanim": {
+        "openFullWidget": "Открыть полный календарь"
+      },
+      "calculator": {
+        "basic": "Обычный",
+        "scientific": "Научный"
+      },
+      "currency": {
+        "loading": "Загрузка курсов…",
+        "loadFailed": "Не удалось загрузить курсы",
+        "refresh": "Обновить",
+        "from": "Из",
+        "to": "В",
+        "amount": "Сумма",
+        "result": "Результат",
+        "swap": "Поменять валюты",
+        "updated": "Курсы на {date}"
+      }
+    },
     "page": {
       "loading": "Загрузка рабочей области…",
       "systemReady": "Система готова",

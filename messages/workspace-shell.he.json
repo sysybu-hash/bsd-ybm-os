@@ -921,6 +921,33 @@
       "platformAdmin": "ניהול",
       "adminFull": "ניהול מלא"
     },
+    "utilityRail": {
+      "title": "כלי עזר",
+      "closeAria": "סגור פאנל כלי עזר",
+      "tabs": {
+        "zmanim": "זמני היום",
+        "calculator": "מחשבון",
+        "currency": "המרת מטבע"
+      },
+      "zmanim": {
+        "openFullWidget": "פתח לוח מלא"
+      },
+      "calculator": {
+        "basic": "רגיל",
+        "scientific": "מדעי"
+      },
+      "currency": {
+        "loading": "טוען שערים…",
+        "loadFailed": "שגיאה בטעינת שערי מטבע",
+        "refresh": "רענון",
+        "from": "ממטבע",
+        "to": "למטבע",
+        "amount": "סכום",
+        "result": "תוצאה",
+        "swap": "החלף מטבעות",
+        "updated": "שערים מעודכנים ל-{date}"
+      }
+    },
     "page": {
       "loading": "טוען סביבת עבודה…",
       "systemReady": "המערכת מוכנה לעבודה",

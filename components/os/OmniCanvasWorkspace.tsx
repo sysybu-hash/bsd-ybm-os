@@ -21,6 +21,7 @@ import FileDropzone from "@/components/os/FileDropzone";
 import KnowledgeVaultWorkspaceBridge from "@/components/os/KnowledgeVaultWorkspaceBridge";
 import PwaInstallBanner from "@/components/os/system/PwaInstallBanner";
 import PasskeyOfferModal from "@/components/auth/PasskeyOfferModal";
+import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityRail";
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
@@ -88,18 +89,21 @@ function OmniCanvasSidebarRail({
 function OmniCanvasWorkspaceInset({
   widgetsCount,
   sidebarRailVisible,
+  utilityRailOpen,
   children,
 }: {
   widgetsCount: number;
   sidebarRailVisible: boolean;
+  utilityRailOpen: boolean;
   children: React.ReactNode;
 }) {
   const { editMode } = useLauncherConfig();
   const padSidebar = sidebarRailVisible && !(editMode && widgetsCount === 0);
+  const padUtility = utilityRailOpen;
 
   return (
     <div
-      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""} ${padUtility ? "md:pe-[calc(var(--os-utility-rail-panel-width)+var(--os-utility-rail-tab-width)+var(--os-sidebar-gap))]" : ""}`}
     >
       {children}
     </div>
@@ -107,6 +111,7 @@ function OmniCanvasWorkspaceInset({
 }
 
 export default function OmniCanvasWorkspace() {
+  const [utilityRailOpen, setUtilityRailOpen] = React.useState(false);
   const s = useOmniCanvasState();
   const {
     t, dir,
@@ -205,7 +210,19 @@ export default function OmniCanvasWorkspace() {
         sidebarAria={t("workspaceWidgets.sidebar.aria")}
       />
 
-      <OmniCanvasWorkspaceInset widgetsCount={widgets.length} sidebarRailVisible={sidebarRailVisible}>
+      <WorkspaceUtilityRail
+        openWidget={(type) => {
+          openWidget(type);
+          setUtilityRailOpen(false);
+        }}
+        onOpenChange={setUtilityRailOpen}
+      />
+
+      <OmniCanvasWorkspaceInset
+        widgetsCount={widgets.length}
+        sidebarRailVisible={sidebarRailVisible}
+        utilityRailOpen={utilityRailOpen}
+      >
         <WorkspaceNavigationProvider>
           <Suspense fallback={null}>
             <OmniCanvasWorkspaceBody
