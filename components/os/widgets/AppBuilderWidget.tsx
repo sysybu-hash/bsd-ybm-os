@@ -114,14 +114,17 @@ export default function AppBuilderWidget() {
 
   // previewContent is used only on mobile (build/preview toggle)
   const previewContent = (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {previewToolbar}
-      {noCodeCanvas ?? (
-        <DynamicSandpackRenderer
-          key={`sandbox-mobile-${previewVersion}`}
-          code={generatedCode ?? SANDPACK_PLACEHOLDER}
-        />
-      )}
+      <div className="relative min-h-0 flex-1">
+        {noCodeCanvas ?? (
+          <DynamicSandpackRenderer
+            key={`sandbox-mobile-${previewVersion}`}
+            code={generatedCode ?? SANDPACK_PLACEHOLDER}
+            className="absolute inset-0"
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -143,7 +146,12 @@ export default function AppBuilderWidget() {
   );
 
   return (
-    <div data-widget-sticky-chrome className="flex flex-row w-full h-full min-h-0 min-w-0 overflow-hidden bg-surface-bg" dir={dir}>
+    <div
+      data-widget-sticky-chrome
+      data-app-builder-root
+      className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden bg-surface-bg"
+      dir={dir}
+    >
 
       {/* RIGHT PANE (Builder / Chat): Fixed width on desktop, hidden on mobile */}
       <div className="hidden md:flex flex-col w-[350px] shrink-0 h-full min-h-0 border-s border-border-main">
@@ -163,14 +171,15 @@ export default function AppBuilderWidget() {
           {mobilePane === "build" ? buildContent : previewContent}
         </div>
 
-        {/* Desktop: toolbar + Sandpack fill the pane directly */}
-        <div className="hidden md:flex flex-col flex-1 min-h-0">
+        {/* Desktop: toolbar + preview fill remaining height */}
+        <div className="hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
           {previewToolbar}
-          <div className="flex flex-col flex-1 min-h-0 p-4">
+          <div className="relative min-h-0 flex-1 p-2">
             {noCodeCanvas ?? (
               <DynamicSandpackRenderer
                 key={`sandbox-${previewVersion}`}
                 code={generatedCode ?? SANDPACK_PLACEHOLDER}
+                className="absolute inset-0"
               />
             )}
           </div>

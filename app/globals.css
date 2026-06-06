@@ -802,6 +802,21 @@
   :root {
     --workspace-inset-bottom: var(--desktop-dock-clearance);
   }
+
+  /* Hub tabs (e.g. AI app builder): nested sticky chrome fills tab pane height */
+  [data-widget-sticky-chrome] > [data-widget-scroll-pane] {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+
+  [data-widget-scroll-pane] > [data-app-builder-root] {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+  }
 }
 
 .os-floating-panel--maximized {

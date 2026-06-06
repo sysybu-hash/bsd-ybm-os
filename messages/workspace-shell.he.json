@@ -934,7 +934,8 @@
       },
       "calculator": {
         "basic": "רגיל",
-        "scientific": "מדעי"
+        "scientific": "מדעי",
+        "display": "תצוגת מחשבון"
       },
       "currency": {
         "loading": "טוען שערים…",

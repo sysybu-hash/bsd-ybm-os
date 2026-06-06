@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, RefreshCw } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
@@ -9,8 +9,13 @@ import { useExchangeRates } from "@/hooks/use-exchange-rates";
 
 const R = "workspaceWidgets.utilityRail.currency";
 
-export default function CurrencyConverterPanel() {
+type Props = {
+  autoFocus?: boolean;
+};
+
+export default function CurrencyConverterPanel({ autoFocus }: Props) {
   const { t, locale } = useI18n();
+  const amountRef = useRef<HTMLInputElement>(null);
   const [from, setFrom] = useState("ILS");
   const [to, setTo] = useState("USD");
   const [amount, setAmount] = useState("100");
@@ -32,6 +37,12 @@ export default function CurrencyConverterPanel() {
       currency,
       maximumFractionDigits: 2,
     }).format(value);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = window.requestAnimationFrame(() => amountRef.current?.focus());
+    return () => window.cancelAnimationFrame(id);
+  }, [autoFocus]);
 
   if (loading && !data) {
     return <WidgetState variant="loading" message={t(`${R}.loading`)} />;
@@ -95,12 +106,18 @@ export default function CurrencyConverterPanel() {
       <label className="flex flex-col gap-1 text-xs font-medium">
         {t(`${R}.amount`)}
         <input
+          ref={amountRef}
           type="text"
           inputMode="decimal"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm font-mono"
+          onChange={(e) => {
+            const raw = e.target.value.replace(/,/g, "");
+            if (raw === "" || /^\d*\.?\d*$/.test(raw)) setAmount(raw);
+          }}
+          className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm font-mono outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20"
           dir="ltr"
+          aria-label={t(`${R}.amount`)}
+          autoComplete="off"
         />
       </label>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { evalExpression, evalScientificExpression } from "@/lib/calculator/eval-expression";
 import type { CalcMode } from "@/lib/utility-rail/prefs";
@@ -11,12 +11,20 @@ const R = "workspaceWidgets.utilityRail.calculator";
 type Props = {
   mode: CalcMode;
   onModeChange: (mode: CalcMode) => void;
+  autoFocus?: boolean;
 };
 
-export default function CalculatorUtilityPanel({ mode, onModeChange }: Props) {
+export default function CalculatorUtilityPanel({ mode, onModeChange, autoFocus }: Props) {
   const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [expression, setExpression] = useState("");
   const [history, setHistory] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(id);
+  }, [autoFocus, mode]);
 
   const evaluate = useCallback(
     (expr: string) => {
@@ -90,12 +98,28 @@ export default function CalculatorUtilityPanel({ mode, onModeChange }: Props) {
         </button>
       </div>
 
-      <div
-        className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-end font-mono text-xl font-bold tabular-nums break-all min-h-[3rem]"
+      <input
+        ref={inputRef}
+        type="text"
+        value={expression}
+        onChange={(e) => setExpression(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleKey("=");
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            handleKey("C");
+          }
+        }}
+        placeholder="0"
         dir="ltr"
-      >
-        {expression || "0"}
-      </div>
+        inputMode={mode === "scientific" ? "text" : "decimal"}
+        aria-label={t(`${R}.display`)}
+        autoComplete="off"
+        spellCheck={false}
+        className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-end font-mono text-xl font-bold tabular-nums break-all min-h-[3rem] outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20"
+      />
 
       {history.length > 0 ? (
         <div className="space-y-0.5 text-xs text-[color:var(--foreground-muted)]" dir="ltr">

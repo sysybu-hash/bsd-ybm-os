@@ -16,23 +16,18 @@ import CurrencyConverterPanel from "./panels/CurrencyConverterPanel";
 
 type Props = {
   openWidget: (type: WidgetType) => void;
-  onOpenChange?: (open: boolean) => void;
 };
 
-export default function WorkspaceUtilityRail({ openWidget, onOpenChange }: Props) {
+export default function WorkspaceUtilityRail({ openWidget }: Props) {
   const [prefs] = useState(() => readUtilityRailPrefs());
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<UtilityRailTab | null>(null);
   const [calcMode, setCalcMode] = useState<CalcMode>(prefs.calcMode);
 
-  const setPanelOpen = useCallback(
-    (next: boolean) => {
-      setOpen(next);
-      onOpenChange?.(next);
-      if (!next) setActiveTab(null);
-    },
-    [onOpenChange],
-  );
+  const setPanelOpen = useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) setActiveTab(null);
+  }, []);
 
   const handleTabClick = useCallback(
     (tab: UtilityRailTab) => {
@@ -42,10 +37,17 @@ export default function WorkspaceUtilityRail({ openWidget, onOpenChange }: Props
       }
       setActiveTab(tab);
       setOpen(true);
-      onOpenChange?.(true);
       writeUtilityRailPrefs({ lastTab: tab });
     },
-    [activeTab, open, onOpenChange, setPanelOpen],
+    [activeTab, open, setPanelOpen],
+  );
+
+  const handleOpenFullWidget = useCallback(
+    (type: WidgetType) => {
+      setPanelOpen(false);
+      openWidget(type);
+    },
+    [openWidget, setPanelOpen],
   );
 
   const handleCalcModeChange = useCallback((mode: CalcMode) => {
@@ -58,12 +60,16 @@ export default function WorkspaceUtilityRail({ openWidget, onOpenChange }: Props
       <div className="pointer-events-auto flex h-full flex-col items-center justify-center gap-1">
         <UtilityTabPanel open={open} activeTab={activeTab} onClose={() => setPanelOpen(false)}>
           {activeTab === "zmanim" ? (
-            <ZmanimUtilityPanel onOpenFullWidget={() => openWidget("jewishCalendar")} />
+            <ZmanimUtilityPanel onOpenFullWidget={() => handleOpenFullWidget("jewishCalendar")} />
           ) : null}
           {activeTab === "calculator" ? (
-            <CalculatorUtilityPanel mode={calcMode} onModeChange={handleCalcModeChange} />
+            <CalculatorUtilityPanel
+              mode={calcMode}
+              onModeChange={handleCalcModeChange}
+              autoFocus={open}
+            />
           ) : null}
-          {activeTab === "currency" ? <CurrencyConverterPanel /> : null}
+          {activeTab === "currency" ? <CurrencyConverterPanel autoFocus={open} /> : null}
         </UtilityTabPanel>
         <UtilityTabStrip activeTab={activeTab} open={open} onTabClick={handleTabClick} />
       </div>

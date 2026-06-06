@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 interface DynamicSandpackRendererProps {
   /** Raw React component source (JSX/TSX). Must default-export a component. */
   code: string;
+  className?: string;
 }
 
 /**
@@ -66,8 +67,9 @@ function buildSrcDoc(code: string): string {
     <script src="${REACT_DOM_CDN}" crossorigin></script>
     <script src="${BABEL_CDN}"></script>
     <style>
-      html, body, #root { height: 100%; margin: 0; }
-      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      html, body { margin: 0; min-height: 100%; height: auto; }
+      #root { min-height: 100%; }
+      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: auto; }
     </style>
   </head>
   <body>
@@ -98,7 +100,7 @@ function buildSrcDoc(code: string): string {
 </html>`;
 }
 
-export function DynamicSandpackRenderer({ code }: DynamicSandpackRendererProps) {
+export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpackRendererProps) {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -122,7 +124,9 @@ export function DynamicSandpackRenderer({ code }: DynamicSandpackRendererProps) 
   const showError = problem != null || runtimeError != null;
 
   return (
-    <div className="relative w-full h-full flex-1 flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-border-main">
+    <div
+      className={`relative flex min-h-[240px] w-full flex-1 flex-col overflow-hidden rounded-lg border border-border-main bg-white ${className}`}
+    >
       {!problem && (
         <iframe
           ref={iframeRef}

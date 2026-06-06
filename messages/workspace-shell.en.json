@@ -934,7 +934,8 @@
       },
       "calculator": {
         "basic": "Basic",
-        "scientific": "Scientific"
+        "scientific": "Scientific",
+        "display": "Calculator display"
       },
       "currency": {
         "loading": "Loading rates…",
