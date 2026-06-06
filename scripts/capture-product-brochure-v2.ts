@@ -33,8 +33,8 @@ type ShotSpec = {
   captureSelector?: string;
   /** המתנה נוספת ספציפית — סלקטור שצריך להופיע אחרי readySelector */
   extraReadySelector?: string;
-  /** מספר התמונות שצריכות להיטען לפני הצילום (אופציונלי) */
-  minImagesLoaded?: number;
+  /** הכנה לפני הצילום (פתיחת טאב, פאנל כלי עזר וכו') */
+  beforeCapture?: (page: Page) => Promise<void>;
 };
 
 const PUBLIC_SHOT: ShotSpec = {
@@ -120,8 +120,38 @@ const AUTH_SHOTS: ShotSpec[] = [
     url: "/?w=aiHub&tab=builder",
     requiresAuth: true,
     readySelector: "[data-widget-shell]",
-    extraReadySelector: '[role="tablist"]',
+    extraReadySelector: "[data-app-builder-root]",
     captureSelector: "[data-widget-shell]",
+    beforeCapture: async (page) => {
+      await page
+        .getByRole("tab", { name: /מחולל אפליקציות|App Generator|Генератор/i })
+        .click()
+        .catch(() => {});
+      await page.locator("[data-app-builder-root]").waitFor({ state: "visible", timeout: 30_000 });
+      await page
+        .locator("[data-app-builder-root] iframe")
+        .first()
+        .waitFor({ state: "visible", timeout: 45_000 })
+        .catch(() => {});
+      await page.waitForTimeout(2500);
+    },
+  },
+  {
+    file: "14-utility-rail-calculator.png",
+    url: "/",
+    requiresAuth: true,
+    readySelector: '[data-testid="launcher-zone-quickGrid"]',
+    readyTimeoutMs: 60_000,
+    beforeCapture: async (page) => {
+      const calcTab = page.getByRole("tab", { name: /מחשבון|Calculator|Калькулятор/i });
+      await calcTab.waitFor({ state: "visible", timeout: 15_000 });
+      await calcTab.click();
+      await page.locator(".os-utility-rail-panel").waitFor({ state: "visible", timeout: 15_000 });
+      await page
+        .locator(".os-utility-rail-panel input")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 });
+    },
   },
 ];
 
@@ -261,6 +291,13 @@ async function runShot(page: Page, shot: ShotSpec) {
   // one more round in case data hydration triggered new spinners
   await waitForLoadingGone(page, 10_000);
   await page.waitForTimeout(800);
+
+  if (shot.beforeCapture) {
+    await shot.beforeCapture(page);
+    await injectStableCss(page);
+    await waitForLoadingGone(page, 10_000);
+    await page.waitForTimeout(600);
+  }
 
   if (shot.captureSelector) {
     const target = page.locator(shot.captureSelector).first();

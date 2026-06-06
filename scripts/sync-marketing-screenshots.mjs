@@ -6,11 +6,13 @@ import path from "node:path";
 
 const SRC_DIR = path.join(process.cwd(), "assets", "product-brochure-v2");
 const DEST_DIR = path.join(process.cwd(), "public", "screenshots");
+const HERO_DIR = path.join(process.cwd(), "public", "marketing");
 
 const MAP = [
   ["02-workspace-home.png", "workspace-home.png"],
   ["07-ai-hub.png", "ai-hub.png"],
   ["13-app-builder.png", "app-builder.png"],
+  ["14-utility-rail-calculator.png", "utility-rail-calculator.png"],
   ["03-finance-hub.png", "finance-hub.png"],
   ["01-marketing-landing.png", "marketing-landing.png"],
 ];
@@ -36,4 +38,16 @@ if (copied === 0) {
   process.exitCode = 1;
 } else {
   console.log(`\n${copied} קבצים ב-${DEST_DIR}`);
+}
+
+fs.mkdirSync(HERO_DIR, { recursive: true });
+let heroCopied = 0;
+for (const file of fs.readdirSync(SRC_DIR).filter((name) => name.endsWith(".png"))) {
+  const src = path.join(SRC_DIR, file);
+  const dest = path.join(HERO_DIR, file);
+  fs.copyFileSync(src, dest);
+  heroCopied++;
+}
+if (heroCopied > 0) {
+  console.log(`${heroCopied} קבצים ל-hero slideshow ב-${HERO_DIR}`);
 }

@@ -28,7 +28,7 @@ export const PRODUCT_BROCHURE_SCREENSHOTS: ProductBrochureScreenshot[] = [
     captionHe: "שולחן עבודה",
     titleHe: "מרחב העבודה שלך",
     subtitleHe: "רשת Hub מרכזית, סרגל יישומים וחלונות צפים — הכל במקום אחד.",
-    highlights: ["6 אריחי ליבה", "Launcher מותאם אישית", "Omnibar לפקודות מהירות"],
+    highlights: ["6 אריחי ליבה", "לשוניות כלי עזר", "Omnibar לפקודות מהירות"],
   },
   {
     file: "finance-hub.png",

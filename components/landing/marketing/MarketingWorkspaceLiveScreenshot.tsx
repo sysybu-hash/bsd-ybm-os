@@ -24,7 +24,7 @@ export default function MarketingWorkspaceLiveScreenshot({ className = "" }: Pro
       </div>
       <div className="relative min-h-0 flex-1 bg-slate-950">
         <Image
-          src="/screenshots/ai-hub.png"
+          src="/screenshots/app-builder.png"
           alt={t("marketingHome.panels.demo.workspaceScreenshotAlt")}
           fill
           className="object-cover object-[center_top]"
