@@ -54,11 +54,8 @@ export default function WorkspaceUtilityRail({ openWidget, onOpenChange }: Props
   }, []);
 
   return (
-    <div
-      className="pointer-events-none fixed z-[1185] flex items-center
-        inset-inline-end-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)]"
-    >
-      <div className="pointer-events-auto flex h-full items-center">
+    <div className="os-utility-rail-host pointer-events-none fixed z-[1185]">
+      <div className="pointer-events-auto flex h-full flex-col items-center justify-center gap-1">
         <UtilityTabPanel open={open} activeTab={activeTab} onClose={() => setPanelOpen(false)}>
           {activeTab === "zmanim" ? (
             <ZmanimUtilityPanel onOpenFullWidget={() => openWidget("jewishCalendar")} />

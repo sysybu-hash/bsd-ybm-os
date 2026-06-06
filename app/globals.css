@@ -842,6 +842,18 @@
   outline: none;
 }
 
+/* לשוניות כלי עזר — צד שמאל ויזואלי ב-RTL (inline-end) */
+.os-utility-rail-host {
+  inset-inline-end: 0;
+  top: var(--workspace-inset-top);
+  bottom: var(--workspace-inset-bottom);
+  width: var(--os-utility-rail-tab-width);
+}
+
+.os-utility-rail-tab {
+  box-shadow: 3px 0 14px rgba(0, 0, 0, 0.12);
+}
+
 @keyframes landing-fade-up {
   from {
     opacity: 0;
