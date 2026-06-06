@@ -9,6 +9,7 @@ import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
 import StructuredDataScript from "@/components/seo/StructuredDataScript";
 import { MarketingAnalyticsClient } from "@/components/layout/MarketingAnalyticsClient";
 import MarketingLayoutExtras from "@/components/layout/MarketingLayoutExtras";
+import { MARKETING_HERO_CRITICAL_INLINE_CSS } from "@/lib/marketing/hero-critical-inline-css";
 
 type Props = Readonly<{
   locale: AppLocale;
@@ -28,6 +29,7 @@ export default function MarketingSiteLayout({ locale, children }: Props) {
       lang={locale}
     >
       <MarketingHeroPreload />
+      <style dangerouslySetInnerHTML={{ __html: MARKETING_HERO_CRITICAL_INLINE_CSS }} />
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <I18nProvider locale={locale} messages={messages}>
           <MarketingAnalyticsClient />

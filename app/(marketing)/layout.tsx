@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
-import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
 
-/** Layout רזה לנתיבי שיווק (preview) — preload LCP poster */
+/** Layout רזה לנתיבי שיווק (preview) */
 export default function MarketingRouteLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <>
-      <MarketingHeroPreload />
-      {children}
-    </>
-  );
+  return children;
 }

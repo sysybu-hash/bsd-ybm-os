@@ -40,7 +40,7 @@ export default function DeferUntilVisible({
   }, [rootMargin]);
 
   return (
-    <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>
+    <div ref={ref} style={{ minHeight }}>
       {visible ? children : fallback}
     </div>
   );

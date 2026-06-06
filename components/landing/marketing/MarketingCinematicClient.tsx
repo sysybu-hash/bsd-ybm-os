@@ -133,8 +133,8 @@ export default function MarketingCinematicClient({ hero }: Props) {
             )}
             <DeferUntilVisible
               rootMargin="-45% 0px 0px 0px"
-              minHeight="28rem"
-              fallback={<div className="min-h-[28rem] w-full" aria-hidden />}
+              minHeight="36rem"
+              fallback={<div className="min-h-[36rem] w-full" aria-hidden data-marketing-live-demo-skeleton />}
             >
               <MarketingLiveDemoSection />
             </DeferUntilVisible>

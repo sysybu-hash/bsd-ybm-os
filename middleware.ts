@@ -57,7 +57,11 @@ export default async function middleware(request: NextRequest, _event: NextFetch
 
   if (pathname === "/") {
     const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
-    if (secret) {
+    const hasSessionCookie =
+      request.cookies.has("next-auth.session-token") ||
+      request.cookies.has("__Secure-next-auth.session-token") ||
+      request.cookies.has("__Host-next-auth.session-token");
+    if (secret && hasSessionCookie) {
       const forwardedProto = request.nextUrl.protocol === "https:" ? "https" : request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
       const secureCookie =
         request.nextUrl.protocol === "https:" ||

@@ -9,7 +9,8 @@ export default function MarketingHeroPoster() {
           alt=""
           width={1920}
           height={1080}
-          decoding="sync"
+          sizes="100vw"
+          decoding="async"
           fetchPriority="high"
           className="mkt-video-poster-img absolute inset-0 h-full w-full object-cover"
         />

@@ -5,8 +5,10 @@ import { buildRootMetadata } from "@/lib/site-metadata";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
-  display: "swap",
+  display: "optional",
+  preload: true,
   adjustFontFallback: true,
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
   variable: "--font-heebo",
 });
 

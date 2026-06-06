@@ -25,14 +25,25 @@ function PostHogPageView({ enabled }: { enabled: boolean }) {
 /** PostHog רק אחרי consent — בלי SessionProvider */
 export function MarketingAnalyticsClient() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+  const [idleReady, setIdleReady] = useState(false);
+
+  useEffect(() => {
+    const run = () => setIdleReady(true);
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run, { timeout: 5000 });
+    } else {
+      globalThis.setTimeout(run, 3500);
+    }
+  }, []);
 
   useEffect(() => subscribeAnalyticsConsent(setAnalyticsAllowed), []);
 
   useEffect(() => {
-    if (analyticsAllowed) initPostHog({ skipConsentCheck: true });
-  }, [analyticsAllowed]);
+    if (analyticsAllowed && idleReady) initPostHog({ skipConsentCheck: true });
+  }, [analyticsAllowed, idleReady]);
 
-  if (!getPostHogProjectKey() || !analyticsAllowed) return null;
+  if (!idleReady || !getPostHogProjectKey() || !analyticsAllowed) return null;
 
   return (
     <PostHogProvider client={posthog}>

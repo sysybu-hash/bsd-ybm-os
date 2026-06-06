@@ -1,8 +1,24 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AppLocale } from "@/lib/i18n/config";
 import { isRtlLocale } from "@/lib/i18n/config";
 import type { MessageTree } from "@/lib/i18n/keys";
+
+function HeroCtaChevron({ rtl }: { rtl: boolean }) {
+  return (
+    <svg
+      className={`h-5 w-5 transition-transform group-hover:-translate-x-0.5 ${rtl ? "rotate-180" : ""}`}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path
+        fillRule="evenodd"
+        d="M7.21 14.77a.75.75 0 01.02-1.06L10.94 10 7.23 6.29a.75.75 0 111.06-1.06l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.08-.02z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
 
 type Props = Readonly<{
   locale: AppLocale;
@@ -22,7 +38,6 @@ function t(messages: MessageTree, key: string): string {
 /** תוכן Hero בשרת — LCP טקסטואלי + poster (לא מחכה ל-hydration של Omnibar). */
 export default function HeroSectionStatic({ locale, messages }: Props) {
   const dir = isRtlLocale(locale) ? "rtl" : "ltr";
-  const CtaIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   return (
     <section
@@ -51,7 +66,7 @@ export default function HeroSectionStatic({ locale, messages }: Props) {
             className="group inline-flex items-center justify-center gap-2 rounded-2xl mkt-btn-primary px-8 py-4 text-lg font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {t(messages, "marketingHome.hero.ctaRegister")}
-            <CtaIcon className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 rtl:rotate-180" aria-hidden />
+            <HeroCtaChevron rtl={dir === "rtl"} />
           </Link>
           <Link
             href="/login"
