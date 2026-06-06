@@ -2,153 +2,128 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, X } from "lucide-react";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
+import {
+  detectPwaInstallState,
+  isIosSafariLike,
+  isStandaloneDisplay,
+} from "@/lib/pwa/install-state";
 
 const DISMISS_KEY = "bsd-ybm-pwa-install-dismissed";
-/** מפתח ישן — נשמר לתאימות לאחור */
 const LEGACY_DISMISS_KEY = "bsd:pwa-install-dismissed";
 const LEGACY_SEEN_KEY = "bsd-ybm-pwa-install-seen";
-const WAS_INSTALLED_KEY = "bsd-ybm-pwa-was-installed";
 
-function isStandaloneDisplay(): boolean {
-  if (typeof window === "undefined") return false;
-  const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
-}
-
-function readStorageFlag(key: string): boolean {
+function readDismissed(): boolean {
   try {
-    return localStorage.getItem(key) === "1";
+    return sessionStorage.getItem(DISMISS_KEY) === "1";
   } catch {
     return false;
   }
 }
 
-function writeStorageFlag(key: string): void {
+function markDismissed(): void {
   try {
-    localStorage.setItem(key, "1");
+    sessionStorage.setItem(DISMISS_KEY, "1");
   } catch {
-    /* private mode / quota */
+    /* private mode */
   }
 }
 
-function removeStorageFlag(key: string): void {
+function clearDismissed(): void {
   try {
-    localStorage.removeItem(key);
+    sessionStorage.removeItem(DISMISS_KEY);
+    localStorage.removeItem(DISMISS_KEY);
+    localStorage.removeItem(LEGACY_DISMISS_KEY);
+    localStorage.removeItem(LEGACY_SEEN_KEY);
   } catch {
-    /* private mode / quota */
+    /* private mode */
   }
-}
-
-/** אם הוסרו מהמסך הבית — מאפסים דחייה כדי להציג שוב את ההתקנה */
-function syncInstallRemovalState(): void {
-  const standalone = isStandaloneDisplay();
-  const wasInstalled = readStorageFlag(WAS_INSTALLED_KEY);
-
-  if (standalone) {
-    writeStorageFlag(WAS_INSTALLED_KEY);
-    return;
-  }
-
-  if (wasInstalled) {
-    removeStorageFlag(WAS_INSTALLED_KEY);
-    removeStorageFlag(DISMISS_KEY);
-    removeStorageFlag(LEGACY_DISMISS_KEY);
-    removeStorageFlag(LEGACY_SEEN_KEY);
-  }
-}
-
-function shouldSuppressPrompt(): boolean {
-  if (isStandaloneDisplay()) return true;
-  return readStorageFlag(DISMISS_KEY) || readStorageFlag(LEGACY_DISMISS_KEY);
-}
-
-function markPromptDismissed(): void {
-  writeStorageFlag(DISMISS_KEY);
-}
-
-function isIosDevice(): boolean {
-  const ua = window.navigator.userAgent;
-  return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
 }
 
 export default function PwaInstallBanner() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [installed, setInstalled] = useState<boolean | null>(null);
+  const [nativeInstallOffered, setNativeInstallOffered] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [isIos, setIsIos] = useState(false);
-  const shownThisMount = useRef(false);
+  const wasInstalledRef = useRef(false);
 
-  const revealOnce = useCallback(() => {
-    if (shownThisMount.current) return;
-    if (shouldSuppressPrompt()) return;
+  const refreshInstallState = useCallback(async () => {
+    const state = await detectPwaInstallState();
+    const nowInstalled = state.installed;
 
-    shownThisMount.current = true;
-    setVisible(true);
+    if (wasInstalledRef.current && !nowInstalled) {
+      clearDismissed();
+      setDismissed(false);
+    }
+
+    wasInstalledRef.current = nowInstalled;
+    setInstalled(nowInstalled);
+
+    if (nowInstalled) {
+      setNativeInstallOffered(false);
+    }
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    syncInstallRemovalState();
-    if (shouldSuppressPrompt()) return;
+    setIsIos(isIosSafariLike());
+    setDismissed(readDismissed());
+    void refreshInstallState();
 
-    const ios = isIosDevice();
-    setIsIos(ios);
-    if (ios) {
-      revealOnce();
-      return;
-    }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshInstallState();
+      }
+    };
 
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-      revealOnce();
+    const onPageShow = () => {
+      void refreshInstallState();
+    };
+
+    const onInstalled = () => {
+      wasInstalledRef.current = true;
+      setInstalled(true);
+      setNativeInstallOffered(false);
+    };
+
+    const onDisplayMode = () => {
+      void refreshInstallState();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("appinstalled", onInstalled);
+
+    const mq = window.matchMedia("(display-mode: standalone)");
+    mq.addEventListener("change", onDisplayMode);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("appinstalled", onInstalled);
+      mq.removeEventListener("change", onDisplayMode);
+    };
+  }, [refreshInstallState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (installed) return;
+
+    const onBip = () => {
+      setNativeInstallOffered(true);
     };
 
     window.addEventListener("beforeinstallprompt", onBip);
     return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, [revealOnce]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const onDisplayMode = () => {
-      syncInstallRemovalState();
-      if (isStandaloneDisplay()) {
-        setVisible(false);
-        setDeferred(null);
-      }
-    };
-
-    const mq = window.matchMedia("(display-mode: standalone)");
-    mq.addEventListener("change", onDisplayMode);
-    return () => mq.removeEventListener("change", onDisplayMode);
-  }, []);
+  }, [installed]);
 
   const dismiss = () => {
-    markPromptDismissed();
-    setVisible(false);
-    setDeferred(null);
+    markDismissed();
+    setDismissed(true);
   };
 
-  const install = async () => {
-    if (!deferred) return;
-    await deferred.prompt();
-    const { outcome } = await deferred.userChoice;
-    setDeferred(null);
-    setVisible(false);
-    if (outcome === "accepted") {
-      writeStorageFlag(WAS_INSTALLED_KEY);
-      return;
-    }
-    markPromptDismissed();
-  };
-
-  if (!visible) return null;
+  if (installed === null || installed || dismissed) return null;
+  if (isStandaloneDisplay()) return null;
 
   return (
     <div
@@ -162,17 +137,10 @@ export default function PwaInstallBanner() {
         <p className="mt-1 text-[color:var(--foreground-muted)]">
           {isIos
             ? "ב-Safari: שתף → «הוסף למסך הבית» לחוויית אפליקציה מלאה."
-            : "התקנה מהירה לגישה מהירה, מסך מלא ועבודה יציבה במובייל."}
+            : nativeInstallOffered
+              ? "הדפדפן מציע התקנה — השתמשו בחץ/אייקון ההתקנה בשורת הכתובת או בתפריט (⋮)."
+              : "בתפריט הדפדפן (⋮) בחרו «התקן אפליקציה» או «הוסף למסך הבית»."}
         </p>
-        {!isIos && deferred ? (
-          <button
-            type="button"
-            onClick={() => void install()}
-            className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white"
-          >
-            התקן עכשיו
-          </button>
-        ) : null}
       </div>
       <button
         type="button"
