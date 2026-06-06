@@ -191,22 +191,30 @@ html.light .marketing-cinematic .mkt-hero-blessing {
   font-family: var(--font-heebo), "Heebo", system-ui, sans-serif;
   font-size: clamp(2.25rem, 4.5vw + 1rem, 4.5rem);
   font-weight: 900;
+  /* Dark page: light glow — dark halo matched the bg and hid Hebrew title lines */
   text-shadow:
-    0 2px 24px rgba(2, 6, 23, 0.85),
-    0 0 1px rgba(2, 6, 23, 0.95);
+    0 0 32px rgba(94, 234, 212, 0.45),
+    0 0 64px rgba(165, 180, 252, 0.28),
+    0 2px 12px rgba(0, 0, 0, 0.55);
   letter-spacing: -0.025em;
   line-height: 1.05;
 }
 
 .marketing-cinematic .mkt-hero-title-line1 {
-  color: #2dd4bf;
+  color: #99f6e4;
 }
 
 .marketing-cinematic .mkt-hero-title-line2 {
-  background: linear-gradient(to left, #818cf8, #2dd4bf);
+  background: linear-gradient(to left, #c7d2fe, #5eead4);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+html.light .marketing-cinematic .mkt-hero-title {
+  text-shadow:
+    0 2px 24px rgba(2, 6, 23, 0.12),
+    0 0 1px rgba(2, 6, 23, 0.08);
 }
 
 html.light .marketing-cinematic .mkt-hero-title-line1 {
