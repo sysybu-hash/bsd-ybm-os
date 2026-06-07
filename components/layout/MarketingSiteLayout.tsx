@@ -5,7 +5,6 @@ import { getMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
-import MarketingHeroPreload from "@/components/layout/MarketingHeroPreload";
 import StructuredDataScript from "@/components/seo/StructuredDataScript";
 import { MarketingAnalyticsClient } from "@/components/layout/MarketingAnalyticsClient";
 import MarketingLayoutExtras from "@/components/layout/MarketingLayoutExtras";
@@ -28,7 +27,6 @@ export default function MarketingSiteLayout({ locale, children }: Props) {
       dir={dir}
       lang={locale}
     >
-      <MarketingHeroPreload />
       <style dangerouslySetInnerHTML={{ __html: MARKETING_HERO_CRITICAL_INLINE_CSS }} />
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <I18nProvider locale={locale} messages={messages}>

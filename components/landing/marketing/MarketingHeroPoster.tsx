@@ -1,4 +1,4 @@
-/** Poster ל-LCP — HTML סטטי לפני hydration של VideoBackground */
+/** LCP poster — נטען בנמוך כדי שה-H1 (טקסט) יישאר אלמנט ה-LCP */
 export default function MarketingHeroPoster() {
   return (
     <div className="mkt-video-shell pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
@@ -11,7 +11,8 @@ export default function MarketingHeroPoster() {
           height={1080}
           sizes="100vw"
           decoding="async"
-          fetchPriority="high"
+          loading="lazy"
+          fetchPriority="low"
           className="mkt-video-poster-img absolute inset-0 h-full w-full object-cover"
         />
       </picture>

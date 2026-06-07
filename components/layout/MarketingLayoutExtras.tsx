@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import DeferUntilIdle from "@/components/layout/DeferUntilIdle";
 
 const CookieConsentBanner = dynamic(() => import("@/components/legal/CookieConsentBanner"), {
   ssr: false,
@@ -27,15 +28,15 @@ const AccessibilitySettingsBootstrap = dynamic(
   { ssr: false },
 );
 
-/** עוגיות, משוב, נגישות וטוסטר — אחרי hydration כדי לא להגדיל TBT בדף נחיתה */
+/** עוגיות, משוב, נגישות וטוסטר — אחרי idle כדי לא להגדיל TBT/LCP בדף נחיתה */
 export default function MarketingLayoutExtras() {
   return (
-    <>
+    <DeferUntilIdle timeoutMs={6000}>
       <AccessibilitySettingsBootstrap />
       <CookieConsentBanner />
       <AccessibilityToolbar />
       <SiteFeedbackFab />
       <AppToaster />
-    </>
+    </DeferUntilIdle>
   );
 }

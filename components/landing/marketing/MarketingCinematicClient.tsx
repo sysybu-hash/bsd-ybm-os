@@ -58,14 +58,23 @@ export default function MarketingCinematicClient({ hero }: Props) {
   const { dir, locale, t } = useI18n();
   const [mountOmnibar, setMountOmnibar] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [enableVideoLayer, setEnableVideoLayer] = useState(false);
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!mobile && !reduced) setEnableVideoLayer(true);
+  }, []);
 
   useEffect(() => {
     const run = () => setMountOmnibar(true);
     const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const timeout = mobile ? 5000 : 2500;
     if (typeof w.requestIdleCallback === "function") {
-      w.requestIdleCallback(run, { timeout: 2500 });
+      w.requestIdleCallback(run, { timeout });
     } else {
-      globalThis.setTimeout(run, 1200);
+      globalThis.setTimeout(run, mobile ? 2000 : 1200);
     }
   }, []);
 
@@ -121,7 +130,7 @@ export default function MarketingCinematicClient({ hero }: Props) {
           backgroundColor: "var(--mkt-body-bg)",
         }}
       >
-        <VideoBackground />
+        {enableVideoLayer ? <VideoBackground /> : null}
         <div className="relative z-10">
           <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
           <main className="relative pb-[calc(8rem+env(safe-area-inset-bottom,0px))] md:pb-8">
