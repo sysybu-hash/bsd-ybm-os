@@ -7,8 +7,9 @@ import { MessageSquare, X } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import SiteFeedbackForm from "@/components/feedback/SiteFeedbackForm";
 
-/** ניפוץ אירוע זה פותח את פאנל המשוב — משמש כפתור הלשונית במובייל */
-export const OPEN_FEEDBACK_FAB_EVENT = "bsd-open-feedback-fab";
+import { OPEN_FEEDBACK_FAB_EVENT } from "@/lib/mobile-chrome-events";
+
+export { OPEN_FEEDBACK_FAB_EVENT };
 
 export default function SiteFeedbackFab() {
   const { t } = useI18n();
@@ -30,12 +31,13 @@ export default function SiteFeedbackFab() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="site-feedback-fab fixed start-4 z-[2400] hidden md:flex h-12 w-12 items-center justify-center rounded-full border border-indigo-400/40 bg-indigo-600 text-white shadow-lg shadow-indigo-900/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 md:h-auto md:w-auto md:gap-2 md:px-4 md:py-3 md:text-sm md:font-bold"
+        className="site-feedback-fab fixed start-4 z-[2400] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-400/35 bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 lg:h-auto lg:w-auto lg:gap-2 lg:rounded-2xl lg:px-3.5 lg:py-2.5 lg:text-sm lg:font-bold"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={t("siteFeedback.fabLabel")}
       >
-        <MessageSquare className="h-5 w-5 shrink-0" aria-hidden />
-        <span className="hidden md:inline">{t("siteFeedback.fabLabel")}</span>
+        <MessageSquare className="h-[18px] w-[18px] shrink-0" aria-hidden />
+        <span className="hidden lg:inline">{t("siteFeedback.fabLabel")}</span>
       </button>
 
       {open ? (

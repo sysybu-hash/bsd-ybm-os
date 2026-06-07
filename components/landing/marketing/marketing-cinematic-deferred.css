@@ -251,6 +251,7 @@ html.light .marketing-cinematic .mkt-mobile-menu-panel {
 }
 
 /* מסתיר FAB וסרגל תחתון כשמודאל שיווקי פתוח */
+body.marketing-mobile-overlay-open .mkt-mobile-nav-host,
 body.marketing-mobile-overlay-open .mkt-mobile-nav,
 body.marketing-mobile-overlay-open .site-feedback-fab,
 body.marketing-mobile-overlay-open .accessibility-toolbar-fab {

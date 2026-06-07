@@ -1,7 +1,9 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Home, LayoutGrid, Menu, Mic, Play } from "lucide-react";
+import { Accessibility, Home, LayoutGrid, Menu, MessageSquare, Mic, Play } from "lucide-react";
+import MobileChromeFabButton from "@/components/os/layout/MobileChromeFabButton";
+import { openAccessibilityPanel, openFeedbackFab } from "@/lib/mobile-chrome-events";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 type NavAction =
@@ -83,10 +85,32 @@ export default function MobileBottomNav({
   };
 
   return (
-    <nav
-      className="mkt-mobile-nav fixed inset-x-0 bottom-0 z-50 border-t border-white/10 mkt-glass-strong pb-[max(0.35rem,env(safe-area-inset-bottom))] md:hidden"
-      aria-label={t("marketingHome.cinematic.bottomNav.aria")}
+    <div
+      className="mkt-mobile-nav-host fixed inset-x-0 bottom-0 z-[1285] md:hidden"
+      data-testid="marketing-mobile-bottom-nav"
       dir={dir}
+    >
+      <div
+        className="mkt-mobile-nav-fabs flex items-center justify-between px-2 pb-1"
+        aria-label={t("marketingHome.cinematic.bottomNav.chromeActionsAria")}
+      >
+        <MobileChromeFabButton
+          icon={MessageSquare}
+          label={t("siteFeedback.fabLabel")}
+          onClick={openFeedbackFab}
+          testId="mobile-feedback-fab"
+          variant="accent"
+        />
+        <MobileChromeFabButton
+          icon={Accessibility}
+          label={t("accessibility.toolbar")}
+          onClick={openAccessibilityPanel}
+          testId="mobile-accessibility-fab"
+        />
+      </div>
+    <nav
+      className="mkt-mobile-nav border-t border-white/10 mkt-glass-strong pb-[max(0.35rem,env(safe-area-inset-bottom))]"
+      aria-label={t("marketingHome.cinematic.bottomNav.aria")}
     >
       <div className="mx-auto flex max-w-lg items-end justify-between gap-0 px-2">
         {leftItems.map((item) => (
@@ -114,5 +138,6 @@ export default function MobileBottomNav({
         ))}
       </div>
     </nav>
+    </div>
   );
 }

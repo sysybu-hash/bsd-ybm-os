@@ -283,6 +283,7 @@
       },
       "bottomNav": {
         "aria": "ניווט מהיר בדף",
+        "chromeActionsAria": "משוב ונגישות",
         "home": "בית",
         "demo": "הדגמה",
         "explore": "גלו עוד",

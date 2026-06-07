@@ -849,6 +849,7 @@
     },
     "mobileNav": {
       "aria": "ניווט מהיר במובייל",
+      "chromeActionsAria": "משוב ונגישות",
       "dashboard": "דאשבורד",
       "aiScanner": "סורק AI",
       "aiHub": "AI",

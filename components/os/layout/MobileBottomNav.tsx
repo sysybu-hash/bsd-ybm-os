@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Accessibility, Grid3x3, Layers, MessageSquare, Mic, Shield, X } from "lucide-react";
-import { OPEN_FEEDBACK_FAB_EVENT } from "@/components/feedback/SiteFeedbackFab";
-import { OPEN_ACCESSIBILITY_PANEL_EVENT } from "@/components/os/system/AccessibilityToolbar";
+import MobileChromeFabButton from "@/components/os/layout/MobileChromeFabButton";
+import { openAccessibilityPanel, openFeedbackFab } from "@/lib/mobile-chrome-events";
 import { WidgetType } from "@/hooks/use-window-manager";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
@@ -148,7 +148,7 @@ export default function MobileBottomNav({
       {moreOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-[110] bg-slate-950/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[1284] bg-slate-950/50 backdrop-blur-sm md:hidden"
           aria-label={t("workspaceWidgets.mobileNav.closeMore")}
           onClick={() => setMoreOpen(false)}
         />
@@ -165,34 +165,29 @@ export default function MobileBottomNav({
         />
       ) : null}
 
-      {/* ── עטיפה: קונטיינר fixed שמכיל גם את הלשוניות וגם את הסרגל ── */}
+      {/* ── עטיפה: קונטיינר fixed שמכיל גם את כפתורי FAB וגם את הסרגל ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[100] md:hidden"
+        className="mobile-bottom-nav-host fixed bottom-0 left-0 right-0 z-[1285] md:hidden"
         data-testid="mobile-bottom-nav"
         dir={dir}
       >
-        {/* ── לשוניות FAB מעל הסרגל ── */}
-        <div className="flex items-end justify-between px-1 pointer-events-none" aria-hidden="true">
-          {/* צד שמאל (start) — משוב */}
-          <button
-            type="button"
-            aria-label={t("siteFeedback.fabLabel")}
-            onClick={() => window.dispatchEvent(new Event(OPEN_FEEDBACK_FAB_EVENT))}
-            className="pointer-events-auto flex items-center gap-1 rounded-t-xl border border-b-0 border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-3 py-1.5 text-[9px] font-bold text-[color:var(--foreground-muted)] backdrop-blur-md transition hover:text-indigo-500 active:scale-95"
-          >
-            <MessageSquare size={11} aria-hidden />
-            {t("siteFeedback.fabLabel")}
-          </button>
-          {/* צד ימין (end) — נגישות */}
-          <button
-            type="button"
-            aria-label={t("accessibility.toolbar")}
-            onClick={() => window.dispatchEvent(new Event(OPEN_ACCESSIBILITY_PANEL_EVENT))}
-            className="pointer-events-auto flex items-center gap-1 rounded-t-xl border border-b-0 border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-3 py-1.5 text-[9px] font-bold text-indigo-600 backdrop-blur-md transition hover:text-indigo-500 active:scale-95 dark:text-indigo-400"
-          >
-            {t("accessibility.toolbar")}
-            <Accessibility size={11} aria-hidden />
-          </button>
+        <div
+          className="mobile-bottom-nav-fabs flex items-center justify-between px-2 pb-1"
+          aria-label={t("workspaceWidgets.mobileNav.chromeActionsAria")}
+        >
+          <MobileChromeFabButton
+            icon={MessageSquare}
+            label={t("siteFeedback.fabLabel")}
+            onClick={openFeedbackFab}
+            testId="mobile-feedback-fab"
+            variant="accent"
+          />
+          <MobileChromeFabButton
+            icon={Accessibility}
+            label={t("accessibility.toolbar")}
+            onClick={openAccessibilityPanel}
+            testId="mobile-accessibility-fab"
+          />
         </div>
 
       <nav
@@ -259,7 +254,7 @@ function MoreAppsPanel({
 }) {
   return (
     <div
-      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[111] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
+      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[1286] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
       role="dialog"
       aria-label={t("workspaceWidgets.mobileNav.moreAppsTitle")}
     >

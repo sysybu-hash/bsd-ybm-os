@@ -283,6 +283,7 @@
       },
       "bottomNav": {
         "aria": "Quick page navigation",
+        "chromeActionsAria": "Feedback and accessibility",
         "home": "Home",
         "demo": "Demo",
         "explore": "Explore",

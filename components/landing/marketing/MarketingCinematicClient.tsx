@@ -124,7 +124,7 @@ export default function MarketingCinematicClient({ hero }: Props) {
         <VideoBackground />
         <div className="relative z-10">
           <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
-          <main className="relative pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+          <main className="relative pb-[calc(8rem+env(safe-area-inset-bottom,0px))] md:pb-8">
             {hero}
             {mountOmnibar ? (
               <MarketingOmnibarIsland onLogin={goLogin} onRegister={goRegister} />

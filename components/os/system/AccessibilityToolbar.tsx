@@ -10,7 +10,9 @@ import {
 import AccessibilityPanelContent from "@/components/os/widgets/AccessibilityPanelContent";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
-export const OPEN_ACCESSIBILITY_PANEL_EVENT = "bsd-open-accessibility-panel";
+import { OPEN_ACCESSIBILITY_PANEL_EVENT } from "@/lib/mobile-chrome-events";
+
+export { OPEN_ACCESSIBILITY_PANEL_EVENT };
 
 export default function AccessibilityToolbar() {
   const { t } = useI18n();
@@ -52,13 +54,13 @@ export default function AccessibilityToolbar() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 text-indigo-600 shadow-lg backdrop-blur-md transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
+        className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-indigo-600 shadow-sm backdrop-blur-md transition hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
         aria-label={label}
         aria-expanded={open}
         aria-controls="accessibility-panel-dialog"
         title={label}
       >
-        <Accessibility size={22} aria-hidden />
+        <Accessibility size={18} aria-hidden />
       </button>
       {open ? (
         <>

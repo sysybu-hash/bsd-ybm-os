@@ -4,7 +4,7 @@
 }
 
 body:has(.marketing-cinematic) {
-  --fab-stack-offset: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  --fab-stack-offset: calc(8rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 768px) {
