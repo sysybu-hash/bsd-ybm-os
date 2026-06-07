@@ -127,6 +127,12 @@ jobs:
       - name: Prepare build env
         run: node scripts/ci-prepare-build-env.mjs
 
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Production build
+        run: npm run build
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
