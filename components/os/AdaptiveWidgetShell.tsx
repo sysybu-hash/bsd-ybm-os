@@ -77,12 +77,15 @@ export default function AdaptiveWidgetShell({
       data-scroll-owner="shell"
       ref={shellRef as React.RefObject<HTMLElement>}
       id={id}
-      onMouseDown={onFocus}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        onFocus?.();
+      }}
       className={`workspace-window pointer-events-auto transition-[box-shadow,border-color,transform] duration-200 ${
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
-          ? "workspace-window--mobile flex min-h-0 flex-col fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !z-[950] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full md:flex-none"
+          ? "workspace-window--mobile flex min-h-0 flex-col fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full md:flex-none"
           : "absolute max-w-[100dvw]"
       }`}
       style={

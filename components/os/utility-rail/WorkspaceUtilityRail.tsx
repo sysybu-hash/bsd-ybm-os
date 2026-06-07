@@ -16,9 +16,11 @@ import CurrencyConverterPanel from "./panels/CurrencyConverterPanel";
 
 type Props = {
   openWidget: (type: WidgetType) => void;
+  /** Hide tab strip on mobile while a widget is open — avoids blocking the close button. */
+  suppressOnMobile?: boolean;
 };
 
-export default function WorkspaceUtilityRail({ openWidget }: Props) {
+export default function WorkspaceUtilityRail({ openWidget, suppressOnMobile = false }: Props) {
   const [prefs] = useState(() => readUtilityRailPrefs());
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<UtilityRailTab | null>(null);
@@ -56,7 +58,9 @@ export default function WorkspaceUtilityRail({ openWidget }: Props) {
   }, []);
 
   return (
-    <div className="os-utility-rail-host pointer-events-none fixed z-[1185]">
+    <div
+      className={`os-utility-rail-host pointer-events-none fixed z-[1185] ${suppressOnMobile ? "max-md:hidden" : ""}`}
+    >
       <div className="pointer-events-auto flex h-full flex-col items-center justify-center gap-1">
         <UtilityTabPanel open={open} activeTab={activeTab} onClose={() => setPanelOpen(false)}>
           {activeTab === "zmanim" ? (

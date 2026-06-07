@@ -24,6 +24,29 @@ type Options = {
 let dismissedWorkspaceIntentFp: string | null = null;
 let fulfilledOpenIntentFp: string | null = null;
 
+/** Synchronous dismiss — call before closeWidget so URL sync cannot reopen the window. */
+export function dismissWorkspaceUrlIntent(
+  intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>,
+) {
+  dismissedWorkspaceIntentFp = workspaceIntentFingerprint(intent, { ignoreInstanceId: true });
+  fulfilledOpenIntentFp = null;
+}
+
+export function dismissWorkspaceUrlIntentForWidget(
+  widget: ActiveWidget,
+  intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>,
+) {
+  if (widget.type !== intent.widgetType) return false;
+  const projectId =
+    (intent.widgetType === "project" || intent.widgetType === "projectsHub") &&
+    typeof intent.viewState?.projectId === "string"
+      ? intent.viewState.projectId
+      : null;
+  if (projectId && widget.liveData?.projectId !== projectId) return false;
+  dismissWorkspaceUrlIntent(intent);
+  return true;
+}
+
 export function useWorkspaceUrlSync({
   hasHydrated,
   widgets,

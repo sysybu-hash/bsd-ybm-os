@@ -555,6 +555,11 @@
     .workspace-window-title {
       font-size: 0.8125rem;
     }
+
+    .workspace-chrome-toolbar {
+      position: relative;
+      z-index: 120;
+    }
   }
 
   .workspace-chrome-btn {

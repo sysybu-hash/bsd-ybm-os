@@ -4,7 +4,11 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useWorkspaceNavigation } from "@/components/os/navigation/WorkspaceNavigationProvider";
-import { useWorkspaceUrlSync } from "@/hooks/use-workspace-url-sync";
+import {
+  dismissWorkspaceUrlIntentForWidget,
+  useWorkspaceUrlSync,
+} from "@/hooks/use-workspace-url-sync";
+import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 import { parseWidgetType } from "@/lib/workspace-url";
@@ -44,6 +48,18 @@ export default function OmniCanvasWorkspaceBody({
   const router = useRouter();
   const userEmail = session?.user?.email ?? null;
 
+  const handleCloseWidget = useCallback(
+    (id: string) => {
+      const widget = widgets.find((w) => w.id === id);
+      if (widget && typeof window !== "undefined") {
+        const intent = parseWorkspaceUrl(new URLSearchParams(window.location.search));
+        if (intent) dismissWorkspaceUrlIntentForWidget(widget, intent);
+      }
+      closeWidget(id);
+    },
+    [widgets, closeWidget],
+  );
+
   const guardedOpenWidget = useCallback(
     (type: WidgetType, data?: Record<string, unknown> | null) => {
       if (!isSubscriberWidgetVisible(type, userEmail)) {
@@ -59,7 +75,7 @@ export default function OmniCanvasWorkspaceBody({
     if (!hasHydrated || session === undefined) return;
     const blocked = widgets.filter((w) => !isSubscriberWidgetVisible(w.type, userEmail));
     if (blocked.length === 0) return;
-    for (const w of blocked) closeWidget(w.id);
+    for (const w of blocked) handleCloseWidget(w.id);
     if (typeof window !== "undefined") {
       const raw = new URLSearchParams(window.location.search).get("w");
       const fromUrl = parseWidgetType(raw);
@@ -67,7 +83,7 @@ export default function OmniCanvasWorkspaceBody({
         router.replace("/", { scroll: false });
       }
     }
-  }, [hasHydrated, session, userEmail, widgets, closeWidget, router]);
+  }, [hasHydrated, session, userEmail, widgets, handleCloseWidget, router]);
 
   const findWidgetByType = useCallback(
     (type: WidgetType) => widgets.find((w) => w.type === type),
@@ -118,7 +134,7 @@ export default function OmniCanvasWorkspaceBody({
       hasHydrated={hasHydrated}
       openWidget={openWidget}
       openWorkspaceWidget={openWorkspaceWidget}
-      closeWidget={closeWidget}
+      closeWidget={handleCloseWidget}
       focusWidget={focusWidget}
       updateWidgetPosition={updateWidgetPosition}
       updateWidgetSize={updateWidgetSize}

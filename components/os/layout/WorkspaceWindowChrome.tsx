@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
@@ -64,6 +64,21 @@ export default function WorkspaceWindowChrome({
 }: WorkspaceWindowChromeProps) {
   const { t, dir } = useI18n();
   const chromeTitle = { title };
+  const closeActivatedRef = useRef(false);
+
+  const handleClose = useCallback(
+    (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (closeActivatedRef.current) return;
+      closeActivatedRef.current = true;
+      window.setTimeout(() => {
+        closeActivatedRef.current = false;
+      }, 400);
+      onClose();
+    },
+    [onClose],
+  );
 
   const handleZoomOut = () => {
     if (onZoomOut) onZoomOut();
@@ -190,8 +205,16 @@ export default function WorkspaceWindowChrome({
         ) : null}
         <button
           type="button"
-          onClick={onClose}
-          className={`${closeBtnClass} touch-manipulation`}
+          onClick={handleClose}
+          onPointerUp={(e) => {
+            if (e.pointerType === "mouse") return;
+            if (e.button !== 0) return;
+            handleClose(e);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleClose(e);
+          }}
+          className={`${closeBtnClass} relative z-[130] touch-manipulation`}
           aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
         >
           <X size={16} className="shrink-0 md:h-[15px] md:w-[15px]" aria-hidden />

@@ -206,7 +206,10 @@ export default function OmniCanvasWorkspace() {
         sidebarAria={t("workspaceWidgets.sidebar.aria")}
       />
 
-      <WorkspaceUtilityRail openWidget={openWidget} />
+      <WorkspaceUtilityRail
+        openWidget={openWidget}
+        suppressOnMobile={widgets.some((w) => !w.isMinimized)}
+      />
 
       <OmniCanvasWorkspaceInset
         widgetsCount={widgets.length}

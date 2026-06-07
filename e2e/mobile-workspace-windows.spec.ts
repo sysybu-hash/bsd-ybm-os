@@ -25,6 +25,22 @@ test.describe("mobile workspace windows", () => {
     expect(box?.width ?? 0).toBeGreaterThan(300);
   });
 
+  test("close button dismisses hub widget on mobile", async ({ page }) => {
+    const signed = await tryCredentialsSignIn(page);
+    test.skip(!signed, "login failed");
+
+    await dismissWorkspaceOverlays(page);
+    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    const shell = page.locator("[data-widget-shell]").first();
+    await expect(shell).toBeVisible({ timeout: 20_000 });
+
+    const closeBtn = shell.getByRole("button", { name: /סגור|close/i });
+    await expect(closeBtn).toBeVisible();
+    await closeBtn.click({ force: true });
+
+    await expect(shell).toBeHidden({ timeout: 10_000 });
+  });
+
   test("hub widget shell exposes touch scroll region", async ({ page }) => {
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "login failed");

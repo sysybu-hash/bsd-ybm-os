@@ -104,7 +104,7 @@ export default function OSWorkspace({
       </AnimatePresence>
 
       <div
-        className={`pointer-events-none absolute inset-0 ${visibleWidgets.length > 0 ? "z-[1190]" : "z-20"}`}
+        className={`pointer-events-none absolute inset-0 ${visibleWidgets.length > 0 ? "z-[1250]" : "z-20"}`}
       >
         {widgets.map((widget) => (
           <WidgetInstance
