@@ -50,6 +50,26 @@ export type WorkspaceUrlIntent = {
   viewState: WidgetViewState | null;
 };
 
+/** Stable key for dismiss/open guards — survives ?tab= vs ?st= and wid= canonicalization. */
+export function workspaceIntentFingerprint(
+  intent: WorkspaceUrlIntent,
+  opts?: { ignoreInstanceId?: boolean },
+): string {
+  const parts: string[] = [intent.widgetType];
+  if (intent.widgetInstanceId && !opts?.ignoreInstanceId) {
+    parts.push(`wid:${intent.widgetInstanceId}`);
+    return parts.join("|");
+  }
+  const vs = intent.viewState ?? {};
+  if (typeof vs.tab === "string" && vs.tab.trim()) {
+    parts.push(`tab:${vs.tab.trim()}`);
+  }
+  if (typeof vs.projectId === "string" && vs.projectId.trim()) {
+    parts.push(`pid:${vs.projectId.trim()}`);
+  }
+  return parts.join("|");
+}
+
 export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIntent | null {
   const widgetRaw =
     searchParams.get(WORKSPACE_URL_PARAMS.widget) ?? searchParams.get("widget");
@@ -71,6 +91,17 @@ export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIn
     (widgetType === "project" || widgetType === "projectsHub")
   ) {
     viewState = { ...(viewState ?? {}), projectId: urlProjectId.trim() };
+  }
+  const tabParam = searchParams.get("tab");
+  if (
+    tabParam &&
+    tabParam.trim() &&
+    (widgetType === "projectsHub" ||
+      widgetType === "financeHub" ||
+      widgetType === "documentsHub" ||
+      widgetType === "aiHub")
+  ) {
+    viewState = { ...(viewState ?? {}), tab: tabParam.trim() };
   }
   return {
     widgetType,

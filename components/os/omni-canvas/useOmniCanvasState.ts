@@ -177,6 +177,10 @@ export function useOmniCanvasState() {
     }
     setHasOpenedDefaults(true);
     const timer = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        const deepLinkNow = parseWorkspaceUrl(new URLSearchParams(window.location.search));
+        if (deepLinkNow) return;
+      }
       openWorkspaceWidget("financeHub", { tab: "overview" });
       setTimeout(() => openWidget("crmTable"), 300);
     }, 800);

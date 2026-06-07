@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import {
   buildWorkspaceSearchParams,
   parseWorkspaceUrl,
+  workspaceIntentFingerprint,
   workspaceUrlFromParams,
 } from "@/lib/workspace-url";
 
@@ -19,6 +20,10 @@ type Options = {
   getWidgetViewState: (widgetId: string) => WidgetViewState | null;
 };
 
+/** Survives Suspense/remount when router.replace updates searchParams. */
+let dismissedWorkspaceIntentFp: string | null = null;
+let fulfilledOpenIntentFp: string | null = null;
+
 export function useWorkspaceUrlSync({
   hasHydrated,
   widgets,
@@ -28,22 +33,17 @@ export function useWorkspaceUrlSync({
   getWidgetViewState,
 }: Options) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const skipNextWrite = useRef(false);
-  const openIntentKeyRef = useRef<string | null>(null);
-  /** כשהמשתמש סגר חלון שמופיע ב-URL — לא לפתוח אותו מחדש. */
-  const dismissedIntentKeyRef = useRef<string | null>(null);
   const prevWidgetsRef = useRef<ActiveWidget[]>([]);
   /** מונע לולאת focusWidget → widgets → effect (Maximum update depth / error boundary). */
   const fulfilledFocusRef = useRef<string | null>(null);
 
-  const currentUrlKey = useCallback((): string => {
-    return (
-      searchParams.toString() ||
-      (typeof window !== "undefined" ? window.location.search.slice(1) : "")
-    );
-  }, [searchParams]);
+  const intentFingerprint = useCallback(
+    (intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) =>
+      workspaceIntentFingerprint(intent, { ignoreInstanceId: true }),
+    [],
+  );
 
   const widgetMatchesUrlIntent = useCallback(
     (widget: ActiveWidget, intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) => {
@@ -88,9 +88,8 @@ export function useWorkspaceUrlSync({
     (focused: ActiveWidget | undefined) => {
       if (!focused) {
         const intent = resolveIntent();
-        const urlKey = currentUrlKey();
         // אל תנקה ?w= לפני שה-deep link הספיק לפתוח חלון (race עם widgets.length === 0)
-        if (intent && dismissedIntentKeyRef.current !== urlKey) return;
+        if (intent && dismissedWorkspaceIntentFp !== intentFingerprint(intent)) return;
         writeUrl({ widgetType: null, viewState: null });
         return;
       }
@@ -106,8 +105,16 @@ export function useWorkspaceUrlSync({
         viewState: mergedViewState,
       });
     },
-    [writeUrl, getWidgetViewState, resolveIntent, currentUrlKey],
+    [writeUrl, getWidgetViewState, resolveIntent, intentFingerprint],
   );
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (!resolveIntent()) {
+      dismissedWorkspaceIntentFp = null;
+      fulfilledOpenIntentFp = null;
+    }
+  }, [hasHydrated, searchParams, resolveIntent]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -119,12 +126,11 @@ export function useWorkspaceUrlSync({
     const removed = prev.filter((p) => !widgets.some((w) => w.id === p.id));
     if (removed.length > 0) {
       const intent = resolveIntent();
-      const urlKey = currentUrlKey();
-      if (intent && urlKey) {
+      if (intent) {
         const closedMatchingUrl = removed.some((widget) => widgetMatchesUrlIntent(widget, intent));
         if (closedMatchingUrl) {
-          dismissedIntentKeyRef.current = urlKey;
-          skipNextWrite.current = true;
+          dismissedWorkspaceIntentFp = intentFingerprint(intent);
+          fulfilledOpenIntentFp = null;
           writeUrl({ widgetType: null, viewState: null });
           fulfilledFocusRef.current = null;
         }
@@ -136,9 +142,9 @@ export function useWorkspaceUrlSync({
     widgets,
     hasHydrated,
     resolveIntent,
-    currentUrlKey,
     widgetMatchesUrlIntent,
     writeUrl,
+    intentFingerprint,
   ]);
 
   useEffect(() => {
@@ -146,8 +152,7 @@ export function useWorkspaceUrlSync({
     const intent = resolveIntent();
     if (!intent) return;
 
-    const urlKey = currentUrlKey();
-    if (!urlKey) return;
+    const fp = intentFingerprint(intent);
 
     const projectId =
       (intent.widgetType === "project" || intent.widgetType === "projectsHub") &&
@@ -164,7 +169,7 @@ export function useWorkspaceUrlSync({
         });
 
     if (matchingWidget) {
-      const focusKey = `${urlKey}:${matchingWidget.id}`;
+      const focusKey = `${fp}:${matchingWidget.id}`;
       if (fulfilledFocusRef.current !== focusKey) {
         fulfilledFocusRef.current = focusKey;
         const topZ = Math.max(...widgets.map((w) => w.zIndex));
@@ -178,9 +183,9 @@ export function useWorkspaceUrlSync({
 
     fulfilledFocusRef.current = null;
 
-    if (dismissedIntentKeyRef.current === urlKey) return;
-    if (openIntentKeyRef.current === urlKey) return;
-    openIntentKeyRef.current = urlKey;
+    if (dismissedWorkspaceIntentFp === fp) return;
+    if (fulfilledOpenIntentFp === fp) return;
+    fulfilledOpenIntentFp = fp;
     skipNextWrite.current = true;
 
     const viewState = intent.viewState;
@@ -192,13 +197,13 @@ export function useWorkspaceUrlSync({
         }
       : null;
     openWidget(intent.widgetType, liveData);
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, currentUrlKey]);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint]);
 
   useEffect(() => {
     const onPopState = () => {
       skipNextWrite.current = true;
-      dismissedIntentKeyRef.current = null;
-      openIntentKeyRef.current = null;
+      dismissedWorkspaceIntentFp = null;
+      fulfilledOpenIntentFp = null;
       const intent = parseWorkspaceUrl(new URLSearchParams(window.location.search));
       if (!intent) return;
       const existing = findWidgetByType(intent.widgetType);
