@@ -2,11 +2,14 @@
 
 עדכון: 2026-06-04 — `npm run lib:line-count`
 
-**P0 הושלם:** `lib/pdf/product-brochure-v2-html.ts` → `product-brochure-v2-data.ts` + `product-brochure-v2-assets.ts` (thin builder).
+**P0 הושלם:** `lib/pdf/product-brochure-v2-html.ts` → `product-brochure-v2-data.ts` + `product-brochure-v2-assets.ts` + `product-brochure-v2-styles.ts` + `product-brochure-v2-sections.ts` (224 שורות builder).
+
+**P1 (2026-06-07):** `tri-engine-types`, `tri-engine-parse`, `tri-engine-extract-validated`, `tri-engine-extract-providers`, `tri-engine-extract-helpers`, `user-launcher-config.layout`.
 
 | שורות | קובץ | שלב מוצע |
 |------|------|----------|
-| 673 | `lib/construction-trades.ts` | `lib/construction/` |
+| 883 | `lib/pdf/product-brochure-v2-styles.ts` | CSS bulk — OK |
+| 548 | `lib/tri-engine-extract.ts` | invoice path → `tri-engine-extract-invoice.ts` |
 | 548 | `lib/launcher/user-launcher-config.ts` | פיצול modules |
 | 512 | `lib/mail.ts` | `lib/mail/` |
 | 511 | `lib/tri-engine-extract.ts` | `lib/scan/` |

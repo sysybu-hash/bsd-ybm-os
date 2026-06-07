@@ -99,9 +99,43 @@ jobs:
       - name: Production build
         run: npm run build
 
+  e2e-ci-gate:
+    name: Playwright ci-gate
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: http://127.0.0.1:3001
+      AUTH_URL: http://127.0.0.1:3001
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare build env
+        run: node scripts/ci-prepare-build-env.mjs
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E ci-gate
+        run: npm run test:e2e:ci-gate
+
   lighthouse-mobile:
     name: Lighthouse CI (local)
-    needs: verify
+    needs: [verify, e2e-ci-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:

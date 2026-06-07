@@ -5,8 +5,8 @@
 | מדד | תוצאה |
 |-----|--------|
 | קבצי TS/TSX (ללא node_modules) | ~1410+ |
-| קבצים ≥300 שורות | ~34 — `npm run lib:line-count` · [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
-| Unit tests | 324+ (כולל chunk-index, contact-embedding-cron, brochure modules) |
+| קבצים ≥300 שורות | ~34 — `npm run lib:line-count` · [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) (brochure HTML→224, styles נפרד) |
+| Unit tests | 354+ |
 | Coverage CI | ≥75% statements/functions (`jest.config.js`) |
 | `test:e2e:ci-gate` | + growth, KV search, BOQ agent, accounting export |
 | i18n parity en/ru vs he | 100% workspace-shell keys |

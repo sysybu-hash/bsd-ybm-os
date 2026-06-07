@@ -22,7 +22,9 @@
 
 ## ביצועים ו-SEO
 
-- [ ] Lighthouse נחיתה ≥90 (Performance, A11y, SEO) — הרצה מקומית: `npm run lighthouse:sample` + CI [lighthouse.yml](../.github/workflows/lighthouse.yml). אופטימיזציה: `LandingPage.tsx` (פונטים/עומס ראשוני).
+- [x] Lighthouse CI — **error ≥90** בכל הקטגוריות (local + www)
+- [x] PostHog marketing — dynamic import (`MarketingPostHogIsland`) — לא חוסם LCP
+- [ ] Lighthouse production מדידה ≥90 — CI יאמת ב-push ל-main
 - [x] `sitemap.xml` + JSON-LD ([StructuredDataScript](../components/seo/StructuredDataScript.tsx))
 - [x] PWA manifest + shortcuts + screenshots אמיתיים ([public/manifest.json](../public/manifest.json), [public/screenshots/](../public/screenshots/))
 

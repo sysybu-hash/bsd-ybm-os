@@ -4,7 +4,7 @@ import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest } from "@/lib/api-json";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract-validated";
 import {
   buildTriEngineAiDataRecord,
   loadTriEngineExtractionInput,

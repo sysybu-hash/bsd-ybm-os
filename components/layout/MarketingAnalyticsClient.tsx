@@ -1,28 +1,16 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { PostHogProvider } from "posthog-js/react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { subscribeAnalyticsConsent } from "@/lib/analytics/posthog-consent";
-import { initPostHog, posthog } from "@/lib/analytics/posthog-client";
 import { getPostHogProjectKey } from "@/lib/analytics/posthog-env";
 
-function PostHogPageView({ enabled }: { enabled: boolean }) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+const PostHogAnalyticsIsland = dynamic(
+  () => import("@/components/layout/MarketingPostHogIsland"),
+  { ssr: false },
+);
 
-  useEffect(() => {
-    if (!enabled || !pathname || !getPostHogProjectKey()) return;
-    initPostHog({ skipConsentCheck: true });
-    const query = searchParams?.toString();
-    const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
-    posthog.capture("$pageview", { $current_url: url });
-  }, [pathname, searchParams, enabled]);
-
-  return null;
-}
-
-/** PostHog רק אחרי consent — בלי SessionProvider */
+/** PostHog רק אחרי consent + idle — bundle נפרד, לא חוסם LCP */
 export function MarketingAnalyticsClient() {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
   const [idleReady, setIdleReady] = useState(false);
@@ -31,25 +19,15 @@ export function MarketingAnalyticsClient() {
     const run = () => setIdleReady(true);
     const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
     if (typeof w.requestIdleCallback === "function") {
-      w.requestIdleCallback(run, { timeout: 5000 });
+      w.requestIdleCallback(run, { timeout: 6000 });
     } else {
-      globalThis.setTimeout(run, 3500);
+      globalThis.setTimeout(run, 4000);
     }
   }, []);
 
   useEffect(() => subscribeAnalyticsConsent(setAnalyticsAllowed), []);
 
-  useEffect(() => {
-    if (analyticsAllowed && idleReady) initPostHog({ skipConsentCheck: true });
-  }, [analyticsAllowed, idleReady]);
-
   if (!idleReady || !getPostHogProjectKey() || !analyticsAllowed) return null;
 
-  return (
-    <PostHogProvider client={posthog}>
-      <Suspense fallback={null}>
-        <PostHogPageView enabled={analyticsAllowed} />
-      </Suspense>
-    </PostHogProvider>
-  );
+  return <PostHogAnalyticsIsland />;
 }

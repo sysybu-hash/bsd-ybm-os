@@ -1,7 +1,8 @@
 import type { Session } from "next-auth";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtractionValidated, type TriEngineProgressEvent } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract-validated";
+import type { TriEngineProgressEvent } from "@/lib/tri-engine-extract";
 import {
   buildTriEngineAiDataRecord,
   loadTriEngineExtractionInput,

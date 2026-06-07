@@ -1,7 +1,6 @@
 import { geminiMultimodal, GEMINI_FLASH_PREFERRED } from "@/lib/tri-engine-gemini";
 export { geminiMultimodal } from "@/lib/tri-engine-gemini";
 import { extractDocumentWithOpenAI } from "@/lib/ai-extract-openai";
-import { extractDocumentWithMistral } from "@/lib/ai-extract-mistral";
 import { normalizeDocAiResultWithGemini, processDocumentAiRawForScanMode } from "@/lib/ai-extract-docai";
 import { assertProviderConfigured, isMistralConfigured, normalizeAiProviderId } from "@/lib/ai-providers";
 import { mapDocAiEntitiesToInvoiceV5 } from "@/lib/docai-invoice-mapper";
@@ -18,69 +17,22 @@ import {
   type ScanModeV5,
   v5ToPersistableAiData,
 } from "@/lib/scan-schema-v5";
-import { getMergedIndustryConfig } from "@/lib/construction-trades";
-import { LOCALE_AI_LANGUAGE_NAMES, normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 import type { MessageTree } from "@/lib/i18n/keys";
-import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
-import { validateScanV5, buildRetryInstruction, type ScanValidationResult } from "@/lib/scan-validate";
-import { extractDocumentWithAnthropic } from "@/lib/ai-extract-anthropic";
 import { isAnthropicConfigured } from "@/lib/ai-providers";
 import { analysePdfPages, buildMultiPagePromptPrefix } from "@/lib/scan-pdf-split";
+import { industryInstructionExtras, localeLang } from "@/lib/tri-engine-extract-helpers";
+import { createTriEngineProviders } from "@/lib/tri-engine-extract-providers";
+import type { TriEngineRunMode } from "@/lib/tri-engine-parse";
+import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
+import {
+  compactError,
+  snapTriTelemetry,
+  type TriEngineProgressEvent,
+  type TriEngineResult,
+  type TriEngineTelemetry,
+} from "@/lib/tri-engine-types";
 
-export type TriEngineTelemetry = {
-  documentAI: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
-  gemini: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
-  gpt: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
-  mistral: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
-  anthropic: { phase: "idle" | "running" | "ok" | "error" | "skipped"; ms?: number; detail?: string };
-};
-
-/** אירועי סטרימינג ללקוח (NDJSON) — טלמטריה ופלטי ביניים */
-export type TriEngineProgressEvent =
-  | { type: "telemetry"; telemetry: TriEngineTelemetry }
-  | { type: "partial_v5"; v5: ScanExtractionV5; stage: string };
-
-function snapTriTelemetry(t: TriEngineTelemetry): TriEngineTelemetry {
-  return {
-    documentAI: { ...t.documentAI },
-    gemini: { ...t.gemini },
-    gpt: { ...t.gpt },
-    mistral: { ...t.mistral },
-    anthropic: { ...t.anthropic },
-  };
-}
-
-export type TriEngineResult = {
-  /** אובייקט לשמירה ב-ERP / persist (כולל שדות legacy metadata) */
-  aiData: Record<string, unknown>;
-  v5: ScanExtractionV5;
-  telemetry: TriEngineTelemetry;
-  /** תוצאת אימות sanity (שלב 3) — בעיות שנמצאו + ציון ביטחון. נוסף ע"י הwrapper המאומת. */
-  validation?: ScanValidationResult;
-};
-
-function localeLang(locale: string): string {
-  const loc = normalizeLocale(locale) as AppLocale;
-  return LOCALE_AI_LANGUAGE_NAMES[loc] ?? "Hebrew";
-}
-
-function industryInstructionExtras(
-  industry: string,
-  trade: string | null,
-  messages: MessageTree,
-): string {
-  const cfg = getMergedIndustryConfig(industry, trade, messages);
-  const cols = cfg.scanner.resultColumns
-    .map((c: { key: string; label: string }) => `- "${c.key}": string | null (${c.label})`)
-    .join("\n");
-  return `### DYNAMIC FIELDS\nInclude at root if missing:\n${cols}\n\n### CONTEXT\nIndustry: ${cfg.label}\n${cfg.aiInstructions}`;
-}
-
-function compactError(error: unknown, max = 320): string {
-  const msg = error instanceof Error ? error.message : String(error);
-  return msg.slice(0, max);
-}
+export type { TriEngineProgressEvent, TriEngineResult, TriEngineTelemetry } from "@/lib/tri-engine-types";
 
 export async function runTriEngineExtraction(params: {
   base64: string;
@@ -154,57 +106,15 @@ export async function runTriEngineExtraction(params: {
   let v5: ScanExtractionV5;
   const runMode = engineRunMode === "AUTO" ? "MULTI_SEQUENTIAL" : engineRunMode;
 
-  const runDocAiOnly = async (): Promise<ScanExtractionV5> => {
-    const docErr = assertProviderConfigured("docai");
-    if (docErr) throw new Error(docErr);
-    const raw = await processDocumentAiRawForScanMode(base64, mimeType, scanMode);
-    if (scanMode === "INVOICE_FINANCIAL" && (raw.processorKind === "INVOICE" || raw.processorKind === "EXPENSE")) {
-      const out = mapDocAiEntitiesToInvoiceV5(raw.entities, raw.fullText, fileName, scanMode);
-      out.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`];
-      return out;
-    }
-    const normalized = await normalizeDocAiResultWithGemini(raw, fileName, fullInstruction, scanMode);
-    const out = coerceLegacyAiToV5(normalized, fileName, scanMode);
-    out.enginesUsed = [`document_ai_${raw.processorKind.toLowerCase()}`, "gemini-normalizer"];
-    return out;
-  };
-
-  const runGeminiOnly = async (): Promise<ScanExtractionV5> => {
-    const gErr = assertProviderConfigured("gemini");
-    if (gErr) throw new Error(gErr);
-    const modelChain = getModelChainForScanMode(scanMode);
-    const raw = await geminiMultimodal(base64, mimeType, fullInstruction, modelChain);
-    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
-    out.enginesUsed = [scanMode === "DRAWING_BOQ" ? "gemini-pro" : "gemini-flash"];
-    return out;
-  };
-
-  const runOpenAiOnly = async (): Promise<ScanExtractionV5> => {
-    const oaErr = assertProviderConfigured(normalizeAiProviderId("openai"));
-    if (oaErr) throw new Error(oaErr);
-    const raw = await extractDocumentWithOpenAI(base64, mimeType, fileName, fullInstruction, openAiModel);
-    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
-    out.enginesUsed = ["openai"];
-    return out;
-  };
-
-  const runMistralOnly = async (): Promise<ScanExtractionV5> => {
-    const mErr = assertProviderConfigured("mistral");
-    if (mErr) throw new Error(mErr);
-    const raw = await extractDocumentWithMistral(base64, mimeType, fileName, fullInstruction, scanMode);
-    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
-    out.enginesUsed = ["mistral-pixtral"];
-    return out;
-  };
-
-  const runAnthropicOnly = async (): Promise<ScanExtractionV5> => {
-    const aErr = assertProviderConfigured("anthropic");
-    if (aErr) throw new Error(aErr);
-    const raw = await extractDocumentWithAnthropic(base64, mimeType, fileName, fullInstruction);
-    const out = coerceLegacyAiToV5(raw, fileName, scanMode);
-    out.enginesUsed = ["claude-sonnet"];
-    return out;
-  };
+  const { runDocAiOnly, runGeminiOnly, runOpenAiOnly, runMistralOnly, runAnthropicOnly } =
+    createTriEngineProviders({
+      base64,
+      mimeType,
+      fileName,
+      scanMode,
+      fullInstruction,
+      openAiModel,
+    });
 
   if (runMode === "SINGLE_ANTHROPIC") {
     telemetry.documentAI = { phase: "skipped" };
@@ -634,52 +544,4 @@ export async function runTriEngineExtraction(params: {
   const aiData = v5ToPersistableAiData(v5);
   aiData._triEngineTelemetry = telemetry;
   return { aiData, v5, telemetry };
-}
-
-/**
- * עוטף את runTriEngineExtraction עם שכבת אימות (שלב 3):
- *   1. מריץ פענוח רגיל.
- *   2. מאמת sanity (validateScanV5).
- *   3. אם נמצאו בעיות ניתנות-לתיקון במסמך פיננסי — מריץ retry ממוקד אחד
- *      (SINGLE_GEMINI + משוב הבעיות) ושומר את התוצאה עם ציון הביטחון הגבוה יותר.
- *   4. מצרף את תוצאת האימות ל-aiData (תחת `_validation`) ולשדה `validation`.
- *
- * הקריאה מ-API routes צריכה להשתמש בפונקציה הזו במקום בפונקציה הגולמית.
- */
-export async function runTriEngineExtractionValidated(
-  params: Parameters<typeof runTriEngineExtraction>[0],
-): Promise<TriEngineResult> {
-  const result = await runTriEngineExtraction(params);
-  const validation = validateScanV5(result.v5);
-
-  const isFinancial =
-    params.scanMode === "INVOICE_FINANCIAL" || params.scanMode === "PROGRESS_BILL";
-  const hasFixableIssues = validation.issues.some((i) => i.severity !== "info");
-  const alreadyRetried = params.engineRunMode === "SINGLE_GEMINI";
-
-  if (isFinancial && hasFixableIssues && !alreadyRetried) {
-    const retryInstruction = buildRetryInstruction(validation.issues);
-    if (retryInstruction) {
-      try {
-        const retry = await runTriEngineExtraction({
-          ...params,
-          engineRunMode: "SINGLE_GEMINI", // re-read ממוקד וזול עם המשוב
-          userInstruction: [params.userInstruction?.trim(), retryInstruction]
-            .filter(Boolean)
-            .join("\n\n"),
-        });
-        const retryValidation = validateScanV5(retry.v5);
-        // שומרים את התוצאה עם ציון הביטחון הגבוה יותר
-        if (retryValidation.confidence > validation.confidence) {
-          const aiData = { ...retry.aiData, _validation: retryValidation, _validationRetried: true };
-          return { ...retry, validation: retryValidation, aiData };
-        }
-      } catch {
-        // retry נכשל — נשמור את התוצאה המקורית עם האזהרות
-      }
-    }
-  }
-
-  const aiData = { ...result.aiData, _validation: validation };
-  return { ...result, validation, aiData };
 }

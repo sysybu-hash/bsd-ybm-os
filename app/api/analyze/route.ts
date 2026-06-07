@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract";
+import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract-validated";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { getMessages } from "@/lib/i18n/load-messages";
 import { normalizeLocale } from "@/lib/i18n/config";
