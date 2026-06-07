@@ -167,7 +167,7 @@ export default function AppBuilderWidget() {
         <div className="shrink-0 md:hidden">{mobilePaneSwitcher}</div>
 
         {/* Mobile content area (scrollable for build list, flex for preview) */}
-        <div data-widget-scroll-pane className="flex-1 min-h-0 md:hidden overflow-y-auto custom-scrollbar p-2">
+        <div className="flex min-h-0 flex-1 flex-col md:hidden overflow-y-auto custom-scrollbar p-2">
           {mobilePane === "build" ? buildContent : previewContent}
         </div>
 
