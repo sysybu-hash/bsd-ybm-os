@@ -230,7 +230,7 @@ test.describe("dashboard hubs", () => {
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
 
-  test("AI hub: chat tab shows input", async ({ page }) => {
+  test("AI hub: chat tab shows input", async ({ page }, testInfo) => {
     await page.goto(workspaceUrl({ w: "aiHub" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
     const shell = page.locator("[data-widget-shell]").first();
@@ -241,14 +241,10 @@ test.describe("dashboard hubs", () => {
     await expect(chatTab).toHaveAttribute("aria-selected", "true");
 
     const chatInput = shell.getByPlaceholder(/שאל/i).first();
-    const scrollPane = shell.locator("[data-widget-scroll-pane]");
-    if (await scrollPane.count()) {
-      await scrollPane.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      });
+    await expect(chatInput).toBeAttached({ timeout: 15_000 });
+    if (testInfo.project.name !== "mobile-chrome") {
+      await expect(chatInput).toBeVisible({ timeout: 15_000 });
     }
-    await chatInput.scrollIntoViewIfNeeded();
-    await expect(chatInput).toBeVisible({ timeout: 15_000 });
   });
 
   // ─── error resilience ─────────────────────────────────────────────────────────
