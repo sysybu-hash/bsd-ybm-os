@@ -15,6 +15,8 @@ type ScanFullEditorProps = {
   onClose: () => void;
   onConfirm: () => void;
   tr: (key: string, fallback: string) => string;
+  /** Parent owns scroll (hub / constrained widget shell) */
+  embeddedInScrollParent?: boolean;
 };
 
 function Section({ title, children, open, toggle }: {
@@ -32,7 +34,14 @@ function Section({ title, children, open, toggle }: {
   );
 }
 
-export function ScanFullEditor({ analysis, onChange, onClose, onConfirm, tr }: ScanFullEditorProps) {
+export function ScanFullEditor({
+  analysis,
+  onChange,
+  onClose,
+  onConfirm,
+  tr,
+  embeddedInScrollParent = false,
+}: ScanFullEditorProps) {
   const [v5, setV5] = useState<ScanExtractionV5>(
     () => analysis.v5 ?? {
       schemaVersion: 5,
@@ -70,7 +79,13 @@ export function ScanFullEditor({ analysis, onChange, onClose, onConfirm, tr }: S
   }, [v5.lineItems]);
 
   return (
-    <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+    <div
+      className={
+        embeddedInScrollParent
+          ? "p-4"
+          : "custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4"
+      }
+    >
       <div className="mx-auto max-w-2xl space-y-4 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-5">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold">

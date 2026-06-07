@@ -46,10 +46,14 @@ export default function DashboardWidget() {
       role="region"
       aria-label={t("workspaceWidgets.quickActions.dashboard.title")}
       tabIndex={0}
+      data-widget-sticky-chrome
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
       dir={dir}
     >
-      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-3 md:gap-8 md:p-6 [-webkit-overflow-scrolling:touch]">
+      <div
+        data-widget-scroll-pane
+        className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-3 md:gap-8 md:p-6 [-webkit-overflow-scrolling:touch]"
+      >
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"

@@ -19,7 +19,7 @@ import { DocItemsForm } from "./document-creator/DocItemsForm";
 import { DocGeneratedSuccess } from "./document-creator/DocGeneratedSuccess";
 import type { DocumentCreatorWidgetProps } from "./document-creator/types";
 
-export default function DocumentCreatorWidget({ liveData = null }: DocumentCreatorWidgetProps) {
+export default function DocumentCreatorWidget({ liveData = null, embeddedInHub = false }: DocumentCreatorWidgetProps) {
   const { dir, t } = useI18n();
   const d = useDocumentCreator(liveData);
 
@@ -49,9 +49,15 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
 
   // ── main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full min-h-0 flex-col bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden" dir={dir}>
+    <div
+      data-widget-sticky-chrome={embeddedInHub ? undefined : true}
+      data-embedded-in-hub={embeddedInHub ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub ? "true" : undefined}
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
+      dir={dir}
+    >
       {/* Header */}
-      <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-[color:var(--background-main)]/50">
+      <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <select
             value={d.docType}
@@ -82,7 +88,10 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-4 sm:p-6 sm:space-y-8">
+      <div
+        data-widget-scroll-pane={embeddedInHub ? undefined : true}
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 space-y-4 sm:p-6 sm:space-y-8 [-webkit-overflow-scrolling:touch]"
+      >
         <IssuedDocumentsList
           issuedList={d.issuedList}
           issuedListLoading={d.issuedListLoading}

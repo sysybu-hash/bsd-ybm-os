@@ -69,8 +69,10 @@ export default function AiScannerWidget({
     );
   }
 
-  const constrainToViewport = !embeddedInHub;
-  const useNaturalHeightLayout = stackScannerPanels || embeddedInHub;
+  const inEditorMode = !!pendingAnalysis;
+  const constrainToViewport = !embeddedInHub || inEditorMode;
+  const useNaturalHeightLayout = (stackScannerPanels || embeddedInHub) && !inEditorMode;
+  const useInnerEditorScroll = inEditorMode && (embeddedInHub || constrainToViewport);
 
   return (
     <div
@@ -78,6 +80,7 @@ export default function AiScannerWidget({
         constrainToViewport ? "h-full" : ""
       } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub && inEditorMode ? "true" : undefined}
       dir={dir}
     >
       <ScanHistorySidebar
@@ -117,13 +120,26 @@ export default function AiScannerWidget({
 
         {/* Body */}
         {pendingAnalysis ? (
-          <ScanFullEditor
-            analysis={pendingAnalysis}
-            onChange={setPendingAnalysis}
-            onClose={() => setPendingAnalysis(null)}
-            onConfirm={() => void confirmAnalysis()}
-            tr={tr}
-          />
+          useInnerEditorScroll ? (
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+              <ScanFullEditor
+                analysis={pendingAnalysis}
+                onChange={setPendingAnalysis}
+                onClose={() => setPendingAnalysis(null)}
+                onConfirm={() => void confirmAnalysis()}
+                tr={tr}
+                embeddedInScrollParent
+              />
+            </div>
+          ) : (
+            <ScanFullEditor
+              analysis={pendingAnalysis}
+              onChange={setPendingAnalysis}
+              onClose={() => setPendingAnalysis(null)}
+              onConfirm={() => void confirmAnalysis()}
+              tr={tr}
+            />
+          )
         ) : stackScannerPanels ? (
           /* Mobile: natural-height panels — parent scrolls */
           <div className="flex flex-col">

@@ -795,6 +795,16 @@
     overscroll-behavior-y: auto;
   }
 
+  [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"] {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
   .os-floating-panel.workspace-window [data-shell-scroll],
   .os-floating-panel.workspace-window .custom-scrollbar.min-h-0.flex-1.overflow-y-auto {
     flex: 1 1 0%;
@@ -852,11 +862,22 @@
     overflow-x: hidden;
   }
 
-  /* Hub tabs without an inner scroll region (e.g. AI scanner): grow with content so the hub scroll pane scrolls */
-  [data-widget-scroll-pane] > [data-embedded-in-hub="true"] {
+  /* Hub tabs without an inner scroll region (e.g. AI scanner drop zone): grow with content so the hub scroll pane scrolls */
+  [data-widget-scroll-pane] > [data-embedded-in-hub="true"]:not([data-hub-inner-scroll="true"]) {
     height: auto;
     max-height: none;
     flex: 0 0 auto;
+  }
+
+  /* Hub scanner editor: fill scroll pane; inner region owns vertical scroll */
+  [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"] {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
   }
 
   /* Simple widgets: fill shell viewport; internal flex-1 overflow-y-auto regions scroll */

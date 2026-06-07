@@ -38,4 +38,5 @@ export type GeneratedDocState = {
 
 export type DocumentCreatorWidgetProps = {
   liveData?: Record<string, unknown> | null;
+  embeddedInHub?: boolean;
 };

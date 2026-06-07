@@ -11,6 +11,7 @@ import { SettingsBusinessProfile } from "./settings-widget/SettingsBusinessProfi
 import { SettingsDriveSection } from "./settings-widget/SettingsDriveSection";
 import { SettingsCalendarSection } from "./settings-widget/SettingsCalendarSection";
 import { SettingsAssignSection } from "./settings-widget/SettingsAssignSection";
+import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 
 const S = "workspaceWidgets.settings";
 
@@ -27,9 +28,13 @@ export default function SettingsWidget() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-transparent text-[color:var(--foreground-main)] overflow-x-hidden" dir={dir}>
+    <div
+      data-widget-sticky-chrome
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
+      dir={dir}
+    >
       {/* Header */}
-      <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
+      <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-[color:var(--foreground-muted)]">
             <Settings size={24} />
@@ -49,7 +54,7 @@ export default function SettingsWidget() {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 sm:p-8">
+      <div data-widget-scroll-pane className={`${widgetScrollPaneClass} p-4 sm:p-8`}>
         <div className="max-w-2xl mx-auto space-y-10">
 
           <ProfessionSettingsPanel

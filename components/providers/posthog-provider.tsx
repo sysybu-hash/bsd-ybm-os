@@ -1,11 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { PostHogProvider } from "posthog-js/react";
 import { subscribeAnalyticsConsent } from "@/lib/analytics/posthog-consent";
 import { initPostHog, posthog } from "@/lib/analytics/posthog-client";
 import { getPostHogProjectKey } from "@/lib/analytics/posthog-env";
+
+const PostHogProvider = dynamic(
+  () => import("posthog-js/react").then((m) => ({ default: m.PostHogProvider })),
+  { ssr: false },
+);
 
 function PostHogPageView({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
@@ -32,7 +37,7 @@ export function CSPostHogProvider({ children }: { children: React.ReactNode }) {
     const run = () => initPostHog({ skipConsentCheck: true });
     const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
     if (typeof w.requestIdleCallback === "function") {
-      const id = w.requestIdleCallback(run, { timeout: 4000 });
+      const id = w.requestIdleCallback(run, { timeout: 8000 });
       return () => w.cancelIdleCallback?.(id);
     }
     const timer = globalThis.setTimeout(run, 2000);

@@ -9,7 +9,11 @@ const OmniCanvasWorkspace = dynamic(() => import("@/components/os/OmniCanvasWork
       aria-busy="true"
       aria-label="Loading workspace"
     >
-      <div className="h-9 w-9 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      <div
+        className="h-9 w-9 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"
+        role="progressbar"
+        aria-label="Loading workspace"
+      />
     </div>
   ),
 });

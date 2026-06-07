@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useHelpCenter } from "./help-center/useHelpCenter";
+import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 
 type Props = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
@@ -31,7 +32,11 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
   const s = useHelpCenter(locale);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div
+      data-widget-sticky-chrome
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]"
+      dir={dir}
+    >
       <header className="shrink-0 border-b border-[color:var(--border-main)] p-4 max-md:px-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600">
@@ -57,7 +62,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
       </header>
 
       {s.searchResults ? (
-        <div className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-y-contain p-4 max-md:px-3">
+        <div data-widget-scroll-pane className={`${widgetScrollPaneClass} space-y-4 p-4 max-md:px-3`}>
           {s.searchResults.guides.length === 0 && s.searchResults.faq.length === 0 ? (
             <p className="text-sm text-[color:var(--foreground-muted)]">{t("workspaceWidgets.helpCenter.noResults")}</p>
           ) : null}
@@ -95,7 +100,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           ) : null}
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div data-widget-scroll-pane className={`${widgetScrollPaneClass} flex min-h-0 flex-1 flex-col md:flex-row`}>
           <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
             <div className="flex gap-2 max-md:flex-row md:flex-col" role="tablist" aria-label={t("workspaceWidgets.helpCenter.guidesSection")}>
               {s.content.categories.map((c) => (

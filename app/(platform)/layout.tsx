@@ -14,7 +14,7 @@ import {
 import { TenantProvider } from "@/components/tenant/TenantContext";
 import SessionProvider from "@/components/os/system/SessionProvider";
 import { CSPostHogProvider } from "@/components/providers/posthog-provider";
-import PostHogIdentify from "@/components/providers/posthog-identify";
+import PostHogIdentifyLazy from "@/components/providers/posthog-identify-lazy";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
 import { TradeProfileProvider } from "@/components/os/system/TradeProfileProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
@@ -115,7 +115,7 @@ export default async function PlatformLayout({
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <SessionProvider session={session}>
           <CSPostHogProvider>
-            <PostHogIdentify />
+            <PostHogIdentifyLazy />
             <I18nProvider locale={locale} messages={messages}>
               <TenantProvider tenant={tenant}>
                 <TradeProfileProvider>

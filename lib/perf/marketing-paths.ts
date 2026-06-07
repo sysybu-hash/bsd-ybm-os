@@ -38,6 +38,7 @@ const LIGHT_PUBLIC_PATHS = new Set([
 
 export function isMarketingContentPath(pathname: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
+  if (isWorkspaceShellPath(p)) return false;
   return (
     isMarketingPublicShellPath(p) ||
     p === "/blog" ||

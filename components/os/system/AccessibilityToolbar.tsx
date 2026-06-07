@@ -14,7 +14,9 @@ import { OPEN_ACCESSIBILITY_PANEL_EVENT } from "@/lib/mobile-chrome-events";
 
 export { OPEN_ACCESSIBILITY_PANEL_EVENT };
 
-export default function AccessibilityToolbar() {
+type Props = { hideFab?: boolean };
+
+export default function AccessibilityToolbar({ hideFab = false }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<AccessibilitySettings>(() => readStoredAccessibilitySettings());
@@ -51,17 +53,19 @@ export default function AccessibilityToolbar() {
   return (
     <>
       {/* כפתור FAB — מוסתר במובייל (הלשונית בסרגל התחתון מחליפה אותו) */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-indigo-600 shadow-sm backdrop-blur-md transition hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
-        aria-label={label}
-        aria-expanded={open}
-        aria-controls="accessibility-panel-dialog"
-        title={label}
-      >
-        <Accessibility size={18} aria-hidden />
-      </button>
+      {!hideFab ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-indigo-600 shadow-sm backdrop-blur-md transition hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
+          aria-label={label}
+          aria-expanded={open}
+          aria-controls="accessibility-panel-dialog"
+          title={label}
+        >
+          <Accessibility size={18} aria-hidden />
+        </button>
+      ) : null}
       {open ? (
         <>
           <button

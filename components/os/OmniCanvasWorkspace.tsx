@@ -1,29 +1,35 @@
 "use client";
 
 import React, { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { PanelRightOpen } from "lucide-react";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
-import OSSidebar from "@/components/os/layout/OSSidebar";
 import { WorkspaceNavigationProvider } from "@/components/os/navigation/WorkspaceNavigationProvider";
 import OmniCanvasWorkspaceBody from "@/components/os/navigation/OmniCanvasWorkspaceBody";
 import OSDock from "@/components/os/layout/OSDock";
-import WindowSwitcher from "@/components/os/layout/WindowSwitcher";
 import MinimizedWidgetsBar from "@/components/os/layout/MinimizedWidgetsBar";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
 import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
-import LauncherPickerSheet from "@/components/os/launcher/LauncherPickerSheet";
-import FirstDayWizard from "@/components/os/onboarding/FirstDayWizard";
-import MobileOmnibarSheet from "@/components/os/MobileOmnibarSheet";
-import NotificationCenter from "@/components/os/NotificationCenter";
-import FileDropzone from "@/components/os/FileDropzone";
-import KnowledgeVaultWorkspaceBridge from "@/components/os/KnowledgeVaultWorkspaceBridge";
-import PwaInstallBanner from "@/components/os/system/PwaInstallBanner";
-import PasskeyOfferModal from "@/components/auth/PasskeyOfferModal";
 import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityRail";
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
 import type { WidgetType } from "@/hooks/use-window-manager";
+
+/** Deferred chrome — not needed for LCP / first paint */
+const OSSidebar = dynamic(() => import("@/components/os/layout/OSSidebar"), { ssr: false });
+const PwaInstallBanner = dynamic(() => import("@/components/os/system/PwaInstallBanner"), { ssr: false });
+const PasskeyOfferModal = dynamic(() => import("@/components/auth/PasskeyOfferModal"), { ssr: false });
+const LauncherPickerSheet = dynamic(() => import("@/components/os/launcher/LauncherPickerSheet"), { ssr: false });
+const FirstDayWizard = dynamic(() => import("@/components/os/onboarding/FirstDayWizard"), { ssr: false });
+const NotificationCenter = dynamic(() => import("@/components/os/NotificationCenter"), { ssr: false });
+const FileDropzone = dynamic(() => import("@/components/os/FileDropzone"), { ssr: false });
+const WindowSwitcher = dynamic(() => import("@/components/os/layout/WindowSwitcher"), { ssr: false });
+const MobileOmnibarSheet = dynamic(() => import("@/components/os/MobileOmnibarSheet"), { ssr: false });
+const KnowledgeVaultWorkspaceBridge = dynamic(
+  () => import("@/components/os/KnowledgeVaultWorkspaceBridge"),
+  { ssr: false },
+);
 
 /** מסתיר את רail הסרגל בעריכת quick grid על מסך הבית — מונע כפילות UI */
 function OmniCanvasSidebarRail({
@@ -159,7 +165,11 @@ export default function OmniCanvasWorkspace() {
         className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
         dir={dir}
       >
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" aria-hidden />
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"
+          role="progressbar"
+          aria-label={t("workspaceWidgets.page.loading")}
+        />
         <p className="mt-4 text-sm font-semibold">{t("workspaceWidgets.page.loading")}</p>
       </div>
     );

@@ -67,7 +67,7 @@ export default function DocumentsHubWidget({ liveData, openWorkspaceWidget }: Pr
       tabCountLabel={t("workspaceWidgets.hubs.tabCount", { count: String(TABS.length) })}
       renderTab={(tabId) => {
         if (tabId === "create") {
-          return <DocumentCreatorWidget liveData={liveData} />;
+          return <DocumentCreatorWidget liveData={liveData} embeddedInHub />;
         }
         if (tabId === "scan") {
           return (

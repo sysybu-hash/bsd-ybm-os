@@ -97,12 +97,35 @@ async function signInViaApi(page, base) {
   );
 }
 
+async function probeServer(base) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${base}/api/health`, { signal: controller.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function main() {
   const base = parseBase();
   const outDir = path.join(process.cwd(), "reports");
   const outPath = path.join(outDir, ".lighthouse-auth-state.json");
 
   console.log(`[lighthouse-auth-setup] base=${base} email=${E2E_EMAIL}`);
+
+  const alive = await probeServer(base);
+  if (!alive) {
+    console.error(
+      `[lighthouse-auth-setup] no server at ${base} — start first:\n` +
+        `  PowerShell: npm run build; npm run start\n` +
+        `  (keep that terminal open, then rerun lighthouse:auth-setup)`,
+    );
+    process.exit(1);
+  }
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ baseURL: base });
