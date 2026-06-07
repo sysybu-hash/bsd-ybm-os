@@ -240,9 +240,15 @@ test.describe("dashboard hubs", () => {
     await chatTab.click();
     await expect(chatTab).toHaveAttribute("aria-selected", "true");
 
-    await expect(shell.getByPlaceholder(/שאל/i).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    const chatInput = shell.getByPlaceholder(/שאל/i).first();
+    const scrollPane = shell.locator("[data-widget-scroll-pane]");
+    if (await scrollPane.count()) {
+      await scrollPane.evaluate((el) => {
+        el.scrollTop = el.scrollHeight;
+      });
+    }
+    await chatInput.scrollIntoViewIfNeeded();
+    await expect(chatInput).toBeVisible({ timeout: 15_000 });
   });
 
   // ─── error resilience ─────────────────────────────────────────────────────────
