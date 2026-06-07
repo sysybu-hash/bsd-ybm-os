@@ -72,9 +72,7 @@ async function primeStorage(page) {
 async function signInViaApi(page, base) {
   return page.evaluate(
     async ({ email, password, origin }) => {
-      const csrf = (await fetch(`${origin}/api/auth/csrf`).then((r) => r.json())) as {
-        csrfToken: string;
-      };
+      const csrf = await fetch(`${origin}/api/auth/csrf`).then((r) => r.json());
       const body = new URLSearchParams({
         csrfToken: csrf.csrfToken,
         email,
@@ -89,11 +87,11 @@ async function signInViaApi(page, base) {
         body,
       });
       if (!res.ok) return false;
-      const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      const data = await res.json().catch(() => null);
       if (data?.error) return false;
       if (data?.url) await fetch(data.url, { credentials: "include" });
       const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
-      return Boolean((session as { user?: { email?: string } }).user?.email);
+      return Boolean(session?.user?.email);
     },
     { email: E2E_EMAIL, password: E2E_PASSWORD, origin: base },
   );
