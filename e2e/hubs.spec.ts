@@ -239,7 +239,7 @@ test.describe("dashboard hubs", () => {
     const chatTab = shell.getByRole("tab", { name: /צ.?אט|chat/i });
     await chatTab.click();
 
-    await expect(shell.getByPlaceholder(/שאל.*/i).or(shell.locator("input[type=text]").first())).toBeVisible({
+    await expect(shell.locator("form input[type=text]").first()).toBeVisible({
       timeout: 15_000,
     });
   });
