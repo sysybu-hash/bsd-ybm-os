@@ -1,9 +1,4 @@
-# Optimized for wall-clock time (~15 min target vs ~22 min before):
-# - quality-checks parallel with build
-# - lighthouse-local parallel with e2e (no wait for Playwright)
-# - one shared .next artifact (no triple rebuild)
-# - Next.js + Playwright browser caches
-name: Quality Gate
+﻿name: Quality Gate
 
 on:
   pull_request:
@@ -12,10 +7,6 @@ on:
       - master
       - main
   workflow_dispatch:
-
-env:
-  # Single origin baked into .next so build artifact is reusable across jobs.
-  CI_BUILD_ORIGIN: http://127.0.0.1:3000
 
 jobs:
   gitleaks:
@@ -62,13 +53,17 @@ jobs:
         run: npm audit --audit-level=high || true
         continue-on-error: true
 
-  quality-checks:
-    name: Lint, tests, and audits
+  verify:
+    name: Lint, tests, and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: http://127.0.0.1:3330
+      AUTH_URL: http://127.0.0.1:3330
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3330
 
     steps:
       - name: Checkout
@@ -80,8 +75,19 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare build env
+        run: node scripts/ci-prepare-build-env.mjs
 
       - name: Lint and type check (parallel)
         run: |
@@ -102,58 +108,14 @@ jobs:
       - name: Rate limit audit
         run: node scripts/audit-rate-limits.mjs
 
-  build:
-    name: Production build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-          cache: npm
-
-      - name: Restore Next.js build cache
-        uses: actions/cache@v4
-        with:
-          path: .next/cache
-          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx') }}
-          restore-keys: |
-            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Prepare build env
-        run: node scripts/ci-prepare-build-env.mjs
-
       - name: Production build
         run: npm run build
 
-      - name: Upload Next.js build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: next-build
-          path: .next
-          retention-days: 1
-          compression-level: 6
-
   e2e-ci-gate:
     name: Playwright ci-gate
-    needs: [quality-checks, build]
+    needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:16
@@ -173,10 +135,9 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       NEXTAUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
       AUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
-      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
-      PLAYWRIGHT_DEV_PORT: "3000"
+      NEXTAUTH_URL: http://127.0.0.1:3001
+      AUTH_URL: http://127.0.0.1:3001
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
       DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/ci
     steps:
@@ -189,14 +150,16 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Download Next.js build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: next-build
-          path: .
 
       - name: Prepare build env
         run: node scripts/ci-prepare-build-env.mjs
@@ -209,6 +172,9 @@ jobs:
 
       - name: Seed E2E test data
         run: node scripts/seed-test-data.mjs
+
+      - name: Production build
+        run: npm run build
 
       - name: Restore Playwright browser cache
         id: playwright-cache
@@ -230,18 +196,17 @@ jobs:
 
   lighthouse-mobile:
     name: Lighthouse CI (local)
-    needs: build
+    needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
-      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_URL: http://localhost:3000
       PORT: "3000"
     steps:
       - name: Checkout
@@ -253,20 +218,25 @@ jobs:
           node-version: "24"
           cache: npm
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Download Next.js build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: next-build
-          path: .
 
       - name: Prepare build env
         run: node scripts/ci-prepare-build-env.mjs
 
       - name: Prisma generate
         run: npx prisma generate
+
+      - name: Production build
+        run: npm run build
 
       - name: Lighthouse CI (mobile, local)
         run: npx @lhci/cli@latest autorun --config=lighthouserc.json
