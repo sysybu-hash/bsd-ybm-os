@@ -49,7 +49,10 @@ export type JewishCalendarPrefs = {
   lat?: number;
   lng?: number;
   elevation?: number;
+  /** @deprecated legacy flag from auto geo on mount — migrated away on read */
   geoDeniedAt?: string;
+  /** User explicitly picked a city from the combobox */
+  userChoseCity?: boolean;
 };
 
 export const JEWISH_CALENDAR_PREFS_KEY = "bsd_ybm_jewish_calendar_v1";

@@ -1,3 +1,4 @@
+import { getDefaultLocation } from "./locations";
 import type { JewishCalendarPrefs } from "./types";
 import { JEWISH_CALENDAR_PREFS_KEY } from "./types";
 
@@ -14,7 +15,29 @@ export function readJewishCalendarPrefs(): JewishCalendarPrefs | null {
 
 export function writeJewishCalendarPrefs(prefs: JewishCalendarPrefs): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(JEWISH_CALENDAR_PREFS_KEY, JSON.stringify(prefs));
+  const cleaned = { ...prefs };
+  if ("geoDeniedAt" in cleaned && cleaned.geoDeniedAt === undefined) {
+    delete cleaned.geoDeniedAt;
+  }
+  localStorage.setItem(JEWISH_CALENDAR_PREFS_KEY, JSON.stringify(cleaned));
+}
+
+/** Strip legacy auto-geo denial flags that caused repeated warnings. */
+export function migrateJewishCalendarPrefs(
+  prefs: JewishCalendarPrefs | null,
+): { prefs: JewishCalendarPrefs | null; changed: boolean } {
+  if (!prefs) return { prefs: null, changed: false };
+
+  let next = prefs;
+  let changed = false;
+
+  if (prefs.geoDeniedAt) {
+    const { geoDeniedAt: _removed, ...rest } = prefs;
+    next = rest;
+    changed = true;
+  }
+
+  return { prefs: changed ? next : prefs, changed };
 }
 
 export function buildDayQueryParams(prefs: JewishCalendarPrefs | null, date?: string): URLSearchParams {

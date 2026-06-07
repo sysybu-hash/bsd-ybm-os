@@ -19,10 +19,12 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
   const layoutDir: "rtl" | "ltr" = dir === "rtl" ? "rtl" : "ltr";
   const {
     locReady,
-    geoDenied,
+    locationHint,
+    suggestLocationPicker,
     locationLabel,
     setCity,
     useMyLocation,
+    dismissLocationHint,
     data,
     loading,
     error,
@@ -66,6 +68,19 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
   const zmanLabel = (z: { labelHe: string; labelEn: string }) =>
     locale === "en" || locale === "ru" ? z.labelEn : z.labelHe;
 
+  const locationHintMessage =
+    locationHint === "choose-city"
+      ? t(`${S}.chooseCityHint`)
+      : locationHint === "denied"
+        ? t(`${S}.geoDenied`)
+        : locationHint === "timeout"
+          ? t(`${S}.geoTimeout`)
+          : locationHint === "unavailable"
+            ? t(`${S}.geoUnavailable`)
+            : locationHint === "unsupported"
+              ? t(`${S}.geoUnsupported`)
+              : null;
+
   return (
     <div className="flex flex-col gap-3" dir={layoutDir}>
       <LocationCombobox
@@ -74,11 +89,11 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
         dir={layoutDir}
         onSelect={setCity}
         onUseMyLocation={useMyLocation}
+        defaultOpen={suggestLocationPicker}
+        emphasize={Boolean(suggestLocationPicker && locationHintMessage)}
+        hint={locationHintMessage}
+        onDismissHint={dismissLocationHint}
       />
-
-      {geoDenied ? (
-        <p className="text-xs text-amber-700 dark:text-amber-300">{t(`${S}.geoDenied`)}</p>
-      ) : null}
 
       <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
         <p className="font-mono text-2xl font-bold tabular-nums" suppressHydrationWarning>

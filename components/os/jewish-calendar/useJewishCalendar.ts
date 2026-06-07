@@ -29,7 +29,7 @@ function shiftDateIso(iso: string, deltaDays: number): string {
 }
 
 export function useJewishCalendar() {
-  const { ready: locReady, geoDenied, locationLabel, setCity, useMyLocation, queryParams } =
+  const { ready: locReady, locationHint, suggestLocationPicker, locationLabel, setCity, useMyLocation, dismissLocationHint, queryParams } =
     useJewishCalendarLocation();
   const [viewDate, setViewDate] = useState(() => israelDateIso());
   const [data, setData] = useState<DaySnapshot | null>(null);
@@ -118,10 +118,14 @@ export function useJewishCalendar() {
 
   return {
     locReady,
-    geoDenied,
+    locationHint,
+    suggestLocationPicker,
     locationLabel,
     setCity,
     useMyLocation,
+    dismissLocationHint,
+    /** @deprecated use locationHint */
+    geoDenied: locationHint === "denied" || locationHint === "choose-city",
     viewDate,
     isToday,
     data,

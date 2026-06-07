@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, X } from "lucide-react";
 import {
   detectPwaInstallState,
+  isAndroidChromeLike,
   isIosSafariLike,
   isStandaloneDisplay,
 } from "@/lib/pwa/install-state";
@@ -44,6 +45,7 @@ export default function PwaInstallBanner() {
   const [nativeInstallOffered, setNativeInstallOffered] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const [isAndroidChrome, setIsAndroidChrome] = useState(false);
   const wasInstalledRef = useRef(false);
 
   const refreshInstallState = useCallback(async () => {
@@ -67,6 +69,7 @@ export default function PwaInstallBanner() {
     if (typeof window === "undefined") return;
 
     setIsIos(isIosSafariLike());
+    setIsAndroidChrome(isAndroidChromeLike());
     setDismissed(readDismissed());
     void refreshInstallState();
 
@@ -137,9 +140,13 @@ export default function PwaInstallBanner() {
         <p className="mt-1 text-[color:var(--foreground-muted)]">
           {isIos
             ? "ב-Safari: שתף → «הוסף למסך הבית» לחוויית אפליקציה מלאה."
-            : nativeInstallOffered
-              ? "הדפדפן מציע התקנה — השתמשו בחץ/אייקון ההתקנה בשורת הכתובת או בתפריט (⋮)."
-              : "בתפריט הדפדפן (⋮) בחרו «התקן אפליקציה» או «הוסף למסך הבית»."}
+            : isAndroidChrome
+              ? nativeInstallOffered
+                ? "השתמשו ב«התקן אפליקציה» בשורת הכתובת. אם Play Protect חוסם — עדכנו Chrome מה-Play Store, התקינו מ-www.bsd-ybm.co.il, ואז «התקן בכל זאת»."
+                : "ב-Chrome (⋮) בחרו «התקן אפליקציה». אם מופיעה אזהרת Play Protect — עדכנו Chrome והתקינו מהכתובת www.bsd-ybm.co.il."
+              : nativeInstallOffered
+                ? "הדפדפן מציע התקנה — השתמשו בחץ/אייקון ההתקנה בשורת הכתובת או בתפריט (⋮)."
+                : "להתקנה ללא אזהרות Play Protect השתמשו ב-Chrome העדכני. בדפדפנים אחרים (Samsung Internet וכו') בחרו «הוסף למסך הבית»."}
         </p>
       </div>
       <button

@@ -145,6 +145,9 @@ export function buildRootMetadata(): Metadata {
       statusBarStyle: "default",
       title: "BSD-YBM-OS",
     },
+    other: {
+      "mobile-web-app-capable": "yes",
+    },
     icons: {
       icon: "/icon-192.png",
       apple: "/icon-192.png",

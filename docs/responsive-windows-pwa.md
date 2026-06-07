@@ -10,8 +10,10 @@
 ## PWA
 
 - `public/manifest.json` — shortcuts ל-`?w=...`
-- `public/sw.js` — cache v5 + offline.html
+- `public/sw.js` — cache + offline.html
+- `app/.well-known/assetlinks.json/route.ts` — Digital Asset Links ל-WebAPK (Play Protect)
 - `components/os/system/PwaInstallBanner.tsx` — התקנה (Android/iOS)
+- `docs/android-pwa-install.md` — Play Protect / Chrome / workaround
 
 ## Gemini Live
 

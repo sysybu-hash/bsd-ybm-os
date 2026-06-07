@@ -19,6 +19,13 @@ export function isIosSafariLike(): boolean {
   return /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
 }
 
+/** Chrome on Android mints WebAPKs with current targetSdk; other browsers may trigger Play Protect. */
+export function isAndroidChromeLike(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  return /Android/i.test(ua) && /Chrome\//i.test(ua) && !/EdgA\//i.test(ua);
+}
+
 /** מקור אמת: standalone + getInstalledRelatedApps (כשזמין) */
 export async function detectPwaInstallState(): Promise<PwaInstallState> {
   const standalone = isStandaloneDisplay();

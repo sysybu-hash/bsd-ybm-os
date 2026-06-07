@@ -15,10 +15,12 @@ export default function JewishCalendarWidget() {
   const layoutDir: "rtl" | "ltr" = dir === "rtl" ? "rtl" : "ltr";
   const {
     locReady,
-    geoDenied,
+    locationHint,
+    suggestLocationPicker,
     locationLabel,
     setCity,
     useMyLocation,
+    dismissLocationHint,
     data,
     loading,
     error,
@@ -67,6 +69,19 @@ export default function JewishCalendarWidget() {
       ? data.gregorian.displayHe
       : data.gregorian.displayEn;
 
+  const locationHintMessage =
+    locationHint === "choose-city"
+      ? t(`${S}.chooseCityHint`)
+      : locationHint === "denied"
+        ? t(`${S}.geoDenied`)
+        : locationHint === "timeout"
+          ? t(`${S}.geoTimeout`)
+          : locationHint === "unavailable"
+            ? t(`${S}.geoUnavailable`)
+            : locationHint === "unsupported"
+              ? t(`${S}.geoUnsupported`)
+              : null;
+
   return (
     <div className="flex w-full min-h-0 flex-col gap-3 p-3 sm:p-4 md:h-full" dir={layoutDir}>
       <div className="flex flex-wrap items-center gap-2">
@@ -76,6 +91,10 @@ export default function JewishCalendarWidget() {
           dir={layoutDir}
           onSelect={setCity}
           onUseMyLocation={useMyLocation}
+          defaultOpen={suggestLocationPicker}
+          emphasize={Boolean(suggestLocationPicker && locationHintMessage)}
+          hint={locationHintMessage}
+          onDismissHint={dismissLocationHint}
         />
         <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-[color:var(--border-main)] p-0.5">
           <button
@@ -112,10 +131,6 @@ export default function JewishCalendarWidget() {
           <RefreshCw size={14} aria-hidden />
         </button>
       </div>
-
-      {geoDenied ? (
-        <p className="text-xs text-amber-700 dark:text-amber-300">{t(`${S}.geoDenied`)}</p>
-      ) : null}
 
       <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
         <div className="flex flex-wrap items-start justify-between gap-3">

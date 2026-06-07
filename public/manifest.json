@@ -1,12 +1,15 @@
 {
-  "id": "/",
+  "id": "https://www.bsd-ybm.co.il/",
   "name": "BSD-YBM Intelligence OS",
   "short_name": "BY",
   "description": "מערכת ניהול AI מתקדמת — ERP, CRM, AI Hub, מחולל אפליקציות וניהול פרויקטים",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": ["standalone", "window-controls-overlay", "minimal-ui"],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#0a0c10",

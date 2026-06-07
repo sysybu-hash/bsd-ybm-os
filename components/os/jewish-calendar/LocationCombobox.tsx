@@ -10,14 +10,32 @@ type Props = {
   dir: "rtl" | "ltr";
   onSelect: (loc: JewishCalendarLocation) => void;
   onUseMyLocation: () => void;
+  defaultOpen?: boolean;
+  emphasize?: boolean;
+  hint?: string | null;
+  onDismissHint?: () => void;
 };
 
-export function LocationCombobox({ label, useMyLocationLabel, dir, onSelect, onUseMyLocation }: Props) {
-  const [open, setOpen] = useState(false);
+export function LocationCombobox({
+  label,
+  useMyLocationLabel,
+  dir,
+  onSelect,
+  onUseMyLocation,
+  defaultOpen = false,
+  emphasize = false,
+  hint,
+  onDismissHint,
+}: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<JewishCalendarLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
@@ -47,10 +65,28 @@ export function LocationCombobox({ label, useMyLocationLabel, dir, onSelect, onU
 
   return (
     <div ref={wrapRef} className="relative min-w-0 flex-1" dir={dir}>
+      {hint ? (
+        <div className="mb-2 flex items-start gap-2 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-2.5 py-2 text-xs text-[color:var(--foreground-muted)]">
+          <p className="min-w-0 flex-1 leading-relaxed">{hint}</p>
+          {onDismissHint ? (
+            <button
+              type="button"
+              onClick={onDismissHint}
+              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-300"
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full min-w-0 items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-2.5 py-1.5 text-start text-xs font-medium text-[color:var(--foreground-main)]"
+        className={`flex w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-start text-xs font-medium text-[color:var(--foreground-main)] ${
+          emphasize
+            ? "border-indigo-400/60 bg-indigo-500/5 ring-1 ring-indigo-400/30"
+            : "border-[color:var(--border-main)] bg-[color:var(--surface-soft)]"
+        }`}
       >
         <MapPin size={14} className="shrink-0 text-indigo-500" aria-hidden />
         <span className="truncate">{label}</span>
@@ -64,13 +100,13 @@ export function LocationCombobox({ label, useMyLocationLabel, dir, onSelect, onU
             placeholder="חיפוש עיר…"
             className="mb-2 w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-2 py-1.5 text-xs"
             dir={dir}
+            autoFocus
           />
           <button
             type="button"
             onClick={() => {
               onUseMyLocation();
               setOpen(false);
-              window.dispatchEvent(new CustomEvent("jewish-calendar:prefs-changed"));
             }}
             className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-300"
           >
@@ -89,7 +125,6 @@ export function LocationCombobox({ label, useMyLocationLabel, dir, onSelect, onU
                     onClick={() => {
                       onSelect(loc);
                       setOpen(false);
-                      window.dispatchEvent(new CustomEvent("jewish-calendar:prefs-changed"));
                     }}
                   >
                     {loc.nameHe}
