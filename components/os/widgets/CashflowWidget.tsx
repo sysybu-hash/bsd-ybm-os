@@ -10,6 +10,7 @@ import {
   mapDashboardStatsToCashflow,
   type CashflowTrendPoint,
 } from "@/lib/workspace-api/map-cashflow-from-dashboard";
+import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 
 const nis = new Intl.NumberFormat("he-IL", {
   style: "currency",
@@ -98,8 +99,8 @@ export default function CashflowWidget() {
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-emerald-600/60 dark:via-emerald-300/60 to-transparent" />
 
-      <div className="relative flex flex-1 min-h-0 flex-col gap-5 p-3 md:p-6">
-        <div className="flex items-start justify-between gap-4 border-b border-[color:var(--border-main)] pb-4">
+      <div className="relative shrink-0 border-b border-[color:var(--border-main)] p-3 pb-4 md:p-6 md:pb-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-200/70">
               {t("workspaceWidgets.cashflowView.eyebrow")}
@@ -115,7 +116,12 @@ export default function CashflowWidget() {
             {t("workspaceWidgets.cashflowView.liveBadge")}
           </div>
         </div>
+      </div>
 
+      <div
+        data-widget-scroll-pane
+        className={`relative flex flex-col gap-5 p-3 md:p-6 ${widgetScrollPaneClass}`}
+      >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {monthlyStats.map((stat) => (
             <StatCard

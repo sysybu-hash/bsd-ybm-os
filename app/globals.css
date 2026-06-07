@@ -846,9 +846,17 @@
     display: flex;
     flex-direction: column;
     flex: 1 1 0%;
+    height: 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+
+  /* Hub tabs without an inner scroll region (e.g. AI scanner): grow with content so the hub scroll pane scrolls */
+  [data-widget-scroll-pane] > [data-embedded-in-hub="true"] {
+    height: auto;
+    max-height: none;
+    flex: 0 0 auto;
   }
 
   /* Simple widgets: fill shell viewport; internal flex-1 overflow-y-auto regions scroll */

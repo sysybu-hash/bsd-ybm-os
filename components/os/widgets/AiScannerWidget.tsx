@@ -69,11 +69,14 @@ export default function AiScannerWidget({
     );
   }
 
+  const constrainToViewport = !embeddedInHub;
+  const useNaturalHeightLayout = stackScannerPanels || embeddedInHub;
+
   return (
     <div
-      className={`flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] ${
-        embeddedInHub ? "[&_.workspace-window]:hidden" : ""
-      }`}
+      className={`flex min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] ${
+        constrainToViewport ? "h-full" : ""
+      } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
       dir={dir}
     >
@@ -83,7 +86,13 @@ export default function AiScannerWidget({
         tr={tr}
       />
 
-      <div className={stackScannerPanels ? "flex flex-col" : "flex min-h-0 flex-1 flex-col overflow-hidden"}>
+      <div
+        className={
+          useNaturalHeightLayout
+            ? "flex flex-col"
+            : "flex min-h-0 flex-1 flex-col overflow-hidden"
+        }
+      >
         <ScanHeaderToolbar
           t={t} tr={tr} scannerPrefix={scannerPrefix}
           boundProjectName={boundProjectName ?? ""}
@@ -156,7 +165,7 @@ export default function AiScannerWidget({
           /* Desktop: fixed resizable panels */
           <Group
             orientation="horizontal"
-            className="min-h-0 flex-1"
+            className={embeddedInHub ? "min-h-[42vh]" : "min-h-0 flex-1"}
           >
             <Panel
               defaultSize={48}
