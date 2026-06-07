@@ -27,8 +27,9 @@ test.describe("Growth — public blog & contact", () => {
   test("contact form submits successfully", async ({ page }) => {
     await page.goto("/contact");
     const email = `e2e-contact-${Date.now()}@example.invalid`;
-    await page.getByLabel(/שם מלא/i).fill("E2E Contact");
-    await page.getByLabel(/אימייל/i).fill(email);
+    const form = page.getByRole("main").locator("form");
+    await form.locator('input:not([type="email"]):not([type="tel"])').first().fill("E2E Contact");
+    await form.locator('input[type="email"]').fill(email);
     await page.getByRole("button", { name: /שלח הודעה/i }).click();
     await expect(page.getByRole("heading", { name: /קיבלנו/i })).toBeVisible({ timeout: 15_000 });
   });

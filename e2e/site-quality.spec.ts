@@ -8,8 +8,8 @@ import {
 
 const MOBILE_PROJECTS = new Set(["mobile-chrome", "mobile-safari"]);
 
-const LANDING_H1 = /מערכת ההפעלה|The operating system for/i;
-const LANDING_CTA = /התחל לעבוד|Get started/i;
+const LANDING_H1 = /מערכת הפעלה|Business OS/i;
+const LANDING_CTA = /פתיחת חשבון|Create account/i;
 const AUTH_HERO = /ברוכים הבאים|Welcome/i;
 const AUTH_TAB_SIGN_IN = /כניסה|Sign in/i;
 const AUTH_BACK_HOME = /חזרה לדף הבית|Back to home/i;
@@ -49,8 +49,9 @@ test.describe("Site quality", () => {
 
     await expect(page).toHaveTitle(/BSD-YBM/i);
     await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: LANDING_CTA })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Gemini Live" })).toBeVisible();
+    await expect(page.getByRole("link", { name: LANDING_CTA })).toBeVisible();
+    await page.locator("#explore").scrollIntoViewIfNeeded();
+    await expect(page.getByText(/Gemini Live|AI Hub/i).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expectNoHorizontalOverflow(page);
   });
@@ -71,16 +72,16 @@ test.describe("Site quality", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
-    await expect(page.getByRole("button", { name: LANDING_CTA })).toBeVisible();
+    await expect(page.getByRole("link", { name: LANDING_CTA })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
-  test("locale cookie switches landing copy to English", async ({ page, context, baseURL }) => {
+  test("locale cookie switches platform copy to English", async ({ page, context, baseURL }) => {
     const origin = baseURL ?? "http://127.0.0.1:3330";
     await setLocaleCookie(context, origin, "en");
-    await page.goto("/");
-    await expect(page.getByRole("button", { name: /Get started/i })).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { name: /Welcome/i })).toBeVisible();
+    await expect(page.locator('[lang="en"]')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 

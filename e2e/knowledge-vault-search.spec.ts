@@ -12,6 +12,10 @@ test.describe("knowledge vault search API", () => {
     test.skip(!signedIn, "E2E credentials not available");
 
     const res = await page.request.get("/api/knowledge-vault/search?q=invoice&limit=5");
+    if (res.status() === 503) {
+      const json = (await res.json()) as { code?: string };
+      test.skip(json.code === "knowledge_vault_disabled", "Knowledge vault disabled in platform settings");
+    }
     expect(res.status()).toBe(200);
     const json = (await res.json()) as { ok?: boolean; hits?: unknown[] };
     expect(json.ok).toBe(true);
