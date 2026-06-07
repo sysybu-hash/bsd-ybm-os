@@ -1,0 +1,63 @@
+name: Lighthouse
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "public/**"
+      - "scripts/lighthouse-*.mjs"
+      - "config/lighthouse-url-matrix.json"
+      - "lighthouserc.json"
+
+jobs:
+  lighthouse-public-p0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build production app
+        run: npm run build
+        env:
+          NEXTAUTH_SECRET: ci-lighthouse-secret-min-32-chars-long
+          AUTH_SECRET: ci-lighthouse-secret-min-32-chars-long
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          SKIP_ENV_VALIDATION: "1"
+
+      - name: Start server
+        run: |
+          npm run start -- -p 3000 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3000 >/dev/null && exit 0
+            sleep 3
+          done
+          echo "Server failed to start" >&2
+          exit 1
+
+      - name: Lighthouse P0 public (mobile)
+        run: >
+          npm run lighthouse:matrix --
+          --base=http://127.0.0.1:3000
+          --tier=public
+          --priority=P0
+          --strategy=mobile
+          --output-dir=reports/pagespeed
+          --fail-under=90
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: reports/pagespeed/
+          if-no-files-found: ignore

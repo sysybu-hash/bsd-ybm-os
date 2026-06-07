@@ -28,9 +28,15 @@ export function CSPostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => subscribeAnalyticsConsent(setAnalyticsAllowed), []);
 
   useEffect(() => {
-    if (analyticsAllowed) {
-      initPostHog({ skipConsentCheck: true });
+    if (!analyticsAllowed) return;
+    const run = () => initPostHog({ skipConsentCheck: true });
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(run, { timeout: 4000 });
+      return () => w.cancelIdleCallback?.(id);
     }
+    const timer = globalThis.setTimeout(run, 2000);
+    return () => globalThis.clearTimeout(timer);
   }, [analyticsAllowed]);
 
   if (!getPostHogProjectKey() || !analyticsAllowed) {

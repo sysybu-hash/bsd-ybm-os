@@ -2,6 +2,7 @@ import type { DocType, IssuedDocument, Organization } from "@prisma/client";
 import type { InvoiceExportPayload, InvoiceLineItem } from "@/lib/invoice-export-types";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { documentTypeLabel } from "@/lib/document-types";
+import { formatOrgTaxIdLine } from "@/lib/org-tax-id-label";
 import { resolveVatRatePercent } from "@/lib/vat-config";
 
 export type InvoiceExportOrg = Pick<
@@ -88,6 +89,7 @@ export function buildInvoiceExportPayload(
     items: parseInvoiceLineItems(doc.items),
     orgName: org.name,
     orgTaxId: org.taxId ?? undefined,
+    orgTaxIdLine: formatOrgTaxIdLine(org.taxId, org.companyType) ?? undefined,
     orgEmail: email,
     orgAddress: org.address ?? undefined,
     itaAllocationNumber: doc.itaAllocationNumber,
@@ -106,6 +108,7 @@ export function previewPayloadFromDraft(params: {
   vatRatePercent: number;
   orgName: string;
   orgTaxId?: string;
+  orgCompanyType?: string;
   dueDate?: string;
 }): InvoiceExportPayload {
   return {
@@ -121,5 +124,6 @@ export function previewPayloadFromDraft(params: {
     items: params.items,
     orgName: params.orgName,
     orgTaxId: params.orgTaxId,
+    orgTaxIdLine: formatOrgTaxIdLine(params.orgTaxId, params.orgCompanyType) ?? undefined,
   };
 }

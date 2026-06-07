@@ -38,15 +38,19 @@ const log = createLogger("platform-layout");
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
-  display: "swap",
+  display: "optional",
+  preload: false,
   adjustFontFallback: true,
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
   variable: "--font-heebo",
 });
 
 const assistant = Assistant({
   subsets: ["latin", "latin-ext"],
-  display: "swap",
+  display: "optional",
+  preload: false,
   adjustFontFallback: true,
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
   variable: "--font-assistant",
 });
 

@@ -13,6 +13,8 @@ export type InvoiceExportPayload = {
   items: InvoiceLineItem[];
   orgName?: string;
   orgTaxId?: string;
+  /** שורת מזהה מס מעוצבת, למשל "ח.פ: 123456789" */
+  orgTaxIdLine?: string;
   orgEmail?: string;
   orgAddress?: string;
   itaAllocationNumber?: string | null;

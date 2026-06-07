@@ -159,6 +159,7 @@ export default function DocumentCreatorWidget({ liveData = null }: DocumentCreat
               vatRatePercent: d.vatRatePercent,
               orgName: d.orgSettings?.name ?? "BSD-YBM",
               orgTaxId: d.orgSettings?.taxId,
+              orgCompanyType: d.orgSettings?.companyType,
             })}
           />
         </section>

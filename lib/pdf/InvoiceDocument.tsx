@@ -134,9 +134,9 @@ export default function InvoiceDocument({ payload }: { payload: InvoiceExportPay
           <View style={styles.box}>
             <Text style={styles.boxLabel}>מאת</Text>
             <Text style={styles.boxValue}>{payload.orgName ?? "—"}</Text>
-            {payload.orgTaxId ? (
+            {payload.orgTaxIdLine ? (
               <Text style={[styles.boxValue, { fontSize: 9, fontWeight: "normal" }]}>
-                {`ח.פ / ע.מ: ${payload.orgTaxId}`}
+                {payload.orgTaxIdLine}
               </Text>
             ) : null}
             {payload.orgAddress ? (

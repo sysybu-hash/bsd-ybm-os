@@ -157,8 +157,37 @@ export default function VideoBackground() {
       setMountVideo(false);
       return;
     }
-    setStaticOnly(false);
-    scheduleDeferredPlay(() => setMountVideo(true));
+
+    // Desktop: poster-first for LCP; load MP4 after interaction or long idle
+    setStaticOnly(true);
+    setIsPlaying(false);
+    setMountVideo(false);
+
+    let enabled = false;
+    const enableVideo = () => {
+      if (enabled) return;
+      enabled = true;
+      setStaticOnly(false);
+      scheduleDeferredPlay(() => setMountVideo(true));
+    };
+
+    const onInteraction = () => enableVideo();
+    document.addEventListener("click", onInteraction, { once: true, passive: true });
+    document.addEventListener("scroll", onInteraction, { once: true, passive: true });
+
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    let idleId: number | undefined;
+    if (typeof w.requestIdleCallback === "function") {
+      idleId = w.requestIdleCallback(() => enableVideo(), { timeout: 12_000 });
+    } else {
+      globalThis.setTimeout(() => enableVideo(), 10_000);
+    }
+
+    return () => {
+      document.removeEventListener("click", onInteraction);
+      document.removeEventListener("scroll", onInteraction);
+      if (idleId != null) w.cancelIdleCallback?.(idleId);
+    };
   }, []);
 
   useEffect(() => {

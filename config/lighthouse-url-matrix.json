@@ -1,0 +1,26 @@
+{
+  "urls": [
+    { "pathname": "/", "tier": "public", "priority": "P0", "requiresAuth": false, "notes": "Marketing landing — LCP critical" },
+    { "pathname": "/login", "tier": "public", "priority": "P0", "requiresAuth": false },
+    { "pathname": "/login?mode=register", "tier": "public", "priority": "P0", "requiresAuth": false, "notes": "Register flow (login page)" },
+    { "pathname": "/about", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/contact", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/help", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/blog", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/blog/gantt-for-contractors", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/blog/field-copilot-guide", "tier": "public", "priority": "P1", "requiresAuth": false },
+    { "pathname": "/privacy", "tier": "public", "priority": "P2", "requiresAuth": false },
+    { "pathname": "/terms", "tier": "public", "priority": "P2", "requiresAuth": false },
+    { "pathname": "/legal", "tier": "public", "priority": "P2", "requiresAuth": false },
+    { "pathname": "/integrations/google", "tier": "public", "priority": "P2", "requiresAuth": false },
+    { "pathname": "/unsubscribe", "tier": "public", "priority": "P3", "requiresAuth": false },
+    { "pathname": "/workspace", "tier": "auth", "priority": "P0", "requiresAuth": true },
+    { "pathname": "/?w=documentsHub", "tier": "auth", "priority": "P0", "requiresAuth": true },
+    { "pathname": "/?w=crmTable", "tier": "auth", "priority": "P1", "requiresAuth": true },
+    { "pathname": "/?w=settings", "tier": "auth", "priority": "P1", "requiresAuth": true },
+    { "pathname": "/?w=helpCenter", "tier": "auth", "priority": "P2", "requiresAuth": true },
+    { "pathname": "/app/admin", "tier": "auth", "priority": "P1", "requiresAuth": true, "requiresAdmin": true },
+    { "pathname": "/app/builder", "tier": "auth", "priority": "P1", "requiresAuth": true },
+    { "pathname": "/app/settings/profession", "tier": "auth", "priority": "P2", "requiresAuth": true }
+  ]
+}

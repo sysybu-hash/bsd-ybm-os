@@ -263,7 +263,7 @@ export function buildInvoicePrintHtml(
       <div class="box">
         <div class="lbl">מאת</div>
         <div class="val"><span class="hebrew">${escapeHtml(payload.orgName ?? "—")}</span></div>
-        ${payload.orgTaxId ? `<div class="meta">ח.פ / ע.מ: <bdi class="money" dir="ltr">${escapeHtml(payload.orgTaxId)}</bdi></div>` : ""}
+        ${payload.orgTaxIdLine ? `<div class="meta"><bdi class="money" dir="ltr">${escapeHtml(payload.orgTaxIdLine)}</bdi></div>` : ""}
         ${payload.orgAddress ? `<div class="meta"><span class="hebrew">${escapeHtml(payload.orgAddress)}</span></div>` : ""}
       </div>
       <div class="box">

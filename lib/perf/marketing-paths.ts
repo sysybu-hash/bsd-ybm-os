@@ -23,12 +23,25 @@ export function shouldSkipServiceWorkerRegistration(
 }
 
 /** נתיבים ציבוריים קלים (בלוג, יצירת קשר) — ללא workspace */
+const LIGHT_PUBLIC_PATHS = new Set([
+  "/about",
+  "/contact",
+  "/help",
+  "/privacy",
+  "/terms",
+  "/legal",
+  "/login",
+  "/register",
+  "/integrations/google",
+  "/unsubscribe",
+]);
+
 export function isMarketingContentPath(pathname: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
   return (
     isMarketingPublicShellPath(p) ||
     p === "/blog" ||
     p.startsWith("/blog/") ||
-    p === "/contact"
+    LIGHT_PUBLIC_PATHS.has(p)
   );
 }

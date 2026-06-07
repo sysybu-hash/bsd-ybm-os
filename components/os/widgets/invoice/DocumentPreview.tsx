@@ -28,8 +28,8 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
         <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <p className="text-[10px] font-bold uppercase text-slate-500">מאת</p>
           <p className="text-sm font-bold">{payload.orgName ?? "—"}</p>
-          {payload.orgTaxId ? (
-            <p className="text-xs text-slate-500">ח.פ: {payload.orgTaxId}</p>
+          {payload.orgTaxIdLine ? (
+            <p className="text-xs text-slate-500">{payload.orgTaxIdLine}</p>
           ) : null}
         </div>
         <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">

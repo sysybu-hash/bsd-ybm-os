@@ -2,28 +2,10 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import ProjectWidget from "@/components/os/ProjectWidget";
-import CashflowWidget from "@/components/os/widgets/CashflowWidget";
-import AiChatWidget from "@/components/os/AiChatWidget";
-import CrmWidget from "@/components/os/CrmWidget";
-import DashboardWidget from "@/components/os/DashboardWidget";
-import ErpDocumentsWidget from "@/components/os/widgets/ErpDocumentsWidget";
-import ProjectBoardWidget from "@/components/os/widgets/ProjectBoardWidget";
-import CrmTableWidget, { type OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
-import ErpFileArchiveWidget from "@/components/os/widgets/ErpFileArchiveWidget";
-import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
-import SettingsWidget from "@/components/os/widgets/SettingsWidget";
-import MeckanoHubWidget from "@/components/os/widgets/MeckanoHubWidget";
-import GoogleDriveWidget from "@/components/os/widgets/GoogleDriveWidget";
-import GoogleCalendarWidget from "@/components/os/widgets/GoogleCalendarWidget";
-import AccessibilityWidget from "@/components/os/widgets/AccessibilityWidget";
-import FinanceHubWidget from "@/components/os/hubs/FinanceHubWidget";
-import ProjectsHubWidget from "@/components/os/hubs/ProjectsHubWidget";
-import DocumentsHubWidget from "@/components/os/hubs/DocumentsHubWidget";
-import AiHubWidget from "@/components/os/hubs/AiHubWidget";
 import WidgetState from "@/components/os/WidgetState";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 
 function WidgetLoadingPlaceholder() {
   return (
@@ -33,14 +15,35 @@ function WidgetLoadingPlaceholder() {
   );
 }
 
-const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const DocumentCreatorWidget = dynamic(() => import("@/components/os/widgets/DocumentCreatorWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCopilotWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
-const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading: () => <WidgetLoadingPlaceholder /> });
+const loading = () => <WidgetLoadingPlaceholder />;
+
+const ProjectWidget = dynamic(() => import("@/components/os/ProjectWidget"), { loading });
+const CashflowWidget = dynamic(() => import("@/components/os/widgets/CashflowWidget"), { loading });
+const AiChatWidget = dynamic(() => import("@/components/os/AiChatWidget"), { loading });
+const CrmWidget = dynamic(() => import("@/components/os/CrmWidget"), { loading });
+const DashboardWidget = dynamic(() => import("@/components/os/DashboardWidget"), { loading });
+const ErpDocumentsWidget = dynamic(() => import("@/components/os/widgets/ErpDocumentsWidget"), { loading });
+const ProjectBoardWidget = dynamic(() => import("@/components/os/widgets/ProjectBoardWidget"), { loading });
+const CrmTableWidget = dynamic(() => import("@/components/os/widgets/CrmTableWidget"), { loading });
+const ErpFileArchiveWidget = dynamic(() => import("@/components/os/widgets/ErpFileArchiveWidget"), { loading });
+const AiChatFullWidget = dynamic(() => import("@/components/os/widgets/AiChatFullWidget"), { loading });
+const SettingsWidget = dynamic(() => import("@/components/os/widgets/SettingsWidget"), { loading });
+const MeckanoHubWidget = dynamic(() => import("@/components/os/widgets/MeckanoHubWidget"), { loading });
+const GoogleDriveWidget = dynamic(() => import("@/components/os/widgets/GoogleDriveWidget"), { loading });
+const GoogleCalendarWidget = dynamic(() => import("@/components/os/widgets/GoogleCalendarWidget"), { loading });
+const AccessibilityWidget = dynamic(() => import("@/components/os/widgets/AccessibilityWidget"), { loading });
+const FinanceHubWidget = dynamic(() => import("@/components/os/hubs/FinanceHubWidget"), { loading });
+const ProjectsHubWidget = dynamic(() => import("@/components/os/hubs/ProjectsHubWidget"), { loading });
+const DocumentsHubWidget = dynamic(() => import("@/components/os/hubs/DocumentsHubWidget"), { loading });
+const AiHubWidget = dynamic(() => import("@/components/os/hubs/AiHubWidget"), { loading });
+const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), { loading });
+const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), { loading });
+const DocumentCreatorWidget = dynamic(() => import("@/components/os/widgets/DocumentCreatorWidget"), { loading });
+const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCopilotWidget"), { loading });
+const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), { loading });
+const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), { loading });
+const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), { loading });
+const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading });
 
 export const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "project", "crm", "dashboard", "aiChat", "cashflow", "erp", "projectBoard", "crmTable",

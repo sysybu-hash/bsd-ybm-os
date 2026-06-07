@@ -164,11 +164,11 @@ function buildDocDefinition(payload: InvoiceExportPayload): TDocumentDefinitions
                     border: [false, false, false, false],
                   },
                 ],
-                ...(payload.orgTaxId
+                ...(payload.orgTaxIdLine
                   ? [
                       [
                         {
-                          text: `ח.פ / ע.מ: ${payload.orgTaxId}`,
+                          text: payload.orgTaxIdLine,
                           style: "boxMeta",
                           border: [false, false, false, false],
                         },

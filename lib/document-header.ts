@@ -1,4 +1,5 @@
 import { CompanyType } from "@prisma/client";
+import { formatOrgTaxIdLine, getOrgTaxIdLabelShort } from "@/lib/org-tax-id-label";
 
 export type DocumentHeaderOrg = {
   isReportable: boolean;
@@ -22,7 +23,7 @@ export function getDocumentHeader(org: DocumentHeaderOrg): {
     };
   }
 
-  const taxLine = org.taxId?.trim() ? `ח.פ / ע.מ: ${org.taxId.trim()}` : "ח.פ / ע.מ: —";
+  const taxLine = formatOrgTaxIdLine(org.taxId, org.companyType) ?? `${getOrgTaxIdLabelShort(org.companyType)}: —`;
 
   if (org.companyType === CompanyType.EXEMPT_DEALER) {
     return {
