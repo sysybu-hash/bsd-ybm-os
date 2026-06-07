@@ -1,6 +1,6 @@
-# Quality Gate — optimized for wall-clock time (~15 min vs ~22 min):
-# - quality-checks ∥ build (no serial lint→build)
-# - lighthouse-local ∥ e2e (no wait for Playwright)
+# Optimized for wall-clock time (~15 min target vs ~22 min before):
+# - quality-checks parallel with build
+# - lighthouse-local parallel with e2e (no wait for Playwright)
 # - one shared .next artifact (no triple rebuild)
 # - Next.js + Playwright browser caches
 name: Quality Gate
