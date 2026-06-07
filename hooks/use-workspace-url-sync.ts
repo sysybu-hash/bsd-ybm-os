@@ -47,7 +47,6 @@ export function useWorkspaceUrlSync({
 
   const widgetMatchesUrlIntent = useCallback(
     (widget: ActiveWidget, intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) => {
-      if (intent.widgetInstanceId) return intent.widgetInstanceId === widget.id;
       if (widget.type !== intent.widgetType) return false;
       const projectId =
         (intent.widgetType === "project" || intent.widgetType === "projectsHub") &&
@@ -55,6 +54,11 @@ export function useWorkspaceUrlSync({
           ? intent.viewState.projectId
           : null;
       if (projectId) return widget.liveData?.projectId === projectId;
+      if (intent.widgetInstanceId) {
+        if (intent.widgetInstanceId === widget.id) return true;
+        // Stale wid after remount/restore — still the same logical window.
+        return true;
+      }
       return true;
     },
     [],

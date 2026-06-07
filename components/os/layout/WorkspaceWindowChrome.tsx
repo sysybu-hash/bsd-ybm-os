@@ -128,7 +128,11 @@ export default function WorkspaceWindowChrome({
         </h2>
       </div>
 
-      <div className="workspace-chrome-toolbar">
+      <div
+        className="workspace-chrome-toolbar"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {showZoom ? (
           <div className="inline-flex shrink-0 items-center gap-0.5">
             <button
@@ -187,7 +191,7 @@ export default function WorkspaceWindowChrome({
         <button
           type="button"
           onClick={onClose}
-          className={closeBtnClass}
+          className={`${closeBtnClass} touch-manipulation`}
           aria-label={t("workspaceWidgets.chrome.closeAria", chromeTitle)}
         >
           <X size={16} className="shrink-0 md:h-[15px] md:w-[15px]" aria-hidden />

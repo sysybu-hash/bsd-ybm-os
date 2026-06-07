@@ -10,11 +10,11 @@ type ResizeHandlesProps = {
 export function ResizeHandles({ onStartResize }: ResizeHandlesProps) {
   return (
     <>
-      {/* top edge — leave room for nw/ne corners */}
+      {/* top edge — below window chrome so close/minimize stay clickable */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "n")}
-        className="absolute left-5 right-5 top-0 z-[100] h-3 cursor-ns-resize border-0 bg-transparent p-0"
+        className="absolute left-5 right-5 top-[var(--window-header-height)] z-[100] h-3 cursor-ns-resize border-0 bg-transparent p-0"
         style={{ cursor: "ns-resize" }}
       />
       {/* bottom edge */}
@@ -42,13 +42,13 @@ export function ResizeHandles({ onStartResize }: ResizeHandlesProps) {
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "nw")}
-        className="absolute left-0 top-0 z-[101] h-5 w-5 cursor-nwse-resize border-0 bg-transparent p-0"
+        className="absolute left-0 top-[var(--window-header-height)] z-[100] h-5 w-5 cursor-nwse-resize border-0 bg-transparent p-0"
         style={{ cursor: "nwse-resize" }}
       />
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "ne")}
-        className="absolute right-0 top-0 z-[101] h-5 w-5 cursor-nesw-resize border-0 bg-transparent p-0"
+        className="absolute right-0 top-[var(--window-header-height)] z-[100] h-5 w-5 cursor-nesw-resize border-0 bg-transparent p-0"
       />
       <button
         type="button" aria-hidden tabIndex={-1}

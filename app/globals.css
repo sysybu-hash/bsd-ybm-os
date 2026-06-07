@@ -499,6 +499,8 @@
   }
 
   .workspace-window-header {
+    position: relative;
+    z-index: 110;
     display: flex;
     min-height: var(--window-header-height);
     flex-shrink: 0;
