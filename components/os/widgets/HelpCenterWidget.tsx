@@ -100,7 +100,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           ) : null}
         </div>
       ) : (
-        <div data-widget-scroll-pane className={`${widgetScrollPaneClass} flex min-h-0 flex-1 flex-col md:flex-row`}>
+        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain md:flex-row md:overflow-hidden [-webkit-overflow-scrolling:touch]">
           <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
             <div className="flex gap-2 max-md:flex-row md:flex-col" role="tablist" aria-label={t("workspaceWidgets.helpCenter.guidesSection")}>
               {s.content.categories.map((c) => (
