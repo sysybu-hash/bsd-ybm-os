@@ -122,9 +122,9 @@ test.describe("dashboard hubs", () => {
     const boardTab = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
     await boardTab.click();
 
-    // Board shows status column tabs (todo / in progress / …)
+    // Without a scoped project, board tab shows the project picker
     await expect(
-      shell.getByRole("button", { name: /לביצוע|To do|todo/i }).first(),
+      shell.getByText(/בחרו פרויקט|Choose a project/i).first(),
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
@@ -206,7 +206,7 @@ test.describe("dashboard hubs", () => {
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
-    const chatTab     = shell.getByRole("tab", { name: /צ'אט|chat/i });
+    const chatTab     = shell.getByRole("tab", { name: /צ.?אט|chat/i });
     const notebookTab = shell.getByRole("tab", { name: /מחברת|notebook/i });
     await expect(chatTab).toBeVisible({ timeout: 10_000 });
     await expect(notebookTab).toBeVisible({ timeout: 10_000 });
@@ -236,7 +236,7 @@ test.describe("dashboard hubs", () => {
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
-    const chatTab = shell.getByRole("tab", { name: /צ'אט|chat/i });
+    const chatTab = shell.getByRole("tab", { name: /צ.?אט|chat/i });
     await chatTab.click();
 
     await expect(shell.getByPlaceholder(/שאל.*/i).or(shell.locator("input[type=text]").first())).toBeVisible({
@@ -252,7 +252,7 @@ test.describe("dashboard hubs", () => {
       { widget: "financeHub",   tabs: [/תזרים|cashflow/i, /סקירה|overview/i] },
       { widget: "projectsHub",  tabs: [/לוח פרויקטים|board/i, /מרכז פרויקט|project/i] },
       { widget: "documentsHub", tabs: [/ארכיון|archive/i, /הפקה|create/i, /סריקה|scan/i] },
-      { widget: "aiHub",        tabs: [/צ'אט|chat/i, /מחברת|notebook/i] },
+      { widget: "aiHub",        tabs: [/צ.?אט|chat/i, /מחברת|notebook/i] },
     ] as const;
 
     const errorHeading = page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i });

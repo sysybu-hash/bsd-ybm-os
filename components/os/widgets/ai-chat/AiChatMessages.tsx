@@ -175,6 +175,7 @@ export function AiChatMessages({
       {miniSendBar}
       <div
         ref={scrollContainerRef}
+        tabIndex={0}
         className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain p-3 sm:space-y-6 sm:p-6"
       >
         {messageList}
