@@ -111,11 +111,11 @@ export default function OsFloatingPanel({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           data-shell-scroll
-          className="shell-scroll-host custom-scrollbar min-h-0 flex-1 max-md:h-0 max-md:min-h-0 overflow-y-auto overflow-x-hidden p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+          className="shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 max-md:min-h-0 overflow-y-auto overflow-x-hidden p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
         >
           <motion.div
             data-shell-content
-            className={`flex min-h-full w-full flex-col ${zoomActive ? "origin-top" : ""}`}
+            className={`flex min-h-full w-full flex-col md:h-full md:max-h-full md:min-h-0 md:overflow-hidden ${zoomActive ? "origin-top" : ""}`}
             style={contentZoomStyle}
           >
             {children}

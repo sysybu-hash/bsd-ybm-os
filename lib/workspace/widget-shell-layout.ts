@@ -1,6 +1,7 @@
 /**
  * Layout classes for widgets inside AdaptiveWidgetShell.
- * On mobile the shell owns vertical scroll unless marked sticky-chrome.
+ * Sticky-chrome widgets scroll via data-widget-scroll-pane; simple widgets use
+ * flex-1 min-h-0 overflow-y-auto below a fixed header (see globals.css desktop rules).
  */
 
 /** Widgets with fixed header/footer that keep an inner scroll pane on mobile. */

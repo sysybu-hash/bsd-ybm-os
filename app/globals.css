@@ -810,12 +810,54 @@
     --workspace-inset-bottom: var(--desktop-dock-clearance);
   }
 
-  /* Hub tabs (e.g. AI app builder): nested sticky chrome fills tab pane height */
-  [data-widget-sticky-chrome] > [data-widget-scroll-pane] {
+  /* Desktop: flex scrollport — without height:0/min-height:0 the pane expands and overflow-hidden parents clip content */
+  [data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host,
+  .os-floating-panel.workspace-window [data-shell-scroll].shell-scroll-host {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Bound shell content so h-full widget flex chains resolve inside the window */
+  [data-scroll-owner="shell"] [data-shell-content],
+  .os-floating-panel.workspace-window [data-shell-content] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Sticky chrome (tabs, steppers, toolbars): inner pane owns scroll */
+  [data-scroll-owner="shell"] [data-shell-content] > [data-widget-sticky-chrome],
+  .os-floating-panel.workspace-window [data-shell-content] > [data-widget-sticky-chrome] {
     display: flex;
     flex-direction: column;
     flex: 1 1 0%;
     min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  [data-widget-sticky-chrome] > [data-widget-scroll-pane],
+  [data-widget-sticky-chrome] [data-widget-scroll-pane] {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Simple widgets: fill shell viewport; internal flex-1 overflow-y-auto regions scroll */
+  [data-scroll-owner="shell"] [data-shell-content] > :not([data-widget-sticky-chrome]),
+  .os-floating-panel.workspace-window [data-shell-content] > :not([data-widget-sticky-chrome]) {
+    flex: 1 1 0%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
   }
 
   [data-widget-scroll-pane] > [data-app-builder-root] {

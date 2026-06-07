@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 
 export type HubTabDef = {
   id: string;
@@ -90,7 +91,7 @@ export default function WidgetHubShell({
         ) : null}
       </div>
       ) : null}
-      <div data-widget-scroll-pane className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div data-widget-scroll-pane className={`relative ${widgetScrollPaneClass}`}>
         {renderTab(activeTab)}
       </div>
     </div>
