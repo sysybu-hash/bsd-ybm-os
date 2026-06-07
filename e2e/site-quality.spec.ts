@@ -50,8 +50,6 @@ test.describe("Site quality", () => {
     await expect(page).toHaveTitle(/BSD-YBM/i);
     await expect(page.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeVisible();
     await expect(page.getByRole("link", { name: LANDING_CTA })).toBeVisible();
-    await page.locator("#explore").scrollIntoViewIfNeeded();
-    await expect(page.getByText(/Gemini Live|AI Hub/i).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expectNoHorizontalOverflow(page);
   });

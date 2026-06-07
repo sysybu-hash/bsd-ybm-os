@@ -4,8 +4,12 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { dismissCookieBannerIfVisible, primeCookieConsent } from "./helpers";
 
 test.describe("Growth — public blog & contact", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeCookieConsent(page);
+  });
   test("blog index lists posts", async ({ page }) => {
     await page.goto("/blog");
     await expect(page.getByRole("heading", { name: /בלוג BSD-YBM/i })).toBeVisible();
@@ -30,15 +34,21 @@ test.describe("Growth — public blog & contact", () => {
     const form = page.getByRole("main").locator("form");
     await form.locator('input:not([type="email"]):not([type="tel"])').first().fill("E2E Contact");
     await form.locator('input[type="email"]').fill(email);
+    await dismissCookieBannerIfVisible(page);
     await page.getByRole("button", { name: /שלח הודעה/i }).click();
     await expect(page.getByRole("heading", { name: /קיבלנו/i })).toBeVisible({ timeout: 15_000 });
   });
 });
 
 test.describe("Growth — unsubscribe", () => {
+  test.beforeEach(async ({ page }) => {
+    await primeCookieConsent(page);
+  });
+
   test("unsubscribe page loads", async ({ page }) => {
     await page.goto("/unsubscribe");
-    await expect(page.getByRole("heading")).toBeVisible();
+    await dismissCookieBannerIfVisible(page);
+    await expect(page.getByRole("heading", { level: 1, name: /הסרה מרשימת תפוצה/i })).toBeVisible();
   });
 });
 

@@ -89,8 +89,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Parallel workers in CI — ci-gate runs many specs across two projects. */
-  workers: process.env.CI ? 4 : undefined,
+  /* Parallel workers in CI — balance speed vs Next server load under Playwright webServer. */
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

@@ -42,7 +42,7 @@ test.describe("dashboard hubs", () => {
   test("finance hub opens from quick grid", async ({ page }) => {
     await hubQuickGridButton(page, /פיננסים|finance/i).click();
     await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("tablist")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("finance hub tab switch: overview → cashflow", async ({ page }) => {
@@ -100,7 +100,7 @@ test.describe("dashboard hubs", () => {
   test("projects hub opens with tab navigation", async ({ page }) => {
     await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
     await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("tablist")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("projects hub has board and project tabs", async ({ page }) => {
@@ -122,9 +122,10 @@ test.describe("dashboard hubs", () => {
     const boardTab = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
     await boardTab.click();
 
-    // Board should show status filter buttons
-    const filterBar = shell.getByRole("button", { name: /הכל|All/i }).first();
-    await expect(filterBar).toBeVisible({ timeout: 15_000 });
+    // Board shows status column tabs (todo / in progress / …)
+    await expect(
+      shell.getByRole("button", { name: /לביצוע|To do|todo/i }).first(),
+    ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
 
@@ -224,7 +225,7 @@ test.describe("dashboard hubs", () => {
 
     // Sources sidebar has a "מקורות|Sources" heading
     await expect(
-      shell.getByRole("heading", { name: /מקורות|sources/i }),
+      shell.getByRole("heading", { name: /מקורות|sources/i }).first(),
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
