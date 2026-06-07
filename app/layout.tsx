@@ -6,7 +6,7 @@ import { buildRootMetadata } from "@/lib/site-metadata";
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
   display: "optional",
-  preload: true,
+  preload: false,
   adjustFontFallback: true,
   fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
   variable: "--font-heebo",

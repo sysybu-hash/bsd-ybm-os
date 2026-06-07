@@ -4,6 +4,7 @@
  */
 export const MARKETING_HERO_CRITICAL_INLINE_CSS = `
 .marketing-cinematic{--mkt-nav-height:4.25rem;--mkt-accent:#d4a853;--mkt-accent-glow:rgba(212,168,83,.45);--mkt-eyebrow:#fcd34d;--mkt-body-bg:#020617;--mkt-fg:#f8fafc;--mkt-fg-muted:#cbd5e1;color-scheme:dark;background:transparent;color:var(--mkt-fg);isolation:isolate}
+.mkt-hero-section,.mkt-hero-section *{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important}
 html.light .marketing-cinematic{--mkt-accent:#92400e;--mkt-accent-glow:rgba(180,134,46,.28);--mkt-eyebrow:#b45309;--mkt-body-bg:#f1f5f9;--mkt-fg:#020617;--mkt-fg-muted:#334155;color-scheme:light}
 body:has(.marketing-cinematic){background-color:var(--mkt-body-bg)!important;overflow-x:clip}
 html:has(.marketing-cinematic){overflow-x:clip}
