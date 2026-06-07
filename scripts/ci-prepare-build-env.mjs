@@ -14,8 +14,8 @@ const PLACEHOLDERS = {
   DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/ci",
   DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/ci",
   NEXTAUTH_SECRET: "ci-nextauth-secret-for-build-only",
-  NEXTAUTH_URL: "http://127.0.0.1:3330",
-  AUTH_URL: "http://127.0.0.1:3330",
+  NEXTAUTH_URL: process.env.CI_BUILD_ORIGIN ?? "http://127.0.0.1:3000",
+  AUTH_URL: process.env.CI_BUILD_ORIGIN ?? "http://127.0.0.1:3000",
 };
 
 function envHas(key) {

@@ -20,6 +20,7 @@
     "start": "next start",
     "test": "jest",
     "test:coverage": "jest --coverage --runInBand",
+    "test:coverage:ci": "jest --coverage --maxWorkers=50%",
     "test:e2e": "playwright test",
     "test:e2e:quality": "playwright test e2e/site-quality.spec.ts --project=chromium --project=mobile-chrome",
     "test:e2e:workspace": "playwright test e2e/workspace-automations.spec.ts e2e/workspace-a11y.spec.ts e2e/hubs.spec.ts e2e/auth-api-smoke.spec.ts --project=chromium",

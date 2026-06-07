@@ -1,3 +1,8 @@
+# Quality Gate — optimized for wall-clock time (~15 min vs ~22 min):
+# - quality-checks ∥ build (no serial lint→build)
+# - lighthouse-local ∥ e2e (no wait for Playwright)
+# - one shared .next artifact (no triple rebuild)
+# - Next.js + Playwright browser caches
 name: Quality Gate
 
 on:
@@ -7,6 +12,10 @@ on:
       - master
       - main
   workflow_dispatch:
+
+env:
+  # Single origin baked into .next so build artifact is reusable across jobs.
+  CI_BUILD_ORIGIN: http://127.0.0.1:3000
 
 jobs:
   gitleaks:
@@ -53,17 +62,13 @@ jobs:
         run: npm audit --audit-level=high || true
         continue-on-error: true
 
-  verify:
-    name: Lint, tests, and build
+  quality-checks:
+    name: Lint, tests, and audits
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      NEXTAUTH_URL: http://127.0.0.1:3330
-      AUTH_URL: http://127.0.0.1:3330
-      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3330
 
     steps:
       - name: Checkout
@@ -78,17 +83,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prepare build env
-        run: node scripts/ci-prepare-build-env.mjs
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check
-        run: npx tsc --noEmit
+      - name: Lint and type check (parallel)
+        run: |
+          set -e
+          npm run lint &
+          lint_pid=$!
+          npx tsc --noEmit &
+          tsc_pid=$!
+          wait "$lint_pid"
+          wait "$tsc_pid"
 
       - name: Unit tests with coverage
-        run: npm run test:coverage
+        run: npm run test:coverage:ci
 
       - name: API route audit
         run: node scripts/audit-api-routes.mjs
@@ -96,14 +102,58 @@ jobs:
       - name: Rate limit audit
         run: node scripts/audit-rate-limits.mjs
 
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare build env
+        run: node scripts/ci-prepare-build-env.mjs
+
       - name: Production build
         run: npm run build
 
+      - name: Upload Next.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: .next
+          retention-days: 1
+          compression-level: 6
+
   e2e-ci-gate:
     name: Playwright ci-gate
-    needs: verify
+    needs: [quality-checks, build]
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16
@@ -123,9 +173,10 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       NEXTAUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
       AUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
-      NEXTAUTH_URL: http://127.0.0.1:3001
-      AUTH_URL: http://127.0.0.1:3001
-      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
+      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
+      PLAYWRIGHT_DEV_PORT: "3000"
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
       DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/ci
     steps:
@@ -141,6 +192,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download Next.js build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .
+
       - name: Prepare build env
         run: node scripts/ci-prepare-build-env.mjs
 
@@ -153,28 +210,38 @@ jobs:
       - name: Seed E2E test data
         run: node scripts/seed-test-data.mjs
 
-      - name: Production build
-        run: npm run build
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright chromium only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
 
       - name: E2E ci-gate
         run: npm run test:e2e:ci-gate
 
   lighthouse-mobile:
     name: Lighthouse CI (local)
-    needs: [verify, e2e-ci-gate]
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      NEXTAUTH_URL: http://localhost:3000
-      AUTH_URL: http://localhost:3000
+      NEXTAUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      AUTH_URL: ${{ env.CI_BUILD_ORIGIN }}
+      NEXT_PUBLIC_SITE_URL: ${{ env.CI_BUILD_ORIGIN }}
       PORT: "3000"
     steps:
       - name: Checkout
@@ -189,14 +256,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download Next.js build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: .
+
       - name: Prepare build env
         run: node scripts/ci-prepare-build-env.mjs
 
       - name: Prisma generate
         run: npx prisma generate
-
-      - name: Production build
-        run: npm run build
 
       - name: Lighthouse CI (mobile, local)
         run: npx @lhci/cli@latest autorun --config=lighthouserc.json
@@ -206,7 +276,6 @@ jobs:
 
   lighthouse-www:
     name: Lighthouse CI (production)
-    needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -221,7 +290,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lighthouse CI (mobile, production)
         run: npx @lhci/cli@latest autorun --config=lighthouserc.www.json
