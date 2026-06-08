@@ -47,10 +47,24 @@ test.describe("mobile workspace windows", () => {
 
     await dismissWorkspaceOverlays(page);
     await hubQuickGridButton(page, /פיננסים|finance/i).click();
-    const scrollHost = page.locator("[data-widget-shell] .custom-scrollbar").first();
-    await expect(scrollHost).toBeVisible({ timeout: 20_000 });
+    const shell = page.locator("[data-widget-shell]").first();
+    await expect(shell).toBeVisible({ timeout: 20_000 });
 
-    const overflowY = await scrollHost.evaluate((el) => getComputedStyle(el).overflowY);
-    expect(overflowY === "auto" || overflowY === "scroll").toBeTruthy();
+    // Hub widgets are sticky-chrome: the outer shell-scroll-host is overflow:hidden
+    // and the inner [data-widget-scroll-pane] is the actual scroll owner.
+    // Accept either pattern so the test works for both flow and sticky-chrome widgets.
+    const scrollPane = shell.locator("[data-widget-scroll-pane]").first();
+    const shellScrollHost = shell.locator("[data-shell-scroll]").first();
+
+    const paneOverflow = await scrollPane.isVisible()
+      ? await scrollPane.evaluate((el) => getComputedStyle(el).overflowY)
+      : "hidden";
+    const hostOverflow = await shellScrollHost.evaluate((el) => getComputedStyle(el).overflowY);
+
+    const hasScrollRegion =
+      paneOverflow === "auto" || paneOverflow === "scroll" ||
+      hostOverflow === "auto" || hostOverflow === "scroll";
+
+    expect(hasScrollRegion).toBeTruthy();
   });
 });
