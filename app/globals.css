@@ -768,9 +768,14 @@
    See lib/workspace/widget-shell-layout.ts and components/os/layout/WindowBody.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* Shell scroll host: size container only — widgets own their own scroll. */
+/* Shell scroll host: size container only — widgets own their own scroll.
+   MUST be a flex column so [data-shell-content] becomes a constrained flex
+   item (flex:1 1 0%). Without display:flex here, content ignores its flex
+   sizing, grows to its natural content height, and nothing scrolls. */
 [data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host,
 .os-floating-panel.workspace-window [data-shell-scroll].shell-scroll-host {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 0%;
   height: 0;
   min-height: 0;
