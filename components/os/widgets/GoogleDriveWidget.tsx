@@ -91,7 +91,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
+    <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-x-hidden bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <DriveHeader
         t={t} drivePrefix={drivePrefix}
         boundProjectName={boundProjectName}
@@ -180,7 +180,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
       ) : null}
 
       {/* File list */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+      <div data-widget-scroll-pane className="custom-scrollbar">
         <DriveFileList
           files={files} viewMode={viewMode} selectedIds={selectedIds}
           workspace={workspace} driveError={driveError} reauthUrl={reauthUrl}

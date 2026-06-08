@@ -57,8 +57,8 @@ export default function AccessibilityPanelContent({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto p-4">
+    <div className="flex w-full flex-col">
+      <div className="p-4">
         <section className="mb-4">
           <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
             {t("accessibility.fontScale")}

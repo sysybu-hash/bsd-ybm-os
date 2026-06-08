@@ -115,7 +115,7 @@ export default function OsFloatingPanel({
         >
           <motion.div
             data-shell-content
-            className={`flex min-h-full w-full flex-col md:h-full md:max-h-full md:min-h-0 md:overflow-hidden ${zoomActive ? "origin-top" : ""}`}
+            className={`flex w-full flex-col ${zoomActive ? "origin-top" : ""}`}
             style={contentZoomStyle}
           >
             {children}
@@ -174,7 +174,7 @@ export default function OsFloatingPanel({
                 <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
                   initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ type: "spring", damping: 28, stiffness: 340 }}
-                  className={`${panelSurfaceClass} max-h-[min(88dvh,calc(100dvh-var(--mobile-chrome-bottom,5.5rem)-1.25rem))]`}>
+                  className={`${panelSurfaceClass} max-h-[var(--window-max-h)]`}>
                   {panelBody}
                 </motion.div>
               </div>

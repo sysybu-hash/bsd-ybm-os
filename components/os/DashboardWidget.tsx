@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
+import WindowBody from "@/components/os/layout/WindowBody";
 import React from "react";
 import { useTheme } from "next-themes";
 import {
@@ -42,18 +43,13 @@ export default function DashboardWidget() {
     new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(num);
 
   return (
-    <div
+    <WindowBody
       role="region"
       aria-label={t("workspaceWidgets.quickActions.dashboard.title")}
       tabIndex={0}
-      data-widget-sticky-chrome
-      className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+      className="min-w-0 gap-4 p-3 text-[color:var(--foreground-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 md:gap-8 md:p-6"
       dir={dir}
     >
-      <div
-        data-widget-scroll-pane
-        className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-3 md:gap-8 md:p-6 [-webkit-overflow-scrolling:touch]"
-      >
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
@@ -200,7 +196,6 @@ export default function DashboardWidget() {
           </AreaChart>
         </ResponsiveContainer>
       </ChartContainer>
-      </div>
-    </div>
+    </WindowBody>
   );
 }

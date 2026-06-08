@@ -94,6 +94,7 @@ export default function CashflowWidget() {
 
   return (
     <div
+      data-widget-sticky-chrome
       className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
       dir={dir}
     >

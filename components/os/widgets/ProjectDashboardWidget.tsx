@@ -94,6 +94,7 @@ export default function ProjectDashboardWidget({
 
   return (
     <div
+      data-widget-sticky-chrome
       className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden text-[color:var(--foreground-main)]"
       dir={dir}
     >
@@ -124,7 +125,7 @@ export default function ProjectDashboardWidget({
         />
       ) : null}
 
-      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain p-2 md:p-3">
+      <div data-widget-scroll-pane className="custom-scrollbar flex flex-col p-2 md:p-3">
         {activeTab === "financial" && (
           <FinancialTab
             data={data}

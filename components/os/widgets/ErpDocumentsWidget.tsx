@@ -34,7 +34,7 @@ export default function ErpDocumentsWidget() {
         </form>
       </div>
 
-      <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto">
+      <div data-widget-scroll-pane className="custom-scrollbar">
         {loading ? (
           <WidgetState variant="loading" message={t("workspaceWidgets.erp.loading")} />
         ) : documents.length === 0 ? (
@@ -95,7 +95,7 @@ export default function ErpDocumentsWidget() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       {/* Mobile pane switcher */}
       <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] p-1.5 md:hidden" role="tablist">
         {(["list", "detail"] as const).map((pane) => {

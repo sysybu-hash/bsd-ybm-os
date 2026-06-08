@@ -99,6 +99,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
 
   return (
     <div
+      data-widget-sticky-chrome
       className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
       dir={dir}
     >
@@ -178,7 +179,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget }: P
         </div>
 
         {/* Task grid — 1 col on mobile, 2 cols on desktop */}
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
+        <div data-widget-scroll-pane className="custom-scrollbar p-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {filteredTasks
               .filter((task) => task.status === activeCol)
