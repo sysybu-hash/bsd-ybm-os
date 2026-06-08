@@ -19,7 +19,7 @@ import { I18nProvider } from "@/components/os/system/I18nProvider";
 import { TradeProfileProvider } from "@/components/os/system/TradeProfileProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
-import { getMessages } from "@/lib/i18n/load-messages";
+import { getMessages, getMarketingMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { buildLocalizedMetadata } from "@/lib/site-metadata";
 import { env } from "@/lib/env";
@@ -54,10 +54,10 @@ const assistant = Assistant({
   variable: "--font-assistant",
 });
 
-export async function generateMetadata(): Promise<Metadata> {
-  const jar = await cookies();
-  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
-  return buildLocalizedMetadata(locale);
+export function generateMetadata(): Metadata {
+  // Static metadata using default locale — avoids Next.js deferred streaming
+  // which would place meta tags outside <head>, invisible to SEO crawlers.
+  return buildLocalizedMetadata("he");
 }
 
 export const dynamic = "force-dynamic";
@@ -80,13 +80,14 @@ export default async function PlatformLayout({
   }
   const jar = await cookies();
   const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
-  const messages = getMessages(locale);
   const dir = isRtlLocale(locale) ? "rtl" : "ltr";
-  const mainSkipLabel = skipToMainLabel(messages, locale);
 
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? "/";
   const lightMarketing = isMarketingContentPath(pathname);
+  // Slim message set for public/marketing pages — skip workspace-shell, workspace-areas (~124 KB raw)
+  const messages = lightMarketing ? getMarketingMessages(locale) : getMessages(locale);
+  const mainSkipLabel = skipToMainLabel(messages, locale);
 
   const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
   const host = normalizeHostname(hostHeader);

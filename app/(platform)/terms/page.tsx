@@ -4,7 +4,7 @@ import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
 import PublicLegalLayout from "@/components/legal/PublicLegalLayout";
 import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
 
-export async function generateMetadata(): Promise<Metadata> {
+export function generateMetadata(): Metadata {
   return buildPublicPageMetadata("terms");
 }
 export default async function TermsPage() {

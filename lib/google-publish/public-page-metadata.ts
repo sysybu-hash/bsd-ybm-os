@@ -1,13 +1,14 @@
-import { cookies } from "next/headers";
 import type { Metadata } from "next";
-import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
 import { buildLocalizedMetadata } from "@/lib/site-metadata";
 import type { PublicPageId } from "@/lib/google-publish/seo-content";
 
-export async function buildPublicPageMetadata(page: PublicPageId): Promise<Metadata> {
-  const jar = await cookies();
-  const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
-  return buildLocalizedMetadata(locale, {
+/**
+ * Build metadata for public/marketing pages using the default locale (he).
+ * Synchronous — avoids Next.js streaming the metadata outside <head>,
+ * which would cause Lighthouse / crawlers to miss the description.
+ */
+export function buildPublicPageMetadata(page: PublicPageId): Metadata {
+  return buildLocalizedMetadata("he", {
     page,
     canonicalPath: `/${page}`,
   });

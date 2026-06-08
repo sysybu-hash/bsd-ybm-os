@@ -7,7 +7,7 @@ import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { legalSite } from "@/lib/legal-site";
 import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
 
-export async function generateMetadata(): Promise<Metadata> {
+export function generateMetadata(): Metadata {
   return buildPublicPageMetadata("about");
 }
 const FOOTER_LINKS: Record<AppLocale, { privacy: string; terms: string; legal: string }> = {

@@ -10,7 +10,7 @@ import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metada
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export function generateMetadata(): Metadata {
   return buildPublicPageMetadata("help");
 }
 

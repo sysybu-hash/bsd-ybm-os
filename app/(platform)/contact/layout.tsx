@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
 
-export async function generateMetadata(): Promise<Metadata> {
+export function generateMetadata(): Metadata {
   return buildPublicPageMetadata("contact");
 }
 
