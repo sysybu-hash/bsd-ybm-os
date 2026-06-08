@@ -755,44 +755,52 @@
 /* ──────────────────────────────────────────────────────────────────────────
    Unified window scroll model — IDENTICAL on desktop and mobile.
 
-   The shell scroll host (`[data-shell-scroll]`) is the single scroll owner.
-   FLOW widgets grow and the host scrolls them. STICKY-CHROME widgets fill the
-   host exactly and scroll their one inner `[data-widget-scroll-pane]`. There is
-   deliberately NO @media fork here: scroll mechanics must not differ between
-   breakpoints (that divergence is what made every fix break the other screen).
+   The shell-scroll-host is a SIZE CONTAINER only — it never scrolls.
+   Every widget type owns its own scroll region:
+     • FLOW widgets (WindowBody):  the widget root itself gets overflow-y:auto
+     • STICKY-CHROME widgets:      the inner [data-widget-scroll-pane] scrolls
+
+   This avoids :has() and eliminates the circular height dependency that caused
+   sticky-chrome to grow to content height instead of window height.
+
    The only thing that varies by breakpoint is window SIZING + dock clearance,
    handled on the window element / CSS vars below — never on the scroll chain.
    See lib/workspace/widget-shell-layout.ts and components/os/layout/WindowBody.
    ────────────────────────────────────────────────────────────────────────── */
 
+/* Shell scroll host: size container only — widgets own their own scroll. */
 [data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host,
 .os-floating-panel.workspace-window [data-shell-scroll].shell-scroll-host {
   flex: 1 1 0%;
   height: 0;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  overscroll-behavior-y: contain;
+  overflow: hidden;
 }
 
-/* Content grows with flow widgets; a sticky-chrome child pins it to host height. */
+/* Shell content: constrained to host height so percentage children resolve. */
 [data-scroll-owner="shell"] [data-shell-content],
 .os-floating-panel.workspace-window [data-shell-content] {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-}
-
-/* Flow widgets: no internal scroll trap — flow naturally so the host scrolls. */
-[data-scroll-owner="shell"] [data-shell-content] > :not([data-widget-sticky-chrome]),
-.os-floating-panel.workspace-window [data-shell-content] > :not([data-widget-sticky-chrome]) {
-  flex: 1 0 auto;
+  flex: 1 1 0%;
   min-height: 0;
 }
 
-/* Sticky chrome: fill the host exactly; the inner pane owns scroll. */
+/* Flow widget roots: fill shell-content and own their vertical scroll. */
+[data-scroll-owner="shell"] [data-shell-content] > :not([data-widget-sticky-chrome]),
+.os-floating-panel.workspace-window [data-shell-content] > :not([data-widget-sticky-chrome]) {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(102, 112, 133, 0.45) transparent;
+}
+
+/* Sticky chrome: fill shell-content; toolbar stays fixed, inner pane scrolls. */
 [data-scroll-owner="shell"] [data-shell-content] > [data-widget-sticky-chrome],
 .os-floating-panel.workspace-window [data-shell-content] > [data-widget-sticky-chrome] {
   display: flex;
@@ -800,26 +808,6 @@
   flex: 1 1 0%;
   min-height: 0;
   overflow: hidden;
-}
-
-/*
- * When a sticky-chrome widget is present, the scroll-host must NOT scroll —
- * only the inner [data-widget-scroll-pane] scrolls. Without these rules,
- * shell-content grows to match sticky-chrome's content height (circular
- * dependency: height:100% resolves against an indefinite parent) and the
- * outer shell scrolls the entire toolbar out of view.
- *
- * :has() is safe here — Chrome 105+, Safari 15.4+, Firefox 121+.
- */
-[data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host:has(> [data-shell-content] > [data-widget-sticky-chrome]),
-.os-floating-panel.workspace-window [data-shell-scroll].shell-scroll-host:has(> [data-shell-content] > [data-widget-sticky-chrome]) {
-  overflow: hidden;
-}
-
-[data-scroll-owner="shell"] [data-shell-content]:has(> [data-widget-sticky-chrome]),
-.os-floating-panel.workspace-window [data-shell-content]:has(> [data-widget-sticky-chrome]) {
-  flex: 1 1 0%;
-  min-height: 0;
 }
 
 [data-widget-sticky-chrome] [data-widget-scroll-pane] {
