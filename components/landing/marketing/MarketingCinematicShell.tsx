@@ -1,4 +1,3 @@
-import "./marketing-cinematic-critical.css";
 import HeroSectionStatic from "@/components/landing/marketing/HeroSectionStatic";
 import MarketingHeroPoster from "@/components/landing/marketing/MarketingHeroPoster";
 import MarketingDeferredStyles from "@/components/landing/marketing/MarketingDeferredStyles";

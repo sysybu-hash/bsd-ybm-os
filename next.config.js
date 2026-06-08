@@ -137,6 +137,9 @@ const nextConfig = {
     },
     optimizePackageImports: ["lucide-react", "framer-motion", "@headlessui/react"],
     cssChunking: "strict",
+    // inlineCss disabled: the CSS chunks (~27KB gzip total) are smaller than the
+    // overhead added by inlining into HTML (pushes LCP element deeper into HTML stream).
+    // inlineCss: true,
   },
 };
 
