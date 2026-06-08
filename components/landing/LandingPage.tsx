@@ -125,17 +125,20 @@ export default function LandingPage({
           </div>
         </div>
 
-        <div className="mt-32 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature, index) => (
-            <FeatureCard
-              key={feature.title}
-              icon={<feature.icon className="h-6 w-6 text-emerald-400" />}
-              title={feature.title}
-              description={feature.body}
-              delay={0.6 + 0.1 * (index + 1)}
-            />
-          ))}
-        </div>
+        <section className="mt-32" aria-labelledby="features-heading">
+          <h2 id="features-heading" className="sr-only">{t("marketingHome.osLanding.featuresHeading")}</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {features.map((feature, index) => (
+              <FeatureCard
+                key={feature.title}
+                icon={<feature.icon className="h-6 w-6 text-emerald-400" />}
+                title={feature.title}
+                description={feature.body}
+                delay={0.6 + 0.1 * (index + 1)}
+              />
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className="relative z-10 border-t border-[color:var(--border-main)] px-8 py-8 text-center text-xs text-[color:var(--foreground-muted)]">

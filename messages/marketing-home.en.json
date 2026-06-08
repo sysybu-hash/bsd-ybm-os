@@ -8,7 +8,9 @@
       "about": "About",
       "contact": "Contact"
     },
-    "header": { "tagline": "The avenue that connects everyone — operations for professional businesses" },
+    "header": {
+      "tagline": "The avenue that connects everyone — operations for professional businesses"
+    },
     "hero": {
       "kicker": "BSD-YBM OS",
       "motto": "The avenue that connects everyone!",
@@ -20,9 +22,18 @@
       "ctaDemo": "Sign in to demo"
     },
     "features": [
-      { "title": "CRM that moves work forward", "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools." },
-      { "title": "Billing & business documents", "body": "Invoices, collections, subscriptions and cash flow inside the same workspace." },
-      { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — data apps, checklists, calculators, kanban, Hebrew calendar and dashboards, plus natural-language CRM, documents and scan actions." }
+      {
+        "title": "CRM that moves work forward",
+        "body": "Clients, tasks, reminders and statuses in one place—without jumping between tools."
+      },
+      {
+        "title": "Billing & business documents",
+        "body": "Invoices, collections, subscriptions and cash flow inside the same workspace."
+      },
+      {
+        "title": "AI Hub & idea engine",
+        "body": "Chat, notebook and app builder — data apps, checklists, calculators, kanban, Hebrew calendar and dashboards, plus natural-language CRM, documents and scan actions."
+      }
     ],
     "mock": {
       "attentionLabel": "Management attention",
@@ -36,10 +47,22 @@
       "financeLabel": "Financial control",
       "demoNavHint": "Click a sidebar icon to explore the demo",
       "stats": [
-        { "label": "Open collections", "value": "₪48,200" },
-        { "label": "Invoices this week", "value": "32" },
-        { "label": "Urgent tasks", "value": "11" },
-        { "label": "New inquiries", "value": "19" }
+        {
+          "label": "Open collections",
+          "value": "₪48,200"
+        },
+        {
+          "label": "Invoices this week",
+          "value": "32"
+        },
+        {
+          "label": "Urgent tasks",
+          "value": "11"
+        },
+        {
+          "label": "New inquiries",
+          "value": "19"
+        }
       ],
       "sidebar": {
         "dashboard": "Dashboard",
@@ -103,10 +126,22 @@
       "body": "BSD-YBM doesn't sell a feature list. It builds a flow: intake, processing, action, collections and control."
     },
     "modules": [
-      { "title": "Smart documents", "body": "Scan, extract, classify and create documents from real business activity." },
-      { "title": "Operational control", "body": "Tasks, follow-ups, internal processes and action items in one clear place." },
-      { "title": "Management insights", "body": "A live picture of revenue, load, exceptions and opportunities—without detached reports." },
-      { "title": "AI Hub & builder", "body": "Org chat, notebook, app builder and platform actions — KPIs, forms and shortcuts on one screen." }
+      {
+        "title": "Smart documents",
+        "body": "Scan, extract, classify and create documents from real business activity."
+      },
+      {
+        "title": "Operational control",
+        "body": "Tasks, follow-ups, internal processes and action items in one clear place."
+      },
+      {
+        "title": "Management insights",
+        "body": "A live picture of revenue, load, exceptions and opportunities—without detached reports."
+      },
+      {
+        "title": "AI Hub & builder",
+        "body": "Org chat, notebook, app builder and platform actions — KPIs, forms and shortcuts on one screen."
+      }
     ],
     "workflow": {
       "label": "Live workflow",
@@ -139,9 +174,18 @@
       "label": "Why it works",
       "title": "The system thinks like an operations environment—not a pile of screens.",
       "rows": [
-        { "title": "Single source of truth", "body": "Clients, documents, tasks, billing and insights share one operational picture." },
-        { "title": "One language", "body": "The team doesn't learn five different tools to move work forward." },
-        { "title": "Contextual AI", "body": "Idea engine, drafts and CRM/document actions from your org data—not a generic chatbot." }
+        {
+          "title": "Single source of truth",
+          "body": "Clients, documents, tasks, billing and insights share one operational picture."
+        },
+        {
+          "title": "One language",
+          "body": "The team doesn't learn five different tools to move work forward."
+        },
+        {
+          "title": "Contextual AI",
+          "body": "Idea engine, drafts and CRM/document actions from your org data—not a generic chatbot."
+        }
       ]
     },
     "proofPoints": [
@@ -304,12 +348,30 @@
       "hubTitle": "What would you like to explore?",
       "hubLead": "Pick a topic — details open in a panel, without a long scroll.",
       "closeAria": "Close panel",
-      "modules": { "title": "Modules & capabilities", "description": "CRM, documents, billing, AI Hub, app builder — clear work layers." },
-      "workflow": { "title": "Workflow", "description": "What happens when new information enters the system." },
-      "industries": { "title": "Industries", "description": "Construction, site and office operations." },
-      "why": { "title": "Why one system", "description": "Single source of truth, fewer tools, contextual AI." },
-      "pricing": { "title": "Plans & pricing", "description": "Direct signup and sizing for your organization." },
-      "principles": { "title": "Product principles", "description": "Connection, transparency, AI as assistant." },
+      "modules": {
+        "title": "Modules & capabilities",
+        "description": "CRM, documents, billing, AI Hub, app builder — clear work layers."
+      },
+      "workflow": {
+        "title": "Workflow",
+        "description": "What happens when new information enters the system."
+      },
+      "industries": {
+        "title": "Industries",
+        "description": "Construction, site and office operations."
+      },
+      "why": {
+        "title": "Why one system",
+        "description": "Single source of truth, fewer tools, contextual AI."
+      },
+      "pricing": {
+        "title": "Plans & pricing",
+        "description": "Direct signup and sizing for your organization."
+      },
+      "principles": {
+        "title": "Product principles",
+        "description": "Connection, transparency, AI as assistant."
+      },
       "demo": {
         "title": "Live demo",
         "description": "Document scan and UI preview — no login.",
@@ -317,8 +379,14 @@
         "workspaceScreenshotAlt": "Live screenshot of BSD-YBM OS — app builder with live preview, utility rail tabs, and AI Hub",
         "workspaceScreenshotCaption": "Actual product screenshot · App builder · recently updated"
       },
-      "feedback": { "title": "Feedback", "description": "Questions or ideas — we reply by email." },
-      "contact": { "title": "Contact & get started", "description": "Details, hours and account signup." },
+      "feedback": {
+        "title": "Feedback",
+        "description": "Questions or ideas — we reply by email."
+      },
+      "contact": {
+        "title": "Contact & get started",
+        "description": "Details, hours and account signup."
+      },
       "modularity": {
         "title": "Full modularity",
         "description": "Connect and extend every system you already run."
@@ -338,17 +406,33 @@
       "ctaStart": "Get started",
       "ctaDemo": "Book a demo",
       "features": [
-        { "title": "AI document scanner", "body": "Automatic extraction from invoices with advanced vision, straight into your database." },
-        { "title": "Gemini Live", "body": "A voice assistant to command and navigate the workspace with natural speech." },
-        { "title": "AI Hub & builder", "body": "Chat, notebook and app builder — builds custom UI or runs platform automations." },
-        { "title": "Unified ERP & CRM", "body": "Visual project board, budgets and cash flow under one roof." },
-        { "title": "Digital signature", "body": "Branded quotes sent to clients for fast, secure signing." }
+        {
+          "title": "AI document scanner",
+          "body": "Automatic extraction from invoices with advanced vision, straight into your database."
+        },
+        {
+          "title": "Gemini Live",
+          "body": "A voice assistant to command and navigate the workspace with natural speech."
+        },
+        {
+          "title": "AI Hub & builder",
+          "body": "Chat, notebook and app builder — builds custom UI or runs platform automations."
+        },
+        {
+          "title": "Unified ERP & CRM",
+          "body": "Visual project board, budgets and cash flow under one roof."
+        },
+        {
+          "title": "Digital signature",
+          "body": "Branded quotes sent to clients for fast, secure signing."
+        }
       ],
       "footerAbout": "About",
       "footerPrivacy": "Privacy",
       "footerTerms": "Terms",
       "footerCookies": "Cookies",
-      "footerCopyright": "© {year} BSD-YBM-OS. All rights reserved."
+      "footerCopyright": "© {year} BSD-YBM-OS. All rights reserved.",
+      "featuresHeading": "Platform features"
     },
     "editorial": {
       "nav": {
@@ -366,12 +450,24 @@
       "projectsSectionTitle": "Projects",
       "projectCardCta": "Details",
       "projectCards": [
-        { "title": "Sites & projects" },
-        { "title": "Documents & vendors" },
-        { "title": "Billing & collections" },
-        { "title": "Field operations" },
-        { "title": "Insights & decisions" },
-        { "title": "AI Hub & idea engine" }
+        {
+          "title": "Sites & projects"
+        },
+        {
+          "title": "Documents & vendors"
+        },
+        {
+          "title": "Billing & collections"
+        },
+        {
+          "title": "Field operations"
+        },
+        {
+          "title": "Insights & decisions"
+        },
+        {
+          "title": "AI Hub & idea engine"
+        }
       ],
       "featuredTitle": "Product capabilities",
       "featuredLead": "Clients, documents and money — one status picture per project, from quote to supplier invoice.",
