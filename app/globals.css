@@ -785,32 +785,6 @@
   min-height: 100%;
 }
 
-/*
- * When a sticky-chrome widget is present, the OUTER shell must NOT scroll —
- * only the inner [data-widget-scroll-pane] scrolls. The fix requires two rules:
- *
- * 1. Lock the scroll host to overflow:hidden so it cannot scroll.
- * 2. Constrain shell-content to fill the scroll host exactly (flex:1 1 0%,
- *    min-height:0) so that the sticky-chrome's own flex sizing is anchored to
- *    the visible window height, not to its content height.
- *
- * Without these, height:100% / max-height:100% on sticky-chrome resolve against
- * shell-content whose height is itself driven by the sticky-chrome — a circular
- * dependency that lets sticky-chrome grow to its full content size (e.g. 910px)
- * instead of being capped at the visible window height (e.g. 524px), which in
- * turn prevents the inner scroll pane from ever needing to scroll.
- */
-[data-scroll-owner="shell"] [data-shell-scroll].shell-scroll-host:has(> [data-shell-content] > [data-widget-sticky-chrome]),
-.os-floating-panel.workspace-window [data-shell-scroll].shell-scroll-host:has(> [data-shell-content] > [data-widget-sticky-chrome]) {
-  overflow: hidden;
-}
-
-[data-scroll-owner="shell"] [data-shell-content]:has(> [data-widget-sticky-chrome]),
-.os-floating-panel.workspace-window [data-shell-content]:has(> [data-widget-sticky-chrome]) {
-  flex: 1 1 0%;
-  min-height: 0;
-}
-
 /* Flow widgets: no internal scroll trap — flow naturally so the host scrolls. */
 [data-scroll-owner="shell"] [data-shell-content] > :not([data-widget-sticky-chrome]),
 .os-floating-panel.workspace-window [data-shell-content] > :not([data-widget-sticky-chrome]) {
@@ -818,14 +792,15 @@
   min-height: 0;
 }
 
-/* Sticky chrome: fill the constrained shell-content via flex (no % heights —
-   they resolved incorrectly before the :has() fix above was in place). */
+/* Sticky chrome: fill the host exactly; the inner pane owns scroll. */
 [data-scroll-owner="shell"] [data-shell-content] > [data-widget-sticky-chrome],
 .os-floating-panel.workspace-window [data-shell-content] > [data-widget-sticky-chrome] {
   display: flex;
   flex-direction: column;
   flex: 1 1 0%;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
 }
 
