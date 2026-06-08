@@ -4,9 +4,7 @@ import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
 import PublicLegalLayout from "@/components/legal/PublicLegalLayout";
 import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
 
-export function generateMetadata(): Metadata {
-  return buildPublicPageMetadata("terms");
-}
+export const metadata: Metadata = buildPublicPageMetadata("terms");
 export default async function TermsPage() {
   const jar = await cookies();
   const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);

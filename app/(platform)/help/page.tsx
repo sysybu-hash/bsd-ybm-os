@@ -10,9 +10,7 @@ import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metada
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata(): Metadata {
-  return buildPublicPageMetadata("help");
-}
+export const metadata: Metadata = buildPublicPageMetadata("help");
 
 const BACK_LABEL: Record<string, string> = {
   he: "← חזרה למרחב העבודה",

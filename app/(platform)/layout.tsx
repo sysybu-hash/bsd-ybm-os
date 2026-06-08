@@ -54,11 +54,8 @@ const assistant = Assistant({
   variable: "--font-assistant",
 });
 
-export function generateMetadata(): Metadata {
-  // Static metadata using default locale — avoids Next.js deferred streaming
-  // which would place meta tags outside <head>, invisible to SEO crawlers.
-  return buildLocalizedMetadata("he");
-}
+// Static export — avoids Next.js streaming metadata outside <head> for force-dynamic routes.
+export const metadata: Metadata = buildLocalizedMetadata("he");
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
