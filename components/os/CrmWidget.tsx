@@ -3,6 +3,7 @@ import WidgetState from "@/components/os/WidgetState";
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, SlidersHorizontal } from 'lucide-react';
 import { createLogger } from "@/lib/logger";
+import WindowBody from "@/components/os/layout/WindowBody";
 
 const log = createLogger("crm-widget");
 
@@ -47,7 +48,13 @@ export default function CrmWidget() {
   };
 
   return (
-    <div className="w-full h-full min-h-0 p-3 sm:p-6 flex flex-col gap-3 sm:gap-6 text-start bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <WindowBody
+      sticky
+      dir={dir}
+      className="text-start text-[color:var(--foreground-main)]"
+      scrollClassName="space-y-3 px-3 pb-3 sm:px-6 sm:pb-6"
+      header={
+        <div className="flex flex-col gap-3 px-3 pt-3 sm:gap-6 sm:px-6 sm:pt-6">
       <div className="flex justify-between items-center w-full">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -71,8 +78,9 @@ export default function CrmWidget() {
          />
          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]" size={18} />
       </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
+        </div>
+      }
+    >
         {loading ? (
           <WidgetState variant="loading" message={t("workspaceWidgets.crmMini.loading")} />
         ) : clients.length > 0 ? (
@@ -99,7 +107,6 @@ export default function CrmWidget() {
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.crmMini.empty")}</p>
           </div>
         )}
-      </div>
-    </div>
+    </WindowBody>
   );
 }

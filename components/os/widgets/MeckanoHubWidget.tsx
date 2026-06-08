@@ -115,7 +115,7 @@ export default function MeckanoHubWidget() {
   const totalHours = reports.reduce((acc, r) => acc + r.hours, 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
+    <div data-widget-sticky-chrome className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]" dir={dir}>
       <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function MeckanoHubWidget() {
         </nav>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div data-widget-scroll-pane className="custom-scrollbar">
         {tab === "overview" ? (
           <div className="space-y-3 p-4 text-xs">
             <p>סנכרון אוטומטי: {autoSyncEnabled ? "פעיל" : "כבוי"}</p>

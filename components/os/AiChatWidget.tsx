@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WindowBody from "@/components/os/layout/WindowBody";
 
 interface AiChatProps {
   provider: string;
@@ -62,7 +63,7 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
   const themeColor = engineColors[provider] ?? "bg-blue-400 text-blue-400 border-blue-500/30";
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-4 rounded-2xl bg-transparent p-6 text-[color:var(--foreground-main)]">
+    <WindowBody className="gap-4 rounded-2xl p-6 text-[color:var(--foreground-main)]">
       <div className="flex items-center justify-between border-b border-[color:var(--border-main)] pb-3">
         <div className="flex items-center gap-3">
           <div
@@ -80,10 +81,10 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
       </div>
 
       <div
-        className={`custom-scrollbar flex-1 overflow-y-auto whitespace-pre-wrap rounded-xl border bg-[color:var(--background-main)]/30 p-4 text-sm leading-relaxed text-[color:var(--foreground-main)] ${themeColor.split(" ")[2] ?? ""}`}
+        className={`whitespace-pre-wrap rounded-xl border bg-[color:var(--background-main)]/30 p-4 text-sm leading-relaxed text-[color:var(--foreground-main)] ${themeColor.split(" ")[2] ?? ""}`}
       >
         {loading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-[color:var(--foreground-muted)]">
+          <div className="flex flex-col items-center justify-center gap-3 py-8 text-[color:var(--foreground-muted)]">
             <div
               className={`h-6 w-6 animate-spin rounded-full border-2 ${(themeColor.split(" ")[1] ?? "").replace("text", "border")} border-t-transparent`}
             />
@@ -93,6 +94,6 @@ export default function AiChatWidget({ provider, prompt }: AiChatProps) {
           response
         )}
       </div>
-    </div>
+    </WindowBody>
   );
 }

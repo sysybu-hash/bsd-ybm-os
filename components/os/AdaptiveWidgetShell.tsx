@@ -155,7 +155,7 @@ export default function AdaptiveWidgetShell({
             {/* Stable wrapper — never unmounts when zoom toggles, preventing widget remount */}
             <div
               data-shell-content
-              className={`flex w-full min-h-full flex-col md:h-full md:max-h-full md:min-h-0 md:overflow-hidden ${zoomActive ? "origin-top" : ""}`}
+              className={`flex w-full flex-col ${zoomActive ? "origin-top" : ""}`}
               style={zoomActive ? contentZoomStyle : undefined}
             >
               {children}

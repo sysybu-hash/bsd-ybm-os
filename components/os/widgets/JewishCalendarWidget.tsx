@@ -3,6 +3,7 @@
 import React from "react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WindowBody from "@/components/os/layout/WindowBody";
 import WidgetState from "@/components/os/WidgetState";
 import { JewishZmanimTimeline } from "@/components/os/jewish-calendar/JewishZmanimTimeline";
 import { LocationCombobox } from "@/components/os/jewish-calendar/LocationCombobox";
@@ -83,7 +84,7 @@ export default function JewishCalendarWidget() {
               : null;
 
   return (
-    <div className="flex w-full min-h-0 flex-col gap-3 p-3 sm:p-4 md:h-full" dir={layoutDir}>
+    <WindowBody className="gap-3 p-3 sm:p-4" dir={layoutDir}>
       <div className="flex flex-wrap items-center gap-2">
         <LocationCombobox
           label={locName}
@@ -168,7 +169,7 @@ export default function JewishCalendarWidget() {
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 rounded-xl border border-[color:var(--border-main)] md:overflow-y-auto">
+      <div className="rounded-xl border border-[color:var(--border-main)]">
         <table className="w-full text-sm">
           <tbody>
             {data.zmanim.map((z) => {
@@ -223,6 +224,6 @@ export default function JewishCalendarWidget() {
           {t(`${S}.credit`)}
         </a>
       </p>
-    </div>
+    </WindowBody>
   );
 }

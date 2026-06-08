@@ -11,7 +11,7 @@ import { SettingsBusinessProfile } from "./settings-widget/SettingsBusinessProfi
 import { SettingsDriveSection } from "./settings-widget/SettingsDriveSection";
 import { SettingsCalendarSection } from "./settings-widget/SettingsCalendarSection";
 import { SettingsAssignSection } from "./settings-widget/SettingsAssignSection";
-import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+import WindowBody from "@/components/os/layout/WindowBody";
 
 const S = "workspaceWidgets.settings";
 
@@ -28,33 +28,33 @@ export default function SettingsWidget() {
   }
 
   return (
-    <div
-      data-widget-sticky-chrome
-      className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
+    <WindowBody
+      sticky
       dir={dir}
-    >
-      {/* Header */}
-      <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-[color:var(--foreground-muted)]">
-            <Settings size={24} />
+      className="bg-transparent text-[color:var(--foreground-main)]"
+      header={
+        <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[color:var(--foreground-muted)]/10 flex items-center justify-center text-[color:var(--foreground-muted)]">
+              <Settings size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">{t(`${S}.title`)}</h2>
+              <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${S}.subtitle`)}</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-[color:var(--foreground-main)]">{t(`${S}.title`)}</h2>
-            <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${S}.subtitle`)}</p>
-          </div>
+          <button
+            onClick={() => void sw.handleSave()}
+            disabled={sw.saving}
+            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+          >
+            {sw.saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {t(`${S}.saveChanges`)}
+          </button>
         </div>
-        <button
-          onClick={() => void sw.handleSave()}
-          disabled={sw.saving}
-          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
-        >
-          {sw.saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-          {t(`${S}.saveChanges`)}
-        </button>
-      </div>
-
-      <div data-widget-scroll-pane className={`${widgetScrollPaneClass} p-4 sm:p-8`}>
+      }
+      scrollClassName="p-4 sm:p-8"
+    >
         <div className="max-w-2xl mx-auto space-y-10">
 
           <ProfessionSettingsPanel
@@ -153,7 +153,6 @@ export default function SettingsWidget() {
           </section>
 
         </div>
-      </div>
-    </div>
+    </WindowBody>
   );
 }
