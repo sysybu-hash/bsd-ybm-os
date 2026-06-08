@@ -9,6 +9,6 @@ export async function buildPublicPageMetadata(page: PublicPageId): Promise<Metad
   const locale = normalizeLocale(jar.get(COOKIE_LOCALE)?.value);
   return buildLocalizedMetadata(locale, {
     page,
-    canonicalPath: page === "login" ? "/login" : `/${page}`,
+    canonicalPath: `/${page}`,
   });
 }

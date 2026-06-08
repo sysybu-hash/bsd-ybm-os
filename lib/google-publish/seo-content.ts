@@ -64,17 +64,18 @@ export function getLocalizedSeo(locale: AppLocale): LocalizedSeo {
   return SEO[locale] ?? SEO.he;
 }
 
-export function getHreflangAlternates(): Record<string, string> {
+export function getHreflangAlternates(path = "/"): Record<string, string> {
   const base = getCanonicalSiteUrl().replace(/\/$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
   return {
-    "he-IL": `${base}/`,
-    en: `${base}/`,
-    ru: `${base}/`,
-    "x-default": `${base}/`,
+    "he-IL": `${base}${p}`,
+    en: `${base}${p}`,
+    ru: `${base}${p}`,
+    "x-default": `${base}${p}`,
   };
 }
 
-export type PublicPageId = "about" | "privacy" | "terms" | "legal" | "login";
+export type PublicPageId = "about" | "privacy" | "terms" | "legal" | "login" | "help" | "contact";
 
 const PAGE_SEO: Record<PublicPageId, Record<AppLocale, { title: string; description: string }>> = {
   about: {
@@ -110,6 +111,16 @@ const PAGE_SEO: Record<PublicPageId, Record<AppLocale, { title: string; descript
     he: { title: "התחברות", description: "התחברות מאובטחת ל-BSD-YBM OS עם Google." },
     en: { title: "Sign in", description: "Secure sign-in to BSD-YBM OS with Google." },
     ru: { title: "Вход", description: "Безопасный вход в BSD-YBM OS через Google." },
+  },
+  help: {
+    he: { title: "מרכז עזרה", description: "מדריכים, שאלות נפוצות ותמיכה ל-BSD-YBM OS — CRM, ERP, AI Hub ומחולל אפליקציות." },
+    en: { title: "Help Center", description: "Guides, FAQ and support for BSD-YBM OS — CRM, ERP, AI Hub and app builder." },
+    ru: { title: "Центр поддержки", description: "Руководства, FAQ и поддержка BSD-YBM OS — CRM, ERP, AI Hub и конструктор приложений." },
+  },
+  contact: {
+    he: { title: "צור קשר", description: "צור קשר עם צוות BSD-YBM OS — תמיכה, שאלות ומכירות." },
+    en: { title: "Contact Us", description: "Contact the BSD-YBM OS team — support, questions and sales." },
+    ru: { title: "Контакты", description: "Свяжитесь с командой BSD-YBM OS — поддержка, вопросы и продажи." },
   },
 };
 

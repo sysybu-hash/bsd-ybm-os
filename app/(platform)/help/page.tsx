@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -5,8 +6,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import HelpCenterWidget from "@/components/os/widgets/HelpCenterWidget";
 import { COOKIE_LOCALE, isRtlLocale, normalizeLocale } from "@/lib/i18n/config";
+import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return buildPublicPageMetadata("help");
+}
 
 const BACK_LABEL: Record<string, string> = {
   he: "← חזרה למרחב העבודה",

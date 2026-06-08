@@ -119,7 +119,7 @@ export function buildLocalizedMetadata(
     },
     alternates: {
       canonical: canonicalPath,
-      languages: getHreflangAlternates(),
+      languages: getHreflangAlternates(canonicalPath),
     },
     robots: productionRobots(),
     ...verify,
