@@ -4,7 +4,7 @@ import MarketingHeroPoster from "@/components/landing/marketing/MarketingHeroPos
 import MarketingDeferredStyles from "@/components/landing/marketing/MarketingDeferredStyles";
 import MarketingCinematicClient from "@/components/landing/marketing/MarketingCinematicClient";
 import type { AppLocale } from "@/lib/i18n/config";
-import { getMessages } from "@/lib/i18n/load-messages";
+import { getMarketingMessages } from "@/lib/i18n/load-messages";
 
 type Props = Readonly<{
   locale?: AppLocale;
@@ -12,7 +12,7 @@ type Props = Readonly<{
 
 /** Server shell — Hero HTML ב-RSC; אינטראקציה (וידאו, omnibar) ב-client island. */
 export default function MarketingCinematicShell({ locale = "he" }: Props) {
-  const messages = getMessages(locale);
+  const messages = getMarketingMessages(locale);
 
   return (
     <>

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { AppLocale } from "@/lib/i18n/config";
 import { isRtlLocale } from "@/lib/i18n/config";
-import { getMessages } from "@/lib/i18n/load-messages";
+import { getMarketingMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
@@ -17,7 +17,7 @@ type Props = Readonly<{
 
 /** עטיפה רזה לדף נחיתה סטטי — ללא Session/Prisma בשרת */
 export default function MarketingSiteLayout({ locale, children }: Props) {
-  const messages = getMessages(locale);
+  const messages = getMarketingMessages(locale);
   const dir = isRtlLocale(locale) ? "rtl" : "ltr";
   const mainSkipLabel = skipToMainLabel(messages, locale);
 

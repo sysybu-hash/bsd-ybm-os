@@ -124,7 +124,7 @@ export default function MarketingHeroOmnibarUI({ omnibar, variant = "hero" }: Pr
           onClear={omnibar.clearChat}
         />
       ) : showHint ? (
-        <p className="mkt-omnibar-hint mt-2 text-center text-xs text-slate-500">
+        <p className="mkt-omnibar-hint mt-2 text-center text-xs text-slate-400">
           {t("marketingHome.cinematic.omnibarHint")}{" "}
           <Link
             href={omnibar.registerHref}

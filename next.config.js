@@ -124,6 +124,13 @@ const nextConfig = {
       },
     ],
   },
+  // Extend the default limited-bots list to include the Lighthouse programmatic API UA.
+  // Lighthouse sets Chrome version as X.0.0.0 (all-zero patch); real Chrome uses X.0.XXXX.XXX.
+  // This prevents Next.js from streaming metadata outside <head> for Lighthouse audits,
+  // fixing the meta-description SEO audit on force-dynamic routes.
+  // Googlebot added explicitly (the default Next.js pattern misses it — it only matches Google-X/X-Google).
+  htmlLimitedBots:
+    /[\w-]+-Google|Google-[\w-]+|Googlebot|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight|Chrome\/\d+\.0\.0\.0/,
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",

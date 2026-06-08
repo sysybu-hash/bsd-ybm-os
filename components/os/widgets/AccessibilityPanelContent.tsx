@@ -110,13 +110,13 @@ export default function AccessibilityPanelContent({
         </p>
         <p className="mt-2 text-[10px] text-[color:var(--foreground-muted)]">{t("accessibility.keyboardHint")}</p>
         <p className="mt-3 text-[10px]">
-          <Link href="/legal" className="font-bold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400">
+          <Link href="/legal" className="font-bold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300">
             {t("accessibility.statementLink")}
           </Link>
           {" · "}
           <a
             href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent("נגישות האתר")}`}
-            className="font-bold text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+            className="font-bold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
           >
             {t("accessibility.feedbackEmail")}
           </a>

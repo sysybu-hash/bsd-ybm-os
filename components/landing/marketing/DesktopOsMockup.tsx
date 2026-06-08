@@ -179,7 +179,7 @@ export default function DesktopOsMockup({ className = "", interactive = true }: 
               const isActive = activeId === id;
               const label = t(`marketingHome.mock.sidebar.${id}`);
               const commonClass = `mkt-os-mock-nav-btn flex h-9 w-9 items-center justify-center rounded-xl transition ${
-                isActive ? "is-active bg-amber-500/25 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.25)]" : "text-slate-500 hover:bg-white/10 hover:text-slate-200"
+                isActive ? "is-active bg-amber-500/25 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.25)]" : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
               }`;
 
               if (!interactive) {
@@ -225,7 +225,7 @@ export default function DesktopOsMockup({ className = "", interactive = true }: 
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
                 <span>BSD-YBM OS</span>
               </div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                 {t("marketingHome.mock.boardKicker")}
               </p>
             </div>

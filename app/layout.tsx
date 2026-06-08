@@ -3,6 +3,19 @@ import { Heebo } from "next/font/google";
 import "./globals.css";
 import { buildRootMetadata } from "@/lib/site-metadata";
 
+// Preload bold Hebrew weights used in the hero H1 (LCP element) so they are
+// ready before first paint. display:"swap" + adjustFontFallback limits CLS.
+const heeboCritical = Heebo({
+  subsets: ["hebrew"],
+  weight: ["700", "800"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
+  fallback: ["system-ui", "Arial", "sans-serif"],
+  variable: "--font-heebo-critical",
+});
+
+// Body text — latin + hebrew, non-critical, loaded after paint.
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
   display: "optional",
@@ -36,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="he" dir="rtl" className={heebo.variable} suppressHydrationWarning>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${heeboCritical.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: MARKETING_THEME_BOOT }} />
       </head>

@@ -124,6 +124,21 @@ function workspaceAreasExtras(locale: AppLocale): Record<string, unknown> {
   return workspaceAreasEn as unknown as Record<string, unknown>;
 }
 
+/**
+ * Slim message set for marketing / public pages.
+ * Excludes workspace-shell, workspace-areas, workspace-dock (~124 KB raw)
+ * that are never used on the landing page, reducing the RSC payload significantly.
+ */
+export function getMarketingMessages(locale: string): MessageTree {
+  const code = normalizeLocale(locale) as AppLocale;
+  const base = PACKS[code] ?? PACKS.en;
+  const extra = siteExtras(code);
+  const chrome = siteChromeExtras(code);
+  let merged = deepMerge(base as unknown as Record<string, unknown>, extra);
+  merged = deepMerge(merged, chrome);
+  return merged as MessageTree;
+}
+
 export function getMessages(locale: string): MessageTree {
   const code = normalizeLocale(locale) as AppLocale;
   const base = PACKS[code] ?? PACKS.en;

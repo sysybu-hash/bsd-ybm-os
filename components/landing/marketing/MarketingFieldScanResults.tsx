@@ -128,14 +128,14 @@ export default function MarketingFieldScanResults({
       ) : null}
 
       {result.assumptions.length > 0 ? (
-        <ul className="space-y-1 text-[10px] text-slate-500">
+        <ul className="space-y-1 text-[10px] text-slate-400">
           {result.assumptions.map((a) => (
             <li key={a}>• {a}</li>
           ))}
         </ul>
       ) : null}
 
-      <p className="text-[10px] leading-relaxed text-slate-500">
+      <p className="text-[10px] leading-relaxed text-slate-400">
         {t("marketingHome.cinematic.fieldScanDisclaimer")}
       </p>
 
@@ -173,7 +173,7 @@ function ResultChip({
   const display = value?.trim() || t("marketingHome.cinematic.fieldScanResultUnknown");
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950/40 p-2.5">
-      <div className="mb-1 flex items-center gap-1 text-[10px] text-slate-500">
+      <div className="mb-1 flex items-center gap-1 text-[10px] text-slate-400">
         <Icon className="h-3 w-3 shrink-0" aria-hidden />
         <span>{label}</span>
       </div>

@@ -54,7 +54,7 @@ export default function CookieConsentBanner() {
       aria-labelledby="cookie-banner-title"
       className="fixed inset-x-0 bottom-0 z-[99990] p-3 sm:p-4"
     >
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 shadow-2xl backdrop-blur-xl sm:p-6">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <Cookie className="text-indigo-500" size={22} aria-hidden />
@@ -73,10 +73,10 @@ export default function CookieConsentBanner() {
         </div>
         <p className="mb-4 text-xs leading-relaxed text-[color:var(--foreground-muted)] sm:text-sm">{t("cookie.wallBody")}</p>
         <div className="mb-4 flex flex-wrap gap-3 text-xs font-bold">
-          <Link href="/privacy" className="text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400">
+          <Link href="/privacy" className="text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300">
             {t("cookie.privacy")}
           </Link>
-          <Link href="/legal" className="text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400">
+          <Link href="/legal" className="text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300">
             {t("cookie.cookiesPolicy")}
           </Link>
         </div>
