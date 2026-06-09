@@ -40,7 +40,12 @@ function clearDismissed(): void {
   }
 }
 
-export default function PwaInstallBanner() {
+type PwaInstallBannerProps = {
+  /** Hide the nudge while a workspace window is open so it never overlaps content. */
+  suppress?: boolean;
+};
+
+export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerProps) {
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [nativeInstallOffered, setNativeInstallOffered] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -125,6 +130,7 @@ export default function PwaInstallBanner() {
     setDismissed(true);
   };
 
+  if (suppress) return null;
   if (installed === null || installed || dismissed) return null;
   if (isStandaloneDisplay()) return null;
 

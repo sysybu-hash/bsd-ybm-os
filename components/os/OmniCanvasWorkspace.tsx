@@ -180,7 +180,7 @@ export default function OmniCanvasWorkspace() {
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
     <main className="quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
-      <PwaInstallBanner />
+      <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
       <PasskeyOfferModal />
       <LauncherEditBanner />
       <LauncherPickerSheet />
