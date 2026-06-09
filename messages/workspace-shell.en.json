@@ -1627,6 +1627,8 @@
       "generate": "✨ Generate Gantt & Workflow",
       "analyzing": "AI is analyzing the BOQ and building your timeline…",
       "success": "Created {n} Gantt phases. Switch to the schedule tab to view them.",
+      "calendarSynced": "{m} events synced to Google Calendar.",
+      "calendarNotConnected": "Google Calendar not connected — nothing synced.",
       "failed": "Gantt generation failed",
       "emptyHint": "Add BOQ lines first"
     },

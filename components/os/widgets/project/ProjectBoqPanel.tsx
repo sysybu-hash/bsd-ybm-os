@@ -153,14 +153,25 @@ export default function ProjectBoqPanel({
         method: "POST",
         credentials: "include",
       });
-      const json = (await res.json().catch(() => ({}))) as { error?: string; created?: number };
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        created?: number;
+        calendar?: { connected: boolean; synced: number };
+      };
       if (!res.ok) {
         throw new Error(json.error ?? t("workspaceWidgets.ganttAgent.failed"));
       }
-      toast.success(
-        t("workspaceWidgets.ganttAgent.success").replace("{n}", String(json.created ?? 0)),
-        { id: toastId },
+      const baseMsg = t("workspaceWidgets.ganttAgent.success").replace(
+        "{n}",
+        String(json.created ?? 0),
       );
+      const calMsg = json.calendar?.connected
+        ? t("workspaceWidgets.ganttAgent.calendarSynced").replace(
+            "{m}",
+            String(json.calendar.synced ?? 0),
+          )
+        : t("workspaceWidgets.ganttAgent.calendarNotConnected");
+      toast.success(`${baseMsg} ${calMsg}`, { id: toastId });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t("workspaceWidgets.ganttAgent.failed"), {
         id: toastId,

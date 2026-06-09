@@ -10,6 +10,7 @@ import { runAiChat } from "@/lib/ai-chat";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { addIsraeliWorkDays, adjustToNextIsraeliWorkday } from "@/lib/date/israeli-workdays";
+import { deleteTaskCalendarEvents, pushGanttTasksToCalendar } from "@/lib/projects/gantt-calendar";
 
 /** מקור משימות שנוצרו ע"י סוכן הגאנט — משמש לזיהוי והחלפה */
 const GANTT_AGENT_SOURCE = "AI_GANTT";
@@ -53,7 +54,7 @@ const responseSchema = z.object({
   phases: z.array(phaseSchema).min(1).max(25),
 });
 
-export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId, userId }, segment) => {
   const { id: projectId } = await segment.params;
   try {
     const industryBlock = await guardConstructionOnlyApi(orgId);
@@ -110,6 +111,22 @@ ${JSON.stringify(
     // נקודת ההתחלה — activeFrom או היום, מוזזת קדימה לראשון אם נופלת בסופ"ש
     const timelineStart = adjustToNextIsraeliWorkday(gate.project.activeFrom ?? new Date());
 
+    // מזהי משימות הגאנט הישנות — נדרשים לניקוי אירועי Google Calendar שלהן
+    const oldTaskIds = (
+      await prisma.task.findMany({
+        where: { projectId, organizationId: orgId, source: GANTT_AGENT_SOURCE },
+        select: { id: true },
+      })
+    ).map((t) => t.id);
+
+    type CreatedTask = {
+      id: string;
+      title: string;
+      description: string | null;
+      startDate: Date | null;
+      endDate: Date | null;
+    };
+
     // 4. החלפה אטומית: מחיקת משימות הגאנט הקודמות שנוצרו ע"י ה-AI (לא הידניות)
     //    והזרקת החדשות — הכל בטרנזקציה אחת. כל שלב תלוי בקודמו (sequential Gantt).
     const { created, replaced } = await prisma.$transaction(async (tx) => {
@@ -117,7 +134,7 @@ ${JSON.stringify(
         where: { projectId, organizationId: orgId, source: GANTT_AGENT_SOURCE },
       });
 
-      const tasks: { id: string; title: string }[] = [];
+      const tasks: CreatedTask[] = [];
       let cursor = timelineStart;
       let previousId: string | null = null;
 
@@ -125,7 +142,7 @@ ${JSON.stringify(
         // השלב מתחיל ביום העבודה הנוכחי ונמשך estimatedDays ימי עבודה (Sun–Thu)
         const startDate = adjustToNextIsraeliWorkday(cursor);
         const endDate = addIsraeliWorkDays(startDate, phase.estimatedDays);
-        const task: { id: string; title: string } = await tx.task.create({
+        const task: CreatedTask = await tx.task.create({
           data: {
             title: phase.taskName.trim(),
             description: phase.description.trim() || null,
@@ -139,7 +156,7 @@ ${JSON.stringify(
             endDate,
             dependencies: previousId ? JSON.stringify([previousId]) : null,
           },
-          select: { id: true, title: true },
+          select: { id: true, title: true, description: true, startDate: true, endDate: true },
         });
         tasks.push(task);
         previousId = task.id;
@@ -149,11 +166,25 @@ ${JSON.stringify(
       return { created: tasks, replaced: del.count };
     });
 
+    // 5. Google Calendar — best-effort, מחוץ לטרנזקציה (קריאות רשת חיצוניות).
+    //    כשל סנכרון לא מפיל את יצירת המשימות.
+    let calendar: { connected: boolean; synced: number } = { connected: false, synced: 0 };
+    try {
+      // ניקוי אירועי הגאנט הישנים לפני יצירת החדשים (sync integrity)
+      await deleteTaskCalendarEvents(userId, orgId, oldTaskIds);
+      calendar = await pushGanttTasksToCalendar(userId, orgId, created);
+    } catch (calErr: unknown) {
+      // נבלע בכוונה — המשימות כבר נוצרו בהצלחה
+      calendar = { connected: false, synced: 0 };
+      void calErr;
+    }
+
     return NextResponse.json({
       ok: true,
       created: created.length,
       replaced,
-      tasks: created,
+      calendar,
+      tasks: created.map((t) => ({ id: t.id, title: t.title })),
     });
   } catch (error) {
     return apiErrorResponse(error, "Project generate-gantt POST");
