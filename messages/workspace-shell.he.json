@@ -1193,7 +1193,10 @@
       "stopScan": "עצור סריקה",
       "back": "חזור",
       "continueToSave": "המשך לשמירה",
-      "cancel": "ביטול"
+      "cancel": "ביטול",
+      "resetWindow": "איפוס החלון",
+      "scanMore": "סריקה נוספת",
+      "pickFiles": "בחר קבצים לסריקה"
     },
     "jewishCalendar": {
       "title": "לוח עברי וזמנים",

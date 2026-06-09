@@ -1193,7 +1193,10 @@
       "stopScan": "Stop scan",
       "back": "Back",
       "continueToSave": "Continue to save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "resetWindow": "Reset window",
+      "scanMore": "Scan another",
+      "pickFiles": "Choose files to scan"
     },
     "jewishCalendar": {
       "title": "Hebrew calendar & zmanim",

@@ -45,6 +45,15 @@ test("mobile shots", async ({ page }) => {
         .catch(() => {});
       await page.waitForTimeout(Number(process.env.SHOT_CLICK_WAIT ?? 2500));
     }
+    if (process.env.SHOT_SCROLL_BOTTOM === "1") {
+      await page.evaluate(() => {
+        const el = document.querySelector<HTMLElement>(
+          "[data-window-body], [data-widget-scroll-pane], [data-shell-scroll]",
+        );
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+      await page.waitForTimeout(800);
+    }
     await page.screenshot({ path: `mobile-shot-${w}.png` });
 
     if (process.env.SHOT_BOTH_THEMES === "1") {

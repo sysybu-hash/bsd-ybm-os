@@ -320,10 +320,17 @@ export default function AiScannerWidget({
         <ScanControlBar
           phase={scanUiPhase}
           t={t}
+          tr={tr}
+          hasContent={queue.length > 0 || !!lastScanV5 || !!pendingAnalysis || isProcessing}
+          onPickFiles={() => fileInputRef.current?.click()}
           onStop={stopScan}
           onBack={goBackScanStep}
           onContinueToSave={pendingAnalysis ? continueToSaveStep : undefined}
-          onCancel={resetScanState}
+          onScanMore={() => {
+            resetScanState();
+            fileInputRef.current?.click();
+          }}
+          onReset={resetScanState}
         />
 
         {/* Engine status bar — compact row on mobile, 3-column on desktop */}
