@@ -73,3 +73,6 @@ reports/
 .psi-*.html
 .lighthouseci/
 lh-*.json
+
+# mobile screenshot harness outputs
+mobile-shot-*.png

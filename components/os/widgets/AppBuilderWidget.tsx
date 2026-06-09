@@ -149,6 +149,7 @@ export default function AppBuilderWidget() {
     <div
       data-widget-sticky-chrome
       data-app-builder-root
+      data-widget-fill-height
       className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden bg-surface-bg"
       dir={dir}
     >
