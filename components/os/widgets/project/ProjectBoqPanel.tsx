@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Download, Upload, Ruler, Sparkles } from "lucide-react";
+import { Loader2, Download, Upload, Ruler, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import BoqAgentPanel from "@/components/os/widgets/project/BoqAgentPanel";
 import TakeoffModule, { type TakeoffMeasurement } from "@/components/os/widgets/project/TakeoffModule";
 
@@ -38,6 +39,7 @@ export default function ProjectBoqPanel({
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [savingTakeoff, setSavingTakeoff] = useState(false);
   const [generatingGantt, setGeneratingGantt] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -114,6 +116,45 @@ export default function ProjectBoqPanel({
       toast.error(t("workspaceWidgets.projectBoq.rowUpdateFailed"));
       return;
     }
+    await load();
+  };
+
+  /** עורך שדה תא (תיאור/כמות/מחיר) ב-blur — רק אם הערך השתנה */
+  const editCell = (l: BoqLine, field: "description" | "quantity" | "unitPrice", raw: string) => {
+    if (field === "description") {
+      const v = raw.trim();
+      if (v && v !== l.description) void patchLine(l.id, { description: v });
+      return;
+    }
+    const v = raw.trim() === "" ? null : Number(raw);
+    if (v == null || !Number.isFinite(v) || v < 0) return;
+    if (v !== l[field]) void patchLine(l.id, { [field]: v });
+  };
+
+  const deleteLine = async (id: string) => {
+    const res = await fetch(`${apiBase}/boq?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      toast.error(t("workspaceWidgets.projectBoq.deleteFailed"));
+      return;
+    }
+    toast.success(t("workspaceWidgets.projectBoq.rowDeleted"));
+    await load();
+  };
+
+  const clearAllLines = async () => {
+    setConfirmClear(false);
+    const res = await fetch(`${apiBase}/boq?clearAll=true`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      toast.error(t("workspaceWidgets.projectBoq.deleteFailed"));
+      return;
+    }
+    toast.success(t("workspaceWidgets.projectBoq.allCleared"));
     await load();
   };
 
@@ -265,6 +306,16 @@ export default function ProjectBoqPanel({
             {t("workspaceWidgets.ganttAgent.generate")}
           </button>
         ) : null}
+        {subTab === "boq" && lines.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            className="flex items-center gap-1 rounded-lg border border-rose-500/50 px-2 py-1 text-xs font-bold text-rose-400 hover:bg-rose-500/10"
+          >
+            <Trash2 size={12} />
+            {t("workspaceWidgets.projectBoq.clearAll")}
+          </button>
+        ) : null}
       </div>
 
       {subTab === "boq" && showTakeoff ? (
@@ -306,6 +357,7 @@ export default function ProjectBoqPanel({
                 <th className="p-2">סה״כ</th>
                 <th className="p-2">בוצע</th>
                 <th className="p-2">מקדם</th>
+                <th className="p-2" aria-label={t("workspaceWidgets.projectBoq.deleteRow")} />
               </tr>
             </thead>
             <tbody>
@@ -314,10 +366,35 @@ export default function ProjectBoqPanel({
                   key={l.id}
                   className={l.isSectionSubtotal ? "font-bold bg-amber-500/5" : ""}
                 >
-                  <td className="p-2">{l.description}</td>
+                  <td className="p-2">
+                    <input
+                      type="text"
+                      defaultValue={l.description}
+                      onBlur={(e) => editCell(l, "description", e.target.value)}
+                      className="w-full min-w-[140px] rounded border border-transparent bg-transparent px-1 hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
                   <td className="p-2 text-center">{l.unit ?? "—"}</td>
-                  <td className="p-2 text-center">{l.quantity ?? "—"}</td>
-                  <td className="p-2 text-center">{l.unitPrice ?? "—"}</td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      defaultValue={l.quantity ?? ""}
+                      onBlur={(e) => editCell(l, "quantity", e.target.value)}
+                      className="w-16 rounded border border-transparent bg-transparent px-1 text-center hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      defaultValue={l.unitPrice ?? ""}
+                      onBlur={(e) => editCell(l, "unitPrice", e.target.value)}
+                      className="w-20 rounded border border-transparent bg-transparent px-1 text-center hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
                   <td className="p-2 text-center">{l.lineTotal}</td>
                   <td className="p-2 text-center">
                     <input
@@ -339,6 +416,17 @@ export default function ProjectBoqPanel({
                         void patchLine(l.id, { progressCoefficient: v ?? undefined });
                       }}
                     />
+                  </td>
+                  <td className="p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void deleteLine(l.id)}
+                      title={t("workspaceWidgets.projectBoq.deleteRow")}
+                      aria-label={t("workspaceWidgets.projectBoq.deleteRow")}
+                      className="rounded p-1 text-rose-400 hover:bg-rose-500/10"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -363,6 +451,7 @@ export default function ProjectBoqPanel({
                 <th className="p-2">סה״כ</th>
                 <th className="p-2">בוצע</th>
                 <th className="p-2">מקדם</th>
+                <th className="p-2" aria-label={t("workspaceWidgets.projectBoq.deleteRow")} />
               </tr>
             </thead>
             <tbody>
@@ -371,10 +460,35 @@ export default function ProjectBoqPanel({
                   key={l.id}
                   className={l.isSectionSubtotal ? "font-bold bg-amber-500/5" : ""}
                 >
-                  <td className="p-2">{l.description}</td>
+                  <td className="p-2">
+                    <input
+                      type="text"
+                      defaultValue={l.description}
+                      onBlur={(e) => editCell(l, "description", e.target.value)}
+                      className="w-full min-w-[140px] rounded border border-transparent bg-transparent px-1 hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
                   <td className="p-2 text-center">{l.unit ?? "—"}</td>
-                  <td className="p-2 text-center">{l.quantity ?? "—"}</td>
-                  <td className="p-2 text-center">{l.unitPrice ?? "—"}</td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      defaultValue={l.quantity ?? ""}
+                      onBlur={(e) => editCell(l, "quantity", e.target.value)}
+                      className="w-16 rounded border border-transparent bg-transparent px-1 text-center hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      defaultValue={l.unitPrice ?? ""}
+                      onBlur={(e) => editCell(l, "unitPrice", e.target.value)}
+                      className="w-20 rounded border border-transparent bg-transparent px-1 text-center hover:border-[color:var(--border-main)] focus:border-[color:var(--border-main)] focus:bg-[color:var(--surface-soft)]"
+                    />
+                  </td>
                   <td className="p-2 text-center">{l.lineTotal}</td>
                   <td className="p-2 text-center">
                     <input
@@ -397,12 +511,33 @@ export default function ProjectBoqPanel({
                       }}
                     />
                   </td>
+                  <td className="p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void deleteLine(l.id)}
+                      title={t("workspaceWidgets.projectBoq.deleteRow")}
+                      aria-label={t("workspaceWidgets.projectBoq.deleteRow")}
+                      className="rounded p-1 text-rose-400 hover:bg-rose-500/10"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <OsConfirmDialog
+        open={confirmClear}
+        title={t("workspaceWidgets.projectBoq.clearAll")}
+        message={t("workspaceWidgets.projectBoq.clearAllConfirm")}
+        confirmLabel={t("workspaceWidgets.projectBoq.clearAll")}
+        destructive
+        onConfirm={() => void clearAllLines()}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 }

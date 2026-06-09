@@ -1590,7 +1590,13 @@
     "projectBoq": {
       "importFailed": "Ошибка импорта",
       "importedLines": "Импортировано: {n}",
-      "rowUpdateFailed": "Ошибка обновления"
+      "rowUpdateFailed": "Ошибка обновления",
+      "deleteRow": "Удалить строку",
+      "clearAll": "Очистить всё",
+      "clearAllConfirm": "Удалить все строки ведомости? Действие необратимо.",
+      "rowDeleted": "Строка удалена",
+      "allCleared": "Все строки удалены",
+      "deleteFailed": "Не удалось удалить"
     },
     "takeoff": {
       "openTool": "Обмер по чертежу",

@@ -145,3 +145,39 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchLineS
   },
   { schema: patchLineSchema },
 );
+
+export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId }, segment) => {
+  const { id: projectId } = await segment.params;
+  try {
+    const industryBlock = await guardConstructionOnlyApi(orgId);
+    if (industryBlock) return industryBlock;
+    const gate = await requireProjectForOrg(projectId, orgId);
+    if (!gate.ok) return gate.response;
+
+    const url = new URL(req.url);
+    const lineId = url.searchParams.get("id");
+    const clearAll = url.searchParams.get("clearAll") === "true";
+
+    if (clearAll) {
+      const result = await prisma.projectBoqLine.deleteMany({
+        where: { projectId, organizationId: orgId },
+      });
+      return NextResponse.json({ success: true, deleted: result.count });
+    }
+
+    if (!lineId) {
+      return NextResponse.json({ error: "חסר מזהה שורה" }, { status: 400 });
+    }
+
+    const deleted = await prisma.projectBoqLine.deleteMany({
+      where: { id: lineId, projectId, organizationId: orgId },
+    });
+    if (deleted.count === 0) {
+      return NextResponse.json({ error: "שורה לא נמצאה" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return apiErrorResponse(error, "Project BOQ DELETE");
+  }
+});

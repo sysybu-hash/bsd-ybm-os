@@ -1590,7 +1590,13 @@
     "projectBoq": {
       "importFailed": "Import failed",
       "importedLines": "Imported {n} lines",
-      "rowUpdateFailed": "Row update failed"
+      "rowUpdateFailed": "Row update failed",
+      "deleteRow": "Delete row",
+      "clearAll": "Clear all",
+      "clearAllConfirm": "Delete all BOQ lines? This cannot be undone.",
+      "rowDeleted": "Row deleted",
+      "allCleared": "All lines deleted",
+      "deleteFailed": "Delete failed"
     },
     "takeoff": {
       "openTool": "Drawing takeoff",

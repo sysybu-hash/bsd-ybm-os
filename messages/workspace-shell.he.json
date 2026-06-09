@@ -1590,7 +1590,13 @@
     "projectBoq": {
       "importFailed": "ייבוא נכשל",
       "importedLines": "יובאו {n} שורות",
-      "rowUpdateFailed": "עדכון שורה נכשל"
+      "rowUpdateFailed": "עדכון שורה נכשל",
+      "deleteRow": "מחק שורה",
+      "clearAll": "מחק הכל",
+      "clearAllConfirm": "למחוק את כל שורות כתב הכמויות? פעולה זו אינה הפיכה.",
+      "rowDeleted": "השורה נמחקה",
+      "allCleared": "כל השורות נמחקו",
+      "deleteFailed": "המחיקה נכשלה"
     },
     "takeoff": {
       "openTool": "מדידה משרטוט",
