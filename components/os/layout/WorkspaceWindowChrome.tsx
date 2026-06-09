@@ -98,9 +98,10 @@ export default function WorkspaceWindowChrome({
 
   const minimizeBtnClass = touchChromeBtn;
 
-  const maximizeBtnClass = maximizeHiddenOnMobile
-    ? "workspace-chrome-btn hidden md:inline-flex"
-    : "workspace-chrome-btn inline-flex";
+  // On mobile, windows already fill the screen, so the maximize toggle is
+  // redundant — always hide it on mobile (shown from md up).
+  const maximizeBtnClass = "workspace-chrome-btn hidden md:inline-flex";
+  void maximizeHiddenOnMobile;
 
   const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
   const ForwardIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
@@ -149,7 +150,7 @@ export default function WorkspaceWindowChrome({
         onPointerDown={(e) => e.stopPropagation()}
       >
         {showZoom ? (
-          <div className="hidden shrink-0 items-center gap-0.5 md:inline-flex">
+          <div className="inline-flex shrink-0 items-center gap-0.5">
             <button
               type="button"
               onClick={handleZoomOut}
