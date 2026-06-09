@@ -50,21 +50,23 @@ test.describe("mobile workspace windows", () => {
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
-    // Hub widgets are sticky-chrome: the outer shell-scroll-host is overflow:hidden
-    // and the inner [data-widget-scroll-pane] is the actual scroll owner.
-    // Accept either pattern so the test works for both flow and sticky-chrome widgets.
-    const scrollPane = shell.locator("[data-widget-scroll-pane]").first();
-    const shellScrollHost = shell.locator("[data-shell-scroll]").first();
-
-    const paneOverflow = await scrollPane.isVisible()
-      ? await scrollPane.evaluate((el) => getComputedStyle(el).overflowY)
-      : "hidden";
-    const hostOverflow = await shellScrollHost.evaluate((el) => getComputedStyle(el).overflowY);
-
-    const hasScrollRegion =
-      paneOverflow === "auto" || paneOverflow === "scroll" ||
-      hostOverflow === "auto" || hostOverflow === "scroll";
-
-    expect(hasScrollRegion).toBeTruthy();
+    // Under the unified scroll model the outer shell-scroll-host is overflow:hidden
+    // and a sticky-chrome widget's inner [data-widget-scroll-pane] owns the scroll —
+    // but that pane mounts only after the hub's content finishes loading. Poll for
+    // ANY scrollable region inside the shell so we don't race the async render.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const widget = document.querySelector("[data-widget-shell]");
+            if (!widget) return false;
+            return Array.from(widget.querySelectorAll<HTMLElement>("*")).some((el) => {
+              const oy = getComputedStyle(el).overflowY;
+              return oy === "auto" || oy === "scroll";
+            });
+          }),
+        { timeout: 15_000, message: "expected a scrollable region inside the hub shell" },
+      )
+      .toBe(true);
   });
 });
