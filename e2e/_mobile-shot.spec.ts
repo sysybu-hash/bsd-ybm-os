@@ -35,5 +35,22 @@ test("mobile shots", async ({ page }) => {
       .catch(() => {});
     await page.waitForTimeout(Number(process.env.SHOT_WAIT ?? 2200));
     await page.screenshot({ path: `mobile-shot-${w}.png` });
+
+    if (process.env.SHOT_BOTH_THEMES === "1") {
+      // Switch to light mode (next-themes uses a class on <html> + localStorage).
+      await page.evaluate(() => {
+        try {
+          localStorage.setItem("theme", "light");
+        } catch {
+          /* ignore */
+        }
+        const html = document.documentElement;
+        html.classList.remove("dark");
+        html.classList.add("light");
+        html.style.colorScheme = "light";
+      });
+      await page.waitForTimeout(700);
+      await page.screenshot({ path: `mobile-shot-${w}-light.png` });
+    }
   }
 });
