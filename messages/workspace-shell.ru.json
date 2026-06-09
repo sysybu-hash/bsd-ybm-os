@@ -1246,7 +1246,15 @@
       "noEventsWeek": "Нет событий на этой неделе",
       "moreEvents": "ещё {count}",
       "openInGoogle": "Открыть в Google",
-      "fromTask": "Задача"
+      "fromTask": "Задача",
+      "addEvent": "Добавить событие",
+      "eventTitleLabel": "Название события",
+      "dateLabel": "Дата",
+      "startLabel": "Время начала",
+      "endLabel": "Время окончания",
+      "saveEvent": "Сохранить событие",
+      "connectToAdd": "Подключите Google Календарь в настройках, чтобы добавлять события",
+      "invalidRange": "Время окончания должно быть позже начала"
     },
     "googleDrive": {
       "pickProjectTitle": "Выберите проект",

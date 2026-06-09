@@ -1246,7 +1246,15 @@
       "noEventsWeek": "No events this week",
       "moreEvents": "+{count} more",
       "openInGoogle": "Open in Google Calendar",
-      "fromTask": "Linked task"
+      "fromTask": "Linked task",
+      "addEvent": "Add event",
+      "eventTitleLabel": "Event title",
+      "dateLabel": "Date",
+      "startLabel": "Start time",
+      "endLabel": "End time",
+      "saveEvent": "Save event",
+      "connectToAdd": "Connect Google Calendar in settings to add events",
+      "invalidRange": "End time must be after the start time"
     },
     "googleDrive": {
       "pickProjectTitle": "Choose a project",

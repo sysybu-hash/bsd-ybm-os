@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
@@ -10,6 +10,7 @@ import { CalendarEmptyPanel } from "./google-calendar/CalendarEmptyPanel";
 import { CalendarMonthView } from "./google-calendar/CalendarMonthView";
 import { CalendarWeekView } from "./google-calendar/CalendarWeekView";
 import { CalendarWidgetHeader } from "./google-calendar/CalendarWidgetHeader";
+import CalendarEventModal, { type CalendarEventDraft } from "./google-calendar/CalendarEventModal";
 import { formatMonthYear, formatWeekRange } from "./google-calendar/format-event-time";
 import { useGoogleCalendarWidget } from "./google-calendar/useGoogleCalendarWidget";
 import "./google-calendar/calendar-print.css";
@@ -29,8 +30,29 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
     calendarSummary, calendarColor, canWrite,
     viewMode, setViewMode, viewAnchor, weekStart, weekEnd, weekDays, monthDays,
     selectedDay, setSelectedDay, eventsByDay, fetchEvents,
-    goToday, shiftPeriod, createEvent, printCalendar,
+    goToday, shiftPeriod, createEvent, creating, printCalendar,
   } = useGoogleCalendarWidget(locale, t(`${S}.loadFailed`), t(`${S}.newEventTitle`));
+
+  const [addOpen, setAddOpen] = useState(false);
+
+  const handleAddEvent = () => {
+    if (!canWrite) {
+      toast.info(t(`${S}.connectToAdd`));
+      openWorkspaceWidget?.("settings", { tab: "calendar" });
+      return;
+    }
+    setAddOpen(true);
+  };
+
+  const handleSubmitEvent = async (draft: CalendarEventDraft) => {
+    const ok = await createEvent(draft.start, draft.end, draft.summary);
+    if (ok) {
+      toast.success(t(`${S}.eventCreated`));
+      setAddOpen(false);
+    } else {
+      toast.error(t(`${S}.eventCreateFailed`));
+    }
+  };
 
   const rangeLabel = useMemo(() => {
     if (viewMode === "month") return formatMonthYear(viewAnchor, locale);
@@ -131,6 +153,28 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
         onRefresh={() => void fetchEvents()}
         onPrint={printCalendar}
         refreshing={loading}
+        addEventLabel={t(`${S}.addEvent`)}
+        onAddEvent={handleAddEvent}
+      />
+
+      <CalendarEventModal
+        open={addOpen}
+        defaultDate={selectedDay}
+        saving={creating}
+        onSubmit={(draft) => void handleSubmitEvent(draft)}
+        onCancel={() => setAddOpen(false)}
+        labels={{
+          title: t(`${S}.addEvent`),
+          eventTitle: t(`${S}.eventTitleLabel`),
+          titlePlaceholder: t(`${S}.newEventTitle`),
+          date: t(`${S}.dateLabel`),
+          start: t(`${S}.startLabel`),
+          end: t(`${S}.endLabel`),
+          allDay: t(`${S}.allDay`),
+          save: t(`${S}.saveEvent`),
+          cancel: t("workspaceWidgets.confirm.cancel"),
+          invalidRange: t(`${S}.invalidRange`),
+        }}
       />
 
       {loading ? (

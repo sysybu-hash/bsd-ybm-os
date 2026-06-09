@@ -1246,7 +1246,15 @@
       "noEventsWeek": "אין אירועים בשבוע זה",
       "moreEvents": "עוד {count}",
       "openInGoogle": "פתיחה ב-Google Calendar",
-      "fromTask": "מקושר למשימה"
+      "fromTask": "מקושר למשימה",
+      "addEvent": "הוסף אירוע",
+      "eventTitleLabel": "כותרת האירוע",
+      "dateLabel": "תאריך",
+      "startLabel": "שעת התחלה",
+      "endLabel": "שעת סיום",
+      "saveEvent": "שמור אירוע",
+      "connectToAdd": "חברו את יומן Google בהגדרות כדי להוסיף אירועים",
+      "invalidRange": "שעת הסיום חייבת להיות אחרי שעת ההתחלה"
     },
     "googleDrive": {
       "pickProjectTitle": "בחרו פרויקט",

@@ -33,7 +33,7 @@ test("mobile shots", async ({ page }) => {
       .first()
       .waitFor({ state: "visible", timeout: 20_000 })
       .catch(() => {});
-    await page.waitForTimeout(2200);
+    await page.waitForTimeout(Number(process.env.SHOT_WAIT ?? 2200));
     await page.screenshot({ path: `mobile-shot-${w}.png` });
   }
 });
