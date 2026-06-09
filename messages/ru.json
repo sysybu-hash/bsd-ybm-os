@@ -282,6 +282,7 @@
     "blueprintNoProject": "Выберите проект и откройте вкладку ведомости для обмера",
     "rescanPlaceholder": "Добавьте указание для повторного сканирования (напр. «Вы пропустили доставку на стр. 2»)",
     "rescanButton": "Пересканировать",
+    "confidenceLabel": "Уверенность модели",
     "queueStatusPending": "В очереди",
     "queueStatusProcessing": "Обработка",
     "queueStatusDone": "Готово",

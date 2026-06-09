@@ -6,6 +6,8 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
+import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
+import { DEFAULT_CONFIDENCE_SCORE } from "@/lib/scan-schema-v5";
 import type { AiScannerWidgetProps } from "./ai-scanner/types";
 import { useAiScannerState } from "./ai-scanner/useAiScannerState";
 import { ScanDropZone } from "./ai-scanner/ScanDropZone";
@@ -63,6 +65,40 @@ export default function AiScannerWidget({
     setRescanText("");
     void rescanLastFile(text);
   };
+
+  const confidencePct = Math.round((lastScanV5?.confidenceScore ?? DEFAULT_CONFIDENCE_SCORE) * 100);
+  const confidenceClass =
+    confidencePct >= 80
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+      : confidencePct >= 50
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+        : "border-rose-500/40 bg-rose-500/10 text-rose-500";
+
+  const rescanBar = (
+    <div className="flex items-center gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 px-3 py-2">
+      <input
+        type="text"
+        value={rescanText}
+        onChange={(e) => setRescanText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submitRescan();
+        }}
+        disabled={isProcessing}
+        placeholder={t("scanner.rescanPlaceholder")}
+        aria-label={t("scanner.rescanPlaceholder")}
+        className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-xs text-[color:var(--foreground-main)] outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <button
+        type="button"
+        onClick={submitRescan}
+        disabled={isProcessing || !rescanText.trim()}
+        className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50"
+      >
+        <RefreshCw size={12} className={isProcessing ? "animate-spin" : ""} />
+        {t("scanner.rescanButton")}
+      </button>
+    </div>
+  );
 
   if (showProjectPicker) {
     return (
@@ -151,6 +187,49 @@ export default function AiScannerWidget({
               tr={tr}
             />
           )
+        ) : lastScanV5 ? (
+          /* Results ready: document preview ‖ extracted data (side-by-side on
+             desktop, stacked on mobile) */
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2 lg:flex-row lg:overflow-hidden">
+            {/* Left — original document preview */}
+            <div className="flex min-h-0 flex-col lg:w-1/2 lg:flex-1">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                {tr("scanner.preview", "תצוגה מקדימה")} · {previewFileName || lastScanFileName}
+              </p>
+              <div className="min-h-0 flex-1 overflow-auto rounded-xl">
+                <ScanFilePreview
+                  url={previewUrl}
+                  mime={previewMime}
+                  fileName={previewFileName || lastScanFileName}
+                  emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה")}
+                />
+              </div>
+            </div>
+
+            <div className="h-px w-full bg-[color:var(--border-main)] lg:h-auto lg:w-px" />
+
+            {/* Right — extracted results, confidence & rescan */}
+            <div className="flex min-h-0 flex-col lg:w-1/2 lg:flex-1">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
+                  {t("scanner.results")}
+                </p>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${confidenceClass}`}
+                  title={tr("scanner.confidenceLabel", "ביטחון המודל")}
+                >
+                  {tr("scanner.confidenceLabel", "ביטחון המודל")}: {confidencePct}%
+                </span>
+              </div>
+              <p className="mb-2 rounded-lg border border-[color:var(--border-main)]/60 bg-[color:var(--surface-card)]/50 px-2 py-1 text-[10px] font-mono text-[color:var(--foreground-muted)]">
+                {tr("scanner.telemetry", "טלמטריה")}: {formatTelemetrySummaryHe(telemetry)}
+              </p>
+              <pre className="custom-scrollbar min-h-0 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-gradient-to-b from-black/25 to-[color:var(--surface-card)]/20 p-3 text-[10px] leading-relaxed backdrop-blur-sm">
+                {resultJson || tr("scanner.noPreview", "אין תוצאה עדיין")}
+              </pre>
+              {rescanBar}
+            </div>
+          </div>
         ) : stackScannerPanels ? (
           /* Mobile: natural-height panels — parent scrolls */
           <div className="flex flex-col">
@@ -237,32 +316,6 @@ export default function AiScannerWidget({
             </Panel>
           </Group>
         )}
-
-        {lastScanV5 && !pendingAnalysis ? (
-          <div className="flex items-center gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 px-3 py-2">
-            <input
-              type="text"
-              value={rescanText}
-              onChange={(e) => setRescanText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submitRescan();
-              }}
-              disabled={isProcessing}
-              placeholder={t("scanner.rescanPlaceholder")}
-              aria-label={t("scanner.rescanPlaceholder")}
-              className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-xs text-[color:var(--foreground-main)] outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={submitRescan}
-              disabled={isProcessing || !rescanText.trim()}
-              className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={isProcessing ? "animate-spin" : ""} />
-              {t("scanner.rescanButton")}
-            </button>
-          </div>
-        ) : null}
 
         <ScanControlBar
           phase={scanUiPhase}
