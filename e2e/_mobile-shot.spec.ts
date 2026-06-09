@@ -21,6 +21,9 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test("mobile shots", async ({ page }) => {
   test.setTimeout(60_000 + WIDGETS.length * 25_000);
+  await page.context().addCookies([
+    { name: "bsd-locale", value: process.env.SHOT_LOCALE ?? "he", domain: "localhost", path: "/" },
+  ]);
   const signed = await tryCredentialsSignIn(page);
   test.skip(!signed, "needs E2E creds");
 
@@ -34,6 +37,14 @@ test("mobile shots", async ({ page }) => {
       .waitFor({ state: "visible", timeout: 20_000 })
       .catch(() => {});
     await page.waitForTimeout(Number(process.env.SHOT_WAIT ?? 2200));
+    if (process.env.SHOT_CLICK) {
+      await page
+        .locator(process.env.SHOT_CLICK)
+        .first()
+        .click({ timeout: 8_000 })
+        .catch(() => {});
+      await page.waitForTimeout(Number(process.env.SHOT_CLICK_WAIT ?? 2500));
+    }
     await page.screenshot({ path: `mobile-shot-${w}.png` });
 
     if (process.env.SHOT_BOTH_THEMES === "1") {

@@ -109,6 +109,7 @@ export default function AdaptiveWidgetShell({
       {/* Content wrapper — overflow-hidden here clips content to rounded corners
           but ResizeHandles lives OUTSIDE this div so it is never clipped. */}
       <div
+        data-window-body
         className={
           mobileOrMaximized
             ? "relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-y-auto max-md:overscroll-contain max-md:[-webkit-overflow-scrolling:touch]"

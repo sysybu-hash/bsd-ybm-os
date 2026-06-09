@@ -888,12 +888,25 @@
      absolute-inset panes and CANNOT flow — they need a definite height. Give
      them the available window content height so their internal layout + scroll
      work, and they fill the screen. Opt in with data-widget-fill-height. */
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-window-body] {
+    overflow: hidden !important;
+  }
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-shell-scroll].shell-scroll-host {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 0% !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-shell-content] {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+  }
   .workspace-window--mobile [data-widget-fill-height] {
-    flex: 0 0 auto !important;
-    height: calc(
-      100dvh - var(--workspace-inset-top) - var(--workspace-inset-bottom) - 3.5rem
-    ) !important;
-    min-height: 22rem !important;
+    flex: 1 1 0% !important;
+    height: 100% !important;
+    min-height: 0 !important;
     max-height: none !important;
     overflow: hidden !important;
   }
