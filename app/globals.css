@@ -882,6 +882,21 @@
     min-height: 0;
     overflow: visible;
   }
+  /* DEEP inner vertical scrollers inside widgets (e.g. the document creator's
+     own flex-1 overflow-y-auto pane) would otherwise trap the touch gesture via
+     overscroll-y-contain and never let the window body scroll. Widgets use the
+     `overscroll-y-*` utility on these vertical scrollers — flatten them so the
+     single window-body scroller owns the gesture. Horizontal scrollers
+     (overscroll-x-*, e.g. the hub tab bar) are intentionally left alone. */
+  .workspace-window--mobile [class*="overscroll-y-contain"],
+  .workspace-window--mobile [class*="overscroll-y-auto"] {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+  }
 }
 
 /* Desktop swaps mobile chrome clearance for the dock clearance — sizing only. */
