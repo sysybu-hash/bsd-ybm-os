@@ -149,7 +149,7 @@ export default function WorkspaceWindowChrome({
         onPointerDown={(e) => e.stopPropagation()}
       >
         {showZoom ? (
-          <div className="inline-flex shrink-0 items-center gap-0.5">
+          <div className="hidden shrink-0 items-center gap-0.5 md:inline-flex">
             <button
               type="button"
               onClick={handleZoomOut}

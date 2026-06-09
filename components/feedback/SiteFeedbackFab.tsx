@@ -57,7 +57,7 @@ export default function SiteFeedbackFab({ hideFab = false }: Props) {
             aria-label={t("siteFeedback.close")}
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-6 shadow-2xl">
+          <div className="relative z-10 max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-6 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2
