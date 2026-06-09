@@ -41,6 +41,60 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId
   }
 });
 
+const createLineSchema = z.object({
+  description: z.string().min(1).max(1000),
+  unit: z.string().max(40).optional(),
+  quantity: z.number().nonnegative().optional(),
+  unitPrice: z.number().nonnegative().optional(),
+  quoteId: z.string().optional(),
+  /** מקור השורה — לדוגמה "TAKEOFF" למדידה משרטוט */
+  source: z.string().max(40).optional(),
+});
+
+export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createLineSchema>(
+  async (_req, { orgId }, segment, body) => {
+    const { id: projectId } = await segment.params;
+    try {
+      const industryBlock = await guardConstructionOnlyApi(orgId);
+      if (industryBlock) return industryBlock;
+      const gate = await requireProjectForOrg(projectId, orgId);
+      if (!gate.ok) return gate.response;
+
+      const quantity = body.quantity ?? 0;
+      const unitPrice = body.unitPrice ?? 0;
+      const lineTotal = quantity * unitPrice;
+
+      // append at the end — next sortOrder after the current max
+      const agg = await prisma.projectBoqLine.aggregate({
+        where: { projectId, organizationId: orgId },
+        _max: { sortOrder: true },
+      });
+      const nextSortOrder = (agg._max.sortOrder ?? -1) + 1;
+
+      const created = await prisma.projectBoqLine.create({
+        data: {
+          projectId,
+          organizationId: orgId,
+          quoteId: body.quoteId ?? null,
+          sortOrder: nextSortOrder,
+          description: body.description,
+          unit: body.unit ?? null,
+          quantity: body.quantity ?? null,
+          unitPrice: body.unitPrice ?? null,
+          lineTotal,
+          source: body.source ?? "MANUAL",
+        },
+        include: { phaseColumns: true },
+      });
+
+      return NextResponse.json(created, { status: 201 });
+    } catch (error) {
+      return apiErrorResponse(error, "Project BOQ POST");
+    }
+  },
+  { schema: createLineSchema },
+);
+
 const patchLineSchema = z.object({
   id: z.string(),
   executedQuantity: z.number().optional(),

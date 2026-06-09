@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Download, Upload } from "lucide-react";
+import { Loader2, Download, Upload, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import BoqAgentPanel from "@/components/os/widgets/project/BoqAgentPanel";
+import TakeoffModule, { type TakeoffMeasurement } from "@/components/os/widgets/project/TakeoffModule";
 
 type BoqLine = {
   id: string;
@@ -34,6 +35,8 @@ export default function ProjectBoqPanel({
   const [lines, setLines] = useState<BoqLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showTakeoff, setShowTakeoff] = useState(false);
+  const [savingTakeoff, setSavingTakeoff] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -113,6 +116,34 @@ export default function ProjectBoqPanel({
     await load();
   };
 
+  const saveTakeoffMeasurement = async (measurement: TakeoffMeasurement) => {
+    setSavingTakeoff(true);
+    try {
+      const res = await fetch(`${apiBase}/boq`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: measurement.description,
+          unit: measurement.unit,
+          quantity: measurement.area,
+          source: "TAKEOFF",
+        }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? t("workspaceWidgets.takeoff.saveFailed"));
+      }
+      toast.success(t("workspaceWidgets.takeoff.savedToast"));
+      await load();
+      setShowTakeoff(false);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("workspaceWidgets.takeoff.saveFailed"));
+    } finally {
+      setSavingTakeoff(false);
+    }
+  };
+
   const subTabs: { id: SubTab; label: string }[] = [
     { id: "quote", label: "הצעת מחיר" },
     { id: "boq", label: "כתב כמויות" },
@@ -167,7 +198,27 @@ export default function ProjectBoqPanel({
           <Download size={12} />
           ייצוא Excel
         </button>
+        {subTab === "boq" ? (
+          <button
+            type="button"
+            onClick={() => setShowTakeoff((v) => !v)}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${
+              showTakeoff
+                ? "border-indigo-500 bg-indigo-500/15 text-indigo-200"
+                : "border-[color:var(--border-main)]"
+            }`}
+          >
+            <Ruler size={12} />
+            {t("workspaceWidgets.takeoff.openTool")}
+          </button>
+        ) : null}
       </div>
+
+      {subTab === "boq" && showTakeoff ? (
+        <div className="h-[60vh] min-h-[420px]">
+          <TakeoffModule onSaveMeasurement={saveTakeoffMeasurement} saving={savingTakeoff} />
+        </div>
+      ) : null}
 
       {subTab === "milestones" ? (
         milestonesSection ?? (
