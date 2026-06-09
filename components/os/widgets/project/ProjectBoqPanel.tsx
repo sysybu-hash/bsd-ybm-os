@@ -187,6 +187,7 @@ export default function ProjectBoqPanel({
   };
 
   const generateGantt = async () => {
+    if (generatingGantt) return; // guard against rapid double-submit before re-render
     setGeneratingGantt(true);
     const toastId = toast.loading(t("workspaceWidgets.ganttAgent.analyzing"));
     try {
