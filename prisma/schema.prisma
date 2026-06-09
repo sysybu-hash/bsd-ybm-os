@@ -278,6 +278,8 @@ model Task {
   externalTaskId String?
   /// שורת כתב כמויות מקושרת
   linkedBoqLineId String?
+  /// מקור המשימה: MANUAL (ידני/ברירת מחדל) או AI_GANTT (נוצר ע"י סוכן הגאנט)
+  source         String       @default("MANUAL")
   projectId      String
   organizationId String
   createdAt      DateTime     @default(now())
@@ -292,6 +294,8 @@ model Task {
   @@index([linkedBoqLineId])
   /// Compound index for task-reminders cron: filters by (org, status, dueDate)
   @@index([organizationId, status, dueDate])
+  /// Filters the gantt-agent replace path: deleteMany by (project, source)
+  @@index([projectId, source])
 }
 
 /// יומן עבודה בשטח

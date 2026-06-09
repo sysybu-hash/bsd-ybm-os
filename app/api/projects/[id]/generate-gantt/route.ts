@@ -9,6 +9,10 @@ import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { runAiChat } from "@/lib/ai-chat";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { addIsraeliWorkDays, adjustToNextIsraeliWorkday } from "@/lib/date/israeli-workdays";
+
+/** מקור משימות שנוצרו ע"י סוכן הגאנט — משמש לזיהוי והחלפה */
+const GANTT_AGENT_SOURCE = "AI_GANTT";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -48,12 +52,6 @@ const phaseSchema = z.object({
 const responseSchema = z.object({
   phases: z.array(phaseSchema).min(1).max(25),
 });
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
 
 export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
   const { id: projectId } = await segment.params;
@@ -107,25 +105,33 @@ ${JSON.stringify(
       );
     }
 
-    // 3. מיון כרונולוגי + שרשור תאריכים (שלב מתחיל כשהקודם מסתיים)
+    // 3. מיון כרונולוגי + שרשור תאריכים על לוח עבודה ישראלי (דילוג שישי/שבת)
     const phases = [...parsed.data.phases].sort((a, b) => a.orderIndex - b.orderIndex);
-    const timelineStart = gate.project.activeFrom ?? new Date();
+    // נקודת ההתחלה — activeFrom או היום, מוזזת קדימה לראשון אם נופלת בסופ"ש
+    const timelineStart = adjustToNextIsraeliWorkday(gate.project.activeFrom ?? new Date());
 
-    // 4. הזרקה בטוחה בטרנזקציה — כל שלב תלוי בקודמו (sequential Gantt)
-    const created = await prisma.$transaction(async (tx) => {
+    // 4. החלפה אטומית: מחיקת משימות הגאנט הקודמות שנוצרו ע"י ה-AI (לא הידניות)
+    //    והזרקת החדשות — הכל בטרנזקציה אחת. כל שלב תלוי בקודמו (sequential Gantt).
+    const { created, replaced } = await prisma.$transaction(async (tx) => {
+      const del = await tx.task.deleteMany({
+        where: { projectId, organizationId: orgId, source: GANTT_AGENT_SOURCE },
+      });
+
       const tasks: { id: string; title: string }[] = [];
       let cursor = timelineStart;
       let previousId: string | null = null;
 
       for (const phase of phases) {
-        const startDate = cursor;
-        const endDate = addDays(startDate, phase.estimatedDays);
+        // השלב מתחיל ביום העבודה הנוכחי ונמשך estimatedDays ימי עבודה (Sun–Thu)
+        const startDate = adjustToNextIsraeliWorkday(cursor);
+        const endDate = addIsraeliWorkDays(startDate, phase.estimatedDays);
         const task: { id: string; title: string } = await tx.task.create({
           data: {
             title: phase.taskName.trim(),
             description: phase.description.trim() || null,
             projectId,
             organizationId: orgId,
+            source: GANTT_AGENT_SOURCE,
             status: "TODO",
             priority: "MEDIUM",
             progress: 0,
@@ -137,12 +143,18 @@ ${JSON.stringify(
         });
         tasks.push(task);
         previousId = task.id;
+        // השלב הבא מתחיל היכן שהנוכחי הסתיים
         cursor = endDate;
       }
-      return tasks;
+      return { created: tasks, replaced: del.count };
     });
 
-    return NextResponse.json({ ok: true, created: created.length, tasks: created });
+    return NextResponse.json({
+      ok: true,
+      created: created.length,
+      replaced,
+      tasks: created,
+    });
   } catch (error) {
     return apiErrorResponse(error, "Project generate-gantt POST");
   }
