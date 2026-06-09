@@ -161,6 +161,7 @@
     "openai": "^6.37.0",
     "papaparse": "^5.5.3",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.10.38",
     "pdfmake": "^0.3.8",
     "posthog-js": "^1.373.5",
     "posthog-node": "^5.34.2",
