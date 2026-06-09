@@ -65,9 +65,21 @@ export type ScanExtractionV5 = {
   summary: string;
   /** true אם יש לפחות שורה עם מחיר חסר/אפס (המשך עיבוד ב-ERP) */
   priceAlertPending: boolean;
+  /** ביטחון המודל בקריאת המסמך (0.0–1.0) — דיווח עצמי של ה-LLM */
+  confidenceScore?: number | null;
   /** מטא-דאטה מהמנועים (לא חובה לשמירה ב-DB) */
   enginesUsed?: string[];
 };
+
+/** ברירת מחדל לביטחון כשמנוע לא מספק ציון (למשל Document AI) */
+export const DEFAULT_CONFIDENCE_SCORE = 0.8;
+
+/** מצמצם ערך ביטחון לטווח 0..1; מחזיר undefined אם לא מספרי */
+export function clampConfidenceScore(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.min(1, Math.max(0, n));
+}
 
 export function emptyV5Base(
   fileName: string,
@@ -98,6 +110,7 @@ export function emptyV5Base(
     docType: partial?.docType ?? "UNKNOWN",
     summary: partial?.summary ?? "",
     priceAlertPending: partial?.priceAlertPending ?? computePriceAlertPending(lineItems),
+    confidenceScore: partial?.confidenceScore ?? null,
     enginesUsed: partial?.enginesUsed,
   };
   merged.priceAlertPending = computePriceAlertPending(merged.lineItems);
@@ -191,6 +204,7 @@ export function coerceLegacyAiToV5(
   const date = typeof raw.date === "string" ? raw.date : null;
   const docType = typeof raw.docType === "string" ? raw.docType : "UNKNOWN";
   const summary = typeof raw.summary === "string" ? raw.summary : "";
+  const confidenceScore = clampConfidenceScore(raw.confidenceScore) ?? null;
 
   return emptyV5Base(fileName, scanMode, {
     documentMetadata: dm,
@@ -202,6 +216,7 @@ export function coerceLegacyAiToV5(
     date,
     docType,
     summary,
+    confidenceScore,
   });
 }
 
@@ -218,6 +233,7 @@ export function v5ToPersistableAiData(v: ScanExtractionV5): Record<string, unkno
     docType: v.docType,
     summary: v.summary,
     priceAlertPending: v.priceAlertPending,
+    confidenceScore: v.confidenceScore ?? null,
     metadata: {
       project: v.documentMetadata.project,
       client: v.documentMetadata.client,
@@ -261,8 +277,10 @@ export function buildV5JsonInstruction(
   "date": string | null,
   "docType": string,
   "summary": string,
-  "priceAlertPending": boolean
-}`;
+  "priceAlertPending": boolean,
+  "confidenceScore": number
+}
+"confidenceScore" MUST be a number between 0.0 and 1.0 reflecting how clearly you could read and extract this document: 1.0 = perfectly legible and fully extracted, 0.5 = partially blurry/ambiguous, below 0.3 = mostly unreadable. Be honest — this drives the UI certainty indicator.`;
 
   if (scanMode === "INVOICE_FINANCIAL") {
     return `You are a strict financial auditor. Extract deterministic invoice/receipt data for Israeli ERP.

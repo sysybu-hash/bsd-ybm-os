@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Zap, Bot, FileText } from "lucide-react";
+import { Zap, Bot, FileText, RefreshCw } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
@@ -53,7 +53,16 @@ export default function AiScannerWidget({
     applyFilePreview, confirmAnalysis, saveToNotebook,
     scanUiPhase, stopScan, goBackScanStep, continueToSaveStep, resetScanState,
     blueprintRouting, dismissBlueprintRouting, openTakeoffForBlueprint,
+    rescanLastFile,
   } = scanQueue;
+
+  const [rescanText, setRescanText] = React.useState("");
+  const submitRescan = () => {
+    const text = rescanText.trim();
+    if (!text || isProcessing) return;
+    setRescanText("");
+    void rescanLastFile(text);
+  };
 
   if (showProjectPicker) {
     return (
@@ -228,6 +237,32 @@ export default function AiScannerWidget({
             </Panel>
           </Group>
         )}
+
+        {lastScanV5 && !pendingAnalysis ? (
+          <div className="flex items-center gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 px-3 py-2">
+            <input
+              type="text"
+              value={rescanText}
+              onChange={(e) => setRescanText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRescan();
+              }}
+              disabled={isProcessing}
+              placeholder={t("scanner.rescanPlaceholder")}
+              aria-label={t("scanner.rescanPlaceholder")}
+              className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-1.5 text-xs text-[color:var(--foreground-main)] outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={submitRescan}
+              disabled={isProcessing || !rescanText.trim()}
+              className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={isProcessing ? "animate-spin" : ""} />
+              {t("scanner.rescanButton")}
+            </button>
+          </div>
+        ) : null}
 
         <ScanControlBar
           phase={scanUiPhase}

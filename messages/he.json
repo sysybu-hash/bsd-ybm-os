@@ -387,6 +387,8 @@
     "blueprintGoToTool": "פתח כלי מדידה",
     "blueprintDismiss": "הבנתי",
     "blueprintNoProject": "בחרו פרויקט ופתחו את לשונית כתב הכמויות כדי להשתמש בכלי המדידה",
+    "rescanPlaceholder": "הוסיפו הנחיה לסריקה חוזרת (לדוגמה: «פספסת את דמי המשלוח בעמוד 2»)",
+    "rescanButton": "סרוק שוב",
     "queueStatusPending": "ממתין",
     "queueStatusProcessing": "מעבד",
     "queueStatusDone": "הושלם",

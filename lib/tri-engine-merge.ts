@@ -30,8 +30,15 @@ function mergeDrawingResults(a: ScanExtractionV5, b: ScanExtractionV5, fileName:
     date: a.date ?? b.date,
     docType: a.docType || b.docType,
     summary: `${a.summary}\n---\n${b.summary}`.slice(0, 4000),
+    confidenceScore: maxConfidence(a.confidenceScore, b.confidenceScore),
     enginesUsed: ["gemini", "openai"],
   });
+}
+
+/** הביטחון הגבוה מבין שני המנועים (null אם לשניהם אין) */
+function maxConfidence(a?: number | null, b?: number | null): number | null {
+  const vals = [a, b].filter((v): v is number => typeof v === "number");
+  return vals.length ? Math.max(...vals) : null;
 }
 
 /** ממזג תוצאות שני מנועי חילוץ לאותו מסמך */
@@ -72,6 +79,7 @@ export function mergeScanResults(
     date: primary.date ?? secondary.date,
     docType: primary.docType !== "UNKNOWN" ? primary.docType : secondary.docType,
     summary: [primary.summary, secondary.summary].filter(Boolean).join("\n---\n").slice(0, 4000),
+    confidenceScore: maxConfidence(primary.confidenceScore, secondary.confidenceScore),
     enginesUsed: [...(primary.enginesUsed ?? []), ...(secondary.enginesUsed ?? [])],
   });
 }

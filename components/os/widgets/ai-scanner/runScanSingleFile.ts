@@ -20,6 +20,8 @@ export type RunScanArgs = {
   scanModeOverride: ScanModeV5;
   boundProjectId: string;
   userInstruction: string;
+  /** הוראת תיקון חד-פעמית למחזור rescan — נשלחת בנפרד ל-API עם מסגור ייעודי */
+  customInstructions?: string;
   industryId: string;
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   tr: (key: string, fallback: string) => string;
@@ -40,6 +42,7 @@ export async function runScanSingleFile({
   scanModeOverride,
   boundProjectId,
   userInstruction,
+  customInstructions,
   industryId,
   openWorkspaceWidget,
   tr,
@@ -76,6 +79,7 @@ export async function runScanSingleFile({
     if (boundProjectId) formData.append("projectId", boundProjectId);
     formData.append("engineRunMode", engineRunMode);
     if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
+    if (customInstructions?.trim()) formData.append("customInstructions", customInstructions.trim());
 
     const res = await fetch("/api/scan/tri-engine/stream", {
       method: "POST",

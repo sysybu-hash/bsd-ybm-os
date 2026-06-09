@@ -1,5 +1,5 @@
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import { DEFAULT_CONFIDENCE_SCORE, type ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { DocumentAnalysis } from "./types";
 
 export const SCAN_INSTRUCTION_KEY = "bsd_scan_user_instruction";
@@ -34,7 +34,10 @@ export function mapV5ToAnalysis(
     vendor: v5.vendor || "לא צוין",
     taxId: v5.taxId ?? undefined,
     projectSuggestion: meta?.project ?? meta?.client ?? "",
-    confidence: 0.92,
+    // True self-reported model certainty (0–1); falls back to a neutral default
+    // when an engine (e.g. Document AI) doesn't provide a score.
+    confidence:
+      typeof v5.confidenceScore === "number" ? v5.confidenceScore : DEFAULT_CONFIDENCE_SCORE,
     summary: v5.summary || v5.docType,
     date: v5.date ?? meta?.documentDate ?? new Date().toISOString().split("T")[0],
     rawAiData: aiData ?? (v5 as unknown as Record<string, unknown>),

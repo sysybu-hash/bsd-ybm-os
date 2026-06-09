@@ -114,10 +114,19 @@ export function parseTriEngineFormData(formData: FormData): ParsedTriEngineForm 
     typeof formData.get("project") === "string" ? (formData.get("project") as string).trim() || null : null;
   const clientLabel =
     typeof formData.get("client") === "string" ? (formData.get("client") as string).trim() || null : null;
-  const userInstruction =
+  const baseInstruction =
     typeof formData.get("userInstruction") === "string"
       ? (formData.get("userInstruction") as string).trim().slice(0, 1200) || null
       : null;
+  // Rescan-loop correction: user-supplied note appended with explicit framing so
+  // the LLM treats it as a targeted fix on this pass.
+  const customInstructions =
+    typeof formData.get("customInstructions") === "string"
+      ? (formData.get("customInstructions") as string).trim().slice(0, 800) || null
+      : null;
+  const userInstruction = customInstructions
+    ? `${baseInstruction ? `${baseInstruction}\n\n` : ""}USER CORRECTION/INSTRUCTION FOR THIS RESCAN: ${customInstructions}`
+    : baseInstruction;
   const openAiModel =
     typeof formData.get("openAiModel") === "string"
       ? (formData.get("openAiModel") as string).trim() || undefined

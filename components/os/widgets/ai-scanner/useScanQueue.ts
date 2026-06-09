@@ -142,8 +142,9 @@ export function useScanQueue({
   );
 
   const runFileQueue = useCallback(
-    async (files: File[]) => {
+    async (files: File[], customInstructions?: string) => {
       if (!files.length || isProcessing) return;
+      const isRescan = !!customInstructions?.trim();
 
       const valid: File[] = [];
       for (const file of files) {
@@ -157,7 +158,8 @@ export function useScanQueue({
       // Architectural drawings need geometric measurement (TakeoffModule), not
       // LLM extraction — the model would hallucinate quantities. We only step in
       // when the engine is on AUTO; an explicit engine/mode choice is respected.
-      if (engineRunMode === "AUTO") {
+      // Rescans re-run an already-accepted file, so the router is skipped.
+      if (engineRunMode === "AUTO" && !isRescan) {
         const scannable: File[] = [];
         const drawings: File[] = [];
         for (const file of valid) {
@@ -216,7 +218,7 @@ export function useScanQueue({
           try {
             const analysis = await runScanSingleFile({
               file, engineRunMode, scanModeOverride, boundProjectId,
-              userInstruction, industryId, openWorkspaceWidget, tr,
+              userInstruction, customInstructions, industryId, openWorkspaceWidget, tr,
               setPendingAnalysis, setResultJson, setTelemetry,
               setScanClassification, setLastScanV5, setLastScanFileName,
               applyFilePreview,
@@ -325,6 +327,21 @@ export function useScanQueue({
     void confirmAnalysis();
   }, [confirmAnalysis]);
 
+  const rescanLastFile = useCallback(
+    async (instruction: string) => {
+      if (!instruction.trim()) return;
+      const file =
+        queue.find((q) => q.file.name === lastScanFileName)?.file ??
+        queue[queue.length - 1]?.file;
+      if (!file) {
+        toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
+        return;
+      }
+      await runFileQueue([file], instruction.trim());
+    },
+    [queue, lastScanFileName, runFileQueue, tr],
+  );
+
   const dismissBlueprintRouting = useCallback(() => setBlueprintRouting(null), []);
 
   const openTakeoffForBlueprint = useCallback(() => {
@@ -400,6 +417,7 @@ export function useScanQueue({
     blueprintRouting,
     dismissBlueprintRouting,
     openTakeoffForBlueprint,
+    rescanLastFile,
   };
 }
 

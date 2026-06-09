@@ -371,6 +371,8 @@
     "blueprintGoToTool": "Open measurement tool",
     "blueprintDismiss": "Got it",
     "blueprintNoProject": "Select a project and open its BOQ tab to use the measurement tool",
+    "rescanPlaceholder": "Add a rescan instruction (e.g. \"You missed the delivery fee on page 2\")",
+    "rescanButton": "Rescan",
     "queueStatusPending": "Pending",
     "queueStatusProcessing": "Processing",
     "queueStatusDone": "Done",
