@@ -5,6 +5,7 @@ import { Zap, Bot, FileText } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
+import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import type { AiScannerWidgetProps } from "./ai-scanner/types";
 import { useAiScannerState } from "./ai-scanner/useAiScannerState";
 import { ScanDropZone } from "./ai-scanner/ScanDropZone";
@@ -51,6 +52,7 @@ export default function AiScannerWidget({
     savingNotebook, previewUrl, previewMime, previewFileName,
     applyFilePreview, confirmAnalysis, saveToNotebook,
     scanUiPhase, stopScan, goBackScanStep, continueToSaveStep, resetScanState,
+    blueprintRouting, dismissBlueprintRouting, openTakeoffForBlueprint,
   } = scanQueue;
 
   if (showProjectPicker) {
@@ -305,6 +307,19 @@ export default function AiScannerWidget({
         confirmAnalysis={confirmAnalysis}
         saveToNotebook={saveToNotebook}
         savingNotebook={savingNotebook}
+      />
+
+      <OsConfirmDialog
+        open={!!blueprintRouting}
+        title={t("scanner.blueprintDetectedTitle")}
+        message={t("scanner.blueprintDetectedMessage").replace(
+          "{names}",
+          (blueprintRouting?.fileNames ?? []).join(", "),
+        )}
+        confirmLabel={t("scanner.blueprintGoToTool")}
+        cancelLabel={t("scanner.blueprintDismiss")}
+        onConfirm={openTakeoffForBlueprint}
+        onCancel={dismissBlueprintRouting}
       />
     </div>
   );

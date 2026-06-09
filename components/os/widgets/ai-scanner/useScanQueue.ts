@@ -9,6 +9,7 @@ import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { defaultScanModeForIndustry, getScanModesForUi } from "@/lib/scan-modes-for-ui";
 import { inferMimeFromFileName, isSupportedScanMime, MAX_SCAN_FILE_BYTES } from "@/lib/scan-mime";
+import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
 import { canBrowserPreviewMime } from "@/lib/scan-preview";
 import type { DocumentAnalysis, QueueItem, ScanHistoryItem } from "./types";
 import { formatMsg } from "./constants";
@@ -53,6 +54,9 @@ export function useScanQueue({
   const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
   const [lastScanFileName, setLastScanFileName] = useState("");
   const [savingNotebook, setSavingNotebook] = useState(false);
+  // Smart router: files classified as architectural drawings are pulled out of
+  // the AI scan and routed to the manual TakeoffModule instead.
+  const [blueprintRouting, setBlueprintRouting] = useState<{ fileNames: string[] } | null>(null);
 
   // preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -148,6 +152,37 @@ export function useScanQueue({
         else valid.push(file);
       }
       if (!valid.length) return;
+
+      // ── Smart document router ────────────────────────────────────────────
+      // Architectural drawings need geometric measurement (TakeoffModule), not
+      // LLM extraction — the model would hallucinate quantities. We only step in
+      // when the engine is on AUTO; an explicit engine/mode choice is respected.
+      if (engineRunMode === "AUTO") {
+        const scannable: File[] = [];
+        const drawings: File[] = [];
+        for (const file of valid) {
+          const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
+          const cls = classifyScanDocumentHeuristic({
+            fileName: file.name,
+            mimeType: mime,
+            userInstruction,
+            industry: industryId,
+          });
+          if (cls.scanMode === "DRAWING_BOQ") drawings.push(file);
+          else scannable.push(file);
+        }
+        if (drawings.length > 0) {
+          setBlueprintRouting({ fileNames: drawings.map((f) => f.name) });
+          toast.info(
+            formatMsg(tr("scanner.blueprintDetectedToast", "זוהה שרטוט: {name} — נדרשת מדידה ידנית"), {
+              name: drawings[0]!.name,
+            }),
+          );
+          // Scan only the non-drawing files; if all were drawings, abort the scan.
+          valid.splice(0, valid.length, ...scannable);
+          if (valid.length === 0) return;
+        }
+      }
 
       const initialQueue: QueueItem[] = valid.map((file) => ({
         id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
@@ -290,6 +325,18 @@ export function useScanQueue({
     void confirmAnalysis();
   }, [confirmAnalysis]);
 
+  const dismissBlueprintRouting = useCallback(() => setBlueprintRouting(null), []);
+
+  const openTakeoffForBlueprint = useCallback(() => {
+    setBlueprintRouting(null);
+    if (!boundProjectId) {
+      toast.info(tr("scanner.blueprintNoProject", "בחרו פרויקט ופתחו את לשונית כתב הכמויות"));
+      return;
+    }
+    // Navigate to the project's financial tab, where the Takeoff tool lives.
+    openWorkspaceWidget?.("project", { projectId: boundProjectId, tab: "financial" });
+  }, [boundProjectId, openWorkspaceWidget, tr]);
+
   const saveToNotebook = useCallback(
     async (
       onOpen?: (type: WidgetType, data?: Record<string, unknown> | null) => void,
@@ -350,6 +397,9 @@ export function useScanQueue({
     goBackScanStep,
     continueToSaveStep,
     resetScanState,
+    blueprintRouting,
+    dismissBlueprintRouting,
+    openTakeoffForBlueprint,
   };
 }
 
