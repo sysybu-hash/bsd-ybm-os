@@ -870,17 +870,30 @@
     flex: 0 0 auto;
     min-height: 0;
   }
-  /* Both widget flavours + their inner panes flow naturally — no scroll trap. */
+  /* Content widgets flow naturally — no scroll trap. The app-builder is
+     excluded (it's an IDE that needs a definite height; see below). */
   .workspace-window--mobile [data-shell-content] > :not([data-widget-sticky-chrome]),
-  .workspace-window--mobile [data-shell-content] > [data-widget-sticky-chrome],
-  .workspace-window--mobile [data-widget-sticky-chrome] [data-widget-scroll-pane],
-  .workspace-window--mobile [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"],
-  .workspace-window--mobile [data-widget-scroll-pane] > [data-app-builder-root] {
+  .workspace-window--mobile [data-shell-content] > [data-widget-sticky-chrome]:not([data-app-builder-root]),
+  .workspace-window--mobile [data-widget-sticky-chrome]:not([data-app-builder-root]) [data-widget-scroll-pane],
+  .workspace-window--mobile [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"]:not([data-app-builder-root]) {
     flex: 0 0 auto;
     height: auto;
     max-height: none;
     min-height: 0;
     overflow: visible;
+  }
+
+  /* App-like widgets (the App Builder IDE) use h-full + absolute-inset panes and
+     CANNOT flow — they need a definite height. Give them the available window
+     content height so their internal layout + scroll work, and fill the screen. */
+  .workspace-window--mobile [data-app-builder-root] {
+    flex: 0 0 auto !important;
+    height: calc(
+      100dvh - var(--workspace-inset-top) - var(--workspace-inset-bottom) - 3.5rem
+    ) !important;
+    min-height: 22rem !important;
+    max-height: none !important;
+    overflow: hidden !important;
   }
   /* DEEP inner vertical scrollers inside widgets (e.g. the document creator's
      own flex-1 overflow-y-auto pane) would otherwise trap the touch gesture via
