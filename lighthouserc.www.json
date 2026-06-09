@@ -6,7 +6,7 @@
       "settings": {
         "formFactor": "mobile",
         "screenEmulation": { "mobile": true },
-        "throttlingMethod": "simulate"
+        "throttlingMethod": "devtools"
       }
     },
     "assert": {
