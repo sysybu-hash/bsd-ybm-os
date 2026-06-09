@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Download, Upload, Ruler } from "lucide-react";
+import { Loader2, Download, Upload, Ruler, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import BoqAgentPanel from "@/components/os/widgets/project/BoqAgentPanel";
@@ -37,6 +37,7 @@ export default function ProjectBoqPanel({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
   const [savingTakeoff, setSavingTakeoff] = useState(false);
+  const [generatingGantt, setGeneratingGantt] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -144,6 +145,31 @@ export default function ProjectBoqPanel({
     }
   };
 
+  const generateGantt = async () => {
+    setGeneratingGantt(true);
+    const toastId = toast.loading(t("workspaceWidgets.ganttAgent.analyzing"));
+    try {
+      const res = await fetch(`${apiBase}/generate-gantt`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string; created?: number };
+      if (!res.ok) {
+        throw new Error(json.error ?? t("workspaceWidgets.ganttAgent.failed"));
+      }
+      toast.success(
+        t("workspaceWidgets.ganttAgent.success").replace("{n}", String(json.created ?? 0)),
+        { id: toastId },
+      );
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("workspaceWidgets.ganttAgent.failed"), {
+        id: toastId,
+      });
+    } finally {
+      setGeneratingGantt(false);
+    }
+  };
+
   const subTabs: { id: SubTab; label: string }[] = [
     { id: "quote", label: "הצעת מחיר" },
     { id: "boq", label: "כתב כמויות" },
@@ -210,6 +236,22 @@ export default function ProjectBoqPanel({
           >
             <Ruler size={12} />
             {t("workspaceWidgets.takeoff.openTool")}
+          </button>
+        ) : null}
+        {subTab === "boq" ? (
+          <button
+            type="button"
+            onClick={() => void generateGantt()}
+            disabled={generatingGantt || lines.length === 0}
+            title={lines.length === 0 ? t("workspaceWidgets.ganttAgent.emptyHint") : ""}
+            className="flex items-center gap-1 rounded-lg border border-violet-500/60 bg-violet-500/15 px-2 py-1 text-xs font-bold text-violet-200 disabled:opacity-50"
+          >
+            {generatingGantt ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Sparkles size={12} />
+            )}
+            {t("workspaceWidgets.ganttAgent.generate")}
           </button>
         ) : null}
       </div>

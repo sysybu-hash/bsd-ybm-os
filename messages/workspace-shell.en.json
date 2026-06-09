@@ -1623,6 +1623,13 @@
       "savedToast": "BOQ line added",
       "saveFailed": "Failed to save the line"
     },
+    "ganttAgent": {
+      "generate": "✨ Generate Gantt & Workflow",
+      "analyzing": "AI is analyzing the BOQ and building your timeline…",
+      "success": "Created {n} Gantt phases. Switch to the schedule tab to view them.",
+      "failed": "Gantt generation failed",
+      "emptyHint": "Add BOQ lines first"
+    },
     "projectDashboard": {
       "meckanoSyncFailed": "Meckano sync failed",
       "meckanoSyncDone": "Meckano: {c} new, {u} updated",
