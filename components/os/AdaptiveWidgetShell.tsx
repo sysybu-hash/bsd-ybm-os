@@ -111,7 +111,7 @@ export default function AdaptiveWidgetShell({
       <div
         className={
           mobileOrMaximized
-            ? "relative flex min-h-0 flex-1 flex-col overflow-hidden"
+            ? "relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-y-auto max-md:overscroll-contain max-md:[-webkit-overflow-scrolling:touch]"
             : "absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-[inherit]"
         }
       >
@@ -133,7 +133,7 @@ export default function AdaptiveWidgetShell({
           closeTouchTarget={mobileOrMaximized}
           headerClassName={
             mobileOrMaximized
-              ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))]"
+              ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-20 max-md:bg-[color:var(--surface-card)]"
               : "cursor-move touch-none"
           }
           onHeaderMouseDown={(e) => {
@@ -145,7 +145,7 @@ export default function AdaptiveWidgetShell({
           }}
         />
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] max-md:flex-none max-md:overflow-visible">
           <div
             data-shell-scroll
             className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 max-md:min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${

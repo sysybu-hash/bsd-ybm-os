@@ -848,6 +848,42 @@
   max-height: none;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Mobile: whole-window natural scroll.
+   On phones we drop the nested fixed-height scroll model. The window BODY
+   scrolls as ONE document (the body wrapper is the scroller; the chrome is
+   sticky in AdaptiveWidgetShell), and everything below flows at its natural
+   height — so the content gets the full screen instead of a small inner box.
+   Desktop (≥768px) keeps the unified single-owner model untouched.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .workspace-window--mobile [data-shell-scroll].shell-scroll-host {
+    display: block;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .workspace-window--mobile [data-shell-content] {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  /* Both widget flavours + their inner panes flow naturally — no scroll trap. */
+  .workspace-window--mobile [data-shell-content] > :not([data-widget-sticky-chrome]),
+  .workspace-window--mobile [data-shell-content] > [data-widget-sticky-chrome],
+  .workspace-window--mobile [data-widget-sticky-chrome] [data-widget-scroll-pane],
+  .workspace-window--mobile [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"],
+  .workspace-window--mobile [data-widget-scroll-pane] > [data-app-builder-root] {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+  }
+}
+
 /* Desktop swaps mobile chrome clearance for the dock clearance — sizing only. */
 @media (min-width: 768px) {
   :root {
