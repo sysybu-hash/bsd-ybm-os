@@ -65,3 +65,11 @@ reports/
 
 .vercel
 .env*.local
+
+# local audit / lighthouse / watch artifacts
+-
+.gh-run-watch*.txt
+.psi-*.json
+.psi-*.html
+.lighthouseci/
+lh-*.json
