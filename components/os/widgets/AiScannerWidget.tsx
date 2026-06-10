@@ -317,6 +317,7 @@ export default function AiScannerWidget({
           </Group>
         )}
 
+        <div className="max-md:sticky max-md:bottom-0 max-md:z-30 max-md:bg-[color:var(--surface-card)] max-md:shadow-[0_-6px_20px_rgba(0,0,0,0.18)]">
         <ScanControlBar
           phase={scanUiPhase}
           t={t}
@@ -377,6 +378,7 @@ export default function AiScannerWidget({
               </div>
             ) : null}
           </div>
+        </div>
         </div>
       </div>
 
