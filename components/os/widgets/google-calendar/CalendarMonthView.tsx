@@ -82,7 +82,7 @@ export function CalendarMonthView({
   const accent = calendarAccentBar(calendarColor);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:flex-none max-md:overflow-visible">
       {canWrite ? (
         <p className="shrink-0 px-4 py-1 text-[10px] text-[color:var(--foreground-muted)]">{dragHintLabel}</p>
       ) : null}
@@ -96,7 +96,7 @@ export function CalendarMonthView({
       </div>
 
       <div
-        className="auto-rows-fr grid min-h-0 flex-1 grid-cols-7 overflow-y-auto custom-scrollbar"
+        className="auto-rows-fr grid min-h-0 flex-1 grid-cols-7 overflow-y-auto custom-scrollbar max-md:flex-none max-md:overflow-visible"
         onPointerUp={() => { if (dragging.current) void finishMonthDrag(); }}
         onPointerLeave={() => { if (dragging.current) void finishMonthDrag(); }}
       >

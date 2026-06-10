@@ -30,7 +30,7 @@ export function CalendarAgendaView({
   const hasAny = weekDays.some((d) => (eventsByDay.get(d.toISOString().slice(0, 10)) ?? []).length > 0);
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar gcal-print-surface" dir={dir}>
+    <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar gcal-print-surface max-md:flex-none max-md:overflow-visible" dir={dir}>
       {!hasAny ? (
         <p className="text-sm text-[color:var(--foreground-muted)] text-center py-16">{noEventsWeekLabel}</p>
       ) : (

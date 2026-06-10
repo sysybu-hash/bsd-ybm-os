@@ -105,8 +105,7 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
     <div
       id="google-calendar-print-root"
       data-widget-sticky-chrome
-      data-widget-fill-height
-      className="flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)]"
+      className="flex h-full min-h-0 flex-col overflow-x-hidden bg-transparent text-[color:var(--foreground-main)] max-md:h-auto max-md:min-h-0 max-md:overflow-visible"
       dir={layoutDir}
     >
       {localOnly && (

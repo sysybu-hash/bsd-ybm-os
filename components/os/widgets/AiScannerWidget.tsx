@@ -118,11 +118,12 @@ export default function AiScannerWidget({
   }
 
   const inEditorMode = !!pendingAnalysis;
-  // Fill-height model: the scanner always fills its window/host and owns its
-  // internal scroll — header (fixed) → body (scrolls) → action bar (pinned).
-  // This makes the footer truly pinned via flex (no fragile position:sticky).
-  const constrainToViewport = true;
-  const useNaturalHeightLayout = false;
+  // Natural-flow model: on mobile the whole window scrolls as one document (like
+  // every other widget) — the scanner flows at its natural height instead of
+  // owning tiny inner scroll panes. The editor still constrains so its full
+  // editor can scroll inside.
+  const constrainToViewport = !embeddedInHub || inEditorMode;
+  const useNaturalHeightLayout = (stackScannerPanels || embeddedInHub) && !inEditorMode;
   const useInnerEditorScroll = inEditorMode && (embeddedInHub || constrainToViewport);
 
   return (
@@ -131,8 +132,7 @@ export default function AiScannerWidget({
         constrainToViewport ? "h-full" : ""
       } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
-      data-hub-inner-scroll={embeddedInHub ? "true" : undefined}
-      data-widget-fill-height
+      data-hub-inner-scroll={embeddedInHub && inEditorMode ? "true" : undefined}
       dir={dir}
     >
       <ScanHistorySidebar
@@ -236,8 +236,8 @@ export default function AiScannerWidget({
             </div>
           </div>
         ) : stackScannerPanels ? (
-          /* Mobile: the work area scrolls; header + action bar stay pinned. */
-          <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          /* Mobile: natural-height panels — the window scrolls as one document */
+          <div className="flex flex-col">
             <div className="min-h-[42vh]">
               <ScanDropZone
                 isDragging={isDragging}
@@ -276,7 +276,7 @@ export default function AiScannerWidget({
           /* Desktop: fixed resizable panels */
           <Group
             orientation="horizontal"
-            className="min-h-0 flex-1"
+            className={embeddedInHub ? "min-h-[42vh]" : "min-h-0 flex-1"}
           >
             <Panel
               defaultSize={48}
@@ -348,7 +348,7 @@ export default function AiScannerWidget({
           </div>
         ) : null}
 
-        <div className="shrink-0 bg-[color:var(--surface-card)] shadow-[0_-6px_20px_rgba(0,0,0,0.12)]">
+        <div className="bg-[color:var(--surface-card)]">
         <ScanControlBar
           phase={scanUiPhase}
           t={t}

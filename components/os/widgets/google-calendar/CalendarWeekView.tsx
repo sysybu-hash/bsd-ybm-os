@@ -43,7 +43,7 @@ export function CalendarWeekView({
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden gcal-print-surface" dir={dir}>
+    <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden gcal-print-surface max-md:flex-none max-md:overflow-visible" dir={dir}>
       {/* Day selector strip — bold compact cards with an event-count badge */}
       <div className="grid grid-cols-7 gap-1.5 p-3 shrink-0 lg:flex-[2] min-h-0 lg:content-start border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/60">
         {weekDays.map((day) => {
@@ -94,7 +94,7 @@ export function CalendarWeekView({
       </div>
 
       {/* Selected day — time grid + event list */}
-      <aside className="flex-1 flex flex-col min-h-0">
+      <aside className="flex-1 flex flex-col min-h-0 max-md:flex-none">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[color:var(--border-main)]/50 shrink-0">
           <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 shadow-sm" />
           <h3 className="text-sm font-black text-[color:var(--foreground-main)]">
@@ -106,8 +106,8 @@ export function CalendarWeekView({
             </span>
           ) : null}
         </div>
-        <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-          <div className="flex min-h-0 flex-1 flex-col p-2 border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/40">
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 max-md:flex-none">
+          <div className="flex min-h-0 flex-1 flex-col p-2 border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/40 max-md:flex-none">
             <CalendarDayTimeGrid
               day={selectedDay}
               events={selectedEvents}
@@ -119,7 +119,7 @@ export function CalendarWeekView({
               onCreateRange={onCreateRange}
             />
           </div>
-          <ul className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-h-0">
+          <ul className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar min-h-0 max-md:flex-none max-md:overflow-visible">
             {selectedEvents.length === 0 ? (
               <li className="flex flex-col items-center gap-2 py-8 text-center text-sm text-[color:var(--foreground-muted)]">
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-2xl">
