@@ -45,6 +45,18 @@ test("mobile shots", async ({ page }) => {
         .catch(() => {});
       await page.waitForTimeout(Number(process.env.SHOT_CLICK_WAIT ?? 2500));
     }
+    if (process.env.SHOT_UPLOAD === "1") {
+      await page
+        .locator('input[type="file"]')
+        .first()
+        .setInputFiles({
+          name: "invoice-demo.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("%PDF-1.4 demo invoice"),
+        })
+        .catch(() => {});
+      await page.waitForTimeout(1500);
+    }
     if (process.env.SHOT_SCROLL_BOTTOM === "1") {
       await page.evaluate(() => {
         const el = document.querySelector<HTMLElement>(

@@ -54,6 +54,8 @@ export function useScanQueue({
   const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
   const [lastScanFileName, setLastScanFileName] = useState("");
   const [savingNotebook, setSavingNotebook] = useState(false);
+  // Staged files — selected but NOT scanned until the user presses "Scan".
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   // Smart router: files classified as architectural drawings are pulled out of
   // the AI scan and routed to the manual TakeoffModule instead.
   const [blueprintRouting, setBlueprintRouting] = useState<{ fileNames: string[] } | null>(null);
@@ -75,6 +77,7 @@ export function useScanQueue({
     abortRef.current?.abort();
     abortRef.current = null;
     setQueue([]);
+    setPendingFiles([]);
     setIsProcessing(false);
     setQueueProgress(null);
     setPendingAnalysis(null);
@@ -386,7 +389,39 @@ export function useScanQueue({
     [lastScanV5, lastScanFileName, openWorkspaceWidget, telemetry, tr],
   );
 
+  // ── Staged-files flow: select → review → press "Scan" ──────────────────────
+  const addFiles = useCallback(
+    (files: File[]) => {
+      const valid: File[] = [];
+      for (const f of files) {
+        const err = validateScanFile(f);
+        if (err) toast.error(err);
+        else valid.push(f);
+      }
+      if (valid.length) setPendingFiles((prev) => [...prev, ...valid]);
+    },
+    [validateScanFile],
+  );
+
+  const removePendingFile = useCallback((idx: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  const clearPending = useCallback(() => setPendingFiles([]), []);
+
+  const startScan = useCallback(async () => {
+    if (!pendingFiles.length || isProcessing) return;
+    const files = pendingFiles;
+    setPendingFiles([]);
+    await runFileQueue(files);
+  }, [pendingFiles, isProcessing, runFileQueue]);
+
   return {
+    pendingFiles,
+    addFiles,
+    removePendingFile,
+    clearPending,
+    startScan,
     queue,
     isProcessing,
     queueProgress,

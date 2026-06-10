@@ -1196,7 +1196,11 @@
       "cancel": "ביטול",
       "resetWindow": "איפוס החלון",
       "scanMore": "סריקה נוספת",
-      "pickFiles": "בחר קבצים לסריקה"
+      "pickFiles": "בחר קבצים לסריקה",
+      "scanNow": "סרוק עכשיו",
+      "clearPending": "נקה",
+      "filesReady": "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»",
+      "removeFile": "הסר"
     },
     "jewishCalendar": {
       "title": "לוח עברי וזמנים",

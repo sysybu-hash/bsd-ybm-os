@@ -11,7 +11,11 @@ type ScanControlBarProps = {
   tr: (key: string, fallback: string) => string;
   /** Anything to reset (queue / result / processing) — toggles the reset button. */
   hasContent: boolean;
+  /** Files selected but not yet scanned. */
+  pendingCount?: number;
   onPickFiles?: () => void;
+  onStartScan?: () => void;
+  onClearPending?: () => void;
   onStop?: () => void;
   onBack?: () => void;
   onContinueToSave?: () => void;
@@ -33,7 +37,10 @@ export function ScanControlBar({
   t,
   tr,
   hasContent,
+  pendingCount = 0,
   onPickFiles,
+  onStartScan,
+  onClearPending,
   onStop,
   onBack,
   onContinueToSave,
@@ -54,6 +61,13 @@ export function ScanControlBar({
         <button type="button" onClick={onReset} className={ghost}>
           <Trash2 size={14} aria-hidden />
           {tr(`${PREFIX}.resetWindow`, "איפוס החלון")}
+        </button>
+      ) : null}
+
+      {phase === "idle" && pendingCount > 0 && onClearPending ? (
+        <button type="button" onClick={onClearPending} className={ghost}>
+          <Trash2 size={14} aria-hidden />
+          {tr(`${PREFIX}.clearPending`, "נקה")}
         </button>
       ) : null}
 
@@ -80,8 +94,13 @@ export function ScanControlBar({
           </button>
         ) : null}
 
-        {phase === "idle" && onPickFiles ? (
-          <button type="button" onClick={onPickFiles} className={primary}>
+        {phase === "idle" && pendingCount > 0 && onStartScan ? (
+          <button type="button" onClick={onStartScan} className={primary}>
+            <ScanLine size={14} aria-hidden />
+            {tr(`${PREFIX}.scanNow`, "סרוק עכשיו")} ({pendingCount})
+          </button>
+        ) : phase === "idle" && onPickFiles ? (
+          <button type="button" onClick={onPickFiles} className={ghost}>
             <ScanLine size={14} aria-hidden />
             {tr(`${PREFIX}.pickFiles`, "בחר קבצים לסריקה")}
           </button>

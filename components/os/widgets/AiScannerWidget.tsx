@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Zap, Bot, FileText, RefreshCw } from "lucide-react";
+import { Zap, Bot, FileText, RefreshCw, X } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
@@ -46,6 +46,7 @@ export default function AiScannerWidget({
   } = s;
 
   const {
+    pendingFiles, startScan, clearPending, removePendingFile,
     queue, isProcessing, queueProgress,
     pendingAnalysis, setPendingAnalysis,
     history, setHistory,
@@ -317,13 +318,42 @@ export default function AiScannerWidget({
           </Group>
         )}
 
+        {pendingFiles.length > 0 && scanUiPhase === "idle" ? (
+          <div className="border-t border-[color:var(--border-main)]/80 bg-amber-500/5 px-3 py-2">
+            <p className="mb-1.5 text-[11px] font-black text-amber-600 dark:text-amber-400">
+              {pendingFiles.length} {tr(`${scannerPrefix}.filesReady`, "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»")}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {pendingFiles.map((f, i) => (
+                <span
+                  key={`${f.name}-${i}`}
+                  className="inline-flex max-w-[12rem] items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[10px] font-bold"
+                >
+                  <span className="truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removePendingFile(i)}
+                    className="shrink-0 text-[color:var(--foreground-muted)] hover:text-rose-500"
+                    aria-label={tr(`${scannerPrefix}.removeFile`, "הסר")}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="max-md:sticky max-md:bottom-0 max-md:z-30 max-md:bg-[color:var(--surface-card)] max-md:shadow-[0_-6px_20px_rgba(0,0,0,0.18)]">
         <ScanControlBar
           phase={scanUiPhase}
           t={t}
           tr={tr}
           hasContent={queue.length > 0 || !!lastScanV5 || !!pendingAnalysis || isProcessing}
+          pendingCount={pendingFiles.length}
           onPickFiles={() => fileInputRef.current?.click()}
+          onStartScan={() => void startScan()}
+          onClearPending={clearPending}
           onStop={stopScan}
           onBack={goBackScanStep}
           onContinueToSave={pendingAnalysis ? continueToSaveStep : undefined}

@@ -50,7 +50,7 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     useProjectPicker({ initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "", listErrorKey: `${scannerPrefix}.loadFailed` });
 
   const scanQueue = useScanQueue({ engineRunMode, scanModeOverride, boundProjectId, userInstruction, industryId, openWorkspaceWidget, tr });
-  const { queue, previewUrl, applyFilePreview, runFileQueue, confirmAnalysis, saveToNotebook, pendingAnalysis, setPendingAnalysis, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
+  const { queue, previewUrl, applyFilePreview, runFileQueue, addFiles, startScan, pendingFiles, confirmAnalysis, saveToNotebook, pendingAnalysis, setPendingAnalysis, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const applyScannerNav = useCallback((view: WidgetViewState) => {
@@ -207,17 +207,17 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     return tr("scanner.modeAuto", "אוטומטי");
   }, [engineMeta, engineRunMode, tr]);
 
-  const onDrop = useCallback(async (e: React.DragEvent) => {
+  const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
     const files = Array.from(e.dataTransfer.files);
-    if (files.length) await runFileQueue(files);
-  }, [runFileQueue]);
+    if (files.length) addFiles(files); // stage — scan only when "Scan" is pressed
+  }, [addFiles]);
 
-  const onFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (files.length) await runFileQueue(files);
-  }, [runFileQueue]);
+    if (files.length) addFiles(files); // stage — scan only when "Scan" is pressed
+  }, [addFiles]);
 
   return {
     t, dir, scannerPrefix,

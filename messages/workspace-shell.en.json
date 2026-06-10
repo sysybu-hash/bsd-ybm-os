@@ -1196,7 +1196,11 @@
       "cancel": "Cancel",
       "resetWindow": "Reset window",
       "scanMore": "Scan another",
-      "pickFiles": "Choose files to scan"
+      "pickFiles": "Choose files to scan",
+      "scanNow": "Scan now",
+      "clearPending": "Clear",
+      "filesReady": "files ready — press “Scan now”",
+      "removeFile": "Remove"
     },
     "jewishCalendar": {
       "title": "Hebrew calendar & zmanim",
