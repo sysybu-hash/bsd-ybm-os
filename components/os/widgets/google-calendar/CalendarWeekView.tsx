@@ -45,7 +45,7 @@ export function CalendarWeekView({
   return (
     <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden gcal-print-surface" dir={dir}>
       {/* Day selector strip — bold compact cards with an event-count badge */}
-      <div className="grid grid-cols-7 gap-1.5 p-3 lg:flex-[2] min-h-0 lg:content-start border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/60">
+      <div className="grid grid-cols-7 gap-1.5 p-3 shrink-0 lg:flex-[2] min-h-0 lg:content-start border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/60">
         {weekDays.map((day) => {
           const key = day.toISOString().slice(0, 10);
           const count = (eventsByDay.get(key) ?? []).length;
@@ -94,7 +94,7 @@ export function CalendarWeekView({
       </div>
 
       {/* Selected day — time grid + event list */}
-      <aside className="lg:flex-1 flex flex-col min-h-0">
+      <aside className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-[color:var(--border-main)]/50 shrink-0">
           <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 shadow-sm" />
           <h3 className="text-sm font-black text-[color:var(--foreground-main)]">
@@ -107,7 +107,7 @@ export function CalendarWeekView({
           ) : null}
         </div>
         <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-          <div className="flex-1 min-h-[220px] p-2 border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/40">
+          <div className="flex min-h-0 flex-1 flex-col p-2 border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/40">
             <CalendarDayTimeGrid
               day={selectedDay}
               events={selectedEvents}
