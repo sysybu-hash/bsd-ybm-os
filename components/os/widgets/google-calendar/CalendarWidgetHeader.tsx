@@ -80,14 +80,14 @@ export function CalendarWidgetHeader({
 
   return (
     <header className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/60 backdrop-blur-sm gcal-no-print">
-      <div className="p-4 md:p-5 flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-              <Calendar size={22} className="text-violet-600 dark:text-violet-400" />
+      <div className="px-3 py-2.5 md:p-5 flex flex-col gap-2.5 md:gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-4">
+          <div className="hidden md:flex items-center gap-2.5 md:gap-3 min-w-0">
+            <div className="w-9 h-9 md:w-11 md:h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+              <Calendar size={20} className="text-violet-600 dark:text-violet-400" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg md:text-xl font-black text-[color:var(--foreground-main)] truncate">
+              <h2 className="text-base md:text-xl font-black text-[color:var(--foreground-main)] truncate">
                 {title}
               </h2>
               <p className="text-xs text-[color:var(--foreground-muted)] truncate">

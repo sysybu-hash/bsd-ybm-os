@@ -96,7 +96,7 @@ export function CalendarMonthView({
       </div>
 
       <div
-        className="auto-rows-fr grid min-h-0 flex-1 grid-cols-7"
+        className="auto-rows-fr grid min-h-0 flex-1 grid-cols-7 overflow-y-auto custom-scrollbar"
         onPointerUp={() => { if (dragging.current) void finishMonthDrag(); }}
         onPointerLeave={() => { if (dragging.current) void finishMonthDrag(); }}
       >
