@@ -118,8 +118,11 @@ export default function AiScannerWidget({
   }
 
   const inEditorMode = !!pendingAnalysis;
-  const constrainToViewport = !embeddedInHub || inEditorMode;
-  const useNaturalHeightLayout = (stackScannerPanels || embeddedInHub) && !inEditorMode;
+  // Fill-height model: the scanner always fills its window/host and owns its
+  // internal scroll — header (fixed) → body (scrolls) → action bar (pinned).
+  // This makes the footer truly pinned via flex (no fragile position:sticky).
+  const constrainToViewport = true;
+  const useNaturalHeightLayout = false;
   const useInnerEditorScroll = inEditorMode && (embeddedInHub || constrainToViewport);
 
   return (
@@ -128,7 +131,8 @@ export default function AiScannerWidget({
         constrainToViewport ? "h-full" : ""
       } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
-      data-hub-inner-scroll={embeddedInHub && inEditorMode ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub ? "true" : undefined}
+      data-widget-fill-height
       dir={dir}
     >
       <ScanHistorySidebar
@@ -232,8 +236,8 @@ export default function AiScannerWidget({
             </div>
           </div>
         ) : stackScannerPanels ? (
-          /* Mobile: natural-height panels — parent scrolls */
-          <div className="flex flex-col">
+          /* Mobile: the work area scrolls; header + action bar stay pinned. */
+          <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
             <div className="min-h-[42vh]">
               <ScanDropZone
                 isDragging={isDragging}
@@ -272,7 +276,7 @@ export default function AiScannerWidget({
           /* Desktop: fixed resizable panels */
           <Group
             orientation="horizontal"
-            className={embeddedInHub ? "min-h-[42vh]" : "min-h-0 flex-1"}
+            className="min-h-0 flex-1"
           >
             <Panel
               defaultSize={48}
@@ -319,7 +323,7 @@ export default function AiScannerWidget({
         )}
 
         {pendingFiles.length > 0 && scanUiPhase === "idle" ? (
-          <div className="border-t border-[color:var(--border-main)]/80 bg-amber-500/5 px-3 py-2">
+          <div className="shrink-0 border-t border-[color:var(--border-main)]/80 bg-amber-500/5 px-3 py-2">
             <p className="mb-1.5 text-[11px] font-black text-amber-600 dark:text-amber-400">
               {pendingFiles.length} {tr(`${scannerPrefix}.filesReady`, "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»")}
             </p>
@@ -344,7 +348,7 @@ export default function AiScannerWidget({
           </div>
         ) : null}
 
-        <div className="max-md:sticky max-md:bottom-0 max-md:z-30 max-md:bg-[color:var(--surface-card)] max-md:shadow-[0_-6px_20px_rgba(0,0,0,0.18)]">
+        <div className="shrink-0 bg-[color:var(--surface-card)] shadow-[0_-6px_20px_rgba(0,0,0,0.12)]">
         <ScanControlBar
           phase={scanUiPhase}
           t={t}

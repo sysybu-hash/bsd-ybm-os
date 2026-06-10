@@ -873,10 +873,10 @@
   /* Content widgets flow naturally — no scroll trap. Widgets that opt out with
      data-widget-fill-height (IDE-like apps: App Builder, Calendar grid, …) are
      excluded — they need a definite height (see below). */
-  .workspace-window--mobile [data-shell-content] > :not([data-widget-sticky-chrome]):not([data-widget-fill-height]),
-  .workspace-window--mobile [data-shell-content] > [data-widget-sticky-chrome]:not([data-widget-fill-height]),
-  .workspace-window--mobile [data-widget-sticky-chrome]:not([data-widget-fill-height]) [data-widget-scroll-pane],
-  .workspace-window--mobile [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"]:not([data-widget-fill-height]) {
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [data-shell-content] > :not([data-widget-sticky-chrome]):not([data-widget-fill-height]),
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [data-shell-content] > [data-widget-sticky-chrome]:not([data-widget-fill-height]),
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [data-widget-sticky-chrome]:not([data-widget-fill-height]) [data-widget-scroll-pane],
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"]:not([data-widget-fill-height]) {
     flex: 0 0 auto;
     height: auto;
     max-height: none;
@@ -891,6 +891,17 @@
   .workspace-window--mobile:has([data-widget-fill-height]) [data-window-body] {
     overflow: hidden !important;
   }
+  /* The shell wrapper between the window body and [data-shell-scroll] is
+     `max-md:flex-none max-md:overflow-visible` (content-flow default). A
+     fill-height widget needs it to fill + clip so the constraint propagates. */
+  .workspace-window--mobile:has([data-widget-fill-height])
+    [data-window-body]
+    > div:has(> [data-shell-scroll]) {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
   .workspace-window--mobile:has([data-widget-fill-height]) [data-shell-scroll].shell-scroll-host {
     display: flex !important;
     flex-direction: column !important;
@@ -902,6 +913,31 @@
   .workspace-window--mobile:has([data-widget-fill-height]) [data-shell-content] {
     flex: 1 1 0% !important;
     min-height: 0 !important;
+  }
+  /* A fill-height widget embedded inside a hub (e.g. the AI scanner in the
+     documents hub) needs the intermediate chrome → scroll-pane chain to fill
+     too, otherwise it has no definite height to fill. Mirror the desktop model
+     here (the base rules are gated on data-scroll-owner which mobile drops). */
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-shell-content] > [data-widget-sticky-chrome] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-widget-sticky-chrome] [data-widget-scroll-pane] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 0% !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .workspace-window--mobile:has([data-widget-fill-height]) [data-widget-scroll-pane] > [data-embedded-in-hub="true"] {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
   .workspace-window--mobile [data-widget-fill-height] {
     flex: 1 1 0% !important;
@@ -916,8 +952,8 @@
      `overscroll-y-*` utility on these vertical scrollers — flatten them so the
      single window-body scroller owns the gesture. Horizontal scrollers
      (overscroll-x-*, e.g. the hub tab bar) are intentionally left alone. */
-  .workspace-window--mobile [class*="overscroll-y-contain"],
-  .workspace-window--mobile [class*="overscroll-y-auto"] {
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [class*="overscroll-y-contain"],
+  .workspace-window--mobile:not(:has([data-widget-fill-height])) [class*="overscroll-y-auto"] {
     flex: 0 0 auto;
     height: auto;
     max-height: none;
