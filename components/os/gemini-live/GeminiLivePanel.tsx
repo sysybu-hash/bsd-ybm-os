@@ -70,7 +70,7 @@ export default function GeminiLivePanel({
             type: "button",
             onClick: onOpenSettings,
             className:
-              "flex h-9 w-9 items-center justify-center rounded-lg border border-[color:var(--border-main)] text-[color:var(--foreground-muted)] hover:text-indigo-300",
+              "flex h-9 w-9 items-center justify-center rounded-lg border border-[color:var(--border-main)] text-[color:var(--foreground-muted)] hover:text-indigo-700 dark:hover:text-indigo-300",
             title: t("workspaceWidgets.omnibar.voiceSettingsTitle"),
             "aria-label": t("workspaceWidgets.omnibar.voiceSettingsAria"),
           },

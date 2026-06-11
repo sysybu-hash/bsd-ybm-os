@@ -67,7 +67,7 @@ export default function OmnibarChatVisual({
           <span className="truncate text-[11px] font-bold text-[color:var(--foreground-main)]">{statusLabel}</span>
         </div>
         {voiceActive ? (
-          <span className="shrink-0 rounded-full bg-indigo-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-indigo-300">
+          <span className="shrink-0 rounded-full bg-indigo-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
             {t("workspaceWidgets.omnibar.liveBadge")}
           </span>
         ) : null}
@@ -76,7 +76,7 @@ export default function OmnibarChatVisual({
       <div className="custom-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain p-3">
         {displayEntries.length === 0 && !voiceActive ? (
           <div className="flex h-full min-h-[8rem] flex-col items-center justify-center gap-2 px-4 text-center opacity-70">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-400">
               <Sparkles size={22} aria-hidden />
             </div>
             <p className="text-xs font-semibold text-[color:var(--foreground-muted)]">
@@ -96,7 +96,7 @@ export default function OmnibarChatVisual({
                   ? "border-[color:var(--border-main)] bg-[color:var(--surface-soft)] text-[color:var(--foreground-main)]"
                   : m.role === "system"
                     ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300"
-                    : "border-indigo-500/25 bg-indigo-500/10 text-indigo-400"
+                    : "border-indigo-500/25 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400"
               }`}
             >
               {m.role === "user" ? (

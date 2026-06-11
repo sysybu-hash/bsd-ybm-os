@@ -117,7 +117,7 @@ export default function ProjectSchedulePanel({
         ) : null}
         <p className="text-[10px] text-[color:var(--foreground-muted)]">XML / CSV (MS Project)</p>
         {selectedDomain !== "ALL" ? (
-          <span className="ms-auto rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] text-indigo-200">
+          <span className="ms-auto rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] text-indigo-700 dark:text-indigo-200">
             {labels.domainCount.replace(
               "{label}",
               projectSubDomains.find((d) => d.id === selectedDomain)?.labelHe ?? "",

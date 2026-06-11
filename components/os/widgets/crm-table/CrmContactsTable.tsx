@@ -192,7 +192,7 @@ export function CrmContactsTable({
                             type="button"
                             aria-label={t("workspaceWidgets.itemActions.delete")}
                             onClick={(e) => onDelete(client.id, e)}
-                            className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-all"
+                            className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-700 dark:text-rose-400 transition-all"
                           >
                             <Trash2 size={14} aria-hidden />
                           </button>

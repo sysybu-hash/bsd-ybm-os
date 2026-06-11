@@ -37,8 +37,8 @@ export function OmnibarSearchDropdown({ results, input, layout, t, onSelect, onC
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-md text-[10px] font-black ${
                 result.type === "contact"
-                  ? "bg-indigo-500/15 text-indigo-200"
-                  : "bg-emerald-500/15 text-emerald-300"
+                  ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-200"
+                  : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
               }`}
             >
               {result.type === "contact" ? "CRM" : "PRJ"}

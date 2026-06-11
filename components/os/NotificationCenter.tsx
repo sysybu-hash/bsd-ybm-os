@@ -255,7 +255,7 @@ export default function NotificationCenter({
                       type="button"
                       disabled={pendingNotificationId === notification.id}
                       onClick={() => void handleConfirmExpense(notification)}
-                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-60"
+                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-60"
                     >
                       {pendingNotificationId === notification.id
                         ? t("workspaceWidgets.notificationCenter.confirming")

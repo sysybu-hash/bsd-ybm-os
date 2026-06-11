@@ -131,7 +131,7 @@ export default function ProjectDocumentGeneratorModal({
         dir="rtl"
       >
         <header className="flex items-center gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
-          <FileOutput size={18} className="text-amber-300" />
+          <FileOutput size={18} className="text-amber-700 dark:text-amber-300" />
           <h2 id="doc-gen-title" className="flex-1 text-sm font-bold">
             {title}
           </h2>
@@ -159,7 +159,7 @@ export default function ProjectDocumentGeneratorModal({
                 });
                 onClose();
               }}
-              className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20"
+              className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-200 hover:bg-amber-500/20"
             >
               קופיילוט שטח — צלם / דבר מהאתר
             </button>

@@ -218,7 +218,7 @@ export default function Omnibar({
           <button
             type="button"
             onClick={() => openWorkspaceWidget("aiChatFull", { startLive: true })}
-            className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-[10px] font-bold text-indigo-300 hover:bg-[color:var(--surface-soft)]"
+            className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:bg-[color:var(--surface-soft)]"
           >
             {t("workspaceWidgets.omnibar.openFullLiveChat")}
           </button>

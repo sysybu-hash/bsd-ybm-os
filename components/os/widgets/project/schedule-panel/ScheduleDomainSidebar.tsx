@@ -69,7 +69,7 @@ export function ScheduleDomainSidebar({
               <div className="me-2 flex flex-col gap-0.5 border-e border-[color:var(--border-main)]/50 pe-2">
                 <button
                   type="button"
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-amber-200/90 hover:bg-amber-500/10"
+                  className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-200/90 hover:bg-amber-500/10"
                   onClick={() => onToggleDocPicker(domain.id)}
                 >
                   <FileOutput size={10} />

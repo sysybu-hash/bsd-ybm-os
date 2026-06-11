@@ -13,17 +13,17 @@ type Props = {
 function ConfidenceChip({ value }: { value?: number }) {
   if (value === undefined) return null;
   if (value >= 0.8) return (
-    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-200">
+    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-700 dark:text-emerald-200">
       <CheckCircle2 size={9} />דיוק גבוה
     </span>
   );
   if (value >= 0.5) return (
-    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-200">
+    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-200">
       <Circle size={9} />דיוק בינוני
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] text-rose-300">
+    <span className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] text-rose-700 dark:text-rose-300">
       <AlertTriangle size={9} />בדוק בעצמך
     </span>
   );
@@ -79,7 +79,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
             <p className="text-[10px] text-[color:var(--foreground-muted)]">בדוק, ערוך ובחר מה לייבא לפרויקט</p>
           </div>
           {data.requiresReview ? (
-            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-200">
               <AlertTriangle size={10} />דורש בדיקה
             </span>
           ) : null}
@@ -96,7 +96,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
             <section>
               <div className="mb-2 flex items-center gap-2">
                 <h3 className="text-xs font-semibold text-[color:var(--foreground)]">משימות לגנט</h3>
-                <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] text-indigo-200">{data.tasks.length}</span>
+                <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] text-indigo-700 dark:text-indigo-200">{data.tasks.length}</span>
                 <button
                   type="button"
                   className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
@@ -116,7 +116,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                     >
                       <button
                         type="button"
-                        className="mt-0.5 shrink-0 text-indigo-300"
+                        className="mt-0.5 shrink-0 text-indigo-700 dark:text-indigo-300"
                         onClick={() => setSelectedTasks((prev) => {
                           const n = new Set(prev);
                           if (n.has(i)) n.delete(i); else n.add(i);
@@ -160,7 +160,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
             <section>
               <div className="mb-2 flex items-center gap-2">
                 <h3 className="text-xs font-semibold text-[color:var(--foreground)]">אבני דרך ותשלום</h3>
-                <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-200">{data.milestones.length}</span>
+                <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-200">{data.milestones.length}</span>
                 <button
                   type="button"
                   className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
@@ -174,12 +174,12 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                   const checked = selectedMilestones.has(i);
                   return (
                     <div key={i} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${checked ? "border-amber-500/40 bg-amber-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
-                      <button type="button" className="shrink-0 text-amber-300"
+                      <button type="button" className="shrink-0 text-amber-700 dark:text-amber-300"
                         onClick={() => setSelectedMilestones((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                         {checked ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>
                       <span className="flex-1 truncate">{m.name}</span>
-                      <span className="shrink-0 font-mono text-amber-200">
+                      <span className="shrink-0 font-mono text-amber-700 dark:text-amber-200">
                         {"percent" in m && m.percent != null
                           ? `${m.percent}%`
                           : typeof m.amount === "number" && m.amount > 0 && m.amount <= 100
@@ -204,7 +204,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
             <section>
               <div className="mb-2 flex items-center gap-2">
                 <h3 className="text-xs font-semibold text-[color:var(--foreground)]">סעיפי כתב כמויות</h3>
-                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-200">{data.boqLineItems.length}</span>
+                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-700 dark:text-emerald-200">{data.boqLineItems.length}</span>
                 <button
                   type="button"
                   className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
@@ -218,7 +218,7 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                   const checked = selectedBoq.has(i);
                   return (
                     <div key={i} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${checked ? "border-emerald-500/40 bg-emerald-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
-                      <button type="button" className="shrink-0 text-emerald-300"
+                      <button type="button" className="shrink-0 text-emerald-700 dark:text-emerald-300"
                         onClick={() => setSelectedBoq((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                         {checked ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>

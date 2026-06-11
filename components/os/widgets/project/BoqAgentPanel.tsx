@@ -99,7 +99,7 @@ export default function BoqAgentPanel({
 
   return (
     <div className="rounded-xl border border-violet-500/25 bg-violet-500/5 p-3 space-y-2">
-      <p className="flex items-center gap-1.5 text-xs font-bold text-violet-200">
+      <p className="flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-200">
         <Sparkles size={14} />
         סוכן כתב כמויות (AI)
       </p>
@@ -135,7 +135,7 @@ export default function BoqAgentPanel({
                     className="mt-0.5"
                   />
                   <span>
-                    <span className="font-bold text-violet-300">
+                    <span className="font-bold text-violet-700 dark:text-violet-300">
                       {s.action === "add" ? "הוסף" : s.action === "update" ? "עדכן" : "הערה"}:
                     </span>{" "}
                     {s.description}

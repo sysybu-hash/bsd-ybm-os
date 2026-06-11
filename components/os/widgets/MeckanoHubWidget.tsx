@@ -150,7 +150,7 @@ export default function MeckanoHubWidget() {
               type="button"
               onClick={() => setTab(id)}
               className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
-                tab === id ? "bg-indigo-500/20 text-indigo-300" : "text-[color:var(--foreground-muted)]"
+                tab === id ? "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300" : "text-[color:var(--foreground-muted)]"
               }`}
             >
               <Icon size={12} />

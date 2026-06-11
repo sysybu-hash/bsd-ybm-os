@@ -28,7 +28,7 @@ export default function KnowledgeVaultAttachButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:text-indigo-300 ${className}`}
+        className={`inline-flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:text-indigo-700 dark:hover:text-indigo-300 ${className}`}
         title={t("knowledgeVault.attachFromVault")}
       >
         <Database size={12} />

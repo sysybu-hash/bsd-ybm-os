@@ -65,7 +65,7 @@ export default function GeminiLiveSettingsSheet({
       panelWidth={480}
       zIndex={OS_MODAL_PANEL_Z}
       headerStart={
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
           <Mic size={18} aria-hidden />
         </div>
       }
@@ -74,7 +74,7 @@ export default function GeminiLiveSettingsSheet({
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-[11px] font-bold text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-300"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-[11px] font-bold text-[color:var(--foreground-muted)] transition hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-300"
           >
             <RotateCcw size={14} aria-hidden />
             {t("geminiLive.reset")}
@@ -91,7 +91,7 @@ export default function GeminiLiveSettingsSheet({
       }
     >
       {isLiveActive ? (
-        <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-200">
+        <p className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-200">
           {t("geminiLive.liveActiveHint")}
         </p>
       ) : null}

@@ -160,7 +160,7 @@ export function DashboardHeader({
               onClick={() => setActiveTab(tab.id)}
               className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
                 activeTab === tab.id
-                  ? "bg-amber-500/20 text-amber-200"
+                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-200"
                   : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
               }`}
             >

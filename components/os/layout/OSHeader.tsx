@@ -218,7 +218,7 @@ export default function OSHeader({
 
             <HeaderIconButton
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-400"
+              className="hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-700 dark:text-rose-400"
               title={t("workspaceNav.signOut")}
               aria-label={t("workspaceWidgets.page.signOut")}
             >

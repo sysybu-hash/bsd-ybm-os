@@ -34,13 +34,13 @@ export function OmnibarActionButtons({
         <HardHat size={18} aria-hidden />
       </button>
       <button type="button" onClick={onOpenSettings}
-        className={`${btnClass} text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-indigo-300`}
+        className={`${btnClass} text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-indigo-700 dark:hover:text-indigo-300`}
         title={t("workspaceWidgets.omnibar.voiceSettingsTitle")} aria-label={t("workspaceWidgets.omnibar.voiceSettingsAria")}
         aria-expanded={false} aria-haspopup="dialog">
         <SlidersHorizontal size={18} aria-hidden />
       </button>
       <button type="button" onClick={onToggleLive}
-        className={`${btnClass} ${voiceActive ? "border-transparent bg-indigo-600 text-white shadow-sm" : rateLimitActive ? "border-rose-500/40 bg-rose-500/10 text-rose-300" : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
+        className={`${btnClass} ${voiceActive ? "border-transparent bg-indigo-600 text-white shadow-sm" : rateLimitActive ? "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300" : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
         title={rateLimitActive && voiceStatus === "idle" && rateLimitLabel ? rateLimitLabel : voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
         aria-label={voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
         aria-pressed={voiceStatus !== "idle"}>

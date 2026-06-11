@@ -240,7 +240,7 @@ export default function ProjectBoqPanel({
             onClick={() => setSubTab(t.id)}
             className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
               subTab === t.id
-                ? "bg-amber-500/20 text-amber-200"
+                ? "bg-amber-500/20 text-amber-700 dark:text-amber-200"
                 : "border border-[color:var(--border-main)] text-[color:var(--foreground-muted)]"
             }`}
           >
@@ -283,7 +283,7 @@ export default function ProjectBoqPanel({
             onClick={() => setShowTakeoff((v) => !v)}
             className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${
               showTakeoff
-                ? "border-indigo-500 bg-indigo-500/15 text-indigo-200"
+                ? "border-indigo-500 bg-indigo-500/15 text-indigo-700 dark:text-indigo-200"
                 : "border-[color:var(--border-main)]"
             }`}
           >
@@ -297,7 +297,7 @@ export default function ProjectBoqPanel({
             onClick={() => void generateGantt()}
             disabled={generatingGantt || lines.length === 0}
             title={lines.length === 0 ? t("workspaceWidgets.ganttAgent.emptyHint") : ""}
-            className="flex items-center gap-1 rounded-lg border border-violet-500/60 bg-violet-500/15 px-2 py-1 text-xs font-bold text-violet-200 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg border border-violet-500/60 bg-violet-500/15 px-2 py-1 text-xs font-bold text-violet-700 dark:text-violet-200 disabled:opacity-50"
           >
             {generatingGantt ? (
               <Loader2 size={12} className="animate-spin" />
@@ -311,7 +311,7 @@ export default function ProjectBoqPanel({
           <button
             type="button"
             onClick={() => setConfirmClear(true)}
-            className="flex items-center gap-1 rounded-lg border border-rose-500/50 px-2 py-1 text-xs font-bold text-rose-400 hover:bg-rose-500/10"
+            className="flex items-center gap-1 rounded-lg border border-rose-500/50 px-2 py-1 text-xs font-bold text-rose-700 dark:text-rose-400 hover:bg-rose-500/10"
           >
             <Trash2 size={12} />
             {t("workspaceWidgets.projectBoq.clearAll")}
@@ -334,7 +334,7 @@ export default function ProjectBoqPanel({
           <Loader2 className="animate-spin text-amber-500" size={20} />
         </div>
       ) : loadError ? (
-        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-200">
           {loadError}
         </p>
       ) : subTab === "boq" ? (
@@ -424,7 +424,7 @@ export default function ProjectBoqPanel({
                       onClick={() => void deleteLine(l.id)}
                       title={t("workspaceWidgets.projectBoq.deleteRow")}
                       aria-label={t("workspaceWidgets.projectBoq.deleteRow")}
-                      className="rounded p-1 text-rose-400 hover:bg-rose-500/10"
+                      className="rounded p-1 text-rose-700 dark:text-rose-400 hover:bg-rose-500/10"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -518,7 +518,7 @@ export default function ProjectBoqPanel({
                       onClick={() => void deleteLine(l.id)}
                       title={t("workspaceWidgets.projectBoq.deleteRow")}
                       aria-label={t("workspaceWidgets.projectBoq.deleteRow")}
-                      className="rounded p-1 text-rose-400 hover:bg-rose-500/10"
+                      className="rounded p-1 text-rose-700 dark:text-rose-400 hover:bg-rose-500/10"
                     >
                       <Trash2 size={14} />
                     </button>

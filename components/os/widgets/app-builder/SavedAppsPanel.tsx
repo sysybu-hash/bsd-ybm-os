@@ -52,7 +52,7 @@ export function SavedAppsPanel({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" onClick={onNewApp}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/10">
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-500/10">
             <Plus className="h-3.5 w-3.5" aria-hidden />
             {t(`${PREFIX}.newApp`)}
           </button>
@@ -67,7 +67,7 @@ export function SavedAppsPanel({
       {/* Gallery */}
       {templates.length > 0 ? (
         <section className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2">
-          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-indigo-300">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
             <Wand2 className="h-3.5 w-3.5" aria-hidden />
             {t(`${PREFIX}.galleryTitle`)}
           </h3>

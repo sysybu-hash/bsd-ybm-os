@@ -19,7 +19,7 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
     >
       <div className="bg-indigo-600 px-5 py-4">
         <h3 className="text-lg font-black text-white">{title}</h3>
-        <p className="text-xs text-indigo-200">
+        <p className="text-xs text-indigo-700 dark:text-indigo-200">
           {payload.orgName ?? "BSD-YBM"} · מס׳ {payload.number || "טיוטה"}
         </p>
       </div>
