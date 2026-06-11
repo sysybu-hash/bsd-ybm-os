@@ -100,7 +100,7 @@ export default function MobileOmnibarSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[1040] bg-black/45 backdrop-blur-[3px]"
+            className="fixed inset-0 z-[1190] bg-black/45 backdrop-blur-[3px]"
             aria-label={t("workspaceWidgets.omnibar.sheetCloseAria")}
             onClick={onClose}
           />
@@ -114,7 +114,7 @@ export default function MobileOmnibarSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-[1050] flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 shadow-2xl"
+            className="fixed inset-x-0 bottom-0 z-[1191] flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 shadow-2xl"
             style={{
               paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
               background:
