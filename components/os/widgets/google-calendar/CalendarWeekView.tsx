@@ -43,9 +43,9 @@ export function CalendarWeekView({
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden gcal-print-surface max-md:flex-none max-md:overflow-visible" dir={dir}>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden gcal-print-surface max-md:flex-none max-md:overflow-visible" dir={dir}>
       {/* Day selector strip — bold compact cards with an event-count badge */}
-      <div className="grid grid-cols-7 gap-1.5 p-3 shrink-0 lg:flex-[2] min-h-0 lg:content-start border-b lg:border-b-0 lg:border-e border-[color:var(--border-main)]/60">
+      <div className="grid grid-cols-7 gap-1.5 p-3 shrink-0 border-b border-[color:var(--border-main)]/60">
         {weekDays.map((day) => {
           const key = day.toISOString().slice(0, 10);
           const count = (eventsByDay.get(key) ?? []).length;
