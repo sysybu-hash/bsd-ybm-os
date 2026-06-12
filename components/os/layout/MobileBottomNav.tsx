@@ -165,30 +165,49 @@ export default function MobileBottomNav({
         />
       ) : null}
 
-      {/* ── עטיפה: קונטיינר fixed שמכיל גם את כפתורי FAB וגם את הסרגל ── */}
+      {/* ── עטיפה: קונטיינר fixed שמכיל את הלשוניות, הכפתור הצף והסרגל ── */}
       <div
         className="mobile-bottom-nav-host fixed bottom-0 left-0 right-0 z-[1285] md:hidden"
         data-testid="mobile-bottom-nav"
         dir={dir}
       >
+        {/* לשוניות משוב + נגישות — צמודות לקצוות, מתמזגות עם קצה ה-dock */}
         <div
-          className="mobile-bottom-nav-fabs flex items-center justify-between px-2 pb-1"
+          className="pointer-events-none absolute inset-x-0 bottom-full flex items-end justify-between"
           aria-label={t("workspaceWidgets.mobileNav.chromeActionsAria")}
         >
-          <MobileChromeFabButton
-            icon={MessageSquare}
-            label={t("siteFeedback.fabLabel")}
-            onClick={openFeedbackFab}
-            testId="mobile-feedback-fab"
-            variant="accent"
-          />
-          <MobileChromeFabButton
-            icon={Accessibility}
-            label={t("accessibility.toolbar")}
-            onClick={openAccessibilityPanel}
-            testId="mobile-accessibility-fab"
-          />
+          <div className="pointer-events-auto -mb-px">
+            <MobileChromeFabButton
+              icon={MessageSquare}
+              label={t("siteFeedback.fabLabel")}
+              onClick={openFeedbackFab}
+              testId="mobile-feedback-fab"
+              variant="accent"
+              shape="tab"
+              corner="start"
+            />
+          </div>
+          <div className="pointer-events-auto -mb-px">
+            <MobileChromeFabButton
+              icon={Accessibility}
+              label={t("accessibility.toolbar")}
+              onClick={openAccessibilityPanel}
+              testId="mobile-accessibility-fab"
+              shape="tab"
+              corner="end"
+            />
+          </div>
         </div>
+
+        {/* כפתור omnibar מרכזי — צף, חצי מעל ה-dock וחצי בתוכו */}
+        <button
+          type="button"
+          onClick={onOpenOmnibar}
+          className="absolute left-1/2 top-0 z-[1287] flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md ring-2 ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-14 sm:w-14"
+          aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
+        >
+          <Mic size={22} strokeWidth={2} aria-hidden />
+        </button>
 
       <nav
         className="flex min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
@@ -203,16 +222,8 @@ export default function MobileBottomNav({
           />
         </NavSideGrid>
 
-        <div className="flex shrink-0 items-end justify-center px-0.5 pb-0.5">
-          <button
-            type="button"
-            onClick={onOpenOmnibar}
-            className="flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-y-1.5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-md ring-2 ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-14 sm:w-14 sm:-translate-y-2.5"
-            aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
-          >
-            <Mic size={22} strokeWidth={2} aria-hidden />
-          </button>
-        </div>
+        {/* שומר-מקום לכפתור הצף כדי לאזן את שני צידי הניווט */}
+        <div className="h-11 w-11 shrink-0 sm:w-14" aria-hidden />
 
         <NavSideGrid>
           {onOpenWindowSwitcher ? (
