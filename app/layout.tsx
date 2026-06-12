@@ -53,7 +53,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: MARKETING_THEME_BOOT }} />
       </head>
-      <body className={`${heebo.className} min-h-screen bg-[#0f172a] font-sans text-slate-100 antialiased`}>
+      <body className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}>
         {children}
       </body>
     </html>
