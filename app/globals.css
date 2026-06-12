@@ -839,12 +839,17 @@
   :root[data-window-maximized="true"] {
     --workspace-inset-top: 0.5rem;
   }
+  /* Collapse the global header to a thin INERT strip while a window is
+     maximized. The header lives in a higher stacking context than the
+     maximized window (which is trapped inside the workspace inset's own
+     stacking context), so `pointer-events: none` is essential — otherwise the
+     header intercepts clicks meant for the window's own controls (e.g. the
+     close button at the very top). Reveal-on-hover was removed for the same
+     reason: it expanded the header over those controls. Un-maximize to use the
+     global header. */
   :root[data-window-maximized="true"] .os-top-header {
     transform: translateY(calc(-100% + 6px));
-  }
-  :root[data-window-maximized="true"] .os-top-header:hover,
-  :root[data-window-maximized="true"] .os-top-header:focus-within {
-    transform: translateY(0);
+    pointer-events: none;
   }
 }
 
