@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Zap, Bot, FileText, RefreshCw, X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { formatTelemetrySummaryHe } from "@/lib/scan-telemetry-display";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
@@ -40,7 +40,6 @@ export default function AiScannerWidget({
     boundProjectName,
     projectsList, projectsListLoading, showProjectPicker, selectProject, clearProject,
     scanQueue,
-    activeEngineLabel,
     openPreviewPanel, onDrop, onFileInputChange,
     pushScannerView,
   } = s;
@@ -118,17 +117,14 @@ export default function AiScannerWidget({
   }
 
   const inEditorMode = !!pendingAnalysis;
-  // Layout model:
-  //  • Mobile (stackScannerPanels): natural-flow — the whole window scrolls as
-  //    one document; panels flow at their natural height.
-  //  • Desktop (incl. embedded in a hub): CONSTRAINED — the body scrolls
-  //    internally while the action bar + engine status stay PINNED at the
-  //    bottom, so the scan buttons are always visible (never cut off behind the
-  //    dock). Previously embedded-desktop wrongly used natural flow, pushing the
-  //    control bar below the fold.
-  const useNaturalHeightLayout = stackScannerPanels && !inEditorMode;
-  const constrainToViewport = !useNaturalHeightLayout;
-  const useInnerEditorScroll = inEditorMode;
+  // Unified scroll model: in the hub (and on mobile) the whole widget flows at
+  // its natural height and the shell's single scroll pane owns scrolling — so
+  // the window scrolls as one document. The primary action now lives in the
+  // header (top), so nothing needs pinning at the bottom. The editor still
+  // constrains so its tall form scrolls internally.
+  const constrainToViewport = !embeddedInHub || inEditorMode;
+  const useNaturalHeightLayout = (stackScannerPanels || embeddedInHub) && !inEditorMode;
+  const useInnerEditorScroll = inEditorMode && (embeddedInHub || constrainToViewport);
   // Is there anything to show in the results panel yet? When idle we hide the
   // empty panel and let the drop zone span the full width.
   const hasScanOutput = !!resultJson || queue.length > 0 || isProcessing;
@@ -139,7 +135,7 @@ export default function AiScannerWidget({
         constrainToViewport ? "h-full" : ""
       } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
-      data-hub-inner-scroll={embeddedInHub && constrainToViewport ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub && inEditorMode ? "true" : undefined}
       dir={dir}
     >
       <ScanHistorySidebar
@@ -175,6 +171,9 @@ export default function AiScannerWidget({
           scanModes={scanModes}
           engineMeta={engineMeta}
           setEngineRunMode={setEngineRunMode}
+          pendingCount={pendingFiles.length}
+          onPickFiles={() => fileInputRef.current?.click()}
+          onStartScan={() => void startScan()}
         />
 
         {/* Body */}
@@ -280,9 +279,10 @@ export default function AiScannerWidget({
             </div>
           </div>
         ) : !hasScanOutput ? (
-          /* Desktop idle: no scan yet — give the drop zone the full width
-             instead of showing an empty results panel beside it. */
-          <div className="flex min-h-0 flex-1 flex-col">
+          /* Idle: no scan yet — give the drop zone the full width instead of an
+             empty results panel beside it. min-height keeps it usable in the
+             natural-flow (hub/mobile) layout. */
+          <div className={`flex flex-col ${useNaturalHeightLayout ? "min-h-[46vh]" : "min-h-0 flex-1"}`}>
             <ScanDropZone
               isDragging={isDragging}
               setIsDragging={setIsDragging}
@@ -307,7 +307,7 @@ export default function AiScannerWidget({
           /* Desktop with output: resizable drop zone ‖ results */
           <Group
             orientation="horizontal"
-            className="min-h-0 flex-1"
+            className={embeddedInHub ? "min-h-[42vh]" : "min-h-0 flex-1"}
           >
             <Panel
               defaultSize={48}
@@ -386,8 +386,6 @@ export default function AiScannerWidget({
           tr={tr}
           hasContent={queue.length > 0 || !!lastScanV5 || !!pendingAnalysis || isProcessing}
           pendingCount={pendingFiles.length}
-          onPickFiles={() => fileInputRef.current?.click()}
-          onStartScan={() => void startScan()}
           onClearPending={clearPending}
           onStop={stopScan}
           onBack={goBackScanStep}
@@ -398,52 +396,6 @@ export default function AiScannerWidget({
           }}
           onReset={resetScanState}
         />
-
-        {/* Engine status bar — compact row on mobile, 3-column on desktop */}
-        <div className="border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 backdrop-blur-sm">
-          {/* Mobile: single compact line */}
-          <div className="flex items-center gap-2 px-3 py-1.5 sm:hidden">
-            <Zap size={12} className="shrink-0 text-blue-500" />
-            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)]">
-              {tr("scanner.engineActive", "מנוע")}:
-            </span>
-            <span className="truncate text-[10px] font-black">{activeEngineLabel}</span>
-            {engineMeta?.configured.gemini ? (
-              <span className="ms-auto shrink-0 text-[9px] font-bold text-purple-500">Gemini ✓</span>
-            ) : null}
-            {engineMeta?.configured.mistral ? (
-              <span className="shrink-0 text-[9px] font-bold text-orange-500">Pixtral ✓</span>
-            ) : null}
-          </div>
-          {/* Desktop: 3 cards */}
-          <div className="hidden gap-2 p-2 sm:grid sm:grid-cols-3">
-            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-              <Zap size={14} className="mx-auto text-blue-500" />
-              <div className="text-[9px] font-bold text-[color:var(--foreground-muted)]">
-                {tr("scanner.engineActive", "מנוע")}
-              </div>
-              <div className="truncate text-[10px] font-black">{activeEngineLabel}</div>
-            </div>
-            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-              <Bot size={14} className="mx-auto text-purple-500" />
-              <div className="text-[9px] font-bold">
-                {engineMeta?.configured.gemini ? "Gemini ✓" : "—"}
-              </div>
-            </div>
-            <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-              <FileText size={14} className="mx-auto text-emerald-500" />
-              <div className="text-[9px] font-bold">
-                {engineMeta?.configured.openai ? "OpenAI ✓" : "—"}
-              </div>
-            </div>
-            {engineMeta?.configured.mistral ? (
-              <div className="rounded-xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 p-2.5 text-center shadow-sm">
-                <span className="mx-auto block text-[10px]">🟠</span>
-                <div className="text-[9px] font-bold text-orange-500">Pixtral ✓</div>
-              </div>
-            ) : null}
-          </div>
-        </div>
         </div>
       </div>
 
