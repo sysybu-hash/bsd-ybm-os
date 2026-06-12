@@ -5,8 +5,8 @@ import { ScanLine, ArrowRight, Eye, FileText, Settings2 } from "lucide-react";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
-import { ENGINE_MODES } from "./constants";
 import type { EngineMeta, QueueItem } from "./types";
+import { EngineSelector } from "./EngineSelector";
 
 type ScanClassification = { scanMode: string; confidence: number; rationale?: string; uncertain?: boolean };
 
@@ -32,6 +32,10 @@ type ScanHeaderToolbarProps = {
   scanModes: { id: string; label: string }[];
   engineMeta: EngineMeta | null;
   setEngineRunMode: (mode: TriEngineRunMode) => void;
+  /** Primary action lives in the header now (top), not pinned at the bottom. */
+  pendingCount: number;
+  onPickFiles: () => void;
+  onStartScan: () => void;
 };
 
 const selectClass =
@@ -45,13 +49,14 @@ export function ScanHeaderToolbar({
   openPreviewPanel, queue, previewUrl, lastScanV5,
   setResultsPanelOpen, pushScannerView, scanClassification, engineRunMode,
   scanModeOverride, setScanModeOverride, scanModes, engineMeta, setEngineRunMode,
+  pendingCount, onPickFiles, onStartScan,
 }: ScanHeaderToolbarProps) {
   return (
-    <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
-      {/* Row 1 — identity + switch project (symmetric: title start, action end) */}
+    <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-1.5">
+      {/* Row 1 — identity + switch project + PRIMARY action (pick / scan) */}
       <div className="flex items-center gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-          <ScanLine className="text-orange-500" size={18} aria-hidden />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+          <ScanLine className="text-orange-500" size={16} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-xs font-black leading-tight">
@@ -64,16 +69,45 @@ export function ScanHeaderToolbar({
         <button
           type="button"
           onClick={clearProject}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2.5 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
           title={t(`${scannerPrefix}.switchProject`)}
         >
           <ArrowRight size={13} className="rtl:rotate-180" aria-hidden />
-          <span className="hidden sm:inline">{t(`${scannerPrefix}.switchProject`)}</span>
+          <span className="hidden md:inline">{t(`${scannerPrefix}.switchProject`)}</span>
         </button>
+        {pendingCount > 0 ? (
+          <button
+            type="button"
+            onClick={onStartScan}
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-l from-orange-600 to-amber-500 px-3 text-[11px] font-bold text-white shadow-sm hover:from-orange-500"
+          >
+            <ScanLine size={14} aria-hidden />
+            {tr("workspaceWidgets.aiScanner.scanNow", "סרוק עכשיו")} ({pendingCount})
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onPickFiles}
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 text-[11px] font-bold text-orange-700 hover:bg-orange-500/15 dark:text-orange-300"
+          >
+            <ScanLine size={14} aria-hidden />
+            {tr("workspaceWidgets.aiScanner.pickFiles", "בחר קבצים לסריקה")}
+          </button>
+        )}
       </div>
 
-      {/* Row 2 — controls, single compact line that scrolls instead of wrapping */}
-      <div className="no-scrollbar mt-2 flex items-center gap-1.5 overflow-x-auto">
+      {/* Row 2 — clickable engine selector (single row, all engines) */}
+      <div className="mt-1.5">
+        <EngineSelector
+          value={engineRunMode}
+          onChange={setEngineRunMode}
+          engineMeta={engineMeta}
+          tr={tr}
+        />
+      </div>
+
+      {/* Row 3 — scan-mode + tools, compact scrolling line */}
+      <div className="no-scrollbar mt-1.5 flex items-center gap-1.5 overflow-x-auto">
         <select
           value={scanModeOverride}
           onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
@@ -82,23 +116,6 @@ export function ScanHeaderToolbar({
         >
           {scanModes.map((m) => (
             <option key={m.id} value={m.id}>{m.label}</option>
-          ))}
-        </select>
-
-        <select
-          value={engineRunMode}
-          onChange={(e) => setEngineRunMode(e.target.value as TriEngineRunMode)}
-          className={selectClass}
-          aria-label={tr("scanner.configAi", "מנועים")}
-        >
-          {ENGINE_MODES.map((m) => (
-            <option
-              key={m.id}
-              value={m.id}
-              disabled={m.id === "SINGLE_DOCUMENT_AI" && !engineMeta?.configured.documentAI}
-            >
-              {tr(m.labelKey, m.fallback)}
-            </option>
           ))}
         </select>
 
