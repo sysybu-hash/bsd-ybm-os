@@ -158,6 +158,20 @@ export default function OmniCanvasWorkspace() {
     };
   }, [mounted, everAuthenticated, sessionStatus]);
 
+  // When a window is maximized (desktop), collapse the global top header to a
+  // thin peek strip and let the workspace extend upward — reclaims ~72px of
+  // vertical space for every window. CSS keyed off this attribute.
+  React.useEffect(() => {
+    if (hasMaximizedWidget) {
+      document.documentElement.dataset.windowMaximized = "true";
+    } else {
+      delete document.documentElement.dataset.windowMaximized;
+    }
+    return () => {
+      delete document.documentElement.dataset.windowMaximized;
+    };
+  }, [hasMaximizedWidget]);
+
   // Show spinner only on first load, NOT on silent background session refetches
   if (!mounted || (!everAuthenticated && sessionStatus === "loading")) {
     return (

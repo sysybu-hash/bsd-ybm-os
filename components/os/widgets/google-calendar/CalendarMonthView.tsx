@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { calendarColorStyle } from "@/lib/client/google-calendar-colors";
 import { addDays, isSameMonth, weekStartsOnForLocale } from "@/lib/client/google-calendar-week";
 import { isTodayDay } from "./CalendarEventCard";
@@ -17,11 +18,12 @@ type CalendarMonthViewProps = {
   selectedDay: Date;
   onSelectDay: (day: Date) => void;
   onCreateRange: (start: Date, end: Date) => Promise<boolean>;
+  onAddOnDay?: (day: Date) => void;
   dragHintLabel: string;
   moreEventsLabel: (n: number) => string;
 };
 
-const MAX_VISIBLE = 2;
+const MAX_VISIBLE = 3;
 
 function dayKey(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -29,13 +31,17 @@ function dayKey(d: Date): string {
 
 export function CalendarMonthView({
   locale, monthDays, viewAnchor, eventsByDay, calendarColor, canWrite,
-  selectedDay, onSelectDay, onCreateRange, dragHintLabel, moreEventsLabel,
+  selectedDay, onSelectDay, onCreateRange, onAddOnDay, dragHintLabel, moreEventsLabel,
 }: CalendarMonthViewProps) {
   const weekStartsOn = weekStartsOnForLocale(locale);
   const baseSunday = new Date(2024, 0, 7);
-  const weekdayLabels = Array.from({ length: 7 }, (_, i) => {
+  const weekdays = Array.from({ length: 7 }, (_, i) => {
     const dayIndex = (weekStartsOn + i) % 7;
-    return addDays(baseSunday, dayIndex).toLocaleDateString(locale, { weekday: "short" });
+    const d = addDays(baseSunday, dayIndex);
+    return {
+      short: d.toLocaleDateString(locale, { weekday: "short" }),
+      isWeekend: dayIndex === 5 || dayIndex === 6, // Fri/Sat
+    };
   });
 
   const [dragStartKey, setDragStartKey] = useState<string | null>(null);
@@ -86,15 +92,20 @@ export function CalendarMonthView({
       ) : null}
 
       <div className="grid shrink-0 grid-cols-7 gap-px px-1.5 pb-1.5">
-        {weekdayLabels.map((label) => (
-          <div key={label} className="text-center text-[10px] font-black uppercase tracking-wide text-[color:var(--foreground-muted)]">
-            {label}
+        {weekdays.map((wd) => (
+          <div
+            key={wd.short}
+            className={`text-center text-[10px] font-black uppercase tracking-wide ${
+              wd.isWeekend ? "text-violet-500/70" : "text-[color:var(--foreground-muted)]"
+            }`}
+          >
+            {wd.short}
           </div>
         ))}
       </div>
 
       <div
-        className="auto-rows-fr grid min-h-0 flex-1 grid-cols-7 gap-1 px-1.5 pb-2 overflow-y-auto custom-scrollbar max-md:flex-none max-md:overflow-visible"
+        className="gcal-month-grid gcal-print-surface auto-rows-fr grid min-h-0 flex-1 grid-cols-7 gap-1 px-1.5 pb-2 overflow-y-auto custom-scrollbar max-md:flex-none max-md:overflow-visible"
         onPointerUp={() => { if (dragging.current) void finishMonthDrag(); }}
         onPointerLeave={() => { if (dragging.current) void finishMonthDrag(); }}
       >
@@ -105,6 +116,7 @@ export function CalendarMonthView({
           const today = isTodayDay(day);
           const selected = dayKey(selectedDay) === key;
           const inRange = inDragRange(key);
+          const weekend = day.getDay() === 5 || day.getDay() === 6; // Fri/Sat
 
           return (
             <button
@@ -120,14 +132,16 @@ export function CalendarMonthView({
               onPointerEnter={() => {
                 if (dragging.current && dragStartKey) setDragEndKey(key);
               }}
-              className={`group flex min-h-[68px] flex-col gap-1 rounded-xl p-1.5 text-start transition-all duration-150 ${
+              className={`group relative flex min-h-[92px] flex-col gap-1 rounded-xl border p-1.5 text-start transition-all duration-150 ${
                 inRange
-                  ? "bg-violet-500/20 ring-1 ring-violet-500/40"
+                  ? "border-violet-500/40 bg-violet-500/20 ring-1 ring-violet-500/40"
                   : selected
-                    ? "bg-violet-500/10 ring-2 ring-violet-500/50"
-                    : inMonth
-                      ? "bg-[color:var(--surface-card)]/30 hover:bg-violet-500/5"
-                      : "bg-transparent"
+                    ? "border-violet-500/50 bg-violet-500/10 ring-2 ring-violet-500/50"
+                    : today
+                      ? "border-violet-500/30 bg-violet-500/[0.07]"
+                      : inMonth
+                        ? `border-[color:var(--border-main)]/50 hover:border-violet-500/30 hover:bg-violet-500/5 ${weekend ? "bg-[color:var(--surface-soft)]/40" : "bg-[color:var(--surface-card)]/30"}`
+                        : "border-transparent bg-transparent"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -136,14 +150,29 @@ export function CalendarMonthView({
                     today
                       ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-md shadow-violet-500/30"
                       : inMonth
-                        ? "text-[color:var(--foreground-main)]"
+                        ? weekend
+                          ? "text-violet-600 dark:text-violet-400"
+                          : "text-[color:var(--foreground-main)]"
                         : "text-[color:var(--foreground-muted)]/40"
                   }`}
                 >
                   {day.getDate()}
                 </span>
-                {dayEvents.length > 0 && !today ? (
-                  <span className="me-0.5 h-1.5 w-1.5 rounded-full bg-violet-500/70" aria-hidden />
+                {dayEvents.length > 0 ? (
+                  <span className="rounded-full bg-violet-500/15 px-1.5 text-[9px] font-black tabular-nums text-violet-600 dark:text-violet-300">
+                    {dayEvents.length}
+                  </span>
+                ) : canWrite && onAddOnDay ? (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); onAddOnDay(day); }}
+                    className="gcal-no-print flex h-5 w-5 items-center justify-center rounded-full text-[color:var(--foreground-muted)] opacity-0 transition-opacity hover:bg-violet-500/15 hover:text-violet-500 group-hover:opacity-100"
+                    aria-hidden
+                  >
+                    <Plus size={13} />
+                  </span>
                 ) : null}
               </div>
               <div className="min-h-0 flex-1 space-y-1 overflow-hidden">
@@ -151,7 +180,7 @@ export function CalendarMonthView({
                   <div
                     key={ev.id}
                     className="gcal-event-chip truncate rounded-md border px-1.5 py-0.5 text-[9px] font-bold leading-tight"
-                    style={calendarColorStyle(calendarColor, ev.entityType === "TASK")}
+                    style={calendarColorStyle(calendarColor, ev.entityType === "TASK" || ev.entityType === "task")}
                     title={ev.summary}
                     onPointerDown={(e) => e.stopPropagation()}
                   >

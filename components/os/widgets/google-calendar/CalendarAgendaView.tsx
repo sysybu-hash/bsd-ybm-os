@@ -34,7 +34,7 @@ export function CalendarAgendaView({
       {!hasAny ? (
         <p className="text-sm text-[color:var(--foreground-muted)] text-center py-16">{noEventsWeekLabel}</p>
       ) : (
-        <div className="space-y-6 max-w-2xl mx-auto">
+        <div className="mx-auto max-w-3xl space-y-6">
           {weekDays.map((day) => {
             const key = day.toISOString().slice(0, 10);
             const dayEvents = eventsByDay.get(key) ?? [];

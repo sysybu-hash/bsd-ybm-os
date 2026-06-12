@@ -13,6 +13,7 @@ import { Calendar, CreditCard, Loader2, Send } from "lucide-react";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 import { toast } from "sonner";
 import type { DocType } from "@prisma/client";
+import { WidgetColumns } from "@/components/os/layout/WidgetCanvas";
 import { useDocumentCreator } from "./document-creator/useDocumentCreator";
 import { IssuedDocumentsList } from "./document-creator/IssuedDocumentsList";
 import { DocItemsForm } from "./document-creator/DocItemsForm";
@@ -56,122 +57,133 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
       className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)]"
       dir={dir}
     >
-      {/* Header */}
-      <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-4 md:p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 min-w-0">
+      {/* Header — compact single row. Inside the hub the tab bar already gives
+          context, so we drop the large title/caption to reclaim vertical space. */}
+      <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 px-3 py-2 sm:px-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           <select
             value={d.docType}
             onChange={(e) => d.setDocType(e.target.value as DocType)}
-            className="w-full max-w-[200px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
+            className="max-w-[200px] rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 px-2.5 py-1.5 text-xs font-bold text-[color:var(--foreground-main)]"
           >
             {ISSUED_DOCUMENT_TYPES.map((dt) => (
               <option key={dt.id} value={dt.id}>{dt.labelHe}</option>
             ))}
           </select>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-[color:var(--foreground-main)] md:text-lg">מחולל מסמכים חכם</h2>
-            <p className="text-[10px] text-[color:var(--foreground-muted)] uppercase tracking-widest font-bold">BSD-YBM Financial Engine</p>
-          </div>
+          {!embeddedInHub ? (
+            <h2 className="hidden truncate text-sm font-bold text-[color:var(--foreground-main)] sm:block">
+              מחולל מסמכים חכם
+            </h2>
+          ) : null}
         </div>
-        <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:items-end">
+        <div className="flex items-center gap-3 shrink-0">
           <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`${t("workspaceWidgets.documentCreator.selectedFromVault")}: ${item.name}`)} />
-          <div className="text-left space-y-0.5">
-            <span className="text-[10px] font-bold text-[color:var(--foreground-muted)] block">
+          <div className="text-end leading-tight">
+            <span className="block text-[9px] font-bold text-[color:var(--foreground-muted)]">
               {t("workspaceWidgets.documentCreator.preVatLabel", { vat: String(formatVatPercent(d.vatRatePercent)) })}
+              {" · "}
+              {t("workspaceWidgets.documentCreator.vatAmountLabel", { amount: billing.vat.toLocaleString() })}
             </span>
-            <span className="text-xs text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.vatAmountLabel", { amount: billing.vat.toLocaleString() })}</span>
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 block">
+            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
               ₪{billing.total.toLocaleString()}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Scrollable body */}
+      {/* Scrollable body — container query host: reflows to the WINDOW width */}
       <div
         data-widget-scroll-pane={embeddedInHub ? undefined : true}
-        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 space-y-4 sm:p-6 sm:space-y-8 [-webkit-overflow-scrolling:touch]"
+        className="widget-canvas custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 sm:p-6 [-webkit-overflow-scrolling:touch]"
       >
-        <IssuedDocumentsList
-          issuedList={d.issuedList}
-          issuedListLoading={d.issuedListLoading}
-          onOpen={(id) => d.navigateIssued(id)}
-          onRefresh={() => void d.fetchIssuedDocuments()}
-        />
-
-        <DocumentClientPicker
-          contacts={d.contacts}
-          loading={d.fetchingContacts}
-          name={d.clientNameInput}
-          selectedContactId={d.selectedContactId}
-          isNewClient={d.isNewClient}
-          newClient={d.newClient}
-          onNameChange={d.setClientNameInput}
-          onSelectContact={(c) => { d.setSelectedContactId(c.id); d.setClientNameInput(c.name); }}
-          onNewClientChange={(patch) => d.setNewClient((prev) => ({ ...prev, ...patch }))}
-          onIsNewClientChange={d.setIsNewClient}
-        />
-
-        <DocItemsForm
-          items={d.items}
-          onAdd={d.addItem}
-          onRemove={d.removeItem}
-          onUpdate={d.updateItem}
-        />
-
-        {/* Additional settings */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">3</div>
-              <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך פירעון</h3>
-            </div>
-            <div className="relative">
-              <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
-              <input type="date" className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
-                defaultValue={new Date().toISOString().split("T")[0]} />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">4</div>
-              <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">אמצעי תשלום</h3>
-            </div>
-            <div className="relative">
-              <CreditCard className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
-              <select className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-[color:var(--foreground-main)]">
-                <option>PayPlus (אשראי)</option>
-                <option>העברה בנקאית</option>
-                <option>צ&apos;ק / מזומן</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        {/* Preview */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">5</div>
-            <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תצוגה מקדימה</h3>
-          </div>
-          {d.selectedTypeMeta ? (
-            <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">{d.selectedTypeMeta.descriptionHe}</p>
-          ) : null}
-          <DocumentPreview
-            payload={previewPayloadFromDraft({
-              type: d.docType,
-              clientName: d.clientNameInput.trim() || d.contacts.find((c) => c.id === d.selectedContactId)?.name || "",
-              items: d.items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
-              net: billing.net,
-              vat: billing.vat,
-              total: billing.total,
-              vatRatePercent: d.vatRatePercent,
-              orgName: d.orgSettings?.name ?? "BSD-YBM",
-              orgTaxId: d.orgSettings?.taxId,
-              orgCompanyType: d.orgSettings?.companyType,
-            })}
+        <div className="mx-auto w-full max-w-[100rem] space-y-4 @2xl:space-y-6">
+          <IssuedDocumentsList
+            issuedList={d.issuedList}
+            issuedListLoading={d.issuedListLoading}
+            onOpen={(id) => d.navigateIssued(id)}
+            onRefresh={() => void d.fetchIssuedDocuments()}
           />
-        </section>
+
+          {/* Narrow window → single column. Wide window → form + sticky preview. */}
+          <WidgetColumns splitAt="@2xl" template="3-2" className="items-start">
+            {/* Form column */}
+            <div className="min-w-0 space-y-4 @2xl:space-y-6">
+              <DocumentClientPicker
+                contacts={d.contacts}
+                loading={d.fetchingContacts}
+                name={d.clientNameInput}
+                selectedContactId={d.selectedContactId}
+                isNewClient={d.isNewClient}
+                newClient={d.newClient}
+                onNameChange={d.setClientNameInput}
+                onSelectContact={(c) => { d.setSelectedContactId(c.id); d.setClientNameInput(c.name); }}
+                onNewClientChange={(patch) => d.setNewClient((prev) => ({ ...prev, ...patch }))}
+                onIsNewClientChange={d.setIsNewClient}
+              />
+
+              <DocItemsForm
+                items={d.items}
+                onAdd={d.addItem}
+                onRemove={d.removeItem}
+                onUpdate={d.updateItem}
+              />
+
+              {/* Additional settings */}
+              <section className="grid grid-cols-1 @lg:grid-cols-2 gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">3</div>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך פירעון</h3>
+                  </div>
+                  <div className="relative">
+                    <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
+                    <input type="date" className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
+                      defaultValue={new Date().toISOString().split("T")[0]} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">4</div>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">אמצעי תשלום</h3>
+                  </div>
+                  <div className="relative">
+                    <CreditCard className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
+                    <select className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-[color:var(--foreground-main)]">
+                      <option>PayPlus (אשראי)</option>
+                      <option>העברה בנקאית</option>
+                      <option>צ&apos;ק / מזומן</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Preview column — sticks beside the form on wide windows */}
+            <section className="min-w-0 @2xl:sticky @2xl:top-0 @2xl:self-start">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">5</div>
+                <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תצוגה מקדימה</h3>
+              </div>
+              {d.selectedTypeMeta ? (
+                <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">{d.selectedTypeMeta.descriptionHe}</p>
+              ) : null}
+              <DocumentPreview
+                payload={previewPayloadFromDraft({
+                  type: d.docType,
+                  clientName: d.clientNameInput.trim() || d.contacts.find((c) => c.id === d.selectedContactId)?.name || "",
+                  items: d.items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
+                  net: billing.net,
+                  vat: billing.vat,
+                  total: billing.total,
+                  vatRatePercent: d.vatRatePercent,
+                  orgName: d.orgSettings?.name ?? "BSD-YBM",
+                  orgTaxId: d.orgSettings?.taxId,
+                  orgCompanyType: d.orgSettings?.companyType,
+                })}
+              />
+            </section>
+          </WidgetColumns>
+        </div>
       </div>
 
       {/* Footer */}
