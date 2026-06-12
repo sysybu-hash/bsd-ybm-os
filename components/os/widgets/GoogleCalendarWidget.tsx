@@ -44,6 +44,11 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
     setAddOpen(true);
   };
 
+  const handleAddOnDay = (day: Date) => {
+    setSelectedDay(day);
+    setAddOpen(true);
+  };
+
   const handleSubmitEvent = async (draft: CalendarEventDraft) => {
     const ok = await createEvent(draft.start, draft.end, draft.summary);
     if (ok) {
@@ -109,7 +114,7 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
       dir={layoutDir}
     >
       {localOnly && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-blue-400/20 bg-blue-50/60 px-3 py-2 text-xs dark:bg-blue-900/10">
+        <div className="gcal-no-print flex shrink-0 items-center gap-2 border-b border-blue-400/20 bg-blue-50/60 px-3 py-2 text-xs dark:bg-blue-900/10">
           <span className="shrink-0 text-blue-600 dark:text-blue-400">📅</span>
           <span className="flex-1 text-blue-800 dark:text-blue-300">
             מציג משימות ופרויקטים בלבד. לסנכרון עם Google Calendar —
@@ -124,7 +129,7 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
         </div>
       )}
 
-      <div className="gcal-print-only border-b border-neutral-300 px-4 py-3">
+      <div className="hidden border-b border-neutral-300 px-4 py-3 print:block">
         <h1 className="text-xl font-bold text-black">{t(`${S}.title`)}</h1>
         <p className="text-sm text-neutral-700">
           {calendarSummary ? `${calendarSummary} · ` : ""}
@@ -192,6 +197,7 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
           selectedDay={selectedDay}
           onSelectDay={setSelectedDay}
           onCreateRange={handleCreateRange}
+          onAddOnDay={handleAddOnDay}
           dragHintLabel={t(`${S}.dragCreateMonth`)}
           moreEventsLabel={moreEventsLabel}
         />

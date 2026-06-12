@@ -829,6 +829,34 @@
   overscroll-behavior-y: contain;
 }
 
+/* Maximized window → reclaim the global top header (desktop only). The header
+   slides up to a thin peek strip; hover / keyboard focus brings it back. The
+   workspace inset collapses so the window extends into the reclaimed space. */
+.os-top-header {
+  transition: transform 0.22s ease;
+}
+@media (min-width: 768px) {
+  :root[data-window-maximized="true"] {
+    --workspace-inset-top: 0.5rem;
+  }
+  :root[data-window-maximized="true"] .os-top-header {
+    transform: translateY(calc(-100% + 6px));
+  }
+  :root[data-window-maximized="true"] .os-top-header:hover,
+  :root[data-window-maximized="true"] .os-top-header:focus-within {
+    transform: translateY(0);
+  }
+}
+
+/* Widget canvas: turns a widget content region into a size container so its
+   children can reflow with @-prefixed container-query variants based on the
+   WINDOW width (not the viewport). Pairs with the WidgetCanvas primitive and
+   is safe to add directly to a [data-widget-scroll-pane] element. */
+.widget-canvas {
+  container-type: inline-size;
+  container-name: widget;
+}
+
 /* Hub/app-builder content that owns its own inner scroll region: fill the pane. */
 [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"],
 [data-widget-scroll-pane] > [data-app-builder-root] {

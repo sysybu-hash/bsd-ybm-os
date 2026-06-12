@@ -53,9 +53,12 @@ export default function SettingsWidget() {
           </button>
         </div>
       }
-      scrollClassName="p-4 sm:p-8"
+      scrollClassName="widget-canvas p-4 sm:p-8"
     >
-        <div className="max-w-2xl mx-auto space-y-10">
+        {/* Narrow window: single comfortable column. Wide window: the sections
+            flow into a 2-column masonry that fills the width (kills the empty
+            side margins). Driven by window width via container queries. */}
+        <div className="mx-auto max-w-3xl space-y-10 @4xl:max-w-none @4xl:columns-2 @4xl:gap-8 @4xl:space-y-0 @4xl:[&>*]:mb-8 @4xl:[&>*]:break-inside-avoid">
 
           <ProfessionSettingsPanel
             initialIndustry={sw.orgIndustry ?? sw.session?.user?.organizationIndustry}

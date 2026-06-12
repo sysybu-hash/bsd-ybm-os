@@ -123,6 +123,7 @@ module.exports = {
   },
   plugins: [
     require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
     function ({ addUtilities, theme }) {
       addUtilities({
         ".bg-grid-white": {

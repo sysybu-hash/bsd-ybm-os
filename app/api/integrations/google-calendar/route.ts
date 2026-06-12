@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
@@ -18,7 +19,13 @@ const createEventSchema = z.object({
   description: z.string().trim().optional(),
   start: z.string().trim().min(1),
   end: z.string().trim().min(1),
+  allDay: z.boolean().optional(),
+  /** event | meeting | task — purely cosmetic prefix for the standalone entry */
+  kind: z.enum(["event", "meeting", "task"]).optional(),
 });
+
+const LOCAL_CALENDAR_ID = "local";
+const KIND_PREFIX: Record<string, string> = { meeting: "👥 ", task: "✅ ", event: "" };
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +81,7 @@ export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
       suggested: Boolean(org?.calendarGoogleEnabled && ctx.org && ctx.org.subscriptionStatus === "ACTIVE"),
       connectUrl: buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard"),
       calendarSummary: "יומן מקומי",
-      canWrite: false,
+      canWrite: true, // local calendar supports creating standalone events
       events: localEvents,
     });
   }
@@ -155,17 +162,43 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }, data) => {
   const limited = await applyRateLimit(req as NextRequest, "google:calendar-events-post", 20, 60_000);
   if (limited) return limited;
 
+  const { summary: rawSummary, description, start, end, allDay, kind } =
+    data as z.infer<typeof createEventSchema>;
+  const summary = `${KIND_PREFIX[kind ?? "event"] ?? ""}${rawSummary}`;
+
   const ctx = await loadCalendarEligibilityContext(userId, orgId);
+
+  // ── Standalone local calendar (no Google connection) ──────────────────────
+  // The calendar works on its own: store the event locally. If Google is later
+  // connected, a future sync can push these up.
   if (!canWriteToGoogleCalendar(ctx.settings)) {
-    return jsonBadRequest("יצירת אירועים דורשת סנכרון דו-כיווני פעיל", "bidirectional_required");
+    const startAt = new Date(start);
+    const endAt = new Date(end);
+    if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime()) || endAt <= startAt) {
+      return jsonBadRequest("טווח תאריכים לא תקין", "invalid_range");
+    }
+    const localEventId = `local-${randomUUID()}`;
+    const row = await prisma.googleCalendarEventLink.create({
+      data: {
+        userId,
+        organizationId: orgId,
+        googleCalendarId: LOCAL_CALENDAR_ID,
+        googleEventId: localEventId,
+        entityType: "STANDALONE",
+        summary,
+        startAt,
+        endAt,
+        allDay: Boolean(allDay),
+        lastSyncedFrom: "LOCAL",
+      },
+    });
+    return NextResponse.json({ ok: true, local: true, event: { id: row.id, summary } });
   }
 
   const calendarId = ctx.settings?.calendarId;
   if (!calendarId) {
     return jsonBadRequest("לא נבחר יומן", "no_calendar");
   }
-
-  const { summary, description, start, end } = data as z.infer<typeof createEventSchema>;
 
   try {
     const cal = await GoogleCalendarService.forUser(userId);
@@ -228,6 +261,35 @@ async function buildLocalCalendarEvents(
   };
 
   const events: LocalEvent[] = [];
+
+  // 0. Standalone local events the user created directly in the calendar.
+  const localRows = await prisma.googleCalendarEventLink.findMany({
+    where: {
+      userId,
+      organizationId: orgId,
+      googleCalendarId: LOCAL_CALENDAR_ID,
+      startAt: { lte: to },
+      endAt: { gte: from },
+    },
+    select: { id: true, summary: true, startAt: true, endAt: true, allDay: true },
+    take: 200,
+    orderBy: { startAt: "asc" },
+  }).catch(() => []);
+
+  for (const r of localRows) {
+    events.push({
+      id: r.id,
+      summary: r.summary,
+      start: r.startAt.toISOString(),
+      end: r.endAt.toISOString(),
+      allDay: r.allDay,
+      entityType: "STANDALONE",
+      htmlLink: null,
+      googleEventId: null,
+      taskId: null,
+      local: true,
+    });
+  }
 
   // 1. Tasks with dueDate or startDate in range
   const tasks = await prisma.task.findMany({

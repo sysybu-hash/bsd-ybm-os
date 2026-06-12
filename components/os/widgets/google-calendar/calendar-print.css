@@ -1,22 +1,36 @@
+/* Print: isolate the calendar so window.print() yields ONLY the board + title,
+   not a screenshot of the whole OS. We hide everything via visibility, then
+   re-show the calendar root subtree and pull it to the page origin. */
 @media print {
   @page {
-    margin: 12mm;
-    size: auto;
+    margin: 10mm;
+    size: landscape;
   }
 
-  .gcal-no-print {
-    display: none !important;
+  /* Hide the entire app… */
+  body * {
+    visibility: hidden !important;
   }
 
-  .gcal-print-only {
-    display: block !important;
+  /* …then reveal only the calendar root and its descendants. */
+  #google-calendar-print-root,
+  #google-calendar-print-root * {
+    visibility: visible !important;
   }
 
+  /* Pull the calendar to the top-left of the printed page and let it grow to
+     its natural height (so every week prints, across pages if needed). */
   #google-calendar-print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     background: #fff !important;
     color: #111 !important;
-    height: auto !important;
-    overflow: visible !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -26,23 +40,38 @@
     text-shadow: none !important;
   }
 
-  #google-calendar-print-root .gcal-print-surface {
+  /* Interactive chrome (toolbar, banners, add-button) is not printed.
+     (The print-only title block uses Tailwind's `hidden print:block`.) */
+  .gcal-no-print {
+    display: none !important;
+  }
+
+  /* Neutralise the flex/scroll constraints so the board flows at full height. */
+  #google-calendar-print-root .gcal-print-surface,
+  #google-calendar-print-root .custom-scrollbar,
+  #google-calendar-print-root [data-widget-scroll-pane] {
     overflow: visible !important;
     max-height: none !important;
     height: auto !important;
+    flex: none !important;
   }
 
-  #google-calendar-print-root .custom-scrollbar {
-    overflow: visible !important;
+  /* Month grid: give every cell a visible border + a printable height so empty
+     days still read as a proper calendar grid. */
+  #google-calendar-print-root .gcal-month-grid {
+    gap: 0 !important;
+  }
+  #google-calendar-print-root .gcal-month-grid > * {
+    border: 1px solid #cbd5e1 !important;
+    min-height: 96px !important;
+    border-radius: 0 !important;
+    background: #fff !important;
   }
 
   #google-calendar-print-root article,
   #google-calendar-print-root .gcal-event-chip {
+    border-color: #cbd5e1 !important;
     break-inside: avoid;
     page-break-inside: avoid;
   }
-}
-
-.gcal-print-only {
-  display: none;
 }

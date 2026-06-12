@@ -118,13 +118,20 @@ export default function AiScannerWidget({
   }
 
   const inEditorMode = !!pendingAnalysis;
-  // Natural-flow model: on mobile the whole window scrolls as one document (like
-  // every other widget) — the scanner flows at its natural height instead of
-  // owning tiny inner scroll panes. The editor still constrains so its full
-  // editor can scroll inside.
-  const constrainToViewport = !embeddedInHub || inEditorMode;
-  const useNaturalHeightLayout = (stackScannerPanels || embeddedInHub) && !inEditorMode;
-  const useInnerEditorScroll = inEditorMode && (embeddedInHub || constrainToViewport);
+  // Layout model:
+  //  • Mobile (stackScannerPanels): natural-flow — the whole window scrolls as
+  //    one document; panels flow at their natural height.
+  //  • Desktop (incl. embedded in a hub): CONSTRAINED — the body scrolls
+  //    internally while the action bar + engine status stay PINNED at the
+  //    bottom, so the scan buttons are always visible (never cut off behind the
+  //    dock). Previously embedded-desktop wrongly used natural flow, pushing the
+  //    control bar below the fold.
+  const useNaturalHeightLayout = stackScannerPanels && !inEditorMode;
+  const constrainToViewport = !useNaturalHeightLayout;
+  const useInnerEditorScroll = inEditorMode;
+  // Is there anything to show in the results panel yet? When idle we hide the
+  // empty panel and let the drop zone span the full width.
+  const hasScanOutput = !!resultJson || queue.length > 0 || isProcessing;
 
   return (
     <div
@@ -132,7 +139,7 @@ export default function AiScannerWidget({
         constrainToViewport ? "h-full" : ""
       } ${embeddedInHub ? "[&_.workspace-window]:hidden" : ""}`}
       data-embedded-in-hub={embeddedInHub ? "true" : undefined}
-      data-hub-inner-scroll={embeddedInHub && inEditorMode ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub && constrainToViewport ? "true" : undefined}
       dir={dir}
     >
       <ScanHistorySidebar
@@ -272,11 +279,35 @@ export default function AiScannerWidget({
               </pre>
             </div>
           </div>
+        ) : !hasScanOutput ? (
+          /* Desktop idle: no scan yet — give the drop zone the full width
+             instead of showing an empty results panel beside it. */
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ScanDropZone
+              isDragging={isDragging}
+              setIsDragging={setIsDragging}
+              isProcessing={isProcessing}
+              queue={queue}
+              queueProgress={queueProgress}
+              hasPendingAnalysis={!!pendingAnalysis}
+              previewUrl={previewUrl}
+              previewMime={previewMime}
+              previewFileName={previewFileName}
+              fileAccept={fileAccept}
+              fileInputRef={fileInputRef}
+              cameraInputRef={cameraInputRef}
+              onDrop={onDrop}
+              onFileInputChange={onFileInputChange}
+              applyFilePreview={applyFilePreview}
+              t={t}
+              tr={tr}
+            />
+          </div>
         ) : (
-          /* Desktop: fixed resizable panels */
+          /* Desktop with output: resizable drop zone ‖ results */
           <Group
             orientation="horizontal"
-            className={embeddedInHub ? "min-h-[42vh]" : "min-h-0 flex-1"}
+            className="min-h-0 flex-1"
           >
             <Panel
               defaultSize={48}
