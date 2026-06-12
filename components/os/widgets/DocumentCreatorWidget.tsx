@@ -70,11 +70,9 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
               <option key={dt.id} value={dt.id}>{dt.labelHe}</option>
             ))}
           </select>
-          {!embeddedInHub ? (
-            <h2 className="hidden truncate text-sm font-bold text-[color:var(--foreground-main)] sm:block">
-              מחולל מסמכים חכם
-            </h2>
-          ) : null}
+          <h2 className="truncate text-sm font-bold text-[color:var(--foreground-main)]">
+            מחולל מסמכים חכם
+          </h2>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <KnowledgeVaultAttachButton onSelect={(item) => toast.success(`${t("workspaceWidgets.documentCreator.selectedFromVault")}: ${item.name}`)} />
