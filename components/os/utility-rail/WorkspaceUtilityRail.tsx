@@ -61,21 +61,29 @@ export default function WorkspaceUtilityRail({ openWidget, suppressOnMobile = fa
     <div
       className={`os-utility-rail-host pointer-events-none fixed z-[1185] ${suppressOnMobile ? "max-md:hidden" : ""}`}
     >
-      <div className="pointer-events-auto flex h-full flex-col items-center justify-center gap-1">
-        <UtilityTabPanel open={open} activeTab={activeTab} onClose={() => setPanelOpen(false)}>
-          {activeTab === "zmanim" ? (
-            <ZmanimUtilityPanel onOpenFullWidget={() => handleOpenFullWidget("jewishCalendar")} />
-          ) : null}
-          {activeTab === "calculator" ? (
-            <CalculatorUtilityPanel
-              mode={calcMode}
-              onModeChange={handleCalcModeChange}
-              autoFocus={open}
-            />
-          ) : null}
-          {activeTab === "currency" ? <CurrencyConverterPanel autoFocus={open} /> : null}
-        </UtilityTabPanel>
-        <UtilityTabStrip activeTab={activeTab} open={open} onTabClick={handleTabClick} />
+      {/* Wrapper stays pointer-events-none so the empty top/bottom of the rail
+          column never intercepts clicks meant for content underneath — e.g. a
+          maximized window's close button, which lands in this exact corner in
+          RTL. Only the actual panel + tab strip opt back into pointer events. */}
+      <div className="pointer-events-none flex h-full flex-col items-center justify-center gap-1">
+        <div className="pointer-events-auto">
+          <UtilityTabPanel open={open} activeTab={activeTab} onClose={() => setPanelOpen(false)}>
+            {activeTab === "zmanim" ? (
+              <ZmanimUtilityPanel onOpenFullWidget={() => handleOpenFullWidget("jewishCalendar")} />
+            ) : null}
+            {activeTab === "calculator" ? (
+              <CalculatorUtilityPanel
+                mode={calcMode}
+                onModeChange={handleCalcModeChange}
+                autoFocus={open}
+              />
+            ) : null}
+            {activeTab === "currency" ? <CurrencyConverterPanel autoFocus={open} /> : null}
+          </UtilityTabPanel>
+        </div>
+        <div className="pointer-events-auto">
+          <UtilityTabStrip activeTab={activeTab} open={open} onTabClick={handleTabClick} />
+        </div>
       </div>
     </div>
   );
