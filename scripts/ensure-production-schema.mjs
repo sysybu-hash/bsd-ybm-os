@@ -36,6 +36,19 @@ if (isPlaceholderUrl(db)) {
   process.exit(0);
 }
 
+// The schema's datasource declares `directUrl = env("DIRECT_URL")`, so every
+// Prisma schema command (db push / migrate deploy) needs DIRECT_URL. Preview
+// deployments (e.g. Vercel) often only carry the pooled DATABASE_URL and must
+// NOT run schema ops against the production DB anyway — so skip gracefully
+// instead of hard-failing the build. Production and CI both set DIRECT_URL.
+const directUrl = (getProjectEnv("DIRECT_URL") || "").trim();
+if (!directUrl) {
+  console.log(
+    "[ensure-production-schema] skip — DIRECT_URL not set (e.g. preview deploy); schema ops require it",
+  );
+  process.exit(0);
+}
+
 const useDbPush = shouldUseDbPush(db);
 
 console.log(
