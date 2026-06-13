@@ -19,6 +19,19 @@ import { z } from "zod";
 
 const str = z.string().min(1);
 const optStr = z.string().optional();
+
+/**
+ * בזמן `next build` (איסוף נתוני דפים, כולל /_not-found) משתני סביבה של
+ * runtime עשויים להיעדר לגיטימית — במיוחד ב-Preview deployments שבהם
+ * DATABASE_URL/NEXTAUTH_SECRET מוגדרים רק ל-Production. ב-build נרפה את
+ * האימות הקשיח של שדות החובה (האימות הקשיח נשמר ל-runtime, ראו validateEnv).
+ */
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+/** מחרוזת חובה ב-runtime, אופציונלית בזמן build בלבד */
+const requiredStr = isBuildPhase
+  ? z.string().optional().transform((v) => v ?? "")
+  : str;
 const optBool = z
   .string()
   .optional()
@@ -28,11 +41,13 @@ const optBool = z
 
 const serverSchema = z.object({
   // --- Core DB ---
-  DATABASE_URL: str,
+  DATABASE_URL: requiredStr,
   DIRECT_URL: optStr,
 
   // --- Auth ---
-  NEXTAUTH_SECRET: str.or(z.undefined()).transform((v) => v ?? process.env.AUTH_SECRET ?? ""),
+  NEXTAUTH_SECRET: z
+    .preprocess((v) => (typeof v === "string" && v.length > 0 ? v : undefined), z.string().optional())
+    .transform((v) => v ?? process.env.AUTH_SECRET ?? ""),
   NEXTAUTH_URL: optStr,
   AUTH_SECRET: optStr,
   AUTH_URL: optStr,
@@ -243,8 +258,8 @@ function validateEnv() {
     );
   }
 
-  // NEXTAUTH_SECRET: דרוש לפחות אחד
-  if (!parsed.NEXTAUTH_SECRET && !parsed.AUTH_SECRET) {
+  // NEXTAUTH_SECRET: דרוש לפחות אחד — נאכף ב-runtime בלבד (ב-build עשוי להיעדר)
+  if (!isBuildPhase && !parsed.NEXTAUTH_SECRET && !parsed.AUTH_SECRET) {
     throw new Error(
       "❌ NEXTAUTH_SECRET (or AUTH_SECRET) is required for authentication."
     );
