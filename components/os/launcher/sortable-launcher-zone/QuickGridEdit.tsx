@@ -27,7 +27,7 @@ import {
   parseQuickGridDragId,
   quickGridCellId,
   quickGridDragId,
-  quickGridInlineStyle,
+  quickGridEditInlineStyle,
   type GridCellCoord,
   type QuickGridCell,
 } from "@/lib/launcher/quick-grid";
@@ -105,7 +105,7 @@ export function QuickGridEdit({
   const totalRows = matrix.length;
   const totalCols = matrix[0]?.length ?? 0;
   const gridStyle = useMemo(
-    () => quickGridInlineStyle(totalCols, totalRows),
+    () => quickGridEditInlineStyle(totalCols, totalRows),
     [totalCols, totalRows],
   );
 
