@@ -31,9 +31,9 @@ export const LAUNCHER_QUICK_TILE_WRAPPER_CLASS =
 export const LAUNCHER_QUICK_EDIT_GRID_CLASS =
   "grid shrink-0 justify-items-stretch rounded-xl border border-dashed border-indigo-400/30 [direction:ltr] bg-[color:var(--surface-card)]/40 p-3 shadow-sm";
 
-/** מעטפת עריכת quick grid — ממורכזת, ללא גלילה מיותרת */
+/** מעטפת עריכת quick grid — נגללת אופקית/אנכית כדי שהאריחים יישארו בגודל קריא */
 export const LAUNCHER_QUICK_EDIT_SCROLL_CLASS =
-  "flex min-h-0 w-full flex-1 items-start justify-center overflow-hidden overscroll-contain px-1 py-2 md:overflow-x-auto md:overflow-y-auto";
+  "flex min-h-0 w-full flex-1 items-start justify-start overflow-auto overscroll-contain px-1 py-2 md:justify-center";
 
 /** @deprecated השתמשו ב־LAUNCHER_QUICK_GRID_CONTAINER_CLASS + שורות */
 export const LAUNCHER_QUICK_GRID_CLASS = LAUNCHER_QUICK_GRID_CONTAINER_CLASS;

@@ -77,6 +77,22 @@ export function quickGridInlineStyle(cols: number, _rows: number): QuickGridInli
   };
 }
 
+/**
+ * רשת עריכה: עמודות ברוחב אריח קבוע (לא מתכווצות) + רוחב max-content,
+ * כדי שבמובייל האריחים יישארו קריאים והקנבס ייגלל אופקית במקום להידחס.
+ */
+export function quickGridEditInlineStyle(cols: number, _rows: number): QuickGridInlineStyle {
+  const gapPx = LAUNCHER_GRID_GAP_PX;
+  const maxW = quickGridDesktopWidthPx(cols);
+  return {
+    width: "max-content",
+    maxWidth: `${maxW}px`,
+    gridTemplateColumns: `repeat(${cols}, ${LAUNCHER_TILE_PX}px)`,
+    columnGap: `${gapPx}px`,
+    rowGap: `${gapPx}px`,
+  };
+}
+
 /** רוחב מקסימלי לרשת 4 עמודות (Hub) */
 export const LAUNCHER_QUICK_DESKTOP_MAX_WIDTH_PX = quickGridDesktopWidthPx(QUICK_GRID_HUB_COLS);
 
