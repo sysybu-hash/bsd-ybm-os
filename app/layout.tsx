@@ -7,7 +7,7 @@ import { buildRootMetadata } from "@/lib/site-metadata";
 // ready before first paint. display:"swap" + adjustFontFallback limits CLS.
 const heeboCritical = Heebo({
   subsets: ["hebrew"],
-  weight: ["700", "800", "900"],
+  weight: ["700", "800"],
   display: "swap",
   preload: true,
   adjustFontFallback: true,

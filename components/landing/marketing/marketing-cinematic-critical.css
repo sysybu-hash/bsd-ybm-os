@@ -188,9 +188,7 @@ html.light .marketing-cinematic .mkt-hero-blessing {
 }
 
 .marketing-cinematic .mkt-hero-title {
-  /* Preloaded critical Heebo (700/800/900) — keeps the LCP H1 painting with the
-     intended font without waiting on the deferred, non-preloaded heebo family. */
-  font-family: var(--font-heebo-critical), var(--font-heebo), "Heebo", system-ui, sans-serif;
+  font-family: var(--font-heebo), "Heebo", system-ui, sans-serif;
   font-size: clamp(2.25rem, 4.5vw + 1rem, 4.5rem);
   font-weight: 900;
   /* Dark page: light glow — dark halo matched the bg and hid Hebrew title lines */
