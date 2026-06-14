@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
-import BrandLogo from "@/components/brand/BrandLogo";
 import { AUTH_INPUT, AUTH_BTN_PRIMARY } from "@/components/auth/auth-ui";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -113,17 +112,14 @@ export default function AuthExperience({
       <div className="absolute end-5 top-5 z-10">
         <LocaleSwitcher compact />
       </div>
-      <div className="absolute start-5 top-5 z-10">
-        <BrandHomeLink size="sm" variant="lockup" tone="auto" />
-      </div>
 
       <section className="relative z-[1] grid w-full max-w-5xl overflow-hidden rounded-3xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl md:grid-cols-[0.9fr_1.1fr]">
-        {/* ── Brand / value panel (all text → fast LCP) ── */}
+        {/* ── Brand / value panel ── */}
         <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-8 text-white md:p-10">
           <div aria-hidden className="pointer-events-none absolute -end-16 -top-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -start-12 bottom-0 h-48 w-48 rounded-full bg-emerald-500/15 blur-3xl" />
           <div className="relative">
-            <BrandLogo size="xl" variant="lockup" tone="night" tile={false} />
+            <BrandHomeLink size="xl" variant="image" tone="night" priority />
             {tenant?.branding.landingTitle ? (
               <p className="mt-5 text-base font-black text-white/90">{tenant.branding.landingTitle}</p>
             ) : null}
@@ -217,11 +213,7 @@ export default function AuthExperience({
               </>
             )
           ) : (
-            <>
-              <h2 className="mb-1 text-2xl font-black tracking-tight">{t("auth.register.title")}</h2>
-              <p className="mb-5 text-sm text-[color:var(--foreground-muted)]">{t("auth.hub.registerSubtitle")}</p>
-              <RegisterWizard embedded onSwitchToLogin={() => setTabAndUrl("login")} />
-            </>
+            <RegisterWizard embedded onSwitchToLogin={() => setTabAndUrl("login")} />
           )}
 
           <button
