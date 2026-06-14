@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
@@ -9,40 +9,48 @@ import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTenant } from "@/components/tenant/TenantContext";
 import LoginPanel from "@/components/auth/LoginPanel";
-import RegisterWizard from "@/components/auth/RegisterWizard";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
+
+// Code-split the heavier registration wizard so /login ships only the login JS.
+const RegisterWizard = dynamic(() => import("@/components/auth/RegisterWizard"), {
+  loading: () => (
+    <div className="h-64 animate-pulse rounded-xl bg-[color:var(--surface-soft)]" aria-hidden />
+  ),
+});
 
 type Tab = "login" | "register";
 
-export default function AuthExperience() {
+type AuthExperienceProps = Readonly<{
+  /** Initial tab from the server-read `?mode=` param — keeps the page SSR-able. */
+  initialMode?: Tab;
+  /** Server-read `?email=` param to prefill the login form. */
+  prefilledEmail?: string;
+  /** Server-read `?plan=` param for funnel attribution. */
+  plan?: string | null;
+}>;
+
+export default function AuthExperience({
+  initialMode = "login",
+  prefilledEmail = "",
+  plan = null,
+}: AuthExperienceProps) {
   const { t, dir } = useI18n();
   const { status } = useSession();
   const router = useRouter();
-  const params = useSearchParams();
   const tenant = useTenant();
 
-  const initialTab = useMemo<Tab>(() => {
-    if (params.get("mode") === "register") return "register";
-    return "login";
-  }, [params]);
-
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTab] = useState<Tab>(initialMode);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
 
-  const prefilledEmail = params.get("email")?.trim() ?? "";
-
-  useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
-
   useEffect(() => {
     if (tab !== "register") return;
     void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelRegisterStarted }) => {
-      trackFunnelRegisterStarted(params.get("plan") ? "register_plan" : "login_tab");
+      trackFunnelRegisterStarted(plan ? "register_plan" : "login_tab");
     });
-  }, [tab, params]);
+  }, [tab, plan]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -53,13 +61,16 @@ export default function AuthExperience() {
   const setTabAndUrl = useCallback(
     (next: Tab) => {
       setTab(next);
-      const q = new URLSearchParams(params.toString());
+      // Preserve any other query params; read from the live URL (client-only callback).
+      const q = new URLSearchParams(
+        typeof window !== "undefined" ? window.location.search : "",
+      );
       if (next === "register") q.set("mode", "register");
       else q.delete("mode");
       const s = q.toString();
       router.replace(s ? `/login?${s}` : "/login", { scroll: false });
     },
-    [params, router],
+    [router],
   );
 
   const submitForgot = async () => {
@@ -84,14 +95,8 @@ export default function AuthExperience() {
     }
   };
 
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[color:var(--background-main)]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" aria-hidden />
-      </div>
-    );
-  }
-
+  // Render the auth UI immediately — don't block the LCP on the session probe.
+  // Authenticated visitors are redirected by the effect above (brief, rare flash).
   return (
     <main
       className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[color:var(--background-main)] px-4 py-10 text-[color:var(--foreground-main)]"
