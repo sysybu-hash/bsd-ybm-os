@@ -204,9 +204,9 @@ export function useWindowManager() {
         zoom: 1,
         isMaximized: layout.isMaximized || anyMaximized,
       };
-      if (mobile) {
-        return [next];
-      }
+      // Append on every viewport — opening a widget no longer closes the others;
+      // previous windows stay open in the background (reachable via the window
+      // switcher / minimized dock). On mobile the new one opens on top (maximized).
       return [...prev, next];
     });
 

@@ -291,6 +291,7 @@ export default function OmniCanvasWorkspace() {
           openWidget={openWidget}
           onOpenOmnibar={() => setMobileOmnibarOpen(true)}
           onOpenWindowSwitcher={() => setWindowSwitcherOpen(true)}
+          omnibarOpen={mobileOmnibarOpen}
         />
         <MobileOmnibarSheet
           open={mobileOmnibarOpen}
