@@ -2,17 +2,14 @@
 
 on:
   pull_request:
-  push:
-    branches:
-      - master
-      - main
   workflow_dispatch:
 
-# Cancel superseded runs on the same branch/PR (a new push aborts the old run).
-# Never cancels main runs, so post-merge validation/deploy always completes.
+# Validate on the PR only (no duplicate full run on merge to main). The Vercel
+# deploy gate runs separately on merge, so production is still protected.
+# Cancel superseded runs on the same PR/branch (a new push aborts the old run).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+  cancel-in-progress: true
 
 jobs:
   gitleaks:
@@ -203,6 +200,7 @@ jobs:
   lighthouse-mobile:
     name: Lighthouse CI (local)
     needs: verify
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -252,7 +250,7 @@ jobs:
 
   lighthouse-www:
     name: Lighthouse CI (production)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
