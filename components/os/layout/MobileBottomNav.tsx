@@ -17,6 +17,8 @@ export type MobileBottomNavProps = {
   openWidget: (type: WidgetType) => void;
   onOpenOmnibar: () => void;
   onOpenWindowSwitcher?: () => void;
+  /** Hide the floating center button while the omnibar sheet is open. */
+  omnibarOpen?: boolean;
 };
 
 type NavItem = { type: WidgetType; labelKey: string; icon: LucideIcon; chip?: boolean };
@@ -124,6 +126,7 @@ export default function MobileBottomNav({
   openWidget,
   onOpenOmnibar,
   onOpenWindowSwitcher,
+  omnibarOpen = false,
 }: MobileBottomNavProps) {
   const { t, dir } = useI18n();
   const isPlatformAdmin = useIsPlatformAdmin();
@@ -199,15 +202,17 @@ export default function MobileBottomNav({
           </div>
         </div>
 
-        {/* כפתור omnibar מרכזי — צף, חצי מעל ה-dock; טבעת עבה חוצבת מגרעת ב-dock */}
-        <button
-          type="button"
-          onClick={onOpenOmnibar}
-          className="absolute left-1/2 top-0 z-[1287] flex h-16 w-16 min-h-[64px] min-w-[64px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-[6px] ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-[72px] sm:w-[72px]"
-          aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
-        >
-          <Mic size={30} strokeWidth={2} aria-hidden />
-        </button>
+        {/* כפתור omnibar מרכזי — צף, חצי מעל ה-dock; מוסתר כשה-omnibar פתוח */}
+        {!omnibarOpen ? (
+          <button
+            type="button"
+            onClick={onOpenOmnibar}
+            className="absolute left-1/2 top-0 z-[1287] flex h-16 w-16 min-h-[64px] min-w-[64px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-[6px] ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-[72px] sm:w-[72px]"
+            aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
+          >
+            <Mic size={30} strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
 
       <nav
         className="flex min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
