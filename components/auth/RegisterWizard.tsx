@@ -6,6 +6,13 @@ import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import PasswordFields from "@/components/auth/PasswordFields";
 import { passwordMeetsRules } from "@/lib/auth/client-password";
+import {
+  AUTH_INPUT,
+  AUTH_BTN_PRIMARY,
+  AUTH_OPTION_CARD,
+  AUTH_OPTION_CARD_ACTIVE,
+  AUTH_OPTION_CARD_IDLE,
+} from "@/components/auth/auth-ui";
 import { useRegisterWizard, type OrgTypeKey } from "./register-wizard/useRegisterWizard";
 
 type Props = {
@@ -40,8 +47,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
       <p className="mt-3 text-sm text-[color:var(--foreground-muted)]">
         {pendingApproval ? t("auth.hub.register.pendingDesc") : t("auth.hub.register.successDesc")}
       </p>
-      <button type="button" onClick={() => goLogin(true)}
-        className="mt-6 w-full rounded-lg bg-[color:var(--accent)] px-4 py-3 text-sm font-black text-white">
+      <button type="button" onClick={() => goLogin(true)} className={`mt-6 ${AUTH_BTN_PRIMARY}`}>
         {t("auth.register.success.cta")}
       </button>
     </div>
@@ -93,7 +99,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
               <div className="grid gap-2 sm:grid-cols-2">
                 {(["COMPANY_MGMT", "CONSTRUCTION"] as const).map((key) => (
                   <button key={key} type="button" onClick={() => setIndustry(key)}
-                    className={`rounded-xl border p-3 text-start text-sm transition ${industry === key ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10" : "border-[color:var(--border-main)]"}`}>
+                    className={`${AUTH_OPTION_CARD} ${industry === key ? AUTH_OPTION_CARD_ACTIVE : AUTH_OPTION_CARD_IDLE}`}>
                     {key === "COMPANY_MGMT" ? t("auth.register.industryCompany") : t("auth.register.industryConstruction")}
                   </button>
                 ))}
@@ -102,7 +108,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
             <div className="grid gap-3 sm:grid-cols-2">
               {(["home", "freelancer", "company", "enterprise"] as OrgTypeKey[]).map((key) => (
                 <button key={key} type="button" onClick={() => setOrgType(key)}
-                  className={`rounded-xl border p-4 text-start transition ${orgType === key ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10" : "border-[color:var(--border-main)] hover:bg-[color:var(--surface-card)]"}`}>
+                  className={`rounded-xl border p-4 text-start transition ${orgType === key ? AUTH_OPTION_CARD_ACTIVE : AUTH_OPTION_CARD_IDLE}`}>
                   <p className="font-black">{t(`auth.register.types.${key}.label`)}</p>
                   <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">{t(`auth.register.types.${key}.desc`)}</p>
                 </button>
@@ -120,7 +126,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
             <div className="grid gap-2 sm:grid-cols-2">
               {specializationOptions.map((opt) => (
                 <button key={opt.id} type="button" onClick={() => setSpecialization(opt.id)}
-                  className={`rounded-xl border p-3 text-start text-sm transition ${specialization === opt.id ? "border-[color:var(--accent)] bg-[color:var(--accent)]/10" : "border-[color:var(--border-main)] hover:bg-[color:var(--surface-card)]"}`}>
+                  className={`rounded-xl border p-3 text-start text-sm transition ${specialization === opt.id ? AUTH_OPTION_CARD_ACTIVE : AUTH_OPTION_CARD_IDLE}`}>
                   {opt.label}
                 </button>
               ))}
@@ -134,13 +140,13 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
             <label className="block text-sm font-bold">
               {t("auth.register.labels.fullName")}
               <input value={name} onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+                className={`mt-1 ${AUTH_INPUT}`}
                 placeholder={t("auth.register.placeholders.fullName")} />
             </label>
             <label className="block text-sm font-bold">
               {t("auth.register.labels.email")}
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+                className={`mt-1 ${AUTH_INPUT}`}
                 readOnly={Boolean(initialEmail)} autoComplete="email" />
             </label>
             <p className="text-xs text-[color:var(--foreground-muted)]">{t("auth.hub.register.emailHint")}</p>
@@ -152,7 +158,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           <label className="block text-sm font-bold">
             {orgNameLabel}
             <input value={orgName} onChange={(e) => setOrgName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+              className={`mt-1 ${AUTH_INPUT}`}
               placeholder={orgNamePlaceholder} />
           </label>
         )}
@@ -189,7 +195,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
       <div className="mt-5 flex flex-wrap gap-3">
         {step > 0 ? (
           <button type="button" onClick={() => setStep((s) => s - 1)}
-            className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--border-main)] px-4 py-2.5 text-sm font-bold">
+            className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-2.5 text-sm font-bold transition hover:bg-[color:var(--surface-soft)]">
             <BackIcon size={16} aria-hidden />
             {t("auth.register.back")}
           </button>
@@ -201,13 +207,13 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
         )}
         {step < steps.length - 1 ? (
           <button type="button" onClick={goNext}
-            className="ms-auto inline-flex items-center gap-2 rounded-lg bg-[color:var(--accent)] px-5 py-2.5 text-sm font-black text-white">
+            className="ms-auto inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500">
             {t("auth.register.next")}
             <NextIcon size={16} aria-hidden />
           </button>
         ) : (
           <button type="button" disabled={busy} onClick={() => void submit()}
-            className="ms-auto rounded-lg bg-[color:var(--accent)] px-5 py-2.5 text-sm font-black text-white disabled:opacity-60">
+            className="ms-auto inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-60">
             {busy ? "…" : t("auth.register.submit")}
           </button>
         )}
