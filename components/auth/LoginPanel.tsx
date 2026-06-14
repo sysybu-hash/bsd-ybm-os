@@ -13,6 +13,7 @@ import {
   writeRememberPreference,
 } from "@/lib/auth/remember-preference";
 import { loginErrorMessages, loginReasonMessages } from "@/lib/auth/login-messages";
+import { AUTH_INPUT, AUTH_BTN_PRIMARY, AUTH_BTN_SECONDARY } from "@/components/auth/auth-ui";
 
 type Props = {
   t: (key: string) => string;
@@ -127,13 +128,13 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
           autoComplete="new-password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+          className={AUTH_INPUT}
           placeholder={t("auth.hub.reset.placeholder")}
         />
         <button
           type="submit"
           disabled={resetBusy || newPassword.length < 12}
-          className="w-full rounded-lg bg-[color:var(--accent)] py-3 text-sm font-black text-white disabled:opacity-60"
+          className={AUTH_BTN_PRIMARY}
         >
           {resetBusy ? "…" : t("auth.hub.reset.submit")}
         </button>
@@ -161,7 +162,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         type="button"
         onClick={() => void handleGoogle()}
         disabled={googleLoading}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-5 text-base font-black shadow-sm transition hover:bg-[color:var(--surface-soft)] disabled:opacity-60"
+        className={AUTH_BTN_SECONDARY}
       >
         {googleLoading ? (
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
@@ -201,7 +202,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={t("auth.login.emailPlaceholder")}
-          className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+          className={AUTH_INPUT}
         />
         <input
           type="password"
@@ -209,7 +210,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder={t("auth.login.passwordPlaceholder")}
-          className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent p-3 text-sm"
+          className={AUTH_INPUT}
         />
         <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[color:var(--foreground-muted)]">
           <input
@@ -223,7 +224,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         <button
           type="submit"
           disabled={credsLoading}
-          className="w-full rounded-lg bg-[color:var(--accent)] py-3 text-sm font-black text-white disabled:opacity-60"
+          className={AUTH_BTN_PRIMARY}
         >
           {credsLoading ? "…" : t("auth.login.submit")}
         </button>
