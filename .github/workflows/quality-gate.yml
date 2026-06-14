@@ -8,6 +8,12 @@ on:
       - main
   workflow_dispatch:
 
+# Cancel superseded runs on the same branch/PR (a new push aborts the old run).
+# Never cancels main runs, so post-merge validation/deploy always completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+
 jobs:
   gitleaks:
     name: Secret scanning (gitleaks)
