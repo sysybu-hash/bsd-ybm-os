@@ -37,7 +37,7 @@ export default function UtilityTabStrip({ activeTab, open, onTabClick }: Props) 
             className={`os-utility-rail-tab flex min-h-[44px] min-w-[var(--os-utility-rail-tab-width)] items-center justify-center rounded-s-xl border transition ${
               selected
                 ? "border-indigo-400/50 bg-indigo-500/15 text-indigo-600 dark:text-indigo-300"
-                : "border-[color:var(--border-main)] bg-[color:var(--glass-bg)] text-indigo-600 shadow-md dark:text-indigo-300 hover:bg-[color:var(--surface-soft)]"
+                : "border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-indigo-600 shadow-sm dark:text-indigo-300 hover:bg-[color:var(--surface-soft)]"
             }`}
           >
             <Icon size={20} strokeWidth={1.75} aria-hidden />

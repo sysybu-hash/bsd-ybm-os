@@ -63,7 +63,7 @@ export default function UtilityTabPanel({ open, activeTab, onClose, children }: 
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: dir === "rtl" ? -24 : 24, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="os-utility-rail-panel fixed z-[1185] flex flex-col overflow-hidden border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-lg backdrop-blur-sm
+            className="os-utility-rail-panel fixed z-[1185] flex flex-col overflow-hidden border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-lg
               end-[var(--os-utility-rail-tab-width)]
               top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)]
               w-[min(100vw,var(--os-utility-rail-panel-width))]

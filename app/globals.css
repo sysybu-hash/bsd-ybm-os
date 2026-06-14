@@ -1050,7 +1050,7 @@
 }
 
 .os-utility-rail-tab {
-  box-shadow: 3px 0 14px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--glass-shadow);
 }
 
 @keyframes landing-fade-up {
