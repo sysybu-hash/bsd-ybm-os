@@ -1,18 +1,11 @@
 name: Lighthouse
 
+# Manual only — run from the Actions tab when you want a Lighthouse audit.
+# Removed the automatic pull_request trigger to keep PR CI fast and quiet
+# (this advisory audit was slow and non-blocking).
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "public/**"
-      - "scripts/lighthouse-*.mjs"
-      - "config/lighthouse-url-matrix.json"
-      - "lighthouserc.json"
 
-# Cancel superseded Lighthouse runs on the same branch/PR.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
