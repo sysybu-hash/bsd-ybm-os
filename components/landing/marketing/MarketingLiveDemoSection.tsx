@@ -3,7 +3,6 @@
 import ScrollReveal from "@/components/landing/marketing/ScrollReveal";
 import MarketingFieldScanDemo from "@/components/landing/marketing/MarketingFieldScanDemo";
 import DesktopOsMockup from "@/components/landing/marketing/DesktopOsMockup";
-import MarketingWorkspaceLiveScreenshot from "@/components/landing/marketing/MarketingWorkspaceLiveScreenshot";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 export default function MarketingLiveDemoSection() {
@@ -35,9 +34,6 @@ export default function MarketingLiveDemoSection() {
           </ScrollReveal>
           <ScrollReveal delay={0.1} className="mkt-hero-demo-slot hidden min-h-[min(52vh,420px)] lg:flex">
             <DesktopOsMockup className="h-full w-full" />
-          </ScrollReveal>
-          <ScrollReveal delay={0.1} className="mkt-hero-demo-slot flex min-h-[min(52vh,420px)] lg:hidden">
-            <MarketingWorkspaceLiveScreenshot className="h-full w-full" />
           </ScrollReveal>
         </div>
       </div>
