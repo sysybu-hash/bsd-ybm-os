@@ -52,7 +52,7 @@ export default function OmnibarChatVisual({
 
   return (
     <section
-      className="flex min-h-[min(42dvh,22rem)] flex-1 flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 shadow-inner backdrop-blur-md"
+      className="flex min-h-[min(26dvh,11rem)] flex-1 flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/60 shadow-inner backdrop-blur-md"
       aria-label={t("workspaceWidgets.omnibar.chatVisualAria")}
       dir={dir}
     >
