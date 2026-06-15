@@ -207,7 +207,7 @@ export default function MobileBottomNav({
           <button
             type="button"
             onClick={onOpenOmnibar}
-            className="absolute left-1/2 top-0 z-[1287] flex h-14 w-14 min-h-[56px] min-w-[56px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_8px_24px_rgba(79,70,229,0.45)] ring-2 ring-[color:var(--background-main)]/70 transition hover:bg-indigo-500 active:scale-95 sm:h-16 sm:w-16"
+            className="absolute left-1/2 top-0 z-[1287] flex h-14 w-14 min-h-[56px] min-w-[56px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_8px_24px_rgba(79,70,229,0.45)] transition hover:bg-indigo-500 active:scale-95 sm:h-16 sm:w-16"
             aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
           >
             <Mic size={26} strokeWidth={2} aria-hidden />
