@@ -80,7 +80,7 @@ export default function OSWorkspace({
         {hasHydrated && visibleWidgets.length === 0 && (
           <motion.section key="empty-state"
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}
-            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:justify-start md:gap-6 md:px-6 md:pb-8 ${
+            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:justify-start md:gap-6 md:px-6 md:pb-8 ${
               launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5 md:pt-5"
             }`}
           >
