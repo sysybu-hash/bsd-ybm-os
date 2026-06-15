@@ -12,6 +12,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import SortableLauncherZone from "@/components/os/launcher/SortableLauncherZone";
 import { getLauncherNavMeta, mobileNavLabelKey } from "@/lib/launcher/launcher-icons";
 import { useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
+import { useMobileChromeBottomSync } from "@/hooks/use-mobile-chrome-bottom-sync";
 
 export type MobileBottomNavProps = {
   openWidget: (type: WidgetType) => void;
@@ -132,6 +133,7 @@ export default function MobileBottomNav({
   const isPlatformAdmin = useIsPlatformAdmin();
   const [moreOpen, setMoreOpen] = useState(false);
   const { zoneSlots } = useLauncherConfig();
+  const hostRef = useMobileChromeBottomSync(omnibarOpen);
 
   const moreFromConfig = slotsToNavItems(zoneSlots("mobileMore"));
   const moreAppsWithAdmin: NavItem[] = isPlatformAdmin
@@ -168,91 +170,92 @@ export default function MobileBottomNav({
         />
       ) : null}
 
-      {/* ── עטיפה: קונטיינר fixed שמכיל את הלשוניות, הכפתור הצף והסרגל ── */}
+      {/* ── סרגל תחתון + מיקרופון שקוע במרכז (חצי בפנים, חצי בחוץ) ── */}
       <div
+        ref={hostRef}
         className="mobile-bottom-nav-host fixed bottom-0 left-0 right-0 z-[1285] md:hidden"
         data-testid="mobile-bottom-nav"
         dir={dir}
       >
-        {/* לשוניות משוב + נגישות — צמודות לקצוות, מתמזגות עם קצה ה-dock */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-full flex items-end justify-between"
-          aria-label={t("workspaceWidgets.mobileNav.chromeActionsAria")}
+        <nav
+          className="mobile-bottom-nav-bar flex max-w-[100vw] flex-col gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
+          aria-label={t("workspaceWidgets.mobileNav.aria")}
         >
-          <div className="pointer-events-auto -mb-px">
-            <MobileChromeFabButton
-              icon={MessageSquare}
-              label={t("siteFeedback.fabLabel")}
-              onClick={openFeedbackFab}
-              testId="mobile-feedback-fab"
-              variant="accent"
-              shape="tab"
-              corner="start"
-            />
-          </div>
-          <div className="pointer-events-auto -mb-px">
-            <MobileChromeFabButton
-              icon={Accessibility}
-              label={t("accessibility.toolbar")}
-              onClick={openAccessibilityPanel}
-              testId="mobile-accessibility-fab"
-              shape="tab"
-              corner="end"
-            />
-          </div>
-        </div>
-
-        {/* כפתור omnibar מרכזי — צף ממש באוויר; טבעת דקה כדי שרואים תוכן מסביבו */}
-        {!omnibarOpen ? (
-          <button
-            type="button"
-            onClick={onOpenOmnibar}
-            className="absolute left-1/2 top-0 z-[1287] flex h-14 w-14 min-h-[56px] min-w-[56px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_8px_24px_rgba(79,70,229,0.45)] transition hover:bg-indigo-500 active:scale-95 sm:h-16 sm:w-16"
-            aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
+          {/* לשוניות קצה — רק בפינות, לא מרחיבות מרווח תוכן */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-full flex items-end justify-between"
+            aria-label={t("workspaceWidgets.mobileNav.chromeActionsAria")}
           >
-            <Mic size={26} strokeWidth={2} aria-hidden />
-          </button>
-        ) : null}
+            <div className="pointer-events-auto -mb-px">
+              <MobileChromeFabButton
+                icon={MessageSquare}
+                label={t("siteFeedback.fabLabel")}
+                onClick={openFeedbackFab}
+                testId="mobile-feedback-fab"
+                variant="accent"
+                shape="tab"
+                corner="start"
+              />
+            </div>
+            <div className="pointer-events-auto -mb-px">
+              <MobileChromeFabButton
+                icon={Accessibility}
+                label={t("accessibility.toolbar")}
+                onClick={openAccessibilityPanel}
+                testId="mobile-accessibility-fab"
+                shape="tab"
+                corner="end"
+              />
+            </div>
+          </div>
 
-      <nav
-        className="flex min-h-[46px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
-        aria-label={t("workspaceWidgets.mobileNav.aria")}
-      >
-        <NavSideGrid>
-          <SortableLauncherZone
-            zone="mobileBarStart"
-            variant="mobile"
-            onOpen={openWidget}
-            className="contents"
-          />
-        </NavSideGrid>
+          <div className="mobile-bottom-nav-icon-row flex items-end gap-0 px-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+            <NavSideGrid>
+              <SortableLauncherZone
+                zone="mobileBarStart"
+                variant="mobile"
+                onOpen={openWidget}
+                className="contents"
+              />
+            </NavSideGrid>
 
-        {/* שומר-מקום לכפתור הצף כדי לאזן את שני צידי הניווט */}
-        <div className="h-12 w-14 shrink-0 sm:w-16" aria-hidden />
+            <div className="mobile-bottom-nav-mic-wrap flex shrink-0 items-end justify-center">
+              {!omnibarOpen ? (
+                <button
+                  type="button"
+                  onClick={onOpenOmnibar}
+                  className="mobile-bottom-nav-mic flex h-16 w-16 min-h-[64px] min-w-[64px] items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-500 active:scale-95 sm:h-[4.25rem] sm:w-[4.25rem] sm:min-h-[4.25rem] sm:min-w-[4.25rem]"
+                  aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
+                >
+                  <Mic size={28} strokeWidth={2} aria-hidden />
+                </button>
+              ) : null}
+            </div>
 
-        <NavSideGrid>
-          {onOpenWindowSwitcher ? (
-            <WindowSwitcherButton
-              onOpen={onOpenWindowSwitcher}
-              label={t("workspaceWidgets.mobileNav.windowSwitcher")}
-            />
-          ) : (
-            <NavSideBalanceSlot />
-          )}
-          <SortableLauncherZone
-            zone="mobileBarEnd"
-            variant="mobile"
-            onOpen={openWidget}
-            className="contents"
-          />
-          <MoreNavButton
-            label={t("workspaceWidgets.mobileNav.moreApps")}
-            moreOpen={moreOpen}
-            onOpen={() => setMoreOpen(true)}
-          />
-        </NavSideGrid>
-      </nav>
-      </div>{/* סוף עטיפת fixed */}
+            <NavSideGrid>
+              {onOpenWindowSwitcher ? (
+                <WindowSwitcherButton
+                  onOpen={onOpenWindowSwitcher}
+                  label={t("workspaceWidgets.mobileNav.windowSwitcher")}
+                />
+              ) : (
+                <NavSideBalanceSlot />
+              )}
+              <SortableLauncherZone
+                zone="mobileBarEnd"
+                variant="mobile"
+                onOpen={openWidget}
+                className="contents"
+              />
+              <MoreNavButton
+                label={t("workspaceWidgets.mobileNav.moreApps")}
+                moreOpen={moreOpen}
+                onOpen={() => setMoreOpen(true)}
+              />
+            </NavSideGrid>
+          </div>
+        </nav>
+      </div>
     </>
   );
 }
@@ -270,7 +273,7 @@ function MoreAppsPanel({
 }) {
   return (
     <div
-      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-3 right-3 z-[1286] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
+      className="fixed bottom-[calc(var(--mobile-chrome-bottom)+0.5rem)] left-3 right-3 z-[1286] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
       role="dialog"
       aria-label={t("workspaceWidgets.mobileNav.moreAppsTitle")}
     >
