@@ -100,7 +100,7 @@ export default function MobileOmnibarSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[1190] bg-black/45 backdrop-blur-[3px]"
+            className="fixed inset-0 z-[1289] bg-black/45 backdrop-blur-[3px]"
             aria-label={t("workspaceWidgets.omnibar.sheetCloseAria")}
             onClick={onClose}
           />
@@ -114,9 +114,9 @@ export default function MobileOmnibarSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-[1191] flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 shadow-2xl"
+            className="fixed inset-x-0 bottom-[var(--mobile-chrome-bottom)] z-[1290] flex max-h-[min(88dvh,calc(100dvh-var(--workspace-inset-top,4rem)-var(--mobile-chrome-bottom,3.25rem)))] flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border-main)] border-b-0 shadow-2xl"
             style={{
-              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+              paddingBottom: "0.5rem",
               background:
                 "linear-gradient(180deg, var(--surface-card) 0%, var(--background-main) 100%)",
               backdropFilter: "blur(24px)",

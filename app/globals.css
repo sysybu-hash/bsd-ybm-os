@@ -58,9 +58,8 @@
     --window-backdrop: blur(20px) saturate(1.12);
     --window-surface: color-mix(in srgb, var(--surface-card) 94%, transparent);
 
-  /* גובה סרגל תחתון במובייל (ניווט + לשוניות קצה צפות + כפתור מרכזי + safe area).
-     שורת הניווט ~3.75rem; הלשוניות והכפתור הצף מתנשאים מעליה. נשמר מרווח לפינוי. */
-    --mobile-chrome-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    /* גובה סרגל תחתון במובייל — שורת אייקונים בלבד; המיקרופון בולט לתוך התוכן */
+    --mobile-chrome-bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
     --workspace-inset-top: calc(var(--workspace-header-height) + env(safe-area-inset-top, 0px));
     --workspace-inset-bottom: var(--mobile-chrome-bottom);
     --desktop-dock-clearance: 7rem;
@@ -751,6 +750,36 @@
 .workspace-window--mobile {
   touch-action: pan-y pinch-zoom;
   -webkit-overflow-scrolling: touch;
+}
+
+/* מיקרופון שקוע — כמו דף הנחיתה: בשורת האייקונים עם translateY, בלי שקע נפרד */
+@media (max-width: 767px) {
+  .workspace-empty-scroll {
+    scrollbar-gutter: auto;
+  }
+
+  .mobile-bottom-nav-bar {
+    position: relative;
+    overflow: visible;
+    padding-top: 0.125rem;
+  }
+
+  .mobile-bottom-nav-mic-wrap {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 4.75rem;
+    width: 4.75rem;
+    align-self: flex-end;
+    padding-bottom: 0.15rem;
+  }
+
+  .mobile-bottom-nav-mic {
+    transform: translateY(-1.35rem);
+    border: 3px solid var(--background-main);
+    box-shadow:
+      0 10px 28px rgba(79, 70, 229, 0.45),
+      0 0 0 1px rgba(79, 70, 229, 0.2);
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

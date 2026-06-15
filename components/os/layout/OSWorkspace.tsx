@@ -80,7 +80,7 @@ export default function OSWorkspace({
         {hasHydrated && visibleWidgets.length === 0 && (
           <motion.section key="empty-state"
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}
-            className={`absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:justify-start md:gap-6 md:px-6 md:pb-8 ${
+            className={`workspace-empty-scroll absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain custom-scrollbar max-md:scroll-pb-3 max-md:px-4 max-md:pt-4 max-md:pb-0 md:justify-start md:gap-6 md:px-6 md:pb-8 ${
               launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5 md:pt-5"
             }`}
           >
@@ -96,7 +96,7 @@ export default function OSWorkspace({
                 {t("workspaceWidgets.empty.subtitle", { omnibar: t("workspaceWidgets.empty.omnibarName") })}
               </p>
             </header>
-            <div className="flex w-full min-w-0 max-w-[min(100%,17.75rem)] shrink-0 flex-col items-center justify-center px-2 pt-2 md:max-w-[min(100%,38.5rem)] md:px-4 md:pt-0">
+            <div className="flex w-full min-w-0 max-w-[min(100%,17.75rem)] shrink-0 flex-col items-center justify-center px-2 pt-2 pb-0 max-md:mt-auto md:max-w-[min(100%,38.5rem)] md:px-4 md:pt-0">
               <SortableLauncherZone zone="quickGrid" variant="quick" onOpen={openWidget} className="w-full min-w-0 max-w-full shrink-0" />
             </div>
           </motion.section>

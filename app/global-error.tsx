@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 
 type Props = Readonly<{
   error: Error & { digest?: string };
@@ -10,11 +9,13 @@ type Props = Readonly<{
 
 export default function GlobalError({ error, reset }: Props) {
   useEffect(() => {
-    try {
-      Sentry.captureException(error, { tags: { scope: "global-error" } });
-    } catch {
-      /* Sentry not configured */
-    }
+    void import("@sentry/nextjs")
+      .then((Sentry) => {
+        Sentry.captureException(error, { tags: { scope: "global-error" } });
+      })
+      .catch(() => {
+        /* Sentry not configured */
+      });
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
       console.error("[global-error]", error);
     }
