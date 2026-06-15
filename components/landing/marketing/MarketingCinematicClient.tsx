@@ -51,9 +51,10 @@ const MarketingMobileMenu = dynamic(
 type Props = Readonly<{
   hero: React.ReactNode;
   locale?: AppLocale;
+  navVariant?: "top" | "drawer";
 }>;
 
-export default function MarketingCinematicClient({ hero }: Props) {
+export default function MarketingCinematicClient({ hero, navVariant = "top" }: Props) {
   const router = useRouter();
   const { dir, locale, t } = useI18n();
   const [mountOmnibar, setMountOmnibar] = useState(false);
@@ -132,7 +133,7 @@ export default function MarketingCinematicClient({ hero }: Props) {
       >
         {enableVideoLayer ? <VideoBackground /> : null}
         <div className="relative z-10">
-          <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
+          <MarketingNavbar onLogin={goLogin} onRegister={goRegister} variant={navVariant} />
           <main className="relative pb-[calc(8rem+env(safe-area-inset-bottom,0px))] md:pb-8">
             {hero}
             {mountOmnibar ? (
