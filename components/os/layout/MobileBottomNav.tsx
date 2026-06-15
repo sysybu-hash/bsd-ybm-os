@@ -202,20 +202,20 @@ export default function MobileBottomNav({
           </div>
         </div>
 
-        {/* כפתור omnibar מרכזי — צף, חצי מעל ה-dock; מוסתר כשה-omnibar פתוח */}
+        {/* כפתור omnibar מרכזי — צף ממש באוויר; טבעת דקה כדי שרואים תוכן מסביבו */}
         {!omnibarOpen ? (
           <button
             type="button"
             onClick={onOpenOmnibar}
-            className="absolute left-1/2 top-0 z-[1287] flex h-16 w-16 min-h-[64px] min-w-[64px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-[6px] ring-[color:var(--background-main)] transition hover:bg-indigo-500 active:scale-95 sm:h-[72px] sm:w-[72px]"
+            className="absolute left-1/2 top-0 z-[1287] flex h-14 w-14 min-h-[56px] min-w-[56px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-indigo-600 text-white shadow-[0_8px_24px_rgba(79,70,229,0.45)] ring-2 ring-[color:var(--background-main)]/70 transition hover:bg-indigo-500 active:scale-95 sm:h-16 sm:w-16"
             aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
           >
-            <Mic size={30} strokeWidth={2} aria-hidden />
+            <Mic size={26} strokeWidth={2} aria-hidden />
           </button>
         ) : null}
 
       <nav
-        className="flex min-h-[56px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
+        className="flex min-h-[46px] max-w-[100vw] items-end gap-0 border-t border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 px-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md"
         aria-label={t("workspaceWidgets.mobileNav.aria")}
       >
         <NavSideGrid>
@@ -228,7 +228,7 @@ export default function MobileBottomNav({
         </NavSideGrid>
 
         {/* שומר-מקום לכפתור הצף כדי לאזן את שני צידי הניווט */}
-        <div className="h-16 w-16 shrink-0 sm:w-[72px]" aria-hidden />
+        <div className="h-12 w-14 shrink-0 sm:w-16" aria-hidden />
 
         <NavSideGrid>
           {onOpenWindowSwitcher ? (

@@ -60,11 +60,11 @@
 
   /* גובה סרגל תחתון במובייל (ניווט + לשוניות קצה צפות + כפתור מרכזי + safe area).
      שורת הניווט ~3.75rem; הלשוניות והכפתור הצף מתנשאים מעליה. נשמר מרווח לפינוי. */
-    --mobile-chrome-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+    --mobile-chrome-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
     --workspace-inset-top: calc(var(--workspace-header-height) + env(safe-area-inset-top, 0px));
     --workspace-inset-bottom: var(--mobile-chrome-bottom);
     --desktop-dock-clearance: 7rem;
-    --minimized-dock-bottom: 6.75rem;
+    --minimized-dock-bottom: 5.25rem;
     /* Shared max-height for floating windows / modals / sheets — one formula,
        used everywhere instead of ad-hoc 88dvh / 92dvh literals. */
     --window-max-h: min(88dvh, calc(100dvh - var(--mobile-chrome-bottom, 5.5rem) - 1.25rem));
