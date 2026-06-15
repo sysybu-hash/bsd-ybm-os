@@ -71,7 +71,8 @@
     @media (min-width: 768px) {
       --minimized-dock-bottom: 5.25rem;
     }
-    --os-sidebar-rail-width: 4.5rem;
+    --os-sidebar-rail-width: 3.5rem;
+    --os-sidebar-rail-width-expanded: 15rem;
     --os-sidebar-gap: 1.25rem;
     --os-utility-rail-tab-width: 2.75rem;
     --os-utility-rail-panel-width: 20rem;

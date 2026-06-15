@@ -1,28 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Heebo } from "next/font/google";
+import { Assistant } from "next/font/google";
 import "./globals.css";
 import { buildRootMetadata } from "@/lib/site-metadata";
 
-// Preload bold Hebrew weights used in the hero H1 (LCP element) so they are
-// ready before first paint. display:"swap" + adjustFontFallback limits CLS.
-const heeboCritical = Heebo({
-  subsets: ["hebrew"],
-  weight: ["700", "800"],
+// Body, UI and headings — refined modern Hebrew sans (latin + hebrew). Variable
+// font, so the ExtraBold (800) hero H1 (LCP element) and regular body share one
+// download. Preloaded so it is ready before first paint.
+const sans = Assistant({
+  subsets: ["hebrew", "latin"],
   display: "swap",
   preload: true,
   adjustFontFallback: true,
-  fallback: ["system-ui", "Arial", "sans-serif"],
-  variable: "--font-heebo-critical",
-});
-
-// Body text — latin + hebrew, non-critical, loaded after paint.
-const heebo = Heebo({
-  subsets: ["hebrew", "latin"],
-  display: "optional",
-  preload: false,
-  adjustFontFallback: true,
   fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
-  variable: "--font-heebo",
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = buildRootMetadata();
@@ -49,11 +39,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${heeboCritical.variable}`} suppressHydrationWarning>
+    <html lang="he" dir="rtl" className={sans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: MARKETING_THEME_BOOT }} />
       </head>
-      <body className={`${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}>
+      <body className={`${sans.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}>
         {children}
       </body>
     </html>

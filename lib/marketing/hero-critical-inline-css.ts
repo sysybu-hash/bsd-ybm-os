@@ -29,16 +29,20 @@ html.light .marketing-cinematic .mkt-video-tint{background-image:radial-gradient
 .mkt-video-poster-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .mkt-video-overlay{position:absolute;inset:0}
 .mkt-video-tint{position:absolute;inset:0;opacity:.4}
-.marketing-cinematic .mkt-hero-motto{color:var(--mkt-eyebrow);text-shadow:0 0 36px var(--mkt-accent-glow);font-weight:900;font-size:clamp(1.75rem,3.6vw + .5rem,3.25rem);line-height:1.15;letter-spacing:-.01em}
-.marketing-cinematic .mkt-hero-blessing{font-family:var(--font-heebo),"Heebo",system-ui,sans-serif;font-size:clamp(.9375rem,2.4vw,1.125rem);font-weight:600;letter-spacing:-.01em;line-height:1.45;color:color-mix(in srgb,var(--mkt-fg) 78%,var(--mkt-eyebrow));text-shadow:none}
+.marketing-cinematic .mkt-hero-motto{font-family:var(--font-sans),system-ui,sans-serif;color:color-mix(in srgb,var(--mkt-eyebrow) 88%,var(--mkt-fg));text-shadow:none;font-weight:600;font-style:normal;font-size:clamp(1.0625rem,1.4vw + .5rem,1.375rem);line-height:1.4;letter-spacing:-.01em;opacity:.95}
+.marketing-cinematic .mkt-hero-blessing{font-family:var(--font-sans),system-ui,sans-serif;font-size:clamp(.875rem,2vw,1rem);font-weight:600;letter-spacing:-.01em;line-height:1.45;color:color-mix(in srgb,var(--mkt-fg) 78%,var(--mkt-eyebrow));text-shadow:none}
+.marketing-cinematic .mkt-hero-eyebrow{line-height:1.3}
+.marketing-cinematic .mkt-hero-eyebrow-dot{color:color-mix(in srgb,var(--mkt-fg) 45%,transparent)}
+.marketing-cinematic .mkt-hero-chip{display:inline-flex;align-items:center;border:1px solid var(--mkt-glass-border);background:var(--mkt-glass-bg);border-radius:9999px;padding:.375rem .875rem;font-size:clamp(.8125rem,1.4vw,.9375rem);font-weight:600;color:var(--mkt-fg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+html.light .marketing-cinematic .mkt-hero-chip{color:#1e293b;border-color:rgba(15,23,42,.12);background:rgba(255,255,255,.82);font-weight:700}
 html.light .marketing-cinematic .mkt-hero-blessing{color:#475569}
 .mkt-hero-section{position:relative;padding-inline:1rem;padding-bottom:1rem;padding-top:calc(var(--mkt-nav-height,4.25rem) + .25rem)}
-.mkt-hero-section,.mkt-hero-section *{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif!important}
+.mkt-hero-section{font-family:var(--font-sans),system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
 .mkt-hero-blessing{margin-bottom:.375rem;font-size:clamp(.9375rem,2.4vw,1.125rem);font-weight:600;line-height:1.45;color:color-mix(in srgb,var(--mkt-fg) 78%,var(--mkt-eyebrow))}
 .mkt-eyebrow{margin-bottom:.375rem;font-size:.875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mkt-eyebrow)}
-.mkt-hero-motto{margin-bottom:.75rem;font-weight:900;font-size:clamp(1.75rem,3.6vw + .5rem,3.25rem);line-height:1.15;color:var(--mkt-eyebrow);text-shadow:0 0 36px var(--mkt-accent-glow)}
-.marketing-cinematic .mkt-hero-title{font-family:var(--font-heebo),"Heebo",system-ui,sans-serif;font-size:clamp(2.25rem,4.5vw + 1rem,4.5rem);font-weight:900;text-shadow:0 0 32px rgba(94,234,212,.45),0 0 64px rgba(165,180,252,.28),0 2px 12px rgba(0,0,0,.55);letter-spacing:-.025em;line-height:1.05}
-.mkt-hero-title{font-size:clamp(2.25rem,4.5vw + 1rem,4.5rem);font-weight:900;line-height:1.05;letter-spacing:-.025em;text-shadow:0 0 32px rgba(94,234,212,.45),0 0 64px rgba(165,180,252,.28),0 2px 12px rgba(0,0,0,.55)}
+.mkt-hero-motto{font-family:var(--font-sans),system-ui,sans-serif;margin-top:.75rem;font-weight:600;font-style:normal;font-size:clamp(1.0625rem,1.4vw + .5rem,1.375rem);line-height:1.4;color:color-mix(in srgb,var(--mkt-eyebrow) 88%,var(--mkt-fg));text-shadow:none;letter-spacing:-.01em;opacity:.95}
+.marketing-cinematic .mkt-hero-title{font-family:var(--font-sans),system-ui,sans-serif;font-size:clamp(2.25rem,4.5vw + 1rem,4.5rem);font-weight:800;text-shadow:0 0 32px rgba(94,234,212,.45),0 0 64px rgba(165,180,252,.28),0 2px 12px rgba(0,0,0,.55);letter-spacing:-.02em;line-height:1.05}
+.mkt-hero-title{font-family:var(--font-sans),system-ui,sans-serif;font-size:clamp(2.25rem,4.5vw + 1rem,4.5rem);font-weight:800;line-height:1.05;letter-spacing:-.02em;text-shadow:0 0 32px rgba(94,234,212,.45),0 0 64px rgba(165,180,252,.28),0 2px 12px rgba(0,0,0,.55)}
 .marketing-cinematic .mkt-hero-title-line1{color:#99f6e4}
 .marketing-cinematic .mkt-hero-title-line2{background:linear-gradient(to left,#c7d2fe,#5eead4);-webkit-background-clip:text;background-clip:text;color:transparent}
 html.light .marketing-cinematic .mkt-hero-title{text-shadow:0 2px 24px rgba(2,6,23,.12),0 0 1px rgba(2,6,23,.08)}
@@ -72,6 +76,10 @@ html.light .marketing-cinematic .mkt-omnibar-status{color:#334155}
 .marketing-cinematic .mkt-nav-link{color:var(--mkt-nav-link)}
 .marketing-cinematic .mkt-nav-link:hover{color:var(--mkt-fg)}
 .marketing-cinematic .mkt-menu-trigger{border-color:var(--mkt-glass-border);color:var(--mkt-fg)}
+@keyframes mktMenuPulse{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--mkt-accent) 55%,transparent),0 0 0 0 var(--mkt-accent-glow)}50%{box-shadow:0 0 0 1px var(--mkt-accent),0 0 22px 3px var(--mkt-accent-glow)}}
+.marketing-cinematic .mkt-nav-menu-btn{width:3.5rem;height:3.5rem;border:2px solid color-mix(in srgb,var(--mkt-accent) 60%,transparent);background:var(--mkt-glass-bg);color:var(--mkt-accent-strong);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:mktMenuPulse 2.4s ease-in-out infinite;transition:transform .15s ease,background .2s ease}
+.marketing-cinematic .mkt-nav-menu-btn:hover{transform:scale(1.06);background:color-mix(in srgb,var(--mkt-accent) 18%,var(--mkt-glass-bg))}
+@media (prefers-reduced-motion:reduce){.marketing-cinematic .mkt-nav-menu-btn{animation:none}}
 .marketing-cinematic .mkt-locale-switcher button,.marketing-cinematic .mkt-theme-toggle button{border-color:rgba(255,255,255,.28)!important;background:rgba(15,23,42,.55)!important;color:#f8fafc!important}
 html.light .marketing-cinematic .mkt-locale-switcher button,html.light .marketing-cinematic .mkt-theme-toggle button{border-color:rgba(15,23,42,.14)!important;background:rgba(255,255,255,.88)!important;color:#0f172a!important}
 .marketing-cinematic .mkt-locale-switcher ul{border-color:rgba(255,255,255,.2)!important;background:rgba(15,23,42,.95)!important}

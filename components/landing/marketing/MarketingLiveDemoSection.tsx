@@ -16,10 +16,7 @@ export default function MarketingLiveDemoSection() {
     >
       <div className="mx-auto max-w-7xl">
         <ScrollReveal className="mkt-section-intro mb-8 text-center md:mb-10">
-          <p className="mkt-eyebrow text-sm font-bold tracking-widest uppercase">
-            {t("marketingHome.hero.ctaDemo")}
-          </p>
-          <h2 id="mkt-live-demo-heading" className="mt-3 text-2xl font-black text-white sm:text-3xl md:text-4xl">
+          <h2 id="mkt-live-demo-heading" className="text-2xl font-black text-white sm:text-3xl md:text-4xl">
             {t("marketingHome.panels.demo.title")}
           </h2>
           <p className="mkt-body-lead mt-4 text-base font-semibold text-slate-300 sm:text-lg">

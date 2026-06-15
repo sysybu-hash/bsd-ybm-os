@@ -25,33 +25,45 @@ type Props = Readonly<{
   messages: MessageTree;
 }>;
 
-function t(messages: MessageTree, key: string): string {
+function resolve(messages: MessageTree, key: string): unknown {
   const parts = key.split(".");
   let cur: unknown = messages;
   for (const p of parts) {
-    if (cur == null || typeof cur !== "object") return key;
+    if (cur == null || typeof cur !== "object") return undefined;
     cur = (cur as Record<string, unknown>)[p];
   }
+  return cur;
+}
+
+function t(messages: MessageTree, key: string): string {
+  const cur = resolve(messages, key);
   return typeof cur === "string" ? cur : key;
+}
+
+function tList(messages: MessageTree, key: string): string[] {
+  const cur = resolve(messages, key);
+  return Array.isArray(cur) ? cur.filter((v): v is string => typeof v === "string") : [];
 }
 
 /** תוכן Hero בשרת — LCP טקסטואלי + poster (לא מחכה ל-hydration של Omnibar). */
 export default function HeroSectionStatic({ locale, messages }: Props) {
   const dir = isRtlLocale(locale) ? "rtl" : "ltr";
+  const chips = tList(messages, "marketingHome.hero.heroChips");
 
   return (
     <section
-      className="mkt-hero-section relative px-4 pb-4 pt-[calc(var(--mkt-nav-height,4.25rem)+0.25rem)] sm:px-6 sm:pb-6 sm:pt-32 md:pb-8"
+      className="mkt-hero-section relative flex min-h-[100svh] flex-col px-4 pb-4 pt-[calc(var(--mkt-nav-height,4.25rem)+0.5rem)] sm:px-6 sm:pb-6 sm:pt-20 md:pb-8"
       id="hero"
       dir={dir}
     >
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-5 sm:gap-8">
+      <p className="mkt-hero-blessing mb-2 text-center sm:mb-3">
+        {t(messages, "marketingHome.hero.titleBlessing")}
+      </p>
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center gap-5 pb-[8vh] sm:gap-8 sm:pb-[12vh]">
         <div className="flex w-full max-w-4xl flex-col items-center text-center">
-          <p className="mkt-hero-blessing mb-1.5 sm:mb-4">{t(messages, "marketingHome.hero.titleBlessing")}</p>
-          <p className="mkt-eyebrow mb-1.5 text-sm font-bold tracking-widest uppercase sm:mb-3">
+          <p className="mkt-eyebrow mb-3 text-sm font-bold tracking-widest uppercase sm:mb-5">
             {t(messages, "marketingHome.hero.kicker")}
           </p>
-          <p className="mkt-hero-motto mb-3 sm:mb-5">{t(messages, "marketingHome.hero.motto")}</p>
           <h1 className="mkt-hero-title">
             <span className="mkt-hero-title-line1 block">{t(messages, "marketingHome.hero.titleLine1")}</span>
             <span className="mkt-hero-title-line2 block">{t(messages, "marketingHome.hero.titleLine2")}</span>
@@ -59,6 +71,16 @@ export default function HeroSectionStatic({ locale, messages }: Props) {
           <p className="mkt-body-lead mt-3 max-w-2xl text-base leading-relaxed sm:mt-6 sm:text-lg md:text-xl">
             {t(messages, "marketingHome.hero.subtitle")}
           </p>
+          <p className="mkt-hero-motto mt-3 sm:mt-4">{t(messages, "marketingHome.hero.motto")}</p>
+          {chips.length > 0 ? (
+            <ul className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:mt-6 sm:gap-2.5" role="list">
+              {chips.map((chip) => (
+                <li key={chip} className="mkt-hero-chip">
+                  {chip}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
         <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link

@@ -80,7 +80,8 @@ export function useOmniCanvasState() {
   );
 
   const hasMaximizedWidget = widgets.some((w) => w.isMaximized && !w.isMinimized);
-  const sidebarRailVisible = !hasMaximizedWidget || sidebarRailPeek;
+  // הסרגל תמיד גלוי בדסקטופ; במצב חלון מלא הוא מתכווץ לאייקונים (collapsed) במקום להסתתר.
+  const sidebarRailVisible = true;
 
   const handleApplyScreenLayout = useCallback(() => {
     if (widgets.length === 0) {

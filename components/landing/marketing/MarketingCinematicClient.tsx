@@ -26,6 +26,13 @@ const MarketingLiveDemoSection = dynamic(
   },
 );
 
+const MarketingOverviewSection = dynamic(
+  () => import("@/components/landing/marketing/MarketingOverviewSection"),
+  {
+    loading: () => <div className="min-h-[20rem] w-full" aria-hidden />,
+  },
+);
+
 const MarketingExploreHub = dynamic(
   () => import("@/components/landing/marketing/MarketingExploreHub"),
   {
@@ -133,13 +140,16 @@ export default function MarketingCinematicClient({ hero }: Props) {
         {enableVideoLayer ? <VideoBackground /> : null}
         <div className="relative z-10">
           <MarketingNavbar onLogin={goLogin} onRegister={goRegister} />
-          <main className="relative pb-[calc(8rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+          <main className="relative pb-[calc(8rem+env(safe-area-inset-bottom,0px))] md:pb-32">
             {hero}
             {mountOmnibar ? (
               <MarketingOmnibarIsland onLogin={goLogin} onRegister={goRegister} />
             ) : (
               <MarketingOmnibarPlaceholder />
             )}
+            <DeferUntilVisible minHeight="20rem" fallback={<div className="min-h-[20rem] w-full" aria-hidden />}>
+              <MarketingOverviewSection />
+            </DeferUntilVisible>
             <DeferUntilVisible
               rootMargin="-45% 0px 0px 0px"
               minHeight="36rem"
