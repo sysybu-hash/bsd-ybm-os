@@ -57,9 +57,8 @@ function OmniCanvasSidebarRail({
   const hideForHomeGridEdit = editMode && widgetsCount === 0;
   const railVisible = sidebarRailVisible && !hideForHomeGridEdit;
 
-  // לשונית ההצצה: מוצגת כשיש widget ממוקסם והסרגל מכווץ —
-  // אינה תלויה ב-railVisible (שתלוי בעצמו ב-peek → תלות מעגלית).
-  const showPeekTab = hasMaximizedWidget && !sidebarRailPeek && !hideForHomeGridEdit;
+  // הסרגל תמיד גלוי כעת — לשונית ההצצה נדרשת רק אם הסרגל מוסתר.
+  const showPeekTab = !railVisible && hasMaximizedWidget && !sidebarRailPeek && !hideForHomeGridEdit;
 
   return (
     <>
@@ -102,7 +101,9 @@ function OmniCanvasWorkspaceInset({
   children: React.ReactNode;
 }) {
   const { editMode } = useLauncherConfig();
-  const padSidebar = sidebarRailVisible && !(editMode && widgetsCount === 0);
+  // במסך הבית (ללא חלונות) לא שומרים מקום לסרגל — כדי שהאריחים יתמרכזו סימטרית.
+  // כשיש חלונות פתוחים שומרים את רוחב הסרגל המכווץ; ההתרחבות ב-hover מרחפת מעל התוכן.
+  const padSidebar = sidebarRailVisible && widgetsCount > 0 && !editMode;
 
   return (
     <div

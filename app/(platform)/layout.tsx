@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Assistant, Heebo } from "next/font/google";
+import { Assistant } from "next/font/google";
 import { unstable_noStore as noStore } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -36,22 +36,13 @@ import { createLogger } from "@/lib/logger";
 
 const log = createLogger("platform-layout");
 
-const heebo = Heebo({
+const sans = Assistant({
   subsets: ["hebrew", "latin"],
-  display: "optional",
-  preload: false,
+  display: "swap",
+  preload: true,
   adjustFontFallback: true,
   fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
-  variable: "--font-heebo",
-});
-
-const assistant = Assistant({
-  subsets: ["latin", "latin-ext"],
-  display: "optional",
-  preload: false,
-  adjustFontFallback: true,
-  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
-  variable: "--font-assistant",
+  variable: "--font-sans",
 });
 
 // Static export — avoids Next.js streaming metadata outside <head> for force-dynamic routes.
@@ -103,7 +94,7 @@ export default async function PlatformLayout({
 
   return (
     <div
-      className={`${heebo.variable} ${assistant.variable} ${heebo.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
+      className={`${sans.variable} ${sans.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}
       dir={dir}
       lang={locale}
       style={tenantStyle}

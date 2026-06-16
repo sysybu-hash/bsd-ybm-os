@@ -13,13 +13,21 @@
     },
     "hero": {
       "kicker": "BSD-YBM OS",
-      "motto": "The avenue that connects everyone!",
+      "motto": "The avenue that connects everyone",
       "titleBlessing": "With God's help we will act and succeed",
-      "titleLine1": "Business OS",
-      "titleLine2": "and command center",
-      "subtitle": "One platform connecting CRM, documents, billing and control—with AI Hub, app builder and an idea engine inside the workflow.",
+      "titleLine1": "One system to run your business",
+      "titleLine2": "Clients, documents, billing & control",
+      "subtitle": "Smart document scanning, CRM, cash flow and AI — all in one place, without jumping between systems.",
+      "heroChips": ["CRM & clients", "Smart docs & scanning", "Billing, cash flow & control"],
       "ctaRegister": "Create account",
       "ctaDemo": "Sign in to demo"
+    },
+    "overview": {
+      "eyebrow": "Overview",
+      "title": "One operating system for your business",
+      "p1": "BSD-YBM OS is a business operating system that unifies everything a company needs to run its day-to-day under one roof — instead of scattering across separate systems, spreadsheets and chats. At its core is a shared source of truth connecting CRM, documents, billing and cash flow, projects and tasks — so every action updates across all layers at once, with no manual copying and no lost context between teams.",
+      "p2": "AI-powered smart scanning extracts data from invoices and receipts and automatically links it to the right client and project, saving hours of typing and reducing errors. The AI Hub adds a smart working layer: an organizational chat that knows your data, a notebook for every project, and an app builder that creates tailored tools — forms, calculators, boards and dashboards — from a free-text description in plain language.",
+      "p3": "The system connects to your cloud storage and calendar (Google Drive and Calendar), works fully in Hebrew, and runs modularly — each organization turns on only what's relevant and expands capabilities at its own pace, without breaking what already works. The result: less manual admin, fewer duplications, and one clear operational view — from the first client quote to month-end financial control."
     },
     "features": [
       {
@@ -285,9 +293,9 @@
       "fieldCopilotScan": "Analyzing document…",
       "fieldCopilotResult": "Detected: ₪12,400 · concrete supplier · linked to Sharon Towers",
       "fieldScanTitle": "Live document scan",
-      "fieldScanSubtitle": "Upload an invoice or photo — Gemini decodes in real time",
+      "fieldScanSubtitle": "Upload an invoice or receipt — Gemini extracts vendor, amount, date and line items in real time",
       "fieldScanQuota": "{remaining} of {limit} demo scans left today",
-      "fieldScanPickHint": "Take a photo or upload a business document (image / PDF)",
+      "fieldScanPickHint": "Photograph or upload an invoice / receipt (image / PDF)",
       "fieldScanDropHint": "Drag a file here · JPEG · PNG · PDF",
       "fieldScanDropActive": "Drop to scan",
       "fieldScanPick": "Upload file",

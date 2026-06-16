@@ -26,6 +26,7 @@ type SortableSlotProps = {
   onOpen: (type: WidgetType) => void;
   disabled: boolean;
   gridCoord?: GridCellCoord;
+  expanded?: boolean;
 };
 
 export function SortableSlot({
@@ -36,6 +37,7 @@ export function SortableSlot({
   onOpen,
   disabled,
   gridCoord,
+  expanded,
 }: SortableSlotProps) {
   const id = gridCoord ? quickGridCellId(gridCoord.row, gridCoord.col) : slotId(zone, index);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -56,7 +58,7 @@ export function SortableSlot({
           ? "min-w-0"
           : variant === "quick"
             ? LAUNCHER_QUICK_TILE_WRAPPER_CLASS
-            : undefined
+            : "md:w-full"
       }
       role={variant === "quick" || variant === "mobile" ? "listitem" : undefined}
     >
@@ -67,6 +69,7 @@ export function SortableSlot({
         widgetId={widgetId}
         onOpen={onOpen}
         variant={variant}
+        expanded={expanded}
         isDragging={isDragging}
         dragHandleProps={disabled ? undefined : { ...attributes, ...listeners }}
       />

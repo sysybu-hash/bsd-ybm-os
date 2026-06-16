@@ -29,6 +29,8 @@ type LauncherTileProps = {
   compactEmpty?: boolean;
   /** רשת עריכה — ללא אנימציית jiggle (יציבות בגרירה) */
   suppressJiggle?: boolean;
+  /** סרגל צד מורחב — אייקון + תווית טקסט (במקום אייקון בלבד) */
+  expanded?: boolean;
 };
 
 export default function LauncherTile({
@@ -43,6 +45,7 @@ export default function LauncherTile({
   isDragging,
   compactEmpty = false,
   suppressJiggle = false,
+  expanded = false,
 }: LauncherTileProps) {
   const { t } = useI18n();
   const { editMode, removeAt, openPickerAt } = useLauncherConfig();
@@ -69,7 +72,7 @@ export default function LauncherTile({
   if (variant === "sidebar") {
     return (
       <div
-        className={`relative ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
+        className={`relative md:w-full ${jiggleClass} ${isDragging ? "opacity-60" : ""}`}
         data-testid={resolvedWidgetId ? `launcher-tile-${resolvedWidgetId}` : "launcher-tile-empty"}
       >
         {editMode ? (
@@ -88,22 +91,29 @@ export default function LauncherTile({
         <button
           type="button"
           onClick={handleClick}
-          className={`group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition hover:bg-[color:var(--surface-soft)] ${
+          className={`group relative flex h-10 w-full shrink-0 items-center justify-start gap-2 rounded-lg transition hover:bg-[color:var(--surface-soft)] ${
             isEmpty && editMode ? "border border-dashed border-indigo-400/60" : ""
           }`}
           title={label}
           aria-label={label}
           {...(editMode ? dragHandleProps : {})}
         >
-          {isEmpty ? (
-            <Plus size={18} className="text-indigo-400" aria-hidden />
-          ) : (
-            <span
-              className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)}`}
-            >
-              <Icon size={19} aria-hidden />
+          <span className="flex w-10 shrink-0 items-center justify-center">
+            {isEmpty ? (
+              <Plus size={18} className="text-indigo-400" aria-hidden />
+            ) : (
+              <span
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${widgetIconChipClass(resolvedWidgetId)}`}
+              >
+                <Icon size={18} aria-hidden />
+              </span>
+            )}
+          </span>
+          {expanded && !isEmpty ? (
+            <span className="min-w-0 flex-1 truncate text-start text-sm font-bold text-[color:var(--foreground-main)]">
+              {label}
             </span>
-          )}
+          ) : null}
         </button>
       </div>
     );

@@ -39,6 +39,8 @@ type SortableLauncherZoneProps = {
   variant: "quick" | "sidebar" | "mobile";
   onOpen: (type: WidgetType) => void;
   className?: string;
+  /** סרגל צד מורחב — אייקון + תווית */
+  expanded?: boolean;
 };
 
 export default function SortableLauncherZone({
@@ -46,6 +48,7 @@ export default function SortableLauncherZone({
   variant,
   onOpen,
   className,
+  expanded,
 }: SortableLauncherZoneProps) {
   const { editMode, enterEditMode, zoneSlots, reorderZone, moveQuickGridCell } =
     useLauncherConfig();
@@ -86,6 +89,7 @@ export default function SortableLauncherZone({
         gridCoord={gridCoord}
         widgetId={slot.widgetId}
         variant={variant}
+        expanded={expanded}
         onOpen={onOpen}
         disabled={!editMode}
       />
