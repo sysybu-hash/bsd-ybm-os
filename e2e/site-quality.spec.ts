@@ -8,7 +8,7 @@ import {
 
 const MOBILE_PROJECTS = new Set(["mobile-chrome", "mobile-safari"]);
 
-const LANDING_H1 = /מערכת הפעלה|Business OS/i;
+const LANDING_H1 = /מערכת אחת לניהול העסק|One system to run your business/i;
 const LANDING_CTA = /פתיחת חשבון|Create account/i;
 const AUTH_HERO = /ברוכים הבאים|Welcome/i;
 const AUTH_TAB_SIGN_IN = /כניסה|Sign in/i;
