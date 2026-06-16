@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
@@ -47,9 +46,6 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
     ? "mkt-glass-strong border-b border-white/10 shadow-lg"
     : "bg-transparent border-b border-transparent";
 
-  // Panel slides in from the inline-start edge (right in RTL, left in LTR).
-  const panelOffset = dir === "rtl" ? 320 : -320;
-
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${navClass}`}
@@ -64,7 +60,7 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
             aria-label={t("marketingHome.cinematic.menuAria")}
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
-            className="mkt-nav-menu-btn flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="mkt-nav-menu-btn hidden items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:flex"
           >
             <Menu className="h-7 w-7" strokeWidth={2.5} aria-hidden />
           </button>
@@ -94,29 +90,24 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen ? (
-          <>
-            <motion.button
-              type="button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[2590] bg-slate-950/50 backdrop-blur-sm"
-              aria-label={t("marketingHome.cinematic.closeMenuAria")}
-              onClick={() => setMenuOpen(false)}
-            />
-            <motion.aside
-              role="dialog"
-              aria-modal="true"
-              aria-label={t("marketingHome.cinematic.menuAria")}
-              initial={{ opacity: 0, x: panelOffset }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: panelOffset }}
-              transition={{ type: "spring", damping: 32, stiffness: 360 }}
-              className="mkt-glass-strong fixed bottom-0 top-0 z-[2600] flex w-[min(21rem,88vw)] flex-col overflow-hidden border-[color:var(--mkt-glass-border)] start-0 border-e"
-              dir={dir}
-            >
+      {menuOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[2590] bg-slate-950/50 backdrop-blur-sm transition-opacity duration-200"
+            aria-label={t("marketingHome.cinematic.closeMenuAria")}
+            onClick={() => setMenuOpen(false)}
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("marketingHome.cinematic.menuAria")}
+            className="mkt-glass-strong fixed bottom-0 top-0 z-[2600] flex w-[min(21rem,88vw)] flex-col overflow-hidden border-[color:var(--mkt-glass-border)] border-e transition-transform duration-300 ease-out start-0"
+            dir={dir}
+            style={{
+              transform: "translateX(0)",
+            }}
+          >
               <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--mkt-glass-border)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
                 <BrandHomeLink size="sm" variant="image" tone="auto" />
                 <button
@@ -203,10 +194,9 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
                   </button>
                 </div>
               </footer>
-            </motion.aside>
-          </>
-        ) : null}
-      </AnimatePresence>
+          </aside>
+        </>
+      ) : null}
     </header>
   );
 }

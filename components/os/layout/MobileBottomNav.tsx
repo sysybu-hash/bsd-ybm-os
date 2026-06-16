@@ -209,7 +209,7 @@ export default function MobileBottomNav({
             </div>
           </div>
 
-          <div className="mobile-bottom-nav-icon-row flex items-end gap-0 px-0.5 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+          <div className="mobile-bottom-nav-icon-row flex items-end gap-0 px-0.5 pb-[max(0.125rem,env(safe-area-inset-bottom))]">
             <NavSideGrid>
               <SortableLauncherZone
                 zone="mobileBarStart"
@@ -219,12 +219,12 @@ export default function MobileBottomNav({
               />
             </NavSideGrid>
 
-            <div className="mobile-bottom-nav-mic-wrap flex shrink-0 items-end justify-center">
+            <div className="mobile-bottom-nav-mic-wrap flex shrink-0 items-end justify-center px-1">
               {!omnibarOpen ? (
                 <button
                   type="button"
                   onClick={onOpenOmnibar}
-                  className="mobile-bottom-nav-mic flex h-16 w-16 min-h-[64px] min-w-[64px] items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-500 active:scale-95 sm:h-[4.25rem] sm:w-[4.25rem] sm:min-h-[4.25rem] sm:min-w-[4.25rem]"
+                  className="mobile-bottom-nav-mic relative -translate-y-3 flex h-16 w-16 min-h-[64px] min-w-[64px] items-center justify-center rounded-full border border-white/30 bg-indigo-600 text-white shadow-[0_14px_28px_rgba(79,70,229,0.45)] ring-4 ring-[color:var(--glass-bg)] transition hover:bg-indigo-500 active:scale-95 sm:h-[4.5rem] sm:w-[4.5rem] sm:min-h-[4.5rem] sm:min-w-[4.5rem]"
                   aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
                 >
                   <Mic size={28} strokeWidth={2} aria-hidden />
