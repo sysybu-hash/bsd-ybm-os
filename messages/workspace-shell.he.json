@@ -353,7 +353,8 @@
       "finance": {
         "tabs": {
           "overview": "סקירה",
-          "cashflow": "תזרים"
+          "cashflow": "תזרים",
+          "officeExpenses": "הוצאות משרד"
         }
       },
       "executive": {
@@ -1721,6 +1722,38 @@
       "detailLabel": "פירוט",
       "netMonth": "{amount} נטו",
       "pickColumn": "בחרו עמודה"
+    },
+    "officeExpenses": {
+      "title": "הוצאות משרד",
+      "subtitle": "הוצאות ארגון שאינן משויכות לפרויקט — חשבוניות, קבלות ותשלומים שוטפים.",
+      "loading": "טוען הוצאות משרד…",
+      "totalPosted": "סה״כ מאושר: {amount}",
+      "addTitle": "הוספת הוצאה",
+      "editTitle": "עריכת הוצאה",
+      "listTitle": "רשימת הוצאות",
+      "vendor": "שם ספק",
+      "invoiceNumber": "מספר חשבונית",
+      "expenseDate": "תאריך",
+      "description": "תיאור",
+      "amountNet": "לפני מע״מ",
+      "vat": "מע״מ",
+      "statusPosted": "מאושר",
+      "statusDraft": "טיוטה",
+      "add": "הוסף",
+      "save": "שמור",
+      "saving": "שומר…",
+      "cancel": "ביטול",
+      "edit": "ערוך",
+      "delete": "מחק",
+      "deleteConfirm": "למחוק את ההוצאה?",
+      "empty": "אין עדיין הוצאות משרד — הוסיפו הוצאה ראשונה למעלה.",
+      "errors": {
+        "load": "טעינת הוצאות המשרד נכשלה",
+        "save": "שמירת ההוצאה נכשלה",
+        "delete": "מחיקת ההוצאה נכשלה",
+        "vendorRequired": "יש להזין שם ספק",
+        "amountInvalid": "סכום לפני מע״מ לא תקין"
+      }
     },
     "aiChat": {
       "title": "עוזר AI",

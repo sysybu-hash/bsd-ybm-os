@@ -353,7 +353,8 @@
       "finance": {
         "tabs": {
           "overview": "Overview",
-          "cashflow": "Cash flow"
+          "cashflow": "Cash flow",
+          "officeExpenses": "Office expenses"
         }
       },
       "executive": {
@@ -1721,6 +1722,38 @@
       "detailLabel": "Details",
       "netMonth": "{amount} net",
       "pickColumn": "Pick a column"
+    },
+    "officeExpenses": {
+      "title": "Office expenses",
+      "subtitle": "Organization expenses not tied to a project — invoices, receipts, and overhead.",
+      "loading": "Loading office expenses…",
+      "totalPosted": "Posted total: {amount}",
+      "addTitle": "Add expense",
+      "editTitle": "Edit expense",
+      "listTitle": "Expense list",
+      "vendor": "Vendor name",
+      "invoiceNumber": "Invoice number",
+      "expenseDate": "Date",
+      "description": "Description",
+      "amountNet": "Net amount",
+      "vat": "VAT",
+      "statusPosted": "Posted",
+      "statusDraft": "Draft",
+      "add": "Add",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this expense?",
+      "empty": "No office expenses yet — add your first one above.",
+      "errors": {
+        "load": "Failed to load office expenses",
+        "save": "Failed to save expense",
+        "delete": "Failed to delete expense",
+        "vendorRequired": "Vendor name is required",
+        "amountInvalid": "Invalid net amount"
+      }
     },
     "aiChat": {
       "title": "AI Assistant",
