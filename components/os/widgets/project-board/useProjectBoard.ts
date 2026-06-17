@@ -7,6 +7,7 @@ import { useProjectPicker } from "@/hooks/use-project-picker";
 import type { BoardColumnId } from "@/lib/tasks/board-mapping";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import { createLogger } from "@/lib/logger";
+import { emitProjectMutation, useProjectSync } from "@/lib/events/project-sync";
 import { emptyForm, taskToForm, syncTask, initialTasks } from "./constants";
 
 const log = createLogger("project-board");
@@ -70,21 +71,18 @@ export function useProjectBoard({
     if (!resolvedProjectId) return;
     try {
       const res = await fetch(
-        `/api/projects/update?projectId=${encodeURIComponent(resolvedProjectId)}`,
+        `/api/projects/${encodeURIComponent(resolvedProjectId)}/tasks`,
         { credentials: "include" },
       );
-      const data = (await res.json()) as Task[] | unknown;
-      if (Array.isArray(data)) {
-        setTasks(
-          (data as Task[]).map((row) => ({
-            ...row,
-            status: (row.status || "todo") as BoardColumnId,
-            priority: (row.priority || "medium") as import("@/lib/tasks/board-mapping").BoardPriorityId,
-          })),
-        );
-      } else {
-        setTasks([]);
-      }
+      const data = (await res.json()) as { tasks?: Task[] } | Task[];
+      const rows = Array.isArray(data) ? data : (data.tasks ?? []);
+      setTasks(
+        rows.map((row) => ({
+          ...row,
+          status: (row.status || "todo") as BoardColumnId,
+          priority: (row.priority || "medium") as import("@/lib/tasks/board-mapping").BoardPriorityId,
+        })),
+      );
     } catch (error) {
       log.error("fetch_tasks_failed", { message: error instanceof Error ? error.message : String(error) });
       toast.error(t(`${boardPrefix}.loadFailed`));
@@ -96,6 +94,8 @@ export function useProjectBoard({
     void fetchContacts();
     void fetchTasks();
   }, [showProjectPicker, loadProjectsList, fetchContacts, fetchTasks]);
+
+  useProjectSync(resolvedProjectId || undefined, fetchTasks);
 
   useEffect(() => {
     if (!resolvedProjectId || selectedProjectName) return;
@@ -158,6 +158,7 @@ export function useProjectBoard({
         );
       }
       toast.success(t(`${boardPrefix}.created`));
+      if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
       void fetchTasks();
     } catch {
       setTasks((prev) => prev.filter((item) => item.id !== optimisticId));
@@ -206,6 +207,7 @@ export function useProjectBoard({
         dueDate: updated.dueDate,
       });
       toast.success(t(`${boardPrefix}.updated`));
+      if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
       setTasks(prev);
       toast.error(t(`${boardPrefix}.saveFailed`));
@@ -217,13 +219,17 @@ export function useProjectBoard({
     setTasks((list) => list.filter((item) => item.id !== taskId));
     if (editingTaskId === taskId) setEditingTaskId(null);
     try {
-      const res = await fetch(`/api/projects/update?id=${encodeURIComponent(taskId)}`, {
+      const url = resolvedProjectId
+        ? `/api/projects/${encodeURIComponent(resolvedProjectId)}/tasks?id=${encodeURIComponent(taskId)}`
+        : `/api/projects/update?id=${encodeURIComponent(taskId)}`;
+      const res = await fetch(url, {
         method: "DELETE",
         credentials: "include",
       });
       const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || data.success === false) throw new Error(data.error);
       toast.success(t(`${boardPrefix}.deleted`));
+      if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
       setTasks(prev);
       toast.error(t(`${boardPrefix}.deleteFailed`));
@@ -238,6 +244,7 @@ export function useProjectBoard({
     try {
       await syncTask({ ...taskPayloadBase(), ...task, status: newStatus });
       toast.success(t(`${boardPrefix}.statusUpdated`));
+      if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
       setTasks(prev);
       toast.error(t(`${boardPrefix}.saveFailed`));
@@ -254,6 +261,7 @@ export function useProjectBoard({
     try {
       await syncTask({ ...taskPayloadBase(), ...task, budget: newBudget });
       toast.success(t(`${boardPrefix}.budgetUpdated`));
+      if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
       setTasks(prev);
       toast.error(t(`${boardPrefix}.saveFailed`));
@@ -285,6 +293,7 @@ export function useProjectBoard({
     handleAddProject, handleSaveEdit, handleDeleteTask,
     updateTaskStatus, updateTaskBudget,
     filteredTasks, priorityLabel,
+    refreshTasks: fetchTasks,
     openWorkspaceWidget,
   };
 }

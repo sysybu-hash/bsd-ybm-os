@@ -7,6 +7,7 @@ import { test, expect } from "@playwright/test";
 import {
   dismissWorkspaceOverlays,
   hubQuickGridButton,
+  openFinanceHub,
   primeCookieConsent,
   tryCredentialsSignIn,
   workspaceUrl,
@@ -33,7 +34,7 @@ test.describe("mobile responsive — layout", () => {
   // ─── widget shell ─────────────────────────────────────────────────────────────
 
   test("widget shell fills full width on mobile", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openFinanceHub(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
@@ -223,7 +224,7 @@ test.describe("mobile responsive — narrow viewport (360px)", () => {
   });
 
   test("finance hub renders without horizontal overflow at 360px", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openFinanceHub(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 

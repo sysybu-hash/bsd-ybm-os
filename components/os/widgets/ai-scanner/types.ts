@@ -3,7 +3,7 @@ import type { ScanValidationResult } from "@/lib/scan-validate";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 export type EngineMeta = {
-  configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean };
+  configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean; anthropic?: boolean };
   gemini?: { primaryLabel?: string };
   openai?: { defaultModelId?: string };
   mistral?: { primaryLabel?: string };

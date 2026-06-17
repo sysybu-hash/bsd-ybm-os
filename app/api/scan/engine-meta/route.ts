@@ -8,6 +8,7 @@ import {
   getOpenAiVisionModel,
   isDocAiConfigured,
   isGeminiConfigured,
+  isAnthropicConfigured,
   isMistralConfigured,
   isOpenAiConfigured,
 } from "@/lib/ai-providers";
@@ -59,6 +60,7 @@ export const GET = withWorkspacesAuth(async () => {
       gemini: isGeminiConfigured(),
       openai: isOpenAiConfigured(),
       mistral: isMistralConfigured(),
+      anthropic: isAnthropicConfigured(),
     },
     documentAI: {
       processors: getDocAiProcessorConfigs(),

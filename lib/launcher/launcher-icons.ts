@@ -38,11 +38,15 @@ import {
 
   Shield,
 
+  ShoppingCart,
+
   Sparkles,
 
   TrendingUp,
 
   Users,
+
+  Warehouse,
 
 } from "lucide-react";
 
@@ -385,6 +389,24 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
     icon: Bot,
     chip: true,
   },
+  logisticsHub: {
+    type: "logisticsHub",
+    labelKey: "workspaceWidgets.titles.logisticsHub",
+    icon: Warehouse,
+    chip: true,
+  },
+  procurementHub: {
+    type: "procurementHub",
+    labelKey: "workspaceWidgets.titles.procurementHub",
+    icon: ShoppingCart,
+    chip: true,
+  },
+  executiveHub: {
+    type: "executiveHub",
+    labelKey: "workspaceWidgets.titles.executiveHub",
+    icon: LayoutDashboard,
+    chip: true,
+  },
 
 };
 
@@ -468,6 +490,9 @@ export function quickActionLabelKey(type: WidgetType): string {
     projectsHub: "workspaceWidgets.quickActions.projectsHub.title",
     documentsHub: "workspaceWidgets.quickActions.documentsHub.title",
     aiHub: "workspaceWidgets.quickActions.aiHub.title",
+    logisticsHub: "workspaceWidgets.quickActions.logisticsHub.title",
+    procurementHub: "workspaceWidgets.quickActions.procurementHub.title",
+    executiveHub: "workspaceWidgets.quickActions.executiveHub.title",
   };
 
   const known = getLauncherNavMeta(type);
@@ -497,6 +522,9 @@ export function mobileNavLabelKey(type: WidgetType): string {
     documentsHub: "workspaceWidgets.mobileNav.documentsHub",
     projectsHub: "workspaceWidgets.mobileNav.projectsHub",
     financeHub: "workspaceWidgets.mobileNav.financeHub",
+    logisticsHub: "workspaceWidgets.mobileNav.logisticsHub",
+    procurementHub: "workspaceWidgets.mobileNav.procurementHub",
+    executiveHub: "workspaceWidgets.mobileNav.executiveHub",
   };
 
   const meta = getLauncherNavMeta(type);

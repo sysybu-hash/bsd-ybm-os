@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Plus, X, Save } from "lucide-react";
+import CommentsThread from "@/components/os/shared/CommentsThread";
 import type { BoardColumnId, BoardPriorityId } from "@/lib/tasks/board-mapping";
 import { columns } from "./constants";
 import type { Contact, TaskFormState } from "./types";
@@ -20,6 +21,7 @@ export type TaskFormModalProps = {
   onClose: () => void;
   onSave: () => void;
   saveLabel: string;
+  taskId?: string;
   t: (key: string) => string;
 };
 
@@ -33,6 +35,7 @@ export function TaskFormModal({
   onClose,
   onSave,
   saveLabel,
+  taskId,
   t,
 }: TaskFormModalProps) {
   if (!open) return null;
@@ -152,6 +155,8 @@ export function TaskFormModal({
             </div>
           </div>
         </div>
+
+        {taskId ? <CommentsThread targetId={taskId} targetType="TASK" /> : null}
 
         <button
           type="button"

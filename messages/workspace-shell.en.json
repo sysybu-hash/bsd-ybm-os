@@ -339,7 +339,10 @@
       "financeHub": "Finance",
       "projectsHub": "Projects",
       "documentsHub": "Documents",
-      "aiHub": "AI"
+      "aiHub": "AI",
+      "logisticsHub": "Logistics & assets",
+      "procurementHub": "Procurement & POs",
+      "executiveHub": "Executive hub"
     },
     "unsupportedWidget": "Unsupported window type ({type})",
     "retry": "Try again",
@@ -351,6 +354,12 @@
         "tabs": {
           "overview": "Overview",
           "cashflow": "Cash flow"
+        }
+      },
+      "executive": {
+        "tabs": {
+          "overview": "Strategic overview",
+          "progressBills": "Subcontractor bills"
         }
       },
       "projects": {
@@ -401,6 +410,179 @@
           "builder": "App Builder",
           "builderShort": "Builder"
         }
+      },
+      "logistics": {
+        "tabs": {
+          "inventory": "Materials",
+          "assets": "Equipment"
+        }
+      },
+      "procurement": {
+        "tabs": {
+          "requests": "Purchase requests",
+          "orders": "Purchase orders",
+          "suppliers": "Suppliers"
+        }
+      }
+    },
+    "logistics": {
+      "subtitle": "Raw materials, stock levels, and field equipment tracking",
+      "loading": "Loading…",
+      "loadError": "Failed to load data",
+      "inventory": {
+        "searchPlaceholder": "Search materials…",
+        "addItem": "Add stock item",
+        "empty": "No inventory items yet",
+        "quantity": "Qty",
+        "lowStock": "Low stock",
+        "formTitle": "New inventory item",
+        "name": "Item name",
+        "sku": "SKU",
+        "category": "Category",
+        "minQuantity": "Min alert level",
+        "unit": "Unit",
+        "location": "Location / warehouse",
+        "save": "Save",
+        "nameRequired": "Name is required",
+        "saveFailed": "Could not save item",
+        "saveSuccess": "Item added"
+      },
+      "assets": {
+        "searchPlaceholder": "Search equipment or serial numbers…",
+        "addAsset": "Add equipment",
+        "empty": "No equipment registered yet",
+        "serial": "Serial",
+        "noSerial": "Not set",
+        "assignedTo": "Assigned to",
+        "project": "Project",
+        "statusAvailable": "In warehouse",
+        "statusInField": "On site",
+        "checkOutCta": "Check out to field",
+        "checkInCta": "Return to warehouse",
+        "formTitle": "New equipment",
+        "name": "Equipment name",
+        "type": "Type",
+        "save": "Save",
+        "nameRequired": "Name is required",
+        "saveFailed": "Could not save equipment",
+        "saveSuccess": "Equipment added",
+        "checkoutTitle": "Check out — {name}",
+        "checkoutDesc": "Select worker and optional project before field dispatch",
+        "assignee": "Assigned worker",
+        "selectUser": "Select worker…",
+        "selectProjectOptional": "Project (optional)",
+        "notes": "Notes",
+        "confirmCheckout": "Confirm check-out",
+        "userRequired": "Select a worker",
+        "actionFailed": "Action failed",
+        "checkOutSuccess": "Equipment checked out",
+        "checkInSuccess": "Equipment returned",
+        "historyCta": "History"
+      },
+      "history": {
+        "title": "Movement history: {name}",
+        "loading": "Loading history…",
+        "empty": "No movement records for this equipment.",
+        "checkout": "Checked out",
+        "checkin": "Returned",
+        "project": "Project: {name}"
+      }
+    },
+    "procurement": {
+      "subtitle": "Purchase requests, supplier orders (PO), and goods receipt",
+      "loadError": "Failed to load data",
+      "requests": {
+        "hint": "Low stock and BOQ gaps appear here automatically",
+        "scanning": "Scanning inventory and BOQ…",
+        "emptyTitle": "No open purchase requests",
+        "empty": "Stock levels are healthy and no BOQ gaps detected.",
+        "needed": "Needed",
+        "createPo": "Create PO",
+        "newPo": "New purchase order",
+        "newRequest": "New request",
+        "newPoSoon": "Coming in the next phase",
+        "sourceLowStock": "Low stock",
+        "sourceBoq": "Bill of quantities",
+        "sourceManual": "Manual request",
+        "lowStockTitle": "Low stock: {name}",
+        "lowStockNotes": "Current quantity ({quantity} {unit}) is at or below minimum ({minQuantity} {unit})"
+      },
+      "orders": {
+        "loading": "Loading orders…",
+        "emptyTitle": "No orders yet",
+        "empty": "Create a PO from a purchase request to get started.",
+        "total": "Total",
+        "expected": "Expected delivery",
+        "markSent": "Send to supplier",
+        "issueDocument": "Issue PDF document",
+        "downloadPdf": "Download PDF",
+        "openDocument": "Open in document creator",
+        "documentReady": "Document issued",
+        "issueFailed": "Failed to issue document",
+        "actionFailed": "Action failed",
+        "receive": "Receive goods",
+        "cancel": "Cancel order",
+        "status": {
+          "DRAFT": "Draft",
+          "SENT": "Sent to supplier",
+          "PARTIAL": "Partially received",
+          "RECEIVED": "Completed",
+          "CANCELLED": "Cancelled"
+        }
+      },
+      "createPo": {
+        "title": "Create purchase order (PO)",
+        "linePreview": "Order line",
+        "quantity": "Quantity",
+        "supplier": "Supplier",
+        "selectSupplier": "Select supplier",
+        "addSupplier": "Add new supplier",
+        "useExistingSupplier": "Choose existing supplier",
+        "newSupplierPlaceholder": "Supplier name",
+        "supplierNameRequired": "Supplier name is required",
+        "supplierRequired": "Please select a supplier",
+        "unitPrice": "Unit price",
+        "unitPriceRequired": "Enter a valid price",
+        "expectedDate": "Expected delivery date",
+        "notes": "Notes",
+        "submit": "Create PO",
+        "submitAndSend": "Issue PDF and send to supplier",
+        "issueAndSendLabel": "Issue branded document and send to supplier",
+        "issueAndSendHint": "Creates a PDF in the ERP archive and moves the order to Sent.",
+        "createFailed": "Failed to create order",
+        "requestAlreadyOrdered": "This request was already fulfilled"
+      },
+      "createRequest": {
+        "title": "New purchase request",
+        "itemTitle": "Item description",
+        "quantity": "Quantity needed",
+        "notes": "Notes",
+        "submit": "Save request",
+        "titleRequired": "Description is required",
+        "quantityRequired": "Enter a valid quantity",
+        "createFailed": "Failed to create request"
+      },
+      "receivePo": {
+        "title": "Receive goods — {number}",
+        "desc": "Received quantity is added to inventory when a stock item is linked.",
+        "progress": "Received {received} of {total}",
+        "receiveQty": "Quantity to receive (max {max})",
+        "submit": "Confirm receipt",
+        "quantityRequired": "Enter a quantity to receive",
+        "overReceive": "Quantity exceeds the order",
+        "receiveFailed": "Failed to receive goods",
+        "allReceived": "All items have been received."
+      },
+      "suppliers": {
+        "addTitle": "New supplier",
+        "namePlaceholder": "Supplier name",
+        "emailPlaceholder": "Email (optional)",
+        "phonePlaceholder": "Phone (optional)",
+        "addButton": "Add supplier",
+        "nameRequired": "Supplier name is required",
+        "saveFailed": "Failed to save supplier",
+        "loading": "Loading suppliers…",
+        "empty": "No suppliers registered yet."
       }
     },
     "fieldCopilot": {
@@ -836,6 +1018,18 @@
       "aiHub": {
         "title": "AI",
         "subtitle": "Chat · notebook · builder"
+      },
+      "logisticsHub": {
+        "title": "Logistics",
+        "subtitle": "Inventory & field assets"
+      },
+      "procurementHub": {
+        "title": "Procurement",
+        "subtitle": "PRs & purchase orders"
+      },
+      "executiveHub": {
+        "title": "Executive hub",
+        "subtitle": "Strategic KPIs & subcontractor bills"
       }
     },
     "empty": {
@@ -857,6 +1051,9 @@
       "documentsHub": "Docs",
       "projectsHub": "Projects",
       "financeHub": "Finance",
+      "logisticsHub": "Logistics",
+      "procurementHub": "Procurement",
+      "executiveHub": "Executive",
       "meckanoReports": "Meckano reports",
       "crmTable": "Clients",
       "omnibarAria": "Open command bar and search",
@@ -1227,11 +1424,41 @@
       "cancel": "Cancel",
       "resetWindow": "Reset window",
       "scanMore": "Scan another",
+      "newScan": "New scan",
       "pickFiles": "Choose files to scan",
       "scanNow": "Scan now",
       "clearPending": "Clear",
       "filesReady": "files ready — press “Scan now”",
       "removeFile": "Remove"
+    },
+    "documentScan": {
+      "continueToSave": "Continue to save",
+      "savePhaseTitle": "Save document",
+      "saveDestination": "Save destination",
+      "saveMultiHint": "You can select multiple destinations — results will be saved to each one",
+      "savePickOne": "Select at least one save destination",
+      "saveMultiSuccess": "Saved to {count} destinations",
+      "saveTargetErp": "ERP (organization)",
+      "saveTargetCrm": "CRM",
+      "saveTargetProject": "Project",
+      "saveTargetNotebook": "AI notebook",
+      "saveTargetExpense": "Expense",
+      "confirmSave": "Confirm and save",
+      "saving": "Saving…",
+      "processing": "Processing document…",
+      "scanMode": "Scan mode",
+      "historyTitle": "Scan history",
+      "historyEmpty": "No recent documents",
+      "clearHistory": "Clear history",
+      "queuePending": "Queued",
+      "pendingCount": "Pending files",
+      "blueprintForkTitle": "Blueprint detected",
+      "blueprintForkMessage": "AI extracted a BOQ for {name}. Approve it or switch to manual Takeoff?",
+      "blueprintApproveAi": "Approve AI BOQ",
+      "blueprintTakeoff": "Measure in Takeoff",
+      "blueprintDismiss": "Continue to review",
+      "saveSuccess": "Saved successfully",
+      "saveFailed": "Save failed"
     },
     "jewishCalendar": {
       "title": "Hebrew calendar & zmanim",
@@ -1345,6 +1572,7 @@
       "saveNew": "Save task",
       "saveEdit": "Save changes",
       "addCard": "Add card",
+      "emptyColumn": "No tasks in this column",
       "requiredFields": "Please fill all required fields",
       "created": "Task created and synced",
       "updated": "Task updated",
@@ -1377,6 +1605,32 @@
         "priority": "Priority",
         "budget": "Budget (₪)",
         "dueDate": "Due date"
+      },
+      "mobileField": {
+        "allCaughtUpTitle": "All caught up",
+        "allCaughtUpDesc": "No open tasks right now.",
+        "inProgressBadge": "In progress",
+        "dueLabel": "Due:",
+        "dueUnset": "Not set",
+        "startWork": "Start work",
+        "blockOrWait": "Blocked / waiting",
+        "markDone": "Mark done",
+        "smartDiary": {
+          "title": "Smart field report",
+          "capture": "Photo the site — AI updates work diary",
+          "captureShort": "Site photo",
+          "captureForTask": "Photo for: {task}",
+          "analyzing": "Analyzing image…",
+          "saved": "Work diary saved",
+          "savedWithTask": "Diary saved and task updated",
+          "analyzeFailed": "Image analysis failed",
+          "invalidImage": "Please choose a valid image",
+          "imageTooLarge": "Image too large (max 8MB)",
+          "applyTaskStatus": "Update task status from AI analysis",
+          "materials": "Materials",
+          "issues": "Issues",
+          "captureAnother": "Take another photo"
+        }
       }
     },
     "dashboard": {
@@ -1401,6 +1655,50 @@
       "allTags": "All tags",
       "timelineTab": "History",
       "timelineEmpty": "No events yet"
+    },
+    "executive": {
+      "title": "Strategic overview",
+      "subtitle": "Organization-wide control metrics",
+      "loading": "Loading strategic data…",
+      "loadError": "Failed to load executive overview",
+      "netCashflow": "Net cash flow",
+      "lateTasks": "Overdue tasks",
+      "budgetAlerts": "Budget alerts",
+      "activeProjects": "Active projects",
+      "pendingBills": "Bills pending approval"
+    },
+    "comments": {
+      "title": "Team thread",
+      "loading": "Loading comments…",
+      "loadError": "Failed to load comments",
+      "postError": "Failed to post comment",
+      "empty": "No comments yet — keep the conversation in the OS",
+      "placeholder": "Write a comment…",
+      "send": "Send",
+      "anonymous": "User"
+    },
+    "progressBills": {
+      "submitTitle": "Submit progress bill",
+      "listTitle": "Subcontractor progress bills",
+      "loading": "Loading bills…",
+      "loadError": "Failed to load bills",
+      "createError": "Failed to create bill",
+      "actionError": "Status update failed",
+      "validation": "Fill project, contractor, amount, and valid completion %",
+      "contractorPlaceholder": "Subcontractor name",
+      "amountPlaceholder": "Amount (ILS)",
+      "percentPlaceholder": "Completion % (0–100)",
+      "saveDraft": "Save draft",
+      "submit": "Submit for approval",
+      "approve": "Approve bill",
+      "markPaid": "Mark paid",
+      "empty": "No progress bills yet",
+      "status": {
+        "draft": "Draft",
+        "submitted": "Pending approval",
+        "approved": "Approved",
+        "paid": "Paid"
+      }
     },
     "cashflowView": {
       "loading": "Syncing cash flow…",
@@ -1615,6 +1913,10 @@
       "closeAria": "Close preview",
       "loadingPreview": "Loading preview…",
       "pdfTitle": "PDF preview",
+      "fileSectionTitle": "File",
+      "decodeSectionTitle": "Decode results",
+      "openInDrive": "Open file in Google Drive",
+      "fileUnavailable": "Source file is not available for preview.",
       "noPreview": "No preview available.",
       "noLineItems": "No line items — download or open the document from the menu.",
       "vendorLabel": "Vendor: ",
@@ -1732,12 +2034,41 @@
   },
   "projectDashboard": {
     "tabs": {
+      "overview": "Overview",
+      "tasks": "Task board",
       "financial": "Financial hub",
       "financialBusiness": "Finance & budget",
       "diary": "Work diary",
       "gantt": "Gantt",
       "ai": "AI notebook",
       "settings": "Settings"
+    },
+    "overview": {
+      "progress": "Project progress",
+      "openTasks": "Open tasks",
+      "tasksDone": "{count} completed",
+      "budgetUsed": "Budget used",
+      "budgetTotal": "of {total} total",
+      "targetDate": "Target date",
+      "startDate": "Start: {date}",
+      "recentActivity": "Recent project activity",
+      "viewAll": "View diary",
+      "noActivity": "No recent activity — add a work diary entry or update tasks",
+      "projectDetails": "Project details",
+      "client": "Client",
+      "status": "Status",
+      "budgetUtilization": "Budget utilization",
+      "pendingExtras": "Pending extras awaiting approval: {amount}",
+      "attendanceCount": "{count} recent attendance records",
+      "activityDiaryFallback": "Work diary update",
+      "activityDiaryMeta": "Progress {progress}%",
+      "activityMilestonePaid": "Paid: {name}",
+      "activityMilestoneMeta": "Payment milestone",
+      "activityExtraFallback": "Approved extra",
+      "activityExtraMeta": "Project extra",
+      "activityExpense": "Invoice: {vendor}",
+      "activityExpenseUnknown": "Unknown vendor",
+      "activityExpenseMeta": "ERP expense"
     },
     "errors": {
       "load": "Failed to load project data",
@@ -1809,6 +2140,17 @@
     "generateDoc": "Generate document",
     "docGeneratorTitle": "Document generator",
     "financialBoqTitle": "Quote / BOQ / billing",
+    "financialKanban": {
+      "loading": "Calculating financial data…",
+      "title": "Budget management & financial control",
+      "subtitle": "Project budget, task allocations from the board, and actual expenses",
+      "approvedBudget": "Approved project budget",
+      "allocatedInTasks": "Budget allocated to tasks",
+      "remainingToAllocate": "Remaining to allocate",
+      "actualExpenses": "Actual expenses (invoices)",
+      "overBudgetTitle": "Budget overrun in task allocations",
+      "overBudgetDesc": "Total budgets set on kanban tasks exceed the approved project budget. Please reprioritize."
+    },
     "domainCount": "Filter: {label}",
     "linkedBoq": "BOQ line",
     "workDiary": "Work diary",

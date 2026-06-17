@@ -23,6 +23,7 @@ describe("COMPANY_MGMT industry", () => {
 
   it("limits UI scan modes for company mgmt", () => {
     const modes = getScanModesForUi("COMPANY_MGMT").map((m) => m.id);
+    expect(modes).toContain("AUTO_DETECT");
     expect(modes).toContain("INVOICE_FINANCIAL");
     expect(modes).toContain("GENERAL_DOCUMENT");
     expect(modes).not.toContain("DRAWING_BOQ");

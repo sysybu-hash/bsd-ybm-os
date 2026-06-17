@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { ArrowRight, RotateCcw, Save, ScanLine, Square, Trash2 } from "lucide-react";
 
-export type ScanUiPhase = "idle" | "processing" | "review" | "results";
+export type ScanUiPhase = "idle" | "processing" | "review" | "save" | "results";
 
 type ScanControlBarProps = {
   phase: ScanUiPhase;
   t: (key: string) => string;
   tr: (key: string, fallback: string) => string;
-  /** Anything to reset (queue / result / processing) — toggles the reset button. */
+  /** Anything to reset (queue / result / processing) ג€” toggles the reset button. */
   hasContent: boolean;
   /** Files selected but not yet scanned. */
   pendingCount?: number;
@@ -49,8 +49,8 @@ export function ScanControlBar({
 }: ScanControlBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/40 px-3 py-2.5 backdrop-blur-md">
-      {/* Secondary cluster — start side */}
-      {(phase === "review" || phase === "results") && onBack ? (
+      {/* Secondary cluster ג€” start side */}
+      {(phase === "review" || phase === "save" || phase === "results") && onBack ? (
         <button type="button" onClick={onBack} className={ghost}>
           <ArrowRight size={14} className="rtl:rotate-180" aria-hidden />
           {t(`${PREFIX}.back`)}
@@ -60,18 +60,18 @@ export function ScanControlBar({
       {hasContent && onReset ? (
         <button type="button" onClick={onReset} className={ghost}>
           <Trash2 size={14} aria-hidden />
-          {tr(`${PREFIX}.resetWindow`, "איפוס החלון")}
+          {tr(`${PREFIX}.resetWindow`, "׳׳™׳₪׳•׳¡ ׳”׳—׳׳•׳")}
         </button>
       ) : null}
 
       {phase === "idle" && pendingCount > 0 && onClearPending ? (
         <button type="button" onClick={onClearPending} className={ghost}>
           <Trash2 size={14} aria-hidden />
-          {tr(`${PREFIX}.clearPending`, "נקה")}
+          {tr(`${PREFIX}.clearPending`, "׳ ׳§׳”")}
         </button>
       ) : null}
 
-      {/* Primary cluster — end side */}
+      {/* Primary cluster ג€” end side */}
       <div className="ms-auto flex flex-wrap items-center gap-2">
         {phase === "processing" && onStop ? (
           <button type="button" onClick={onStop} className={danger}>
@@ -87,25 +87,26 @@ export function ScanControlBar({
           </button>
         ) : null}
 
-        {phase === "results" && onScanMore ? (
+        {(phase === "review" || phase === "results" || phase === "save") && onScanMore ? (
           <button type="button" onClick={onScanMore} className={primary}>
             <ScanLine size={14} aria-hidden />
-            {tr(`${PREFIX}.scanMore`, "סריקה נוספת")}
+            {tr(`${PREFIX}.newScan`, "סריקה חדשה")}
           </button>
         ) : null}
 
         {phase === "idle" && pendingCount > 0 && onStartScan ? (
           <button type="button" onClick={onStartScan} className={primary}>
             <ScanLine size={14} aria-hidden />
-            {tr(`${PREFIX}.scanNow`, "סרוק עכשיו")} ({pendingCount})
+            {tr(`${PREFIX}.scanNow`, "׳¡׳¨׳•׳§ ׳¢׳›׳©׳™׳•")} ({pendingCount})
           </button>
         ) : phase === "idle" && onPickFiles ? (
           <button type="button" onClick={onPickFiles} className={ghost}>
             <ScanLine size={14} aria-hidden />
-            {tr(`${PREFIX}.pickFiles`, "בחר קבצים לסריקה")}
+            {tr(`${PREFIX}.pickFiles`, "׳‘׳—׳¨ ׳§׳‘׳¦׳™׳ ׳׳¡׳¨׳™׳§׳”")}
           </button>
         ) : null}
       </div>
     </div>
   );
 }
+

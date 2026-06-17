@@ -5,6 +5,7 @@ import { Link2 } from "lucide-react";
 import { TRADE_BAR, parseDependencyIds } from "./utils";
 import type { GanttTask } from "./types";
 import type { FlatTask } from "./utils";
+import { DraggableGanttBar } from "./DraggableGanttBar";
 
 function barColorClass(task: FlatTask, defaultCls: string): string {
   const now = Date.now();
@@ -21,12 +22,23 @@ type Props = {
   left: number;
   width: number;
   displayProgress: number;
+  pixelsPerDay: number;
   taskById: Map<string, GanttTask>;
-  onDragStart: (e: React.MouseEvent<HTMLDivElement>, task: FlatTask) => void;
+  onDatesChange: (taskId: string, startDate: string, endDate: string) => void;
+  onProgressPointerDown?: (e: React.PointerEvent<HTMLDivElement>, task: FlatTask) => void;
 };
 
 export function GanttChartRow({
-  task, idx, rowH, left, width, displayProgress, taskById, onDragStart,
+  task,
+  idx,
+  rowH,
+  left,
+  width,
+  displayProgress,
+  pixelsPerDay,
+  taskById,
+  onDatesChange,
+  onProgressPointerDown,
 }: Props) {
   const baseCls = (task.tradeId && TRADE_BAR[task.tradeId]) ?? TRADE_BAR.GENERAL ?? "bg-indigo-500";
   const colorCls = barColorClass(task, baseCls);
@@ -39,26 +51,46 @@ export function GanttChartRow({
       style={{ height: rowH }}
     >
       <div
-        data-bar-id={task.id}
-        className={`absolute bottom-3 top-3 z-[2] flex items-center overflow-hidden rounded-md shadow-sm ${colorCls} ${task.hasChildren ? "cursor-default" : "cursor-ew-resize"}`}
+        className="absolute bottom-0 top-0 z-[2]"
         style={{ left: `${left}%`, width: `${width}%`, minWidth: 4 }}
-        onMouseDown={task.hasChildren ? undefined : (e) => onDragStart(e, task)}
-        title={`${task.title} · ${displayProgress}%`}
       >
-        <div className="absolute inset-0 rounded-md bg-black/20"
-          style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }} />
-        {width > 5 ? (
-          <span className="pointer-events-none relative z-[1] w-full select-none text-center text-[9px] font-semibold text-white drop-shadow-sm">
-            {displayProgress}%
-          </span>
-        ) : null}
+        {task.hasChildren ? (
+          <div
+            className={`absolute inset-y-3 inset-x-0 overflow-hidden rounded-md shadow-sm ${colorCls} cursor-default opacity-80`}
+          >
+            <div
+              className="absolute inset-0 rounded-md bg-black/20"
+              style={{ width: `${Math.min(100, Math.max(0, displayProgress))}%` }}
+            />
+            {width > 5 ? (
+              <span className="pointer-events-none relative z-[1] flex h-full w-full items-center justify-center text-center text-[9px] font-semibold text-white drop-shadow-sm">
+                {displayProgress}%
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <DraggableGanttBar
+            task={task}
+            displayProgress={displayProgress}
+            pixelsPerDay={pixelsPerDay}
+            colorCls={colorCls}
+            showLabel={width > 5}
+            onDatesChange={onDatesChange}
+            onProgressPointerDown={
+              onProgressPointerDown
+                ? (e) => onProgressPointerDown(e, task)
+                : undefined
+            }
+          />
+        )}
       </div>
       {deps.length > 0 ? (
         <span
           className="absolute end-1 top-1 z-[3] flex items-center gap-0.5 rounded bg-amber-100 px-1 text-[8px] text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
           title={deps.map((id) => taskById.get(id)?.title ?? id).join(" → ")}
         >
-          <Link2 size={8} />{deps.length}
+          <Link2 size={8} />
+          {deps.length}
         </span>
       ) : null}
     </div>

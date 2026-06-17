@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { createLogger } from "./logger";
@@ -76,7 +76,7 @@ export async function checkRateLimit(
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /** Extract a stable key from the incoming request (IP or user-id). */
-export function getRateLimitKey(req: NextRequest, suffix: string): string {
+export function getRateLimitKey(req: Request, suffix: string): string {
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded ? (forwarded.split(",")[0] ?? "unknown").trim() : "unknown";
   return `rl:${suffix}:${ip}`;
@@ -91,7 +91,7 @@ export function getRateLimitKey(req: NextRequest, suffix: string): string {
  * if (limited) return limited;
  */
 export async function applyRateLimit(
-  req: NextRequest,
+  req: Request,
   key: string,
   limit: number,
   windowMs: number,

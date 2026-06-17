@@ -1,13 +1,16 @@
 import { DriveDecodeStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GoogleDriveService } from "@/lib/services/google-drive";
-import { processDocumentAction } from "@/app/actions/process-document";
 import { saveScannedDocumentAction } from "@/app/actions/save-scanned-document";
 import {
   extractClientNameFromAi,
   routeDriveDecode,
 } from "@/lib/google-drive-decode-routing";
 import type { DriveDecodePreviewItem } from "@/lib/google-drive-decode-types";
+import { unifiedExtractFromFile } from "@/lib/scan/unified-extract";
+import { isScanUnifiedV2Enabled } from "@/lib/scan/feature-flag";
+import { processDocumentAction } from "@/app/actions/process-document";
+import { inferScreenTypeFromFileForIndustry } from "@/lib/ai/screen-decode-policy";
 
 export type { DriveDecodePreviewItem } from "@/lib/google-drive-decode-types";
 import { inferMimeFromFileName, isSupportedScanMime } from "@/lib/scan-mime";
@@ -78,19 +81,49 @@ export async function decodeDriveFilePreview(
 
     const blob = new Blob([new Uint8Array(buffer)], { type: scanMime });
     const file = new File([blob], name, { type: scanMime });
-    const form = new FormData();
-    form.append("file", file);
-    form.append("provider", "gemini");
 
-    const processed = await processDocumentAction(form, userId, organizationId, false);
-    if (!processed.success) {
-      throw new Error(processed.error ?? "פענוח נכשל");
+    let aiData: Record<string, unknown>;
+
+    if (isScanUnifiedV2Enabled()) {
+      const org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { industry: true },
+      });
+      const screenType = inferScreenTypeFromFileForIndustry(
+        name,
+        scanMime,
+        org?.industry ?? "CONSTRUCTION",
+      );
+      const scanMode =
+        screenType === "blueprint"
+          ? "DRAWING_BOQ"
+          : screenType === "invoice"
+            ? "INVOICE_FINANCIAL"
+            : "GENERAL_DOCUMENT";
+
+      const extracted = await unifiedExtractFromFile({
+        file,
+        userId,
+        scanMode,
+        engineRunMode: "AUTO",
+        industry: org?.industry ?? "CONSTRUCTION",
+      });
+      aiData = extracted.aiData;
+    } else {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("provider", "gemini");
+
+      const processed = await processDocumentAction(form, userId, organizationId, false);
+      if (!processed.success) {
+        throw new Error(processed.error ?? "פענוח נכשל");
+      }
+
+      aiData =
+        processed.data && typeof processed.data === "object" && !Array.isArray(processed.data)
+          ? (processed.data as Record<string, unknown>)
+          : {};
     }
-
-    const aiData =
-      processed.data && typeof processed.data === "object" && !Array.isArray(processed.data)
-        ? (processed.data as Record<string, unknown>)
-        : {};
 
     const routing = routeDriveDecode(aiData);
     const detectedClientName = extractClientNameFromAi(aiData);

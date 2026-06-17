@@ -20,6 +20,7 @@ export default function ProjectGanttChart({
   allTasks,
   boqLines = [],
   onProgressChange,
+  onDatesChange,
   onSaveTask,
   onDeleteTask,
   onClearAll,
@@ -239,6 +240,7 @@ export default function ProjectGanttChart({
           scale={scale} labels={labels}
           onEdit={openEdit}
           onProgressChange={onProgressChange}
+          onDatesChange={onDatesChange}
           onOpenDiary={onOpenDiary}
           onCreateDiary={onCreateDiary}
         />

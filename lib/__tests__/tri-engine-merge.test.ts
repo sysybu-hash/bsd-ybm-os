@@ -30,6 +30,18 @@ describe("tri-engine-merge", () => {
     expect(enriched.total).toBe(100);
   });
 
+  it("enrichInvoiceV5 fills vendor from client metadata", () => {
+    const v5 = emptyV5Base("x.pdf", "INVOICE_FINANCIAL", {
+      vendor: "לא צוין",
+      documentMetadata: { client: "חברת חשמל בע״מ" },
+      total: 0,
+      lineItems: [{ description: "א", quantity: 1, lineTotal: 50 }],
+    } as Partial<ScanExtractionV5>);
+    const enriched = enrichInvoiceV5(v5);
+    expect(enriched.vendor).toBe("חברת חשמל בע״מ");
+    expect(enriched.total).toBe(50);
+  });
+
   it("enrichInvoiceV5 is a no-op for non-invoice scan modes", () => {
     const v5 = emptyV5Base("drawing.pdf", "DRAWING_BOQ", { total: 10 });
     expect(enrichInvoiceV5(v5)).toBe(v5);

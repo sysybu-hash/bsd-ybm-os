@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpen, ChevronDown, ChevronRight, ListTree, Pencil } from "lucide-react";
 import { PROJECT_SUB_DOMAIN_BY_ID } from "@/lib/project-sub-domains";
 import {
@@ -25,20 +25,13 @@ type GanttChartViewProps = {
   labels: GanttLabels;
   onEdit: (task: GanttTask) => void;
   onProgressChange: (taskId: string, progress: number) => Promise<void>;
+  onDatesChange?: (taskId: string, startDate: string, endDate: string) => Promise<void> | void;
   onOpenDiary?: (task: GanttTask) => void;
   onCreateDiary?: (task: GanttTask) => Promise<void>;
 };
 
 const NAME_W = 220;
 const ROW_H  = 44;
-
-function barColorClass(task: FlatTask, defaultCls: string): string {
-  const now = Date.now();
-  const end = new Date(task.endDate ?? "").getTime();
-  if (task.status === "DONE" || task.progress >= 100) return "bg-emerald-500";
-  if (end && end < now && task.progress < 100) return "bg-rose-500";
-  return defaultCls;
-}
 
 type StatusMeta = { label: string; dot: string };
 function getStatusMeta(task: FlatTask): StatusMeta | null {
@@ -56,11 +49,28 @@ function getStatusMeta(task: FlatTask): StatusMeta | null {
 export function GanttChartView({
   tasks, range, ticks, todayLeft, taskById,
   hideConstructionFeatures, scale, labels,
-  onEdit, onProgressChange, onOpenDiary, onCreateDiary,
+  onEdit, onProgressChange, onDatesChange, onOpenDiary, onCreateDiary,
 }: GanttChartViewProps) {
   const span = range.max - range.min || 1;
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [chartWidthPx, setChartWidthPx] = useState(800);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState<{ taskId: string; progress: number } | null>(null);
+
+  useEffect(() => {
+    const el = chartAreaRef.current;
+    if (!el) return;
+    const updateWidth = () => {
+      const w = el.clientWidth;
+      if (w > 0) setChartWidthPx(w);
+    };
+    updateWidth();
+    const ro = new ResizeObserver(() => updateWidth());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const pixelsPerDay = chartWidthPx / Math.max(span / 86400000, 1);
 
   const weekendBands = scale === "days" ? buildWeekendBands(range.min, range.max) : [];
   const flatTasks = flattenTaskTree(tasks, collapsed);
@@ -68,10 +78,11 @@ export function GanttChartView({
   const toggleCollapse = (id: string) =>
     setCollapsed(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, task: FlatTask) => {
+  const handleProgressPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, task: FlatTask) => {
       if (task.hasChildren) return;
       e.preventDefault();
+      e.stopPropagation();
       const bar = document.querySelector<HTMLDivElement>(`[data-bar-id="${task.id}"]`);
       if (!bar) return;
 
@@ -82,18 +93,28 @@ export function GanttChartView({
 
       setDragging({ taskId: task.id, progress: getProgress(e.clientX) });
 
-      const onMove = (mv: MouseEvent) => setDragging({ taskId: task.id, progress: getProgress(mv.clientX) });
-      const onUp   = (uv: MouseEvent) => {
+      const onMove = (mv: PointerEvent) =>
+        setDragging({ taskId: task.id, progress: getProgress(mv.clientX) });
+      const onUp = (uv: PointerEvent) => {
         const p = getProgress(uv.clientX);
         setDragging(null);
         void onProgressChange(task.id, p);
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
       };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
     },
     [onProgressChange],
+  );
+
+  const handleDatesChange = useCallback(
+    (taskId: string, startDate: string, endDate: string) => {
+      void onDatesChange?.(taskId, startDate, endDate);
+    },
+    [onDatesChange],
   );
 
   const rowIndexMap = new Map(flatTasks.map((t, i) => [t.id, i]));
@@ -192,7 +213,7 @@ export function GanttChartView({
         </div>
 
         {/* ── Scrollable chart ── */}
-        <div className="relative min-w-0 flex-1 overflow-x-auto" dir="ltr">
+        <div ref={chartAreaRef} className="relative min-w-0 flex-1 overflow-x-auto" dir="ltr">
 
           {/* Weekend shade */}
           {weekendBands.map((band, i) => (
@@ -263,7 +284,10 @@ export function GanttChartView({
               return (
                 <GanttChartRow key={task.id} task={task} idx={idx} rowH={ROW_H}
                   left={left} width={width} displayProgress={displayProgress}
-                  taskById={taskById} onDragStart={handleDragStart} />
+                  pixelsPerDay={pixelsPerDay}
+                  taskById={taskById}
+                  onDatesChange={handleDatesChange}
+                  onProgressPointerDown={handleProgressPointerDown} />
               );
             })}
           </div>

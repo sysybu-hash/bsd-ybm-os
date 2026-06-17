@@ -3,18 +3,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { OSNotification } from '@/components/os/NotificationCenter';
 import { useKnowledgeVault } from '@/components/os/KnowledgeVaultProvider';
+import { stashPendingScanIntake } from '@/lib/scan/pending-intake';
 
-interface DocumentAnalysis {
+interface FileDropzoneProps {
+  onProcessed: (notification: OSNotification) => void;
+  onLatency?: (latency: number) => void;
+  /** מפנה לסורק המאוחד במקום /api/analyze ישיר */
+  onRouteToScanner?: () => void;
+}
+
+interface LegacyDocumentAnalysis {
   amount: number | null;
   vendor: string;
   projectSuggestion: string;
   confidence: number;
   summary: string;
-}
-
-interface FileDropzoneProps {
-  onProcessed: (notification: OSNotification) => void;
-  onLatency?: (latency: number) => void;
 }
 
 const readFileAsDataUrl = (file: File) => {
@@ -39,7 +42,7 @@ const formatAmount = (amount: number | null) => {
   }).format(amount);
 };
 
-export default function FileDropzone({ onProcessed, onLatency }: FileDropzoneProps) {
+export default function FileDropzone({ onProcessed, onLatency, onRouteToScanner }: FileDropzoneProps) {
   const vault = useKnowledgeVault();
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,10 +55,16 @@ export default function FileDropzone({ onProcessed, onLatency }: FileDropzonePro
     onProcessed({
       id: `ai-analysis-started-${Date.now()}`,
       title: 'AI Analysis Started',
-      message: `${file.name} נשלח למנוע הניתוח של BSD-YBM.`,
+      message: `${file.name} נשלח לסורק המאוחד.`,
       severity: 'info',
       createdAt: new Date().toISOString(),
     });
+
+    if (onRouteToScanner) {
+      stashPendingScanIntake([file], { autoScan: true, source: 'dropzone' });
+      onRouteToScanner();
+      return;
+    }
 
     setIsProcessing(true);
 
@@ -77,7 +86,7 @@ export default function FileDropzone({ onProcessed, onLatency }: FileDropzonePro
 
       const data = await response.json() as {
         success?: boolean;
-        analysis?: DocumentAnalysis;
+        analysis?: LegacyDocumentAnalysis;
         notification?: OSNotification;
       };
 
@@ -128,7 +137,7 @@ export default function FileDropzone({ onProcessed, onLatency }: FileDropzonePro
     } finally {
       setIsProcessing(false);
     }
-  }, [onLatency, onProcessed, vault]);
+  }, [onLatency, onProcessed, onRouteToScanner, vault]);
 
   useEffect(() => {
     const handleDragEnter = (event: DragEvent) => {

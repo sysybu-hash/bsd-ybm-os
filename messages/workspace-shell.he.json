@@ -339,7 +339,10 @@
       "financeHub": "פיננסים",
       "projectsHub": "פרויקטים",
       "documentsHub": "מסמכים",
-      "aiHub": "בינה מלאכותית"
+      "aiHub": "בינה מלאכותית",
+      "logisticsHub": "לוגיסטיקה וציוד",
+      "procurementHub": "רכש והזמנות",
+      "executiveHub": "מרכז מנהל"
     },
     "unsupportedWidget": "סוג חלון לא נתמך ({type})",
     "retry": "נסה שוב",
@@ -351,6 +354,12 @@
         "tabs": {
           "overview": "סקירה",
           "cashflow": "תזרים"
+        }
+      },
+      "executive": {
+        "tabs": {
+          "overview": "סקירה אסטרטגית",
+          "progressBills": "חשבונות קבלנים"
         }
       },
       "projects": {
@@ -401,6 +410,179 @@
           "builder": "מחולל אפליקציות",
           "builderShort": "מחולל"
         }
+      },
+      "logistics": {
+        "tabs": {
+          "inventory": "חומרי גלם",
+          "assets": "ציוד קבוע"
+        }
+      },
+      "procurement": {
+        "tabs": {
+          "requests": "דרישות רכש",
+          "orders": "הזמנות עבודה",
+          "suppliers": "ספקים"
+        }
+      }
+    },
+    "logistics": {
+      "subtitle": "ניהול חומרי גלם, מלאי ומעקב אחר כלי עבודה בשטח",
+      "loading": "טוען נתונים…",
+      "loadError": "שגיאה בטעינת הנתונים",
+      "inventory": {
+        "searchPlaceholder": "חיפוש חומרים…",
+        "addItem": "הוסף פריט מלאי",
+        "empty": "אין פריטי מלאי עדיין",
+        "quantity": "כמות",
+        "lowStock": "מלאי חסר",
+        "formTitle": "פריט מלאי חדש",
+        "name": "שם הפריט",
+        "sku": "מק״ט / SKU",
+        "category": "קטגוריה",
+        "minQuantity": "מינימום להתראה",
+        "unit": "יחידת מידה",
+        "location": "מיקום / מחסן",
+        "save": "שמור",
+        "nameRequired": "יש להזין שם פריט",
+        "saveFailed": "שמירת הפריט נכשלה",
+        "saveSuccess": "פריט המלאי נוסף"
+      },
+      "assets": {
+        "searchPlaceholder": "חיפוש ציוד ומספרים סידוריים…",
+        "addAsset": "הוסף ציוד",
+        "empty": "אין ציוד רשום עדיין",
+        "serial": "מספר סידורי",
+        "noSerial": "לא מוגדר",
+        "assignedTo": "מוחתם ל",
+        "project": "פרויקט",
+        "statusAvailable": "זמין במחסן",
+        "statusInField": "בשטח",
+        "checkOutCta": "החתם ויציאה לשטח",
+        "checkInCta": "החזר למחסן",
+        "formTitle": "ציוד חדש",
+        "name": "שם הציוד",
+        "type": "סוג",
+        "save": "שמור",
+        "nameRequired": "יש להזין שם ציוד",
+        "saveFailed": "שמירת הציוד נכשלה",
+        "saveSuccess": "הציוד נוסף",
+        "checkoutTitle": "החתמת ציוד — {name}",
+        "checkoutDesc": "בחרו עובד ופרויקט יעד לפני יציאה לשטח",
+        "assignee": "עובד מוחתם",
+        "selectUser": "בחרו עובד…",
+        "selectProjectOptional": "פרויקט (אופציונלי)",
+        "notes": "הערות",
+        "confirmCheckout": "אשר החתמה",
+        "userRequired": "יש לבחור עובד",
+        "actionFailed": "הפעולה נכשלה",
+        "checkOutSuccess": "הציוד הוצא לשטח",
+        "checkInSuccess": "הציוד הוחזר למחסן",
+        "historyCta": "היסטוריה"
+      },
+      "history": {
+        "title": "היסטוריית תנועות: {name}",
+        "loading": "טוען היסטוריה…",
+        "empty": "אין תיעוד תנועות לציוד זה.",
+        "checkout": "יציאה לשטח",
+        "checkin": "הוחזר למחסן",
+        "project": "פרויקט: {name}"
+      }
+    },
+    "procurement": {
+      "subtitle": "ניהול דרישות רכש, הזמנות ספקים (PO) וקליטת סחורה",
+      "loadError": "שגיאה בטעינת הנתונים",
+      "requests": {
+        "hint": "דרישות ממלאי חסר ומכתבי כמויות יופיעו כאן אוטומטית",
+        "scanning": "סורק מלאי וכתבי כמויות…",
+        "emptyTitle": "אין דרישות רכש פתוחות",
+        "empty": "המלאי תקין ואין חוסרים מכתבי הכמויות (BOQ).",
+        "needed": "דרוש",
+        "createPo": "הפק הזמנה (PO)",
+        "newPo": "הזמנת רכש חדשה",
+        "newRequest": "דרישה חדשה",
+        "newPoSoon": "בשלב הבא",
+        "sourceLowStock": "חוסר במלאי",
+        "sourceBoq": "כתב כמויות",
+        "sourceManual": "דרישה ידנית",
+        "lowStockTitle": "מלאי חסר: {name}",
+        "lowStockNotes": "הכמות הנוכחית ({quantity} {unit}) ירדה מתחת למינימום ({minQuantity} {unit})"
+      },
+      "orders": {
+        "loading": "טוען הזמנות…",
+        "emptyTitle": "אין הזמנות עדיין",
+        "empty": "הפיקו הזמנה מדרישת רכש כדי להתחיל.",
+        "total": "סה״כ",
+        "expected": "אספקה צפויה",
+        "markSent": "שלח לספק",
+        "issueDocument": "הפק מסמך PDF",
+        "downloadPdf": "הורד PDF",
+        "openDocument": "פתח ביוצר מסמכים",
+        "documentReady": "מסמך מונפק",
+        "issueFailed": "הפקת המסמך נכשלה",
+        "actionFailed": "הפעולה נכשלה",
+        "receive": "קליטת סחורה",
+        "cancel": "ביטול הזמנה",
+        "status": {
+          "DRAFT": "טיוטה",
+          "SENT": "נשלח לספק",
+          "PARTIAL": "נקלט חלקית",
+          "RECEIVED": "הושלם",
+          "CANCELLED": "בוטל"
+        }
+      },
+      "createPo": {
+        "title": "הפקת הזמנת רכש (PO)",
+        "linePreview": "שורת הזמנה",
+        "quantity": "כמות",
+        "supplier": "ספק",
+        "selectSupplier": "בחרו ספק",
+        "addSupplier": "הוספת ספק חדש",
+        "useExistingSupplier": "בחירה מספק קיים",
+        "newSupplierPlaceholder": "שם הספק",
+        "supplierNameRequired": "יש להזין שם ספק",
+        "supplierRequired": "יש לבחור ספק",
+        "unitPrice": "מחיר ליחידה (₪)",
+        "unitPriceRequired": "יש להזין מחיר תקין",
+        "expectedDate": "תאריך אספקה צפוי",
+        "notes": "הערות",
+        "submit": "הפק הזמנה",
+        "submitAndSend": "הפק PDF ושלח לספק",
+        "issueAndSendLabel": "הפק מסמך ממותג ושלח לספק",
+        "issueAndSendHint": "ייווצר מסמך PDF בארכיון ERP וההזמנה תעבור לסטטוס «נשלח לספק».",
+        "createFailed": "יצירת ההזמנה נכשלה",
+        "requestAlreadyOrdered": "הדרישה כבר טופלה"
+      },
+      "createRequest": {
+        "title": "דרישת רכש חדשה",
+        "itemTitle": "תיאור הפריט",
+        "quantity": "כמות נדרשת",
+        "notes": "הערות",
+        "submit": "שמור דרישה",
+        "titleRequired": "יש להזין תיאור",
+        "quantityRequired": "יש להזין כמות תקינה",
+        "createFailed": "יצירת הדרישה נכשלה"
+      },
+      "receivePo": {
+        "title": "קליטת סחורה — {number}",
+        "desc": "הכמות שתיקלט תתווסף אוטומטית למלאי (כשיש קישור לפריט).",
+        "progress": "נקלט {received} מתוך {total}",
+        "receiveQty": "כמות לקליטה (מקס׳ {max})",
+        "submit": "אשר קליטה",
+        "quantityRequired": "יש להזין כמות לקליטה",
+        "overReceive": "הכמות חורגת מההזמנה",
+        "receiveFailed": "קליטת הסחורה נכשלה",
+        "allReceived": "כל הפריטים כבר נקלטו."
+      },
+      "suppliers": {
+        "addTitle": "ספק חדש",
+        "namePlaceholder": "שם הספק",
+        "emailPlaceholder": "אימייל (אופציונלי)",
+        "phonePlaceholder": "טלפון (אופציונלי)",
+        "addButton": "הוסף ספק",
+        "nameRequired": "יש להזין שם ספק",
+        "saveFailed": "שמירת הספק נכשלה",
+        "loading": "טוען ספקים…",
+        "empty": "אין ספקים רשומים עדיין."
       }
     },
     "fieldCopilot": {
@@ -836,6 +1018,18 @@
       "aiHub": {
         "title": "AI",
         "subtitle": "צ׳אט · מחברת · מחולל"
+      },
+      "logisticsHub": {
+        "title": "לוגיסטיקה",
+        "subtitle": "מלאי וציוד בשטח"
+      },
+      "procurementHub": {
+        "title": "רכש",
+        "subtitle": "דרישות והזמנות PO"
+      },
+      "executiveHub": {
+        "title": "מרכז מנהל",
+        "subtitle": "סקירה אסטרטגית וחשבונות קבלנים"
       }
     },
     "empty": {
@@ -857,6 +1051,9 @@
       "documentsHub": "מסמכים",
       "projectsHub": "פרויקטים",
       "financeHub": "פיננסים",
+      "logisticsHub": "לוגיסטיקה",
+      "procurementHub": "רכש",
+      "executiveHub": "מרכז מנהל",
       "meckanoReports": "דוחות Meckano",
       "crmTable": "לקוחות",
       "omnibarAria": "פתח שורת פקודה וחיפוש",
@@ -1227,11 +1424,41 @@
       "cancel": "ביטול",
       "resetWindow": "איפוס החלון",
       "scanMore": "סריקה נוספת",
+      "newScan": "סריקה חדשה",
       "pickFiles": "בחר קבצים לסריקה",
       "scanNow": "סרוק עכשיו",
       "clearPending": "נקה",
       "filesReady": "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»",
       "removeFile": "הסר"
+    },
+    "documentScan": {
+      "continueToSave": "המשך לשמירה",
+      "savePhaseTitle": "שמירת מסמך",
+      "saveDestination": "יעד שמירה",
+      "saveMultiHint": "ניתן לסמן יותר מיעד אחד — השמירה תתבצע לכל היעדים שסומנו",
+      "savePickOne": "בחרו לפחות יעד שמירה אחד",
+      "saveMultiSuccess": "נשמר ל-{count} יעדים",
+      "saveTargetErp": "ERP (ארגון)",
+      "saveTargetCrm": "CRM",
+      "saveTargetProject": "פרויקט",
+      "saveTargetNotebook": "מחברת AI",
+      "saveTargetExpense": "הוצאה",
+      "confirmSave": "אשר ושמור",
+      "saving": "שומר…",
+      "processing": "מעבד מסמך…",
+      "scanMode": "מצב סריקה",
+      "historyTitle": "היסטוריית סריקות",
+      "historyEmpty": "אין מסמכים אחרונים",
+      "clearHistory": "נקה היסטוריה",
+      "queuePending": "בתור",
+      "pendingCount": "קבצים ממתינים",
+      "blueprintForkTitle": "זוהתה גרמושקה",
+      "blueprintForkMessage": "המערכת חילצה כתב כמויות מ-AI עבור {name}. לאשר את התוצאה או לעבור למדידה ידנית?",
+      "blueprintApproveAi": "אשר BOQ מ-AI",
+      "blueprintTakeoff": "מדוד ב-Takeoff",
+      "blueprintDismiss": "המשך לסקירה",
+      "saveSuccess": "נשמר בהצלחה",
+      "saveFailed": "השמירה נכשלה"
     },
     "jewishCalendar": {
       "title": "לוח עברי וזמנים",
@@ -1345,6 +1572,7 @@
       "saveNew": "שמור משימה",
       "saveEdit": "שמור שינויים",
       "addCard": "הוסף כרטיס",
+      "emptyColumn": "אין משימות בעמודה זו",
       "requiredFields": "אנא מלא את כל שדות החובה",
       "created": "משימה נוספה וסונכרנה",
       "updated": "המשימה עודכנה",
@@ -1377,6 +1605,32 @@
         "priority": "עדיפות",
         "budget": "תקציב (₪)",
         "dueDate": "תאריך יעד"
+      },
+      "mobileField": {
+        "allCaughtUpTitle": "הכל מעודכן",
+        "allCaughtUpDesc": "אין משימות פתוחות כרגע.",
+        "inProgressBadge": "בעבודה",
+        "dueLabel": "יעד:",
+        "dueUnset": "לא הוגדר",
+        "startWork": "התחל ביצוע",
+        "blockOrWait": "חסם / המתנה",
+        "markDone": "סיום משימה",
+        "smartDiary": {
+          "title": "דו״ח יום חכם",
+          "capture": "צלם את האתר — AI מעדכן יומן עבודה",
+          "captureShort": "צלם אתר",
+          "captureForTask": "צלם עבור: {task}",
+          "analyzing": "מנתח תמונה…",
+          "saved": "יומן העבודה נשמר",
+          "savedWithTask": "יומן נשמר והמשימה עודכנה",
+          "analyzeFailed": "ניתוח התמונה נכשל",
+          "invalidImage": "יש לבחור תמונה תקינה",
+          "imageTooLarge": "התמונה גדולה מדי (מקס׳ 8MB)",
+          "applyTaskStatus": "עדכן סטטוס משימה לפי ניתוח AI",
+          "materials": "חומרים",
+          "issues": "בעיות",
+          "captureAnother": "צילום נוסף"
+        }
       }
     },
     "dashboard": {
@@ -1401,6 +1655,50 @@
       "allTags": "כל התגיות",
       "timelineTab": "היסטוריה",
       "timelineEmpty": "אין אירועים עדיין"
+    },
+    "executive": {
+      "title": "סקירה אסטרטגית",
+      "subtitle": "מדדי שליטה מרכזיים לכל הארגון",
+      "loading": "טוען נתונים אסטרטגיים…",
+      "loadError": "שגיאה בטעינת הסקירה האסטרטגית",
+      "netCashflow": "תזרים נטו",
+      "lateTasks": "משימות בפיגור",
+      "budgetAlerts": "חריגות תקציב",
+      "activeProjects": "פרויקטים פעילים",
+      "pendingBills": "חשבונות לאישור"
+    },
+    "comments": {
+      "title": "שיח צוות",
+      "loading": "טוען תגובות…",
+      "loadError": "שגיאה בטעינת התגובות",
+      "postError": "שליחת התגובה נכשלה",
+      "empty": "אין תגובות עדיין — התחילו שיחה כאן במקום וואטסאפ",
+      "placeholder": "כתוב תגובה…",
+      "send": "שלח",
+      "anonymous": "משתמש"
+    },
+    "progressBills": {
+      "submitTitle": "הגשת חשבון חלקי",
+      "listTitle": "חשבונות קבלני משנה",
+      "loading": "טוען חשבונות…",
+      "loadError": "שגיאה בטעינת החשבונות",
+      "createError": "יצירת החשבון נכשלה",
+      "actionError": "עדכון הסטטוס נכשל",
+      "validation": "מלאו פרויקט, שם קבלן, סכום ואחוז ביצוע תקינים",
+      "contractorPlaceholder": "שם קבלן המשנה",
+      "amountPlaceholder": "סכום (₪)",
+      "percentPlaceholder": "אחוז ביצוע (0–100)",
+      "saveDraft": "שמור טיוטה",
+      "submit": "הגש לאישור",
+      "approve": "אשר חשבון",
+      "markPaid": "סמן כשולם",
+      "empty": "אין חשבונות חלקיים עדיין",
+      "status": {
+        "draft": "טיוטה",
+        "submitted": "ממתין לאישור",
+        "approved": "אושר",
+        "paid": "שולם"
+      }
     },
     "cashflowView": {
       "loading": "מסנכרן תזרים מזומנים…",
@@ -1615,6 +1913,10 @@
       "closeAria": "סגור תצוגה",
       "loadingPreview": "טוען תצוגה…",
       "pdfTitle": "תצוגת PDF",
+      "fileSectionTitle": "הקובץ",
+      "decodeSectionTitle": "תוצאות פענוח",
+      "openInDrive": "פתח את הקובץ ב-Google Drive",
+      "fileUnavailable": "קובץ המקור לא זמין לתצוגה.",
       "noPreview": "אין תצוגה זמינה.",
       "noLineItems": "אין שורות מפורטות — ניתן להוריד או לפתוח את המסמך מהתפריט.",
       "vendorLabel": "ספק: ",
@@ -1732,12 +2034,41 @@
   },
   "projectDashboard": {
     "tabs": {
+      "overview": "תמונת מצב",
+      "tasks": "לוח משימות",
       "financial": "מרכז פיננסי",
       "financialBusiness": "כספים ותקציב",
       "diary": "יומן עבודה",
       "gantt": "גנט",
       "ai": "מחברת AI",
       "settings": "הגדרות"
+    },
+    "overview": {
+      "progress": "התקדמות הפרויקט",
+      "openTasks": "משימות פתוחות",
+      "tasksDone": "{count} הושלמו",
+      "budgetUsed": "ניצול תקציב",
+      "budgetTotal": "מתוך {total} כולל",
+      "targetDate": "תאריך יעד",
+      "startDate": "התחלה: {date}",
+      "recentActivity": "פעילות אחרונה בפרויקט",
+      "viewAll": "צפה ביומן",
+      "noActivity": "אין פעילות אחרונה — הוסיפו יומן עבודה או עדכנו משימות",
+      "projectDetails": "פרטי הפרויקט",
+      "client": "לקוח",
+      "status": "סטטוס",
+      "budgetUtilization": "אחוז ניצול תקציב",
+      "pendingExtras": "תוספות ממתינות לאישור: {amount}",
+      "attendanceCount": "{count} רשומות נוכחות אחרונות",
+      "activityDiaryFallback": "עדכון יומן עבודה",
+      "activityDiaryMeta": "התקדמות {progress}%",
+      "activityMilestonePaid": "שולם: {name}",
+      "activityMilestoneMeta": "אבן דרך תשלום",
+      "activityExtraFallback": "תוספת מאושרת",
+      "activityExtraMeta": "תוספת לפרויקט",
+      "activityExpense": "חשבונית: {vendor}",
+      "activityExpenseUnknown": "ספק לא ידוע",
+      "activityExpenseMeta": "הוצאה מ-ERP"
     },
     "errors": {
       "load": "טעינת נתוני הפרויקט נכשלה",
@@ -1809,6 +2140,17 @@
     "generateDoc": "הפק מסמך",
     "docGeneratorTitle": "מחולל מסמכים",
     "financialBoqTitle": "הצעת מחיר / כתב כמויות / חשבונות",
+    "financialKanban": {
+      "loading": "מחשב נתונים פיננסיים…",
+      "title": "ניהול תקציב ובקרה פיננסית",
+      "subtitle": "ריכוז תקציבים, הקצאות משימות והוצאות בפועל",
+      "approvedBudget": "תקציב פרויקט מאושר",
+      "allocatedInTasks": "תקציב מוקצה למשימות",
+      "remainingToAllocate": "יתרה להקצאה",
+      "actualExpenses": "הוצאות בפועל (חשבוניות)",
+      "overBudgetTitle": "חריגת תקציב זוהתה בהקצאות",
+      "overBudgetDesc": "סך התקציב שהוגדר במשימות הקנבן עובר את תקציב הפרויקט המאושר. אנא בצעו תעדוף מחדש."
+    },
     "domainCount": "סינון: {label}",
     "linkedBoq": "שורת BOQ",
     "workDiary": "יומן עבודה",

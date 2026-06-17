@@ -112,6 +112,19 @@ export async function primeCookieConsent(page: Page) {
 
 /** מחכה שה-workspace נטען אחרי התחברות (לא דף נחיתה / login). */
 export async function waitForAuthenticatedWorkspace(page: Page) {
+  await expect
+    .poll(
+      () => {
+        try {
+          return !new URL(page.url()).pathname.includes("/login");
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30_000, message: "Expected to leave login route" },
+    )
+    .toBe(true);
+
   const sidebar = page.getByRole("navigation", { name: /יישומים|Apps/i });
   const mobileNav = page.getByTestId("mobile-bottom-nav");
   const workspaceNav = page.getByRole("complementary", { name: /Workspace navigation|ניווט/i });
@@ -220,6 +233,17 @@ async function hasAuthenticatedSession(page: Page): Promise<boolean> {
   });
 }
 
+async function ensureAuthenticatedWorkspace(page: Page): Promise<boolean> {
+  if (!(await hasAuthenticatedSession(page))) return false;
+  if (new URL(page.url()).pathname.includes("/login")) return false;
+  try {
+    await waitForAuthenticatedWorkspace(page);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function credentialsSignInViaApi(page: Page): Promise<boolean> {
   const ok = await page.evaluate(
     async ({ email, password }) => {
@@ -274,6 +298,30 @@ async function credentialsSignInViaUi(page: Page): Promise<boolean> {
   return hasAuthenticatedSession(page);
 }
 
+export async function signInWithRetries(page: Page, attempts = 4): Promise<boolean> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const signed = await tryCredentialsSignIn(page);
+    if (signed) return true;
+    await page.waitForTimeout(600 + attempt * 600);
+  }
+  return false;
+}
+
+/** ממתין ל-session cookie לפני קריאות API ב-E2E. */
+export async function waitForAuthenticatedApiSession(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get("/api/auth/session");
+        if (!res.ok()) return false;
+        const data = (await res.json()) as { user?: { email?: string } };
+        return Boolean(data.user?.email);
+      },
+      { timeout: 30_000, message: "Expected authenticated API session" },
+    )
+    .toBe(true);
+}
+
 export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
   try {
     await primeCookieConsent(page);
@@ -282,14 +330,21 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
     await page.waitForLoadState("domcontentloaded");
 
     if (await credentialsSignInViaApi(page)) {
-      await page.goto("/");
-      await waitForAuthenticatedWorkspace(page);
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      if (await ensureAuthenticatedWorkspace(page)) {
+        await dismissWorkspaceOverlays(page);
+        return true;
+      }
+      await page.goto("/login", { waitUntil: "domcontentloaded" });
+    }
+
+    if (await ensureAuthenticatedWorkspace(page)) {
       await dismissWorkspaceOverlays(page);
       return true;
     }
 
     if (await credentialsSignInViaUi(page)) {
-      await waitForAuthenticatedWorkspace(page);
+      if (!(await ensureAuthenticatedWorkspace(page))) return false;
       await dismissWorkspaceOverlays(page);
       return true;
     }
@@ -306,6 +361,48 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
 /** כפתור Hub ברשת המהירה (לא אייקון בסרגל הצד). */
 export function hubQuickGridButton(page: Page, name: RegExp) {
   return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
+}
+
+/** פותח Hub מהרשת המהירה, או deep link אם האריח לא מוצג (למשל פיננסים בתעשיית בנייה). */
+export async function openHubFromLauncher(
+  page: Page,
+  opts: { quickGridName: RegExp; widget: string; tab?: string },
+): Promise<void> {
+  const btn = hubQuickGridButton(page, opts.quickGridName);
+  if (await btn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await btn.click();
+    return;
+  }
+  const url = opts.tab
+    ? workspaceUrl({ w: opts.widget, tab: opts.tab })
+    : workspaceUrl({ w: opts.widget });
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await dismissWorkspaceOverlays(page);
+}
+
+export async function openFinanceHub(page: Page): Promise<void> {
+  await openHubFromLauncher(page, {
+    quickGridName: /פיננסים|finance/i,
+    widget: "financeHub",
+  });
+}
+
+/** פותח Hub כלשהו לבדיקות shell — מעדיף אריח זמין ברשת המהירה. */
+export async function openAnyHubFromQuickGrid(page: Page): Promise<void> {
+  const candidates = [
+    /מרכז מנהל|executive/i,
+    /פיננסים|finance/i,
+    /פרויקטים|projects hub/i,
+    /מסמכים|documents hub/i,
+  ];
+  for (const name of candidates) {
+    const btn = hubQuickGridButton(page, name);
+    if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await btn.click();
+      return;
+    }
+  }
+  await openFinanceHub(page);
 }
 
 /** מחכה שהווידג'ט סיים טעינה ומציג UI אינטראקטיבי (לא רק shell ריק). */

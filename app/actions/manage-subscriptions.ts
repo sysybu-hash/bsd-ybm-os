@@ -2,6 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -36,7 +37,7 @@ async function requireSuperAdmin() {
 
 function revalidateSubscriptionSurfaces() {
   revalidatePath("/app/admin");
-  revalidatePath("/app/documents/erp");
+  revalidateErpDocumentsSurfaces();
   revalidatePath("/app/settings/billing");
   revalidatePath("/app/settings/overview");
 }

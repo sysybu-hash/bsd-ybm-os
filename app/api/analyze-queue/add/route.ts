@@ -15,6 +15,10 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("analyze-queue-add");
 import { drainDocumentScanQueue } from "@/lib/analyze-queue-runner";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
+import {
+  mapLegacyAnalysisTypeToScanMode,
+  mapLegacyProviderToEngineRunMode,
+} from "@/lib/scan/legacy-map";
 
 const QUEUE_ENQUEUE_PER_HOUR = 60;
 const QUEUE_ENQUEUE_PER_HOUR_PLATFORM = 200;
@@ -56,19 +60,27 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
 
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
-    const persist = formData.get("persist") !== "false";
+    const persist = formData.get("persist") === "true";
+    const analysisType = String(formData.get("analysisType") ?? "INVOICE");
+    const provider = String(formData.get("provider") ?? "gemini");
 
     const payload: DocumentScanFilePayload = {
       kind: "inline",
       base64,
       fileName: file.name,
       mimeType: file.type || "application/octet-stream",
-      provider: String(formData.get("provider") ?? "gemini"),
-      analysisType: String(formData.get("analysisType") ?? "INVOICE"),
+      provider,
+      analysisType,
       industry: user?.organization?.industry ?? "CONSTRUCTION",
       language: String(formData.get("language") ?? "auto"),
       model: String(formData.get("model") ?? ""),
       persist,
+      scanMode: mapLegacyAnalysisTypeToScanMode(
+        String(formData.get("scanMode") ?? analysisType),
+      ),
+      engineRunMode: mapLegacyProviderToEngineRunMode(
+        String(formData.get("engineRunMode") ?? provider),
+      ),
     };
 
     const job = await prisma.documentScanJob.create({

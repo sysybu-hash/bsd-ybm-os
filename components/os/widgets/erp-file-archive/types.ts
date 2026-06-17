@@ -14,6 +14,8 @@ export type ScanDocPreview = {
   id: string;
   fileName: string;
   type: string;
+  fileDriveId?: string | null;
+  fileDriveWebViewLink?: string | null;
   aiData?: Record<string, unknown> | null;
   lineItems?: Array<{
     id: string;

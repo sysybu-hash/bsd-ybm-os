@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ScanLine, ArrowRight, Eye, FileText, Settings2 } from "lucide-react";
-import type { ScanModeV5 } from "@/lib/scan-schema-v5";
+import { isAutoDetectScanMode, type ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { EngineMeta, QueueItem } from "./types";
@@ -27,9 +27,9 @@ type ScanHeaderToolbarProps = {
   pushScannerView: (view: WidgetViewState) => void;
   scanClassification: ScanClassification | null;
   engineRunMode: TriEngineRunMode;
-  scanModeOverride: ScanModeV5;
-  setScanModeOverride: (mode: ScanModeV5) => void;
-  scanModes: { id: string; label: string }[];
+  scanModeOverride: ScanModeUiSelection;
+  setScanModeOverride: (mode: ScanModeUiSelection) => void;
+  scanModes: { id: ScanModeUiSelection; label: string }[];
   engineMeta: EngineMeta | null;
   setEngineRunMode: (mode: TriEngineRunMode) => void;
   /** Primary action lives in the header now (top), not pinned at the bottom. */
@@ -110,7 +110,7 @@ export function ScanHeaderToolbar({
       <div className="no-scrollbar mt-1.5 flex items-center gap-1.5 overflow-x-auto">
         <select
           value={scanModeOverride}
-          onChange={(e) => setScanModeOverride(e.target.value as ScanModeV5)}
+          onChange={(e) => setScanModeOverride(e.target.value as ScanModeUiSelection)}
           className={selectClass}
           aria-label={tr("scanner.scanMode", "מצב סריקה")}
         >
@@ -137,7 +137,7 @@ export function ScanHeaderToolbar({
         <button
           type="button"
           onClick={openPreviewPanel}
-          disabled={queue.length === 0 && !previewUrl}
+          disabled={queue.length === 0 && !previewUrl && pendingCount === 0}
           className={iconBtn}
           aria-label={tr("scanner.preview", "תצוגה מקדימה")}
         >
@@ -156,12 +156,18 @@ export function ScanHeaderToolbar({
           <FileText size={15} aria-hidden />
         </button>
 
-        {scanClassification && engineRunMode === "AUTO" ? (
+        {scanClassification ? (
           <span
             className="hidden shrink-0 truncate rounded-lg bg-indigo-500/10 px-2 py-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 sm:block"
             title={scanClassification.rationale}
           >
-            {scanClassification.scanMode} ({Math.round(scanClassification.confidence * 100)}%)
+            {isAutoDetectScanMode(scanModeOverride)
+              ? tr("scanner.detectedDocType", "זוהה")
+              : null}
+            {" "}
+            {scanModes.find((m) => m.id === scanClassification.scanMode)?.label ??
+              scanClassification.scanMode}{" "}
+            ({Math.round(scanClassification.confidence * 100)}%)
           </span>
         ) : null}
       </div>

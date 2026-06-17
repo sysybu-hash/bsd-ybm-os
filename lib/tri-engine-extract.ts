@@ -34,6 +34,24 @@ import {
 
 export type { TriEngineProgressEvent, TriEngineResult, TriEngineTelemetry } from "@/lib/tri-engine-types";
 
+function finalizeFinancialV5(v5: ScanExtractionV5, scanMode: ScanModeV5): ScanExtractionV5 {
+  if (scanMode === "INVOICE_FINANCIAL" || scanMode === "PROGRESS_BILL") {
+    return enrichInvoiceV5(v5);
+  }
+  return v5;
+}
+
+function packTriEngineResult(
+  v5: ScanExtractionV5,
+  scanMode: ScanModeV5,
+  telemetry: TriEngineTelemetry,
+): TriEngineResult {
+  const finalized = finalizeFinancialV5(v5, scanMode);
+  const aiData = v5ToPersistableAiData(finalized);
+  aiData._triEngineTelemetry = telemetry;
+  return { aiData, v5: finalized, telemetry };
+}
+
 export async function runTriEngineExtraction(params: {
   base64: string;
   mimeType: string;
@@ -129,7 +147,7 @@ export async function runTriEngineExtraction(params: {
       telemetry.anthropic = { phase: "ok", ms: Date.now() - t0 };
       await emitTelemetry();
       await emitPartial(v5, "anthropic_single");
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     } catch (e) {
       telemetry.anthropic = { phase: "error", detail: compactError(e, 200) };
       await emitTelemetry();
@@ -148,7 +166,7 @@ export async function runTriEngineExtraction(params: {
       telemetry.documentAI = { phase: "ok", ms: Date.now() - t0 };
       await emitTelemetry();
       await emitPartial(v5, "document_ai");
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     } catch (e) {
       telemetry.documentAI = { phase: "error", detail: compactError(e, 200) };
       await emitTelemetry();
@@ -167,7 +185,7 @@ export async function runTriEngineExtraction(params: {
       telemetry.gemini = { phase: "ok", ms: Date.now() - t0 };
       await emitTelemetry();
       await emitPartial(v5, "gemini_single");
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     } catch (e) {
       telemetry.gemini = { phase: "error", detail: compactError(e, 200) };
       await emitTelemetry();
@@ -187,7 +205,7 @@ export async function runTriEngineExtraction(params: {
       telemetry.mistral = { phase: "ok", ms: Date.now() - t0 };
       await emitTelemetry();
       await emitPartial(v5, "mistral_single");
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     } catch (e) {
       telemetry.mistral = { phase: "error", detail: compactError(e, 200) };
       await emitTelemetry();
@@ -206,7 +224,7 @@ export async function runTriEngineExtraction(params: {
       telemetry.gpt = { phase: "ok", ms: Date.now() - t0 };
       await emitTelemetry();
       await emitPartial(v5, "openai_single");
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     } catch (e) {
       telemetry.gpt = { phase: "error", detail: compactError(e, 200) };
       await emitTelemetry();
@@ -280,11 +298,8 @@ export async function runTriEngineExtraction(params: {
 
     v5 = fulfilled.reduce((acc, next) => mergeScanResults(acc, next, fileName, scanMode));
     v5.enginesUsed = fulfilled.flatMap((item) => item.enginesUsed ?? []);
-    v5 = enrichInvoiceV5(v5);
     await emitPartial(v5, "merged_parallel");
-    const aiData = v5ToPersistableAiData(v5);
-    aiData._triEngineTelemetry = telemetry;
-    return { aiData, v5, telemetry };
+    return packTriEngineResult(v5, scanMode, telemetry);
   }
 
   if (scanMode === "INVOICE_FINANCIAL") {
@@ -463,7 +478,7 @@ export async function runTriEngineExtraction(params: {
       await emitTelemetry();
       v5 = coerceLegacyAiToV5(geminiRaw, fileName, scanMode);
       v5.enginesUsed = ["gemini"];
-      return { aiData: v5ToPersistableAiData(v5), v5, telemetry };
+      return packTriEngineResult(v5, scanMode, telemetry);
     }
 
     const b = coerceLegacyAiToV5(gptRaw, fileName, scanMode);
@@ -502,9 +517,7 @@ export async function runTriEngineExtraction(params: {
         telemetry.anthropic = { phase: "skipped" };
         await emitTelemetry();
         await emitPartial(v5, "mistral_fallback");
-        const aiData = v5ToPersistableAiData(v5);
-        aiData._triEngineTelemetry = telemetry;
-        return { aiData, v5, telemetry };
+        return packTriEngineResult(v5, scanMode, telemetry);
       } catch (mistralErr) {
         telemetry.mistral = { phase: "error", detail: mistralErr instanceof Error ? mistralErr.message.slice(0, 200) : String(mistralErr) };
         await emitTelemetry();
@@ -521,9 +534,7 @@ export async function runTriEngineExtraction(params: {
           telemetry.gpt = { phase: "skipped" };
           await emitTelemetry();
           await emitPartial(v5, "anthropic_fallback");
-          const aiDataA = v5ToPersistableAiData(v5);
-          aiDataA._triEngineTelemetry = telemetry;
-          return { aiData: aiDataA, v5, telemetry };
+          return packTriEngineResult(v5, scanMode, telemetry);
         } catch (anthropicErr) {
           telemetry.anthropic = { phase: "error", detail: anthropicErr instanceof Error ? anthropicErr.message.slice(0, 200) : String(anthropicErr) };
           await emitTelemetry();
@@ -541,7 +552,5 @@ export async function runTriEngineExtraction(params: {
     await emitPartial(v5, "gemini_flash");
   }
 
-  const aiData = v5ToPersistableAiData(v5);
-  aiData._triEngineTelemetry = telemetry;
-  return { aiData, v5, telemetry };
+  return packTriEngineResult(v5, scanMode, telemetry);
 }

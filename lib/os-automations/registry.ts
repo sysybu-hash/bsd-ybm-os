@@ -85,7 +85,9 @@ export async function runAutomationAction(
     }
     case "open_scanner":
     case "scan_with_instructions": {
-      deps.openWidget("aiScanner", {
+      deps.openWidget("documentsHub", {
+        tab: "scan",
+        source: "automation",
         userInstruction: String(params.userInstruction ?? ""),
         engineRunMode: String(params.engineRunMode ?? "AUTO"),
         scanMode: params.scanMode,
@@ -107,15 +109,15 @@ export async function runAutomationAction(
       return { ok: true, message: "נפתח קופיילוט שטח" };
     }
     case "show_scan_preview": {
-      deps.openWidget("aiScanner", { openPreviewPanel: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", openPreviewPanel: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "show_scan_results": {
-      deps.openWidget("aiScanner", { openResultsPanel: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", openResultsPanel: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "confirm_scan_to_erp": {
-      deps.openWidget("aiScanner", { confirmToErp: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", confirmToErp: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "open_ai_chat": {

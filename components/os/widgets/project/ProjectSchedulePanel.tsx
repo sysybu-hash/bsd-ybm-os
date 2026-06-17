@@ -47,6 +47,7 @@ export default function ProjectSchedulePanel({
     openDoc,
     createDiaryForTask,
     onProgressChange,
+    updateTaskDates,
   } = useScheduleData({
     projectId,
     projectName,
@@ -133,6 +134,7 @@ export default function ProjectSchedulePanel({
         boqLines={boqLines}
         labels={labels}
         onProgressChange={onProgressChange}
+        onDatesChange={(taskId, startDate, endDate) => updateTaskDates(taskId, startDate, endDate)}
         onSaveTask={saveTask}
         onDeleteTask={deleteTask}
         onClearAll={clearAllTasks}

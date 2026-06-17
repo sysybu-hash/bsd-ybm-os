@@ -39,6 +39,26 @@ test.describe("Document Scan — auth protection", () => {
     const res = await request.get("/api/org/scan-lookups");
     expect([401, 403, 302]).toContain(res.status());
   });
+
+  test("scan save requires auth", async ({ request }) => {
+    const res = await request.post("/api/scan/save");
+    expect([401, 403, 302]).toContain(res.status());
+  });
+
+  test("scan history requires auth", async ({ request }) => {
+    const res = await request.get("/api/scan/history");
+    expect([401, 403, 302]).toContain(res.status());
+  });
+
+  test("scan history clear requires auth", async ({ request }) => {
+    const res = await request.delete("/api/scan/history");
+    expect([401, 403, 302]).toContain(res.status());
+  });
+
+  test("analyze-queue pending requires auth", async ({ request }) => {
+    const res = await request.get("/api/analyze-queue/pending");
+    expect([401, 403, 302]).toContain(res.status());
+  });
 });
 
 test.describe("Blueprint (Garmoshka) Decode — auth + validation", () => {

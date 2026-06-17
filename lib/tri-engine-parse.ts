@@ -1,5 +1,6 @@
 import { inferMimeFromFileName, isSupportedScanMime, MAX_SCAN_FILE_BYTES } from "@/lib/scan-mime";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
+import { ALL_SCAN_MODES } from "@/lib/scan-modes-for-ui";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
 import {
   isDocAiConfigured,
@@ -20,16 +21,7 @@ export type TriEngineRunMode =
 
 export function parseScanMode(raw: string | null): ScanModeV5 {
   const u = String(raw ?? "").toUpperCase();
-  if (
-    u === "INVOICE_FINANCIAL" ||
-    u === "DRAWING_BOQ" ||
-    u === "GENERAL_DOCUMENT" ||
-    u === "QUOTE_BOQ" ||
-    u === "PROGRESS_BILL" ||
-    u === "SITE_LOG"
-  ) {
-    return u;
-  }
+  if (ALL_SCAN_MODES.has(u as ScanModeV5)) return u as ScanModeV5;
   return "GENERAL_DOCUMENT";
 }
 
@@ -99,6 +91,7 @@ export type ParsedTriEngineForm = {
   userInstruction: string | null;
   openAiModel?: string;
   engineRunMode: TriEngineRunMode;
+  docTypeAutoDetect: boolean;
 };
 
 /** מחזיר null אם חסר קובץ */
@@ -134,8 +127,19 @@ export function parseTriEngineFormData(formData: FormData): ParsedTriEngineForm 
   const engineRunMode = parseTriEngineRunMode(
     typeof formData.get("engineRunMode") === "string" ? (formData.get("engineRunMode") as string) : null,
   );
+  const docTypeAutoDetect = formData.get("docTypeAutoDetect") === "true";
 
-  return { file, scanMode, persist, projectLabel, clientLabel, userInstruction, openAiModel, engineRunMode };
+  return {
+    file,
+    scanMode,
+    persist,
+    projectLabel,
+    clientLabel,
+    userInstruction,
+    openAiModel,
+    engineRunMode,
+    docTypeAutoDetect,
+  };
 }
 
 export function validateTriEngineRequest(parsed: ParsedTriEngineForm):

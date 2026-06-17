@@ -119,7 +119,9 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
       return;
     }
     if (!openWorkspaceWidget) { toast.error(t("workspaceWidgets.googleDrive.scannerOpenError")); return; }
-    openWorkspaceWidget("aiScanner", {
+    openWorkspaceWidget("documentsHub", {
+      tab: "scan",
+      source: "drive",
       projectId: boundProjectId || nav?.currentView?.projectId,
       driveImportFile: { fileId: file.id, fileName: file.name, mimeType: file.mimeType },
     });

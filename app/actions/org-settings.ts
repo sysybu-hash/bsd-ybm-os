@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { MECKANO_ACCESS_ERROR, canAccessMeckano } from "@/lib/meckano-access";
@@ -23,7 +24,7 @@ function revalidateWorkspace() {
   revalidatePath("/app");
   revalidatePath("/app/clients");
   revalidatePath("/app/documents");
-  revalidatePath("/app/documents/erp");
+  revalidateErpDocumentsSurfaces();
   revalidatePath("/app/documents/issue");
   revalidatePath("/app/ai");
   revalidatePath("/app/finance");

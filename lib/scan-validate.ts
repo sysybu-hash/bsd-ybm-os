@@ -9,6 +9,7 @@
  * המודול טהור (ללא תלות ב-AI/DB) — קל לבדיקה ולשימוש חוזר.
  */
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import { isPlaceholderVendor } from "@/lib/scan/v5-normalize";
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
@@ -83,7 +84,7 @@ export function validateScanV5(v5: ScanExtractionV5): ScanValidationResult {
     v5.documentMetadata.scanMode === "PROGRESS_BILL";
 
   // ── ספק חסר ─────────────────────────────────────────────────────────────
-  if (!v5.vendor || v5.vendor.trim() === "" || v5.vendor === "לא צוין") {
+  if (!v5.vendor || isPlaceholderVendor(v5.vendor)) {
     issues.push({
       field: "vendor",
       severity: "warning",

@@ -4,7 +4,7 @@ import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
 import type { ScanValidationResult } from "@/lib/scan-validate";
 import type { WidgetType } from "@/hooks/use-window-manager";
-import { clampScanModeForIndustry } from "@/lib/scan-modes-for-ui";
+import { clampScanModeForIndustry, isAutoDetectScanMode, type ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import {
   inferScreenTypeFromFileForIndustry,
   resolvePolicyForIndustry,
@@ -17,7 +17,7 @@ import { mapV5ToAnalysis, readNdjsonStream } from "./constants";
 export type RunScanArgs = {
   file: File;
   engineRunMode: TriEngineRunMode;
-  scanModeOverride: ScanModeV5;
+  scanModeOverride: ScanModeUiSelection;
   boundProjectId: string;
   userInstruction: string;
   /** הוראת תיקון חד-פעמית למחזור rescan — נשלחת בנפרד ל-API עם מסגור ייעודי */
@@ -70,12 +70,13 @@ export async function runScanSingleFile({
     formData.append("file", file);
     const inferred = inferScreenTypeFromFileForIndustry(file.name, file.type || "", industryId);
     const policy = resolvePolicyForIndustry(inferred, industryId);
-    const scanMode = clampScanModeForIndustry(
-      engineRunMode === "AUTO" ? (policy.scanMode as ScanModeV5) : scanModeOverride,
-      industryId,
-    );
+    const autoDetect = isAutoDetectScanMode(scanModeOverride);
+    const scanMode = autoDetect
+      ? ("GENERAL_DOCUMENT" as ScanModeV5)
+      : clampScanModeForIndustry(scanModeOverride, industryId);
     formData.append("scanMode", scanMode);
-    formData.append("persist", boundProjectId ? "true" : "false");
+    if (autoDetect) formData.append("docTypeAutoDetect", "true");
+    formData.append("persist", "false");
     if (boundProjectId) formData.append("projectId", boundProjectId);
     formData.append("engineRunMode", engineRunMode);
     if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());

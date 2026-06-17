@@ -1,4 +1,4 @@
-import { parseWorkspaceUrl, workspaceIntentFingerprint } from "@/lib/workspace-url";
+import { parseWorkspaceUrl, workspaceIntentFingerprint, buildProjectWidgetUrl, resolveLegacyWidgetTypes } from "@/lib/workspace-url";
 
 describe("parseWorkspaceUrl", () => {
   it("maps w=project&projectId to projectsHub with tab and projectId", () => {
@@ -19,6 +19,33 @@ describe("parseWorkspaceUrl", () => {
     const intent = parseWorkspaceUrl(new URLSearchParams("w=projectsHub&tab=board"));
     expect(intent?.widgetType).toBe("projectsHub");
     expect(intent?.viewState?.tab).toBe("board");
+  });
+
+  it("resolves legacy projectBoard widget to projectsHub", () => {
+    const intent = parseWorkspaceUrl(new URLSearchParams("w=projectBoard&projectId=p1"));
+    expect(intent?.widgetType).toBe("projectsHub");
+    expect(intent?.viewState?.projectId).toBe("p1");
+    expect(intent?.viewState?.tab).toBe("board");
+  });
+
+  it("buildProjectWidgetUrl points to projectsHub with tab and projectId", () => {
+    const url = buildProjectWidgetUrl("p-abc", "board");
+    expect(url).toContain("w=projectsHub");
+    expect(url).toContain("tab=board");
+    expect(url).toContain("projectId=p-abc");
+    expect(resolveLegacyWidgetTypes("projectBoard")).toBe("projectsHub");
+  });
+
+  it("reads tab query param for executiveHub deep links", () => {
+    const intent = parseWorkspaceUrl(new URLSearchParams("w=executiveHub&tab=progressBills"));
+    expect(intent?.widgetType).toBe("executiveHub");
+    expect(intent?.viewState?.tab).toBe("progressBills");
+  });
+
+  it("decodes executiveHub state from st param", () => {
+    const intent = parseWorkspaceUrl(new URLSearchParams("w=executiveHub&st=t:overview"));
+    expect(intent?.widgetType).toBe("executiveHub");
+    expect(intent?.viewState?.tab).toBe("overview");
   });
 });
 

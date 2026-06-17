@@ -118,7 +118,14 @@ export function DashboardHeader({
               {hasConstructionPlan ? (
                 <button
                   type="button"
-                  onClick={() => openWorkspaceWidget("aiScanner", { projectId: resolvedId, scanMode: "DRAWING_BOQ" })}
+                  onClick={() =>
+                    openWorkspaceWidget("documentsHub", {
+                      tab: "scan",
+                      projectId: resolvedId,
+                      scanMode: "DRAWING_BOQ",
+                      source: "project",
+                    })
+                  }
                   className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2 py-0.5 text-[10px] font-bold"
                 >
                   <Scan size={10} aria-hidden /> סורק AI

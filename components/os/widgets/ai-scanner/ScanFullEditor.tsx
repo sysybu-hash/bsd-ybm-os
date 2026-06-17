@@ -17,6 +17,8 @@ type ScanFullEditorProps = {
   tr: (key: string, fallback: string) => string;
   /** Parent owns scroll (hub / constrained widget shell) */
   embeddedInScrollParent?: boolean;
+  /** Override confirm button label */
+  confirmLabel?: string;
 };
 
 function Section({ title, children, open, toggle }: {
@@ -41,6 +43,7 @@ export function ScanFullEditor({
   onConfirm,
   tr,
   embeddedInScrollParent = false,
+  confirmLabel,
 }: ScanFullEditorProps) {
   const [v5, setV5] = useState<ScanExtractionV5>(
     () => analysis.v5 ?? {
@@ -132,7 +135,7 @@ export function ScanFullEditor({
         <button type="button"
           onClick={() => { onChange({ ...analysis, vendor: v5.vendor, taxId: v5.taxId ?? undefined, amount: v5.total, date: v5.date ?? analysis.date, v5 }); onConfirm(); }}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-black text-white hover:bg-emerald-500">
-          <Save size={18} /> {tr("scanner.confirmExpense", "אשר ושמור")}
+          <Save size={18} /> {confirmLabel ?? tr("scanner.confirmExpense", "אשר ושמור")}
         </button>
       </div>
     </div>
