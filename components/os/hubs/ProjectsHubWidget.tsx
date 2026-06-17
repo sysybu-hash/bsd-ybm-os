@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import ProjectWidget from "@/components/os/ProjectWidget";
 import ProjectBoardWidget from "@/components/os/widgets/ProjectBoardWidget";
+import OfficeExpensesWidget from "@/components/os/widgets/OfficeExpensesWidget";
 import AddProjectDialog from "@/components/os/widgets/shared/AddProjectDialog";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubShell";
@@ -14,6 +15,7 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 const TABS: HubTabDef[] = [
   { id: "board", labelKey: "workspaceWidgets.hubs.projects.tabs.board" },
   { id: "project", labelKey: "workspaceWidgets.hubs.projects.tabs.project" },
+  { id: "officeExpenses", labelKey: "workspaceWidgets.hubs.projects.tabs.officeExpenses" },
 ];
 
 type OpenWorkspaceWidgetFn = (
@@ -152,6 +154,9 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
               openWorkspaceWidget={openWorkspaceWidget}
             />
           );
+        }
+        if (tabId === "officeExpenses") {
+          return <OfficeExpensesWidget />;
         }
         if (!projectId) {
           return (

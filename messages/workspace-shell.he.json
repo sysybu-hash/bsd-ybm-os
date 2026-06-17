@@ -366,7 +366,8 @@
       "projects": {
         "tabs": {
           "board": "לוח פרויקטים",
-          "project": "מרכז פרויקט"
+          "project": "מרכז פרויקט",
+          "officeExpenses": "הוצאות משרד"
         },
         "pickerTitle": "בחרו פרויקט",
         "pickerDesc": "בחרו פרויקט לפני כניסה למרכז השליטה",
