@@ -53,6 +53,7 @@ export default function OfficeExpenseForm({
         />
         <select
           className={osFieldClassName}
+          aria-label={t("workspaceWidgets.officeExpenses.statusLabel")}
           value={form.status}
           onChange={(e) =>
             onFormChange((prev) => ({

@@ -1739,6 +1739,7 @@
       "vat": "VAT",
       "statusPosted": "Posted",
       "statusDraft": "Draft",
+      "statusLabel": "Status",
       "add": "Add",
       "save": "Save",
       "saving": "Saving…",
@@ -1760,6 +1761,7 @@
       "filters": {
         "search": "Search vendor / invoice / description",
         "statusAll": "All statuses",
+        "status": "Status filter",
         "fromDate": "From date",
         "toDate": "To date",
         "clear": "Clear filters"

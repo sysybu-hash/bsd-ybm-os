@@ -7,6 +7,7 @@ import {
   openAnyHubFromQuickGrid,
   primeCookieConsent,
   tryCredentialsSignIn,
+  widgetShell,
   workspaceUrl,
 } from "./helpers";
 
@@ -58,13 +59,13 @@ test.describe("dashboard hubs", () => {
 
   test("finance hub opens from quick grid", async ({ page }) => {
     await openFinanceHub(page);
-    await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
+    await expect(widgetShell(page, "financeHub")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("finance hub tab switch: overview → cashflow", async ({ page }) => {
     await openFinanceHub(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "financeHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     const cashflowTab = shell.getByRole("tab", { name: /תזרים|cashflow/i });
@@ -78,7 +79,7 @@ test.describe("dashboard hubs", () => {
 
   test("finance hub tab switch: cashflow → overview", async ({ page }) => {
     await openFinanceHub(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "financeHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     const cashflowTab = shell.getByRole("tab", { name: /תזרים|cashflow/i });
@@ -94,7 +95,7 @@ test.describe("dashboard hubs", () => {
   test("deep link resolves dashboard alias to finance hub", async ({ page }) => {
     await gotoWorkspace(page, workspaceUrl({ w: "dashboard" }));
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "financeHub");
     await expect(shell).toBeVisible({ timeout: 30_000 });
 
     const urlMatches = /w=(dashboard|financeHub|finance)/.test(page.url());
@@ -109,7 +110,7 @@ test.describe("dashboard hubs", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "financeHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
     await expect(shell.getByRole("tab", { selected: true })).toContainText(/תזרים|cashflow/i, {
       timeout: 10_000,
@@ -120,13 +121,13 @@ test.describe("dashboard hubs", () => {
 
   test("projects hub opens with tab navigation", async ({ page }) => {
     await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
-    await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
+    await expect(widgetShell(page, "projectsHub")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("projects hub has board and project tabs", async ({ page }) => {
     await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     const boardTab   = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
@@ -137,7 +138,7 @@ test.describe("dashboard hubs", () => {
 
   test("projects hub: switch to board tab renders task columns", async ({ page }) => {
     await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     const boardTab = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
@@ -164,7 +165,7 @@ test.describe("dashboard hubs", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
     await expect(shell.getByRole("tab", { selected: true })).toContainText(/לוח פרויקטים|board/i, {
       timeout: 10_000,
@@ -175,12 +176,12 @@ test.describe("dashboard hubs", () => {
 
   test("documents hub opens from quick grid", async ({ page }) => {
     await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
-    await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
+    await expect(widgetShell(page, "documentsHub")).toBeVisible({ timeout: 15_000 });
   });
 
   test("documents hub has archive, create and scan tabs", async ({ page }) => {
     await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     await expect(shell.getByRole("tab", { name: /ארכיון|archive/i })).toBeVisible({ timeout: 10_000 });
@@ -193,7 +194,7 @@ test.describe("dashboard hubs", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const createTab = shell.getByRole("tab", { name: /הפקה|create/i });
@@ -209,7 +210,7 @@ test.describe("dashboard hubs", () => {
 
   test("documents hub: scan tab loads scanner", async ({ page }) => {
     await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
     await shell.getByRole("tab", { name: /סריקה|scan/i }).click();
@@ -226,7 +227,7 @@ test.describe("dashboard hubs", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
     await expect(shell.getByRole("tab", { selected: true })).toContainText(/סריקה|scan/i, {
       timeout: 10_000,
@@ -239,7 +240,7 @@ test.describe("dashboard hubs", () => {
     // Open AI hub via deep link (may not be in quick grid by default)
     await page.goto(workspaceUrl({ w: "aiHub" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "aiHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const chatTab     = shell.getByRole("tab", { name: /צ.?אט|chat/i });
@@ -253,7 +254,7 @@ test.describe("dashboard hubs", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "aiHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const notebookTab = shell.getByRole("tab", { name: /מחברת|notebook/i });
@@ -269,7 +270,7 @@ test.describe("dashboard hubs", () => {
   test("AI hub: chat tab shows input", async ({ page }, testInfo) => {
     await page.goto(workspaceUrl({ w: "aiHub" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = widgetShell(page, "aiHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const chatTab = shell.getByRole("tab", { name: /צ.?אט|chat/i });
@@ -300,7 +301,7 @@ test.describe("dashboard hubs", () => {
     for (const { widget, tabs } of hubs) {
       await page.goto(workspaceUrl({ w: widget }), { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      const shell = page.locator("[data-widget-shell]").first();
+      const shell = widgetShell(page, widget);
       await shell.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
 
       for (const tabName of tabs) {

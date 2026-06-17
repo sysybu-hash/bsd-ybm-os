@@ -46,6 +46,7 @@ export default function OfficeExpenseFiltersBar({
         />
         <select
           className={osFieldClassName}
+          aria-label={t("workspaceWidgets.officeExpenses.filters.status")}
           value={filters.status}
           onChange={(e) =>
             onFiltersChange((prev) => ({

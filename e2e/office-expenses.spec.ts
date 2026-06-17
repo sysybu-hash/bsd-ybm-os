@@ -6,6 +6,8 @@ import {
   primeCookieConsent,
   tryCredentialsSignIn,
   tryProjectMgrSignIn,
+  waitForExecutiveHubOfficeExpenses,
+  widgetShell,
   workspaceUrl,
 } from "./helpers";
 
@@ -25,11 +27,9 @@ test.describe("office expenses", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
+    await waitForExecutiveHubOfficeExpenses(page);
 
-    const shell = page.locator("[data-widget-shell]").first();
-    await shell.waitFor({ state: "visible", timeout: 20_000 });
-
-    await expect(shell.getByRole("tab", { name: /הוצאות משרד|office expenses/i })).toBeVisible();
+    const shell = widgetShell(page, "executiveHub");
     await expect(shell.getByText(/סריקת חשבונית|scan invoice/i)).toBeVisible();
     await expect(shell.getByPlaceholder(/שם ספק|vendor/i)).toBeVisible();
 
@@ -69,10 +69,9 @@ test.describe("office expenses", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
+    await waitForExecutiveHubOfficeExpenses(page);
 
-    const shell = page.locator("[data-widget-shell]").first();
-    await shell.waitFor({ state: "visible", timeout: 20_000 });
-
+    const shell = widgetShell(page, "executiveHub");
     const vendor = `E2E Edit ${Date.now()}`;
     await shell.getByPlaceholder(/שם ספק|vendor/i).fill(vendor);
     await shell.getByPlaceholder(/לפני מע|net amount|before vat/i).fill("50");
@@ -98,9 +97,9 @@ test.describe("office expenses", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
+    await waitForExecutiveHubOfficeExpenses(page);
 
-    const shell = page.locator("[data-widget-shell]").first();
-    await shell.waitFor({ state: "visible", timeout: 20_000 });
+    const shell = widgetShell(page, "executiveHub");
     await expect(shell.getByPlaceholder(/שם ספק|vendor/i)).toBeVisible();
     await expect(shell.getByText(/סריקת חשבונית|scan invoice/i)).toBeVisible();
   });
@@ -116,7 +115,7 @@ test.describe("office expenses", () => {
     await link.click();
 
     await page.waitForURL(/w=executiveHub/, { timeout: 15_000 });
-    await expect(page.getByRole("tab", { name: /הוצאות משרד|office expenses/i })).toBeVisible();
+    await waitForExecutiveHubOfficeExpenses(page);
   });
 });
 
@@ -172,10 +171,9 @@ test.describe("office expenses — PROJECT_MGR read-only", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
+    await waitForExecutiveHubOfficeExpenses(page);
 
-    const shell = page.locator("[data-widget-shell]").first();
-    await shell.waitFor({ state: "visible", timeout: 20_000 });
-
+    const shell = widgetShell(page, "executiveHub");
     await expect(shell.getByText(/הרשאת צפייה בלבד|view-only access/i)).toBeVisible();
     await expect(shell.getByText(/סריקת חשבונית|scan invoice/i)).toHaveCount(0);
     await expect(shell.getByPlaceholder(/שם ספק|vendor/i)).toHaveCount(0);

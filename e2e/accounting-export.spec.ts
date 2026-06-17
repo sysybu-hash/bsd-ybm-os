@@ -1,7 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { signInWithRetries, waitForAuthenticatedApiSession } from "./helpers";
+import { primeCookieConsent, signInWithRetries, waitForAuthenticatedApiSession } from "./helpers";
 
 test.describe("accounting export API", () => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    const origin = baseURL ?? "http://localhost:3001";
+    await page.context().addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
+    await primeCookieConsent(page);
+  });
+
   test("GET formats requires auth", async ({ request }) => {
     const res = await request.get("/api/accounting/export");
     expect([401, 403]).toContain(res.status());

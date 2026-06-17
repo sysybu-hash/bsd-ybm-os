@@ -155,6 +155,7 @@ export default function SortableLauncherZone({
 
   const wrapperProps = {
     ...longPress,
+    role: variant === "mobile" ? ("list" as const) : undefined,
     "data-testid": `launcher-zone-${zone}`,
     className: isQuickGrid
       ? [

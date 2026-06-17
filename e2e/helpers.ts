@@ -155,6 +155,20 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
   });
 }
 
+/** Scoped widget shell — topmost window for the given widget type (avoids strict-mode multi-match). */
+export function widgetShell(page: Page, widgetId: string) {
+  return page.locator(`[data-widget-shell][id^="${widgetId}-"]`).last();
+}
+
+/** Waits for executive hub shell and the office-expenses tab to be active. */
+export async function waitForExecutiveHubOfficeExpenses(page: Page) {
+  const shell = widgetShell(page, "executiveHub");
+  await expect(shell).toBeVisible({ timeout: 30_000 });
+  const tab = shell.getByRole("tab", { name: /הוצאות משרד|office expenses/i });
+  await expect(tab).toBeVisible({ timeout: 15_000 });
+  await expect(tab).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
+}
+
 /** סלקטור לחלון פרויקטים / מרכז שליטה (hub או standalone). */
 export function projectWorkspaceShell(page: Page) {
   return page.locator("[data-widget-shell]").first();
@@ -324,7 +338,14 @@ export async function signInWithRetries(
 ): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt++) {
     const signed = await tryCredentialsSignIn(page, credentials);
-    if (signed) return true;
+    if (signed) {
+      try {
+        await waitForAuthenticatedApiSession(page);
+        return true;
+      } catch {
+        /* session cookie not ready yet — retry sign-in */
+      }
+    }
     await page.waitForTimeout(600 + attempt * 600);
   }
   return false;

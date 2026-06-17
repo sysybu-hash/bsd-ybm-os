@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults, Result } from "axe-core";
-import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, tryCredentialsSignIn, workspaceUrl } from "./helpers";
+import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
 
 const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
 
@@ -59,6 +59,15 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
   { key: "drive",             url: workspaceUrl({ w: "googleDrive" }), label: "Google Drive" },
 ];
 
+const WIDGET_SHELL_IDS: Record<string, string> = {
+  dashboard: "financeHub",
+  crm: "crmTable",
+  "ai-chat": "aiChatFull",
+  "project-board": "project",
+  scanner: "aiScanner",
+  drive: "googleDrive",
+};
+
 async function signInWithRetries(page: Parameters<typeof tryCredentialsSignIn>[0]): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const signed = await tryCredentialsSignIn(page);
@@ -85,11 +94,18 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      await page.locator("[data-widget-shell]").first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+      if (key !== "workspace-chrome") {
+        const widgetId = WIDGET_SHELL_IDS[key];
+        if (widgetId) {
+          await widgetShell(page, widgetId).waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+        }
+      }
 
-      const results: AxeResults = await new AxeBuilder({ page })
-        .withTags(AXE_TAGS)
-        .analyze();
+      const axeBuilder = new AxeBuilder({ page }).withTags(AXE_TAGS);
+      const results: AxeResults =
+        key === "workspace-chrome"
+          ? await axeBuilder.analyze()
+          : await axeBuilder.include("[data-widget-shell]").analyze();
 
       const baseline = readBaseline();
 

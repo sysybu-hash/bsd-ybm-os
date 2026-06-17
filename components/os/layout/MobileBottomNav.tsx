@@ -215,7 +215,7 @@ export default function MobileBottomNav({
                 zone="mobileBarStart"
                 variant="mobile"
                 onOpen={openWidget}
-                className="contents"
+                className="col-span-3 grid min-w-0 grid-cols-3 items-end gap-0"
               />
             </NavSideGrid>
 
@@ -245,7 +245,7 @@ export default function MobileBottomNav({
                 zone="mobileBarEnd"
                 variant="mobile"
                 onOpen={openWidget}
-                className="contents"
+                className="min-w-0"
               />
               <MoreNavButton
                 label={t("workspaceWidgets.mobileNav.moreApps")}

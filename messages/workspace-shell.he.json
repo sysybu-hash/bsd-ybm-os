@@ -1739,6 +1739,7 @@
       "vat": "מע״מ",
       "statusPosted": "מאושר",
       "statusDraft": "טיוטה",
+      "statusLabel": "סטטוס",
       "add": "הוסף",
       "save": "שמור",
       "saving": "שומר…",
@@ -1760,6 +1761,7 @@
       "filters": {
         "search": "חיפוש ספק / חשבונית / תיאור",
         "statusAll": "כל הסטטוסים",
+        "status": "סינון לפי סטטוס",
         "fromDate": "מתאריך",
         "toDate": "עד תאריך",
         "clear": "נקה סינון"

@@ -4,6 +4,7 @@ import {
   dismissWorkspaceOverlays,
   primeCookieConsent,
   tryCredentialsSignIn,
+  waitForAuthenticatedWorkspace,
 } from "./helpers";
 
 const MOBILE_PROJECTS = new Set(["mobile-chrome", "mobile-safari"]);
@@ -110,6 +111,7 @@ test.describe("Site quality", () => {
 
     await dismissCookieBannerIfVisible(page);
     await dismissWorkspaceOverlays(page);
+    await waitForAuthenticatedWorkspace(page);
     await expect(page.getByRole("navigation", { name: /יישומים|Apps/i })).toBeVisible({ timeout: 15000 });
     await expectNoHorizontalOverflow(page);
   });
