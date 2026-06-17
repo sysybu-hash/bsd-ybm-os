@@ -45,6 +45,47 @@ test.describe("office expenses", () => {
     expect(Array.isArray(body.expenses)).toBe(true);
   });
 
+  test("edit and delete office expense", async ({ page }) => {
+    await page.goto(workspaceUrl({ w: "executiveHub", tab: "officeExpenses" }), {
+      waitUntil: "domcontentloaded",
+    });
+    await dismissWorkspaceOverlays(page);
+
+    const shell = page.locator("[data-widget-shell]").first();
+    await shell.waitFor({ state: "visible", timeout: 20_000 });
+
+    const vendor = `E2E Edit ${Date.now()}`;
+    await shell.getByPlaceholder(/שם ספק|vendor/i).fill(vendor);
+    await shell.getByPlaceholder(/לפני מע|net amount|before vat/i).fill("50");
+    await shell.getByRole("button", { name: /הוסף|add/i }).click();
+    await expect(shell.getByText(vendor)).toBeVisible({ timeout: 15_000 });
+
+    const row = shell.locator("li", { hasText: vendor });
+    await row.getByRole("button", { name: /ערוך|edit/i }).click();
+    const updated = `${vendor} Updated`;
+    await shell.getByPlaceholder(/שם ספק|vendor/i).fill(updated);
+    await shell.getByRole("button", { name: /שמור|save/i }).click();
+    await expect(shell.getByText(updated)).toBeVisible({ timeout: 15_000 });
+
+    const updatedRow = shell.locator("li", { hasText: updated });
+    await updatedRow.getByRole("button", { name: /מחק|delete/i }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: /אישור|confirm|מחק|delete/i }).click();
+    await expect(shell.getByText(updated)).not.toBeVisible({ timeout: 15_000 });
+  });
+
+  test("office expenses layout in landscape viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto(workspaceUrl({ w: "executiveHub", tab: "officeExpenses" }), {
+      waitUntil: "domcontentloaded",
+    });
+    await dismissWorkspaceOverlays(page);
+
+    const shell = page.locator("[data-widget-shell]").first();
+    await shell.waitFor({ state: "visible", timeout: 20_000 });
+    await expect(shell.getByPlaceholder(/שם ספק|vendor/i)).toBeVisible();
+    await expect(shell.getByText(/סריקת חשבונית|scan invoice/i)).toBeVisible();
+  });
+
   test("finance hub links to executive office expenses", async ({ page }) => {
     await page.goto(workspaceUrl({ w: "financeHub", tab: "overview" }), {
       waitUntil: "domcontentloaded",

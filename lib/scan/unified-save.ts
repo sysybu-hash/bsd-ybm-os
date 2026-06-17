@@ -1,4 +1,3 @@
-import { ExpenseAllocation } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   buildTriEngineAiDataRecord,
@@ -8,6 +7,7 @@ import { saveScannedDocumentAction } from "@/app/actions/save-scanned-document";
 import { resolvePolicyForIndustry, inferScreenTypeFromFileForIndustry } from "@/lib/ai/screen-decode-policy";
 import { runScanPostActions } from "@/lib/ai/scan-post-actions";
 import { v5ToPersistableAiData } from "@/lib/scan-schema-v5";
+import { createExpenseFromScan } from "@/lib/workspace-api/expense-from-scan";
 import { createLogger } from "@/lib/logger";
 import type { UnifiedSaveInput, UnifiedSaveResult } from "@/lib/scan/unified-scan-types";
 import type { WidgetType } from "@/hooks/use-window-manager";
@@ -95,22 +95,11 @@ export async function unifiedSaveScan(
         organizationId: ctx.organizationId,
       });
 
-      const vatDivisor = 1.17;
-      const total = input.v5.total ?? 0;
-      await prisma.expenseRecord.create({
-        data: {
-          organizationId: ctx.organizationId,
-          vendorName: input.v5.vendor || "לא צוין",
-          amountNet: total / vatDivisor,
-          vat: total - total / vatDivisor,
-          total,
-          expenseDate: input.v5.date ? new Date(input.v5.date) : new Date(),
-          description: input.v5.summary ?? "",
-          status: "POSTED",
-          sourceDocumentId: documentId,
-          aiExtractedJson: aiData as object,
-          allocation: input.projectId ? ExpenseAllocation.PROJECT : ExpenseAllocation.OFFICE,
-        },
+      await createExpenseFromScan(ctx.organizationId, {
+        v5: input.v5,
+        sourceDocumentId: documentId,
+        aiExtractedJson: aiData as object,
+        projectId: input.projectId ?? null,
       });
 
       return { ok: true, documentId, driveWebViewLink };

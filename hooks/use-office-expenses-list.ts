@@ -27,11 +27,21 @@ function buildQuery(filters: OfficeExpenseFilters): string {
   return qs ? `?${qs}` : "";
 }
 
+const SEARCH_DEBOUNCE_MS = 300;
+
 export function useOfficeExpensesList(loadErrorMessage: string) {
   const [expenses, setExpenses] = useState<FinanceExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<OfficeExpenseFilters>(emptyOfficeExpenseFilters);
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilters((prev) => (prev.q === searchInput ? prev : { ...prev, q: searchInput }));
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,8 +73,18 @@ export function useOfficeExpensesList(loadErrorMessage: string) {
   );
 
   const resetFilters = useCallback(() => {
+    setSearchInput("");
     setFilters(emptyOfficeExpenseFilters());
   }, []);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(filters.q.trim()) ||
+      Boolean(filters.status) ||
+      Boolean(filters.fromDate) ||
+      Boolean(filters.toDate),
+    [filters],
+  );
 
   return {
     expenses,
@@ -72,7 +92,10 @@ export function useOfficeExpensesList(loadErrorMessage: string) {
     error,
     filters,
     setFilters,
+    searchInput,
+    setSearchInput,
     resetFilters,
+    hasActiveFilters,
     totalPosted,
     reload: load,
   };
