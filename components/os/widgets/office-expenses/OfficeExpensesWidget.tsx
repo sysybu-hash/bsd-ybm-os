@@ -46,6 +46,7 @@ export default function OfficeExpensesWidget() {
   const {
     expenses,
     loading,
+    loadingMore,
     error,
     filters,
     setFilters,
@@ -54,6 +55,8 @@ export default function OfficeExpensesWidget() {
     resetFilters,
     hasActiveFilters,
     totalPosted,
+    hasMore,
+    loadMore,
     reload,
   } = useOfficeExpensesList(loadError, forbiddenError);
 
@@ -91,6 +94,9 @@ export default function OfficeExpensesWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (res.status === 403) {
+        throw new Error(t("workspaceWidgets.officeExpenses.errors.forbiddenManage"));
+      }
       if (!res.ok) throw new Error(t("workspaceWidgets.officeExpenses.errors.save"));
       resetForm();
       await reload();
@@ -200,17 +206,22 @@ export default function OfficeExpensesWidget() {
           expenses={expenses}
           hasActiveFilters={hasActiveFilters}
           canManage={canManage}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={() => void loadMore()}
           onEdit={handleEdit}
           onDeleteRequest={setDeleteTargetId}
         />
       </section>
 
-      <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
-        <h3 className="mb-2 text-xs font-semibold">
-          {t("workspaceWidgets.officeExpenses.exportSection")}
-        </h3>
-        <AccountingExportPanel />
-      </section>
+      {canManage ? (
+        <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
+          <h3 className="mb-2 text-xs font-semibold">
+            {t("workspaceWidgets.officeExpenses.exportSection")}
+          </h3>
+          <AccountingExportPanel />
+        </section>
+      ) : null}
 
       <OsConfirmDialog
         open={deleteTargetId !== null}

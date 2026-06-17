@@ -9,6 +9,9 @@ type Props = {
   expenses: FinanceExpenseRow[];
   hasActiveFilters: boolean;
   canManage: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   onEdit: (row: FinanceExpenseRow) => void;
   onDeleteRequest: (id: string) => void;
 };
@@ -17,6 +20,9 @@ export default function OfficeExpenseList({
   expenses,
   hasActiveFilters,
   canManage,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onEdit,
   onDeleteRequest,
 }: Props) {
@@ -33,8 +39,9 @@ export default function OfficeExpenseList({
   }
 
   return (
-    <ul className="space-y-2">
-      {expenses.map((row) => (
+    <>
+      <ul className="space-y-2">
+        {expenses.map((row) => (
         <li
           key={row.id}
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs"
@@ -76,7 +83,20 @@ export default function OfficeExpenseList({
             ) : null}
           </div>
         </li>
-      ))}
-    </ul>
+        ))}
+      </ul>
+      {hasMore ? (
+        <button
+          type="button"
+          disabled={loadingMore}
+          onClick={onLoadMore}
+          className="mt-3 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-60 dark:hover:bg-indigo-950/30"
+        >
+          {loadingMore
+            ? t("workspaceWidgets.officeExpenses.loadingMore")
+            : t("workspaceWidgets.officeExpenses.loadMore")}
+        </button>
+      ) : null}
+    </>
   );
 }

@@ -1,7 +1,9 @@
 import {
+  buildOfficeExpenseListWhere,
   createOfficeExpense,
   deleteOfficeExpense,
   listOfficeExpenses,
+  OFFICE_EXPENSES_PAGE_SIZE,
   updateOfficeExpense,
 } from "@/lib/workspace-api/office-expenses";
 
@@ -13,6 +15,8 @@ jest.mock("@/lib/prisma", () => ({
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn(),
     },
   },
 }));
@@ -24,31 +28,36 @@ const findFirst = prisma.expenseRecord.findFirst as jest.Mock;
 const create = prisma.expenseRecord.create as jest.Mock;
 const update = prisma.expenseRecord.update as jest.Mock;
 const del = prisma.expenseRecord.delete as jest.Mock;
+const count = prisma.expenseRecord.count as jest.Mock;
+const aggregate = prisma.expenseRecord.aggregate as jest.Mock;
+
+const sampleRow = {
+  id: "e1",
+  vendorName: "Office Depot",
+  invoiceNumber: "100",
+  description: null,
+  expenseDate: new Date("2026-06-01T12:00:00Z"),
+  total: 118,
+  amountNet: 100,
+  vat: 18,
+  allocation: "OFFICE",
+  status: "POSTED",
+  projectId: null,
+  contactId: null,
+};
 
 describe("office-expenses workspace api", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    count.mockResolvedValue(1);
+    aggregate.mockResolvedValue({ _sum: { total: 118 } });
   });
 
-  it("lists office expenses scoped to org and OFFICE allocation", async () => {
-    findMany.mockResolvedValue([
-      {
-        id: "e1",
-        vendorName: "Office Depot",
-        invoiceNumber: "100",
-        description: null,
-        expenseDate: new Date("2026-06-01T12:00:00Z"),
-        total: 118,
-        amountNet: 100,
-        vat: 18,
-        allocation: "OFFICE",
-        status: "POSTED",
-        projectId: null,
-        contactId: null,
-      },
-    ]);
+  it("lists office expenses with pagination metadata", async () => {
+    findMany.mockResolvedValue([sampleRow]);
 
-    const rows = await listOfficeExpenses("org-1");
+    const result = await listOfficeExpenses("org-1", { skip: 0, take: 30 });
+    expect(count).toHaveBeenCalled();
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -56,71 +65,60 @@ describe("office-expenses workspace api", () => {
           allocation: "OFFICE",
           projectId: null,
         }),
+        skip: 0,
+        take: 30,
       }),
     );
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.vendorName).toBe("Office Depot");
+    expect(result.expenses).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.skip).toBe(0);
+    expect(result.take).toBe(30);
+    expect(result.totalPosted).toBe(118);
   });
 
-  it("filters office expenses by status and search query", async () => {
-    findMany.mockResolvedValue([
-      {
-        id: "e1",
-        vendorName: "Office Depot",
-        invoiceNumber: "100",
-        description: "supplies",
-        expenseDate: new Date("2026-06-01T12:00:00Z"),
-        total: 118,
-        amountNet: 100,
-        vat: 18,
-        allocation: "OFFICE",
-        status: "POSTED",
-        projectId: null,
-        contactId: null,
-      },
-      {
-        id: "e2",
-        vendorName: "Rent Co",
-        invoiceNumber: null,
-        description: null,
-        expenseDate: new Date("2026-06-10T12:00:00Z"),
-        total: 5000,
-        amountNet: 5000,
-        vat: 0,
-        allocation: "OFFICE",
-        status: "DRAFT",
-        projectId: null,
-        contactId: null,
-      },
-    ]);
+  it("applies server-side search in where clause", () => {
+    const where = buildOfficeExpenseListWhere("org-1", { q: "rent" });
+    expect(where).toEqual(
+      expect.objectContaining({
+        OR: expect.arrayContaining([
+          expect.objectContaining({ vendorName: { contains: "rent", mode: "insensitive" } }),
+        ]),
+      }),
+    );
+  });
 
-    const postedOnly = await listOfficeExpenses("org-1", { status: "POSTED" });
+  it("filters by status in prisma where", async () => {
+    findMany.mockResolvedValue([sampleRow]);
+    count.mockResolvedValue(1);
+
+    await listOfficeExpenses("org-1", { status: "POSTED" });
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ status: "POSTED" }),
       }),
     );
-    expect(postedOnly).toHaveLength(2);
+  });
 
-    const byQuery = await listOfficeExpenses("org-1", { q: "rent" });
-    expect(byQuery).toHaveLength(1);
-    expect(byQuery[0]?.vendorName).toBe("Rent Co");
+  it("uses default page size when take is omitted", async () => {
+    findMany.mockResolvedValue([]);
+    count.mockResolvedValue(0);
+
+    const result = await listOfficeExpenses("org-1");
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: OFFICE_EXPENSES_PAGE_SIZE }),
+    );
+    expect(result.take).toBe(OFFICE_EXPENSES_PAGE_SIZE);
   });
 
   it("creates office expense without project linkage", async () => {
     create.mockResolvedValue({
+      ...sampleRow,
       id: "e2",
       vendorName: "Rent",
-      invoiceNumber: null,
       description: "Monthly",
-      expenseDate: new Date("2026-06-15T12:00:00Z"),
       total: 5000,
       amountNet: 5000,
       vat: 0,
-      allocation: "OFFICE",
-      status: "POSTED",
-      projectId: null,
-      contactId: null,
     });
 
     const row = await createOfficeExpense("org-1", {

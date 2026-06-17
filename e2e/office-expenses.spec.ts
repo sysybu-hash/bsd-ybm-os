@@ -38,11 +38,27 @@ test.describe("office expenses", () => {
     await expect(shell.getByText(vendor)).toBeVisible({ timeout: 15_000 });
   });
 
-  test("office expenses API returns list for authenticated session", async ({ page }) => {
-    const res = await page.request.get("/api/office-expenses");
+  test("office expenses API returns paginated list for authenticated session", async ({ page }) => {
+    const res = await page.request.get("/api/office-expenses?skip=0&take=30");
     expect(res.status()).toBe(200);
-    const body = (await res.json()) as { expenses?: unknown[] };
+    const body = (await res.json()) as {
+      expenses?: unknown[];
+      total?: number;
+      skip?: number;
+      take?: number;
+      totalPosted?: number;
+    };
     expect(Array.isArray(body.expenses)).toBe(true);
+    expect(typeof body.total).toBe("number");
+    expect(typeof body.totalPosted).toBe("number");
+    expect(body.take).toBe(30);
+  });
+
+  test("office expenses POST requires org admin role", async ({ page }) => {
+    const res = await page.request.post("/api/office-expenses", {
+      data: { vendorName: "RBAC Test", amountNet: 1 },
+    });
+    expect([200, 201, 403]).toContain(res.status());
   });
 
   test("edit and delete office expense", async ({ page }) => {

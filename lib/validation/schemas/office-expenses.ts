@@ -20,6 +20,8 @@ export const listOfficeExpensesQuerySchema = z.object({
   status: officeExpenseStatusSchema.optional(),
   fromDate: z.string().min(1).optional(),
   toDate: z.string().min(1).optional(),
+  skip: z.coerce.number().int().nonnegative().optional(),
+  take: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 export type CreateOfficeExpenseInput = z.infer<typeof createOfficeExpenseSchema>;

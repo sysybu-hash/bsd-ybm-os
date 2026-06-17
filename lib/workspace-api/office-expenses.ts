@@ -1,4 +1,4 @@
-import { ExpenseAllocation, ExpenseRecordStatus } from "@prisma/client";
+import { ExpenseAllocation, ExpenseRecordStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import type {
@@ -6,6 +6,17 @@ import type {
   ListOfficeExpensesQuery,
   UpdateOfficeExpenseInput,
 } from "@/lib/validation/schemas/office-expenses";
+
+export const OFFICE_EXPENSES_PAGE_SIZE = 30;
+export const OFFICE_EXPENSES_MAX_PAGE_SIZE = 100;
+
+export type ListOfficeExpensesResult = {
+  expenses: FinanceExpenseRow[];
+  total: number;
+  skip: number;
+  take: number;
+  totalPosted: number;
+};
 
 function parseExpenseDate(raw: string | undefined): Date {
   if (raw?.trim()) {
@@ -59,11 +70,11 @@ const officeWhere = (orgId: string) => ({
   projectId: null,
 });
 
-export async function listOfficeExpenses(
+export function buildOfficeExpenseListWhere(
   orgId: string,
   query: ListOfficeExpensesQuery = {},
-): Promise<FinanceExpenseRow[]> {
-  const q = query.q?.trim().toLowerCase() ?? "";
+): Prisma.ExpenseRecordWhereInput {
+  const q = query.q?.trim() ?? "";
   const dateFilter =
     query.fromDate || query.toDate
       ? {
@@ -72,29 +83,54 @@ export async function listOfficeExpenses(
         }
       : undefined;
 
-  const rows = await prisma.expenseRecord.findMany({
-    where: {
-      ...officeWhere(orgId),
-      ...(query.status ? { status: query.status } : {}),
-      ...(dateFilter ? { expenseDate: dateFilter } : {}),
-    },
-    orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
-    take: 200,
-  });
+  return {
+    ...officeWhere(orgId),
+    ...(query.status ? { status: query.status } : {}),
+    ...(dateFilter ? { expenseDate: dateFilter } : {}),
+    ...(q
+      ? {
+          OR: [
+            { vendorName: { contains: q, mode: "insensitive" } },
+            { invoiceNumber: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+}
 
-  const mapped = rows.map(mapRow);
-  if (!q) return mapped;
+export async function listOfficeExpenses(
+  orgId: string,
+  query: ListOfficeExpensesQuery = {},
+): Promise<ListOfficeExpensesResult> {
+  const skip = Math.max(0, query.skip ?? 0);
+  const take = Math.min(
+    OFFICE_EXPENSES_MAX_PAGE_SIZE,
+    Math.max(1, query.take ?? OFFICE_EXPENSES_PAGE_SIZE),
+  );
+  const where = buildOfficeExpenseListWhere(orgId, query);
 
-  return mapped.filter((row) => {
-    const haystack = [
-      row.vendorName,
-      row.invoiceNumber ?? "",
-      row.description ?? "",
-    ]
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(q);
-  });
+  const [total, rows, postedAgg] = await Promise.all([
+    prisma.expenseRecord.count({ where }),
+    prisma.expenseRecord.findMany({
+      where,
+      orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
+      skip,
+      take,
+    }),
+    prisma.expenseRecord.aggregate({
+      where: { ...officeWhere(orgId), status: ExpenseRecordStatus.POSTED },
+      _sum: { total: true },
+    }),
+  ]);
+
+  return {
+    expenses: rows.map(mapRow),
+    total,
+    skip,
+    take,
+    totalPosted: postedAgg._sum.total ?? 0,
+  };
 }
 
 export async function createOfficeExpense(orgId: string, input: CreateOfficeExpenseInput) {

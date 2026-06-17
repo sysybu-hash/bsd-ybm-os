@@ -20,8 +20,8 @@ export const GET = withWorkspacesAuth(
       const raw = Object.fromEntries(new URL(req.url).searchParams.entries());
       const parsed = listOfficeExpensesQuerySchema.safeParse(raw);
       const query = parsed.success ? parsed.data : {};
-      const expenses = await listOfficeExpenses(orgId, query);
-      return NextResponse.json({ expenses });
+    const expenses = await listOfficeExpenses(orgId, query);
+    return NextResponse.json(expenses);
     } catch (error) {
       return apiErrorResponse(error, "Office expenses GET");
     }
