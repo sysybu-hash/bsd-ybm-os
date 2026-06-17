@@ -51,7 +51,11 @@ test.describe("office expenses", () => {
   });
 
   test("office expenses API returns paginated list for authenticated session", async ({ page }) => {
-    const res = await page.request.get("/api/office-expenses?skip=0&take=30");
+    let res = await page.request.get("/api/office-expenses?skip=0&take=30");
+    for (let attempt = 0; attempt < 3 && res.status() === 429; attempt++) {
+      await page.waitForTimeout(1_500 * (attempt + 1));
+      res = await page.request.get("/api/office-expenses?skip=0&take=30");
+    }
     expect(res.status()).toBe(200);
     const body = (await res.json()) as {
       expenses?: unknown[];

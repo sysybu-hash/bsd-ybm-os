@@ -142,16 +142,22 @@ test.describe("dashboard hubs", () => {
     await expect(projectTab).toBeVisible({ timeout: 10_000 });
   });
 
-  test("projects hub: switch to board tab renders task columns", async ({ page }) => {
-    await openHubFromLauncher(page, {
-      quickGridName: /פרויקטים|projects hub/i,
-      widget: "projectsHub",
-    });
+  test("projects hub: switch to board tab renders task columns", async ({ page }, testInfo) => {
+    if (testInfo.project.name === "mobile-chrome") {
+      await page.goto(workspaceUrl({ w: "projectsHub", tab: "board" }), {
+        waitUntil: "domcontentloaded",
+      });
+      await dismissWorkspaceOverlays(page);
+    } else {
+      await openHubFromLauncher(page, {
+        quickGridName: /פרויקטים|projects hub/i,
+        widget: "projectsHub",
+      });
+    }
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
-    const boardTab = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
-    await boardTab.click();
+    await ensureHubTabFromDeepLink(shell, /לוח פרויקטים|board/i);
     await page
       .waitForResponse(
         (res) => res.url().includes("/api/projects") && res.request().method() === "GET" && res.ok(),

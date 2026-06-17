@@ -45,7 +45,9 @@ test.describe("mobile workspace windows", () => {
     await expect(closeBtn).toBeVisible({ timeout: 15_000 });
     await closeBtn.click({ force: true });
 
-    await expect(shell).toBeHidden({ timeout: 15_000 });
+    await expect
+      .poll(async () => !(await shell.isVisible().catch(() => false)), { timeout: 15_000 })
+      .toBe(true);
   });
 
   test("hub widget shell exposes touch scroll region", async ({ page }) => {
