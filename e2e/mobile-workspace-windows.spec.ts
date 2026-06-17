@@ -5,6 +5,7 @@ import {
   dismissWorkspaceOverlays,
   gotoWorkspaceProject,
   hubQuickGridButton,
+  openAnyHubFromQuickGrid,
   tryCredentialsSignIn,
 } from "./helpers";
 
@@ -30,7 +31,7 @@ test.describe("mobile workspace windows", () => {
     test.skip(!signed, "login failed");
 
     await dismissWorkspaceOverlays(page);
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openAnyHubFromQuickGrid(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
@@ -46,7 +47,7 @@ test.describe("mobile workspace windows", () => {
     test.skip(!signed, "login failed");
 
     await dismissWorkspaceOverlays(page);
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openAnyHubFromQuickGrid(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 

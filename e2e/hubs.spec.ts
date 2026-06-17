@@ -3,6 +3,8 @@ import {
   dismissCookieBannerIfVisible,
   dismissWorkspaceOverlays,
   hubQuickGridButton,
+  openFinanceHub,
+  openAnyHubFromQuickGrid,
   primeCookieConsent,
   tryCredentialsSignIn,
   workspaceUrl,
@@ -29,10 +31,10 @@ test.describe("dashboard hubs", () => {
 
   test("quick grid shows consolidated hub tiles", async ({ page }) => {
     await page.waitForLoadState("domcontentloaded");
-    const finance   = page.getByRole("button", { name: /פיננסים|finance/i });
+    const executive = page.getByRole("button", { name: /מרכז מנהל|executive/i });
     const projects  = page.getByRole("button", { name: /פרויקטים|projects hub/i });
     const documents = page.getByRole("button", { name: /מסמכים|documents hub/i });
-    await expect(finance.first()).toBeVisible({ timeout: 20_000 });
+    await expect(executive.first()).toBeVisible({ timeout: 20_000 });
     await expect(projects.first()).toBeVisible({ timeout: 20_000 });
     await expect(documents.first()).toBeVisible({ timeout: 20_000 });
   });
@@ -40,13 +42,13 @@ test.describe("dashboard hubs", () => {
   // ─── finance hub ─────────────────────────────────────────────────────────────
 
   test("finance hub opens from quick grid", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openFinanceHub(page);
     await expect(page.locator("[data-widget-shell]")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("finance hub tab switch: overview → cashflow", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openFinanceHub(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
@@ -61,7 +63,7 @@ test.describe("dashboard hubs", () => {
   });
 
   test("finance hub tab switch: cashflow → overview", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
+    await openFinanceHub(page);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 15_000 });
 

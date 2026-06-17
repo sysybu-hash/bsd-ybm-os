@@ -308,6 +308,48 @@ export function hubQuickGridButton(page: Page, name: RegExp) {
   return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
 }
 
+/** פותח Hub מהרשת המהירה, או deep link אם האריח לא מוצג (למשל פיננסים בתעשיית בנייה). */
+export async function openHubFromLauncher(
+  page: Page,
+  opts: { quickGridName: RegExp; widget: string; tab?: string },
+): Promise<void> {
+  const btn = hubQuickGridButton(page, opts.quickGridName);
+  if (await btn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await btn.click();
+    return;
+  }
+  const url = opts.tab
+    ? workspaceUrl({ w: opts.widget, tab: opts.tab })
+    : workspaceUrl({ w: opts.widget });
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await dismissWorkspaceOverlays(page);
+}
+
+export async function openFinanceHub(page: Page): Promise<void> {
+  await openHubFromLauncher(page, {
+    quickGridName: /פיננסים|finance/i,
+    widget: "financeHub",
+  });
+}
+
+/** פותח Hub כלשהו לבדיקות shell — מעדיף אריח זמין ברשת המהירה. */
+export async function openAnyHubFromQuickGrid(page: Page): Promise<void> {
+  const candidates = [
+    /מרכז מנהל|executive/i,
+    /פיננסים|finance/i,
+    /פרויקטים|projects hub/i,
+    /מסמכים|documents hub/i,
+  ];
+  for (const name of candidates) {
+    const btn = hubQuickGridButton(page, name);
+    if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await btn.click();
+      return;
+    }
+  }
+  await openFinanceHub(page);
+}
+
 /** מחכה שהווידג'ט סיים טעינה ומציג UI אינטראקטיבי (לא רק shell ריק). */
 export async function waitForBrochureWidgetReady(page: Page, widgetId: string): Promise<void> {
   const loading = page.locator("[data-widget-shell]").getByText(/טוען|Loading|Загрузка/i);
