@@ -68,6 +68,7 @@
       "login": {
         "remember": "זכור אותי במכשיר זה",
         "passkey": "כניסה בטביעת אצבע / Face ID",
+        "passkeyShort": "כניסה ביומטרי",
         "forgot": "שכחתי סיסמה",
         "errorEmpty": "מלאו אימייל וסיסמה",
         "errorInvalid": "אימייל או סיסמה שגויים",

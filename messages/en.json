@@ -68,6 +68,7 @@
       "login": {
         "remember": "Remember me on this device",
         "passkey": "Sign in with fingerprint / Face ID",
+        "passkeyShort": "Biometric sign-in",
         "forgot": "Forgot password",
         "errorEmpty": "Enter email and password",
         "errorInvalid": "Invalid email or password",

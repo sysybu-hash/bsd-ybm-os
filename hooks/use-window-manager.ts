@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback, type MutableRefObject } from 'react';
 import {
   buildWidgetLayout,
+  clampWidgetLayoutToWorkspace,
   isMobileViewport,
-  normalizeWidgetForViewport,
 } from '@/lib/workspace/window-layout-policy';
 import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generator';
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
@@ -82,7 +82,7 @@ function migrateRestoredWidget(w: ActiveWidget): ActiveWidget {
     resolved?.liveData != null
       ? { ...live, ...resolved.liveData }
       : live;
-  return normalizeWidgetForViewport({
+  return clampWidgetLayoutToWorkspace({
     ...w,
     type,
     liveData: mergedLive && Object.keys(mergedLive).length > 0 ? mergedLive : null,
@@ -471,7 +471,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         zById.set(w.id, z);
       }
       nextZIndexRef.current = z + 1;
-      return prev.map((w) => {
+      const next = prev.map((w) => {
         const cell = layouts.get(w.id);
         const nextZ = zById.get(w.id) ?? w.zIndex;
         if (!cell) {
@@ -485,8 +485,16 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
           zIndex: nextZ,
         };
       });
+      if (userId) {
+        queueMicrotask(() => {
+          if (activeUserIdRef.current === userId) {
+            persistLayout(next, userId);
+          }
+        });
+      }
+      return next;
     });
-  }, []);
+  }, [userId, persistLayout]);
 
   const openWidgetFocused = useCallback(
     (

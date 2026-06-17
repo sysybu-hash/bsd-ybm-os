@@ -13,7 +13,14 @@ import {
   writeRememberPreference,
 } from "@/lib/auth/remember-preference";
 import { loginErrorMessages, loginReasonMessages } from "@/lib/auth/login-messages";
-import { AUTH_INPUT, AUTH_BTN_PRIMARY, AUTH_BTN_SECONDARY } from "@/components/auth/auth-ui";
+import {
+  AUTH_INPUT,
+  AUTH_BTN_PRIMARY,
+  AUTH_BTN_SECONDARY,
+  AUTH_DIVIDER_ROW,
+  AUTH_DIVIDER_LINE,
+  AUTH_DIVIDER_LABEL,
+} from "@/components/auth/auth-ui";
 
 type Props = {
   t: (key: string) => string;
@@ -120,9 +127,9 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
 
   if (resetToken) {
     return (
-      <form onSubmit={(e) => void handleReset(e)} className="space-y-4">
+      <form onSubmit={(e) => void handleReset(e)} className="space-y-3 sm:space-y-4">
         <h3 className="text-lg font-black">{t("auth.hub.reset.title")}</h3>
-        <p className="text-sm text-[color:var(--foreground-muted)]">{t("auth.hub.reset.body")}</p>
+        <p className="hidden text-sm text-[color:var(--foreground-muted)] sm:block">{t("auth.hub.reset.body")}</p>
         <input
           type="password"
           autoComplete="new-password"
@@ -142,27 +149,26 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
     );
   }
 
+  const passkeyLabel = (
+    <>
+      <span className="md:hidden">{t("auth.hub.login.passkeyShort")}</span>
+      <span className="hidden md:inline">{t("auth.hub.login.passkey")}</span>
+    </>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-3 md:gap-5">
       {bannerText ? (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-900 dark:text-amber-100">
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-xs font-semibold text-amber-900 sm:px-4 sm:py-3 sm:text-sm dark:text-amber-100">
           {bannerText}
         </p>
       ) : null}
-
-      <PasskeyLoginButton email={email} label={t("auth.hub.login.passkey")} />
-
-      <div className="relative flex items-center gap-3 py-1">
-        <div className="h-px flex-1 bg-[color:var(--border-main)]" />
-        <span className="text-xs font-bold text-[color:var(--foreground-muted)]">{t("auth.login.or")}</span>
-        <div className="h-px flex-1 bg-[color:var(--border-main)]" />
-      </div>
 
       <button
         type="button"
         onClick={() => void handleGoogle()}
         disabled={googleLoading}
-        className={AUTH_BTN_SECONDARY}
+        className={`${AUTH_BTN_SECONDARY} order-1`}
       >
         {googleLoading ? (
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
@@ -177,7 +183,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         {t("auth.loginOs.google")}
       </button>
 
-      <p className="text-center text-xs leading-relaxed text-[color:var(--foreground-muted)]">
+      <p className="order-2 hidden text-center text-xs leading-relaxed text-[color:var(--foreground-muted)] md:block">
         {t("auth.loginOs.googleScopeNote")}{" "}
         <Link href="/privacy" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
           {t("auth.loginOs.privacyLink")}
@@ -195,7 +201,13 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         </Link>
       </p>
 
-      <form onSubmit={(e) => void handleCredentials(e)} className="space-y-3">
+      <div className={`${AUTH_DIVIDER_ROW} order-3`}>
+        <div className={AUTH_DIVIDER_LINE} />
+        <span className={AUTH_DIVIDER_LABEL}>{t("auth.login.or")}</span>
+        <div className={AUTH_DIVIDER_LINE} />
+      </div>
+
+      <form onSubmit={(e) => void handleCredentials(e)} className="order-4 space-y-2.5 sm:space-y-3">
         <input
           type="email"
           autoComplete="email"
@@ -212,15 +224,26 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
           placeholder={t("auth.login.passwordPlaceholder")}
           className={AUTH_INPUT}
         />
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[color:var(--foreground-muted)]">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="h-4 w-4 rounded border-[color:var(--border-main)]"
-          />
-          {t("auth.hub.login.remember")}
-        </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs font-semibold text-[color:var(--foreground-muted)] sm:text-sm">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 shrink-0 rounded border-[color:var(--border-main)]"
+            />
+            <span className="truncate">{t("auth.hub.login.remember")}</span>
+          </label>
+          {onForgotPassword ? (
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="shrink-0 text-xs font-bold text-[color:var(--accent)] hover:underline sm:text-sm"
+            >
+              {t("auth.hub.login.forgot")}
+            </button>
+          ) : null}
+        </div>
         <button
           type="submit"
           disabled={credsLoading}
@@ -230,15 +253,19 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
         </button>
       </form>
 
-      {onForgotPassword ? (
-        <button
-          type="button"
-          onClick={onForgotPassword}
-          className="text-sm font-bold text-[color:var(--accent)] hover:underline"
-        >
-          {t("auth.hub.login.forgot")}
-        </button>
-      ) : null}
+      <div className="order-5">
+        <PasskeyLoginButton email={email} label={passkeyLabel} compact />
+      </div>
+
+      <p className="order-6 text-center text-[10px] leading-relaxed text-[color:var(--foreground-muted)] md:hidden">
+        <Link href="/privacy" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+          {t("auth.loginOs.privacyLink")}
+        </Link>
+        {" · "}
+        <Link href="/terms" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+          {t("auth.loginOs.termsLink")}
+        </Link>
+      </p>
     </div>
   );
 }

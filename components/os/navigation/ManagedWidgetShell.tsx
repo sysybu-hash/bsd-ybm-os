@@ -47,8 +47,13 @@ export default function ManagedWidgetShell({
 
   const handleBack = useCallback(() => {
     const result = wsNav.chromeBack(widget.id);
-    if (result.focusWidgetId) onRequestFocusWidget(result.focusWidgetId);
-  }, [wsNav, widget.id, onRequestFocusWidget]);
+    if (result.focusWidgetId) {
+      onRequestFocusWidget(result.focusWidgetId);
+      return;
+    }
+    if (result.handled) return;
+    onClose();
+  }, [wsNav, widget.id, onRequestFocusWidget, onClose]);
 
   const handleForward = useCallback(() => {
     const result = wsNav.chromeForward(widget.id);

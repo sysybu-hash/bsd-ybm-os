@@ -77,14 +77,20 @@ export function useWorkspaceUrlSync({
           ? intent.viewState.projectId
           : null;
       if (projectId) return widget.liveData?.projectId === projectId;
-      if (intent.widgetInstanceId) {
-        if (intent.widgetInstanceId === widget.id) return true;
-        // Stale wid after remount/restore — still the same logical window.
-        return true;
-      }
       return true;
     },
     [],
+  );
+
+  const findWidgetForIntent = useCallback(
+    (intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) => {
+      if (intent.widgetInstanceId) {
+        const byId = widgets.find((w) => w.id === intent.widgetInstanceId);
+        if (byId) return byId;
+      }
+      return widgets.find((w) => widgetMatchesUrlIntent(w, intent));
+    },
+    [widgets, widgetMatchesUrlIntent],
   );
 
   const resolveIntent = useCallback((): ReturnType<typeof parseWorkspaceUrl> => {
@@ -187,13 +193,7 @@ export function useWorkspaceUrlSync({
         ? intent.viewState.projectId
         : null;
 
-    const matchingWidget = intent.widgetInstanceId
-      ? widgets.find((w) => w.id === intent.widgetInstanceId)
-      : widgets.find((w) => {
-          if (w.type !== intent.widgetType) return false;
-          if (projectId) return w.liveData?.projectId === projectId;
-          return true;
-        });
+    const matchingWidget = findWidgetForIntent(intent);
 
     if (matchingWidget) {
       const focusKey = `${fp}:${matchingWidget.id}`;
@@ -224,10 +224,14 @@ export function useWorkspaceUrlSync({
         }
       : null;
     openWidget(intent.widgetType, liveData);
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint]);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent]);
 
   useEffect(() => {
     const onPopState = () => {
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (path === "/login" || path.startsWith("/login/")) return;
+      }
       skipNextWrite.current = true;
       dismissedWorkspaceIntentFp = null;
       fulfilledOpenIntentFp = null;

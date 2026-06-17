@@ -100,7 +100,7 @@ export default function AuthExperience({
   // Authenticated visitors are redirected by the effect above (brief, rare flash).
   return (
     <main
-      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[color:var(--background-main)] px-4 py-8 text-[color:var(--foreground-main)]"
+      className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[color:var(--background-main)] px-3 py-4 text-[color:var(--foreground-main)] sm:px-4 sm:py-8"
       dir={dir}
     >
       {/* Ambient gradient wash */}
@@ -109,13 +109,13 @@ export default function AuthExperience({
         <div className="absolute -bottom-24 end-[-6%] h-[380px] w-[440px] rounded-full bg-emerald-500/10 blur-[110px]" />
       </div>
 
-      <div className="absolute end-5 top-5 z-10">
+      <div className="absolute end-3 top-3 z-10 sm:end-5 sm:top-5">
         <LocaleSwitcher compact />
       </div>
 
-      <section className="relative z-[1] grid w-full max-w-5xl overflow-hidden rounded-3xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)] backdrop-blur-xl md:grid-cols-[0.9fr_1.1fr]">
-        {/* ── Brand / value panel ── */}
-        <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-8 text-white md:p-10">
+      <section className="relative z-[1] grid w-full max-w-md overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/95 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.35)] backdrop-blur-xl md:max-w-5xl md:rounded-3xl md:shadow-[0_30px_80px_-30px_rgba(15,23,42,0.45)] md:grid-cols-[0.9fr_1.1fr]">
+        {/* ── Brand / value panel (desktop only) ── */}
+        <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-8 text-white md:flex md:p-10">
           <div aria-hidden className="pointer-events-none absolute -end-16 -top-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -start-12 bottom-0 h-48 w-48 rounded-full bg-emerald-500/15 blur-3xl" />
           <div className="relative">
@@ -147,9 +147,14 @@ export default function AuthExperience({
         </div>
 
         {/* ── Form panel ── */}
-        <div className="flex flex-col p-6 sm:p-8 md:p-10">
+        <div className="flex flex-col p-4 sm:p-6 md:p-10">
+          <div className="mb-4 flex flex-col items-center gap-2 text-center md:hidden">
+            <BrandHomeLink size="lg" variant="image" tone="auto" priority />
+            <h1 className="text-lg font-black tracking-tight">{t("auth.hub.heroTitle")}</h1>
+          </div>
+
           <div
-            className="mb-7 grid grid-cols-2 gap-1 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-1"
+            className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-1 md:mb-7 md:rounded-2xl"
             role="tablist"
           >
             {(["login", "register"] as const).map((key) => (
@@ -159,7 +164,7 @@ export default function AuthExperience({
                 role="tab"
                 aria-selected={tab === key}
                 onClick={() => setTabAndUrl(key)}
-                className={`rounded-xl py-2.5 text-sm font-bold transition ${
+                className={`rounded-lg py-2 text-xs font-bold transition sm:rounded-xl sm:py-2.5 sm:text-sm ${
                   tab === key
                     ? "bg-gradient-to-l from-indigo-600 to-violet-600 text-white shadow-sm"
                     : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
@@ -172,9 +177,9 @@ export default function AuthExperience({
 
           {tab === "login" ? (
             forgotOpen ? (
-              <div className="space-y-4">
-                <h2 className="text-xl font-black">{t("auth.hub.forgot.title")}</h2>
-                <p className="text-sm text-[color:var(--foreground-muted)]">{t("auth.hub.forgot.body")}</p>
+              <div className="space-y-3 sm:space-y-4">
+                <h2 className="text-lg font-black sm:text-xl">{t("auth.hub.forgot.title")}</h2>
+                <p className="hidden text-sm text-[color:var(--foreground-muted)] sm:block">{t("auth.hub.forgot.body")}</p>
                 <input
                   type="email"
                   value={forgotEmail}
@@ -200,8 +205,8 @@ export default function AuthExperience({
               </div>
             ) : (
               <>
-                <h2 className="mb-1 text-2xl font-black tracking-tight">{t("auth.hub.loginTitle")}</h2>
-                <p className="mb-6 text-sm text-[color:var(--foreground-muted)]">{t("auth.hub.loginSubtitle")}</p>
+                <h2 className="mb-1 hidden text-2xl font-black tracking-tight md:block">{t("auth.hub.loginTitle")}</h2>
+                <p className="mb-6 hidden text-sm text-[color:var(--foreground-muted)] md:block">{t("auth.hub.loginSubtitle")}</p>
                 <LoginPanel
                   t={t}
                   prefilledEmail={prefilledEmail}
@@ -219,10 +224,11 @@ export default function AuthExperience({
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="mt-8 inline-flex items-center justify-center gap-2 text-sm font-bold text-[color:var(--foreground-muted)] transition hover:text-[color:var(--foreground-main)]"
+            className="mt-5 inline-flex items-center justify-center gap-2 text-xs font-bold text-[color:var(--foreground-muted)] transition hover:text-[color:var(--foreground-main)] sm:mt-8 sm:text-sm"
+            aria-label={t("auth.loginOs.backHomeAria")}
           >
-            {t("auth.loginOs.backHome")}
-            <ArrowLeft size={16} aria-hidden />
+            <span>{t("auth.loginOs.backHome")}</span>
+            <ArrowLeft size={16} aria-hidden className="rtl:rotate-180" />
           </button>
         </div>
       </section>

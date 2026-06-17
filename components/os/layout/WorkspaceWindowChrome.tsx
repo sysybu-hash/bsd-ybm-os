@@ -116,6 +116,18 @@ export default function WorkspaceWindowChrome({
       onPointerCancel={onHeaderPointerUp}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
+        {showNavigation && closeTouchTarget ? (
+          <div className="flex shrink-0 items-center md:hidden">
+            <button
+              type="button"
+              onClick={onBack}
+              className={touchChromeBtn}
+              aria-label={t("workspaceWidgets.chrome.backAria", chromeTitle)}
+            >
+              <BackIcon size={18} aria-hidden />
+            </button>
+          </div>
+        ) : null}
         {showNavigation && !closeTouchTarget ? (
           <div className="hidden shrink-0 items-center gap-0.5 sm:flex">
             <button

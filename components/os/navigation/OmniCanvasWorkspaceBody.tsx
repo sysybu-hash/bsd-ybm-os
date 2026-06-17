@@ -8,6 +8,7 @@ import {
   dismissWorkspaceUrlIntentForWidget,
   useWorkspaceUrlSync,
 } from "@/hooks/use-workspace-url-sync";
+import { useWorkspaceHardwareBack } from "@/hooks/use-workspace-hardware-back";
 import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
@@ -95,6 +96,19 @@ export default function OmniCanvasWorkspaceBody({
     const topZ = Math.max(...widgets.map((w) => w.zIndex));
     return widgets.find((w) => w.zIndex === topZ);
   }, [widgets]);
+
+  const getFocusedWidgetId = useCallback(
+    () => getFocusedWidget()?.id,
+    [getFocusedWidget],
+  );
+
+  useWorkspaceHardwareBack({
+    enabled: hasHydrated && widgets.length > 0,
+    getFocusedWidgetId,
+    chromeBack: wsNav.chromeBack,
+    focusWidget,
+    closeWidget: handleCloseWidget,
+  });
 
   const { syncUrlFromFocusedWidget } = useWorkspaceUrlSync({
     hasHydrated,

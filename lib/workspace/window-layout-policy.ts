@@ -243,6 +243,44 @@ function isDegenerateDesktopLayout(
 
 }
 
+/** שומר מיקום/גודל שמורים — רק מגביל לגבולות, בלי לאפס גריד מקצועי */
+export function clampWidgetLayoutToWorkspace<T extends {
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  isMaximized?: boolean;
+}>(widget: T): T {
+  const workspace = getWorkspaceContentSize();
+
+  if (workspace.mobile) {
+    return {
+      ...widget,
+      position: { x: 0, y: 0 },
+      size: { width: workspace.width, height: workspace.height },
+      isMaximized: true,
+    };
+  }
+
+  if (widget.isMaximized) return widget;
+
+  const clampedW = Math.min(widget.size.width, workspace.width - 16);
+  const clampedH = Math.min(widget.size.height, workspace.height - 16);
+  const size = {
+    width: Math.max(360, clampedW),
+    height: Math.max(320, clampedH),
+  };
+  const maxX = Math.max(0, workspace.width - size.width);
+  const maxY = Math.max(0, workspace.height - size.height);
+
+  return {
+    ...widget,
+    size,
+    position: {
+      x: Math.max(0, Math.min(widget.position.x, maxX)),
+      y: Math.max(0, Math.min(widget.position.y, maxY)),
+    },
+  };
+}
+
 
 
 export type WidgetLayoutSeed = {

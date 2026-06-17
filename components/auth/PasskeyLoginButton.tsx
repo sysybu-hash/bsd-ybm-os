@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { signIn } from "next-auth/react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { Fingerprint } from "lucide-react";
@@ -19,9 +19,11 @@ const log = createLogger("passkey-login-button");
 export default function PasskeyLoginButton({
   email,
   label,
+  compact = false,
 }: {
   email?: string;
-  label: string;
+  label: ReactNode;
+  compact?: boolean;
 }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -96,7 +98,11 @@ export default function PasskeyLoginButton({
       type="button"
       disabled={busy}
       onClick={() => void run()}
-      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-500/10 px-5 text-sm font-black text-indigo-700 transition hover:bg-indigo-500/15 disabled:opacity-60 dark:text-indigo-200"
+      className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 font-black text-indigo-700 transition hover:bg-indigo-500/15 disabled:opacity-60 dark:text-indigo-200 ${
+        compact
+          ? "min-h-10 px-3 text-xs sm:min-h-11 sm:text-sm"
+          : "min-h-11 px-5 text-sm"
+      }`}
     >
       {busy ? (
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-300 border-t-indigo-600" />
