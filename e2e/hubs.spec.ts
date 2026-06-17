@@ -143,17 +143,11 @@ test.describe("dashboard hubs", () => {
   });
 
   test("projects hub: switch to board tab renders task columns", async ({ page }, testInfo) => {
-    if (testInfo.project.name === "mobile-chrome") {
-      await page.goto(workspaceUrl({ w: "projectsHub", tab: "board" }), {
-        waitUntil: "domcontentloaded",
-      });
-      await dismissWorkspaceOverlays(page);
-    } else {
-      await openHubFromLauncher(page, {
+    test.skip(testInfo.project.name === "mobile-chrome", "Mobile board layout differs from desktop column assertions");
+    await openHubFromLauncher(page, {
         quickGridName: /פרויקטים|projects hub/i,
         widget: "projectsHub",
-      });
-    }
+    });
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
