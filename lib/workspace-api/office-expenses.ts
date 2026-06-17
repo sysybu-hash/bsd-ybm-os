@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import type {
   CreateOfficeExpenseInput,
+  ListOfficeExpensesQuery,
   UpdateOfficeExpenseInput,
 } from "@/lib/validation/schemas/office-expenses";
 
@@ -58,13 +59,42 @@ const officeWhere = (orgId: string) => ({
   projectId: null,
 });
 
-export async function listOfficeExpenses(orgId: string): Promise<FinanceExpenseRow[]> {
+export async function listOfficeExpenses(
+  orgId: string,
+  query: ListOfficeExpensesQuery = {},
+): Promise<FinanceExpenseRow[]> {
+  const q = query.q?.trim().toLowerCase() ?? "";
+  const dateFilter =
+    query.fromDate || query.toDate
+      ? {
+          ...(query.fromDate ? { gte: parseExpenseDate(query.fromDate) } : {}),
+          ...(query.toDate ? { lte: parseExpenseDate(query.toDate) } : {}),
+        }
+      : undefined;
+
   const rows = await prisma.expenseRecord.findMany({
-    where: officeWhere(orgId),
+    where: {
+      ...officeWhere(orgId),
+      ...(query.status ? { status: query.status } : {}),
+      ...(dateFilter ? { expenseDate: dateFilter } : {}),
+    },
     orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
     take: 200,
   });
-  return rows.map(mapRow);
+
+  const mapped = rows.map(mapRow);
+  if (!q) return mapped;
+
+  return mapped.filter((row) => {
+    const haystack = [
+      row.vendorName,
+      row.invoiceNumber ?? "",
+      row.description ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(q);
+  });
 }
 
 export async function createOfficeExpense(orgId: string, input: CreateOfficeExpenseInput) {

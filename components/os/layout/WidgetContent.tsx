@@ -87,7 +87,7 @@ export function WidgetContent({
   if (widget.type === "accessibility") return <AccessibilityWidget />;
   if (widget.type === "platformAdmin") return <PlatformAdminWidget />;
   if (widget.type === "helpCenter") return <HelpCenterWidget openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "financeHub") return <FinanceHubWidget liveData={widget.liveData} />;
+  if (widget.type === "financeHub") return <FinanceHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "projectsHub") return <ProjectsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "documentsHub") return <DocumentsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "aiHub") return <AiHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;

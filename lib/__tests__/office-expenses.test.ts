@@ -62,6 +62,51 @@ describe("office-expenses workspace api", () => {
     expect(rows[0]?.vendorName).toBe("Office Depot");
   });
 
+  it("filters office expenses by status and search query", async () => {
+    findMany.mockResolvedValue([
+      {
+        id: "e1",
+        vendorName: "Office Depot",
+        invoiceNumber: "100",
+        description: "supplies",
+        expenseDate: new Date("2026-06-01T12:00:00Z"),
+        total: 118,
+        amountNet: 100,
+        vat: 18,
+        allocation: "OFFICE",
+        status: "POSTED",
+        projectId: null,
+        contactId: null,
+      },
+      {
+        id: "e2",
+        vendorName: "Rent Co",
+        invoiceNumber: null,
+        description: null,
+        expenseDate: new Date("2026-06-10T12:00:00Z"),
+        total: 5000,
+        amountNet: 5000,
+        vat: 0,
+        allocation: "OFFICE",
+        status: "DRAFT",
+        projectId: null,
+        contactId: null,
+      },
+    ]);
+
+    const postedOnly = await listOfficeExpenses("org-1", { status: "POSTED" });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "POSTED" }),
+      }),
+    );
+    expect(postedOnly).toHaveLength(2);
+
+    const byQuery = await listOfficeExpenses("org-1", { q: "rent" });
+    expect(byQuery).toHaveLength(1);
+    expect(byQuery[0]?.vendorName).toBe("Rent Co");
+  });
+
   it("creates office expense without project linkage", async () => {
     create.mockResolvedValue({
       id: "e2",

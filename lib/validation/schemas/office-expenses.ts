@@ -15,5 +15,13 @@ export const createOfficeExpenseSchema = z.object({
 
 export const updateOfficeExpenseSchema = createOfficeExpenseSchema.partial();
 
+export const listOfficeExpensesQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  status: officeExpenseStatusSchema.optional(),
+  fromDate: z.string().min(1).optional(),
+  toDate: z.string().min(1).optional(),
+});
+
 export type CreateOfficeExpenseInput = z.infer<typeof createOfficeExpenseSchema>;
 export type UpdateOfficeExpenseInput = z.infer<typeof updateOfficeExpenseSchema>;
+export type ListOfficeExpensesQuery = z.infer<typeof listOfficeExpensesQuerySchema>;

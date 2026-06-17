@@ -353,8 +353,7 @@
       "finance": {
         "tabs": {
           "overview": "Overview",
-          "cashflow": "Cash flow",
-          "officeExpenses": "Office expenses"
+          "cashflow": "Cash flow"
         }
       },
       "executive": {
@@ -1748,6 +1747,20 @@
       "delete": "Delete",
       "deleteConfirm": "Delete this expense?",
       "empty": "No office expenses yet — add your first one above.",
+      "filteredEmpty": "No expenses match your filters — try adjusting the search.",
+      "vsProjectBanner": "Office expenses are organization invoices not tied to a project. Planned project expenses are monthly budget lines only.",
+      "hubLinkTitle": "Office expenses",
+      "hubLinkDesc": "Scan, invoices and recurring org payments — in the Manager Center.",
+      "projectLinkTitle": "Office expenses (organization)",
+      "projectLinkDesc": "Office invoices not tied to this project — manage in the Manager Center.",
+      "exportSection": "Accounting export",
+      "filters": {
+        "search": "Search vendor / invoice / description",
+        "statusAll": "All statuses",
+        "fromDate": "From date",
+        "toDate": "To date",
+        "clear": "Clear filters"
+      },
       "scanTitle": "Scan invoice / receipt",
       "scanSubtitle": "Take a photo, upload, or drag a document — scanning creates an office expense automatically (vendor, amount, date).",
       "scanSaveTarget": "Save as office expense",
@@ -2153,8 +2166,10 @@
     "extras": "Extras",
     "erpExpenses": "ERP invoices",
     "erpVsPlannedHelp": "ERP invoices come from finance; planned expenses are monthly budget lines you enter in the project.",
+    "erpProjectOnlyNote": "This list shows ERP invoices linked to the current project only. General office expenses are managed in the Manager Center.",
     "noErpExpenses": "No ERP invoices linked to this project",
     "plannedExpenses": "Planned expenses",
+    "plannedExpensesHelp": "Monthly budget lines for this project — not tax invoices. For org office invoices, use the Manager Center.",
     "attendanceTitle": "Recent attendance (Meckano)",
     "attendanceEmpty": "No attendance data — link a Meckano zone to the project",
     "milestoneName": "Milestone name",

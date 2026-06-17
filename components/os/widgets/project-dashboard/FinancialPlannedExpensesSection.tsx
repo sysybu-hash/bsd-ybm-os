@@ -19,7 +19,10 @@ export function FinancialPlannedExpensesSection({ data, apiBase, refresh, t }: P
 
   return (
     <section>
-      <h3 className="mb-2 text-xs font-semibold">{t("projectDashboard.plannedExpenses")}</h3>
+      <h3 className="mb-1 text-xs font-semibold">{t("projectDashboard.plannedExpenses")}</h3>
+      <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">
+        {t("projectDashboard.plannedExpensesHelp")}
+      </p>
       <ul className="space-y-1 text-xs">
         {data.projectExpenses.map((e) => (
           <li key={e.id} className="flex justify-between rounded border border-[color:var(--border-main)] px-2 py-1">

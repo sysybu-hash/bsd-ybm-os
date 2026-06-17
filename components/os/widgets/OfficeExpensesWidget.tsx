@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useCallback, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+import { useOfficeExpensesList } from "@/hooks/use-office-expenses-list";
 
 const OfficeExpenseScanPanel = dynamic(
   () => import("@/components/os/widgets/OfficeExpenseScanPanel"),
@@ -18,6 +19,11 @@ const OfficeExpenseScanPanel = dynamic(
       </div>
     ),
   },
+);
+
+const AccountingExportPanel = dynamic(
+  () => import("@/components/os/widgets/AccountingExportPanel"),
+  { loading: () => null },
 );
 
 const nis = new Intl.NumberFormat("he-IL", {
@@ -76,46 +82,28 @@ function payloadFromForm(form: FormState) {
 
 export default function OfficeExpensesWidget() {
   const { t } = useI18n();
-  const [expenses, setExpenses] = useState<FinanceExpenseRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const loadError = t("workspaceWidgets.officeExpenses.errors.load");
+  const {
+    expenses,
+    loading,
+    error,
+    filters,
+    setFilters,
+    resetFilters,
+    totalPosted,
+    reload,
+  } = useOfficeExpensesList(loadError);
+
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const totalPosted = useMemo(
-    () =>
-      expenses
-        .filter((row) => row.status === "POSTED")
-        .reduce((sum, row) => sum + row.total, 0),
-    [expenses],
-  );
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/office-expenses", { credentials: "include" });
-      if (!res.ok) throw new Error(t("workspaceWidgets.officeExpenses.errors.load"));
-      const data = (await res.json()) as { expenses: FinanceExpenseRow[] };
-      setExpenses(data.expenses ?? []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("workspaceWidgets.officeExpenses.errors.load"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setEditingId(null);
     setForm(emptyForm());
     setFormError(null);
-  };
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.vendorName.trim()) {
@@ -141,7 +129,7 @@ export default function OfficeExpensesWidget() {
       });
       if (!res.ok) throw new Error(t("workspaceWidgets.officeExpenses.errors.save"));
       resetForm();
-      await load();
+      await reload();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : t("workspaceWidgets.officeExpenses.errors.save"));
     } finally {
@@ -160,7 +148,7 @@ export default function OfficeExpensesWidget() {
       return;
     }
     if (editingId === id) resetForm();
-    await load();
+    await reload();
   };
 
   if (loading) {
@@ -172,11 +160,17 @@ export default function OfficeExpensesWidget() {
       <WidgetState
         variant="error"
         message={error}
-        onRetry={() => void load()}
+        onRetry={() => void reload()}
         retryLabel={t("workspaceWidgets.retry")}
       />
     );
   }
+
+  const hasActiveFilters =
+    Boolean(filters.q.trim()) ||
+    Boolean(filters.status) ||
+    Boolean(filters.fromDate) ||
+    Boolean(filters.toDate);
 
   return (
     <div className={`${widgetScrollPaneClass} flex flex-col gap-4 p-4`}>
@@ -194,6 +188,10 @@ export default function OfficeExpensesWidget() {
         </p>
       </header>
 
+      <p className="rounded-lg border border-amber-200/70 bg-amber-50/80 px-3 py-2 text-[11px] leading-relaxed text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+        {t("workspaceWidgets.officeExpenses.vsProjectBanner")}
+      </p>
+
       <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
         <h3 className="mb-1 text-xs font-semibold">
           {t("workspaceWidgets.officeExpenses.scanTitle")}
@@ -202,7 +200,7 @@ export default function OfficeExpensesWidget() {
           {t("workspaceWidgets.officeExpenses.scanSubtitle")}
         </p>
         <div className="overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
-          <OfficeExpenseScanPanel onExpenseSaved={() => void load()} />
+          <OfficeExpenseScanPanel onExpenseSaved={() => void reload()} />
         </div>
       </section>
 
@@ -296,10 +294,59 @@ export default function OfficeExpensesWidget() {
       </section>
 
       <section>
-        <h3 className="mb-2 text-xs font-semibold">{t("workspaceWidgets.officeExpenses.listTitle")}</h3>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold">{t("workspaceWidgets.officeExpenses.listTitle")}</h3>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-[11px] text-indigo-600 hover:underline"
+            >
+              {t("workspaceWidgets.officeExpenses.filters.clear")}
+            </button>
+          ) : null}
+        </div>
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <input
+            className={osFieldClassName}
+            placeholder={t("workspaceWidgets.officeExpenses.filters.search")}
+            value={filters.q}
+            onChange={(e) => setFilters((prev) => ({ ...prev, q: e.target.value }))}
+          />
+          <select
+            className={osFieldClassName}
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                status: e.target.value === "DRAFT" || e.target.value === "POSTED" ? e.target.value : "",
+              }))
+            }
+          >
+            <option value="">{t("workspaceWidgets.officeExpenses.filters.statusAll")}</option>
+            <option value="POSTED">{t("workspaceWidgets.officeExpenses.statusPosted")}</option>
+            <option value="DRAFT">{t("workspaceWidgets.officeExpenses.statusDraft")}</option>
+          </select>
+          <input
+            className={osFieldClassName}
+            type="date"
+            aria-label={t("workspaceWidgets.officeExpenses.filters.fromDate")}
+            value={filters.fromDate}
+            onChange={(e) => setFilters((prev) => ({ ...prev, fromDate: e.target.value }))}
+          />
+          <input
+            className={osFieldClassName}
+            type="date"
+            aria-label={t("workspaceWidgets.officeExpenses.filters.toDate")}
+            value={filters.toDate}
+            onChange={(e) => setFilters((prev) => ({ ...prev, toDate: e.target.value }))}
+          />
+        </div>
         {expenses.length === 0 ? (
           <p className="text-xs text-[color:var(--foreground-muted)]">
-            {t("workspaceWidgets.officeExpenses.empty")}
+            {hasActiveFilters
+              ? t("workspaceWidgets.officeExpenses.filteredEmpty")
+              : t("workspaceWidgets.officeExpenses.empty")}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -348,6 +395,13 @@ export default function OfficeExpensesWidget() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
+        <h3 className="mb-2 text-xs font-semibold">
+          {t("workspaceWidgets.officeExpenses.exportSection")}
+        </h3>
+        <AccountingExportPanel />
       </section>
     </div>
   );

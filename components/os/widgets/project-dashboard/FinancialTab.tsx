@@ -2,6 +2,7 @@
 
 import React from "react";
 import ProjectBoqPanel from "@/components/os/widgets/project/ProjectBoqPanel";
+import OfficeExpensesHubLink from "@/components/os/widgets/OfficeExpensesHubLink";
 import type { DashboardData } from "./types";
 import { formatMoney } from "./utils";
 import { FinancialMilestonesSection } from "./FinancialMilestonesSection";
@@ -15,9 +16,20 @@ type FinancialTabProps = {
   isCompanyMgmt: boolean;
   refresh: () => Promise<void>;
   t: (key: string, opts?: Record<string, string>) => string;
+  openWorkspaceWidget?: (
+    type: import("@/hooks/use-window-manager").WidgetType,
+    data?: Record<string, unknown> | null,
+  ) => void;
 };
 
-export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: FinancialTabProps) {
+export function FinancialTab({
+  data,
+  apiBase,
+  isCompanyMgmt,
+  refresh,
+  t,
+  openWorkspaceWidget,
+}: FinancialTabProps) {
   const milestonesSection = (
     <FinancialMilestonesSection data={data} apiBase={apiBase} isCompanyMgmt={isCompanyMgmt} refresh={refresh} t={t} />
   );
@@ -58,8 +70,11 @@ export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: Finan
       {/* ERP Expenses */}
       <section>
         <h3 className="mb-1 text-xs font-semibold">{t("projectDashboard.erpExpenses")}</h3>
-        <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">
+        <p className="mb-2 text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
           {t("projectDashboard.erpVsPlannedHelp")}
+        </p>
+        <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">
+          {t("projectDashboard.erpProjectOnlyNote")}
         </p>
         <ul className="space-y-1 text-xs">
           {(data.expenseRecords ?? []).map((e) => (
@@ -75,6 +90,10 @@ export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: Finan
       </section>
 
       <FinancialPlannedExpensesSection data={data} apiBase={apiBase} refresh={refresh} t={t} />
+
+      {openWorkspaceWidget ? (
+        <OfficeExpensesHubLink openWorkspaceWidget={openWorkspaceWidget} variant="project" />
+      ) : null}
     </div>
   );
 }

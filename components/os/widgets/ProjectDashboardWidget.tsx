@@ -148,6 +148,7 @@ export default function ProjectDashboardWidget({
               isCompanyMgmt={isCompanyMgmt}
               refresh={refresh}
               t={t}
+              openWorkspaceWidget={openWorkspaceWidget}
             />
           </div>
         )}
