@@ -550,7 +550,7 @@
     box-shadow: none;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 767px), ((max-height: 767px) and (pointer: coarse)) {
     .workspace-chrome-btn {
       min-height: 2.75rem;
       min-width: 2.75rem;
@@ -754,7 +754,7 @@
 }
 
 /* מיקרופון שקוע — כמו דף הנחיתה: בשורת האייקונים עם translateY, בלי שקע נפרד */
-@media (max-width: 767px) {
+@media (max-width: 767px), ((max-height: 767px) and (pointer: coarse)) {
   .workspace-empty-scroll {
     scrollbar-gutter: auto;
   }
@@ -919,7 +919,7 @@
    height — so the content gets the full screen instead of a small inner box.
    Desktop (≥768px) keeps the unified single-owner model untouched.
    ────────────────────────────────────────────────────────────────────────── */
-@media (max-width: 767px) {
+@media (max-width: 767px), ((max-height: 767px) and (pointer: coarse)) {
   .workspace-window--mobile [data-shell-scroll].shell-scroll-host {
     display: block;
     flex: 0 0 auto;

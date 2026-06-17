@@ -14,6 +14,8 @@ import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launc
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
 import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityRail";
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
+import { useMobileViewportSync } from "@/hooks/use-mobile-viewport-sync";
+import { useLockPortraitOrientation } from "@/hooks/use-lock-portrait-orientation";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 /** Deferred chrome — not needed for LCP / first paint */
@@ -65,7 +67,7 @@ function OmniCanvasSidebarRail({
       {showPeekTab ? (
         <button
           type="button"
-          className="os-sidebar-peek-rail fixed z-[1190] hidden md:flex items-center justify-center"
+          className="os-sidebar-peek-rail fixed z-[1190] hidden desktop-vp:flex items-center justify-center"
           onMouseEnter={() => setSidebarRailPeek(true)}
           onClick={() => setSidebarRailPeek(true)}
           onFocus={() => setSidebarRailPeek(true)}
@@ -107,7 +109,7 @@ function OmniCanvasWorkspaceInset({
 
   return (
     <div
-      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] desktop-vp:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "desktop-vp:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
     >
       {children}
     </div>
@@ -115,6 +117,9 @@ function OmniCanvasWorkspaceInset({
 }
 
 export default function OmniCanvasWorkspace() {
+  useMobileViewportSync();
+  useLockPortraitOrientation();
+
   const s = useOmniCanvasState();
   const {
     t, dir,
@@ -287,7 +292,7 @@ export default function OmniCanvasWorkspace() {
         onCloseWidget={closeWidget}
       />
 
-      <div className="md:hidden">
+      <div className="hidden mobile-vp:contents">
         <MobileBottomNav
           openWidget={openWidget}
           onOpenOmnibar={() => setMobileOmnibarOpen(true)}

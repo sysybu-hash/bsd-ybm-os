@@ -153,7 +153,7 @@ export default function MobileBottomNav({
       {moreOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-[1284] bg-slate-950/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[1284] hidden bg-slate-950/50 backdrop-blur-sm mobile-vp:block"
           aria-label={t("workspaceWidgets.mobileNav.closeMore")}
           onClick={() => setMoreOpen(false)}
         />
@@ -173,7 +173,7 @@ export default function MobileBottomNav({
       {/* ── סרגל תחתון + מיקרופון שקוע במרכז (חצי בפנים, חצי בחוץ) ── */}
       <div
         ref={hostRef}
-        className="mobile-bottom-nav-host fixed bottom-0 left-0 right-0 z-[1285] md:hidden"
+        className="mobile-bottom-nav-host fixed bottom-0 left-0 right-0 z-[1285] hidden mobile-vp:block"
         data-testid="mobile-bottom-nav"
         dir={dir}
       >
@@ -273,7 +273,7 @@ function MoreAppsPanel({
 }) {
   return (
     <div
-      className="fixed bottom-[calc(var(--mobile-chrome-bottom)+0.5rem)] left-3 right-3 z-[1286] max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl md:hidden"
+      className="fixed bottom-[calc(var(--mobile-chrome-bottom)+0.5rem)] left-3 right-3 z-[1286] hidden max-h-[50vh] overflow-y-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 shadow-xl mobile-vp:block"
       role="dialog"
       aria-label={t("workspaceWidgets.mobileNav.moreAppsTitle")}
     >

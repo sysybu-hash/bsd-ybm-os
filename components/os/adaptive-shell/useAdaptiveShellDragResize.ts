@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   RESIZE_MIN_WINDOW_HEIGHT,
   RESIZE_MIN_WINDOW_WIDTH,
+  isMobileViewport,
   resolveShellDesktopDimensions,
 } from "@/lib/workspace/window-layout-policy";
 
@@ -45,7 +46,7 @@ export function useAdaptiveShellDragResize({
   }, [workspaceBoundsRef]);
 
   const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 768,
+    () => typeof window !== "undefined" && isMobileViewport(),
   );
 
   const resolveDesktopDimensions = useCallback(
@@ -97,8 +98,7 @@ export function useAdaptiveShellDragResize({
 
   useEffect(() => {
     const syncViewport = () => {
-      const w = window.visualViewport?.width ?? window.innerWidth;
-      setIsMobile(w < 768);
+      setIsMobile(isMobileViewport());
     };
     syncViewport();
     window.addEventListener("resize", syncViewport);

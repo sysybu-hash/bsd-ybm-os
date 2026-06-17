@@ -92,7 +92,7 @@ export default function OSSidebar({
       {isOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-[1150] hidden bg-slate-950/45 backdrop-blur-[2px] md:block"
+          className="fixed inset-0 z-[1150] hidden bg-slate-950/45 backdrop-blur-[2px] desktop-vp:block"
           onClick={closeSidebar}
           aria-label={t("workspaceWidgets.sidebar.closeAria")}
         />
@@ -108,7 +108,7 @@ export default function OSSidebar({
           onMouseLeave?.();
         }}
         style={{ ["--os-rail-w" as string]: railWidth }}
-        className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-[width] duration-200 md:flex
+        className={`fixed z-[1200] hidden flex-col border-[color:var(--border-main)] bg-[color:var(--glass-bg)] shadow-md backdrop-blur-sm transition-[width] duration-200 desktop-vp:flex
           bottom-0 left-0 right-0 h-auto w-full items-stretch border-t px-3 py-2
           md:bottom-24 md:start-3 md:end-auto md:top-20 md:max-h-[calc(100vh-8.5rem)] md:min-h-0 md:w-[var(--os-rail-w)] md:max-w-[var(--os-rail-w)] md:rounded-xl md:border md:px-2 md:py-2.5`}
         aria-label={t("workspaceWidgets.sidebar.aria")}

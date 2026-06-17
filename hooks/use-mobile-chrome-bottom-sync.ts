@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-
-const MOBILE_CHROME_MQL = "(max-width: 767px)";
+import { isMobileViewport } from "@/lib/workspace/window-layout-policy";
 
 function measureChromeBottomPx(host: HTMLElement): number {
   const viewportBottom =
@@ -31,10 +30,9 @@ export function useMobileChromeBottomSync(syncKey: number | boolean = 0) {
     if (!host) return;
 
     const root = document.documentElement;
-    const mql = window.matchMedia(MOBILE_CHROME_MQL);
 
     const apply = () => {
-      if (!mql.matches) {
+      if (!isMobileViewport()) {
         root.style.removeProperty("--mobile-chrome-bottom");
         return;
       }
@@ -53,14 +51,12 @@ export function useMobileChromeBottomSync(syncKey: number | boolean = 0) {
     const onViewportChange = () => apply();
     window.visualViewport?.addEventListener("resize", onViewportChange);
     window.visualViewport?.addEventListener("scroll", onViewportChange);
-    mql.addEventListener("change", apply);
     window.addEventListener("resize", onViewportChange);
 
     return () => {
       ro.disconnect();
       window.visualViewport?.removeEventListener("resize", onViewportChange);
       window.visualViewport?.removeEventListener("scroll", onViewportChange);
-      mql.removeEventListener("change", apply);
       window.removeEventListener("resize", onViewportChange);
       root.style.removeProperty("--mobile-chrome-bottom");
     };

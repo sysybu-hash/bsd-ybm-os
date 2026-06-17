@@ -27,29 +27,34 @@ export type WorkspaceViewport = {
 
 
 export function getViewportSize(): WorkspaceViewport {
-
   if (typeof window === "undefined") {
-
     return { width: 1280, height: 800 };
-
   }
 
   const vv = window.visualViewport;
-
   const width = Math.round(vv?.width ?? window.innerWidth);
-
   const height = Math.round(vv?.height ?? window.innerHeight);
-
   return { width: Math.max(320, width), height: Math.max(400, height) };
-
 }
 
+/** הקצה הקצר — נשאר מובייל גם ב-landscape (למשל 844×390). */
+export function getViewportShortEdge(viewport: WorkspaceViewport): number {
+  return Math.min(viewport.width, viewport.height);
+}
 
+export function matchesCoarsePointer(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(pointer: coarse)").matches;
+}
 
 export function isMobileViewport(viewport = getViewportSize()): boolean {
-
-  return viewport.width < MOBILE_BREAKPOINT_PX;
-
+  const shortEdge = getViewportShortEdge(viewport);
+  if (shortEdge < MOBILE_BREAKPOINT_PX) return true;
+  if (typeof window !== "undefined" && matchesCoarsePointer() && shortEdge < MOBILE_BREAKPOINT_PX + 96) {
+    return true;
+  }
+  return false;
 }
 
 

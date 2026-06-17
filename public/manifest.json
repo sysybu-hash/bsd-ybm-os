@@ -10,7 +10,7 @@
   "launch_handler": {
     "client_mode": "navigate-existing"
   },
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "background_color": "#0f172a",
   "theme_color": "#0a0c10",
   "lang": "he-IL",
