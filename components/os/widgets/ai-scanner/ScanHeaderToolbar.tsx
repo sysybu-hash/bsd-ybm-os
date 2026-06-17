@@ -71,6 +71,7 @@ export function ScanHeaderToolbar({
           onClick={clearProject}
           className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
           title={t(`${scannerPrefix}.switchProject`)}
+          aria-label={t(`${scannerPrefix}.switchProject`)}
         >
           <ArrowRight size={13} className="rtl:rotate-180" aria-hidden />
           <span className="hidden md:inline">{t(`${scannerPrefix}.switchProject`)}</span>
@@ -124,6 +125,7 @@ export function ScanHeaderToolbar({
           value={userInstruction}
           onChange={(e) => persistInstruction(e.target.value)}
           placeholder={tr("scanner.instructionPlaceholder", "הנחיות ל-AI…")}
+          aria-label={tr("scanner.instructionPlaceholder", "הנחיות ל-AI")}
           className="hidden h-9 w-40 shrink-0 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 text-[11px] font-semibold sm:block"
         />
         <button

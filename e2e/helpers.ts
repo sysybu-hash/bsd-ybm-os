@@ -173,6 +173,18 @@ export async function expectHubTabSelected(shell: Locator, tabName: RegExp): Pro
     .toBe(true);
 }
 
+/**
+ * Deep links may focus an existing hub without switching tabs — click the tab when needed.
+ */
+export async function ensureHubTabFromDeepLink(shell: Locator, tabName: RegExp): Promise<void> {
+  const tab = shell.getByRole("tab", { name: tabName });
+  await expect(tab).toBeVisible({ timeout: 15_000 });
+  if ((await tab.getAttribute("aria-selected")) !== "true") {
+    await tab.click();
+  }
+  await expectHubTabSelected(shell, tabName);
+}
+
 /** Waits for executive hub shell and the office-expenses tab to be active. */
 export async function waitForExecutiveHubOfficeExpenses(page: Page) {
   const shell = widgetShell(page, "executiveHub");

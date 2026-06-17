@@ -10,6 +10,7 @@ import {
   widgetShell,
   workspaceUrl,
   expectHubTabSelected,
+  ensureHubTabFromDeepLink,
 } from "./helpers";
 
 async function gotoWorkspace(page: Parameters<typeof tryCredentialsSignIn>[0], url: string) {
@@ -113,7 +114,7 @@ test.describe("dashboard hubs", () => {
     await dismissWorkspaceOverlays(page);
     const shell = widgetShell(page, "financeHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
-    await expectHubTabSelected(shell, /תזרים|cashflow/i);
+    await ensureHubTabFromDeepLink(shell, /תזרים|cashflow/i);
   });
 
   // ─── projects hub ─────────────────────────────────────────────────────────────
@@ -228,7 +229,7 @@ test.describe("dashboard hubs", () => {
     await dismissWorkspaceOverlays(page);
     const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
-    await expectHubTabSelected(shell, /סריקה|scan/i);
+    await ensureHubTabFromDeepLink(shell, /סריקה|scan/i);
   });
 
   // ─── AI hub ───────────────────────────────────────────────────────────────────

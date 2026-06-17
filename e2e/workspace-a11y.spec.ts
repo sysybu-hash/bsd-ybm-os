@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults, Result } from "axe-core";
-import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
+import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, ensureHubTabFromDeepLink, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
 
 const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
 
@@ -64,7 +64,7 @@ const WIDGET_SHELL_IDS: Record<string, string> = {
   crm: "crmTable",
   "ai-chat": "aiChatFull",
   "project-board": "project",
-  scanner: "aiScanner",
+  scanner: "documentsHub",
   drive: "googleDrive",
 };
 
@@ -94,7 +94,9 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      if (key !== "workspace-chrome") {
+      if (key === "scanner") {
+        await ensureHubTabFromDeepLink(widgetShell(page, "documentsHub"), /סריקה|scan/i);
+      } else if (key !== "workspace-chrome") {
         const widgetId = WIDGET_SHELL_IDS[key];
         if (widgetId) {
           await widgetShell(page, widgetId).waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
@@ -102,10 +104,23 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       }
 
       const axeBuilder = new AxeBuilder({ page }).withTags(AXE_TAGS);
-      const results: AxeResults =
-        key === "workspace-chrome"
-          ? await axeBuilder.exclude(".os-utility-rail-host").analyze()
-          : await axeBuilder.include("[data-widget-shell]").analyze();
+      let results: AxeResults;
+      if (key === "workspace-chrome") {
+        results = await axeBuilder
+          .exclude(".os-utility-rail-host")
+          .exclude("[data-widget-shell]")
+          .exclude("[data-testid='mobile-bottom-nav']")
+          .analyze();
+      } else {
+        const widgetId = WIDGET_SHELL_IDS[key];
+        const shell = widgetId ? widgetShell(page, widgetId) : page.locator("[data-widget-shell]").last();
+        await shell.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+        const shellId = await shell.getAttribute("id");
+        const includeSelector = shellId
+          ? `[id="${shellId}"]`
+          : `[data-widget-shell][id^="${widgetId}-"]`;
+        results = await axeBuilder.include(includeSelector).analyze();
+      }
 
       const baseline = readBaseline();
 

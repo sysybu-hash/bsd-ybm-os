@@ -106,7 +106,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Short edge must be ≥768px or the app treats chromium as mobile (sidebar hidden).
+        viewport: { width: 1280, height: 900 },
+      },
     },
 
     {

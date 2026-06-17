@@ -113,9 +113,9 @@ test.describe("Site quality", () => {
     await dismissWorkspaceOverlays(page);
     await waitForAuthenticatedWorkspace(page);
     await expect(
-      page
-        .getByRole("navigation", { name: /יישומים|Apps/i })
-        .or(page.getByTestId("launcher-zone-sidebar")),
+      page.getByRole("complementary", { name: /Workspace navigation|ניווט/i }).or(
+        page.getByRole("navigation", { name: /יישומים|Apps/i }),
+      ),
     ).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
   });
