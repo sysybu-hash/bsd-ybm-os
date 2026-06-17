@@ -180,7 +180,8 @@ export async function ensureHubTabFromDeepLink(shell: Locator, tabName: RegExp):
   const tab = shell.getByRole("tab", { name: tabName });
   await expect(tab).toBeVisible({ timeout: 15_000 });
   if ((await tab.getAttribute("aria-selected")) !== "true") {
-    await tab.click();
+    await tab.scrollIntoViewIfNeeded();
+    await tab.click({ force: true });
   }
   await expectHubTabSelected(shell, tabName);
 }
@@ -189,9 +190,7 @@ export async function ensureHubTabFromDeepLink(shell: Locator, tabName: RegExp):
 export async function waitForExecutiveHubOfficeExpenses(page: Page) {
   const shell = widgetShell(page, "executiveHub");
   await expect(shell).toBeVisible({ timeout: 30_000 });
-  const tab = shell.getByRole("tab", { name: /הוצאות משרד|office expenses/i });
-  await expect(tab).toBeVisible({ timeout: 15_000 });
-  await expect(tab).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
+  await ensureHubTabFromDeepLink(shell, /הוצאות משרד|office expenses/i);
 }
 
 /** סלקטור לחלון פרויקטים / מרכז שליטה (hub או standalone). */

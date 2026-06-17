@@ -59,6 +59,7 @@ export function useOmniCanvasState() {
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
+    updateWidgetLiveData,
   } = useWindowManager({ userId, authReady });
 
   const openWorkspaceWidget = useCallback(
@@ -220,7 +221,7 @@ export function useOmniCanvasState() {
     // window manager
     widgets, hasHydrated, openWidget, closeWidget, focusWidget,
     updateWidgetPosition, updateWidgetSize, toggleMaximize, toggleMinimize, restoreWidget,
-    updateZoom,
+    updateZoom, updateWidgetLiveData,
     isCleanDashboard, toggleWorkState,
     // computed
     hasMaximizedWidget, sidebarRailVisible,

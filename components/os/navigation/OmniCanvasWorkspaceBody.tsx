@@ -29,6 +29,7 @@ type Props = {
   toggleMaximize: (id: string) => void;
   toggleMinimize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
+  updateWidgetLiveData: (id: string, liveData: Record<string, unknown> | null) => void;
 };
 
 export default function OmniCanvasWorkspaceBody({
@@ -43,6 +44,7 @@ export default function OmniCanvasWorkspaceBody({
   toggleMaximize,
   toggleMinimize,
   updateZoom,
+  updateWidgetLiveData,
 }: Props) {
   const wsNav = useWorkspaceNavigation();
   const { data: session } = useSession();
@@ -117,6 +119,7 @@ export default function OmniCanvasWorkspaceBody({
     focusWidget,
     findWidgetByType,
     getWidgetViewState: wsNav.getWidgetViewState,
+    updateWidgetLiveData,
   });
 
   const onWidgetViewChange = useCallback(

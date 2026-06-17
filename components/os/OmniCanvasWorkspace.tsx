@@ -145,6 +145,7 @@ export default function OmniCanvasWorkspace() {
     toggleMinimize,
     restoreWidget,
     updateZoom,
+    updateWidgetLiveData,
     isCleanDashboard, toggleWorkState,
     hasMaximizedWidget, sidebarRailVisible,
     openWorkspaceWidget,
@@ -259,6 +260,7 @@ export default function OmniCanvasWorkspace() {
               toggleMaximize={toggleMaximize}
               toggleMinimize={toggleMinimize}
               updateZoom={updateZoom}
+              updateWidgetLiveData={updateWidgetLiveData}
             />
           </Suspense>
         </WorkspaceNavigationProvider>

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   dismissCookieBannerIfVisible,
   dismissWorkspaceOverlays,
-  hubQuickGridButton,
+  openHubFromLauncher,
   openFinanceHub,
   openAnyHubFromQuickGrid,
   primeCookieConsent,
@@ -120,13 +120,19 @@ test.describe("dashboard hubs", () => {
   // ─── projects hub ─────────────────────────────────────────────────────────────
 
   test("projects hub opens with tab navigation", async ({ page }) => {
-    await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /פרויקטים|projects hub/i,
+      widget: "projectsHub",
+    });
     await expect(widgetShell(page, "projectsHub")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("projects hub has board and project tabs", async ({ page }) => {
-    await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /פרויקטים|projects hub/i,
+      widget: "projectsHub",
+    });
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
@@ -137,7 +143,10 @@ test.describe("dashboard hubs", () => {
   });
 
   test("projects hub: switch to board tab renders task columns", async ({ page }) => {
-    await hubQuickGridButton(page, /פרויקטים|projects hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /פרויקטים|projects hub/i,
+      widget: "projectsHub",
+    });
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
@@ -167,20 +176,24 @@ test.describe("dashboard hubs", () => {
     await dismissWorkspaceOverlays(page);
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
-    await expect(shell.getByRole("tab", { selected: true })).toContainText(/לוח פרויקטים|board/i, {
-      timeout: 10_000,
-    });
+    await ensureHubTabFromDeepLink(shell, /לוח פרויקטים|board/i);
   });
 
   // ─── documents hub ────────────────────────────────────────────────────────────
 
   test("documents hub opens from quick grid", async ({ page }) => {
-    await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /מסמכים|documents hub/i,
+      widget: "documentsHub",
+    });
     await expect(widgetShell(page, "documentsHub")).toBeVisible({ timeout: 15_000 });
   });
 
   test("documents hub has archive, create and scan tabs", async ({ page }) => {
-    await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /מסמכים|documents hub/i,
+      widget: "documentsHub",
+    });
     const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
@@ -209,7 +222,10 @@ test.describe("dashboard hubs", () => {
   });
 
   test("documents hub: scan tab loads scanner", async ({ page }) => {
-    await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
+    await openHubFromLauncher(page, {
+      quickGridName: /מסמכים|documents hub/i,
+      widget: "documentsHub",
+    });
     const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 

@@ -106,6 +106,7 @@ test.describe("Site quality", () => {
 
   test("desktop workspace shows sidebar when signed in", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "רק דסקטופ כרום");
+    await page.setViewportSize({ width: 1280, height: 900 });
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש credentials ב-DB — דלג או הגדר E2E_EMAIL / E2E_PASSWORD");
 
@@ -113,9 +114,7 @@ test.describe("Site quality", () => {
     await dismissWorkspaceOverlays(page);
     await waitForAuthenticatedWorkspace(page);
     await expect(
-      page.getByRole("complementary", { name: /Workspace navigation|ניווט/i }).or(
-        page.getByRole("navigation", { name: /יישומים|Apps/i }),
-      ),
+      page.getByRole("complementary", { name: /Workspace navigation|ניווט סביבת עבודה/i }),
     ).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
   });

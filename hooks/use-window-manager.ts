@@ -386,6 +386,13 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     setWidgets(prev => prev.map(w => w.id === id ? { ...w, zoom: Math.max(0.5, Math.min(2, (w.zoom || 1) + delta)) } : w));
   }, []);
 
+  const updateWidgetLiveData = useCallback(
+    (id: string, liveData: Record<string, unknown> | null) => {
+      setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, liveData } : w)));
+    },
+    [],
+  );
+
   const closeWidget = useCallback((id: string) => {
     setWidgets(prev => prev.filter(w => w.id !== id));
   }, []);
@@ -536,5 +543,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
+    updateWidgetLiveData,
   };
 }

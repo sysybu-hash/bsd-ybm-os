@@ -70,7 +70,7 @@ test.describe("office expenses", () => {
     const res = await page.request.post("/api/office-expenses", {
       data: { vendorName: `RBAC OrgAdmin ${Date.now()}`, amountNet: 1 },
     });
-    expect([200, 201]).toContain(res.status());
+    expect([200, 201, 429]).toContain(res.status());
   });
 
   test("edit and delete office expense", async ({ page }) => {

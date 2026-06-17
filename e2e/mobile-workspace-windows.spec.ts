@@ -38,10 +38,10 @@ test.describe("mobile workspace windows", () => {
 
     await dismissWorkspaceOverlays(page);
     await openAnyHubFromQuickGrid(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 30_000 });
 
-    const closeBtn = shell.getByRole("button", { name: /סגור|close/i });
+    const closeBtn = shell.getByRole("button", { name: /סגור|close/i }).first();
     await expect(closeBtn).toBeVisible({ timeout: 15_000 });
     await closeBtn.click({ force: true });
 

@@ -62,10 +62,17 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
 const WIDGET_SHELL_IDS: Record<string, string> = {
   dashboard: "financeHub",
   crm: "crmTable",
-  "ai-chat": "aiChatFull",
-  "project-board": "project",
+  "ai-chat": "aiHub",
+  "project-board": "projectsHub",
   scanner: "documentsHub",
   drive: "googleDrive",
+};
+
+const WIDGET_ENSURE_TABS: Partial<Record<string, RegExp>> = {
+  dashboard: /סקירה|overview/i,
+  "ai-chat": /צ.?אט|chat/i,
+  "project-board": /מרכז פרויקט|project/i,
+  scanner: /סריקה|scan/i,
 };
 
 async function signInWithRetries(page: Parameters<typeof tryCredentialsSignIn>[0]): Promise<boolean> {
@@ -91,15 +98,19 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       const signed = await signInWithRetries(page);
       expect(signed, "משתמש E2E חייב להיות זמין בבדיקות 10/10").toBeTruthy();
 
+      await page.setViewportSize({ width: 1280, height: 900 });
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      if (key === "scanner") {
-        await ensureHubTabFromDeepLink(widgetShell(page, "documentsHub"), /סריקה|scan/i);
-      } else if (key !== "workspace-chrome") {
+      if (key !== "workspace-chrome") {
         const widgetId = WIDGET_SHELL_IDS[key];
+        const ensureTab = WIDGET_ENSURE_TABS[key];
         if (widgetId) {
-          await widgetShell(page, widgetId).waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+          const shell = widgetShell(page, widgetId);
+          await shell.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
+          if (ensureTab) {
+            await ensureHubTabFromDeepLink(shell, ensureTab);
+          }
         }
       }
 

@@ -18,6 +18,7 @@ type Options = {
   focusWidget: (id: string) => void;
   findWidgetByType: (type: WidgetType) => ActiveWidget | undefined;
   getWidgetViewState: (widgetId: string) => WidgetViewState | null;
+  updateWidgetLiveData?: (id: string, liveData: Record<string, unknown> | null) => void;
 };
 
 /** Survives Suspense/remount when router.replace updates searchParams. */
@@ -54,6 +55,7 @@ export function useWorkspaceUrlSync({
   focusWidget,
   findWidgetByType,
   getWidgetViewState,
+  updateWidgetLiveData,
 }: Options) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -196,6 +198,15 @@ export function useWorkspaceUrlSync({
     const matchingWidget = findWidgetForIntent(intent);
 
     if (matchingWidget) {
+      const viewState = intent.viewState;
+      if (viewState && Object.keys(viewState).length > 0 && updateWidgetLiveData) {
+        const merged: Record<string, unknown> = { ...(matchingWidget.liveData ?? {}), ...viewState };
+        const prevKey = JSON.stringify(matchingWidget.liveData ?? {});
+        const nextKey = JSON.stringify(merged);
+        if (prevKey !== nextKey) {
+          updateWidgetLiveData(matchingWidget.id, merged);
+        }
+      }
       const focusKey = `${fp}:${matchingWidget.id}`;
       if (fulfilledFocusRef.current !== focusKey) {
         fulfilledFocusRef.current = focusKey;
@@ -224,7 +235,7 @@ export function useWorkspaceUrlSync({
         }
       : null;
     openWidget(intent.widgetType, liveData);
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent]);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent, updateWidgetLiveData]);
 
   useEffect(() => {
     const onPopState = () => {

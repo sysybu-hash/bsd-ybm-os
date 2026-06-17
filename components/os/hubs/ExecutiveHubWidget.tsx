@@ -7,7 +7,7 @@ import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubSh
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LayoutDashboard } from "lucide-react";
 
 const TABS: HubTabDef[] = [
@@ -27,6 +27,13 @@ export default function ExecutiveHubWidget({ liveData }: Props) {
       ? (liveData.tab as string)
       : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tab = liveData?.tab;
+    if (typeof tab === "string" && TABS.some((row) => row.id === tab)) {
+      setActiveTab(tab);
+    }
+  }, [liveData?.tab]);
 
   const applyView = useCallback((view: WidgetViewState) => {
     const tab = view.tab;

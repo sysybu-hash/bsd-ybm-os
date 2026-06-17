@@ -82,7 +82,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             <button
               type="button"
               onClick={() => s.setIsAddingClient(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+              className="bg-emerald-700 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
             >
               <UserPlus size={18} /> {t("workspaceWidgets.crmTable.newClient")}
             </button>
