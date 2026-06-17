@@ -143,6 +143,10 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
       DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+      E2E_EMAIL: owner@bsd-demo.test
+      E2E_PASSWORD: Demo!2026
+      E2E_PM_EMAIL: pm@bsd-demo.test
+      E2E_PM_PASSWORD: Demo!2026
     steps:
       - name: Checkout
         uses: actions/checkout@v5

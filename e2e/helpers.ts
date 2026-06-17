@@ -30,11 +30,23 @@ async function safeGoto(
 
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
+export const E2E_PM_EMAIL = process.env.E2E_PM_EMAIL ?? "pm@bsd-demo.test";
+export const E2E_PM_PASSWORD = process.env.E2E_PM_PASSWORD ?? E2E_PASSWORD;
 
-function readSeedMarker(): { e2eProjectId?: string; e2eContactId?: string } {
+export type E2eCredentials = { email: string; password: string };
+
+function readSeedMarker(): {
+  e2eProjectId?: string;
+  e2eContactId?: string;
+  e2eOfficeExpenseId?: string;
+} {
   try {
     const p = path.resolve(process.cwd(), ".e2e-demo-seeded.json");
-    return JSON.parse(fs.readFileSync(p, "utf8")) as { e2eProjectId?: string; e2eContactId?: string };
+    return JSON.parse(fs.readFileSync(p, "utf8")) as {
+      e2eProjectId?: string;
+      e2eContactId?: string;
+      e2eOfficeExpenseId?: string;
+    };
   } catch {
     return {};
   }
@@ -44,6 +56,8 @@ const seedMarker = readSeedMarker();
 
 export const E2E_PROJECT_ID = process.env.E2E_PROJECT_ID ?? seedMarker.e2eProjectId ?? "";
 export const E2E_CONTACT_ID = process.env.E2E_CONTACT_ID ?? seedMarker.e2eContactId ?? "";
+export const E2E_OFFICE_EXPENSE_ID =
+  process.env.E2E_OFFICE_EXPENSE_ID ?? seedMarker.e2eOfficeExpenseId ?? "";
 
 /** Canonical workspace URL at `/` with query params (use `w` for widget type). */
 export function workspaceUrl(params: Record<string, string>): string {
@@ -249,7 +263,7 @@ async function ensureAuthenticatedWorkspace(page: Page): Promise<boolean> {
   }
 }
 
-async function credentialsSignInViaApi(page: Page): Promise<boolean> {
+async function credentialsSignInViaApi(page: Page, credentials: E2eCredentials): Promise<boolean> {
   const ok = await page.evaluate(
     async ({ email, password }) => {
       const csrf = (await fetch(`${window.location.origin}/api/auth/csrf`).then((r) => r.json())) as {
@@ -277,12 +291,12 @@ async function credentialsSignInViaApi(page: Page): Promise<boolean> {
       const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
       return Boolean((session as { user?: { email?: string } }).user?.email);
     },
-    { email: E2E_EMAIL, password: E2E_PASSWORD },
+    credentials,
   );
   return ok;
 }
 
-async function credentialsSignInViaUi(page: Page): Promise<boolean> {
+async function credentialsSignInViaUi(page: Page, credentials: E2eCredentials): Promise<boolean> {
   const emailInput = page
     .getByPlaceholder(/אימייל|email/i)
     .or(page.getByLabel(/אימייל|email/i))
@@ -296,16 +310,20 @@ async function credentialsSignInViaUi(page: Page): Promise<boolean> {
   if (!(await emailInput.isVisible({ timeout: 12_000 }).catch(() => false))) {
     return false;
   }
-  await emailInput.fill(E2E_EMAIL);
-  await passwordInput.fill(E2E_PASSWORD);
+  await emailInput.fill(credentials.email);
+  await passwordInput.fill(credentials.password);
   await submit.click();
   await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 35_000 });
   return hasAuthenticatedSession(page);
 }
 
-export async function signInWithRetries(page: Page, attempts = 4): Promise<boolean> {
+export async function signInWithRetries(
+  page: Page,
+  attempts = 4,
+  credentials: E2eCredentials = { email: E2E_EMAIL, password: E2E_PASSWORD },
+): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await tryCredentialsSignIn(page, credentials);
     if (signed) return true;
     await page.waitForTimeout(600 + attempt * 600);
   }
@@ -327,14 +345,17 @@ export async function waitForAuthenticatedApiSession(page: Page): Promise<void> 
     .toBe(true);
 }
 
-export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
+export async function tryCredentialsSignIn(
+  page: Page,
+  credentials: E2eCredentials = { email: E2E_EMAIL, password: E2E_PASSWORD },
+): Promise<boolean> {
   try {
     await primeCookieConsent(page);
     await primeE2eBrowserStorage(page);
     await page.goto("/login");
     await page.waitForLoadState("domcontentloaded");
 
-    if (await credentialsSignInViaApi(page)) {
+    if (await credentialsSignInViaApi(page, credentials)) {
       await page.goto("/", { waitUntil: "domcontentloaded" });
       if (await ensureAuthenticatedWorkspace(page)) {
         await dismissWorkspaceOverlays(page);
@@ -348,7 +369,7 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
       return true;
     }
 
-    if (await credentialsSignInViaUi(page)) {
+    if (await credentialsSignInViaUi(page, credentials)) {
       if (!(await ensureAuthenticatedWorkspace(page))) return false;
       await dismissWorkspaceOverlays(page);
       return true;
@@ -361,6 +382,11 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
     }
     return false;
   }
+}
+
+/** התחברות כמשתמש PROJECT_MGR (pm@bsd-demo.test אחרי seed). */
+export async function tryProjectMgrSignIn(page: Page): Promise<boolean> {
+  return tryCredentialsSignIn(page, { email: E2E_PM_EMAIL, password: E2E_PM_PASSWORD });
 }
 
 /** כפתור Hub ברשת המהירה (לא אייקון בסרגל הצד). */
