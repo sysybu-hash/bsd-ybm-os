@@ -24,6 +24,7 @@ const ISSUED_DOC_TYPES = [
   "INVOICE_RECEIPT",
   "RECEIPT",
   "CREDIT_NOTE",
+  "PURCHASE_ORDER",
 ] as const satisfies readonly DocType[];
 
 const createIssuedDocumentSchema = z.object({

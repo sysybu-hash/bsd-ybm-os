@@ -38,6 +38,7 @@ export {
   buildDefaultLauncherConfig,
   buildDefaultQuickGrid,
   buildIndustryLauncherConfig,
+  CONSTRUCTION_QUICK_GRID,
   DEFAULT_QUICK_GRID,
   getDefaultLauncherConfig,
   isQuickGridEmpty,

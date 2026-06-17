@@ -7,6 +7,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import { deleteIssuedDocument, updateIssuedDocument } from "@/app/actions/issued-documents";
 import type { DocStatus, DocType } from "@prisma/client";
 import InvoiceActionBar from "@/components/os/widgets/invoice/InvoiceActionBar";
+import CommentsThread from "@/components/os/shared/CommentsThread";
 
 type LineItem = { desc: string; qty: number; price: number };
 
@@ -289,6 +290,8 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
           {t("workspaceWidgets.invoice.whatsappReminder")}
         </a>
       ) : null}
+
+      <CommentsThread targetId={issuedDocumentId} targetType="DOC" />
     </div>
   );
 }

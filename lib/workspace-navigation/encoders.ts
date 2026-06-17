@@ -60,7 +60,10 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
     }
     case "financeHub":
     case "documentsHub":
-    case "aiHub": {
+    case "aiHub":
+    case "logisticsHub":
+    case "procurementHub":
+    case "executiveHub": {
       const tab = state.tab as string | undefined;
       return tab?.trim() ? `t:${tab.trim()}` : null;
     }
@@ -123,7 +126,10 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
     }
     case "financeHub":
     case "documentsHub":
-    case "aiHub": {
+    case "aiHub":
+    case "logisticsHub":
+    case "procurementHub":
+    case "executiveHub": {
       if (raw.startsWith("t:")) return { tab: raw.slice(2) };
       return { tab: raw };
     }

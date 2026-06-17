@@ -189,6 +189,8 @@ const serverSchema = z.object({
 
   // --- Feature flags ---
   BLUEPRINT_USE_FLASH_ONLY: optBool,
+  /** מסלול סריקה מאוחד V2 (Tri-Engine בכל הכניסות) — כבוי = legacy processDocumentAction */
+  SCAN_UNIFIED_V2: optBool,
   ENABLE_DEBUG_SESSION: optBool,
   /** CSP ללא unsafe-eval (staging) — Next.js עדיין דורש unsafe-inline לרוב ה-builds */
   CSP_STRICT: optBool,

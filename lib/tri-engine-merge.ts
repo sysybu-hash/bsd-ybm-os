@@ -1,3 +1,7 @@
+import {
+  isPlaceholderVendor,
+  sumLineItemsTotal,
+} from "@/lib/scan/v5-normalize";
 import { emptyV5Base, type ScanExtractionV5, type ScanModeV5 } from "@/lib/scan-schema-v5";
 
 function mergeDrawingResults(a: ScanExtractionV5, b: ScanExtractionV5, fileName: string): ScanExtractionV5 {
@@ -84,16 +88,27 @@ export function mergeScanResults(
   });
 }
 
-/** ממלא שדות חסרים אחרי מיזוג מנועים (חשבוניות) */
+/** ממלא שדות חסרים אחרי מיזוג מנועים (חשבוניות / חשבון חלקי) */
 export function enrichInvoiceV5(v5: ScanExtractionV5): ScanExtractionV5 {
-  if (v5.documentMetadata.scanMode !== "INVOICE_FINANCIAL") return v5;
+  const mode = v5.documentMetadata.scanMode;
+  if (mode !== "INVOICE_FINANCIAL" && mode !== "PROGRESS_BILL") return v5;
+
   const dm = { ...v5.documentMetadata };
   if (!dm.documentDate && v5.date) dm.documentDate = v5.date;
-  if (!dm.client && v5.vendor && v5.vendor !== "לא צוין") dm.client = v5.vendor;
-  let total = v5.total;
-  if ((!total || total <= 0) && v5.lineItems.length > 0) {
-    const sum = v5.lineItems.reduce((acc, row) => acc + (Number(row.lineTotal) || 0), 0);
-    if (sum > 0) total = sum;
+
+  let vendor = v5.vendor;
+  if (isPlaceholderVendor(vendor) && dm.client && !isPlaceholderVendor(dm.client)) {
+    vendor = dm.client;
   }
-  return { ...v5, documentMetadata: dm, total };
+  if (!isPlaceholderVendor(vendor)) {
+    if (!dm.client || isPlaceholderVendor(dm.client)) dm.client = vendor;
+  }
+
+  let total = v5.total;
+  if (!Number.isFinite(total) || total <= 0) {
+    const fromLines = sumLineItemsTotal(v5.lineItems);
+    if (fromLines > 0) total = fromLines;
+  }
+
+  return { ...v5, documentMetadata: dm, vendor, total };
 }

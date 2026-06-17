@@ -60,8 +60,12 @@ describe("runAutomationAction", () => {
       deps,
     );
     expect(deps.openWidget).toHaveBeenCalledWith(
-      "aiScanner",
-      expect.objectContaining({ openInstructions: true, userInstruction: "test" }),
+      "documentsHub",
+      expect.objectContaining({
+        tab: "scan",
+        openInstructions: true,
+        userInstruction: "test",
+      }),
     );
   });
 

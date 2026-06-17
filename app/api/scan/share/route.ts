@@ -22,7 +22,7 @@ const log = createLogger("scan-share");
 
 export const dynamic = "force-dynamic";
 
-const FALLBACK_REDIRECT = "/?w=aiScanner&share=1";
+const FALLBACK_REDIRECT = "/?w=documentsHub&tab=scan&source=share";
 
 export async function POST(req: Request) {
   try {
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
           });
           // Redirect with Drive file ID so the scanner can auto-load it
           redirect(
-            `/?w=aiScanner&sharedDriveId=${encodeURIComponent(archiveResult.driveFileId)}&sharedFileName=${encodeURIComponent(file.name)}`,
+            `/?w=documentsHub&tab=scan&source=share&sharedDriveId=${encodeURIComponent(archiveResult.driveFileId)}&sharedFileName=${encodeURIComponent(file.name)}`,
           );
         }
       } catch (err: unknown) {

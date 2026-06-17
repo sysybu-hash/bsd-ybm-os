@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadGateway } from "@/lib/api-json";
@@ -77,7 +78,7 @@ export const POST = withWorkspacesAuth(
         });
       }
 
-      revalidatePath("/app/documents/erp");
+      revalidateErpDocumentsSurfaces();
       revalidatePath("/app/settings/billing");
       revalidatePath("/app");
 

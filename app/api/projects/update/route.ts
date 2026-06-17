@@ -4,32 +4,27 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
 import { captureServerEvent } from "@/lib/analytics/posthog-server";
 import {
-  boardPriorityFromDb,
   boardPriorityToDb,
   boardStatusFromDb,
   boardStatusToDb,
-  buildTaskDescription,
-  parseClientFromDescription,
 } from "@/lib/tasks/board-mapping";
+import {
+  buildTaskKanbanMetadataJson,
+  mapPrismaTaskToBoardRow,
+  mergeTaskKanbanMetadata,
+} from "@/lib/tasks/kanban-task-mapper";
 import { syncTaskToGoogleCalendarIfEligible } from "@/lib/google-calendar-sync";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("projects-update");
 
-function parseBudgetFromDescription(description: string | null | undefined): number {
-  if (!description) return 0;
-  const m = description.match(/Budget:\s*([\d.]+)/i);
-  return m ? Number(m[1]) || 0 : 0;
-}
-
-function stripManagedDescription(description: string | null | undefined): string {
-  if (!description) return "";
-  return description
-    .split("|")
-    .map((p) => p.trim())
-    .filter((p) => p && !/^Client:/i.test(p) && !/^Budget:/i.test(p))
-    .join(" | ");
-}
+const taskInclude = {
+  project: {
+    include: {
+      contacts: { take: 1, orderBy: { createdAt: "asc" as const } },
+    },
+  },
+} as const;
 
 export const GET = withWorkspacesAuth(async (request, { orgId }) => {
   try {
@@ -39,34 +34,11 @@ export const GET = withWorkspacesAuth(async (request, { orgId }) => {
         organizationId: orgId,
         ...(projectId ? { projectId } : {}),
       },
-      include: {
-        project: {
-          include: {
-            contacts: { take: 1, orderBy: { createdAt: "asc" } },
-          },
-        },
-      },
+      include: taskInclude,
       orderBy: { createdAt: "desc" },
     });
 
-    const mappedTasks = tasks.map((t) => {
-      const contactId = t.project.primaryContactId ?? t.project.contacts[0]?.id ?? "";
-      const clientFromDesc = parseClientFromDescription(t.description);
-      return {
-        id: t.id,
-        title: t.title,
-        description: stripManagedDescription(t.description),
-        project: t.project.name,
-        projectName: t.project.name,
-        projectId: t.projectId,
-        clientName: t.project.contacts[0]?.name ?? clientFromDesc,
-        contactId,
-        budget: t.project.budget > 0 ? t.project.budget : parseBudgetFromDescription(t.description),
-        status: boardStatusFromDb(t.status),
-        priority: boardPriorityFromDb(t.priority),
-        dueDate: t.dueDate ? t.dueDate.toISOString().split("T")[0] : "",
-      };
-    });
+    const mappedTasks = tasks.map(mapPrismaTaskToBoardRow);
 
     return NextResponse.json(mappedTasks);
   } catch (error: unknown) {
@@ -166,6 +138,12 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
             )?.name
           : undefined);
 
+      const metadataPatch = mergeTaskKanbanMetadata(existing.metadata, {
+        clientName: resolvedClient,
+        contactId: contactId ?? undefined,
+        budget: typeof budget === "number" ? budget : undefined,
+      });
+
       const updatedTask = await prisma.task.update({
         where: { id },
         data: {
@@ -174,10 +152,8 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
           dueDate: dueDate === "" ? null : dueDate ? new Date(dueDate) : undefined,
           title: title || undefined,
           projectId,
-          description:
-            description !== undefined || resolvedClient || typeof budget === "number"
-              ? buildTaskDescription(resolvedClient, budget, description)
-              : undefined,
+          description: description !== undefined ? description : undefined,
+          metadata: metadataPatch,
         },
       });
 
@@ -256,7 +232,12 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         projectId: projectRecord.id,
         organizationId: orgId,
-        description: buildTaskDescription(clientName, budget, description),
+        description: description?.trim() || null,
+        metadata: buildTaskKanbanMetadataJson({
+          clientName,
+          contactId,
+          budget: typeof budget === "number" ? budget : undefined,
+        }),
       },
     });
 

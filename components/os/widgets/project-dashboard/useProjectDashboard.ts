@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BarChart3, BookOpen, Calendar, Settings } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, KanbanSquare, LayoutDashboard, Settings } from "lucide-react";
 import { registerWebPush, unregisterWebPush } from "@/lib/push/register-client";
+import { useProjectSync } from "@/lib/events/project-sync";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import type { TabId, DashboardData, ProjectListItem, ProjectDashboardWidgetProps } from "./types";
@@ -17,7 +18,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [loading, setLoading] = useState(Boolean(projectId || projectName));
   const [projectsList, setProjectsList] = useState<ProjectListItem[]>([]);
   const [projectsListLoading, setProjectsListLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>("financial");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [uploadingBlueprint, setUploadingBlueprint] = useState(false);
   const [blueprintPreview, setBlueprintPreview] = useState<import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis | null>(null);
@@ -97,6 +98,11 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     void loadProjectsList();
   }, [projectId, projectName, resolvedId, refresh, loadProjectsList]);
 
+  const syncProjectId = resolvedId || projectId;
+  useProjectSync(syncProjectId || undefined, () => {
+    void refresh();
+  });
+
   const togglePush = async () => {
     const next = !pushEnabled;
     if (next) {
@@ -162,7 +168,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   }, [loadProjectsList]);
 
   const resetWorkspace = useCallback(() => {
-    setActiveTab("financial");
+    setActiveTab("overview");
     setDiaryInitialDesc(undefined);
     setDiaryInitialTaskId(undefined);
     toast.success(t("projectDashboard.resetWorkspaceDone"));
@@ -170,6 +176,8 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
 
   const tabs = useMemo(() => {
     const all: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
+      { id: "overview", label: t("projectDashboard.tabs.overview"), icon: LayoutDashboard },
+      { id: "tasks", label: t("projectDashboard.tabs.tasks"), icon: KanbanSquare },
       { id: "financial", label: isCompanyMgmt ? t("projectDashboard.tabs.financialBusiness") : t("projectDashboard.tabs.financial"), icon: BarChart3 },
       { id: "diary", label: t("projectDashboard.tabs.diary"), icon: BookOpen },
       { id: "gantt", label: t("projectDashboard.tabs.gantt"), icon: Calendar },

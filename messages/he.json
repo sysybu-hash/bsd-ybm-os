@@ -365,6 +365,8 @@
     "source": "ספק / מקור",
     "document": "סוג מסמך",
     "modeAuto": "אוטומטי",
+    "scanModeAuto": "זיהוי אוטומטי",
+    "detectedDocType": "זוהה",
     "modeMulti": "ריבוי מנועים",
     "modeGemini": "Gemini בלבד",
     "modeOpenai": "OpenAI בלבד",

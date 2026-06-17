@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
@@ -8,8 +9,22 @@ import { getTaskTradeId } from "@/lib/project-task-metadata";
 import { buildTaskTradeDescription, getTaskTradeNotes } from "@/lib/project-task-trade";
 import type { ProjectSubDomainId } from "@/lib/project-sub-domains";
 import { PROJECT_SUB_DOMAIN_BY_ID } from "@/lib/project-sub-domains";
+import {
+  boardPriorityToDb,
+  boardStatusToDb,
+} from "@/lib/tasks/board-mapping";
+import {
+  buildTaskKanbanMetadataJson,
+  mapPrismaTaskToBoardRow,
+  mergeTaskKanbanMetadata,
+} from "@/lib/tasks/kanban-task-mapper";
+import { captureServerEvent } from "@/lib/analytics/posthog-server";
+import { syncTaskToGoogleCalendarIfEligible } from "@/lib/google-calendar-sync";
+import { createLogger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+
+const log = createLogger("project-tasks");
 
 function parseDependencies(raw: string | null | undefined): string | null {
   if (raw == null || raw === "") return null;
@@ -36,6 +51,35 @@ function toIsoDate(value: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+const taskInclude = {
+  project: {
+    include: {
+      contacts: { take: 1, orderBy: { createdAt: "asc" as const } },
+    },
+  },
+} as const;
+
+export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+  const { id: projectId } = await segment.params;
+  try {
+    const gate = await requireProjectForOrg(projectId, orgId);
+    if (!gate.ok) return gate.response;
+
+    const tasks = await prisma.task.findMany({
+      where: { projectId, organizationId: orgId },
+      include: taskInclude,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const mapped = tasks.map(mapPrismaTaskToBoardRow);
+    return NextResponse.json({ tasks: mapped });
+  } catch (error: unknown) {
+    return apiErrorResponse(error, "Project tasks GET");
+  }
+});
+
+const metadataSchema = z.record(z.string(), z.unknown()).optional();
+
 const createSchema = z.object({
   title: z.string().min(1),
   startDate: z.string().optional(),
@@ -47,10 +91,15 @@ const createSchema = z.object({
   description: z.string().optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
+  dueDate: z.string().optional(),
+  clientName: z.string().optional(),
+  contactId: z.string().optional(),
+  budget: z.number().optional(),
+  metadata: metadataSchema,
 });
 
 export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchema>(
-  async (_req, { orgId }, segment, body) => {
+  async (_req, { orgId, userId }, segment, body) => {
     const { id: projectId } = await segment.params;
     try {
       const gate = await requireProjectForOrg(projectId, orgId);
@@ -60,6 +109,42 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchem
         ? (body.tradeId as ProjectSubDomainId)
         : null;
 
+      const dbStatus = body.status ? boardStatusToDb(body.status) ?? body.status : "TODO";
+      const dbPriority = body.priority ? boardPriorityToDb(body.priority) ?? body.priority : "MEDIUM";
+
+      const kanbanMeta = buildTaskKanbanMetadataJson({
+        clientName: body.clientName,
+        contactId: body.contactId,
+        budget: body.budget,
+      });
+      let metadata: Prisma.InputJsonValue | undefined;
+      if (body.metadata !== undefined) {
+        metadata = {
+          ...(kanbanMeta as Record<string, unknown>),
+          ...body.metadata,
+        } as Prisma.InputJsonValue;
+      } else if (Object.keys(kanbanMeta as Record<string, unknown>).length > 0) {
+        metadata = kanbanMeta;
+      }
+
+      if (body.contactId) {
+        await prisma.contact.updateMany({
+          where: { id: body.contactId, organizationId: orgId },
+          data: { projectId },
+        });
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { primaryContactId: body.contactId },
+        });
+      }
+
+      if (typeof body.budget === "number") {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { budget: body.budget },
+        });
+      }
+
       const task = await prisma.task.create({
         data: {
           title: body.title.trim(),
@@ -67,18 +152,34 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchem
           organizationId: orgId,
           startDate: toIsoDate(body.startDate),
           endDate: toIsoDate(body.endDate),
+          dueDate: toIsoDate(body.dueDate),
           progress: body.progress ?? 0,
-          status: body.status ?? "TODO",
-          priority: body.priority ?? "MEDIUM",
+          status: dbStatus,
+          priority: dbPriority,
           dependencies: parseDependencies(
             Array.isArray(body.dependencies) ? JSON.stringify(body.dependencies) : body.dependencies,
           ),
           linkedBoqLineId: body.linkedBoqLineId ?? null,
           description: buildTaskTradeDescription(tradeId, body.description, body.linkedBoqLineId),
+          ...(metadata !== undefined ? { metadata } : {}),
         },
       });
 
-      return NextResponse.json({ task });
+      await captureServerEvent(userId, "task_created", {
+        taskId: task.id,
+        organizationId: orgId,
+      });
+
+      try {
+        await syncTaskToGoogleCalendarIfEligible(userId, orgId, task);
+      } catch (err: unknown) {
+        log.warn("calendar sync after task create failed", {
+          taskId: task.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      return NextResponse.json({ task, success: true });
     } catch (error) {
       return apiErrorResponse(error, "Project tasks POST");
     }
@@ -86,29 +187,45 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createSchem
   { schema: createSchema },
 );
 
-const patchSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1).optional(),
-  startDate: z.string().nullable().optional(),
-  endDate: z.string().nullable().optional(),
-  progress: z.number().int().min(0).max(100).optional(),
-  dependencies: z.union([z.string(), z.array(z.string())]).optional(),
-  tradeId: z.string().nullable().optional(),
-  linkedBoqLineId: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  status: z.string().optional(),
-  priority: z.string().optional(),
-});
+const patchSchema = z
+  .object({
+    id: z.string().min(1).optional(),
+    taskId: z.string().min(1).optional(),
+    title: z.string().min(1).optional(),
+    startDate: z.string().nullable().optional(),
+    endDate: z.string().nullable().optional(),
+    progress: z.number().int().min(0).max(100).optional(),
+    dependencies: z.union([z.string(), z.array(z.string())]).optional(),
+    tradeId: z.string().nullable().optional(),
+    linkedBoqLineId: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    status: z.string().optional(),
+    priority: z.string().optional(),
+    dueDate: z.string().nullable().optional(),
+    clientName: z.string().optional(),
+    contactId: z.string().optional(),
+    budget: z.number().optional(),
+    metadata: metadataSchema,
+  })
+  .refine((body) => Boolean(body.id ?? body.taskId), {
+    message: "חסר מזהה משימה",
+    path: ["id"],
+  });
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchema>(
-  async (_req, { orgId }, segment, body) => {
+  async (_req, { orgId, userId }, segment, body) => {
     const { id: projectId } = await segment.params;
     try {
       const gate = await requireProjectForOrg(projectId, orgId);
       if (!gate.ok) return gate.response;
 
+      const taskId = body.id ?? body.taskId;
+      if (!taskId) {
+        return NextResponse.json({ error: "חסר מזהה משימה" }, { status: 400 });
+      }
+
       const existing = await prisma.task.findFirst({
-        where: { id: body.id, projectId, organizationId: orgId },
+        where: { id: taskId, projectId, organizationId: orgId },
       });
       if (!existing) {
         return NextResponse.json({ error: "משימה לא נמצאה" }, { status: 404 });
@@ -135,15 +252,57 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
         description = buildTaskTradeDescription(tradeId, notes, resolvedBoq);
       }
 
+      const dbStatus = body.status ? boardStatusToDb(body.status) ?? body.status : undefined;
+      const dbPriority = body.priority ? boardPriorityToDb(body.priority) ?? body.priority : undefined;
+
+      let metadataPatch: Prisma.InputJsonValue | undefined;
+      if (
+        body.metadata !== undefined ||
+        body.clientName !== undefined ||
+        body.contactId !== undefined ||
+        body.budget !== undefined
+      ) {
+        metadataPatch = mergeTaskKanbanMetadata(existing.metadata, {
+          ...(body.clientName !== undefined ? { clientName: body.clientName } : {}),
+          ...(body.contactId !== undefined ? { contactId: body.contactId } : {}),
+          ...(body.budget !== undefined ? { budget: body.budget } : {}),
+        });
+        if (body.metadata) {
+          metadataPatch = {
+            ...(metadataPatch as Record<string, unknown>),
+            ...body.metadata,
+          } as Prisma.InputJsonValue;
+        }
+      }
+
+      if (body.contactId) {
+        await prisma.contact.updateMany({
+          where: { id: body.contactId, organizationId: orgId },
+          data: { projectId },
+        });
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { primaryContactId: body.contactId },
+        });
+      }
+
+      if (typeof body.budget === "number") {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { budget: body.budget },
+        });
+      }
+
       const updated = await prisma.task.update({
-        where: { id: body.id },
+        where: { id: taskId },
         data: {
           title: body.title?.trim(),
           startDate: body.startDate === undefined ? undefined : toIsoDate(body.startDate ?? undefined),
           endDate: body.endDate === undefined ? undefined : toIsoDate(body.endDate ?? undefined),
+          dueDate: body.dueDate === undefined ? undefined : toIsoDate(body.dueDate ?? undefined),
           progress: body.progress,
-          status: body.status,
-          priority: body.priority,
+          status: dbStatus,
+          priority: dbPriority,
           linkedBoqLineId: boqId === undefined ? undefined : boqId,
           dependencies:
             body.dependencies === undefined
@@ -154,10 +313,28 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
                     : body.dependencies,
                 ),
           description,
+          ...(metadataPatch !== undefined ? { metadata: metadataPatch } : {}),
         },
       });
 
-      return NextResponse.json({ task: updated });
+      if (body.status) {
+        await captureServerEvent(userId, "task_status_changed", {
+          taskId,
+          status: body.status,
+          organizationId: orgId,
+        });
+      }
+
+      try {
+        await syncTaskToGoogleCalendarIfEligible(userId, orgId, updated);
+      } catch (err: unknown) {
+        log.warn("calendar sync after task update failed", {
+          taskId: updated.id,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      return NextResponse.json({ task: updated, success: true });
     } catch (error) {
       return apiErrorResponse(error, "Project tasks PATCH");
     }
@@ -165,7 +342,7 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
   { schema: patchSchema },
 );
 
-export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId }, segment) => {
+export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId, userId }, segment) => {
   const { id: projectId } = await segment.params;
   try {
     const gate = await requireProjectForOrg(projectId, orgId);
@@ -190,12 +367,35 @@ export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { or
       return NextResponse.json({ error: "חסר מזהה משימה" }, { status: 400 });
     }
 
-    const deleted = await prisma.task.deleteMany({
+    const existing = await prisma.task.findFirst({
       where: { id: taskId, projectId, organizationId: orgId },
     });
-    if (deleted.count === 0) {
+    if (!existing) {
       return NextResponse.json({ error: "משימה לא נמצאה" }, { status: 404 });
     }
+
+    await prisma.task.deleteMany({
+      where: { id: taskId, projectId, organizationId: orgId },
+    });
+
+    try {
+      await syncTaskToGoogleCalendarIfEligible(userId, orgId, {
+        ...existing,
+        dueDate: null,
+        endDate: null,
+        startDate: null,
+      });
+    } catch (err: unknown) {
+      log.warn("calendar sync after task delete failed", {
+        taskId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    await captureServerEvent(userId, "task_deleted", {
+      taskId,
+      organizationId: orgId,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

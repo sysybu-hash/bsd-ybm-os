@@ -1,6 +1,7 @@
 import {
   classifyScanDocumentHeuristic,
   isExplicitClientScanMode,
+  shouldAutoClassifyDocumentType,
 } from "@/lib/scan-classify";
 
 describe("scan-classify", () => {
@@ -41,5 +42,22 @@ describe("scan-classify", () => {
       industry: "COMPANY_MGMT",
     });
     expect(r.scanMode).toBe("GENERAL_DOCUMENT");
+  });
+
+  it("shouldAutoClassifyDocumentType when doc type auto detect flag", () => {
+    expect(
+      shouldAutoClassifyDocumentType({
+        scanMode: "GENERAL_DOCUMENT",
+        engineRunMode: "SINGLE_GEMINI",
+        docTypeAutoDetect: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAutoClassifyDocumentType({
+        scanMode: "INVOICE_FINANCIAL",
+        engineRunMode: "AUTO",
+        docTypeAutoDetect: false,
+      }),
+    ).toBe(false);
   });
 });

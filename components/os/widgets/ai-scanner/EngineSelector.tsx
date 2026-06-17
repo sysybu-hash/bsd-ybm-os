@@ -32,7 +32,7 @@ export function EngineSelector({ value, onChange, engineMeta, tr }: EngineSelect
     { id: "AUTO", label: tr("scanner.modeAuto", "אוטומטי"), tone: "border-indigo-500/50 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
     { id: "SINGLE_GEMINI", label: "Gemini", cfg: "gemini", tone: "border-purple-500/50 bg-purple-500/15 text-purple-700 dark:text-purple-300" },
     { id: "SINGLE_OPENAI", label: "OpenAI", cfg: "openai", tone: "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-    { id: "SINGLE_ANTHROPIC", label: "Claude", tone: "border-orange-500/50 bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+    { id: "SINGLE_ANTHROPIC", label: "Claude", cfg: "anthropic", tone: "border-orange-500/50 bg-orange-500/15 text-orange-700 dark:text-orange-300" },
     { id: "SINGLE_DOCUMENT_AI", label: "Document AI", cfg: "documentAI", tone: "border-sky-500/50 bg-sky-500/15 text-sky-700 dark:text-sky-300" },
     { id: "SINGLE_MISTRAL", label: "Pixtral", cfg: "mistral", tone: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300" },
     { id: "MULTI_PARALLEL", label: tr("scanner.modeMulti", "ריבוי מנועים"), tone: "border-rose-500/50 bg-rose-500/15 text-rose-700 dark:text-rose-300" },

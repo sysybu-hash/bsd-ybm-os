@@ -259,6 +259,8 @@
     "source": "Источник",
     "document": "Тип документа",
     "modeAuto": "Авто",
+    "scanModeAuto": "Автоопределение типа",
+    "detectedDocType": "Определено",
     "modeMulti": "Несколько движков",
     "modeGemini": "Только Gemini",
     "modeOpenai": "Только OpenAI",

@@ -22,6 +22,7 @@ export {
 } from "@/lib/tri-engine-parse";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { sendDocNotification } from "@/app/actions/send-doc-notification";
+import { resolveDocNotificationFields } from "@/lib/scan/notification-fields";
 import { getPriceSpikeAlerts, type PriceSpikeAlert } from "@/lib/erp-price-spikes";
 import { filterAlertsForScan } from "@/lib/scan-sync-summary";
 import type { MessageTree } from "@/lib/i18n/keys";
@@ -250,11 +251,10 @@ export async function persistTriEngineToErp(params: {
     select: { email: true },
   });
   if (emailRow?.email) {
-    await sendDocNotification(
-      emailRow.email,
-      String(aiData.vendor ?? "ספק כללי"),
-      Number(aiData.total ?? 0),
-    );
+    const notify = resolveDocNotificationFields(aiData);
+    await sendDocNotification(emailRow.email, notify.vendor, notify.total, {
+      extractionIncomplete: notify.extractionIncomplete,
+    });
   }
 
   // ── 5. תובנות עסקיות (כפילויות, ספק↔פרויקט, תנאי תשלום) ──────────────────

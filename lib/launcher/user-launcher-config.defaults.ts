@@ -1,5 +1,5 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
-import { isCompanyMgmtIndustry } from "@/lib/business-lines";
+import { isCompanyMgmtIndustry, isLogisticsLauncherIndustry } from "@/lib/business-lines";
 import type {
   LauncherDefaultOptions,
   LauncherSlot,
@@ -32,10 +32,22 @@ export const DEFAULT_QUICK_GRID: LauncherSlot[] = [
 ];
 
 /** ניהול עסק / מנהל פלטפורמה — 4×2 ללא שטח/Meckano */
+/** בנייה / נדל״ן — logisticsHub במקום יומן Google בשורה 1 */
+export const CONSTRUCTION_QUICK_GRID: LauncherSlot[] = [
+  gridSlot("crmTable", 0, 0),
+  gridSlot("projectsHub", 0, 1),
+  gridSlot("executiveHub", 0, 2),
+  gridSlot("documentsHub", 0, 3),
+  gridSlot("fieldCopilot", 1, 0),
+  gridSlot("logisticsHub", 1, 1),
+  gridSlot("aiHub", 1, 2),
+  gridSlot("helpCenter", 1, 3),
+];
+
 export const BUSINESS_MGMT_QUICK_GRID: LauncherSlot[] = [
   gridSlot("crmTable", 0, 0),
   gridSlot("projectsHub", 0, 1),
-  gridSlot("financeHub", 0, 2),
+  gridSlot("executiveHub", 0, 2),
   gridSlot("documentsHub", 0, 3),
   gridSlot("aiHub", 1, 0),
   gridSlot("googleCalendar", 1, 1),
@@ -61,9 +73,12 @@ export function buildDefaultQuickGrid(
   industryRaw?: string | null,
   options?: LauncherDefaultOptions,
 ): LauncherSlot[] {
-  const source = usesBusinessMgmtQuickGrid(industryRaw, options?.isPlatformAdmin)
-    ? BUSINESS_MGMT_QUICK_GRID
-    : DEFAULT_QUICK_GRID;
+  let source = DEFAULT_QUICK_GRID;
+  if (usesBusinessMgmtQuickGrid(industryRaw, options?.isPlatformAdmin)) {
+    source = BUSINESS_MGMT_QUICK_GRID;
+  } else if (isLogisticsLauncherIndustry(industryRaw)) {
+    source = CONSTRUCTION_QUICK_GRID;
+  }
   return source.map((s) => ({ ...s }));
 }
 
@@ -87,6 +102,7 @@ export function buildDefaultLauncherConfig(
   options?: LauncherDefaultOptions,
 ): UserLauncherConfig {
   const company = isCompanyMgmtIndustry(industryRaw);
+  const logistics = isLogisticsLauncherIndustry(industryRaw);
   const quickGrid = buildDefaultQuickGrid(industryRaw, options);
 
   return {
@@ -97,6 +113,7 @@ export function buildDefaultLauncherConfig(
       slot("projectsHub"),
       slot("crmTable"),
       slot("documentsHub"),
+      ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
       ...(company ? [] : [slot("fieldCopilot")]),
       slot("aiHub"),
       slot("appBuilder"),
@@ -109,6 +126,7 @@ export function buildDefaultLauncherConfig(
     mobileBarEnd: [slot("aiHub")],
     mobileMore: [
       ...(company ? [] : [slot("fieldCopilot")]),
+      ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
       slot("financeHub"),
       slot("projectsHub"),
       slot("crmTable"),

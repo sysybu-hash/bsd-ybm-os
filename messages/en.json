@@ -350,6 +350,8 @@
     "source": "Source",
     "document": "Document Type",
     "modeAuto": "Automatic",
+    "scanModeAuto": "Auto-detect type",
+    "detectedDocType": "Detected",
     "modeMulti": "Multi-engine",
     "modeGemini": "Gemini only",
     "modeOpenai": "OpenAI only",

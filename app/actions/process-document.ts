@@ -1,5 +1,6 @@
 "use server";
 
+/** @deprecated Prefer `unifiedExtractFromFile` / `unifiedSaveScan` when `SCAN_UNIFIED_V2` is enabled. */
 import { createHash } from "crypto";
 import { env } from "@/lib/env";
 import { Prisma } from "@prisma/client";
@@ -30,6 +31,7 @@ import { readRequestMessages } from "@/lib/i18n/server-messages";
 import { getMergedIndustryConfig } from "@/lib/construction-trades";
 import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { sendDocNotification } from "./send-doc-notification";
+import { resolveDocNotificationFields } from "@/lib/scan/notification-fields";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import {
   inferMimeFromFileName,
@@ -38,6 +40,12 @@ import {
   isDocxMime,
 } from "@/lib/scan-mime";
 import { createLogger } from "@/lib/logger";
+import { isScanUnifiedV2Enabled } from "@/lib/scan/feature-flag";
+import {
+  mapLegacyAnalysisTypeToScanMode,
+  unifiedExtractFromFile,
+} from "@/lib/scan/unified-extract";
+import { unifiedSaveScan } from "@/lib/scan/unified-save";
 const log = createLogger("process-document");
 
 function getGeminiKey(): string | undefined {
@@ -224,6 +232,45 @@ export async function processDocumentAction(
       rawScanModel !== "default"
         ? rawScanModel
         : undefined;
+
+    if (isScanUnifiedV2Enabled()) {
+      const scanMode = mapLegacyAnalysisTypeToScanMode(analysisId);
+      const extraction = await unifiedExtractFromFile({
+        file,
+        userId,
+        scanMode,
+        industry: userIndustry,
+        openAiModel: scanModel,
+      });
+      let documentId: string | undefined;
+      if (persist) {
+        const saved = await unifiedSaveScan(
+          {
+            file,
+            fileName: file.name,
+            v5: extraction.v5,
+            aiData: extraction.aiData,
+            target: "erp",
+            userId,
+            organizationId: orgId,
+          },
+          { userId, organizationId: orgId, industry: userIndustry },
+        );
+        if (!saved.ok) {
+          return { success: false, error: saved.error ?? "שמירה נכשלה" };
+        }
+        documentId = saved.documentId;
+      }
+      return {
+        success: true,
+        data: {
+          ...extraction.aiData,
+          documentId,
+          _unified: true,
+          _v5: extraction.v5,
+        },
+      };
+    }
 
     // Industry adaptation for AI instructions (בנייה + התמחות נלווית) — כולל תרגום UI כשיש
     const industryConfig = getMergedIndustryConfig(userIndustry, orgTrade, uiMessages);
@@ -429,11 +476,10 @@ export async function processDocumentAction(
     });
 
     if (user?.email && !fromCache) {
-      await sendDocNotification(
-        user.email,
-        String(aiData.vendor ?? "ספק כללי"),
-        Number(aiData.total ?? 0),
-      );
+      const notify = resolveDocNotificationFields(aiData);
+      await sendDocNotification(user.email, notify.vendor, notify.total, {
+        extractionIncomplete: notify.extractionIncomplete,
+      });
     }
 
     return {

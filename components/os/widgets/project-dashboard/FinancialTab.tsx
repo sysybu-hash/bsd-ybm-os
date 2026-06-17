@@ -7,6 +7,7 @@ import { formatMoney } from "./utils";
 import { FinancialMilestonesSection } from "./FinancialMilestonesSection";
 import { FinancialExtrasSection } from "./FinancialExtrasSection";
 import { FinancialPlannedExpensesSection } from "./FinancialPlannedExpensesSection";
+import { FinancialKanbanBudgetSummary } from "./FinancialKanbanBudgetSummary";
 
 type FinancialTabProps = {
   data: DashboardData;
@@ -22,7 +23,14 @@ export function FinancialTab({ data, apiBase, isCompanyMgmt, refresh, t }: Finan
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <FinancialKanbanBudgetSummary
+        projectId={data.id}
+        totalProjectBudget={data.budget}
+        actualExpenses={data.financial.erpExpenses}
+        t={t}
+      />
+
       {!isCompanyMgmt ? (
         <section>
           <h3 className="mb-2 text-xs font-semibold">{t("projectDashboard.financialBoqTitle")}</h3>

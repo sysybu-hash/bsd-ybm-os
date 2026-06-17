@@ -4,20 +4,22 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ScanUiPhase } from "./ScanControlBar";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import type { ScanExtractionV5, ScanModeV5 } from "@/lib/scan-schema-v5";
+import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import type { ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { defaultScanModeForIndustry, getScanModesForUi } from "@/lib/scan-modes-for-ui";
 import { inferMimeFromFileName, isSupportedScanMime, MAX_SCAN_FILE_BYTES } from "@/lib/scan-mime";
-import { classifyScanDocumentHeuristic } from "@/lib/scan-classify";
 import { canBrowserPreviewMime } from "@/lib/scan-preview";
 import type { DocumentAnalysis, QueueItem, ScanHistoryItem } from "./types";
 import { formatMsg } from "./constants";
 import { runScanSingleFile } from "./runScanSingleFile";
+import { unifiedSaveFromClient } from "@/lib/scan/unified-save-client";
+import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
 
 export type UseScanQueueArgs = {
   engineRunMode: TriEngineRunMode;
-  scanModeOverride: ScanModeV5;
+  scanModeOverride: ScanModeUiSelection;
   boundProjectId: string;
   userInstruction: string;
   industryId: string;
@@ -54,11 +56,13 @@ export function useScanQueue({
   const [lastScanV5, setLastScanV5] = useState<ScanExtractionV5 | null>(null);
   const [lastScanFileName, setLastScanFileName] = useState("");
   const [savingNotebook, setSavingNotebook] = useState(false);
+  const [sessionPhase, setSessionPhase] = useState<"idle" | "intake" | "processing" | "review" | "save">("idle");
+  const [saveTargets, setSaveTargets] = useState<UnifiedSaveTarget[]>(["erp"]);
+  const [activeScanFile, setActiveScanFile] = useState<File | null>(null);
+  const [showBlueprintFork, setShowBlueprintFork] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   // Staged files — selected but NOT scanned until the user presses "Scan".
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  // Smart router: files classified as architectural drawings are pulled out of
-  // the AI scan and routed to the manual TakeoffModule instead.
-  const [blueprintRouting, setBlueprintRouting] = useState<{ fileNames: string[] } | null>(null);
 
   // preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -67,11 +71,12 @@ export function useScanQueue({
   const abortRef = useRef<AbortController | null>(null);
 
   const scanUiPhase: ScanUiPhase = useMemo(() => {
-    if (isProcessing) return "processing";
-    if (pendingAnalysis) return "review";
+    if (sessionPhase === "save") return "save";
+    if (isProcessing || sessionPhase === "processing") return "processing";
+    if (pendingAnalysis || sessionPhase === "review") return "review";
     if (lastScanV5) return "results";
     return "idle";
-  }, [isProcessing, pendingAnalysis, lastScanV5]);
+  }, [isProcessing, pendingAnalysis, lastScanV5, sessionPhase]);
 
   const resetScanState = useCallback(() => {
     abortRef.current?.abort();
@@ -90,6 +95,11 @@ export function useScanQueue({
     setPreviewUrl(null);
     setPreviewMime(null);
     setPreviewFileName("");
+    setSessionPhase("idle");
+    setSaveTargets(["erp"]);
+    setActiveScanFile(null);
+    setShowBlueprintFork(false);
+    setIsSaving(false);
   }, [previewUrl]);
 
   const stopScan = useCallback(() => {
@@ -104,16 +114,22 @@ export function useScanQueue({
   }, [tr]);
 
   const goBackScanStep = useCallback(() => {
+    if (sessionPhase === "save") {
+      setSessionPhase("review");
+      return;
+    }
     if (pendingAnalysis) {
       setPendingAnalysis(null);
+      setSessionPhase("idle");
       return;
     }
     if (lastScanV5) {
       setLastScanV5(null);
       setLastScanFileName("");
       setResultJson("");
+      setSessionPhase("idle");
     }
-  }, [pendingAnalysis, lastScanV5]);
+  }, [pendingAnalysis, lastScanV5, sessionPhase]);
 
   const applyFilePreview = useCallback(
     (file: File) => {
@@ -157,38 +173,7 @@ export function useScanQueue({
       }
       if (!valid.length) return;
 
-      // ── Smart document router ────────────────────────────────────────────
-      // Architectural drawings need geometric measurement (TakeoffModule), not
-      // LLM extraction — the model would hallucinate quantities. We only step in
-      // when the engine is on AUTO; an explicit engine/mode choice is respected.
-      // Rescans re-run an already-accepted file, so the router is skipped.
-      if (engineRunMode === "AUTO" && !isRescan) {
-        const scannable: File[] = [];
-        const drawings: File[] = [];
-        for (const file of valid) {
-          const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
-          const cls = classifyScanDocumentHeuristic({
-            fileName: file.name,
-            mimeType: mime,
-            userInstruction,
-            industry: industryId,
-          });
-          if (cls.scanMode === "DRAWING_BOQ") drawings.push(file);
-          else scannable.push(file);
-        }
-        if (drawings.length > 0) {
-          setBlueprintRouting({ fileNames: drawings.map((f) => f.name) });
-          toast.info(
-            formatMsg(tr("scanner.blueprintDetectedToast", "זוהה שרטוט: {name} — נדרשת מדידה ידנית"), {
-              name: drawings[0]!.name,
-            }),
-          );
-          // Scan only the non-drawing files; if all were drawings, abort the scan.
-          valid.splice(0, valid.length, ...scannable);
-          if (valid.length === 0) return;
-        }
-      }
-
+      setSessionPhase("processing");
       const initialQueue: QueueItem[] = valid.map((file) => ({
         id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2, 8)}`,
         file,
@@ -227,6 +212,11 @@ export function useScanQueue({
               applyFilePreview,
               signal: controller.signal,
             });
+            setActiveScanFile(file);
+            setSessionPhase("review");
+            if (analysis.v5?.documentMetadata.scanMode === "DRAWING_BOQ") {
+              setShowBlueprintFork(true);
+            }
             ok++;
             setQueue((prev) => prev.map((q) => (q.id === qid ? { ...q, status: "done" } : q)));
             setHistory((prev) => [
@@ -262,100 +252,15 @@ export function useScanQueue({
         setQueueProgress(null);
         setIsProcessing(false);
         if (abortRef.current === controller) abortRef.current = null;
+        if (!controller.signal.aborted && ok > 0) {
+          setSessionPhase("review");
+        }
       }
     },
      
     [isProcessing, validateScanFile, engineRunMode, scanModeOverride, boundProjectId,
      userInstruction, industryId, openWorkspaceWidget, tr, applyFilePreview],
   );
-
-  const confirmAnalysis = useCallback(async () => {
-    if (!pendingAnalysis) return;
-    const raw = pendingAnalysis.rawAiData as DocumentAnalysis | undefined;
-    const isCorrected =
-      raw &&
-      (pendingAnalysis.vendor !== raw.vendor ||
-        pendingAnalysis.amount !== raw.amount ||
-        pendingAnalysis.taxId !== raw.taxId ||
-        pendingAnalysis.date !== raw.date);
-
-    if (isCorrected && pendingAnalysis.documentId) {
-      try {
-        await fetch("/api/ai/corrections", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            documentId: pendingAnalysis.documentId,
-            originalAiData: raw,
-            correctedData: {
-              vendor: pendingAnalysis.vendor,
-              amount: pendingAnalysis.amount,
-              taxId: pendingAnalysis.taxId,
-              date: pendingAnalysis.date,
-            },
-            correctionSource: "USER_MANUAL",
-          }),
-        });
-      } catch { /* */ }
-    }
-
-    try {
-      await fetch("/api/expenses/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: pendingAnalysis.amount,
-          vendor: pendingAnalysis.vendor,
-          projectName: pendingAnalysis.projectSuggestion,
-        }),
-      });
-    } catch { /* */ }
-
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        fileName: tr("scanner.results", "סריקה"),
-        vendor: pendingAnalysis.vendor,
-        amount: pendingAnalysis.amount,
-        date: pendingAnalysis.date || new Date().toISOString().split("T")[0]!,
-        status: "success",
-      },
-      ...prev,
-    ]);
-    setPendingAnalysis(null);
-    toast.success(tr("scanner.confirmExpense", "ההוצאה נשמרה"));
-  }, [pendingAnalysis, tr]);
-
-  const continueToSaveStep = useCallback(() => {
-    void confirmAnalysis();
-  }, [confirmAnalysis]);
-
-  const rescanLastFile = useCallback(
-    async (instruction: string) => {
-      if (!instruction.trim()) return;
-      const file =
-        queue.find((q) => q.file.name === lastScanFileName)?.file ??
-        queue[queue.length - 1]?.file;
-      if (!file) {
-        toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
-        return;
-      }
-      await runFileQueue([file], instruction.trim());
-    },
-    [queue, lastScanFileName, runFileQueue, tr],
-  );
-
-  const dismissBlueprintRouting = useCallback(() => setBlueprintRouting(null), []);
-
-  const openTakeoffForBlueprint = useCallback(() => {
-    setBlueprintRouting(null);
-    if (!boundProjectId) {
-      toast.info(tr("scanner.blueprintNoProject", "בחרו פרויקט ופתחו את לשונית כתב הכמויות"));
-      return;
-    }
-    // Navigate to the project's financial tab, where the Takeoff tool lives.
-    openWorkspaceWidget?.("project", { projectId: boundProjectId, tab: "financial" });
-  }, [boundProjectId, openWorkspaceWidget, tr]);
 
   const saveToNotebook = useCallback(
     async (
@@ -389,6 +294,176 @@ export function useScanQueue({
     [lastScanV5, lastScanFileName, openWorkspaceWidget, telemetry, tr],
   );
 
+  const goToSaveStep = useCallback(() => {
+    if (!pendingAnalysis) return;
+    setSessionPhase("save");
+  }, [pendingAnalysis]);
+
+  const startNewScan = useCallback(() => {
+    resetScanState();
+  }, [resetScanState]);
+
+  const executeUnifiedSave = useCallback(async () => {
+    if (!pendingAnalysis?.v5) {
+      toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
+      return;
+    }
+    const file =
+      activeScanFile ??
+      queue.find((q) => q.file.name === lastScanFileName)?.file ??
+      queue[queue.length - 1]?.file;
+    if (!file) {
+      toast.error(tr("scanner.noScanYet", "אין קובץ לשמירה"));
+      return;
+    }
+
+    const rawTargets = saveTargets.length ? saveTargets : (["erp"] as UnifiedSaveTarget[]);
+    const targets = [
+      ...new Set(
+        rawTargets.map((t) => (t === "project" && !boundProjectId ? "erp" : t)),
+      ),
+    ];
+
+    if (!targets.length) {
+      toast.error(tr("workspaceWidgets.documentScan.savePickOne", "בחרו לפחות יעד שמירה אחד"));
+      return;
+    }
+
+    setIsSaving(true);
+    let savedCount = 0;
+  try {
+    for (const target of targets) {
+      if (target === "notebook") {
+        await saveToNotebook();
+        savedCount++;
+        continue;
+      }
+
+      const result = await unifiedSaveFromClient(file, {
+        target,
+        fileName: lastScanFileName || file.name,
+        v5: pendingAnalysis.v5,
+        aiData: pendingAnalysis.rawAiData,
+        projectId: boundProjectId || undefined,
+        documentId: pendingAnalysis.documentId,
+      });
+
+      if (!result.ok) {
+        toast.error(result.error ?? tr("scanner.saveFailed", "שמירה נכשלה"));
+        return;
+      }
+
+      savedCount++;
+    }
+
+    const raw = pendingAnalysis.rawAiData;
+    const isCorrected =
+      raw &&
+      (pendingAnalysis.vendor !== (raw as unknown as DocumentAnalysis).vendor ||
+        pendingAnalysis.amount !== (raw as unknown as DocumentAnalysis).amount);
+
+    const lastDocId = pendingAnalysis.documentId;
+    if (isCorrected && lastDocId) {
+      try {
+        await fetch("/api/ai/corrections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: lastDocId,
+            originalAiData: raw,
+            correctedData: {
+              vendor: pendingAnalysis.vendor,
+              amount: pendingAnalysis.amount,
+              taxId: pendingAnalysis.taxId,
+              date: pendingAnalysis.date,
+            },
+            correctionSource: "USER_MANUAL",
+          }),
+        });
+      } catch { /* */ }
+    }
+
+    setHistory((prev) => [
+      {
+        id: Date.now().toString(),
+        fileName: lastScanFileName || file.name,
+        vendor: pendingAnalysis.vendor,
+        amount: pendingAnalysis.amount,
+        date: pendingAnalysis.date || new Date().toISOString().split("T")[0]!,
+        status: "success",
+      },
+      ...prev,
+    ]);
+    setPendingAnalysis(null);
+    setShowBlueprintFork(false);
+    setSessionPhase("idle");
+    toast.success(
+      savedCount > 1
+        ? tr("workspaceWidgets.documentScan.saveMultiSuccess", "נשמר ל-{count} יעדים").replace(
+            "{count}",
+            String(savedCount),
+          )
+        : tr("scanner.saveSuccess", "המסמך נשמר בהצלחה"),
+    );
+  } finally {
+    setIsSaving(false);
+  }
+  }, [
+    pendingAnalysis,
+    activeScanFile,
+    queue,
+    lastScanFileName,
+    saveTargets,
+    boundProjectId,
+    saveToNotebook,
+    tr,
+  ]);
+
+  const confirmAnalysis = useCallback(async () => {
+    await executeUnifiedSave();
+  }, [executeUnifiedSave]);
+
+  const continueToSaveStep = useCallback(() => {
+    goToSaveStep();
+  }, [goToSaveStep]);
+
+  const rescanLastFile = useCallback(
+    async (instruction: string) => {
+      if (!instruction.trim()) return;
+      const file =
+        queue.find((q) => q.file.name === lastScanFileName)?.file ??
+        queue[queue.length - 1]?.file;
+      if (!file) {
+        toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
+        return;
+      }
+      await runFileQueue([file], instruction.trim());
+    },
+    [queue, lastScanFileName, runFileQueue, tr],
+  );
+
+  const dismissBlueprintFork = useCallback(() => setShowBlueprintFork(false), []);
+
+  const openTakeoffForBlueprint = useCallback(() => {
+    setShowBlueprintFork(false);
+    if (!boundProjectId) {
+      toast.info(tr("scanner.blueprintNoProject", "בחרו פרויקט ופתחו את לשונית כתב הכמויות"));
+      return;
+    }
+    openWorkspaceWidget?.("project", {
+      projectId: boundProjectId,
+      tab: "financial",
+      takeoff: true,
+      blueprintFileName: lastScanFileName || undefined,
+    });
+  }, [boundProjectId, openWorkspaceWidget, tr, lastScanFileName]);
+
+  const approveBlueprintBoq = useCallback(async () => {
+    setSaveTargets([boundProjectId ? "project" : "erp"]);
+    setShowBlueprintFork(false);
+    setSessionPhase("save");
+  }, [boundProjectId]);
+
   // ── Staged-files flow: select → review → press "Scan" ──────────────────────
   const addFiles = useCallback(
     (files: File[]) => {
@@ -398,16 +473,46 @@ export function useScanQueue({
         if (err) toast.error(err);
         else valid.push(f);
       }
-      if (valid.length) setPendingFiles((prev) => [...prev, ...valid]);
+      if (!valid.length) return;
+      setPendingFiles((prev) => {
+        const next = [...prev, ...valid];
+        const previewFile = next[next.length - 1];
+        if (previewFile) applyFilePreview(previewFile);
+        return next;
+      });
+      setSessionPhase("intake");
     },
-    [validateScanFile],
+    [applyFilePreview, validateScanFile],
   );
 
-  const removePendingFile = useCallback((idx: number) => {
-    setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
+  const removePendingFile = useCallback(
+    (idx: number) => {
+      setPendingFiles((prev) => {
+        const next = prev.filter((_, i) => i !== idx);
+        const previewFile = next[next.length - 1];
+        if (previewFile) applyFilePreview(previewFile);
+        else if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          setPreviewUrl(null);
+          setPreviewMime(null);
+          setPreviewFileName("");
+        }
+        return next;
+      });
+    },
+    [applyFilePreview, previewUrl],
+  );
 
-  const clearPending = useCallback(() => setPendingFiles([]), []);
+  const clearPending = useCallback(() => {
+    setPendingFiles([]);
+    if (previewUrl && !isProcessing && !pendingAnalysis && !lastScanV5) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      setPreviewMime(null);
+      setPreviewFileName("");
+    }
+    setSessionPhase("idle");
+  }, [isProcessing, lastScanV5, pendingAnalysis, previewUrl]);
 
   const startScan = useCallback(async () => {
     if (!pendingFiles.length || isProcessing) return;
@@ -449,9 +554,18 @@ export function useScanQueue({
     goBackScanStep,
     continueToSaveStep,
     resetScanState,
-    blueprintRouting,
-    dismissBlueprintRouting,
+    sessionPhase,
+    setSessionPhase,
+    saveTargets,
+    setSaveTargets,
+    startNewScan,
+    goToSaveStep,
+    executeUnifiedSave,
+    showBlueprintFork,
+    dismissBlueprintFork,
     openTakeoffForBlueprint,
+    approveBlueprintBoq,
+    isSaving,
     rescanLastFile,
   };
 }

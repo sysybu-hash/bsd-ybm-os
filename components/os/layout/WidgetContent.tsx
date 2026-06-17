@@ -36,6 +36,8 @@ const FinanceHubWidget = dynamic(() => import("@/components/os/hubs/FinanceHubWi
 const ProjectsHubWidget = dynamic(() => import("@/components/os/hubs/ProjectsHubWidget"), { loading });
 const DocumentsHubWidget = dynamic(() => import("@/components/os/hubs/DocumentsHubWidget"), { loading });
 const AiHubWidget = dynamic(() => import("@/components/os/hubs/AiHubWidget"), { loading });
+const LogisticsHubWidget = dynamic(() => import("@/components/os/hubs/LogisticsHubWidget"), { loading });
+const ProcurementHubWidget = dynamic(() => import("@/components/os/hubs/ProcurementHubWidget"), { loading });
 const AiScannerWidget = dynamic(() => import("@/components/os/widgets/AiScannerWidget"), { loading });
 const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), { loading });
 const DocumentCreatorWidget = dynamic(() => import("@/components/os/widgets/DocumentCreatorWidget"), { loading });
@@ -43,13 +45,15 @@ const FieldCopilotWidget = dynamic(() => import("@/components/os/widgets/FieldCo
 const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), { loading });
 const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/PlatformAdminWidget"), { loading });
 const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), { loading });
+const ExecutiveHubWidget = dynamic(() => import("@/components/os/hubs/ExecutiveHubWidget"), { loading });
 const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading });
 
 export const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "project", "crm", "dashboard", "aiChat", "cashflow", "erp", "projectBoard", "crmTable",
   "erpArchive", "docCreator", "aiScanner", "fieldCopilot", "aiChatFull", "settings",
   "meckanoReports", "googleDrive", "googleCalendar", "jewishCalendar", "notebookLM", "accessibility",
-  "platformAdmin", "helpCenter", "financeHub", "projectsHub", "documentsHub", "aiHub", "appBuilder",
+  "platformAdmin", "helpCenter",   "financeHub", "projectsHub", "documentsHub", "aiHub", "appBuilder",
+  "logisticsHub", "procurementHub", "executiveHub",
 ]);
 
 export function WidgetContent({
@@ -87,6 +91,11 @@ export function WidgetContent({
   if (widget.type === "projectsHub") return <ProjectsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "documentsHub") return <DocumentsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   if (widget.type === "aiHub") return <AiHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  if (widget.type === "logisticsHub") return <LogisticsHubWidget liveData={widget.liveData} />;
+  if (widget.type === "procurementHub") {
+    return <ProcurementHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (widget.type === "executiveHub") return <ExecutiveHubWidget liveData={widget.liveData} />;
 
   return (
     <WidgetState variant="error"

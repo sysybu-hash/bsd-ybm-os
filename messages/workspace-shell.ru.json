@@ -339,7 +339,10 @@
       "financeHub": "Финансы",
       "projectsHub": "Проекты",
       "documentsHub": "Документы",
-      "aiHub": "ИИ"
+      "aiHub": "ИИ",
+      "logisticsHub": "Логистика и оборудование",
+      "procurementHub": "Закупки и PO",
+      "executiveHub": "Центр руководства"
     },
     "unsupportedWidget": "Неподдерживаемый тип окна ({type})",
     "retry": "Повторить",
@@ -351,6 +354,12 @@
         "tabs": {
           "overview": "Обзор",
           "cashflow": "Денежный поток"
+        }
+      },
+      "executive": {
+        "tabs": {
+          "overview": "Стратегический обзор",
+          "progressBills": "Счета подрядчиков"
         }
       },
       "projects": {
@@ -401,6 +410,179 @@
           "builder": "Конструктор приложений",
           "builderShort": "Конструктор"
         }
+      },
+      "logistics": {
+        "tabs": {
+          "inventory": "Материалы",
+          "assets": "Оборудование"
+        }
+      },
+      "procurement": {
+        "tabs": {
+          "requests": "Заявки на закупку",
+          "orders": "Заказы",
+          "suppliers": "Поставщики"
+        }
+      }
+    },
+    "logistics": {
+      "subtitle": "Сырьё, склад и учёт инструмента на объекте",
+      "loading": "Загрузка…",
+      "loadError": "Ошибка загрузки",
+      "inventory": {
+        "searchPlaceholder": "Поиск материалов…",
+        "addItem": "Добавить позицию",
+        "empty": "Пока нет позиций на складе",
+        "quantity": "Кол-во",
+        "lowStock": "Мало на складе",
+        "formTitle": "Новая позиция",
+        "name": "Название",
+        "sku": "SKU",
+        "category": "Категория",
+        "minQuantity": "Мин. остаток",
+        "unit": "Ед. изм.",
+        "location": "Место / склад",
+        "save": "Сохранить",
+        "nameRequired": "Укажите название",
+        "saveFailed": "Не удалось сохранить",
+        "saveSuccess": "Позиция добавлена"
+      },
+      "assets": {
+        "searchPlaceholder": "Поиск оборудования или серийных номеров…",
+        "addAsset": "Добавить оборудование",
+        "empty": "Оборудование не зарегистрировано",
+        "serial": "Серийный №",
+        "noSerial": "Не указан",
+        "assignedTo": "Выдано",
+        "project": "Проект",
+        "statusAvailable": "На складе",
+        "statusInField": "На объекте",
+        "checkOutCta": "Выдать на объект",
+        "checkInCta": "Вернуть на склад",
+        "formTitle": "Новое оборудование",
+        "name": "Название",
+        "type": "Тип",
+        "save": "Сохранить",
+        "nameRequired": "Укажите название",
+        "saveFailed": "Не удалось сохранить",
+        "saveSuccess": "Оборудование добавлено",
+        "checkoutTitle": "Выдача — {name}",
+        "checkoutDesc": "Выберите сотрудника и при необходимости проект",
+        "assignee": "Сотрудник",
+        "selectUser": "Выберите сотрудника…",
+        "selectProjectOptional": "Проект (необязательно)",
+        "notes": "Заметки",
+        "confirmCheckout": "Подтвердить выдачу",
+        "userRequired": "Выберите сотрудника",
+        "actionFailed": "Ошибка операции",
+        "checkOutSuccess": "Оборудование выдано",
+        "checkInSuccess": "Оборудование возвращено",
+        "historyCta": "История"
+      },
+      "history": {
+        "title": "История перемещений: {name}",
+        "loading": "Загрузка истории…",
+        "empty": "Нет записей о перемещениях.",
+        "checkout": "Выдано на объект",
+        "checkin": "Возвращено",
+        "project": "Проект: {name}"
+      }
+    },
+    "procurement": {
+      "subtitle": "Заявки на закупку, заказы поставщикам (PO) и приёмка",
+      "loadError": "Ошибка загрузки",
+      "requests": {
+        "hint": "Нехватка на складе и пробелы в BOQ появляются здесь автоматически",
+        "scanning": "Сканирование склада и BOQ…",
+        "emptyTitle": "Нет открытых заявок",
+        "empty": "Запасы в норме, пробелов в BOQ не обнаружено.",
+        "needed": "Нужно",
+        "createPo": "Создать PO",
+        "newPo": "Новый заказ",
+        "newRequest": "Новая заявка",
+        "newPoSoon": "На следующем этапе",
+        "sourceLowStock": "Мало на складе",
+        "sourceBoq": "Ведомость объёмов",
+        "sourceManual": "Ручная заявка",
+        "lowStockTitle": "Мало на складе: {name}",
+        "lowStockNotes": "Текущее количество ({quantity} {unit}) на уровне или ниже минимума ({minQuantity} {unit})"
+      },
+      "orders": {
+        "loading": "Загрузка заказов…",
+        "emptyTitle": "Пока нет заказов",
+        "empty": "Создайте PO из заявки на закупку.",
+        "total": "Итого",
+        "expected": "Ожидаемая поставка",
+        "markSent": "Отправить поставщику",
+        "issueDocument": "Выпустить PDF",
+        "downloadPdf": "Скачать PDF",
+        "openDocument": "Открыть в редакторе",
+        "documentReady": "Документ выпущен",
+        "issueFailed": "Не удалось выпустить документ",
+        "actionFailed": "Операция не выполнена",
+        "receive": "Приёмка",
+        "cancel": "Отменить заказ",
+        "status": {
+          "DRAFT": "Черновик",
+          "SENT": "Отправлен поставщику",
+          "PARTIAL": "Частично принят",
+          "RECEIVED": "Завершён",
+          "CANCELLED": "Отменён"
+        }
+      },
+      "createPo": {
+        "title": "Создание заказа (PO)",
+        "linePreview": "Строка заказа",
+        "quantity": "Количество",
+        "supplier": "Поставщик",
+        "selectSupplier": "Выберите поставщика",
+        "addSupplier": "Добавить поставщика",
+        "useExistingSupplier": "Выбрать из списка",
+        "newSupplierPlaceholder": "Название поставщика",
+        "supplierNameRequired": "Укажите название поставщика",
+        "supplierRequired": "Выберите поставщика",
+        "unitPrice": "Цена за единицу",
+        "unitPriceRequired": "Укажите корректную цену",
+        "expectedDate": "Ожидаемая дата поставки",
+        "notes": "Примечания",
+        "submit": "Создать PO",
+        "submitAndSend": "Выпустить PDF и отправить",
+        "issueAndSendLabel": "Выпустить брендированный документ и отправить",
+        "issueAndSendHint": "Создаёт PDF в архиве ERP и переводит заказ в статус «Отправлен».",
+        "createFailed": "Не удалось создать заказ",
+        "requestAlreadyOrdered": "Заявка уже обработана"
+      },
+      "createRequest": {
+        "title": "Новая заявка на закупку",
+        "itemTitle": "Описание позиции",
+        "quantity": "Требуемое количество",
+        "notes": "Примечания",
+        "submit": "Сохранить заявку",
+        "titleRequired": "Укажите описание",
+        "quantityRequired": "Укажите корректное количество",
+        "createFailed": "Не удалось создать заявку"
+      },
+      "receivePo": {
+        "title": "Приёмка — {number}",
+        "desc": "Принятое количество добавляется на склад при связи с позицией.",
+        "progress": "Принято {received} из {total}",
+        "receiveQty": "Количество к приёмке (макс. {max})",
+        "submit": "Подтвердить приёмку",
+        "quantityRequired": "Укажите количество",
+        "overReceive": "Количество превышает заказ",
+        "receiveFailed": "Приёмка не удалась",
+        "allReceived": "Все позиции уже приняты."
+      },
+      "suppliers": {
+        "addTitle": "Новый поставщик",
+        "namePlaceholder": "Название",
+        "emailPlaceholder": "Email (необязательно)",
+        "phonePlaceholder": "Телефон (необязательно)",
+        "addButton": "Добавить",
+        "nameRequired": "Укажите название поставщика",
+        "saveFailed": "Не удалось сохранить",
+        "loading": "Загрузка поставщиков…",
+        "empty": "Пока нет зарегистрированных поставщиков."
       }
     },
     "fieldCopilot": {
@@ -836,6 +1018,18 @@
       "aiHub": {
         "title": "ИИ",
         "subtitle": "Чат · блокнот · конструктор"
+      },
+      "logisticsHub": {
+        "title": "Логистика",
+        "subtitle": "Склад и оборудование"
+      },
+      "procurementHub": {
+        "title": "Закупки",
+        "subtitle": "Заявки и заказы PO"
+      },
+      "executiveHub": {
+        "title": "Центр руководства",
+        "subtitle": "KPI и счета подрядчиков"
       }
     },
     "empty": {
@@ -857,6 +1051,9 @@
       "documentsHub": "Документы",
       "projectsHub": "Проекты",
       "financeHub": "Финансы",
+      "logisticsHub": "Логистика",
+      "procurementHub": "Закупки",
+      "executiveHub": "Руководство",
       "meckanoReports": "Отчёты Meckano",
       "crmTable": "Клиенты",
       "omnibarAria": "Открыть командную строку и поиск",
@@ -1227,11 +1424,41 @@
       "cancel": "Отмена",
       "resetWindow": "Сбросить окно",
       "scanMore": "Ещё одно сканирование",
+      "newScan": "Новое сканирование",
       "pickFiles": "Выбрать файлы для сканирования",
       "scanNow": "Сканировать",
       "clearPending": "Очистить",
       "filesReady": "файлов готово — нажмите «Сканировать»",
       "removeFile": "Удалить"
+    },
+    "documentScan": {
+      "continueToSave": "Продолжить к сохранению",
+      "savePhaseTitle": "Сохранение документа",
+      "saveDestination": "Куда сохранить",
+      "saveMultiHint": "Можно выбрать несколько целей — результат сохранится в каждую",
+      "savePickOne": "Выберите хотя бы одну цель сохранения",
+      "saveMultiSuccess": "Сохранено в {count} целей",
+      "saveTargetErp": "ERP (организация)",
+      "saveTargetCrm": "CRM",
+      "saveTargetProject": "Проект",
+      "saveTargetNotebook": "AI-блокнот",
+      "saveTargetExpense": "Расход",
+      "confirmSave": "Подтвердить и сохранить",
+      "saving": "Сохранение…",
+      "processing": "Обработка документа…",
+      "scanMode": "Режим сканирования",
+      "historyTitle": "История сканирований",
+      "historyEmpty": "Нет недавних документов",
+      "clearHistory": "Очистить историю",
+      "queuePending": "В очереди",
+      "pendingCount": "Ожидающие файлы",
+      "blueprintForkTitle": "Обнаружен чертёж",
+      "blueprintForkMessage": "ИИ извлёк BOQ для {name}. Подтвердить или перейти к ручному Takeoff?",
+      "blueprintApproveAi": "Подтвердить BOQ от ИИ",
+      "blueprintTakeoff": "Измерить в Takeoff",
+      "blueprintDismiss": "Продолжить проверку",
+      "saveSuccess": "Успешно сохранено",
+      "saveFailed": "Не удалось сохранить"
     },
     "jewishCalendar": {
       "title": "Еврейский календарь и зманим",
@@ -1345,6 +1572,7 @@
       "saveNew": "Сохранить задачу",
       "saveEdit": "Сохранить изменения",
       "addCard": "Добавить карточку",
+      "emptyColumn": "В колонке нет задач",
       "requiredFields": "Заполните все обязательные поля",
       "created": "Задача создана и синхронизирована",
       "updated": "Задача обновлена",
@@ -1377,6 +1605,32 @@
         "priority": "Приоритет",
         "budget": "Бюджет (₪)",
         "dueDate": "Срок"
+      },
+      "mobileField": {
+        "allCaughtUpTitle": "Всё актуально",
+        "allCaughtUpDesc": "Нет открытых задач.",
+        "inProgressBadge": "В работе",
+        "dueLabel": "Срок:",
+        "dueUnset": "Не задан",
+        "startWork": "Начать работу",
+        "blockOrWait": "Блок / ожидание",
+        "markDone": "Завершить",
+        "smartDiary": {
+          "title": "Умный отчёт с объекта",
+          "capture": "Сфотографируйте объект — AI обновит дневник",
+          "captureShort": "Фото объекта",
+          "captureForTask": "Фото для: {task}",
+          "analyzing": "Анализ изображения…",
+          "saved": "Дневник сохранён",
+          "savedWithTask": "Дневник сохранён, задача обновлена",
+          "analyzeFailed": "Не удалось проанализировать фото",
+          "invalidImage": "Выберите корректное изображение",
+          "imageTooLarge": "Изображение слишком большое (макс. 8MB)",
+          "applyTaskStatus": "Обновить статус задачи по анализу AI",
+          "materials": "Материалы",
+          "issues": "Проблемы",
+          "captureAnother": "Ещё фото"
+        }
       }
     },
     "dashboard": {
@@ -1401,6 +1655,50 @@
       "allTags": "Все теги",
       "timelineTab": "История",
       "timelineEmpty": "Событий пока нет"
+    },
+    "executive": {
+      "title": "Стратегический обзор",
+      "subtitle": "Ключевые показатели организации",
+      "loading": "Загрузка стратегических данных…",
+      "loadError": "Не удалось загрузить обзор",
+      "netCashflow": "Чистый денежный поток",
+      "lateTasks": "Просроченные задачи",
+      "budgetAlerts": "Превышения бюджета",
+      "activeProjects": "Активные проекты",
+      "pendingBills": "Счета на утверждении"
+    },
+    "comments": {
+      "title": "Обсуждение команды",
+      "loading": "Загрузка комментариев…",
+      "loadError": "Не удалось загрузить комментарии",
+      "postError": "Не удалось отправить комментарий",
+      "empty": "Комментариев пока нет — ведите переписку в системе",
+      "placeholder": "Напишите комментарий…",
+      "send": "Отправить",
+      "anonymous": "Пользователь"
+    },
+    "progressBills": {
+      "submitTitle": "Подать промежуточный счёт",
+      "listTitle": "Счета субподрядчиков",
+      "loading": "Загрузка счетов…",
+      "loadError": "Не удалось загрузить счета",
+      "createError": "Не удалось создать счёт",
+      "actionError": "Не удалось обновить статус",
+      "validation": "Заполните проект, подрядчика, сумму и % выполнения",
+      "contractorPlaceholder": "Имя субподрядчика",
+      "amountPlaceholder": "Сумма (₪)",
+      "percentPlaceholder": "% выполнения (0–100)",
+      "saveDraft": "Сохранить черновик",
+      "submit": "Отправить на утверждение",
+      "approve": "Утвердить счёт",
+      "markPaid": "Отметить оплаченным",
+      "empty": "Промежуточных счетов пока нет",
+      "status": {
+        "draft": "Черновик",
+        "submitted": "На утверждении",
+        "approved": "Утверждён",
+        "paid": "Оплачен"
+      }
     },
     "cashflowView": {
       "loading": "Синхронизация денежного потока…",
@@ -1615,6 +1913,10 @@
       "closeAria": "Закрыть просмотр",
       "loadingPreview": "Загрузка просмотра…",
       "pdfTitle": "Просмотр PDF",
+      "fileSectionTitle": "Файл",
+      "decodeSectionTitle": "Результаты распознавания",
+      "openInDrive": "Открыть файл в Google Drive",
+      "fileUnavailable": "Исходный файл недоступен для просмотра.",
       "noPreview": "Предварительный просмотр недоступен.",
       "noLineItems": "Нет детальных строк — скачайте или откройте документ через меню.",
       "vendorLabel": "Поставщик: ",
@@ -1732,12 +2034,41 @@
   },
   "projectDashboard": {
     "tabs": {
+      "overview": "Обзор",
+      "tasks": "Доска задач",
       "financial": "Финансы",
       "financialBusiness": "Финансы и бюджет",
       "diary": "Журнал работ",
       "gantt": "Гант",
       "ai": "AI-блокнот",
       "settings": "Настройки"
+    },
+    "overview": {
+      "progress": "Прогресс проекта",
+      "openTasks": "Открытые задачи",
+      "tasksDone": "{count} выполнено",
+      "budgetUsed": "Использовано бюджета",
+      "budgetTotal": "из {total} всего",
+      "targetDate": "Целевая дата",
+      "startDate": "Начало: {date}",
+      "recentActivity": "Недавняя активность",
+      "viewAll": "Открыть журнал",
+      "noActivity": "Нет недавней активности",
+      "projectDetails": "Детали проекта",
+      "client": "Клиент",
+      "status": "Статус",
+      "budgetUtilization": "Использование бюджета",
+      "pendingExtras": "Дополнения на согласовании: {amount}",
+      "attendanceCount": "{count} записей посещаемости",
+      "activityDiaryFallback": "Запись в журнале",
+      "activityDiaryMeta": "Прогресс {progress}%",
+      "activityMilestonePaid": "Оплачено: {name}",
+      "activityMilestoneMeta": "Этап оплаты",
+      "activityExtraFallback": "Утверждённое дополнение",
+      "activityExtraMeta": "Дополнение к проекту",
+      "activityExpense": "Счёт: {vendor}",
+      "activityExpenseUnknown": "Неизвестный поставщик",
+      "activityExpenseMeta": "Расход ERP"
     },
     "errors": {
       "load": "Не удалось загрузить проект",
@@ -1809,6 +2140,17 @@
     "generateDoc": "Создать документ",
     "docGeneratorTitle": "Генератор документов",
     "financialBoqTitle": "Смета / КС / счета",
+    "financialKanban": {
+      "loading": "Расчёт финансовых данных…",
+      "title": "Управление бюджетом и финансовый контроль",
+      "subtitle": "Бюджет проекта, распределение по задачам и фактические расходы",
+      "approvedBudget": "Утверждённый бюджет проекта",
+      "allocatedInTasks": "Бюджет, выделенный задачам",
+      "remainingToAllocate": "Остаток для распределения",
+      "actualExpenses": "Фактические расходы (счета)",
+      "overBudgetTitle": "Превышение бюджета в распределении",
+      "overBudgetDesc": "Сумма бюджетов в канбане превышает утверждённый бюджет проекта. Пересмотрите приоритеты."
+    },
     "domainCount": "Фильтр: {label}",
     "linkedBoq": "Строка BOQ",
     "workDiary": "Дневник работ",

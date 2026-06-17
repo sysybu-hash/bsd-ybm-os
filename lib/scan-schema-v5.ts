@@ -1,6 +1,8 @@
 /**
  * סכימת פלט מאוחדת V5 — כל מסלולי ה-Tri-Engine מחזירים אובייקט תואם (לפני/אחרי נירמול).
  */
+import { pickTotalFromRaw, pickVendorFromRaw } from "@/lib/scan/v5-normalize";
+
 export const SCAN_SCHEMA_V5 = 5 as const;
 
 export type ScanModeV5 =
@@ -198,9 +200,9 @@ export function coerceLegacyAiToV5(
         .filter((x) => x && x.description) as LineItemV5[]
     : [];
 
-  const vendor = typeof raw.vendor === "string" ? raw.vendor : "לא צוין";
+  const vendor = pickVendorFromRaw(raw, dm.client);
   const taxId = typeof raw.taxId === "string" ? raw.taxId : null;
-  const total = typeof raw.total === "number" ? raw.total : 0;
+  const total = pickTotalFromRaw(raw, lineItems);
   const date = typeof raw.date === "string" ? raw.date : null;
   const docType = typeof raw.docType === "string" ? raw.docType : "UNKNOWN";
   const summary = typeof raw.summary === "string" ? raw.summary : "";

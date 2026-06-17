@@ -85,6 +85,7 @@ model Organization {
   projectQuotes            ProjectQuote[]
   projectBoqLines          ProjectBoqLine[]
   progressBills            ProgressBill[]
+  contextComments          ContextComment[]
   workDiaries              WorkDiary[]
   paymentMilestones        PaymentMilestone[]
   projectExtras            ProjectExtra[]
@@ -99,6 +100,11 @@ model Organization {
   googleCalendarEventLinks GoogleCalendarEventLink[]
   customAppSchemas         CustomAppSchema[]
   customAppData            CustomAppData[]
+  inventoryItems           InventoryItem[]
+  assets                   Asset[]
+  suppliers                Supplier[]
+  purchaseRequests         PurchaseRequest[]
+  purchaseOrders           PurchaseOrder[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -253,6 +259,9 @@ model Project {
   quotes           ProjectQuote[]
   boqLines         ProjectBoqLine[]
   progressBills    ProgressBill[]
+  assets           Asset[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -280,6 +289,8 @@ model Task {
   linkedBoqLineId String?
   /// מקור המשימה: MANUAL (ידני/ברירת מחדל) או AI_GANTT (נוצר ע"י סוכן הגאנט)
   source         String       @default("MANUAL")
+  /// נתונים מובנים לקנבן/גאנט (לקוח, תקציב, contactId וכו׳)
+  metadata       Json?        @default("{}")
   projectId      String
   organizationId String
   createdAt      DateTime     @default(now())
@@ -392,24 +403,50 @@ model ProjectBoqPhaseColumn {
 
 /// חשבון חלקי (חשבון 2, 3…)
 model ProgressBill {
-  id              String             @id @default(cuid())
-  projectId       String
-  organizationId  String
-  billNumber      Int
-  billDate        DateTime?
-  subtotal        Float              @default(0)
-  discountPercent Float?
-  vatPercent      Float?
-  adjustmentsJson Json?
-  total           Float              @default(0)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  lines           ProgressBillLine[]
+  id                 String             @id @default(cuid())
+  projectId          String
+  organizationId     String
+  billNumber         Int
+  billDate           DateTime?
+  subtotal           Float              @default(0)
+  discountPercent    Float?
+  vatPercent         Float?
+  adjustmentsJson    Json?
+  total              Float              @default(0)
+  /// DRAFT | SUBMITTED | APPROVED | PAID
+  status             String             @default("DRAFT")
+  contractorName     String?
+  /// אחוז ביצוע מדווח על ידי קבלן (0–100)
+  completionPercent  Float?
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  approvedByUserId   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lines              ProgressBillLine[]
 
   @@unique([projectId, billNumber])
   @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+/// תגובה הקשרית על משימה / מסמך — תקשורת בתוך המערכת
+model ContextComment {
+  id             String       @id @default(cuid())
+  organizationId String
+  targetType     String
+  targetId       String
+  authorUserId   String
+  text           String       @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, targetType, targetId])
+  @@index([authorUserId])
 }
 
 model ProgressBillLine {
@@ -511,6 +548,8 @@ model User {
   passwordHash       String?
   /// התחברות אחרונה (מעודכן ב־NextAuth signIn)
   lastLoginAt        DateTime?
+  /// מסמכים שנוצרו לפני מועד זה לא יוצגו בהיסטוריית הסריקה של המשתמש
+  scanHistoryClearedAt DateTime?
   /// פריסת Launcher אישית (quickGrid עם row/col, sidebar וכו׳)
   launcherConfigJson Json?
   accounts           Account[]
@@ -527,6 +566,8 @@ model User {
   fieldCopilotSessions FieldCopilotSession[]
   googleCalendarSettings UserGoogleCalendarSettings[]
   googleCalendarEventLinks GoogleCalendarEventLink[]
+  assignedAssets         Asset[]                 @relation("AssetAssignedUser")
+  contextComments        ContextComment[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   @@index([lastLoginAt])
@@ -841,6 +882,7 @@ model IssuedDocument {
   /// מי הפיק את המסמך (לסינון «שותפו איתי»)
   createdByUserId String?
   createdByUser   User?        @relation("IssuedDocumentCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  purchaseOrders PurchaseOrder[]
   deletedAt       DateTime?
 
   @@unique([organizationId, type, number])
@@ -1136,6 +1178,7 @@ enum DocType {
   INVOICE_RECEIPT
   RECEIPT
   CREDIT_NOTE
+  PURCHASE_ORDER
 }
 
 enum DocStatus {
@@ -1415,4 +1458,155 @@ model AppIdeaSubmission {
   @@index([status])
   @@index([createdAt])
   @@index([status, createdAt])
+}
+
+// ==========================================
+// Logistics, Inventory & Assets
+// ==========================================
+
+enum AssetStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  LOST
+}
+
+model InventoryItem {
+  id             String       @id @default(cuid())
+  name           String
+  sku            String?
+  category       String       @default("general")
+  quantity       Float        @default(0)
+  minQuantity    Float        @default(0)
+  unit           String       @default("units")
+  location       String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseRequests PurchaseRequest[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@index([organizationId])
+  @@index([organizationId, category])
+}
+
+model Asset {
+  id              String             @id @default(cuid())
+  name            String
+  serialNumber    String?
+  type            String             @default("tool")
+  status          AssetStatus        @default(AVAILABLE)
+  currentUserId   String?
+  projectId       String?
+  organizationId  String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  currentUser     User?              @relation("AssetAssignedUser", fields: [currentUserId], references: [id], onDelete: SetNull)
+  project         Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  checkoutLogs    AssetCheckoutLog[]
+
+  @@unique([organizationId, serialNumber])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@index([currentUserId])
+}
+
+model AssetCheckoutLog {
+  id             String   @id @default(cuid())
+  assetId        String
+  organizationId String
+  userId         String?
+  projectId      String?
+  action         String
+  notes          String?
+  createdAt      DateTime @default(now())
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, createdAt])
+  @@index([organizationId])
+}
+
+model Supplier {
+  id             String          @id @default(cuid())
+  name           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  taxId          String?
+  paymentTerms   String?
+  organizationId String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+
+  @@index([organizationId])
+}
+
+model PurchaseRequest {
+  id              String         @id @default(cuid())
+  title           String
+  status          String         @default("PENDING")
+  source          String         @default("LOW_STOCK")
+  notes           String?
+  quantityNeeded  Float          @default(0)
+  projectId       String?
+  inventoryItemId String?
+  organizationId  String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([projectId])
+  @@index([inventoryItemId])
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  orderNumber    String
+  status         String              @default("DRAFT")
+  totalAmount    Float               @default(0)
+  currency       String              @default("ILS")
+  expectedDate   DateTime?
+  notes          String?
+  supplierId     String
+  projectId      String?
+  issuedDocumentId String?
+  organizationId String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  supplier       Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  project        Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  issuedDocument IssuedDocument?     @relation(fields: [issuedDocumentId], references: [id], onDelete: SetNull)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lineItems      PurchaseOrderLine[]
+
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId])
+  @@index([supplierId])
+  @@index([projectId])
+  @@index([issuedDocumentId])
+}
+
+model PurchaseOrderLine {
+  id              String         @id @default(cuid())
+  description     String
+  quantity        Float
+  unitPrice       Float
+  totalPrice      Float
+  receivedQty     Float          @default(0)
+  inventoryItemId String?
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseOrderId])
+  @@index([inventoryItemId])
 }

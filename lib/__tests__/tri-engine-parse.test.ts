@@ -69,6 +69,7 @@ describe("validateTriEngineRequest", () => {
       clientLabel: null,
       userInstruction: null,
       engineRunMode: "AUTO",
+      docTypeAutoDetect: false,
     });
     expect(result).toEqual({ ok: false, status: 400, error: "הקובץ ריק.", code: "empty_file" });
   });

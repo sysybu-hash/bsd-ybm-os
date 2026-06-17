@@ -37,6 +37,9 @@ const WIDGET_TYPES = new Set<string>([
   "documentsHub",
   "aiHub",
   "appBuilder",
+  "logisticsHub",
+  "procurementHub",
+  "executiveHub",
 ]);
 
 export function parseWidgetType(raw: string | null): WidgetType | null {
@@ -77,7 +80,9 @@ export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIn
   const aliasData =
     urlProjectId && urlProjectId.trim() ? { projectId: urlProjectId.trim() } : null;
   const resolved = widgetRaw ? resolveWidgetOpen(widgetRaw, aliasData) : null;
-  const widgetType = resolved?.type ?? parseWidgetType(widgetRaw);
+  const widgetType =
+    resolved?.type ??
+    parseWidgetType(widgetRaw ? resolveLegacyWidgetTypes(widgetRaw) : null);
   if (!widgetType) return null;
   const st = searchParams.get(WORKSPACE_URL_PARAMS.state);
   const wid = searchParams.get(WORKSPACE_URL_PARAMS.widgetInstance) ?? undefined;
@@ -99,7 +104,10 @@ export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIn
     (widgetType === "projectsHub" ||
       widgetType === "financeHub" ||
       widgetType === "documentsHub" ||
-      widgetType === "aiHub")
+      widgetType === "aiHub" ||
+      widgetType === "logisticsHub" ||
+      widgetType === "procurementHub" ||
+      widgetType === "executiveHub")
   ) {
     viewState = { ...(viewState ?? {}), tab: tabParam.trim() };
   }
@@ -132,4 +140,37 @@ export function buildWorkspaceSearchParams(opts: {
 export function workspaceUrlFromParams(sp: URLSearchParams): string {
   const q = sp.toString();
   return q ? `/?${q}` : "/";
+}
+
+/** Hub widget types — legacy board/project open via resolveLegacyWidgetTypes */
+export const HUB_WIDGET_TYPES = {
+  PROJECTS_HUB: "projectsHub",
+  FINANCE_HUB: "financeHub",
+  DOCUMENTS_HUB: "documentsHub",
+  AI_HUB: "aiHub",
+  LOGISTICS_HUB: "logisticsHub",
+  PROCUREMENT_HUB: "procurementHub",
+} as const;
+
+export type ProjectHubTab = "overview" | "project" | "board" | "tasks" | "finance" | "diary" | "settings";
+
+/** בונה URL ל-projectsHub עם טאב ופרויקט */
+export function buildProjectWidgetUrl(
+  projectId: string,
+  tab: ProjectHubTab = "overview",
+): string {
+  const sp = new URLSearchParams({
+    w: HUB_WIDGET_TYPES.PROJECTS_HUB,
+    tab,
+    projectId,
+  });
+  return workspaceUrlFromParams(sp);
+}
+
+/** ממפה ווידג'טים ישנים ל-Hub המאוחד (תאימות לאחור ללינקים ישנים) */
+export function resolveLegacyWidgetTypes(widgetType: string): string {
+  if (widgetType === "projectBoard" || widgetType === "project") {
+    return HUB_WIDGET_TYPES.PROJECTS_HUB;
+  }
+  return widgetType;
 }

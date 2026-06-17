@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { Prisma, type SubscriptionTier } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -135,7 +136,7 @@ export async function executiveApplyManualSubscriptionAction(
         },
       });
     }
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/clients");
     return { ok: true };
@@ -175,7 +176,7 @@ export async function executiveSaveBillingConfigAction(formData: FormData): Prom
         tierMonthlyPricesJson,
       },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch {
@@ -233,7 +234,7 @@ export async function executiveUpdateBundlePriceAction(
       where: { id: bundleId },
       data: { priceIls },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch {

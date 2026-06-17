@@ -14,7 +14,7 @@ import {
   triEngineNdjsonErrorResponse,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-api-common";
-import { classifyScanDocumentHeuristic, isExplicitClientScanMode } from "@/lib/scan-classify";
+import { classifyScanDocumentHeuristic, shouldAutoClassifyDocumentType } from "@/lib/scan-classify";
 import { classifyScanDocumentByContent } from "@/lib/scan-classify-ai";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -79,7 +79,13 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   let engineRunMode = parsed.engineRunMode;
   let resolvedClassification = null as Awaited<ReturnType<typeof classifyScanDocumentByContent>>;
 
-  if (engineRunMode === "AUTO" && !isExplicitClientScanMode(parsed.scanMode)) {
+  if (
+    shouldAutoClassifyDocumentType({
+      scanMode: parsed.scanMode,
+      engineRunMode,
+      docTypeAutoDetect: parsed.docTypeAutoDetect,
+    })
+  ) {
     const mime = parsed.file.type || "application/octet-stream";
     const heuristic = classifyScanDocumentHeuristic({
       fileName: parsed.file.name,
@@ -143,7 +149,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
     try {
       await writeLine({ type: "start", usageWarnings: gate.usageWarnings });
 
-      if (parsed.engineRunMode === "AUTO" && resolvedClassification) {
+      if (resolvedClassification && (parsed.docTypeAutoDetect || parsed.engineRunMode === "AUTO")) {
         const plan = resolveTriEnginePlan(resolvedClassification.scanMode, "AUTO");
         await writeLine({
           type: "classification",

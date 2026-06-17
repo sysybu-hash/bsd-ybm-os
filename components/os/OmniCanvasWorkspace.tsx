@@ -319,7 +319,17 @@ export default function OmniCanvasWorkspace() {
         anchorRef={bellButtonRef}
         confirmExpense={async () => undefined}
       />
-      <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />
+      <FileDropzone
+        onProcessed={(n) => setNotifications((prev) => [n, ...prev])}
+        onLatency={setApiLatency}
+        onRouteToScanner={() =>
+          openWorkspaceWidget("documentsHub", {
+            tab: "scan",
+            autoScan: true,
+            source: "dropzone",
+          })
+        }
+      />
     </main>
     </KnowledgeVaultWorkspaceBridge>
     </AutomationRunnerProvider>

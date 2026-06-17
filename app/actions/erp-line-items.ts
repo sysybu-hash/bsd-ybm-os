@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
@@ -97,7 +98,7 @@ export async function resolvePriceAlertLineItemsAction(
       return n;
     });
 
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/business");
     return { ok: true, cleared };
   } catch (e: unknown) {

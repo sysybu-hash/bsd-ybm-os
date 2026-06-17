@@ -7,6 +7,7 @@ type Props = {
   file: ErpArchiveFile;
   archiveView: string;
   className: string;
+  style?: React.CSSProperties;
   dir: string;
   onPreview: (f: ErpArchiveFile) => void;
   onDownload: (f: ErpArchiveFile) => Promise<void>;
@@ -15,10 +16,10 @@ type Props = {
 };
 
 export function ArchiveActionMenu({
-  file, archiveView, className, dir, onPreview, onDownload, onDelete, onRestore,
+  file, archiveView, className, style, dir, onPreview, onDownload, onDelete, onRestore,
 }: Props) {
   return (
-    <div data-archive-menu className={className} dir={dir}>
+    <div data-archive-menu className={className} style={style} dir={dir}>
       {archiveView !== "trash" ? (
         <>
           <button type="button"

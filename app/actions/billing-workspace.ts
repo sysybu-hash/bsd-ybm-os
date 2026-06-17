@@ -1,6 +1,7 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -76,7 +77,7 @@ export async function saveBillingWorkspaceAction(
       where: { id: orgId },
       data: { billingWorkspaceJson: payload as object },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/settings/overview");
     return { ok: true };

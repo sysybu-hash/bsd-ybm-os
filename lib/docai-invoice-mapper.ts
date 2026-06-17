@@ -6,6 +6,7 @@ import {
   type ScanExtractionV5,
   type ScanModeV5,
 } from "@/lib/scan-schema-v5";
+import { enrichInvoiceV5 } from "@/lib/tri-engine-merge";
 
 function num(s: unknown): number | null {
   if (typeof s === "number" && Number.isFinite(s)) return s;
@@ -97,28 +98,30 @@ export function mapDocAiEntitiesToInvoiceV5(
 
   const summarySlice = fullText.trim().slice(0, 800);
 
-  return emptyV5Base(fileName, scanMode, {
-    documentMetadata: {
-      project: null,
-      client: null,
-      documentDate: docDate,
-      drawingRefs: null,
-      discipline: "finance",
-      sheetIndex: null,
-      sourceFileName: fileName,
-      scanMode,
-    },
-    lineItems,
-    billOfQuantities: [],
-    vendor,
-    total: inferredTotal || 0,
-    date: docDate,
-    docType: "INVOICE",
-    summary:
-      lineItems.length > 0
-        ? `Document AI: ${lineItems.length} שורות חויבו. ${summarySlice ? "מקטע: " + summarySlice : ""}`
-        : `Document AI: לא זוהו שורות מחיר — נדרש נירמול נוסף. ${summarySlice}`,
-    priceAlertPending: computePriceAlertPending(lineItems),
-    enginesUsed: ["document_ai"],
-  });
+  return enrichInvoiceV5(
+    emptyV5Base(fileName, scanMode, {
+      documentMetadata: {
+        project: null,
+        client: null,
+        documentDate: docDate,
+        drawingRefs: null,
+        discipline: "finance",
+        sheetIndex: null,
+        sourceFileName: fileName,
+        scanMode,
+      },
+      lineItems,
+      billOfQuantities: [],
+      vendor,
+      total: inferredTotal || 0,
+      date: docDate,
+      docType: "INVOICE",
+      summary:
+        lineItems.length > 0
+          ? `Document AI: ${lineItems.length} שורות חויבו. ${summarySlice ? "מקטע: " + summarySlice : ""}`
+          : `Document AI: לא זוהו שורות מחיר — נדרש נירמול נוסף. ${summarySlice}`,
+      priceAlertPending: computePriceAlertPending(lineItems),
+      enginesUsed: ["document_ai"],
+    }),
+  );
 }

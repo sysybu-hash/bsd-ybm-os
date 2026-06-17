@@ -35,6 +35,55 @@ export function taskToForm(task: Task): TaskFormState {
 }
 
 export async function syncTask(payload: Record<string, unknown>) {
+  const projectId =
+    typeof payload.projectId === "string" && payload.projectId.trim()
+      ? payload.projectId.trim()
+      : undefined;
+  const taskId = typeof payload.id === "string" ? payload.id : undefined;
+  const isUpdate = Boolean(taskId && !/^\d+$/.test(taskId));
+
+  if (projectId) {
+    const url = `/api/projects/${encodeURIComponent(projectId)}/tasks`;
+    const body = isUpdate
+      ? {
+          id: taskId,
+          title: payload.title,
+          description: payload.description,
+          status: payload.status,
+          priority: payload.priority,
+          dueDate: payload.dueDate,
+          clientName: payload.clientName,
+          contactId: payload.contactId,
+          budget: payload.budget,
+        }
+      : {
+          title: payload.title,
+          description: payload.description,
+          status: payload.status,
+          priority: payload.priority,
+          dueDate: payload.dueDate,
+          clientName: payload.clientName,
+          contactId: payload.contactId,
+          budget: payload.budget,
+        };
+
+    const res = await fetch(url, {
+      method: isUpdate ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+      task?: { id?: string };
+    };
+    if (!res.ok || data.success === false) {
+      throw new Error(data.error ?? "שגיאת שמירה");
+    }
+    return data;
+  }
+
   const res = await fetch("/api/projects/update", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
