@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type MutableRefObject } from 'react';
 import {
   buildWidgetLayout,
   isMobileViewport,
@@ -10,6 +10,16 @@ import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generat
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
 import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
 import { resolveWidgetOpen } from '@/lib/os-assistant/resolve-widget-open';
+import {
+  LEGACY_GLOBAL_LAYOUT_KEY,
+  parseWorkspaceLayoutFromStorage,
+  scrubWorkspaceLayout,
+  workspaceLayoutStorageKey,
+} from '@/lib/workspace/user-workspace-layout';
+import {
+  isApiCooldown,
+  markApiCooldownFromResponse,
+} from '@/lib/client/api-rate-limit-backoff';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger("window-manager");
@@ -79,10 +89,38 @@ function migrateRestoredWidget(w: ActiveWidget): ActiveWidget {
   });
 }
 
-const STORAGE_KEY = 'bsd_ybm_layout_quiet_v6';
-const PREVIOUS_STORAGE_KEY = 'bsd_ybm_layout_quiet_v5';
-const LEGACY_STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
+const LEGACY_STORAGE_KEYS = [
+  LEGACY_GLOBAL_LAYOUT_KEY,
+  'bsd_ybm_layout_quiet_v5',
+  'bsd_ybm_layout_quiet_v4',
+  'bsd_ybm_layout_quiet_v3',
+] as const;
 const SNAPSHOT_KEY = 'bsd_ybm_layout_snapshot_session';
+const WORKSPACE_LAYOUT_API_KEY = 'api:user/workspace-layout';
+
+function removeLegacyGlobalLayoutKeys(): void {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch { /* quota */ }
+  }
+}
+
+function applyRestoredWidgets(
+  widgets: ActiveWidget[],
+  setWidgets: (w: ActiveWidget[]) => void,
+  nextZIndexRef: MutableRefObject<number>,
+): void {
+  const restored = widgets.map((w) => migrateRestoredWidget(w));
+  setWidgets(restored);
+  const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
+  nextZIndexRef.current = maxZ + 1;
+}
+
+type UseWindowManagerOptions = {
+  userId: string | null;
+  authReady: boolean;
+};
 
 const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }> = {
   project: { width: 1120, height: 780 },
@@ -118,69 +156,148 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   executiveHub: { width: 1080, height: 800 },
 };
 
-export function useWindowManager() {
+export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [isCleanDashboard, setIsCleanDashboard] = useState(false);
   const nextZIndexRef = useRef(100);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
 
-  // Persistence: Load
-  useEffect(() => {
+  const persistLayout = useCallback((nextWidgets: ActiveWidget[], targetUserId: string) => {
+    const sanitized = scrubWorkspaceLayout(nextWidgets);
+    const storageKey = workspaceLayoutStorageKey(targetUserId);
     try {
-      let raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        raw = localStorage.getItem(PREVIOUS_STORAGE_KEY);
-        if (raw) localStorage.removeItem(PREVIOUS_STORAGE_KEY);
-      }
-      if (!raw) {
-        const v4 = localStorage.getItem('bsd_ybm_layout_quiet_v4');
-        if (v4) {
-          raw = v4;
-          localStorage.removeItem('bsd_ybm_layout_quiet_v4');
-        }
-      }
-      if (!raw) {
-        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (legacy) {
-          raw = legacy;
-          localStorage.removeItem(LEGACY_STORAGE_KEY);
-        }
-      }
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const restored = parsed
-            .filter(
-              (w) =>
-                w &&
-                typeof w.id === 'string' &&
-                typeof w.type === 'string' &&
-                normalizeWidgetAction(w.type),
-            )
-            .map((w) => migrateRestoredWidget(w as ActiveWidget)) as ActiveWidget[];
-          setWidgets(restored);
-          const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
-          nextZIndexRef.current = maxZ + 1;
-          setIsFirstTime(false);
-        }
-      } else {
-        setIsFirstTime(true);
-      }
+      localStorage.setItem(storageKey, JSON.stringify(sanitized));
     } catch (e) {
-      log.warn("localStorage load error", { error: e instanceof Error ? e.message : String(e) });
-      setIsFirstTime(true);
-    } finally {
-      setHasHydrated(true);
+      log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
     }
+    if (isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) return;
+    void fetch("/api/user/workspace-layout", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ widgets: sanitized }),
+    })
+      .then((res) => {
+        markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res);
+      })
+      .catch(() => { /* network */ });
   }, []);
 
-  // Persistence: Save
+  // Persistence: load per user (server + user-scoped localStorage)
   useEffect(() => {
-    if (hasHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
+    if (!authReady) return;
+
+    if (!userId) {
+      setWidgets([]);
+      setIsFirstTime(true);
+      setHasHydrated(true);
+      activeUserIdRef.current = null;
+      return;
     }
-  }, [widgets, hasHydrated]);
+
+    let cancelled = false;
+    setHasHydrated(false);
+    activeUserIdRef.current = userId;
+
+    async function hydrate() {
+      const storageKey = workspaceLayoutStorageKey(userId!);
+      let localWidgets = parseWorkspaceLayoutFromStorage(
+        typeof window !== "undefined" ? localStorage.getItem(storageKey) : null,
+      );
+
+      let resolvedWidgets: ActiveWidget[] = [];
+      let firstTime = true;
+
+      try {
+        if (!isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) {
+          const res = await fetch("/api/user/workspace-layout", { credentials: "include" });
+          if (markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res)) {
+            resolvedWidgets = localWidgets;
+            firstTime = resolvedWidgets.length === 0;
+          } else if (res.ok) {
+            const data = (await res.json()) as { widgets?: unknown };
+            const serverWidgets = scrubWorkspaceLayout(data.widgets ?? null);
+            if (serverWidgets.length > 0) {
+              resolvedWidgets = serverWidgets;
+              firstTime = false;
+              try {
+                localStorage.setItem(storageKey, JSON.stringify(serverWidgets));
+              } catch { /* quota */ }
+            } else if (localWidgets.length > 0) {
+              resolvedWidgets = localWidgets;
+              firstTime = false;
+              persistLayout(localWidgets, userId!);
+            } else {
+              const legacyRaw =
+                typeof window !== "undefined" ? localStorage.getItem(LEGACY_GLOBAL_LAYOUT_KEY) : null;
+              const legacyWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
+              if (legacyWidgets.length > 0) {
+                resolvedWidgets = legacyWidgets;
+                firstTime = false;
+                persistLayout(legacyWidgets, userId!);
+              }
+              removeLegacyGlobalLayoutKeys();
+            }
+          } else if (localWidgets.length > 0) {
+            resolvedWidgets = localWidgets;
+            firstTime = false;
+          }
+        } else if (localWidgets.length > 0) {
+          resolvedWidgets = localWidgets;
+          firstTime = false;
+        }
+      } catch (e) {
+        log.warn("workspace layout hydrate error", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+        if (localWidgets.length > 0) {
+          resolvedWidgets = localWidgets;
+          firstTime = false;
+        }
+      }
+
+      if (cancelled || activeUserIdRef.current !== userId) return;
+
+      if (resolvedWidgets.length > 0) {
+        applyRestoredWidgets(resolvedWidgets, setWidgets, nextZIndexRef);
+        setIsFirstTime(false);
+      } else {
+        setWidgets([]);
+        setIsFirstTime(firstTime);
+      }
+      setHasHydrated(true);
+    }
+
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, userId, persistLayout]);
+
+  // Persistence: save per user (debounced server sync)
+  useEffect(() => {
+    if (!hasHydrated || !userId || activeUserIdRef.current !== userId) return;
+
+    const storageKey = workspaceLayoutStorageKey(userId);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(widgets));
+    } catch (e) {
+      log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
+    }
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      if (activeUserIdRef.current !== userId) return;
+      persistLayout(widgets, userId);
+    }, 400);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [widgets, hasHydrated, userId, persistLayout]);
 
   const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null): string => {
     const resolved = resolveWidgetOpen(type, data);
@@ -293,8 +410,13 @@ export function useWindowManager() {
 
   const clearLayout = useCallback(() => {
     setWidgets([]);
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    if (userId) {
+      try {
+        localStorage.removeItem(workspaceLayoutStorageKey(userId));
+      } catch { /* quota */ }
+      persistLayout([], userId);
+    }
+  }, [userId, persistLayout]);
 
   const enterCleanDashboard = useCallback(() => {
     if (typeof sessionStorage !== 'undefined') {

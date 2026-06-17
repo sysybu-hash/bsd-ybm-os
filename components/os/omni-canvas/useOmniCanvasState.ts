@@ -34,6 +34,13 @@ export function useOmniCanvasState() {
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
   const bellButtonRef = useRef<HTMLButtonElement>(null);
 
+  const userId = session?.user?.id ?? null;
+  const authReady = sessionStatus !== "loading";
+
+  useEffect(() => {
+    setHasOpenedDefaults(false);
+  }, [userId]);
+
   const {
     widgets,
     hasHydrated,
@@ -52,7 +59,7 @@ export function useOmniCanvasState() {
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
-  } = useWindowManager();
+  } = useWindowManager({ userId, authReady });
 
   const openWorkspaceWidget = useCallback(
     (

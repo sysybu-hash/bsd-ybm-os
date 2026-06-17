@@ -67,13 +67,17 @@ const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
 export async function primeE2eBrowserStorage(page: Page) {
   await page.addInitScript(
-    ({ passkeyKey, wizardKey, launcherBannerKey, launcherStorageKey, layoutKeys }) => {
+    ({ passkeyKey, wizardKey, launcherBannerKey, launcherStorageKey, layoutKeys, layoutPrefix }) => {
       try {
         localStorage.setItem(passkeyKey, "1");
         localStorage.setItem(wizardKey, "dismissed");
         localStorage.setItem(launcherBannerKey, "1");
         localStorage.setItem(launcherStorageKey, "{}");
         for (const k of layoutKeys) localStorage.removeItem(k);
+        for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+          const key = localStorage.key(i);
+          if (key?.startsWith(layoutPrefix)) localStorage.removeItem(key);
+        }
       } catch {
         /* ignore */
       }
@@ -90,6 +94,7 @@ export async function primeE2eBrowserStorage(page: Page) {
         "bsd_ybm_layout_quiet_v4",
         "bsd_ybm_layout_snapshot_session",
       ],
+      layoutPrefix: "bsd_ybm_layout_quiet_v7:",
     },
   );
 }
