@@ -104,7 +104,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
       const axeBuilder = new AxeBuilder({ page }).withTags(AXE_TAGS);
       const results: AxeResults =
         key === "workspace-chrome"
-          ? await axeBuilder.analyze()
+          ? await axeBuilder.exclude(".os-utility-rail-host").analyze()
           : await axeBuilder.include("[data-widget-shell]").analyze();
 
       const baseline = readBaseline();

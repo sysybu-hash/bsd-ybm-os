@@ -48,6 +48,7 @@ export default function OfficeExpenseForm({
         <input
           className={osFieldClassName}
           type="date"
+          aria-label={t("workspaceWidgets.officeExpenses.expenseDate")}
           value={form.expenseDate}
           onChange={(e) => onFormChange((prev) => ({ ...prev, expenseDate: e.target.value }))}
         />

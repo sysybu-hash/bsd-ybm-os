@@ -18,7 +18,11 @@ test.describe("accounting export API", () => {
     test.skip(!signedIn, "E2E credentials not available");
     await waitForAuthenticatedApiSession(page);
 
-    const res = await page.request.get("/api/accounting/export");
+    let res = await page.request.get("/api/accounting/export");
+    for (let attempt = 0; attempt < 3 && res.status() === 429; attempt++) {
+      await page.waitForTimeout(1_500 * (attempt + 1));
+      res = await page.request.get("/api/accounting/export");
+    }
     expect(res.status()).toBe(200);
     const json = (await res.json()) as { formats?: string[] };
     expect(json.formats).toEqual(expect.arrayContaining(["bkmvdata", "priority", "hashavshevet"]));
@@ -31,7 +35,7 @@ test.describe("accounting export API", () => {
 
     const from = new Date(Date.now() - 86400000).toISOString();
     const to = new Date().toISOString();
-    const res = await page.request.post("/api/accounting/export", {
+    let res = await page.request.post("/api/accounting/export", {
       data: {
         format: "bkmvdata",
         fromDate: from,
@@ -40,6 +44,18 @@ test.describe("accounting export API", () => {
         includeExpenses: false,
       },
     });
+    for (let attempt = 0; attempt < 3 && res.status() === 429; attempt++) {
+      await page.waitForTimeout(1_500 * (attempt + 1));
+      res = await page.request.post("/api/accounting/export", {
+        data: {
+          format: "bkmvdata",
+          fromDate: from,
+          toDate: to,
+          includeDocuments: false,
+          includeExpenses: false,
+        },
+      });
+    }
     expect([200, 400, 422, 429]).toContain(res.status());
   });
 });

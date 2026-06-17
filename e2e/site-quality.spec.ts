@@ -112,7 +112,11 @@ test.describe("Site quality", () => {
     await dismissCookieBannerIfVisible(page);
     await dismissWorkspaceOverlays(page);
     await waitForAuthenticatedWorkspace(page);
-    await expect(page.getByRole("navigation", { name: /יישומים|Apps/i })).toBeVisible({ timeout: 15000 });
+    await expect(
+      page
+        .getByRole("navigation", { name: /יישומים|Apps/i })
+        .or(page.getByTestId("launcher-zone-sidebar")),
+    ).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
   });
 

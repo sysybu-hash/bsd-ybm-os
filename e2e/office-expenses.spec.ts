@@ -36,7 +36,16 @@ test.describe("office expenses", () => {
     const vendor = `E2E Office ${Date.now()}`;
     await shell.getByPlaceholder(/שם ספק|vendor/i).fill(vendor);
     await shell.getByPlaceholder(/לפני מע|net amount|before vat/i).fill("100");
-    await shell.getByRole("button", { name: /הוסף|add/i }).click();
+    await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes("/api/office-expenses") &&
+          res.request().method() === "POST" &&
+          res.ok(),
+        { timeout: 30_000 },
+      ),
+      shell.getByRole("button", { name: /הוסף|add/i }).click(),
+    ]);
 
     await expect(shell.getByText(vendor)).toBeVisible({ timeout: 15_000 });
   });
@@ -75,7 +84,16 @@ test.describe("office expenses", () => {
     const vendor = `E2E Edit ${Date.now()}`;
     await shell.getByPlaceholder(/שם ספק|vendor/i).fill(vendor);
     await shell.getByPlaceholder(/לפני מע|net amount|before vat/i).fill("50");
-    await shell.getByRole("button", { name: /הוסף|add/i }).click();
+    await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          res.url().includes("/api/office-expenses") &&
+          res.request().method() === "POST" &&
+          res.ok(),
+        { timeout: 30_000 },
+      ),
+      shell.getByRole("button", { name: /הוסף|add/i }).click(),
+    ]);
     await expect(shell.getByText(vendor)).toBeVisible({ timeout: 15_000 });
 
     const row = shell.locator("li", { hasText: vendor });

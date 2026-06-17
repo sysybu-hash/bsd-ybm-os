@@ -1,8 +1,11 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Removed test script — false positive in git history"
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Removed meckano test script — false positive in git history"
 paths = [
-  '''(^|/)test-meckano\.js$''',
+  '''(?i)(?:^|/)test-meckano\.js$''',
 ]

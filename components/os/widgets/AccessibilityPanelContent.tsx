@@ -60,10 +60,15 @@ export default function AccessibilityPanelContent({
     <div className="flex w-full flex-col">
       <div className="p-4">
         <section className="mb-4">
-          <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
+          <label
+            htmlFor="accessibility-font-scale"
+            className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]"
+          >
             {t("accessibility.fontScale")}
           </label>
           <select
+            id="accessibility-font-scale"
+            aria-label={t("accessibility.fontScale")}
             value={value.fontScale}
             onChange={(e) => onChange({ ...value, fontScale: e.target.value as AccessibilityFontScale })}
             className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-xs font-bold"

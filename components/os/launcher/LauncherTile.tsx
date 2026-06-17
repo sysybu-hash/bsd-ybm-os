@@ -188,6 +188,7 @@ export default function LauncherTile({
       <button
         type="button"
         onClick={handleClick}
+        aria-label={label}
         className={`quiet-surface group flex size-full min-h-0 min-w-0 flex-col items-center justify-center text-center transition ${
           tileSize === "mobile"
             ? "h-[124px] w-full max-w-[124px] min-w-[120px] gap-2 p-2.5"

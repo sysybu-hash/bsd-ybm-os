@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** Navigates and retries on Firefox NS_BINDING_ABORTED / "interrupted by another navigation". */
 async function safeGoto(
@@ -158,6 +158,19 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
 /** Scoped widget shell — topmost window for the given widget type (avoids strict-mode multi-match). */
 export function widgetShell(page: Page, widgetId: string) {
   return page.locator(`[data-widget-shell][id^="${widgetId}-"]`).last();
+}
+
+/** Waits until the hub shell shows the expected tab as selected (deep links can lag). */
+export async function expectHubTabSelected(shell: Locator, tabName: RegExp): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const text = (await shell.getByRole("tab", { selected: true }).textContent()) ?? "";
+        return tabName.test(text);
+      },
+      { timeout: 20_000, message: `Expected selected hub tab matching ${tabName}` },
+    )
+    .toBe(true);
 }
 
 /** Waits for executive hub shell and the office-expenses tab to be active. */
