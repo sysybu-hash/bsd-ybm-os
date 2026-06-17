@@ -552,6 +552,8 @@ model User {
   scanHistoryClearedAt DateTime?
   /// פריסת Launcher אישית (quickGrid עם row/col, sidebar וכו׳)
   launcherConfigJson Json?
+  /// פריסת חלונות workspace אישית (מיקום, גודל, z-index)
+  workspaceLayoutJson Json?
   accounts           Account[]
   activityLogs       ActivityLog[]
   documents          Document[]
