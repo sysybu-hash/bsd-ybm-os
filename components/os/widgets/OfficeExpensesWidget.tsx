@@ -1,12 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Pencil, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+
+const OfficeExpenseScanPanel = dynamic(
+  () => import("@/components/os/widgets/OfficeExpenseScanPanel"),
+  {
+    loading: () => (
+      <div className="flex min-h-[280px] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    ),
+  },
+);
 
 const nis = new Intl.NumberFormat("he-IL", {
   style: "currency",
@@ -181,6 +193,18 @@ export default function OfficeExpensesWidget() {
           {t("workspaceWidgets.officeExpenses.totalPosted", { amount: nis.format(totalPosted) })}
         </p>
       </header>
+
+      <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
+        <h3 className="mb-1 text-xs font-semibold">
+          {t("workspaceWidgets.officeExpenses.scanTitle")}
+        </h3>
+        <p className="mb-3 text-[11px] text-[color:var(--foreground-muted)]">
+          {t("workspaceWidgets.officeExpenses.scanSubtitle")}
+        </p>
+        <div className="min-h-[280px] overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
+          <OfficeExpenseScanPanel onExpenseSaved={() => void load()} />
+        </div>
+      </section>
 
       <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
         <h3 className="mb-2 text-xs font-semibold">

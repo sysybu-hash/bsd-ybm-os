@@ -15,10 +15,14 @@ export default function AiScannerWidget({
   liveData = null,
   openWorkspaceWidget,
   embeddedInHub = false,
+  officeExpenseMode = false,
+  onSaveComplete,
 }: AiScannerWidgetProps) {
   const s = useAiScannerState({
     liveData,
     openWorkspaceWidget: embeddedInHub ? undefined : openWorkspaceWidget,
+    officeExpenseMode,
+    onSaveComplete,
   });
   const {
     t,

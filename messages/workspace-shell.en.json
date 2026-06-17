@@ -1748,6 +1748,10 @@
       "delete": "Delete",
       "deleteConfirm": "Delete this expense?",
       "empty": "No office expenses yet — add your first one above.",
+      "scanTitle": "Scan invoice / receipt",
+      "scanSubtitle": "Take a photo, upload, or drag a document — scanning creates an office expense automatically (vendor, amount, date).",
+      "scanSaveTarget": "Save as office expense",
+      "scanSaved": "Expense saved from scan",
       "errors": {
         "load": "Failed to load office expenses",
         "save": "Failed to save expense",

@@ -25,6 +25,9 @@ export type UseScanQueueArgs = {
   industryId: string;
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   tr: (key: string, fallback: string) => string;
+  defaultSaveTargets?: UnifiedSaveTarget[];
+  lockedSaveTargets?: UnifiedSaveTarget[];
+  onSaveComplete?: () => void;
 };
 
 export function useScanQueue({
@@ -35,6 +38,9 @@ export function useScanQueue({
   industryId,
   openWorkspaceWidget,
   tr,
+  defaultSaveTargets = ["erp"],
+  lockedSaveTargets,
+  onSaveComplete,
 }: UseScanQueueArgs) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,7 +63,7 @@ export function useScanQueue({
   const [lastScanFileName, setLastScanFileName] = useState("");
   const [savingNotebook, setSavingNotebook] = useState(false);
   const [sessionPhase, setSessionPhase] = useState<"idle" | "intake" | "processing" | "review" | "save">("idle");
-  const [saveTargets, setSaveTargets] = useState<UnifiedSaveTarget[]>(["erp"]);
+  const [saveTargets, setSaveTargets] = useState<UnifiedSaveTarget[]>(defaultSaveTargets);
   const [activeScanFile, setActiveScanFile] = useState<File | null>(null);
   const [showBlueprintFork, setShowBlueprintFork] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,11 +102,11 @@ export function useScanQueue({
     setPreviewMime(null);
     setPreviewFileName("");
     setSessionPhase("idle");
-    setSaveTargets(["erp"]);
+    setSaveTargets(defaultSaveTargets);
     setActiveScanFile(null);
     setShowBlueprintFork(false);
     setIsSaving(false);
-  }, [previewUrl]);
+  }, [defaultSaveTargets, previewUrl]);
 
   const stopScan = useCallback(() => {
     abortRef.current?.abort();
@@ -317,7 +323,11 @@ export function useScanQueue({
       return;
     }
 
-    const rawTargets = saveTargets.length ? saveTargets : (["erp"] as UnifiedSaveTarget[]);
+    const rawTargets = lockedSaveTargets?.length
+      ? lockedSaveTargets
+      : saveTargets.length
+        ? saveTargets
+        : defaultSaveTargets;
     const targets = [
       ...new Set(
         rawTargets.map((t) => (t === "project" && !boundProjectId ? "erp" : t)),
@@ -405,6 +415,7 @@ export function useScanQueue({
           )
         : tr("scanner.saveSuccess", "המסמך נשמר בהצלחה"),
     );
+    onSaveComplete?.();
   } finally {
     setIsSaving(false);
   }
@@ -415,7 +426,10 @@ export function useScanQueue({
     lastScanFileName,
     saveTargets,
     boundProjectId,
+    defaultSaveTargets,
+    lockedSaveTargets,
     saveToNotebook,
+    onSaveComplete,
     tr,
   ]);
 
@@ -565,6 +579,7 @@ export function useScanQueue({
     dismissBlueprintFork,
     openTakeoffForBlueprint,
     approveBlueprintBoq,
+    lockedSaveTargets,
     isSaving,
     rescanLastFile,
   };

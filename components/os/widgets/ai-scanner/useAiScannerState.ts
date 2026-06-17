@@ -16,7 +16,12 @@ import type { AiScannerWidgetProps } from "./types";
 
 const scannerPrefix = "workspaceWidgets.aiScanner";
 
-export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWidgetProps) {
+export function useAiScannerState({
+  liveData,
+  openWorkspaceWidget,
+  officeExpenseMode = false,
+  onSaveComplete,
+}: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
   const industryConfig = useIndustryConfig();
   const industryId = industryConfig.id;
@@ -51,9 +56,24 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
   const [stackScannerPanels, setStackScannerPanels] = useState(false);
 
   const { resolvedProjectId: boundProjectId, selectedProjectName: boundProjectName, projectsList, projectsListLoading, showProjectPicker, loadProjectsList, selectProject, clearProject } =
-    useProjectPicker({ initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "", listErrorKey: `${scannerPrefix}.loadFailed` });
+    useProjectPicker({
+      initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "",
+      listErrorKey: `${scannerPrefix}.loadFailed`,
+      skipProjectPicker: officeExpenseMode,
+    });
 
-  const scanQueue = useDocumentScanSession({ engineRunMode, scanModeOverride, boundProjectId, userInstruction, industryId, openWorkspaceWidget, tr });
+  const scanQueue = useDocumentScanSession({
+    engineRunMode,
+    scanModeOverride,
+    boundProjectId,
+    userInstruction,
+    industryId,
+    openWorkspaceWidget,
+    tr,
+    defaultSaveTargets: officeExpenseMode ? ["expense"] : undefined,
+    lockedSaveTargets: officeExpenseMode ? ["expense"] : undefined,
+    onSaveComplete,
+  });
   const { queue, previewUrl, applyFilePreview, runFileQueue, addFiles, startScan, pendingFiles, confirmAnalysis, saveToNotebook, pendingAnalysis, setPendingAnalysis, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
 
   // ── nav ───────────────────────────────────────────────────────────────────

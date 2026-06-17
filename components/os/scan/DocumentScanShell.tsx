@@ -71,6 +71,7 @@ export function DocumentScanShell({
     isSaving,
     lastScanFileName,
     goBackScanStep,
+    lockedSaveTargets,
   } = scanQueue;
 
   /** ב-Hub הגלילה נעשית ברמת ה-pane — לא בחלונית פנימית צרה */
@@ -105,6 +106,7 @@ export function DocumentScanShell({
             fileInputRef.current?.click();
           }}
           saving={isSaving}
+          lockedTargets={lockedSaveTargets}
         />,
       );
     }

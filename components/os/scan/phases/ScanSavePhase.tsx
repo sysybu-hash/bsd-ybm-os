@@ -16,6 +16,7 @@ type ScanSavePhaseProps = {
   onSave: () => void;
   onNewScan?: () => void;
   saving?: boolean;
+  lockedTargets?: UnifiedSaveTarget[];
 };
 
 export function ScanSavePhase({
@@ -29,8 +30,10 @@ export function ScanSavePhase({
   onSave,
   onNewScan,
   saving,
+  lockedTargets,
 }: ScanSavePhaseProps) {
-  const canSave = saveTargets.length > 0;
+  const canSave = (lockedTargets?.length ?? saveTargets.length) > 0;
+  const isLocked = !!lockedTargets?.length;
 
   return (
     <div className="w-full min-w-0 max-w-3xl flex flex-col gap-4 p-4">
@@ -45,12 +48,18 @@ export function ScanSavePhase({
         </p>
       </div>
 
-      <ScanDestinationPicker
-        values={saveTargets}
-        onChange={onSaveTargetsChange}
-        hasProject={hasProject}
-        tr={tr}
-      />
+      {isLocked ? (
+        <p className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-2.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+          {tr("workspaceWidgets.officeExpenses.scanSaveTarget", "שמירה כהוצאת משרד")}
+        </p>
+      ) : (
+        <ScanDestinationPicker
+          values={saveTargets}
+          onChange={onSaveTargetsChange}
+          hasProject={hasProject}
+          tr={tr}
+        />
+      )}
 
       <div className="flex flex-wrap gap-2">
         {onNewScan ? (

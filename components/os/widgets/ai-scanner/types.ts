@@ -49,4 +49,8 @@ export type AiScannerWidgetProps = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   /** מוצג כטאב בתוך documentsHub — ללא פתיחת חלון נפרד */
   embeddedInHub?: boolean;
+  /** סריקה ישירה להוצאת משרד — ללא פרויקט, שמירה ליעד expense בלבד */
+  officeExpenseMode?: boolean;
+  /** נקרא אחרי שמירה מוצלחת של סריקה */
+  onSaveComplete?: () => void;
 };
