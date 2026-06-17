@@ -8,6 +8,7 @@ import { officeExpenseNis } from "./types";
 type Props = {
   expenses: FinanceExpenseRow[];
   hasActiveFilters: boolean;
+  canManage: boolean;
   onEdit: (row: FinanceExpenseRow) => void;
   onDeleteRequest: (id: string) => void;
 };
@@ -15,6 +16,7 @@ type Props = {
 export default function OfficeExpenseList({
   expenses,
   hasActiveFilters,
+  canManage,
   onEdit,
   onDeleteRequest,
 }: Props) {
@@ -52,22 +54,26 @@ export default function OfficeExpenseList({
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">{officeExpenseNis.format(row.total)}</span>
-            <button
-              type="button"
-              aria-label={t("workspaceWidgets.officeExpenses.edit")}
-              className="rounded p-1 hover:bg-[color:var(--surface-elevated)]"
-              onClick={() => onEdit(row)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label={t("workspaceWidgets.officeExpenses.delete")}
-              className="rounded p-1 text-rose-500 hover:bg-rose-500/10"
-              onClick={() => onDeleteRequest(row.id)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {canManage ? (
+              <>
+                <button
+                  type="button"
+                  aria-label={t("workspaceWidgets.officeExpenses.edit")}
+                  className="rounded p-1 hover:bg-[color:var(--surface-elevated)]"
+                  onClick={() => onEdit(row)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("workspaceWidgets.officeExpenses.delete")}
+                  className="rounded p-1 text-rose-500 hover:bg-rose-500/10"
+                  onClick={() => onDeleteRequest(row.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
+            ) : null}
           </div>
         </li>
       ))}

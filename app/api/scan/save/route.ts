@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden } from "@/lib/api-json";
+import { canManageOfficeExpenses } from "@/lib/office-expenses-auth";
 import { prisma } from "@/lib/prisma";
 import { unifiedSaveScan } from "@/lib/scan/unified-save";
 import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
@@ -23,7 +24,7 @@ const saveBodySchema = z.object({
 
 const VALID_TARGETS = new Set<UnifiedSaveTarget>(["erp", "crm", "project", "notebook", "expense"]);
 
-export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
   const limited = await applyRateLimit(req, "scan:save", 30, 60_000);
   if (limited) return limited;
 
@@ -51,6 +52,10 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
 
     if (parsed.target === "notebook") {
       return jsonBadRequest("השתמש ב-/api/notebooklm/from-scan למחברת", "use_notebook_endpoint");
+    }
+
+    if (parsed.target === "expense" && !parsed.projectId && !canManageOfficeExpenses(role)) {
+      return jsonForbidden("אין הרשאה ליצור הוצאת משרד מסריקה.");
     }
 
     const org = await prisma.organization.findUnique({

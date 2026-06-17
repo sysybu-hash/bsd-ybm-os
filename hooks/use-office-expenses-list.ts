@@ -29,7 +29,7 @@ function buildQuery(filters: OfficeExpenseFilters): string {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-export function useOfficeExpensesList(loadErrorMessage: string) {
+export function useOfficeExpensesList(loadErrorMessage: string, forbiddenMessage?: string) {
   const [expenses, setExpenses] = useState<FinanceExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +50,9 @@ export function useOfficeExpensesList(loadErrorMessage: string) {
       const res = await fetch(`/api/office-expenses${buildQuery(filters)}`, {
         credentials: "include",
       });
+      if (res.status === 403 && forbiddenMessage) {
+        throw new Error(forbiddenMessage);
+      }
       if (!res.ok) throw new Error(loadErrorMessage);
       const data = (await res.json()) as { expenses: FinanceExpenseRow[] };
       setExpenses(data.expenses ?? []);
@@ -58,7 +61,7 @@ export function useOfficeExpensesList(loadErrorMessage: string) {
     } finally {
       setLoading(false);
     }
-  }, [filters, loadErrorMessage]);
+  }, [filters, loadErrorMessage, forbiddenMessage]);
 
   useEffect(() => {
     void load();

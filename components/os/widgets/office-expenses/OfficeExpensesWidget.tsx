@@ -2,10 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
+import { canManageOfficeExpenses } from "@/lib/office-expenses-auth";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 import { useOfficeExpensesList } from "@/hooks/use-office-expenses-list";
 import OfficeExpenseForm from "./OfficeExpenseForm";
@@ -37,7 +39,10 @@ const AccountingExportPanel = dynamic(
 
 export default function OfficeExpensesWidget() {
   const { t } = useI18n();
+  const { data: session } = useSession();
+  const canManage = canManageOfficeExpenses(session?.user?.role);
   const loadError = t("workspaceWidgets.officeExpenses.errors.load");
+  const forbiddenError = t("workspaceWidgets.officeExpenses.errors.forbidden");
   const {
     expenses,
     loading,
@@ -50,7 +55,7 @@ export default function OfficeExpensesWidget() {
     hasActiveFilters,
     totalPosted,
     reload,
-  } = useOfficeExpensesList(loadError);
+  } = useOfficeExpensesList(loadError, forbiddenError);
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -150,27 +155,37 @@ export default function OfficeExpensesWidget() {
         {t("workspaceWidgets.officeExpenses.vsProjectBanner")}
       </p>
 
-      <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
-        <h3 className="mb-1 text-xs font-semibold">
-          {t("workspaceWidgets.officeExpenses.scanTitle")}
-        </h3>
-        <p className="mb-3 text-[11px] text-[color:var(--foreground-muted)]">
-          {t("workspaceWidgets.officeExpenses.scanSubtitle")}
+      {!canManage ? (
+        <p className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-[11px] leading-relaxed text-slate-800 dark:border-slate-700/50 dark:bg-slate-900/30 dark:text-slate-200">
+          {t("workspaceWidgets.officeExpenses.readOnlyBanner")}
         </p>
-        <div className="overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
-          <OfficeExpenseScanPanel onExpenseSaved={() => void reload()} />
-        </div>
-      </section>
+      ) : null}
 
-      <OfficeExpenseForm
-        editingId={editingId}
-        form={form}
-        formError={formError}
-        saving={saving}
-        onFormChange={setForm}
-        onSubmit={() => void handleSubmit()}
-        onCancel={resetForm}
-      />
+      {canManage ? (
+        <section className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3">
+          <h3 className="mb-1 text-xs font-semibold">
+            {t("workspaceWidgets.officeExpenses.scanTitle")}
+          </h3>
+          <p className="mb-3 text-[11px] text-[color:var(--foreground-muted)]">
+            {t("workspaceWidgets.officeExpenses.scanSubtitle")}
+          </p>
+          <div className="overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
+            <OfficeExpenseScanPanel onExpenseSaved={() => void reload()} />
+          </div>
+        </section>
+      ) : null}
+
+      {canManage ? (
+        <OfficeExpenseForm
+          editingId={editingId}
+          form={form}
+          formError={formError}
+          saving={saving}
+          onFormChange={setForm}
+          onSubmit={() => void handleSubmit()}
+          onCancel={resetForm}
+        />
+      ) : null}
 
       <section>
         <OfficeExpenseFiltersBar
@@ -184,6 +199,7 @@ export default function OfficeExpensesWidget() {
         <OfficeExpenseList
           expenses={expenses}
           hasActiveFilters={hasActiveFilters}
+          canManage={canManage}
           onEdit={handleEdit}
           onDeleteRequest={setDeleteTargetId}
         />

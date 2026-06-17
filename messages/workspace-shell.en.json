@@ -1754,6 +1754,7 @@
       "projectLinkTitle": "Office expenses (organization)",
       "projectLinkDesc": "Office invoices not tied to this project — manage in the Manager Center.",
       "exportSection": "Accounting export",
+      "readOnlyBanner": "View-only access — only an organization admin can create, edit, or delete office expenses.",
       "filters": {
         "search": "Search vendor / invoice / description",
         "statusAll": "All statuses",
@@ -1775,7 +1776,8 @@
         "save": "Failed to save expense",
         "delete": "Failed to delete expense",
         "vendorRequired": "Vendor name is required",
-        "amountInvalid": "Invalid net amount"
+        "amountInvalid": "Invalid net amount",
+        "forbidden": "You do not have permission to view office expenses"
       }
     },
     "aiChat": {

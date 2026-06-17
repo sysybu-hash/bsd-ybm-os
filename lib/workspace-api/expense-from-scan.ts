@@ -2,6 +2,10 @@ import { ExpenseAllocation, ExpenseRecordStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
+import {
+  logOfficeExpenseAudit,
+  officeExpenseAuditDetails,
+} from "@/lib/office-expenses-audit";
 
 const DEFAULT_VAT_RATE = 0.17;
 
@@ -95,6 +99,7 @@ export type CreateExpenseFromScanInput = {
   sourceDocumentId: string;
   aiExtractedJson: object;
   projectId?: string | null;
+  auditUserId?: string;
 };
 
 /** יצירת ExpenseRecord מסריקה — משרד או פרויקט */
@@ -123,6 +128,20 @@ export async function createExpenseFromScan(
       contactId: null,
     },
   });
+
+  if (!isProject && input.auditUserId) {
+    await logOfficeExpenseAudit(
+      input.auditUserId,
+      orgId,
+      "scan_created",
+      officeExpenseAuditDetails({
+        id: row.id,
+        vendor: row.vendorName,
+        total: row.total,
+        documentId: input.sourceDocumentId,
+      }),
+    );
+  }
 
   return mapRow(row);
 }

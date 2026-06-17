@@ -100,6 +100,7 @@ export async function unifiedSaveScan(
         sourceDocumentId: documentId,
         aiExtractedJson: aiData as object,
         projectId: input.projectId ?? null,
+        auditUserId: ctx.userId,
       });
 
       return { ok: true, documentId, driveWebViewLink };
