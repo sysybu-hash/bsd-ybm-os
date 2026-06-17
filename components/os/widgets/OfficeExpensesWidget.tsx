@@ -13,8 +13,8 @@ const OfficeExpenseScanPanel = dynamic(
   () => import("@/components/os/widgets/OfficeExpenseScanPanel"),
   {
     loading: () => (
-      <div className="flex min-h-[280px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      <div className="flex min-h-[160px] items-center justify-center">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
       </div>
     ),
   },
@@ -201,7 +201,7 @@ export default function OfficeExpensesWidget() {
         <p className="mb-3 text-[11px] text-[color:var(--foreground-muted)]">
           {t("workspaceWidgets.officeExpenses.scanSubtitle")}
         </p>
-        <div className="min-h-[280px] overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
+        <div className="overflow-hidden rounded-lg border border-[color:var(--border-main)]/60">
           <OfficeExpenseScanPanel onExpenseSaved={() => void load()} />
         </div>
       </section>

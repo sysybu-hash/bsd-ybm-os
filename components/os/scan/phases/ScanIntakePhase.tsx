@@ -32,6 +32,7 @@ type ScanIntakePhaseProps = {
   t: (key: string) => string;
   tr: (key: string, fallback: string) => string;
   showControls?: boolean;
+  compact?: boolean;
 };
 
 export function ScanIntakePhase(props: ScanIntakePhaseProps) {
@@ -44,6 +45,7 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
     scanModes,
     tr,
     showControls = true,
+    compact = false,
     ...dropProps
   } = props;
 
@@ -71,7 +73,7 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
           </select>
         </div>
       ) : null}
-      <ScanDropZone {...dropProps} tr={tr} t={dropProps.t} hasPendingAnalysis={false} />
+      <ScanDropZone {...dropProps} tr={tr} t={dropProps.t} hasPendingAnalysis={false} compact={compact} />
     </div>
   );
 }

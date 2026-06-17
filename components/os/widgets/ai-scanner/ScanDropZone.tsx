@@ -25,6 +25,7 @@ type ScanDropZoneProps = {
   applyFilePreview: (file: File) => void;
   t: (key: string) => string;
   tr: (key: string, fallback: string) => string;
+  compact?: boolean;
 };
 
 export function ScanDropZone({
@@ -45,6 +46,7 @@ export function ScanDropZone({
   applyFilePreview,
   t,
   tr,
+  compact = false,
 }: ScanDropZoneProps) {
   const doneCount = queue.filter((q) => q.status === "done").length;
   const progressPct =
@@ -60,7 +62,9 @@ export function ScanDropZone({
       }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={onDrop}
-      className={`relative m-2 flex min-h-[10rem] flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-all md:m-3 ${
+      className={`relative m-2 flex flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-all md:m-3 ${
+        compact ? "min-h-[7rem]" : "min-h-[10rem]"
+      } ${
         isDragging
           ? "border-orange-400/70 bg-gradient-to-b from-orange-500/15 to-amber-500/5 shadow-[0_0_32px_-8px_rgba(249,115,22,0.35)]"
           : "border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/30 backdrop-blur-sm"
@@ -102,10 +106,14 @@ export function ScanDropZone({
           ) : null}
         </div>
       ) : (
-        <div className="relative z-10 flex w-full flex-col items-center px-4 py-4">
+        <div className={`relative z-10 flex w-full flex-col items-center px-4 ${compact ? "py-2" : "py-4"}`}>
           {/* Icon */}
-          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-500 shadow-inner">
-            <Upload size={30} aria-hidden />
+          <div
+            className={`mb-3 flex items-center justify-center rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-500 shadow-inner ${
+              compact ? "h-12 w-12" : "h-16 w-16"
+            }`}
+          >
+            <Upload size={compact ? 22 : 30} aria-hidden />
           </div>
 
           {/* Title */}

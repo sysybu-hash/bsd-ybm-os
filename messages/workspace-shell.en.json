@@ -1752,6 +1752,11 @@
       "scanSubtitle": "Take a photo, upload, or drag a document — scanning creates an office expense automatically (vendor, amount, date).",
       "scanSaveTarget": "Save as office expense",
       "scanSaved": "Expense saved from scan",
+      "scanAdvanced": "Advanced",
+      "scanDocType": "Document type",
+      "scanModeInvoice": "Invoice / receipt",
+      "scanModeReceipt": "Receipt",
+      "scanFilesReady": "{count} file(s) ready to scan",
       "errors": {
         "load": "Failed to load office expenses",
         "save": "Failed to save expense",

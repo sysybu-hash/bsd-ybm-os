@@ -51,6 +51,8 @@ export type AiScannerWidgetProps = {
   embeddedInHub?: boolean;
   /** סריקה ישירה להוצאת משרד — ללא פרויקט, שמירה ליעד expense בלבד */
   officeExpenseMode?: boolean;
+  /** מצב סריקה ראשוני (למשל INVOICE_FINANCIAL להוצאות משרד) */
+  initialScanModeOverride?: import("@/lib/scan-modes-for-ui").ScanModeUiSelection;
   /** נקרא אחרי שמירה מוצלחת של סריקה */
   onSaveComplete?: () => void;
 };

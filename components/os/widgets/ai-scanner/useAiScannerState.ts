@@ -20,6 +20,7 @@ export function useAiScannerState({
   liveData,
   openWorkspaceWidget,
   officeExpenseMode = false,
+  initialScanModeOverride,
   onSaveComplete,
 }: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
@@ -47,7 +48,7 @@ export function useAiScannerState({
   } | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
   const [scanModeOverride, setScanModeOverride] = useState<ScanModeUiSelection>(() =>
-    defaultScanModeForIndustry(industryId),
+    initialScanModeOverride ?? defaultScanModeForIndustry(industryId),
   );
   const [userInstruction, setUserInstruction] = useState("");
   const [instructionsOpen, setInstructionsOpen] = useState(false);
@@ -92,7 +93,11 @@ export function useAiScannerState({
     }
   }, [liveData?.autoScan, addFiles, startScan]);
 
-  useEffect(() => { setScanModeOverride(defaultScanModeForIndustry(industryId)); }, [industryId]);
+  useEffect(() => {
+    if (!officeExpenseMode) {
+      setScanModeOverride(defaultScanModeForIndustry(industryId));
+    }
+  }, [industryId, officeExpenseMode]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");

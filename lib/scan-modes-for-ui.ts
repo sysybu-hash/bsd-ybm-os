@@ -54,6 +54,23 @@ export function defaultScanModeForIndustry(_industryRaw?: string | null): ScanMo
   return SCAN_MODE_AUTO_DETECT;
 }
 
+/** מצבי סריקה להוצאות משרד — חשבונית/קבלה בלבד */
+export function getOfficeExpenseScanModes(
+  tr?: (key: string, fallback: string) => string,
+): ScanModeUiOption[] {
+  const invoiceLabel =
+    tr?.("workspaceWidgets.officeExpenses.scanModeInvoice", "חשבונית / קבלה") ??
+    "חשבונית / קבלה";
+  const receiptLabel =
+    tr?.("workspaceWidgets.officeExpenses.scanModeReceipt", "קבלה") ?? "קבלה";
+  return [
+    { id: "INVOICE_FINANCIAL", label: invoiceLabel },
+    { id: "DELIVERY_NOTE", label: receiptLabel },
+  ];
+}
+
+export const OFFICE_EXPENSE_DEFAULT_SCAN_MODE: ScanModeV5 = "INVOICE_FINANCIAL";
+
 /** מצבים שאסורים לענף עסקי (למניעת AUTO שמסווג ל-BOQ) */
 export function clampScanModeForIndustry(
   mode: ScanModeV5,

@@ -1752,6 +1752,11 @@
       "scanSubtitle": "צלמו, העלו או גררו מסמך — הסריקה תיצור הוצאת משרד אוטומטית (ספק, סכום, תאריך).",
       "scanSaveTarget": "שמירה כהוצאת משרד",
       "scanSaved": "ההוצאה נשמרה מסריקה",
+      "scanAdvanced": "מתקדם",
+      "scanDocType": "סוג מסמך",
+      "scanModeInvoice": "חשבונית / קבלה",
+      "scanModeReceipt": "קבלה",
+      "scanFilesReady": "{count} קבצים מוכנים לסריקה",
       "errors": {
         "load": "טעינת הוצאות המשרד נכשלה",
         "save": "שמירת ההוצאה נכשלה",

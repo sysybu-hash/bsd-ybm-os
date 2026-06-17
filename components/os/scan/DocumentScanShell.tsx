@@ -15,6 +15,8 @@ type ScannerState = ReturnType<typeof useAiScannerState>;
 type DocumentScanShellProps = {
   state: ScannerState;
   embeddedInHub?: boolean;
+  /** מצב קומפקטי — ללא סרגל היסטוריה/תצוגה מקדימה (הוצאות משרד) */
+  compactMode?: boolean;
   /** כשה-HeaderToolbar כבר מציג מנועים/מצב — לא לשכפל ב-Intake */
   showIntakeControls?: boolean;
 };
@@ -25,6 +27,7 @@ type DocumentScanShellProps = {
 export function DocumentScanShell({
   state,
   embeddedInHub = false,
+  compactMode = false,
   showIntakeControls = true,
 }: DocumentScanShellProps) {
   const {
@@ -128,23 +131,27 @@ export function DocumentScanShell({
       return <ScanProcessingPhase queue={queue} queueProgress={queueProgress} tr={tr} />;
     }
 
-    const sidebarClass = embeddedInHub
-      ? "flex w-full shrink-0 flex-col gap-2 border-b border-[color:var(--border-main)] p-2 md:w-56 md:border-b-0 md:border-e"
-      : "hidden w-72 shrink-0 flex-col gap-2 p-2 lg:flex";
+    const sidebarClass = compactMode
+      ? "hidden"
+      : embeddedInHub
+        ? "flex w-full shrink-0 flex-col gap-2 border-b border-[color:var(--border-main)] p-2 md:w-56 md:border-b-0 md:border-e"
+        : "hidden w-72 shrink-0 flex-col gap-2 p-2 lg:flex";
 
     return (
       <div
-        className={`flex min-h-0 flex-1 flex-col ${embeddedInHub ? "md:flex-row" : "lg:flex-row"}`}
+        className={`flex min-h-0 flex-1 flex-col ${compactMode || embeddedInHub ? "md:flex-row" : "lg:flex-row"}`}
       >
-        <aside className={sidebarClass}>
-          <ScanFilePreview
-            url={previewUrl}
-            mime={previewMime}
-            fileName={previewFileName}
-            emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה")}
-          />
-          <ScanHistoryPanel tr={tr} />
-        </aside>
+        {!compactMode ? (
+          <aside className={sidebarClass}>
+            <ScanFilePreview
+              url={previewUrl}
+              mime={previewMime}
+              fileName={previewFileName}
+              emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה")}
+            />
+            <ScanHistoryPanel tr={tr} />
+          </aside>
+        ) : null}
         <div className="min-h-0 flex-1">
           <ScanIntakePhase
             isDragging={isDragging}
@@ -170,6 +177,7 @@ export function DocumentScanShell({
             t={t}
             tr={tr}
             showControls={showIntakeControls}
+            compact={compactMode}
           />
         </div>
       </div>
