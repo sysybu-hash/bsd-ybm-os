@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { tryCredentialsSignIn } from "./helpers";
+import { signInWithRetries, waitForAuthenticatedApiSession } from "./helpers";
 
 test.describe("accounting export API", () => {
   test("GET formats requires auth", async ({ request }) => {
@@ -8,8 +8,9 @@ test.describe("accounting export API", () => {
   });
 
   test("authenticated GET lists formats", async ({ page }) => {
-    const signedIn = await tryCredentialsSignIn(page);
+    const signedIn = await signInWithRetries(page);
     test.skip(!signedIn, "E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
 
     const res = await page.request.get("/api/accounting/export");
     expect(res.status()).toBe(200);
@@ -18,8 +19,9 @@ test.describe("accounting export API", () => {
   });
 
   test("POST export with empty range returns file or validation", async ({ page }) => {
-    const signedIn = await tryCredentialsSignIn(page);
+    const signedIn = await signInWithRetries(page);
     test.skip(!signedIn, "E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
 
     const from = new Date(Date.now() - 86400000).toISOString();
     const to = new Date().toISOString();

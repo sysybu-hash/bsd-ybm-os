@@ -59,6 +59,15 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
   { key: "drive",             url: workspaceUrl({ w: "googleDrive" }), label: "Google Drive" },
 ];
 
+async function signInWithRetries(page: Parameters<typeof tryCredentialsSignIn>[0]): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const signed = await tryCredentialsSignIn(page);
+    if (signed) return true;
+    await page.waitForTimeout(500 + attempt * 500);
+  }
+  return false;
+}
+
 // ─── test suite ──────────────────────────────────────────────────────────────
 test.describe("Workspace accessibility — axe audit per widget", () => {
   test.beforeEach(async ({ context, baseURL }) => {
@@ -70,7 +79,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     test(`no new critical/serious axe violations — ${label}`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
-      const signed = await tryCredentialsSignIn(page);
+      const signed = await signInWithRetries(page);
       expect(signed, "משתמש E2E חייב להיות זמין בבדיקות 10/10").toBeTruthy();
 
       await dismissCookieBannerIfVisible(page);
@@ -128,7 +137,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     );
     test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await signInWithRetries(page);
     expect(signed, "משתמש E2E חייב להיות זמין לבניית baseline").toBeTruthy();
     await dismissCookieBannerIfVisible(page);
 

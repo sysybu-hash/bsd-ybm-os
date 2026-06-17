@@ -98,6 +98,7 @@
     "marketing:capture-live-demo": "npx tsx scripts/capture-product-brochure-v2.ts && node scripts/sync-marketing-screenshots.mjs",
     "product-brochure:pdf": "dotenv -e .env.local -- npx tsx scripts/generate-product-brochure-pdf.ts",
     "product-brochure:v2-pdf": "npx tsx scripts/generate-product-brochure-v2-pdf.ts",
+    "system-spec:pdf": "npx tsx scripts/generate-system-spec-pdf.ts",
     "marketing:onepagers": "npx tsx scripts/generate-marketing-onepagers.ts",
     "docs:marketing-pdf": "npm run marketing:onepagers && npm run product-brochure:pdf && npm run product-brochure:v2-pdf",
     "product-brochure:build": "npm run product-brochure:capture && npm run product-brochure:pdf",

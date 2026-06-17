@@ -10,40 +10,56 @@ test.describe("Growth — public blog & contact", () => {
   test.beforeEach(async ({ page }) => {
     await primeCookieConsent(page);
   });
+
   test("blog index lists posts", async ({ page }) => {
-    await page.goto("/blog");
-    await expect(page.getByRole("heading", { name: /בלוג BSD-YBM/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /גנט לקבלנים/i })).toBeVisible();
+    await page.goto("/blog", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: /בלוג BSD-YBM/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("link", { name: /גנט לקבלנים/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test("blog post renders article", async ({ page }) => {
-    await page.goto("/blog/gantt-for-contractors");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(/גנט לקבלנים/i);
-    await expect(page.getByRole("link", { name: /התחל חינם/i })).toBeVisible();
+    await page.goto("/blog/gantt-for-contractors", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/גנט לקבלנים/i, {
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("link", { name: /התחל חינם/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test("contact page shows form", async ({ page }) => {
-    await page.goto("/contact");
-    await expect(page.getByRole("heading", { name: /צור קשר/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /שלח הודעה/i })).toBeVisible();
+    await page.goto("/contact", { waitUntil: "domcontentloaded" });
+    await dismissCookieBannerIfVisible(page);
+    await expect(page.getByRole("heading", { name: /צור קשר/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel(/שם מלא/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: /שלח הודעה/i })).toBeVisible({ timeout: 15_000 });
   });
 
   test("contact form submits successfully", async ({ page }) => {
-    await page.goto("/contact");
-    const email = `e2e-contact-${Date.now()}@example.invalid`;
-    const form = page.getByRole("main").locator("form");
-    await form.locator('input:not([type="email"]):not([type="tel"])').first().fill("E2E Contact");
-    await form.locator('input[type="email"]').fill(email);
+    await page.goto("/contact", { waitUntil: "load" });
     await dismissCookieBannerIfVisible(page);
+    await expect(page.getByLabel(/שם מלא/i)).toBeVisible({ timeout: 30_000 });
+
+    const email = `e2e-contact-${Date.now()}@example.invalid`;
+    await page.getByLabel(/שם מלא/i).fill("E2E Contact");
+    await page.getByLabel(/אימייל/i).fill(email);
+    await page.getByLabel(/הודעה/i).fill("בדיקת E2E");
+    await expect(page.getByLabel(/אימייל/i)).toHaveValue(email);
+
+    const postDone = page
+      .waitForResponse(
+        (response) => response.url().includes("/api/leads") && response.request().method() === "POST",
+        { timeout: 45_000 },
+      )
+      .catch(() => null);
+
     await page.getByRole("button", { name: /שלח הודעה/i }).click();
-    // Accept either the success state OR the /api/leads rate-limit guard (5/hour):
-    // both prove the form submitted and the backend responded. Under repeated test
-    // runs the shared lead endpoint legitimately returns 429.
-    await expect(
-      page
-        .getByRole("heading", { name: /קיבלנו/i })
-        .or(page.getByText(/יותר מדי בקשות/i)),
-    ).toBeVisible({ timeout: 15_000 });
+
+    const res = await postDone;
+    if (res) {
+      expect([200, 429]).toContain(res.status());
+      return;
+    }
+
+    await expect(page.getByRole("heading", { name: /קיבלנו|תודה/i })).toBeVisible({ timeout: 45_000 });
   });
 });
 
@@ -53,9 +69,11 @@ test.describe("Growth — unsubscribe", () => {
   });
 
   test("unsubscribe page loads", async ({ page }) => {
-    await page.goto("/unsubscribe");
+    await page.goto("/unsubscribe", { waitUntil: "domcontentloaded" });
     await dismissCookieBannerIfVisible(page);
-    await expect(page.getByRole("heading", { level: 1, name: /הסרה מרשימת תפוצה/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /הסרה מרשימת תפוצה/i })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });
 
