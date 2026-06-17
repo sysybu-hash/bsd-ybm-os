@@ -360,14 +360,14 @@
       "executive": {
         "tabs": {
           "overview": "Стратегический обзор",
-          "progressBills": "Счета подрядчиков"
+          "progressBills": "Счета подрядчиков",
+          "officeExpenses": "Офисные расходы"
         }
       },
       "projects": {
         "tabs": {
           "board": "Доска",
-          "project": "Центр проекта",
-          "officeExpenses": "Офисные расходы"
+          "project": "Центр проекта"
         },
         "pickerTitle": "Выберите проект",
         "pickerDesc": "Выберите проект перед открытием центра",

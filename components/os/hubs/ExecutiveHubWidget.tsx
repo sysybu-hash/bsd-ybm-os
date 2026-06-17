@@ -1,6 +1,7 @@
 "use client";
 
 import ExecutiveDashboardWidget from "@/components/os/widgets/executive/ExecutiveDashboardWidget";
+import OfficeExpensesWidget from "@/components/os/widgets/OfficeExpensesWidget";
 import ProgressBillPortalPanel from "@/components/os/widgets/progress-bills/ProgressBillPortalPanel";
 import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubShell";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -12,6 +13,7 @@ import { LayoutDashboard } from "lucide-react";
 const TABS: HubTabDef[] = [
   { id: "overview", labelKey: "workspaceWidgets.hubs.executive.tabs.overview" },
   { id: "progressBills", labelKey: "workspaceWidgets.hubs.executive.tabs.progressBills" },
+  { id: "officeExpenses", labelKey: "workspaceWidgets.hubs.executive.tabs.officeExpenses" },
 ];
 
 type Props = {
@@ -56,9 +58,11 @@ export default function ExecutiveHubWidget({ liveData }: Props) {
         initialTab={activeTab}
         onTabChange={handleTabChange}
         tabCountLabel={t("workspaceWidgets.hubs.tabCount", { count: String(TABS.length) })}
-        renderTab={(tabId) =>
-          tabId === "progressBills" ? <ProgressBillPortalPanel /> : <ExecutiveDashboardWidget />
-        }
+        renderTab={(tabId) => {
+          if (tabId === "progressBills") return <ProgressBillPortalPanel />;
+          if (tabId === "officeExpenses") return <OfficeExpensesWidget />;
+          return <ExecutiveDashboardWidget />;
+        }}
       />
     </div>
   );

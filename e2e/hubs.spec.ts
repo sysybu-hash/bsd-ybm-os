@@ -289,7 +289,8 @@ test.describe("dashboard hubs", () => {
     test.setTimeout(120_000);
     const hubs = [
       { widget: "financeHub",   tabs: [/תזרים|cashflow/i, /סקירה|overview/i] },
-      { widget: "projectsHub",  tabs: [/לוח פרויקטים|board/i, /מרכז פרויקט|project/i, /הוצאות משרד|office expenses/i] },
+      { widget: "projectsHub",  tabs: [/לוח פרויקטים|board/i, /מרכז פרויקט|project/i] },
+      { widget: "executiveHub", tabs: [/סקירה|overview/i, /חשבונות קבלנים|subcontractor/i, /הוצאות משרד|office expenses/i] },
       { widget: "documentsHub", tabs: [/ארכיון|archive/i, /הפקה|create/i, /סריקה|scan/i] },
       { widget: "aiHub",        tabs: [/צ.?אט|chat/i, /מחברת|notebook/i] },
     ] as const;

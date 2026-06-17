@@ -360,14 +360,14 @@
       "executive": {
         "tabs": {
           "overview": "סקירה אסטרטגית",
-          "progressBills": "חשבונות קבלנים"
+          "progressBills": "חשבונות קבלנים",
+          "officeExpenses": "הוצאות משרד"
         }
       },
       "projects": {
         "tabs": {
           "board": "לוח פרויקטים",
-          "project": "מרכז פרויקט",
-          "officeExpenses": "הוצאות משרד"
+          "project": "מרכז פרויקט"
         },
         "pickerTitle": "בחרו פרויקט",
         "pickerDesc": "בחרו פרויקט לפני כניסה למרכז השליטה",
