@@ -19,7 +19,7 @@ import { I18nProvider } from "@/components/os/system/I18nProvider";
 import { TradeProfileProvider } from "@/components/os/system/TradeProfileProvider";
 import { AccessibilitySettingsBootstrap } from "@/components/os/system/AccessibilitySettingsBootstrap";
 import { COOKIE_LOCALE, normalizeLocale, isRtlLocale } from "@/lib/i18n/config";
-import { getMessages, getMarketingMessages } from "@/lib/i18n/load-messages";
+import { getMessages, getMarketingMessages, getWorkspaceMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { buildLocalizedMetadata } from "@/lib/site-metadata";
 import { env } from "@/lib/env";
@@ -31,7 +31,7 @@ import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
 import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
 import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
 import ConditionalServiceWorker from "@/components/pwa/ConditionalServiceWorker";
-import { isMarketingContentPath } from "@/lib/perf/marketing-paths";
+import { isMarketingContentPath, isWorkspaceShellPath } from "@/lib/perf/marketing-paths";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("platform-layout");
@@ -73,8 +73,11 @@ export default async function PlatformLayout({
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? "/";
   const lightMarketing = isMarketingContentPath(pathname);
-  // Slim message set for public/marketing pages — skip workspace-shell, workspace-areas (~124 KB raw)
-  const messages = lightMarketing ? getMarketingMessages(locale) : getMessages(locale);
+  const messages = lightMarketing
+    ? getMarketingMessages(locale)
+    : isWorkspaceShellPath(pathname)
+      ? getWorkspaceMessages(locale)
+      : getMessages(locale);
   const mainSkipLabel = skipToMainLabel(messages, locale);
 
   const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";

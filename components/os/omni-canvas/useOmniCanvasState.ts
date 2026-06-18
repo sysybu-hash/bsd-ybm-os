@@ -185,15 +185,14 @@ export function useOmniCanvasState() {
       if (deepLink) return;
     }
     setHasOpenedDefaults(true);
-    const timer = setTimeout(() => {
+    openWorkspaceWidget("financeHub", { tab: "overview" });
+    queueMicrotask(() => {
       if (typeof window !== "undefined") {
         const deepLinkNow = parseWorkspaceUrl(new URLSearchParams(window.location.search));
         if (deepLinkNow) return;
       }
-      openWorkspaceWidget("financeHub", { tab: "overview" });
-      setTimeout(() => openWidget("crmTable"), 300);
-    }, 800);
-    return () => clearTimeout(timer);
+      openWidget("crmTable");
+    });
   }, [
     hasHydrated,
     session,

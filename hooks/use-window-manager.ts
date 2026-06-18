@@ -82,11 +82,18 @@ function migrateRestoredWidget(w: ActiveWidget): ActiveWidget {
     resolved?.liveData != null
       ? { ...live, ...resolved.liveData }
       : live;
-  return clampWidgetLayoutToWorkspace({
+  const migrated: ActiveWidget = {
     ...w,
     type,
     liveData: mergedLive && Object.keys(mergedLive).length > 0 ? mergedLive : null,
-  });
+  };
+  // Keep saved desktop coordinates in memory on mobile — shell renders fullscreen locally.
+  if (typeof window !== 'undefined' && isMobileViewport()) return migrated;
+  return clampWidgetLayoutToWorkspace(migrated);
+}
+
+function canPersistWorkspaceLayout(): boolean {
+  return typeof window !== 'undefined' && !isMobileViewport();
 }
 
 const LEGACY_STORAGE_KEYS = [
@@ -165,7 +172,12 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
 
-  const persistLayout = useCallback((nextWidgets: ActiveWidget[], targetUserId: string) => {
+  const persistLayout = useCallback((
+    nextWidgets: ActiveWidget[],
+    targetUserId: string,
+    options?: { force?: boolean },
+  ) => {
+    if (!options?.force && !canPersistWorkspaceLayout()) return;
     const sanitized = scrubWorkspaceLayout(nextWidgets);
     const storageKey = workspaceLayoutStorageKey(targetUserId);
     try {
@@ -199,17 +211,33 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     }
 
     let cancelled = false;
-    setHasHydrated(false);
     activeUserIdRef.current = userId;
+    const layoutUserId = userId;
 
-    async function hydrate() {
-      const storageKey = workspaceLayoutStorageKey(userId!);
-      let localWidgets = parseWorkspaceLayoutFromStorage(
-        typeof window !== "undefined" ? localStorage.getItem(storageKey) : null,
-      );
+    const storageKey = workspaceLayoutStorageKey(layoutUserId);
+    let localWidgets = parseWorkspaceLayoutFromStorage(
+      typeof window !== "undefined" ? localStorage.getItem(storageKey) : null,
+    );
+    if (localWidgets.length === 0) {
+      const legacyRaw =
+        typeof window !== "undefined" ? localStorage.getItem(LEGACY_GLOBAL_LAYOUT_KEY) : null;
+      localWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
+    }
 
-      let resolvedWidgets: ActiveWidget[] = [];
-      let firstTime = true;
+    // Phase 1 (sync): show cached layout immediately — no spinner flash on user switch
+    if (localWidgets.length > 0) {
+      applyRestoredWidgets(localWidgets, setWidgets, nextZIndexRef);
+      setIsFirstTime(false);
+    } else {
+      setWidgets([]);
+      setIsFirstTime(true);
+    }
+    setHasHydrated(true);
+
+    // Phase 2 (async): reconcile with server in background
+    async function syncFromServer() {
+      let resolvedWidgets: ActiveWidget[] = localWidgets;
+      let firstTime = localWidgets.length === 0;
 
       try {
         if (!isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) {
@@ -229,7 +257,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
             } else if (localWidgets.length > 0) {
               resolvedWidgets = localWidgets;
               firstTime = false;
-              persistLayout(localWidgets, userId!);
+              persistLayout(localWidgets, layoutUserId, { force: true });
             } else {
               const legacyRaw =
                 typeof window !== "undefined" ? localStorage.getItem(LEGACY_GLOBAL_LAYOUT_KEY) : null;
@@ -237,7 +265,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
               if (legacyWidgets.length > 0) {
                 resolvedWidgets = legacyWidgets;
                 firstTime = false;
-                persistLayout(legacyWidgets, userId!);
+                persistLayout(legacyWidgets, layoutUserId, { force: true });
               }
               removeLegacyGlobalLayoutKeys();
             }
@@ -259,7 +287,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         }
       }
 
-      if (cancelled || activeUserIdRef.current !== userId) return;
+      if (cancelled || activeUserIdRef.current !== layoutUserId) return;
 
       if (resolvedWidgets.length > 0) {
         applyRestoredWidgets(resolvedWidgets, setWidgets, nextZIndexRef);
@@ -268,18 +296,18 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         setWidgets([]);
         setIsFirstTime(firstTime);
       }
-      setHasHydrated(true);
     }
 
-    void hydrate();
+    void syncFromServer();
     return () => {
       cancelled = true;
     };
   }, [authReady, userId, persistLayout]);
 
-  // Persistence: save per user (debounced server sync)
+  // Persistence: save per user (debounced server sync) — desktop only
   useEffect(() => {
     if (!hasHydrated || !userId || activeUserIdRef.current !== userId) return;
+    if (!canPersistWorkspaceLayout()) return;
 
     const storageKey = workspaceLayoutStorageKey(userId);
     try {
@@ -291,6 +319,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       if (activeUserIdRef.current !== userId) return;
+      if (!canPersistWorkspaceLayout()) return;
       persistLayout(widgets, userId);
     }, 400);
 
@@ -417,7 +446,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
   const clearLayout = useCallback(() => {
     setWidgets([]);
-    if (userId) {
+    if (userId && canPersistWorkspaceLayout()) {
       try {
         localStorage.removeItem(workspaceLayoutStorageKey(userId));
       } catch { /* quota */ }
