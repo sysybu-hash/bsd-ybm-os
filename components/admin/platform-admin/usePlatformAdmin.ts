@@ -27,6 +27,7 @@ import {
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 import { normalizeIndustryType } from "@/lib/professions/config";
 import type { PlatformConfig } from "@/lib/platform-settings";
+import type { AdminSystemHealth } from "@/lib/admin-assistant/system-health";
 import { TABS, type TabId } from "./types";
 import { usePlatformAdminUtils } from "./usePlatformAdminUtils";
 
@@ -61,7 +62,8 @@ export function usePlatformAdmin() {
   const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
   const [provisionSendEmail, setProvisionSendEmail] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
-  const [health, setHealth] = useState<{ checkedAt?: string; statuses?: { name: string; ok: boolean; detail: string }[] } | null>(null);
+  const [health, setHealth] = useState<AdminSystemHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
   const [envStatus, setEnvStatus] = useState<Record<string, boolean> | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -100,10 +102,18 @@ export function usePlatformAdmin() {
   }, [t]);
 
   const loadHealth = useCallback(async () => {
-    const res = await fetch("/api/admin/system-health", { credentials: "include" });
-    const data = await res.json();
-    if (!res.ok) { toast.error(t("platformAdmin.loadHealthFailed")); return; }
-    setHealth(data);
+    setHealthLoading(true);
+    try {
+      const res = await fetch("/api/admin/system-health", { credentials: "include" });
+      const data = (await res.json()) as AdminSystemHealth & { error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? t("platformAdmin.loadHealthFailed"));
+        return;
+      }
+      setHealth(data);
+    } finally {
+      setHealthLoading(false);
+    }
   }, [t]);
 
   const refreshAll = useCallback(async () => {
@@ -276,7 +286,7 @@ export function usePlatformAdmin() {
     adminUsers, provisionEmail, setProvisionEmail, provisionName, setProvisionName,
     provisionOrgId, setProvisionOrgId, provisionRole, setProvisionRole,
     provisionSendEmail, setProvisionSendEmail,
-    health, envStatus, savingSettings,
+    health, healthLoading, envStatus, savingSettings,
     handleSaveSubscription, handleAdjustScans, handleApprovePending, handleRejectPending,
     handleCreateOrg, handleDeleteOrg, handleDeleteUser, handleProvisionUser,
     savePlatformSettings, loadHealth,

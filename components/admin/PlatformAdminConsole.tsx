@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Activity, Loader2, RefreshCw, Shield } from "lucide-react";
+import { Loader2, RefreshCw, Shield } from "lucide-react";
 import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
 import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
 import { osFieldClassName } from "@/components/os/ui/os-field";
@@ -13,6 +13,7 @@ import { SubscriptionsTab } from "./platform-admin/SubscriptionsTab";
 import { UsersTab } from "./platform-admin/UsersTab";
 import { SettingsTab } from "./platform-admin/SettingsTab";
 import { IdeasTab } from "./platform-admin/IdeasTab";
+import { HealthTab } from "./platform-admin/HealthTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
@@ -206,40 +207,13 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
         )}
 
         {p.tab === "health" && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void p.loadHealth()}
-                className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold">
-                רענן בדיקה
-              </button>
-              <button type="button" disabled={p.testingEmail} onClick={() => void p.handleTestEmail()}
-                className="rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-                {p.testingEmail ? "שולח…" : "שלח מייל בדיקה"}
-              </button>
-            </div>
-            {p.health?.statuses?.map((s) => (
-              <div key={s.name} className={`rounded-xl border p-3 ${s.ok ? "border-emerald-500/30" : "border-rose-500/40"}`}>
-                <p className="font-bold">{s.name}</p>
-                <p className="text-xs text-[color:var(--foreground-muted)]">{s.detail}</p>
-              </div>
-            ))}
-            {p.envStatus ? (
-              <div className="rounded-xl border border-[color:var(--border-main)] p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                  <Activity size={12} className="me-1 inline" />
-                  משתני סביבה
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {Object.entries(p.envStatus).map(([k, v]) => (
-                    <li key={k} className="flex justify-between">
-                      <span>{k}</span>
-                      <span className={v ? "text-emerald-600" : "text-rose-500"}>{v ? "מוגדר" : "חסר"}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
+          <HealthTab
+            health={p.health}
+            loading={p.healthLoading}
+            testingEmail={p.testingEmail}
+            onRefresh={() => void p.loadHealth()}
+            onTestEmail={() => void p.handleTestEmail()}
+          />
         )}
 
         {p.tab === "ideas" && <IdeasTab />}

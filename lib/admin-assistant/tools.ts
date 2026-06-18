@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { env } from "@/lib/env";
+import { getAdminEnvStatusRecord } from "@/lib/admin/env-status";
 import { z } from "zod";
 import { listPendingRegistrationsAction } from "@/app/actions/admin-console";
 import { manageSubsListOrganizationsAction } from "@/app/actions/manage-subscriptions";
@@ -23,22 +23,6 @@ export function consumeAdminNavigationHint(): AdminNavigationHint | null {
   return hint;
 }
 
-function getEnvStatusRecord(): Record<string, boolean> {
-  return {
-    cronSecret: Boolean(env.CRON_SECRET?.trim()),
-    analyzeQueueSecret: Boolean(env.ANALYZE_QUEUE_SECRET?.trim()),
-    googleAi: Boolean(
-      env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim(),
-    ),
-    openai: Boolean(env.OPENAI_API_KEY?.trim()),
-    anthropic: Boolean(env.ANTHROPIC_API_KEY?.trim()),
-    groq: Boolean(env.GROQ_API_KEY?.trim()),
-    nextAuthSecret: Boolean(env.NEXTAUTH_SECRET?.trim() || env.AUTH_SECRET?.trim()),
-    resend: Boolean(env.RESEND_API_KEY?.trim()),
-    smtpHost: Boolean(env.SMTP_HOST?.trim()),
-    databaseUrl: Boolean(env.DATABASE_URL?.trim()),
-  };
-}
 
 const CAPABILITY_TEXT: Record<string, string> = {
   subscriptions:
@@ -61,7 +45,7 @@ export const adminAssistantTools = {
   get_env_status: tool({
     description: "מחזיר שמות משתני סביבה קריטיים והאם הוגדרו (ללא ערכים)",
     inputSchema: z.object({}),
-    execute: async () => ({ envStatus: getEnvStatusRecord() }),
+    execute: async () => ({ envStatus: getAdminEnvStatusRecord() }),
   }),
 
   get_platform_settings_summary: tool({
