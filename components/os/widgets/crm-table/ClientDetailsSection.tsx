@@ -66,7 +66,7 @@ export function ClientDetailsSection({
         </section>
         {isEditing && (
           <button type="button" onClick={() => void onSave()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 font-black text-white shadow-xl shadow-emerald-900/20 transition-all hover:bg-emerald-500">
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--accent)] font-black text-white shadow-xl shadow-emerald-900/20 transition-all hover:bg-emerald-500">
             <Save size={18} /> {t("workspaceWidgets.crmTable.saveChanges")}
           </button>
         )}
@@ -91,12 +91,12 @@ export function ClientDetailsSection({
             </select>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={creatingProject} onClick={() => void onCreateProject()}
-                className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                className="rounded-xl bg-[color:var(--accent)] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
                 {creatingProject ? t("workspaceWidgets.crmTable.creatingProject") : t("workspaceWidgets.crmTable.newProject")}
               </button>
               {client.projectId && openWorkspaceWidget ? (
                 <button type="button" onClick={onOpenProjectHub}
-                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  className="rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-3 py-2 text-xs font-bold text-[color:var(--accent)] dark:text-emerald-300">
                   {t("workspaceWidgets.crmTable.openControlCenter")}
                 </button>
               ) : null}
@@ -128,7 +128,7 @@ export function ClientDetailsSection({
                   <tr key={doc.id}>
                     <td className="px-6 py-4 font-medium text-slate-500">{doc.date ? formatShortDate(doc.date) : "—"}</td>
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-200">{issuedDocumentDescription(doc)}</td>
-                    <td className="px-6 py-4 font-black text-emerald-600 dark:text-emerald-400">{formatCurrencyILS(doc.total)}</td>
+                    <td className="px-6 py-4 font-black text-[color:var(--accent)] dark:text-emerald-400">{formatCurrencyILS(doc.total)}</td>
                     <td className="px-6 py-4">
                       <span className={`rounded-[4px] px-2 py-0.5 text-[9px] font-bold ${issuedDocumentStatusClass(doc.status)}`}>
                         {DOC_STATUS_LABELS[doc.status] ?? doc.status}

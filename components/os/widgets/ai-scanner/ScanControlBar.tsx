@@ -29,7 +29,7 @@ const base =
   "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40";
 const ghost = `${base} border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]`;
 const danger = `${base} border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300 hover:bg-rose-500/15`;
-const primary = `${base} bg-gradient-to-l from-orange-600 to-amber-500 text-white shadow-md shadow-orange-500/20 hover:from-orange-500`;
+const primary = `${base} bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] text-white shadow-md shadow-orange-500/20 hover:from-orange-500`;
 const success = `${base} bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20`;
 
 export function ScanControlBar({

@@ -48,7 +48,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col gap-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[color:var(--accent)] dark:text-emerald-400">
               <Users size={24} />
             </div>
             <div>
@@ -82,7 +82,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             <button
               type="button"
               onClick={() => s.setIsAddingClient(true)}
-              className="bg-emerald-700 hover:bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+              className="bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
             >
               <UserPlus size={18} /> {t("workspaceWidgets.crmTable.newClient")}
             </button>

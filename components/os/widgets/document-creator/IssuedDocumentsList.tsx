@@ -17,10 +17,10 @@ export function IssuedDocumentsList({ issuedList, issuedListLoading, onOpen, onR
     <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          <FileText className="h-4 w-4 text-[color:var(--accent)] dark:text-indigo-400" />
           <h3 className="text-sm font-bold text-[color:var(--foreground-main)]">מסמכים שהונפקו</h3>
         </div>
-        <button type="button" onClick={onRefresh} className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+        <button type="button" onClick={onRefresh} className="text-[10px] font-bold text-[color:var(--accent)] dark:text-indigo-400 hover:underline">
           רענון
         </button>
       </div>
@@ -41,7 +41,7 @@ export function IssuedDocumentsList({ issuedList, issuedListLoading, onOpen, onR
                   {documentTypeLabel(doc.type)} #{doc.number}
                 </span>
                 <span className="truncate text-[color:var(--foreground-muted)]">{doc.clientName}</span>
-                <span className="shrink-0 font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="shrink-0 font-bold text-[color:var(--accent)] dark:text-emerald-400">
                   ₪{doc.total.toLocaleString("he-IL")}
                 </span>
               </button>

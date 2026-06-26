@@ -67,7 +67,7 @@ export function CrmContactsTable({
                           {client.name?.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-bold text-[color:var(--foreground-main)] group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                          <div className="font-bold text-[color:var(--foreground-main)] group-hover:text-[color:var(--accent)] dark:group-hover:text-emerald-400 transition-colors">
                             {client.name}
                           </div>
                           {(client.tags ?? []).length > 0 ? (
@@ -89,7 +89,7 @@ export function CrmContactsTable({
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
                           client.status === "active"
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            ? "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-400"
                             : client.status === "lead"
                               ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                               : "bg-slate-500/10 text-slate-500 dark:text-slate-400"
@@ -122,7 +122,7 @@ export function CrmContactsTable({
                         </div>
                         {client.projectName ? (
                           <span
-                            className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 truncate max-w-[12rem]"
+                            className="text-[10px] font-bold text-[color:var(--accent)] dark:text-emerald-300 truncate max-w-[12rem]"
                             title={client.projectName}
                           >
                             {client.projectName}
@@ -168,7 +168,7 @@ export function CrmContactsTable({
                               e.stopPropagation();
                               onOpenProjectHub(client);
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors shrink-0"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--accent)]/40 bg-[color:var(--accent-soft)] px-2.5 py-1.5 text-[10px] font-bold text-[color:var(--accent)] dark:text-emerald-300 hover:bg-[color:var(--accent-soft)] transition-colors shrink-0"
                           >
                             <LayoutDashboard size={12} className="shrink-0" />
                             <span className="hidden sm:inline">

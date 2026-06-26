@@ -18,7 +18,7 @@ export function DocGeneratedSuccess({ generatedDoc, docTypeLabel, onDownloadPDF,
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 bg-transparent text-[color:var(--foreground-main)]">
       <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mb-6">
-        <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+        <CheckCircle2 className="w-10 h-10 text-[color:var(--accent)] dark:text-emerald-400" />
       </div>
       <h2 className="text-2xl font-bold mb-2 text-[color:var(--foreground-main)]">
         {docTypeLabel} #{generatedDoc.documentNumber} הופק!
@@ -47,7 +47,7 @@ export function DocGeneratedSuccess({ generatedDoc, docTypeLabel, onDownloadPDF,
             />
             <button
               onClick={() => { navigator.clipboard.writeText(generatedDoc.signUrl || ""); toast.success(t("workspaceWidgets.documentCreator.urlCopied")); }}
-              className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors border border-emerald-500/20"
+              className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-[color:var(--accent)] dark:text-emerald-400 rounded-lg transition-colors border border-emerald-500/20"
             >
               <Copy size={16} />
             </button>
@@ -65,7 +65,7 @@ export function DocGeneratedSuccess({ generatedDoc, docTypeLabel, onDownloadPDF,
             <a
               href={generatedDoc.signUrl}
               target="_blank"
-              className="p-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl transition-all flex items-center justify-center"
+              className="p-3 bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] text-slate-950 rounded-xl transition-all flex items-center justify-center"
             >
               <ExternalLink size={20} />
             </a>

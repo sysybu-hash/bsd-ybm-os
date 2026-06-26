@@ -16,6 +16,7 @@ import {
   type AppSchemaListItem,
 } from "@/app/actions/app-builder";
 import { submitAppIdeaAction } from "@/app/actions/app-ideas";
+import { isLikelyReactComponent } from "@/lib/app-builder/jsx-preview-utils";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 /**
@@ -61,13 +62,15 @@ export function useAppBuilder() {
       const result = await Promise.race([listAppSchemasAction(), timeout]);
       if (result.ok) {
         setSavedApps(result.schemas);
+      } else {
+        setError(result.error ?? t(`${prefix}.loadSchemaError`));
       }
     } catch {
-      // silently ignore — user can retry with the refresh button in SavedAppsPanel
+      setError(t(`${prefix}.loadSchemaError`));
     } finally {
       setLoadingSaved(false);
     }
-  }, []);
+  }, [prefix, t]);
 
   useEffect(() => {
     void refreshSavedApps();
@@ -148,13 +151,18 @@ export function useAppBuilder() {
           messages: [{ role: "user", content: `בנה מחדש את האפליקציה "${name}" לפי הסכמה הנוכחית` }],
         }),
       });
-      const data = (await res.json()) as { jsxCode?: string; uiSchema?: AppBuilderUiSchema };
-      if (data.jsxCode) {
-        codeHistory.push(data.jsxCode);
+      const data = (await res.json()) as { jsxCode?: string; uiSchema?: AppBuilderUiSchema; error?: string };
+      const jsxCode = data.jsxCode?.trim();
+      if (jsxCode && isLikelyReactComponent(jsxCode)) {
+        codeHistory.push(jsxCode);
+        setPreviewVersion((v) => v + 1);
+        setMobilePane("preview");
+      } else if (data.uiSchema) {
+        setUiSchema(data.uiSchema);
         setPreviewVersion((v) => v + 1);
         setMobilePane("preview");
       } else {
-        setError(t(`${prefix}.loadSchemaError`));
+        setError(data.error ?? t(`${prefix}.generateError`));
       }
     } catch {
       setError(t(`${prefix}.loadSchemaError`));

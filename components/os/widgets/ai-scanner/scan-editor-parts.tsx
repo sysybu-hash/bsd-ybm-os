@@ -59,7 +59,7 @@ export function LineItemsEditor({ items, onChange }: { items: LineItemV5[]; onCh
     return (
       <div className="flex items-center justify-between rounded-lg border border-dashed border-[color:var(--border-main)] px-3 py-2">
         <span className="text-xs text-[color:var(--foreground-muted)]">אין שורות פריטים</span>
-        <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-indigo-500">
+        <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg bg-[color:var(--accent)] px-2 py-1 text-[10px] font-bold text-white hover:bg-indigo-500">
           <Plus size={11} /> הוסף שורה
         </button>
       </div>
@@ -91,7 +91,7 @@ export function LineItemsEditor({ items, onChange }: { items: LineItemV5[]; onCh
           </div>
         );
       })}
-      <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg border border-dashed border-indigo-400/50 px-3 py-1.5 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50/60 dark:text-indigo-400 dark:hover:bg-indigo-900/10">
+      <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg border border-dashed border-indigo-400/50 px-3 py-1.5 text-[10px] font-bold text-[color:var(--accent)] hover:bg-indigo-50/60 dark:text-indigo-400 dark:hover:bg-indigo-900/10">
         <Plus size={11} /> הוסף שורה
       </button>
     </div>
@@ -121,7 +121,7 @@ export function BoqEditor({ rows, onChange }: { rows: BillOfQuantityRowV5[]; onC
           </button>
         </div>
       ))}
-      <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg border border-dashed border-indigo-400/50 px-3 py-1.5 text-[10px] font-bold text-indigo-600 hover:bg-indigo-50/60 dark:text-indigo-400 dark:hover:bg-indigo-900/10">
+      <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg border border-dashed border-indigo-400/50 px-3 py-1.5 text-[10px] font-bold text-[color:var(--accent)] hover:bg-indigo-50/60 dark:text-indigo-400 dark:hover:bg-indigo-900/10">
         <Plus size={11} /> הוסף שורת BOQ
       </button>
     </div>

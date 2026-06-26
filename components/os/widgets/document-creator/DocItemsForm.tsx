@@ -21,7 +21,7 @@ export function DocItemsForm({ items, onAdd, onRemove, onUpdate }: DocItemsFormP
           </div>
           <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">פירוט עבודה / פריטים</h3>
         </div>
-        <button onClick={onAdd} className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors">
+        <button onClick={onAdd} className="text-xs font-bold text-[color:var(--accent)] dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors">
           <Plus size={14} /> הוסף פריט
         </button>
       </div>
@@ -53,7 +53,7 @@ export function DocItemsForm({ items, onAdd, onRemove, onUpdate }: DocItemsFormP
                   type="number"
                   inputMode="decimal"
                   placeholder="מחיר"
-                  className="w-full bg-transparent border-none text-sm text-left text-emerald-600 dark:text-emerald-400 font-bold focus:outline-none"
+                  className="w-full bg-transparent border-none text-sm text-left text-[color:var(--accent)] dark:text-emerald-400 font-bold focus:outline-none"
                   value={item.price}
                   onChange={(e) => onUpdate(item.id, "price", parseFloat(e.target.value))}
                 />

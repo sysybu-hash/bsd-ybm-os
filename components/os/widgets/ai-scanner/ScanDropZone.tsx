@@ -131,7 +131,7 @@ export function ScanDropZone({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm font-bold text-orange-700 shadow-sm transition active:scale-95 hover:bg-orange-500/20 dark:text-orange-200"
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm font-bold text-[color:var(--accent)] shadow-sm transition active:scale-95 hover:bg-orange-500/20 dark:text-orange-200"
             >
               <Upload size={16} aria-hidden />
               {tr("scanner.selectFiles", "העלה קובץ")}
@@ -141,7 +141,7 @@ export function ScanDropZone({
             <button
               type="button"
               onClick={() => (cameraInputRef ?? fileInputRef).current?.click()}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-indigo-700 shadow-sm transition active:scale-95 hover:bg-indigo-500/20 dark:text-indigo-200 sm:hidden"
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-[color:var(--accent)] shadow-sm transition active:scale-95 hover:bg-indigo-500/20 dark:text-indigo-200 sm:hidden"
             >
               <Camera size={16} aria-hidden />
               {tr("scanner.capturePhoto", "צלם מסמך")}

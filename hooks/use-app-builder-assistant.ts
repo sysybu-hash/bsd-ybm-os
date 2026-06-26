@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useAutomationRunnerContext } from "@/components/os/AutomationRunnerContext";
-import { useI18n } from "@/components/os/system/I18nProvider";import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { useGeminiLiveAudio, DEFAULT_GEMINI_LIVE_VOICE_SETTINGS } from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveStatusLabels, GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
@@ -21,6 +22,8 @@ import {
   isGeminiLiveRateLimited,
 } from "@/lib/gemini-live/rate-limit-cooldown";
 import { formatGeminiLiveRateLimitMessage } from "@/lib/gemini-live-user-message";
+import { handleAppBuilderLiveToolCall } from "@/lib/app-builder/live-tool-handler";
+import { isLikelyReactComponent } from "@/lib/app-builder/jsx-preview-utils";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 import type { AutomationAction } from "@/lib/os-automations/types";
 import { formatChatTime, type Message } from "@/components/os/widgets/ai-chat/types";
@@ -52,9 +55,16 @@ type UseAppBuilderAssistantOptions = {
   onSchemaApplied: (schema: AppBuilderUiSchema) => void;
   /** Called when the API returns a jsxCode string for Sandpack rendering */
   onCodeApplied?: (code: string) => void;
+  /** Schema arrived but JSX generation failed — rebuild preview from schema */
+  onRegeneratePreview?: (schema: AppBuilderUiSchema) => void;
 };
 
-export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCodeApplied }: UseAppBuilderAssistantOptions) {
+export function useAppBuilderAssistant({
+  currentUiSchema,
+  onSchemaApplied,
+  onCodeApplied,
+  onRegeneratePreview,
+}: UseAppBuilderAssistantOptions) {
   const { t, locale } = useI18n();
   const { data: session } = useSession();
   const automationCtx = useAutomationRunnerContext();
@@ -122,6 +132,39 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCod
   // הפרומפט נבנה בצד השרת; כאן אנו מעבירים רק את הגדרות הקול.
   const APP_BUILDER_LIVE_SESSION_URL = "/api/ai/gemini-live/app-builder-session";
 
+  const handleLiveToolCall = useCallback(
+    async (name: string, args: Record<string, unknown>) => {
+      let buildSucceeded = false;
+      const result = await handleAppBuilderLiveToolCall(name, args, {
+        locale,
+        getCurrentUiSchema: () => uiSchemaRef.current,
+        onCodeApplied,
+        onSchemaApplied,
+        onRegeneratePreview,
+        t,
+        onBuildReply: (reply) => {
+          buildSucceeded = true;
+          setMessages((prev) => [
+            ...prev.filter((m) => m.id !== LIVE_ASSISTANT_DRAFT_ID),
+            {
+              id: `assistant-live-build-${Date.now()}`,
+              role: "assistant",
+              content: reply,
+              timestamp: formatChatTime(locale),
+            },
+          ]);
+          toast.success(t("workspaceWidgets.appBuilder.liveBuildDone"));
+        },
+      });
+
+      if (!buildSucceeded) {
+        toast.error(result);
+      }
+      return result;
+    },
+    [locale, onCodeApplied, onRegeneratePreview, onSchemaApplied, t],
+  );
+
   const geminiLive = useGeminiLiveAudio({
     owner: "appBuilder",
     enabled: isLiveMode && geminiLiveEligible,
@@ -149,8 +192,7 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCod
         upsertLiveTranscriptMessage(prev, LIVE_ASSISTANT_DRAFT_ID, "assistant", visible, finished, locale),
       );
     },
-    // onToolCall intentionally omitted — the app-builder voice assistant does NOT
-    // execute any platform actions (CRM, invoices, scan, etc.)
+    onToolCall: handleLiveToolCall,
     shouldNotifyError: () => liveAutoStartRef.current,
     onError: (message) => {
       liveAutoStartRef.current = false;
@@ -268,13 +310,16 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCod
           },
         ]);
 
-        if (data.jsxCode) {
-          onCodeApplied?.(data.jsxCode);
+        const jsxCode = data.jsxCode?.trim();
+        if (jsxCode && isLikelyReactComponent(jsxCode)) {
+          onCodeApplied?.(jsxCode);
         }
         if (data.uiSchema) {
           onSchemaApplied(data.uiSchema);
-        } else if (data.schemaError && !data.jsxCode) {
-          // Only show schema error if we also have no JSX fallback
+          if (!jsxCode && onRegeneratePreview) {
+            onRegeneratePreview(data.uiSchema);
+          }
+        } else if (data.schemaError && !jsxCode) {
           toast.error(t("workspaceWidgets.appBuilder.refineFailed"));
         }
 
@@ -290,7 +335,7 @@ export function useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCod
         setIsLoading(false);
       }
     },
-    [automationCtx, input, isLoading, locale, messages, onCodeApplied, onSchemaApplied, t],
+    [automationCtx, input, isLoading, locale, messages, onCodeApplied, onRegeneratePreview, onSchemaApplied, t],
   );
 
   const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =

@@ -1,15 +1,23 @@
 "use client";
 
+import { useMemo } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
+import DynamicRenderer from "@/components/AppBuilder/DynamicRenderer";
+import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
 import { DynamicSandpackRenderer } from "@/components/os/widgets/shared/DynamicSandpackRenderer";
 import { PreviewToolbar } from "@/components/os/widgets/app-builder/PreviewToolbar";
 import { SavedAppsPanel } from "@/components/os/widgets/app-builder/SavedAppsPanel";
 import { SaveAppForm } from "@/components/os/widgets/app-builder/SaveAppForm";
 import AppBuilderAssistantPanel from "@/components/os/widgets/app-builder/AppBuilderAssistantPanel";
-import { SANDPACK_PLACEHOLDER } from "@/components/os/widgets/app-builder/app-builder-helpers";
+import { buildSandpackPlaceholder } from "@/components/os/widgets/app-builder/app-builder-helpers";
 import { useAppBuilder } from "@/components/os/widgets/app-builder/useAppBuilder";
 
-export default function AppBuilderWidget() {
+type AppBuilderWidgetProps = {
+  /** When rendered inside AI Hub — uses hub scroll/fill contract instead of own sticky chrome. */
+  embeddedInHub?: boolean;
+};
+
+export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWidgetProps) {
   const s = useAppBuilder();
   const {
     t, dir, prefix,
@@ -23,8 +31,17 @@ export default function AppBuilderWidget() {
     handleShareNow, handleLoadSaved, handleDeleteSaved, handleSaveSchema, formatDate,
   } = s;
 
-  // ── Raw content fragments — no wrapper divs, no scroll containers ────────
-  // Each pane's scroll container is defined ONCE in the return below.
+  const placeholderCode = useMemo(
+    () => buildSandpackPlaceholder(t(`${prefix}.previewWindowTitle`), t(`${prefix}.emptyPreview`)),
+    [prefix, t],
+  );
+
+  const previewTitle =
+    appName.trim() ||
+    (uiSchema && "title" in uiSchema && typeof uiSchema.title === "string" ? uiSchema.title : "") ||
+    t(`${prefix}.previewWindowTitle`);
+  const previewSubtitle = uiSchema ? null : t(`${prefix}.emptyPreview`);
+
   const buildContent = (
     <>
       <SavedAppsPanel
@@ -41,15 +58,14 @@ export default function AppBuilderWidget() {
         formatDate={formatDate}
       />
 
-      {/* Chat — embedded (flat) mode: grows naturally, no internal scroll */}
       <AppBuilderAssistantPanel
         embedded
         currentUiSchema={uiSchema}
         onSchemaApplied={applySchemaFromAssistant}
         onCodeApplied={applyCodeFromAssistant}
+        onRegeneratePreview={(schema) => void handleRegenerate(schema, appName)}
       />
 
-      {/* Save form */}
       {uiSchema ? (
         <SaveAppForm
           appName={appName}
@@ -68,13 +84,14 @@ export default function AppBuilderWidget() {
       ) : null}
 
       {success ? <p className="text-xs text-emerald-400" role="status">{success}</p> : null}
-      {error   ? <p className="text-xs text-red-400"     role="alert">{error}</p>    : null}
+      {error ? <p className="text-xs text-red-400" role="alert">{error}</p> : null}
     </>
   );
 
-  // Undo/redo toolbar — lets the user revert a generation that made things worse.
-  const previewToolbar = codeHistory.total > 0 ? (
+  const previewHeader = (
     <PreviewToolbar
+      title={previewTitle}
+      subtitle={previewSubtitle}
       canUndo={codeHistory.canUndo}
       canRedo={codeHistory.canRedo}
       index={codeHistory.index}
@@ -82,62 +99,89 @@ export default function AppBuilderWidget() {
       onUndo={handleUndo}
       onRedo={handleRedo}
     />
-  ) : null;
+  );
 
-  // When app loaded but no jsxCode — show a "rebuild preview" prompt
-  const noCodeCanvas = uiSchema && !generatedCode ? (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] text-center">
-      {regenerating ? (
-        <>
-          <Loader2 size={28} className="animate-spin text-indigo-400" />
-          <p className="text-sm font-medium text-[color:var(--foreground-muted)]">בונה תצוגה מקדימה…</p>
-        </>
+  const previewCanvas = (
+    <div className="relative min-h-0 flex-1 p-2 sm:p-3">
+      {generatedCode ? (
+        <DynamicSandpackRenderer
+          key={`sandbox-${previewVersion}`}
+          code={generatedCode}
+          className="absolute inset-2 sm:inset-3"
+        />
+      ) : uiSchema ? (
+        <div className="absolute inset-2 sm:inset-3 overflow-y-auto overscroll-y-contain custom-scrollbar rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]">
+          {regenerating ? (
+            <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 p-6 text-center">
+              <Loader2 size={28} className="animate-spin text-indigo-400" />
+              <p className="text-sm font-medium text-[color:var(--foreground-muted)]">{t(`${prefix}.generating`)}</p>
+            </div>
+          ) : (
+            <>
+              <DynamicRenderer
+                key={`schema-${previewVersion}-${savedSchemaId ?? "draft"}`}
+                uiSchema={uiSchema}
+                schemaId={savedSchemaId}
+                readOnly={readOnlyLoaded}
+              />
+              <div className="sticky bottom-0 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 p-3 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => void handleRegenerate(uiSchema, appName)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-500"
+                >
+                  <RefreshCw size={14} />
+                  {t(`${prefix}.generate`)}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       ) : (
-        <>
-          <RefreshCw size={28} className="text-indigo-400" />
-          <div>
-            <p className="text-sm font-semibold text-[color:var(--foreground-main)]">{appName || "האפליקציה נטענה"}</p>
-            <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">הקוד לא נשמר — יש לבנות תצוגה מקדימה</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void handleRegenerate(uiSchema, appName)}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-500"
-          >
-            <RefreshCw size={14} />
-            בנה תצוגה מקדימה
-          </button>
-        </>
+        <DynamicSandpackRenderer
+          key="sandbox-placeholder"
+          code={placeholderCode}
+          className="absolute inset-2 sm:inset-3"
+        />
       )}
     </div>
-  ) : null;
+  );
 
-  // previewContent is used only on mobile (build/preview toggle)
-  const previewContent = (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {previewToolbar}
-      <div className="relative min-h-0 flex-1">
-        {noCodeCanvas ?? (
-          <DynamicSandpackRenderer
-            key={`sandbox-mobile-${previewVersion}`}
-            code={generatedCode ?? SANDPACK_PLACEHOLDER}
-            className="absolute inset-0"
-          />
-        )}
+  const previewPane = (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--surface-soft)]/40">
+      {previewHeader}
+      {previewCanvas}
+    </div>
+  );
+
+  const controlsPane = (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden border-s border-border-main bg-[color:var(--background-main)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain custom-scrollbar px-4 py-4 sm:px-5 sm:py-5">
+        {buildContent}
       </div>
     </div>
   );
 
   const mobilePaneSwitcher = (
-    <div className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 p-2"
-      role="tablist" aria-label={t(`${prefix}.mobilePaneAria`)}>
+    <div
+      className="flex shrink-0 gap-1 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/90 p-2"
+      role="tablist"
+      aria-label={t(`${prefix}.mobilePaneAria`)}
+    >
       {(["build", "preview"] as const).map((pane) => {
         const selected = mobilePane === pane;
         const label = pane === "build" ? t(`${prefix}.mobilePaneBuild`) : t(`${prefix}.mobilePanePreview`);
         return (
-          <button key={pane} type="button" role="tab" aria-selected={selected}
+          <button
+            key={pane}
+            type="button"
+            role="tab"
+            aria-selected={selected}
             onClick={() => setMobilePane(pane)}
-            className={`min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${selected ? "bg-indigo-600 text-white" : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"}`}>
+            className={`min-h-[44px] flex-1 rounded-lg px-3 text-sm font-bold transition ${
+              selected ? "bg-[color:var(--accent)] text-white" : "bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]"
+            }`}
+          >
             {label}
           </button>
         );
@@ -147,46 +191,48 @@ export default function AppBuilderWidget() {
 
   return (
     <div
-      data-widget-sticky-chrome
+      data-widget-sticky-chrome={embeddedInHub ? undefined : true}
+      data-embedded-in-hub={embeddedInHub ? "true" : undefined}
+      data-hub-inner-scroll={embeddedInHub ? "true" : undefined}
       data-app-builder-root
       data-widget-fill-height
-      className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden bg-surface-bg"
+      className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-bg"
       dir={dir}
     >
-
-      {/* RIGHT PANE (Builder / Chat): Fixed width on desktop, hidden on mobile */}
-      <div className="hidden md:flex flex-col w-[350px] shrink-0 h-full min-h-0 border-s border-border-main">
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
-          {buildContent}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        {mobilePaneSwitcher}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {mobilePane === "build" ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain custom-scrollbar px-4 py-4">
+              {buildContent}
+            </div>
+          ) : (
+            previewPane
+          )}
         </div>
       </div>
 
-      {/* LEFT PANE (Preview): Takes remaining space — NO extra scroll wrapper,
-          Sandpack owns its own iframe scroll context */}
-      <div className="flex flex-col flex-1 min-w-0 h-full min-h-0 relative">
-        {/* Mobile: pane switcher */}
-        <div className="shrink-0 md:hidden">{mobilePaneSwitcher}</div>
-
-        {/* Mobile content area (scrollable for build list, flex for preview) */}
-        <div className="flex min-h-0 flex-1 flex-col md:hidden overflow-y-auto custom-scrollbar p-2">
-          {mobilePane === "build" ? buildContent : previewContent}
-        </div>
-
-        {/* Desktop: toolbar + preview fill remaining height */}
-        <div className="hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
-          {previewToolbar}
-          <div className="relative min-h-0 flex-1 p-2">
-            {noCodeCanvas ?? (
-              <DynamicSandpackRenderer
-                key={`sandbox-${previewVersion}`}
-                code={generatedCode ?? SANDPACK_PLACEHOLDER}
-                className="absolute inset-0"
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
+      <WidgetSplitPanels
+        className="hidden min-h-0 flex-1 md:flex"
+        layoutStorageKey="app-builder-split-v1"
+        panels={[
+          {
+            id: "app-builder-controls",
+            defaultSize: 36,
+            minSize: 28,
+            maxSize: 48,
+            className: "flex min-h-0 min-w-0 flex-col",
+            children: controlsPane,
+          },
+          {
+            id: "app-builder-preview",
+            defaultSize: 64,
+            minSize: 40,
+            className: "flex min-h-0 min-w-0 flex-col",
+            children: previewPane,
+          },
+        ]}
+      />
     </div>
   );
 }

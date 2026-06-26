@@ -80,7 +80,7 @@ export function ScanHeaderToolbar({
           <button
             type="button"
             onClick={onStartScan}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-l from-orange-600 to-amber-500 px-3 text-[11px] font-bold text-white shadow-sm hover:from-orange-500"
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] px-3 text-[11px] font-bold text-white shadow-sm hover:from-orange-500"
           >
             <ScanLine size={14} aria-hidden />
             {tr("workspaceWidgets.aiScanner.scanNow", "סרוק עכשיו")} ({pendingCount})
@@ -89,7 +89,7 @@ export function ScanHeaderToolbar({
           <button
             type="button"
             onClick={onPickFiles}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 text-[11px] font-bold text-orange-700 hover:bg-orange-500/15 dark:text-orange-300"
+            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 text-[11px] font-bold text-[color:var(--accent)] hover:bg-orange-500/15 dark:text-orange-300"
           >
             <ScanLine size={14} aria-hidden />
             {tr("workspaceWidgets.aiScanner.pickFiles", "בחר קבצים לסריקה")}
@@ -160,7 +160,7 @@ export function ScanHeaderToolbar({
 
         {scanClassification ? (
           <span
-            className="hidden shrink-0 truncate rounded-lg bg-indigo-500/10 px-2 py-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 sm:block"
+            className="hidden shrink-0 truncate rounded-lg bg-indigo-500/10 px-2 py-1.5 text-[10px] font-bold text-[color:var(--accent)] dark:text-indigo-300 sm:block"
             title={scanClassification.rationale}
           >
             {isAutoDetectScanMode(scanModeOverride)

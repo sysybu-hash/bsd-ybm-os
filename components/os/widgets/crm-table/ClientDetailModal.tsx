@@ -62,7 +62,7 @@ export function ClientDetailModal({
                 <span
                   className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                     client.status === "active"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-400"
                       : client.status === "lead"
                         ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         : "bg-slate-500/10 text-slate-500 dark:text-slate-400"
@@ -109,7 +109,7 @@ export function ClientDetailModal({
             onClick={() => setActiveTab("details")}
             className={`px-4 py-2 text-xs font-bold rounded-t-xl ${
               activeTab === "details"
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                ? "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-300"
                 : "text-slate-500"
             }`}
           >
@@ -120,7 +120,7 @@ export function ClientDetailModal({
             onClick={() => setActiveTab("timeline")}
             className={`px-4 py-2 text-xs font-bold rounded-t-xl ${
               activeTab === "timeline"
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                ? "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-300"
                 : "text-slate-500"
             }`}
           >

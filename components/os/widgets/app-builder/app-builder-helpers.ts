@@ -54,15 +54,30 @@ export function mapActionError(error: string, t: (key: string) => string, prefix
   return error;
 }
 
+/** Escape text for embedding inside a JS template literal in generated preview code. */
+function escapeForTemplateLiteral(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
+}
+
 /** Placeholder component shown in the preview before any app is generated. */
-export const SANDPACK_PLACEHOLDER = `export default function App() {
+export function buildSandpackPlaceholder(title: string, subtitle: string): string {
+  const safeTitle = escapeForTemplateLiteral(title);
+  const safeSubtitle = escapeForTemplateLiteral(subtitle);
+  return `export default function App() {
   return (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh",gap:"16px",background:"#f8fafc",fontFamily:"system-ui,sans-serif",color:"#64748b",textAlign:"center",padding:"32px"}}>
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100%",height:"100%",gap:"16px",background:"#f8fafc",fontFamily:"system-ui,sans-serif",color:"#64748b",textAlign:"center",padding:"32px",boxSizing:"border-box"}}>
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.5}}>
         <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
       </svg>
-      <p style={{fontSize:"15px",fontWeight:600,color:"#475569",margin:0}}>חלון תצוגה מקדימה</p>
-      <p style={{fontSize:"13px",color:"#94a3b8",maxWidth:"260px",lineHeight:1.6,margin:0}}>תארו את הממשק שאתם רוצים בצ׳אט — הוא יופיע כאן מיידית</p>
+      <p style={{fontSize:"15px",fontWeight:600,color:"#475569",margin:0}}>${safeTitle}</p>
+      <p style={{fontSize:"13px",color:"#94a3b8",maxWidth:"280px",lineHeight:1.6,margin:0}}>${safeSubtitle}</p>
     </div>
   );
 }`;
+}
+
+/** @deprecated Use buildSandpackPlaceholder with i18n strings */
+export const SANDPACK_PLACEHOLDER = buildSandpackPlaceholder(
+  "חלון תצוגה מקדימה",
+  "תארו את הממשק שאתם רוצים בצ׳אט — הוא יופיע כאן מיידית",
+);

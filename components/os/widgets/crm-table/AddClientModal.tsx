@@ -48,7 +48,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
       <div className="w-full max-w-md shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl my-auto">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <UserPlus className="text-emerald-600 dark:text-emerald-400" size={24} /> {t("workspaceWidgets.crmTable.addClientTitle")}
+            <UserPlus className="text-[color:var(--accent)] dark:text-emerald-400" size={24} /> {t("workspaceWidgets.crmTable.addClientTitle")}
           </h3>
           <button
             type="button"
@@ -117,7 +117,7 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
         <button
           type="button"
           onClick={() => void handleAdd()}
-          className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
+          className="w-full h-12 bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
         >
           <Save size={18} /> {t("workspaceWidgets.crmTable.addClientSave")}
         </button>

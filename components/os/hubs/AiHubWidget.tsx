@@ -66,9 +66,7 @@ export default function AiHubWidget({ liveData, openWorkspaceWidget }: Props) {
         tabId === "notebook" ? (
           <NotebookLMWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />
         ) : tabId === "builder" ? (
-          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <AppBuilderWidget />
-          </div>
+          <AppBuilderWidget embeddedInHub />
         ) : (
           <AiChatFullWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />
         )

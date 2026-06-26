@@ -55,7 +55,8 @@ export type WidgetType =
   | 'appBuilder'
   | 'logisticsHub'
   | 'procurementHub'
-  | 'executiveHub';
+  | 'executiveHub'
+  | 'universalCommand';
 
 export interface ActiveWidget {
   id: string;
@@ -156,11 +157,12 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   financeHub: { width: 1040, height: 780 },
   projectsHub: { width: 1120, height: 780 },
   documentsHub: { width: 1040, height: 780 },
-  aiHub: { width: 720, height: 750 },
+  aiHub: { width: 1100, height: 780 },
   appBuilder: { width: 1100, height: 780 },
   logisticsHub: { width: 1040, height: 780 },
   procurementHub: { width: 1040, height: 780 },
   executiveHub: { width: 1080, height: 800 },
+  universalCommand: { width: 920, height: 640 },
 };
 
 export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
@@ -423,8 +425,17 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
   );
 
   const closeWidget = useCallback((id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
-  }, []);
+    setWidgets(prev => {
+      const next = prev.filter(w => w.id !== id);
+      // Flush to the server immediately (force, bypassing the 400ms debounce) so a
+      // refresh right after closing can't restore the window from a stale server copy.
+      if (userId) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        persistLayout(next, userId, { force: true });
+      }
+      return next;
+    });
+  }, [userId, persistLayout]);
 
   const focusWidget = useCallback((id: string) => {
     const nextZ = nextZIndexRef.current + 1;

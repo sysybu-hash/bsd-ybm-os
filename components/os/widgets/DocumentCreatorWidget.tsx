@@ -82,7 +82,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
               {" · "}
               {t("workspaceWidgets.documentCreator.vatAmountLabel", { amount: billing.vat.toLocaleString() })}
             </span>
-            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-lg font-black text-[color:var(--accent)] dark:text-emerald-400">
               ₪{billing.total.toLocaleString()}
             </span>
           </div>
@@ -190,7 +190,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
           type="button"
           onClick={() => void d.generateDocument()}
           disabled={d.loading || !d.clientNameInput.trim()}
-          className="w-full h-14 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
+          className="w-full h-14 bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
         >
           {d.loading ? (
             <Loader2 className="w-6 h-6 animate-spin" />
@@ -225,13 +225,13 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
           <p className="text-sm text-[color:var(--foreground-muted)]">
             לפני מע״מ: ₪{billing.net.toLocaleString()} · מע״מ ({formatVatPercent(d.vatRatePercent)}%): ₪{billing.vat.toLocaleString()}
           </p>
-          <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+          <p className="text-lg font-black text-[color:var(--accent)] dark:text-emerald-400">
             ₪{billing.total.toLocaleString()}
           </p>
           <button
             type="button"
             onClick={() => void d.generateDocument()}
-            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500"
+            className="w-full rounded-xl bg-[color:var(--accent)] py-3 text-sm font-bold text-white hover:bg-indigo-500"
           >
             {t("workspaceWidgets.docCreator.draftConfirm")}
           </button>

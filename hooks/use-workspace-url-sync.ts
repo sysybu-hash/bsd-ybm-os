@@ -63,6 +63,9 @@ export function useWorkspaceUrlSync({
   const prevWidgetsRef = useRef<ActiveWidget[]>([]);
   /** מונע לולאת focusWidget → widgets → effect (Maximum update depth / error boundary). */
   const fulfilledFocusRef = useRef<string | null>(null);
+  /** On a fresh page load, a `?w=…&wid=…` URL is a self-written focus link from a previous
+   *  session — not user intent. We strip it once so reloads restore ONLY the saved layout. */
+  const initialUrlStripped = useRef(false);
 
   const intentFingerprint = useCallback(
     (intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) =>
@@ -187,6 +190,20 @@ export function useWorkspaceUrlSync({
     const intent = resolveIntent();
     if (!intent) return;
 
+    // First processing after hydration: if the URL carries a window instance id (`wid`),
+    // it's a stale self-written focus link from a previous session — strip it and don't
+    // auto-open. The saved layout (use-window-manager) is the single source of truth for
+    // what reopens, so a refresh restores exactly the windows the user left — nothing else.
+    // Intentional deep links (launcher, emails) use `?w=X` WITHOUT a `wid` and still open.
+    if (!initialUrlStripped.current) {
+      initialUrlStripped.current = true;
+      if (intent.widgetInstanceId && typeof window !== "undefined") {
+        dismissedWorkspaceIntentFp = intentFingerprint(intent);
+        window.history.replaceState(null, "", window.location.pathname);
+        return;
+      }
+    }
+
     const fp = intentFingerprint(intent);
 
     const projectId =
@@ -220,6 +237,17 @@ export function useWorkspaceUrlSync({
     }
 
     fulfilledFocusRef.current = null;
+
+    // A `?w=X&wid=Y` URL carries a specific window instance id. Reaching this branch means
+    // no open window matches that id — i.e. it's a stale self-written focus URL left over
+    // from a previous session/refresh (the instance no longer exists). Don't resurrect the
+    // window; strip the deep link so a refresh starts clean. (Intentional deep links — from
+    // the launcher, emails, etc. — carry `?w=X` without a `wid` and still open below.)
+    if (intent.widgetInstanceId && typeof window !== "undefined") {
+      dismissedWorkspaceIntentFp = fp;
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
 
     if (dismissedWorkspaceIntentFp === fp) return;
     if (fulfilledOpenIntentFp === fp) return;

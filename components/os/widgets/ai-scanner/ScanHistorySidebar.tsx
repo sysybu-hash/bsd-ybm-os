@@ -30,7 +30,7 @@ export function ScanHistorySidebar({ history, onDelete, tr }: ScanHistorySidebar
           >
             <div className="min-w-0 flex-1">
               <div className="truncate text-[10px] font-bold">{item.vendor}</div>
-              <div className="text-[10px] font-mono text-emerald-600">
+              <div className="text-[10px] font-mono text-[color:var(--accent)]">
                 ₪{(item.amount || 0).toLocaleString()}
               </div>
             </div>

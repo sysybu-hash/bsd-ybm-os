@@ -40,7 +40,7 @@ export function SaveAppForm({
   return (
     <div className="flex flex-col gap-2 border-t border-[color:var(--border-main)] pt-4">
       {isEditing ? (
-        <p className="text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
+        <p className="text-[10px] font-medium text-[color:var(--accent)] dark:text-indigo-300">
           {readOnlyLoaded ? t(`${PREFIX}.globalAppReadOnly`) : t(`${PREFIX}.editingApp`)}
         </p>
       ) : null}
@@ -68,14 +68,14 @@ export function SaveAppForm({
           type="button"
           onClick={onShareNow}
           disabled={sharingIdea}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs font-medium text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-500/15 disabled:opacity-60"
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs font-medium text-[color:var(--accent)] dark:text-indigo-300 transition hover:bg-indigo-500/15 disabled:opacity-60"
         >
           <Share2 size={12} aria-hidden />
           {sharingIdea ? "שולח…" : t(`${PREFIX}.shareIdeaLabel`)}
         </button>
       ) : null}
       <button type="button" onClick={onSave} disabled={saving || readOnlyLoaded}
-        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-indigo-600 text-white hover:bg-indigo-500" : "border border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20"}`}>
+        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-[color:var(--accent)] text-white hover:bg-indigo-500" : "border border-indigo-500/40 bg-indigo-500/10 text-[color:var(--accent)] dark:text-indigo-300 hover:bg-indigo-500/20"}`}>
         {saving ? t(`${PREFIX}.saving`) : isEditing ? t(`${PREFIX}.updateApp`) : t(`${PREFIX}.saveApp`)}
       </button>
     </div>

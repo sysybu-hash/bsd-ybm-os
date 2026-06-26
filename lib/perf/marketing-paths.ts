@@ -7,7 +7,12 @@ export function isMarketingPublicShellPath(pathname: string): boolean {
 /** מרחב עבודה פעיל (כולל rewrite מ־`/` למנויים מחוברים) */
 export function isWorkspaceShellPath(pathname: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
-  return p === "/workspace" || p.startsWith("/workspace/");
+  return (
+    p === "/workspace" ||
+    p.startsWith("/workspace/") ||
+    p === "/dashboard" ||
+    p.startsWith("/dashboard/")
+  );
 }
 
 /** האם לדלג על רישום Service Worker */
