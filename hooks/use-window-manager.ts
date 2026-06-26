@@ -334,12 +334,20 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
       log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
     }
 
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      if (activeUserIdRef.current !== userId) return;
-      if (!canPersistWorkspaceLayout()) return;
-      persistLayout(widgets, userId);
-    }, 400);
+    // When all windows are closed, persist to server immediately (no debounce) so that
+    // a fast page refresh sees the cleared state from the server and does not re-open
+    // the old layout via Phase 2.
+    if (widgets.length === 0) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      persistLayout([], userId);
+    } else {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        if (activeUserIdRef.current !== userId) return;
+        if (!canPersistWorkspaceLayout()) return;
+        persistLayout(widgets, userId);
+      }, 400);
+    }
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
