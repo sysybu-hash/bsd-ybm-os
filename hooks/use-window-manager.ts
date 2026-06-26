@@ -165,6 +165,11 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   universalCommand: { width: 920, height: 640 },
 };
 
+// True after the first successful server-sync in this browser session.
+// Prevents stale-localStorage flash on first page load while preserving
+// instant layout restore during in-session user switches.
+let _sessionServerSynced = false;
+
 export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -226,7 +231,12 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
       localWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
     }
 
-    // Phase 1 (sync): show cached layout immediately — no spinner flash on user switch
+    // Phase 1 (sync): apply cached layout into state.
+    // On first page load (_sessionServerSynced=false) we intentionally do NOT mark
+    // hasHydrated yet — this prevents a stale-localStorage flash where an old widget
+    // flickers before Phase 2 overwrites it with the real server layout.
+    // On subsequent in-session user switches Phase 1 fires after _sessionServerSynced
+    // is already true, so we restore instantly as before.
     if (localWidgets.length > 0) {
       applyRestoredWidgets(localWidgets, setWidgets, nextZIndexRef);
       setIsFirstTime(false);
@@ -234,7 +244,9 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
       setWidgets([]);
       setIsFirstTime(true);
     }
-    setHasHydrated(true);
+    if (_sessionServerSynced) {
+      setHasHydrated(true);
+    }
 
     // Phase 2 (async): reconcile with server in background
     async function syncFromServer() {
@@ -298,6 +310,10 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         setWidgets([]);
         setIsFirstTime(firstTime);
       }
+      // Mark session as synced — subsequent in-session user switches can use Phase 1
+      // instant restore without risk of flashing stale data on cold page load.
+      _sessionServerSynced = true;
+      setHasHydrated(true);
     }
 
     void syncFromServer();
