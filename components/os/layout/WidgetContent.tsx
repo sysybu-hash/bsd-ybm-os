@@ -47,13 +47,14 @@ const PlatformAdminWidget = dynamic(() => import("@/components/os/widgets/Platfo
 const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCenterWidget"), { loading });
 const ExecutiveHubWidget = dynamic(() => import("@/components/os/hubs/ExecutiveHubWidget"), { loading });
 const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading });
+const UniversalCommandWidget = dynamic(() => import("@/components/os/widgets/UniversalCommandWidget"), { loading });
 
 export const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "project", "crm", "dashboard", "aiChat", "cashflow", "erp", "projectBoard", "crmTable",
   "erpArchive", "docCreator", "aiScanner", "fieldCopilot", "aiChatFull", "settings",
   "meckanoReports", "googleDrive", "googleCalendar", "jewishCalendar", "notebookLM", "accessibility",
   "platformAdmin", "helpCenter",   "financeHub", "projectsHub", "documentsHub", "aiHub", "appBuilder",
-  "logisticsHub", "procurementHub", "executiveHub",
+  "logisticsHub", "procurementHub", "executiveHub", "universalCommand",
 ]);
 
 export function WidgetContent({
@@ -96,6 +97,7 @@ export function WidgetContent({
     return <ProcurementHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
   }
   if (widget.type === "executiveHub") return <ExecutiveHubWidget liveData={widget.liveData} />;
+  if (widget.type === "universalCommand") return <UniversalCommandWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
 
   return (
     <WidgetState variant="error"

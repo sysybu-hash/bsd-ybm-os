@@ -109,6 +109,7 @@ export function buildDefaultLauncherConfig(
     version: 2,
     quickGrid,
     sidebar: [
+      slot("universalCommand"),
       slot("financeHub"),
       slot("projectsHub"),
       slot("crmTable"),
@@ -125,6 +126,7 @@ export function buildDefaultLauncherConfig(
       : [slot("fieldCopilot"), slot("documentsHub"), slot("projectsHub")],
     mobileBarEnd: [slot("aiHub")],
     mobileMore: [
+      slot("universalCommand"),
       ...(company ? [] : [slot("fieldCopilot")]),
       ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
       slot("financeHub"),

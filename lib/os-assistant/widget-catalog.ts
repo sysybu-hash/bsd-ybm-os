@@ -208,6 +208,13 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelRu: "Админ",
     keywords: ["אדמין", "admin", "מנהל", "מנויים", "הרשמות"],
   },
+  {
+    id: "universalCommand",
+    labelHe: "מרכז בקרה ופעולות מהירות",
+    labelEn: "Command center",
+    labelRu: "Центр команд",
+    keywords: ["מרכז", "בקרה", "פעולות", "מהיר", "command", "center", "quick", "actions"],
+  },
 ];
 
 const ALIASES: Record<string, WidgetType> = {

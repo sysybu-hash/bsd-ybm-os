@@ -1,15 +1,13 @@
-import { generateObject, generateText } from "ai";
+import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { APP_BUILDER_CHAT_SYSTEM_PROMPT } from "@/lib/app-builder/chat-system-prompt";
+import { generateAppBuilderUiFromPrompt } from "@/lib/app-builder/generate-app-ui";
 import { appBuilderCapabilitiesForPrompt } from "@/lib/app-builder/platform-capabilities-for-prompt";
-import {
-  buildRefinePrompt,
-  generateUiSchemaFromPrompt,
-} from "@/lib/app-builder/generate-ui-schema";
+import { looksLikeUiBuildRequest } from "@/lib/app-builder/jsx-preview-utils";
 import { env } from "@/lib/env";
 import { GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
 import { jsonBadRequest, jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
@@ -153,12 +151,22 @@ export const POST = withWorkspacesAuth(
 
       const conversation = buildConversationPrompt(data.messages, data.currentUiSchema);
 
-      const { object: intent } = await generateObject({
+      const { object: rawIntent } = await generateObject({
         model: google(MODEL),
         system,
         schema: chatIntentSchema,
         prompt: conversation,
       });
+
+      const intent = { ...rawIntent };
+      const userText = lastUser.content.trim();
+      const refiningExistingApp = data.currentUiSchema != null;
+
+      // Heuristic safety net — the model sometimes answers in chat but skips generateApp.
+      if (!intent.generateApp && (looksLikeUiBuildRequest(userText) || refiningExistingApp)) {
+        intent.generateApp = true;
+        intent.appPrompt = userText;
+      }
 
       let uiSchema: z.infer<typeof appBuilderUiSchema> | undefined;
       let schemaError: string | undefined;
@@ -168,82 +176,20 @@ export const POST = withWorkspacesAuth(
       // Use the last user message so an edit request never silently no-ops.
       const effectiveAppPrompt =
         intent.appPrompt?.trim() ||
-        (intent.generateApp ? lastUser.content.trim() : "");
+        (intent.generateApp ? userText : "");
 
       if (intent.generateApp && effectiveAppPrompt) {
-        // ── 1. JSON schema path (legacy, for schema-typed apps) ──────────────
-        const generatorPrompt =
-          data.currentUiSchema != null
-            ? buildRefinePrompt(effectiveAppPrompt, data.currentUiSchema)
-            : effectiveAppPrompt;
-
-        const sanitized = await generateUiSchemaFromPrompt(generatorPrompt, locale);
-        if (sanitized.ok) {
-          uiSchema = sanitized.schema;
-        } else {
-          log.warn("chat_ui_schema_rejected", { error: sanitized.error, orgId });
-          schemaError = "schema_rejected";
-        }
-
-        // ── 2. JSX code path (Sandpack dynamic renderer) ─────────────────────
-        try {
-          const jsxSystemPrompt = [
-            "You are an elite React and Tailwind CSS engineer.",
-            "Build ANYTHING the user requests: clocks, games, calculators, animations, charts, dashboards, forms, or any creative UI.",
-            "Never refuse. Never say it is too complex.",
-            "",
-            "STRICT OUTPUT RULES — violating any rule will break the renderer:",
-            "1. Return ONLY the raw React component code. No markdown. No backticks. No ```jsx or ``` fences of any kind.",
-            "2. Do NOT include any explanatory text, comments about the code, or prose before or after the component.",
-            "3. Start the response with exactly 'import React' or 'export default function' — nothing else before it.",
-            "4. Export a single default functional component.",
-            "5. Use Tailwind CSS classes exclusively for styling (Tailwind CDN is injected, all classes work).",
-            "6. Use only React (useState, useEffect, useRef, etc. are available). Do NOT import any other library.",
-            "7. Ensure all parentheses, brackets, and braces are perfectly balanced — no syntax errors.",
-            "8. For animations (clocks, loaders) inject a <style> tag with @keyframes inside the JSX, or use inline style={{animation:...}}.",
-          ].join("\n");
-
-          const { text } = await generateText({
-            model: google(MODEL),
-            system: jsxSystemPrompt,
-            prompt: effectiveAppPrompt,
-            maxOutputTokens: 8192,
-          });
-
-          // ── Robust markdown fence extractor ──────────────────────────────────
-          // Priority 1: extract content from inside ```lang ... ``` blocks
-          // Priority 2: strip any leading/trailing fence lines
-          // Priority 3: trim whitespace
-          let cleanCode = text;
-
-          // Greedy match: opening fence → LAST closing fence (prevents stopping early on template literals)
-          const fenceMatch = cleanCode.match(/```(?:jsx?|tsx?|typescript|javascript|react)?\s*([\s\S]*)```/i);
-          if (fenceMatch?.[1]) {
-            cleanCode = fenceMatch[1];
-          } else {
-            // No closing fence — strip any opening fence line if present
-            cleanCode = cleanCode
-              .replace(/^```(?:jsx?|tsx?|typescript|javascript|react)?\s*/im, "")
-              .replace(/```\s*$/m, "");
-          }
-          // Strip any residual lone trailing backtick left by partial fence extraction
-          cleanCode = cleanCode.replace(/(?<![`])(`)\s*$/, "").trim();
-
-          // Safety: ensure the code starts with a valid React statement
-          if (!cleanCode.startsWith("import") && !cleanCode.startsWith("export") && !cleanCode.startsWith("const") && !cleanCode.startsWith("function")) {
-            // Model prepended prose — find the first real code line
-            const codeStart = cleanCode.search(/^(?:import |export |const |function )/m);
-            if (codeStart !== -1) cleanCode = cleanCode.slice(codeStart).trim();
-          }
-
-          jsxCode = cleanCode;
-          log.info("chat_jsx_generated", { orgId, chars: jsxCode.length });
-        } catch (jsxErr: unknown) {
-          log.warn("chat_jsx_generation_failed", {
-            error: jsxErr instanceof Error ? jsxErr.message : String(jsxErr),
-            orgId,
-          });
-          // Non-fatal — the uiSchema path can still serve the preview
+        const generated = await generateAppBuilderUiFromPrompt({
+          description: effectiveAppPrompt,
+          locale,
+          currentUiSchema: data.currentUiSchema,
+          orgId,
+          mode: refiningExistingApp ? "update" : "build",
+        });
+        uiSchema = generated.uiSchema;
+        jsxCode = generated.jsxCode;
+        if (generated.schemaError) {
+          schemaError = generated.schemaError;
         }
       }
 

@@ -342,7 +342,77 @@
       "aiHub": "AI",
       "logisticsHub": "Logistics & assets",
       "procurementHub": "Procurement & POs",
-      "executiveHub": "Executive hub"
+      "executiveHub": "Executive hub",
+      "universalCommand": "Command Center"
+    },
+    "classicDashboard": {
+      "title": "Dashboard",
+      "proMode": "Back to OS mode",
+      "classicMode": "Classic view",
+      "subtitleShort": "A simple dashboard, no floating windows",
+      "tabs": {
+        "home": "Overview",
+        "crm": "CRM & Projects",
+        "erp": "Documents",
+        "scan": "AI Scan",
+        "customOs": "App Builder",
+        "calendar": "Calendar",
+        "tasks": "Tasks",
+        "calculators": "Calculators",
+        "drive": "Drive folder",
+        "aiChat": "AI Chat",
+        "settings": "Settings"
+      },
+      "crmSubTabs": {
+        "projects": "Projects",
+        "clients": "Clients"
+      },
+      "projectsList": {
+        "title": "My projects",
+        "loading": "Loading projects…",
+        "empty": "No projects yet. Create a new project to get started."
+      },
+      "overview": {
+        "greeting": "Welcome to your dashboard",
+        "subtitle": "A live snapshot of your business — all in one place",
+        "loading": "Loading data…",
+        "revenue": "Total revenue",
+        "expenses": "Total expenses",
+        "activeProjects": "Active projects",
+        "clients": "Clients",
+        "pendingInvoices": "Pending invoices",
+        "quickActionsTitle": "Quick actions"
+      },
+      "calculators": {
+        "calculator": "Calculator",
+        "currency": "Currency converter"
+      }
+    },
+    "commandCenter": {
+      "title": "Command Center & Quick Actions",
+      "subtitle": "Run core cross-cutting actions from anywhere in one click",
+      "cards": {
+        "project": {
+          "badge": "CRM",
+          "heading": "New project",
+          "desc": "Create a project, set the client, initial budget and an automatic work diary."
+        },
+        "document": {
+          "badge": "ERP",
+          "heading": "Issue document / invoice",
+          "desc": "Quickly create invoices, quotes or bills of quantities straight into accounting."
+        },
+        "scan": {
+          "badge": "AI Scan",
+          "heading": "Smart document scan",
+          "desc": "Upload files, supplier invoices or site logs and decode them automatically with AI."
+        },
+        "generator": {
+          "badge": "Custom OS",
+          "heading": "Module & app builder",
+          "desc": "Define a custom data schema and extend the workspace instantly."
+        }
+      }
     },
     "unsupportedWidget": "Unsupported window type ({type})",
     "retry": "Try again",
@@ -705,6 +775,7 @@
       "generating": "Generating…",
       "generateError": "Failed to generate UI — try rephrasing",
       "previewTitle": "Live preview",
+      "previewWindowTitle": "Preview window",
       "mobilePaneAria": "App builder areas",
       "mobilePaneBuild": "Build & chat",
       "mobilePanePreview": "Preview",
@@ -729,7 +800,12 @@
       "liveStatusListening": "Listening…",
       "liveStatusSpeaking": "Assistant speaking…",
       "liveStatusInterrupted": "Interrupted — listening for more",
-      "liveStatusTool": "Running action…",
+      "liveStatusTool": "Building UI…",
+      "liveBuildDone": "Preview updated with your UI",
+      "liveBuildFailed": "Voice UI build failed — please try again",
+      "liveToolUnknown": "Unknown voice tool",
+      "liveToolMissingDescription": "Missing description for UI build",
+      "liveToolNothingToUpdate": "Nothing to update — ask to create something new",
       "liveStatusDisconnected": "Disconnected",
       "liveStatusPreparing": "Preparing connection…",
       "liveStatusFallback": "Live available after sign-in",
@@ -995,6 +1071,10 @@
       "appBuilder": {
         "title": "AI App Builder",
         "subtitle": "Forms · dashboards · control center"
+      },
+      "universalCommand": {
+        "title": "Command Center & Quick Actions",
+        "subtitle": "Every action in one place"
       },
       "accessibility": {
         "title": "Accessibility",

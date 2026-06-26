@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  LayoutDashboard,
   LayoutList,
   Settings,
   Shield,
@@ -143,6 +145,25 @@ export default function OSSidebar({
               ) : null}
             </button>
           </div>
+
+          {/* פריט ראשון — מעבר למצב התצוגה הקלאסי (דשבורד) */}
+          <Link
+            href="/dashboard"
+            aria-label={t("workspaceWidgets.classicDashboard.classicMode")}
+            title={t("workspaceWidgets.classicDashboard.classicMode")}
+            className="group flex h-10 w-full shrink-0 items-center justify-start gap-2 rounded-xl bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] text-white shadow-md shadow-blue-900/20 ring-1 ring-white/15 transition hover:brightness-110"
+          >
+            <span className="flex w-10 shrink-0 items-center justify-center">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+                <LayoutDashboard size={18} aria-hidden />
+              </span>
+            </span>
+            {expanded ? (
+              <span className="min-w-0 flex-1 truncate text-start text-sm font-black">
+                {t("workspaceWidgets.classicDashboard.classicMode")}
+              </span>
+            ) : null}
+          </Link>
 
           <nav
             aria-label={t("workspaceWidgets.sidebar.appsAria")}

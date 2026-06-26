@@ -342,7 +342,77 @@
       "aiHub": "ИИ",
       "logisticsHub": "Логистика и оборудование",
       "procurementHub": "Закупки и PO",
-      "executiveHub": "Центр руководства"
+      "executiveHub": "Центр руководства",
+      "universalCommand": "Центр команд"
+    },
+    "classicDashboard": {
+      "title": "Панель управления",
+      "proMode": "Вернуться в режим ОС",
+      "classicMode": "Классический вид",
+      "subtitleShort": "Простая панель без плавающих окон",
+      "tabs": {
+        "home": "Обзор",
+        "crm": "CRM и проекты",
+        "erp": "Документы",
+        "scan": "AI-сканирование",
+        "customOs": "Конструктор приложений",
+        "calendar": "Календарь",
+        "tasks": "Задачи",
+        "calculators": "Калькуляторы",
+        "drive": "Папка Drive",
+        "aiChat": "AI-чат",
+        "settings": "Настройки"
+      },
+      "crmSubTabs": {
+        "projects": "Проекты",
+        "clients": "Клиенты"
+      },
+      "projectsList": {
+        "title": "Мои проекты",
+        "loading": "Загрузка проектов…",
+        "empty": "Проектов пока нет. Создайте новый проект, чтобы начать."
+      },
+      "overview": {
+        "greeting": "Добро пожаловать на панель",
+        "subtitle": "Актуальный снимок вашего бизнеса — всё в одном месте",
+        "loading": "Загрузка данных…",
+        "revenue": "Общий доход",
+        "expenses": "Общие расходы",
+        "activeProjects": "Активные проекты",
+        "clients": "Клиенты",
+        "pendingInvoices": "Ожидающие счета",
+        "quickActionsTitle": "Быстрые действия"
+      },
+      "calculators": {
+        "calculator": "Калькулятор",
+        "currency": "Конвертер валют"
+      }
+    },
+    "commandCenter": {
+      "title": "Центр команд и быстрых действий",
+      "subtitle": "Запускайте ключевые сквозные действия откуда угодно в один клик",
+      "cards": {
+        "project": {
+          "badge": "CRM",
+          "heading": "Новый проект",
+          "desc": "Создание проекта, выбор клиента, начальный бюджет и автоматический журнал работ."
+        },
+        "document": {
+          "badge": "ERP",
+          "heading": "Выпуск документа / счёта",
+          "desc": "Быстрое создание счетов, смет или ведомостей объёмов прямо в бухгалтерию."
+        },
+        "scan": {
+          "badge": "AI Scan",
+          "heading": "Умное сканирование документов",
+          "desc": "Загрузка файлов, счетов поставщиков или полевых журналов и их автоматическая расшифровка ИИ."
+        },
+        "generator": {
+          "badge": "Custom OS",
+          "heading": "Конструктор модулей и приложений",
+          "desc": "Определите собственную схему данных и мгновенно расширьте рабочее пространство."
+        }
+      }
     },
     "unsupportedWidget": "Неподдерживаемый тип окна ({type})",
     "retry": "Повторить",
@@ -705,6 +775,7 @@
       "generating": "Создание…",
       "generateError": "Не удалось создать интерфейс — переформулируйте запрос",
       "previewTitle": "Предпросмотр",
+      "previewWindowTitle": "Окно предпросмотра",
       "mobilePaneAria": "Области конструктора",
       "mobilePaneBuild": "Сборка и чат",
       "mobilePanePreview": "Предпросмотр",
@@ -729,7 +800,12 @@
       "liveStatusListening": "Слушаю…",
       "liveStatusSpeaking": "Ассистент говорит…",
       "liveStatusInterrupted": "Прервано — слушаю дальше",
-      "liveStatusTool": "Выполняю действие…",
+      "liveStatusTool": "Создаю интерфейс…",
+      "liveBuildDone": "Предпросмотр обновлён",
+      "liveBuildFailed": "Голосовая сборка UI не удалась — попробуйте снова",
+      "liveToolUnknown": "Неизвестный голосовой инструмент",
+      "liveToolMissingDescription": "Нет описания для сборки UI",
+      "liveToolNothingToUpdate": "Нечего обновлять — попросите создать что-то новое",
       "liveStatusDisconnected": "Отключено",
       "liveStatusPreparing": "Подготовка подключения…",
       "liveStatusFallback": "Live доступен после входа",
@@ -995,6 +1071,10 @@
       "appBuilder": {
         "title": "AI конструктор",
         "subtitle": "Формы · дашборды · центр управления"
+      },
+      "universalCommand": {
+        "title": "Центр команд и быстрых действий",
+        "subtitle": "Все действия в одном месте"
       },
       "accessibility": {
         "title": "Доступность",

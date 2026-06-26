@@ -14,6 +14,8 @@ import {
 
   Clock,
 
+  Command,
+
   FilePlus,
 
   FileText,
@@ -405,6 +407,12 @@ const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
     type: "executiveHub",
     labelKey: "workspaceWidgets.titles.executiveHub",
     icon: LayoutDashboard,
+    chip: true,
+  },
+  universalCommand: {
+    type: "universalCommand",
+    labelKey: "workspaceWidgets.titles.universalCommand",
+    icon: Command,
     chip: true,
   },
 

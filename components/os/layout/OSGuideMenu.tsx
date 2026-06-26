@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LayoutList, X } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LayoutList, X } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
@@ -116,6 +117,25 @@ export default function OSGuideMenu({ openWidget, onClose }: OSGuideMenuProps) {
 
           <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-3">
             <div className="flex flex-col gap-4">
+              {/* פריט עליון בולט — מעבר למצב התצוגה הקלאסי */}
+              <Link
+                href="/dashboard"
+                onClick={onClose}
+                className="group flex w-full items-center gap-3 rounded-xl bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] p-2.5 text-start text-white shadow-lg shadow-blue-900/25 ring-1 ring-white/15 transition hover:brightness-110"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <LayoutDashboard size={20} strokeWidth={2} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-black">
+                    {t("workspaceWidgets.classicDashboard.classicMode")}
+                  </span>
+                  <span className="block truncate text-[11px] font-medium text-white/80">
+                    {t("workspaceWidgets.classicDashboard.subtitleShort")}
+                  </span>
+                </span>
+              </Link>
+
               {sections.map((section) => (
                 <section key={section.id} aria-labelledby={`guide-section-${section.id}`}>
                   <h3

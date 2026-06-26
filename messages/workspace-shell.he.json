@@ -342,7 +342,77 @@
       "aiHub": "בינה מלאכותית",
       "logisticsHub": "לוגיסטיקה וציוד",
       "procurementHub": "רכש והזמנות",
-      "executiveHub": "מרכז מנהל"
+      "executiveHub": "מרכז מנהל",
+      "universalCommand": "מרכז בקרה"
+    },
+    "classicDashboard": {
+      "title": "לוח בקרה",
+      "proMode": "חזור למצב מערכת הפעלה",
+      "classicMode": "מצב תצוגה קלאסית",
+      "subtitleShort": "דשבורד פשוט בלי חלונות צפים",
+      "tabs": {
+        "home": "סקירה כללית",
+        "crm": "CRM ופרויקטים",
+        "erp": "מסמכים",
+        "scan": "סריקת AI",
+        "customOs": "מחולל אפליקציות",
+        "calendar": "לוח שנה",
+        "tasks": "משימות",
+        "calculators": "מחשבונים",
+        "drive": "תיקיית דרייב",
+        "aiChat": "צ׳אט AI",
+        "settings": "הגדרות"
+      },
+      "crmSubTabs": {
+        "projects": "פרויקטים",
+        "clients": "לקוחות"
+      },
+      "projectsList": {
+        "title": "הפרויקטים שלי",
+        "loading": "טוען פרויקטים…",
+        "empty": "עדיין אין פרויקטים. צור פרויקט חדש כדי להתחיל."
+      },
+      "overview": {
+        "greeting": "ברוך הבא ללוח הבקרה",
+        "subtitle": "תמונת מצב עדכנית של העסק — הכל במקום אחד",
+        "loading": "טוען נתונים…",
+        "revenue": "סך הכנסות",
+        "expenses": "סך הוצאות",
+        "activeProjects": "פרויקטים פעילים",
+        "clients": "לקוחות",
+        "pendingInvoices": "חשבוניות ממתינות",
+        "quickActionsTitle": "פעולות מהירות"
+      },
+      "calculators": {
+        "calculator": "מחשבון",
+        "currency": "המרת מטבע"
+      }
+    },
+    "commandCenter": {
+      "title": "מרכז בקרה ופעולות מהירות",
+      "subtitle": "ביצוע פעולות ליבה רוחביות מכל מקום בלחיצה אחת",
+      "cards": {
+        "project": {
+          "badge": "CRM",
+          "heading": "פתח פרויקט חדש",
+          "desc": "הקמת ישות פרויקט, הגדרת לקוח, תקציב ראשוני ויומן עבודה אוטומטי במערכת."
+        },
+        "document": {
+          "badge": "ERP",
+          "heading": "הפק מסמך / חשבונית",
+          "desc": "יצירה מהירה של חשבוניות, הצעות מחיר או כתבי כמויות ישירות לחשבונאות המערכת."
+        },
+        "scan": {
+          "badge": "AI Scan",
+          "heading": "סריקת מסמכים חכמה",
+          "desc": "העלאת קבצים, חשבוניות ספק או יומני שטח ופענוחם האוטומטי באמצעות מנוע ה-AI."
+        },
+        "generator": {
+          "badge": "Custom OS",
+          "heading": "מחולל מודולים ואפליקציות",
+          "desc": "הגדרת סכמת נתונים מותאמת אישית והרחבת הלוח באופן מיידי."
+        }
+      }
     },
     "unsupportedWidget": "סוג חלון לא נתמך ({type})",
     "retry": "נסה שוב",
@@ -705,6 +775,7 @@
       "generating": "יוצר…",
       "generateError": "יצירת הממשק נכשלה — נסו לנסח מחדש",
       "previewTitle": "תצוגה מקדימה",
+      "previewWindowTitle": "חלון תצוגה מקדימה",
       "mobilePaneAria": "אזורי מחולל האפליקציות",
       "mobilePaneBuild": "בנייה וצ׳אט",
       "mobilePanePreview": "תצוגה מקדימה",
@@ -729,7 +800,12 @@
       "liveStatusListening": "מקשיב…",
       "liveStatusSpeaking": "העוזר מדבר…",
       "liveStatusInterrupted": "הופסק — מקשיב להמשך",
-      "liveStatusTool": "מבצע פעולה…",
+      "liveStatusTool": "בונה את הממשק…",
+      "liveBuildDone": "הממשק עודכן בתצוגה המקדימה",
+      "liveBuildFailed": "בניית הממשק הקולית נכשלה — נסו שוב",
+      "liveToolUnknown": "כלי קולי לא מוכר",
+      "liveToolMissingDescription": "חסר תיאור לבניית הממשק",
+      "liveToolNothingToUpdate": "אין ממשק לעדכון — בקשו ליצור משהו חדש",
       "liveStatusDisconnected": "נותק",
       "liveStatusPreparing": "מכין חיבור…",
       "liveStatusFallback": "Live זמין אחרי התחברות",
@@ -963,6 +1039,10 @@
       "appBuilder": {
         "title": "מחולל אפליקציות",
         "subtitle": "טפסים · דשבורד · מרכז שליטה"
+      },
+      "universalCommand": {
+        "title": "מרכז בקרה ופעולות מהירות",
+        "subtitle": "כל הפעולות במקום אחד"
       },
       "aiChatFull": {
         "title": "צ׳אט AI",

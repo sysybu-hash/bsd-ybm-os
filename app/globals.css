@@ -29,6 +29,12 @@
     --state-danger: #be123c;
     --state-info: #2563eb;
 
+    /* Unified vivid-blue accent — dashboard + unified widgets */
+    --accent: #2563eb;
+    --accent-strong: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --accent-contrast: #ffffff;
+
     --radius-sm: 8px;
     --radius-md: 10px;
     --radius-lg: 12px;
@@ -138,6 +144,10 @@
     --brand-accent-soft: rgba(99, 102, 241, 0.16);
     --brand-teal-soft: rgba(20, 184, 166, 0.14);
     --brand-amber-soft: rgba(245, 158, 11, 0.14);
+    --accent: #3b82f6;
+    --accent-strong: #2563eb;
+    --accent-soft: rgba(59, 130, 246, 0.16);
+    --accent-contrast: #ffffff;
     --canvas: var(--background-main);
     --canvas-raised: var(--surface-card);
     --canvas-sunken: var(--surface-soft);
@@ -160,6 +170,44 @@
       0 14px 36px rgba(0, 0, 0, 0.32),
       0 28px 60px rgba(99, 102, 241, 0.12);
     --window-surface: color-mix(in srgb, var(--surface-card) 90%, transparent);
+  }
+
+  /* Classic dashboard — always-bright scope. Re-declares the light token values so
+     the subtree stays bright/readable even when the global theme is .dark, and so
+     token-based widgets rendered inside adopt the light palette automatically. */
+  .dashboard-theme {
+    color-scheme: light;
+    --background-main: #f6f7fb;
+    --foreground-main: #0f172a;
+    --foreground-muted: #5b6478;
+    --surface-card: #ffffff;
+    --surface-soft: #f1f5f9;
+    --surface-elevated: #ffffff;
+    --border-main: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(226, 232, 240, 0.7);
+    --glass-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+    --accent: #2563eb;
+    --accent-strong: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --accent-contrast: #ffffff;
+    --sidebar-bg: rgba(255, 255, 255, 0.7);
+    --sidebar-hover-bg: #f1f5f9;
+    background:
+      radial-gradient(1200px 600px at 100% -10%, rgba(37, 99, 235, 0.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(37, 99, 235, 0.05), transparent 55%),
+      var(--background-main);
+  }
+
+  /* Single-scroller dashboard: embedded widgets that manage their own height/scroll
+     (e.g. the CRM table) flow naturally so the dashboard <main> is the only scroller. */
+  .dashboard-main [data-widget-sticky-chrome] {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .dashboard-main [data-widget-scroll-pane] {
+    overflow: visible !important;
   }
 
   html {
@@ -894,7 +942,8 @@
 
 /* Hub/app-builder content that owns its own inner scroll region: fill the pane. */
 [data-widget-scroll-pane] > [data-embedded-in-hub="true"][data-hub-inner-scroll="true"],
-[data-widget-scroll-pane] > [data-app-builder-root] {
+[data-widget-scroll-pane] > [data-app-builder-root],
+[data-widget-scroll-pane] [data-app-builder-root] {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;

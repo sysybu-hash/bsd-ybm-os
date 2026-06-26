@@ -54,11 +54,17 @@ export default function OmniCanvasWorkspaceBody({
   const handleCloseWidget = useCallback(
     (id: string) => {
       const widget = widgets.find((w) => w.id === id);
+      let matchedUrl = false;
       if (widget && typeof window !== "undefined") {
         const intent = parseWorkspaceUrl(new URLSearchParams(window.location.search));
-        if (intent) dismissWorkspaceUrlIntentForWidget(widget, intent);
+        if (intent) matchedUrl = dismissWorkspaceUrlIntentForWidget(widget, intent);
       }
       closeWidget(id);
+      // If the closed window was the one reflected in the URL (?w=…), strip it from the
+      // address bar immediately. Otherwise a refresh re-opens it from the deep link.
+      if (matchedUrl && typeof window !== "undefined") {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
     },
     [widgets, closeWidget],
   );

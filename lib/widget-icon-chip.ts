@@ -33,6 +33,7 @@ export function widgetIconChipClass(type: WidgetType): string {
     documentsHub: "bg-emerald-500/22 text-emerald-700 group-hover:bg-emerald-500/30 dark:bg-emerald-500/28 dark:text-emerald-200 dark:group-hover:bg-emerald-500/38",
     aiHub: "bg-purple-500/22 text-purple-700 group-hover:bg-purple-500/30 dark:bg-purple-500/28 dark:text-purple-200 dark:group-hover:bg-purple-500/38",
     accessibility: "bg-slate-500/22 text-slate-700 group-hover:bg-slate-500/32 dark:bg-slate-500/28 dark:text-slate-200 dark:group-hover:bg-slate-500/38",
+    universalCommand: "bg-gradient-to-br from-blue-500/25 to-indigo-500/25 text-blue-700 group-hover:from-blue-500/35 group-hover:to-indigo-500/35 dark:from-blue-500/30 dark:to-indigo-500/30 dark:text-blue-200",
   };
   return map[type] ?? "bg-indigo-500/22 text-indigo-700 group-hover:bg-indigo-500/30 dark:bg-indigo-500/28 dark:text-indigo-200 dark:group-hover:bg-indigo-500/38";
 }

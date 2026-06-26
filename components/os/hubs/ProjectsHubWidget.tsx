@@ -71,6 +71,10 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
   }, [liveData?.projectId, liveData?.name]);
 
   useEffect(() => {
+    if (liveData?.action === "create") setAddProjectOpen(true);
+  }, [liveData?.action]);
+
+  useEffect(() => {
     void reloadProjects();
   }, [reloadProjects]);
 
