@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp, Save, X } from "lucide-react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { CheckCircle2, ChevronDown, ChevronUp, Download, FileJson, FileSpreadsheet, FileText, Printer, Save, X } from "lucide-react";
 import type { DocumentAnalysis } from "./types";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import { downloadBlob, rowsToCsv } from "@/lib/export-file";
 import {
   BOQ_MODES, HeaderFields, LineItemsEditor, BoqEditor,
   emptyBoqRow as _emptyBoqRow, computeLineTotal,
@@ -36,6 +37,70 @@ function Section({ title, children, open, toggle }: {
   );
 }
 
+function useScanExport(v5Ref: React.RefObject<ScanExtractionV5 | null>) {
+  const [exportOpen, setExportOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  function baseName() {
+    const v = v5Ref.current;
+    return `${v?.vendor || "scan"}-${v?.date || "export"}`.replace(/[^\w֐-׿.-]/g, "_");
+  }
+
+  function exportCsv() {
+    const v = v5Ref.current;
+    if (!v) return;
+    const header = ["תיאור", "כמות", "מחיר יחידה", "סה\"כ שורה", "מטבע", "מק\"ט"];
+    const rows = v.lineItems.map((li) => [
+      li.description,
+      String(li.quantity ?? ""),
+      String(li.unitPrice ?? ""),
+      String(li.lineTotal ?? ""),
+      li.currency ?? "ILS",
+      li.sku ?? "",
+    ]);
+    downloadBlob(`${baseName()}.csv`, rowsToCsv([header, ...rows]), "text/csv;charset=utf-8");
+    setExportOpen(false);
+  }
+
+  function exportJson() {
+    const v = v5Ref.current;
+    if (!v) return;
+    downloadBlob(`${baseName()}.json`, JSON.stringify(v, null, 2), "application/json");
+    setExportOpen(false);
+  }
+
+  async function exportPdf() {
+    const v = v5Ref.current;
+    if (!v) return;
+    setPdfLoading(true);
+    try {
+      const res = await fetch("/api/scan/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ v5: v }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setPdfLoading(false);
+      setExportOpen(false);
+    }
+  }
+
+  function printDoc() {
+    setExportOpen(false);
+    setTimeout(() => window.print(), 100);
+  }
+
+  return { exportOpen, setExportOpen, pdfLoading, exportCsv, exportJson, exportPdf, printDoc };
+}
+
 export function ScanFullEditor({
   analysis,
   onChange,
@@ -60,8 +125,15 @@ export function ScanFullEditor({
     },
   );
 
+  const v5Ref = useRef<ScanExtractionV5 | null>(null);
+  v5Ref.current = v5;
+  const exportActions = useScanExport(v5Ref);
+
   const [boqOpen, setBoqOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [telemetryOpen, setTelemetryOpen] = useState(false);
+
+  const telemetry = analysis.rawAiData?._triEngineTelemetry as Record<string, { phase: string; ms?: number; detail?: string }> | undefined;
 
   const showBoq = BOQ_MODES.has(v5.documentMetadata.scanMode);
 
@@ -95,9 +167,48 @@ export function ScanFullEditor({
             <CheckCircle2 className="text-emerald-500" size={20} />
             {tr("scanner.fullEditor", "עריכת תוצאת סריקה")}
           </h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-black/5">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Export dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => exportActions.setExportOpen((o) => !o)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2.5 py-1.5 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
+                title={tr("scanner.export", "ייצוא")}
+              >
+                <Download size={13} aria-hidden />
+                {tr("scanner.export", "ייצוא")}
+                <ChevronDown size={11} aria-hidden />
+              </button>
+              {exportActions.exportOpen && (
+                <div className="absolute end-0 top-full z-50 mt-1 min-w-[160px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-xl">
+                  <button type="button" onClick={exportActions.exportCsv}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)] rounded-t-xl">
+                    <FileSpreadsheet size={14} className="text-emerald-600" aria-hidden />
+                    CSV
+                  </button>
+                  <button type="button" onClick={exportActions.exportJson}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)]">
+                    <FileJson size={14} className="text-amber-600" aria-hidden />
+                    JSON
+                  </button>
+                  <button type="button" onClick={() => void exportActions.exportPdf()} disabled={exportActions.pdfLoading}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)] disabled:opacity-50">
+                    <FileText size={14} className="text-red-600" aria-hidden />
+                    {exportActions.pdfLoading ? tr("scanner.generating", "מייצר...") : "PDF"}
+                  </button>
+                  <button type="button" onClick={exportActions.printDoc}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)] rounded-b-xl">
+                    <Printer size={14} className="text-blue-600" aria-hidden />
+                    {tr("scanner.print", "הדפסה")}
+                  </button>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-black/5">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <HeaderFields v5={v5} onChange={patchV5} />
@@ -132,9 +243,29 @@ export function ScanFullEditor({
             className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent px-2 py-1.5 text-xs leading-relaxed" />
         </Section>
 
+        {telemetry && (
+          <Section title={tr("scanner.engineDetails", "פרטי מנועים")} open={telemetryOpen} toggle={() => setTelemetryOpen((o) => !o)}>
+            <div className="space-y-1">
+              {Object.entries(telemetry).map(([engine, status]) => {
+                const phase = status.phase as string;
+                const color = phase === "ok" ? "text-emerald-600" : phase === "error" ? "text-red-500" : phase === "skipped" ? "text-[color:var(--foreground-muted)]" : "text-amber-500";
+                const label = { documentAI: "Document AI", gemini: "Gemini", gpt: "OpenAI", mistral: "Pixtral", anthropic: "Claude" }[engine] ?? engine;
+                return (
+                  <div key={engine} className="flex items-center justify-between text-[11px]">
+                    <span className="font-medium">{label}</span>
+                    <span className={color}>
+                      {phase === "ok" ? `✓ ${status.ms ? `${status.ms}ms` : ""}` : phase === "error" ? `✗ ${status.detail ?? ""}` : phase === "skipped" ? `— ${status.detail ?? ""}` : phase}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
         <button type="button"
           onClick={() => { onChange({ ...analysis, vendor: v5.vendor, taxId: v5.taxId ?? undefined, amount: v5.total, date: v5.date ?? analysis.date, v5 }); onConfirm(); }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-black text-white hover:bg-emerald-500">
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] py-3 text-sm font-black text-white hover:bg-emerald-500">
           <Save size={18} /> {confirmLabel ?? tr("scanner.confirmExpense", "אשר ושמור")}
         </button>
       </div>

@@ -22,6 +22,9 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [pushEnabled, setPushEnabled] = useState(false);
   const [uploadingBlueprint, setUploadingBlueprint] = useState(false);
   const [blueprintPreview, setBlueprintPreview] = useState<import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis | null>(null);
+  const [blueprintEnginesUsed, setBlueprintEnginesUsed] = useState<string[]>([]);
+  const [blueprintEngineRunMode, setBlueprintEngineRunMode] = useState<import("@/lib/projects/blueprint-analyze").BlueprintEngineRunMode>("AUTO");
+  const [blueprintInstruction, setBlueprintInstruction] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [diaryInitialDesc, setDiaryInitialDesc] = useState<string | undefined>();
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
@@ -124,14 +127,35 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       fd.append("file", file);
       fd.append("projectId", resolvedId);
       fd.append("preview", "true");
+      fd.append("engineRunMode", blueprintEngineRunMode);
+      if (blueprintInstruction.trim()) fd.append("userInstruction", blueprintInstruction.trim());
       const res = await fetch("/api/projects/analyze-blueprint", { method: "POST", credentials: "include", body: fd });
-      const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? t("projectDashboard.errors.blueprint")); return; }
+      const json = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) { toast.error((json.error as string) ?? t("projectDashboard.errors.blueprint")); return; }
+      setBlueprintEnginesUsed(Array.isArray(json.enginesUsed) ? (json.enginesUsed as string[]) : []);
       setBlueprintPreview(json as import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis);
     } catch {
       toast.error(t("projectDashboard.errors.blueprint"));
     } finally {
       setUploadingBlueprint(false);
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      toast.error((json.error as string) ?? t("projectDashboard.errors.load"));
+      return;
+    }
+    toast.success(t("projectDashboard.deleteSuccess") || "הפרויקט נמחק");
+    setProjectsList((prev) => prev.filter((p) => p.id !== id));
+    if (resolvedId === id) {
+      setResolvedId("");
+      setData(null);
     }
   };
 
@@ -200,6 +224,10 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
     selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush,
+    blueprintEnginesUsed,
+    blueprintEngineRunMode, setBlueprintEngineRunMode,
+    blueprintInstruction, setBlueprintInstruction,
+    deleteProject,
     onBlueprintFile, confirmBlueprintImport, loadProjectsList,
     openWorkspaceWidget,
   };

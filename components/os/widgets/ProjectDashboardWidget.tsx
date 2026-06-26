@@ -45,7 +45,10 @@ export default function ProjectDashboardWidget({
     diaryInitialTaskId, setDiaryInitialTaskId,
     showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
-    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile,
+    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, deleteProject,
+    blueprintEnginesUsed,
+    blueprintEngineRunMode, setBlueprintEngineRunMode,
+    blueprintInstruction, setBlueprintInstruction,
   } = s;
 
   if (showProjectPicker) {
@@ -54,6 +57,7 @@ export default function ProjectDashboardWidget({
         projects={projectsList}
         loading={projectsListLoading}
         onSelect={selectProject}
+        onDelete={deleteProject}
         titleKey="projectDashboard.pickProjectTitle"
         descKey="projectDashboard.pickProjectDesc"
         loadingKey="projectDashboard.pickProjectLoading"
@@ -116,12 +120,18 @@ export default function ProjectDashboardWidget({
         resetWorkspace={resetWorkspace}
         togglePush={togglePush}
         onBlueprintFile={onBlueprintFile}
+        blueprintEngineRunMode={blueprintEngineRunMode}
+        setBlueprintEngineRunMode={setBlueprintEngineRunMode}
+        blueprintInstruction={blueprintInstruction}
+        setBlueprintInstruction={setBlueprintInstruction}
         openWorkspaceWidget={openWorkspaceWidget}
       />
 
       {blueprintPreview ? (
         <BlueprintPreviewModal
           data={blueprintPreview}
+          enginesUsed={blueprintEnginesUsed}
+          projectName={data.name}
           onConfirm={confirmBlueprintImport}
           onClose={() => setBlueprintPreview(null)}
         />

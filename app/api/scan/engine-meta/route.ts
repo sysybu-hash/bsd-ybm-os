@@ -44,6 +44,20 @@ function geminiUiLabel(id: string): string {
   return id.replace(/^gemini-/, "");
 }
 
+function docAiMissingConfig(): string[] {
+  const missing: string[] = [];
+  const creds = process.env["GOOGLE_DOCUMENT_AI_CREDENTIALS"] || process.env["GOOGLE_APPLICATION_CREDENTIALS_JSON"];
+  if (!creds) missing.push("GOOGLE_DOCUMENT_AI_CREDENTIALS");
+  const hasProcessor =
+    process.env["GOOGLE_DOCUMENT_AI_INVOICE_PROCESSOR_ID"] ||
+    process.env["GOOGLE_DOCUMENT_AI_OCR_PROCESSOR_ID"] ||
+    process.env["GOOGLE_DOCUMENT_AI_FORM_PROCESSOR_ID"] ||
+    process.env["GOOGLE_DOCUMENT_AI_EXPENSE_PROCESSOR_ID"] ||
+    process.env["GOOGLE_DOCUMENT_AI_PROCESSOR_ID"];
+  if (!hasProcessor) missing.push("GOOGLE_DOCUMENT_AI_INVOICE_PROCESSOR_ID");
+  return missing;
+}
+
 export const GET = withWorkspacesAuth(async () => {
   const geminiPrimaryModelId = getGeminiModelId();
   const openaiDefaultModelId = getOpenAiVisionModel();
@@ -61,6 +75,13 @@ export const GET = withWorkspacesAuth(async () => {
       openai: isOpenAiConfigured(),
       mistral: isMistralConfigured(),
       anthropic: isAnthropicConfigured(),
+    },
+    missingConfig: {
+      documentAI: isDocAiConfigured() ? [] : docAiMissingConfig(),
+      gemini: isGeminiConfigured() ? [] : ["GOOGLE_GENERATIVE_AI_API_KEY"],
+      openai: isOpenAiConfigured() ? [] : ["OPENAI_API_KEY"],
+      mistral: isMistralConfigured() ? [] : ["MISTRAL_API_KEY"],
+      anthropic: isAnthropicConfigured() ? [] : ["ANTHROPIC_API_KEY"],
     },
     documentAI: {
       processors: getDocAiProcessorConfigs(),

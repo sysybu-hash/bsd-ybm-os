@@ -116,6 +116,7 @@ export type TriEngineExtractionInput = {
   messages: MessageTree;
   openAiModel?: string;
   engineRunMode: TriEngineRunMode;
+  customEngines?: string[];
   userInstruction?: string | null;
 };
 

@@ -42,6 +42,8 @@ export function DocumentScanShell({
     engineMeta,
     engineRunMode,
     setEngineRunMode,
+    customEngines,
+    setCustomEngines,
     scanModeOverride,
     setScanModeOverride,
     onDrop,
@@ -170,6 +172,8 @@ export function DocumentScanShell({
             applyFilePreview={applyFilePreview}
             engineRunMode={engineRunMode}
             setEngineRunMode={setEngineRunMode}
+            customEngines={customEngines}
+            onCustomEnginesChange={setCustomEngines}
             engineMeta={engineMeta}
             scanModeOverride={scanModeOverride}
             setScanModeOverride={setScanModeOverride}

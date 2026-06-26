@@ -4,6 +4,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 
 export type EngineMeta = {
   configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean; anthropic?: boolean };
+  missingConfig?: { documentAI?: string[]; gemini?: string[]; openai?: string[]; mistral?: string[]; anthropic?: string[] };
   gemini?: { primaryLabel?: string };
   openai?: { defaultModelId?: string };
   mistral?: { primaryLabel?: string };

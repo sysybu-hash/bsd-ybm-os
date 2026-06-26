@@ -4,7 +4,7 @@ import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest, jsonTooManyRequests } from "@/lib/api-json";
 import { assertProviderConfigured } from "@/lib/ai-providers";
-import { analyzeBlueprintFile } from "@/lib/projects/blueprint-analyze";
+import { analyzeBlueprintFile, type BlueprintEngineRunMode } from "@/lib/projects/blueprint-analyze";
 import { prisma } from "@/lib/prisma";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
@@ -161,11 +161,14 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     const gate = await requireProjectForOrg(projectId, orgId);
     if (!gate.ok) return gate.response;
 
+    const engineRunMode = (formData.get("engineRunMode") as BlueprintEngineRunMode | null) ?? "AUTO";
+    const userInstruction = formData.get("userInstruction") as string | null;
+
     const arrayBuffer = await file.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = file.type || "application/pdf";
 
-    const parsed = await analyzeBlueprintFile(base64, mimeType);
+    const parsed = await analyzeBlueprintFile(base64, mimeType, { engineRunMode, userInstruction });
 
     if (isPreview) {
       return NextResponse.json({ preview: true, ...parsed });

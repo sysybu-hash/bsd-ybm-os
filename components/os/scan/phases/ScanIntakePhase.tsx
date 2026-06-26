@@ -25,6 +25,8 @@ type ScanIntakePhaseProps = {
   applyFilePreview: (file: File) => void;
   engineRunMode: TriEngineRunMode;
   setEngineRunMode: (m: TriEngineRunMode) => void;
+  customEngines?: string[];
+  onCustomEnginesChange?: (engines: string[]) => void;
   engineMeta: EngineMeta | null;
   scanModeOverride: ScanModeUiSelection;
   setScanModeOverride: (m: ScanModeUiSelection) => void;
@@ -39,6 +41,8 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
   const {
     engineRunMode,
     setEngineRunMode,
+    customEngines,
+    onCustomEnginesChange,
     engineMeta,
     scanModeOverride,
     setScanModeOverride,
@@ -56,6 +60,8 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
           <ScanEngineBar
             value={engineRunMode}
             onChange={setEngineRunMode}
+            customEngines={customEngines}
+            onCustomEnginesChange={onCustomEnginesChange}
             engineMeta={engineMeta}
             tr={tr}
           />

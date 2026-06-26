@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckSquare, Square, X, Loader2, AlertTriangle, CheckCircle2, Circle } from "lucide-react";
+import { CheckSquare, Square, X, Loader2, AlertTriangle, CheckCircle2, Circle, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import type { BlueprintAnalysis } from "@/lib/projects/blueprint-analysis-schema";
+import { downloadBlob, rowsToCsv } from "@/lib/export-file";
 
 type Props = {
   data: BlueprintAnalysis;
+  enginesUsed?: string[];
+  projectName?: string;
   onConfirm: (selected: BlueprintAnalysis) => Promise<void>;
   onClose: () => void;
 };
@@ -29,7 +32,7 @@ function ConfidenceChip({ value }: { value?: number }) {
   );
 }
 
-export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Props) {
+export default function BlueprintPreviewModal({ data, enginesUsed, projectName, onConfirm, onClose }: Props) {
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(
     new Set(data.tasks.map((_, i) => i)),
   );
@@ -40,11 +43,83 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
     new Set(data.boqLineItems.map((_, i) => i)),
   );
   const [saving, setSaving] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
-  // Editable task fields
+  // Editable fields
   const [taskEdits, setTaskEdits] = useState(
     data.tasks.map((t) => ({ name: t.name, startDate: t.startDate ?? "", endDate: t.endDate ?? "" })),
   );
+  const [milestoneEdits, setMilestoneEdits] = useState(
+    data.milestones.map((m) => ({
+      name: m.name,
+      percent: m.percent != null ? String(m.percent) : "",
+      amount: m.amount != null ? String(m.amount) : "",
+    })),
+  );
+  const [boqEdits, setBoqEdits] = useState(
+    data.boqLineItems.map((b) => ({
+      description: b.description,
+      unit: b.unit ?? "",
+      quantity: b.quantity != null ? String(b.quantity) : "",
+      confidence: b.confidence,
+    })),
+  );
+
+  const exportTasksCsv = () => {
+    const rows = taskEdits.filter((_, i) => selectedTasks.has(i))
+      .map((t) => [t.name, t.startDate, t.endDate]);
+    downloadBlob("blueprint-tasks.csv", rowsToCsv([["שם משימה", "תחילה", "סיום"], ...rows]), "text/csv");
+  };
+
+  const exportBoqCsv = () => {
+    const rows = boqEdits.filter((_, i) => selectedBoq.has(i))
+      .map((b) => [b.description, b.unit, b.quantity, String(b.confidence ?? "")]);
+    downloadBlob("blueprint-boq.csv", rowsToCsv([["תיאור", "יחידה", "כמות", "ביטחון"], ...rows]), "text/csv");
+  };
+
+  const exportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const currentAnalysis: BlueprintAnalysis = {
+        tasks: taskEdits.filter((_, i) => selectedTasks.has(i))
+          .map((e) => ({ name: e.name, startDate: e.startDate || undefined, endDate: e.endDate || undefined })),
+        milestones: milestoneEdits.filter((_, i) => selectedMilestones.has(i))
+          .map((e) => ({
+            name: e.name,
+            percent: e.percent ? Number(e.percent) : undefined,
+            amount: e.amount ? Number(e.amount) : undefined,
+          })),
+        boqLineItems: boqEdits.filter((_, i) => selectedBoq.has(i))
+          .map((e) => ({
+            description: e.description,
+            unit: e.unit || undefined,
+            quantity: e.quantity ? Number(e.quantity) : undefined,
+            confidence: e.confidence,
+          })),
+        requiresReview: false,
+      };
+      const res = await fetch("/api/projects/export-blueprint-pdf", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis: currentAnalysis, projectName }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blueprint-${projectName ?? "export"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const printDoc = () => {
+    setTimeout(() => window.print(), 100);
+  };
 
   const toggleAll = (set: Set<number>, setFn: (s: Set<number>) => void, total: number) => {
     if (set.size === total) setFn(new Set());
@@ -58,8 +133,21 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
         tasks: taskEdits
           .filter((_, i) => selectedTasks.has(i))
           .map((e) => ({ name: e.name, startDate: e.startDate || undefined, endDate: e.endDate || undefined })),
-        milestones: data.milestones.filter((_, i) => selectedMilestones.has(i)),
-        boqLineItems: data.boqLineItems.filter((_, i) => selectedBoq.has(i)),
+        milestones: milestoneEdits
+          .filter((_, i) => selectedMilestones.has(i))
+          .map((e) => ({
+            name: e.name,
+            percent: e.percent ? Number(e.percent) : undefined,
+            amount: e.amount ? Number(e.amount) : undefined,
+          })),
+        boqLineItems: boqEdits
+          .filter((_, i) => selectedBoq.has(i))
+          .map((e) => ({
+            description: e.description,
+            unit: e.unit || undefined,
+            quantity: e.quantity ? Number(e.quantity) : undefined,
+            confidence: e.confidence,
+          })),
         requiresReview: false,
       });
     } finally {
@@ -73,16 +161,34 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm" dir="rtl">
       <div className="flex h-full max-h-[88vh] w-full max-w-3xl flex-col rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-[color:var(--border-main)] px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
           <div className="flex-1">
             <h2 className="text-sm font-bold text-[color:var(--foreground)]">תוצאות פענוח גרמושקה</h2>
             <p className="text-[10px] text-[color:var(--foreground-muted)]">בדוק, ערוך ובחר מה לייבא לפרויקט</p>
           </div>
+          {enginesUsed && enginesUsed.length > 0 ? (
+            <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[9px] text-indigo-700 dark:text-indigo-300">
+              {enginesUsed.join(" • ")}
+            </span>
+          ) : null}
           {data.requiresReview ? (
             <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-200">
               <AlertTriangle size={10} />דורש בדיקה
             </span>
           ) : null}
+          {/* Export toolbar */}
+          <button type="button" title="CSV משימות" onClick={exportTasksCsv} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-1.5 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">
+            <FileSpreadsheet size={13} />
+          </button>
+          <button type="button" title="CSV כתב כמויות" onClick={exportBoqCsv} className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-1.5 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300">
+            <FileSpreadsheet size={13} />
+          </button>
+          <button type="button" title="ייצוא PDF" disabled={exportingPdf} onClick={() => void exportPdf()} className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-1.5 text-rose-700 hover:bg-rose-500/20 disabled:opacity-50 dark:text-rose-300">
+            {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+          </button>
+          <button type="button" title="הדפסה" onClick={printDoc} className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-1.5 text-sky-700 hover:bg-sky-500/20 dark:text-sky-300">
+            <Printer size={13} />
+          </button>
           <button type="button" className="rounded-lg p-1.5 hover:bg-[color:var(--surface-elevated)]" onClick={onClose}>
             <X size={16} />
           </button>
@@ -169,29 +275,39 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                   {selectedMilestones.size === data.milestones.length ? "בטל הכל" : "בחר הכל"}
                 </button>
               </div>
-              <div className="space-y-1">
-                {data.milestones.map((m, i) => {
+              <div className="space-y-1.5">
+                {data.milestones.map((_, i) => {
+                  const edit = milestoneEdits[i]!;
                   const checked = selectedMilestones.has(i);
                   return (
-                    <div key={i} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${checked ? "border-amber-500/40 bg-amber-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
-                      <button type="button" className="shrink-0 text-amber-700 dark:text-amber-300"
+                    <div key={i} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${checked ? "border-amber-500/40 bg-amber-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
+                      <button type="button" className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300"
                         onClick={() => setSelectedMilestones((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                         {checked ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>
-                      <span className="flex-1 truncate">{m.name}</span>
-                      <span className="shrink-0 font-mono text-amber-700 dark:text-amber-200">
-                        {"percent" in m && m.percent != null
-                          ? `${m.percent}%`
-                          : typeof m.amount === "number" && m.amount > 0 && m.amount <= 100
-                            ? `${m.amount}%`
-                            : typeof m.amount === "number"
-                              ? m.amount.toLocaleString("he-IL", {
-                                  style: "currency",
-                                  currency: "ILS",
-                                  maximumFractionDigits: 0,
-                                })
-                              : String(m.amount ?? "—")}
-                      </span>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <input
+                          className="w-full rounded border border-[color:var(--border-main)]/60 bg-transparent px-1.5 py-0.5 text-xs focus:border-amber-500/60 focus:outline-none"
+                          value={edit.name}
+                          onChange={(e) => setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, name: e.target.value } : m))}
+                        />
+                        <div className="flex gap-2">
+                          <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
+                            אחוז
+                            <input type="number" min={0} max={100} className="w-14 rounded border border-[color:var(--border-main)]/40 bg-transparent px-1 text-[9px]"
+                              value={edit.percent}
+                              onChange={(e) => setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, percent: e.target.value } : m))}
+                            />
+                          </label>
+                          <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
+                            סכום ₪
+                            <input type="number" min={0} className="w-20 rounded border border-[color:var(--border-main)]/40 bg-transparent px-1 text-[9px]"
+                              value={edit.amount}
+                              onChange={(e) => setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, amount: e.target.value } : m))}
+                            />
+                          </label>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -213,22 +329,40 @@ export default function BlueprintPreviewModal({ data, onConfirm, onClose }: Prop
                   {selectedBoq.size === data.boqLineItems.length ? "בטל הכל" : "בחר הכל"}
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {data.boqLineItems.map((b, i) => {
+                  const edit = boqEdits[i]!;
                   const checked = selectedBoq.has(i);
                   return (
-                    <div key={i} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${checked ? "border-emerald-500/40 bg-emerald-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
-                      <button type="button" className="shrink-0 text-emerald-700 dark:text-emerald-300"
+                    <div key={i} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${checked ? "border-emerald-500/40 bg-emerald-500/5" : "border-[color:var(--border-main)]/40 opacity-60"}`}>
+                      <button type="button" className="mt-0.5 shrink-0 text-emerald-700 dark:text-emerald-300"
                         onClick={() => setSelectedBoq((prev) => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                         {checked ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>
-                      <span className="min-w-0 flex-1 truncate">{b.description}</span>
-                      {b.quantity ? (
-                        <span className="shrink-0 text-[10px] text-[color:var(--foreground-muted)]">
-                          {b.quantity} {b.unit ?? ""}
-                        </span>
-                      ) : null}
-                      <ConfidenceChip value={b.confidence} />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <input
+                          className="w-full rounded border border-[color:var(--border-main)]/60 bg-transparent px-1.5 py-0.5 text-xs focus:border-emerald-500/60 focus:outline-none"
+                          value={edit.description}
+                          onChange={(e) => setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, description: e.target.value } : q))}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
+                            יחידה
+                            <input type="text" className="w-14 rounded border border-[color:var(--border-main)]/40 bg-transparent px-1 text-[9px]"
+                              value={edit.unit}
+                              onChange={(e) => setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, unit: e.target.value } : q))}
+                            />
+                          </label>
+                          <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
+                            כמות
+                            <input type="number" min={0} className="w-16 rounded border border-[color:var(--border-main)]/40 bg-transparent px-1 text-[9px]"
+                              value={edit.quantity}
+                              onChange={(e) => setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, quantity: e.target.value } : q))}
+                            />
+                          </label>
+                          <ConfidenceChip value={b.confidence} />
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

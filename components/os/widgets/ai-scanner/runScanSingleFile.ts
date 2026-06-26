@@ -17,6 +17,8 @@ import { mapV5ToAnalysis, readNdjsonStream } from "./constants";
 export type RunScanArgs = {
   file: File;
   engineRunMode: TriEngineRunMode;
+  /** מנועים לבחירה ידנית — בשימוש עם CUSTOM_PARALLEL */
+  customEngines?: string[];
   scanModeOverride: ScanModeUiSelection;
   boundProjectId: string;
   userInstruction: string;
@@ -39,6 +41,7 @@ export type RunScanArgs = {
 export async function runScanSingleFile({
   file,
   engineRunMode,
+  customEngines,
   scanModeOverride,
   boundProjectId,
   userInstruction,
@@ -79,6 +82,7 @@ export async function runScanSingleFile({
     formData.append("persist", "false");
     if (boundProjectId) formData.append("projectId", boundProjectId);
     formData.append("engineRunMode", engineRunMode);
+    if (customEngines?.length) formData.append("customEngines", customEngines.join(","));
     if (userInstruction.trim()) formData.append("userInstruction", userInstruction.trim());
     if (customInstructions?.trim()) formData.append("customInstructions", customInstructions.trim());
 

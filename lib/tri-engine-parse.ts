@@ -13,6 +13,7 @@ export type TriEngineRunMode =
   | "AUTO"
   | "MULTI_SEQUENTIAL"
   | "MULTI_PARALLEL"
+  | "CUSTOM_PARALLEL"
   | "SINGLE_DOCUMENT_AI"
   | "SINGLE_GEMINI"
   | "SINGLE_OPENAI"
@@ -31,6 +32,7 @@ export function parseTriEngineRunMode(raw: string | null): TriEngineRunMode {
     u === "AUTO" ||
     u === "MULTI_SEQUENTIAL" ||
     u === "MULTI_PARALLEL" ||
+    u === "CUSTOM_PARALLEL" ||
     u === "SINGLE_DOCUMENT_AI" ||
     u === "SINGLE_GEMINI" ||
     u === "SINGLE_OPENAI" ||
@@ -91,6 +93,8 @@ export type ParsedTriEngineForm = {
   userInstruction: string | null;
   openAiModel?: string;
   engineRunMode: TriEngineRunMode;
+  /** מנועים מותאמים אישית — בשימוש עם CUSTOM_PARALLEL */
+  customEngines?: string[];
   docTypeAutoDetect: boolean;
 };
 
@@ -129,6 +133,13 @@ export function parseTriEngineFormData(formData: FormData): ParsedTriEngineForm 
   );
   const docTypeAutoDetect = formData.get("docTypeAutoDetect") === "true";
 
+  const rawCustomEngines = typeof formData.get("customEngines") === "string"
+    ? (formData.get("customEngines") as string).trim()
+    : "";
+  const customEngines = rawCustomEngines
+    ? rawCustomEngines.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
   return {
     file,
     scanMode,
@@ -138,6 +149,7 @@ export function parseTriEngineFormData(formData: FormData): ParsedTriEngineForm 
     userInstruction,
     openAiModel,
     engineRunMode,
+    customEngines,
     docTypeAutoDetect,
   };
 }

@@ -4,6 +4,7 @@ import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonNotFound } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
+import { applyRateLimit } from "@/lib/rate-limit";
 import {
   resolvePrimaryContactId,
   syncProjectCrmContact,
@@ -112,3 +113,25 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
   },
   { schema: patchSchema },
 );
+
+export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId }, segment) => {
+  const { id: projectId } = await segment.params;
+  try {
+    const limited = await applyRateLimit(req, `project:delete:${orgId}`, 10, 60_000);
+    if (limited) return limited;
+
+    const gate = await requireProjectForOrg(projectId, orgId);
+    if (!gate.ok) return gate.response;
+
+    const existing = await prisma.project.findFirst({
+      where: { id: projectId, organizationId: orgId },
+      select: { id: true },
+    });
+    if (!existing) return jsonNotFound("הפרויקט לא נמצא");
+
+    await prisma.project.delete({ where: { id: projectId } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return apiErrorResponse(error, "Project DELETE");
+  }
+});

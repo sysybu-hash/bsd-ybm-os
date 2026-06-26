@@ -47,6 +47,7 @@ export function useAiScannerState({
     mistral?: { primaryLabel?: string };
   } | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
+  const [customEngines, setCustomEngines] = useState<string[]>([]);
   const [scanModeOverride, setScanModeOverride] = useState<ScanModeUiSelection>(() =>
     initialScanModeOverride ?? defaultScanModeForIndustry(industryId),
   );
@@ -65,6 +66,7 @@ export function useAiScannerState({
 
   const scanQueue = useDocumentScanSession({
     engineRunMode,
+    customEngines,
     scanModeOverride,
     boundProjectId,
     userInstruction,
@@ -257,8 +259,9 @@ export function useAiScannerState({
     if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
     if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Pixtral";
     if (engineRunMode === "MULTI_PARALLEL") return tr("scanner.modeMulti", "ריבוי מנועים");
+    if (engineRunMode === "CUSTOM_PARALLEL") return customEngines.length ? customEngines.join("+") : tr("scanner.modeMulti", "ריבוי מנועים");
     return tr("scanner.modeAuto", "אוטומטי");
-  }, [engineMeta, engineRunMode, tr]);
+  }, [engineMeta, engineRunMode, customEngines, tr]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -276,7 +279,7 @@ export function useAiScannerState({
     t, dir, scannerPrefix,
     scanModes, fileInputRef, cameraInputRef, fileAccept,
     isDragging, setIsDragging,
-    engineMeta, engineRunMode, setEngineRunMode,
+    engineMeta, engineRunMode, setEngineRunMode, customEngines, setCustomEngines,
     scanModeOverride, setScanModeOverride,
     userInstruction, persistInstruction,
     instructionsOpen, setInstructionsOpen,

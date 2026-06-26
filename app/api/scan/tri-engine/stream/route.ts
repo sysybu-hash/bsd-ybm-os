@@ -165,6 +165,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
 
       const { v5, telemetry, validation } = await runTriEngineExtractionValidated({
         ...input,
+        customEngines: parsed.customEngines,
         onProgress: async (e: TriEngineProgressEvent) => {
           await writeLine(e);
         },

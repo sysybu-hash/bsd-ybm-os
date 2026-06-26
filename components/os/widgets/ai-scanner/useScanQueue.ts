@@ -19,6 +19,7 @@ import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
 
 export type UseScanQueueArgs = {
   engineRunMode: TriEngineRunMode;
+  customEngines?: string[];
   scanModeOverride: ScanModeUiSelection;
   boundProjectId: string;
   userInstruction: string;
@@ -32,6 +33,7 @@ export type UseScanQueueArgs = {
 
 export function useScanQueue({
   engineRunMode,
+  customEngines,
   scanModeOverride,
   boundProjectId,
   userInstruction,
@@ -211,7 +213,7 @@ export function useScanQueue({
 
           try {
             const analysis = await runScanSingleFile({
-              file, engineRunMode, scanModeOverride, boundProjectId,
+              file, engineRunMode, customEngines, scanModeOverride, boundProjectId,
               userInstruction, customInstructions, industryId, openWorkspaceWidget, tr,
               setPendingAnalysis, setResultJson, setTelemetry,
               setScanClassification, setLastScanV5, setLastScanFileName,
@@ -264,7 +266,7 @@ export function useScanQueue({
       }
     },
      
-    [isProcessing, validateScanFile, engineRunMode, scanModeOverride, boundProjectId,
+    [isProcessing, validateScanFile, engineRunMode, customEngines, scanModeOverride, boundProjectId,
      userInstruction, industryId, openWorkspaceWidget, tr, applyFilePreview],
   );
 
