@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Accessibility, Grid3x3, Layers, MessageSquare, Mic, Shield, X } from "lucide-react";
+import { Accessibility, Grid3x3, LayoutDashboard, Layers, MessageSquare, Mic, Shield, X } from "lucide-react";
 import MobileChromeFabButton from "@/components/os/layout/MobileChromeFabButton";
 import { openAccessibilityPanel, openFeedbackFab } from "@/lib/mobile-chrome-events";
 import { WidgetType } from "@/hooks/use-window-manager";
@@ -260,6 +261,20 @@ export default function MobileBottomNav({
   );
 }
 
+function DashboardLinkButton({ label }: { label: string }) {
+  return (
+    <Link
+      href="/m/dashboard"
+      className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
+    >
+      <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition dark:bg-indigo-950 dark:text-indigo-400">
+        <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden />
+      </span>
+      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
+    </Link>
+  );
+}
+
 function MoreAppsPanel({
   t,
   apps,
@@ -279,6 +294,7 @@ function MoreAppsPanel({
     >
       <MoreAppsPanelHeader t={t} onClose={onClose} />
       <div className="grid grid-cols-4 gap-2">
+        <DashboardLinkButton label={t("workspaceWidgets.mobileNav.dashboard")} />
         {apps.map((item) => (
           <SideNavButton key={item.type} item={item} onOpen={onOpen} label={t(item.labelKey)} />
         ))}

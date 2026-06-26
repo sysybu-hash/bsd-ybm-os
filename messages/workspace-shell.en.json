@@ -1141,7 +1141,8 @@
       "windowSwitcher": "Windows",
       "moreApps": "More",
       "moreAppsTitle": "More apps",
-      "closeMore": "Close menu"
+      "closeMore": "Close menu",
+      "backToOS": "Back to OS"
     },
     "onboarding": {
       "title": "First day in BSD-YBM",

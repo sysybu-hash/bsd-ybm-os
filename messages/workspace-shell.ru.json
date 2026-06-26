@@ -1141,7 +1141,8 @@
       "windowSwitcher": "Окна",
       "moreApps": "Ещё",
       "moreAppsTitle": "Другие приложения",
-      "closeMore": "Закрыть меню"
+      "closeMore": "Закрыть меню",
+      "backToOS": "К ОС"
     },
     "onboarding": {
       "title": "Первый день в BSD-YBM",

@@ -1141,7 +1141,8 @@
       "windowSwitcher": "חלונות",
       "moreApps": "עוד",
       "moreAppsTitle": "יישומים נוספים",
-      "closeMore": "סגור תפריט"
+      "closeMore": "סגור תפריט",
+      "backToOS": "חזור ל-OS"
     },
     "onboarding": {
       "title": "יום ראשון ב-BSD-YBM",
