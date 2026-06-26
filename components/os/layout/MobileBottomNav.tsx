@@ -168,6 +168,7 @@ export default function MobileBottomNav({
             openWidget(type);
             setMoreOpen(false);
           }}
+          onOpenWindowSwitcher={onOpenWindowSwitcher}
         />
       ) : null}
 
@@ -234,14 +235,7 @@ export default function MobileBottomNav({
             </div>
 
             <NavSideGrid>
-              {onOpenWindowSwitcher ? (
-                <WindowSwitcherButton
-                  onOpen={onOpenWindowSwitcher}
-                  label={t("workspaceWidgets.mobileNav.windowSwitcher")}
-                />
-              ) : (
-                <NavSideBalanceSlot />
-              )}
+              <DashboardLinkButton label={t("workspaceWidgets.mobileNav.dashboard")} />
               <SortableLauncherZone
                 zone="mobileBarEnd"
                 variant="mobile"
@@ -280,11 +274,13 @@ function MoreAppsPanel({
   apps,
   onClose,
   onOpen,
+  onOpenWindowSwitcher,
 }: {
   t: (key: string) => string;
   apps: NavItem[];
   onClose: () => void;
   onOpen: (type: WidgetType) => void;
+  onOpenWindowSwitcher?: () => void;
 }) {
   return (
     <div
@@ -294,7 +290,18 @@ function MoreAppsPanel({
     >
       <MoreAppsPanelHeader t={t} onClose={onClose} />
       <div className="grid grid-cols-4 gap-2">
-        <DashboardLinkButton label={t("workspaceWidgets.mobileNav.dashboard")} />
+        {onOpenWindowSwitcher ? (
+          <button
+            type="button"
+            onClick={() => { onOpenWindowSwitcher(); onClose(); }}
+            className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
+          >
+            <span className={`flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg transition ${widgetIconChipClass("appBuilder")}`}>
+              <Layers size={20} strokeWidth={1.75} aria-hidden />
+            </span>
+            <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{t("workspaceWidgets.mobileNav.windowSwitcher")}</span>
+          </button>
+        ) : null}
         {apps.map((item) => (
           <SideNavButton key={item.type} item={item} onOpen={onOpen} label={t(item.labelKey)} />
         ))}
