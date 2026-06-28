@@ -49,6 +49,8 @@ export default function ProjectDashboardWidget({
     blueprintEnginesUsed,
     blueprintEngineRunMode, setBlueprintEngineRunMode,
     blueprintInstruction, setBlueprintInstruction,
+    blueprintCustomEngines, setBlueprintCustomEngines,
+    blueprintUseOcr, setBlueprintUseOcr,
   } = s;
 
   if (showProjectPicker) {
@@ -124,6 +126,10 @@ export default function ProjectDashboardWidget({
         setBlueprintEngineRunMode={setBlueprintEngineRunMode}
         blueprintInstruction={blueprintInstruction}
         setBlueprintInstruction={setBlueprintInstruction}
+        blueprintCustomEngines={blueprintCustomEngines}
+        setBlueprintCustomEngines={setBlueprintCustomEngines}
+        blueprintUseOcr={blueprintUseOcr}
+        setBlueprintUseOcr={setBlueprintUseOcr}
         openWorkspaceWidget={openWorkspaceWidget}
       />
 

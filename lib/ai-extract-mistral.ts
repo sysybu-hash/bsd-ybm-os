@@ -45,6 +45,7 @@ export async function extractDocumentWithMistral(
       body: JSON.stringify({
         model,
         response_format: { type: "json_object" },
+        temperature: 0,
         messages: [
           {
             role: "user",
@@ -79,6 +80,57 @@ export async function extractDocumentWithMistral(
   }
 
   throw lastErr ?? new Error("Mistral: כל מודלי ה-vision נכשלו");
+}
+
+/**
+ * Mistral OCR 4 — מודל OCR ייעודי עם תמיכה מלאה בעברית (170+ שפות).
+ * מחזיר טקסט markdown נקי מכל עמוד בנפרד, ואז מאוחד לטקסט אחד.
+ * מיועד כ-pre-pass לפני ניתוח LLM — משפר דיוק בחילוץ כמויות מגרמושקות.
+ */
+export async function extractTextWithMistralOCR(
+  base64: string,
+  mimeType: string,
+): Promise<string> {
+  const key = getMistralKey();
+
+  const documentPayload =
+    mimeType === "application/pdf"
+      ? { type: "document_url", document_url: `data:application/pdf;base64,${base64}` }
+      : { type: "image_url", image_url: `data:${mimeType};base64,${base64}` };
+
+  const res = await fetch(`${MISTRAL_API_BASE}/ocr`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "mistral-ocr-latest",
+      document: documentPayload,
+      include_image_base64: false,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Mistral OCR: ${res.status} ${(await res.text()).slice(0, 400)}`);
+  }
+
+  const data = (await res.json()) as {
+    pages?: Array<{ index: number; markdown?: string }>;
+    text?: string;
+  };
+
+  if (typeof data.text === "string" && data.text.trim()) return data.text;
+
+  if (Array.isArray(data.pages) && data.pages.length > 0) {
+    return data.pages
+      .sort((a, b) => a.index - b.index)
+      .map((p, idx) => `\n\n--- עמוד ${idx + 1} ---\n\n${p.markdown ?? ""}`)
+      .join("")
+      .trim();
+  }
+
+  throw new Error("Mistral OCR לא החזיר תוכן");
 }
 
 /** צ'אט טקסט (ללא vision) — לשימוש ב-ai-chat.ts */

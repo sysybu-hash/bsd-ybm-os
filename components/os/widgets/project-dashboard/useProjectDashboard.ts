@@ -25,6 +25,8 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [blueprintEnginesUsed, setBlueprintEnginesUsed] = useState<string[]>([]);
   const [blueprintEngineRunMode, setBlueprintEngineRunMode] = useState<import("@/lib/projects/blueprint-analyze").BlueprintEngineRunMode>("AUTO");
   const [blueprintInstruction, setBlueprintInstruction] = useState("");
+  const [blueprintCustomEngines, setBlueprintCustomEngines] = useState<string[]>([]);
+  const [blueprintUseOcr, setBlueprintUseOcr] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [diaryInitialDesc, setDiaryInitialDesc] = useState<string | undefined>();
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
@@ -129,6 +131,10 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       fd.append("preview", "true");
       fd.append("engineRunMode", blueprintEngineRunMode);
       if (blueprintInstruction.trim()) fd.append("userInstruction", blueprintInstruction.trim());
+      if (blueprintEngineRunMode === "CUSTOM_PARALLEL" && blueprintCustomEngines.length > 0) {
+        fd.append("customEngines", JSON.stringify(blueprintCustomEngines));
+      }
+      fd.append("useOcrPrepass", blueprintUseOcr ? "true" : "false");
       const res = await fetch("/api/projects/analyze-blueprint", { method: "POST", credentials: "include", body: fd });
       const json = (await res.json()) as Record<string, unknown>;
       if (!res.ok) { toast.error((json.error as string) ?? t("projectDashboard.errors.blueprint")); return; }
@@ -227,6 +233,8 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     blueprintEnginesUsed,
     blueprintEngineRunMode, setBlueprintEngineRunMode,
     blueprintInstruction, setBlueprintInstruction,
+    blueprintCustomEngines, setBlueprintCustomEngines,
+    blueprintUseOcr, setBlueprintUseOcr,
     deleteProject,
     onBlueprintFile, confirmBlueprintImport, loadProjectsList,
     openWorkspaceWidget,

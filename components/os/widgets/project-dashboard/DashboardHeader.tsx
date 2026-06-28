@@ -40,15 +40,28 @@ type DashboardHeaderProps = {
   setBlueprintEngineRunMode: (m: BlueprintEngineRunMode) => void;
   blueprintInstruction: string;
   setBlueprintInstruction: (v: string) => void;
+  blueprintCustomEngines: string[];
+  setBlueprintCustomEngines: (v: string[]) => void;
+  blueprintUseOcr: boolean;
+  setBlueprintUseOcr: (v: boolean) => void;
   openWorkspaceWidget?: ((type: WidgetType, data?: Record<string, unknown> | null) => void) | null;
 };
 
 const BLUEPRINT_ENGINE_CHIPS: { id: BlueprintEngineRunMode; label: string; Icon?: typeof Sparkles }[] = [
   { id: "AUTO", label: "אוטומטי", Icon: Sparkles },
-  { id: "MULTI_PARALLEL", label: "ריבוי מנועים", Icon: Layers },
+  { id: "MULTI_PARALLEL", label: "הכל במקביל", Icon: Layers },
+  { id: "CUSTOM_PARALLEL", label: "בחירה ידנית", Icon: Layers },
   { id: "SINGLE_GEMINI", label: "Gemini" },
   { id: "SINGLE_OPENAI", label: "OpenAI" },
   { id: "SINGLE_ANTHROPIC", label: "Claude" },
+  { id: "SINGLE_MISTRAL", label: "Mistral" },
+];
+
+const CUSTOM_ENGINE_OPTIONS: { key: string; label: string }[] = [
+  { key: "gemini",    label: "Gemini" },
+  { key: "openai",   label: "OpenAI" },
+  { key: "anthropic", label: "Claude" },
+  { key: "mistral",  label: "Mistral" },
 ];
 
 export function DashboardHeader({
@@ -57,6 +70,8 @@ export function DashboardHeader({
   clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile,
   blueprintEngineRunMode, setBlueprintEngineRunMode,
   blueprintInstruction, setBlueprintInstruction,
+  blueprintCustomEngines, setBlueprintCustomEngines,
+  blueprintUseOcr, setBlueprintUseOcr,
   openWorkspaceWidget,
 }: DashboardHeaderProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -155,6 +170,43 @@ export function DashboardHeader({
               );
             })}
           </div>
+          {blueprintEngineRunMode === "CUSTOM_PARALLEL" ? (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {CUSTOM_ENGINE_OPTIONS.map((opt) => {
+                const checked = blueprintCustomEngines.includes(opt.key);
+                return (
+                  <label
+                    key={opt.key}
+                    className="flex cursor-pointer items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2 py-1 text-[11px] font-bold hover:bg-[color:var(--surface-soft)]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setBlueprintCustomEngines(
+                          checked
+                            ? blueprintCustomEngines.filter((k) => k !== opt.key)
+                            : [...blueprintCustomEngines, opt.key],
+                        )
+                      }
+                      className="accent-amber-500"
+                    />
+                    {opt.label}
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+          <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2.5 py-1.5 text-[11px] font-bold hover:bg-[color:var(--surface-soft)]">
+            <input
+              type="checkbox"
+              checked={blueprintUseOcr}
+              onChange={(e) => setBlueprintUseOcr(e.target.checked)}
+              className="accent-amber-500"
+            />
+            <span>Mistral OCR 4 pre-pass</span>
+            <span className="ms-auto font-normal text-[color:var(--foreground-muted)]">חילוץ עברית מדויק לפני ניתוח AI</span>
+          </label>
           <textarea
             rows={2}
             maxLength={800}

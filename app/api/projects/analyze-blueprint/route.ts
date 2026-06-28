@@ -16,7 +16,39 @@ import {
 } from "@/lib/projects/blueprint-analysis-schema";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 240; // multipass on large PDFs needs more time
+
+const PAGES_PER_CHUNK = 4;
+
+/** Split a PDF buffer into chunks of PAGES_PER_CHUNK pages each, returned as base64 strings. */
+async function splitPdfIntoChunks(
+  buffer: ArrayBuffer,
+): Promise<Array<{ base64: string; mimeType: string; pageLabel: string }> | null> {
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const srcDoc = await PDFDocument.load(buffer);
+    const totalPages = srcDoc.getPageCount();
+    if (totalPages <= PAGES_PER_CHUNK) return null; // small enough to send whole
+
+    const chunks: Array<{ base64: string; mimeType: string; pageLabel: string }> = [];
+    for (let start = 0; start < totalPages; start += PAGES_PER_CHUNK) {
+      const end = Math.min(start + PAGES_PER_CHUNK, totalPages);
+      const chunk = await PDFDocument.create();
+      const pageIndices = Array.from({ length: end - start }, (_, i) => start + i);
+      const pages = await chunk.copyPages(srcDoc, pageIndices);
+      pages.forEach((p: import("pdf-lib").PDFPage) => chunk.addPage(p));
+      const bytes = await chunk.save();
+      chunks.push({
+        base64: Buffer.from(bytes).toString("base64"),
+        mimeType: "application/pdf",
+        pageLabel: `עמודים ${start + 1}–${end} מתוך ${totalPages}`,
+      });
+    }
+    return chunks;
+  } catch {
+    return null; // pdf-lib unavailable — fall back to whole-doc analysis
+  }
+}
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const REQUESTS_PER_HOUR = 15;
@@ -163,12 +195,21 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
 
     const engineRunMode = (formData.get("engineRunMode") as BlueprintEngineRunMode | null) ?? "AUTO";
     const userInstruction = formData.get("userInstruction") as string | null;
+    const customEnginesRaw = formData.get("customEngines") as string | null;
+    const customEngines = customEnginesRaw ? (JSON.parse(customEnginesRaw) as string[]) : undefined;
+    const useOcrPrepass = formData.get("useOcrPrepass") === "true";
 
     const arrayBuffer = await file.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = file.type || "application/pdf";
 
-    const parsed = await analyzeBlueprintFile(base64, mimeType, { engineRunMode, userInstruction });
+    const pdfChunks = mimeType === "application/pdf"
+      ? (await splitPdfIntoChunks(arrayBuffer)) ?? undefined
+      : undefined;
+
+    const parsed = await analyzeBlueprintFile(base64, mimeType, {
+      engineRunMode, userInstruction, customEngines, pdfChunks, useOcrPrepass,
+    });
 
     if (isPreview) {
       return NextResponse.json({ preview: true, ...parsed });

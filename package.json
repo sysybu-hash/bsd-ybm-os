@@ -161,6 +161,7 @@
     "nodemailer": "^7.0.13",
     "openai": "^6.37.0",
     "papaparse": "^5.5.3",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^4.10.38",
     "pdfmake": "^0.3.8",

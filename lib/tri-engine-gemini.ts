@@ -22,11 +22,22 @@ export async function geminiMultimodal(
   let lastErr: unknown = null;
   for (const modelId of modelChain) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent([
-        `${instruction}\nReturn a single JSON object only, no markdown.`,
-        { inlineData: { data: base64, mimeType } },
-      ]);
+      const model = genAI.getGenerativeModel(
+        { model: modelId },
+        { apiVersion: undefined },
+      );
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `${instruction}\nReturn a single JSON object only, no markdown.` },
+              { inlineData: { data: base64, mimeType } },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" },
+      });
       return parseModelJsonText(result.response.text());
     } catch (err: unknown) {
       lastErr = err;
