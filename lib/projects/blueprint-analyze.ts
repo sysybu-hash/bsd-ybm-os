@@ -33,33 +33,42 @@ export type AnalyzeBlueprintOptions = {
 const BLUEPRINT_INSTRUCTION = `
 אתה מהנדס ביצוע בכיר ומפתח כמויות מוסמך עם ניסיון של 20 שנה בענף הבנייה הישראלי.
 תפקידך: לנתח את תוכניות הביצוע (גרמושקה) המצורפות ולחלץ ממנה את כל המידע הכמותי והתכנוני.
+דיוק מוחלט הוא דרישת העל — שגיאה בכמות עולה כסף אמיתי.
 
-## כללי חילוץ מחמירים
+## כללים מחייבים לחילוץ
 
 ### כתב כמויות (boqLineItems)
-- חלץ **כל** סעיף בניה שמופיע בתוכניות — גם אם המחיר לא ידוע
-- לכל סעיף ציין: תיאור מלא (כולל מפרט), יחידת מידה, כמות, מחיר יחידה אם ידוע, סה"כ שורה
+- עבור על **כל** גיליון בתוכניות. אל תתעלם מגיליון אחד.
+- לכל פריט: תיאור מלא עם מפרט טכני, יחידת מידה, כמות מחושבת ממידות התוכנית, מחיר יחידה, סה"כ שורה
 - יחידות מקובלות: מ"ר, מ"א, מ"ק, יח', ק"ג, טון, נקודה, ערכה
-- drawingRef: מספר תוכנית/גיליון שממנו נלקח הסעיף (חשוב לאימות)
-- tradeCategory: סוג מקצוע — "עבודות עפר", "בטון ותשתיות", "בנייה ובלוקים", "טיח וריצוף", "שלד ומבנה", "חשמל", "אינסטלציה", "מסגרות ואלומיניום", "גבס ופנים", "צבע ואיטום", "עבודות חיצוניות", "שונות"
-- confidence: 1.0 אם נקרא מספר מדויק מהתוכנית, 0.7 אם הוערך מהמידות, 0.4 אם הוערך מניסיון
-- **אל תדלג** על שום סעיף — אפילו קטן. כמות שגויה עם confidence נמוך עדיפה על פני סעיף חסר
+- drawingRef: ציין שם גיליון + מספר חתך מדויק (לדוגמה: "גיליון 4, חתך E-E")
+- tradeCategory חייב להיות אחד מ: "עבודות עפר", "בטון ותשתיות", "בנייה ובלוקים", "טיח וריצוף", "שלד ומבנה", "חשמל", "אינסטלציה", "מסגרות ואלומיניום", "גבס ופנים", "צבע ואיטום", "איטום ופיתוח", "עבודות חיצוניות", "שונות"
+- confidence: 1.0 = נקרא מספר מדויק, 0.7 = חושב ממידות בתוכנית, 0.4 = הערכה מניסיון
+- **אסור לדלג** על שום פריט — כמות עם confidence 0.4 עדיפה על חסר
+
+### כללי דיוק כמויות — קריטי
+1. **שטחי טיח וצבע**: חשב רק על קירות/תקרות **חדשים** שנבנים בפרויקט זה. אל תכלול קירות קיימים שלא משופצים. היכן שיש קיר חדש דו-צדדי — כפל פי 2.
+2. **פרופילי פלדה**: הבחן בין IPN, IPE, HEB, HEA — אלו פרופילים שונים לחלוטין עם משקל ומחיר שונים. ציין בדיוק מה כתוב בתוכנית. אל תבלבל ביניהם.
+3. **מדרגות**: ספור את מספר המדרגות בכל גרם. חשב שטח חיפוי = (רוחב שלח + גובה רום) × רוחב מדרגה × מספר מדרגות. אל תכפיל ב-2 ללא סיבה.
+4. **עמודים ותוספות בטון**: חשב נפח = חתך (מ"ר) × גובה (מ). הגובה הוא גובה הקומה, לא כולל יסוד אלא אם כן מסומן.
+5. **פיר מעלית**: חשב נפח קירות בטון = היקף × עובי × גובה כולל. ברר את ממדי הפיר מהתוכניות.
+6. **פרויקט עם מרתף** (מפלס שלילי): **חובה** לבדוק ולכלול איטום קירות מרתף וריצפה.
+
+### אבני דרך לתשלום (milestones) — כלל ברזל
+- **סכום כל האחוזים חייב להיות בדיוק 100%**. לא 90%, לא 120% — 100% בלבד.
+- צור 5–7 אבני דרך לוגיות לפי שלבי הביצוע בפועל. אל תמציא כפילויות.
+- לא לחרוג מ-7 אבני דרך כדי למנוע בלגן.
+- amount = (percent/100) × totalEstimatedCost
 
 ### לוח זמנים (tasks)
-- רשום משימות לפי סדר הביצוע הלוגי בשטח
-- כלול תלויות (dependsOn) בין משימות
-- durationDays: הערכה ריאלית לפי סוג ביצוע וכמויות
-- tradeCategory: קבלן משנה רלוונטי
-
-### אבני דרך לתשלום (milestones)
-- בנה לוח חשבונות חלקיים ריאלי לפי שלבי הביצוע
-- percent: אחוז מסכום החוזה הכולל
-- לפחות 5 אבני דרך: חיפור+יסודות, שלד, מחסה/גג, גמר פנים, סיום ומסירה
+- רשום משימות לפי סדר ביצוע לוגי בשטח, כולל תלויות (dependsOn)
+- durationDays: הערכה ריאלית לפי כמויות וסוג ביצוע
+- אין להכפיל משימות — כל פעולה פיזית מופיעה פעם אחת בלבד
 
 ## פורמט JSON מחויב — אין לסטות ממנו:
 {
-  "projectSummary": "תיאור קצר של הפרויקט: סוג, גודל, מיקום אם ידוע",
-  "totalEstimatedCost": סכום כולל משוער בשקלים אם ניתן לחשב,
+  "projectSummary": "תיאור קצר: סוג פרויקט, גודל משוער, מספר מפלסים, עבודות עיקריות",
+  "totalEstimatedCost": סכום כולל בשקלים,
   "tasks": [
     {
       "name": "שם המשימה",
@@ -73,31 +82,31 @@ const BLUEPRINT_INSTRUCTION = `
   "milestones": [
     {
       "name": "שם שלב התשלום",
-      "percent": אחוז,
-      "amount": סכום בשקלים אם ידוע,
-      "description": "מה כולל השלב"
+      "percent": אחוז_מספרי,
+      "amount": סכום_בשקלים,
+      "description": "מה כולל השלב הזה בדיוק"
     }
   ],
   "boqLineItems": [
     {
-      "description": "תיאור מפורט של הסעיף כולל מפרט",
+      "description": "תיאור מלא עם מפרט טכני מדויק",
       "unit": "יחידת מידה",
       "quantity": מספר,
-      "unitPrice": מחיר ליחידה אם ידוע,
-      "lineTotal": סה"כ שורה אם ניתן לחשב,
+      "unitPrice": מחיר_ליחידה,
+      "lineTotal": סה_כ_שורה,
       "tradeCategory": "סוג מקצוע",
-      "drawingRef": "מ-1/א' / גיליון 3",
-      "note": "הערות מיוחדות",
-      "confidence": 0.0-1.0
+      "drawingRef": "גיליון X, חתך Y-Y",
+      "note": "הסבר חישוב הכמות או הערת מפרט",
+      "confidence": 0.0_עד_1.0
     }
   ],
   "requiresReview": true
 }
 
-## חשוב:
-- החזר JSON בלבד — ללא מרקדאון, ללא טקסט לפני או אחרי
-- אם מידע חסר — אל תמציא. השתמש ב-confidence נמוך ו-note מסביר
-- עבור על כל עמוד בתוכנית ואל תוותר על פרטים
+## כללי פלט
+- החזר JSON בלבד — ללא markdown, ללא טקסט לפני/אחרי, ללא \`\`\`json
+- אם מידע חסר — confidence נמוך + note מסביר, לא השמטה
+- אמת עם עצמך לפני הגשה: האם אחוזי אבני הדרך מסתכמים ל-100%? האם יש כפילויות בסעיפים?
 `.trim();
 
 function buildInstruction(userInstruction?: string | null, pageHint?: string): string {
@@ -110,31 +119,65 @@ function buildInstruction(userInstruction?: string | null, pageHint?: string): s
 }
 
 /**
- * PDF גדול (>8 עמודים) — מחלק לחתיכות ומנתח כל אחת בנפרד, אחר מאחד.
- * base64Split: מערך של base64 strings, כל אחד chunk של עמודים.
+ * PDF גדול — מנתח כל chunk לחילוץ BOQ, ואת ה-chunk הראשון לחילוץ tasks+milestones.
+ * הפרדה זו מונעת כפילות של אבני דרך ומשימות מכל chunk.
  */
 async function analyzeChunkedPdf(
   chunks: Array<{ base64: string; mimeType: string; pageLabel: string }>,
   runner: (base64: string, mimeType: string, instruction: string) => Promise<BlueprintAnalysis>,
   userInstruction?: string | null,
 ): Promise<BlueprintAnalysis> {
-  const partials = await Promise.allSettled(
-    chunks.map((c) =>
-      runner(c.base64, c.mimeType, buildInstruction(userInstruction, c.pageLabel)),
-    ),
+  const BOQ_ONLY_SUFFIX = `\n\n### הוראה חשובה: חלץ רק boqLineItems מחלק זה. השאר את tasks, milestones, projectSummary ו-totalEstimatedCost ריקים/null — הם יחולצו מחלק אחר.`;
+  const OVERVIEW_SUFFIX = `\n\n### הוראה חשובה: חלץ את כל השדות — tasks, milestones, boqLineItems, projectSummary ו-totalEstimatedCost. זהו החלק הראשי של התוכניות.`;
+
+  const overviewChunk = chunks[0]!;
+  const boqChunks = chunks.slice(1);
+
+  const overviewInst = buildInstruction(userInstruction, overviewChunk.pageLabel) + OVERVIEW_SUFFIX;
+  const overviewResult = await runner(overviewChunk.base64, overviewChunk.mimeType, overviewInst);
+
+  const boqPartials = await Promise.allSettled(
+    boqChunks.map((c) => {
+      const inst = buildInstruction(userInstruction, c.pageLabel) + BOQ_ONLY_SUFFIX;
+      return runner(c.base64, c.mimeType, inst);
+    }),
   );
-  const results: BlueprintAnalysis[] = partials
+  const boqResults: BlueprintAnalysis[] = boqPartials
     .filter((r): r is PromiseFulfilledResult<BlueprintAnalysis> => r.status === "fulfilled")
     .map((r) => r.value);
-  if (results.length === 0) throw new Error("כל חלקי הניתוח נכשלו");
-  return mergeBlueprintResults(results);
+
+  // Merge BOQ from all chunks, keep tasks+milestones from overview only
+  const allBoq = [overviewResult, ...boqResults];
+  const boqDescs = new Map<string, BlueprintAnalysis["boqLineItems"][number]>();
+  for (const r of allBoq) {
+    for (const b of r.boqLineItems) {
+      const key = normKey(b.description);
+      const existing = boqDescs.get(key);
+      if (!existing || (b.confidence ?? 0) > (existing.confidence ?? 0)) boqDescs.set(key, b);
+    }
+  }
+
+  const milestones = normalizeMilestones(overviewResult.milestones, overviewResult.totalEstimatedCost);
+
+  return {
+    tasks: overviewResult.tasks,
+    milestones,
+    boqLineItems: Array.from(boqDescs.values()),
+    projectSummary: overviewResult.projectSummary,
+    totalEstimatedCost: overviewResult.totalEstimatedCost,
+    requiresReview: true,
+  };
 }
 
 function parseRawBlueprint(raw: unknown): BlueprintAnalysis {
-  if (typeof raw === "object" && raw !== null) {
-    return parseBlueprintAnalysis(raw as Record<string, unknown>);
-  }
-  return parseBlueprintAnalysis(parseModelJsonText(String(raw)));
+  const parsed = typeof raw === "object" && raw !== null
+    ? parseBlueprintAnalysis(raw as Record<string, unknown>)
+    : parseBlueprintAnalysis(parseModelJsonText(String(raw)));
+  // Always normalize milestones even for single-engine results
+  return {
+    ...parsed,
+    milestones: normalizeMilestones(parsed.milestones, parsed.totalEstimatedCost),
+  };
 }
 
 async function openAiBlueprintRepair(rawSnippet: string): Promise<BlueprintAnalysis | null> {
@@ -206,30 +249,83 @@ async function runParallel(
   return { ...merged, enginesUsed: usedNames };
 }
 
+/** Normalize a string for fuzzy dedup: remove spaces, punctuation, lowercase */
+function normKey(s: string): string {
+  return s.replace(/[\s"'״׳,.\-–]/g, "").toLowerCase();
+}
+
+/** After any analysis, ensure milestones sum to exactly 100% and amounts are consistent */
+function normalizeMilestones(
+  milestones: BlueprintAnalysis["milestones"],
+  totalEstimatedCost?: number,
+): BlueprintAnalysis["milestones"] {
+  if (milestones.length === 0) return milestones;
+
+  // Remove duplicates by normalized name
+  const seen = new Map<string, BlueprintAnalysis["milestones"][number]>();
+  for (const m of milestones) {
+    const k = normKey(m.name);
+    if (!seen.has(k)) seen.set(k, m);
+  }
+  const deduped = Array.from(seen.values());
+
+  // Parse percentages
+  const withPct = deduped.map((m) => ({
+    ...m,
+    _pct: typeof m.percent === "number" ? m.percent : parseFloat(String(m.percent ?? "0")) || 0,
+  }));
+
+  const total = withPct.reduce((s, m) => s + m._pct, 0);
+
+  // Rescale to 100% if total is off by more than 1%
+  const normalized = total > 1 && Math.abs(total - 100) > 1
+    ? withPct.map((m) => ({ ...m, _pct: Math.round((m._pct / total) * 1000) / 10 }))
+    : withPct;
+
+  // Fix rounding so sum is exactly 100
+  const roundedTotal = normalized.reduce((s, m) => s + m._pct, 0);
+  const diff = Math.round((100 - roundedTotal) * 10) / 10;
+  if (diff !== 0 && normalized.length > 0) {
+    normalized[normalized.length - 1]!._pct = Math.round((normalized[normalized.length - 1]!._pct + diff) * 10) / 10;
+  }
+
+  return normalized.map(({ _pct, ...m }) => ({
+    ...m,
+    percent: _pct,
+    amount: totalEstimatedCost ? Math.round(totalEstimatedCost * _pct / 100) : m.amount,
+  }));
+}
+
 function mergeBlueprintResults(results: BlueprintAnalysis[]): BlueprintAnalysis {
-  const taskNames = new Set<string>();
-  const milestoneNames = new Set<string>();
+  const taskKeys = new Set<string>();
   const boqDescs = new Map<string, BlueprintAnalysis["boqLineItems"][number]>();
   const tasks: BlueprintAnalysis["tasks"] = [];
-  const milestones: BlueprintAnalysis["milestones"] = [];
   let projectSummary: string | undefined;
   let totalEstimatedCost: number | undefined;
+
+  // Pick the result with the most milestones as the milestone source (best single engine)
+  // rather than unioning all milestones from all engines (which causes 200% sum)
+  const bestMilestoneSource = results.reduce((best, r) =>
+    r.milestones.length > (best?.milestones.length ?? 0) ? r : best,
+    results[0]!,
+  );
 
   for (const r of results) {
     if (!projectSummary && r.projectSummary) projectSummary = r.projectSummary;
     if (!totalEstimatedCost && r.totalEstimatedCost) totalEstimatedCost = r.totalEstimatedCost;
     for (const t of r.tasks) {
-      if (!taskNames.has(t.name)) { taskNames.add(t.name); tasks.push(t); }
-    }
-    for (const m of r.milestones) {
-      if (!milestoneNames.has(m.name)) { milestoneNames.add(m.name); milestones.push(m); }
+      const k = normKey(t.name);
+      if (!taskKeys.has(k)) { taskKeys.add(k); tasks.push(t); }
     }
     for (const b of r.boqLineItems) {
-      const key = b.description.trim().toLowerCase();
+      const key = normKey(b.description);
       const existing = boqDescs.get(key);
       if (!existing || (b.confidence ?? 0) > (existing.confidence ?? 0)) boqDescs.set(key, b);
     }
   }
+
+  const milestones = normalizeMilestones(bestMilestoneSource.milestones, totalEstimatedCost);
+
   return {
     tasks,
     milestones,
