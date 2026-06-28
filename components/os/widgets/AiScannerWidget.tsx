@@ -90,6 +90,8 @@ export default function AiScannerWidget({
     continueToSaveStep,
     resetScanState,
     scanClassification,
+    rescanLastFile,
+    hasFailedItems,
   } = scanQueue;
 
   if (showProjectPicker) {
@@ -170,7 +172,7 @@ export default function AiScannerWidget({
         </div>
 
         {pendingFiles.length > 0 && scanUiPhase === "idle" ? (
-          <div className="shrink-0 border-t border-[color:var(--border-main)]/80 bg-amber-500/5 px-3 py-2">
+          <div className="shrink-0 border-t border-[color:var(--border-main)]/80 bg-amber-500/5 px-3 py-2 flex-none">
             <p className="mb-1.5 text-[11px] font-black text-amber-600 dark:text-amber-400">
               {pendingFiles.length}{" "}
               {tr(`${scannerPrefix}.filesReady`, "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»")}
@@ -203,13 +205,14 @@ export default function AiScannerWidget({
           </div>
         ) : null}
 
-        <div className="bg-[color:var(--surface-card)]">
+        <div className="shrink-0 bg-[color:var(--surface-card)]">
           <ScanControlBar
             phase={scanUiPhase}
             t={t}
             tr={tr}
             hasContent={queue.length > 0 || !!lastScanV5 || !!pendingAnalysis || isProcessing}
             pendingCount={pendingFiles.length}
+            hasFailedItems={hasFailedItems}
             onClearPending={clearPending}
             onStop={stopScan}
             onBack={goBackScanStep}
@@ -221,6 +224,7 @@ export default function AiScannerWidget({
             onReset={resetScanState}
             onPickFiles={() => fileInputRef.current?.click()}
             onStartScan={() => void startScan()}
+            onRetry={() => void rescanLastFile("")}
           />
         </div>
       </div>

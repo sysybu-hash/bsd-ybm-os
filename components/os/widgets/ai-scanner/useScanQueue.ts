@@ -260,8 +260,9 @@ export function useScanQueue({
         setQueueProgress(null);
         setIsProcessing(false);
         if (abortRef.current === controller) abortRef.current = null;
-        if (!controller.signal.aborted && ok > 0) {
-          setSessionPhase("review");
+        if (!controller.signal.aborted) {
+          // If all scans failed, return to idle — don't leave stuck in "processing"
+          setSessionPhase(ok > 0 ? "review" : "idle");
         }
       }
     },
@@ -537,6 +538,9 @@ export function useScanQueue({
     await runFileQueue(files);
   }, [pendingFiles, isProcessing, runFileQueue]);
 
+  /** True when at least one queue item has status "error" — drives the retry button */
+  const hasFailedItems = queue.some((q) => q.status === "error");
+
   return {
     pendingFiles,
     addFiles,
@@ -584,6 +588,7 @@ export function useScanQueue({
     lockedSaveTargets,
     isSaving,
     rescanLastFile,
+    hasFailedItems,
   };
 }
 

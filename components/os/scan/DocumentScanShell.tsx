@@ -79,8 +79,19 @@ export function DocumentScanShell({
     lockedSaveTargets,
   } = scanQueue;
 
-  /** ב-Hub הגלילה נעשית ברמת ה-pane — לא בחלונית פנימית צרה */
+  /**
+   * Use an inner scroll container when the widget owns its height (standalone window).
+   * In hub mode the hub's pane already scrolls — no inner container needed.
+   */
   const useInnerScroll = !embeddedInHub && (sessionPhase === "review" || sessionPhase === "save");
+
+  /**
+   * Tell ScanFullEditor whether a parent already provides scroll context.
+   * - Standalone review/save: shell wraps with overflow-y-auto → editor should NOT add its own.
+   * - Hub mode: hub pane scrolls → editor should NOT add its own either.
+   * - Intake/processing: editor not shown, irrelevant.
+   */
+  const editorEmbeddedInScroll = embeddedInHub || useInnerScroll;
 
   const hubScrollClass =
     "custom-scrollbar w-full min-w-0 min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-24 [-webkit-overflow-scrolling:touch] [touch-action:pan-y]";
@@ -124,7 +135,7 @@ export function DocumentScanShell({
           onClose={() => setPendingAnalysis(null)}
           onContinueToSave={goToSaveStep}
           tr={tr}
-          embeddedInScrollParent={useInnerScroll}
+          embeddedInScrollParent={editorEmbeddedInScroll}
         />,
       );
     }
