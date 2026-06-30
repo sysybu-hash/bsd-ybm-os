@@ -35,7 +35,7 @@ export default function AnalysisStep({ loading, onAnalyze, scopeSummary }: Props
         type="button"
         disabled={loading}
         onClick={onAnalyze}
-        className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-indigo-600 font-bold text-white disabled:opacity-50"
+        className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-[color:var(--win-accent,#6366f1)] font-bold text-white disabled:opacity-50"
       >
         {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
         {loading

@@ -60,7 +60,7 @@ export default function OfficeExpenseScanPanel({ onExpenseSaved }: Props) {
       {showIntakeChrome ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border-main)]/60 px-3 py-2">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[color:var(--foreground-main)]">
-            <Receipt size={14} className="text-indigo-500" aria-hidden />
+            <Receipt size={14} className="text-[color:var(--win-accent,#6366f1)]" aria-hidden />
             {activeModeLabel}
           </span>
           <button

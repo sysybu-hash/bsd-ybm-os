@@ -66,7 +66,7 @@ export default function OsPromptDialog({
             <button
               type="button"
               onClick={() => onConfirm(value.trim())}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-500"
+              className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-4 py-2 text-sm font-bold text-white hover:opacity-90"
             >
               {confirm}
             </button>

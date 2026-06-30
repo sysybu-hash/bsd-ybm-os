@@ -109,7 +109,7 @@ export default function JewishCalendarWidget() {
           <button
             type="button"
             onClick={goToday}
-            className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300"
+            className="px-2 py-1 text-xs font-semibold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300"
           >
             {t(`${S}.today`)}
           </button>
@@ -145,7 +145,7 @@ export default function JewishCalendarWidget() {
             <p className="font-semibold text-[color:var(--foreground-main)]">{data.hebrew.displayHe}</p>
             <p className="text-[color:var(--foreground-muted)]">{gregDisplay}</p>
             {data.parasha ? (
-              <p className="mt-1 text-xs text-indigo-600 dark:text-indigo-300">
+              <p className="mt-1 text-xs text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300">
                 {t(`${S}.parasha`)} {data.parasha}
               </p>
             ) : null}
@@ -219,7 +219,7 @@ export default function JewishCalendarWidget() {
           href="https://www.hebcal.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-indigo-500"
+          className="underline hover:text-[color:var(--win-accent,#6366f1)]"
         >
           {t(`${S}.credit`)}
         </a>

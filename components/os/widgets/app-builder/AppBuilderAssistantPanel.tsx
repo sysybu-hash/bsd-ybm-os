@@ -133,7 +133,7 @@ export default function AppBuilderAssistantPanel({
             <button
               type="submit"
               disabled={c.isLoading || !c.input.trim()}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--accent)] px-3 py-2.5 text-white transition hover:bg-indigo-500 disabled:opacity-60"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--accent)] px-3 py-2.5 text-white transition hover:opacity-90 disabled:opacity-60"
               aria-label={t("workspaceWidgets.appBuilder.chatSend")}
             >
               {c.isLoading ? (

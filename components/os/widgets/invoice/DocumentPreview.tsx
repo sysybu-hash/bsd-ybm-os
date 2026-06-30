@@ -17,7 +17,7 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
       className="overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-white text-slate-900 shadow-xl dark:bg-slate-950 dark:text-slate-100"
       dir="rtl"
     >
-      <div className="bg-indigo-600 px-5 py-4">
+      <div className="bg-[color:var(--win-accent,#6366f1)] px-5 py-4">
         <h3 className="text-lg font-black text-white">{title}</h3>
         <p className="text-xs text-indigo-700 dark:text-indigo-200">
           {payload.orgName ?? "BSD-YBM"} · מס׳ {payload.number || "טיוטה"}
@@ -79,7 +79,7 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
           <span>מע״מ ({vatPct}%)</span>
           <span>{money(payload.vat)}</span>
         </div>
-        <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-black text-indigo-600 dark:border-slate-700">
+        <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-black text-[color:var(--win-accent,#6366f1)] dark:border-slate-700">
           <span>סה״כ לתשלום</span>
           <span>{money(payload.total)}</span>
         </div>

@@ -82,7 +82,7 @@ export default function CalculatorUtilityPanel({ mode, onModeChange, autoFocus }
           type="button"
           onClick={() => onModeChange("basic")}
           className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold ${
-            mode === "basic" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"
+            mode === "basic" ? "bg-[color:var(--win-accent,#6366f1)] text-white" : "text-[color:var(--foreground-muted)]"
           }`}
         >
           {t(`${R}.basic`)}
@@ -91,7 +91,7 @@ export default function CalculatorUtilityPanel({ mode, onModeChange, autoFocus }
           type="button"
           onClick={() => onModeChange("scientific")}
           className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold ${
-            mode === "scientific" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"
+            mode === "scientific" ? "bg-[color:var(--win-accent,#6366f1)] text-white" : "text-[color:var(--foreground-muted)]"
           }`}
         >
           {t(`${R}.scientific`)}

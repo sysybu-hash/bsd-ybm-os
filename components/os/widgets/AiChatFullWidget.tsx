@@ -50,7 +50,7 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         <div className="flex items-center gap-1.5 min-w-0">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
             <button type="button" onClick={c.handleLiveTab}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-[color:var(--win-accent,#6366f1)] text-white" : "text-[color:var(--foreground-muted)]"}`}>
               {t("workspaceWidgets.aiChat.tabLive")}
             </button>
           ) : null}

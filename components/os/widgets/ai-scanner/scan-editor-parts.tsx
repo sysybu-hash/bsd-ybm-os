@@ -59,7 +59,7 @@ export function LineItemsEditor({ items, onChange }: { items: LineItemV5[]; onCh
     return (
       <div className="flex items-center justify-between rounded-lg border border-dashed border-[color:var(--border-main)] px-3 py-2">
         <span className="text-xs text-[color:var(--foreground-muted)]">אין שורות פריטים</span>
-        <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg bg-[color:var(--accent)] px-2 py-1 text-[10px] font-bold text-white hover:bg-indigo-500">
+        <button type="button" onClick={add} className="flex items-center gap-1 rounded-lg bg-[color:var(--accent)] px-2 py-1 text-[10px] font-bold text-white hover:opacity-90">
           <Plus size={11} /> הוסף שורה
         </button>
       </div>

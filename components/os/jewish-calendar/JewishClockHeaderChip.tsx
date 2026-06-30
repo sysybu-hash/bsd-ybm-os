@@ -67,7 +67,7 @@ export default function JewishClockHeaderChip({ openWidget }: Props) {
       dir="rtl"
     >
       <span className="flex items-center gap-1 font-mono text-sm font-bold tabular-nums" suppressHydrationWarning>
-        <Clock size={12} className="shrink-0 text-indigo-500" aria-hidden />
+        <Clock size={12} className="shrink-0 text-[color:var(--win-accent,#6366f1)]" aria-hidden />
         {timeStr}
       </span>
       {hebrewLine ? (

@@ -65,7 +65,7 @@ export default function NotebookSpeechSettingsPanel({
         aria-expanded={expanded}
       >
         <span className="flex items-center gap-2 text-xs font-bold text-[color:var(--foreground-main)]">
-          <Settings2 className="h-4 w-4 text-indigo-500" aria-hidden />
+          <Settings2 className="h-4 w-4 text-[color:var(--win-accent,#6366f1)]" aria-hidden />
           הגדרות סגנון דיבור
         </span>
         <span className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">
@@ -177,7 +177,7 @@ export default function NotebookSpeechSettingsPanel({
             <button
               type="button"
               onClick={handleSave}
-              className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-indigo-500"
+              className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2.5 py-1.5 text-[10px] font-bold text-white hover:opacity-90"
             >
               <Save className="h-3 w-3" aria-hidden />
               שמור

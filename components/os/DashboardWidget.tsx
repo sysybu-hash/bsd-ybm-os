@@ -124,7 +124,7 @@ export default function DashboardWidget() {
         </ChartContainer>
 
         <ChartContainer
-          title={<span className="flex items-center gap-2"><Activity size={15} className="text-indigo-500 dark:text-indigo-400" />סטטוס הצעות מחיר</span>}
+          title={<span className="flex items-center gap-2"><Activity size={15} className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />סטטוס הצעות מחיר</span>}
           minHeight={192}
         >
           <div className="flex flex-col gap-4">
@@ -155,12 +155,12 @@ export default function DashboardWidget() {
 
       {/* Cashflow Chart */}
       <ChartContainer
-        title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />תחזית תזרים מזומנים חכמה</span>}
+        title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />תחזית תזרים מזומנים חכמה</span>}
         subtitle="ניתוח היסטורי + תחזית רבעונית קדימה"
         actionElement={
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[color:var(--win-accent,#6366f1)]" />
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">ביצוע בפועל</span>
             </div>
             <div className="flex items-center gap-1.5">

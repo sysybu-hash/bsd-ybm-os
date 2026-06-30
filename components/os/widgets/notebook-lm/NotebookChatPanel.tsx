@@ -93,10 +93,10 @@ export function NotebookChatPanel({
       {audioScript ? (
         <motion.div className="space-y-3 border-b border-[color:var(--border-main)] bg-indigo-500/5 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-300">סקירה קולית</span>
+            <span className="text-xs font-bold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300">סקירה קולית</span>
             <div className="flex flex-wrap items-center gap-1.5">
               {!isPlaying && !isPaused ? (
-                <button type="button" onClick={() => onPlay(audioScript)} className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-indigo-500">
+                <button type="button" onClick={() => onPlay(audioScript)} className="flex items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2.5 py-1 text-[10px] font-bold text-white hover:opacity-90">
                   <Play className="h-3 w-3" aria-hidden /> השמע
                 </button>
               ) : null}
@@ -120,7 +120,7 @@ export function NotebookChatPanel({
           {(isPlaying || isPaused) && audioScript.length > 0 ? (
             <div className="space-y-1">
               <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--surface-soft)]">
-                <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-300" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-[color:var(--win-accent,#6366f1)] transition-[width] duration-300" style={{ width: `${progress}%` }} />
               </div>
               <p className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">{isPaused ? "מושהה" : "מנגן"} · {progress}%</p>
             </div>
@@ -148,7 +148,7 @@ export function NotebookChatPanel({
               <div
                 className={`max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
                   m.role === "user"
-                    ? "rounded-br-sm bg-indigo-600 text-white"
+                    ? "rounded-br-sm bg-[color:var(--win-accent,#6366f1)] text-white"
                     : "rounded-bl-sm border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-main)]"
                 }`}
               >
@@ -172,7 +172,7 @@ export function NotebookChatPanel({
       <div className="border-t border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/40 p-3">
         <div className="custom-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
           <button type="button" disabled={isGeneratingAudio} onClick={onVoiceOverview}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-500/20 disabled:opacity-50 dark:text-indigo-300">
+            className="flex shrink-0 items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-[color:var(--win-accent,#6366f1)] transition hover:bg-indigo-500/20 disabled:opacity-50 dark:text-indigo-300">
             {isGeneratingAudio ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />}
             סקירה קולית
           </button>
@@ -215,7 +215,7 @@ export function NotebookChatPanel({
             disabled={isLoading}
           />
           <button type="submit" disabled={isLoading || !input.trim()}
-            className="absolute left-2 rounded-lg bg-indigo-600 p-2 text-white hover:bg-indigo-500 disabled:opacity-50">
+            className="absolute left-2 rounded-lg bg-[color:var(--win-accent,#6366f1)] p-2 text-white hover:opacity-90 disabled:opacity-50">
             <Send className="h-4 w-4 rtl:-scale-x-100" />
           </button>
         </form>

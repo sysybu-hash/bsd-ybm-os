@@ -40,7 +40,7 @@ export function GanttChartRow({
   onDatesChange,
   onProgressPointerDown,
 }: Props) {
-  const baseCls = (task.tradeId && TRADE_BAR[task.tradeId]) ?? TRADE_BAR.GENERAL ?? "bg-indigo-500";
+  const baseCls = (task.tradeId && TRADE_BAR[task.tradeId]) ?? TRADE_BAR.GENERAL ?? "bg-[color:var(--win-accent,#6366f1)]";
   const colorCls = barColorClass(task, baseCls);
   const deps = parseDependencyIds(task.dependencies);
   const isEven = idx % 2 === 0;

@@ -145,7 +145,7 @@ export default function ReviewStep({ draft, onUpdate }: Props) {
             type="button"
             disabled={saving}
             onClick={() => void onUnifiedSave()}
-            className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+            className="w-full rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
           >
             {saving
               ? tr("workspaceWidgets.documentScan.saving", "שומר…")

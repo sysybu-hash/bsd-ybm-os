@@ -46,7 +46,7 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
           <p>{t("projectDashboard.milestonesEmptyBusiness")}</p>
           <button
             type="button"
-            className="mt-2 rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+            className="mt-2 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-xs text-white"
             onClick={async () => {
               const existing = new Set(data.milestones.map((m) => m.name.trim()));
               for (const preset of BUSINESS_PAYMENT_MILESTONE_PRESETS) {
@@ -112,7 +112,7 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
         />
         <button
           type="button"
-          className="rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-xs text-white"
           onClick={async () => {
             if (!milestoneName) return;
             const pct = milestonePercent ? Number(milestonePercent) : undefined;

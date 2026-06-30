@@ -113,7 +113,7 @@ export default function Omnibar({
       <span
         className={`h-1.5 w-1.5 shrink-0 rounded-full ${
           live.voiceStatus !== "idle"
-            ? "animate-pulse bg-indigo-500"
+            ? "animate-pulse bg-[color:var(--win-accent,#6366f1)]"
             : isBusy
               ? "animate-pulse bg-amber-400"
               : status === "error"
@@ -229,7 +229,7 @@ export default function Omnibar({
         <button
           type="button"
           onClick={() => openWorkspaceWidget("aiChatFull", { startLive: live.voiceActive })}
-          className="mt-3 min-h-[44px] w-full rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2.5 text-center text-[11px] font-bold text-indigo-600 dark:text-indigo-300"
+          className="mt-3 min-h-[44px] w-full rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2.5 text-center text-[11px] font-bold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300"
         >
           {t("workspaceWidgets.omnibar.openFullLiveChat")}
         </button>

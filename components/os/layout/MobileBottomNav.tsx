@@ -226,7 +226,7 @@ export default function MobileBottomNav({
                 <button
                   type="button"
                   onClick={onOpenOmnibar}
-                  className="mobile-bottom-nav-mic relative -translate-y-3 flex h-16 w-16 min-h-[64px] min-w-[64px] items-center justify-center rounded-full border border-white/30 bg-indigo-600 text-white shadow-[0_14px_28px_rgba(79,70,229,0.45)] ring-4 ring-[color:var(--glass-bg)] transition hover:bg-indigo-500 active:scale-95 sm:h-[4.5rem] sm:w-[4.5rem] sm:min-h-[4.5rem] sm:min-w-[4.5rem]"
+                  className="mobile-bottom-nav-mic relative -translate-y-3 flex h-16 w-16 min-h-[64px] min-w-[64px] items-center justify-center rounded-full border border-white/30 bg-[color:var(--win-accent,#6366f1)] text-white shadow-[0_14px_28px_rgba(79,70,229,0.45)] ring-4 ring-[color:var(--glass-bg)] transition hover:opacity-90 active:scale-95 sm:h-[4.5rem] sm:w-[4.5rem] sm:min-h-[4.5rem] sm:min-w-[4.5rem]"
                   aria-label={t("workspaceWidgets.mobileNav.omnibarAria")}
                 >
                   <Mic size={28} strokeWidth={2} aria-hidden />
@@ -261,7 +261,7 @@ function DashboardLinkButton({ label }: { label: string }) {
       href="/m/dashboard"
       className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
     >
-      <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition dark:bg-indigo-950 dark:text-indigo-400">
+      <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[color:var(--win-accent,#6366f1)] transition dark:bg-indigo-950 dark:text-indigo-400">
         <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden />
       </span>
       <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>

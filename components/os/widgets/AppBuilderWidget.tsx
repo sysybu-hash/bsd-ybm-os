@@ -128,7 +128,7 @@ export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWi
                 <button
                   type="button"
                   onClick={() => void handleRegenerate(uiSchema, appName)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white transition hover:bg-indigo-500"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
                 >
                   <RefreshCw size={14} />
                   {t(`${prefix}.generate`)}

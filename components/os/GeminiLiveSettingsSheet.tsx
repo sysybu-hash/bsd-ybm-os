@@ -82,7 +82,7 @@ export default function GeminiLiveSettingsSheet({
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-[11px] font-black text-white shadow-md transition hover:bg-indigo-500"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2 text-[11px] font-black text-white shadow-md transition hover:opacity-90"
           >
             <Save size={14} aria-hidden />
             {t("geminiLive.save")}

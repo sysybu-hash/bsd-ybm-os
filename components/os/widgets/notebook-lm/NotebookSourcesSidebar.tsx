@@ -91,7 +91,7 @@ export function NotebookSourcesSidebar({
             type="button"
             disabled={isSaving}
             onClick={onSave}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-60"
           >
             {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             {t(`${P}.save`)}
@@ -149,7 +149,7 @@ export function NotebookSourcesSidebar({
 
       {/* Sources heading */}
       <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-[color:var(--foreground-main)]">
-        <FileText className="h-5 w-5 text-indigo-500" /> {t(`${P}.sourcesHeading`)}
+        <FileText className="h-5 w-5 text-[color:var(--win-accent,#6366f1)]" /> {t(`${P}.sourcesHeading`)}
       </h2>
 
       {/* Drop zone */}
@@ -158,9 +158,9 @@ export function NotebookSourcesSidebar({
         onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
       >
         {isUploading ? (
-          <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-indigo-500" />
+          <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-[color:var(--win-accent,#6366f1)]" />
         ) : (
-          <Upload className="mx-auto mb-2 h-8 w-8 text-[color:var(--foreground-muted)] group-hover:text-indigo-500" />
+          <Upload className="mx-auto mb-2 h-8 w-8 text-[color:var(--foreground-muted)] group-hover:text-[color:var(--win-accent,#6366f1)]" />
         )}
         <p className="text-sm font-medium text-[color:var(--foreground-muted)]">{t(`${P}.uploadHint`)}</p>
         <p className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">{SCAN_ACCEPT_SUMMARY}</p>
@@ -186,7 +186,7 @@ export function NotebookSourcesSidebar({
               className="flex items-center justify-between rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <div className="rounded-md bg-indigo-500/15 p-2 text-indigo-500">
+                <div className="rounded-md bg-indigo-500/15 p-2 text-[color:var(--win-accent,#6366f1)]">
                   <FileText className="h-4 w-4" />
                 </div>
                 <span className="truncate text-sm font-medium text-[color:var(--foreground-main)]">{source.name}</span>

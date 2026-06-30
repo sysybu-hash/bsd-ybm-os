@@ -171,7 +171,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget, emb
       <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
         {/* Top row: icon + title + new task */}
         <div className="flex items-center gap-3 px-3 py-2.5 sm:px-6 sm:py-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 sm:h-10 sm:w-10">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400 sm:h-10 sm:w-10">
             <BarChart3 size={20} aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
@@ -189,7 +189,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget, emb
                 setIsAddingProject(true);
               }
             }}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition-all"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white hover:opacity-90 transition-all"
           >
             <Plus size={15} aria-hidden />
             <span className="hidden xs:inline">{t(`${boardPrefix}.newTask`)}</span>
@@ -241,7 +241,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget, emb
                 setIsAddingProject(true);
               }
             }}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition-all"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white hover:opacity-90 transition-all"
           >
             <Plus size={15} aria-hidden />
             {t(`${boardPrefix}.newTask`)}
@@ -327,7 +327,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget, emb
                         onClick={() => setActiveCol(col.id)}
                         className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
                           active
-                            ? "bg-indigo-600 text-white shadow-sm"
+                            ? "bg-[color:var(--win-accent,#6366f1)] text-white shadow-sm"
                             : "border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                         }`}
                       >

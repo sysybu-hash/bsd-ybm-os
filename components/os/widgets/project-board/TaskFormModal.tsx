@@ -45,7 +45,7 @@ export function TaskFormModal({
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl my-auto">
         <div className="flex items-center justify-between mb-4 sm:mb-8">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <Plus className="text-indigo-600 dark:text-indigo-400" size={24} /> {title}
+            <Plus className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" size={24} /> {title}
           </h3>
           <button
             type="button"
@@ -161,7 +161,7 @@ export function TaskFormModal({
         <button
           type="button"
           onClick={onSave}
-          className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
+          className="w-full h-12 bg-[color:var(--win-accent,#6366f1)] hover:opacity-90 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
         >
           <Save size={18} /> {saveLabel}
         </button>

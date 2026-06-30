@@ -119,7 +119,7 @@ export default function MeckanoHubWidget() {
       <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-[color:var(--win-accent,#6366f1)]">
               <FileText size={20} />
             </div>
             <div>
@@ -136,7 +136,7 @@ export default function MeckanoHubWidget() {
                 <Download size={12} className="inline me-1" />
                 CSV
               </button>
-              <button type="button" onClick={downloadPDF} className="rounded-lg bg-indigo-600 px-2 py-1 text-[10px] font-bold text-white">
+              <button type="button" onClick={downloadPDF} className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-[10px] font-bold text-white">
                 <FileDown size={12} className="inline me-1" />
                 PDF
               </button>
@@ -167,7 +167,7 @@ export default function MeckanoHubWidget() {
             <p>סה״כ שעות בטווח הנוכחי: {totalHours.toFixed(1)}</p>
             <p>עובדים במערכת: {employees.length}</p>
             <p>משימות/פרויקטים: {projects.length}</p>
-            <button type="button" onClick={() => void fetchReports()} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white">
+            <button type="button" onClick={() => void fetchReports()} className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-white">
               רענון דוחות
             </button>
             <button type="button" onClick={() => void syncZones()} disabled={syncingZones} className="ms-2 rounded-lg border border-[color:var(--border-main)] px-3 py-1.5">
@@ -198,7 +198,7 @@ export default function MeckanoHubWidget() {
             </div>
             {isLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="animate-spin text-indigo-500" />
+                <Loader2 className="animate-spin text-[color:var(--win-accent,#6366f1)]" />
               </div>
             ) : (
               <div className="overflow-x-auto p-2">
@@ -247,7 +247,7 @@ export default function MeckanoHubWidget() {
         {tab === "zones" ? (
           <div className="space-y-3 p-4 text-xs">
             <p className="text-[color:var(--foreground-muted)]">ייבוא אזורים ממקאנו ל-CRM ולפרויקטים.</p>
-            <button type="button" onClick={() => void syncZones()} disabled={syncingZones} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white">
+            <button type="button" onClick={() => void syncZones()} disabled={syncingZones} className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-white">
               {syncingZones ? <Loader2 size={14} className="animate-spin inline" /> : <Briefcase size={14} className="inline me-1" />}
               סנכרון אזורים מ-API
             </button>
@@ -284,7 +284,7 @@ export default function MeckanoHubWidget() {
               placeholder="הדבק מפתח מ-Meckano → הגדרות"
               className="w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2"
             />
-            <button type="button" disabled={savingKey} onClick={() => void saveApiKey()} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white">
+            <button type="button" disabled={savingKey} onClick={() => void saveApiKey()} className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-white">
               {savingKey ? <Loader2 size={14} className="animate-spin inline" /> : null}
               שמור מפתח
             </button>

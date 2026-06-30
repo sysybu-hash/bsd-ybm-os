@@ -63,7 +63,7 @@ export default function OsConfirmDialog({
               type="button"
               onClick={onConfirm}
               className={`rounded-lg px-4 py-2 text-sm font-bold text-white ${
-                destructive ? "bg-rose-600 hover:bg-rose-500" : "bg-indigo-600 hover:bg-indigo-500"
+                destructive ? "bg-rose-600 hover:bg-rose-500" : "bg-[color:var(--win-accent,#6366f1)] hover:opacity-90"
               }`}
               aria-label={confirm}
             >

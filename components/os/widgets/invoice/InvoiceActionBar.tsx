@@ -53,7 +53,7 @@ export default function InvoiceActionBar({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
         >
           <Save size={14} aria-hidden />
           {t("workspaceWidgets.invoice.save")}

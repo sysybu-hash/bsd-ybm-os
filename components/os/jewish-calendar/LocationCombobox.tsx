@@ -72,7 +72,7 @@ export function LocationCombobox({
             <button
               type="button"
               onClick={onDismissHint}
-              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-300"
+              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-[color:var(--win-accent,#6366f1)] hover:bg-indigo-500/10 dark:text-indigo-300"
             >
               ✕
             </button>
@@ -88,7 +88,7 @@ export function LocationCombobox({
             : "border-[color:var(--border-main)] bg-[color:var(--surface-soft)]"
         }`}
       >
-        <MapPin size={14} className="shrink-0 text-indigo-500" aria-hidden />
+        <MapPin size={14} className="shrink-0 text-[color:var(--win-accent,#6366f1)]" aria-hidden />
         <span className="truncate">{label}</span>
       </button>
       {open ? (
@@ -108,7 +108,7 @@ export function LocationCombobox({
               onUseMyLocation();
               setOpen(false);
             }}
-            className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-indigo-600 hover:bg-indigo-500/10 dark:text-indigo-300"
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-[color:var(--win-accent,#6366f1)] hover:bg-indigo-500/10 dark:text-indigo-300"
           >
             <Navigation size={14} aria-hidden />
             {useMyLocationLabel}

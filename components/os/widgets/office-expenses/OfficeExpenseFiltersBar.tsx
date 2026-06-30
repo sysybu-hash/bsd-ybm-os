@@ -31,7 +31,7 @@ export default function OfficeExpenseFiltersBar({
           <button
             type="button"
             onClick={onClear}
-            className="text-[11px] text-indigo-600 hover:underline"
+            className="text-[11px] text-[color:var(--win-accent,#6366f1)] hover:underline"
           >
             {t("workspaceWidgets.officeExpenses.filters.clear")}
           </button>
