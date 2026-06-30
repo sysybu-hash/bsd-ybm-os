@@ -67,7 +67,7 @@ function KpiCard({
   );
 }
 
-export default function DashboardOverview({ onNavigate }: { onNavigate: (tab: string) => void }) {
+export default function DashboardOverview({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const { t } = useI18n();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,7 +146,7 @@ export default function DashboardOverview({ onNavigate }: { onNavigate: (tab: st
               <button
                 key={id}
                 type="button"
-                onClick={() => onNavigate(id)}
+                onClick={() => onNavigate?.(id)}
                 className="group relative flex items-center gap-3 overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 text-start shadow-[var(--shadow-md)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lg)]"
               >
                 <span className={`pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full blur-2xl ${c.glow}`} aria-hidden />

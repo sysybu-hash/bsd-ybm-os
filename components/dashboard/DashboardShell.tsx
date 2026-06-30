@@ -3,23 +3,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import {
-  CalendarDays,
-  Calculator,
-  Cpu,
-  FileText,
-  FolderKanban,
-  HardDrive,
-  LayoutDashboard,
-  ListChecks,
-  Loader2,
-  MessageSquare,
-  MonitorPlay,
-  ScanLine,
-  Settings,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { FolderKanban, Loader2, MonitorPlay } from "lucide-react";
+import { CLASSIC_SECTIONS } from "@/lib/classic/sections";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import AddProjectForm from "@/components/os/widgets/shared/AddProjectForm";
 import DashboardClock from "@/components/dashboard/DashboardClock";
@@ -56,19 +41,8 @@ type TabId =
   | "settings";
 type CrmSubTab = "projects" | "clients";
 
-const TABS: ReadonlyArray<{ id: TabId; icon: LucideIcon }> = [
-  { id: "home", icon: LayoutDashboard },
-  { id: "crm", icon: Users },
-  { id: "erp", icon: FileText },
-  { id: "scan", icon: ScanLine },
-  { id: "customOs", icon: Cpu },
-  { id: "calendar", icon: CalendarDays },
-  { id: "tasks", icon: ListChecks },
-  { id: "calculators", icon: Calculator },
-  { id: "drive", icon: HardDrive },
-  { id: "aiChat", icon: MessageSquare },
-  { id: "settings", icon: Settings },
-];
+// Desktop tab list — derived from the shared classic-sections registry.
+const TABS = CLASSIC_SECTIONS;
 
 /** Frosted card shell used across the dashboard panels. */
 const CARD =
