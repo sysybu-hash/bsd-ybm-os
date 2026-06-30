@@ -29,7 +29,10 @@ export function StatCard({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-foreground-muted">{title}</h3>
         {Icon && (
-          <div className="p-2 bg-surface-soft rounded-lg text-foreground-muted">
+          <div
+            className="p-2 rounded-lg text-[color:var(--win-accent,#6366f1)]"
+            style={{ background: "color-mix(in srgb, var(--win-accent, #6366f1) 12%, transparent)" }}
+          >
             <Icon className="w-4 h-4" />
           </div>
         )}

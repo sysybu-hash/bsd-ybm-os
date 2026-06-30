@@ -74,9 +74,14 @@ export default function WidgetHubShell({
                 onClick={() => selectTab(tab.id)}
                 className={`shrink-0 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-colors md:px-2.5 md:text-xs ${
                   selected
-                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
+                    ? "text-[color:var(--win-accent,#6366f1)]"
                     : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
+                style={
+                  selected
+                    ? { background: "color-mix(in srgb, var(--win-accent, #6366f1) 15%, transparent)" }
+                    : undefined
+                }
               >
                 <span className="md:hidden">{t(tab.shortLabelKey ?? tab.labelKey)}</span>
                 <span className="hidden md:inline">{t(tab.labelKey)}</span>

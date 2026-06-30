@@ -28,6 +28,9 @@ interface ShellProps {
   onBack?: () => void;
   onForward?: () => void;
   maximizeHiddenOnMobile?: boolean;
+  /** Window Identity — אקצנט (גוון) ואייקון ייחודיים לחלון */
+  accent?: string;
+  headerIcon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -54,6 +57,8 @@ export default function AdaptiveWidgetShell({
   onBack,
   onForward,
   maximizeHiddenOnMobile = false,
+  accent,
+  headerIcon,
   children,
 }: ShellProps) {
   const { dir } = useI18n();
@@ -90,8 +95,8 @@ export default function AdaptiveWidgetShell({
       }`}
       style={
         mobileOrMaximized
-          ? { zIndex, display: isMinimized ? "none" : undefined }
-          : {
+          ? ({ zIndex, display: isMinimized ? "none" : undefined, "--win-accent": accent } as React.CSSProperties)
+          : ({
               width: `${currentSize.width}px`,
               height: `${currentSize.height}px`,
               maxWidth: `${ws.width}px`,
@@ -100,7 +105,8 @@ export default function AdaptiveWidgetShell({
               top: `${clampedTop}px`,
               zIndex,
               display: isMinimized ? "none" : undefined,
-            }
+              "--win-accent": accent,
+            } as React.CSSProperties)
       }
       dir={dir}
       aria-hidden={isMinimized || undefined}
@@ -119,6 +125,7 @@ export default function AdaptiveWidgetShell({
         <WorkspaceWindowChrome
           title={title}
           titleId={`${id}-title`}
+          headerStart={headerIcon ? <span className="workspace-window-icon" aria-hidden>{headerIcon}</span> : undefined}
           onClose={onClose}
           zoom={zoom}
           onZoomDelta={(delta) => onZoomChange?.(delta)}
