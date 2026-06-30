@@ -258,7 +258,7 @@ export default function MobileBottomNav({
 function DashboardLinkButton({ label }: { label: string }) {
   return (
     <Link
-      href="/m/dashboard"
+      href="/dashboard"
       className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
     >
       <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[color:var(--win-accent,#6366f1)] transition dark:bg-indigo-950 dark:text-indigo-400">
