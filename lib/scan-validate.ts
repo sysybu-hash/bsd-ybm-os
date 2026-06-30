@@ -8,8 +8,15 @@
  *
  * המודול טהור (ללא תלות ב-AI/DB) — קל לבדיקה ולשימוש חוזר.
  */
-import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
+import {
+  clampConfidenceScore,
+  DEFAULT_CONFIDENCE_SCORE,
+  type ScanExtractionV5,
+} from "@/lib/scan-schema-v5";
 import { isPlaceholderVendor } from "@/lib/scan/v5-normalize";
+
+/** מתחת לסף זה (ביטחון משוקלל) — הסריקה מנותבת לסקירה אנושית לפני שמירה. */
+export const REVIEW_CONFIDENCE_THRESHOLD = 0.6;
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
@@ -28,7 +35,18 @@ export type ScanValidationResult = {
   issues: ValidationIssue[];
   /** ציון ביטחון מחושב 0..1 — יורד עם כל בעיה */
   confidence: number;
+  /** ביטחון משוקלל: המינימום בין ביטחון-הולידציה לביטחון העצמי של המודל */
+  effectiveConfidence: number;
+  /** האם לנתב לסקירה אנושית לפני שמירה (ביטחון נמוך או שגיאת error) */
+  requiresHumanReview: boolean;
+  /** ביטחון פר-שדה (0..1) לשדות שסומנו בבעיה — להצגת נקודות סטטוס ב-UI */
+  fieldConfidence: Record<string, number>;
 };
+
+/** ביטחון פר-שדה לפי חומרת הבעיה החמורה ביותר שסומנה עליו. */
+function severityConfidence(severity: ValidationSeverity): number {
+  return severity === "error" ? 0.3 : severity === "warning" ? 0.6 : 0.85;
+}
 
 /** מע"מ ישראלי נכון ל-2026 (אחרי 1.1.2026: 18%). טווח סובלנות לזיהוי. */
 const VAT_RATE = 0.18;
@@ -157,10 +175,28 @@ export function validateScanV5(v5: ScanExtractionV5): ScanValidationResult {
   }, 0);
   const confidence = Math.max(0, Math.min(1, 1 - penalty));
 
+  // ── ביטחון משוקלל + ניתוב לסקירה אנושית (P0.4) ───────────────────────────
+  // משלבים את ביטחון-הולידציה הדטרמיניסטי עם הביטחון העצמי של המודל; הנמוך מנצח.
+  const modelConfidence = clampConfidenceScore(v5.confidenceScore) ?? DEFAULT_CONFIDENCE_SCORE;
+  const effectiveConfidence = Math.min(confidence, modelConfidence);
+  const hasError = issues.some((i) => i.severity === "error");
+  const requiresHumanReview = hasError || effectiveConfidence < REVIEW_CONFIDENCE_THRESHOLD;
+
+  // ביטחון פר-שדה: שדה שסומן בבעיה מקבל ביטחון לפי החומרה החמורה ביותר עליו.
+  const fieldConfidence: Record<string, number> = {};
+  for (const issue of issues) {
+    const c = severityConfidence(issue.severity);
+    const prev = fieldConfidence[issue.field];
+    fieldConfidence[issue.field] = prev === undefined ? c : Math.min(prev, c);
+  }
+
   return {
-    ok: issues.every((i) => i.severity !== "error"),
+    ok: !hasError,
     issues,
     confidence,
+    effectiveConfidence,
+    requiresHumanReview,
+    fieldConfidence,
   };
 }
 

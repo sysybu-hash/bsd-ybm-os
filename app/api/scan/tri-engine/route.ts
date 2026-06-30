@@ -70,6 +70,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
       parsed.openAiModel,
       parsed.engineRunMode,
       parsed.userInstruction,
+      !gate.downgraded,
     );
 
     const { v5, telemetry, validation } = await runTriEngineExtractionValidated({

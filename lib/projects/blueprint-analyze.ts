@@ -121,11 +121,13 @@ function buildInstruction(userInstruction?: string | null, pageHint?: string): s
 /**
  * PDF גדול — מנתח כל chunk לחילוץ BOQ, ואת ה-chunk הראשון לחילוץ tasks+milestones.
  * הפרדה זו מונעת כפילות של אבני דרך ומשימות מכל chunk.
+ * מיוצא לצורכי בדיקה (mבחן הזרקת ה-OCR preamble לכל chunk).
  */
-async function analyzeChunkedPdf(
+export async function analyzeChunkedPdf(
   chunks: Array<{ base64: string; mimeType: string; pageLabel: string }>,
   runner: (base64: string, mimeType: string, instruction: string) => Promise<BlueprintAnalysis>,
   userInstruction?: string | null,
+  ocrPreamble = "",
 ): Promise<BlueprintAnalysis> {
   const BOQ_ONLY_SUFFIX = `\n\n### הוראה חשובה: חלץ רק boqLineItems מחלק זה. השאר את tasks, milestones, projectSummary ו-totalEstimatedCost ריקים/null — הם יחולצו מחלק אחר.`;
   const OVERVIEW_SUFFIX = `\n\n### הוראה חשובה: חלץ את כל השדות — tasks, milestones, boqLineItems, projectSummary ו-totalEstimatedCost. זהו החלק הראשי של התוכניות.`;
@@ -133,12 +135,12 @@ async function analyzeChunkedPdf(
   const overviewChunk = chunks[0]!;
   const boqChunks = chunks.slice(1);
 
-  const overviewInst = buildInstruction(userInstruction, overviewChunk.pageLabel) + OVERVIEW_SUFFIX;
+  const overviewInst = buildInstruction(userInstruction, overviewChunk.pageLabel) + OVERVIEW_SUFFIX + ocrPreamble;
   const overviewResult = await runner(overviewChunk.base64, overviewChunk.mimeType, overviewInst);
 
   const boqPartials = await Promise.allSettled(
     boqChunks.map((c) => {
-      const inst = buildInstruction(userInstruction, c.pageLabel) + BOQ_ONLY_SUFFIX;
+      const inst = buildInstruction(userInstruction, c.pageLabel) + BOQ_ONLY_SUFFIX + ocrPreamble;
       return runner(c.base64, c.mimeType, inst);
     }),
   );
@@ -370,7 +372,7 @@ export async function analyzeBlueprintFile(
   ): Promise<BlueprintAnalysis> {
     const inst = buildInstructionWithOcr(options?.userInstruction);
     if (chunks && chunks.length > 1) {
-      return analyzeChunkedPdf(chunks, singleFn, options?.userInstruction);
+      return analyzeChunkedPdf(chunks, singleFn, options?.userInstruction, ocrPreamble);
     }
     return singleFn(base64, mimeType, inst);
   }
@@ -399,7 +401,7 @@ export async function analyzeBlueprintFile(
         : isOpenAiConfigured() ? "openai"
         : "mistral";
       if (!ENGINE_RUNNERS[primaryKey].check()) throw new Error("אין מנועי AI מוגדרים");
-      const chunked = await analyzeChunkedPdf(chunks, ENGINE_RUNNERS[primaryKey].fn, options?.userInstruction);
+      const chunked = await analyzeChunkedPdf(chunks, ENGINE_RUNNERS[primaryKey].fn, options?.userInstruction, ocrPreamble);
       return { ...chunked, enginesUsed: [primaryKey, "multipass"] };
     }
     return runParallel(["gemini", "openai", "anthropic", "mistral"], base64, mimeType, buildInstructionWithOcr(options?.userInstruction));
@@ -416,7 +418,7 @@ export async function analyzeBlueprintFile(
   // AUTO: Gemini multipass for large PDF → OpenAI fallback for JSON repair
   const instruction = buildInstructionWithOcr(options?.userInstruction);
   if (chunks && chunks.length > 1 && isGeminiConfigured()) {
-    const merged = await analyzeChunkedPdf(chunks, runGeminiBlueprintAnalysis, options?.userInstruction);
+    const merged = await analyzeChunkedPdf(chunks, runGeminiBlueprintAnalysis, options?.userInstruction, ocrPreamble);
     return { ...merged, enginesUsed: ["gemini", "multipass"] };
   }
   const modelChain = getBlueprintAnalysisModelChain();

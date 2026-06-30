@@ -14,16 +14,27 @@ function financialFieldScore(v5: ScanExtractionV5): number {
   return score;
 }
 
+/** סך השורות שחולצו (פריטים + כתב כמויות) — שומר שלא נאבד נתונים ב-retry. */
+function totalRowCount(v5: ScanExtractionV5): number {
+  return v5.lineItems.length + v5.billOfQuantities.length;
+}
+
 function shouldPreferRetryResult(
   original: ScanValidationResult,
   originalV5: ScanExtractionV5,
   retry: ScanValidationResult,
   retryV5: ScanExtractionV5,
+  isFinancial: boolean,
 ): boolean {
-  const originalFields = financialFieldScore(originalV5);
-  const retryFields = financialFieldScore(retryV5);
-  if (retryFields > originalFields) return true;
-  if (retryFields < originalFields) return false;
+  // אף פעם לא מעדיפים retry שאיבד שורות שחולצו (חשוב במיוחד ל-BOQ/מסמכים לא-פיננסיים).
+  if (totalRowCount(retryV5) < totalRowCount(originalV5)) return false;
+
+  if (isFinancial) {
+    const originalFields = financialFieldScore(originalV5);
+    const retryFields = financialFieldScore(retryV5);
+    if (retryFields > originalFields) return true;
+    if (retryFields < originalFields) return false;
+  }
 
   const originalErrors = original.issues.filter((i) => i.severity === "error").length;
   const retryErrors = retry.issues.filter((i) => i.severity === "error").length;
@@ -50,10 +61,12 @@ export async function runTriEngineExtractionValidated(
 
   const isFinancial =
     params.scanMode === "INVOICE_FINANCIAL" || params.scanMode === "PROGRESS_BILL";
+  // P0.5 — retry on fixable issues for ANY scan mode (not just financial). The
+  // row-preservation guard in shouldPreferRetryResult protects BOQ/list documents.
   const hasFixableIssues = validation.issues.some((i) => i.severity !== "info");
   const alreadyRetried = params.engineRunMode === "SINGLE_GEMINI";
 
-  if (isFinancial && hasFixableIssues && !alreadyRetried) {
+  if (hasFixableIssues && !alreadyRetried) {
     const retryInstruction = buildRetryInstruction(validation.issues);
     if (retryInstruction) {
       try {
@@ -65,7 +78,7 @@ export async function runTriEngineExtractionValidated(
             .join("\n\n"),
         });
         const retryValidation = validateScanV5(retry.v5);
-        if (shouldPreferRetryResult(validation, result.v5, retryValidation, retry.v5)) {
+        if (shouldPreferRetryResult(validation, result.v5, retryValidation, retry.v5, isFinancial)) {
           const aiData = { ...retry.aiData, _validation: retryValidation, _validationRetried: true };
           return { ...retry, validation: retryValidation, aiData };
         }

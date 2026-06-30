@@ -1,3 +1,12 @@
+jest.mock("@/lib/ai-providers", () => ({
+  isAnthropicConfigured: jest.fn(() => true),
+  isDocAiConfigured: () => true,
+  isGeminiConfigured: () => true,
+  isMistralConfigured: () => true,
+  isOpenAiConfigured: () => true,
+}));
+
+import { isAnthropicConfigured } from "@/lib/ai-providers";
 import {
   parseScanMode,
   parseTriEngineFormData,
@@ -5,6 +14,8 @@ import {
   triEngineCreditKindFor,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-parse";
+
+const mockAnthropicConfigured = isAnthropicConfigured as jest.Mock;
 
 describe("parseScanMode", () => {
   it("returns known modes", () => {
@@ -37,6 +48,21 @@ describe("triEngineCreditKindFor", () => {
 
   it("marks gemini-only as cheap", () => {
     expect(triEngineCreditKindFor("GENERAL_DOCUMENT", "SINGLE_GEMINI")).toBe("cheap");
+  });
+
+  it("marks SINGLE_ANTHROPIC as premium", () => {
+    expect(triEngineCreditKindFor("GENERAL_DOCUMENT", "SINGLE_ANTHROPIC")).toBe("premium");
+  });
+
+  it("marks AUTO contracts as premium when Anthropic is configured", () => {
+    mockAnthropicConfigured.mockReturnValue(true);
+    expect(triEngineCreditKindFor("CONTRACT", "AUTO")).toBe("premium");
+  });
+
+  it("keeps AUTO contracts cheap when Anthropic is not configured", () => {
+    mockAnthropicConfigured.mockReturnValue(false);
+    expect(triEngineCreditKindFor("CONTRACT", "AUTO")).toBe("cheap");
+    mockAnthropicConfigured.mockReturnValue(true);
   });
 });
 
