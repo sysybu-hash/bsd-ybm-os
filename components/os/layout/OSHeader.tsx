@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Bell, Layers, LayoutGrid, LayoutList, LayoutTemplate, LogOut, Settings, Shield } from "lucide-react";
-import Link from "next/link";
+import { Bell, Layers, LayoutGrid, LayoutTemplate, LogOut, Settings, Shield } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import { signOut, useSession } from "next-auth/react";
@@ -176,18 +175,6 @@ export default function OSHeader({
             ) : null}
 
             <ToolbarDivider />
-
-            <Link
-              href="/dashboard"
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150",
-                "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]",
-              )}
-              title={t("workspaceWidgets.classicDashboard.classicMode")}
-              aria-label={t("workspaceWidgets.classicDashboard.classicMode")}
-            >
-              <LayoutList size={16} aria-hidden />
-            </Link>
 
             <LocaleSwitcher compact embedded />
 

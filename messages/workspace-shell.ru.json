@@ -1125,7 +1125,7 @@
     "mobileNav": {
       "aria": "Быстрая навигация (мобильный)",
       "chromeActionsAria": "Обратная связь и доступность",
-      "dashboard": "Панель",
+      "dashboard": "Классический режим",
       "aiScanner": "AI-скан",
       "aiHub": "AI",
       "fieldCopilot": "Копилот",
