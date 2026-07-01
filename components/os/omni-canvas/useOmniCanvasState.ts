@@ -11,6 +11,7 @@ import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 import { parseWorkspaceUrl } from "@/lib/workspace-url";
+import { hasOpenedDefaultWidgetsOnce, markDefaultWidgetsOpened } from "@/lib/workspace/default-widgets-flag";
 import type { SearchResult } from "./types";
 import { useNotificationsFeed } from "./useNotificationsFeed";
 import { useOmniCanvasHandlers } from "./useOmniCanvasHandlers";
@@ -180,11 +181,17 @@ export function useOmniCanvasState() {
 
   useEffect(() => {
     if (!hasHydrated || !session || widgets.length > 0 || !isFirstTime || hasOpenedDefaults || isCleanDashboard) return;
+    // `isFirstTime` only means "no saved layout right now" — that's also true every
+    // time a returning user closes all their windows. Without this permanent
+    // per-user flag, clearing your workspace would re-trigger the welcome widgets
+    // forever. Only run this once, ever, per browser+user.
+    if (userId && hasOpenedDefaultWidgetsOnce(userId)) return;
     if (typeof window !== "undefined") {
       const deepLink = parseWorkspaceUrl(new URLSearchParams(window.location.search));
       if (deepLink) return;
     }
     setHasOpenedDefaults(true);
+    if (userId) markDefaultWidgetsOpened(userId);
     openWorkspaceWidget("financeHub", { tab: "overview" });
     queueMicrotask(() => {
       if (typeof window !== "undefined") {
@@ -202,6 +209,7 @@ export function useOmniCanvasState() {
     hasOpenedDefaults,
     isFirstTime,
     isCleanDashboard,
+    userId,
   ]);
 
   return {
