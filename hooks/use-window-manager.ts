@@ -186,7 +186,6 @@ let _sessionServerSynced = false;
 export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const [isCleanDashboard, setIsCleanDashboard] = useState(false);
   const nextZIndexRef = useRef(100);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,7 +251,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
     if (!userId) {
       setWidgets([]);
-      setIsFirstTime(true);
       setHasHydrated(true);
       activeUserIdRef.current = null;
       return;
@@ -280,10 +278,8 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     // is already true, so we restore instantly as before.
     if (localWidgets.length > 0) {
       applyRestoredWidgets(localWidgets, setWidgets, nextZIndexRef);
-      setIsFirstTime(false);
     } else {
       setWidgets([]);
-      setIsFirstTime(true);
     }
     if (_sessionServerSynced) {
       setHasHydrated(true);
@@ -292,26 +288,22 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     // Phase 2 (async): reconcile with server in background
     async function syncFromServer() {
       let resolvedWidgets: ActiveWidget[] = localWidgets;
-      let firstTime = localWidgets.length === 0;
 
       try {
         if (!isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) {
           const res = await fetch("/api/user/workspace-layout", { credentials: "include" });
           if (markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res)) {
             resolvedWidgets = localWidgets;
-            firstTime = resolvedWidgets.length === 0;
           } else if (res.ok) {
             const data = (await res.json()) as { widgets?: unknown };
             const serverWidgets = scrubWorkspaceLayout(data.widgets ?? null);
             if (serverWidgets.length > 0) {
               resolvedWidgets = serverWidgets;
-              firstTime = false;
               try {
                 localStorage.setItem(storageKey, JSON.stringify(serverWidgets));
               } catch { /* quota */ }
             } else if (localWidgets.length > 0) {
               resolvedWidgets = localWidgets;
-              firstTime = false;
               persistLayout(localWidgets, layoutUserId, { force: true });
             } else {
               const legacyRaw =
@@ -319,18 +311,15 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
               const legacyWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
               if (legacyWidgets.length > 0) {
                 resolvedWidgets = legacyWidgets;
-                firstTime = false;
                 persistLayout(legacyWidgets, layoutUserId, { force: true });
               }
               removeLegacyGlobalLayoutKeys();
             }
           } else if (localWidgets.length > 0) {
             resolvedWidgets = localWidgets;
-            firstTime = false;
           }
         } else if (localWidgets.length > 0) {
           resolvedWidgets = localWidgets;
-          firstTime = false;
         }
       } catch (e) {
         log.warn("workspace layout hydrate error", {
@@ -338,7 +327,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         });
         if (localWidgets.length > 0) {
           resolvedWidgets = localWidgets;
-          firstTime = false;
         }
       }
 
@@ -346,10 +334,8 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
       if (resolvedWidgets.length > 0) {
         applyRestoredWidgets(resolvedWidgets, setWidgets, nextZIndexRef);
-        setIsFirstTime(false);
       } else {
         setWidgets([]);
-        setIsFirstTime(firstTime);
       }
       // Mark session as synced — subsequent in-session user switches can use Phase 1
       // instant restore without risk of flashing stale data on cold page load.
@@ -652,7 +638,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     restoreWidget,
     updateZoom,
     clearLayout,
-    isFirstTime,
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
