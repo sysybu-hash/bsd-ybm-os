@@ -97,7 +97,7 @@ export default function OfficeExpenseForm({
           type="button"
           disabled={saving}
           onClick={onSubmit}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
           {saving
             ? t("workspaceWidgets.officeExpenses.saving")

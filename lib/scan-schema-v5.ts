@@ -71,6 +71,11 @@ export type ScanExtractionV5 = {
   confidenceScore?: number | null;
   /** מטא-דאטה מהמנועים (לא חובה לשמירה ב-DB) */
   enginesUsed?: string[];
+  /**
+   * איזה מנוע "ניצח" בכל שדה סקלרי אחרי מיזוג ריבוי-מנועים (vendor/total/date/...).
+   * משמש לטלמטריה ולתצוגת מקור-השדה ב-Command Center. לא חובה לשמירה ב-DB.
+   */
+  fieldProvenance?: Record<string, string>;
 };
 
 /** ברירת מחדל לביטחון כשמנוע לא מספק ציון (למשל Document AI) */
@@ -114,6 +119,7 @@ export function emptyV5Base(
     priceAlertPending: partial?.priceAlertPending ?? computePriceAlertPending(lineItems),
     confidenceScore: partial?.confidenceScore ?? null,
     enginesUsed: partial?.enginesUsed,
+    fieldProvenance: partial?.fieldProvenance,
   };
   merged.priceAlertPending = computePriceAlertPending(merged.lineItems);
   return merged;

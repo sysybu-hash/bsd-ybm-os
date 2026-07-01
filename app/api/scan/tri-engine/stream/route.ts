@@ -135,6 +135,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
     parsed.openAiModel,
     engineRunMode,
     parsed.userInstruction,
+    !gate.downgraded,
   );
 
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -147,7 +148,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
 
   (async () => {
     try {
-      await writeLine({ type: "start", usageWarnings: gate.usageWarnings });
+      await writeLine({ type: "start", usageWarnings: gate.usageWarnings, downgraded: gate.downgraded });
 
       if (resolvedClassification && (parsed.docTypeAutoDetect || parsed.engineRunMode === "AUTO")) {
         const plan = resolveTriEnginePlan(resolvedClassification.scanMode, "AUTO");

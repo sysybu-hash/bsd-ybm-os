@@ -99,10 +99,14 @@ export function useWorkspaceUrlSync({
   );
 
   const resolveIntent = useCallback((): ReturnType<typeof parseWorkspaceUrl> => {
-    const fromHook = parseWorkspaceUrl(searchParams);
-    if (fromHook) return fromHook;
-    if (typeof window === "undefined") return null;
-    return parseWorkspaceUrl(new URLSearchParams(window.location.search));
+    // The real, current URL is the only ground truth — a raw (non-router) history
+    // mutation elsewhere can leave the useSearchParams() hook value stale, which
+    // would otherwise make a URL we already stripped keep appearing to "have" a
+    // deep link forever. Only fall back to the hook value for SSR.
+    if (typeof window !== "undefined") {
+      return parseWorkspaceUrl(new URLSearchParams(window.location.search));
+    }
+    return parseWorkspaceUrl(searchParams);
   }, [searchParams]);
 
   const writeUrl = useCallback(
@@ -199,7 +203,10 @@ export function useWorkspaceUrlSync({
       initialUrlStripped.current = true;
       if (intent.widgetInstanceId && typeof window !== "undefined") {
         dismissedWorkspaceIntentFp = intentFingerprint(intent);
-        window.history.replaceState(null, "", window.location.pathname);
+        // router.replace (not the raw History API) so Next's own useSearchParams()
+        // state updates too — a raw history.replaceState call can leave it stale,
+        // causing this same "stale wid" URL to keep being read as if still present.
+        router.replace(window.location.pathname, { scroll: false });
         return;
       }
     }
@@ -245,7 +252,7 @@ export function useWorkspaceUrlSync({
     // the launcher, emails, etc. — carry `?w=X` without a `wid` and still open below.)
     if (intent.widgetInstanceId && typeof window !== "undefined") {
       dismissedWorkspaceIntentFp = fp;
-      window.history.replaceState(null, "", window.location.pathname);
+      router.replace(window.location.pathname, { scroll: false });
       return;
     }
 
@@ -263,7 +270,7 @@ export function useWorkspaceUrlSync({
         }
       : null;
     openWidget(intent.widgetType, liveData);
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent, updateWidgetLiveData]);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent, updateWidgetLiveData, router]);
 
   useEffect(() => {
     const onPopState = () => {

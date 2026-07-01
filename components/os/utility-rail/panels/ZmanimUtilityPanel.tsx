@@ -155,7 +155,7 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
         <button
           type="button"
           onClick={onOpenFullWidget}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs font-bold text-white"
         >
           {t(`${R}.openFullWidget`)}
         </button>

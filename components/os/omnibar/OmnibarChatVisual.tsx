@@ -60,7 +60,7 @@ export default function OmnibarChatVisual({
         <div className="flex min-w-0 items-center gap-2">
           <span
             className={`h-2 w-2 shrink-0 rounded-full ${
-              voiceActive ? "animate-pulse bg-indigo-500" : isBusy ? "animate-pulse bg-amber-400" : "bg-emerald-500"
+              voiceActive ? "animate-pulse bg-[color:var(--win-accent,#6366f1)]" : isBusy ? "animate-pulse bg-amber-400" : "bg-emerald-500"
             }`}
             aria-hidden
           />

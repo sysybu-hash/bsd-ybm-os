@@ -28,6 +28,9 @@ interface ShellProps {
   onBack?: () => void;
   onForward?: () => void;
   maximizeHiddenOnMobile?: boolean;
+  /** Window Identity — אקצנט (גוון) ואייקון ייחודיים לחלון */
+  accent?: string;
+  headerIcon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -54,11 +57,14 @@ export default function AdaptiveWidgetShell({
   onBack,
   onForward,
   maximizeHiddenOnMobile = false,
+  accent,
+  headerIcon,
   children,
 }: ShellProps) {
   const { dir } = useI18n();
 
   const {
+    isMobile,
     mobileOrMaximized,
     currentSize, position,
     setIsDragging,
@@ -70,6 +76,11 @@ export default function AdaptiveWidgetShell({
     initialOffset, size, isMaximized, workspaceBoundsRef,
     zoom, dir, onPositionChange, onResize,
   });
+
+  // Maximized on desktop must clear the always-visible sidebar rail; real mobile
+  // (no sidebar) spans the full width. Driven by JS (not a Tailwind class) so it
+  // can't be over-constrained by a competing `width: 100%` rule.
+  const desktopMaximized = isMaximized && !isMobile;
 
   return (
     <section
@@ -85,13 +96,25 @@ export default function AdaptiveWidgetShell({
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
-          ? "workspace-window--mobile flex min-h-0 flex-col fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none"
+          ? "workspace-window--mobile flex min-h-0 flex-col fixed top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !h-auto !max-h-none !rounded-none !shadow-none"
           : "absolute max-w-[100dvw]"
       }`}
       style={
         mobileOrMaximized
-          ? { zIndex, display: isMinimized ? "none" : undefined }
-          : {
+          ? ({
+              // Left/right (not width) so the box auto-sizes to fill the gap —
+              // setting both width:100% and an inset-start offset would be
+              // over-constrained and the browser silently drops one of them.
+              insetInlineStart: desktopMaximized
+                ? "calc(var(--os-sidebar-rail-width) + var(--os-sidebar-gap))"
+                : 0,
+              insetInlineEnd: 0,
+              maxWidth: "100dvw",
+              zIndex,
+              display: isMinimized ? "none" : undefined,
+              "--win-accent": accent,
+            } as React.CSSProperties)
+          : ({
               width: `${currentSize.width}px`,
               height: `${currentSize.height}px`,
               maxWidth: `${ws.width}px`,
@@ -100,7 +123,8 @@ export default function AdaptiveWidgetShell({
               top: `${clampedTop}px`,
               zIndex,
               display: isMinimized ? "none" : undefined,
-            }
+              "--win-accent": accent,
+            } as React.CSSProperties)
       }
       dir={dir}
       aria-hidden={isMinimized || undefined}
@@ -119,6 +143,7 @@ export default function AdaptiveWidgetShell({
         <WorkspaceWindowChrome
           title={title}
           titleId={`${id}-title`}
+          headerStart={headerIcon ? <span className="workspace-window-icon" aria-hidden>{headerIcon}</span> : undefined}
           onClose={onClose}
           zoom={zoom}
           onZoomDelta={(delta) => onZoomChange?.(delta)}

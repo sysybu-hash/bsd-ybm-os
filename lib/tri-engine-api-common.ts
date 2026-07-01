@@ -47,6 +47,11 @@ export type TriEngineGateOk = {
   orgId: string;
   organizationId: string;
   usageWarnings?: ScanUsageWarningId[];
+  /**
+   * true כשביקשנו חיוב פרמיום אך מכסת הפרימיום אזלה, וירדנו אוטומטית לחיוב זול.
+   * הקורא משתמש בזה כדי לדלג על מנועי פרמיום (Anthropic) ולהסתפק במסלול הזול.
+   */
+  downgraded?: boolean;
 };
 
 export type TriEngineGateResult =
@@ -56,6 +61,8 @@ export type TriEngineGateResult =
 export async function triEngineAuthorizeAndCharge(
   session: Session | null,
   scanCreditKind: ScanCreditKind,
+  /** כשהחיוב המבוקש הוא פרמיום והמכסה אזלה — לרדת אוטומטית לחיוב זול במקום לחסום. */
+  allowPremiumDowngrade = true,
 ): Promise<TriEngineGateResult> {
   if (!session?.user?.id) {
     return { ok: false, status: 401, error: API_MSG_UNAUTHORIZED };
@@ -86,7 +93,24 @@ export async function triEngineAuthorizeAndCharge(
     return { ok: false, status: 400, error: "ארגון לא תקין" };
   }
 
-  const quota = await checkAndDeductScanCredit(resolvedOrg.id, session.user.id, scanCreditKind);
+  let quota = await checkAndDeductScanCredit(resolvedOrg.id, session.user.id, scanCreditKind);
+  let downgraded = false;
+
+  // Graceful downgrade: premium quota exhausted → charge a cheap scan instead and
+  // signal the caller to skip premium engines (e.g. Anthropic for contracts).
+  if (
+    !quota.allowed &&
+    quota.code === "QUOTA_EXCEEDED" &&
+    scanCreditKind === "premium" &&
+    allowPremiumDowngrade
+  ) {
+    const cheap = await checkAndDeductScanCredit(resolvedOrg.id, session.user.id, "cheap");
+    if (cheap.allowed) {
+      quota = cheap;
+      downgraded = true;
+    }
+  }
+
   if (!quota.allowed) {
     return {
       ok: false,
@@ -102,6 +126,7 @@ export async function triEngineAuthorizeAndCharge(
     orgId,
     organizationId: quota.organizationId,
     usageWarnings: quota.usageWarnings,
+    downgraded,
   };
 }
 
@@ -118,6 +143,8 @@ export type TriEngineExtractionInput = {
   engineRunMode: TriEngineRunMode;
   customEngines?: string[];
   userInstruction?: string | null;
+  /** false כשירדנו לחיוב זול — מדלגים על מנועי פרמיום (Anthropic) ב-AUTO. */
+  allowPremiumEngines?: boolean;
 };
 
 export async function loadTriEngineExtractionInput(
@@ -127,6 +154,7 @@ export async function loadTriEngineExtractionInput(
   openAiModel?: string,
   engineRunMode: TriEngineRunMode = "AUTO",
   userInstruction?: string | null,
+  allowPremiumEngines = true,
 ): Promise<TriEngineExtractionInput> {
   const bytes = await file.arrayBuffer();
   const base64 = Buffer.from(bytes).toString("base64");
@@ -172,6 +200,7 @@ export async function loadTriEngineExtractionInput(
     openAiModel,
     engineRunMode,
     userInstruction: enrichedInstruction || null,
+    allowPremiumEngines,
   };
 }
 

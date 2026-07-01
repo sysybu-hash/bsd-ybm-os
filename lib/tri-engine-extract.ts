@@ -23,7 +23,7 @@ import { analysePdfPages, buildMultiPagePromptPrefix } from "@/lib/scan-pdf-spli
 import { industryInstructionExtras, localeLang } from "@/lib/tri-engine-extract-helpers";
 import { createTriEngineProviders } from "@/lib/tri-engine-extract-providers";
 import type { TriEngineRunMode } from "@/lib/tri-engine-parse";
-import { enrichInvoiceV5, mergeScanResults } from "@/lib/tri-engine-merge";
+import { enrichInvoiceV5, mergeScanResults, mergeScanResultsMany } from "@/lib/tri-engine-merge";
 import {
   compactError,
   snapTriTelemetry,
@@ -66,6 +66,8 @@ export async function runTriEngineExtraction(params: {
   /** מנועים לבחירה ידנית — בשימוש עם CUSTOM_PARALLEL */
   customEngines?: string[];
   userInstruction?: string | null;
+  /** false כשירדנו לחיוב זול — מדלגים על מנועי פרמיום (Anthropic) ב-AUTO. */
+  allowPremiumEngines?: boolean;
   /** עדכוני ביניים לסטרימינג (טלמטריה + V5 חלקי) */
   onProgress?: (e: TriEngineProgressEvent) => void | Promise<void>;
 }): Promise<TriEngineResult> {
@@ -82,6 +84,7 @@ export async function runTriEngineExtraction(params: {
     engineRunMode = "AUTO",
     customEngines,
     userInstruction,
+    allowPremiumEngines = true,
     onProgress,
   } = params;
 
@@ -306,8 +309,7 @@ export async function runTriEngineExtraction(params: {
     if (!fulfilled.length) {
       throw new Error(`All selected engines failed. ${failures.join(" | ")}`);
     }
-    v5 = fulfilled.reduce((acc, next) => mergeScanResults(acc, next, fileName, scanMode));
-    v5.enginesUsed = fulfilled.flatMap((item) => item.enginesUsed ?? []);
+    v5 = mergeScanResultsMany(fulfilled, fileName, scanMode);
     await emitPartial(v5, "merged_custom_parallel");
     return packTriEngineResult(v5, scanMode, telemetry);
   }
@@ -376,8 +378,7 @@ export async function runTriEngineExtraction(params: {
       throw new Error(`All selected engines failed. ${failures.join(" | ")}`);
     }
 
-    v5 = fulfilled.reduce((acc, next) => mergeScanResults(acc, next, fileName, scanMode));
-    v5.enginesUsed = fulfilled.flatMap((item) => item.enginesUsed ?? []);
+    v5 = mergeScanResultsMany(fulfilled, fileName, scanMode);
     await emitPartial(v5, "merged_parallel");
     return packTriEngineResult(v5, scanMode, telemetry);
   }
@@ -566,6 +567,36 @@ export async function runTriEngineExtraction(params: {
     v5 = mergeScanResults(a, b, fileName, "DRAWING_BOQ");
     v5.enginesUsed = ["gemini", "openai"];
     await emitPartial(v5, "merged_gemini_openai");
+  } else if (scanMode === "CONTRACT" && allowPremiumEngines && isAnthropicConfigured()) {
+    // Claude excels at long/narrative documents with native PDF support. Routed in
+    // AUTO for contracts when premium credit is available (else downgraded → Gemini).
+    const tA = Date.now();
+    telemetry.anthropic = { phase: "running" };
+    telemetry.documentAI = { phase: "skipped" };
+    telemetry.gpt = { phase: "skipped" };
+    telemetry.mistral = { phase: "skipped" };
+    await emitTelemetry();
+    try {
+      v5 = await runAnthropicOnly();
+      telemetry.anthropic = { phase: "ok", ms: Date.now() - tA };
+      telemetry.gemini = { phase: "skipped" };
+      await emitTelemetry();
+      await emitPartial(v5, "anthropic_contract");
+    } catch (e) {
+      telemetry.anthropic = { phase: "error", detail: compactError(e, 200) };
+      await emitTelemetry();
+      const tG = Date.now();
+      telemetry.gemini = { phase: "running", detail: "fallback_after_anthropic_error" };
+      await emitTelemetry();
+      const gErr = assertProviderConfigured("gemini");
+      if (gErr) throw new Error(gErr);
+      const raw = await geminiMultimodal(base64, mimeType, fullInstruction, getModelChainForScanMode(scanMode));
+      v5 = coerceLegacyAiToV5(raw, fileName, scanMode);
+      v5.enginesUsed = ["gemini-fallback"];
+      telemetry.gemini = { phase: "ok", ms: Date.now() - tG };
+      await emitTelemetry();
+      await emitPartial(v5, "gemini_fallback");
+    }
   } else {
     const tF = Date.now();
     telemetry.gemini = { phase: "running" };

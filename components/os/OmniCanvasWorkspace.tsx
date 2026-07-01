@@ -109,7 +109,7 @@ function OmniCanvasWorkspaceInset({
 
   return (
     <div
-      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] desktop-vp:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "desktop-vp:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
+      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] desktop-vp:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "desktop-vp:ps-[calc(var(--os-sidebar-rail-width)_+_var(--os-sidebar-gap))]" : ""}`}
     >
       {children}
     </div>

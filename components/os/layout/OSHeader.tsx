@@ -40,7 +40,7 @@ const HeaderIconButton = React.forwardRef<
       className={cn(
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150",
         active
-          ? "bg-indigo-500/15 text-indigo-500 dark:text-indigo-300"
+          ? "bg-indigo-500/15 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300"
           : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]",
         className,
       )}

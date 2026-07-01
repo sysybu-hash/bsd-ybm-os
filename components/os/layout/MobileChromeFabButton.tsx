@@ -30,8 +30,8 @@ export default function MobileChromeFabButton({
   const accent = variant === "accent";
 
   const palette = accent
-    ? "border-indigo-400/35 bg-indigo-600 text-white hover:bg-indigo-500"
-    : "border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-indigo-600 hover:bg-[color:var(--surface-soft)] dark:text-indigo-400";
+    ? "border-indigo-400/35 bg-[color:var(--win-accent,#6366f1)] text-white hover:opacity-90"
+    : "border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-[color:var(--win-accent,#6366f1)] hover:bg-[color:var(--surface-soft)] dark:text-indigo-400";
 
   if (shape === "tab") {
     // קצה חיצוני שטוח צמוד לגבול המסך, תחתית שטוחה שמתמזגת עם ה-dock,

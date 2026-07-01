@@ -105,7 +105,7 @@ function PreviewFallbackActions({
       <a
         href={url}
         download={fileName}
-        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-indigo-500"
+        className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-[11px] font-bold text-white hover:opacity-90"
       >
         הורדה
       </a>

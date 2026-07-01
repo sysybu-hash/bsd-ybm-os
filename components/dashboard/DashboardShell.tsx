@@ -3,28 +3,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import {
-  CalendarDays,
-  Calculator,
-  Cpu,
-  FileText,
-  FolderKanban,
-  HardDrive,
-  LayoutDashboard,
-  ListChecks,
-  Loader2,
-  MessageSquare,
-  MonitorPlay,
-  ScanLine,
-  Settings,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { FolderKanban, Loader2, MonitorPlay } from "lucide-react";
+import { CLASSIC_SECTIONS } from "@/lib/classic/sections";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import AddProjectForm from "@/components/os/widgets/shared/AddProjectForm";
 import DashboardClock from "@/components/dashboard/DashboardClock";
 import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import DashboardCalculators from "@/components/dashboard/DashboardCalculators";
+import ClassicMobileNav from "@/components/dashboard/ClassicMobileNav";
 
 const loading = () => (
   <div className="flex min-h-[200px] items-center justify-center text-[color:var(--foreground-muted)]">
@@ -56,19 +42,8 @@ type TabId =
   | "settings";
 type CrmSubTab = "projects" | "clients";
 
-const TABS: ReadonlyArray<{ id: TabId; icon: LucideIcon }> = [
-  { id: "home", icon: LayoutDashboard },
-  { id: "crm", icon: Users },
-  { id: "erp", icon: FileText },
-  { id: "scan", icon: ScanLine },
-  { id: "customOs", icon: Cpu },
-  { id: "calendar", icon: CalendarDays },
-  { id: "tasks", icon: ListChecks },
-  { id: "calculators", icon: Calculator },
-  { id: "drive", icon: HardDrive },
-  { id: "aiChat", icon: MessageSquare },
-  { id: "settings", icon: Settings },
-];
+// Desktop tab list — derived from the shared classic-sections registry.
+const TABS = CLASSIC_SECTIONS;
 
 /** Frosted card shell used across the dashboard panels. */
 const CARD =
@@ -188,10 +163,10 @@ export default function DashboardShell() {
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar — desktop only; mobile uses the bottom nav below */}
         <nav
           aria-label={t("workspaceWidgets.classicDashboard.title")}
-          className="flex w-16 shrink-0 flex-col gap-1 overflow-y-auto border-e border-[color:var(--border-main)] bg-[color:var(--glass-bg)] p-2 backdrop-blur-xl sm:w-56 sm:p-3"
+          className="hidden shrink-0 flex-col gap-1 overflow-y-auto border-e border-[color:var(--border-main)] bg-[color:var(--glass-bg)] p-2 backdrop-blur-xl sm:flex sm:w-56 sm:p-3"
         >
           {TABS.map(({ id, icon: Icon }) => (
             <button
@@ -213,7 +188,7 @@ export default function DashboardShell() {
         </nav>
 
         {/* Main content */}
-        <main className="dashboard-main min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="dashboard-main min-h-0 flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-6">
           {activeTab === "home" ? <DashboardOverview onNavigate={(tab) => setActiveTab(tab as TabId)} /> : null}
           {activeTab === "crm" ? <CrmTab /> : null}
           {activeTab === "erp" ? <DocumentCreatorWidget embeddedInHub /> : null}
@@ -227,6 +202,8 @@ export default function DashboardShell() {
           {activeTab === "settings" ? <SettingsWidget /> : null}
         </main>
       </div>
+
+      <ClassicMobileNav activeTab={activeTab} onSelect={(id) => setActiveTab(id)} t={t} />
     </div>
   );
 }

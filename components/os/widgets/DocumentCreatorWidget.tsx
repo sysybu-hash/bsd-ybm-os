@@ -231,7 +231,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
           <button
             type="button"
             onClick={() => void d.generateDocument()}
-            className="w-full rounded-xl bg-[color:var(--accent)] py-3 text-sm font-bold text-white hover:bg-indigo-500"
+            className="w-full rounded-xl bg-[color:var(--accent)] py-3 text-sm font-bold text-white hover:opacity-90"
           >
             {t("workspaceWidgets.docCreator.draftConfirm")}
           </button>

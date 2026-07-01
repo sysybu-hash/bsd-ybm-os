@@ -24,18 +24,19 @@ export function ResizeHandles({ onStartResize }: ResizeHandlesProps) {
         className="absolute bottom-0 left-5 right-5 z-[100] h-3 cursor-ns-resize border-0 bg-transparent p-0"
         style={{ cursor: "ns-resize" }}
       />
-      {/* right edge — full height minus corner squares */}
+      {/* right edge — starts below the header so it never overlaps the flush
+          Windows 11 caption buttons (min/max/close sit at the header's corner) */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "e")}
-        className="absolute bottom-5 right-0 top-5 z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
+        className="absolute bottom-5 right-0 top-[var(--window-header-height)] z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
         style={{ cursor: "ew-resize" }}
       />
-      {/* left edge — full height minus corner squares */}
+      {/* left edge — starts below the header (see right edge note) */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "w")}
-        className="absolute bottom-5 left-0 top-5 z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
+        className="absolute bottom-5 left-0 top-[var(--window-header-height)] z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
         style={{ cursor: "ew-resize" }}
       />
       {/* corners — 20×20px for comfortable grab area */}

@@ -67,7 +67,7 @@ export default class WidgetErrorBoundary extends React.Component<Props, State> {
           <button
             type="button"
             onClick={this.reset}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500"
+            className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-4 py-2 text-xs font-bold text-white hover:opacity-90"
           >
             לנסות שוב
           </button>

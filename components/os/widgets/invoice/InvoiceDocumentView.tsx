@@ -173,7 +173,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
         </h2>
         <p className="text-xs text-[color:var(--foreground-muted)]">{doc.type}</p>
         {doc.itaAllocationNumber ? (
-          <p className="mt-1 text-xs font-semibold text-indigo-600">
+          <p className="mt-1 text-xs font-semibold text-[color:var(--win-accent,#6366f1)]">
             {t("workspaceWidgets.invoice.itaAllocation")}: {doc.itaAllocationNumber}
           </p>
         ) : null}

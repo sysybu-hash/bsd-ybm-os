@@ -70,7 +70,7 @@ export default function SessionHistoryPanel({
           <button
             type="button"
             onClick={onNew}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-500/10 dark:text-indigo-300"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-[color:var(--win-accent,#6366f1)] transition hover:bg-indigo-500/10 dark:text-indigo-300"
           >
             <Plus size={14} aria-hidden />
             {t(`${PREFIX}.newSession` as Parameters<typeof t>[0])}

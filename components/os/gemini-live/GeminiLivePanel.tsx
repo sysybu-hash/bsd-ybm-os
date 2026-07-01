@@ -49,7 +49,7 @@ export default function GeminiLivePanel({
         { className: "flex items-center gap-2 text-[10px] font-bold text-[color:var(--foreground-muted)]" },
         React.createElement("span", {
           className: `h-1.5 w-1.5 rounded-full ${
-            voiceStatus !== "idle" ? "animate-pulse bg-indigo-500" : "bg-emerald-500"
+            voiceStatus !== "idle" ? "animate-pulse bg-[color:var(--win-accent,#6366f1)]" : "bg-emerald-500"
           }`,
         }),
         React.createElement("span", null, statusLabel),
@@ -83,7 +83,7 @@ export default function GeminiLivePanel({
             onClick: onToggleLive,
             className: `flex h-12 w-12 items-center justify-center rounded-full transition ${
               voiceActive
-                ? "bg-indigo-600 text-white shadow-lg"
+                ? "bg-[color:var(--win-accent,#6366f1)] text-white shadow-lg"
                 : "border border-[color:var(--border-main)] bg-[color:var(--background-main)]"
             }`,
             "aria-pressed": isLiveActive,

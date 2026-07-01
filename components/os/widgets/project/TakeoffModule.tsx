@@ -322,7 +322,7 @@ export default function TakeoffModule({ onSaveMeasurement, saving = false }: Tak
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] bg-[color:var(--surface-elevated)] p-3">
         <div className="flex flex-wrap items-center gap-2">
           <label
-            className={`flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500 ${
+            className={`flex items-center gap-2 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 ${
               isLoading ? "cursor-wait opacity-70" : "cursor-pointer"
             }`}
           >
@@ -358,7 +358,7 @@ export default function TakeoffModule({ onSaveMeasurement, saving = false }: Tak
                 aria-label={t("workspaceWidgets.takeoff.pan")}
                 className={`rounded-lg p-2 transition-colors ${
                   mode === "pan"
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-[color:var(--win-accent,#6366f1)] text-white"
                     : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
               >
@@ -397,7 +397,7 @@ export default function TakeoffModule({ onSaveMeasurement, saving = false }: Tak
                 }}
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   mode === "calibrate"
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-[color:var(--win-accent,#6366f1)] text-white"
                     : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
               >
@@ -413,7 +413,7 @@ export default function TakeoffModule({ onSaveMeasurement, saving = false }: Tak
                   !ppm
                     ? "cursor-not-allowed text-[color:var(--foreground-muted)] opacity-50"
                     : mode === "measure"
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-[color:var(--win-accent,#6366f1)] text-white"
                       : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
               >

@@ -90,7 +90,7 @@ export default function OfficeExpenseList({
           type="button"
           disabled={loadingMore}
           onClick={onLoadMore}
-          className="mt-3 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 disabled:opacity-60 dark:hover:bg-indigo-950/30"
+          className="mt-3 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-medium text-[color:var(--win-accent,#6366f1)] hover:bg-indigo-50 disabled:opacity-60 dark:hover:bg-indigo-950/30"
         >
           {loadingMore
             ? t("workspaceWidgets.officeExpenses.loadingMore")

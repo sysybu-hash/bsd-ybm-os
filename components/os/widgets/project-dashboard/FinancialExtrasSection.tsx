@@ -59,7 +59,7 @@ export function FinancialExtrasSection({ data, apiBase, refresh, t }: Props) {
         />
         <button
           type="button"
-          className="rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-xs text-white"
           onClick={async () => {
             if (!extraDesc || !extraCost) return;
             await fetch(`${apiBase}/extras`, {

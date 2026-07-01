@@ -106,6 +106,19 @@ const LEGACY_STORAGE_KEYS = [
 const SNAPSHOT_KEY = 'bsd_ybm_layout_snapshot_session';
 const WORKSPACE_LAYOUT_API_KEY = 'api:user/workspace-layout';
 
+/**
+ * Cross-tab sync channel name — without this, two open tabs of the same user
+ * each hold their own in-memory `widgets` copy with no coordination. A stale
+ * background tab can later re-save its old state and clobber a fresh close
+ * made in another tab (last-write-wins, no version check). BroadcastChannel
+ * lets every open tab adopt a change the instant another tab makes it.
+ */
+function workspaceLayoutChannelName(userId: string): string {
+  return `bsd_ybm_workspace_layout:${userId}`;
+}
+
+type WorkspaceLayoutBroadcastMessage = { widgets: ActiveWidget[]; ts: number };
+
 function removeLegacyGlobalLayoutKeys(): void {
   for (const key of LEGACY_STORAGE_KEYS) {
     try {
@@ -173,11 +186,33 @@ let _sessionServerSynced = false;
 export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const [isCleanDashboard, setIsCleanDashboard] = useState(false);
   const nextZIndexRef = useRef(100);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeUserIdRef = useRef<string | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  /** True for exactly one save-effect run right after adopting another tab's
+   *  broadcast — skips re-broadcasting/re-PATCHing an unchanged echo. */
+  const applyingRemoteUpdateRef = useRef(false);
+
+  // (Re)open the cross-tab channel whenever the active user changes.
+  useEffect(() => {
+    if (!userId || typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
+      return;
+    }
+    const channel = new BroadcastChannel(workspaceLayoutChannelName(userId));
+    broadcastChannelRef.current = channel;
+    channel.onmessage = (event: MessageEvent<WorkspaceLayoutBroadcastMessage>) => {
+      const data = event.data;
+      if (!data || !Array.isArray(data.widgets)) return;
+      applyingRemoteUpdateRef.current = true;
+      applyRestoredWidgets(data.widgets, setWidgets, nextZIndexRef);
+    };
+    return () => {
+      channel.close();
+      if (broadcastChannelRef.current === channel) broadcastChannelRef.current = null;
+    };
+  }, [userId]);
 
   const persistLayout = useCallback((
     nextWidgets: ActiveWidget[],
@@ -187,6 +222,11 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     if (!options?.force && !canPersistWorkspaceLayout()) return;
     const sanitized = scrubWorkspaceLayout(nextWidgets);
     const storageKey = workspaceLayoutStorageKey(targetUserId);
+    try {
+      broadcastChannelRef.current?.postMessage({ widgets: sanitized, ts: Date.now() } satisfies WorkspaceLayoutBroadcastMessage);
+    } catch {
+      /* BroadcastChannel unsupported or already closed — server sync below still applies */
+    }
     try {
       localStorage.setItem(storageKey, JSON.stringify(sanitized));
     } catch (e) {
@@ -211,7 +251,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
     if (!userId) {
       setWidgets([]);
-      setIsFirstTime(true);
       setHasHydrated(true);
       activeUserIdRef.current = null;
       return;
@@ -239,10 +278,8 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     // is already true, so we restore instantly as before.
     if (localWidgets.length > 0) {
       applyRestoredWidgets(localWidgets, setWidgets, nextZIndexRef);
-      setIsFirstTime(false);
     } else {
       setWidgets([]);
-      setIsFirstTime(true);
     }
     if (_sessionServerSynced) {
       setHasHydrated(true);
@@ -251,26 +288,22 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     // Phase 2 (async): reconcile with server in background
     async function syncFromServer() {
       let resolvedWidgets: ActiveWidget[] = localWidgets;
-      let firstTime = localWidgets.length === 0;
 
       try {
         if (!isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) {
           const res = await fetch("/api/user/workspace-layout", { credentials: "include" });
           if (markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res)) {
             resolvedWidgets = localWidgets;
-            firstTime = resolvedWidgets.length === 0;
           } else if (res.ok) {
             const data = (await res.json()) as { widgets?: unknown };
             const serverWidgets = scrubWorkspaceLayout(data.widgets ?? null);
             if (serverWidgets.length > 0) {
               resolvedWidgets = serverWidgets;
-              firstTime = false;
               try {
                 localStorage.setItem(storageKey, JSON.stringify(serverWidgets));
               } catch { /* quota */ }
             } else if (localWidgets.length > 0) {
               resolvedWidgets = localWidgets;
-              firstTime = false;
               persistLayout(localWidgets, layoutUserId, { force: true });
             } else {
               const legacyRaw =
@@ -278,18 +311,15 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
               const legacyWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
               if (legacyWidgets.length > 0) {
                 resolvedWidgets = legacyWidgets;
-                firstTime = false;
                 persistLayout(legacyWidgets, layoutUserId, { force: true });
               }
               removeLegacyGlobalLayoutKeys();
             }
           } else if (localWidgets.length > 0) {
             resolvedWidgets = localWidgets;
-            firstTime = false;
           }
         } else if (localWidgets.length > 0) {
           resolvedWidgets = localWidgets;
-          firstTime = false;
         }
       } catch (e) {
         log.warn("workspace layout hydrate error", {
@@ -297,7 +327,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
         });
         if (localWidgets.length > 0) {
           resolvedWidgets = localWidgets;
-          firstTime = false;
         }
       }
 
@@ -305,10 +334,8 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
       if (resolvedWidgets.length > 0) {
         applyRestoredWidgets(resolvedWidgets, setWidgets, nextZIndexRef);
-        setIsFirstTime(false);
       } else {
         setWidgets([]);
-        setIsFirstTime(firstTime);
       }
       // Mark session as synced — subsequent in-session user switches can use Phase 1
       // instant restore without risk of flashing stale data on cold page load.
@@ -332,6 +359,14 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
       localStorage.setItem(storageKey, JSON.stringify(widgets));
     } catch (e) {
       log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
+    }
+
+    // This run is just adopting a change another tab already broadcast and saved —
+    // mirror to localStorage (above) only, skip re-broadcasting/re-PATCHing the same data.
+    if (applyingRemoteUpdateRef.current) {
+      applyingRemoteUpdateRef.current = false;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      return;
     }
 
     // When all windows are closed, persist to server immediately (no debounce) so that
@@ -603,7 +638,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     restoreWidget,
     updateZoom,
     clearLayout,
-    isFirstTime,
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,

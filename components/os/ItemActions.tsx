@@ -45,7 +45,7 @@ export default function ItemActions({
           <button
             type="button"
             onClick={onEdit}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-indigo-600"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--win-accent,#6366f1)]"
             aria-label={edit}
             title={edit}
           >

@@ -57,7 +57,7 @@ export default function AccessibilityToolbar({ hideFab = false }: Props) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-indigo-600 shadow-sm backdrop-blur-md transition hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
+          className="accessibility-toolbar-fab fixed end-4 z-[2401] hidden md:flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--glass-bg)]/95 text-[color:var(--win-accent,#6366f1)] shadow-sm backdrop-blur-md transition hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:text-indigo-400"
           aria-label={label}
           aria-expanded={open}
           aria-controls="accessibility-panel-dialog"

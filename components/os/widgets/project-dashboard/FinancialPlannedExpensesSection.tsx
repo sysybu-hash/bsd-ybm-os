@@ -53,7 +53,7 @@ export function FinancialPlannedExpensesSection({ data, apiBase, refresh, t }: P
         />
         <button
           type="button"
-          className="rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-xs text-white"
           onClick={async () => {
             if (!expMonth || !expCategory || !expAmount) return;
             await fetch(`${apiBase}/expenses`, {

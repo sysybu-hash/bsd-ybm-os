@@ -49,7 +49,7 @@ export default function ProjectPickerPanel({
       <button
         type="button"
         onClick={onAddProject}
-        className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-indigo-500 sm:w-auto"
+        className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:opacity-90 sm:w-auto"
       >
         <FolderPlus size={16} aria-hidden />
         {t(addProjectLabelKey)}

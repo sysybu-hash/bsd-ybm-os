@@ -140,7 +140,7 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
       role="region"
       aria-label="התקנת אפליקציה"
     >
-      <Download className="mt-0.5 shrink-0 text-indigo-500" size={20} aria-hidden />
+      <Download className="mt-0.5 shrink-0 text-[color:var(--win-accent,#6366f1)]" size={20} aria-hidden />
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-bold text-[color:var(--foreground-main)]">התקינו את BSD-YBM OS</p>
         <p className="mt-1 text-[color:var(--foreground-muted)]">

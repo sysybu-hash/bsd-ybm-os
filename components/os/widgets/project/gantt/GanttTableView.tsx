@@ -81,7 +81,7 @@ export function GanttTableView({ tasks, labels, onEdit, onDelete, onProgressChan
                     />
                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[color:var(--border-main)]">
                       <div
-                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        className="h-full rounded-full bg-[color:var(--win-accent,#6366f1)] transition-all"
                         style={{ width: `${Math.min(100, task.progress)}%` }}
                       />
                     </div>
@@ -91,7 +91,7 @@ export function GanttTableView({ tasks, labels, onEdit, onDelete, onProgressChan
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      className="rounded-md border border-[color:var(--border-main)] p-1.5 text-[color:var(--foreground-muted)] transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-700 dark:hover:text-indigo-400"
+                      className="rounded-md border border-[color:var(--border-main)] p-1.5 text-[color:var(--foreground-muted)] transition-colors hover:border-indigo-300 hover:text-[color:var(--win-accent,#6366f1)] dark:hover:border-indigo-700 dark:hover:text-indigo-400"
                       onClick={() => onEdit(task)}
                     >
                       <Pencil size={12} />

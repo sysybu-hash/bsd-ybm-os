@@ -52,17 +52,22 @@
     --workspace-chrome-omnibar-offset: 4.25rem;
     --workspace-header-height: 4.5rem;
 
-    /* Spatial Glass OS — מסגרות חלונות workspace */
-    --window-radius: 22px;
-    --window-header-height: 2.75rem;
-    --window-ring: color-mix(in srgb, var(--brand-accent) 7%, transparent);
-    --window-ring-focus: color-mix(in srgb, var(--brand-accent) 14%, transparent);
-    --window-shadow-rest: var(--glass-shadow);
+    /* Windows 11 (Fluent) — מסגרות חלונות workspace: פינות 8px, Mica, caption מלבני */
+    --window-radius: 8px;
+    --window-header-height: 2.5rem;
+    --window-ring: transparent;
+    --window-ring-focus: color-mix(in srgb, var(--brand-accent) 10%, transparent);
+    --window-shadow-rest:
+      0 8px 22px -8px rgba(0, 0, 0, 0.18),
+      0 2px 6px rgba(0, 0, 0, 0.08);
     --window-shadow-focus:
-      0 20px 40px -8px rgba(0, 0, 0, 0.14),
-      0 4px 12px rgba(79, 70, 229, 0.10);
-    --window-backdrop: blur(20px) saturate(1.12);
-    --window-surface: color-mix(in srgb, var(--surface-card) 94%, transparent);
+      0 16px 38px -10px rgba(0, 0, 0, 0.24),
+      0 4px 10px rgba(0, 0, 0, 0.12);
+    /* Mica — חומר אטום-עדין (במקום זכוכית כבדה) */
+    --window-backdrop: blur(30px) saturate(1.3);
+    --window-surface: color-mix(in srgb, var(--surface-card) 98%, transparent);
+    /* אדום הסגירה של Windows 11 */
+    --window-close-hover: #c42b1c;
 
     /* גובה סרגל תחתון במובייל — שורת אייקונים בלבד; המיקרופון בולט לתוך התוכן */
     --mobile-chrome-bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
@@ -523,15 +528,16 @@
     }
   }
 
+  /* Window Identity — פס אקצנט עליון בצבע הייחודי של החלון */
   .workspace-window::before,
   .os-floating-panel.workspace-window::before {
     content: "";
     position: absolute;
     inset-inline: 0;
     top: 0;
-    height: 2px;
+    height: 3px;
     border-radius: var(--window-radius) var(--window-radius) 0 0;
-    background: transparent;
+    background: color-mix(in srgb, var(--win-accent, transparent) 55%, transparent);
     pointer-events: none;
     z-index: 2;
     transition: background 200ms ease;
@@ -542,12 +548,8 @@
   }
 
   .workspace-window--focused::before {
-    background: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in srgb, var(--brand-accent) 55%, transparent),
-      transparent
-    );
+    /* בפוקוס — האקצנט מתחזק לגוון מלא */
+    background: var(--win-accent, transparent);
   }
 
   .workspace-window-header {
@@ -561,11 +563,25 @@
     gap: 0.75rem;
     padding-inline: 0.75rem;
     border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 80%, transparent);
+    /* Window Identity — רקע כותרת עם רמז עדין של גוון-האקצנט של החלון */
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--glass-bg) 92%, transparent),
-      color-mix(in srgb, var(--surface-soft) 40%, transparent)
+      color-mix(in srgb, var(--win-accent, transparent) 9%, color-mix(in srgb, var(--glass-bg) 92%, transparent)),
+      color-mix(in srgb, var(--win-accent, transparent) 4%, color-mix(in srgb, var(--surface-soft) 40%, transparent))
     );
+  }
+
+  /* אריח-אייקון צבעוני בכותרת — חלק מזהות החלון */
+  .workspace-window-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--win-accent, var(--brand-accent)) 16%, transparent);
+    color: var(--win-accent, var(--brand-accent));
   }
 
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -614,20 +630,20 @@
     }
   }
 
+  /* כפתורי-כלי אפליקציה (back/forward/zoom) — מלבן מעוגל עדין בסגנון Win11 */
   .workspace-chrome-btn {
     display: inline-flex;
     min-height: 2rem;
     min-width: 2rem;
     align-items: center;
     justify-content: center;
-    border-radius: 9999px;
+    border-radius: 6px;
     border: 0;
     background: transparent;
     color: var(--foreground-muted);
     transition:
-      background-color 140ms ease,
-      color 140ms ease,
-      transform 140ms ease;
+      background-color 120ms ease,
+      color 120ms ease;
   }
 
   .workspace-chrome-btn:hover {
@@ -635,9 +651,27 @@
     color: var(--foreground-main);
   }
 
+  /* קבוצת caption של Windows 11 — צמודה לפינה, בגובה הכותרת המלא, ללא רווח */
+  .workspace-window-caption {
+    display: inline-flex;
+    align-items: stretch;
+    align-self: stretch;
+    gap: 0;
+    /* מגיע עד קצה החלון (מבטל את ה-padding האופקי של הכותרת) */
+    margin-inline-end: -0.75rem;
+    margin-inline-start: 0.25rem;
+  }
+
+  /* כפתורי caption מלבניים בגובה מלא (scoped לגבור על Tailwind min-w/min-h) */
+  .workspace-window-caption .workspace-chrome-btn--caption {
+    height: var(--window-header-height);
+    min-width: 2.875rem;
+    border-radius: 0;
+  }
+
   .workspace-chrome-btn--danger:hover {
-    background: color-mix(in srgb, rgb(244 63 94) 14%, transparent);
-    color: rgb(225 29 72);
+    background: var(--window-close-hover);
+    color: #fff;
   }
 
   .workspace-minimized-dock {

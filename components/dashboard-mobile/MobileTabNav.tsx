@@ -3,22 +3,26 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, FolderKanban, Grid3x3, ScanLine, Users } from "lucide-react";
+import { Grid3x3 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { CLASSIC_MOBILE_PRIMARY } from "@/lib/classic/sections";
 
-type Tab = {
+type NavItem = {
   href: string;
   labelKey: string;
   icon: React.ElementType;
   fab?: boolean;
 };
 
-const TABS: ReadonlyArray<Tab> = [
-  { href: "/m/dashboard/crm",      labelKey: "workspaceWidgets.classicDashboard.tabs.crm",    icon: Users },
-  { href: "/m/dashboard/projects", labelKey: "workspaceWidgets.classicDashboard.tabs.tasks",  icon: FolderKanban },
-  { href: "/m/dashboard/scanner",  labelKey: "workspaceWidgets.classicDashboard.tabs.scan",   icon: ScanLine, fab: true },
-  { href: "/m/dashboard/ai",       labelKey: "workspaceWidgets.classicDashboard.tabs.aiChat", icon: Bot },
-  { href: "/m/dashboard/more",     labelKey: "workspaceWidgets.mobileNav.moreApps",           icon: Grid3x3 },
+// Derived from the single classic-sections registry, plus the "more" entry.
+const ITEMS: ReadonlyArray<NavItem> = [
+  ...CLASSIC_MOBILE_PRIMARY.map((s) => ({
+    href: s.mobileHref,
+    labelKey: s.labelKey,
+    icon: s.icon,
+    fab: s.fab,
+  })),
+  { href: "/m/dashboard/more", labelKey: "workspaceWidgets.mobileNav.moreApps", icon: Grid3x3 },
 ];
 
 export default function MobileTabNav() {
@@ -32,7 +36,7 @@ export default function MobileTabNav() {
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-end justify-around px-1 pt-1">
-        {TABS.map(({ href, labelKey, icon: Icon, fab }) => {
+        {ITEMS.map(({ href, labelKey, icon: Icon, fab }) => {
           const active = pathname.startsWith(href);
           if (fab) {
             return (
@@ -47,7 +51,7 @@ export default function MobileTabNav() {
                   className={`-mt-5 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[color:var(--background-main)] shadow-lg transition active:scale-95 ${
                     active
                       ? "bg-[color:var(--accent)] text-white"
-                      : "bg-indigo-600 text-white"
+                      : "bg-[color:var(--win-accent,#6366f1)] text-white"
                   }`}
                 >
                   <Icon size={24} strokeWidth={1.75} aria-hidden />

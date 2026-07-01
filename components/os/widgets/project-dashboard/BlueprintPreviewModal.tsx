@@ -475,7 +475,7 @@ export default function BlueprintPreviewModal({ data, enginesUsed, projectName, 
           </button>
           <button type="button" onClick={() => void handleConfirm()}
             disabled={saving || totalSelected === 0}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+            className="flex items-center gap-1.5 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
             {saving ? <Loader2 size={12} className="animate-spin" /> : null}
             אשר והזן
           </button>

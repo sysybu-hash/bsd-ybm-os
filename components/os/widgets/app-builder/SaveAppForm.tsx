@@ -75,7 +75,7 @@ export function SaveAppForm({
         </button>
       ) : null}
       <button type="button" onClick={onSave} disabled={saving || readOnlyLoaded}
-        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-[color:var(--accent)] text-white hover:bg-indigo-500" : "border border-indigo-500/40 bg-indigo-500/10 text-[color:var(--accent)] dark:text-indigo-300 hover:bg-indigo-500/20"}`}>
+        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-[color:var(--accent)] text-white hover:opacity-90" : "border border-indigo-500/40 bg-indigo-500/10 text-[color:var(--accent)] dark:text-indigo-300 hover:bg-indigo-500/20"}`}>
         {saving ? t(`${PREFIX}.saving`) : isEditing ? t(`${PREFIX}.updateApp`) : t(`${PREFIX}.saveApp`)}
       </button>
     </div>

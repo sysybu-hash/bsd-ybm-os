@@ -96,7 +96,7 @@ export default function ProjectGanttChart({
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 py-14 text-center">
         <div className="rounded-full bg-indigo-100 p-4 dark:bg-indigo-900/30">
-          <BarChart2 size={28} className="text-indigo-500" />
+          <BarChart2 size={28} className="text-[color:var(--win-accent,#6366f1)]" />
         </div>
         <div>
           <p className="text-sm font-semibold text-[color:var(--foreground-main)]">
@@ -109,7 +109,7 @@ export default function ProjectGanttChart({
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
         >
           <Plus size={14} />
           {labels.addTask}
@@ -168,7 +168,7 @@ export default function ProjectGanttChart({
                 onClick={() => setScale(key)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   scale === key
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-[color:var(--win-accent,#6366f1)] text-white"
                     : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
                 }`}
               >
@@ -199,7 +199,7 @@ export default function ProjectGanttChart({
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
+          className="flex items-center gap-1.5 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
         >
           <Plus size={13} />
           {labels.addTask}
@@ -260,7 +260,7 @@ function LegendRow({ labels }: { labels: GanttProps["labels"] }) {
   return (
     <div className="ms-auto flex items-center gap-3">
       <span className="flex items-center gap-1">
-        <span className="h-2 w-4 rounded-sm bg-indigo-500" />
+        <span className="h-2 w-4 rounded-sm bg-[color:var(--win-accent,#6366f1)]" />
         {labels.ganttProgress ?? "בביצוע"}
       </span>
       <span className="flex items-center gap-1">

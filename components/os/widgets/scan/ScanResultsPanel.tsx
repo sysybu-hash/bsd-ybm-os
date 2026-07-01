@@ -85,7 +85,7 @@ export default function ScanResultsPanel({
         </p>
         <p className="mt-1 font-black text-[color:var(--foreground-main)]">{v5.docType || "—"}</p>
         <p className="text-[color:var(--foreground-muted)]">{v5.vendor || "—"}</p>
-        <p className="mt-2 text-lg font-black text-indigo-600 dark:text-indigo-400">
+        <p className="mt-2 text-lg font-black text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400">
           {v5.total != null ? `₪${Number(v5.total).toLocaleString("he-IL")}` : "—"}
         </p>
         {metaRows.length > 0 ? (

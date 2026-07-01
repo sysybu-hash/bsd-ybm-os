@@ -75,7 +75,7 @@ export function TaskCard({
         </div>
       </div>
 
-      <h4 className="text-sm font-bold text-[color:var(--foreground-main)] mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
+      <h4 className="text-sm font-bold text-[color:var(--foreground-main)] mb-1 group-hover:text-[color:var(--win-accent,#6366f1)] dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
         {task.title}
       </h4>
 
@@ -117,7 +117,7 @@ export function TaskCard({
           type="button"
           onClick={() => onEdit(task)}
           onPointerDown={(e) => e.stopPropagation()}
-          className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+          className="text-[10px] font-bold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         >
           {t("workspaceWidgets.itemActions.edit")}
         </button>

@@ -16,7 +16,7 @@ export function SettingsBusinessProfile({ settings, onChange, t }: SettingsBusin
   return (
     <section>
       <div className="flex items-center gap-2 mb-6">
-        <Building2 size={18} className="text-indigo-500" />
+        <Building2 size={18} className="text-[color:var(--win-accent,#6366f1)]" />
         <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
           {t(`${S}.businessProfile`)}
         </h3>
