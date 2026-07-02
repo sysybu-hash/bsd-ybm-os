@@ -173,7 +173,12 @@ export function isLikelyGeminiModelUnavailable(err: unknown): boolean {
     lower.includes("resource exhausted") ||
     lower.includes("too many requests") ||
     lower.includes("quota") ||
-    lower.includes("does not exist")
+    lower.includes("does not exist") ||
+    // 400 מה-API יכול להיות כשל זמני/ספציפי-למודל בעיבוד תמונה — כדאי לנסות
+    // מודל אחר בשרשרת לפני שנכשלים לגמרי.
+    (lower.includes("400") &&
+      (lower.includes("unable to process input image") ||
+        lower.includes("bad request")))
   );
 }
 

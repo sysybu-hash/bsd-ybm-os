@@ -4,6 +4,7 @@ import {
   getBlueprintAnalysisModelChain,
   getGeminiModelFallbackChain,
   getGeminiModelId,
+  isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 
 describe("gemini-model-catalog", () => {
@@ -22,5 +23,17 @@ describe("gemini-model-catalog", () => {
     const chain = getBlueprintAnalysisModelChain();
     expect(chain[0]).toBe("gemini-3.5-flash");
     expect(chain.some((m) => m === "gemini-3-flash-preview")).toBe(false);
+  });
+
+  it("treats a 400 'unable to process input image' error as retryable so the fallback chain isn't abandoned", () => {
+    const err = new Error(
+      "[GoogleGenerativeAI Error]: [400 Bad Request] Unable to process input image.",
+    );
+    expect(isLikelyGeminiModelUnavailable(err)).toBe(true);
+  });
+
+  it("treats a generic 400 Bad Request as retryable", () => {
+    const err = new Error("[400 Bad Request] Something went wrong.");
+    expect(isLikelyGeminiModelUnavailable(err)).toBe(true);
   });
 });
