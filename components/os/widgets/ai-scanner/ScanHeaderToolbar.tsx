@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ScanLine, ArrowRight, Eye, FileText, Settings2 } from "lucide-react";
+import { ScanLine, ArrowRight, Camera, Eye, FileText, Settings2 } from "lucide-react";
 import { isAutoDetectScanMode, type ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
@@ -36,6 +36,7 @@ type ScanHeaderToolbarProps = {
   pendingCount: number;
   onPickFiles: () => void;
   onStartScan: () => void;
+  onOpenCamera: () => void;
 };
 
 const selectClass =
@@ -49,7 +50,7 @@ export function ScanHeaderToolbar({
   openPreviewPanel, queue, previewUrl, lastScanV5,
   setResultsPanelOpen, pushScannerView, scanClassification, engineRunMode,
   scanModeOverride, setScanModeOverride, scanModes, engineMeta, setEngineRunMode,
-  pendingCount, onPickFiles, onStartScan,
+  pendingCount, onPickFiles, onStartScan, onOpenCamera,
 }: ScanHeaderToolbarProps) {
   return (
     <div className="shrink-0 border-b border-[color:var(--border-main)] px-3 py-1.5">
@@ -95,6 +96,15 @@ export function ScanHeaderToolbar({
             {tr("workspaceWidgets.aiScanner.pickFiles", "בחר קבצים לסריקה")}
           </button>
         )}
+        <button
+          type="button"
+          onClick={onOpenCamera}
+          className={iconBtn}
+          title={tr("scanner.cameraOpen", "צלם מסמך")}
+          aria-label={tr("scanner.cameraOpen", "צלם מסמך")}
+        >
+          <Camera size={15} aria-hidden />
+        </button>
       </div>
 
       {/* Row 2 — clickable engine selector (single row, all engines) */}

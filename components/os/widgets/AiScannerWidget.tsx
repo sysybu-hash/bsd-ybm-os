@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { X } from "lucide-react";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
+import InPageCameraCapture from "@/components/shared/InPageCameraCapture";
 import type { AiScannerWidgetProps } from "./ai-scanner/types";
 import { useAiScannerState } from "./ai-scanner/useAiScannerState";
 import { ScanHistorySidebar } from "./ai-scanner/ScanHistorySidebar";
@@ -24,6 +25,7 @@ export default function AiScannerWidget({
     officeExpenseMode,
     onSaveComplete,
   });
+  const [cameraOpen, setCameraOpen] = useState(false);
   const {
     t,
     dir,
@@ -63,6 +65,7 @@ export default function AiScannerWidget({
   } = s;
 
   const {
+    addFiles,
     pendingFiles,
     startScan,
     clearPending,
@@ -159,6 +162,7 @@ export default function AiScannerWidget({
           pendingCount={pendingFiles.length}
           onPickFiles={() => fileInputRef.current?.click()}
           onStartScan={() => void startScan()}
+          onOpenCamera={() => setCameraOpen(true)}
         />
 
         <div
@@ -252,6 +256,28 @@ export default function AiScannerWidget({
         saveToNotebook={saveToNotebook}
         savingNotebook={savingNotebook}
       />
+
+      {cameraOpen ? (
+        <InPageCameraCapture
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            setCameraOpen(false);
+            addFiles([file]);
+          }}
+          onFallbackToFile={() => {
+            setCameraOpen(false);
+            fileInputRef.current?.click();
+          }}
+          labels={{
+            live: tr("scanner.cameraLive", "מצלמה חיה"),
+            shutter: tr("scanner.cameraShutter", "צלם"),
+            flip: tr("scanner.cameraFlip", "החלף מצלמה"),
+            close: tr("scanner.cameraClose", "סגור מצלמה"),
+            error: tr("scanner.cameraError", "לא הצלחנו לפתוח את המצלמה. אפשר להעלות קובץ במקום."),
+            useFileInstead: tr("scanner.cameraUseFile", "העלאת קובץ במקום"),
+          }}
+        />
+      ) : null}
     </div>
   );
 }

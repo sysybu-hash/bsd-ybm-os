@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera, FileText, FileUp, Loader2, ScanLine, Sparkles, Upload } from "lucide-react";
 import MarketingFieldScanResults from "@/components/landing/marketing/MarketingFieldScanResults";
+import InPageCameraCapture from "@/components/shared/InPageCameraCapture";
 import { useMarketingDemoScan } from "@/hooks/useMarketingDemoScan";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { buildMarketingPublicUrls } from "@/lib/marketing/canonical-site";
@@ -14,8 +15,8 @@ const ACCEPT =
 export default function MarketingFieldScanDemo() {
   const { t, locale } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const scan = useMarketingDemoScan(t, locale);
   const registerHref = buildMarketingPublicUrls().register;
 
@@ -33,7 +34,7 @@ export default function MarketingFieldScanDemo() {
 
   const openCamera = useCallback(() => {
     if (!canInteract) return;
-    cameraRef.current?.click();
+    setCameraOpen(true);
   }, [canInteract]);
 
   const onDragEnter = useCallback(
@@ -268,22 +269,27 @@ export default function MarketingFieldScanDemo() {
           e.target.value = "";
         }}
       />
-      <label htmlFor="mkt-field-scan-camera" className="sr-only">
-        {t("marketingHome.cinematic.fieldScanCamera")}
-      </label>
-      <input
-        id="mkt-field-scan-camera"
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="sr-only"
-        onChange={(e) => {
-          const file = e.target.files?.[0] ?? null;
-          void scan.onFileSelected(file);
-          e.target.value = "";
-        }}
-      />
+      {cameraOpen ? (
+        <InPageCameraCapture
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => {
+            setCameraOpen(false);
+            void scan.onFileSelected(file);
+          }}
+          onFallbackToFile={() => {
+            setCameraOpen(false);
+            pickFile();
+          }}
+          labels={{
+            live: t("marketingHome.cinematic.fieldScanCameraLive"),
+            shutter: t("marketingHome.cinematic.fieldScanCameraShutter"),
+            flip: t("marketingHome.cinematic.fieldScanCameraFlip"),
+            close: t("marketingHome.cinematic.fieldScanCameraClose"),
+            error: t("marketingHome.cinematic.fieldScanCameraError"),
+            useFileInstead: t("marketingHome.cinematic.fieldScanCameraUseFile"),
+          }}
+        />
+      ) : null}
     </div>
   );
 }

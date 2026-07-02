@@ -219,7 +219,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     targetUserId: string,
     options?: { force?: boolean },
   ) => {
-    if (!options?.force && !canPersistWorkspaceLayout()) return;
+    if (typeof window === 'undefined') return;
     const sanitized = scrubWorkspaceLayout(nextWidgets);
     const storageKey = workspaceLayoutStorageKey(targetUserId);
     try {
@@ -232,6 +232,11 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     } catch (e) {
       log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
     }
+    // Server sync stays desktop-only (perf — see f3cf2c6). Mobile still gets the
+    // localStorage write above, so an OS-triggered tab reload (e.g. after the native
+    // camera app opens and Android discards the tab under memory pressure) restores
+    // the open widget instead of dropping back to the empty home screen.
+    if (!options?.force && !canPersistWorkspaceLayout()) return;
     if (isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) return;
     void fetch("/api/user/workspace-layout", {
       method: "PATCH",
@@ -349,10 +354,9 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
     };
   }, [authReady, userId, persistLayout]);
 
-  // Persistence: save per user (debounced server sync) — desktop only
+  // Persistence: save per user — localStorage on every platform, debounced server sync desktop-only
   useEffect(() => {
     if (!hasHydrated || !userId || activeUserIdRef.current !== userId) return;
-    if (!canPersistWorkspaceLayout()) return;
 
     const storageKey = workspaceLayoutStorageKey(userId);
     try {
@@ -379,7 +383,6 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         if (activeUserIdRef.current !== userId) return;
-        if (!canPersistWorkspaceLayout()) return;
         persistLayout(widgets, userId);
       }, 400);
     }
@@ -516,7 +519,7 @@ export function useWindowManager({ userId, authReady }: UseWindowManagerOptions)
 
   const clearLayout = useCallback(() => {
     setWidgets([]);
-    if (userId && canPersistWorkspaceLayout()) {
+    if (userId) {
       try {
         localStorage.removeItem(workspaceLayoutStorageKey(userId));
       } catch { /* quota */ }
