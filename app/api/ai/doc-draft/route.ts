@@ -42,5 +42,8 @@ export const POST = withWorkspacesAuth(
       return apiErrorResponse(err, "api/ai/doc-draft");
     }
   },
-  { schema: docDraftBodySchema },
+  {
+    schema: docDraftBodySchema,
+    rateLimit: { key: "ai:doc-draft", limit: 40, windowMs: 60 * 60 * 1000 },
+  },
 );

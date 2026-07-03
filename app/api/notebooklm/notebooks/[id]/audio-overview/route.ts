@@ -8,7 +8,9 @@ import {
   jsonBadRequest,
   jsonNotFound,
   jsonServiceUnavailable,
+  jsonTooManyRequests,
 } from "@/lib/api-json";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { GEMINI_NOTEBOOKLM_DEFAULT_MODEL } from "@/lib/gemini-model";
@@ -35,6 +37,11 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof audioOvervi
 
       if (!isGeminiConfigured()) {
         return jsonServiceUnavailable(getApiMessage("gemini_not_configured", locale), "gemini_not_configured");
+      }
+
+      const rl = await checkRateLimit(`audio-overview:user:${userId}`, 10, 60 * 60 * 1000);
+      if (!rl.success) {
+        return jsonTooManyRequests(getApiMessage("rate_limited", locale));
       }
 
       const { id } = await segment.params;
