@@ -44,6 +44,10 @@
     {
       "path": "/api/cron/contact-embeddings",
       "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/monthly-health-report",
+      "schedule": "0 8 1 * *"
     }
   ]
 }

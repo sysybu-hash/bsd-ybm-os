@@ -59,7 +59,8 @@ playwright-report/
 
 # Jest coverage + קבצי בדיקה מקומיים
 coverage/
-reports/
+# artifacts בלבד (pagespeed/lighthouse) — מעוגן לשורש כדי לא לחסום את lib/reports/
+/reports/
 /test-*.pdf
 
 .env*.local
