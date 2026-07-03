@@ -17,6 +17,8 @@ export default function GlobalError({ error, reset }: Props) {
         /* Sentry not configured */
       });
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+      // חריגה מכללי הלוגר: global-error מחליף את ה-root layout כולו, ולכן
+      // createLogger והתשתית סביבו אינם זמינים כאן. dev בלבד.
       console.error("[global-error]", error);
     }
   }, [error]);

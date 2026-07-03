@@ -25,7 +25,7 @@ describe("user-launcher-config", () => {
     const b = getDefaultLauncherConfig();
     expect(a.quickGrid).toHaveLength(8);
     expect(a.quickGrid).toEqual(DEFAULT_QUICK_GRID);
-    expect(a.sidebar[0]!.widgetId).toBe("financeHub");
+    expect(a.sidebar[0]!.widgetId).toBe("universalCommand");
     expect(b.version).toBe(2);
   });
 
@@ -80,7 +80,7 @@ describe("user-launcher-config", () => {
 
     const resolved = resolveStoredLauncherConfig({ sidebar: [{ widgetId: "crmTable" }] }, "CONSTRUCTION");
     expect(resolved.quickGrid).toHaveLength(CONSTRUCTION_QUICK_GRID.length);
-    expect(resolved.sidebar[0]!.widgetId).toBe("financeHub");
+    expect(resolved.sidebar[0]!.widgetId).toBe("universalCommand");
   });
 
   it("resets v1 stored config to v2 default", () => {
