@@ -154,7 +154,7 @@ export function getAdminEnvChecks(): AdminEnvCheckGroup[] {
         },
         {
           id: "posthog",
-          configured: has(env.POSTHOG_API_KEY) || has(process.env.NEXT_PUBLIC_POSTHOG_KEY),
+          configured: has(env.POSTHOG_API_KEY) || has(env.NEXT_PUBLIC_POSTHOG_KEY),
           kind: "optional",
         },
         {
