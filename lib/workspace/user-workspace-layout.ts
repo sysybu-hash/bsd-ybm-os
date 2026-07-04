@@ -37,6 +37,22 @@ function isWidgetType(value: string): value is WidgetType {
   return normalizeWidgetAction(value) !== null;
 }
 
+/**
+ * מסיר מ-liveData מפתחות ניווט זמניים (`__navInitial` וכו') לפני שמירה/שחזור.
+ * דליפה שלהם ל-layout השמור גורמת לאותו חלון לוגי להיראות "שונה" בהשוואות
+ * (deep-link matching, דה-דופליקציה בשחזור) — וכך נולדים חלונות כפולים.
+ */
+function stripTransientLiveData(
+  liveData: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!liveData) return liveData;
+  if (!Object.keys(liveData).some((k) => k.startsWith("__"))) return liveData;
+  const clean = Object.fromEntries(
+    Object.entries(liveData).filter(([k]) => !k.startsWith("__")),
+  );
+  return Object.keys(clean).length > 0 ? clean : null;
+}
+
 export function scrubWorkspaceLayout(raw: unknown): ActiveWidget[] {
   const parsed = layoutSchema.safeParse(raw);
   if (!parsed.success) return [];
@@ -47,7 +63,7 @@ export function scrubWorkspaceLayout(raw: unknown): ActiveWidget[] {
     widgets.push({
       id: row.id,
       type: row.type,
-      liveData: row.liveData,
+      liveData: stripTransientLiveData(row.liveData),
       position: row.position,
       size: row.size,
       zIndex: row.zIndex,

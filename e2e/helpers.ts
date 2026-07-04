@@ -73,10 +73,28 @@ const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
 import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-constants";
+import { WORKSPACE_LAYOUT_STORAGE_PREFIX } from "@/lib/workspace/user-workspace-layout";
 
 const FIRST_DAY_WIZARD_KEY = FIRST_DAY_WIZARD_STORAGE_KEY;
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
+
+/**
+ * מסיר את פריסת החלונות השמורה (localStorage) לפני כל ניווט —
+ * מאז שה-persist פעיל גם במובייל, בדיקות שחולקות storageState עלולות
+ * "לרשת" חלונות פתוחים מבדיקה קודמת ולשבור בידוד.
+ */
+export async function resetWorkspaceLayoutStorage(page: Page): Promise<void> {
+  await page.addInitScript((prefix: string) => {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith(`${prefix}:`)) localStorage.removeItem(key);
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, WORKSPACE_LAYOUT_STORAGE_PREFIX);
+}
 
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
 export async function primeE2eBrowserStorage(page: Page) {

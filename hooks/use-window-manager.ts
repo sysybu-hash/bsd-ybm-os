@@ -127,12 +127,28 @@ function removeLegacyGlobalLayoutKeys(): void {
   }
 }
 
+/**
+ * מסיר כפילויות מ-layout משוחזר: אותו type עם אותו liveData = אותו חלון לוגי.
+ * layout שמור יכול לצבור כפילויות (מרוץ בין שחזור-URL לשחזור-שרת, מיזוג בין טאבים) —
+ * ואז השחזור פותח את אותו hub פעמיים זה-על-זה. שומרים את המופע העליון (zIndex גבוה).
+ * חלונות מאותו type עם liveData שונה (למשל שני פרויקטים) נשמרים כולם.
+ */
+function dedupeRestoredWidgets(widgets: ActiveWidget[]): ActiveWidget[] {
+  const byKey = new Map<string, ActiveWidget>();
+  for (const w of widgets) {
+    const key = `${w.type}:${JSON.stringify(w.liveData ?? null)}`;
+    const existing = byKey.get(key);
+    if (!existing || (w.zIndex ?? 0) > (existing.zIndex ?? 0)) byKey.set(key, w);
+  }
+  return widgets.filter((w) => byKey.get(`${w.type}:${JSON.stringify(w.liveData ?? null)}`) === w);
+}
+
 function applyRestoredWidgets(
   widgets: ActiveWidget[],
   setWidgets: (w: ActiveWidget[]) => void,
   nextZIndexRef: MutableRefObject<number>,
 ): void {
-  const restored = widgets.map((w) => migrateRestoredWidget(w));
+  const restored = dedupeRestoredWidgets(widgets.map((w) => migrateRestoredWidget(w)));
   setWidgets(restored);
   const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
   nextZIndexRef.current = maxZ + 1;

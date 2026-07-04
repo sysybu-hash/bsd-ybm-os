@@ -5,6 +5,7 @@ import {
   dismissWorkspaceOverlays,
   gotoWorkspaceProject,
   openAnyHubFromQuickGrid,
+  resetWorkspaceLayoutStorage,
   signInWithRetries,
   waitForAuthenticatedWorkspace,
 } from "./helpers";
@@ -12,8 +13,10 @@ import {
 test.describe("mobile workspace windows", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async ({ page }, testInfo) => {
     testInfo.setTimeout(120_000);
+    // מובייל שומר כעת layout ל-localStorage — לאפס כדי שחלונות לא ידלפו בין בדיקות
+    await resetWorkspaceLayoutStorage(page);
   });
 
   test.skip(!E2E_EMAIL, "requires E2E credentials");
