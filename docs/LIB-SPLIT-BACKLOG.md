@@ -23,3 +23,17 @@
 | 404 | `lib/workspace/window-layout-policy.ts` | workspace |
 
 יעד: אף קובץ לוגיקה >300 (מלבד locale keys ו-generated).
+
+---
+
+**P0 מעודכן (2026-07-05):** בוצעו פיצולי הקומפוננטות: TakeoffModule (581→58),
+ProjectBoqPanel (544→204 + דה-דופליקציה של טבלה כפולה), BlueprintPreviewModal
+(486→118), ProjectBoardWidget (380→278), OmniCanvasWorkspace (345→261).
+
+**נדחו במכוון — לפצל רק אחרי כיסוי בדיקות (הסקאנר הוא מוקד באגים פעיל, תוקן 03/07):**
+
+| קובץ | שורות | תכנון פיצול |
+|------|------|-------------|
+| `components/os/widgets/ai-scanner/useScanQueue.ts` | 596 | `useScanExecution` (runFileQueue/startScan/stop) + `useScanSave` (executeUnifiedSave/saveToNotebook/corrections) + `useScanPreview`. תנאי מקדים: בדיקות offline-outbox (Phase 11) שמכסות את זרימת התור |
+| `lib/tri-engine-extract.ts` | 667 | פונקציה אחת ענקית `runTriEngineExtraction` — לחלץ בלוקי-מנוע (docai/gemini/openai/mistral/anthropic) לרשומת runners אחידה. תנאי מקדים: בדיקת אינטגרציה על מיזוג ריבוי-מנועים |
+| `components/os/layout/MobileBottomNav.tsx` | 335 | חסום — שינויים לא-שמורים בעץ העבודה של המשתמש |
