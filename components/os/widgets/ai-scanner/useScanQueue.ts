@@ -14,6 +14,7 @@ import { canBrowserPreviewMime } from "@/lib/scan-preview";
 import type { DocumentAnalysis, QueueItem, ScanHistoryItem } from "./types";
 import { formatMsg } from "./constants";
 import { runScanSingleFile } from "./runScanSingleFile";
+import { enqueueScan, isNetworkError } from "@/lib/offline/scan-outbox";
 import { unifiedSaveFromClient } from "@/lib/scan/unified-save-client";
 import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
 
@@ -241,6 +242,29 @@ export function useScanQueue({
           } catch (err: unknown) {
             if (err instanceof DOMException && err.name === "AbortError") {
               break;
+            }
+            // כשל-רשת (שטח ללא קליטה) — שמור לתור אופליין במקום לאבד את הסריקה.
+            if (isNetworkError(err)) {
+              try {
+                await enqueueScan({
+                  fileBlob: file,
+                  fileName: file.name,
+                  fileType: file.type,
+                  scanMode: String(scanModeOverride),
+                  engineRunMode: String(engineRunMode),
+                  projectId: boundProjectId || null,
+                  userInstruction: userInstruction?.trim() || null,
+                });
+                setQueue((prev) =>
+                  prev.map((q) => (q.id === qid ? { ...q, status: "queued" } : q)),
+                );
+                toast.info(
+                  tr("scanner.outboxSaved", "אין רשת — הסריקה נשמרה ותסתנכרן כשהחיבור יחזור"),
+                );
+                continue;
+              } catch {
+                /* מכסה מלאה או אין IndexedDB — ניפול לטיפול השגיאה הרגיל */
+              }
             }
             fail++;
             const msg = err instanceof Error ? err.message : tr("scanner.scanError", "שגיאה");

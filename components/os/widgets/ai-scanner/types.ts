@@ -36,7 +36,7 @@ export interface ScanHistoryItem {
   status: "success" | "warning" | "error";
 }
 
-export type QueueStatus = "pending" | "processing" | "done" | "error";
+export type QueueStatus = "pending" | "processing" | "done" | "error" | "queued";
 
 export interface QueueItem {
   id: string;

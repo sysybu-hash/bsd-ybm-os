@@ -7,6 +7,7 @@ import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { EngineMeta, QueueItem } from "./types";
 import { EngineSelector } from "./EngineSelector";
+import { ScanOutboxBadge } from "./ScanOutboxBadge";
 
 type ScanClassification = { scanMode: string; confidence: number; rationale?: string; uncertain?: boolean };
 
@@ -105,6 +106,7 @@ export function ScanHeaderToolbar({
         >
           <Camera size={15} aria-hidden />
         </button>
+        <ScanOutboxBadge tr={tr} />
       </div>
 
       {/* Row 2 — clickable engine selector (single row, all engines) */}
