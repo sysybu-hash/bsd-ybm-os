@@ -59,15 +59,21 @@ npm run premerge   # = verify:all
 | # | פריט | מצב |
 |---|---|---|
 | 🟡 | lib/ refactor (169 קבצים שטוחים) | לא התחיל |
-| 🟡 | פיצול 10 קומפוננטים >700 שורות | לא התחיל |
+| ✅ | פיצול קומפוננטים ענקיים | הושלם 07/26 — 5 פוצלו (Takeoff, BoqPanel, BlueprintPreview, ProjectBoard, OmniCanvas); useScanQueue + tri-engine-extract נדחו-עם-תכנון (LIB-SPLIT-BACKLOG) |
 | ✅ | DB indexes audit + migrations | הושלם (`be34c4b`) |
-| 🟢 | SEO: JSON-LD schema.org | חסר JSON-LD |
+| ✅ | SEO: JSON-LD schema.org | הושלם — `components/seo/StructuredDataScript` (Organization+WebSite+SoftwareApplication) בשני ה-layouts |
 | ✅ | og:image דינמי | הושלם (`ed59a17`) |
 | ✅ | `noUncheckedIndexedAccess` בtsconfig | הושלם (`3c91151`) |
 | ✅ | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | הושלם (`200e728`) |
-| 🟢 | axe a11y audit ב-E2E | לא התחיל |
-| 🟢 | PWA manifest (screenshots + categories) | חסר |
+| 🟢 | axe a11y audit ב-E2E | קיים חלקית (`e2e/workspace-a11y.spec.ts`) |
+| ✅ | PWA manifest (screenshots + categories + share_target) | הושלם |
 | ⚪ | i18n אנגלית | אופציונלי |
+
+**עדכון 2026-07-05 (סבב תיקון כולל):** בדיקות 432/432 ✓ · npm audit: 0 high/critical
+ב-production · rate-limits לכל נתיבי ה-AI · 31 error/loading boundaries · N+1 audit נקי
+(PERF-N1-AUDIT) · load-smoke ב-CI (`load-smoke.yml`) + ספים · תזכורת DR רבעונית
+(`dr-drill-reminder.yml`) · דוח בריאות עסק חודשי (`monthly-health-report`) · תיקון
+חלונות כפולים בשחזור layout (`076ac11`).
 
 ---
 

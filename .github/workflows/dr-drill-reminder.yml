@@ -1,0 +1,47 @@
+name: DR Drill Reminder
+
+# תזכורת רבעונית לתרגול התאוששות מאסון לפי docs/DR-PLAN.md —
+# פותחת issue עם ה-checklist. ה-drill עצמו ידני (קונסולת Neon).
+on:
+  schedule:
+    - cron: "0 6 1 1,4,7,10 *" # 1 בינואר/אפריל/יולי/אוקטובר, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  open-reminder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open quarterly DR drill issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `תרגול DR רבעוני — ${new Date().toISOString().slice(0, 10)}`;
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "dr-drill",
+            });
+            if (existing.length > 0) {
+              core.info("open dr-drill issue already exists — skipping");
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ["dr-drill", "ops"],
+              body: [
+                "תזכורת רבעונית אוטומטית — לבצע לפי [docs/DR-PLAN.md](../blob/main/docs/DR-PLAN.md):",
+                "",
+                "- [ ] `npm run ops:neon-dr-drill` (חיבור + checklist)",
+                "- [ ] יצירת restore branch ב-Neon מנקודת זמן ידועה-כתקינה",
+                "- [ ] `prisma db pull` מול ה-branch המשוחזר לאימות סכמה",
+                "- [ ] תיעוד זמן השחזור בפועל ב-DR-PLAN (שורת 'תרגיל אחרון')",
+                "- [ ] סימון ב-docs/KPI-SIGNOFF.md",
+              ].join("\n"),
+            });

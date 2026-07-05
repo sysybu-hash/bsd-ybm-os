@@ -73,27 +73,39 @@ const COOKIE_CONSENT_KEY = "bsd-ybm-cookie-consent-v1";
 
 const PASSKEY_OFFER_KEY = "bsd-passkey-offer-dismissed";
 import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-constants";
-import { WORKSPACE_LAYOUT_STORAGE_PREFIX } from "@/lib/workspace/user-workspace-layout";
 
 const FIRST_DAY_WIZARD_KEY = FIRST_DAY_WIZARD_STORAGE_KEY;
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
 
 /**
- * מסיר את פריסת החלונות השמורה (localStorage) לפני כל ניווט —
- * מאז שה-persist פעיל גם במובייל, בדיקות שחולקות storageState עלולות
- * "לרשת" חלונות פתוחים מבדיקה קודמת ולשבור בידוד.
+ * מסמן לטאב הזה לא למחוק את פריסת החלונות בניווט הבא —
+ * primeE2eBrowserStorage מנקה layout בכל ניווט (בידוד בדיקות), אבל בדיקות
+ * restore-אחרי-reload צריכות שה-layout ישרוד את הטעינה מחדש.
  */
-export async function resetWorkspaceLayoutStorage(page: Page): Promise<void> {
-  await page.addInitScript((prefix: string) => {
-    try {
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith(`${prefix}:`)) localStorage.removeItem(key);
-      }
-    } catch {
-      /* storage unavailable */
-    }
-  }, WORKSPACE_LAYOUT_STORAGE_PREFIX);
+export async function keepWorkspaceLayoutAcrossReload(page: Page): Promise<void> {
+  await page.evaluate(() => localStorage.setItem("__e2e_keep_layout", "1"));
+}
+
+/**
+ * מנקה את פריסת החלונות ב*שרת* עבור המשתמש המחובר. חובה במובייל: בדיקות
+ * בתצוגת דסקטופ מוקדם יותר בריצה שומרות layout לשרת עבור אותו משתמש-seed,
+ * ובדיקות מובייל מושכות אותו ב-hydration (ה-fetch לא חסום לפי viewport, רק
+ * הכתיבה). קורא אחרי התחברות.
+ */
+export async function clearServerWorkspaceLayout(page: Page): Promise<void> {
+  try {
+    await page.evaluate(async () => {
+      await fetch("/api/user/workspace-layout", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ widgets: [] }),
+      });
+    });
+  } catch {
+    /* best-effort */
+  }
 }
 
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
@@ -106,9 +118,12 @@ export async function primeE2eBrowserStorage(page: Page) {
         localStorage.setItem(launcherBannerKey, "1");
         localStorage.setItem(launcherStorageKey, "{}");
         for (const k of layoutKeys) localStorage.removeItem(k);
-        for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-          const key = localStorage.key(i);
-          if (key?.startsWith(layoutPrefix)) localStorage.removeItem(key);
+        // בדיקות restore-אחרי-reload מציבות דגל opt-out כדי שה-layout ישרוד ניווט
+        if (localStorage.getItem("__e2e_keep_layout") !== "1") {
+          for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+            const key = localStorage.key(i);
+            if (key?.startsWith(layoutPrefix)) localStorage.removeItem(key);
+          }
         }
       } catch {
         /* ignore */

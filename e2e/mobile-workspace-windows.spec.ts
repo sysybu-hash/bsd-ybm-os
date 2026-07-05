@@ -2,10 +2,11 @@ import { test, expect } from "@playwright/test";
 import {
   E2E_EMAIL,
   E2E_PROJECT_ID,
+  clearServerWorkspaceLayout,
   dismissWorkspaceOverlays,
   gotoWorkspaceProject,
+  keepWorkspaceLayoutAcrossReload,
   openAnyHubFromQuickGrid,
-  resetWorkspaceLayoutStorage,
   signInWithRetries,
   waitForAuthenticatedWorkspace,
 } from "./helpers";
@@ -13,10 +14,9 @@ import {
 test.describe("mobile workspace windows", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test.beforeEach(async ({ page }, testInfo) => {
+  test.beforeEach(async ({}, testInfo) => {
     testInfo.setTimeout(120_000);
-    // מובייל שומר כעת layout ל-localStorage — לאפס כדי שחלונות לא ידלפו בין בדיקות
-    await resetWorkspaceLayoutStorage(page);
+    // בידוד layout בין בדיקות מטופל ב-primeE2eBrowserStorage (מנקה בכל ניווט).
   });
 
   test.skip(!E2E_EMAIL, "requires E2E credentials");
@@ -34,11 +34,43 @@ test.describe("mobile workspace windows", () => {
     expect(box?.width ?? 0).toBeGreaterThan(300);
   });
 
+  /**
+   * מדמה tab-kill של אנדרואיד (המצלמה החיצונית גורמת ל-reload מלא):
+   * חלון פתוח חייב להשתחזר מ-localStorage אחרי טעינה מחדש — ולא לחזור למסך הבית.
+   * מכסה את fix(scan) 03dec09 + persistence במובייל.
+   */
+  test("open hub survives a full page reload on mobile (tab-kill restore)", async ({ page }) => {
+    const signed = await signInWithRetries(page);
+    test.skip(!signed, "login failed");
+    await waitForAuthenticatedWorkspace(page);
+
+    await clearServerWorkspaceLayout(page);
+    await dismissWorkspaceOverlays(page);
+    await openAnyHubFromQuickGrid(page);
+    const shell = page.locator("[data-widget-shell]").last();
+    await expect(shell).toBeVisible({ timeout: 30_000 });
+    const widgetId = await shell.getAttribute("id");
+
+    // מבטל את ניקוי ה-layout שהבידוד עושה בכל ניווט — כדי שהחלון ישרוד את הטעינה
+    // מחדש, בדיוק כמו שקורה למשתמש אמיתי כשאנדרואיד מרענן את הטאב אחרי המצלמה.
+    await keepWorkspaceLayoutAcrossReload(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForAuthenticatedWorkspace(page);
+    await dismissWorkspaceOverlays(page);
+
+    // שחזור מחכה ל-hydration מלא (כולל fetch layout מהשרת) — timeout נדיב
+    const restored = page.locator("[data-widget-shell]");
+    await expect(restored.first()).toBeVisible({ timeout: 60_000 });
+    // אותו מופע חלון (id זהה) — שוחזר, לא נפתח מחדש
+    await expect(restored.first()).toHaveAttribute("id", widgetId ?? "");
+  });
+
   test("close button dismisses hub widget on mobile", async ({ page }) => {
     const signed = await signInWithRetries(page);
     test.skip(!signed, "login failed");
     await waitForAuthenticatedWorkspace(page);
 
+    await clearServerWorkspaceLayout(page);
     await dismissWorkspaceOverlays(page);
     await openAnyHubFromQuickGrid(page);
     const shell = page.locator("[data-widget-shell]").last();
@@ -58,6 +90,7 @@ test.describe("mobile workspace windows", () => {
     test.skip(!signed, "login failed");
     await waitForAuthenticatedWorkspace(page);
 
+    await clearServerWorkspaceLayout(page);
     await dismissWorkspaceOverlays(page);
     await openAnyHubFromQuickGrid(page);
     const shell = page.locator("[data-widget-shell]").first();

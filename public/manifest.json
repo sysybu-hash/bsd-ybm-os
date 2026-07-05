@@ -84,6 +84,8 @@
   "screenshots": [
     {
       "src": "/screenshots/ai-hub.png",
+      "sizes": "2880x1800",
+      "type": "image/png",
       "form_factor": "wide",
       "label": "BSD-YBM OS — AI Hub"
     },
