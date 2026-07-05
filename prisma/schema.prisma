@@ -105,6 +105,7 @@ model Organization {
   suppliers                Supplier[]
   purchaseRequests         PurchaseRequest[]
   purchaseOrders           PurchaseOrder[]
+  whatsappLinks            WhatsappLink[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -559,6 +560,7 @@ model User {
   documents          Document[]
   issuedDocumentsCreated IssuedDocument[] @relation("IssuedDocumentCreatedBy")
   documentScanJobs   DocumentScanJob[]
+  whatsappLinks      WhatsappLink[]
   inAppNotifications InAppNotification[]
   pushSubscriptions  PushSubscription[]
   notebooks          Notebook[]
@@ -1613,4 +1615,21 @@ model PurchaseOrderLine {
 
   @@index([purchaseOrderId])
   @@index([inventoryItemId])
+}
+
+/// קישור מספר WhatsApp מאומת לארגון/משתמש — לקליטת סריקות מ-WhatsApp Cloud API.
+model WhatsappLink {
+  id             String       @id @default(cuid())
+  /// מספר בפורמט E.164 ללא "+"
+  phone          String       @unique
+  organizationId String
+  userId         String
+  verifiedAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  lastMessageAt  DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
 }

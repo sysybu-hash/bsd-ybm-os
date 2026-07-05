@@ -1,7 +1,7 @@
 # API Inventory
 
 > נוצר אוטומטית ע"י `node scripts/generate-openapi.mjs` מתוך `app/api/**/route.ts`.
-> 301 מסלולים (method + path). מקור מלא: [`docs/openapi.json`](./openapi.json).
+> 304 מסלולים (method + path). מקור מלא: [`docs/openapi.json`](./openapi.json).
 
 | Method | Path | Auth guard | Rate-limited |
 |--------|------|-----------|--------------|
@@ -306,3 +306,6 @@
 | `PATCH` | `/api/user/workspace-layout` | workspace-session | ✓ |
 | `POST` | `/api/webhooks/paypal` | webhook-hmac | — |
 | `POST` | `/api/webhooks/payplus` | webhook-hmac | — |
+| `GET` | `/api/webhooks/whatsapp` | webhook-hmac | — |
+| `POST` | `/api/webhooks/whatsapp` | webhook-hmac | — |
+| `POST` | `/api/whatsapp/link-code` | workspace-session | ✓ |

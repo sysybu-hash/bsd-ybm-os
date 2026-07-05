@@ -6926,6 +6926,76 @@
           }
         }
       }
+    },
+    "/api/webhooks/whatsapp": {
+      "get": {
+        "summary": "GET /api/webhooks/whatsapp",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "webhookSignature": []
+          }
+        ],
+        "x-auth-guard": "webhook-hmac",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/webhooks/whatsapp",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "webhookSignature": []
+          }
+        ],
+        "x-auth-guard": "webhook-hmac",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/whatsapp/link-code": {
+      "post": {
+        "summary": "POST /api/whatsapp/link-code",
+        "tags": [
+          "whatsapp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
     }
   }
 }

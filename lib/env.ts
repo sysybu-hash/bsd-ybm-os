@@ -174,6 +174,13 @@ const serverSchema = z.object({
   CRON_SECRET: optStr,
   ANALYZE_QUEUE_SECRET: optStr,
 
+  // --- WhatsApp Cloud API (Meta) ---
+  WHATSAPP_VERIFY_TOKEN: optStr, // אימות ה-webhook (GET hub.verify_token)
+  WHATSAPP_APP_SECRET: optStr, // אימות חתימת X-Hub-Signature-256
+  WHATSAPP_ACCESS_TOKEN: optStr, // הורדת מדיה + שליחת תשובות (Graph API)
+  WHATSAPP_PHONE_NUMBER_ID: optStr, // מזהה מספר העסק לשליחה
+  WHATSAPP_API_VERSION: optStr, // ברירת מחדל v21.0
+
   // --- Admin / Tenant ---
   OS_ADMIN_EMAIL: optStr,
   OS_ADMIN_EMAILS: optStr,
