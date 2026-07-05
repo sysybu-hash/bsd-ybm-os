@@ -25,6 +25,10 @@ export type MobileBottomNavProps = {
 
 type NavItem = { type: WidgetType; labelKey: string; icon: LucideIcon; chip?: boolean };
 
+/** Shared label style so every bottom-nav button shows its full text within the existing row height. */
+const NAV_LABEL_CLASS =
+  "line-clamp-2 max-w-full whitespace-normal break-words px-0.5 text-center text-[7px] font-bold leading-[1.05] sm:text-[8px]";
+
 function SideNavButton({
   item,
   onOpen,
@@ -53,7 +57,7 @@ function SideNavButton({
       ) : (
         <Icon size={21} strokeWidth={1.75} className="max-[380px]:h-[19px] max-[380px]:w-[19px] shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden />
       )}
-      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
+      <span className={NAV_LABEL_CLASS}>{label}</span>
     </button>
   );
 }
@@ -81,7 +85,7 @@ function WindowSwitcherButton({
       aria-label={label}
     >
       <Layers size={21} strokeWidth={1.75} className="max-[380px]:h-[19px] max-[380px]:w-[19px] shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden />
-      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
+      <span className={NAV_LABEL_CLASS}>{label}</span>
     </button>
   );
 }
@@ -103,8 +107,10 @@ function MoreNavButton({
       aria-label={label}
       aria-expanded={moreOpen}
     >
-      <Grid3x3 size={21} strokeWidth={1.75} className="max-[380px]:h-[19px] max-[380px]:w-[19px] shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden />
-      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
+      <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-slate-500/22 text-slate-700 transition sm:h-10 sm:w-10 sm:rounded-xl dark:bg-slate-500/28 dark:text-slate-200">
+        <Grid3x3 size={20} strokeWidth={1.75} aria-hidden />
+      </span>
+      <span className={NAV_LABEL_CLASS}>{label}</span>
     </button>
   );
 }
@@ -264,7 +270,7 @@ function DashboardLinkButton({ label }: { label: string }) {
       <span className="flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-[color:var(--win-accent,#6366f1)] transition dark:bg-indigo-950 dark:text-indigo-400">
         <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden />
       </span>
-      <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{label}</span>
+      <span className={NAV_LABEL_CLASS}>{label}</span>
     </Link>
   );
 }
@@ -299,7 +305,7 @@ function MoreAppsPanel({
             <span className={`flex h-9 w-9 max-[380px]:h-8 max-[380px]:w-8 shrink-0 items-center justify-center rounded-lg transition ${widgetIconChipClass("appBuilder")}`}>
               <Layers size={20} strokeWidth={1.75} aria-hidden />
             </span>
-            <span className="max-w-full truncate px-0.5 text-[8px] font-bold leading-tight sm:text-[9px]">{t("workspaceWidgets.mobileNav.windowSwitcher")}</span>
+            <span className={NAV_LABEL_CLASS}>{t("workspaceWidgets.mobileNav.windowSwitcher")}</span>
           </button>
         ) : null}
         {apps.map((item) => (
