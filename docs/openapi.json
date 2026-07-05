@@ -1,0 +1,6931 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BSD-YBM OS API",
+    "version": "1.0.0",
+    "description": "Route inventory auto-derived from app/api. Auth guard + rate-limit flags reflect the actual source. Request/response schemas are filled in incrementally per route."
+  },
+  "servers": [
+    {
+      "url": "https://www.bsd-ybm.co.il"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "next-auth.session-token"
+      },
+      "cronSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "CRON_SECRET bearer token"
+      },
+      "webhookSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "signature",
+        "description": "HMAC-SHA256 over the raw body"
+      }
+    }
+  },
+  "paths": {
+    "/api/accounting/export": {
+      "get": {
+        "summary": "GET /api/accounting/export",
+        "tags": [
+          "accounting"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/accounting/export",
+        "tags": [
+          "accounting"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/admin/assistant/execute": {
+      "post": {
+        "summary": "POST /api/admin/assistant/execute",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/assistant": {
+      "post": {
+        "summary": "POST /api/admin/assistant",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/admin/broadcast-notification": {
+      "post": {
+        "summary": "POST /api/admin/broadcast-notification",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/check-user": {
+      "get": {
+        "summary": "GET /api/admin/check-user",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/fix-roles": {
+      "post": {
+        "summary": "POST /api/admin/fix-roles",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/health": {
+      "get": {
+        "summary": "GET /api/admin/health",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/logs": {
+      "get": {
+        "summary": "GET /api/admin/logs",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/admin/logs",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/platform-settings": {
+      "get": {
+        "summary": "GET /api/admin/platform-settings",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/admin/platform-settings",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/self-heal": {
+      "post": {
+        "summary": "POST /api/admin/self-heal",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/set-password": {
+      "post": {
+        "summary": "POST /api/admin/set-password",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/system-health": {
+      "get": {
+        "summary": "GET /api/admin/system-health",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/test-email": {
+      "post": {
+        "summary": "POST /api/admin/test-email",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/ai-assistant": {
+      "post": {
+        "summary": "POST /api/ai-assistant",
+        "tags": [
+          "ai-assistant"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/ai-builder/chat": {
+      "post": {
+        "summary": "POST /api/ai-builder/chat",
+        "tags": [
+          "ai-builder"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai-builder/generate": {
+      "post": {
+        "summary": "POST /api/ai-builder/generate",
+        "tags": [
+          "ai-builder"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai-builder/live-build": {
+      "post": {
+        "summary": "POST /api/ai-builder/live-build",
+        "tags": [
+          "ai-builder"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/chat": {
+      "post": {
+        "summary": "POST /api/ai/chat",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/corrections": {
+      "post": {
+        "summary": "POST /api/ai/corrections",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/ai/doc-draft": {
+      "post": {
+        "summary": "POST /api/ai/doc-draft",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/gemini-live/app-builder-session": {
+      "post": {
+        "summary": "POST /api/ai/gemini-live/app-builder-session",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/gemini-live/field-copilot-session": {
+      "post": {
+        "summary": "POST /api/ai/gemini-live/field-copilot-session",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/gemini-live/session": {
+      "post": {
+        "summary": "POST /api/ai/gemini-live/session",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/omni-voice": {
+      "post": {
+        "summary": "POST /api/ai/omni-voice",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/ai/operator": {
+      "post": {
+        "summary": "POST /api/ai/operator",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/ai/providers": {
+      "get": {
+        "summary": "GET /api/ai/providers",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/ai": {
+      "post": {
+        "summary": "POST /api/ai",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/analyze-queue/add": {
+      "post": {
+        "summary": "POST /api/analyze-queue/add",
+        "tags": [
+          "analyze-queue"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/analyze-queue/pending": {
+      "get": {
+        "summary": "GET /api/analyze-queue/pending",
+        "tags": [
+          "analyze-queue"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/analyze-queue/process": {
+      "get": {
+        "summary": "GET /api/analyze-queue/process",
+        "tags": [
+          "analyze-queue"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/analyze-queue/process",
+        "tags": [
+          "analyze-queue"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/analyze-queue/status": {
+      "get": {
+        "summary": "GET /api/analyze-queue/status",
+        "tags": [
+          "analyze-queue"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "summary": "POST /api/analyze",
+        "tags": [
+          "analyze"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/assign-user": {
+      "post": {
+        "summary": "POST /api/assign-user",
+        "tags": [
+          "assign-user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/auth/{nextauth}": {
+      "get": {
+        "summary": "GET /api/auth/{nextauth}",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/auth/{nextauth}",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "summary": "POST /api/auth/forgot-password",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/google-reconnect/callback": {
+      "get": {
+        "summary": "GET /api/auth/google-reconnect/callback",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "jwt",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/auth/google-reconnect": {
+      "get": {
+        "summary": "GET /api/auth/google-reconnect",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/google-start": {
+      "get": {
+        "summary": "GET /api/auth/google-start",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/{id}": {
+      "delete": {
+        "summary": "DELETE /api/auth/passkey/{id}",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/auth-options": {
+      "post": {
+        "summary": "POST /api/auth/passkey/auth-options",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/auth-verify": {
+      "post": {
+        "summary": "POST /api/auth/passkey/auth-verify",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/list": {
+      "get": {
+        "summary": "GET /api/auth/passkey/list",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/register-options": {
+      "post": {
+        "summary": "POST /api/auth/passkey/register-options",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/passkey/register-verify": {
+      "post": {
+        "summary": "POST /api/auth/passkey/register-verify",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "summary": "POST /api/auth/reset-password",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/set-password": {
+      "post": {
+        "summary": "POST /api/auth/set-password",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/billing/paypal/capture-order": {
+      "post": {
+        "summary": "POST /api/billing/paypal/capture-order",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/billing/paypal/create-order": {
+      "post": {
+        "summary": "POST /api/billing/paypal/create-order",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/chat/legacy": {
+      "post": {
+        "summary": "POST /api/chat/legacy",
+        "tags": [
+          "chat"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "summary": "POST /api/chat",
+        "tags": [
+          "chat"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/comments": {
+      "get": {
+        "summary": "GET /api/comments",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/comments",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts/{id}/project-change-check": {
+      "get": {
+        "summary": "GET /api/crm/contacts/{id}/project-change-check",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts/{id}": {
+      "get": {
+        "summary": "GET /api/crm/contacts/{id}",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/crm/contacts/{id}",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/crm/contacts/{id}",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts/{id}/timeline": {
+      "get": {
+        "summary": "GET /api/crm/contacts/{id}/timeline",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts/export": {
+      "get": {
+        "summary": "GET /api/crm/contacts/export",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts": {
+      "get": {
+        "summary": "GET /api/crm/contacts",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/crm/contacts",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/crm/import": {
+      "post": {
+        "summary": "POST /api/crm/import",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/crm/semantic-search": {
+      "post": {
+        "summary": "POST /api/crm/semantic-search",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/cron/cashflow-guardian": {
+      "get": {
+        "summary": "GET /api/cron/cashflow-guardian",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/collection-reminders": {
+      "get": {
+        "summary": "GET /api/cron/collection-reminders",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/contact-embeddings": {
+      "get": {
+        "summary": "GET /api/cron/contact-embeddings",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/email-digest": {
+      "get": {
+        "summary": "GET /api/cron/email-digest",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/field-copilot-followups": {
+      "get": {
+        "summary": "GET /api/cron/field-copilot-followups",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/financial-insights": {
+      "get": {
+        "summary": "GET /api/cron/financial-insights",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/google-calendar-push": {
+      "get": {
+        "summary": "GET /api/cron/google-calendar-push",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/google-calendar-sync": {
+      "get": {
+        "summary": "GET /api/cron/google-calendar-sync",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/lifecycle-emails": {
+      "get": {
+        "summary": "GET /api/cron/lifecycle-emails",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/meckano-sync": {
+      "get": {
+        "summary": "GET /api/cron/meckano-sync",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/monthly-health-report": {
+      "get": {
+        "summary": "GET /api/cron/monthly-health-report",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/task-reminders": {
+      "get": {
+        "summary": "GET /api/cron/task-reminders",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/cron/work-diary-push": {
+      "get": {
+        "summary": "GET /api/cron/work-diary-push",
+        "tags": [
+          "cron"
+        ],
+        "security": [
+          {
+            "cronSecret": []
+          }
+        ],
+        "x-auth-guard": "cron-secret",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats": {
+      "get": {
+        "summary": "GET /api/dashboard/stats",
+        "tags": [
+          "dashboard"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/data": {
+      "get": {
+        "summary": "GET /api/data",
+        "tags": [
+          "data"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/data",
+        "tags": [
+          "data"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/debug-session": {
+      "get": {
+        "summary": "GET /api/debug-session",
+        "tags": [
+          "debug-session"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/documents/issued/{id}/export": {
+      "get": {
+        "summary": "GET /api/documents/issued/{id}/export",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/documents/issued/{id}": {
+      "get": {
+        "summary": "GET /api/documents/issued/{id}",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/documents/issued/{id}/send-reminder": {
+      "post": {
+        "summary": "POST /api/documents/issued/{id}/send-reminder",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/documents/issued/drafts": {
+      "get": {
+        "summary": "GET /api/documents/issued/drafts",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/documents/issued/drafts",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/documents/issued/drafts",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/archive/bulk-export": {
+      "post": {
+        "summary": "POST /api/erp/archive/bulk-export",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/erp/archive/empty-trash": {
+      "post": {
+        "summary": "POST /api/erp/archive/empty-trash",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/erp/archive/item": {
+      "patch": {
+        "summary": "PATCH /api/erp/archive/item",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/archive": {
+      "get": {
+        "summary": "GET /api/erp/archive",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/documents/{id}/file": {
+      "get": {
+        "summary": "GET /api/erp/documents/{id}/file",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/documents/{id}": {
+      "get": {
+        "summary": "GET /api/erp/documents/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/erp/documents/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/erp/documents/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/documents": {
+      "get": {
+        "summary": "GET /api/erp/documents",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/issued-documents/{id}": {
+      "patch": {
+        "summary": "PATCH /api/erp/issued-documents/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/erp/issued-documents/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/issued-documents/box": {
+      "get": {
+        "summary": "GET /api/erp/issued-documents/box",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/issued-documents": {
+      "get": {
+        "summary": "GET /api/erp/issued-documents",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/erp/issued-documents",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/line-items/{id}": {
+      "patch": {
+        "summary": "PATCH /api/erp/line-items/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/erp/line-items/{id}",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/notebook": {
+      "post": {
+        "summary": "POST /api/erp/notebook",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/price-compare": {
+      "get": {
+        "summary": "GET /api/erp/price-compare",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/price-comparison": {
+      "get": {
+        "summary": "GET /api/erp/price-comparison",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/erp/project-notebook/chat-stream": {
+      "post": {
+        "summary": "POST /api/erp/project-notebook/chat-stream",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/erp/project-notebook/chat": {
+      "post": {
+        "summary": "POST /api/erp/project-notebook/chat",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/erp/quotes": {
+      "get": {
+        "summary": "GET /api/erp/quotes",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/erp/quotes",
+        "tags": [
+          "erp"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/exchange-rates": {
+      "get": {
+        "summary": "GET /api/exchange-rates",
+        "tags": [
+          "exchange-rates"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/executive/stats": {
+      "get": {
+        "summary": "GET /api/executive/stats",
+        "tags": [
+          "executive"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/expenses/confirm": {
+      "post": {
+        "summary": "POST /api/expenses/confirm",
+        "tags": [
+          "expenses"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "summary": "POST /api/feedback",
+        "tags": [
+          "feedback"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/field-copilot/analyze": {
+      "post": {
+        "summary": "POST /api/field-copilot/analyze",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/field-copilot/assets/{id}": {
+      "get": {
+        "summary": "GET /api/field-copilot/assets/{id}",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/field-copilot/assets": {
+      "post": {
+        "summary": "POST /api/field-copilot/assets",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/field-copilot/assets",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/field-copilot/handoff": {
+      "post": {
+        "summary": "POST /api/field-copilot/handoff",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/field-copilot/session": {
+      "get": {
+        "summary": "GET /api/field-copilot/session",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/field-copilot/session",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/field-copilot/session",
+        "tags": [
+          "field-copilot"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "GET /api/health",
+        "tags": [
+          "health"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/integrations/cloud": {
+      "get": {
+        "summary": "GET /api/integrations/cloud",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/integrations/cloud",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/integrations/google-calendar/calendars": {
+      "get": {
+        "summary": "GET /api/integrations/google-calendar/calendars",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google-calendar": {
+      "get": {
+        "summary": "GET /api/integrations/google-calendar",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/integrations/google-calendar",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google-calendar/settings/activate": {
+      "put": {
+        "summary": "PUT /api/integrations/google-calendar/settings/activate",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google-calendar/settings": {
+      "get": {
+        "summary": "GET /api/integrations/google-calendar/settings",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "put": {
+        "summary": "PUT /api/integrations/google-calendar/settings",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google-calendar/sync": {
+      "post": {
+        "summary": "POST /api/integrations/google-calendar/sync",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google/calendar/callback": {
+      "get": {
+        "summary": "GET /api/integrations/google/calendar/callback",
+        "tags": [
+          "integrations"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "jwt",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/integrations/google/calendar/connect": {
+      "get": {
+        "summary": "GET /api/integrations/google/calendar/connect",
+        "tags": [
+          "integrations"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/jewish-calendar/day": {
+      "get": {
+        "summary": "GET /api/jewish-calendar/day",
+        "tags": [
+          "jewish-calendar"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/jewish-calendar/locations": {
+      "get": {
+        "summary": "GET /api/jewish-calendar/locations",
+        "tags": [
+          "jewish-calendar"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/knowledge-vault/ingest": {
+      "post": {
+        "summary": "POST /api/knowledge-vault/ingest",
+        "tags": [
+          "knowledge-vault"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/knowledge-vault/issue": {
+      "post": {
+        "summary": "POST /api/knowledge-vault/issue",
+        "tags": [
+          "knowledge-vault"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/knowledge-vault/items": {
+      "get": {
+        "summary": "GET /api/knowledge-vault/items",
+        "tags": [
+          "knowledge-vault"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/knowledge-vault/parse": {
+      "post": {
+        "summary": "POST /api/knowledge-vault/parse",
+        "tags": [
+          "knowledge-vault"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/knowledge-vault/search": {
+      "get": {
+        "summary": "GET /api/knowledge-vault/search",
+        "tags": [
+          "knowledge-vault"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/leads": {
+      "post": {
+        "summary": "POST /api/leads",
+        "tags": [
+          "leads"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/locale": {
+      "post": {
+        "summary": "POST /api/locale",
+        "tags": [
+          "locale"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/logistics/assets/{id}/checkout": {
+      "post": {
+        "summary": "POST /api/logistics/assets/{id}/checkout",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/logistics/assets/{id}/history": {
+      "get": {
+        "summary": "GET /api/logistics/assets/{id}/history",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/logistics/assets": {
+      "get": {
+        "summary": "GET /api/logistics/assets",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/logistics/assets",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/logistics/inventory/{id}": {
+      "patch": {
+        "summary": "PATCH /api/logistics/inventory/{id}",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/logistics/inventory/{id}",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/logistics/inventory": {
+      "get": {
+        "summary": "GET /api/logistics/inventory",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/logistics/inventory",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/logistics/lookups": {
+      "get": {
+        "summary": "GET /api/logistics/lookups",
+        "tags": [
+          "logistics"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/marketing/assistant/chat": {
+      "post": {
+        "summary": "POST /api/marketing/assistant/chat",
+        "tags": [
+          "marketing"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/marketing/assistant/gemini-live/session": {
+      "post": {
+        "summary": "POST /api/marketing/assistant/gemini-live/session",
+        "tags": [
+          "marketing"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/marketing/demo-scan": {
+      "get": {
+        "summary": "GET /api/marketing/demo-scan",
+        "tags": [
+          "marketing"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/marketing/demo-scan",
+        "tags": [
+          "marketing"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/meckano/{path}": {
+      "get": {
+        "summary": "GET /api/meckano/{path}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/meckano/{path}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "summary": "PUT /api/meckano/{path}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/meckano/{path}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/access": {
+      "get": {
+        "summary": "GET /api/meckano/access",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/attendance": {
+      "get": {
+        "summary": "GET /api/meckano/attendance",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/clock-in": {
+      "post": {
+        "summary": "POST /api/meckano/clock-in",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/employees": {
+      "get": {
+        "summary": "GET /api/meckano/employees",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/projects": {
+      "get": {
+        "summary": "GET /api/meckano/projects",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/reports/export-pdf": {
+      "post": {
+        "summary": "POST /api/meckano/reports/export-pdf",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/reports": {
+      "post": {
+        "summary": "POST /api/meckano/reports",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/sync/contacts": {
+      "post": {
+        "summary": "POST /api/meckano/sync/contacts",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/sync/zones-to-crm": {
+      "post": {
+        "summary": "POST /api/meckano/sync/zones-to-crm",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/zones/{id}": {
+      "put": {
+        "summary": "PUT /api/meckano/zones/{id}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/meckano/zones/{id}",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/zones": {
+      "get": {
+        "summary": "GET /api/meckano/zones",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/meckano/zones",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/meckano/zones/sync": {
+      "post": {
+        "summary": "POST /api/meckano/zones/sync",
+        "tags": [
+          "meckano"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/chat": {
+      "post": {
+        "summary": "POST /api/notebooklm/chat",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/extract-pdf": {
+      "post": {
+        "summary": "POST /api/notebooklm/extract-pdf",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/extract-source": {
+      "post": {
+        "summary": "POST /api/notebooklm/extract-source",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/from-scan": {
+      "post": {
+        "summary": "POST /api/notebooklm/from-scan",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/generate-document": {
+      "post": {
+        "summary": "POST /api/notebooklm/generate-document",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/notebooks/{id}/audio-overview": {
+      "post": {
+        "summary": "POST /api/notebooklm/notebooks/{id}/audio-overview",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/notebooks/{id}": {
+      "get": {
+        "summary": "GET /api/notebooklm/notebooks/{id}",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/notebooklm/notebooks/{id}",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notebooklm/notebooks": {
+      "get": {
+        "summary": "GET /api/notebooklm/notebooks",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/notebooklm/notebooks",
+        "tags": [
+          "notebooklm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notifications/feed": {
+      "get": {
+        "summary": "GET /api/notifications/feed",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/notifications/feed/stream": {
+      "get": {
+        "summary": "GET /api/notifications/feed/stream",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/office-expenses/{id}": {
+      "patch": {
+        "summary": "PATCH /api/office-expenses/{id}",
+        "tags": [
+          "office-expenses"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/office-expenses/{id}",
+        "tags": [
+          "office-expenses"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/office-expenses": {
+      "get": {
+        "summary": "GET /api/office-expenses",
+        "tags": [
+          "office-expenses"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/office-expenses",
+        "tags": [
+          "office-expenses"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/org-invite/preview": {
+      "get": {
+        "summary": "GET /api/org-invite/preview",
+        "tags": [
+          "org-invite"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/org/check-email-verified": {
+      "get": {
+        "summary": "GET /api/org/check-email-verified",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/org/insights/daily": {
+      "get": {
+        "summary": "GET /api/org/insights/daily",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/org/resend-verification": {
+      "post": {
+        "summary": "POST /api/org/resend-verification",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/org/scan-lookups": {
+      "get": {
+        "summary": "GET /api/org/scan-lookups",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/organization": {
+      "get": {
+        "summary": "GET /api/organization",
+        "tags": [
+          "organization"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/organization",
+        "tags": [
+          "organization"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/assistant/context": {
+      "get": {
+        "summary": "GET /api/os/assistant/context",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/assistant/execute-tool": {
+      "post": {
+        "summary": "POST /api/os/assistant/execute-tool",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/assistant/interpret": {
+      "post": {
+        "summary": "POST /api/os/assistant/interpret",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/os/assistant/parse-action": {
+      "post": {
+        "summary": "POST /api/os/assistant/parse-action",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/os/automations/intent-enabled": {
+      "get": {
+        "summary": "GET /api/os/automations/intent-enabled",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/decode-batch": {
+      "post": {
+        "summary": "POST /api/os/google-drive/decode-batch",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/download": {
+      "get": {
+        "summary": "GET /api/os/google-drive/download",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/files": {
+      "get": {
+        "summary": "GET /api/os/google-drive/files",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/folders": {
+      "get": {
+        "summary": "GET /api/os/google-drive/folders",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/settings": {
+      "get": {
+        "summary": "GET /api/os/google-drive/settings",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/os/google-drive/settings",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/sync": {
+      "post": {
+        "summary": "POST /api/os/google-drive/sync",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/to-notebook": {
+      "post": {
+        "summary": "POST /api/os/google-drive/to-notebook",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/upload": {
+      "post": {
+        "summary": "POST /api/os/google-drive/upload",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/os/google-drive/workspace": {
+      "get": {
+        "summary": "GET /api/os/google-drive/workspace",
+        "tags": [
+          "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/procurement/orders/{id}/issue-document": {
+      "post": {
+        "summary": "POST /api/procurement/orders/{id}/issue-document",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/procurement/orders/{id}": {
+      "post": {
+        "summary": "POST /api/procurement/orders/{id}",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/procurement/orders/{id}",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/procurement/orders": {
+      "get": {
+        "summary": "GET /api/procurement/orders",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/procurement/orders",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/procurement/requests": {
+      "get": {
+        "summary": "GET /api/procurement/requests",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/procurement/requests",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/procurement/suppliers": {
+      "get": {
+        "summary": "GET /api/procurement/suppliers",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/procurement/suppliers",
+        "tags": [
+          "procurement"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/progress-bills/{id}": {
+      "patch": {
+        "summary": "PATCH /api/progress-bills/{id}",
+        "tags": [
+          "progress-bills"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/progress-bills": {
+      "get": {
+        "summary": "GET /api/progress-bills",
+        "tags": [
+          "progress-bills"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/progress-bills",
+        "tags": [
+          "progress-bills"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/ai-insights": {
+      "get": {
+        "summary": "GET /api/projects/{id}/ai-insights",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/boq/agent": {
+      "post": {
+        "summary": "POST /api/projects/{id}/boq/agent",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/boq": {
+      "get": {
+        "summary": "GET /api/projects/{id}/boq",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/boq",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/boq",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/projects/{id}/boq",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/dashboard": {
+      "get": {
+        "summary": "GET /api/projects/{id}/dashboard",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/drive-folder": {
+      "get": {
+        "summary": "GET /api/projects/{id}/drive-folder",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/expenses": {
+      "get": {
+        "summary": "GET /api/projects/{id}/expenses",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/expenses",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/export/excel": {
+      "get": {
+        "summary": "GET /api/projects/{id}/export/excel",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/extras": {
+      "get": {
+        "summary": "GET /api/projects/{id}/extras",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/extras",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/extras",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/field-site-report": {
+      "post": {
+        "summary": "POST /api/projects/{id}/field-site-report",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/generate-gantt": {
+      "post": {
+        "summary": "POST /api/projects/{id}/generate-gantt",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/import/excel": {
+      "post": {
+        "summary": "POST /api/projects/{id}/import/excel",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/import/schedule": {
+      "post": {
+        "summary": "POST /api/projects/{id}/import/schedule",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/milestones": {
+      "get": {
+        "summary": "GET /api/projects/{id}/milestones",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/milestones",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/milestones",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/notes": {
+      "get": {
+        "summary": "GET /api/projects/{id}/notes",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/notes",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "summary": "GET /api/projects/{id}",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/projects/{id}",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/sync-meckano": {
+      "post": {
+        "summary": "POST /api/projects/{id}/sync-meckano",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/tasks": {
+      "get": {
+        "summary": "GET /api/projects/{id}/tasks",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/tasks",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/tasks",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/projects/{id}/tasks",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/tasks/schedule": {
+      "get": {
+        "summary": "GET /api/projects/{id}/tasks/schedule",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/tasks/schedule",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/work-diaries/{diaryId}": {
+      "patch": {
+        "summary": "PATCH /api/projects/{id}/work-diaries/{diaryId}",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/projects/{id}/work-diaries/{diaryId}",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/work-diaries": {
+      "get": {
+        "summary": "GET /api/projects/{id}/work-diaries",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/{id}/work-diaries",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/analyze-blueprint": {
+      "post": {
+        "summary": "POST /api/projects/analyze-blueprint",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/detail": {
+      "get": {
+        "summary": "GET /api/projects/detail",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/export-blueprint-excel": {
+      "post": {
+        "summary": "POST /api/projects/export-blueprint-excel",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects/export-blueprint-pdf": {
+      "post": {
+        "summary": "POST /api/projects/export-blueprint-pdf",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "summary": "GET /api/projects",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/projects/update": {
+      "get": {
+        "summary": "GET /api/projects/update",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/projects/update",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/projects/update",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/push/subscribe": {
+      "get": {
+        "summary": "GET /api/push/subscribe",
+        "tags": [
+          "push"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/push/subscribe",
+        "tags": [
+          "push"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/push/subscribe",
+        "tags": [
+          "push"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/quotes": {
+      "post": {
+        "summary": "POST /api/quotes",
+        "tags": [
+          "quotes"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "summary": "POST /api/register",
+        "tags": [
+          "register"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/reports/finance-csv": {
+      "get": {
+        "summary": "GET /api/reports/finance-csv",
+        "tags": [
+          "reports"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/scan/engine-meta": {
+      "get": {
+        "summary": "GET /api/scan/engine-meta",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/scan/export-pdf": {
+      "post": {
+        "summary": "POST /api/scan/export-pdf",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/scan/history": {
+      "get": {
+        "summary": "GET /api/scan/history",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/scan/history",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/scan/save": {
+      "post": {
+        "summary": "POST /api/scan/save",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/scan/share": {
+      "post": {
+        "summary": "POST /api/scan/share",
+        "tags": [
+          "scan"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/scan/sync-summary": {
+      "get": {
+        "summary": "GET /api/scan/sync-summary",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/scan/tri-engine": {
+      "post": {
+        "summary": "POST /api/scan/tri-engine",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/scan/tri-engine/stream": {
+      "post": {
+        "summary": "POST /api/scan/tri-engine/stream",
+        "tags": [
+          "scan"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "GET /api/search",
+        "tags": [
+          "search"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/sign/{id}": {
+      "get": {
+        "summary": "GET /api/sign/{id}",
+        "tags": [
+          "sign"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/sign/{id}",
+        "tags": [
+          "sign"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/telemetry/wizard": {
+      "post": {
+        "summary": "POST /api/telemetry/wizard",
+        "tags": [
+          "telemetry"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/unsubscribe": {
+      "get": {
+        "summary": "GET /api/unsubscribe",
+        "tags": [
+          "unsubscribe"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/unsubscribe",
+        "tags": [
+          "unsubscribe"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/user/launcher-config": {
+      "get": {
+        "summary": "GET /api/user/launcher-config",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/user/launcher-config",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/user/notifications": {
+      "get": {
+        "summary": "GET /api/user/notifications",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/user/notifications",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/user/workspace-layout": {
+      "get": {
+        "summary": "GET /api/user/workspace-layout",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/user/workspace-layout",
+        "tags": [
+          "user"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/webhooks/paypal": {
+      "post": {
+        "summary": "POST /api/webhooks/paypal",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "webhookSignature": []
+          }
+        ],
+        "x-auth-guard": "webhook-hmac",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/webhooks/payplus": {
+      "post": {
+        "summary": "POST /api/webhooks/payplus",
+        "tags": [
+          "webhooks"
+        ],
+        "security": [
+          {
+            "webhookSignature": []
+          }
+        ],
+        "x-auth-guard": "webhook-hmac",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  }
+}

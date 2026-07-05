@@ -73,7 +73,10 @@ npm run premerge   # = verify:all
 ב-production · rate-limits לכל נתיבי ה-AI · 31 error/loading boundaries · N+1 audit נקי
 (PERF-N1-AUDIT) · load-smoke ב-CI (`load-smoke.yml`) + ספים · תזכורת DR רבעונית
 (`dr-drill-reminder.yml`) · דוח בריאות עסק חודשי (`monthly-health-report`) · תיקון
-חלונות כפולים בשחזור layout (`076ac11`).
+חלונות כפולים בשחזור layout (`076ac11`) · **ERD אוטומטי** (`npm run docs:erd` →
+DB-ERD.md, 68 מודלים) · **OpenAPI/API-inventory אוטומטי** (`npm run docs:openapi` →
+openapi.json + API-INVENTORY.md, 301 operations עם auth-guard + rate-limit derived
+מהקוד).
 
 ---
 
