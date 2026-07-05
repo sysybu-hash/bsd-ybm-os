@@ -11,6 +11,7 @@ import { SettingsBusinessProfile } from "./settings-widget/SettingsBusinessProfi
 import { SettingsDriveSection } from "./settings-widget/SettingsDriveSection";
 import { SettingsCalendarSection } from "./settings-widget/SettingsCalendarSection";
 import { SettingsAssignSection } from "./settings-widget/SettingsAssignSection";
+import { SettingsWhatsappSection } from "./settings-widget/SettingsWhatsappSection";
 import WindowBody from "@/components/os/layout/WindowBody";
 
 const S = "workspaceWidgets.settings";
@@ -134,6 +135,8 @@ export default function SettingsWidget() {
               t={t}
             />
           )}
+
+          {sw.showAssignPanel && <SettingsWhatsappSection t={t} />}
 
           {/* Security */}
           <section className="pt-6 border-t border-[color:var(--border-main)]/30">

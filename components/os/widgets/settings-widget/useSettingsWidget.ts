@@ -13,6 +13,7 @@ const ASSIGN_ROLE_KEYS = [
   { value: "EMPLOYEE", labelKey: "workspaceWidgets.settings.roles.employee" },
   { value: "PROJECT_MGR", labelKey: "workspaceWidgets.settings.roles.projectMgr" },
   { value: "CLIENT", labelKey: "workspaceWidgets.settings.roles.client" },
+  { value: "ACCOUNTANT", labelKey: "workspaceWidgets.settings.roles.accountant" },
   { value: "ORG_ADMIN", labelKey: "workspaceWidgets.settings.roles.orgAdmin" },
 ] as const;
 

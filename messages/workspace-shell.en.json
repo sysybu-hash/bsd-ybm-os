@@ -970,12 +970,25 @@
       "assignEmail": "User email",
       "assignRole": "Organization role",
       "assignSubmit": "Assign to organization",
+      "whatsapp": {
+        "title": "WhatsApp connection",
+        "intro": "Link a WhatsApp number so clients and field staff can send an invoice photo straight to your business WhatsApp — it's scanned into the organization automatically.",
+        "generate": "Generate link code",
+        "regenerate": "Generate a new code",
+        "copy": "Copy",
+        "error": "Could not generate a code. Make sure the WhatsApp integration is configured.",
+        "step1": "Open WhatsApp and message the BSD-YBM business number.",
+        "step2": "Send the code above as a text message.",
+        "step3": "Once confirmed, any invoice photo you send is scanned automatically.",
+        "expiresAt": "Code valid until {time}."
+      },
       "securityTitle": "Data security",
       "securityDesc": "These settings sync directly to the Organization table in PostgreSQL. They affect invoice headers, quotes, and system notifications sent to clients.",
       "roles": {
         "employee": "Employee",
         "projectMgr": "Project manager",
         "client": "Client",
+        "accountant": "Accountant (read-only)",
         "orgAdmin": "Org admin"
       },
       "errors": {
