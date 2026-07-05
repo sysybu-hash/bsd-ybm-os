@@ -192,7 +192,8 @@
     "protobufjs": ">=7.5.8",
     "lodash": ">=4.17.24",
     "fast-xml-parser": ">=5.7.0",
-    "fast-xml-builder": ">=1.1.7"
+    "fast-xml-builder": ">=1.1.7",
+    "nodemailer": "$nodemailer"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
