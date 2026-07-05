@@ -3,14 +3,14 @@
 import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FolderKanban, Loader2, MonitorPlay } from "lucide-react";
-import { CLASSIC_SECTIONS } from "@/lib/classic/sections";
+import { FolderKanban, Loader2, Menu, MonitorPlay } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import AddProjectForm from "@/components/os/widgets/shared/AddProjectForm";
 import DashboardClock from "@/components/dashboard/DashboardClock";
 import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import DashboardCalculators from "@/components/dashboard/DashboardCalculators";
-import ClassicMobileNav from "@/components/dashboard/ClassicMobileNav";
+import { ClassicSidebar } from "@/components/dashboard/ClassicSidebar";
+import { ClassicMobileDrawer } from "@/components/dashboard/ClassicMobileDrawer";
 
 const loading = () => (
   <div className="flex min-h-[200px] items-center justify-center text-[color:var(--foreground-muted)]">
@@ -42,8 +42,7 @@ type TabId =
   | "settings";
 type CrmSubTab = "projects" | "clients";
 
-// Desktop tab list — derived from the shared classic-sections registry.
-const TABS = CLASSIC_SECTIONS;
+const SIDEBAR_COLLAPSED_KEY = "bsd_ybm_classic_sidebar_collapsed";
 
 /** Frosted card shell used across the dashboard panels. */
 const CARD =
@@ -51,7 +50,7 @@ const CARD =
 
 type ProjectListItem = { id: string; name: string; isActive?: boolean };
 
-function ProjectsPanel() {
+function ProjectsPanel({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
   const { t } = useI18n();
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -90,12 +89,15 @@ function ProjectsPanel() {
         ) : (
           <ul className="space-y-2">
             {projects.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-4 py-3 transition-colors hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent-soft)]"
-              >
-                <FolderKanban className="shrink-0 text-[color:var(--accent)]" size={18} aria-hidden />
-                <span className="truncate text-sm font-semibold text-[color:var(--foreground-main)]">{p.name}</span>
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenProject(p.id)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-4 py-3 text-start transition-colors hover:border-[color:var(--accent)]/40 hover:bg-[color:var(--accent-soft)]"
+                >
+                  <FolderKanban className="shrink-0 text-[color:var(--accent)]" size={18} aria-hidden />
+                  <span className="truncate text-sm font-semibold text-[color:var(--foreground-main)]">{p.name}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -105,7 +107,7 @@ function ProjectsPanel() {
   );
 }
 
-function CrmTab() {
+function CrmTab({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
   const { t } = useI18n();
   const [sub, setSub] = useState<CrmSubTab>("projects");
   const subTabs: ReadonlyArray<CrmSubTab> = ["projects", "clients"];
@@ -131,7 +133,7 @@ function CrmTab() {
         ))}
       </div>
 
-      {sub === "projects" ? <ProjectsPanel /> : <CrmTableWidget />}
+      {sub === "projects" ? <ProjectsPanel onOpenProject={onOpenProject} /> : <CrmTableWidget />}
     </div>
   );
 }
@@ -139,6 +141,35 @@ function CrmTab() {
 export default function DashboardShell() {
   const { t, dir } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // שחזור מצב הסרגל (מכווץ/פרוש) מ-localStorage.
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
+  }, []);
+
+  const openProject = useCallback((projectId: string) => {
+    setSelectedProjectId(projectId);
+    setActiveTab("tasks");
+  }, []);
 
   return (
     <div
@@ -147,9 +178,19 @@ export default function DashboardShell() {
     >
       {/* Header */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--border-main)] bg-[color:var(--glass-bg)] px-4 py-3 backdrop-blur-xl sm:px-6">
-        <h1 className="text-lg font-extrabold tracking-tight text-[color:var(--foreground-main)] sm:text-xl">
-          {t("workspaceWidgets.classicDashboard.title")}
-        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label={t("workspaceWidgets.classicDashboard.sidebar.openMenu")}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-[color:var(--foreground-main)] transition-colors hover:bg-[color:var(--surface-soft)] sm:hidden"
+          >
+            <Menu size={22} aria-hidden />
+          </button>
+          <h1 className="text-lg font-extrabold tracking-tight text-[color:var(--foreground-main)] sm:text-xl">
+            {t("workspaceWidgets.classicDashboard.title")}
+          </h1>
+        </div>
         <div className="flex items-center gap-3">
           <DashboardClock />
           <Link
@@ -163,39 +204,24 @@ export default function DashboardShell() {
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Sidebar — desktop only; mobile uses the bottom nav below */}
-        <nav
-          aria-label={t("workspaceWidgets.classicDashboard.title")}
-          className="hidden shrink-0 flex-col gap-1 overflow-y-auto border-e border-[color:var(--border-main)] bg-[color:var(--glass-bg)] p-2 backdrop-blur-xl sm:flex sm:w-56 sm:p-3"
-        >
-          {TABS.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              aria-current={activeTab === id}
-              className={`flex items-center gap-3 rounded-xl border-s-2 px-3 py-2.5 text-sm font-bold transition-colors ${
-                activeTab === id
-                  ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-[color:var(--accent)]"
-                  : "border-transparent text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]"
-              }`}
-              title={t(`workspaceWidgets.classicDashboard.tabs.${id}`)}
-            >
-              <Icon size={20} className="shrink-0" aria-hidden />
-              <span className="hidden truncate sm:inline">{t(`workspaceWidgets.classicDashboard.tabs.${id}`)}</span>
-            </button>
-          ))}
-        </nav>
+        {/* Sidebar — desktop only; mobile uses the slide-in drawer */}
+        <ClassicSidebar
+          activeTab={activeTab}
+          onSelect={(id) => setActiveTab(id)}
+          t={t}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
+        />
 
         {/* Main content */}
-        <main className="dashboard-main min-h-0 flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-6">
+        <main className="dashboard-main min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {activeTab === "home" ? <DashboardOverview onNavigate={(tab) => setActiveTab(tab as TabId)} /> : null}
-          {activeTab === "crm" ? <CrmTab /> : null}
+          {activeTab === "crm" ? <CrmTab onOpenProject={openProject} /> : null}
           {activeTab === "erp" ? <DocumentCreatorWidget embeddedInHub /> : null}
           {activeTab === "scan" ? <AiScannerWidget embeddedInHub /> : null}
           {activeTab === "customOs" ? <AppBuilderWidget embeddedInHub /> : null}
           {activeTab === "calendar" ? <JewishCalendarWidget /> : null}
-          {activeTab === "tasks" ? <ProjectBoardWidget embedded /> : null}
+          {activeTab === "tasks" ? <ProjectBoardWidget embedded projectId={selectedProjectId} /> : null}
           {activeTab === "calculators" ? <DashboardCalculators /> : null}
           {activeTab === "drive" ? <GoogleDriveWidget /> : null}
           {activeTab === "aiChat" ? <AiChatFullWidget /> : null}
@@ -203,7 +229,13 @@ export default function DashboardShell() {
         </main>
       </div>
 
-      <ClassicMobileNav activeTab={activeTab} onSelect={(id) => setActiveTab(id)} t={t} />
+      <ClassicMobileDrawer
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        activeTab={activeTab}
+        onSelect={(id) => setActiveTab(id)}
+        t={t}
+      />
     </div>
   );
 }

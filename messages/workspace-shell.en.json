@@ -350,6 +350,12 @@
       "proMode": "Back to OS mode",
       "classicMode": "Classic view",
       "subtitleShort": "A simple dashboard, no floating windows",
+      "sidebar": {
+        "expand": "Expand menu",
+        "collapse": "Collapse menu",
+        "openMenu": "Open menu",
+        "close": "Close menu"
+      },
       "tabs": {
         "home": "Overview",
         "crm": "CRM & Projects",
