@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonForbidden, jsonTooManyRequests, jsonUnauthorized, jsonValidationFailed } from "@/lib/api-json";
 import { isAdmin } from "@/lib/is-admin";
+import { shouldBlockReadOnlyRole } from "@/lib/accountant-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export type WorkspaceAuthContext = {
@@ -47,6 +48,11 @@ type WorkspaceAuthOptionsBase = {
    * - `false` — ללא הגבלה (SSE/stream בלבד)
    */
   rateLimit?: RateLimitOptions | false;
+  /**
+   * ברירת מחדל: תפקידי קריאה-בלבד (ACCOUNTANT) נחסמים ממתודות-כתיבה (POST/PUT/PATCH/DELETE).
+   * קבע `true` בנתיב שמייצר קובץ ב-POST אך אינו משנה מצב (למשל ייצוא הנה"ח).
+   */
+  allowReadOnlyRoles?: boolean;
 };
 
 export type WorkspaceAuthOptions = WorkspaceAuthOptionsBase & {
@@ -184,6 +190,11 @@ export function withWorkspacesAuth(
     const gate = await requireWorkspaceAuth(options);
     if (!isWorkspaceContext(gate)) return gate;
 
+    // תפקיד קריאה-בלבד (ACCOUNTANT) — חסום מתודות-כתיבה אלא אם הנתיב הצהיר אחרת.
+    if (shouldBlockReadOnlyRole(gate.role, req.method, options?.allowReadOnlyRoles)) {
+      return jsonForbidden("תפקיד קריאה-בלבד — פעולה זו אינה מותרת.");
+    }
+
     // rate limit — per authenticated user (more fair than IP-based for authed routes)
     if (options?.rateLimit !== false) {
       const { key, limit, windowMs } = options?.rateLimit ?? DEFAULT_WORKSPACE_RATE_LIMIT;
@@ -258,6 +269,11 @@ export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
   return async (req: Request, segment: { params: Promise<P> }) => {
     const gate = await requireWorkspaceAuth(options);
     if (!isWorkspaceContext(gate)) return gate;
+
+    // תפקיד קריאה-בלבד (ACCOUNTANT) — חסום מתודות-כתיבה אלא אם הנתיב הצהיר אחרת.
+    if (shouldBlockReadOnlyRole(gate.role, req.method, options?.allowReadOnlyRoles)) {
+      return jsonForbidden("תפקיד קריאה-בלבד — פעולה זו אינה מותרת.");
+    }
 
     if (options?.schema) {
       const target = effectiveParseTarget(req, options.parseTarget);

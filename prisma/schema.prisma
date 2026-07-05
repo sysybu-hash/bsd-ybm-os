@@ -1210,6 +1210,8 @@ enum UserRole {
   PROJECT_MGR
   EMPLOYEE
   CLIENT
+  /// רואה חשבון חיצוני — קריאה-בלבד: מסמכים, הוצאות וייצוא הנהלת חשבונות
+  ACCOUNTANT
 }
 
 enum AccountStatus {

@@ -56,6 +56,8 @@ export function getWorkspaceRoleLabel(context: WorkspaceAccessContext): string {
       return "עובד צוות";
     case "CLIENT":
       return "מנוי";
+    case "ACCOUNTANT":
+      return "רואה חשבון";
     case "SUPER_ADMIN":
       return "מנהל מערכת";
     default:
