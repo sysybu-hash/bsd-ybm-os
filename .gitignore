@@ -1,6 +1,8 @@
 .env.vercel.pull
 .env.vercel.prod
 .env.vercel.production
+.env.vercel.prod.tmp
+.cron.secret.tmp
 .env.vprod
 
 # תלות ובנייה

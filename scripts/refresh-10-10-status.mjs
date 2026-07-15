@@ -15,10 +15,10 @@ if (r.stdout) process.stdout.write(r.stdout);
 if (r.stderr) process.stderr.write(r.stderr);
 
 console.log("\n10/10 gates (see docs/PROGRESS-10-10.md):");
-console.log("  • lib splits — run until backlog empty");
-console.log("  • CSP_STRICT=true on staging when ready");
-console.log("  • npm run lighthouse:sample on production URL");
-console.log("  • node scripts/neon-dr-drill.mjs quarterly");
-console.log("  • KPI sign-off fields in docs/KPI-SIGNOFF.md");
+console.log("  • KPI signed 2026-07-15 — see docs/KPI-SIGNOFF.md");
+console.log("  • lib logic ≥300 target <25 (bulk OK excluded)");
+console.log("  • CSP_STRICT=true Preview→Prod via Vercel Dashboard when ready");
+console.log("  • npm run lighthouse:matrix:prod (desktop landing ≥90)");
+console.log("  • node scripts/neon-dr-drill.mjs + quarterly Neon PITR console");
 
 process.exit(r.status ?? 0);

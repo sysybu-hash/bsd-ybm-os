@@ -1,7 +1,8 @@
 # Vercel Environment Variables — BSD-YBM OS 10/10
 
-> **Last updated**: 2026-06-04  
-> Apply to **Production** and **Preview** before `npm run db:migrate` on each environment.
+> **Last updated**: 2026-07-16  
+> Apply to **Production** and **Preview** before `npm run db:migrate` on each environment.  
+> **Audit 2026-07-16:** Production + Preview — `CRON_SECRET` (synced), `SENTRY_DSN`, `CSP_STRICT=true` (Preview + Development). Production also has DB/Auth/AI/PostHog/`PAYPAL_CLIENT_ID`.
 
 ## Database
 

@@ -49,6 +49,10 @@ const SENSITIVE_PROTECTED_ALLOWLIST = new Map([
   ["app/api/auth/google-reconnect/callback/route.ts", "session + signed-state protected"],
   ["app/api/webhooks/payplus/route.ts", "HMAC-SHA256 timing-safe verified (signature הוא ה-auth)"],
   ["app/api/webhooks/paypal/route.ts", "PayPal signature verified"],
+  [
+    "app/api/webhooks/whatsapp/route.ts",
+    "Meta X-Hub-Signature-256 HMAC verified (signature הוא ה-auth; IP rate-limit מזיק ל-webhook)",
+  ],
   ["app/api/auth/[...nextauth]/route.ts", "NextAuth internal handler (credential brute-force מטופל בנפרד)"],
 ]);
 

@@ -582,9 +582,20 @@ export async function dismissCookieBannerIfVisible(page: Page) {
 
 /** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
 export async function dismissWorkspaceOverlays(page: Page) {
+  // Prevent Launcher v2 migration banner from covering quick-grid / hub chrome in E2E.
+  await page
+    .evaluate(() => {
+      try {
+        localStorage.setItem("bsd_ybm_launcher_v2_banner_seen", "1");
+      } catch {
+        /* ignore */
+      }
+    })
+    .catch(() => {});
+
   const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
   if (await migrationBanner.isVisible({ timeout: 2000 }).catch(() => false)) {
-    const dismissBtn = migrationBanner.getByRole("button", { name: /הבנתי|Got it|Close|סגירה/i });
+    const dismissBtn = migrationBanner.getByRole("button", { name: /הבנתי|Got it|Close|סגירה|Dismiss|סגור/i });
     if (await dismissBtn.isVisible().catch(() => false)) {
       await dismissBtn.click();
     } else {

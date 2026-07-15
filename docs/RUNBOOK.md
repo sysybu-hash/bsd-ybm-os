@@ -1,9 +1,16 @@
 ﻿# BSD-YBM Intelligence ג€” Production Runbook
 
-> **Last updated**: 2026-06-04  
+> **Last updated**: 2026-07-15  
 > This document is for **on-call engineers and deployment owners**.  
 > For architecture details see `docs/ARCHITECTURE.md`.  
 > For onboarding see `docs/ONBOARDING.md`.
+
+### On-call ownership
+
+| Role | Contact | Channel |
+|------|---------|---------|
+| Primary on-call | yohanan.bukshpan | GitHub + Vercel project `bsd-ybm-os` |
+| Escalation | Project owner (same) | Sentry + Vercel deployment emails |
 
 ---
 

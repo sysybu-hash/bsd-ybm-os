@@ -23,6 +23,10 @@ const PwaInstallBanner = dynamic(() => import("@/components/os/system/PwaInstall
 const PasskeyOfferModal = dynamic(() => import("@/components/auth/PasskeyOfferModal"), { ssr: false });
 const LauncherPickerSheet = dynamic(() => import("@/components/os/launcher/LauncherPickerSheet"), { ssr: false });
 const FirstDayWizard = dynamic(() => import("@/components/os/onboarding/FirstDayWizard"), { ssr: false });
+const LauncherV2MigrationBanner = dynamic(
+  () => import("@/components/os/onboarding/LauncherV2MigrationBanner"),
+  { ssr: false },
+);
 const NotificationCenter = dynamic(() => import("@/components/os/NotificationCenter"), { ssr: false });
 const FileDropzone = dynamic(() => import("@/components/os/FileDropzone"), { ssr: false });
 const WindowSwitcher = dynamic(() => import("@/components/os/layout/WindowSwitcher"), { ssr: false });
@@ -120,6 +124,7 @@ export default function OmniCanvasWorkspace() {
       <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
       <PasskeyOfferModal />
       <LauncherEditBanner />
+      <LauncherV2MigrationBanner />
       <LauncherPickerSheet />
       <FirstDayWizard
         onOpenWidget={(type, data) => {
