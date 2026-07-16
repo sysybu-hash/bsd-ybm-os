@@ -7,6 +7,11 @@ type ResizeHandlesProps = {
   onStartResize: (e: React.MouseEvent, dir: ResizeHandle) => void;
 };
 
+/**
+ * Edge strips stay thin (~4px) so they do not cover the native/custom scrollbar
+ * gutter (~12–17px). Corners keep a larger hit target for easy diagonal resize.
+ * Scroll hosts inset from the physical right via AdaptiveWidgetShell.
+ */
 export function ResizeHandles({ onStartResize }: ResizeHandlesProps) {
   return (
     <>
@@ -14,47 +19,46 @@ export function ResizeHandles({ onStartResize }: ResizeHandlesProps) {
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "n")}
-        className="absolute left-5 right-5 top-[var(--window-header-height)] z-[100] h-3 cursor-ns-resize border-0 bg-transparent p-0"
+        className="absolute left-5 right-5 top-[var(--window-header-height)] z-[100] h-1 cursor-ns-resize border-0 bg-transparent p-0"
         style={{ cursor: "ns-resize" }}
       />
-      {/* bottom edge */}
+      {/* bottom edge — thin; avoid stealing horizontal scrollbar / content */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "s")}
-        className="absolute bottom-0 left-5 right-5 z-[100] h-3 cursor-ns-resize border-0 bg-transparent p-0"
+        className="absolute bottom-0 left-5 right-5 z-[100] h-1 cursor-ns-resize border-0 bg-transparent p-0"
         style={{ cursor: "ns-resize" }}
       />
-      {/* right edge — starts below the header so it never overlaps the flush
-          Windows 11 caption buttons (min/max/close sit at the header's corner) */}
+      {/* right edge — 4px only; scrollbar sits inset (see shell-scroll margin) */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "e")}
-        className="absolute bottom-5 right-0 top-[var(--window-header-height)] z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
+        className="absolute bottom-5 right-0 top-[var(--window-header-height)] z-[100] w-1 cursor-ew-resize border-0 bg-transparent p-0"
         style={{ cursor: "ew-resize" }}
       />
-      {/* left edge — starts below the header (see right edge note) */}
+      {/* left edge */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "w")}
-        className="absolute bottom-5 left-0 top-[var(--window-header-height)] z-[100] w-3 cursor-ew-resize border-0 bg-transparent p-0"
+        className="absolute bottom-5 left-0 top-[var(--window-header-height)] z-[100] w-1 cursor-ew-resize border-0 bg-transparent p-0"
         style={{ cursor: "ew-resize" }}
       />
-      {/* corners — 20×20px for comfortable grab area */}
+      {/* corners — larger grab; primary way to resize width+height */}
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "nw")}
-        className="absolute left-0 top-[var(--window-header-height)] z-[100] h-5 w-5 cursor-nwse-resize border-0 bg-transparent p-0"
+        className="absolute left-0 top-[var(--window-header-height)] z-[100] h-4 w-4 cursor-nwse-resize border-0 bg-transparent p-0"
         style={{ cursor: "nwse-resize" }}
       />
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "ne")}
-        className="absolute right-0 top-[var(--window-header-height)] z-[100] h-5 w-5 cursor-nesw-resize border-0 bg-transparent p-0"
+        className="absolute right-0 top-[var(--window-header-height)] z-[100] h-4 w-4 cursor-nesw-resize border-0 bg-transparent p-0"
       />
       <button
         type="button" aria-hidden tabIndex={-1}
         onMouseDown={(e) => onStartResize(e, "sw")}
-        className="absolute bottom-0 left-0 z-[101] h-5 w-5 cursor-nesw-resize border-0 bg-transparent p-0"
+        className="absolute bottom-0 left-0 z-[101] h-4 w-4 cursor-nesw-resize border-0 bg-transparent p-0"
       />
       <button
         type="button" aria-hidden tabIndex={-1}

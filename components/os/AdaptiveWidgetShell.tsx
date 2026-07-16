@@ -174,7 +174,12 @@ export default function AdaptiveWidgetShell({
         <div className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] ${mobileOrMaximized ? "flex-none overflow-visible" : ""}`}>
           <div
             data-shell-scroll
-            className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 ${mobileOrMaximized ? "min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "md:pb-0"} [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${
+            className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 ${
+              mobileOrMaximized
+                ? "min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+                : /* Inset scroll+scrollbar from window edges so ResizeHandles (w-1/h-1) do not steal drag */
+                  "md:pb-0 mr-2 mb-1.5 ml-0.5"
+            } [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${
               zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
             }`}
           >
