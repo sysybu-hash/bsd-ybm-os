@@ -8,7 +8,13 @@ import {
   parseScheduleCsv,
   type ImportedScheduleTask,
 } from "@/lib/imports/ms-project-schedule";
+import { convertMppToXml, isMppConvertConfigured, MppConvertError } from "@/lib/mpp/convert-client";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
+import {
+  getApiErrorMessage,
+  getMppApiErrorMessage,
+  resolveApiLocaleFromRequest,
+} from "@/lib/i18n/api-error";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,6 +52,7 @@ async function importTasks(
 
 export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgId }, segment) => {
   const { id: projectId } = await segment.params;
+  const apiLocale = resolveApiLocaleFromRequest(req);
   try {
     const gate = await requireProjectForOrg(projectId, orgId);
     if (!gate.ok) return gate.response;
@@ -56,24 +63,45 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (req, { orgI
     const replace = form.get("replace") !== "false";
 
     if (!file || !(file instanceof File)) {
-      return jsonBadRequest("לא נמצא קובץ לוח זמנים", "missing_file");
+      return jsonBadRequest(
+        getApiErrorMessage("schedule_missing_file", apiLocale),
+        "missing_file",
+      );
     }
 
     const name = file.name.toLowerCase();
-    const text = await file.text();
+    let text: string;
     let tasks: ImportedScheduleTask[] = [];
 
-    if (name.endsWith(".xml") || text.trimStart().startsWith("<?xml")) {
+    if (name.endsWith(".mpp")) {
+      if (!isMppConvertConfigured()) {
+        return jsonBadRequest(
+          getApiErrorMessage("schedule_mpp_not_configured", apiLocale),
+          "mpp_converter_not_configured",
+        );
+      }
+      try {
+        const converted = await convertMppToXml(file, file.name);
+        text = converted.xml;
+      } catch (err: unknown) {
+        if (err instanceof MppConvertError) {
+          return jsonBadRequest(getMppApiErrorMessage(err.code, apiLocale), err.code);
+        }
+        throw err;
+      }
+    } else {
+      text = await file.text();
+    }
+
+    if (name.endsWith(".xml") || name.endsWith(".mpp") || text.trimStart().startsWith("<?xml")) {
       tasks = parseMsProjectXml(text);
     } else if (name.endsWith(".csv")) {
       tasks = parseScheduleCsv(text);
-    } else if (name.endsWith(".mpp")) {
-      return jsonBadRequest(
-        "ייבוא MPP ישיר דורש ייצוא מ-MS Project ל-XML או CSV",
-        "mpp_not_supported",
-      );
     } else {
-      return jsonBadRequest("פורמט לא נתמך — השתמשו ב-XML או CSV", "unsupported_format");
+      return jsonBadRequest(
+        getApiErrorMessage("schedule_unsupported_format", apiLocale),
+        "unsupported_format",
+      );
     }
 
     if (!confirm) {

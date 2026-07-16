@@ -18,6 +18,7 @@ import {
 import { runMistralTextChat } from "@/lib/ai-extract-mistral";
 import { getAiChatSystemPrefix } from "@/lib/i18n/ai-prompts";
 import { getUserFacingAiErrorMessageForLocale } from "@/lib/i18n/ai-locale";
+import { assertAiServicesAvailable } from "@/lib/ai-kill-switch";
 
 const RETRYABLE_STATUS_CODES = [429, 500, 503, 504];
 /** אחרי Gemini (ברירת מחדל): OpenAI → Mistral → Anthropic → Groq */
@@ -241,6 +242,7 @@ export async function runAiChat(
   contextJson: string,
   locale: string,
 ): Promise<{ text: string; provider: AiProviderId }> {
+  assertAiServicesAvailable();
   const requestedProvider = normalizeAiProviderId(providerRaw);
   const systemPrefix = getAiChatSystemPrefix(contextJson, locale);
   const prompt = systemPrefix + userPrompt;
@@ -327,6 +329,7 @@ export async function runAiChatStreamingNative(
   locale: string,
   onChunk: AiChatStreamChunkHandler,
 ): Promise<{ provider: AiProviderId }> {
+  assertAiServicesAvailable();
   const requestedProvider = normalizeAiProviderId(providerRaw);
   const systemPrefix = getAiChatSystemPrefix(contextJson, locale);
   const prompt = systemPrefix + userPrompt;

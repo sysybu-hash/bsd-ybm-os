@@ -26,8 +26,10 @@ type HealthTabProps = {
   } | null;
   loading: boolean;
   testingEmail: boolean;
+  selfHealBusy?: boolean;
   onRefresh: () => void;
   onTestEmail: () => void;
+  onSelfHealDryRun?: () => void;
 };
 
 const SERVICE_ICONS = {
@@ -132,7 +134,15 @@ function EnvRow({
   );
 }
 
-export function HealthTab({ health, loading, testingEmail, onRefresh, onTestEmail }: HealthTabProps) {
+export function HealthTab({
+  health,
+  loading,
+  testingEmail,
+  selfHealBusy = false,
+  onRefresh,
+  onTestEmail,
+  onSelfHealDryRun,
+}: HealthTabProps) {
   const { t } = useI18n();
   const checkedLabel = health?.checkedAt
     ? t("platformAdmin.health.lastChecked", {
@@ -171,6 +181,16 @@ export function HealthTab({ health, loading, testingEmail, onRefresh, onTestEmai
           >
             {testingEmail ? t("platformAdmin.health.sendingTestEmail") : t("platformAdmin.health.sendTestEmail")}
           </button>
+          {onSelfHealDryRun ? (
+            <button
+              type="button"
+              disabled={selfHealBusy || loading}
+              onClick={onSelfHealDryRun}
+              className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-800 dark:text-amber-200 disabled:opacity-50"
+            >
+              {selfHealBusy ? "Self-heal…" : "Self-heal (dry-run)"}
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -130,9 +130,9 @@ If Gemini is down (most common):
 
 If ALL AI providers are down (rare):
 ```bash
-# Temporarily set DISABLE_AI_FALLBACK=1 in Vercel env vars
-# This causes scan/chat features to return a friendly "service unavailable" instead of infinite retrying
-# NOT YET IMPLEMENTED — add to backlog
+# Set DISABLE_AI_FALLBACK=1 in Vercel env vars
+# Scan/chat features return a friendly "service unavailable" (503) instead of retrying fallbacks
+# IMPLEMENTED — lib/ai-kill-switch.ts · wired in ai-chat, unified-extract, process-document, scan/tri-engine
 ```
 
 ---

@@ -211,8 +211,10 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             health={p.health}
             loading={p.healthLoading}
             testingEmail={p.testingEmail}
+            selfHealBusy={p.selfHealBusy}
             onRefresh={() => void p.loadHealth()}
             onTestEmail={() => void p.handleTestEmail()}
+            onSelfHealDryRun={() => void p.handleSelfHealDryRun()}
           />
         )}
 

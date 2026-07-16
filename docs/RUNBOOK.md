@@ -121,6 +121,12 @@ Set `NEXTAUTH_URL` and `AUTH_URL` on Vercel to `https://www.bsd-ybm.co.il` (**wi
 
 After scope errors: Settings → reconnect Google (Drive) or Calendar wizard.
 
+### Google OAuth / Drive verification (external)
+
+סטטוס Owner (2026-07-16): האפליקציה חיה בפרוד עם OAuth redirects למעלה. אם Google Cloud Console עדיין ב-**Testing** / verification Pending — זה לא חוסם שימוש פנימי; להשלים Publishing + verification לפני שיווק רחב ל-100+ משתמשים חיצוניים. Runbook: [google-oauth-verification-runbook-he.md](./google-oauth-verification-runbook-he.md).
+
+- [ ] Console verification / Production status (Owner)
+
 ### Rotating a Secret
 
 1. Generate new value

@@ -3,7 +3,7 @@
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import WindowBody from "@/components/os/layout/WindowBody";
-import React from "react";
+import React, { useMemo } from "react";
 import { useTheme } from "next-themes";
 import {
   AreaChart,
@@ -21,12 +21,26 @@ import { StatCard, ChartContainer, StatusBadge } from "@/components/os/widgets/s
 import { motion } from "framer-motion";
 import { useDashboardStats } from "./useDashboardStats";
 import { useFinanceReportExport } from "@/hooks/useFinanceReportExport";
+import { intlLocaleForApp } from "@/lib/i18n/intl-locale";
+import type { AppLocale } from "@/lib/i18n/config";
 
 export default function DashboardWidget() {
-  const { dir, t } = useI18n();
+  const { dir, t, locale } = useI18n();
   const { theme } = useTheme();
   const { stats, loading, error, fetchDashboardStats } = useDashboardStats(t);
   const { exporting, exportCsv, exportPdf } = useFinanceReportExport({ t });
+
+  const intlLocale = intlLocaleForApp(locale as AppLocale);
+  const formatCurrency = useMemo(
+    () => (num: number) =>
+      new Intl.NumberFormat(intlLocale, { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(num),
+    [intlLocale],
+  );
+
+  const pendingQuoteCount =
+    stats.analytics.quoteStatus.find(
+      (s) => s.name === "Pending" || s.name === "\u05DE\u05DE\u05EA\u05D9\u05DF",
+    )?.value ?? 0;
 
   if (loading) return <WidgetState variant="loading" message={t("workspaceWidgets.dashboard.loading")} />;
   if (error) return (
@@ -39,8 +53,6 @@ export default function DashboardWidget() {
   );
 
   const netProfit = stats.totalRevenue - stats.totalExpenses;
-  const formatCurrency = (num: number) =>
-    new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(num);
 
   return (
     <WindowBody
@@ -84,7 +96,9 @@ export default function DashboardWidget() {
         />
         <StatCard title={t("workspaceWidgets.dashboard.activeProjects")} value={stats.activeProjects}>
           <div className="mt-3">
-            <StatusBadge variant="indigo">{stats.pendingInvoices} בטיפול</StatusBadge>
+            <StatusBadge variant="indigo">
+              {t("workspaceWidgets.dashboard.pendingBadge", { count: String(stats.pendingInvoices) })}
+            </StatusBadge>
           </div>
         </StatCard>
       </div>
@@ -105,7 +119,7 @@ export default function DashboardWidget() {
       {/* Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <ChartContainer
-          title={<span className="flex items-center gap-2"><TrendingUp size={15} className="text-emerald-500 dark:text-emerald-400" />סיכום הוצאות חודשי</span>}
+          title={<span className="flex items-center gap-2"><TrendingUp size={15} className="text-emerald-500 dark:text-emerald-400" />{t("workspaceWidgets.dashboard.monthlyExpensesTitle")}</span>}
           minHeight={192}
         >
           <ResponsiveContainer width="100%" height="100%">
@@ -124,7 +138,7 @@ export default function DashboardWidget() {
         </ChartContainer>
 
         <ChartContainer
-          title={<span className="flex items-center gap-2"><Activity size={15} className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />סטטוס הצעות מחיר</span>}
+          title={<span className="flex items-center gap-2"><Activity size={15} className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />{t("workspaceWidgets.dashboard.quoteStatusTitle")}</span>}
           minHeight={192}
         >
           <div className="flex flex-col gap-4">
@@ -132,7 +146,9 @@ export default function DashboardWidget() {
               <div key={status.name} className="flex flex-col gap-2">
                 <div className="flex justify-between text-xs font-medium">
                   <span className="text-slate-500 dark:text-slate-400">{status.name}</span>
-                  <span className="text-slate-700 dark:text-slate-300 font-semibold">{status.value} מסמכים</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-semibold">
+                    {t("workspaceWidgets.dashboard.documentsCount", { count: String(status.value) })}
+                  </span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
                   <motion.div
@@ -146,7 +162,7 @@ export default function DashboardWidget() {
             ))}
             <div className="mt-2 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700/60">
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed text-center">
-                המערכת מזהה {stats.analytics.quoteStatus.find((s) => s.name === "ממתין")?.value ?? 0} הצעות מחיר שטרם נחתמו. מומלץ לשלוח תזכורת אוטומטית.
+                {t("workspaceWidgets.dashboard.quoteInsight", { count: String(pendingQuoteCount) })}
               </p>
             </div>
           </div>
@@ -155,17 +171,17 @@ export default function DashboardWidget() {
 
       {/* Cashflow Chart */}
       <ChartContainer
-        title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />תחזית תזרים מזומנים חכמה</span>}
-        subtitle="ניתוח היסטורי + תחזית רבעונית קדימה"
+        title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />{t("workspaceWidgets.dashboard.cashflowForecastTitle")}</span>}
+        subtitle={t("workspaceWidgets.dashboard.cashflowSubtitle")}
         actionElement={
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-[color:var(--win-accent,#6366f1)]" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">ביצוע בפועל</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.actualLabel")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-indigo-300 border border-dashed border-indigo-400" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">תחזית AI</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.forecastLabel")}</span>
             </div>
           </div>
         }

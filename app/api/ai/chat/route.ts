@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { runAiChat } from "@/lib/ai-chat";
+import { AiServiceUnavailableError } from "@/lib/ai-kill-switch";
+import { jsonServiceUnavailable } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { subscriptionTiersPromptBlockHe } from "@/lib/subscription-tier-config";
 import { prisma } from "@/lib/prisma";
@@ -85,6 +87,9 @@ export const POST = withWorkspacesAuth(
         provider,
       });
     } catch (err: unknown) {
+      if (err instanceof AiServiceUnavailableError) {
+        return jsonServiceUnavailable(err.message, err.code);
+      }
       return apiErrorResponse(err, "api/ai/chat");
     }
   },

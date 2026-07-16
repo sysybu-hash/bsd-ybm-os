@@ -1,12 +1,20 @@
 import { isAnyDocAiProcessorConfigured } from "@/lib/ai-extract-docai";
 import { env } from "@/lib/env";
 
+export {
+  AI_SERVICE_UNAVAILABLE_CODE,
+  AI_SERVICE_UNAVAILABLE_MESSAGE,
+  AiServiceUnavailableError,
+  assertAiServicesAvailable,
+  checkAiServicesAvailable,
+  isAiFallbackDisabled,
+} from "@/lib/ai-kill-switch";
+
 /**
  * ספקי AI נתמכים לפי מפתחות ב-.env / Vercel.
- * שים לב: MindStudio נשאר כסוג שמור לאחור, אבל לא נחשף ב-UI עד שתהיה אינטגרציית runtime אמיתית.
  */
 
-export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "mindstudio" | "docai";
+export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "docai";
 
 export type AiProviderPublic = {
   id: AiProviderId;
@@ -42,10 +50,6 @@ export function isGroqConfigured(): boolean {
 
 export function isMistralConfigured(): boolean {
   return has(env.MISTRAL_API_KEY);
-}
-
-export function isMindStudioConfigured(): boolean {
-  return has(env.MIND_STUDIO_API_KEY);
 }
 
 export function isDocAiConfigured(): boolean {
@@ -110,11 +114,11 @@ export function normalizeAiProviderId(raw: string | null | undefined): AiProvide
     value === "groq" ||
     value === "gemini" ||
     value === "mistral" ||
-    value === "mindstudio" ||
     value === "docai"
   ) {
     return value as AiProviderId;
   }
+  if (value === "mindstudio") return "gemini";
   return "gemini";
 }
 
@@ -141,8 +145,6 @@ export function assertProviderConfigured(id: AiProviderId): string | null {
       return isGroqConfigured() ? null : "חסר GROQ_API_KEY";
     case "mistral":
       return isMistralConfigured() ? null : "חסר MISTRAL_API_KEY";
-    case "mindstudio":
-      return "MindStudio עדיין לא מחובר ב-runtime בפרויקט הזה";
     case "docai":
       return isDocAiConfigured()
         ? null

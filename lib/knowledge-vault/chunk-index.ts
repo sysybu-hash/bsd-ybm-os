@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { embedText, cosineSimilarity, isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
+import { writeKnowledgeVaultChunkEmbedding } from "@/lib/embeddings/pgvector-dual-write";
 
 const CHUNK_SIZE = 1200;
 
@@ -57,7 +58,7 @@ export async function indexKnowledgeVaultEntry(
     if (existing?.textHash === textHash) continue;
 
     const embedding = embeddingsEnabled ? await embedText(content) : null;
-    await prisma.knowledgeVaultChunk.upsert({
+    const row = await prisma.knowledgeVaultChunk.upsert({
       where: { driveEntryId_chunkIndex: { driveEntryId, chunkIndex: i } },
       create: {
         organizationId,
@@ -72,7 +73,11 @@ export async function indexKnowledgeVaultEntry(
         textHash,
         embedding: embedding ?? undefined,
       },
+      select: { id: true },
     });
+    if (embedding) {
+      await writeKnowledgeVaultChunkEmbedding(row.id, embedding);
+    }
     written++;
   }
 
@@ -130,6 +135,29 @@ export async function searchKnowledgeVaultChunks(
 
   const queryVec = await embedText(q);
   if (!queryVec) return [];
+
+  try {
+    const { searchKnowledgeVaultChunksPgvector } = await import(
+      "@/lib/embeddings/pgvector-dual-write"
+    );
+    const pgHits = await searchKnowledgeVaultChunksPgvector(organizationId, queryVec, limit);
+    if (pgHits?.length) {
+      return pgHits
+        .filter((x) => x.score > 0.32)
+        .map(
+          (x): VaultChunkHit => ({
+            driveEntryId: x.driveEntryId,
+            driveFileId: x.driveFileId,
+            name: x.name,
+            chunkIndex: x.chunkIndex,
+            snippet: x.snippet,
+            score: x.score,
+          }),
+        );
+    }
+  } catch {
+    /* JSON cosine fallback */
+  }
 
   return rows
     .map((r: ChunkRow): VaultChunkHit => {

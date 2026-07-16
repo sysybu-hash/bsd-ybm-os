@@ -4,8 +4,12 @@
 
 - `CRON_SECRET` — `/api/cron/*`
 - `ANALYZE_QUEUE_SECRET` — worker של `analyze-queue/process`
-- `ITA_PRODUCTION_KEY` — מספר הקצאה מס הכנסה (ללא מפתח: כשל ברור; mock רק עם `ALLOW_ITA_MOCK`, ראו [INTEGRATIONS-STUBS.md](./INTEGRATIONS-STUBS.md))
+- `ITA_PRODUCTION_KEY` + `ITA_API_URL` — הקצאה חיה; בלי URL: hard-fail; mock רק עם `ALLOW_ITA_MOCK`
 - `CSP_STRICT` — `true` ב-Preview וב-Production
+- `DISABLE_AI_FALLBACK` — כיבוי AI בחירום (503)
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_*` — חיוב Stripe (אופציונלי)
+- `USE_PGVECTOR=true` — אחרי migrate עם הרחבת vector
+- `MPP_CONVERT_URL` — שירות המרת `.mpp` → XML
 
 ## Prisma
 

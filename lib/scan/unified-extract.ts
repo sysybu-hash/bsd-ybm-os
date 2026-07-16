@@ -8,6 +8,7 @@ import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 import { inferScreenTypeFromFileForIndustry, resolvePolicyForIndustry } from "@/lib/ai/screen-decode-policy";
 import { clampScanModeForIndustry } from "@/lib/scan-modes-for-ui";
 import { enrichDrawingBoqWithBlueprintAnalyzer } from "@/lib/scan/blueprint-v5-enrich";
+import { assertAiServicesAvailable } from "@/lib/ai-kill-switch";
 import type { UnifiedExtractInput, UnifiedExtractResult } from "@/lib/scan/unified-scan-types";
 import {
   mapLegacyAnalysisTypeToScanMode,
@@ -32,6 +33,7 @@ export type UnifiedExtractFromFileParams = {
 export async function unifiedExtractFromFile(
   params: UnifiedExtractFromFileParams,
 ): Promise<UnifiedExtractResult> {
+  assertAiServicesAvailable();
   const industry = params.industry ?? "CONSTRUCTION";
   const inferred = inferScreenTypeFromFileForIndustry(
     params.file.name,

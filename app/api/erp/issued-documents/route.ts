@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { requiresItaAllocation } from "@/lib/ita-allocation-rules";
+import { getApiErrorMessage, resolveApiLocaleFromRequest } from "@/lib/i18n/api-error";
 import { requestItaAllocation } from "@/lib/services/ita-service";
 import type { DocType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -58,8 +59,9 @@ export const GET = withWorkspacesAuth(async (_req, { orgId }) => {
 });
 
 /* ───── POST — הנפקת מסמך חדש (חשבונית / קבלה / חש״ק / זיכוי) ───── */
-export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
   try {
+  const apiLocale = resolveApiLocaleFromRequest(req);
   const { type, clientName, items, dueDate, contactId, projectId } = data as {
     type: DocType;
     clientName: string;
@@ -144,7 +146,10 @@ export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => 
   }
 
   if (!doc) {
-    return jsonBadRequest("לא ניתן היה להקצות מספר מסמך.", "document_number_allocation_failed");
+    return jsonBadRequest(
+      getApiErrorMessage("document_number_allocation_failed", apiLocale),
+      "document_number_allocation_failed",
+    );
   }
 
   let itaAllocationNumber: string | null = null;
@@ -159,7 +164,7 @@ export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => 
       await prisma.issuedDocument.delete({ where: { id: doc.id } }).catch(() => undefined);
       return NextResponse.json(
         {
-          error: ita.error ?? "בקשת מספר הקצאה נכשלה",
+          error: getApiErrorMessage(ita.errorKey ?? "ita_allocation_failed", apiLocale),
           code: "ita_allocation_required",
           itaIsMock: false,
           thresholdNis: ita.thresholdNis,

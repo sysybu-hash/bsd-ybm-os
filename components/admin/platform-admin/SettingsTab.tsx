@@ -6,6 +6,22 @@ import { AUTOMATION_CATALOG } from "@/lib/os-automations/catalog";
 import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construction-trades";
 import type { PlatformConfig } from "@/lib/platform-settings";
 
+const FEATURE_FLAG_LABELS: Record<
+  keyof PlatformConfig["featureFlags"],
+  { label: string; hint?: string }
+> = {
+  meckanoGlobal: { label: "Meckano גלובלי" },
+  geminiLiveEnabled: { label: "Gemini Live" },
+  driveSyncDefault: { label: "Drive sync ברירת מחדל" },
+  knowledgeVaultEnabled: { label: "מאגר ידע (Knowledge Vault)" },
+  aiChatLiveDefault: { label: "Live כברירת מחדל ב-AI Chat" },
+  geminiLiveAdvancedFeatures: {
+    label: "Gemini Live מתקדם (proactiveAudio + affectiveDialog)",
+    hint: "מאפשר affectiveDialog, proactiveAudio ו-session resumption בהגדרות Live",
+  },
+  fieldCopilotEnabled: { label: "קופיילוט שטח" },
+};
+
 type SettingsTabProps = {
   platformConfig: PlatformConfig;
   setPlatformConfig: (v: PlatformConfig) => void;
@@ -53,11 +69,26 @@ export function SettingsTab({ platformConfig, setPlatformConfig, savingSettings,
         </label>
       </div>
       <p className="text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">דגלי תכונות</p>
-      {(["meckanoGlobal", "geminiLiveEnabled", "driveSyncDefault", "knowledgeVaultEnabled", "aiChatLiveDefault", "geminiLiveAdvancedFeatures"] as const).map((flag) => (
-        <label key={flag} className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={platformConfig.featureFlags[flag]}
-            onChange={(e) => setPlatformConfig({ ...platformConfig, featureFlags: { ...platformConfig.featureFlags, [flag]: e.target.checked } })} />
-          {flag}
+      {(Object.keys(FEATURE_FLAG_LABELS) as Array<keyof PlatformConfig["featureFlags"]>).map((flag) => (
+        <label key={flag} className="flex flex-col gap-0.5 text-sm">
+          <span className="flex items-center gap-2 font-bold">
+            <input
+              type="checkbox"
+              checked={platformConfig.featureFlags[flag]}
+              onChange={(e) =>
+                setPlatformConfig({
+                  ...platformConfig,
+                  featureFlags: { ...platformConfig.featureFlags, [flag]: e.target.checked },
+                })
+              }
+            />
+            {FEATURE_FLAG_LABELS[flag].label}
+          </span>
+          {FEATURE_FLAG_LABELS[flag].hint ? (
+            <span className="pe-6 text-[11px] text-[color:var(--foreground-muted)]">
+              {FEATURE_FLAG_LABELS[flag].hint}
+            </span>
+          ) : null}
         </label>
       ))}
       <p className="text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">אוטומציות (כיבוי = חסום)</p>

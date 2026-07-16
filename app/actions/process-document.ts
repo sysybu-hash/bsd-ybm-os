@@ -1,6 +1,6 @@
 "use server";
 
-/** @deprecated Prefer `unifiedExtractFromFile` / `unifiedSaveScan` when `SCAN_UNIFIED_V2` is enabled. */
+/** @deprecated Prefer `unifiedExtractFromFile` / `unifiedSaveScan`. Legacy path runs only when SCAN_UNIFIED_V2=false. */
 import { createHash } from "crypto";
 import { env } from "@/lib/env";
 import { Prisma } from "@prisma/client";
@@ -46,6 +46,7 @@ import {
   unifiedExtractFromFile,
 } from "@/lib/scan/unified-extract";
 import { unifiedSaveScan } from "@/lib/scan/unified-save";
+import { AI_SERVICE_UNAVAILABLE_CODE, checkAiServicesAvailable } from "@/lib/ai-kill-switch";
 const log = createLogger("process-document");
 
 function getGeminiKey(): string | undefined {
@@ -54,7 +55,7 @@ function getGeminiKey(): string | undefined {
 
 export type ProcessDocumentResult =
   | { success: true; data: unknown }
-  | { success: false; error: string; code?: "QUOTA_EXCEEDED" };
+  | { success: false; error: string; code?: "QUOTA_EXCEEDED" | typeof AI_SERVICE_UNAVAILABLE_CODE };
 
 /**
  * חילוץ מול Gemini עם קובץ בינארי אחד (למשל PDF שלם ב־base64).
@@ -191,12 +192,20 @@ function authEnvHintForProvider(id: AiProviderId): string {
   }
 }
 
+/**
+ * @deprecated Use `unifiedExtractFromFile` + `unifiedSaveScan` directly. Kept as a thin wrapper for legacy API callers.
+ */
 export async function processDocumentAction(
   formData: FormData,
   userId: string,
   orgId: string,
   persist: boolean = true,
 ): Promise<ProcessDocumentResult> {
+  const aiGate = checkAiServicesAvailable();
+  if (!aiGate.ok) {
+    return { success: false, error: aiGate.message, code: aiGate.code };
+  }
+
   let effectiveProviderForError: AiProviderId | undefined;
   let requestedProviderForError: AiProviderId | undefined;
 
@@ -271,6 +280,11 @@ export async function processDocumentAction(
         },
       };
     }
+
+    log.warn(
+      "DEPRECATED legacy process-document path (SCAN_UNIFIED_V2=false). " +
+        "Migrate callers to unifiedExtractFromFile / unifiedSaveScan.",
+    );
 
     // Industry adaptation for AI instructions (בנייה + התמחות נלווית) — כולל תרגום UI כשיש
     const industryConfig = getMergedIndustryConfig(userIndustry, orgTrade, uiMessages);

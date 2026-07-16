@@ -96,6 +96,84 @@ export async function paypalCaptureOrder(orderId: string): Promise<Record<string
   return j;
 }
 
+export type PayPalRefundResult = {
+  success: boolean;
+  refundId: string | null;
+  message: string;
+};
+
+/**
+ * Refund a captured PayPal payment (full or partial).
+ * https://developer.paypal.com/docs/api/payments/v2/#captures_refund
+ */
+export async function paypalRefundCapture(params: {
+  captureId: string;
+  amount?: number;
+  currencyCode?: string;
+  reason?: string;
+}): Promise<PayPalRefundResult> {
+  const { captureId, amount, currencyCode = "ILS", reason } = params;
+  if (!captureId.trim()) {
+    return { success: false, refundId: null, message: "Missing capture ID" };
+  }
+
+  try {
+    const token = await paypalGetAccessToken();
+    const body: Record<string, unknown> = {};
+    if (amount != null && Number.isFinite(amount)) {
+      body.amount = {
+        value: amount.toFixed(2),
+        currency_code: currencyCode,
+      };
+    }
+    if (reason?.trim()) {
+      body.note_to_payer = reason.trim().slice(0, 255);
+    }
+
+    const res = await fetch(`${paypalBaseUrl()}/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const j = (await res.json()) as {
+      id?: string;
+      status?: string;
+      message?: string;
+      details?: Array<{ issue?: string; description?: string }>;
+    };
+
+    if (!res.ok) {
+      const detail = j.details?.[0]?.description ?? j.message ?? `PayPal refund HTTP ${res.status}`;
+      log.error("[PayPal refund]", j);
+      return { success: false, refundId: null, message: detail };
+    }
+
+    const refundId = typeof j.id === "string" ? j.id : null;
+    const status = typeof j.status === "string" ? j.status : "";
+    if (refundId && (status === "COMPLETED" || status === "PENDING")) {
+      return { success: true, refundId, message: status === "PENDING" ? "Refund pending" : "Refund completed" };
+    }
+
+    return {
+      success: false,
+      refundId,
+      message: status ? `Unexpected refund status: ${status}` : "PayPal refund response missing status",
+    };
+  } catch (e) {
+    log.error("paypal_refund_failed", e instanceof Error ? e : new Error(String(e)));
+    return {
+      success: false,
+      refundId: null,
+      message: e instanceof Error ? e.message : "PayPal refund failed",
+    };
+  }
+}
+
 export async function paypalFetchOrder(orderId: string): Promise<Record<string, unknown>> {
   const token = await paypalGetAccessToken();
   const res = await fetch(`${paypalBaseUrl()}/v2/checkout/orders/${orderId}`, {

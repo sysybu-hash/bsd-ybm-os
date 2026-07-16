@@ -2,9 +2,14 @@
 /**
  * מזהה מחרוזות עברית קשיחות ב-UI (מחוץ ל-i18n / help-center / tests).
  * יעד 10/10: 0 הפרות ב-components/app (מלבד allowlist).
+ *
+ * שימוש:
+ *   node scripts/check-hardcoded-hebrew.mjs
+ *   node scripts/check-hardcoded-hebrew.mjs components/os/DashboardWidget.tsx
+ *   node scripts/check-hardcoded-hebrew.mjs components/os/widgets/crm-table
  */
-import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 const HEBREW = /[\u0590-\u05FF]/;
 const ROOTS = ["components", "app"];
@@ -35,26 +40,56 @@ async function walk(dir, acc = []) {
   return acc;
 }
 
-const hits = [];
-for (const root of ROOTS) {
-  const files = await walk(join(process.cwd(), root));
-  for (const file of files) {
-    const rel = file.replace(/\\/g, "/").replace(/.*BSD-YBM-OS\//i, "");
-    if (ALLOWLIST.some((re) => re.test(rel))) continue;
-    const src = await readFile(file, "utf8");
-    const lines = src.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i] ?? "";
-      if (!HEBREW.test(line)) continue;
-      if (line.includes('t("') || line.includes("t('")) continue;
-      if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
-      hits.push({ rel, line: i + 1, snippet: line.trim().slice(0, 80) });
+async function collectFiles(pathArgs) {
+  if (pathArgs.length === 0) {
+    const acc = [];
+    for (const root of ROOTS) {
+      await walk(join(process.cwd(), root), acc);
     }
+    return acc;
+  }
+
+  const acc = [];
+  for (const raw of pathArgs) {
+    const abs = resolve(process.cwd(), raw);
+    try {
+      const st = await stat(abs);
+      if (st.isDirectory()) {
+        await walk(abs, acc);
+      } else if (/\.(tsx|ts|jsx|js)$/.test(abs)) {
+        acc.push(abs);
+      }
+    } catch {
+      console.warn(`Skipping missing path: ${raw}`);
+    }
+  }
+  return acc;
+}
+
+const pathArgs = process.argv.slice(2);
+const files = await collectFiles(pathArgs);
+
+const hits = [];
+for (const file of files) {
+  const rel = file.replace(/\\/g, "/").replace(/.*BSD-YBM-OS\//i, "");
+  if (ALLOWLIST.some((re) => re.test(rel))) continue;
+  const src = await readFile(file, "utf8");
+  const lines = src.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (!HEBREW.test(line)) continue;
+    if (line.includes('t("') || line.includes("t('")) continue;
+    if (line.includes('tr("') || line.includes("tr('")) continue;
+    if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
+    hits.push({ rel, line: i + 1, snippet: line.trim().slice(0, 80) });
   }
 }
 
 const MAX_REPORT = 40;
 console.log(`Hardcoded Hebrew scan: ${hits.length} line(s)`);
+if (pathArgs.length > 0) {
+  console.log(`  scope: ${pathArgs.join(", ")}`);
+}
 for (const h of hits.slice(0, MAX_REPORT)) {
   console.log(`  ${h.rel}:${h.line}  ${h.snippet}`);
 }

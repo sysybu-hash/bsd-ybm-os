@@ -29,6 +29,7 @@ export default function MarketingWorkspaceLiveScreenshot({ className = "" }: Pro
           fill
           className="object-cover object-[center_top]"
           sizes="(max-width: 1024px) 100vw, 640px"
+          loading="lazy"
           priority={false}
         />
       </div>

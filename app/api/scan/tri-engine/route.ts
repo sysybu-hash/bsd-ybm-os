@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest } from "@/lib/api-json";
+import { checkAiServicesAvailable } from "@/lib/ai-kill-switch";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { prisma } from "@/lib/prisma";
 import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract-validated";
@@ -21,6 +22,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  const aiGate = checkAiServicesAvailable();
+  if (!aiGate.ok) {
+    return NextResponse.json({ error: aiGate.message, code: aiGate.code }, { status: 503 });
+  }
+
   // rate limit: 20 סריקות/דקה per user (scan הוא פעולה יקרה)
   try {
     const userRow = await prisma.user.findUnique({

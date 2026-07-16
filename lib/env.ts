@@ -169,8 +169,23 @@ const serverSchema = z.object({
 
   // --- ITA (רשות המסים) ---
   ITA_PRODUCTION_KEY: optStr,
+  /** Base URL for ITA allocation API (required with ITA_PRODUCTION_KEY for live calls) */
+  ITA_API_URL: optStr,
   /** מאפשר מספרי הקצאה mock — רק local/E2E; אסור בפרודקשן */
   ALLOW_ITA_MOCK: optBool,
+
+  // --- Payments: Stripe ---
+  STRIPE_SECRET_KEY: optStr,
+  STRIPE_WEBHOOK_SECRET: optStr,
+  /** Optional price IDs — e.g. STRIPE_PRICE_HOUSEHOLD_MONTHLY via process.env */
+  STRIPE_PRICE_HOUSEHOLD_MONTHLY: optStr,
+  STRIPE_PRICE_HOUSEHOLD_ANNUAL: optStr,
+  STRIPE_PRICE_DEALER_MONTHLY: optStr,
+  STRIPE_PRICE_DEALER_ANNUAL: optStr,
+  STRIPE_PRICE_COMPANY_MONTHLY: optStr,
+  STRIPE_PRICE_COMPANY_ANNUAL: optStr,
+  STRIPE_PRICE_CORPORATE_MONTHLY: optStr,
+  STRIPE_PRICE_CORPORATE_ANNUAL: optStr,
 
   // --- Cron / Queue security ---
   CRON_SECRET: optStr,
@@ -200,10 +215,16 @@ const serverSchema = z.object({
   BLUEPRINT_USE_FLASH_ONLY: optBool,
   /** מסלול סריקה מאוחד V2 (Tri-Engine בכל הכניסות) — כבוי = legacy processDocumentAction */
   SCAN_UNIFIED_V2: optBool,
+  /** P1 DR — כיבוי fallback/retry AI; סריקה/צ'אט מחזירים 503 ידידותי */
+  DISABLE_AI_FALLBACK: optBool,
   ENABLE_DEBUG_SESSION: optBool,
   /** CSP ללא unsafe-eval (staging) — Next.js עדיין דורש unsafe-inline לרוב ה-builds */
   CSP_STRICT: optBool,
   PRISMA_USE_NEON_DRIVER: optBool,
+  /** Native pgvector dual-write (requires migration + extension) */
+  USE_PGVECTOR: optBool,
+  /** External MS Project .mpp → XML converter (POST multipart) */
+  MPP_CONVERT_URL: optStr,
 
   // --- Site verification (SEO) ---
   GOOGLE_SITE_VERIFICATION: optStr,

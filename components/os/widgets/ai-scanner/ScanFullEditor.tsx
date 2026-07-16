@@ -37,19 +37,29 @@ function Section({ title, children, open, toggle }: {
   );
 }
 
-function useScanExport(v5Ref: React.RefObject<ScanExtractionV5 | null>) {
+function useScanExport(
+  v5Ref: React.RefObject<ScanExtractionV5 | null>,
+  tr: (key: string, fallback: string) => string,
+) {
   const [exportOpen, setExportOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   function baseName() {
     const v = v5Ref.current;
-    return `${v?.vendor || "scan"}-${v?.date || "export"}`.replace(/[^\w֐-׿.-]/g, "_");
+    return `${v?.vendor || "scan"}-${v?.date || "export"}`.replace(/[^\w\u0590-\u05FF.-]/g, "_");
   }
 
   function exportCsv() {
     const v = v5Ref.current;
     if (!v) return;
-    const header = ["תיאור", "כמות", "מחיר יחידה", "סה\"כ שורה", "מטבע", "מק\"ט"];
+    const header = [
+      tr("scanner.csvColDescription", "Description"),
+      tr("scanner.csvColQty", "Qty"),
+      tr("scanner.csvColUnitPrice", "Unit price"),
+      tr("scanner.csvColLineTotal", "Line total"),
+      tr("scanner.csvColCurrency", "Currency"),
+      tr("scanner.csvColSku", "SKU"),
+    ];
     const rows = v.lineItems.map((li) => [
       li.description,
       String(li.quantity ?? ""),
@@ -127,7 +137,7 @@ export function ScanFullEditor({
 
   const v5Ref = useRef<ScanExtractionV5 | null>(null);
   v5Ref.current = v5;
-  const exportActions = useScanExport(v5Ref);
+  const exportActions = useScanExport(v5Ref, tr);
 
   const [boqOpen, setBoqOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -216,29 +226,39 @@ export function ScanFullEditor({
         {autoTotal != null && Math.abs(autoTotal - v5.total) > 0.01 && (
           <div className="flex items-center gap-2 rounded-lg bg-amber-50/80 px-3 py-1.5 text-[11px] dark:bg-amber-900/10">
             <span className="text-amber-700 dark:text-amber-300">
-              סכום שורות: ₪{autoTotal.toLocaleString("he-IL", { maximumFractionDigits: 2 })} — שונה מסה״כ
+              {tr("scanner.lineTotalMismatch", "Line total: ₪{amount} — differs from document total").replace(
+                "{amount}",
+                autoTotal.toLocaleString("he-IL", { maximumFractionDigits: 2 }),
+              )}
             </span>
             <button type="button" onClick={() => patchV5({ total: autoTotal })}
               className="rounded bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-amber-500">
-              עדכן
+              {tr("scanner.updateTotal", "Update")}
             </button>
           </div>
         )}
 
         <div className="space-y-2">
           <p className="text-[11px] font-black uppercase tracking-wide text-[color:var(--foreground-muted)]">
-            שורות פריטים ({v5.lineItems.length})
+            {tr("scanner.lineItemsTitle", "Line items ({count})").replace("{count}", String(v5.lineItems.length))}
           </p>
           <LineItemsEditor items={v5.lineItems} onChange={(items) => patchV5({ lineItems: items })} />
         </div>
 
         {showBoq && (
-          <Section title={`כתב כמויות (BOQ) — ${v5.billOfQuantities.length} שורות`} open={boqOpen} toggle={() => setBoqOpen((o) => !o)}>
+          <Section
+            title={tr("scanner.boqSectionTitle", "Bill of quantities (BOQ) — {count} rows").replace(
+              "{count}",
+              String(v5.billOfQuantities.length),
+            )}
+            open={boqOpen}
+            toggle={() => setBoqOpen((o) => !o)}
+          >
             <BoqEditor rows={v5.billOfQuantities} onChange={(rows) => patchV5({ billOfQuantities: rows })} />
           </Section>
         )}
 
-        <Section title="סיכום" open={summaryOpen} toggle={() => setSummaryOpen((o) => !o)}>
+        <Section title={tr("scanner.summarySection", "Summary")} open={summaryOpen} toggle={() => setSummaryOpen((o) => !o)}>
           <textarea value={v5.summary} onChange={(e) => patchV5({ summary: e.target.value })} rows={4}
             className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent px-2 py-1.5 text-xs leading-relaxed" />
         </Section>

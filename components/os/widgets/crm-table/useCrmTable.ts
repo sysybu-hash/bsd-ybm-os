@@ -5,8 +5,18 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import { createProjectForContact } from "@/app/actions/crm";
 import { downloadAuthenticatedFile } from "@/lib/client/download-api-file";
-import type { Client, ProjectOption, CrmTableWidgetProps } from "./types";
-import { mapIssuedDocuments } from "./constants";
+import type { Client, CrmTableWidgetProps } from "./types";
+import {
+  checkProjectChangeApi,
+  deleteContactApi,
+  fetchContactByIdApi,
+  fetchContactsPageApi,
+  fetchProjectOptionsApi,
+  fetchProjectSyncMetaApi,
+  importContactsApi,
+  postSemanticSearchApi,
+  updateContactApi,
+} from "./crm-table-api";
 
 export function useCrmTable({
   openWorkspaceWidget,
@@ -29,33 +39,13 @@ export function useCrmTable({
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
+  const [projectOptions, setProjectOptions] = useState<{ id: string; name: string }[]>([]);
   const [savingProject, setSavingProject] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
   const [projectSyncMeta, setProjectSyncMeta] = useState<{
     autoSyncCrm: boolean;
     primaryContactId: string | null;
   } | null>(null);
-
-  const mapContactRow = (c: Record<string, unknown>): Client => {
-    const project = c.project as { id?: string; name?: string } | null | undefined;
-    const rawTags = c.tags;
-    const tags = Array.isArray(rawTags) ? rawTags.map(String) : [];
-    return {
-      id: String(c.id),
-      name: String(c.name ?? ""),
-      email: (c.email as string | null) ?? null,
-      phone: (c.phone as string | null) ?? null,
-      notes: (c.notes as string | null) ?? null,
-      status: (String(c.status ?? "active").toLowerCase() as Client["status"]) || "active",
-      lastContact: String(c.createdAt ?? new Date().toISOString()),
-      totalProjects: project?.id ? 1 : 0,
-      projectId: project?.id ?? null,
-      projectName: project?.name ?? null,
-      issuedDocuments: mapIssuedDocuments(c.issuedDocuments),
-      tags,
-    };
-  };
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -69,11 +59,7 @@ export function useCrmTable({
 
   const loadProjectOptions = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects", { credentials: "include" });
-      const json = await res.json();
-      if (!res.ok) return;
-      const list = Array.isArray(json.projects) ? json.projects : Array.isArray(json) ? json : [];
-      setProjectOptions(list.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })));
+      setProjectOptions(await fetchProjectOptionsApi());
     } catch {
       /* ignore */
     }
@@ -82,26 +68,12 @@ export function useCrmTable({
   const runSemanticSearch = useCallback(
     async (query: string): Promise<string[] | null> => {
       try {
-        const res = await fetch("/api/crm/semantic-search", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
-        });
-        const data = (await res.json()) as {
-          matchedIds?: string[];
-          fallback?: boolean;
-          error?: string;
-        };
-        if (!res.ok) {
-          if (data.fallback) {
-            setSemanticFallback(true);
-            return null;
-          }
+        const data = await postSemanticSearchApi(query);
+        if (data.error && !data.fallback) {
           throw new Error(data.error ?? t("workspaceWidgets.crmTable.semanticFailed"));
         }
-        setSemanticFallback(Boolean(data.fallback));
-        return Array.isArray(data.matchedIds) ? data.matchedIds : [];
+        setSemanticFallback(data.fallback);
+        return data.matchedIds;
       } catch {
         setSemanticFallback(true);
         return null;
@@ -122,56 +94,40 @@ export function useCrmTable({
         setLoadError(null);
         const skip = append ? (page + 1) * 50 : 0;
         const q = searchQuery.trim();
+        const errorLoad = t("workspaceWidgets.crmTable.errorLoad");
 
-        let rows: Record<string, unknown>[] = [];
-        let total = 0;
+        let pageResult: { clients: Client[]; total: number };
 
         if (semanticMode && q.length >= 2) {
           const matchedIds = await runSemanticSearch(q);
           if (matchedIds && matchedIds.length > 0) {
-            const params = new URLSearchParams({
-              ids: matchedIds.join(","),
-              take: "50",
-              skip: String(skip),
-            });
-            if (tagFilter) params.set("tag", tagFilter);
-            const res = await fetch(`/api/crm/contacts?${params.toString()}`, { credentials: "include" });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || t("workspaceWidgets.crmTable.errorLoad"));
-            rows = Array.isArray(data.contacts) ? data.contacts : [];
-            total = typeof data.total === "number" ? data.total : rows.length;
+            pageResult = await fetchContactsPageApi(
+              { skip, tag: tagFilter || undefined, ids: matchedIds },
+              errorLoad,
+            );
           } else if (matchedIds && matchedIds.length === 0) {
-            rows = [];
-            total = 0;
+            pageResult = { clients: [], total: 0 };
           } else {
-            const params = new URLSearchParams({ skip: String(skip), take: "50", q });
-            if (tagFilter) params.set("tag", tagFilter);
-            const res = await fetch(`/api/crm/contacts?${params.toString()}`, { credentials: "include" });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || t("workspaceWidgets.crmTable.errorLoad"));
-            rows = Array.isArray(data.contacts) ? data.contacts : [];
-            total = typeof data.total === "number" ? data.total : rows.length;
+            pageResult = await fetchContactsPageApi(
+              { skip, q, tag: tagFilter || undefined },
+              errorLoad,
+            );
           }
         } else {
-          const params = new URLSearchParams({ skip: String(skip), take: "50" });
-          if (q) params.set("q", q);
-          if (tagFilter) params.set("tag", tagFilter);
-          const res = await fetch(`/api/crm/contacts?${params.toString()}`, { credentials: "include" });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data?.error || t("workspaceWidgets.crmTable.errorLoad"));
-          rows = Array.isArray(data.contacts) ? data.contacts : [];
-          total = typeof data.total === "number" ? data.total : rows.length;
+          pageResult = await fetchContactsPageApi(
+            { skip, q: q || undefined, tag: tagFilter || undefined },
+            errorLoad,
+          );
         }
 
-        const mapped = rows.map((c) => mapContactRow(c));
         if (append) {
-          setClients((prev) => [...prev, ...mapped]);
+          setClients((prev) => [...prev, ...pageResult.clients]);
           setPage((p) => p + 1);
         } else {
-          setClients(mapped);
+          setClients(pageResult.clients);
           setPage(0);
         }
-        setHasMore(skip + mapped.length < total);
+        setHasMore(skip + pageResult.clients.length < pageResult.total);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : t("workspaceWidgets.crmTable.errorLoad");
         setLoadError(msg);
@@ -199,17 +155,10 @@ export function useCrmTable({
     if (!selectedClient?.id) return;
     let cancelled = false;
     void (async () => {
-      try {
-        const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, { credentials: "include" });
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { contact?: Record<string, unknown> };
-        if (!data.contact || cancelled) return;
-        const refreshed = mapContactRow(data.contact);
-        setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
-        setClients((prev) => prev.map((c) => (c.id === refreshed.id ? { ...c, ...refreshed } : c)));
-      } catch {
-        /* optional */
-      }
+      const refreshed = await fetchContactByIdApi(selectedClient.id);
+      if (!refreshed || cancelled) return;
+      setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
+      setClients((prev) => prev.map((c) => (c.id === refreshed.id ? { ...c, ...refreshed } : c)));
     })();
     return () => {
       cancelled = true;
@@ -223,21 +172,8 @@ export function useCrmTable({
     }
     let cancelled = false;
     void (async () => {
-      try {
-        const res = await fetch(`/api/projects/${selectedClient.projectId}`, { credentials: "include" });
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as {
-          project?: { autoSyncCrm?: boolean; primaryContactId?: string | null };
-        };
-        if (!cancelled) {
-          setProjectSyncMeta({
-            autoSyncCrm: Boolean(data.project?.autoSyncCrm),
-            primaryContactId: data.project?.primaryContactId ?? null,
-          });
-        }
-      } catch {
-        if (!cancelled) setProjectSyncMeta(null);
-      }
+      const meta = await fetchProjectSyncMetaApi(selectedClient.projectId!);
+      if (!cancelled) setProjectSyncMeta(meta);
     })();
     return () => {
       cancelled = true;
@@ -258,8 +194,7 @@ export function useCrmTable({
     const id = deleteTargetId;
     setDeleteTargetId(null);
     try {
-      const res = await fetch(`/api/crm/contacts/${id}`, { method: "DELETE" });
-      if (res.ok) {
+      if (await deleteContactApi(id)) {
         toast.success(t("workspaceWidgets.crmTable.deleted"));
         void fetchClients();
       } else throw new Error("delete failed");
@@ -271,25 +206,17 @@ export function useCrmTable({
   const handleUpdateClient = async () => {
     if (!selectedClient) return;
     try {
-      const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: selectedClient.name,
-          email: selectedClient.email,
-          phone: selectedClient.phone,
-          notes: selectedClient.notes,
-          status: selectedClient.status,
-          projectId: selectedClient.projectId,
-          tags: selectedClient.tags ?? [],
-        }),
+      const refreshed = await updateContactApi(selectedClient.id, {
+        name: selectedClient.name,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        notes: selectedClient.notes,
+        status: selectedClient.status,
+        projectId: selectedClient.projectId,
+        tags: selectedClient.tags ?? [],
       });
-      if (res.ok) {
-        const json = (await res.json()) as { contact?: Record<string, unknown> };
-        if (json.contact) {
-          const refreshed = mapContactRow(json.contact);
-          setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
-        }
+      if (refreshed) {
+        setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
         toast.success(t("workspaceWidgets.crmTable.updated"));
         setIsEditing(false);
         void fetchClients();
@@ -302,32 +229,20 @@ export function useCrmTable({
   const saveClientProject = async (projectId: string | null) => {
     if (!selectedClient || savingProject) return;
     if (projectId) {
-      const check = await fetch(
-        `/api/crm/contacts/${selectedClient.id}/project-change-check?nextProjectId=${encodeURIComponent(projectId)}`,
-        { credentials: "include" },
-      ).catch(() => null);
-      if (check?.ok) {
-        const j = (await check.json()) as { allowed?: boolean; warn?: string };
-        if (j.allowed === false) {
-          toast.error(j.warn ?? t("workspaceWidgets.crmTable.projectChangeBlocked"));
+      const check = await checkProjectChangeApi(selectedClient.id, projectId);
+      if (check) {
+        if (check.allowed === false) {
+          toast.error(check.warn ?? t("workspaceWidgets.crmTable.projectChangeBlocked"));
           return;
         }
-        if (j.warn && !window.confirm(j.warn)) return;
+        if (check.warn && !window.confirm(check.warn)) return;
       }
     }
     setSavingProject(true);
     try {
-      const res = await fetch(`/api/crm/contacts/${selectedClient.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId }),
-      });
-      if (!res.ok) throw new Error("patch failed");
-      const json = await res.json();
-      const contact = json.contact as Record<string, unknown> | undefined;
-      const updated: Client = contact
-        ? mapContactRow(contact)
-        : { ...selectedClient, projectId: null, projectName: null, totalProjects: 0 };
+      const updated =
+        (await updateContactApi(selectedClient.id, { projectId })) ??
+        ({ ...selectedClient, projectId: null, projectName: null, totalProjects: 0 } satisfies Client);
       setSelectedClient(updated);
       setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       toast.success(t("workspaceWidgets.crmTable.projectLinkUpdated"));
@@ -393,13 +308,8 @@ export function useCrmTable({
           return;
         }
         try {
-          const res = await fetch("/api/crm/import", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contacts: data }),
-          });
-          const result = await res.json();
-          if (res.ok) {
+          const result = await importContactsApi(data);
+          if (result.ok) {
             toast.success(result.message ?? t("workspaceWidgets.crmTable.importSuccess"));
             void fetchClients();
           } else throw new Error(result.error || t("workspaceWidgets.crmTable.importFailed"));

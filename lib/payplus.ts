@@ -1,7 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("payplus");
 
 const PAYPLUS_API_URL = "https://restapi.payplus.co.il/api/v1.0";
+
+export type PayPlusPaymentPageResult = {
+  url: string;
+  paymentPageUid?: string;
+};
+
+export type PayPlusRefundResult = {
+  success: boolean;
+  refundId: string | null;
+  message: string;
+};
 
 function getPayPlusKey(): string {
   return env.PAYPLUS_API_KEY?.trim() || "";
@@ -28,7 +42,7 @@ export async function createPayPlusPaymentPage(params: {
   errorUrl: string;
   callbackUrl: string;
   metadata?: Record<string, unknown>;
-}) {
+}): Promise<PayPlusPaymentPageResult> {
   const apiKey = getPayPlusKey();
   const secretKey = getPayPlusSecret();
 
@@ -73,7 +87,96 @@ export async function createPayPlusPaymentPage(params: {
     throw new Error(data.message || `PayPlus Error: ${response.status}`);
   }
 
-  return data.data.payment_page_link;
+  return {
+    url: data.data.payment_page_link as string,
+    paymentPageUid:
+      typeof data.data.payment_page_uid === "string" ? data.data.payment_page_uid : undefined,
+  };
+}
+
+/**
+ * Refund a PayPlus transaction by UID.
+ * https://docs.payplus.co.il/reference/post_transactions-refundbytransactionuid
+ */
+export async function refundPayPlusByTransactionUid(params: {
+  transactionUid: string;
+  amount?: number;
+  moreInfo?: string;
+}): Promise<PayPlusRefundResult> {
+  const apiKey = getPayPlusKey();
+  const secretKey = getPayPlusSecret();
+
+  if (!apiKey || !secretKey) {
+    return {
+      success: false,
+      refundId: null,
+      message: "PayPlus not configured — set PAYPLUS_API_KEY and PAYPLUS_SECRET_KEY",
+    };
+  }
+
+  const transactionUid = params.transactionUid.trim();
+  if (!transactionUid) {
+    return { success: false, refundId: null, message: "Missing transaction UID" };
+  }
+
+  if (params.amount == null || !Number.isFinite(params.amount)) {
+    return {
+      success: false,
+      refundId: null,
+      message: "PayPlus refund requires an explicit amount",
+    };
+  }
+
+  const body: Record<string, unknown> = {
+    transaction_uid: transactionUid,
+    amount: params.amount,
+  };
+  if (params.moreInfo?.trim()) {
+    body.more_info = params.moreInfo.trim();
+  }
+
+  try {
+    const response = await fetch(`${PAYPLUS_API_URL}/Transactions/RefundByTransactionUID`, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "secret-key": secretKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await response.json()) as {
+      results?: { status?: string; description?: string };
+      data?: { transaction?: { uid?: string } };
+      message?: string;
+    };
+
+    if (!response.ok) {
+      const message = data.results?.description ?? data.message ?? `PayPlus refund HTTP ${response.status}`;
+      log.error("payplus_refund_failed", undefined, { status: response.status, data });
+      return { success: false, refundId: null, message };
+    }
+
+    const status = data.results?.status ?? "";
+    const refundId = data.data?.transaction?.uid ?? null;
+    if (status === "success" && refundId) {
+      return { success: true, refundId, message: data.results?.description ?? "Refund completed" };
+    }
+
+    return {
+      success: false,
+      refundId,
+      message: data.results?.description ?? data.message ?? "PayPlus refund failed",
+    };
+  } catch (e) {
+    log.error("payplus_refund_error", e instanceof Error ? e : new Error(String(e)));
+    return {
+      success: false,
+      refundId: null,
+      message: e instanceof Error ? e.message : "PayPlus refund request failed",
+    };
+  }
 }
 
 /**

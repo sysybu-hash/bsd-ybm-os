@@ -1495,7 +1495,8 @@
       "addClientStatusInactive": "Inactive",
       "addClientSave": "Add client",
       "openControlCenter": "Open control center",
-      "openFieldCopilot": "Field Copilot"
+      "openFieldCopilot": "Field Copilot",
+      "loadMore": "Load more"
     },
     "itemActions": {
       "edit": "Edit",
@@ -1755,7 +1756,31 @@
       "tagFilter": "Filter by tag",
       "allTags": "All tags",
       "timelineTab": "History",
-      "timelineEmpty": "No events yet"
+      "timelineEmpty": "No events yet",
+      "pendingBadge": "{count} in progress",
+      "monthlyExpensesTitle": "Monthly expense summary",
+      "quoteStatusTitle": "Quote status",
+      "documentsCount": "{count} documents",
+      "quoteInsight": "The system detected {count} unsigned quotes. Consider sending an automatic reminder.",
+      "cashflowForecastTitle": "Smart cash flow forecast",
+      "cashflowSubtitle": "Historical analysis + forward quarterly forecast",
+      "actualLabel": "Actual",
+      "forecastLabel": "AI forecast"
+    },
+    "documentPreview": {
+      "draft": "Draft",
+      "numberPrefix": "No.",
+      "fromLabel": "From",
+      "toLabel": "To",
+      "dateLabel": "Date:",
+      "colDescription": "Description",
+      "colQty": "Qty",
+      "colPrice": "Price",
+      "colTotal": "Total",
+      "emptyItems": "Add items to see preview",
+      "subtotalBeforeVat": "Before VAT",
+      "vatLabel": "VAT ({percent}%)",
+      "totalDue": "Total due"
     },
     "executive": {
       "title": "Strategic overview",

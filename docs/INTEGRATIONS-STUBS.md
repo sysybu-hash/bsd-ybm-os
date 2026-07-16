@@ -1,32 +1,45 @@
 # אינטגרציות — סטטוס ואבטחה
 
-מסמך זה מתאר שירותים שטרם מומשו במלואם. **אין לממש self-heal אוטומטי בפרודקשן** ללא אפיון אבטחה.
+מסמך זה מתאר שירותים עם soft-gate או אפיון אבטחה מיוחד. עדכון: 2026-07-16 (all-gaps track).
 
 ## מס הכנסה (ITA) — `lib/services/ita-service.ts`
 
-- **Blocked until real ITA API** — אין מספרי הקצאה מדומים בפרודקשן.
-- ללא `ITA_PRODUCTION_KEY` (או בלי מימוש API): כשנדרש מספר הקצאה — כשל ברור (`success: false`); הנפקת מסמך מחזירה **422** עם `ita_allocation_required`.
+- אין מספרי הקצאה מדומים בפרודקשן.
+- Live HTTP כש-`ITA_PRODUCTION_KEY` **ו-**`ITA_API_URL` מוגדרים → `POST {ITA_API_URL}/allocation`.
+- מפתח בלי URL / בלי מפתח כשנדרש הקצאה → כשל ברור; הנפקה → **422**.
 - Mock רק אם `ALLOW_ITA_MOCK=true` (local / E2E).
-- מימוש API מלא לפי מפרט רשמי — פרויקט נפרד כשיש מפתח + מפרט מאושר.
+
+## תשלומים — Refunds / Stripe
+
+| נתיב | סטטוס |
+|------|--------|
+| `POST /api/billing/refunds` | PayPal + PayPlus (+ Stripe gateway) — org admin |
+| Stripe Checkout | `POST /api/billing/stripe/create-checkout` — soft-gate בלי `STRIPE_SECRET_KEY` |
+| Stripe webhooks | `/api/webhooks/stripe` — דורש `STRIPE_WEBHOOK_SECRET` |
 
 ## Google Calendar — `/api/integrations/google-calendar/*`
 
-סנכרון opt-in: המשתמש מאשר ובוחר `READ_ONLY` או `BIDIRECTIONAL` ב-`PUT .../settings/activate`. Cron: `google-calendar-sync`, `google-calendar-push`.
+סנכרון opt-in חי. Legacy GET **לא** מחזיר «בפיתוח» — `syncRoutes` כשלא מחובר.
 
-| Route | תפקיד |
-|-------|--------|
-| `GET /api/integrations/google-calendar` | אירועים (יומן מקומי או Google); כשלא מחובר — `localOnly: true` + `syncRoutes` |
-| `GET/PUT .../settings` | הגדרות סנכרון |
-| `POST .../settings/activate` | הפעלת סנכרון + בחירת יומן |
-| `POST .../sync` | סנכרון ידני |
-| `GET .../calendars` | רשימת יומנים (OAuth) |
+## MPP (MS Project)
 
-Legacy `GET /api/integrations/google-calendar` **לא** מחזיר «בפיתוח» — מצביע ל-`syncRoutes` כש-Google לא מחובר.
+- ייבוא `.mpp` דרך `MPP_CONVERT_URL` (שירות המרה חיצוני) → pipeline XML קיים.
+- בלי converter: `mpp_converter_not_configured` (ברור). XML/CSV נשארים נתמכים.
+
+## pgvector
+
+- מיגרציה + dual-write + ANN search כש-`USE_PGVECTOR=true` אחרי `migrate deploy`.
+- Fallback: JSON + cosine ב-JS.
 
 ## Admin self-heal — `POST /api/admin/self-heal`
 
-- מוגן ב-`withOSAdmin` בלבד.
-- Stub: מחזיר `status: "skipped"` — לא מבצע תיקוני DB אוטומטיים.
+- מוגן ב-`withOSAdmin`; `dryRun` ברירת מחדל **true**.
+- ראו [`SELF-HEAL-SECURITY.md`](./SELF-HEAL-SECURITY.md).
+- אין auto-cron בלי opt-in.
+
+## AI kill switch
+
+- `DISABLE_AI_FALLBACK=true` → 503 ידידותי על scan/chat (ראו DR-PLAN §6).
 
 ## PostHog (אירועי מוצר)
 

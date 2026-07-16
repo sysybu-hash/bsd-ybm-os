@@ -2,6 +2,7 @@
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { jsonBadRequest, jsonTooManyRequests } from "@/lib/api-json";
 import { processDocumentAction } from "@/app/actions/process-document";
+import { AI_SERVICE_UNAVAILABLE_CODE } from "@/lib/ai-kill-switch";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -41,7 +42,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     const result = await processDocumentAction(formData, userId, orgId, persist);
 
     if (!result.success) {
-      const status = result.code === "QUOTA_EXCEEDED" ? 403 : 500;
+      const status =
+        result.code === "QUOTA_EXCEEDED" ? 403 : result.code === AI_SERVICE_UNAVAILABLE_CODE ? 503 : 500;
       return NextResponse.json(
         {
           error: result.error ?? "אירעה שגיאה בפענוח המסמך",

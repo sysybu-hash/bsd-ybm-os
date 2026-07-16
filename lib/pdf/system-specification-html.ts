@@ -108,8 +108,8 @@ const STATUS_MATRIX: StatusRow[] = [
   { module: "חיוב PayPal / PayPlus", status: "מוכן", note: "Webhooks מאומתים HMAC" },
   { module: "Meckano + Google Calendar", status: "מוכן", note: "Cron sync" },
   { module: "Knowledge Vault RAG", status: "מוגבל", note: "כבוי בפרוד — feature flag" },
-  { module: "ITA (מס הכנסה)", status: "Stub", note: "Mock ללא מפתח production" },
-  { module: "Gemini Live E2E מלא", status: "ידני", note: "smoke ב-CI בלבד" },
+  { module: "ITA (מס הכנסה)", status: "מוגבל", note: "Hard-fail מעל סף ההקצאה; mock רק ב-local/E2E (ALLOW_ITA_MOCK)" },
+  { module: "Gemini Live", status: "מוכן", note: "API + workspace; E2E smoke ב-CI, לא אוטומטי מלא" },
   { module: "Quality Gate מקומי (verify)", status: "מוכן", note: "lint + tsc + audit + 382 unit tests" },
   { module: "E2E ci-gate מלא", status: "מוכן", note: "93 passed מקומית (chromium + mobile-chrome)" },
 ];
@@ -121,6 +121,7 @@ function statusBadge(status: string): string {
     מוגבל: "warn",
     Stub: "stub",
     ידני: "warn",
+    "Hard-fail": "warn",
   };
   const cls = map[status] ?? "neutral";
   return `<span class="badge badge-${cls}">${escapeHtml(status)}</span>`;
@@ -293,7 +294,7 @@ export function buildSystemSpecificationHtml(): string {
         ["Google Drive / Calendar", "מוכן — OAuth + cron"],
         ["Meckano", "מוכן — דוחות נוכחות"],
         ["NotebookLM", "מוכן — מחברת AI"],
-        ["ITA מס הכנסה", "Stub — mock"],
+        ["ITA מס הכנסה", "Hard-fail — mock רק local/E2E"],
       ] as ReadonlyArray<readonly [string, string]>).map(([a, b]) => [escapeHtml(a), escapeHtml(b)]))}`),
 
     section("9. מצב פריסה ואיכות (יוני 2026)", `
@@ -311,7 +312,7 @@ export function buildSystemSpecificationHtml(): string {
 
     `<section class="page section closing">
       <h2>10. סיכום</h2>
-      <p class="lead">BSD-YBM OS היא פלטפורמה בשלה טכנולוגית עם שכבת מוצר עשירה: workspace מודרני, מודולים עסקיים מלאים, ויכולות AI מובנות. מצב איכות מקומי תקין (verify); ITA ו-Gemini Live E2E נשארים Stub/ידני; merge לפרודקשן תלוי ב-ci-gate ירוק ב-GitHub.</p>
+      <p class="lead">BSD-YBM OS היא פלטפורמה בשלה טכנולוגית עם שכבת מוצר עשירה: workspace מודרני, מודולים עסקיים מלאים, ויכולות AI מובנות. מצב איכות מקומי תקין (verify); ITA — hard-fail מעל סף ההקצאה (ללא mock בפרוד); Gemini Live זמין ב-workspace; merge לפרודקשן תלוי ב-ci-gate ירוק ב-GitHub.</p>
       <div class="closing-box">
         <strong>BSD-YBM</strong> · יוחנן בוקשפן · 052-564-0021 · bsd-ybm.co.il<br/>
         מסמך זה נוצר ב-${escapeHtml(GENERATED)} · גרסה ${META.version}

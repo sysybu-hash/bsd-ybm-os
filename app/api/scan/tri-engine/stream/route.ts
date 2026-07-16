@@ -18,6 +18,7 @@ import { classifyScanDocumentHeuristic, shouldAutoClassifyDocumentType } from "@
 import { classifyScanDocumentByContent } from "@/lib/scan-classify-ai";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkAiServicesAvailable } from "@/lib/ai-kill-switch";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("scan-tri-engine-stream");
@@ -27,6 +28,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  const aiGate = checkAiServicesAvailable();
+  if (!aiGate.ok) {
+    return triEngineNdjsonErrorResponse(503, { error: aiGate.message, code: aiGate.code });
+  }
+
   const userRow = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true },

@@ -3,6 +3,9 @@
 import React from "react";
 import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { intlLocaleForApp } from "@/lib/i18n/intl-locale";
+import type { AppLocale } from "@/lib/i18n/config";
 import type { Client, OpenWorkspaceWidgetFn } from "./types";
 
 type CrmContactsTableProps = {
@@ -32,6 +35,9 @@ export function CrmContactsTable({
   openWorkspaceWidget,
   t,
 }: CrmContactsTableProps) {
+  const { locale } = useI18n();
+  const dateLocale = intlLocaleForApp(locale as AppLocale);
+
   return (
     <>
       <div className="overflow-x-auto min-w-0">
@@ -132,7 +138,7 @@ export function CrmContactsTable({
                     </td>
                     <td className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">
                       <div className="text-[11px] text-[color:var(--foreground-main)] opacity-70 font-medium">
-                        {new Date(client.lastContact).toLocaleDateString("he-IL")}
+                        {new Date(client.lastContact).toLocaleDateString(dateLocale)}
                       </div>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
@@ -212,7 +218,7 @@ export function CrmContactsTable({
           disabled={loadingMore}
           className="mx-auto my-4 block rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)]/80 px-6 py-2 text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--foreground-muted)]/10 disabled:opacity-50"
         >
-          {loadingMore ? t("workspaceWidgets.crmTable.loading") : "טען עוד"}
+          {loadingMore ? t("workspaceWidgets.crmTable.loading") : t("workspaceWidgets.crmTable.loadMore")}
         </button>
       )}
 

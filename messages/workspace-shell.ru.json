@@ -1495,7 +1495,8 @@
       "addClientStatusInactive": "Неактивный",
       "addClientSave": "Добавить",
       "openControlCenter": "Открыть центр управления",
-      "openFieldCopilot": "Полевой копilot"
+      "openFieldCopilot": "Полевой копilot",
+      "loadMore": "Загрузить ещё"
     },
     "itemActions": {
       "edit": "Изменить",
@@ -1755,7 +1756,31 @@
       "tagFilter": "Фильтр по тегу",
       "allTags": "Все теги",
       "timelineTab": "История",
-      "timelineEmpty": "Событий пока нет"
+      "timelineEmpty": "Событий пока нет",
+      "pendingBadge": "{count} в работе",
+      "monthlyExpensesTitle": "Сводка расходов по месяцам",
+      "quoteStatusTitle": "Статус коммерческих предложений",
+      "documentsCount": "{count} документов",
+      "quoteInsight": "Система обнаружила {count} неподписанных предложений. Рекомендуется отправить автоматическое напоминание.",
+      "cashflowForecastTitle": "Умный прогноз денежного потока",
+      "cashflowSubtitle": "Исторический анализ + квартальный прогноз",
+      "actualLabel": "Факт",
+      "forecastLabel": "Прогноз AI"
+    },
+    "documentPreview": {
+      "draft": "Черновик",
+      "numberPrefix": "№",
+      "fromLabel": "От",
+      "toLabel": "Кому",
+      "dateLabel": "Дата:",
+      "colDescription": "Описание",
+      "colQty": "Кол-во",
+      "colPrice": "Цена",
+      "colTotal": "Итого",
+      "emptyItems": "Добавьте позиции для предпросмотра",
+      "subtotalBeforeVat": "До НДС",
+      "vatLabel": "НДС ({percent}%)",
+      "totalDue": "К оплате"
     },
     "executive": {
       "title": "Стратегический обзор",

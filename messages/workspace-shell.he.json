@@ -1495,7 +1495,8 @@
       "addClientStatusInactive": "לא פעיל (Inactive)",
       "addClientSave": "הוסף לקוח",
       "openControlCenter": "פתח מרכז שליטה",
-      "openFieldCopilot": "קופיילוט שטח"
+      "openFieldCopilot": "קופיילוט שטח",
+      "loadMore": "טען עוד"
     },
     "itemActions": {
       "edit": "ערוך",
@@ -1755,7 +1756,31 @@
       "tagFilter": "סינון לפי תגית",
       "allTags": "כל התגיות",
       "timelineTab": "היסטוריה",
-      "timelineEmpty": "אין אירועים עדיין"
+      "timelineEmpty": "אין אירועים עדיין",
+      "pendingBadge": "{count} בטיפול",
+      "monthlyExpensesTitle": "סיכום הוצאות חודשי",
+      "quoteStatusTitle": "סטטוס הצעות מחיר",
+      "documentsCount": "{count} מסמכים",
+      "quoteInsight": "המערכת מזהה {count} הצעות מחיר שטרם נחתמו. מומלץ לשלוח תזכורת אוטומטית.",
+      "cashflowForecastTitle": "תחזית תזרים מזומנים חכמה",
+      "cashflowSubtitle": "ניתוח היסטורי + תחזית רבעונית קדימה",
+      "actualLabel": "ביצוע בפועל",
+      "forecastLabel": "תחזית AI"
+    },
+    "documentPreview": {
+      "draft": "טיוטה",
+      "numberPrefix": "מס׳",
+      "fromLabel": "מאת",
+      "toLabel": "לכבוד",
+      "dateLabel": "תאריך:",
+      "colDescription": "תיאור",
+      "colQty": "כמות",
+      "colPrice": "מחיר",
+      "colTotal": "סה״כ",
+      "emptyItems": "הוסף פריטים לתצוגה מקדימה",
+      "subtotalBeforeVat": "לפני מע״מ",
+      "vatLabel": "מע״מ ({percent}%)",
+      "totalDue": "סה״כ לתשלום"
     },
     "executive": {
       "title": "סקירה אסטרטגית",

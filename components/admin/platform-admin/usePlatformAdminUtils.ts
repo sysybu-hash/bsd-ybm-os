@@ -12,6 +12,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
   const [testingEmail, setTestingEmail] = useState(false);
+  const [selfHealBusy, setSelfHealBusy] = useState(false);
 
   const handleLookupUser = useCallback(async () => {
     const email = userEmail.trim().toLowerCase();
@@ -52,10 +53,30 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     }
   }, [loadHealth, t]);
 
+  const handleSelfHealDryRun = useCallback(async () => {
+    setSelfHealBusy(true);
+    try {
+      const res = await fetch("/api/admin/self-heal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "purge_stale_rate_limits", dryRun: true }),
+      });
+      const data = (await res.json()) as { affected?: number; status?: string; error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? "Self-heal failed");
+        return;
+      }
+      toast.success(`Self-heal dry-run: ${data.affected ?? 0} stale rate-limit rows`);
+    } finally {
+      setSelfHealBusy(false);
+    }
+  }, []);
+
   return {
     userEmail, setUserEmail, userLookup, setUserLookup,
     broadcastTitle, setBroadcastTitle, broadcastBody, setBroadcastBody,
-    testingEmail,
-    handleLookupUser, handleBroadcast, handleTestEmail,
+    testingEmail, selfHealBusy,
+    handleLookupUser, handleBroadcast, handleTestEmail, handleSelfHealDryRun,
   };
 }
