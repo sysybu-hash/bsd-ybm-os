@@ -35,6 +35,11 @@ export async function sendCollectionRequest(issuedDocumentId: string): Promise<S
     return { ok: false, error: "אין אימייל ללקוח — עדכנו את איש הקשר ב-CRM" };
   }
 
+  const { canSendCollectionReminderEmails } = await import("@/lib/mail/platform-mail-settings");
+  if (!(await canSendCollectionReminderEmails())) {
+    return { ok: false, error: "תזכורות גבייה במייל כבויות בהגדרות האדמין" };
+  }
+
   const payload = buildInvoiceExportPayload(doc, doc.organization);
   const pdf = await buildInvoicePdfBuffer(payload);
 

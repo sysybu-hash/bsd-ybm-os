@@ -21,8 +21,10 @@ type TabId =
   | "users"
   | "broadcast"
   | "health"
+  | "mail"
   | "settings"
-  | "assistant";
+  | "assistant"
+  | "ideas";
 
 type Props = {
   onNavigateTab?: (tabId: TabId) => void;

@@ -159,6 +159,11 @@ export async function flushAllEmailDigests(): Promise<{
     return { buckets: 0, sent: 0, items: 0 };
   }
 
+  const { canFlushEmailDigest } = await import("@/lib/mail/platform-mail-settings");
+  if (!(await canFlushEmailDigest())) {
+    return { buckets: 0, sent: 0, items: 0 };
+  }
+
   const groups = await prisma.emailDigestItem.groupBy({
     by: ["recipient", "category"],
     _count: { id: true },

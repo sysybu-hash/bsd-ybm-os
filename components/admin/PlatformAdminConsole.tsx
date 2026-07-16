@@ -14,6 +14,7 @@ import { UsersTab } from "./platform-admin/UsersTab";
 import { SettingsTab } from "./platform-admin/SettingsTab";
 import { IdeasTab } from "./platform-admin/IdeasTab";
 import { HealthTab } from "./platform-admin/HealthTab";
+import { MailTab } from "./platform-admin/MailTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
@@ -215,6 +216,17 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             onRefresh={() => void p.loadHealth()}
             onTestEmail={() => void p.handleTestEmail()}
             onSelfHealDryRun={() => void p.handleSelfHealDryRun()}
+          />
+        )}
+
+        {p.tab === "mail" && p.platformConfig && (
+          <MailTab
+            platformConfig={p.platformConfig}
+            setPlatformConfig={p.setPlatformConfig}
+            savingSettings={p.savingSettings}
+            onSave={() => void p.savePlatformSettings()}
+            testingEmail={p.testingEmail}
+            onTestEmail={() => void p.handleTestEmail()}
           />
         )}
 

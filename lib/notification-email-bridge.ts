@@ -36,6 +36,9 @@ export async function maybeEmailUserNotification(
   }
 
   try {
+    const { canEnqueueNotificationEmails } = await import("@/lib/mail/platform-mail-settings");
+    if (!(await canEnqueueNotificationEmails())) return;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { email: true, accountStatus: true },
@@ -68,6 +71,9 @@ export async function maybeEmailOrgAdminsNotification(
   }
 
   try {
+    const { canEnqueueNotificationEmails } = await import("@/lib/mail/platform-mail-settings");
+    if (!(await canEnqueueNotificationEmails())) return;
+
     const admins = await prisma.user.findMany({
       where: {
         organizationId,

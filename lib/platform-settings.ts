@@ -21,6 +21,45 @@ const featureFlagsSchema = z.object({
   fieldCopilotEnabled: z.boolean().default(true),
 });
 
+/** Admin-controlled mail channels (secrets stay in Vercel env). */
+export const platformMailSchema = z.object({
+  /** Master kill-switch — off = no outbound mail */
+  masterEnabled: z.boolean().default(true),
+  /** Welcome / verify / provision / transactional */
+  transactionalEnabled: z.boolean().default(true),
+  /** Daily digest flush (cron email-digest) */
+  digestEnabled: z.boolean().default(true),
+  /** Trial ending + reactivation campaigns */
+  lifecycleEnabled: z.boolean().default(true),
+  /** App notifications → digest queue */
+  notificationBridgeEnabled: z.boolean().default(true),
+  /** Collection reminder emails */
+  collectionRemindersEnabled: z.boolean().default(true),
+  /** Override From (empty = MAIL_FROM / EMAIL_FROM env) */
+  fromOverride: z.string().max(200).default(""),
+  /** Override Reply-To (empty = MAIL_REPLY_TO / SMTP_USER) */
+  replyToOverride: z.string().max(200).default(""),
+  /** Days before trial end to send warning */
+  lifecycleTrialDaysBefore: z.number().int().min(1).max(30).default(3),
+  /** Days without login before reactivation nudge */
+  lifecycleInactiveDays: z.number().int().min(3).max(90).default(7),
+});
+
+export type PlatformMailConfig = z.infer<typeof platformMailSchema>;
+
+export const DEFAULT_PLATFORM_MAIL: PlatformMailConfig = {
+  masterEnabled: true,
+  transactionalEnabled: true,
+  digestEnabled: true,
+  lifecycleEnabled: true,
+  notificationBridgeEnabled: true,
+  collectionRemindersEnabled: true,
+  fromOverride: "",
+  replyToOverride: "",
+  lifecycleTrialDaysBefore: 3,
+  lifecycleInactiveDays: 7,
+};
+
 export const platformConfigSchema = z.object({
   version: z.number().int().default(1),
   maintenanceMode: z.boolean().default(false),
@@ -40,6 +79,7 @@ export const platformConfigSchema = z.object({
     geminiLiveAdvancedFeatures: false,
     fieldCopilotEnabled: true,
   }),
+  mail: platformMailSchema.default(DEFAULT_PLATFORM_MAIL),
 });
 
 export type PlatformConfig = z.infer<typeof platformConfigSchema>;
@@ -65,6 +105,7 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
     geminiLiveAdvancedFeatures: false,
     fieldCopilotEnabled: true,
   },
+  mail: { ...DEFAULT_PLATFORM_MAIL },
 };
 
 let cachedConfig: PlatformConfig | null = null;
@@ -90,6 +131,10 @@ function mergeWithDefaults(raw: unknown): PlatformConfig {
     featureFlags: {
       ...DEFAULT_PLATFORM_CONFIG.featureFlags,
       ...base.featureFlags,
+    },
+    mail: {
+      ...DEFAULT_PLATFORM_MAIL,
+      ...base.mail,
     },
   };
 }
@@ -158,6 +203,10 @@ export async function updatePlatformConfig(
     automationEnabled: {
       ...current.automationEnabled,
       ...(patch.automationEnabled ?? {}),
+    },
+    mail: {
+      ...current.mail,
+      ...(patch.mail ?? {}),
     },
     defaultConstructionTrade:
       patch.defaultConstructionTrade !== undefined

@@ -5,12 +5,15 @@ import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import {
-  getMailFrom,
-  getMailReplyTo,
   isMailTransportConfigured,
   isResendConfigured,
   isSmtpConfigured,
 } from "@/lib/mail-config";
+import {
+  canSendTransactionalMail,
+  resolveMailFrom,
+  resolveMailReplyTo,
+} from "@/lib/mail/platform-mail-settings";
 
 export const TAGLINE = "BSD-YBM-OS - השדרה שמחברת בין כולם";
 const log = createLogger("mail-core");
@@ -68,9 +71,9 @@ async function sendViaResend(to: string | string[], subject: string, html: strin
   const resend = createResend();
   if (!resend) return false;
   const list = Array.isArray(to) ? to : [to];
-  const replyTo = getMailReplyTo();
+  const replyTo = await resolveMailReplyTo();
   const { error } = await resend.emails.send({
-    from: getMailFrom(),
+    from: await resolveMailFrom(),
     to: list,
     subject,
     html,
@@ -88,9 +91,9 @@ async function sendViaSmtp(to: string | string[], subject: string, html: string)
   const transporter = createSmtpTransporter();
 
   const list = Array.isArray(to) ? to : [to];
-  const replyTo = getMailReplyTo();
+  const replyTo = await resolveMailReplyTo();
   await transporter.sendMail({
-    from: getMailFrom(),
+    from: await resolveMailFrom(),
     to: list.join(", "),
     subject,
     html,
@@ -107,6 +110,12 @@ export async function sendTransactionalEmail(
   subject: string,
   htmlBodyInner: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await canSendTransactionalMail())) {
+    return {
+      ok: false,
+      error: "שליחת מייל כבויה בהגדרות האדמין (מייל → מתג ראשי / טרנזקציונלי)",
+    };
+  }
   if (!isMailTransportConfigured()) {
     return {
       ok: false,
@@ -147,6 +156,12 @@ export async function sendTransactionalEmailWithAttachments(
   htmlBodyInner: string,
   attachments: EmailAttachment[],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await canSendTransactionalMail())) {
+    return {
+      ok: false,
+      error: "שליחת מייל כבויה בהגדרות האדמין",
+    };
+  }
   if (!isMailTransportConfigured()) {
     return {
       ok: false,
@@ -161,13 +176,14 @@ export async function sendTransactionalEmailWithAttachments(
     content: a.content,
     contentType: a.contentType ?? "application/octet-stream",
   }));
-  const replyTo = getMailReplyTo();
+  const replyTo = await resolveMailReplyTo();
+  const from = await resolveMailFrom();
 
   try {
     const resend = createResend();
     if (resend) {
       const { error } = await resend.emails.send({
-        from: getMailFrom(),
+        from,
         to: list,
         subject,
         html,
@@ -188,7 +204,7 @@ export async function sendTransactionalEmailWithAttachments(
     if (isSmtpConfigured()) {
       const transporter = createSmtpTransporter();
       await transporter.sendMail({
-        from: getMailFrom(),
+        from,
         to: list.join(", "),
         subject,
         html,
