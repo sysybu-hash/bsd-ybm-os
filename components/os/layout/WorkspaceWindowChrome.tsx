@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useRef } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { WindowsMaximizeIcon, WindowsRestoreIcon } from "@/components/os/layout/WindowsWindowIcons";
 
 export type WorkspaceWindowChromeProps = {
   title: string;
@@ -215,7 +216,11 @@ export default function WorkspaceWindowChrome({
                   : t("workspaceWidgets.chrome.maximizeAria", chromeTitle)
               }
             >
-              {isMaximized ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
+              {isMaximized ? (
+                <WindowsRestoreIcon size={15} aria-hidden />
+              ) : (
+                <WindowsMaximizeIcon size={15} aria-hidden />
+              )}
             </button>
           ) : null}
           <button
