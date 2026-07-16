@@ -31,6 +31,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
   const initialEmail = params.get("email")?.trim() ?? "";
   const inviteToken = params.get("invite")?.trim() ?? "";
   const orgInviteToken = params.get("orgInvite")?.trim() ?? "";
+  const planParam = params.get("plan")?.trim() ?? "";
 
   const [step, setStep] = useState(0);
   const [orgType, setOrgType] = useState<OrgTypeKey>("company");
@@ -134,6 +135,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
           constructionTrade: specialization,
           inviteToken: inviteToken || undefined,
           orgInviteToken: orgInviteToken || undefined,
+          plan: planParam || undefined,
           password,
         }),
       });

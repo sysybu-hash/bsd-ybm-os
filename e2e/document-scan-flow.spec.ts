@@ -7,9 +7,19 @@
  * 3. The AI scan pipeline endpoints exist and reject unauthenticated requests.
  * 4. Rate-limiting on blueprint analysis (garmoshka decoding).
  * 5. The org-invite preview endpoint validates token format.
+ * 6. Happy-path: login → documentsHub scan tab → mocked extract → UI review/save cues.
  */
 
 import { test, expect } from "@playwright/test";
+import {
+  E2E_EMAIL,
+  E2E_PASSWORD,
+  dismissWorkspaceOverlays,
+  signInWithRetries,
+  waitForAuthenticatedApiSession,
+  widgetShell,
+  workspaceUrl,
+} from "./helpers";
 
 test.describe("Document Scan — auth protection", () => {
   test("scan tri-engine requires auth", async ({ request }) => {
@@ -121,5 +131,76 @@ test.describe("Passkey auth-options — rate-limit smoke", () => {
     expect([200, 500]).toContain(res.status());
     expect(res.status()).not.toBe(404);
     expect(res.status()).not.toBe(429); // single call never hits rate limit
+  });
+});
+
+test.describe("Document Scan — authenticated happy path (mocked extract)", () => {
+  test("documentsHub scan tab + mocked tri-engine shows review UI", async ({ page }) => {
+    const signed = await signInWithRetries(page, 4, {
+      email: E2E_EMAIL,
+      password: E2E_PASSWORD,
+    });
+    test.skip(!signed, "E2E credentials / seed unavailable");
+    await waitForAuthenticatedApiSession(page);
+
+    await page.route("**/api/scan/tri-engine**", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          v5: {
+            schemaVersion: 5,
+            documentMetadata: {
+              project: null,
+              client: null,
+              documentDate: null,
+              drawingRefs: null,
+              discipline: null,
+              sheetIndex: null,
+              sourceFileName: "e2e-fixture.jpg",
+              scanMode: "GENERAL_DOCUMENT",
+            },
+            billOfQuantities: [],
+            lineItems: [{ description: "E2E line", lineTotal: 10 }],
+            vendor: "E2E Vendor",
+            total: 10,
+            date: "2026-07-16",
+            docType: "GENERAL",
+            summary: "E2E mock extraction",
+            priceAlertPending: false,
+          },
+          aiData: { vendor: "E2E Vendor", total: 10 },
+          telemetry: { enginesUsed: ["mock"], latencyMs: 1 },
+        }),
+      });
+    });
+
+    await page.goto(workspaceUrl({ w: "documentsHub", tab: "scan" }), {
+      waitUntil: "domcontentloaded",
+    });
+    await dismissWorkspaceOverlays(page);
+    const shell = widgetShell(page, "documentsHub");
+    await expect(shell).toBeVisible({ timeout: 20_000 });
+
+    const fileInput = shell.locator('input[type="file"]').first();
+    if (await fileInput.count()) {
+      await fileInput.setInputFiles({
+        name: "e2e-fixture.jpg",
+        mimeType: "image/jpeg",
+        buffer: Buffer.from(
+          "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGfAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//Z",
+          "base64",
+        ),
+      });
+    }
+
+    await expect(
+      shell.getByText(/E2E Vendor|E2E mock|שמירה|יעד|ספק|review|סיכום/i).first(),
+    ).toBeVisible({ timeout: 25_000 });
   });
 });

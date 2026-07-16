@@ -18,6 +18,6 @@
 ## הערות
 
 - מסמכים: [QA-PLAN](./QA-PLAN.md), [LAUNCH-CHECKLIST](./LAUNCH-CHECKLIST.md), [PRODUCT-MAP](./PRODUCT-MAP.md).
-- DR: תרגיל חיבור Neon 2026-07-15 — [DR-PLAN](./DR-PLAN.md); PITR מלא בקונסולה — רבעוני.
+- DR: תרגיל חיבור Neon 2026-07-15 + PITR קונסולה 2026-07-16 (`pitr-drill`, `SELECT 1` OK) — [DR-PLAN](./DR-PLAN.md).
 - WAIVE מכוון (לא blockers): pgvector native, Refunds API, MPP, ITA production מלא, admin self-heal, Stripe.
-- CSP_STRICT: להפעיל ב-Preview דרך Vercel Dashboard (CLI דורש בחירת branch) → smoke → Production.
+- CSP_STRICT: Preview=`true` (2026-07-16); נותר smoke ב-Preview ואז העתקה ל-Production.

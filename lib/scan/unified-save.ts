@@ -5,7 +5,7 @@ import {
 } from "@/lib/tri-engine-api-common";
 import { saveScannedDocumentAction } from "@/app/actions/save-scanned-document";
 import { resolvePolicyForIndustry, inferScreenTypeFromFileForIndustry } from "@/lib/ai/screen-decode-policy";
-import { runScanPostActions } from "@/lib/ai/scan-post-actions";
+import { runScanPostActionsServer } from "@/lib/ai/scan-post-actions";
 import { v5ToPersistableAiData } from "@/lib/scan-schema-v5";
 import { createExpenseFromScan } from "@/lib/workspace-api/expense-from-scan";
 import { createLogger } from "@/lib/logger";
@@ -71,8 +71,10 @@ export async function unifiedSaveScan(
           industry,
         );
 
-        const post = await runScanPostActions({
+        const post = await runScanPostActionsServer({
           projectId: input.projectId,
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
           v5: input.v5,
           policy,
         });

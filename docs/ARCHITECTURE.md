@@ -73,7 +73,7 @@ BSD-YBM Intelligence is a **Hebrew-first, RTL** ERP/CRM/OS built for Israeli con
 | UI | React 18 + Tailwind CSS 3 + Radix UI headless |
 | State / Data | TanStack Query v5 (server state), React state (local) |
 | ORM | Prisma 6 + `@prisma/adapter-neon` |
-| Database | Neon serverless PostgreSQL (pgvector enabled) |
+| Database | Neon serverless PostgreSQL (embeddings as JSON + JS cosine; native pgvector deferred) |
 | Cache / Rate-limit | Upstash Redis (HTTP, serverless-safe) |
 | Auth | NextAuth v4 + `@next-auth/prisma-adapter`, WebAuthn/Passkeys via `@simplewebauthn` |
 | AI (primary) | Google Gemini 2.5 Flash/Pro via `@google/genai` + `@ai-sdk/google` |
@@ -233,7 +233,7 @@ All 5 cron routes are protected via `withCronGuard` (`lib/cron-guard.ts`):
 | `PushSubscription` | Web Push endpoint registrations |
 | `FinancialInsight` | AI-generated daily financial summaries |
 
-**Database**: Neon serverless Postgres (connection pooling via `@prisma/adapter-neon`, pgvector for embeddings).
+**Database**: Neon serverless Postgres (connection pooling via `@prisma/adapter-neon`). Embeddings stored as JSON with in-process cosine similarity; native pgvector is intentionally deferred.
 
 ---
 

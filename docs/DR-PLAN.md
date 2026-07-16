@@ -4,7 +4,7 @@
 > **Owner**: yohanan.bukshpan
 > **Review cadence**: Quarterly + after any P0 incident
 > **תרגיל אחרון (חיבור Neon)**: 2026-07-15 — `npm run ops:neon-dr-drill` (reachable, 12 orgs)  
-> **PITR מלא בקונסולה**: רבעוני — Owner מבצע branch מ-PITR לפי §3; מעדכן תאריך כאן אחרי השלמה
+> **PITR קונסולה**: 2026-07-16 — branch `pitr-drill` מ-`production` (past point in time) + `SELECT 1` ב-SQL Editor — עבר; branch נמחק אחרי האימות
 
 ---
 

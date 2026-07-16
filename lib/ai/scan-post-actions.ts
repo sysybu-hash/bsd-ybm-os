@@ -1,6 +1,11 @@
 import type { ScreenDecodePolicy } from "@/lib/ai/screen-decode-policy";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { WidgetType } from "@/hooks/use-window-manager";
+import { prisma } from "@/lib/prisma";
+import { requireProjectForOrg } from "@/lib/projects/project-access";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("scan-post-actions");
 
 export type ScanPostActionContext = {
   projectId: string | null;
@@ -12,13 +17,24 @@ export type ScanPostActionContext = {
   ) => string | void;
 };
 
+export type ScanPostActionServerContext = {
+  projectId: string | null;
+  organizationId: string;
+  userId: string;
+  v5: ScanExtractionV5;
+  policy: ScreenDecodePolicy;
+};
+
 export type ScanPostActionResult = {
   applied: string[];
   skipped: string[];
 };
 
-/** מפעיל פעולות post-scan (יומן, BOQ, ERP, מחברת) — לא הרסני בלי projectId */
-export async function runScanPostActions(
+/**
+ * Client-side post-actions (fetch cookies + open widgets).
+ * Prefer this from browser after save; work_diary uses relative fetch.
+ */
+export async function runScanPostActionsClient(
   ctx: ScanPostActionContext,
 ): Promise<ScanPostActionResult> {
   const applied: string[] = [];
@@ -120,3 +136,74 @@ export async function runScanPostActions(
 
   return { applied, skipped };
 }
+
+/**
+ * Server-side post-actions — Prisma only (no relative fetch).
+ * UI-only actions (boq/erp/notebook/crm/tasks) are skipped here; client runs them.
+ */
+export async function runScanPostActionsServer(
+  ctx: ScanPostActionServerContext,
+): Promise<ScanPostActionResult> {
+  const applied: string[] = [];
+  const skipped: string[] = [];
+  const { projectId, organizationId, userId, v5, policy } = ctx;
+
+  for (const action of policy.postActions) {
+    if (action === "work_diary") {
+      if (!projectId) {
+        skipped.push("work_diary");
+        continue;
+      }
+      const gate = await requireProjectForOrg(projectId, organizationId);
+      if (!gate.ok) {
+        skipped.push("work_diary");
+        continue;
+      }
+      const desc = (v5.summary?.trim() || v5.docType || "רשומה מסריקה").slice(0, 2000);
+      try {
+        const diary = await prisma.workDiary.create({
+          data: {
+            projectId,
+            organizationId,
+            description: desc,
+            workersCount: 1,
+            progress: 0,
+            isSyncedToAI: true,
+            date: new Date(),
+            createdByUserId: userId,
+          },
+        });
+        if (diary.isSyncedToAI) {
+          try {
+            const { createProjectNote } = await import("@/lib/workspace-api/project-detail");
+            await createProjectNote(organizationId, userId, projectId, `[יומן עבודה] ${desc}`);
+          } catch {
+            /* non-blocking */
+          }
+        }
+        applied.push("work_diary");
+      } catch (err) {
+        log.warn("work_diary_server_failed", { projectId, err });
+        skipped.push("work_diary");
+      }
+      continue;
+    }
+
+    // Widget-only actions — client after save
+    if (
+      action === "boq" ||
+      action === "erp" ||
+      action === "notebook" ||
+      action === "crm" ||
+      action === "tasks"
+    ) {
+      skipped.push(action);
+      continue;
+    }
+  }
+
+  return { applied, skipped };
+}
+
+/** @deprecated use runScanPostActionsClient — kept for existing imports */
+export const runScanPostActions = runScanPostActionsClient;

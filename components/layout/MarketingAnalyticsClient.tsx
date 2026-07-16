@@ -18,10 +18,12 @@ export function MarketingAnalyticsClient() {
   useEffect(() => {
     const run = () => setIdleReady(true);
     const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    const timeout = mobile ? 8000 : 6000;
     if (typeof w.requestIdleCallback === "function") {
-      w.requestIdleCallback(run, { timeout: 6000 });
+      w.requestIdleCallback(run, { timeout });
     } else {
-      globalThis.setTimeout(run, 4000);
+      globalThis.setTimeout(run, mobile ? 5000 : 4000);
     }
   }, []);
 

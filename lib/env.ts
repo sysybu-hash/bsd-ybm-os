@@ -169,6 +169,8 @@ const serverSchema = z.object({
 
   // --- ITA (רשות המסים) ---
   ITA_PRODUCTION_KEY: optStr,
+  /** מאפשר מספרי הקצאה mock — רק local/E2E; אסור בפרודקשן */
+  ALLOW_ITA_MOCK: optBool,
 
   // --- Cron / Queue security ---
   CRON_SECRET: optStr,
@@ -324,3 +326,16 @@ export const clientEnv = {
 };
 
 export type Env = ReturnType<typeof validateEnv>;
+
+/**
+ * Edge/middleware-safe env reads — no Zod validation, no server-schema side effects.
+ * Use in middleware.ts instead of importing the full `env` proxy.
+ */
+export const edgeEnv = {
+  get nextAuthSecret(): string {
+    return process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? "";
+  },
+  get isVercel(): boolean {
+    return Boolean(process.env.VERCEL);
+  },
+};

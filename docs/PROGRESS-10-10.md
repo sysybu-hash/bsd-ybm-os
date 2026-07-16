@@ -44,6 +44,6 @@ npm run lighthouse:matrix:prod
 | פריט | הערות |
 |------|--------|
 | `CSP_STRICT=true` Preview→Prod | Preview מוגדר (2026-07-16); smoke ואז Production |
-| PITR מלא בקונסולת Neon | רבעוני — אחרי drill מקומי |
+| PITR מלא בקונסולת Neon | **הושלם 2026-07-16** — `pitr-drill` + `SELECT 1` |
 | Mobile Lighthouse perf → ≥78/90 | שיפור TBT בדפי help/workspace |
 | פיצול לוגיקה שנותרה ≥300 | useCrmTable, user-launcher-config — [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |

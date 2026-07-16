@@ -1,6 +1,6 @@
 # SLOs — BSD-YBM OS
 
-> עדכון: 2026-07-15 — התראות מחוברות / מתועדות לחיבור
+> עדכון: 2026-07-16 — צ'קליסט הפעלת התראות
 
 ## זמינות
 
@@ -26,14 +26,19 @@
 | p95 routes כבדים (CRM list) | <1s |
 | Lighthouse Performance (landing desktop) | ≥90 |
 
-## התראות (מחוברות / להפעיל בקונסולה)
+## התראות — צ'קליסט הפעלה (Owner)
 
-| מקור | כלל | סטטוס |
-|------|-----|--------|
-| Sentry | Spike 5xx / error rate &gt; 0.5% ב-5 דק׳ | להגדיר ב-Sentry Alerts על פרויקט `bsd-ybm-os` |
-| Sentry Crons | Missed check-in לכל `withCronGuard` slug | מופעל בקוד דרך `Sentry.withMonitor` — ודאו DSN בפרוד |
-| PostHog | Anomaly על `session_create_failed` | Insights → Alert |
-| Vercel | Deployment failure | הודעות פרויקט `bsd-ybm-os` ל-owner |
+סמנו אחרי הגדרה בקונסולה:
+
+- [ ] **Sentry** → Alerts → Error spike / issue rate &gt; 0.5% ב-5 דק׳ על פרויקט `bsd-ybm-os` → מייל/Slack ל-on-call
+- [ ] **Sentry Crons** → ודאו שמופיעים monitors לכל slug מ-`withCronGuard` (DSN בפרוד פעיל)
+- [ ] **PostHog** → Insight על `session_create_failed` → Alert anomaly
+- [ ] **Vercel** → Project Settings → Notifications → Deployment Failed → owner email
+
+| מקור | כלל | קוד / הערה |
+|------|-----|------------|
+| Sentry Crons | Missed check-in | `lib/cron-guard.ts` → `Sentry.withMonitor` |
+| Vercel Cron schedule | UTC | מוניטורים ב-Sentry מוגדרים `Asia/Jerusalem` — ייתכנו false miss; ראו RUNBOOK |
 
 ## Error budget
 

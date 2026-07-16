@@ -12,6 +12,16 @@
  */
 
 import { test, expect } from "@playwright/test";
+import {
+  E2E_COMPANY_MGMT_EMAIL,
+  E2E_COMPANY_MGMT_PROJECT_ID,
+  E2E_CONTACT_ID,
+  E2E_PASSWORD,
+  E2E_PROJECT_ID,
+  primeCookieConsent,
+  signInWithRetries,
+  waitForAuthenticatedApiSession,
+} from "./helpers";
 
 const FAKE_ORG_ID = "org_nonexistent_idor_test_00000000";
 const FAKE_PROJECT_ID = "proj_nonexistent_idor_test_000000";
@@ -86,6 +96,72 @@ test.describe("Tenant Isolation — cross-org resource access", () => {
       },
     });
     expect([401, 403, 302]).toContain(res.status());
+  });
+});
+
+test.describe("Tenant Isolation — authenticated two-org IDOR", () => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    const origin = baseURL ?? "http://localhost:3001";
+    await page.context().addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
+    await primeCookieConsent(page);
+  });
+
+  test("construction org user cannot read company-mgmt project", async ({ page }) => {
+    test.skip(!E2E_COMPANY_MGMT_PROJECT_ID, "Run npm run seed:test — companyMgmtOrganizationId missing");
+
+    const signedIn = await signInWithRetries(page);
+    test.skip(!signedIn, "E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
+
+    const res = await page.request.get(`/api/projects/${E2E_COMPANY_MGMT_PROJECT_ID}`);
+    expect([403, 404], `Expected IDOR block for foreign project, got ${res.status()}`).toContain(res.status());
+    expect(res.status()).not.toBe(200);
+  });
+
+  test("construction org user cannot read company-mgmt milestones", async ({ page }) => {
+    test.skip(!E2E_COMPANY_MGMT_PROJECT_ID, "Run npm run seed:test — companyMgmtOrganizationId missing");
+
+    const signedIn = await signInWithRetries(page);
+    test.skip(!signedIn, "E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
+
+    const res = await page.request.get(
+      `/api/projects/${E2E_COMPANY_MGMT_PROJECT_ID}/milestones`,
+    );
+    expect([403, 404], `Expected IDOR block for foreign milestones, got ${res.status()}`).toContain(
+      res.status(),
+    );
+    expect(res.status()).not.toBe(200);
+  });
+
+  test("company-mgmt user cannot read construction org project", async ({ page }) => {
+    test.skip(!E2E_PROJECT_ID, "Run npm run seed:test — e2eProjectId missing");
+
+    const signedIn = await signInWithRetries(page, 4, {
+      email: E2E_COMPANY_MGMT_EMAIL,
+      password: E2E_PASSWORD,
+    });
+    test.skip(!signedIn, "Company mgmt E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
+
+    const res = await page.request.get(`/api/projects/${E2E_PROJECT_ID}`);
+    expect([403, 404], `Expected IDOR block for foreign project, got ${res.status()}`).toContain(res.status());
+    expect(res.status()).not.toBe(200);
+  });
+
+  test("company-mgmt user cannot read construction org contact timeline", async ({ page }) => {
+    test.skip(!E2E_CONTACT_ID, "Run npm run seed:test — e2eContactId missing");
+
+    const signedIn = await signInWithRetries(page, 4, {
+      email: E2E_COMPANY_MGMT_EMAIL,
+      password: E2E_PASSWORD,
+    });
+    test.skip(!signedIn, "Company mgmt E2E credentials not available");
+    await waitForAuthenticatedApiSession(page);
+
+    const res = await page.request.get(`/api/crm/contacts/${E2E_CONTACT_ID}/timeline`);
+    expect([403, 404], `Expected IDOR block for foreign contact, got ${res.status()}`).toContain(res.status());
+    expect(res.status()).not.toBe(200);
   });
 });
 

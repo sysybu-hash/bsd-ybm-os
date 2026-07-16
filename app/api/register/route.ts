@@ -33,6 +33,7 @@ import {
   getPlatformConfig,
   isRegistrationOpen,
 } from "@/lib/platform-settings";
+import { verifyRegistrationPayPalOrder } from "@/lib/register-paypal-verify";
 
 const log = createLogger("register");
 
@@ -90,6 +91,8 @@ export async function POST(req: NextRequest) {
       orgInviteToken?: string;
       plan?: string;
       password?: string;
+      orderID?: string;
+      paypalOrderId?: string;
     };
 
     const emailRaw = String(body.email ?? "").trim();
@@ -317,14 +320,23 @@ export async function POST(req: NextRequest) {
 
     const planRaw = String(body.plan ?? "").toUpperCase();
     const isDirectPlan = !!body.plan;
+    const paymentOrderId = String(body.orderID ?? body.paypalOrderId ?? "").trim();
 
     // Mapping plan string to SubscriptionTier enum
-    const tier = ["FREE", "HOUSEHOLD", "DEALER", "COMPANY", "CORPORATE"].includes(planRaw)
+    let tier = ["FREE", "HOUSEHOLD", "DEALER", "COMPANY", "CORPORATE"].includes(planRaw)
        ? (planRaw as import("@prisma/client").SubscriptionTier)
        : "FREE";
 
-    // Only general signup (no plan, no invite) goes to PENDING_APPROVAL
-    const shouldApprove = isDirectPlan || !!inviteToken || !!orgInviteToken;
+    let shouldApprove = isDirectPlan || !!inviteToken || !!orgInviteToken;
+
+    if (paymentOrderId) {
+      const payment = await verifyRegistrationPayPalOrder(paymentOrderId, normalized);
+      if (payment.ok) {
+        shouldApprove = true;
+        tier = payment.tier;
+      }
+    }
+
     const initialStatus = shouldApprove ? AccountStatus.ACTIVE : AccountStatus.PENDING_APPROVAL;
     const initialSubStatus = shouldApprove ? "ACTIVE" : "PENDING_APPROVAL";
 

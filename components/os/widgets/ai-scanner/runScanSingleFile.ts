@@ -9,7 +9,7 @@ import {
   inferScreenTypeFromFileForIndustry,
   resolvePolicyForIndustry,
 } from "@/lib/ai/screen-decode-policy";
-import { runScanPostActions } from "@/lib/ai/scan-post-actions";
+import { runScanPostActionsClient } from "@/lib/ai/scan-post-actions";
 import { LAST_SCAN_STORAGE_KEY } from "@/lib/notebooklm-from-scan";
 import type { DocumentAnalysis } from "./types";
 import { mapV5ToAnalysis, readNdjsonStream } from "./constants";
@@ -160,7 +160,7 @@ export async function runScanSingleFile({
 
       const postPolicy = resolvePolicyForIndustry(inferred, industryId);
       if (postPolicy.postActions.length > 0 && boundProjectId) {
-        const post = await runScanPostActions({
+        const post = await runScanPostActionsClient({
           projectId: boundProjectId,
           v5: finalV5,
           policy: postPolicy,

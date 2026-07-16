@@ -39,6 +39,8 @@ function readSeedMarker(): {
   e2eProjectId?: string;
   e2eContactId?: string;
   e2eOfficeExpenseId?: string;
+  companyMgmtOrganizationId?: string;
+  companyMgmtEmail?: string;
 } {
   try {
     const p = path.resolve(process.cwd(), ".e2e-demo-seeded.json");
@@ -46,6 +48,8 @@ function readSeedMarker(): {
       e2eProjectId?: string;
       e2eContactId?: string;
       e2eOfficeExpenseId?: string;
+      companyMgmtOrganizationId?: string;
+      companyMgmtEmail?: string;
     };
   } catch {
     return {};
@@ -58,6 +62,14 @@ export const E2E_PROJECT_ID = process.env.E2E_PROJECT_ID ?? seedMarker.e2eProjec
 export const E2E_CONTACT_ID = process.env.E2E_CONTACT_ID ?? seedMarker.e2eContactId ?? "";
 export const E2E_OFFICE_EXPENSE_ID =
   process.env.E2E_OFFICE_EXPENSE_ID ?? seedMarker.e2eOfficeExpenseId ?? "";
+export const E2E_COMPANY_MGMT_ORG_ID =
+  process.env.E2E_COMPANY_MGMT_ORG_ID ?? seedMarker.companyMgmtOrganizationId ?? "";
+export const E2E_COMPANY_MGMT_EMAIL =
+  process.env.E2E_COMPANY_MGMT_EMAIL ?? seedMarker.companyMgmtEmail ?? "company@bsd-demo.test";
+/** Seeded company-mgmt demo project id pattern: `${orgId}-demo-project`. */
+export const E2E_COMPANY_MGMT_PROJECT_ID =
+  process.env.E2E_COMPANY_MGMT_PROJECT_ID ??
+  (E2E_COMPANY_MGMT_ORG_ID ? `${E2E_COMPANY_MGMT_ORG_ID}-demo-project` : "");
 
 /** Canonical workspace URL at `/` with query params (use `w` for widget type). */
 export function workspaceUrl(params: Record<string, string>): string {
@@ -77,6 +89,8 @@ import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-
 const FIRST_DAY_WIZARD_KEY = FIRST_DAY_WIZARD_STORAGE_KEY;
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
+const LAUNCHER_STORAGE_KEY_LEGACY = "bsd_ybm_launcher_v1";
+const PWA_INSTALL_DISMISS_KEY = "bsd-ybm-pwa-install-dismissed";
 
 /**
  * מסמן לטאב הזה לא למחוק את פריסת החלונות בניווט הבא —
@@ -111,12 +125,23 @@ export async function clearServerWorkspaceLayout(page: Page): Promise<void> {
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
 export async function primeE2eBrowserStorage(page: Page) {
   await page.addInitScript(
-    ({ passkeyKey, wizardKey, launcherBannerKey, launcherStorageKey, layoutKeys, layoutPrefix }) => {
+    ({
+      passkeyKey,
+      wizardKey,
+      launcherBannerKey,
+      launcherStorageKey,
+      launcherLegacyKey,
+      pwaDismissKey,
+      layoutKeys,
+      layoutPrefix,
+    }) => {
       try {
         localStorage.setItem(passkeyKey, "1");
         localStorage.setItem(wizardKey, "dismissed");
         localStorage.setItem(launcherBannerKey, "1");
         localStorage.setItem(launcherStorageKey, "{}");
+        localStorage.removeItem(launcherLegacyKey);
+        sessionStorage.setItem(pwaDismissKey, "1");
         for (const k of layoutKeys) localStorage.removeItem(k);
         // בדיקות restore-אחרי-reload מציבות דגל opt-out כדי שה-layout ישרוד ניווט
         if (localStorage.getItem("__e2e_keep_layout") !== "1") {
@@ -134,6 +159,8 @@ export async function primeE2eBrowserStorage(page: Page) {
       wizardKey: FIRST_DAY_WIZARD_KEY,
       launcherBannerKey: LAUNCHER_V2_BANNER_KEY,
       launcherStorageKey: LAUNCHER_STORAGE_KEY,
+      launcherLegacyKey: LAUNCHER_STORAGE_KEY_LEGACY,
+      pwaDismissKey: PWA_INSTALL_DISMISS_KEY,
       layoutKeys: [
         "bsd_ybm_layout_quiet_v6",
         "bsd_ybm_layout_quiet_v5",
@@ -480,6 +507,7 @@ export async function openHubFromLauncher(
   const btn = hubQuickGridButton(page, opts.quickGridName);
   if (await btn.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await btn.click();
+    await dismissWorkspaceOverlays(page);
     return;
   }
   const url = opts.tab
@@ -577,57 +605,106 @@ export async function dismissCookieBannerIfVisible(page: Page) {
   const accept = page.getByRole("button", { name: /קבל את כל העוגיות|Accept all cookies/i });
   if (await accept.isVisible().catch(() => false)) {
     await accept.click();
+    await accept.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  }
+}
+
+async function dismissLauncherMigrationBanner(page: Page): Promise<void> {
+  const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
+  if (!(await migrationBanner.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const dismissBtn = migrationBanner.getByRole("button", {
+    name: /הבנתי|Got it|Понятно|Close|סגירה|Dismiss|סגור/i,
+  });
+  if (await dismissBtn.isVisible().catch(() => false)) {
+    await dismissBtn.click({ force: true });
+  } else {
+    await migrationBanner.locator("button").first().click({ force: true });
+  }
+  await migrationBanner.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissPasskeyOffer(page: Page): Promise<void> {
+  const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
+  if (!(await passkeyDialog.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const later = passkeyDialog.getByRole("button", { name: /אולי אחר כך|Maybe later/i });
+  const close = passkeyDialog.getByRole("button", { name: /סגירה|Close/i });
+  if (await later.isVisible().catch(() => false)) {
+    await later.click({ force: true });
+  } else if (await close.isVisible().catch(() => false)) {
+    await close.click({ force: true });
+  }
+  await passkeyDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissFirstDayWizard(page: Page): Promise<void> {
+  const wizard = page.getByTestId("first-day-wizard");
+  if (!(await wizard.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
+  const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
+  if (await skip.isVisible().catch(() => false)) {
+    await skip.click({ force: true });
+  } else if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click({ force: true });
+  }
+  await wizard.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissPwaInstallBanner(page: Page): Promise<void> {
+  const pwaRegion = page.getByRole("region", { name: /התקנת אפליקציה|Install app/i });
+  if (!(await pwaRegion.isVisible({ timeout: 1000 }).catch(() => false))) return;
+
+  const close = pwaRegion.getByRole("button", { name: /סגור|Close/i });
+  if (await close.isVisible().catch(() => false)) {
+    await close.click({ force: true });
+    await pwaRegion.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   }
 }
 
 /** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
 export async function dismissWorkspaceOverlays(page: Page) {
-  // Prevent Launcher v2 migration banner from covering quick-grid / hub chrome in E2E.
-  await page
-    .evaluate(() => {
-      try {
-        localStorage.setItem("bsd_ybm_launcher_v2_banner_seen", "1");
-      } catch {
-        /* ignore */
-      }
-    })
-    .catch(() => {});
+  for (let pass = 0; pass < 3; pass++) {
+    // Prevent Launcher v2 migration banner from covering quick-grid / hub chrome in E2E.
+    await page
+      .evaluate(
+        ({ launcherBannerKey, launcherStorageKey, launcherLegacyKey, wizardKey, passkeyKey, pwaDismissKey }) => {
+          try {
+            localStorage.setItem(launcherBannerKey, "1");
+            localStorage.setItem(launcherStorageKey, "{}");
+            localStorage.removeItem(launcherLegacyKey);
+            localStorage.setItem(wizardKey, "dismissed");
+            localStorage.setItem(passkeyKey, "1");
+            sessionStorage.setItem(pwaDismissKey, "1");
+          } catch {
+            /* ignore */
+          }
+        },
+        {
+          launcherBannerKey: LAUNCHER_V2_BANNER_KEY,
+          launcherStorageKey: LAUNCHER_STORAGE_KEY,
+          launcherLegacyKey: LAUNCHER_STORAGE_KEY_LEGACY,
+          wizardKey: FIRST_DAY_WIZARD_KEY,
+          passkeyKey: PASSKEY_OFFER_KEY,
+          pwaDismissKey: PWA_INSTALL_DISMISS_KEY,
+        },
+      )
+      .catch(() => {});
 
-  const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
-  if (await migrationBanner.isVisible({ timeout: 2000 }).catch(() => false)) {
-    const dismissBtn = migrationBanner.getByRole("button", { name: /הבנתי|Got it|Close|סגירה|Dismiss|סגור/i });
-    if (await dismissBtn.isVisible().catch(() => false)) {
-      await dismissBtn.click();
-    } else {
-      await migrationBanner.locator("button").first().click();
-    }
-    await migrationBanner.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-  }
+    await dismissCookieBannerIfVisible(page);
+    await dismissLauncherMigrationBanner(page);
+    await dismissPasskeyOffer(page);
+    await dismissFirstDayWizard(page);
+    await dismissPwaInstallBanner(page);
 
-  const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
-  try {
-    await passkeyDialog.waitFor({ state: "visible", timeout: 4000 });
-    const later = passkeyDialog.getByRole("button", { name: /אולי אחר כך|Maybe later/i });
-    const close = passkeyDialog.getByRole("button", { name: /סגירה|Close/i });
-    if (await later.isVisible().catch(() => false)) {
-      await later.click();
-    } else if (await close.isVisible().catch(() => false)) {
-      await close.click();
-    }
-    await passkeyDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-  } catch {
-    /* passkey offer not shown */
-  }
-
-  const wizard = page.getByTestId("first-day-wizard");
-  if (await wizard.isVisible({ timeout: 5000 }).catch(() => false)) {
-    const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
-    const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
-    if (await skip.isVisible().catch(() => false)) {
-      await skip.click();
-    } else if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click();
-    }
-    await wizard.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    const blocking = page
+      .getByTestId("launcher-v2-migration-banner")
+      .or(page.getByTestId("first-day-wizard"))
+      .or(page.locator('[aria-labelledby="passkey-offer-title"]'))
+      .or(page.getByRole("dialog", { name: /עוגיות|cookies/i }));
+    const stillVisible = await blocking.first().isVisible({ timeout: 500 }).catch(() => false);
+    if (!stillVisible) break;
+    await page.waitForTimeout(300);
   }
 }

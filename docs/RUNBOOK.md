@@ -278,6 +278,22 @@ curl -X GET https://bsd-ybm.co.il/api/cron/financial-insights \
 
 Env checklist: [VERCEL-ENV-CHECKLIST.md](./VERCEL-ENV-CHECKLIST.md). Manual trigger: GET any path with `Authorization: Bearer $CRON_SECRET`.
 
+### Timezone — UTC vs Asia/Jerusalem
+
+- **Vercel Cron** schedules in `vercel.json` are **UTC**.
+- **Sentry Crons** monitors created via `withCronGuard` / `Sentry.withMonitor` often use **`Asia/Jerusalem`**.
+- A "missed check-in" near DST or around midnight Israel time can be a **false alarm** — verify the UTC schedule and last successful run in Vercel logs before paging.
+- All cron routes must use `withCronGuard` (incl. `/api/analyze-queue/process`).
+
+### Ops alerts checklist (human)
+
+See also [SLO.md](./SLO.md). Enable once:
+
+1. Sentry → 5xx / error rate spike → on-call
+2. Sentry Crons → missed check-in (mind timezone above)
+3. Vercel → Deployment Failed notification
+4. PostHog → alert on `session_create_failed` anomaly
+
 **If a cron is consistently failing:**
 1. Check Sentry for the `cron_failure` event and its `error` field
 2. Check if `CRON_SECRET` is set in Vercel env

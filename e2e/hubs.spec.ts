@@ -6,14 +6,15 @@ import {
   openFinanceHub,
   openAnyHubFromQuickGrid,
   primeCookieConsent,
-  tryCredentialsSignIn,
+  signInWithRetries,
   widgetShell,
   workspaceUrl,
   expectHubTabSelected,
   ensureHubTabFromDeepLink,
+  waitForAuthenticatedWorkspace,
 } from "./helpers";
 
-async function gotoWorkspace(page: Parameters<typeof tryCredentialsSignIn>[0], url: string) {
+async function gotoWorkspace(page: Parameters<typeof signInWithRetries>[0], url: string) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
@@ -28,11 +29,12 @@ async function gotoWorkspace(page: Parameters<typeof tryCredentialsSignIn>[0], u
   }
 }
 
-async function signIn(page: Parameters<typeof tryCredentialsSignIn>[0]) {
+async function signIn(page: Parameters<typeof signInWithRetries>[0]) {
   await primeCookieConsent(page);
-  const signed = await tryCredentialsSignIn(page);
+  const signed = await signInWithRetries(page);
   await dismissCookieBannerIfVisible(page);
   if (!signed) test.skip(true, "E2E credentials not configured");
+  await waitForAuthenticatedWorkspace(page);
   await dismissWorkspaceOverlays(page);
   return signed;
 }
@@ -48,6 +50,7 @@ test.describe("dashboard hubs", () => {
   // ─── quick-grid ──────────────────────────────────────────────────────────────
 
   test("quick grid shows consolidated hub tiles", async ({ page }) => {
+    await dismissWorkspaceOverlays(page);
     await page.waitForLoadState("domcontentloaded");
     const executive = page.getByRole("button", { name: /מרכז מנהל|executive/i });
     const projects  = page.getByRole("button", { name: /פרויקטים|projects hub/i });

@@ -4,19 +4,24 @@
 
 ## מס הכנסה (ITA) — `lib/services/ita-service.ts`
 
-- דורש `ITA_PRODUCTION_KEY` ב-Vercel / `.env.local` לחיבור production.
-- ללא מפתח: המערכת מחזירה מספר הקצאה mock (`isMock: true`) ורושמת אזהרה בלוג.
-- מימוש API מלא לפי מפרט רשמי — פרויקט נפרד כשיש מפתח production מאושר.
+- **Blocked until real ITA API** — אין מספרי הקצאה מדומים בפרודקשן.
+- ללא `ITA_PRODUCTION_KEY` (או בלי מימוש API): כשנדרש מספר הקצאה — כשל ברור (`success: false`); הנפקת מסמך מחזירה **422** עם `ita_allocation_required`.
+- Mock רק אם `ALLOW_ITA_MOCK=true` (local / E2E).
+- מימוש API מלא לפי מפרט רשמי — פרויקט נפרד כשיש מפתח + מפרט מאושר.
 
 ## Google Calendar — `/api/integrations/google-calendar/*`
 
 סנכרון opt-in: המשתמש מאשר ובוחר `READ_ONLY` או `BIDIRECTIONAL` ב-`PUT .../settings/activate`. Cron: `google-calendar-sync`, `google-calendar-push`.
 
-## Google Calendar (legacy route) — `GET /api/integrations/google-calendar`
+| Route | תפקיד |
+|-------|--------|
+| `GET /api/integrations/google-calendar` | אירועים (יומן מקומי או Google); כשלא מחובר — `localOnly: true` + `syncRoutes` |
+| `GET/PUT .../settings` | הגדרות סנכרון |
+| `POST .../settings/activate` | הפעלת סנכרון + בחירת יומן |
+| `POST .../sync` | סנכרון ידני |
+| `GET .../calendars` | רשימת יומנים (OAuth) |
 
-- מוגן ב-`withWorkspacesAuth`.
-- מחזיר `connected: false` והודעה «בפיתוח».
-- OAuth מלא (scopes, tokens ב-DB, סנכרון אירועים) — שלב עתידי.
+Legacy `GET /api/integrations/google-calendar` **לא** מחזיר «בפיתוח» — מצביע ל-`syncRoutes` כש-Google לא מחובר.
 
 ## Admin self-heal — `POST /api/admin/self-heal`
 

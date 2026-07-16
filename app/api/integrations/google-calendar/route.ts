@@ -80,6 +80,12 @@ export const GET = withWorkspacesAuth(async (req, { userId, orgId }) => {
       localOnly: true,    // ← hint to UI: show "connect Google" banner
       suggested: Boolean(org?.calendarGoogleEnabled && ctx.org && ctx.org.subscriptionStatus === "ACTIVE"),
       connectUrl: buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard"),
+      syncRoutes: {
+        settings: "/api/integrations/google-calendar/settings",
+        sync: "/api/integrations/google-calendar/sync",
+        calendars: "/api/integrations/google-calendar/calendars",
+        activate: "/api/integrations/google-calendar/settings/activate",
+      },
       calendarSummary: "יומן מקומי",
       canWrite: true, // local calendar supports creating standalone events
       events: localEvents,

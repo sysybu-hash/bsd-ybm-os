@@ -154,24 +154,25 @@ export const POST = withWorkspacesAuth(async (_req, { orgId, userId }, data) => 
       docType: type,
       asOf: docDate,
     });
-    if (!ita.success) {
+    if (!ita.success || !ita.allocationNumber) {
+      // אל נשאיר מסמך מעל הסף בלי הקצאה תקינה
+      await prisma.issuedDocument.delete({ where: { id: doc.id } }).catch(() => undefined);
       return NextResponse.json(
         {
-          document: doc,
-          itaError: ita.error ?? "בקשת מספר הקצאה נכשלה",
+          error: ita.error ?? "בקשת מספר הקצאה נכשלה",
+          code: "ita_allocation_required",
           itaIsMock: false,
+          thresholdNis: ita.thresholdNis,
         },
-        { status: 201 },
+        { status: 422 },
       );
     }
-    if (ita.allocationNumber) {
-      itaAllocationNumber = ita.allocationNumber;
-      itaIsMock = ita.isMock;
-      doc = await prisma.issuedDocument.update({
-        where: { id: doc.id },
-        data: { itaAllocationNumber },
-      });
-    }
+    itaAllocationNumber = ita.allocationNumber;
+    itaIsMock = ita.isMock;
+    doc = await prisma.issuedDocument.update({
+      where: { id: doc.id },
+      data: { itaAllocationNumber },
+    });
   }
 
   revalidatePath("/app/erp");

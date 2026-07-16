@@ -5,6 +5,7 @@ import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import { COOKIE_LOCALE } from "@/lib/i18n/config";
 import { negotiateLocale } from "@/lib/i18n/negotiate";
 import { normalizeNextAuthUrlEnv } from "@/lib/normalize-nextauth-url-env";
+import { edgeEnv } from "@/lib/env";
 import { applyNextAuthUrlEnv } from "@/lib/site-url";
 
 applyNextAuthUrlEnv();
@@ -56,7 +57,7 @@ export default async function middleware(request: NextRequest, _event: NextFetch
   const pathname = request.nextUrl.pathname;
 
   if (pathname === "/") {
-    const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+    const secret = edgeEnv.nextAuthSecret;
     const hasSessionCookie =
       request.cookies.has("next-auth.session-token") ||
       request.cookies.has("__Secure-next-auth.session-token") ||
@@ -66,7 +67,7 @@ export default async function middleware(request: NextRequest, _event: NextFetch
       const secureCookie =
         request.nextUrl.protocol === "https:" ||
         forwardedProto === "https" ||
-        Boolean(process.env.VERCEL);
+        edgeEnv.isVercel;
       const token = (await getToken({
         req: request,
         secret,
@@ -87,7 +88,7 @@ export default async function middleware(request: NextRequest, _event: NextFetch
   }
 
   const requiresSession = pathname.startsWith("/api/") && !isPublicApi(pathname);
-  const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+  const secret = edgeEnv.nextAuthSecret;
 
   if (requiresSession) {
     if (!secret) {
@@ -102,7 +103,7 @@ export default async function middleware(request: NextRequest, _event: NextFetch
     const secureCookie =
       request.nextUrl.protocol === "https:" ||
       forwardedProto === "https" ||
-      Boolean(process.env.VERCEL);
+      edgeEnv.isVercel;
 
     const token = (await getToken({
       req: request,

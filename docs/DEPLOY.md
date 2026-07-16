@@ -4,7 +4,8 @@
 
 - `CRON_SECRET` — `/api/cron/*`
 - `ANALYZE_QUEUE_SECRET` — worker של `analyze-queue/process`
-- `ITA_PRODUCTION_KEY` — מספר הקצאה מס הכנסה (ללא מפתח: mock בלבד, ראו [INTEGRATIONS-STUBS.md](./INTEGRATIONS-STUBS.md))
+- `ITA_PRODUCTION_KEY` — מספר הקצאה מס הכנסה (ללא מפתח: כשל ברור; mock רק עם `ALLOW_ITA_MOCK`, ראו [INTEGRATIONS-STUBS.md](./INTEGRATIONS-STUBS.md))
+- `CSP_STRICT` — `true` ב-Preview וב-Production
 
 ## Prisma
 
