@@ -99,9 +99,12 @@ export default function WorkspaceWindowChrome({
 
   const minimizeBtnClass = `${touchChromeBtn} workspace-chrome-btn--caption`;
 
-  const maximizeBtnClass = closeTouchTarget
-    ? "hidden"
-    : "workspace-chrome-btn workspace-chrome-btn--caption hidden desktop-vp:inline-flex";
+  // Always show maximize/restore when wired — never hide on maximize (closeTouchTarget).
+  // Optional: hide maximize only on mobile while *not* maximized.
+  const maximizeBtnClass =
+    maximizeHiddenOnMobile && !isMaximized
+      ? `${touchChromeBtn} workspace-chrome-btn--caption hidden desktop-vp:inline-flex`
+      : `${touchChromeBtn} workspace-chrome-btn--caption`;
 
   const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
   const ForwardIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
