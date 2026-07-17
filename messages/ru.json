@@ -140,6 +140,22 @@
       },
       "specializationConstruction": "Выберите специализацию строительства",
       "specializationBusiness": "Выберите направление бизнеса"
+    },
+    "hub": {
+      "register": {
+        "pendingTitle": "Заявка получена",
+        "pendingDesc": "Аккаунт создан и ожидает одобрения администратора. Пока нельзя войти в рабочую область.",
+        "pendingNext": "После одобрения вы получите письмо, затем войдите с email и паролем. Обычно это занимает до одного рабочего дня.",
+        "pendingLoginCta": "Вернуться ко входу",
+        "pendingContactCta": "Связаться с поддержкой",
+        "pendingHomeCta": "На главную",
+        "pendingMailSubject": "Заявка на регистрацию ожидает одобрения - BSD-YBM",
+        "successDesc": "Аккаунт создан. Переходим в рабочую область...",
+        "autoSignInFailed": "Аккаунт создан, но автоматический вход не удался - войдите вручную.",
+        "passwordInvalid": "Проверьте пароль и подтверждение",
+        "registerFailed": "Регистрация не удалась",
+        "networkError": "Ошибка сети"
+      }
     }
   },
   "dashboard": {
@@ -626,11 +642,21 @@
       "kindRecommended": "Рекомендуется",
       "kindOptional": "Опционально",
       "services": {
-        "database": { "name": "База данных" },
-        "aiEngine": { "name": "AI" },
-        "email": { "name": "Почта" },
-        "payments": { "name": "Платежи" },
-        "auth": { "name": "Аутентификация" }
+        "database": {
+          "name": "База данных"
+        },
+        "aiEngine": {
+          "name": "AI"
+        },
+        "email": {
+          "name": "Почта"
+        },
+        "payments": {
+          "name": "Платежи"
+        },
+        "auth": {
+          "name": "Аутентификация"
+        }
       },
       "serviceDetail": {
         "databaseConnected": "Подключено",
@@ -657,27 +683,90 @@
         "integrations": "Интеграции"
       },
       "env": {
-        "databaseUrl": { "label": "DATABASE_URL", "hint": "PostgreSQL (Neon)" },
-        "nextAuthSecret": { "label": "NEXTAUTH_SECRET", "hint": "Подпись session" },
-        "nextAuthUrl": { "label": "NEXTAUTH_URL", "hint": "Базовый URL auth" },
-        "googleOAuth": { "label": "GOOGLE_CLIENT_*", "hint": "OAuth Google" },
-        "googleAi": { "label": "GEMINI_API_KEY", "hint": "Основной AI (Gemini)" },
-        "openai": { "label": "OPENAI_API_KEY", "hint": "Альтернативный AI" },
-        "anthropic": { "label": "ANTHROPIC_API_KEY", "hint": "Альтернативный AI" },
-        "groq": { "label": "GROQ_API_KEY", "hint": "Альтернативный AI" },
-        "documentAi": { "label": "DOCUMENT_AI", "hint": "Google Document AI" },
-        "resend": { "label": "RESEND_API_KEY", "hint": "Почта через Resend" },
-        "smtpHost": { "label": "SMTP_HOST", "hint": "SMTP сервер" },
-        "mailFrom": { "label": "MAIL_FROM", "hint": "Адрес отправителя" },
-        "paypalClient": { "label": "PAYPAL_CLIENT_*", "hint": "PayPal REST API" },
-        "osPaypal": { "label": "OS_PAYPAL_*", "hint": "PayPal оператора" },
-        "payplus": { "label": "PAYPLUS_*", "hint": "PayPlus" },
-        "cronSecret": { "label": "CRON_SECRET", "hint": "Auth для cron" },
-        "analyzeQueueSecret": { "label": "ANALYZE_QUEUE_SECRET", "hint": "Auth очереди анализа" },
-        "upstashRedis": { "label": "UPSTASH_REDIS", "hint": "Redis / rate limit" },
-        "posthog": { "label": "POSTHOG_*", "hint": "Аналитика" },
-        "vapid": { "label": "VAPID_*", "hint": "Push-уведомления" },
-        "meckano": { "label": "MECKANO_API_KEY", "hint": "Интеграция Meckano" }
+        "databaseUrl": {
+          "label": "DATABASE_URL",
+          "hint": "PostgreSQL (Neon)"
+        },
+        "nextAuthSecret": {
+          "label": "NEXTAUTH_SECRET",
+          "hint": "Подпись session"
+        },
+        "nextAuthUrl": {
+          "label": "NEXTAUTH_URL",
+          "hint": "Базовый URL auth"
+        },
+        "googleOAuth": {
+          "label": "GOOGLE_CLIENT_*",
+          "hint": "OAuth Google"
+        },
+        "googleAi": {
+          "label": "GEMINI_API_KEY",
+          "hint": "Основной AI (Gemini)"
+        },
+        "openai": {
+          "label": "OPENAI_API_KEY",
+          "hint": "Альтернативный AI"
+        },
+        "anthropic": {
+          "label": "ANTHROPIC_API_KEY",
+          "hint": "Альтернативный AI"
+        },
+        "groq": {
+          "label": "GROQ_API_KEY",
+          "hint": "Альтернативный AI"
+        },
+        "documentAi": {
+          "label": "DOCUMENT_AI",
+          "hint": "Google Document AI"
+        },
+        "resend": {
+          "label": "RESEND_API_KEY",
+          "hint": "Почта через Resend"
+        },
+        "smtpHost": {
+          "label": "SMTP_HOST",
+          "hint": "SMTP сервер"
+        },
+        "mailFrom": {
+          "label": "MAIL_FROM",
+          "hint": "Адрес отправителя"
+        },
+        "paypalClient": {
+          "label": "PAYPAL_CLIENT_*",
+          "hint": "PayPal REST API"
+        },
+        "osPaypal": {
+          "label": "OS_PAYPAL_*",
+          "hint": "PayPal оператора"
+        },
+        "payplus": {
+          "label": "PAYPLUS_*",
+          "hint": "PayPlus"
+        },
+        "cronSecret": {
+          "label": "CRON_SECRET",
+          "hint": "Auth для cron"
+        },
+        "analyzeQueueSecret": {
+          "label": "ANALYZE_QUEUE_SECRET",
+          "hint": "Auth очереди анализа"
+        },
+        "upstashRedis": {
+          "label": "UPSTASH_REDIS",
+          "hint": "Redis / rate limit"
+        },
+        "posthog": {
+          "label": "POSTHOG_*",
+          "hint": "Аналитика"
+        },
+        "vapid": {
+          "label": "VAPID_*",
+          "hint": "Push-уведомления"
+        },
+        "meckano": {
+          "label": "MECKANO_API_KEY",
+          "hint": "Интеграция Meckano"
+        }
       }
     }
   },

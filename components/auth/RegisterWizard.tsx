@@ -1,14 +1,18 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Mail } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import PasswordFields from "@/components/auth/PasswordFields";
+import OsBootSplash from "@/components/os/boot/OsBootSplash";
 import { passwordMeetsRules } from "@/lib/auth/client-password";
+import { SITE_CONTACT } from "@/lib/site-contact";
 import {
   AUTH_INPUT,
   AUTH_BTN_PRIMARY,
+  AUTH_BTN_SECONDARY,
   AUTH_OPTION_CARD,
   AUTH_OPTION_CARD_ACTIVE,
   AUTH_OPTION_CARD_IDLE,
@@ -31,21 +35,49 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
     password, setPassword, passwordConfirm, setPasswordConfirm,
     industry, setIndustry,
     specialization, setSpecialization, specializationOptions,
-    busy, done, pendingApproval,
+    busy, done, pendingApproval, enteringWorkspace,
     goLogin, goNext, submit,
   } = s;
 
   const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
   const NextIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
-  const successBlock = (
+  if (enteringWorkspace) {
+    return <OsBootSplash phase="register" />;
+  }
+
+  const successBlock = pendingApproval ? (
+    <div className="rounded-xl border border-amber-500/30 bg-[color:var(--surface-soft)] p-6 text-center">
+      <Clock3 className="mx-auto mb-4 text-amber-500" size={48} aria-hidden />
+      <h3 className="text-lg font-black">{t("auth.hub.register.pendingTitle")}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-[color:var(--foreground-muted)]">
+        {t("auth.hub.register.pendingDesc")}
+      </p>
+      <p className="mt-3 text-xs leading-relaxed text-[color:var(--foreground-muted)]">
+        {t("auth.hub.register.pendingNext")}
+      </p>
+      <div className="mt-6 flex flex-col gap-2">
+        <button type="button" onClick={() => goLogin(true)} className={AUTH_BTN_PRIMARY}>
+          {t("auth.hub.register.pendingLoginCta")}
+        </button>
+        <a
+          href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent(t("auth.hub.register.pendingMailSubject"))}`}
+          className={`${AUTH_BTN_SECONDARY} inline-flex items-center justify-center gap-2`}
+        >
+          <Mail size={16} aria-hidden />
+          {t("auth.hub.register.pendingContactCta")}
+        </a>
+        <Link href="/" className="mt-1 text-xs font-bold text-[color:var(--accent)] hover:underline">
+          {t("auth.hub.register.pendingHomeCta")}
+        </Link>
+      </div>
+    </div>
+  ) : (
     <div className="rounded-xl border border-emerald-500/30 bg-[color:var(--surface-soft)] p-6 text-center">
       <CheckCircle2 className="mx-auto mb-4 text-emerald-500" size={48} aria-hidden />
-      <h3 className="text-lg font-black">
-        {pendingApproval ? t("auth.hub.register.pendingTitle") : t("auth.register.success.title")}
-      </h3>
+      <h3 className="text-lg font-black">{t("auth.register.success.title")}</h3>
       <p className="mt-3 text-sm text-[color:var(--foreground-muted)]">
-        {pendingApproval ? t("auth.hub.register.pendingDesc") : t("auth.hub.register.successDesc")}
+        {t("auth.hub.register.successDesc")}
       </p>
       <button type="button" onClick={() => goLogin(true)} className={`mt-6 ${AUTH_BTN_PRIMARY}`}>
         {t("auth.register.success.cta")}

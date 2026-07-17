@@ -1227,3 +1227,9 @@ html.light body:has(.marketing-cinematic) {
   position: relative;
   z-index: 1;
 }
+
+/* OS boot splash progress bar */
+@keyframes os-boot-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}

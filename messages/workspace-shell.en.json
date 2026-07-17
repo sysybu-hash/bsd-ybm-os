@@ -1299,6 +1299,17 @@
         "updated": "Rates updated for {date}"
       }
     },
+    "boot": {
+      "title": "BSD-YBM OS",
+      "phaseChunk": "Loading the system…",
+      "phaseSession": "Verifying sign-in…",
+      "phaseDesktop": "Loading desktop…",
+      "phaseReady": "Almost ready…",
+      "phaseRegister": "Preparing your account…",
+      "hintStart": "Starting the system",
+      "hintDesktop": "Restoring windows and preferences",
+      "hintAlmost": "Just a moment"
+    },
     "page": {
       "loading": "Loading workspace…",
       "systemReady": "System ready",

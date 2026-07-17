@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTenant } from "@/components/tenant/TenantContext";
@@ -10,6 +11,7 @@ import type { CustomerType } from "@prisma/client";
 import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construction-trades";
 import { BUSINESS_LINE_IDS, businessLineLabelHe } from "@/lib/business-lines";
 import { PRELOGIN_TRADE_COOKIE } from "@/lib/prelogin-trade-cookie";
+import { SESSION_MAX_AGE_DEFAULT_SEC } from "@/lib/auth/remember-preference";
 
 export type OrgTypeKey = "home" | "freelancer" | "company" | "enterprise";
 
@@ -45,6 +47,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [pendingApproval, setPendingApproval] = useState(false);
+  const [enteringWorkspace, setEnteringWorkspace] = useState(false);
 
   // Read prelogin cookie to pre-fill construction trade
   useEffect(() => {
@@ -123,11 +126,12 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
     }
     setBusy(true);
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
+          email: normalizedEmail,
           name: name.trim() || null,
           organizationName: orgName.trim(),
           orgType: TYPE_TO_CUSTOMER[orgType],
@@ -139,17 +143,52 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
           password,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; message?: string; error?: string };
-      if (!res.ok) { toast.error(data.error ?? data.message ?? t("auth.hub.register.registerFailed")); return; }
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+        pendingApproval?: boolean;
+      };
+      if (!res.ok) {
+        toast.error(data.error ?? data.message ?? t("auth.hub.register.registerFailed"));
+        return;
+      }
       // Clear prelogin cookie after successful registration
-      try { document.cookie = `${PRELOGIN_TRADE_COOKIE}=; max-age=0; path=/`; } catch { /* ignore */ }
+      try {
+        document.cookie = `${PRELOGIN_TRADE_COOKIE}=; max-age=0; path=/`;
+      } catch {
+        /* ignore */
+      }
       const msg = data.message ?? "";
-      const pendingApproval = msg.includes("מנהל") || msg.includes("אישור");
-      setPendingApproval(pendingApproval);
+      const isPending =
+        typeof data.pendingApproval === "boolean"
+          ? data.pendingApproval
+          : msg.includes("מנהל") || msg.includes("אישור");
+      setPendingApproval(isPending);
       setDone(true);
       void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelRegisterCompleted }) => {
-        trackFunnelRegisterCompleted({ pendingApproval, source: "register_wizard" });
+        trackFunnelRegisterCompleted({ pendingApproval: isPending, source: "register_wizard" });
       });
+
+      if (!isPending) {
+        setEnteringWorkspace(true);
+        const result = await signIn(
+          "credentials",
+          {
+            email: normalizedEmail,
+            password,
+            redirect: false,
+            callbackUrl: "/",
+          },
+          { maxAge: String(SESSION_MAX_AGE_DEFAULT_SEC) },
+        );
+        if (result?.ok) {
+          router.push("/");
+          return;
+        }
+        setEnteringWorkspace(false);
+        toast.error(t("auth.hub.register.autoSignInFailed"));
+      }
     } catch {
       toast.error(t("auth.hub.register.networkError"));
     } finally {
@@ -167,7 +206,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
     industry, setIndustry: handleSetIndustry,
     specialization, setSpecialization,
     specializationOptions,
-    busy, done, pendingApproval,
+    busy, done, pendingApproval, enteringWorkspace,
     goLogin, goNext, submit,
   };
 }

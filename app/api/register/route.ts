@@ -222,6 +222,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({
         ok: true,
+        pendingApproval: false,
         message: plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — התחברו בדף הכניסה."
           : "ההרשמה הושלמה. התחברו בדף הכניסה עם האימייל והסיסמה שבחרתם.",
@@ -312,6 +313,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({
         ok: true,
+        pendingApproval: false,
         message: plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל."
           : "ההרשמה הושלמה — התחברו במייל והסיסמה שבחרתם.",
@@ -399,6 +401,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({
       ok: true,
+      pendingApproval: !shouldApprove,
       message: shouldApprove
         ? plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — ניתן להתחבר כעת."

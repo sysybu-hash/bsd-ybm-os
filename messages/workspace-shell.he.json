@@ -1299,6 +1299,17 @@
         "updated": "שערים מעודכנים ל-{date}"
       }
     },
+    "boot": {
+      "title": "BSD-YBM OS",
+      "phaseChunk": "טוען את המערכת…",
+      "phaseSession": "מאמת כניסה…",
+      "phaseDesktop": "טוען שולחן עבודה…",
+      "phaseReady": "כמעט מוכן…",
+      "phaseRegister": "מכין את החשבון…",
+      "hintStart": "מפעיל את המערכת",
+      "hintDesktop": "מסדר חלונות והעדפות",
+      "hintAlmost": "עוד רגע ונכנסים"
+    },
     "page": {
       "loading": "טוען סביבת עבודה…",
       "systemReady": "המערכת מוכנה לעבודה",

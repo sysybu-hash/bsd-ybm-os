@@ -98,8 +98,14 @@
         "passwordRequirements": "At least 12 characters with upper, lower, and a digit.",
         "passwordInvalid": "Check password and confirmation",
         "pendingTitle": "Request received",
-        "pendingDesc": "After admin approval, sign in with your email and password.",
-        "successDesc": "Account created. Sign in with your email and password.",
+        "pendingDesc": "Your account was created and is waiting for admin approval. You cannot enter the workspace until then.",
+        "pendingNext": "After approval you will get an email, then sign in with the email and password you chose. This usually takes up to one business day.",
+        "pendingLoginCta": "Back to sign in",
+        "pendingContactCta": "Contact support",
+        "pendingHomeCta": "Back to home",
+        "pendingMailSubject": "Pending registration - BSD-YBM",
+        "successDesc": "Account created. Taking you to the workspace...",
+        "autoSignInFailed": "Account created, but automatic sign-in failed - please sign in manually.",
         "passwordGenerated": "Strong password generated",
         "passwordMismatch": "Passwords do not match",
         "registerFailed": "Registration failed",
@@ -999,11 +1005,21 @@
       "kindRecommended": "Recommended",
       "kindOptional": "Optional",
       "services": {
-        "database": { "name": "Database" },
-        "aiEngine": { "name": "AI engine" },
-        "email": { "name": "Email" },
-        "payments": { "name": "Payments" },
-        "auth": { "name": "Authentication" }
+        "database": {
+          "name": "Database"
+        },
+        "aiEngine": {
+          "name": "AI engine"
+        },
+        "email": {
+          "name": "Email"
+        },
+        "payments": {
+          "name": "Payments"
+        },
+        "auth": {
+          "name": "Authentication"
+        }
       },
       "serviceDetail": {
         "databaseConnected": "Connected",
@@ -1030,27 +1046,90 @@
         "integrations": "Integrations"
       },
       "env": {
-        "databaseUrl": { "label": "DATABASE_URL", "hint": "PostgreSQL (Neon) connection" },
-        "nextAuthSecret": { "label": "NEXTAUTH_SECRET", "hint": "Session and cookie signing" },
-        "nextAuthUrl": { "label": "NEXTAUTH_URL", "hint": "Auth base URL" },
-        "googleOAuth": { "label": "GOOGLE_CLIENT_*", "hint": "OAuth for Drive and Google integrations" },
-        "googleAi": { "label": "GEMINI_API_KEY", "hint": "Primary AI engine (Gemini)" },
-        "openai": { "label": "OPENAI_API_KEY", "hint": "Alternative AI provider" },
-        "anthropic": { "label": "ANTHROPIC_API_KEY", "hint": "Alternative AI provider" },
-        "groq": { "label": "GROQ_API_KEY", "hint": "Alternative AI provider" },
-        "documentAi": { "label": "DOCUMENT_AI", "hint": "Google Document AI for scanning" },
-        "resend": { "label": "RESEND_API_KEY", "hint": "Email via Resend" },
-        "smtpHost": { "label": "SMTP_HOST", "hint": "Alternative SMTP server" },
-        "mailFrom": { "label": "MAIL_FROM", "hint": "Default sender address" },
-        "paypalClient": { "label": "PAYPAL_CLIENT_*", "hint": "PayPal REST API" },
-        "osPaypal": { "label": "OS_PAYPAL_*", "hint": "Platform operator PayPal" },
-        "payplus": { "label": "PAYPLUS_*", "hint": "PayPlus for Israeli payments" },
-        "cronSecret": { "label": "CRON_SECRET", "hint": "Cron endpoint authentication" },
-        "analyzeQueueSecret": { "label": "ANALYZE_QUEUE_SECRET", "hint": "Document analyze queue auth" },
-        "upstashRedis": { "label": "UPSTASH_REDIS", "hint": "Redis / rate limiting" },
-        "posthog": { "label": "POSTHOG_*", "hint": "Analytics and tracking" },
-        "vapid": { "label": "VAPID_*", "hint": "Browser push notifications" },
-        "meckano": { "label": "MECKANO_API_KEY", "hint": "Meckano integration" }
+        "databaseUrl": {
+          "label": "DATABASE_URL",
+          "hint": "PostgreSQL (Neon) connection"
+        },
+        "nextAuthSecret": {
+          "label": "NEXTAUTH_SECRET",
+          "hint": "Session and cookie signing"
+        },
+        "nextAuthUrl": {
+          "label": "NEXTAUTH_URL",
+          "hint": "Auth base URL"
+        },
+        "googleOAuth": {
+          "label": "GOOGLE_CLIENT_*",
+          "hint": "OAuth for Drive and Google integrations"
+        },
+        "googleAi": {
+          "label": "GEMINI_API_KEY",
+          "hint": "Primary AI engine (Gemini)"
+        },
+        "openai": {
+          "label": "OPENAI_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "anthropic": {
+          "label": "ANTHROPIC_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "groq": {
+          "label": "GROQ_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "documentAi": {
+          "label": "DOCUMENT_AI",
+          "hint": "Google Document AI for scanning"
+        },
+        "resend": {
+          "label": "RESEND_API_KEY",
+          "hint": "Email via Resend"
+        },
+        "smtpHost": {
+          "label": "SMTP_HOST",
+          "hint": "Alternative SMTP server"
+        },
+        "mailFrom": {
+          "label": "MAIL_FROM",
+          "hint": "Default sender address"
+        },
+        "paypalClient": {
+          "label": "PAYPAL_CLIENT_*",
+          "hint": "PayPal REST API"
+        },
+        "osPaypal": {
+          "label": "OS_PAYPAL_*",
+          "hint": "Platform operator PayPal"
+        },
+        "payplus": {
+          "label": "PAYPLUS_*",
+          "hint": "PayPlus for Israeli payments"
+        },
+        "cronSecret": {
+          "label": "CRON_SECRET",
+          "hint": "Cron endpoint authentication"
+        },
+        "analyzeQueueSecret": {
+          "label": "ANALYZE_QUEUE_SECRET",
+          "hint": "Document analyze queue auth"
+        },
+        "upstashRedis": {
+          "label": "UPSTASH_REDIS",
+          "hint": "Redis / rate limiting"
+        },
+        "posthog": {
+          "label": "POSTHOG_*",
+          "hint": "Analytics and tracking"
+        },
+        "vapid": {
+          "label": "VAPID_*",
+          "hint": "Browser push notifications"
+        },
+        "meckano": {
+          "label": "MECKANO_API_KEY",
+          "hint": "Meckano integration"
+        }
       }
     }
   },

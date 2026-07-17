@@ -1299,6 +1299,17 @@
         "updated": "Курсы на {date}"
       }
     },
+    "boot": {
+      "title": "BSD-YBM OS",
+      "phaseChunk": "Загрузка системы…",
+      "phaseSession": "Проверка входа…",
+      "phaseDesktop": "Загрузка рабочего стола…",
+      "phaseReady": "Почти готово…",
+      "phaseRegister": "Подготовка аккаунта…",
+      "hintStart": "Запуск системы",
+      "hintDesktop": "Восстановление окон и настроек",
+      "hintAlmost": "Ещё мгновение"
+    },
     "page": {
       "loading": "Загрузка рабочей области…",
       "systemReady": "Система готова",

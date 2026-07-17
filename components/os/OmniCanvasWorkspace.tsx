@@ -16,6 +16,8 @@ import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityR
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
 import { useMobileViewportSync } from "@/hooks/use-mobile-viewport-sync";
 import { useLockPortraitOrientation } from "@/hooks/use-lock-portrait-orientation";
+import OsBootSplash from "@/components/os/boot/OsBootSplash";
+import { useOsBootGate } from "@/components/os/boot/useOsBootGate";
 
 /** Deferred chrome — not needed for LCP / first paint */
 const OSSidebar = dynamic(() => import("@/components/os/layout/OSSidebar"), { ssr: false });
@@ -99,28 +101,30 @@ export default function OmniCanvasWorkspace() {
     };
   }, [hasMaximizedWidget]);
 
-  // Show spinner only on first load, NOT on silent background session refetches
-  if (!mounted || (!everAuthenticated && sessionStatus === "loading")) {
-    return (
-      <div
-        className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
-        dir={dir}
-      >
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"
-          role="progressbar"
-          aria-label={t("workspaceWidgets.page.loading")}
-        />
-        <p className="mt-4 text-sm font-semibold">{t("workspaceWidgets.page.loading")}</p>
-      </div>
-    );
+  const sessionBlocking = !everAuthenticated && sessionStatus === "loading";
+  const { showSplash, fading: bootFading, phase: bootPhase } = useOsBootGate({
+    mounted,
+    sessionBlocking,
+    hasHydrated,
+  });
+
+  // Session still resolving — boot only (no empty chrome)
+  if (!mounted || sessionBlocking) {
+    return <OsBootSplash phase="session" />;
   }
 
   return (
     <LauncherConfigProvider>
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
-    <main className="quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
+    {showSplash ? <OsBootSplash phase={bootPhase} fading={bootFading} /> : null}
+    <main
+      className={`quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300 ${
+        showSplash ? "pointer-events-none" : ""
+      }`}
+      dir={dir}
+      aria-hidden={showSplash}
+    >
       <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
       <PasskeyOfferModal />
       <LauncherEditBanner />

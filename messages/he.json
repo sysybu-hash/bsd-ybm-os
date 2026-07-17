@@ -98,8 +98,14 @@
         "passwordRequirements": "לפחות 12 תווים, אות גדולה, קטנה וספרה.",
         "passwordInvalid": "בדקו את הסיסמה ואימותה",
         "pendingTitle": "הבקשה נקלטה",
-        "pendingDesc": "לאחר אישור מנהל המערכת התחברו במייל והסיסמה.",
-        "successDesc": "החשבון נוצר. התחברו עם האימייל והסיסמה.",
+        "pendingDesc": "החשבון נוצר וממתין לאישור מנהל המערכת. עד אז לא ניתן להיכנס לסביבת העבודה.",
+        "pendingNext": "לאחר האישור תקבלו מייל, ואז אפשר להתחבר עם האימייל והסיסמה שבחרתם. בדרך כלל זה לוקח עד יום עסקים אחד.",
+        "pendingLoginCta": "חזרה למסך התחברות",
+        "pendingContactCta": "פנייה לתמיכה",
+        "pendingHomeCta": "חזרה לדף הבית",
+        "pendingMailSubject": "בקשת הרשמה ממתינה לאישור - BSD-YBM",
+        "successDesc": "החשבון נוצר. מעבירים אתכם לסביבת העבודה...",
+        "autoSignInFailed": "החשבון נוצר, אך הכניסה האוטומטית נכשלה - התחברו ידנית.",
         "passwordGenerated": "נוצרה סיסמה חזקה",
         "passwordMismatch": "הסיסמאות אינן תואמות",
         "registerFailed": "הרשמה נכשלה",
@@ -1026,11 +1032,21 @@
       "kindRecommended": "מומלץ",
       "kindOptional": "אופציונלי",
       "services": {
-        "database": { "name": "מסד נתונים" },
-        "aiEngine": { "name": "מנוע AI" },
-        "email": { "name": "דואר (מייל)" },
-        "payments": { "name": "תשלומים" },
-        "auth": { "name": "אימות" }
+        "database": {
+          "name": "מסד נתונים"
+        },
+        "aiEngine": {
+          "name": "מנוע AI"
+        },
+        "email": {
+          "name": "דואר (מייל)"
+        },
+        "payments": {
+          "name": "תשלומים"
+        },
+        "auth": {
+          "name": "אימות"
+        }
       },
       "serviceDetail": {
         "databaseConnected": "מחובר",
@@ -1057,27 +1073,90 @@
         "integrations": "אינטגרציות"
       },
       "env": {
-        "databaseUrl": { "label": "DATABASE_URL", "hint": "חיבור PostgreSQL (Neon)" },
-        "nextAuthSecret": { "label": "NEXTAUTH_SECRET", "hint": "חתימת session ו-cookies" },
-        "nextAuthUrl": { "label": "NEXTAUTH_URL", "hint": "כתובת בסיס לאימות" },
-        "googleOAuth": { "label": "GOOGLE_CLIENT_*", "hint": "OAuth ל-Drive ואינטגרציות Google" },
-        "googleAi": { "label": "GEMINI_API_KEY", "hint": "מנוע AI ראשי (Gemini)" },
-        "openai": { "label": "OPENAI_API_KEY", "hint": "ספק AI חלופי" },
-        "anthropic": { "label": "ANTHROPIC_API_KEY", "hint": "ספק AI חלופי" },
-        "groq": { "label": "GROQ_API_KEY", "hint": "ספק AI חלופי" },
-        "documentAi": { "label": "DOCUMENT_AI", "hint": "Google Document AI לסריקה" },
-        "resend": { "label": "RESEND_API_KEY", "hint": "שליחת מייל דרך Resend" },
-        "smtpHost": { "label": "SMTP_HOST", "hint": "שרת SMTP חלופי" },
-        "mailFrom": { "label": "MAIL_FROM", "hint": "כתובת שולח ברירת מחדל" },
-        "paypalClient": { "label": "PAYPAL_CLIENT_*", "hint": "PayPal REST API" },
-        "osPaypal": { "label": "OS_PAYPAL_*", "hint": "PayPal של מפעיל הפלטפורמה" },
-        "payplus": { "label": "PAYPLUS_*", "hint": "PayPlus לתשלומים ישראליים" },
-        "cronSecret": { "label": "CRON_SECRET", "hint": "אימות קריאות cron" },
-        "analyzeQueueSecret": { "label": "ANALYZE_QUEUE_SECRET", "hint": "אימות תור ניתוח מסמכים" },
-        "upstashRedis": { "label": "UPSTASH_REDIS", "hint": "Redis / rate limit" },
-        "posthog": { "label": "POSTHOG_*", "hint": "אנליטיקה ומעקב" },
-        "vapid": { "label": "VAPID_*", "hint": "התראות push בדפדפן" },
-        "meckano": { "label": "MECKANO_API_KEY", "hint": "אינטגרציית Meckano" }
+        "databaseUrl": {
+          "label": "DATABASE_URL",
+          "hint": "חיבור PostgreSQL (Neon)"
+        },
+        "nextAuthSecret": {
+          "label": "NEXTAUTH_SECRET",
+          "hint": "חתימת session ו-cookies"
+        },
+        "nextAuthUrl": {
+          "label": "NEXTAUTH_URL",
+          "hint": "כתובת בסיס לאימות"
+        },
+        "googleOAuth": {
+          "label": "GOOGLE_CLIENT_*",
+          "hint": "OAuth ל-Drive ואינטגרציות Google"
+        },
+        "googleAi": {
+          "label": "GEMINI_API_KEY",
+          "hint": "מנוע AI ראשי (Gemini)"
+        },
+        "openai": {
+          "label": "OPENAI_API_KEY",
+          "hint": "ספק AI חלופי"
+        },
+        "anthropic": {
+          "label": "ANTHROPIC_API_KEY",
+          "hint": "ספק AI חלופי"
+        },
+        "groq": {
+          "label": "GROQ_API_KEY",
+          "hint": "ספק AI חלופי"
+        },
+        "documentAi": {
+          "label": "DOCUMENT_AI",
+          "hint": "Google Document AI לסריקה"
+        },
+        "resend": {
+          "label": "RESEND_API_KEY",
+          "hint": "שליחת מייל דרך Resend"
+        },
+        "smtpHost": {
+          "label": "SMTP_HOST",
+          "hint": "שרת SMTP חלופי"
+        },
+        "mailFrom": {
+          "label": "MAIL_FROM",
+          "hint": "כתובת שולח ברירת מחדל"
+        },
+        "paypalClient": {
+          "label": "PAYPAL_CLIENT_*",
+          "hint": "PayPal REST API"
+        },
+        "osPaypal": {
+          "label": "OS_PAYPAL_*",
+          "hint": "PayPal של מפעיל הפלטפורמה"
+        },
+        "payplus": {
+          "label": "PAYPLUS_*",
+          "hint": "PayPlus לתשלומים ישראליים"
+        },
+        "cronSecret": {
+          "label": "CRON_SECRET",
+          "hint": "אימות קריאות cron"
+        },
+        "analyzeQueueSecret": {
+          "label": "ANALYZE_QUEUE_SECRET",
+          "hint": "אימות תור ניתוח מסמכים"
+        },
+        "upstashRedis": {
+          "label": "UPSTASH_REDIS",
+          "hint": "Redis / rate limit"
+        },
+        "posthog": {
+          "label": "POSTHOG_*",
+          "hint": "אנליטיקה ומעקב"
+        },
+        "vapid": {
+          "label": "VAPID_*",
+          "hint": "התראות push בדפדפן"
+        },
+        "meckano": {
+          "label": "MECKANO_API_KEY",
+          "hint": "אינטגרציית Meckano"
+        }
       }
     }
   },
