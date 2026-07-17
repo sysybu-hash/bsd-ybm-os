@@ -26,7 +26,8 @@ export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
   useEffect(() => {
     const remaining = Math.max(
       0,
-      OS_BOOT_MIN_MS - ((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt.current),
+      OS_BOOT_MIN_MS -
+        ((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt.current),
     );
     const id = window.setTimeout(() => setMinElapsed(true), remaining);
     return () => window.clearTimeout(id);
@@ -34,14 +35,19 @@ export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
 
   const coreReady = mounted && !sessionBlocking && hasHydrated && minElapsed;
 
+  // Do NOT put `fading` in deps — that cleared the hide timeout and left the desktop
+  // with pointer-events-none forever (invisible overlay / unclickable UI).
   useEffect(() => {
-    if (!coreReady || hidden || fading) return;
+    if (!coreReady || hidden) return;
     setFading(true);
     const id = window.setTimeout(() => setHidden(true), OS_BOOT_FADE_MS);
     return () => window.clearTimeout(id);
-  }, [coreReady, hidden, fading]);
+  }, [coreReady, hidden]);
 
   const showSplash = !hidden;
+  /** While fading, splash already ignores pointers — keep the desktop clickable. */
+  const blockPointer = showSplash && !fading;
+
   const phase =
     !mounted || sessionBlocking
       ? ("session" as const)
@@ -49,5 +55,5 @@ export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
         ? ("desktop" as const)
         : ("ready" as const);
 
-  return { showSplash, fading, phase };
+  return { showSplash, fading, phase, blockPointer };
 }

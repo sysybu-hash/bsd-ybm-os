@@ -102,7 +102,7 @@ export default function OmniCanvasWorkspace() {
   }, [hasMaximizedWidget]);
 
   const sessionBlocking = !everAuthenticated && sessionStatus === "loading";
-  const { showSplash, fading: bootFading, phase: bootPhase } = useOsBootGate({
+  const { showSplash, fading: bootFading, phase: bootPhase, blockPointer } = useOsBootGate({
     mounted,
     sessionBlocking,
     hasHydrated,
@@ -120,10 +120,10 @@ export default function OmniCanvasWorkspace() {
     {showSplash ? <OsBootSplash phase={bootPhase} fading={bootFading} /> : null}
     <main
       className={`quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300 ${
-        showSplash ? "pointer-events-none" : ""
+        blockPointer ? "pointer-events-none" : ""
       }`}
       dir={dir}
-      aria-hidden={showSplash}
+      aria-hidden={blockPointer}
     >
       <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
       <PasskeyOfferModal />
