@@ -9,6 +9,7 @@ import {
   parseOrgMailPrefs,
   type OrgMailPrefs,
 } from "@/lib/mail/org-mail-prefs-shared";
+import { isJewishRestDay } from "@/lib/jewish-calendar/is-jewish-rest-day";
 
 export {
   DEFAULT_ORG_MAIL_PREFS,
@@ -50,34 +51,45 @@ export async function getOrgMailPrefsForEmail(email: string): Promise<OrgMailPre
   return getOrgMailPrefs(user.organizationId);
 }
 
+function orgAllowsByJewishRestDay(prefs: OrgMailPrefs, now: Date = new Date()): boolean {
+  if (prefs.respectJewishRestDays === false) return true;
+  return !isJewishRestDay(now);
+}
+
+function orgChannelAllowed(prefs: OrgMailPrefs, channelOn: boolean, now?: Date): boolean {
+  if (prefs.masterEnabled === false) return false;
+  if (!channelOn) return false;
+  return orgAllowsByJewishRestDay(prefs, now);
+}
+
 export async function orgAllowsDigest(organizationId: string): Promise<boolean> {
   const p = await getOrgMailPrefs(organizationId);
-  return p.masterEnabled !== false && p.digestEnabled !== false;
+  return orgChannelAllowed(p, p.digestEnabled !== false);
 }
 
 export async function orgAllowsLifecycle(organizationId: string): Promise<boolean> {
   const p = await getOrgMailPrefs(organizationId);
-  return p.masterEnabled !== false && p.lifecycleEnabled !== false;
+  return orgChannelAllowed(p, p.lifecycleEnabled !== false);
 }
 
 export async function orgAllowsNotificationEmails(organizationId: string): Promise<boolean> {
   const p = await getOrgMailPrefs(organizationId);
-  return p.masterEnabled !== false && p.notificationBridgeEnabled !== false;
+  return orgChannelAllowed(p, p.notificationBridgeEnabled !== false);
 }
 
 export async function orgAllowsCollectionEmails(organizationId: string): Promise<boolean> {
   const p = await getOrgMailPrefs(organizationId);
-  return p.masterEnabled !== false && p.collectionRemindersEnabled !== false;
+  return orgChannelAllowed(p, p.collectionRemindersEnabled !== false);
 }
 
 export async function emailAllowsDigest(email: string): Promise<boolean> {
   const prefs = await getOrgMailPrefsForEmail(email);
   if (!prefs) return true; // no org → allow (platform admin digests etc.)
-  return prefs.masterEnabled !== false && prefs.digestEnabled !== false;
+  return orgChannelAllowed(prefs, prefs.digestEnabled !== false);
 }
 
 export async function emailAllowsLifecycle(email: string): Promise<boolean> {
   const prefs = await getOrgMailPrefsForEmail(email);
   if (!prefs) return true;
-  return prefs.masterEnabled !== false && prefs.lifecycleEnabled !== false;
+  return orgChannelAllowed(prefs, prefs.lifecycleEnabled !== false);
 }

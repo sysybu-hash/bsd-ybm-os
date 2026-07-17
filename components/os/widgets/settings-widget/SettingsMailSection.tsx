@@ -12,7 +12,7 @@ type SettingsMailSectionProps = {
 };
 
 const CHANNELS: Array<{
-  key: keyof Omit<OrgMailPrefs, "masterEnabled">;
+  key: keyof Omit<OrgMailPrefs, "masterEnabled" | "respectJewishRestDays">;
   labelKey: string;
   hintKey: string;
 }> = [
@@ -105,6 +105,28 @@ export function SettingsMailSection({ t, canManage }: SettingsMailSectionProps) 
           className="h-5 w-5 accent-sky-600"
           checked={masterOn}
           onChange={(e) => setPrefs((p) => ({ ...p, masterEnabled: e.target.checked }))}
+        />
+      </label>
+
+      <label
+        className={`mb-5 flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-[color:var(--border-main)] px-4 py-3 ${
+          masterOn ? "" : "pointer-events-none opacity-50"
+        }`}
+      >
+        <div>
+          <p className="text-sm font-bold text-[color:var(--foreground-main)]">
+            {t(`${S}.respectRestDays`)}
+          </p>
+          <p className="text-xs text-[color:var(--foreground-muted)]">
+            {t(`${S}.respectRestDaysHint`)}
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          className="mt-1 h-5 w-5 accent-sky-600"
+          checked={prefs.respectJewishRestDays !== false}
+          disabled={!masterOn}
+          onChange={(e) => setPrefs((p) => ({ ...p, respectJewishRestDays: e.target.checked }))}
         />
       </label>
 

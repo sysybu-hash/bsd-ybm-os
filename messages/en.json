@@ -986,7 +986,9 @@
       "runLifecycleNow": "Send subscription reminders now",
       "digestRan": "Daily summary ran",
       "lifecycleRan": "Subscription reminders ran",
-      "actionFailed": "Action failed"
+      "actionFailed": "Action failed",
+      "respectRestDays": "Do not send on Shabbat and Jewish holidays",
+      "respectRestDaysHint": "When on — no outbound mail from candle lighting (Jerusalem) until havdalah, including Chol HaMoed."
     },
     "health": {
       "title": "System health",

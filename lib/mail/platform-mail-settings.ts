@@ -13,6 +13,7 @@ import {
   getMailFrom as getEnvMailFrom,
   getMailReplyTo as getEnvMailReplyTo,
 } from "@/lib/mail-config";
+import { isJewishRestDay } from "@/lib/jewish-calendar/is-jewish-rest-day";
 
 export type { PlatformMailConfig };
 
@@ -26,29 +27,46 @@ export async function isPlatformMailMasterEnabled(): Promise<boolean> {
   return mail.masterEnabled !== false;
 }
 
+/** When respectJewishRestDays is on (default), block all outbound on שבת/חג/מועד. */
+export async function platformAllowsByJewishRestDay(now: Date = new Date()): Promise<boolean> {
+  const mail = await getPlatformMailConfig();
+  if (mail.respectJewishRestDays === false) return true;
+  return !isJewishRestDay(now);
+}
+
+async function platformChannelAllowed(
+  channelEnabled: boolean,
+  now: Date = new Date(),
+): Promise<boolean> {
+  const mail = await getPlatformMailConfig();
+  if (mail.masterEnabled === false) return false;
+  if (!channelEnabled) return false;
+  return platformAllowsByJewishRestDay(now);
+}
+
 export async function canSendTransactionalMail(): Promise<boolean> {
   const mail = await getPlatformMailConfig();
-  return mail.masterEnabled !== false && mail.transactionalEnabled !== false;
+  return platformChannelAllowed(mail.transactionalEnabled !== false);
 }
 
 export async function canFlushEmailDigest(): Promise<boolean> {
   const mail = await getPlatformMailConfig();
-  return mail.masterEnabled !== false && mail.digestEnabled !== false;
+  return platformChannelAllowed(mail.digestEnabled !== false);
 }
 
 export async function canRunLifecycleEmails(): Promise<boolean> {
   const mail = await getPlatformMailConfig();
-  return mail.masterEnabled !== false && mail.lifecycleEnabled !== false;
+  return platformChannelAllowed(mail.lifecycleEnabled !== false);
 }
 
 export async function canEnqueueNotificationEmails(): Promise<boolean> {
   const mail = await getPlatformMailConfig();
-  return mail.masterEnabled !== false && mail.notificationBridgeEnabled !== false;
+  return platformChannelAllowed(mail.notificationBridgeEnabled !== false);
 }
 
 export async function canSendCollectionReminderEmails(): Promise<boolean> {
   const mail = await getPlatformMailConfig();
-  return mail.masterEnabled !== false && mail.collectionRemindersEnabled !== false;
+  return platformChannelAllowed(mail.collectionRemindersEnabled !== false);
 }
 
 /** From address: platform override if set, else env. */
@@ -80,6 +98,7 @@ export function mailConfigSummary(cfg: PlatformConfig): {
       lifecycle: cfg.mail.lifecycleEnabled,
       notificationBridge: cfg.mail.notificationBridgeEnabled,
       collectionReminders: cfg.mail.collectionRemindersEnabled,
+      respectJewishRestDays: cfg.mail.respectJewishRestDays,
     },
     fromOverride: cfg.mail.fromOverride,
     replyToOverride: cfg.mail.replyToOverride,

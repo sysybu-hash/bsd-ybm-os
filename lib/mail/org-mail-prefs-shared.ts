@@ -12,6 +12,8 @@ export const orgMailPrefsSchema = z.object({
   lifecycleEnabled: z.boolean().default(true),
   notificationBridgeEnabled: z.boolean().default(true),
   collectionRemindersEnabled: z.boolean().default(true),
+  /** Do not send org mail on Shabbat / Yom Tov / Chol HaMoed (Asia/Jerusalem) */
+  respectJewishRestDays: z.boolean().default(true),
 });
 
 export type OrgMailPrefs = z.infer<typeof orgMailPrefsSchema>;
@@ -22,6 +24,7 @@ export const DEFAULT_ORG_MAIL_PREFS: OrgMailPrefs = {
   lifecycleEnabled: true,
   notificationBridgeEnabled: true,
   collectionRemindersEnabled: true,
+  respectJewishRestDays: true,
 };
 
 export function parseOrgMailPrefs(raw: unknown): OrgMailPrefs {

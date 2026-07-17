@@ -982,7 +982,9 @@
           "notificationsHint": "e.g. overdue tasks, newly scanned invoices.",
           "collection": "Collection reminders to clients",
           "collectionHint": "Payment reminders with invoice attached."
-        }
+        },
+        "respectRestDays": "Do not send on Shabbat and Jewish holidays",
+        "respectRestDaysHint": "When on — this org will not send optional emails on Shabbat / Yom Tov / Chol HaMoed (Jerusalem time)."
       },
       "reconnectGoogle": "Reconnect Google",
       "assignSection": "Assign users to organization",

@@ -35,6 +35,8 @@ export const platformMailSchema = z.object({
   notificationBridgeEnabled: z.boolean().default(true),
   /** Collection reminder emails */
   collectionRemindersEnabled: z.boolean().default(true),
+  /** Do not send mail on Shabbat / Yom Tov / Chol HaMoed (Asia/Jerusalem) */
+  respectJewishRestDays: z.boolean().default(true),
   /** Override From (empty = MAIL_FROM / EMAIL_FROM env) */
   fromOverride: z.string().max(200).default(""),
   /** Override Reply-To (empty = MAIL_REPLY_TO / SMTP_USER) */
@@ -54,6 +56,7 @@ export const DEFAULT_PLATFORM_MAIL: PlatformMailConfig = {
   lifecycleEnabled: true,
   notificationBridgeEnabled: true,
   collectionRemindersEnabled: true,
+  respectJewishRestDays: true,
   fromOverride: "",
   replyToOverride: "",
   lifecycleTrialDaysBefore: 3,

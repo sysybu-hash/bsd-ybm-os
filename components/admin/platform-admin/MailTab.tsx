@@ -177,6 +177,29 @@ export function MailTab({
         ) : null}
       </div>
 
+      {/* Jewish rest days */}
+      <label
+        className={`flex cursor-pointer items-start justify-between gap-3 rounded-2xl border border-[color:var(--border-main)] px-4 py-3 ${
+          sendingOn ? "" : "pointer-events-none opacity-45"
+        }`}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-bold">{t("platformAdmin.mail.respectRestDays")}</p>
+          <p className="text-xs text-[color:var(--foreground-muted)]">
+            {t("platformAdmin.mail.respectRestDaysHint")}
+          </p>
+        </div>
+        <input
+          type="checkbox"
+          className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+          checked={mail.respectJewishRestDays !== false}
+          disabled={!sendingOn}
+          onChange={(e) =>
+            setPlatformConfig(patchMail(platformConfig, { respectJewishRestDays: e.target.checked }))
+          }
+        />
+      </label>
+
       {/* Simple channels */}
       <div className={`space-y-3 ${sendingOn ? "" : "pointer-events-none opacity-45"}`}>
         <p className="text-xs font-bold uppercase tracking-wide text-[color:var(--foreground-muted)]">
