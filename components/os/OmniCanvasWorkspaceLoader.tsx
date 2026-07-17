@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import OsBootSplash from "@/components/os/boot/OsBootSplash";
 
 void import("@/components/os/OmniCanvasWorkspace");
 
 const OmniCanvasWorkspace = dynamic(() => import("@/components/os/OmniCanvasWorkspace"), {
-  loading: () => <OsBootSplash phase="chunk" />,
+  ssr: false,
+  // Boot splash lives in workspace/layout OsBootHost — do not remount it here.
+  loading: () => null,
 });
 
 /** טוען workspace רק למשתמשים מחוברים — לא נכלל ב-bundle של אורחי `/`. */

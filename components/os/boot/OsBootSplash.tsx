@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useI18n } from "@/components/os/system/I18nProvider";
-import { BRAND_LOGO_ALT, BRAND_LOGO_NIGHT_SRC, BRAND_WORDMARK } from "@/lib/brand";
+import { BRAND_LOGO_ALT, BRAND_LOGO_DAY_SRC, BRAND_LOGO_NIGHT_SRC, BRAND_WORDMARK } from "@/lib/brand";
 
 const BOOT = "workspaceWidgets.boot";
 
@@ -25,12 +25,12 @@ const PHASE_KEY: Record<OsBootPhase, string> = {
 };
 
 /** Keep in sync with useOsBootGate hide timeout */
-export const OS_BOOT_MIN_MS = 900;
-export const OS_BOOT_FADE_MS = 750;
+export const OS_BOOT_MIN_MS = 700;
+export const OS_BOOT_FADE_MS = 500;
 
 /**
- * Windows-style full-screen boot splash until the OS shell is ready.
- * Crossfades to the desktop (lightens then fades) to avoid a hard jump.
+ * Boot splash matched to the desktop theme background so dismiss is a soft
+ * content fade — not a dark→light full-screen jump.
  */
 export default function OsBootSplash({
   phase = "session",
@@ -39,25 +39,26 @@ export default function OsBootSplash({
 }: OsBootSplashProps) {
   const { t, dir } = useI18n();
   const [tick, setTick] = useState(0);
+  const [logoSrc, setLogoSrc] = useState(BRAND_LOGO_NIGHT_SRC);
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), 2200);
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const dark = document.documentElement.classList.contains("dark");
+    setLogoSrc(dark ? BRAND_LOGO_NIGHT_SRC : BRAND_LOGO_DAY_SRC);
+  }, []);
+
   const rotatingKeys = ["hintStart", "hintDesktop", "hintAlmost"] as const;
   const hint = t(`${BOOT}.${rotatingKeys[tick % rotatingKeys.length]}`);
   const status = t(`${BOOT}.${PHASE_KEY[phase]}`);
-  const blending = fading || phase === "ready";
 
   return (
     <div
-      className={`fixed inset-0 z-[3000] flex flex-col items-center justify-center transition-[opacity,background-color,color] duration-700 ease-out ${
-        fading ? "pointer-events-none opacity-0" : "opacity-100"
-      } ${
-        blending
-          ? "bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
-          : "bg-[#0b1220] text-slate-100"
+      className={`fixed inset-0 z-[3000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-main)] ${
+        fading ? "pointer-events-none" : ""
       } ${className}`}
       dir={dir}
       role="status"
@@ -65,24 +66,13 @@ export default function OsBootSplash({
       aria-busy={!fading}
     >
       <div
-        className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${
-          blending ? "opacity-0" : "opacity-40"
-        }`}
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% 20%, rgba(56,189,248,0.18), transparent 55%), radial-gradient(ellipse 60% 40% at 70% 80%, rgba(99,102,241,0.12), transparent 50%)",
-        }}
-        aria-hidden
-      />
-
-      <div
-        className={`relative z-10 flex flex-col items-center px-6 text-center transition-opacity duration-500 ${
-          blending ? "opacity-0" : "opacity-100"
+        className={`relative z-10 flex flex-col items-center px-6 text-center transition-opacity duration-500 ease-out ${
+          fading || phase === "ready" ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-sky-900/40">
+        <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">
           <Image
-            src={BRAND_LOGO_NIGHT_SRC}
+            src={logoSrc}
             alt={BRAND_LOGO_ALT}
             width={64}
             height={64}
@@ -92,20 +82,20 @@ export default function OsBootSplash({
           />
         </div>
 
-        <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.35em] text-slate-400">
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.35em] text-[color:var(--foreground-muted)]">
           {BRAND_WORDMARK}
         </p>
-        <h1 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
-          {t(`${BOOT}.title`)}
-        </h1>
-        <p className="mt-3 min-h-[1.25rem] text-sm text-slate-300">{status}</p>
-        <p className="mt-1 min-h-[1.25rem] text-xs text-slate-500">{hint}</p>
+        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t(`${BOOT}.title`)}</h1>
+        <p className="mt-3 min-h-[1.25rem] text-sm text-[color:var(--foreground-muted)]">{status}</p>
+        <p className="mt-1 min-h-[1.25rem] text-xs text-[color:var(--foreground-muted)] opacity-80">
+          {hint}
+        </p>
 
         <div
-          className="relative mt-10 h-1 w-48 overflow-hidden rounded-full bg-white/10 sm:w-56"
+          className="relative mt-10 h-1 w-48 overflow-hidden rounded-full bg-[color:var(--border-main)] sm:w-56"
           aria-hidden
         >
-          <div className="absolute inset-y-0 w-2/5 rounded-full bg-gradient-to-r from-transparent via-sky-400 to-transparent opacity-90 [animation:os-boot-slide_1.5s_ease-in-out_infinite]" />
+          <div className="absolute inset-y-0 w-2/5 rounded-full bg-gradient-to-r from-transparent via-[color:var(--win-accent,#6366f1)] to-transparent opacity-90 [animation:os-boot-slide_1.5s_ease-in-out_infinite]" />
         </div>
       </div>
     </div>

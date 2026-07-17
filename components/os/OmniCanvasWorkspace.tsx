@@ -16,8 +16,7 @@ import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityR
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
 import { useMobileViewportSync } from "@/hooks/use-mobile-viewport-sync";
 import { useLockPortraitOrientation } from "@/hooks/use-lock-portrait-orientation";
-import OsBootSplash from "@/components/os/boot/OsBootSplash";
-import { useOsBootGate } from "@/components/os/boot/useOsBootGate";
+import { useOsBootReport } from "@/components/os/boot/OsBootHost";
 
 /** Deferred chrome — not needed for LCP / first paint */
 const OSSidebar = dynamic(() => import("@/components/os/layout/OSSidebar"), { ssr: false });
@@ -110,22 +109,20 @@ function OmniCanvasWorkspaceInner() {
   }, [hasMaximizedWidget]);
 
   const sessionBlocking = !everAuthenticated && sessionStatus === "loading";
-  const { showSplash, fading: bootFading, phase: bootPhase, blockPointer } = useOsBootGate({
-    mounted,
-    sessionBlocking,
-    hasHydrated,
-    launcherBootReady,
-  });
+  const { reportBoot, showSplash, blockPointer } = useOsBootReport();
 
-  // Always mount the shell under the splash (no remount jump). Overlay only.
-  if (!mounted) {
-    return <OsBootSplash phase="session" />;
-  }
+  React.useEffect(() => {
+    reportBoot({
+      mounted,
+      sessionBlocking,
+      hasHydrated,
+      launcherBootReady,
+    });
+  }, [reportBoot, mounted, sessionBlocking, hasHydrated, launcherBootReady]);
 
   return (
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
-    {showSplash ? <OsBootSplash phase={bootPhase} fading={bootFading} /> : null}
     <main
       className={`quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300 ${
         blockPointer ? "pointer-events-none" : ""

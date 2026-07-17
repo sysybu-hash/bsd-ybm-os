@@ -30,7 +30,7 @@ export const viewport: Viewport = {
   ],
 };
 
-const MARKETING_THEME_BOOT = `try{var p=location.pathname;if(p==='/'||p.startsWith('/marketing-preview')){var t=null;try{t=localStorage.getItem('theme');}catch(e){}var mode=t==='light'?'light':'dark';var root=document.documentElement;root.classList.remove(mode==='light'?'dark':'light');root.classList.add(mode);root.style.colorScheme=mode;}}catch(e){}`;
+const ROOT_THEME_AND_BOOT = `try{var p=location.pathname;var c=document.cookie||"";var hasSession=c.indexOf("next-auth.session-token")!==-1||c.indexOf("__Secure-next-auth.session-token")!==-1||c.indexOf("__Host-next-auth.session-token")!==-1;var workspace=p==="/workspace"||p.indexOf("/workspace/")===0||(p==="/"&&hasSession);var root=document.documentElement;var t=null;try{t=localStorage.getItem("theme");}catch(e){}var mode="dark";if(t==="light")mode="light";else if(t==="dark")mode="dark";else if(t==="system")mode=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";if(workspace){root.setAttribute("data-os-boot","1");}else if(p==="/"||p.indexOf("/marketing-preview")===0){if(t!=="light"&&t!=="dark"&&t!=="system")mode="dark";}else{mode=null;}if(mode){root.classList.remove(mode==="light"?"dark":"light");root.classList.add(mode);root.style.colorScheme=mode;}}catch(e){}`;
 
 /** מעטפת HTML סטטית — סשן/טננט ב-(platform)/layout בלבד */
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl" className={sans.variable} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: MARKETING_THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: ROOT_THEME_AND_BOOT }} />
       </head>
       <body className={`${sans.className} min-h-screen bg-[color:var(--background-main)] font-sans text-[color:var(--foreground-main)] antialiased`}>
         {children}
