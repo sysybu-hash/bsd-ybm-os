@@ -117,8 +117,8 @@ function OmniCanvasWorkspaceInner() {
     launcherBootReady,
   });
 
-  // Session still resolving — boot only (no empty chrome)
-  if (!mounted || sessionBlocking) {
+  // Always mount the shell under the splash (no remount jump). Overlay only.
+  if (!mounted) {
     return <OsBootSplash phase="session" />;
   }
 
@@ -134,15 +134,17 @@ function OmniCanvasWorkspaceInner() {
       aria-hidden={blockPointer}
     >
       <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
-      <PasskeyOfferModal />
+      {!showSplash ? <PasskeyOfferModal /> : null}
       <LauncherEditBanner />
       <LauncherV2MigrationBanner />
       <LauncherPickerSheet />
-      <FirstDayWizard
-        onOpenWidget={(type, data) => {
-          openWorkspaceWidget(type, data);
-        }}
-      />
+      {!showSplash ? (
+        <FirstDayWizard
+          onOpenWidget={(type, data) => {
+            openWorkspaceWidget(type, data);
+          }}
+        />
+      ) : null}
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 

@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { OS_BOOT_FADE_MS, OS_BOOT_MIN_MS } from "@/components/os/boot/OsBootSplash";
 
+/** Hold an opaque light splash so the dark→light blend finishes before opacity fade */
+const OS_BOOT_BLEND_MS = 220;
+
 type Args = {
   /** Client mounted */
   mounted: boolean;
@@ -43,13 +46,15 @@ export function useOsBootGate({
   const coreReady =
     mounted && !sessionBlocking && hasHydrated && launcherBootReady && minElapsed;
 
-  // Do NOT put `fading` in deps — that cleared the hide timeout and left the desktop
-  // with pointer-events-none forever (invisible overlay / unclickable UI).
+  // Do NOT put `fading` in deps — that cleared the hide timeout and left the desktop unclickable.
   useEffect(() => {
     if (!coreReady || hidden) return;
-    setFading(true);
-    const id = window.setTimeout(() => setHidden(true), OS_BOOT_FADE_MS);
-    return () => window.clearTimeout(id);
+    const fadeId = window.setTimeout(() => setFading(true), OS_BOOT_BLEND_MS);
+    const hideId = window.setTimeout(() => setHidden(true), OS_BOOT_BLEND_MS + OS_BOOT_FADE_MS);
+    return () => {
+      window.clearTimeout(fadeId);
+      window.clearTimeout(hideId);
+    };
   }, [coreReady, hidden]);
 
   const showSplash = !hidden;

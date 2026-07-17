@@ -24,9 +24,13 @@ const PHASE_KEY: Record<OsBootPhase, string> = {
   register: "phaseRegister",
 };
 
+/** Keep in sync with useOsBootGate hide timeout */
+export const OS_BOOT_MIN_MS = 900;
+export const OS_BOOT_FADE_MS = 750;
+
 /**
  * Windows-style full-screen boot splash until the OS shell is ready.
- * Safe under platform I18nProvider (workspace / register).
+ * Crossfades to the desktop (lightens then fades) to avoid a hard jump.
  */
 export default function OsBootSplash({
   phase = "session",
@@ -44,11 +48,16 @@ export default function OsBootSplash({
   const rotatingKeys = ["hintStart", "hintDesktop", "hintAlmost"] as const;
   const hint = t(`${BOOT}.${rotatingKeys[tick % rotatingKeys.length]}`);
   const status = t(`${BOOT}.${PHASE_KEY[phase]}`);
+  const blending = fading || phase === "ready";
 
   return (
     <div
-      className={`fixed inset-0 z-[3000] flex flex-col items-center justify-center bg-[#0b1220] text-slate-100 transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[3000] flex flex-col items-center justify-center transition-[opacity,background-color,color] duration-700 ease-out ${
         fading ? "pointer-events-none opacity-0" : "opacity-100"
+      } ${
+        blending
+          ? "bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
+          : "bg-[#0b1220] text-slate-100"
       } ${className}`}
       dir={dir}
       role="status"
@@ -56,7 +65,9 @@ export default function OsBootSplash({
       aria-busy={!fading}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-40"
+        className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${
+          blending ? "opacity-0" : "opacity-40"
+        }`}
         style={{
           background:
             "radial-gradient(ellipse 80% 50% at 50% 20%, rgba(56,189,248,0.18), transparent 55%), radial-gradient(ellipse 60% 40% at 70% 80%, rgba(99,102,241,0.12), transparent 50%)",
@@ -64,7 +75,11 @@ export default function OsBootSplash({
         aria-hidden
       />
 
-      <div className="relative z-10 flex flex-col items-center px-6 text-center">
+      <div
+        className={`relative z-10 flex flex-col items-center px-6 text-center transition-opacity duration-500 ${
+          blending ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-white/5 shadow-2xl shadow-sky-900/40">
           <Image
             src={BRAND_LOGO_NIGHT_SRC}
@@ -96,7 +111,3 @@ export default function OsBootSplash({
     </div>
   );
 }
-
-/** Min display time so warm-cache loads do not flash. */
-export const OS_BOOT_MIN_MS = 1100;
-export const OS_BOOT_FADE_MS = 480;
