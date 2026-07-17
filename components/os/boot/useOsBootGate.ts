@@ -10,12 +10,19 @@ type Args = {
   sessionBlocking: boolean;
   /** Window manager layout hydrated */
   hasHydrated: boolean;
+  /** Launcher local + first server sync ready */
+  launcherBootReady?: boolean;
 };
 
 /**
- * Keeps the boot splash visible until session + layout are ready and min time elapsed.
+ * Keeps the boot splash visible until session + layout + launcher are ready and min time elapsed.
  */
-export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
+export function useOsBootGate({
+  mounted,
+  sessionBlocking,
+  hasHydrated,
+  launcherBootReady = true,
+}: Args) {
   const startedAt = useRef(
     typeof performance !== "undefined" ? performance.now() : Date.now(),
   );
@@ -33,7 +40,8 @@ export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
     return () => window.clearTimeout(id);
   }, []);
 
-  const coreReady = mounted && !sessionBlocking && hasHydrated && minElapsed;
+  const coreReady =
+    mounted && !sessionBlocking && hasHydrated && launcherBootReady && minElapsed;
 
   // Do NOT put `fading` in deps — that cleared the hide timeout and left the desktop
   // with pointer-events-none forever (invisible overlay / unclickable UI).
@@ -51,7 +59,7 @@ export function useOsBootGate({ mounted, sessionBlocking, hasHydrated }: Args) {
   const phase =
     !mounted || sessionBlocking
       ? ("session" as const)
-      : !hasHydrated
+      : !hasHydrated || !launcherBootReady
         ? ("desktop" as const)
         : ("ready" as const);
 

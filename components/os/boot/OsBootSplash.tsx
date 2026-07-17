@@ -99,4 +99,4 @@ export default function OsBootSplash({
 
 /** Min display time so warm-cache loads do not flash. */
 export const OS_BOOT_MIN_MS = 1100;
-export const OS_BOOT_FADE_MS = 320;
+export const OS_BOOT_FADE_MS = 480;

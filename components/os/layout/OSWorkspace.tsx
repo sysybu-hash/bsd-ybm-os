@@ -35,7 +35,7 @@ export default function OSWorkspace({
   toggleMaximize, toggleMinimize, updateZoom, onWidgetViewChange,
 }: OSWorkspaceProps) {
   const { t, dir } = useI18n();
-  const { editMode: launcherEditMode } = useLauncherConfig();
+  const { editMode: launcherEditMode, hydrated: launcherHydrated } = useLauncherConfig();
   const { data: session } = useSession();
   const workspaceBoundsRef = React.useRef<HTMLDivElement>(null);
 
@@ -77,9 +77,10 @@ export default function OSWorkspace({
   return (
     <div ref={workspaceBoundsRef} className="relative flex h-full min-h-0 flex-1 overflow-hidden" dir={dir}>
       <AnimatePresence mode="wait">
-        {hasHydrated && visibleWidgets.length === 0 && (
+        {hasHydrated && launcherHydrated && visibleWidgets.length === 0 && (
           <motion.section key="empty-state"
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
             className={`workspace-empty-scroll absolute inset-0 z-10 flex min-h-0 flex-col items-center overflow-x-hidden overflow-y-auto overscroll-contain custom-scrollbar max-md:scroll-pb-3 max-md:px-4 max-md:pt-4 max-md:pb-0 md:justify-start md:gap-6 md:px-6 md:pb-8 ${
               launcherEditMode ? "pt-[calc(6.5rem+env(safe-area-inset-top))] md:pt-24" : "pt-5 md:pt-5"
             }`}

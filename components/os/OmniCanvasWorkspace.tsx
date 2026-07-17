@@ -9,7 +9,7 @@ import OmniCanvasWorkspaceBody from "@/components/os/navigation/OmniCanvasWorksp
 import OSDock from "@/components/os/layout/OSDock";
 import MinimizedWidgetsBar from "@/components/os/layout/MinimizedWidgetsBar";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
-import { LauncherConfigProvider } from "@/components/os/launcher/LauncherConfigProvider";
+import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
 import { OmniCanvasSidebarRail, OmniCanvasWorkspaceInset } from "@/components/os/layout/OmniCanvasChrome";
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
 import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityRail";
@@ -41,8 +41,16 @@ const KnowledgeVaultWorkspaceBridge = dynamic(
 export default function OmniCanvasWorkspace() {
   useMobileViewportSync();
   useLockPortraitOrientation();
+  return (
+    <LauncherConfigProvider>
+      <OmniCanvasWorkspaceInner />
+    </LauncherConfigProvider>
+  );
+}
 
+function OmniCanvasWorkspaceInner() {
   const s = useOmniCanvasState();
+  const { bootReady: launcherBootReady } = useLauncherConfig();
   const {
     t, dir,
     mounted, sessionStatus, everAuthenticated,
@@ -106,6 +114,7 @@ export default function OmniCanvasWorkspace() {
     mounted,
     sessionBlocking,
     hasHydrated,
+    launcherBootReady,
   });
 
   // Session still resolving — boot only (no empty chrome)
@@ -114,7 +123,6 @@ export default function OmniCanvasWorkspace() {
   }
 
   return (
-    <LauncherConfigProvider>
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
     {showSplash ? <OsBootSplash phase={bootPhase} fading={bootFading} /> : null}
@@ -265,6 +273,5 @@ export default function OmniCanvasWorkspace() {
     </main>
     </KnowledgeVaultWorkspaceBridge>
     </AutomationRunnerProvider>
-    </LauncherConfigProvider>
   );
 }

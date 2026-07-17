@@ -40,6 +40,8 @@ type PickerState = { zone: LauncherZone; slotIndex: number; row?: number; col?: 
 type LauncherConfigContextValue = {
   config: UserLauncherConfig;
   hydrated: boolean;
+  /** Local + first server reconcile done — safe to dismiss OS boot splash */
+  bootReady: boolean;
   editMode: boolean;
   setEditMode: (on: boolean) => void;
   enterEditMode: () => void;
@@ -68,6 +70,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const isPlatformAdmin = useIsPlatformAdmin();
   const { allowed: meckanoEnabled } = useMeckanoAccess();
   const [hydrated, setHydrated] = useState(false);
+  const [bootReady, setBootReady] = useState(false);
   const launcherDefaultOptions = useMemo(
     () => ({ isPlatformAdmin }),
     [isPlatformAdmin],
@@ -134,7 +137,13 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
         if (previous !== migrated) localStorage.setItem(LAUNCHER_STORAGE_KEY, migrated);
       } catch { /* quota */ }
     }
-    void syncFromServer();
+    void (async () => {
+      try {
+        await syncFromServer();
+      } finally {
+        if (!cancelled) setBootReady(true);
+      }
+    })();
     return () => { cancelled = true; };
   }, [organizationIndustry, userId, isPlatformAdmin, meckanoEnabled, launcherDefaultOptions, permissionCtx]);
 
@@ -169,14 +178,14 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
 
   const value = useMemo<LauncherConfigContextValue>(
     () => ({
-      config, hydrated, editMode, setEditMode, announce, picker,
+      config, hydrated, bootReady, editMode, setEditMode, announce, picker,
       permissionCtx,
       enterEditMode,
       exitEditMode,
       ...restActions,
     }),
      
-    [config, hydrated, editMode, announce, picker, permissionCtx, restActions, enterEditMode, exitEditMode],
+    [config, hydrated, bootReady, editMode, announce, picker, permissionCtx, restActions, enterEditMode, exitEditMode],
   );
 
   return (
