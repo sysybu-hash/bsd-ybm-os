@@ -31,6 +31,7 @@ import CookieConsentBanner from "@/components/legal/CookieConsentBanner";
 import AccessibilityToolbar from "@/components/os/system/AccessibilityToolbar";
 import SiteFeedbackFab from "@/components/feedback/SiteFeedbackFab";
 import ConditionalServiceWorker from "@/components/pwa/ConditionalServiceWorker";
+import PresenceHeartbeat from "@/components/os/system/PresenceHeartbeat";
 import { isMarketingContentPath, isWorkspaceShellPath } from "@/lib/perf/marketing-paths";
 import { createLogger } from "@/lib/logger";
 
@@ -129,6 +130,7 @@ export default async function PlatformLayout({
                     {!lightMarketing ? <AccessibilityToolbar /> : null}
                     {!lightMarketing ? <SiteFeedbackFab /> : null}
                     <AppToaster />
+                    <PresenceHeartbeat />
                     <ConditionalServiceWorker />
                     <Script id="pwa-ios" strategy="afterInteractive">
                       {`if (window.navigator.standalone === true) { document.body.classList.add('pwa-ios'); }`}

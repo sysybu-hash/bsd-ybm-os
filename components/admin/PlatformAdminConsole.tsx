@@ -15,6 +15,7 @@ import { SettingsTab } from "./platform-admin/SettingsTab";
 import { IdeasTab } from "./platform-admin/IdeasTab";
 import { HealthTab } from "./platform-admin/HealthTab";
 import { MailTab } from "./platform-admin/MailTab";
+import { LoginLogTab } from "./platform-admin/LoginLogTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
@@ -206,6 +207,8 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             </button>
           </div>
         )}
+
+        {p.tab === "logins" && <LoginLogTab />}
 
         {p.tab === "health" && (
           <HealthTab

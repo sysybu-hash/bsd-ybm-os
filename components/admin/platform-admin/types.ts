@@ -1,4 +1,4 @@
-import { Activity, Bell, Bot, Lightbulb, Mail, Settings2, Shield, UserCheck, Users } from "lucide-react";
+import { Activity, Bell, Bot, Lightbulb, LogIn, Mail, Settings2, Shield, UserCheck, Users } from "lucide-react";
 
 export type TabId =
   | "subscriptions"
@@ -7,6 +7,7 @@ export type TabId =
   | "broadcast"
   | "health"
   | "mail"
+  | "logins"
   | "settings"
   | "assistant"
   | "ideas";
@@ -19,6 +20,7 @@ export const TABS: { id: TabId; labelKey: string; icon: typeof Shield }[] = [
   { id: "subscriptions", labelKey: "platformAdmin.tabs.subscriptions", icon: Users },
   { id: "pending", labelKey: "platformAdmin.tabs.pending", icon: UserCheck },
   { id: "users", labelKey: "platformAdmin.tabs.users", icon: Users },
+  { id: "logins", labelKey: "platformAdmin.tabs.logins", icon: LogIn },
   { id: "broadcast", labelKey: "platformAdmin.tabs.broadcast", icon: Bell },
   { id: "health", labelKey: "platformAdmin.tabs.health", icon: Activity },
   { id: "mail", labelKey: "platformAdmin.mail.tab", icon: Mail },

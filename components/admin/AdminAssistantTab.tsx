@@ -19,6 +19,7 @@ type TabId =
   | "subscriptions"
   | "pending"
   | "users"
+  | "logins"
   | "broadcast"
   | "health"
   | "mail"
