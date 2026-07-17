@@ -15,14 +15,14 @@ export type PlatformAdminConsoleProps = {
   variant?: "page" | "widget";
 };
 
-export const TABS: { id: TabId; label: string; icon: typeof Shield }[] = [
-  { id: "subscriptions", label: "מנויים", icon: Users },
-  { id: "pending", label: "הרשמות", icon: UserCheck },
-  { id: "users", label: "משתמשים", icon: Users },
-  { id: "broadcast", label: "שידורים", icon: Bell },
-  { id: "health", label: "בריאות", icon: Activity },
-  { id: "mail", label: "מייל", icon: Mail },
-  { id: "ideas", label: "רעיונות", icon: Lightbulb },
-  { id: "assistant", label: "עוזר ניהול", icon: Bot },
-  { id: "settings", label: "הגדרות", icon: Settings2 },
+export const TABS: { id: TabId; labelKey: string; icon: typeof Shield }[] = [
+  { id: "subscriptions", labelKey: "platformAdmin.tabs.subscriptions", icon: Users },
+  { id: "pending", labelKey: "platformAdmin.tabs.pending", icon: UserCheck },
+  { id: "users", labelKey: "platformAdmin.tabs.users", icon: Users },
+  { id: "broadcast", labelKey: "platformAdmin.tabs.broadcast", icon: Bell },
+  { id: "health", labelKey: "platformAdmin.tabs.health", icon: Activity },
+  { id: "mail", labelKey: "platformAdmin.mail.tab", icon: Mail },
+  { id: "ideas", labelKey: "platformAdmin.tabs.ideas", icon: Lightbulb },
+  { id: "assistant", labelKey: "platformAdmin.tabs.assistant", icon: Bot },
+  { id: "settings", labelKey: "platformAdmin.tabs.settings", icon: Settings2 },
 ];

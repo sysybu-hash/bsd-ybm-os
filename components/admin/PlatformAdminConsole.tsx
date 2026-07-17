@@ -62,20 +62,20 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
 
       {/* ── Tab nav ────────────────────────────────────────────── */}
       <nav className="flex gap-1 overflow-x-auto border-b border-[color:var(--border-main)] px-2 py-2">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = p.tab === t.id;
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = p.tab === tab.id;
           return (
             <button
-              key={t.id}
+              key={tab.id}
               type="button"
-              onClick={() => p.selectTab(t.id)}
+              onClick={() => p.selectTab(tab.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
                 active ? "bg-blue-600 text-white" : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
               }`}
             >
               <Icon size={14} />
-              {t.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
