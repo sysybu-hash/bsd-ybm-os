@@ -141,13 +141,20 @@ export async function runLifecycleCampaigns(): Promise<{ sent: number; skipped: 
       },
     },
     select: {
+      id: true,
       users: { select: { email: true, name: true }, take: 1, where: { role: "ORG_ADMIN" } },
       trialEndsAt: true,
     },
     take: 500,
   });
 
+  const { orgAllowsLifecycle, emailAllowsLifecycle } = await import("@/lib/mail/org-mail-settings");
+
   for (const org of trialEndingSoon) {
+    if (!(await orgAllowsLifecycle(org.id))) {
+      skipped++;
+      continue;
+    }
     const admin = org.users[0];
     if (!admin || !org.trialEndsAt) continue;
     const daysLeft = Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / 86400000);
@@ -170,6 +177,10 @@ export async function runLifecycleCampaigns(): Promise<{ sent: number; skipped: 
   });
 
   for (const user of inactiveUsers) {
+    if (!(await emailAllowsLifecycle(user.email))) {
+      skipped++;
+      continue;
+    }
     const daysSince = user.lastLoginAt
       ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / 86400000)
       : inactiveDays;

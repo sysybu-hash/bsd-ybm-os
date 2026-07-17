@@ -72,6 +72,18 @@ export async function flushDigestBucket(
   }
 
   const normalized = recipient.trim().toLowerCase();
+
+  // Tenant optional digests — respect org prefs (platform admins / no-org still allowed)
+  if (category === EMAIL_DIGEST_CATEGORY.NOTIFICATION) {
+    const { emailAllowsDigest } = await import("@/lib/mail/org-mail-settings");
+    if (!(await emailAllowsDigest(normalized))) {
+      await prisma.emailDigestItem.deleteMany({
+        where: { recipient: normalized, category },
+      });
+      return { sent: false, count: 0 };
+    }
+  }
+
   const rows = await prisma.emailDigestItem.findMany({
     where: { recipient: normalized, category },
     orderBy: { createdAt: "asc" },
@@ -124,6 +136,11 @@ export async function enqueueDigestEmail(params: {
 
   const recipient = params.recipient.trim().toLowerCase();
   if (!recipient.includes("@")) return;
+
+  if (params.category === EMAIL_DIGEST_CATEGORY.NOTIFICATION) {
+    const { emailAllowsDigest } = await import("@/lib/mail/org-mail-settings");
+    if (!(await emailAllowsDigest(recipient))) return;
+  }
 
   const title = params.title.trim();
   const body = params.body.trim();

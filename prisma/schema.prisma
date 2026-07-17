@@ -62,6 +62,8 @@ model Organization {
   industryConfigJson       Json?
   /// התמחות בתוך ענף הבנייה (חשמל, אינסטלציה וכו') — משפיע על פענוח AI והצגה
   constructionTrade        String                    @default("GENERAL_CONTRACTOR")
+  /// העדפות מייל של המנוי: { masterEnabled, digestEnabled, lifecycleEnabled, notificationBridgeEnabled, collectionRemindersEnabled }
+  mailPrefsJson            Json?
   activityLogs             ActivityLog[]
   aiCorrections            AICorrection[]
   automations              Automation[]

@@ -964,6 +964,26 @@
         "pauseFailed": "Could not pause",
         "loadFailed": "Failed to load calendar settings"
       },
+      "mail": {
+        "sectionTitle": "System emails",
+        "intro": "Choose which optional emails your organization receives. Verification and sign-in emails always follow platform policy.",
+        "master": "Optional emails",
+        "masterHint": "Turning this off stops digests, lifecycle nudges, notification emails, and collection reminders for this org.",
+        "save": "Save email preferences",
+        "saved": "Email preferences saved",
+        "saveFailed": "Failed to save email preferences",
+        "loadFailed": "Failed to load email preferences",
+        "channels": {
+          "digest": "Daily digest",
+          "digestHint": "Bundled summary of pending notifications.",
+          "lifecycle": "Subscription & engagement",
+          "lifecycleHint": "Trial ending, reactivation, and similar.",
+          "notifications": "Important notification emails",
+          "notificationsHint": "e.g. overdue tasks, newly scanned invoices.",
+          "collection": "Collection reminders to clients",
+          "collectionHint": "Payment reminders with invoice attached."
+        }
+      },
       "reconnectGoogle": "Reconnect Google",
       "assignSection": "Assign users to organization",
       "assignIntro": "The user must sign in with Google at least once before assignment. After assignment, sign out and back in refreshes Gemini Live and API permissions.",
