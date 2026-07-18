@@ -1,4 +1,11 @@
-import { parseWorkspaceUrl, workspaceIntentFingerprint, buildProjectWidgetUrl, resolveLegacyWidgetTypes } from "@/lib/workspace-url";
+import {
+  parseWorkspaceUrl,
+  workspaceIntentFingerprint,
+  buildProjectWidgetUrl,
+  buildWorkspaceSearchParams,
+  resolveLegacyWidgetTypes,
+} from "@/lib/workspace-url";
+import { encodeWidgetState, decodeWidgetState } from "@/lib/workspace-navigation/encoders";
 
 describe("parseWorkspaceUrl", () => {
   it("maps w=project&projectId to projectsHub with tab and projectId", () => {
@@ -58,5 +65,50 @@ describe("workspaceIntentFingerprint", () => {
     expect(workspaceIntentFingerprint(fromTab!, { ignoreInstanceId: true })).toBe(
       workspaceIntentFingerprint(fromSt!, { ignoreInstanceId: true }),
     );
+  });
+});
+
+describe("inner-view deep links", () => {
+  it("encodes and decodes projectsHub dashboard tab", () => {
+    const st = encodeWidgetState("projectsHub", {
+      tab: "project",
+      projectId: "p1",
+      dashboardTab: "gantt",
+    });
+    expect(st).toContain("dt:gantt");
+    expect(decodeWidgetState("projectsHub", st)).toEqual({
+      tab: "project",
+      projectId: "p1",
+      dashboardTab: "gantt",
+    });
+  });
+
+  it("parses dt= and contactId= query params", () => {
+    const project = parseWorkspaceUrl(
+      new URLSearchParams("w=projectsHub&tab=project&projectId=p1&dt=financial"),
+    );
+    expect(project?.viewState?.dashboardTab).toBe("financial");
+    const crm = parseWorkspaceUrl(new URLSearchParams("w=crmTable&contactId=c-9"));
+    expect(crm?.viewState?.contactId).toBe("c-9");
+  });
+
+  it("encodes meckano / calendar / jewish calendar views", () => {
+    expect(encodeWidgetState("meckanoReports", { tab: "zones" })).toBe("t:zones");
+    expect(decodeWidgetState("meckanoReports", "t:people")).toEqual({ tab: "people" });
+    expect(encodeWidgetState("googleCalendar", { viewMode: "month" })).toBe("v:month");
+    expect(decodeWidgetState("googleCalendar", "v:agenda")).toEqual({ viewMode: "agenda" });
+    expect(encodeWidgetState("jewishCalendar", { viewDate: "2026-07-19" })).toBe("d:2026-07-19");
+    expect(decodeWidgetState("jewishCalendar", "d:2026-07-19")).toEqual({ viewDate: "2026-07-19" });
+  });
+
+  it("builds shareable hub params including project dashboard tab", () => {
+    const sp = buildWorkspaceSearchParams({
+      widgetType: "projectsHub",
+      viewState: { tab: "project", projectId: "p1", dashboardTab: "tasks" },
+    });
+    expect(sp.get("w")).toBe("projectsHub");
+    expect(sp.get("tab")).toBe("project");
+    expect(sp.get("projectId")).toBe("p1");
+    expect(sp.get("dt")).toBe("tasks");
   });
 });

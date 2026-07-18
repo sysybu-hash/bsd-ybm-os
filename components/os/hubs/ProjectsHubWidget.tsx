@@ -110,7 +110,7 @@ export default function ProjectsHubWidget({ liveData, openWorkspaceWidget }: Pro
       setProjectId(id);
       setProjectName(name);
       setActiveTab("project");
-      pushView({ tab: "project", projectId: id, name: name ?? null });
+      pushView({ tab: "project", projectId: id, name: name ?? null, dashboardTab: "overview" });
     },
     [projects, pushView],
   );

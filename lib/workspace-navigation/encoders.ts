@@ -33,6 +33,22 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
       const mode = state.viewMode as string | undefined;
       return mode && mode !== "list" ? `v:${mode}` : null;
     }
+    case "googleCalendar": {
+      const mode = state.viewMode as string | undefined;
+      return mode && mode !== "week" ? `v:${mode}` : null;
+    }
+    case "meckanoReports": {
+      const tab = state.tab as string | undefined;
+      return tab?.trim() ? `t:${tab.trim()}` : null;
+    }
+    case "crmTable": {
+      const contactId = state.contactId as string | undefined;
+      return contactId?.trim() ? `c:${contactId.trim()}` : null;
+    }
+    case "jewishCalendar": {
+      const day = state.viewDate as string | undefined;
+      return day?.trim() ? `d:${day.trim()}` : null;
+    }
     case "docCreator": {
       const id = state.issuedDocumentId as string | undefined;
       if (id) return `edit:${id}`;
@@ -72,6 +88,10 @@ export function encodeWidgetState(type: WidgetType, state: WidgetViewState | nul
       const tab = state.tab as string | undefined;
       if (tab?.trim()) parts.push(`t:${tab.trim()}`);
       if (state.projectId) parts.push(`p:${String(state.projectId)}`);
+      const dashboardTab = state.dashboardTab as string | undefined;
+      if (dashboardTab?.trim() && dashboardTab.trim() !== "overview") {
+        parts.push(`dt:${dashboardTab.trim()}`);
+      }
       return parts.length ? parts.join(",") : null;
     }
     default:
@@ -103,6 +123,16 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
     }
     case "googleDrive":
       return raw.startsWith("v:") ? { viewMode: raw.slice(2) } : null;
+    case "googleCalendar":
+      return raw.startsWith("v:") ? { viewMode: raw.slice(2) } : null;
+    case "meckanoReports": {
+      if (raw.startsWith("t:")) return { tab: raw.slice(2) };
+      return { tab: raw };
+    }
+    case "crmTable":
+      return raw.startsWith("c:") ? { contactId: raw.slice(2) } : null;
+    case "jewishCalendar":
+      return raw.startsWith("d:") ? { viewDate: raw.slice(2) } : null;
     case "docCreator": {
       if (raw.startsWith("edit:")) return { issuedDocumentId: raw.slice(5) };
       return { panel: raw };
@@ -138,6 +168,7 @@ export function decodeWidgetState(type: WidgetType, st: string | null): WidgetVi
       for (const part of raw.split(",")) {
         if (part.startsWith("t:")) state.tab = part.slice(2);
         else if (part.startsWith("p:")) state.projectId = part.slice(2);
+        else if (part.startsWith("dt:")) state.dashboardTab = part.slice(3);
       }
       return Object.keys(state).length > 0 ? state : null;
     }

@@ -19,16 +19,34 @@ import {
 import { toast } from "sonner";
 import WidgetState from "@/components/os/WidgetState";
 import { useMeckanoAccess } from "@/hooks/use-meckano-access";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { useMeckanoReports } from "./meckano-reports/useMeckanoReports";
 
 type TabId = "overview" | "reports" | "people" | "zones" | "punch" | "settings";
+
+const MECKANO_TABS: TabId[] = ["overview", "reports", "people", "zones", "punch", "settings"];
 
 export default function MeckanoHubWidget() {
   const { allowed, loading: accessLoading } = useMeckanoAccess();
   const hub = useMeckanoReports();
   const { dir, t, reports, employees, projects, isLoading, error, filters, setFilters, fetchReports, exportToCSV, downloadPDF, lastSyncAt, autoSyncEnabled } = hub;
 
-  const [tab, setTab] = useState<TabId>("reports");
+  const [tab, setTabState] = useState<TabId>("reports");
+  const applyView = useCallback((view: WidgetViewState) => {
+    const next = view.tab;
+    if (typeof next === "string" && (MECKANO_TABS as string[]).includes(next)) {
+      setTabState(next as TabId);
+    }
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyView);
+  const setTab = useCallback(
+    (id: TabId) => {
+      setTabState(id);
+      pushView({ tab: id });
+    },
+    [pushView],
+  );
   const [syncingZones, setSyncingZones] = useState(false);
   const [punchBusy, setPunchBusy] = useState(false);
   const [apiKeyDraft, setApiKeyDraft] = useState("");

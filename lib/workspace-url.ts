@@ -40,6 +40,8 @@ const WIDGET_TYPES = new Set<string>([
   "logisticsHub",
   "procurementHub",
   "executiveHub",
+  "jewishCalendar",
+  "universalCommand",
 ]);
 
 export function parseWidgetType(raw: string | null): WidgetType | null {
@@ -69,6 +71,12 @@ export function workspaceIntentFingerprint(
   }
   if (typeof vs.projectId === "string" && vs.projectId.trim()) {
     parts.push(`pid:${vs.projectId.trim()}`);
+  }
+  if (typeof vs.dashboardTab === "string" && vs.dashboardTab.trim()) {
+    parts.push(`dt:${vs.dashboardTab.trim()}`);
+  }
+  if (typeof vs.contactId === "string" && vs.contactId.trim()) {
+    parts.push(`cid:${vs.contactId.trim()}`);
   }
   return parts.join("|");
 }
@@ -107,9 +115,18 @@ export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIn
       widgetType === "aiHub" ||
       widgetType === "logisticsHub" ||
       widgetType === "procurementHub" ||
-      widgetType === "executiveHub")
+      widgetType === "executiveHub" ||
+      widgetType === "meckanoReports")
   ) {
     viewState = { ...(viewState ?? {}), tab: tabParam.trim() };
+  }
+  const dtParam = searchParams.get("dt");
+  if (dtParam && dtParam.trim() && widgetType === "projectsHub") {
+    viewState = { ...(viewState ?? {}), dashboardTab: dtParam.trim() };
+  }
+  const contactParam = searchParams.get("contactId");
+  if (contactParam && contactParam.trim() && widgetType === "crmTable") {
+    viewState = { ...(viewState ?? {}), contactId: contactParam.trim() };
   }
   return {
     widgetType,
@@ -130,8 +147,40 @@ export function buildWorkspaceSearchParams(opts: {
     if (st) sp.set(WORKSPACE_URL_PARAMS.state, st);
     if (opts.widgetInstanceId) sp.set(WORKSPACE_URL_PARAMS.widgetInstance, opts.widgetInstanceId);
     const projectId = opts.viewState?.projectId;
-    if (opts.widgetType === "project" && typeof projectId === "string" && projectId.trim()) {
+    if (
+      (opts.widgetType === "project" || opts.widgetType === "projectsHub") &&
+      typeof projectId === "string" &&
+      projectId.trim()
+    ) {
       sp.set("projectId", projectId.trim());
+    }
+    const tab = opts.viewState?.tab;
+    if (
+      typeof tab === "string" &&
+      tab.trim() &&
+      (opts.widgetType === "projectsHub" ||
+        opts.widgetType === "financeHub" ||
+        opts.widgetType === "documentsHub" ||
+        opts.widgetType === "aiHub" ||
+        opts.widgetType === "logisticsHub" ||
+        opts.widgetType === "procurementHub" ||
+        opts.widgetType === "executiveHub" ||
+        opts.widgetType === "meckanoReports")
+    ) {
+      sp.set("tab", tab.trim());
+    }
+    const dashboardTab = opts.viewState?.dashboardTab;
+    if (
+      opts.widgetType === "projectsHub" &&
+      typeof dashboardTab === "string" &&
+      dashboardTab.trim() &&
+      dashboardTab.trim() !== "overview"
+    ) {
+      sp.set("dt", dashboardTab.trim());
+    }
+    const contactId = opts.viewState?.contactId;
+    if (opts.widgetType === "crmTable" && typeof contactId === "string" && contactId.trim()) {
+      sp.set("contactId", contactId.trim());
     }
   }
   return sp;

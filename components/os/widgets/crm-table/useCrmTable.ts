@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import { createProjectForContact } from "@/app/actions/crm";
 import { downloadAuthenticatedFile } from "@/lib/client/download-api-file";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { Client, CrmTableWidgetProps } from "./types";
 import {
   checkProjectChangeApi,
@@ -33,8 +35,39 @@ export function useCrmTable({
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClientState] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  const applyCrmView = useCallback((view: WidgetViewState) => {
+    const contactId = typeof view.contactId === "string" ? view.contactId.trim() : "";
+    if (!contactId) {
+      setSelectedClientState(null);
+      setIsEditing(false);
+      return;
+    }
+    void (async () => {
+      try {
+        const client = await fetchContactByIdApi(contactId);
+        if (client) setSelectedClientState(client);
+      } catch {
+        /* ignore deep-link miss */
+      }
+    })();
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyCrmView);
+
+  const setSelectedClient = useCallback(
+    (client: Client | null | ((prev: Client | null) => Client | null)) => {
+      setSelectedClientState((prev) => {
+        const next = typeof client === "function" ? client(prev) : client;
+        if (next?.id !== prev?.id) {
+          queueMicrotask(() => pushView(next?.id ? { contactId: next.id } : {}));
+        }
+        return next;
+      });
+    },
+    [pushView],
+  );
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -157,7 +190,8 @@ export function useCrmTable({
     void (async () => {
       const refreshed = await fetchContactByIdApi(selectedClient.id);
       if (!refreshed || cancelled) return;
-      setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
+      // Use state setter (not URL-syncing wrapper) so detail refresh does not rewrite the URL.
+      setSelectedClientState((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
       setClients((prev) => prev.map((c) => (c.id === refreshed.id ? { ...c, ...refreshed } : c)));
     })();
     return () => {
