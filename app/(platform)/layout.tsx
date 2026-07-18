@@ -74,11 +74,17 @@ export default async function PlatformLayout({
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? "/";
   const lightMarketing = isMarketingContentPath(pathname);
-  const messages = lightMarketing
-    ? getMarketingMessages(locale)
+  const messagePack = lightMarketing
+    ? ("marketing" as const)
     : isWorkspaceShellPath(pathname)
-      ? getWorkspaceMessages(locale)
-      : getMessages(locale);
+      ? ("workspace" as const)
+      : ("full" as const);
+  const messages =
+    messagePack === "marketing"
+      ? getMarketingMessages(locale)
+      : messagePack === "workspace"
+        ? getWorkspaceMessages(locale)
+        : getMessages(locale);
   const mainSkipLabel = skipToMainLabel(messages, locale);
 
   const hostHeader = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
@@ -109,7 +115,7 @@ export default async function PlatformLayout({
         <SessionProvider session={session}>
           <CSPostHogProvider>
             <PostHogIdentifyLazy />
-            <I18nProvider locale={locale} messages={messages}>
+            <I18nProvider locale={locale} messages={messages} pack={messagePack}>
               <TenantProvider tenant={tenant}>
                 <TradeProfileProvider>
                   <a
