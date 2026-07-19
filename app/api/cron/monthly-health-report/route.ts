@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
     "cron-monthly-health-report",
     { type: "crontab", value: "0 8 1 * *" },
     async () => {
-      return runMonthlyHealthReports();
+      const orgId = req.nextUrl.searchParams.get("orgId")?.trim() || undefined;
+      const cursor = req.nextUrl.searchParams.get("cursor")?.trim() || undefined;
+      return runMonthlyHealthReports({ orgId, cursor });
     },
   );
 }

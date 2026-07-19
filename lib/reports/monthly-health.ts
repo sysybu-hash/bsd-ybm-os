@@ -164,12 +164,32 @@ export type MonthlyHealthRunResult = {
   skippedEmpty: number;
   skippedNoRecipient: number;
   failed: number;
+  nextCursor: string | null;
+  partial: boolean;
 };
 
+export type MonthlyHealthRunOpts = {
+  refDate?: Date;
+  orgId?: string;
+  cursor?: string;
+  take?: number;
+  timeBudgetMs?: number;
+};
+
+const DEFAULT_ORG_BATCH = 25;
+const DEFAULT_TIME_BUDGET_MS = 240_000;
+
 /**
- * מריץ את הדוח על כל הארגונים הפעילים ושולח למנהלי הארגון.
+ * מריץ את הדוח על ארגונים (batch עם cursor) ושולח למנהלי הארגון.
  */
-export async function runMonthlyHealthReports(refDate: Date = new Date()): Promise<MonthlyHealthRunResult> {
+export async function runMonthlyHealthReports(
+  opts: MonthlyHealthRunOpts = {},
+): Promise<MonthlyHealthRunResult> {
+  const refDate = opts.refDate ?? new Date();
+  const take = opts.take ?? DEFAULT_ORG_BATCH;
+  const timeBudgetMs = opts.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+  const started = Date.now();
+
   const result: MonthlyHealthRunResult = {
     checked: 0,
     sent: 0,
@@ -177,22 +197,39 @@ export async function runMonthlyHealthReports(refDate: Date = new Date()): Promi
     skippedEmpty: 0,
     skippedNoRecipient: 0,
     failed: 0,
+    nextCursor: null,
+    partial: false,
   };
 
   const orgs = await prisma.organization.findMany({
     select: { id: true, name: true },
+    where: opts.orgId ? { id: opts.orgId } : undefined,
+    orderBy: { id: "asc" },
+    take: opts.orgId ? 1 : take,
+    ...(opts.cursor && !opts.orgId
+      ? { cursor: { id: opts.cursor }, skip: 1 }
+      : {}),
   });
 
   const optOuts = new Set(
     (
       await prisma.setting.findMany({
-        where: { key: { startsWith: "monthly_health_optout:" }, value: "1" },
+        where: {
+          key: { in: orgs.map((o) => monthlyHealthOptOutKey(o.id)) },
+          value: "1",
+        },
         select: { key: true },
       })
     ).map((s) => s.key),
   );
 
   for (const org of orgs) {
+    if (Date.now() - started > timeBudgetMs) {
+      result.nextCursor = org.id;
+      result.partial = true;
+      break;
+    }
+
     result.checked += 1;
 
     if (optOuts.has(monthlyHealthOptOutKey(org.id))) {
@@ -241,6 +278,11 @@ export async function runMonthlyHealthReports(refDate: Date = new Date()): Promi
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  if (!result.partial && !opts.orgId && orgs.length === take) {
+    result.nextCursor = orgs[orgs.length - 1]?.id ?? null;
+    result.partial = Boolean(result.nextCursor);
   }
 
   log.info("monthly health run complete", { ...result });

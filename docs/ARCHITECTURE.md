@@ -188,16 +188,22 @@ export const POST = withWorkspacesAuth(
 **What it does:**
 1. Validates NextAuth JWT session
 2. Resolves `orgId` from session (verified against DB)
-3. Applies per-user rate limiting (via Upstash Redis or Prisma `RateLimit` table)
+3. Applies per-user rate limiting via `lib/rate-limit.ts`
 4. Returns structured JSON errors with Hebrew messages
 
 ### Rate Limiting
 
-Two strategies:
-- **IP-based** (`applyRateLimit` from `lib/rate-limit.ts`) — for unauthenticated endpoints (auth, sign)
-- **User-ID-based** (`rateLimit` option in `withWorkspacesAuth`) — for authenticated endpoints
+`checkRateLimit` / `applyRateLimit` in `lib/rate-limit.ts`:
 
-All violations log to `createLogger("rate-limit")` with `Retry-After` headers returned.
+1. **Preferred:** Upstash Redis (`UPSTASH_REDIS_REST_URL` / `KV_REST_API_URL`) — atomic `INCR` + `PEXPIRE`
+2. **Fallback:** Prisma `RateLimit` table when Redis env is missing or Redis errors (local/CI)
+
+Strategies:
+
+- **IP-based** (`applyRateLimit`) — unauthenticated endpoints (auth, register, sign)
+- **User-ID-based** (`rateLimit` option in `withWorkspacesAuth`) — authenticated endpoints
+
+Violations log to `createLogger("rate-limit")` with `Retry-After` headers.
 
 ### Cron Routes
 

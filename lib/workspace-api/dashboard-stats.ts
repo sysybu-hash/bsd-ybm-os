@@ -5,41 +5,59 @@ const log = createLogger("dashboard-stats");
 
 export async function getDashboardStats(orgId: string) {
   const whereOrg = { organizationId: orgId };
-  const [projects, expenses, clients, quotes, pendingInvoicesCount] = await Promise.all([
-    prisma.project.findMany({ where: whereOrg }),
-    prisma.expenseRecord.findMany({ where: whereOrg }),
-    prisma.contact.findMany({ where: whereOrg }),
-    prisma.quote.findMany({ where: whereOrg }),
-    prisma.issuedDocument.count({
-      where: { organizationId: orgId, status: "PENDING", deletedAt: null },
-    }),
-  ]);
-
-  const totalRevenue = projects.reduce((sum, p) => sum + (p.budget ?? 0), 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.total, 0);
-
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-  const thisMonthExpenses = expenses
-    .filter((e) => new Date(e.expenseDate) >= thisMonthStart)
-    .reduce((sum, e) => sum + e.total, 0);
+  const [
+    projectAgg,
+    activeProjects,
+    totalClients,
+    expenseTotal,
+    thisMonthExpenseAgg,
+    lastMonthExpenseAgg,
+    pendingQuotes,
+    signedQuotes,
+    pendingInvoicesCount,
+    dbInsight,
+  ] = await Promise.all([
+    prisma.project.aggregate({
+      where: whereOrg,
+      _sum: { budget: true },
+    }),
+    prisma.project.count({ where: whereOrg }),
+    prisma.contact.count({ where: whereOrg }),
+    prisma.expenseRecord.aggregate({
+      where: whereOrg,
+      _sum: { total: true },
+    }),
+    prisma.expenseRecord.aggregate({
+      where: { ...whereOrg, expenseDate: { gte: thisMonthStart } },
+      _sum: { total: true },
+    }),
+    prisma.expenseRecord.aggregate({
+      where: {
+        ...whereOrg,
+        expenseDate: { gte: lastMonthStart, lte: lastMonthEnd },
+      },
+      _sum: { total: true },
+    }),
+    prisma.quote.count({ where: { ...whereOrg, status: "PENDING" } }),
+    prisma.quote.count({
+      where: { ...whereOrg, status: { in: ["SIGNED", "APPROVED"] } },
+    }),
+    prisma.issuedDocument.count({
+      where: { organizationId: orgId, status: "PENDING", deletedAt: null },
+    }),
+    prisma.financialInsight.findUnique({ where: { organizationId: orgId } }),
+  ]);
 
-  const lastMonthExpenses = expenses
-    .filter((e) => {
-      const d = new Date(e.expenseDate);
-      return d >= lastMonthStart && d <= lastMonthEnd;
-    })
-    .reduce((sum, e) => sum + e.total, 0);
-
-  const pendingQuotes = quotes.filter((q) => q.status === "PENDING").length;
-  const signedQuotes = quotes.filter((q) => q.status === "SIGNED" || q.status === "APPROVED").length;
-
-  let insight = "המערכת מנתחת נתונים...";
-  const dbInsight = await prisma.financialInsight.findUnique({ where: { organizationId: orgId } });
-  if (dbInsight) insight = dbInsight.content;
+  const totalRevenue = projectAgg._sum.budget ?? 0;
+  const totalExpenses = expenseTotal._sum.total ?? 0;
+  const thisMonthExpenses = thisMonthExpenseAgg._sum.total ?? 0;
+  const lastMonthExpenses = lastMonthExpenseAgg._sum.total ?? 0;
+  const insight = dbInsight?.content ?? "המערכת מנתחת נתונים...";
 
   let cashflow: unknown[] = [];
   try {
@@ -54,8 +72,8 @@ export async function getDashboardStats(orgId: string) {
   return {
     totalRevenue,
     totalExpenses,
-    activeProjects: projects.length,
-    totalClients: clients.length,
+    activeProjects,
+    totalClients,
     pendingInvoices: pendingInvoicesCount,
     aiInsight: insight,
     cashflow,

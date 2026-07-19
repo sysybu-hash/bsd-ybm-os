@@ -1,34 +1,95 @@
 import { prisma } from "@/lib/prisma";
 import { askAI } from "@/lib/ai-orchestrator";
 import { createLogger } from "@/lib/logger";
+
 const log = createLogger("semantic-search");
 
+const NAME_MATCH_TAKE = 50;
+const RECENT_FALLBACK_TAKE = 80;
+const AI_CONTEXT_MAX = 80;
+
 export interface SemanticSearchResult {
-  type: 'project' | 'contact' | 'unknown';
+  type: "project" | "contact" | "unknown";
   id: string;
   name: string;
   relevance: number;
 }
 
+type NamedRow = { id: string; name: string };
+
+function localNameMatch(query: string, projects: NamedRow[], contacts: NamedRow[]): SemanticSearchResult[] {
+  const lowerQuery = query.toLowerCase();
+  const results: SemanticSearchResult[] = [];
+  for (const p of projects) {
+    if (p.name.toLowerCase().includes(lowerQuery)) {
+      results.push({ type: "project", id: p.id, name: p.name, relevance: 0.5 });
+    }
+  }
+  for (const c of contacts) {
+    if (c.name.toLowerCase().includes(lowerQuery)) {
+      results.push({ type: "contact", id: c.id, name: c.name, relevance: 0.5 });
+    }
+  }
+  return results.sort((a, b) => b.relevance - a.relevance).slice(0, 3);
+}
+
 export async function semanticSearch(query: string, organizationId: string): Promise<SemanticSearchResult[]> {
-  // 1. Get context from DB
-  const [projects, contacts] = await Promise.all([
-    prisma.project.findMany({ where: { organizationId } }),
-    prisma.contact.findMany({ where: { organizationId } })
+  const q = query.trim();
+  if (!q) return [];
+
+  const [matchedProjects, matchedContacts] = await Promise.all([
+    prisma.project.findMany({
+      where: { organizationId, name: { contains: q, mode: "insensitive" } },
+      select: { id: true, name: true },
+      take: NAME_MATCH_TAKE,
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.contact.findMany({
+      where: { organizationId, name: { contains: q, mode: "insensitive" } },
+      select: { id: true, name: true },
+      take: NAME_MATCH_TAKE,
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  let projects = matchedProjects;
+  let contacts = matchedContacts;
+
+  if (projects.length === 0 && contacts.length === 0) {
+    const [recentProjects, recentContacts] = await Promise.all([
+      prisma.project.findMany({
+        where: { organizationId },
+        select: { id: true, name: true },
+        take: RECENT_FALLBACK_TAKE,
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.contact.findMany({
+        where: { organizationId },
+        select: { id: true, name: true },
+        take: RECENT_FALLBACK_TAKE,
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    projects = recentProjects;
+    contacts = recentContacts;
+  }
 
   if (projects.length === 0 && contacts.length === 0) return [];
 
-  // 2. Prepare context for AI
-  const context = {
-    projects: projects.map(p => ({ id: p.id, name: p.name })),
-    contacts: contacts.map(c => ({ id: c.id, name: c.name }))
-  };
+  const contextProjects = projects.slice(0, AI_CONTEXT_MAX);
+  const contextContacts = contacts.slice(0, AI_CONTEXT_MAX);
 
   const prompt = `
-    Given the user query: "${query}"
+    Given the user query: "${q}"
     And the following business entities:
-    ${JSON.stringify(context, null, 2)}
+    ${JSON.stringify(
+      {
+        projects: contextProjects.map((p) => ({ id: p.id, name: p.name })),
+        contacts: contextContacts.map((c) => ({ id: c.id, name: c.name })),
+      },
+      null,
+      2,
+    )}
     
     Identify the most relevant project or contact.
     Return ONLY a JSON array of results, each with:
@@ -38,27 +99,11 @@ export async function semanticSearch(query: string, organizationId: string): Pro
   `;
 
   try {
-    const aiResponse = await askAI('gemini', prompt);
-    const cleanedResponse = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanedResponse);
+    const aiResponse = await askAI("gemini", prompt);
+    const cleanedResponse = aiResponse.replace(/```json\n?|\n?```/g, "").trim();
+    return JSON.parse(cleanedResponse) as SemanticSearchResult[];
   } catch (err) {
     log.error("Semantic search AI error:", err);
-    // Fallback to simple text search
-    const results: SemanticSearchResult[] = [];
-    const lowerQuery = query.toLowerCase();
-    
-    projects.forEach(p => {
-      if (p.name.toLowerCase().includes(lowerQuery)) {
-        results.push({ type: 'project', id: p.id, name: p.name, relevance: 0.5 });
-      }
-    });
-    
-    contacts.forEach(c => {
-      if (c.name.toLowerCase().includes(lowerQuery)) {
-        results.push({ type: 'contact', id: c.id, name: c.name, relevance: 0.5 });
-      }
-    });
-    
-    return results.sort((a, b) => b.relevance - a.relevance).slice(0, 3);
+    return localNameMatch(q, projects, contacts);
   }
 }

@@ -4,7 +4,9 @@ import { withCronGuard } from "@/lib/cron-guard";
 
 export async function GET(req: NextRequest) {
   return withCronGuard(req, "cron-financial-insights", { type: "crontab", value: "0 6 * * *" }, async () => {
-    await runDailyInsightsForAllOrganizations();
-    return { ran: true };
+    const orgId = req.nextUrl.searchParams.get("orgId")?.trim() || undefined;
+    const cursor = req.nextUrl.searchParams.get("cursor")?.trim() || undefined;
+    const result = await runDailyInsightsForAllOrganizations({ orgId, cursor });
+    return { ran: true, ...result };
   });
 }

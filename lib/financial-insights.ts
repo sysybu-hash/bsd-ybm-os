@@ -84,13 +84,64 @@ ${JSON.stringify(payload).slice(0, 120000)}
   });
 }
 
-export async function runDailyInsightsForAllOrganizations(): Promise<void> {
-  const orgs = await prisma.organization.findMany({ select: { id: true } });
+export type OrgBatchRunOpts = {
+  orgId?: string;
+  cursor?: string;
+  take?: number;
+  /** Stop processing more orgs after this many ms (default ~240s) */
+  timeBudgetMs?: number;
+};
+
+export type OrgBatchRunResult = {
+  processed: number;
+  failed: number;
+  nextCursor: string | null;
+  partial: boolean;
+};
+
+const DEFAULT_ORG_BATCH = 25;
+const DEFAULT_TIME_BUDGET_MS = 240_000;
+
+export async function runDailyInsightsForAllOrganizations(
+  opts: OrgBatchRunOpts = {},
+): Promise<OrgBatchRunResult> {
+  const take = opts.take ?? DEFAULT_ORG_BATCH;
+  const timeBudgetMs = opts.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+  const started = Date.now();
+
+  const orgs = await prisma.organization.findMany({
+    select: { id: true },
+    where: opts.orgId ? { id: opts.orgId } : undefined,
+    orderBy: { id: "asc" },
+    take: opts.orgId ? 1 : take,
+    ...(opts.cursor && !opts.orgId
+      ? { cursor: { id: opts.cursor }, skip: 1 }
+      : {}),
+  });
+
+  let failed = 0;
+  let processed = 0;
   for (const o of orgs) {
+    if (Date.now() - started > timeBudgetMs) {
+      return {
+        processed,
+        failed,
+        nextCursor: o.id,
+        partial: true,
+      };
+    }
     try {
       await generateAndStoreInsightForOrganization(o.id);
+      processed += 1;
     } catch (e) {
+      failed += 1;
+      processed += 1;
       log.error("insight_failed", e, { orgId: o.id });
     }
   }
+
+  const nextCursor =
+    !opts.orgId && orgs.length === take ? (orgs[orgs.length - 1]?.id ?? null) : null;
+
+  return { processed, failed, nextCursor, partial: Boolean(nextCursor) };
 }
