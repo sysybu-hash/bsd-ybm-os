@@ -15,11 +15,11 @@
       "kicker": "BSD-YBM OS",
       "motto": "The avenue that connects everyone",
       "titleBlessing": "With God's help we will act and succeed",
-      "titleLine1": "Scan an invoice",
-      "titleLine2": "Saved to your project",
-      "subtitle": "AI scan for invoices and receipts — confirm fields and save to a project in a few taps.",
-      "heroChips": ["Smart scan", "Save to project", "Finance in one place"],
-      "ctaRegister": "Start scanning",
+      "titleLine1": "One system to run your business",
+      "titleLine2": "Clients, documents, billing & control",
+      "subtitle": "Smart document scanning, CRM, cash flow and AI — all in one place, without jumping between systems.",
+      "heroChips": ["CRM & clients", "Smart docs & scanning", "Billing, cash flow & control"],
+      "ctaRegister": "Create account",
       "ctaDemo": "Sign in to demo"
     },
     "overview": {
