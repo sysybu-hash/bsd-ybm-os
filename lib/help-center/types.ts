@@ -20,6 +20,8 @@ export type HelpGuide = {
   tips?: string[];
   omnibarExamples?: string[];
   openWidget?: WidgetType;
+  /** Optional liveData (e.g. hub tab) when opening the related screen */
+  openWidgetData?: Record<string, unknown>;
 };
 
 export type HelpCategory = {

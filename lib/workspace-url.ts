@@ -128,6 +128,17 @@ export function parseWorkspaceUrl(searchParams: URLSearchParams): WorkspaceUrlIn
   if (contactParam && contactParam.trim() && widgetType === "crmTable") {
     viewState = { ...(viewState ?? {}), contactId: contactParam.trim() };
   }
+  // Legacy projectsHub tab=board → project center + tasks
+  if (widgetType === "projectsHub" && viewState?.tab === "board") {
+    viewState = {
+      ...viewState,
+      tab: "project",
+      dashboardTab:
+        typeof viewState.dashboardTab === "string" && viewState.dashboardTab.trim()
+          ? viewState.dashboardTab
+          : "tasks",
+    };
+  }
   return {
     widgetType,
     widgetInstanceId: wid,
@@ -201,19 +212,41 @@ export const HUB_WIDGET_TYPES = {
   PROCUREMENT_HUB: "procurementHub",
 } as const;
 
-export type ProjectHubTab = "overview" | "project" | "board" | "tasks" | "finance" | "diary" | "settings";
+export type ProjectHubTab =
+  | "overview"
+  | "project"
+  | "board"
+  | "tasks"
+  | "finance"
+  | "diary"
+  | "settings";
 
-/** בונה URL ל-projectsHub עם טאב ופרויקט */
+const PROJECT_HUB_TAB_TO_DASHBOARD: Record<ProjectHubTab, string> = {
+  overview: "overview",
+  project: "overview",
+  board: "tasks",
+  tasks: "tasks",
+  finance: "financial",
+  diary: "diary",
+  settings: "settings",
+};
+
+/** בונה URL ל-projectsHub (מרכז פרויקט) עם טאב לוח־מחוונים */
 export function buildProjectWidgetUrl(
   projectId: string,
   tab: ProjectHubTab = "overview",
 ): string {
-  const sp = new URLSearchParams({
-    w: HUB_WIDGET_TYPES.PROJECTS_HUB,
-    tab,
-    projectId,
-  });
-  return workspaceUrlFromParams(sp);
+  const dashboardTab = PROJECT_HUB_TAB_TO_DASHBOARD[tab] ?? "overview";
+  return workspaceUrlFromParams(
+    buildWorkspaceSearchParams({
+      widgetType: HUB_WIDGET_TYPES.PROJECTS_HUB,
+      viewState: {
+        tab: "project",
+        projectId,
+        ...(dashboardTab !== "overview" ? { dashboardTab } : {}),
+      },
+    }),
+  );
 }
 
 /** ממפה ווידג'טים ישנים ל-Hub המאוחד (תאימות לאחור ללינקים ישנים) */

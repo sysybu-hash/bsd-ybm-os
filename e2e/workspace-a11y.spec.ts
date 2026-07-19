@@ -54,7 +54,7 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
   { key: "dashboard",         url: workspaceUrl({ w: "dashboard" }), label: "דאשבורד" },
   { key: "crm",               url: workspaceUrl({ w: "crmTable" }), label: "CRM לקוחות" },
   { key: "ai-chat",           url: workspaceUrl({ w: "aiChatFull" }), label: "צ'אט AI" },
-  { key: "project-board",     url: workspaceUrl({ w: "projectsHub", tab: "board" }), label: "לוח פרויקטים" },
+  { key: "project-board",     url: workspaceUrl({ w: "projectsHub", tab: "project" }), label: "מרכז פרויקט" },
   { key: "scanner",           url: workspaceUrl({ w: "aiScanner" }), label: "סורק AI" },
   { key: "drive",             url: workspaceUrl({ w: "googleDrive" }), label: "Google Drive" },
 ];
@@ -71,7 +71,6 @@ const WIDGET_SHELL_IDS: Record<string, string> = {
 const WIDGET_ENSURE_TABS: Partial<Record<string, RegExp>> = {
   dashboard: /סקירה|overview/i,
   "ai-chat": /צ.?אט|chat/i,
-  "project-board": /לוח פרויקטים|board/i,
   scanner: /סריקה|scan/i,
 };
 

@@ -440,12 +440,8 @@
         }
       },
       "projects": {
-        "tabs": {
-          "board": "Project board",
-          "project": "Project hub"
-        },
         "pickerTitle": "Choose a project",
-        "pickerDesc": "Select a project before opening the control center",
+        "pickerDesc": "Click a project to open the project center",
         "openCrm": "Open CRM",
         "addProject": {
           "cta": "Add project",

@@ -21,6 +21,14 @@ describe("resolveWidgetOpen", () => {
     expect(req?.liveData?.projectId).toBe("p1");
   });
 
+  it("maps projectBoard to projectsHub project center on tasks", () => {
+    const req = resolveWidgetOpen("projectBoard", { projectId: "p1" });
+    expect(req?.type).toBe("projectsHub");
+    expect(req?.liveData?.tab).toBe("project");
+    expect(req?.liveData?.dashboardTab).toBe("tasks");
+    expect(req?.liveData?.projectId).toBe("p1");
+  });
+
   it("maps quoteGen to documentsHub create tab", () => {
     const req = resolveWidgetOpen("quoteGen", null);
     expect(req?.type).toBe("documentsHub");
@@ -37,6 +45,8 @@ describe("mapLauncherWidgetId", () => {
   it("normalizes legacy grid ids to hubs", () => {
     expect(mapLauncherWidgetId("dashboard")).toBe("financeHub");
     expect(mapLauncherWidgetId("aiChatFull")).toBe("aiHub");
+    expect(mapLauncherWidgetId("appBuilder")).toBe("aiHub");
+    expect(mapLauncherWidgetId("crm")).toBe("crmTable");
     expect(mapLauncherWidgetId("crmTable")).toBe("crmTable");
   });
 });

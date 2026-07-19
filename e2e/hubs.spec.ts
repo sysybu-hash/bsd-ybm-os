@@ -122,16 +122,19 @@ test.describe("dashboard hubs", () => {
 
   // ─── projects hub ─────────────────────────────────────────────────────────────
 
-  test("projects hub opens with tab navigation", async ({ page }) => {
+  test("projects hub opens with project picker", async ({ page }) => {
     await openHubFromLauncher(page, {
       quickGridName: /פרויקטים|projects hub/i,
       widget: "projectsHub",
     });
-    await expect(widgetShell(page, "projectsHub")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("tablist").first()).toBeVisible({ timeout: 10_000 });
+    const shell = widgetShell(page, "projectsHub");
+    await expect(shell).toBeVisible({ timeout: 15_000 });
+    await expect(shell.getByText(/בחרו פרויקט|Choose a project/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
-  test("projects hub has board and project tabs", async ({ page }) => {
+  test("projects hub: picker lists projects without hub tabs", async ({ page }) => {
     await openHubFromLauncher(page, {
       quickGridName: /פרויקטים|projects hub/i,
       widget: "projectsHub",
@@ -139,22 +142,9 @@ test.describe("dashboard hubs", () => {
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 15_000 });
 
-    const boardTab   = shell.getByRole("tab", { name: /לוח פרויקטים|board/i });
-    const projectTab = shell.getByRole("tab", { name: /מרכז פרויקט|project/i });
-    await expect(boardTab).toBeVisible({ timeout: 10_000 });
-    await expect(projectTab).toBeVisible({ timeout: 10_000 });
-  });
+    await expect(shell.getByRole("tab", { name: /לוח פרויקטים|board/i })).toHaveCount(0);
+    await expect(shell.getByRole("tab", { name: /מרכז פרויקט|project/i })).toHaveCount(0);
 
-  test("projects hub: switch to board tab renders task columns", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === "mobile-chrome", "Mobile board layout differs from desktop column assertions");
-    await openHubFromLauncher(page, {
-        quickGridName: /פרויקטים|projects hub/i,
-        widget: "projectsHub",
-    });
-    const shell = widgetShell(page, "projectsHub");
-    await expect(shell).toBeVisible({ timeout: 15_000 });
-
-    await ensureHubTabFromDeepLink(shell, /לוח פרויקטים|board/i);
     await page
       .waitForResponse(
         (res) => res.url().includes("/api/projects") && res.request().method() === "GET" && res.ok(),
@@ -163,23 +153,21 @@ test.describe("dashboard hubs", () => {
       .catch(() => {});
 
     const projectPicker = shell.getByText(/בחרו פרויקט|Choose a project/i).first();
-    const boardColumn = shell.getByText(/לביצוע|To Do|In Progress|בתהליך|בביקורת|Done|הושלם/i).first();
-    const boardHeader = shell.getByRole("heading", { name: /לוח ניהול|project board/i }).first();
-    const searchField = shell.getByPlaceholder(/חיפוש משימה|search/i).first();
-    await expect(projectPicker.or(boardColumn).or(boardHeader).or(searchField)).toBeVisible({
-      timeout: 30_000,
-    });
+    const addProject = shell.getByRole("button", { name: /הוסף פרויקט|Add project/i }).first();
+    await expect(projectPicker.or(addProject)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
 
-  test("projects hub deep link opens board tab", async ({ page }) => {
+  test("projects hub deep link tab=board shows picker (legacy alias)", async ({ page }) => {
     await page.goto(workspaceUrl({ w: "projectsHub", tab: "board" }), {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
     const shell = widgetShell(page, "projectsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
-    await ensureHubTabFromDeepLink(shell, /לוח פרויקטים|board/i);
+    await expect(shell.getByText(/בחרו פרויקט|Choose a project/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   // ─── documents hub ────────────────────────────────────────────────────────────
@@ -308,7 +296,7 @@ test.describe("dashboard hubs", () => {
     test.setTimeout(120_000);
     const hubs = [
       { widget: "financeHub",   tabs: [/תזרים|cashflow/i, /סקירה|overview/i] },
-      { widget: "projectsHub",  tabs: [/לוח פרויקטים|board/i, /מרכז פרויקט|project/i] },
+      { widget: "projectsHub",  tabs: [] },
       { widget: "executiveHub", tabs: [/סקירה|overview/i, /חשבונות קבלנים|subcontractor/i, /הוצאות משרד|office expenses/i] },
       { widget: "documentsHub", tabs: [/ארכיון|archive/i, /הפקה|create/i, /סריקה|scan/i] },
       { widget: "aiHub",        tabs: [/צ.?אט|chat/i, /מחברת|notebook/i] },

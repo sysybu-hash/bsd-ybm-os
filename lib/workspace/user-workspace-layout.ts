@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
+import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 
 const positionSchema = z.object({
   x: z.number().finite(),
@@ -60,10 +61,13 @@ export function scrubWorkspaceLayout(raw: unknown): ActiveWidget[] {
   const widgets: ActiveWidget[] = [];
   for (const row of parsed.data) {
     if (!isWidgetType(row.type)) continue;
+    const live = stripTransientLiveData(row.liveData);
+    const resolved = resolveWidgetOpen(row.type, live);
+    if (!resolved) continue;
     widgets.push({
       id: row.id,
-      type: row.type,
-      liveData: stripTransientLiveData(row.liveData),
+      type: resolved.type,
+      liveData: resolved.liveData,
       position: row.position,
       size: row.size,
       zIndex: row.zIndex,

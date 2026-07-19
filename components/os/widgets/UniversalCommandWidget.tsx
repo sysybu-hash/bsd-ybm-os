@@ -24,10 +24,34 @@ type CommandAction = {
 };
 
 const ACTIONS: CommandAction[] = [
-  { key: "project", icon: FolderPlus, target: "project", liveData: { action: "create" }, accent: "amber" },
-  { key: "document", icon: FilePlus, target: "docCreator", accent: "blue" },
-  { key: "scan", icon: Sparkles, target: "aiScanner", accent: "purple" },
-  { key: "generator", icon: Cpu, target: "appBuilder", accent: "emerald" },
+  {
+    key: "project",
+    icon: FolderPlus,
+    target: "projectsHub",
+    liveData: { action: "create" },
+    accent: "amber",
+  },
+  {
+    key: "document",
+    icon: FilePlus,
+    target: "documentsHub",
+    liveData: { tab: "create" },
+    accent: "blue",
+  },
+  {
+    key: "scan",
+    icon: Sparkles,
+    target: "documentsHub",
+    liveData: { tab: "scan" },
+    accent: "purple",
+  },
+  {
+    key: "generator",
+    icon: Cpu,
+    target: "aiHub",
+    liveData: { tab: "builder" },
+    accent: "emerald",
+  },
 ];
 
 const ACCENT: Record<string, { icon: string; badge: string; hover: string; heading: string }> = {

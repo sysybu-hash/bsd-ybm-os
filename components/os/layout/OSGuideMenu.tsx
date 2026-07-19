@@ -28,16 +28,74 @@ const GUIDE_WIDGETS: readonly WidgetType[] = [
   "helpCenter",
 ];
 
-/** Hubs שמכילים כמה אזורים — נפתחים כתת-תפריט. פתיחת תת-פריט מנותבת ל-tab המתאים. */
-const HUB_SUBITEMS: Partial<Record<WidgetType, readonly WidgetType[]>> = {
-  financeHub: ["dashboard", "cashflow"],
-  projectsHub: ["projectBoard", "project"],
-  documentsHub: ["aiScanner", "docCreator", "erpArchive"],
-  aiHub: ["aiChatFull", "notebookLM", "appBuilder"],
+type HubSubItem = {
+  id: string;
+  tab: string;
+  labelKey: string;
+  /** Icon / chip source (legacy type ok for visuals) */
+  iconType: WidgetType;
+};
+
+/** Hubs עם קיצורי טאב — נפתחים כתת-תפריט ל-hub + tab */
+const HUB_SUBITEMS: Partial<Record<WidgetType, readonly HubSubItem[]>> = {
+  financeHub: [
+    {
+      id: "overview",
+      tab: "overview",
+      labelKey: "workspaceWidgets.titles.dashboard",
+      iconType: "dashboard",
+    },
+    {
+      id: "cashflow",
+      tab: "cashflow",
+      labelKey: "workspaceWidgets.titles.cashflow",
+      iconType: "cashflow",
+    },
+  ],
+  documentsHub: [
+    {
+      id: "scan",
+      tab: "scan",
+      labelKey: "workspaceWidgets.titles.aiScanner",
+      iconType: "aiScanner",
+    },
+    {
+      id: "create",
+      tab: "create",
+      labelKey: "workspaceWidgets.titles.docCreator",
+      iconType: "docCreator",
+    },
+    {
+      id: "archive",
+      tab: "archive",
+      labelKey: "workspaceWidgets.titles.erpArchive",
+      iconType: "erpArchive",
+    },
+  ],
+  aiHub: [
+    {
+      id: "chat",
+      tab: "chat",
+      labelKey: "workspaceWidgets.titles.aiChatFull",
+      iconType: "aiChatFull",
+    },
+    {
+      id: "notebook",
+      tab: "notebook",
+      labelKey: "workspaceWidgets.titles.notebookLM",
+      iconType: "notebookLM",
+    },
+    {
+      id: "builder",
+      tab: "builder",
+      labelKey: "workspaceWidgets.titles.appBuilder",
+      iconType: "appBuilder",
+    },
+  ],
 };
 
 interface OSGuideMenuProps {
-  openWidget: (type: WidgetType) => void;
+  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   onClose: () => void;
 }
 
@@ -60,8 +118,8 @@ export default function OSGuideMenu({ openWidget, onClose }: OSGuideMenuProps) {
   const sections = groupPickerOptions([...visible]);
   const offX = dir === "rtl" ? 24 : -24;
 
-  const openAndClose = (type: WidgetType) => {
-    openWidget(type);
+  const openAndClose = (type: WidgetType, data?: Record<string, unknown> | null) => {
+    openWidget(type, data);
     onClose();
   };
 
@@ -117,7 +175,6 @@ export default function OSGuideMenu({ openWidget, onClose }: OSGuideMenuProps) {
 
           <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-3">
             <div className="flex flex-col gap-4">
-              {/* פריט עליון בולט — מעבר למצב התצוגה הקלאסי */}
               <Link
                 href="/dashboard"
                 onClick={onClose}
@@ -187,25 +244,28 @@ export default function OSGuideMenu({ openWidget, onClose }: OSGuideMenuProps) {
                           </button>
 
                           {subs && isOpen ? (
-                            <ul className="mt-1 flex flex-col gap-0.5 border-s border-[color:var(--border-main)] ps-2 ms-5" role="list">
+                            <ul
+                              className="mt-1 flex flex-col gap-0.5 border-s border-[color:var(--border-main)] ps-2 ms-5"
+                              role="list"
+                            >
                               {subs.map((sub) => {
-                                const subMeta = getLauncherNavMeta(sub);
+                                const subMeta = getLauncherNavMeta(sub.iconType);
                                 const SubIcon = subMeta.icon;
                                 return (
-                                  <li key={sub}>
+                                  <li key={sub.id}>
                                     <button
                                       type="button"
-                                      data-testid={`guide-open-${sub}`}
-                                      onClick={() => openAndClose(sub)}
+                                      data-testid={`guide-open-${type}-${sub.id}`}
+                                      onClick={() => openAndClose(type, { tab: sub.tab })}
                                       className="group flex w-full items-center gap-2.5 rounded-lg p-1.5 text-start transition hover:bg-[color:var(--surface-soft)]"
                                     >
                                       <span
-                                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${widgetIconChipClass(sub)}`}
+                                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${widgetIconChipClass(sub.iconType)}`}
                                       >
                                         <SubIcon size={15} strokeWidth={2} aria-hidden />
                                       </span>
                                       <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[color:var(--foreground-main)]">
-                                        {t(`workspaceWidgets.titles.${sub}`)}
+                                        {t(sub.labelKey)}
                                       </span>
                                     </button>
                                   </li>

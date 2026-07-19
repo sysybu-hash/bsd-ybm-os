@@ -106,7 +106,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         },
       ],
       tips: ["На мобильном используйте «Ещё» для доступа ко всем приложениям."],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "windows",
@@ -135,7 +136,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Статус", body: "Строка статуса над Omnibar показывает последнее действие или ошибку." },
       ],
       omnibarExamples: ["открыть клиентов", "сканировать счёт", "открыть блокнот", "добавить задачу в проект X"],
-      openWidget: "aiChatFull",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"chat"},
     },
     {
       id: "dashboard-kpi",
@@ -149,7 +151,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Недавняя активность", body: "Список последних документов со ссылкой в архив." },
         { title: "Быстрые действия", body: "Пустой экран предлагает карточки ярлыков к основным приложениям." },
       ],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "scanner-upload",
@@ -166,7 +169,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "В блокнот", body: "«Сохранить в блокнот» создаёт источник NotebookLM из скана." },
       ],
       tips: ["Добавьте свои «инструкции сканирования» перед загрузкой."],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "scanner-engines",
@@ -179,7 +183,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Балансы", body: "«Эконом» (Gemini) и «премиум» (OpenAI) списываются по настройкам организации." },
         { title: "Ошибки", body: "При сбое — проверьте формат, размер или попробуйте один движок." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "crm-clients",
@@ -207,7 +212,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Фильтр", body: "По дате, клиенту или статусу оплаты." },
         { title: "Экспорт", body: "PDF или CSV для бухгалтерии по правам доступа." },
       ],
-      openWidget: "erpArchive",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "doc-creator",
@@ -221,7 +227,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Строки", body: "Позиции, цены и НДС — превью под тип бизнеса." },
         { title: "Создать", body: "Сформируйте PDF и отправьте клиенту или сохраните черновик." },
       ],
-      openWidget: "docCreator",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"create"},
     },
     {
       id: "drive-sync",
@@ -250,7 +257,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Чат", body: "Задавайте вопросы — ответы только на основе источников." },
         { title: "Сохранение", body: "Блокноты сохраняются по пользователю/организации." },
       ],
-      openWidget: "notebookLM",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"notebook"},
     },
     {
       id: "meckano-attendance",
@@ -313,7 +321,7 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "CRM", body: "Откройте клиентов из лаунчера или Omnibar." },
         { title: "Проекты", body: "Внутренние проекты без BOQ." },
       ],
-      openWidget: "crm",
+      openWidget: "crmTable",
     },
     {
       id: "company-mgmt-projects",
@@ -325,7 +333,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "График", body: "Таймлайн проекта — зависимости без строк BOQ." },
         { title: "Документы", body: "Деловые документы проекта." },
       ],
-      openWidget: "project",
+      openWidget: "projectsHub",
+      openWidgetData: {"tab":"project"},
     },
     {
       id: "company-mgmt-erp",
@@ -337,7 +346,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Архив", body: "Как в общем режиме." },
         { title: "Генератор", body: "Студия документов с бизнес-шаблонами." },
       ],
-      openWidget: "erp",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "company-mgmt-scan",
@@ -349,7 +359,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Режимы", body: "Бизнес-режимы сканера для вашей отрасли." },
         { title: "В ERP", body: "После подтверждения — в архив или выпуск." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "company-mgmt-profession",
@@ -374,7 +385,8 @@ export const HELP_CENTER_RU: HelpCenterData = {
         { title: "Баланс", body: "Проверьте остаток сканов по тарифу (настройки / админ)." },
         { title: "Движок", body: "Попробуйте один движок или более чёткие инструкции сканирования." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
   ],
   globalFaq: [

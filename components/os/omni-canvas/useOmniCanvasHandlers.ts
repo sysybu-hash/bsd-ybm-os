@@ -77,7 +77,7 @@ export function useOmniCanvasHandlers({
     setSearchResults([]);
     setMobileOmnibarOpen(false);
     if (result.type === "project") {
-      openWidget("project", { name: result.name });
+      openWidget("projectsHub", { tab: "project", name: result.name });
       setSystemMessage(t("workspaceWidgets.page.commands.openedProject", { name: result.name }));
       return;
     }
@@ -93,7 +93,7 @@ export function useOmniCanvasHandlers({
     setSystemMessage(t("workspaceWidgets.page.commands.processing"));
     try {
       if (cmd.startsWith("/")) {
-        openWidget("aiChatFull", { provider: "gemini", prompt: cmd.slice(1).trim() });
+        openWidget("aiHub", { tab: "chat", provider: "gemini", prompt: cmd.slice(1).trim() });
         setSystemMessage(t("workspaceWidgets.page.commands.openedAiChat"));
         return;
       }
@@ -105,14 +105,14 @@ export function useOmniCanvasHandlers({
       if (results.length > 0) {
         const top = results[0]!;
         if (top.type === "project") {
-          openWidget("project", { name: top.name });
+          openWidget("projectsHub", { tab: "project", name: top.name });
           setSystemMessage(t("workspaceWidgets.page.commands.foundProject", { name: top.name }));
         } else {
           openWidget("crmTable");
           setSystemMessage(t("workspaceWidgets.page.commands.foundClient", { name: top.name }));
         }
       } else {
-        openWidget("aiChatFull", { prompt: cmd });
+        openWidget("aiHub", { tab: "chat", prompt: cmd });
         setSystemMessage(t("workspaceWidgets.page.commands.openingAiChat"));
       }
     } catch (err) {
@@ -163,23 +163,37 @@ export function useOmniCanvasHandlers({
     switch (linkType) {
       case "project":
       case "projectBoard":
-        openWidget("projectBoard", targetId ? { projectId: targetId } : null);
+        openWidget(
+          "projectsHub",
+          targetId
+            ? { tab: "project", projectId: targetId, dashboardTab: "tasks" }
+            : { tab: "project", dashboardTab: "tasks" },
+        );
         break;
       case "erp":
-        openWidget("erp", targetId ? { documentId: targetId } : null);
+        openWidget(
+          "documentsHub",
+          targetId ? { tab: "archive", documentId: targetId } : { tab: "archive" },
+        );
         break;
       case "aiScanner":
       case "scan":
-        openWidget("aiScanner", targetId ? { documentId: targetId } : null);
+        openWidget(
+          "documentsHub",
+          targetId ? { tab: "scan", documentId: targetId } : { tab: "scan" },
+        );
         break;
       case "docCreator":
-        openWidget("docCreator", targetId ? { issuedDocumentId: targetId } : null);
+        openWidget(
+          "documentsHub",
+          targetId ? { tab: "create", issuedDocumentId: targetId } : { tab: "create" },
+        );
         break;
       case "fieldCopilot":
         openWidget("fieldCopilot", targetId ? { sessionId: targetId } : null);
         break;
       case "expense":
-        openWidget("aiScanner");
+        openWidget("documentsHub", { tab: "scan" });
         break;
       default:
         break;
@@ -194,13 +208,13 @@ export function useOmniCanvasHandlers({
       if (!id) return;
       await markNotificationRead(id);
     } else if (action.action === "viewProject") {
-      openWidget("project", { name: action.payload?.query });
+      openWidget("projectsHub", { tab: "project", name: action.payload?.query });
       setIsNotificationsOpen(false);
     } else if (action.action === "openErp") {
-      openWidget("erp");
+      openWidget("documentsHub", { tab: "archive" });
       setIsNotificationsOpen(false);
     } else if (action.action === "openScanner") {
-      openWidget("aiScanner");
+      openWidget("documentsHub", { tab: "scan" });
       setIsNotificationsOpen(false);
     } else if (action.action === "whatsapp") {
       const phone = action.payload?.phone;

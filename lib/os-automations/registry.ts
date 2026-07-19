@@ -30,15 +30,20 @@ function mapTaskPriority(raw: unknown): string | undefined {
   return undefined;
 }
 
-const WIDGET_BY_INTENT: Partial<Record<string, WidgetType>> = {
-  open_dashboard: "dashboard",
-  open_crm: "crmTable",
-  open_project_board: "projectBoard",
-  open_erp_archive: "erpArchive",
-  open_meckano_reports: "meckanoReports",
-  open_google_drive: "googleDrive",
-  open_settings: "settings",
-  open_accessibility: "accessibility",
+const WIDGET_BY_INTENT: Partial<
+  Record<string, { type: WidgetType; liveData?: Record<string, unknown> }>
+> = {
+  open_dashboard: { type: "financeHub", liveData: { tab: "overview" } },
+  open_crm: { type: "crmTable" },
+  open_project_board: {
+    type: "projectsHub",
+    liveData: { tab: "project", dashboardTab: "tasks" },
+  },
+  open_erp_archive: { type: "documentsHub", liveData: { tab: "archive" } },
+  open_meckano_reports: { type: "meckanoReports" },
+  open_google_drive: { type: "googleDrive" },
+  open_settings: { type: "settings" },
+  open_accessibility: { type: "accessibility" },
 };
 
 function widgetPayload(params: Record<string, unknown>): Record<string, unknown> | null {
@@ -78,9 +83,12 @@ export async function runAutomationAction(
     case "open_google_drive":
     case "open_settings":
     case "open_accessibility": {
-      const w = WIDGET_BY_INTENT[intent];
-      if (!w) return { ok: false };
-      deps.openWidget(w, widgetPayload(params));
+      const route = WIDGET_BY_INTENT[intent];
+      if (!route) return { ok: false };
+      deps.openWidget(route.type, {
+        ...(route.liveData ?? {}),
+        ...widgetPayload(params),
+      });
       return { ok: true };
     }
     case "open_scanner":
@@ -121,7 +129,8 @@ export async function runAutomationAction(
       return { ok: true };
     }
     case "open_ai_chat": {
-      deps.openWidget("aiChatFull", {
+      deps.openWidget("aiHub", {
+        tab: "chat",
         provider: String(params.provider ?? "gemini"),
         prompt: String(params.prompt ?? ""),
         ...widgetPayload(params),
@@ -129,7 +138,8 @@ export async function runAutomationAction(
       return { ok: true };
     }
     case "open_notebook": {
-      deps.openWidget("notebookLM", {
+      deps.openWidget("aiHub", {
+        tab: "notebook",
         notebookId: params.notebookId,
         title: params.title,
         preloadSources: params.preloadSources,
@@ -140,7 +150,8 @@ export async function runAutomationAction(
     case "create_invoice":
     case "create_quote": {
       const p = params as InvoiceDraftParams;
-      deps.openWidget("docCreator", {
+      deps.openWidget("documentsHub", {
+        tab: "create",
         automation: "invoice_draft",
         docType: intent === "create_quote" ? "quote" : "invoice",
         contactId: p.contactId,
@@ -175,7 +186,7 @@ export async function runAutomationAction(
         if (!res.ok || !data.success) {
           return { ok: false, message: data.error ?? "יצירת משימה נכשלה" };
         }
-        deps.openWidget("projectBoard");
+        deps.openWidget("projectsHub", { tab: "project", dashboardTab: "tasks" });
         const msg = `נוספה משימה «${title}» בפרויקט ${projectName}`;
         deps.setSystemMessage(msg);
         return { ok: true, message: msg };
@@ -247,7 +258,8 @@ export async function runAutomationAction(
     case "assign_document_project": {
       const id = String(params.issuedDocumentId ?? params.documentId ?? "");
       if (!id) return { ok: false, message: "Missing document id" };
-      deps.openWidget("docCreator", {
+      deps.openWidget("documentsHub", {
+        tab: "create",
         issuedDocumentId: id,
         projectId: params.projectId,
       });
@@ -256,7 +268,11 @@ export async function runAutomationAction(
     case "delete_issued_document": {
       const id = String(params.issuedDocumentId ?? params.documentId ?? "");
       if (!id) return { ok: false };
-      deps.openWidget("docCreator", { issuedDocumentId: id, requestDelete: true });
+      deps.openWidget("documentsHub", {
+        tab: "create",
+        issuedDocumentId: id,
+        requestDelete: true,
+      });
       return { ok: true };
     }
     case "export_document": {
@@ -271,10 +287,14 @@ export async function runAutomationAction(
     case "save_scan_to_notebook": {
       const last = typeof window !== "undefined" ? sessionStorage.getItem("bsd_last_scan_payload") : null;
       if (!last) {
-        deps.openWidget("aiScanner");
+        deps.openWidget("documentsHub", { tab: "scan" });
         return { ok: true, message: "Open scanner first" };
       }
-      deps.openWidget("aiScanner", { triggerSaveToNotebook: true, ...JSON.parse(last) });
+      deps.openWidget("documentsHub", {
+        tab: "scan",
+        triggerSaveToNotebook: true,
+        ...JSON.parse(last),
+      });
       return { ok: true };
     }
     case "close_widget": {

@@ -117,7 +117,6 @@ export function buildDefaultLauncherConfig(
       ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
       ...(company ? [] : [slot("fieldCopilot")]),
       slot("aiHub"),
-      slot("appBuilder"),
       slot("googleDrive"),
       slot("accessibility"),
     ],

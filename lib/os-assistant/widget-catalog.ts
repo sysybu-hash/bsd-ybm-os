@@ -8,6 +8,8 @@ export type OsWidgetAction = {
   labelEn: string;
   labelRu: string;
   keywords: string[];
+  /** Hidden from launcher picker — still valid for open/resolve aliases */
+  pickerHidden?: boolean;
 };
 
 /** כל הווידג'טים שהעוזר יכול לפתוח */
@@ -18,6 +20,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Financial dashboard",
     labelRu: "Финансовая панель",
     keywords: ["דאשבורד", "dashboard", "סטטוס"],
+    pickerHidden: true,
   },
   {
     id: "projectBoard",
@@ -25,6 +28,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Project board",
     labelRu: "Доска проектов",
     keywords: ["פרויקטים", "לוח", "משימות", "projects"],
+    pickerHidden: true,
   },
   {
     id: "crmTable",
@@ -39,6 +43,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "ERP archive",
     labelRu: "Архив ERP",
     keywords: ["ארכיון", "erp", "מסמכים", "documents"],
+    pickerHidden: true,
   },
   {
     id: "docCreator",
@@ -46,6 +51,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Document creator",
     labelRu: "Создание документов",
     keywords: ["הצעה", "חשבונית", "מסמך", "invoice", "quote"],
+    pickerHidden: true,
   },
   {
     id: "aiScanner",
@@ -53,6 +59,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "AI scanner",
     labelRu: "AI-сканер",
     keywords: ["סריקה", "סרוק", "פענוח", "scan"],
+    pickerHidden: true,
   },
   {
     id: "aiChatFull",
@@ -60,6 +67,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Full AI chat",
     labelRu: "Полный AI-чат",
     keywords: ["צ'אט", "שיחה", "ai", "chat"],
+    pickerHidden: true,
   },
   {
     id: "notebookLM",
@@ -67,6 +75,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "NotebookLM",
     labelRu: "NotebookLM",
     keywords: ["מחברת", "notebook", "מחקר"],
+    pickerHidden: true,
   },
   {
     id: "googleDrive",
@@ -109,6 +118,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Project control center",
     labelRu: "Центр управления проектом",
     keywords: ["פרויקט", "project", "גנט", "תקציב", "יומן עבודה"],
+    pickerHidden: true,
   },
   {
     id: "cashflow",
@@ -116,6 +126,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "Cash flow",
     labelRu: "Денежный поток",
     keywords: ["תזרים", "cash", "מזומנים"],
+    pickerHidden: true,
   },
   {
     id: "erp",
@@ -123,6 +134,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "ERP documents",
     labelRu: "Документы ERP",
     keywords: ["erp", "מסמכים"],
+    pickerHidden: true,
   },
   {
     id: "accessibility",
@@ -151,6 +163,7 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelEn: "AI App Builder",
     labelRu: "AI конструктор приложений",
     keywords: ["app", "builder", "form", "טופס", "ai", "מחולל", "אפליקציה"],
+    pickerHidden: true,
   },
   {
     id: "financeHub",
@@ -164,21 +177,21 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     labelHe: "פרויקטים",
     labelEn: "Projects hub",
     labelRu: "Проекты",
-    keywords: ["פרויקטים", "לוח", "project", "board", "גנט"],
+    keywords: ["פרויקטים", "לוח", "project", "board", "גנט", "משימות"],
   },
   {
     id: "documentsHub",
     labelHe: "מסמכים",
     labelEn: "Documents hub",
     labelRu: "Документы",
-    keywords: ["מסמכים", "ארכיון", "הפקה", "סריקה", "erp", "scan"],
+    keywords: ["מסמכים", "ארכיון", "הפקה", "סריקה", "erp", "scan", "חשבונית", "invoice"],
   },
   {
     id: "aiHub",
     labelHe: "בינה מלאכותית",
     labelEn: "AI hub",
     labelRu: "ИИ",
-    keywords: ["ai", "צ'אט", "chat", "notebook", "מחברת"],
+    keywords: ["ai", "צ'אט", "chat", "notebook", "מחברת", "מחולל", "builder", "app"],
   },
   {
     id: "logisticsHub",
@@ -242,5 +255,7 @@ export function normalizeWidgetAction(raw: string): WidgetType | null {
 
 export function widgetCatalogForPrompt(locale?: string): string {
   const loc = normalizeLocale(locale) as AppLocale;
-  return OS_ASSISTANT_WIDGETS.map((w) => `- ${w.id}: ${labelForLocale(w, loc)}`).join("\n");
+  return OS_ASSISTANT_WIDGETS.filter((w) => !w.pickerHidden)
+    .map((w) => `- ${w.id}: ${labelForLocale(w, loc)}`)
+    .join("\n");
 }

@@ -8,15 +8,16 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 
 type TrayAction = {
   type: WidgetType;
+  liveData?: Record<string, unknown> | null;
   labelKey: string;
   icon: React.ReactNode;
 };
 
 const TRAY_ACTIONS: TrayAction[] = [
-  { type: "aiHub", labelKey: "workspaceWidgets.quickActions.aiHub.title", icon: <MessageSquare size={18} aria-hidden /> },
-  { type: "aiScanner", labelKey: "workspaceWidgets.quickActions.aiScanner.title", icon: <Scan size={18} aria-hidden /> },
+  { type: "aiHub", liveData: { tab: "chat" }, labelKey: "workspaceWidgets.quickActions.aiHub.title", icon: <MessageSquare size={18} aria-hidden /> },
+  { type: "documentsHub", liveData: { tab: "scan" }, labelKey: "workspaceWidgets.quickActions.aiScanner.title", icon: <Scan size={18} aria-hidden /> },
   { type: "fieldCopilot", labelKey: "workspaceWidgets.sidebar.fieldCopilot", icon: <HardHat size={18} aria-hidden /> },
-  { type: "documentsHub", labelKey: "workspaceWidgets.quickActions.documentsHub.title", icon: <LayoutGrid size={18} aria-hidden /> },
+  { type: "documentsHub", liveData: { tab: "archive" }, labelKey: "workspaceWidgets.quickActions.documentsHub.title", icon: <LayoutGrid size={18} aria-hidden /> },
 ];
 
 type OmnibarLauncherTrayProps = {
@@ -88,10 +89,10 @@ export default function OmnibarLauncherTray({
         <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
           {TRAY_ACTIONS.map((action) => (
             <button
-              key={action.type}
+              key={`${action.type}-${action.liveData?.tab ?? "default"}`}
               type="button"
               onClick={() => {
-                openWorkspaceWidget(action.type, null);
+                openWorkspaceWidget(action.type, action.liveData ?? null);
                 onCloseSheet?.();
               }}
               className="flex min-h-[44px] flex-col items-center justify-center gap-1.5 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)]/40 px-2 py-2.5 text-center text-[10px] font-bold text-[color:var(--foreground-main)] transition hover:border-indigo-500/40 hover:bg-indigo-500/5"

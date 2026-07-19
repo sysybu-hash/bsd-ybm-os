@@ -185,7 +185,12 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                   {s.activeGuide.openWidget && openWorkspaceWidget ? (
                     <button
                       type="button"
-                      onClick={() => openWorkspaceWidget(s.activeGuide!.openWidget!)}
+                      onClick={() =>
+                        openWorkspaceWidget(
+                          s.activeGuide!.openWidget!,
+                          s.activeGuide!.openWidgetData ?? null,
+                        )
+                      }
                       className="mt-4 flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white"
                     >
                       <ExternalLink size={16} aria-hidden />

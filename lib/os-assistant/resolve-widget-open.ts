@@ -6,13 +6,43 @@ export type WidgetOpenRequest = {
   liveData: Record<string, unknown> | null;
 };
 
+/** Legacy widget IDs consolidated into hubs — hide from picker, collapse in launcher scrub */
+export const CONSOLIDATED_LEGACY_WIDGET_IDS = [
+  "dashboard",
+  "cashflow",
+  "projectBoard",
+  "project",
+  "erp",
+  "erpArchive",
+  "docCreator",
+  "quoteGen",
+  "aiScanner",
+  "scan",
+  "aiChat",
+  "aiChatFull",
+  "notebookLM",
+  "appBuilder",
+  "crm",
+] as const;
+
+const CONSOLIDATED_LEGACY_SET = new Set<string>(CONSOLIDATED_LEGACY_WIDGET_IDS);
+
+export function isConsolidatedLegacyWidgetId(id: string): boolean {
+  return CONSOLIDATED_LEGACY_SET.has(id);
+}
+
 const HUB_OPEN_MAP: Record<
   string,
-  { hub: WidgetType; tab: string; mergeKeys?: string[] }
+  { hub: WidgetType; tab: string; dashboardTab?: string; mergeKeys?: string[] }
 > = {
   dashboard: { hub: "financeHub", tab: "overview" },
   cashflow: { hub: "financeHub", tab: "cashflow" },
-  projectBoard: { hub: "projectsHub", tab: "board" },
+  projectBoard: {
+    hub: "projectsHub",
+    tab: "project",
+    dashboardTab: "tasks",
+    mergeKeys: ["projectId", "name"],
+  },
   project: { hub: "projectsHub", tab: "project", mergeKeys: ["projectId", "name"] },
   erp: { hub: "documentsHub", tab: "archive" },
   erpArchive: { hub: "documentsHub", tab: "archive" },
@@ -42,6 +72,9 @@ export function resolveWidgetOpen(
   const merged: Record<string, unknown> = { ...(data ?? {}) };
   if (route) {
     if (merged.tab == null && route.tab) merged.tab = route.tab;
+    if (merged.dashboardTab == null && route.dashboardTab) {
+      merged.dashboardTab = route.dashboardTab;
+    }
     return {
       type: route.hub,
       liveData: Object.keys(merged).length > 0 ? merged : route.tab ? { tab: route.tab } : null,
@@ -69,6 +102,8 @@ export function mapLauncherWidgetId(type: WidgetType): WidgetType {
     aiChatFull: "aiHub",
     aiChat: "aiHub",
     notebookLM: "aiHub",
+    appBuilder: "aiHub",
+    crm: "crmTable",
   };
   return map[type] ?? type;
 }

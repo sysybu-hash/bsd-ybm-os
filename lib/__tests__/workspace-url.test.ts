@@ -22,23 +22,26 @@ describe("parseWorkspaceUrl", () => {
     expect(intent?.viewState?.projectId).toBe("abc");
   });
 
-  it("reads tab query param for projectsHub deep links", () => {
+  it("normalizes legacy projectsHub tab=board to project center + tasks", () => {
     const intent = parseWorkspaceUrl(new URLSearchParams("w=projectsHub&tab=board"));
     expect(intent?.widgetType).toBe("projectsHub");
-    expect(intent?.viewState?.tab).toBe("board");
+    expect(intent?.viewState?.tab).toBe("project");
+    expect(intent?.viewState?.dashboardTab).toBe("tasks");
   });
 
-  it("resolves legacy projectBoard widget to projectsHub", () => {
+  it("resolves legacy projectBoard widget to projectsHub project center", () => {
     const intent = parseWorkspaceUrl(new URLSearchParams("w=projectBoard&projectId=p1"));
     expect(intent?.widgetType).toBe("projectsHub");
     expect(intent?.viewState?.projectId).toBe("p1");
-    expect(intent?.viewState?.tab).toBe("board");
+    expect(intent?.viewState?.tab).toBe("project");
+    expect(intent?.viewState?.dashboardTab).toBe("tasks");
   });
 
-  it("buildProjectWidgetUrl points to projectsHub with tab and projectId", () => {
+  it("buildProjectWidgetUrl points to projectsHub project center with tasks", () => {
     const url = buildProjectWidgetUrl("p-abc", "board");
     expect(url).toContain("w=projectsHub");
-    expect(url).toContain("tab=board");
+    expect(url).toContain("tab=project");
+    expect(url).toContain("dt=tasks");
     expect(url).toContain("projectId=p-abc");
     expect(resolveLegacyWidgetTypes("projectBoard")).toBe("projectsHub");
   });
@@ -57,7 +60,7 @@ describe("parseWorkspaceUrl", () => {
 });
 
 describe("workspaceIntentFingerprint", () => {
-  it("matches tab= and st= encodings for the same projectsHub intent", () => {
+  it("matches legacy board encodings after normalize to project+tasks", () => {
     const fromTab = parseWorkspaceUrl(new URLSearchParams("w=projectsHub&tab=board"));
     const fromSt = parseWorkspaceUrl(new URLSearchParams("w=projectsHub&st=t:board&wid=projectsHub-1"));
     expect(fromTab).not.toBeNull();
@@ -65,6 +68,8 @@ describe("workspaceIntentFingerprint", () => {
     expect(workspaceIntentFingerprint(fromTab!, { ignoreInstanceId: true })).toBe(
       workspaceIntentFingerprint(fromSt!, { ignoreInstanceId: true }),
     );
+    expect(workspaceIntentFingerprint(fromTab!, { ignoreInstanceId: true })).toContain("tab:project");
+    expect(workspaceIntentFingerprint(fromTab!, { ignoreInstanceId: true })).toContain("dt:tasks");
   });
 });
 

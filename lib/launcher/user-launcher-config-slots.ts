@@ -13,10 +13,11 @@ export function emptySlot(): LauncherSlot {
   return { widgetId: null };
 }
 
-/** מזהה אריח לשמירה — שומר קיצור legacy (docCreator, aiScanner) ולא מאחד ל-Hub */
+/** מזהה אריח לשמירה — מאחד legacy ל-Hub (docCreator → documentsHub וכו׳) */
 function launcherTileWidgetId(raw: string): WidgetType | null {
   if (isRemovedLauncherWidgetId(raw)) return null;
-  return normalizeWidgetAction(raw);
+  const normalized = normalizeWidgetAction(raw);
+  return normalized ? mapLauncherWidgetId(normalized) : null;
 }
 
 export function normalizeSlot(raw: unknown): LauncherSlot {
@@ -87,7 +88,6 @@ const QUICK_GRID_EXTRA_ORDER: WidgetType[] = [
   "googleCalendar",
   "meckanoReports",
   "googleDrive",
-  "notebookLM",
   "accessibility",
   "helpCenter",
   "platformAdmin",
@@ -192,10 +192,12 @@ export function ensureMeckanoLauncherSlots(
   if (config.sidebar.some((s) => s.widgetId === "meckanoReports")) return config;
 
   const sidebar = [...config.sidebar];
-  const afterAiChat = sidebar.findIndex((s) => s.widgetId === "aiChatFull");
+  const afterAi = sidebar.findIndex(
+    (s) => s.widgetId === "aiHub" || s.widgetId === "aiChatFull",
+  );
   const slot: LauncherSlot = { widgetId: "meckanoReports" };
-  if (afterAiChat >= 0) {
-    sidebar.splice(afterAiChat + 1, 0, slot);
+  if (afterAi >= 0) {
+    sidebar.splice(afterAi + 1, 0, slot);
   } else {
     sidebar.push(slot);
   }

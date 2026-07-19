@@ -40,4 +40,30 @@ describe("user-workspace-layout", () => {
     expect(widgets).toHaveLength(1);
     expect(widgets[0]?.liveData).toEqual({ tab: "chat" });
   });
+
+  it("remaps legacy widget types to hubs on scrub", () => {
+    const result = scrubWorkspaceLayout([
+      {
+        id: "dashboard-1",
+        type: "dashboard",
+        liveData: null,
+        position: { x: 0, y: 0 },
+        size: { width: 800, height: 600 },
+        zIndex: 1,
+      },
+      {
+        id: "builder-1",
+        type: "appBuilder",
+        liveData: null,
+        position: { x: 10, y: 10 },
+        size: { width: 700, height: 500 },
+        zIndex: 2,
+      },
+    ]);
+    expect(result).toHaveLength(2);
+    expect(result[0]?.type).toBe("financeHub");
+    expect(result[0]?.liveData).toEqual(expect.objectContaining({ tab: "overview" }));
+    expect(result[1]?.type).toBe("aiHub");
+    expect(result[1]?.liveData).toEqual(expect.objectContaining({ tab: "builder" }));
+  });
 });

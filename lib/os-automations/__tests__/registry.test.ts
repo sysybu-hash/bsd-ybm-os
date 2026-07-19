@@ -46,11 +46,14 @@ function mockDeps(overrides: Partial<AutomationRunnerDeps> = {}): AutomationRunn
 }
 
 describe("runAutomationAction", () => {
-  it("opens dashboard via open_dashboard intent", async () => {
+  it("opens finance hub via open_dashboard intent", async () => {
     const deps = mockDeps();
     const result = await runAutomationAction({ intent: "open_dashboard" }, deps);
     expect(result.ok).toBe(true);
-    expect(deps.openWidget).toHaveBeenCalledWith("dashboard", null);
+    expect(deps.openWidget).toHaveBeenCalledWith(
+      "financeHub",
+      expect.objectContaining({ tab: "overview" }),
+    );
   });
 
   it("opens scanner with instructions", async () => {

@@ -121,6 +121,27 @@ describe("user-launcher-config", () => {
     expect(scrubbed.quickGrid.find((s) => s.widgetId === "aiHub")).toMatchObject({ row: 1, col: 1 });
   });
 
+  it("scrub collapses sidebar appBuilder into aiHub", () => {
+    const scrubbed = scrubLauncherConfig({
+      version: 2,
+      quickGrid: DEFAULT_QUICK_GRID,
+      sidebar: [{ widgetId: "aiHub" }, { widgetId: "appBuilder" }, { widgetId: "crmTable" }],
+      mobileBarStart: [],
+      mobileBarEnd: [],
+      mobileMore: [],
+    });
+    const sidebarIds = scrubbed.sidebar.map((s) => s.widgetId);
+    expect(sidebarIds).toContain("aiHub");
+    expect(sidebarIds).not.toContain("appBuilder");
+    expect(sidebarIds.filter((id) => id === "aiHub")).toHaveLength(1);
+  });
+
+  it("default sidebar does not include appBuilder", () => {
+    const cfg = getDefaultLauncherConfig();
+    expect(cfg.sidebar.some((s) => s.widgetId === "appBuilder")).toBe(false);
+    expect(cfg.sidebar.some((s) => s.widgetId === "aiHub")).toBe(true);
+  });
+
   it("dedupes repeated documentsHub tiles after legacy migration", () => {
     const slots = [
       { widgetId: "documentsHub" as const, row: 0, col: 0 },

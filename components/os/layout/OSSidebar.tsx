@@ -21,7 +21,7 @@ import { helpIconChipClass, widgetIconChipClass } from "@/lib/widget-icon-chip";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 interface OSSidebarProps {
-  openWidget: (type: WidgetType) => void;
+  openWidget: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   isOpen?: boolean;
   closeSidebar?: () => void;
   hidden?: boolean;
@@ -208,8 +208,8 @@ export default function OSSidebar({
 
       {guideOpen ? (
         <OSGuideMenu
-          openWidget={(type) => {
-            openWidget(type);
+          openWidget={(type, data) => {
+            openWidget(type, data);
             setGuideOpen(false);
           }}
           onClose={() => setGuideOpen(false)}

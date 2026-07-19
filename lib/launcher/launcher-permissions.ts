@@ -1,6 +1,7 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
 import { OS_ASSISTANT_WIDGETS } from "@/lib/os-assistant/widget-catalog";
+import { isConsolidatedLegacyWidgetId } from "@/lib/os-assistant/resolve-widget-open";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
 
 export type LauncherPermissionContext = {
@@ -36,7 +37,11 @@ export function filterWidgetsForPicker(
   ctx: LauncherPermissionContext,
   usedInZone: Set<WidgetType>,
 ): WidgetType[] {
-  return OS_ASSISTANT_WIDGETS.map((w) => w.id).filter(
-    (id) => isWidgetAllowed(id, ctx) && !usedInZone.has(id),
-  );
+  return OS_ASSISTANT_WIDGETS.filter(
+    (w) =>
+      !w.pickerHidden &&
+      !isConsolidatedLegacyWidgetId(w.id) &&
+      isWidgetAllowed(w.id, ctx) &&
+      !usedInZone.has(w.id),
+  ).map((w) => w.id);
 }
