@@ -62,15 +62,15 @@ describe("requestItaAllocation", () => {
     expect(r.allocationNumber).toBeUndefined();
   });
 
-  it("fails hard when allocation required and no key / no mock", async () => {
+  it("allows issue without allocation when ITA is not configured", async () => {
     const r = await requestItaAllocation(20_000, "123", "inv-2", {
       docType: "INVOICE",
       asOf: new Date("2026-07-01"),
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
+    expect(r.skipped).toBe(true);
     expect(r.isMock).toBe(false);
     expect(r.allocationNumber).toBeUndefined();
-    expect(r.errorKey).toBe("ita_not_configured");
   });
 
   it("returns mock only when ALLOW_ITA_MOCK is true", async () => {
@@ -85,7 +85,7 @@ describe("requestItaAllocation", () => {
     expect(r.allocationNumber).toMatch(/^\d{9}$/);
   });
 
-  it("fails when key set but ITA_API_URL missing", async () => {
+  it("allows issue without allocation when key set but ITA_API_URL missing", async () => {
     (env as { ITA_PRODUCTION_KEY?: string }).ITA_PRODUCTION_KEY = "some-key";
     expect(isItaProductionConfigured()).toBe(true);
     expect(isItaHttpConfigured()).toBe(false);
@@ -93,10 +93,10 @@ describe("requestItaAllocation", () => {
       docType: "INVOICE",
       asOf: new Date("2026-07-01"),
     });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
+    expect(r.skipped).toBe(true);
     expect(r.isMock).toBe(false);
     expect(r.allocationNumber).toBeUndefined();
-    expect(r.errorKey).toBe("ita_api_inactive");
   });
 
   it("calls ITA HTTP API when key and URL are set", async () => {

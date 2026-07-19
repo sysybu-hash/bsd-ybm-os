@@ -2,7 +2,8 @@
  * מספר הקצאה — רשות המסים (מעודכן 18/05/2026)
  * סף לפני מע״מ: 10,000 ₪ (מ-1.1.2026), 5,000 ₪ (מ-1.6.2026)
  *
- * בפרודקשן: אין מספרי הקצאה מדומים. Mock רק עם ALLOW_ITA_MOCK=true (local/E2E).
+ * כשחיבור ITA לא מוגדר במלואו — מנפיקים בלי מספר הקצאה (המסמך נשמר).
+ * Mock מספרי הקצאה רק עם ALLOW_ITA_MOCK=true (local/E2E).
  * HTTP API — כאשר ITA_PRODUCTION_KEY + ITA_API_URL מוגדרים.
  */
 import type { DocType } from "@prisma/client";
@@ -159,25 +160,19 @@ export async function requestItaAllocation(
       };
     }
 
-    if (!isItaProductionConfigured()) {
-      log.warn("ITA allocation required but ITA_PRODUCTION_KEY missing — refusing");
-      return {
-        success: false,
-        errorKey: "ita_not_configured",
-        isMock: false,
-        thresholdNis: threshold,
-      };
-    }
-
     if (isItaHttpConfigured()) {
       return requestItaAllocationHttp(netAmount, clientVat, invoiceId, { docType, asOf });
     }
 
-    // מפתח קיים אך ITA_API_URL חסר — לא להחזיר מספר שנראה אמיתי
-    log.error("ITA_PRODUCTION_KEY set but ITA_API_URL missing");
+    // חיבור ITA עדיין לא מוכן — מאפשרים הנפקה בלי מספר הקצאה (יתווסף כשיהיה חיבור).
+    if (isItaProductionConfigured()) {
+      log.warn("ITA_PRODUCTION_KEY set but ITA_API_URL missing — issuing without allocation");
+    } else {
+      log.warn("ITA not configured — issuing without allocation number");
+    }
     return {
-      success: false,
-      errorKey: "ita_api_inactive",
+      success: true,
+      skipped: true,
       isMock: false,
       thresholdNis: threshold,
     };

@@ -154,13 +154,13 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
 
   let itaAllocationNumber: string | null = null;
   let itaIsMock = false;
+  let itaSkippedWithoutAllocation = false;
   if (requiresItaAllocation(type, amount, docDate)) {
     const ita = await requestItaAllocation(amount, org.taxId ?? "", doc.id, {
       docType: type,
       asOf: docDate,
     });
-    if (!ita.success || !ita.allocationNumber) {
-      // אל נשאיר מסמך מעל הסף בלי הקצאה תקינה
+    if (!ita.success) {
       await prisma.issuedDocument.delete({ where: { id: doc.id } }).catch(() => undefined);
       return NextResponse.json(
         {
@@ -172,12 +172,17 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
         { status: 422 },
       );
     }
-    itaAllocationNumber = ita.allocationNumber;
-    itaIsMock = ita.isMock;
-    doc = await prisma.issuedDocument.update({
-      where: { id: doc.id },
-      data: { itaAllocationNumber },
-    });
+    if (ita.allocationNumber) {
+      itaAllocationNumber = ita.allocationNumber;
+      itaIsMock = ita.isMock;
+      doc = await prisma.issuedDocument.update({
+        where: { id: doc.id },
+        data: { itaAllocationNumber },
+      });
+    } else {
+      // ITA לא מחובר עדיין — המסמך נשמר בלי מספר הקצאה
+      itaSkippedWithoutAllocation = Boolean(ita.skipped);
+    }
   }
 
   revalidatePath("/app/erp");
@@ -187,7 +192,12 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
   }
 
   return NextResponse.json(
-    { document: doc, itaAllocationNumber, itaIsMock },
+    {
+      document: doc,
+      itaAllocationNumber,
+      itaIsMock,
+      itaSkippedWithoutAllocation,
+    },
     { status: 201 },
   );
   } catch (error) {
