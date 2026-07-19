@@ -6,6 +6,7 @@ import WidgetState from "@/components/os/WidgetState";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
+import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 
 function WidgetLoadingPlaceholder() {
   return (
@@ -17,7 +18,6 @@ function WidgetLoadingPlaceholder() {
 
 const loading = () => <WidgetLoadingPlaceholder />;
 
-const ProjectWidget = dynamic(() => import("@/components/os/ProjectWidget"), { loading });
 const CashflowWidget = dynamic(() => import("@/components/os/widgets/CashflowWidget"), { loading });
 const AiChatWidget = dynamic(() => import("@/components/os/AiChatWidget"), { loading });
 const CrmWidget = dynamic(() => import("@/components/os/CrmWidget"), { loading });
@@ -65,39 +65,82 @@ export function WidgetContent({
 }) {
   const { t } = useI18n();
 
-  if (widget.type === "project") return <ProjectWidget projectId={typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined} projectName={typeof widget.liveData?.name === "string" ? widget.liveData.name : undefined} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "crm") return <CrmWidget />;
-  if (widget.type === "dashboard") return <DashboardWidget />;
-  if (widget.type === "aiChat") return <AiChatWidget provider={String(widget.liveData?.provider || "gemini")} prompt={String(widget.liveData?.prompt || "")} />;
-  if (widget.type === "cashflow") return <CashflowWidget />;
-  if (widget.type === "erp") return <ErpDocumentsWidget />;
-  if (widget.type === "projectBoard") return <ProjectBoardWidget projectId={typeof widget.liveData?.projectId === "string" ? widget.liveData.projectId : undefined} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "crmTable") return <CrmTableWidget openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "erpArchive") return <ErpFileArchiveWidget />;
-  if (widget.type === "docCreator") return <DocumentCreatorWidget liveData={widget.liveData} />;
-  if (widget.type === "aiScanner") return <AiScannerWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "fieldCopilot") return <FieldCopilotWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "appBuilder") return <AppBuilderWidget />;
-  if (widget.type === "aiChatFull") return <AiChatFullWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "settings") return <SettingsWidget />;
-  if (widget.type === "meckanoReports") return <MeckanoHubWidget />;
-  if (widget.type === "googleDrive") return <GoogleDriveWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "googleCalendar") return <GoogleCalendarWidget openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "jewishCalendar") return <JewishCalendarWidget />;
-  if (widget.type === "notebookLM") return <NotebookLMWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "accessibility") return <AccessibilityWidget />;
-  if (widget.type === "platformAdmin") return <PlatformAdminWidget />;
-  if (widget.type === "helpCenter") return <HelpCenterWidget openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "financeHub") return <FinanceHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "projectsHub") return <ProjectsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "documentsHub") return <DocumentsHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "aiHub") return <AiHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
-  if (widget.type === "logisticsHub") return <LogisticsHubWidget liveData={widget.liveData} />;
-  if (widget.type === "procurementHub") {
-    return <ProcurementHubWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  // Consolidated legacy types render as their Hub (same mapping as launcher/scrub).
+  const resolved = resolveWidgetOpen(widget.type, widget.liveData) ?? {
+    type: widget.type,
+    liveData: widget.liveData,
+  };
+  const type = resolved.type;
+  const liveData = resolved.liveData;
+
+  if (type === "crm") return <CrmWidget />;
+  if (type === "dashboard") return <DashboardWidget />;
+  if (type === "aiChat") {
+    return (
+      <AiChatWidget
+        provider={String(liveData?.provider || "gemini")}
+        prompt={String(liveData?.prompt || "")}
+      />
+    );
   }
-  if (widget.type === "executiveHub") return <ExecutiveHubWidget liveData={widget.liveData} />;
-  if (widget.type === "universalCommand") return <UniversalCommandWidget liveData={widget.liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  if (type === "cashflow") return <CashflowWidget />;
+  if (type === "erp") return <ErpDocumentsWidget />;
+  if (type === "projectBoard") {
+    return (
+      <ProjectBoardWidget
+        projectId={typeof liveData?.projectId === "string" ? liveData.projectId : undefined}
+        openWorkspaceWidget={openWorkspaceWidget}
+      />
+    );
+  }
+  if (type === "crmTable") return <CrmTableWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  if (type === "erpArchive") return <ErpFileArchiveWidget />;
+  if (type === "docCreator") return <DocumentCreatorWidget liveData={liveData} />;
+  if (type === "aiScanner") {
+    return <AiScannerWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "fieldCopilot") {
+    return <FieldCopilotWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "appBuilder") return <AppBuilderWidget />;
+  if (type === "aiChatFull") {
+    return <AiChatFullWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "settings") return <SettingsWidget />;
+  if (type === "meckanoReports") return <MeckanoHubWidget />;
+  if (type === "googleDrive") {
+    return <GoogleDriveWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "googleCalendar") {
+    return <GoogleCalendarWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "jewishCalendar") return <JewishCalendarWidget />;
+  if (type === "notebookLM") {
+    return <NotebookLMWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "accessibility") return <AccessibilityWidget />;
+  if (type === "platformAdmin") return <PlatformAdminWidget />;
+  if (type === "helpCenter") return <HelpCenterWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  if (type === "financeHub") {
+    return <FinanceHubWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "projectsHub") {
+    return <ProjectsHubWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "documentsHub") {
+    return <DocumentsHubWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "aiHub") {
+    return <AiHubWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "logisticsHub") return <LogisticsHubWidget liveData={liveData} />;
+  if (type === "procurementHub") {
+    return <ProcurementHubWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "executiveHub") return <ExecutiveHubWidget liveData={liveData} />;
+  if (type === "universalCommand") {
+    return <UniversalCommandWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
 
   return (
     <WidgetState variant="error"

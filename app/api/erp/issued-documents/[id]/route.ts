@@ -55,7 +55,7 @@ function totalsFromItems(
 }
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
-  async (req, { orgId }, { params }) => {
+  async (req, { orgId, userId }, { params }) => {
     const { id } = await params;
     const body = (await req.json()) as {
       type?: string;
@@ -133,12 +133,24 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }>(
       },
     });
 
+    if (status === DocStatus.CANCELLED) {
+      const { logIssuedDocumentAudit, issuedDocumentAuditDetails } = await import(
+        "@/lib/issued-documents-audit"
+      );
+      await logIssuedDocumentAudit(
+        userId,
+        orgId,
+        "voided",
+        issuedDocumentAuditDetails({ id: updated.id, status: "CANCELLED" }),
+      );
+    }
+
     return NextResponse.json({ document: updated });
   },
 );
 
 export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(
-  async (_req, { orgId }, { params }) => {
+  async (_req, { orgId, userId }, { params }) => {
     const { id } = await params;
     const existing = await prisma.issuedDocument.findFirst({
       where: { id, organizationId: orgId },
@@ -150,6 +162,15 @@ export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(
     }
 
     await prisma.issuedDocument.delete({ where: { id } });
+    const { logIssuedDocumentAudit, issuedDocumentAuditDetails } = await import(
+      "@/lib/issued-documents-audit"
+    );
+    await logIssuedDocumentAudit(
+      userId,
+      orgId,
+      "voided",
+      issuedDocumentAuditDetails({ id, via: "delete" }),
+    );
     return NextResponse.json({ ok: true });
   },
 );

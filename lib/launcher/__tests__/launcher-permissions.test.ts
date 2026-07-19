@@ -18,4 +18,22 @@ describe("filterWidgetsForPicker", () => {
       expect(isConsolidatedLegacyWidgetId(id)).toBe(false);
     }
   });
+
+  it("hides advanced widgets for EMPLOYEE / CLIENT simple roles", () => {
+    const options = filterWidgetsForPicker(
+      {
+        isPlatformAdmin: false,
+        meckanoEnabled: true,
+        calendarGoogleEnabled: true,
+        role: "EMPLOYEE",
+      },
+      new Set(),
+    );
+    expect(options).toContain("projectsHub");
+    expect(options).toContain("documentsHub");
+    expect(options).not.toContain("fieldCopilot");
+    expect(options).not.toContain("executiveHub");
+    expect(options).not.toContain("universalCommand");
+    expect(options).not.toContain("procurementHub");
+  });
 });

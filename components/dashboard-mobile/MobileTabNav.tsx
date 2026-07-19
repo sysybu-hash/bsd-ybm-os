@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { CLASSIC_MOBILE_PRIMARY } from "@/lib/classic/sections";
 
@@ -14,16 +13,13 @@ type NavItem = {
   fab?: boolean;
 };
 
-// Derived from the single classic-sections registry, plus the "more" entry.
-const ITEMS: ReadonlyArray<NavItem> = [
-  ...CLASSIC_MOBILE_PRIMARY.map((s) => ({
-    href: s.mobileHref,
-    labelKey: s.labelKey,
-    icon: s.icon,
-    fab: s.fab,
-  })),
-  { href: "/m/dashboard/more", labelKey: "workspaceWidgets.mobileNav.moreApps", icon: Grid3x3 },
-];
+/** Core mobile tabs only: home / projects / scan. */
+const ITEMS: ReadonlyArray<NavItem> = CLASSIC_MOBILE_PRIMARY.map((s) => ({
+  href: s.mobileHref,
+  labelKey: s.labelKey,
+  icon: s.icon,
+  fab: s.fab,
+}));
 
 export default function MobileTabNav() {
   const { t } = useI18n();

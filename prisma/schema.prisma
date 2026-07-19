@@ -269,6 +269,7 @@ model Project {
 
   @@index([organizationId])
   @@index([organizationId, isActive])
+  @@index([organizationId, updatedAt])
   @@index([meckanoZoneId])
   @@index([primaryContactId])
 }
@@ -853,6 +854,7 @@ model Contact {
   searchEmbedding ContactSearchEmbedding?
 
   @@index([organizationId])
+  @@index([organizationId, createdAt])
   @@index([projectId])
   @@index([status, value])
   @@index([createdAt])

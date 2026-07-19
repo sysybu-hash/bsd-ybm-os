@@ -1,9 +1,30 @@
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { getUpstashRedis } from "@/lib/upstash-redis";
 
 const log = createLogger("dashboard-stats");
 
-export async function getDashboardStats(orgId: string) {
+const DASH_STATS_TTL_SEC = 45;
+
+export type DashboardStatsPayload = {
+  totalRevenue: number;
+  totalExpenses: number;
+  activeProjects: number;
+  totalClients: number;
+  pendingInvoices: number;
+  aiInsight: string;
+  cashflow: unknown[];
+  analytics: {
+    monthlyExpenses: { name: string; value: number }[];
+    quoteStatus: { name: string; value: number; color: string }[];
+  };
+};
+
+function cacheKey(orgId: string): string {
+  return `dash:stats:${orgId}`;
+}
+
+async function computeDashboardStats(orgId: string): Promise<DashboardStatsPayload> {
   const whereOrg = { organizationId: orgId };
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -88,4 +109,35 @@ export async function getDashboardStats(orgId: string) {
       ],
     },
   };
+}
+
+export async function getDashboardStats(orgId: string): Promise<DashboardStatsPayload> {
+  const redis = getUpstashRedis();
+  const key = cacheKey(orgId);
+  if (redis) {
+    try {
+      const cached = await redis.get<DashboardStatsPayload>(key);
+      if (cached && typeof cached === "object") {
+        return cached;
+      }
+    } catch (err) {
+      log.warn("dashboard_stats_cache_get_failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const stats = await computeDashboardStats(orgId);
+
+  if (redis) {
+    try {
+      await redis.set(key, stats, { ex: DASH_STATS_TTL_SEC });
+    } catch (err) {
+      log.warn("dashboard_stats_cache_set_failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return stats;
 }

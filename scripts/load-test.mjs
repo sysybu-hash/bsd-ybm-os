@@ -31,6 +31,8 @@ const PROFILES = {
       "/api/health",
       "/api/auth/session",
       "/api/dashboard/stats",
+      "/api/projects",
+      "/api/search?q=test",
     ],
     requests: 80,
     concurrency: 10,

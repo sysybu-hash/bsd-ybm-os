@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { Redis } from "@upstash/redis";
+import type { Redis } from "@upstash/redis";
 import { prisma } from "./prisma";
 import { createLogger } from "./logger";
+import { __resetUpstashRedisForTests, getUpstashRedis } from "./upstash-redis";
 
 const logger = createLogger("rate-limit");
 
-let redisClient: Redis | null | undefined;
-
 function getRedis(): Redis | null {
-  if (redisClient !== undefined) return redisClient;
-  try {
-    if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) {
-      redisClient = null;
-      return null;
-    }
-    redisClient = Redis.fromEnv();
-    return redisClient;
-  } catch {
-    redisClient = null;
-    return null;
-  }
+  return getUpstashRedis();
 }
 
 /** Test helper — reset cached Redis client between tests */
 export function __resetRateLimitRedisForTests() {
-  redisClient = undefined;
+  __resetUpstashRedisForTests();
 }
 
 function isUniqueConstraintError(err: unknown): boolean {

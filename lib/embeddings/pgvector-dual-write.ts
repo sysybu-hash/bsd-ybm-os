@@ -163,6 +163,46 @@ export async function searchKnowledgeVaultChunksPgvector(
   }
 }
 
+/**
+ * Contact Top-K via pgvector. Returns null when unavailable (caller uses JSON cosine).
+ */
+export async function searchContactsPgvector(
+  organizationId: string,
+  queryEmbedding: number[],
+  limit: number,
+): Promise<Array<{ contactId: string; score: number }> | null> {
+  if (!(await canUsePgVectorStorage())) return null;
+  if (queryEmbedding.length !== EMBEDDING_VECTOR_DIM) return null;
+
+  try {
+    const lit = vectorLiteral(queryEmbedding);
+    const rows = await prisma.$queryRawUnsafe<
+      Array<{ contactId: string; distance: number }>
+    >(
+      `SELECT c."contactId",
+              (c."embeddingVector" <=> $1::vector) AS distance
+       FROM "ContactSearchEmbedding" c
+       WHERE c."organizationId" = $2
+         AND c."embeddingVector" IS NOT NULL
+       ORDER BY c."embeddingVector" <=> $1::vector
+       LIMIT $3`,
+      lit,
+      organizationId,
+      limit,
+    );
+
+    return rows.map((r) => ({
+      contactId: r.contactId,
+      score: Math.max(0, 1 - Number(r.distance)),
+    }));
+  } catch (err: unknown) {
+    log.warn("pgvector_contact_search_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
 /** Reset probe cache (tests). */
 export function resetPgVectorProbeCache(): void {
   pgVectorAvailable = null;

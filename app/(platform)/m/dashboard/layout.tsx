@@ -1,13 +1,23 @@
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import MobileDashLayout from "@/components/dashboard-mobile/MobileDashLayout";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The classic dashboard is now a single responsive shell at /dashboard
- * (sidebar on desktop, bottom-nav on mobile). The old separate mobile tree is
- * retired — every /m/dashboard/* path redirects to the unified shell.
- * (Session is enforced by /dashboard.)
+ * Core mobile tabs live here: home / scanner / projects.
+ * Other /m/dashboard/* pages redirect to home (see those page files).
  */
-export default function MobileDashboardLayout() {
-  redirect("/dashboard");
+export default async function MobileDashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect("/");
+  }
+
+  return <MobileDashLayout>{children}</MobileDashLayout>;
 }

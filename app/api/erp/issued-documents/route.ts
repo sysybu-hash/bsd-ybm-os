@@ -191,6 +191,24 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
     revalidatePath(`/app/crm/client/${resolvedContactId}`);
   }
 
+  const { logIssuedDocumentAudit, issuedDocumentAuditDetails } = await import(
+    "@/lib/issued-documents-audit"
+  );
+  await logIssuedDocumentAudit(
+    userId,
+    orgId,
+    "created",
+    issuedDocumentAuditDetails({
+      id: doc.id,
+      type: doc.type,
+      number: doc.number,
+      clientName: doc.clientName,
+      total: doc.total,
+      projectId: resolvedProjectId,
+      contactId: resolvedContactId,
+    }),
+  );
+
   return NextResponse.json(
     {
       document: doc,

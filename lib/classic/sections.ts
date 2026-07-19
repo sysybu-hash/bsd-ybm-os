@@ -50,10 +50,10 @@ const lbl = (id: string) => `workspaceWidgets.classicDashboard.tabs.${id}`;
 /** Canonical order — desktop renders all of these as tabs. */
 export const CLASSIC_SECTIONS: readonly ClassicSection[] = [
   { id: "home",        labelKey: lbl("home"),        icon: LayoutDashboard, mobileHref: "/m/dashboard/home",            mobilePrimary: true },
-  { id: "crm",         labelKey: lbl("crm"),         icon: Users,           mobileHref: "/m/dashboard/crm",             mobilePrimary: true },
+  { id: "tasks",       labelKey: lbl("tasks"),       icon: FolderKanban,    mobileHref: "/m/dashboard/projects",        mobilePrimary: true },
   { id: "scan",        labelKey: lbl("scan"),        icon: ScanLine,        mobileHref: "/m/dashboard/scanner",         mobilePrimary: true, fab: true },
-  { id: "aiChat",      labelKey: lbl("aiChat"),      icon: Bot,             mobileHref: "/m/dashboard/ai",              mobilePrimary: true },
-  { id: "tasks",       labelKey: lbl("tasks"),       icon: FolderKanban,    mobileHref: "/m/dashboard/projects" },
+  { id: "crm",         labelKey: lbl("crm"),         icon: Users,           mobileHref: "/m/dashboard/crm" },
+  { id: "aiChat",      labelKey: lbl("aiChat"),      icon: Bot,             mobileHref: "/m/dashboard/ai" },
   { id: "erp",         labelKey: lbl("erp"),         icon: FileText,        mobileHref: "/m/dashboard/more/erp" },
   { id: "customOs",    labelKey: lbl("customOs"),    icon: Cpu,             mobileHref: "/m/dashboard/more/builder" },
   { id: "calendar",    labelKey: lbl("calendar"),    icon: CalendarDays,    mobileHref: "/m/dashboard/more/calendar" },
@@ -62,7 +62,7 @@ export const CLASSIC_SECTIONS: readonly ClassicSection[] = [
   { id: "settings",    labelKey: lbl("settings"),    icon: Settings,        mobileHref: "/m/dashboard/more/settings" },
 ];
 
-/** Sections in the mobile bottom nav (home, crm, scan-fab, aiChat) — FAB centered. */
+/** Core mobile bottom nav: home / projects / scan FAB. */
 export const CLASSIC_MOBILE_PRIMARY: readonly ClassicSection[] = CLASSIC_SECTIONS.filter(
   (s) => s.mobilePrimary,
 );

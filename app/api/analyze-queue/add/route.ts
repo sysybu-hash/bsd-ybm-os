@@ -52,6 +52,19 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       );
     }
 
+    // Daily per-org AI enqueue cap (cost guard)
+    const dailyLimit = dev ? 500 : 120;
+    const dailyKey = `scan-queue-enqueue:day:org:${orgId}`;
+    const daily = await checkRateLimit(dailyKey, dailyLimit, 24 * 60 * 60 * 1000);
+    if (!daily.success) {
+      log.warn("analyze_queue_daily_cap", { orgId, dailyLimit });
+      return jsonTooManyRequests(
+        "חרגת ממכסת סריקות AI היומית לארגון. נסה שוב מחר או פנה לתמיכה.",
+        "daily_ai_cap",
+        { resetAt: daily.resetAt.toISOString() },
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) {

@@ -76,7 +76,9 @@ async function resolveRegistrationPassword(
 }
 
 export async function POST(req: NextRequest) {
-  // 5 הרשמות לשעה per IP — מגן על יצירת חשבונות-ספאם וברוט-פורס
+  // Burst + hourly caps per IP
+  const burst = await applyRateLimit(req, "register:burst", 3, 60_000);
+  if (burst) return burst;
   const limited = await applyRateLimit(req, "register", 5, 60 * 60 * 1000);
   if (limited) return limited;
   try {

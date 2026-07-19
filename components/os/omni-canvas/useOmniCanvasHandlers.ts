@@ -6,6 +6,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import type { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import type { SearchResult } from "./types";
 import { createLogger } from "@/lib/logger";
+import { fetchWorkspaceSearch } from "@/lib/workspace-search-client";
 
 const log = createLogger("omni-canvas-handlers");
 
@@ -63,11 +64,8 @@ export function useOmniCanvasHandlers({
   const handleSearchPreview = async (query: string) => {
     if (query.trim().length < 2) { setSearchResults([]); return; }
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&preview=true`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(Array.isArray(data.results) ? data.results : []);
-      }
+      const results = await fetchWorkspaceSearch(query, { preview: true });
+      setSearchResults(results as SearchResult[]);
     } catch (err) {
       log.error("search preview failed", { error: err instanceof Error ? err.message : String(err) });
     }
@@ -99,9 +97,7 @@ export function useOmniCanvasHandlers({
       }
       const handled = await automationRunner.handleCommandWithAutomations(cmd);
       if (handled) return;
-      const res = await fetch(`/api/search?q=${encodeURIComponent(cmd)}`, { credentials: "include" });
-      const data = await res.json();
-      const results: SearchResult[] = Array.isArray(data.results) ? data.results : [];
+      const results = (await fetchWorkspaceSearch(cmd)) as SearchResult[];
       if (results.length > 0) {
         const top = results[0]!;
         if (top.type === "project") {

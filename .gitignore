@@ -80,3 +80,13 @@ lh-*.json
 
 # mobile screenshot harness outputs
 mobile-shot-*.png
+
+# local capture / architecture scratch (not product source)
+.tmp-boot-capture/
+e2e/_*-capture.spec.ts
+e2e/_boot-capture.spec.ts
+e2e/_dash-capture.spec.ts
+e2e/_mobile-shot.spec.ts
+docs/BSD-YBM-OS-architecture-report.pdf
+docs/architecture-report.html
+docs/ov.png

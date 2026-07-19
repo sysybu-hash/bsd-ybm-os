@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { askAI } from "@/lib/ai-orchestrator";
 import { createLogger } from "@/lib/logger";
+import {
+  searchContactsByEmbedding,
+  syncContactEmbeddingsForOrg,
+} from "@/lib/crm/contact-embedding-index";
+import { isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
 
 const log = createLogger("semantic-search");
 
@@ -36,6 +41,54 @@ function localNameMatch(query: string, projects: NamedRow[], contacts: NamedRow[
 export async function semanticSearch(query: string, organizationId: string): Promise<SemanticSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
+
+  // Prefer vector Top-K for contacts when embeddings are configured.
+  if (isEmbeddingConfigured()) {
+    try {
+      await syncContactEmbeddingsForOrg(organizationId);
+      const contactIds = await searchContactsByEmbedding(organizationId, q, 3);
+      if (contactIds.length > 0) {
+        const contacts = await prisma.contact.findMany({
+          where: { organizationId, id: { in: contactIds } },
+          select: { id: true, name: true },
+        });
+        const byId = new Map(contacts.map((c) => [c.id, c.name]));
+        const vectorHits: SemanticSearchResult[] = [];
+        contactIds.forEach((id, i) => {
+          const name = byId.get(id);
+          if (!name) return;
+          vectorHits.push({
+            type: "contact",
+            id,
+            name,
+            relevance: Math.max(0.4, 1 - i * 0.1),
+          });
+        });
+
+        const projects = await prisma.project.findMany({
+          where: { organizationId, name: { contains: q, mode: "insensitive" } },
+          select: { id: true, name: true },
+          take: 3,
+          orderBy: { updatedAt: "desc" },
+        });
+        const projectHits: SemanticSearchResult[] = projects.map((p) => ({
+          type: "project",
+          id: p.id,
+          name: p.name,
+          relevance: 0.55,
+        }));
+
+        const merged = [...projectHits, ...vectorHits]
+          .sort((a, b) => b.relevance - a.relevance)
+          .slice(0, 3);
+        if (merged.length > 0) return merged;
+      }
+    } catch (err) {
+      log.warn("vector_search_failed_fallback", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   const [matchedProjects, matchedContacts] = await Promise.all([
     prisma.project.findMany({

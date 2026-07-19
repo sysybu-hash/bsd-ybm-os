@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-/** Non-core mobile tab — use workspace AI hub. */
-export default function MobileAiRedirectPage() {
+/** Nested /m/dashboard/more/* → full workspace OS. */
+export default function MobileMoreLayout() {
   redirect("/workspace");
 }

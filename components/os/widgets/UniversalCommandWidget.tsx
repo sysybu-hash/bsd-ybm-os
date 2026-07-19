@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
-import { Cpu, FilePlus, FolderPlus, Sparkles, type LucideIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Cpu, FilePlus, FolderPlus, Search, Sparkles, type LucideIcon } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/crm-table/types";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WindowBody from "@/components/os/layout/WindowBody";
+import { fetchWorkspaceSearch, type WorkspaceSearchHit } from "@/lib/workspace-search-client";
 
 type UniversalCommandWidgetProps = {
   liveData?: Record<string, unknown> | null;
@@ -85,6 +86,31 @@ export default function UniversalCommandWidget({
   openWorkspaceWidget,
 }: UniversalCommandWidgetProps) {
   const { t, dir } = useI18n();
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<WorkspaceSearchHit[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const runSearch = async () => {
+    const query = q.trim();
+    if (query.length < 2) {
+      setHits([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      setHits(await fetchWorkspaceSearch(query, { preview: true }));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const openHit = (hit: WorkspaceSearchHit) => {
+    if (hit.type === "project") {
+      openWorkspaceWidget?.("projectsHub", { tab: "project", projectId: hit.id, name: hit.name });
+    } else {
+      openWorkspaceWidget?.("crmTable", { contactId: hit.id, name: hit.name });
+    }
+  };
 
   return (
     <WindowBody className="gap-6 p-3 md:p-6" dir={dir}>
@@ -95,6 +121,50 @@ export default function UniversalCommandWidget({
         <p className="mt-0.5 text-xs text-[color:var(--foreground-muted)]">
           {t("workspaceWidgets.commandCenter.subtitle")}
         </p>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void runSearch();
+          }}
+        >
+          <label className="sr-only" htmlFor="uc-workspace-search">
+            {t("workspaceWidgets.commandCenter.title")}
+          </label>
+          <input
+            id="uc-workspace-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 text-sm"
+            placeholder={t("workspaceWidgets.commandCenter.searchPlaceholder")}
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 text-sm font-bold text-white"
+            disabled={searching}
+          >
+            <Search size={16} aria-hidden />
+            {searching ? "…" : t("workspaceWidgets.onboarding.next")}
+          </button>
+        </form>
+        {hits.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {hits.map((hit) => (
+              <li key={`${hit.type}-${hit.id}`}>
+                <button
+                  type="button"
+                  onClick={() => openHit(hit)}
+                  className="w-full rounded-md px-2 py-1.5 text-start text-sm hover:bg-[color:var(--surface-soft)]"
+                >
+                  <span className="font-medium">{hit.name}</span>
+                  <span className="ms-2 text-[10px] uppercase text-[color:var(--foreground-muted)]">
+                    {hit.type}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </header>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

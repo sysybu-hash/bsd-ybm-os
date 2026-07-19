@@ -397,6 +397,7 @@
     "commandCenter": {
       "title": "Command Center & Quick Actions",
       "subtitle": "Run core cross-cutting actions from anywhere in one click",
+      "searchPlaceholder": "Search project or contact…",
       "cards": {
         "project": {
           "badge": "CRM",
@@ -1195,12 +1196,16 @@
       "stepScan": "First scan (Documents)",
       "stepDocument": "First document",
       "stepFieldCopilot": "Field Copilot",
+      "stepProject": "Pick or create a project",
+      "stepSave": "Save the scan to a project",
       "desc_login": "You are connected — let's tour the Hub tiles on your desktop.",
       "desc_finance": "Open the Finance hub for dashboard and cash flow in one place.",
       "desc_drive": "Google Drive lives in the side rail (not inside Documents hub). Tap to open.",
       "desc_scan": "Open Documents hub → Scan tab for the AI invoice scanner.",
       "desc_document": "Create your first quote or invoice from Documents → Create.",
-      "desc_fieldCopilot": "Field Copilot — site quotes with capture and AI analysis."
+      "desc_fieldCopilot": "Field Copilot — site quotes with capture and AI analysis.",
+      "desc_project": "Open Projects hub — pick an existing project or create one.",
+      "desc_save": "After scanning — confirm fields and save to a project. This is the core path."
     },
     "launcher": {
       "editHint": "Drag tiles to grid cells · X to remove · Tap empty cell or + to add",
