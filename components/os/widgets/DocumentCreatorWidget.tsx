@@ -126,22 +126,62 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                 onUpdate={d.updateItem}
               />
 
-              {/* Additional settings */}
-              <section className="grid grid-cols-1 @lg:grid-cols-2 gap-6">
+              {/* Number + dates */}
+              <section className="grid grid-cols-1 @lg:grid-cols-3 gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">3</div>
-                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך פירעון</h3>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">מספר מסמך</h3>
                   </div>
-                  <div className="relative">
-                    <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
-                    <input type="date" className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
-                      defaultValue={new Date().toISOString().split("T")[0]} />
-                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={d.documentNumberInput}
+                    onChange={(e) => d.setDocumentNumberInput(e.target.value)}
+                    placeholder={d.suggestedNumber != null ? String(d.suggestedNumber) : "אוטומטי"}
+                    className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
+                  />
+                  <p className="mt-1.5 text-[10px] text-[color:var(--foreground-muted)]">
+                    מתמלא אוטומטית — ניתן לשנות ידנית
+                  </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">4</div>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך הנפקה</h3>
+                  </div>
+                  <div className="relative">
+                    <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
+                    <input
+                      type="date"
+                      value={d.issueDate}
+                      onChange={(e) => d.setIssueDate(e.target.value)}
+                      className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">5</div>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך פירעון</h3>
+                  </div>
+                  <div className="relative">
+                    <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
+                    <input
+                      type="date"
+                      value={d.dueDate}
+                      onChange={(e) => d.setDueDate(e.target.value)}
+                      className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid grid-cols-1 gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">6</div>
                     <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">אמצעי תשלום</h3>
                   </div>
                   <div className="relative">
@@ -159,7 +199,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
             {/* Preview column — sticks beside the form on wide windows */}
             <section className="min-w-0 @2xl:sticky @2xl:top-0 @2xl:self-start">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">5</div>
+                <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">7</div>
                 <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תצוגה מקדימה</h3>
               </div>
               {d.selectedTypeMeta ? (
@@ -168,6 +208,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
               <DocumentPreview
                 payload={previewPayloadFromDraft({
                   type: d.docType,
+                  number: d.previewNumber,
                   clientName: d.clientNameInput.trim() || d.contacts.find((c) => c.id === d.selectedContactId)?.name || "",
                   items: d.items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
                   net: billing.net,
@@ -177,6 +218,8 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                   orgName: d.orgSettings?.name ?? "BSD-YBM",
                   orgTaxId: d.orgSettings?.taxId,
                   orgCompanyType: d.orgSettings?.companyType,
+                  issueDate: d.issueDate,
+                  dueDate: d.dueDate,
                 })}
               />
             </section>

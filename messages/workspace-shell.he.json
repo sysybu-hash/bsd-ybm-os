@@ -356,6 +356,11 @@
         "openMenu": "פתח תפריט",
         "close": "סגור תפריט"
       },
+      "navGroups": {
+        "daily": "יומיום",
+        "finance": "כספים ומסמכים",
+        "tools": "כלים"
+      },
       "tabs": {
         "home": "סקירה כללית",
         "crm": "CRM ופרויקטים",
@@ -379,19 +384,75 @@
         "empty": "עדיין אין פרויקטים. צור פרויקט חדש כדי להתחיל."
       },
       "overview": {
-        "greeting": "ברוך הבא ללוח הבקרה",
-        "subtitle": "תמונת מצב עדכנית של העסק — הכל במקום אחד",
+        "greeting": "מצב העסק עכשיו",
+        "subtitle": "מה דורש טיפול — ומה אפשר לעשות מיד",
+        "summary": "{projects} פרויקטים פעילים · {clients} לקוחות · {pending} חשבוניות ממתינות",
+        "summaryEmpty": "אין נתונים עדיין — התחל בסריקה או בפרויקט חדש",
         "loading": "טוען נתונים…",
         "revenue": "סך הכנסות",
         "expenses": "סך הוצאות",
         "activeProjects": "פרויקטים פעילים",
         "clients": "לקוחות",
         "pendingInvoices": "חשבוניות ממתינות",
-        "quickActionsTitle": "פעולות מהירות"
+        "attentionTitle": "דורש טיפול",
+        "attentionPending": "{count} חשבוניות ממתינות לטיפול",
+        "attentionInsight": "תובנת AI",
+        "attentionGoInvoices": "למסמכים",
+        "attentionGoCrm": "ל-CRM",
+        "attentionEmpty": "הכול נראה תקין כרגע",
+        "quickActionsTitle": "פעולות ראשיות",
+        "actionScan": "סריקה",
+        "actionDocument": "מסמך",
+        "actionCrm": "CRM",
+        "actionClients": "לקוחות",
+        "myProjectsLink": "הפרויקטים שלי"
       },
       "calculators": {
         "calculator": "מחשבון",
         "currency": "המרת מטבע"
+      },
+      "planner": {
+        "add": "הוסף",
+        "today": "היום",
+        "prevMonth": "חודש קודם",
+        "nextMonth": "חודש הבא",
+        "tabDiary": "יומן",
+        "tabZmanim": "זמנים",
+        "dayEmpty": "אין פגישות או משימות ביום זה",
+        "loading": "טוען…",
+        "loadFailed": "לא ניתן לטעון את היומן",
+        "zmanimTitle": "זמני היום",
+        "zmanimFailed": "לא ניתן לטעון זמנים",
+        "retry": "נסה שוב",
+        "saved": "נשמר",
+        "deleted": "נמחק",
+        "saveFailed": "השמירה נכשלה",
+        "confirmDelete": "למחוק את הפריט?",
+        "edit": "עריכה",
+        "delete": "מחיקה",
+        "reminderTag": "תזכורת · {mins} דק׳ לפני",
+        "reminderToast": "תזכורת: {title} בעוד {mins} דק׳",
+        "kinds": {
+          "meeting": "פגישה",
+          "task": "משימה",
+          "reminder": "תזכורת",
+          "event": "אירוע"
+        },
+        "modal": {
+          "create": "פריט חדש",
+          "edit": "עריכת פריט",
+          "title": "כותרת",
+          "titlePlaceholder": "למשל: פגישה עם קבלן",
+          "date": "תאריך",
+          "start": "התחלה",
+          "end": "סיום",
+          "allDay": "כל היום",
+          "kind": "סוג",
+          "reminderMinutes": "תזכורת (דקות לפני)",
+          "save": "שמור",
+          "cancel": "ביטול",
+          "invalidRange": "יש למלא כותרת וטווח תקין"
+        }
       }
     },
     "commandCenter": {

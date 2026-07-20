@@ -356,6 +356,11 @@
         "openMenu": "Open menu",
         "close": "Close menu"
       },
+      "navGroups": {
+        "daily": "Daily",
+        "finance": "Finance & documents",
+        "tools": "Tools"
+      },
       "tabs": {
         "home": "Overview",
         "crm": "CRM & Projects",
@@ -379,19 +384,75 @@
         "empty": "No projects yet. Create a new project to get started."
       },
       "overview": {
-        "greeting": "Welcome to your dashboard",
-        "subtitle": "A live snapshot of your business — all in one place",
+        "greeting": "Business status now",
+        "subtitle": "What needs attention — and what you can do next",
+        "summary": "{projects} active projects · {clients} clients · {pending} pending invoices",
+        "summaryEmpty": "No data yet — start with a scan or a new project",
         "loading": "Loading data…",
         "revenue": "Total revenue",
         "expenses": "Total expenses",
         "activeProjects": "Active projects",
         "clients": "Clients",
         "pendingInvoices": "Pending invoices",
-        "quickActionsTitle": "Quick actions"
+        "attentionTitle": "Needs attention",
+        "attentionPending": "{count} invoices pending",
+        "attentionInsight": "AI insight",
+        "attentionGoInvoices": "Documents",
+        "attentionGoCrm": "CRM",
+        "attentionEmpty": "Everything looks fine right now",
+        "quickActionsTitle": "Primary actions",
+        "actionScan": "Scan",
+        "actionDocument": "Document",
+        "actionCrm": "CRM",
+        "actionClients": "Clients",
+        "myProjectsLink": "My projects"
       },
       "calculators": {
         "calculator": "Calculator",
         "currency": "Currency converter"
+      },
+      "planner": {
+        "add": "Add",
+        "today": "Today",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "tabDiary": "Diary",
+        "tabZmanim": "Zmanim",
+        "dayEmpty": "No meetings or tasks on this day",
+        "loading": "Loading…",
+        "loadFailed": "Could not load the planner",
+        "zmanimTitle": "Daily times",
+        "zmanimFailed": "Could not load zmanim",
+        "retry": "Retry",
+        "saved": "Saved",
+        "deleted": "Deleted",
+        "saveFailed": "Save failed",
+        "confirmDelete": "Delete this item?",
+        "edit": "Edit",
+        "delete": "Delete",
+        "reminderTag": "Reminder · {mins} min before",
+        "reminderToast": "Reminder: {title} in {mins} min",
+        "kinds": {
+          "meeting": "Meeting",
+          "task": "Task",
+          "reminder": "Reminder",
+          "event": "Event"
+        },
+        "modal": {
+          "create": "New item",
+          "edit": "Edit item",
+          "title": "Title",
+          "titlePlaceholder": "e.g. Meeting with contractor",
+          "date": "Date",
+          "start": "Start",
+          "end": "End",
+          "allDay": "All day",
+          "kind": "Type",
+          "reminderMinutes": "Reminder (minutes before)",
+          "save": "Save",
+          "cancel": "Cancel",
+          "invalidRange": "Enter a title and valid time range"
+        }
       }
     },
     "commandCenter": {

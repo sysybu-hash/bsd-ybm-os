@@ -45,7 +45,16 @@ export type ClassicSection = {
   fab?: boolean;
 };
 
+export type ClassicNavGroupId = "daily" | "finance" | "tools";
+
+export type ClassicNavGroup = {
+  id: ClassicNavGroupId;
+  labelKey: string;
+  sectionIds: readonly ClassicSectionId[];
+};
+
 const lbl = (id: string) => `workspaceWidgets.classicDashboard.tabs.${id}`;
+const grp = (id: string) => `workspaceWidgets.classicDashboard.navGroups.${id}`;
 
 /** Canonical order — desktop renders all of these as tabs. */
 export const CLASSIC_SECTIONS: readonly ClassicSection[] = [
@@ -60,6 +69,13 @@ export const CLASSIC_SECTIONS: readonly ClassicSection[] = [
   { id: "calculators", labelKey: lbl("calculators"), icon: Calculator,      mobileHref: "/m/dashboard/more/calculators" },
   { id: "drive",       labelKey: lbl("drive"),       icon: HardDrive,       mobileHref: "/m/dashboard/more/drive" },
   { id: "settings",    labelKey: lbl("settings"),    icon: Settings,        mobileHref: "/m/dashboard/more/settings" },
+];
+
+/** Grouped sidebar/drawer order for classic mode (desktop + hamburger). */
+export const CLASSIC_NAV_GROUPS: readonly ClassicNavGroup[] = [
+  { id: "daily", labelKey: grp("daily"), sectionIds: ["home", "scan", "tasks", "crm"] },
+  { id: "finance", labelKey: grp("finance"), sectionIds: ["erp", "drive"] },
+  { id: "tools", labelKey: grp("tools"), sectionIds: ["customOs", "calendar", "calculators", "aiChat", "settings"] },
 ];
 
 /** Sections in the mobile bottom nav (home, crm, scan-fab, aiChat) — FAB centered. */

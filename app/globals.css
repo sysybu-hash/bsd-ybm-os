@@ -177,32 +177,40 @@
     --window-surface: color-mix(in srgb, var(--surface-card) 90%, transparent);
   }
 
-  /* Classic dashboard — always-bright scope. Re-declares the light token values so
-     the subtree stays bright/readable even when the global theme is .dark, and so
-     token-based widgets rendered inside adopt the light palette automatically. */
+  /* Classic dashboard — always-bright operational scope (warm light, flat). */
   .dashboard-theme {
     color-scheme: light;
-    --background-main: #f6f7fb;
-    --foreground-main: #0f172a;
-    --foreground-muted: #5b6478;
+    --classic-ink: #1c1917;
+    --classic-muted: #78716c;
+    --classic-rule: #e7e5e4;
+    --classic-accent: #3d5a73;
+    --classic-accent-soft: #eef2f5;
+    --background-main: #f7f5f2;
+    --foreground-main: var(--classic-ink);
+    --foreground-muted: var(--classic-muted);
     --surface-card: #ffffff;
-    --surface-soft: #f1f5f9;
+    --surface-soft: #f0ece7;
     --surface-elevated: #ffffff;
-    --border-main: #e2e8f0;
-    --border-strong: #cbd5e1;
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(226, 232, 240, 0.7);
-    --glass-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
-    --accent: #2563eb;
-    --accent-strong: #1d4ed8;
-    --accent-soft: #eff6ff;
+    --border-main: var(--classic-rule);
+    --border-strong: #d6d3d1;
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-border: rgba(231, 229, 228, 0.9);
+    --glass-shadow: 0 1px 2px rgba(28, 25, 23, 0.04);
+    --accent: var(--classic-accent);
+    --accent-strong: #2f4659;
+    --accent-soft: var(--classic-accent-soft);
     --accent-contrast: #ffffff;
-    --sidebar-bg: rgba(255, 255, 255, 0.7);
-    --sidebar-hover-bg: #f1f5f9;
-    background:
-      radial-gradient(1200px 600px at 100% -10%, rgba(37, 99, 235, 0.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(37, 99, 235, 0.05), transparent 55%),
-      var(--background-main);
+    --sidebar-bg: rgba(255, 255, 255, 0.92);
+    --sidebar-hover-bg: #f0ece7;
+    background: var(--background-main);
+  }
+
+  @keyframes classic-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .classic-fade-in {
+    animation: classic-fade-in 0.35s ease-out both;
   }
 
   /* Single-scroller dashboard: embedded widgets that manage their own height/scroll

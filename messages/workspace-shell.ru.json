@@ -356,6 +356,11 @@
         "openMenu": "Открыть меню",
         "close": "Закрыть меню"
       },
+      "navGroups": {
+        "daily": "Ежедневно",
+        "finance": "Финансы и документы",
+        "tools": "Инструменты"
+      },
       "tabs": {
         "home": "Обзор",
         "crm": "CRM и проекты",
@@ -379,19 +384,75 @@
         "empty": "Проектов пока нет. Создайте новый проект, чтобы начать."
       },
       "overview": {
-        "greeting": "Добро пожаловать на панель",
-        "subtitle": "Актуальный снимок вашего бизнеса — всё в одном месте",
+        "greeting": "Состояние бизнеса сейчас",
+        "subtitle": "Что требует внимания — и что можно сделать сразу",
+        "summary": "{projects} активных проектов · {clients} клиентов · {pending} ожидающих счетов",
+        "summaryEmpty": "Данных пока нет — начните со сканирования или нового проекта",
         "loading": "Загрузка данных…",
         "revenue": "Общий доход",
         "expenses": "Общие расходы",
         "activeProjects": "Активные проекты",
         "clients": "Клиенты",
         "pendingInvoices": "Ожидающие счета",
-        "quickActionsTitle": "Быстрые действия"
+        "attentionTitle": "Требует внимания",
+        "attentionPending": "{count} счетов ожидают обработки",
+        "attentionInsight": "Инсайт AI",
+        "attentionGoInvoices": "К документам",
+        "attentionGoCrm": "К CRM",
+        "attentionEmpty": "Сейчас всё в порядке",
+        "quickActionsTitle": "Основные действия",
+        "actionScan": "Сканирование",
+        "actionDocument": "Документ",
+        "actionCrm": "CRM",
+        "actionClients": "Клиенты",
+        "myProjectsLink": "Мои проекты"
       },
       "calculators": {
         "calculator": "Калькулятор",
         "currency": "Конвертер валют"
+      },
+      "planner": {
+        "add": "Добавить",
+        "today": "Сегодня",
+        "prevMonth": "Предыдущий месяц",
+        "nextMonth": "Следующий месяц",
+        "tabDiary": "Дневник",
+        "tabZmanim": "Зманим",
+        "dayEmpty": "Нет встреч или задач в этот день",
+        "loading": "Загрузка…",
+        "loadFailed": "Не удалось загрузить календарь",
+        "zmanimTitle": "Времена дня",
+        "zmanimFailed": "Не удалось загрузить времена",
+        "retry": "Повторить",
+        "saved": "Сохранено",
+        "deleted": "Удалено",
+        "saveFailed": "Ошибка сохранения",
+        "confirmDelete": "Удалить этот элемент?",
+        "edit": "Изменить",
+        "delete": "Удалить",
+        "reminderTag": "Напоминание · за {mins} мин",
+        "reminderToast": "Напоминание: {title} через {mins} мин",
+        "kinds": {
+          "meeting": "Встреча",
+          "task": "Задача",
+          "reminder": "Напоминание",
+          "event": "Событие"
+        },
+        "modal": {
+          "create": "Новый элемент",
+          "edit": "Редактирование",
+          "title": "Название",
+          "titlePlaceholder": "например: встреча с подрядчиком",
+          "date": "Дата",
+          "start": "Начало",
+          "end": "Конец",
+          "allDay": "Весь день",
+          "kind": "Тип",
+          "reminderMinutes": "Напоминание (минут до)",
+          "save": "Сохранить",
+          "cancel": "Отмена",
+          "invalidRange": "Укажите название и корректный диапазон"
+        }
       }
     },
     "commandCenter": {

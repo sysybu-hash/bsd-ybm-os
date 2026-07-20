@@ -32,6 +32,12 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
   const [loading, setLoading] = useState(false);
   const [generatedDoc, setGeneratedDoc] = useState<GeneratedDocState | null>(null);
   const [openIssuedId, setOpenIssuedId] = useState<string | null>(null);
+  /** Empty = use auto nextNumber on issue */
+  const [documentNumberInput, setDocumentNumberInput] = useState("");
+  const [suggestedNumber, setSuggestedNumber] = useState<number | null>(null);
+  const [numberManuallyEdited, setNumberManuallyEdited] = useState(false);
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const draftPanelExitRef = useRef<(() => void) | null>(null);
 
@@ -41,6 +47,36 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     issuedList, issuedListLoading,
     fetchIssuedDocuments,
   } = useDocumentData();
+
+  // Suggested next document number for current type (auto-fill unless user edited)
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/erp/issued-documents?nextFor=${encodeURIComponent(docType)}`,
+          { credentials: "include" },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { nextNumber?: number };
+        if (cancelled || typeof data.nextNumber !== "number") return;
+        setSuggestedNumber(data.nextNumber);
+        if (!numberManuallyEdited) {
+          setDocumentNumberInput(String(data.nextNumber));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [docType, numberManuallyEdited]);
+
+  const setDocTypeAndResetNumber = useCallback((type: DocType) => {
+    setDocType(type);
+    setNumberManuallyEdited(false);
+  }, []);
 
   // ── navigation ────────────────────────────────────────────────────────────
   const applyDocNav = useCallback((view: WidgetViewState) => {
@@ -174,6 +210,15 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     if (items.some((item) => !item.description || item.price <= 0)) {
       toast.error(t("workspaceWidgets.documentCreator.fillAllItems")); return;
     }
+    const trimmedNum = documentNumberInput.trim();
+    const parsedManualNumber = trimmedNum ? Number.parseInt(trimmedNum, 10) : NaN;
+    const numberToSend =
+      Number.isFinite(parsedManualNumber) && parsedManualNumber > 0
+        ? parsedManualNumber
+        : undefined;
+    // If input matches suggestion and user never edited — let server allocate (avoids stale race).
+    const useServerAuto =
+      !numberManuallyEdited || numberToSend == null;
     setLoading(true);
     try {
       await closeDraftPanel();
@@ -186,6 +231,9 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
           contactId: contact.id,
           clientName: contact.name,
           items: items.map((i) => ({ desc: i.description, qty: i.quantity, price: i.price })),
+          date: issueDate || undefined,
+          dueDate: dueDate || undefined,
+          ...(useServerAuto ? {} : { number: numberToSend }),
         }),
       });
 
@@ -232,7 +280,7 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
 
   return {
     showDraft, setShowDraft,
-    docType, setDocType,
+    docType, setDocType: setDocTypeAndResetNumber,
     orgSettings,
     contacts, setContacts,
     clientNameInput, setClientNameInput,
@@ -248,6 +296,16 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     issuedListLoading,
     vatRatePercent,
     selectedTypeMeta,
+    documentNumberInput,
+    setDocumentNumberInput: (v: string) => {
+      setNumberManuallyEdited(true);
+      setDocumentNumberInput(v);
+    },
+    suggestedNumber,
+    issueDate, setIssueDate,
+    dueDate, setDueDate,
+    previewNumber:
+      Number.parseInt(documentNumberInput.trim(), 10) || suggestedNumber || 0,
     addItem, removeItem, updateItem,
     calculateSubtotal, calculateBilling,
     generateDocument, downloadPDF,
