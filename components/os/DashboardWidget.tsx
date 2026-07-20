@@ -6,8 +6,6 @@ import WindowBody from "@/components/os/layout/WindowBody";
 import React, { useMemo } from "react";
 import { useTheme } from "next-themes";
 import {
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -87,12 +85,35 @@ export default function DashboardWidget() {
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title={t("workspaceWidgets.dashboard.totalRevenue")} value={formatCurrency(stats.totalRevenue)} valueClassName="text-emerald-600 dark:text-emerald-400" />
-        <StatCard title={t("workspaceWidgets.dashboard.totalExpenses")} value={formatCurrency(stats.totalExpenses)} valueClassName="text-rose-600 dark:text-rose-400" />
+        <StatCard
+          title={t("workspaceWidgets.dashboard.totalRevenue")}
+          value={formatCurrency(stats.totalRevenue)}
+          valueClassName="text-emerald-600 dark:text-emerald-400"
+          detail={
+            stats.breakdown
+              ? t("workspaceWidgets.dashboard.revenueSourceDetail", {
+                  count: String(stats.breakdown.issuedIncomeDocsCount),
+                })
+              : t("workspaceWidgets.dashboard.revenueSourceFallback")
+          }
+        />
+        <StatCard
+          title={t("workspaceWidgets.dashboard.totalExpenses")}
+          value={formatCurrency(stats.totalExpenses)}
+          valueClassName="text-rose-600 dark:text-rose-400"
+          detail={
+            stats.breakdown
+              ? t("workspaceWidgets.dashboard.expensesSourceDetail", {
+                  count: String(stats.breakdown.expenseRecordsCount),
+                })
+              : t("workspaceWidgets.dashboard.expensesSourceFallback")
+          }
+        />
         <StatCard
           title={t("workspaceWidgets.dashboard.netProfit")}
           value={formatCurrency(netProfit)}
           valueClassName={netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}
+          detail={t("workspaceWidgets.dashboard.netSourceDetail")}
         />
         <StatCard title={t("workspaceWidgets.dashboard.activeProjects")} value={stats.activeProjects}>
           <div className="mt-3">
@@ -102,6 +123,34 @@ export default function DashboardWidget() {
           </div>
         </StatCard>
       </div>
+
+      {stats.breakdown ? (
+        <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 text-sm">
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[color:var(--foreground-muted)]">
+            {t("workspaceWidgets.dashboard.breakdownTitle")}
+          </h3>
+          <ul className="space-y-1.5 text-[color:var(--foreground-main)]">
+            {stats.breakdown.revenueLines.map((line) => (
+              <li key={line.label} className="flex justify-between gap-3">
+                <span className="text-[color:var(--foreground-muted)]">{line.label}</span>
+                <span className="font-semibold tabular-nums">{formatCurrency(line.amount)}</span>
+              </li>
+            ))}
+            {stats.breakdown.expenseLines.map((line) => (
+              <li key={line.label} className="flex justify-between gap-3">
+                <span className="text-[color:var(--foreground-muted)]">{line.label}</span>
+                <span className="font-semibold tabular-nums">{formatCurrency(line.amount)}</span>
+              </li>
+            ))}
+            {(stats.breakdown.projectBudgetsTotal ?? 0) > 0 ? (
+              <li className="flex justify-between gap-3 border-t border-[color:var(--border-main)] pt-1.5 text-xs text-[color:var(--foreground-muted)]">
+                <span>{t("workspaceWidgets.dashboard.projectBudgetsNote")}</span>
+                <span className="tabular-nums">{formatCurrency(stats.breakdown.projectBudgetsTotal)}</span>
+              </li>
+            ) : null}
+          </ul>
+        </div>
+      ) : null}
 
       {/* AI Insight */}
       {stats.aiInsight && (
@@ -169,36 +218,26 @@ export default function DashboardWidget() {
         </ChartContainer>
       </div>
 
-      {/* Cashflow Chart */}
+      {/* Cashflow Chart — real monthly income vs expenses */}
       <ChartContainer
         title={<span className="flex items-center gap-2"><Activity className="w-4 h-4 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" />{t("workspaceWidgets.dashboard.cashflowForecastTitle")}</span>}
         subtitle={t("workspaceWidgets.dashboard.cashflowSubtitle")}
         actionElement={
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[color:var(--win-accent,#6366f1)]" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.actualLabel")}</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.incomeLabel")}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-indigo-300 border border-dashed border-indigo-400" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.forecastLabel")}</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t("workspaceWidgets.dashboard.expenseLabel")}</span>
             </div>
           </div>
         }
         minHeight={256}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-              </linearGradient>
-            </defs>
+          <BarChart data={stats.cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme === "dark" ? "#ffffff08" : "#00000008"} vertical={false} />
             <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} dy={10} />
             <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `₪${value / 1000}k`} />
@@ -207,9 +246,9 @@ export default function DashboardWidget() {
               itemStyle={{ color: theme === "dark" ? "#e2e8f0" : "#0f172a" }}
               formatter={(value: number) => formatCurrency(value)}
             />
-            <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" strokeLinecap="round" connectNulls />
-            <Area type="monotone" dataKey="forecast" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" fillOpacity={1} fill="url(#colorForecast)" connectNulls />
-          </AreaChart>
+            <Bar dataKey="revenue" name={t("workspaceWidgets.dashboard.incomeLabel")} fill="#10b981" radius={[4, 4, 0, 0]} barSize={18} />
+            <Bar dataKey="expenses" name={t("workspaceWidgets.dashboard.expenseLabel")} fill="#fb7185" radius={[4, 4, 0, 0]} barSize={18} />
+          </BarChart>
         </ResponsiveContainer>
       </ChartContainer>
     </WindowBody>

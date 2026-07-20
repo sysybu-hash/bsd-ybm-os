@@ -75,19 +75,27 @@ export default function CashflowWidget() {
     {
       label: t("workspaceWidgets.dashboard.totalRevenue"),
       value: nis.format(cashflow.overview.revenue),
-      detail: t("workspaceWidgets.cashflowView.revenueDetail"),
+      detail: stats.breakdown
+        ? t("workspaceWidgets.dashboard.revenueSourceDetail", {
+            count: String(stats.breakdown.issuedIncomeDocsCount),
+          })
+        : t("workspaceWidgets.cashflowView.revenueDetail"),
       valueClass: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: t("workspaceWidgets.dashboard.totalExpenses"),
       value: nis.format(cashflow.overview.expenses),
-      detail: t("workspaceWidgets.cashflowView.expensesDetail"),
+      detail: stats.breakdown
+        ? t("workspaceWidgets.dashboard.expensesSourceDetail", {
+            count: String(stats.breakdown.expenseRecordsCount),
+          })
+        : t("workspaceWidgets.cashflowView.expensesDetail"),
       valueClass: "text-rose-600 dark:text-rose-400",
     },
     {
       label: t("workspaceWidgets.dashboard.netProfit"),
       value: nis.format(cashflow.overview.netProfit),
-      detail: t("workspaceWidgets.cashflowView.netDetail"),
+      detail: t("workspaceWidgets.dashboard.netSourceDetail"),
       valueClass: "text-teal-600 dark:text-teal-400",
     },
   ];

@@ -4,10 +4,21 @@ import { useCallback, useEffect, useState } from "react";
 
 interface CashflowPoint {
   name: string;
+  revenue?: number;
+  expenses?: number;
   actual?: number;
   forecast?: number;
   type: "past" | "future";
 }
+
+export type MoneySourceBreakdown = {
+  revenueLines: { label: string; amount: number }[];
+  expenseLines: { label: string; amount: number }[];
+  projectBudgetsTotal: number;
+  issuedIncomeDocsCount: number;
+  creditNotesTotal: number;
+  expenseRecordsCount: number;
+};
 
 interface DashboardStats {
   totalRevenue: number;
@@ -17,8 +28,10 @@ interface DashboardStats {
   pendingInvoices: number;
   aiInsight: string;
   cashflow: CashflowPoint[];
+  breakdown?: MoneySourceBreakdown;
   analytics: {
     monthlyExpenses: { name: string; value: number }[];
+    monthlyIncome?: { name: string; value: number }[];
     quoteStatus: { name: string; value: number; color: string }[];
   };
 }
@@ -31,7 +44,7 @@ const DEFAULT_STATS: DashboardStats = {
   pendingInvoices: 0,
   aiInsight: "",
   cashflow: [],
-  analytics: { monthlyExpenses: [], quoteStatus: [] },
+  analytics: { monthlyExpenses: [], monthlyIncome: [], quoteStatus: [] },
 };
 
 export type { DashboardStats, CashflowPoint };
@@ -56,7 +69,9 @@ export function useDashboardStats(t: (key: string) => string) {
     }
   }, [t]);
 
-  useEffect(() => { void fetchDashboardStats(); }, [fetchDashboardStats]);
+  useEffect(() => {
+    void fetchDashboardStats();
+  }, [fetchDashboardStats]);
 
   return { stats, loading, error, fetchDashboardStats };
 }

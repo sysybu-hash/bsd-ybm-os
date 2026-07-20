@@ -10,6 +10,14 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
+type Breakdown = {
+  revenueLines?: { label: string; amount: number }[];
+  expenseLines?: { label: string; amount: number }[];
+  issuedIncomeDocsCount?: number;
+  expenseRecordsCount?: number;
+  projectBudgetsTotal?: number;
+};
+
 type Stats = {
   totalRevenue?: number;
   totalExpenses?: number;
@@ -17,6 +25,7 @@ type Stats = {
   totalClients?: number;
   pendingInvoices?: number;
   aiInsight?: string;
+  breakdown?: Breakdown;
 };
 
 function shekel(n: number | undefined): string {
@@ -93,6 +102,11 @@ export default function DashboardOverview({ onNavigate }: { onNavigate?: (tab: s
                 <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-[color:var(--classic-ink)] sm:text-3xl">
                   {shekel(stats?.totalRevenue)}
                 </p>
+                <p className="mt-1 text-[11px] text-[color:var(--classic-muted)]">
+                  {t("workspaceWidgets.dashboard.revenueSourceDetail", {
+                    count: String(stats?.breakdown?.issuedIncomeDocsCount ?? 0),
+                  })}
+                </p>
               </div>
               <div className="classic-fade-in" style={{ animationDelay: "60ms" }}>
                 <p className="text-xs font-semibold text-[color:var(--classic-muted)]">
@@ -100,6 +114,11 @@ export default function DashboardOverview({ onNavigate }: { onNavigate?: (tab: s
                 </p>
                 <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-[color:var(--classic-ink)] sm:text-3xl">
                   {shekel(stats?.totalExpenses)}
+                </p>
+                <p className="mt-1 text-[11px] text-[color:var(--classic-muted)]">
+                  {t("workspaceWidgets.dashboard.expensesSourceDetail", {
+                    count: String(stats?.breakdown?.expenseRecordsCount ?? 0),
+                  })}
                 </p>
               </div>
               <div className="classic-fade-in" style={{ animationDelay: "120ms" }}>
@@ -111,6 +130,22 @@ export default function DashboardOverview({ onNavigate }: { onNavigate?: (tab: s
                 </p>
               </div>
             </div>
+            {stats?.breakdown?.revenueLines?.length || stats?.breakdown?.expenseLines?.length ? (
+              <ul className="mt-4 space-y-1 border-t border-[color:var(--classic-rule)] pt-3 text-sm text-[color:var(--classic-muted)]">
+                {(stats.breakdown.revenueLines ?? []).map((line) => (
+                  <li key={line.label} className="flex justify-between gap-4">
+                    <span>{line.label}</span>
+                    <span className="tabular-nums text-[color:var(--classic-ink)]">{shekel(line.amount)}</span>
+                  </li>
+                ))}
+                {(stats.breakdown.expenseLines ?? []).map((line) => (
+                  <li key={line.label} className="flex justify-between gap-4">
+                    <span>{line.label}</span>
+                    <span className="tabular-nums text-[color:var(--classic-ink)]">{shekel(line.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <p className="mt-4 text-sm text-[color:var(--classic-muted)]">
               {hasAny
                 ? t("workspaceWidgets.classicDashboard.overview.summary", {

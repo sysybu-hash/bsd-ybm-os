@@ -16,6 +16,7 @@ export type CashflowViewData = {
     upcomingPayables: number;
   };
   trend: CashflowTrendPoint[];
+  breakdown?: DashboardStats["breakdown"];
 };
 
 function isCashflowPoint(value: unknown): value is CashflowPoint {
@@ -30,28 +31,38 @@ function isCashflowPoint(value: unknown): value is CashflowPoint {
 function trendFromStats(stats: DashboardStats): CashflowTrendPoint[] {
   const points = stats.cashflow.filter(isCashflowPoint);
   if (points.length > 0) {
-    const monthlyRevenue =
-      stats.totalRevenue > 0 ? Math.round(stats.totalRevenue / points.length) : 0;
     return points.map((p) => ({
       month: p.name,
-      revenue: monthlyRevenue,
-      expenses: p.actual ?? p.forecast ?? 0,
+      revenue: typeof p.revenue === "number" ? p.revenue : 0,
+      expenses:
+        typeof p.expenses === "number"
+          ? p.expenses
+          : (p.actual ?? p.forecast ?? 0),
     }));
   }
 
-  return stats.analytics.monthlyExpenses.map((row) => ({
-    month: row.name,
-    revenue: stats.totalRevenue > 0 ? Math.round(stats.totalRevenue / 2) : 0,
-    expenses: row.value,
+  const income = stats.analytics.monthlyIncome ?? [];
+  const expenses = stats.analytics.monthlyExpenses;
+  const months = new Set([...income.map((r) => r.name), ...expenses.map((r) => r.name)]);
+  return [...months].map((month) => ({
+    month,
+    revenue: income.find((r) => r.name === month)?.value ?? 0,
+    expenses: expenses.find((r) => r.name === month)?.value ?? 0,
   }));
 }
 
 export function hasCashflowData(stats: DashboardStats): boolean {
   if (stats.totalRevenue > 0 || stats.totalExpenses > 0) return true;
   if (stats.pendingInvoices > 0) return true;
+  if ((stats.breakdown?.projectBudgetsTotal ?? 0) > 0) return true;
   return stats.cashflow.some((p) => {
     if (!isCashflowPoint(p)) return false;
-    return (p.actual ?? 0) > 0 || (p.forecast ?? 0) > 0;
+    return (
+      (p.revenue ?? 0) > 0 ||
+      (p.expenses ?? 0) > 0 ||
+      (p.actual ?? 0) > 0 ||
+      (p.forecast ?? 0) > 0
+    );
   });
 }
 
@@ -77,5 +88,6 @@ export function mapDashboardStatsToCashflow(stats: DashboardStats): CashflowView
       upcomingPayables: thisMonthExpenses,
     },
     trend,
+    breakdown: stats.breakdown,
   };
 }

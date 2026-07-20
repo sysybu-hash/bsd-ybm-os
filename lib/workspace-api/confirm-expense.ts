@@ -41,7 +41,7 @@ export async function confirmExpense(orgId: string, body: ConfirmExpenseInput) {
     },
   });
 
-  const [allExpenses, allProjects, pendingInvoices] = await Promise.all([
+  const [allExpenses, allProjects, pendingInvoices, issuedIncome, creditNotes] = await Promise.all([
     prisma.expenseRecord.aggregate({
       where: { organizationId: orgId },
       _sum: { total: true },
@@ -54,13 +54,34 @@ export async function confirmExpense(orgId: string, body: ConfirmExpenseInput) {
     prisma.issuedDocument.count({
       where: { organizationId: orgId, status: "PENDING", deletedAt: null },
     }),
+    prisma.issuedDocument.aggregate({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        status: { not: "CANCELLED" },
+        type: { in: ["TRANSACTION_INVOICE", "INVOICE", "INVOICE_RECEIPT", "RECEIPT"] },
+      },
+      _sum: { total: true },
+    }),
+    prisma.issuedDocument.aggregate({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        status: { not: "CANCELLED" },
+        type: "CREDIT_NOTE",
+      },
+      _sum: { total: true },
+    }),
   ]);
+
+  const income = issuedIncome._sum.total ?? 0;
+  const credits = creditNotes._sum.total ?? 0;
 
   return {
     ok: true as const,
     success: true,
     newStats: {
-      totalRevenue: allProjects._sum.budget ?? 0,
+      totalRevenue: Math.max(0, income - credits),
       totalExpenses: allExpenses._sum.total ?? 0,
       activeProjects: allProjects._count.id,
       pendingInvoices,
