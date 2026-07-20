@@ -76,11 +76,7 @@ export default async function middleware(request: NextRequest, _event: NextFetch
       if (hasAuthenticatedJwtPayload(token)) {
         const url = request.nextUrl.clone();
         url.pathname = "/home";
-        const requestHeaders = new Headers(request.headers);
-        requestHeaders.set("x-pathname", "/home");
-        const res = NextResponse.rewrite(url, {
-          request: { headers: requestHeaders },
-        });
+        const res = NextResponse.redirect(url);
         patchLocaleCookie(request, res);
         return res;
       }
