@@ -995,6 +995,14 @@
   overflow: hidden;
 }
 
+/* Hub pane must not compete for the mouse wheel when a child owns inner scroll
+   (e.g. Document Creator in documentsHub) — otherwise content is clipped with
+   no working scroller. */
+[data-widget-sticky-chrome] [data-widget-scroll-pane]:has(> [data-hub-inner-scroll="true"]),
+[data-widget-sticky-chrome] [data-widget-scroll-pane]:has(> [data-app-builder-root]) {
+  overflow: hidden;
+}
+
 /* Hub content with no inner scroll region: grow so the hub pane scrolls it. */
 [data-widget-scroll-pane] > [data-embedded-in-hub="true"]:not([data-hub-inner-scroll="true"]) {
   flex: 0 0 auto;

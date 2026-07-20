@@ -21,8 +21,23 @@ import { useDashboardStats } from "./useDashboardStats";
 import { useFinanceReportExport } from "@/hooks/useFinanceReportExport";
 import { intlLocaleForApp } from "@/lib/i18n/intl-locale";
 import type { AppLocale } from "@/lib/i18n/config";
+import type { WidgetType } from "@/hooks/use-window-manager";
 
-export default function DashboardWidget() {
+type OpenWorkspaceWidgetFn = (
+  type: WidgetType,
+  data?: Record<string, unknown> | null,
+) => void;
+
+type DashboardWidgetProps = {
+  openWorkspaceWidget?: OpenWorkspaceWidgetFn;
+  /** Switch to cashflow tab when embedded in Finance Hub */
+  onOpenCashflow?: () => void;
+};
+
+export default function DashboardWidget({
+  openWorkspaceWidget,
+  onOpenCashflow,
+}: DashboardWidgetProps = {}) {
   const { dir, t, locale } = useI18n();
   const { theme } = useTheme();
   const { stats, loading, error, fetchDashboardStats } = useDashboardStats(t);
@@ -51,6 +66,14 @@ export default function DashboardWidget() {
   );
 
   const netProfit = stats.totalRevenue - stats.totalExpenses;
+
+  const openRevenue = () => openWorkspaceWidget?.("documentsHub", { tab: "create" });
+  const openExpenses = () => openWorkspaceWidget?.("executiveHub", { tab: "officeExpenses" });
+  const openNet = () => {
+    if (onOpenCashflow) onOpenCashflow();
+    else openWorkspaceWidget?.("financeHub", { tab: "cashflow" });
+  };
+  const openProjects = () => openWorkspaceWidget?.("projectsHub", null);
 
   return (
     <WindowBody
@@ -83,7 +106,7 @@ export default function DashboardWidget() {
         </button>
       </div>
 
-      {/* Top Stats Cards */}
+      {/* Top Stats Cards — click opens related window / tab */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title={t("workspaceWidgets.dashboard.totalRevenue")}
@@ -96,6 +119,8 @@ export default function DashboardWidget() {
                 })
               : t("workspaceWidgets.dashboard.revenueSourceFallback")
           }
+          onClick={openWorkspaceWidget ? openRevenue : undefined}
+          onClickLabel={t("workspaceWidgets.dashboard.openRevenue")}
         />
         <StatCard
           title={t("workspaceWidgets.dashboard.totalExpenses")}
@@ -108,14 +133,23 @@ export default function DashboardWidget() {
                 })
               : t("workspaceWidgets.dashboard.expensesSourceFallback")
           }
+          onClick={openWorkspaceWidget ? openExpenses : undefined}
+          onClickLabel={t("workspaceWidgets.dashboard.openExpenses")}
         />
         <StatCard
           title={t("workspaceWidgets.dashboard.netProfit")}
           value={formatCurrency(netProfit)}
           valueClassName={netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}
           detail={t("workspaceWidgets.dashboard.netSourceDetail")}
+          onClick={openWorkspaceWidget || onOpenCashflow ? openNet : undefined}
+          onClickLabel={t("workspaceWidgets.dashboard.openCashflow")}
         />
-        <StatCard title={t("workspaceWidgets.dashboard.activeProjects")} value={stats.activeProjects}>
+        <StatCard
+          title={t("workspaceWidgets.dashboard.activeProjects")}
+          value={stats.activeProjects}
+          onClick={openWorkspaceWidget ? openProjects : undefined}
+          onClickLabel={t("workspaceWidgets.dashboard.openProjects")}
+        >
           <div className="mt-3">
             <StatusBadge variant="indigo">
               {t("workspaceWidgets.dashboard.pendingBadge", { count: String(stats.pendingInvoices) })}

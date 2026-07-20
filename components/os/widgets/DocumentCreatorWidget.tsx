@@ -89,9 +89,10 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
         </div>
       </div>
 
-      {/* Scrollable body — container query host: reflows to the WINDOW width */}
+      {/* Scrollable body — always owns vertical scroll (standalone or inside hub).
+          When embedded, hub pane is overflow:hidden via globals.css :has(hub-inner-scroll). */}
       <div
-        data-widget-scroll-pane={embeddedInHub ? undefined : true}
+        data-widget-scroll-pane
         className="widget-canvas custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 sm:p-6 [-webkit-overflow-scrolling:touch]"
       >
         <div className="mx-auto w-full max-w-[100rem] space-y-4 @2xl:space-y-6">
@@ -227,8 +228,8 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-6 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
+      {/* Footer — shrink-0 so flex scroll body keeps a definite height */}
+      <div className="shrink-0 p-6 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
         <button
           type="button"
           onClick={() => void d.generateDocument()}

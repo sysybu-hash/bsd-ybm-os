@@ -63,7 +63,14 @@ export default function FinanceHubWidget({ liveData, openWorkspaceWidget }: Prop
       onTabChange={handleTabChange}
       tabCountLabel={t("workspaceWidgets.hubs.tabCount", { count: String(TABS.length) })}
       renderTab={(tabId) => {
-        if (tabId === "cashflow") return <CashflowWidget />;
+        if (tabId === "cashflow") {
+          return (
+            <CashflowWidget
+              openWorkspaceWidget={openWorkspaceWidget}
+              onOpenOverview={() => handleTabChange("overview")}
+            />
+          );
+        }
         return (
           <div className="flex min-h-0 flex-1 flex-col">
             {openWorkspaceWidget ? (
@@ -74,7 +81,10 @@ export default function FinanceHubWidget({ liveData, openWorkspaceWidget }: Prop
                 />
               </div>
             ) : null}
-            <DashboardWidget />
+            <DashboardWidget
+              openWorkspaceWidget={openWorkspaceWidget}
+              onOpenCashflow={() => handleTabChange("cashflow")}
+            />
           </div>
         );
       }}

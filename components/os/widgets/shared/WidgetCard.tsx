@@ -12,6 +12,8 @@ export function StatCard({
   icon: Icon,
   valueClassName,
   children,
+  onClick,
+  onClickLabel,
 }: {
   title: string;
   value: React.ReactNode;
@@ -21,11 +23,13 @@ export function StatCard({
   icon?: React.ElementType;
   valueClassName?: string;
   children?: React.ReactNode;
+  onClick?: () => void;
+  onClickLabel?: string;
 }) {
   const isPositive = (trend ?? 0) >= 0;
 
-  return (
-    <div className="flex flex-col p-5 bg-surface-card rounded-xl border border-border-main shadow-glass transition-all duration-200 hover:shadow-window hover:border-border-strong">
+  const body = (
+    <>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-foreground-muted">{title}</h3>
         {Icon && (
@@ -60,8 +64,26 @@ export function StatCard({
       )}
 
       {children}
-    </div>
+    </>
   );
+
+  const baseClass =
+    "flex flex-col p-5 bg-surface-card rounded-xl border border-border-main shadow-glass transition-all duration-200 hover:shadow-window hover:border-border-strong";
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={onClickLabel ?? title}
+        className={`${baseClass} w-full cursor-pointer text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--win-accent,#6366f1)]/50`}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return <div className={baseClass}>{body}</div>;
 }
 
 // ── ChartContainer ────────────────────────────────────────────────────────────

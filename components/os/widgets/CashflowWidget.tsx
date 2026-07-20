@@ -11,6 +11,7 @@ import {
   type CashflowTrendPoint,
 } from "@/lib/workspace-api/map-cashflow-from-dashboard";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+import type { WidgetType } from "@/hooks/use-window-manager";
 
 const nis = new Intl.NumberFormat("he-IL", {
   style: "currency",
@@ -18,7 +19,21 @@ const nis = new Intl.NumberFormat("he-IL", {
   maximumFractionDigits: 0,
 });
 
-export default function CashflowWidget() {
+type OpenWorkspaceWidgetFn = (
+  type: WidgetType,
+  data?: Record<string, unknown> | null,
+) => void;
+
+type CashflowWidgetProps = {
+  openWorkspaceWidget?: OpenWorkspaceWidgetFn;
+  /** Switch to finance overview tab when embedded in Finance Hub */
+  onOpenOverview?: () => void;
+};
+
+export default function CashflowWidget({
+  openWorkspaceWidget,
+  onOpenOverview,
+}: CashflowWidgetProps = {}) {
   const { dir, t } = useI18n();
   const { stats, loading, error, fetchDashboardStats } = useDashboardStats(t);
   const cashflow = useMemo(
@@ -71,8 +86,17 @@ export default function CashflowWidget() {
     ...cashflow.trend.flatMap((item) => [item.revenue, item.expenses]),
     1,
   );
+
+  const openRevenue = () => openWorkspaceWidget?.("documentsHub", { tab: "create" });
+  const openExpenses = () => openWorkspaceWidget?.("executiveHub", { tab: "officeExpenses" });
+  const openNet = () => {
+    if (onOpenOverview) onOpenOverview();
+    else openWorkspaceWidget?.("financeHub", { tab: "overview" });
+  };
+
   const monthlyStats = [
     {
+      id: "revenue" as const,
       label: t("workspaceWidgets.dashboard.totalRevenue"),
       value: nis.format(cashflow.overview.revenue),
       detail: stats.breakdown
@@ -81,8 +105,11 @@ export default function CashflowWidget() {
           })
         : t("workspaceWidgets.cashflowView.revenueDetail"),
       valueClass: "text-emerald-600 dark:text-emerald-400",
+      onClick: openWorkspaceWidget ? openRevenue : undefined,
+      onClickLabel: t("workspaceWidgets.dashboard.openRevenue"),
     },
     {
+      id: "expenses" as const,
       label: t("workspaceWidgets.dashboard.totalExpenses"),
       value: nis.format(cashflow.overview.expenses),
       detail: stats.breakdown
@@ -91,12 +118,17 @@ export default function CashflowWidget() {
           })
         : t("workspaceWidgets.cashflowView.expensesDetail"),
       valueClass: "text-rose-600 dark:text-rose-400",
+      onClick: openWorkspaceWidget ? openExpenses : undefined,
+      onClickLabel: t("workspaceWidgets.dashboard.openExpenses"),
     },
     {
+      id: "net" as const,
       label: t("workspaceWidgets.dashboard.netProfit"),
       value: nis.format(cashflow.overview.netProfit),
       detail: t("workspaceWidgets.dashboard.netSourceDetail"),
       valueClass: "text-teal-600 dark:text-teal-400",
+      onClick: openWorkspaceWidget || onOpenOverview ? openNet : undefined,
+      onClickLabel: t("workspaceWidgets.dashboard.openOverview"),
     },
   ];
 
@@ -134,11 +166,13 @@ export default function CashflowWidget() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {monthlyStats.map((stat) => (
             <StatCard
-              key={stat.label}
+              key={stat.id}
               title={stat.label}
               value={stat.value}
               detail={stat.detail}
               valueClassName={stat.valueClass}
+              onClick={stat.onClick}
+              onClickLabel={stat.onClickLabel}
             />
           ))}
         </div>

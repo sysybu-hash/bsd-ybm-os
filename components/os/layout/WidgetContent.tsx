@@ -74,7 +74,9 @@ export function WidgetContent({
   const liveData = resolved.liveData;
 
   if (type === "crm") return <CrmWidget />;
-  if (type === "dashboard") return <DashboardWidget />;
+  if (type === "dashboard") {
+    return <DashboardWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  }
   if (type === "aiChat") {
     return (
       <AiChatWidget
@@ -83,7 +85,9 @@ export function WidgetContent({
       />
     );
   }
-  if (type === "cashflow") return <CashflowWidget />;
+  if (type === "cashflow") {
+    return <CashflowWidget openWorkspaceWidget={openWorkspaceWidget} />;
+  }
   if (type === "erp") return <ErpDocumentsWidget />;
   if (type === "projectBoard") {
     return (
