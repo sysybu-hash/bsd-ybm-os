@@ -1,8 +1,19 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export const dynamic = "force-dynamic";
+import dynamic from "next/dynamic";
 
-/** Non-core mobile tab — use workspace AI hub. */
-export default function MobileAiRedirectPage() {
-  redirect("/workspace");
+const AiChatFullWidget = dynamic(
+  () => import("@/components/os/widgets/AiChatFullWidget"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="space-y-3 p-4">
+        <div className="h-full min-h-[60vh] animate-pulse rounded-2xl bg-[color:var(--surface-soft)]" />
+      </div>
+    ),
+  },
+);
+
+export default function AiTabPage() {
+  return <AiChatFullWidget />;
 }
