@@ -194,7 +194,7 @@ export default function DashboardShell() {
         <div className="flex items-center gap-3">
           <DashboardClock />
           <Link
-            href="/workspace"
+            href="/home"
             className="flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-2 text-sm font-bold text-[color:var(--foreground-main)] shadow-sm transition-all hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
           >
             <MonitorPlay size={16} aria-hidden />

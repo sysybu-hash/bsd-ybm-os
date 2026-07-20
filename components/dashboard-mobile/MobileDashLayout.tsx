@@ -20,7 +20,7 @@ export default function MobileDashLayout({ children }: { children: React.ReactNo
         style={{ paddingTop: "max(0.625rem, env(safe-area-inset-top))" }}
       >
         <Link
-          href="/workspace"
+          href="/home"
           aria-label={t("workspaceWidgets.mobileNav.backToOS")}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-muted)] transition hover:text-[color:var(--foreground-main)] active:scale-95"
         >

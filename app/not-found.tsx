@@ -21,7 +21,7 @@ export default async function NotFound() {
       <p className="max-w-md text-sm text-[color:var(--foreground-muted)]">{t("siteErrors.notFoundBody")}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
-          href="/workspace"
+          href="/home"
           className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-500"
         >
           {t("siteErrors.workspace")}

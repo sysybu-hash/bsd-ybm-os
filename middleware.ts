@@ -75,9 +75,9 @@ export default async function middleware(request: NextRequest, _event: NextFetch
       })) as Record<string, unknown> | null;
       if (hasAuthenticatedJwtPayload(token)) {
         const url = request.nextUrl.clone();
-        url.pathname = "/workspace";
+        url.pathname = "/home";
         const requestHeaders = new Headers(request.headers);
-        requestHeaders.set("x-pathname", "/workspace");
+        requestHeaders.set("x-pathname", "/home");
         const res = NextResponse.rewrite(url, {
           request: { headers: requestHeaders },
         });
