@@ -202,7 +202,9 @@ export function usePlatformAdmin() {
       const r = await manageSubsCreateManualUserAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
       if (r.emailed) toast.success(t("platformAdmin.newSubscriptionEmailed"));
-      else toast.warning(r.mailError ? `מנוי נוצר, אך המייל לא נשלח: ${r.mailError}` : "מנוי נוצר, אך שליחת המייל נכשלה — בדקו RESEND_API_KEY או SMTP ב-Vercel");
+      else toast.warning(r.mailError
+        ? t("platformAdmin.confirm.createdMailFailed", { error: r.mailError })
+        : t("platformAdmin.confirm.createdMailFailedGeneric"));
       setShowCreateOrg(false); setCreateEmail(""); setCreateName(""); setCreateOrgName(""); setCreateTier("FREE"); setCreateVip(false);
       setCreateIndustry(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION"));
       setCreateConstructionTrade(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION") === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
@@ -212,7 +214,7 @@ export function usePlatformAdmin() {
 
   const handleDeleteOrg = async () => {
     if (!selectedOrg) return;
-    if (!window.confirm(`למחוק את הארגון «${selectedOrg.name}» ואת כל המשתמשים והנתונים שלו? פעולה בלתי הפיכה.`)) return;
+    if (!window.confirm(t("platformAdmin.confirm.deleteOrg", { name: selectedOrg.name }))) return;
     setBusyAction(true);
     try {
       const fd = new FormData();
@@ -225,7 +227,7 @@ export function usePlatformAdmin() {
   };
 
   const handleDeleteUser = async (email: string) => {
-    if (!window.confirm(`למחוק את המשתמש ${email}?`)) return;
+    if (!window.confirm(t("platformAdmin.confirm.deleteUser", { email }))) return;
     setBusyAction(true);
     try {
       const fd = new FormData();
@@ -263,7 +265,7 @@ export function usePlatformAdmin() {
         body: JSON.stringify(platformConfig),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
+      if (!res.ok) throw new Error(data.error ?? t("platformAdmin.confirm.saveFailedFallback"));
       setPlatformConfig(data.config);
       toast.success(t("platformAdmin.platformSettingsSaved"));
     } catch (e) { toast.error(e instanceof Error ? e.message : t("platformAdmin.saveFailed")); }

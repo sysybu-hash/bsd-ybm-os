@@ -36,8 +36,10 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             <Shield size={22} />
           </span>
           <div>
-            <h1 className="text-lg font-black">ניהול BSD-YBM</h1>
-            <p className="text-xs text-[color:var(--foreground-muted)]">מנויים, משתמשים והגדרות פלטפורמה</p>
+            <h1 className="text-lg font-black">{t("platformAdmin.console.title")}</h1>
+            <p className="text-xs text-[color:var(--foreground-muted)]">
+              {t("platformAdmin.console.subtitle")}
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -46,16 +48,20 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             onClick={() => void p.refreshAll()}
             className="flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold hover:bg-[color:var(--surface-soft)]"
           >
-            {p.loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            רענון
+            {p.loading ? (
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw size={14} aria-hidden />
+            )}
+            {t("platformAdmin.console.refresh")}
           </button>
           {variant === "page" ? (
             <Link href="/" className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500">
-              חזרה למרחב העבודה
+              {t("platformAdmin.console.backToWorkspace")}
             </Link>
           ) : (
             <Link href="/app/admin" className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold hover:bg-[color:var(--surface-soft)]">
-              ניהול מלא
+              {t("platformAdmin.console.fullAdmin")}
             </Link>
           )}
         </div>
@@ -107,7 +113,6 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             createIndustry={p.createIndustry} setCreateIndustry={p.setCreateIndustry}
             createConstructionTrade={p.createConstructionTrade} setCreateConstructionTrade={p.setCreateConstructionTrade}
             busyAction={p.busyAction}
-            platformConfig={p.platformConfig}
             onSaveSubscription={() => void p.handleSaveSubscription()}
             onAdjustScans={() => void p.handleAdjustScans()}
             onCreateOrg={() => void p.handleCreateOrg()}
@@ -119,17 +124,19 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3 rounded-xl border border-[color:var(--border-main)] p-3">
               <label className="text-xs font-bold">
-                תוכנית לאישור
+                {t("platformAdmin.console.planToApprove")}
                 <select value={p.approvePlan} onChange={(e) => p.setApprovePlan(e.target.value)} className={`mt-1 block ${osFieldClassName}`}>
-                  {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => <option key={t} value={t}>{tierLabelHe(t)}</option>)}
+                  {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => (
+                    <option key={tier} value={tier}>{tierLabelHe(tier)}</option>
+                  ))}
                 </select>
               </label>
               <label className="text-xs font-bold">
-                תפקיד
+                {t("platformAdmin.console.role")}
                 <select value={p.approveRole} onChange={(e) => p.setApproveRole(e.target.value)} className={`mt-1 block ${osFieldClassName}`}>
-                  <option value="ORG_ADMIN">מנהל ארגון</option>
-                  <option value="PROJECT_MGR">מנהל פרויקטים</option>
-                  <option value="EMPLOYEE">עובד</option>
+                  <option value="ORG_ADMIN">{t("platformAdmin.console.roleOrgAdmin")}</option>
+                  <option value="PROJECT_MGR">{t("platformAdmin.console.roleProjectMgr")}</option>
+                  <option value="EMPLOYEE">{t("platformAdmin.console.roleEmployee")}</option>
                 </select>
               </label>
             </div>
@@ -197,13 +204,15 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
         {p.tab === "broadcast" && (
           <div className="max-w-lg space-y-3">
             <input value={p.broadcastTitle} onChange={(e) => p.setBroadcastTitle(e.target.value)}
-              placeholder="כותרת התראה" className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
+              placeholder={t("platformAdmin.console.broadcastTitle")}
+              className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
             <textarea value={p.broadcastBody} onChange={(e) => p.setBroadcastBody(e.target.value)}
-              placeholder="תוכן ההתראה לכל המשתמשים הפעילים" rows={6}
+              placeholder={t("platformAdmin.console.broadcastBody")} rows={6}
               className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
             <button type="button" onClick={() => void p.handleBroadcast()}
-              className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">
-              שלח שידור
+              disabled={!p.broadcastTitle.trim() || !p.broadcastBody.trim()}
+              className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+              {t("platformAdmin.console.broadcastSend")}
             </button>
           </div>
         )}

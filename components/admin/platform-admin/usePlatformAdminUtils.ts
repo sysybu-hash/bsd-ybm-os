@@ -4,11 +4,27 @@ import { useCallback, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { toast } from "sonner";
 
+/** Shape returned by `GET /api/admin/check-user`. */
+export type AdminUserLookup =
+  | { found: false }
+  | {
+      found: true;
+      user: {
+        id: string;
+        email: string;
+        name: string | null;
+        role: string;
+        accountStatus: string;
+        organizationId: string | null;
+        lastLoginAt: string | null;
+      };
+    };
+
 /** User lookup, broadcast notification, and test-email — independent of org/subscription state. */
 export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
   const { t } = useI18n();
   const [userEmail, setUserEmail] = useState("");
-  const [userLookup, setUserLookup] = useState<Record<string, unknown> | null>(null);
+  const [userLookup, setUserLookup] = useState<AdminUserLookup | null>(null);
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
   const [testingEmail, setTestingEmail] = useState(false);
@@ -18,7 +34,7 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     const email = userEmail.trim().toLowerCase();
     if (!email) return;
     const res = await fetch(`/api/admin/check-user?email=${encodeURIComponent(email)}`, { credentials: "include" });
-    const data = await res.json();
+    const data = (await res.json()) as AdminUserLookup & { error?: string };
     if (!res.ok) { toast.error(data.error ?? t("platformAdmin.searchFailed")); return; }
     setUserLookup(data);
   }, [userEmail, t]);

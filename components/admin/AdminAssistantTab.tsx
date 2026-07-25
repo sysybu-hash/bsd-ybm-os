@@ -31,21 +31,21 @@ type Props = {
   onNavigateTab?: (tabId: TabId) => void;
 };
 
-const QUICK_PROMPTS = [
-  "מה מצב בריאות המערכת?",
-  "אילו משתני ENV חסרים?",
-  "כמה הרשמות ממתינות יש?",
-  "סכם את המנויים לפי tier",
-];
+const QUICK_PROMPT_KEYS = [
+  "suggestHealth",
+  "suggestEnv",
+  "suggestPending",
+  "suggestTiers",
+] as const;
 
 export default function AdminAssistantTab({ onNavigateTab }: Props) {
   const { t } = useI18n();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "שלום. אני עוזר הניהול — אוכל לבדוק בריאות מערכת, סטטוס ENV, מנויים והרשמות. במה לעזור?",
-    },
+  const ts = useCallback(
+    (suffix: string) => t(`platformAdmin.assistant.${suffix}`),
+    [t],
+  );
+  const [messages, setMessages] = useState<Message[]>(() => [
+    { role: "assistant", content: t("platformAdmin.assistant.greeting") },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
 
         if (data.navigation?.tabId && onNavigateTab) {
           onNavigateTab(data.navigation.tabId as TabId);
-          toast.message(data.navigation.hint ?? "מעבר לטאב המבוקש");
+          toast.message(data.navigation.hint ?? ts("navigating"));
         }
       } catch {
         toast.error(t("platformAdmin.assistantContactError"));
@@ -104,7 +104,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
         setTimeout(scrollToEnd, 50);
       }
     },
-    [loading, messages, onNavigateTab, scrollToEnd, t],
+    [loading, messages, onNavigateTab, scrollToEnd, t, ts],
   );
 
   const executePending = useCallback(
@@ -136,22 +136,25 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
   return (
     <div className="flex h-full min-h-[420px] flex-col gap-3" dir="rtl">
       <div className="flex flex-wrap gap-2">
-        {QUICK_PROMPTS.map((q) => (
-          <button
-            key={q}
-            type="button"
-            disabled={loading}
-            onClick={() => void send(q)}
-            className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-1.5 text-xs text-[color:var(--foreground-muted)] hover:border-amber-500/40 hover:text-[color:var(--foreground-main)]"
-          >
-            {q}
-          </button>
-        ))}
+        {QUICK_PROMPT_KEYS.map((key) => {
+          const q = ts(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={loading}
+              onClick={() => void send(q)}
+              className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-1.5 text-xs text-[color:var(--foreground-muted)] hover:border-amber-500/40 hover:text-[color:var(--foreground-main)]"
+            >
+              {q}
+            </button>
+          );
+        })}
       </div>
 
       {pendingActions.length > 0 && (
         <div className="space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="text-xs font-semibold text-amber-200">פעולות הממתינות לאישור</p>
+          <p className="text-xs font-semibold text-amber-200">{ts("pendingActions")}</p>
           {pendingActions.map((action) => (
             <div
               key={action.actionId}
@@ -165,7 +168,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
                   onClick={() => void executePending(action)}
                   className="rounded bg-emerald-600 px-2 py-1 text-white disabled:opacity-50"
                 >
-                  {executingId === action.actionId ? "מבצע…" : "אשר"}
+                  {executingId === action.actionId ? ts("executing") : ts("approve")}
                 </button>
                 <button
                   type="button"
@@ -175,7 +178,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
                   }
                   className="rounded border border-[color:var(--border-main)] px-2 py-1"
                 >
-                  בטל
+                  {ts("cancel")}
                 </button>
               </div>
             </div>
@@ -186,7 +189,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]">
         <div className="flex items-center gap-2 border-b border-[color:var(--border-main)] px-4 py-2">
           <Bot size={18} className="text-indigo-400" aria-hidden />
-          <span className="text-sm font-semibold text-[color:var(--foreground-main)]">עוזר ניהול</span>
+          <span className="text-sm font-semibold text-[color:var(--foreground-main)]">{ts("title")}</span>
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -205,7 +208,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
           {loading && (
             <div className="flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
               <Loader2 size={14} className="animate-spin" aria-hidden />
-              חושב…
+              {ts("thinking")}
             </div>
           )}
           <div ref={endRef} />
@@ -222,15 +225,15 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
             className={osFieldClassName}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="שאל על בריאות, ENV, מנויים…"
+            placeholder={ts("inputPlaceholder")}
             disabled={loading}
-            aria-label="הודעה לעוזר ניהול"
+            aria-label={ts("inputAria")}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             className="flex shrink-0 items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-white disabled:opacity-50"
-            aria-label="שליחה"
+            aria-label={ts("sendAria")}
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
           </button>

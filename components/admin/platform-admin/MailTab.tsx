@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ChevronDown, Loader2, Mail, Save, Send } from "lucide-react";
+import { Loader2, Mail, Save, Send } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { PlatformConfig, PlatformMailConfig } from "@/lib/platform-settings";
+import { MailAdvancedPanel } from "@/components/admin/platform-admin/MailAdvancedPanel";
 
 type MailStatus = {
   transportConfigured: boolean;
@@ -76,7 +77,6 @@ export function MailTab({
   const [status, setStatus] = useState<MailStatus | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -253,109 +253,15 @@ export function MailTab({
         </button>
       </div>
 
-      {/* Advanced — collapsed */}
-      <div className="rounded-xl border border-[color:var(--border-main)]">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="flex w-full items-center justify-between px-3 py-3 text-sm font-bold"
-        >
-          {t("platformAdmin.mail.advanced")}
-          <ChevronDown
-            size={16}
-            className={`transition ${showAdvanced ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-        </button>
-        {showAdvanced ? (
-          <div className="space-y-3 border-t border-[color:var(--border-main)] p-3">
-            <label className="block text-xs font-bold">
-              {t("platformAdmin.mail.fromOverride")}
-              <input
-                type="text"
-                value={mail.fromOverride}
-                onChange={(e) =>
-                  setPlatformConfig(patchMail(platformConfig, { fromOverride: e.target.value }))
-                }
-                placeholder={t("platformAdmin.mail.fromPlaceholder")}
-                className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] p-2 text-sm font-normal"
-              />
-            </label>
-            <label className="block text-xs font-bold">
-              {t("platformAdmin.mail.replyOverride")}
-              <input
-                type="email"
-                value={mail.replyToOverride}
-                onChange={(e) =>
-                  setPlatformConfig(patchMail(platformConfig, { replyToOverride: e.target.value }))
-                }
-                placeholder="yb@bsd-ybm.co.il"
-                className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] p-2 text-sm font-normal"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-bold">
-                {t("platformAdmin.mail.trialDays")}
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={mail.lifecycleTrialDaysBefore}
-                  onChange={(e) =>
-                    setPlatformConfig(
-                      patchMail(platformConfig, {
-                        lifecycleTrialDaysBefore: Number(e.target.value) || 3,
-                      }),
-                    )
-                  }
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] p-2 text-sm font-normal"
-                />
-              </label>
-              <label className="text-xs font-bold">
-                {t("platformAdmin.mail.inactiveDays")}
-                <input
-                  type="number"
-                  min={3}
-                  max={90}
-                  value={mail.lifecycleInactiveDays}
-                  onChange={(e) =>
-                    setPlatformConfig(
-                      patchMail(platformConfig, {
-                        lifecycleInactiveDays: Number(e.target.value) || 7,
-                      }),
-                    )
-                  }
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] p-2 text-sm font-normal"
-                />
-              </label>
-            </div>
-            <p className="text-[11px] text-[color:var(--foreground-muted)]">
-              {t("platformAdmin.mail.advancedHint")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={!!actionBusy || !sendingOn || !mail.digestEnabled}
-                onClick={() => void runAction("flush_digest")}
-                className="rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold disabled:opacity-50"
-              >
-                {actionBusy === "flush_digest" ? "…" : t("platformAdmin.mail.runDigestNow")}
-              </button>
-              <button
-                type="button"
-                disabled={!!actionBusy || !sendingOn || !mail.lifecycleEnabled}
-                onClick={() => void runAction("run_lifecycle")}
-                className="rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold disabled:opacity-50"
-              >
-                {actionBusy === "run_lifecycle" ? "…" : t("platformAdmin.mail.runLifecycleNow")}
-              </button>
-            </div>
-            {actionMsg ? (
-              <p className="rounded-lg bg-[color:var(--surface-soft)] p-2 text-xs">{actionMsg}</p>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <MailAdvancedPanel
+        mail={mail}
+        patchMail={(patch) => setPlatformConfig(patchMail(platformConfig, patch))}
+        sendingOn={sendingOn}
+        actionBusy={actionBusy}
+        actionMsg={actionMsg}
+        onRunAction={(action) => void runAction(action)}
+        t={(suffix) => t(`platformAdmin.mail.${suffix}`)}
+      />
     </div>
   );
 }
