@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import { cookies } from "next/headers";
 import { COOKIE_LOCALE, normalizeLocale } from "@/lib/i18n/config";
-import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import { legalSite } from "@/lib/legal-site";
+import PublicPageShell from "@/components/landing/marketing/PublicPageShell";
 import {
   getGoogleIntegrationDoc,
   GOOGLE_ACCOUNT_PERMISSIONS_URL,
@@ -29,15 +28,8 @@ export default async function GoogleIntegrationPage() {
   const dir = locale === "he" ? "rtl" : "ltr";
 
   return (
-    <div className="min-h-dvh bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
-      <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 border-b border-[color:var(--border-main)] px-4 py-4">
-        <BrandHomeLink size="sm" />
-        <LocaleSwitcher compact />
-      </header>
-
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="text-2xl font-black tracking-tight">{doc.title}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-[color:var(--foreground-muted)]">{doc.lead}</p>
+    <PublicPageShell heroTitle={doc.title} heroSubtitle={doc.lead}>
+      <div className="mx-auto max-w-3xl px-4 py-8" dir={dir}>
 
         <div className="mt-8 space-y-6">
           {doc.sections.map((section) => (
@@ -70,7 +62,7 @@ export default async function GoogleIntegrationPage() {
             {locale === "en" ? "About" : locale === "ru" ? "О нас" : "אודות"}
           </Link>
         </nav>
-      </main>
-    </div>
+      </div>
+    </PublicPageShell>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Loader2, Mail, Save } from "lucide-react";
+import { Mail, Save } from "lucide-react";
 import { toast } from "sonner";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import type { OrgMailPrefs } from "@/lib/mail/org-mail-prefs-shared";
 import { DEFAULT_ORG_MAIL_PREFS } from "@/lib/mail/org-mail-prefs-shared";
 
@@ -74,8 +76,8 @@ export function SettingsMailSection({ t, canManage }: SettingsMailSectionProps) 
 
   if (loading) {
     return (
-      <section className="flex justify-center border-t border-[color:var(--border-main)]/30 py-8 pt-6">
-        <Loader2 className="animate-spin text-sky-500" size={24} />
+      <section className="border-t border-[color:var(--border-main)]/30 pt-6">
+        <WidgetState variant="loading" />
       </section>
     );
   }
@@ -155,15 +157,15 @@ export function SettingsMailSection({ t, canManage }: SettingsMailSectionProps) 
         ))}
       </div>
 
-      <button
-        type="button"
+      <OsButton
+        variant="primary"
+        className="mt-5"
+        loading={saving}
+        icon={<Save size={16} aria-hidden />}
         onClick={() => void handleSave()}
-        disabled={saving}
-        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-500 disabled:opacity-60"
       >
-        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
         {t(`${S}.save`)}
-      </button>
+      </OsButton>
     </section>
   );
 }

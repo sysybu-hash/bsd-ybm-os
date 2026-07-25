@@ -1,18 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Clock, TrendingUp, Wallet, FileCheck } from "lucide-react";
+import { AlertTriangle, Clock, TrendingUp, Wallet, FileCheck, RefreshCw } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import WindowBody from "@/components/os/layout/WindowBody";
 import { StatCard } from "@/components/os/widgets/shared/WidgetCard";
+import { OsIconButton } from "@/components/os/ui";
 import type { ExecutiveStatsResponse } from "@/lib/validation/schemas/executive";
 
 export default function ExecutiveDashboardWidget() {
-  const { dir, t } = useI18n();
+  const { dir, t, locale } = useI18n();
   const [data, setData] = useState<ExecutiveStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -22,6 +24,7 @@ export default function ExecutiveDashboardWidget() {
       const json = (await res.json()) as ExecutiveStatsResponse & { error?: string };
       if (!res.ok) throw new Error(json.error ?? t("workspaceWidgets.executive.loadError"));
       setData(json);
+      setUpdatedAt(new Date());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("workspaceWidgets.executive.loadError"));
       setData(null);
@@ -60,16 +63,30 @@ export default function ExecutiveDashboardWidget() {
       role="region"
       aria-label={t("workspaceWidgets.executive.title")}
       tabIndex={0}
-      className="min-w-0 gap-4 p-3 text-[color:var(--foreground-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 md:gap-6 md:p-6"
+      className="min-w-0 gap-4 p-3 text-[color:var(--foreground-main)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--win-accent,var(--accent))]/50 md:gap-6 md:p-6"
       dir={dir}
     >
-      <div>
-        <h2 className="text-lg font-bold text-[color:var(--foreground-main)] md:text-xl">
-          {t("workspaceWidgets.executive.title")}
-        </h2>
-        <p className="mt-1 text-sm text-[color:var(--foreground-muted)]">
-          {t("workspaceWidgets.executive.subtitle")}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-[color:var(--foreground-main)] md:text-xl">
+            {t("workspaceWidgets.executive.title")}
+          </h2>
+          <p className="mt-1 text-sm text-[color:var(--foreground-muted)]">
+            {t("workspaceWidgets.executive.subtitle")}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {updatedAt ? (
+            <span className="text-[11px] text-[color:var(--foreground-muted)]">
+              {t("workspaceWidgets.executive.updatedAt", {
+                time: updatedAt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
+              })}
+            </span>
+          ) : null}
+          <OsIconButton label={t("common.refresh")} size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden />
+          </OsIconButton>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

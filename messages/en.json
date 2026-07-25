@@ -510,7 +510,13 @@
     "saveToErp": "Save to ERP"
   },
   "common": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "close": "Close",
+    "retry": "Retry",
+    "save": "Save"
   },
   "erpStats": {
     "trendFirst": "First month with data",

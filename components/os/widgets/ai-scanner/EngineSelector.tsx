@@ -70,7 +70,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
         const tooltip = configured
           ? chip.label
           : missing.length
-            ? `${chip.label} — חסר: ${missing.join(", ")}`
+            ? `${chip.label} — ${tr("scanner.engineMissing", "חסר")}: ${missing.join(", ")}`
             : `${chip.label} — ${tr("scanner.engineNotConfigured", "לא מוגדר")}`;
         return (
           <button

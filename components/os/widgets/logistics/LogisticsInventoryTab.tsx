@@ -12,7 +12,7 @@ import { useLogisticsInventory } from "./useLogisticsData";
 const prefix = "workspaceWidgets.logistics";
 
 const inputClass =
-  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] ps-9 pe-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent)]";
+  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] ps-9 pe-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--win-accent,var(--accent))]";
 
 export default function LogisticsInventoryTab() {
   const { t } = useI18n();
@@ -37,7 +37,7 @@ export default function LogisticsInventoryTab() {
         <button
           type="button"
           onClick={() => setFormOpen(true)}
-          className="inline-flex items-center gap-2 rounded-md bg-[color:var(--brand-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-md bg-[color:var(--win-accent,var(--accent))] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
           {t(`${prefix}.inventory.addItem`)}

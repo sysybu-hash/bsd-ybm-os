@@ -21,28 +21,28 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
 
   return (
     <div
-      className="overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-white text-slate-900 shadow-xl dark:bg-slate-950 dark:text-slate-100"
+      className="overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] text-[color:var(--foreground-main)] shadow-xl"
       dir={dir}
     >
       <div className="bg-[color:var(--win-accent,#6366f1)] px-5 py-4">
         <h3 className="text-lg font-black text-white">{title}</h3>
-        <p className="text-xs text-indigo-700 dark:text-indigo-200">
+        <p className="text-xs text-white/80">
           {payload.orgName ?? "BSD-YBM"} · {t("workspaceWidgets.documentPreview.numberPrefix")} {docNumber}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 p-4">
-        <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <p className="text-[10px] font-bold uppercase text-slate-500">{t("workspaceWidgets.documentPreview.fromLabel")}</p>
+        <div className="rounded-lg border border-[color:var(--border-main)] p-3">
+          <p className="text-[10px] font-bold uppercase text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentPreview.fromLabel")}</p>
           <p className="text-sm font-bold">{payload.orgName ?? "—"}</p>
           {payload.orgTaxIdLine ? (
-            <p className="text-xs text-slate-500">{payload.orgTaxIdLine}</p>
+            <p className="text-xs text-[color:var(--foreground-muted)]">{payload.orgTaxIdLine}</p>
           ) : null}
         </div>
-        <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <p className="text-[10px] font-bold uppercase text-slate-500">{t("workspaceWidgets.documentPreview.toLabel")}</p>
+        <div className="rounded-lg border border-[color:var(--border-main)] p-3">
+          <p className="text-[10px] font-bold uppercase text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentPreview.toLabel")}</p>
           <p className="text-sm font-bold">{payload.clientName || "—"}</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
             {t("workspaceWidgets.documentPreview.dateLabel")} {payload.date}
           </p>
         </div>
@@ -51,7 +51,7 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
       <div className="px-4 pb-2">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-slate-100 text-slate-500 dark:bg-slate-800">
+            <tr className="bg-[color:var(--surface-soft)] text-[color:var(--foreground-muted)]">
               <th className="p-2 text-right">{t("workspaceWidgets.documentPreview.colDescription")}</th>
               <th className="p-2 text-center">{t("workspaceWidgets.documentPreview.colQty")}</th>
               <th className="p-2 text-center">{t("workspaceWidgets.documentPreview.colPrice")}</th>
@@ -61,13 +61,13 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
           <tbody>
             {payload.items.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-slate-400">
+                <td colSpan={4} className="p-4 text-center text-[color:var(--foreground-muted)]">
                   {t("workspaceWidgets.documentPreview.emptyItems")}
                 </td>
               </tr>
             ) : (
               payload.items.map((item, i) => (
-                <tr key={`${item.desc}-${i}`} className="border-b border-slate-100 dark:border-slate-800">
+                <tr key={`${item.desc}-${i}`} className="border-b border-[color:var(--border-main)]">
                   <td className="p-2 text-right">{item.desc}</td>
                   <td className="p-2 text-center">{item.qty}</td>
                   <td className="p-2 text-center">{money(item.price)}</td>
@@ -79,16 +79,16 @@ export default function DocumentPreview({ payload }: { payload: InvoiceExportPay
         </table>
       </div>
 
-      <div className="mx-4 mb-4 max-w-xs rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+      <div className="mx-4 mb-4 max-w-xs rounded-lg border border-[color:var(--border-main)] p-3 text-sm">
+        <div className="flex justify-between text-[color:var(--foreground-muted)]">
           <span>{t("workspaceWidgets.documentPreview.subtotalBeforeVat")}</span>
           <span>{money(payload.amount)}</span>
         </div>
-        <div className="mt-1 flex justify-between text-slate-600 dark:text-slate-400">
+        <div className="mt-1 flex justify-between text-[color:var(--foreground-muted)]">
           <span>{t("workspaceWidgets.documentPreview.vatLabel", { percent: vatPct })}</span>
           <span>{money(payload.vat)}</span>
         </div>
-        <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-black text-[color:var(--win-accent,#6366f1)] dark:border-slate-700">
+        <div className="mt-2 flex justify-between border-t border-[color:var(--border-main)] pt-2 text-base font-black text-[color:var(--win-accent,var(--accent))]">
           <span>{t("workspaceWidgets.documentPreview.totalDue")}</span>
           <span>{money(payload.total)}</span>
         </div>

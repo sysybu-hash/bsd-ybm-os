@@ -20,6 +20,7 @@ import type { UIMessage } from "ai";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { visibleTextFromUIMessage } from "@/lib/ai/ui-message-text";
 import NotebookSpeechSettingsPanel from "@/components/os/widgets/NotebookSpeechSettingsPanel";
+import { OsIconButton } from "@/components/os/ui";
 import type { NotebookSpeechSettings } from "@/lib/notebook-speech-settings";
 
 type NotebookChatPanelProps = {
@@ -84,7 +85,7 @@ export function NotebookChatPanel({
           <Bot className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h3 className="font-bold text-[color:var(--foreground-main)]">סטודיו מחקר AI</h3>
+          <h3 className="font-bold text-[color:var(--foreground-main)]">{t("workspaceWidgets.notebookLM.studioTitle")}</h3>
           <p className="text-xs text-[color:var(--foreground-muted)]">Gemini 2.5 Flash</p>
         </div>
       </div>
@@ -93,26 +94,26 @@ export function NotebookChatPanel({
       {audioScript ? (
         <motion.div className="space-y-3 border-b border-[color:var(--border-main)] bg-indigo-500/5 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300">סקירה קולית</span>
+            <span className="text-xs font-bold text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300">{t("workspaceWidgets.notebookLM.audioOverview")}</span>
             <div className="flex flex-wrap items-center gap-1.5">
               {!isPlaying && !isPaused ? (
                 <button type="button" onClick={() => onPlay(audioScript)} className="flex items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2.5 py-1 text-[10px] font-bold text-white hover:opacity-90">
-                  <Play className="h-3 w-3" aria-hidden /> השמע
+                  <Play className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.play")}
                 </button>
               ) : null}
               {isPlaying ? (
                 <button type="button" onClick={onPause} className="flex items-center gap-1 rounded-lg border border-indigo-500/40 bg-indigo-500/15 px-2.5 py-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-200">
-                  <Pause className="h-3 w-3" aria-hidden /> השהה
+                  <Pause className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.pause")}
                 </button>
               ) : null}
               {isPaused ? (
                 <button type="button" onClick={onResume} className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-emerald-500">
-                  <Play className="h-3 w-3" aria-hidden /> המשך
+                  <Play className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.resume")}
                 </button>
               ) : null}
               {isPlaying || isPaused ? (
                 <button type="button" onClick={onStop} className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-1 text-[10px] font-bold text-[color:var(--foreground-main)]">
-                  <Square className="h-3 w-3" aria-hidden /> עצור
+                  <Square className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.stop")}
                 </button>
               ) : null}
             </div>
@@ -122,14 +123,14 @@ export function NotebookChatPanel({
               <div className="h-1.5 overflow-hidden rounded-full bg-[color:var(--surface-soft)]">
                 <div className="h-full rounded-full bg-[color:var(--win-accent,#6366f1)] transition-[width] duration-300" style={{ width: `${progress}%` }} />
               </div>
-              <p className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">{isPaused ? "מושהה" : "מנגן"} · {progress}%</p>
+              <p className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">{t(isPaused ? "workspaceWidgets.notebookLM.paused" : "workspaceWidgets.notebookLM.playing")} · {progress}%</p>
             </div>
           ) : null}
           <NotebookSpeechSettingsPanel
             settings={speechSettings}
             onChange={setSpeechSettings}
-            onPreview={() => onPlay("שלום, כך נשמעת הסקירה הקולית שלך במחברת BSD-YBM.")}
-            previewSnippet="שלום, כך נשמעת הסקירה הקולית שלך במחברת BSD-YBM."
+            onPreview={() => onPlay(t("workspaceWidgets.notebookLM.previewSnippet"))}
+            previewSnippet={t("workspaceWidgets.notebookLM.previewSnippet")}
           />
           <p className="max-h-24 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap text-[color:var(--foreground-muted)]">{audioScript}</p>
         </motion.div>
@@ -140,7 +141,7 @@ export function NotebookChatPanel({
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-[color:var(--foreground-muted)]">
             <Bot className="mb-4 h-14 w-14 opacity-20" />
-            <p>שאל שאלות על המסמכים שהעלית.</p>
+            <p>{t("workspaceWidgets.notebookLM.askAboutDocs")}</p>
           </div>
         ) : (
           messages.map((m) => (
@@ -174,15 +175,15 @@ export function NotebookChatPanel({
           <button type="button" disabled={isGeneratingAudio} onClick={onVoiceOverview}
             className="flex shrink-0 items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-[color:var(--win-accent,#6366f1)] transition hover:bg-indigo-500/20 disabled:opacity-50 dark:text-indigo-300">
             {isGeneratingAudio ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3 w-3" />}
-            סקירה קולית
+            {t("workspaceWidgets.notebookLM.audioOverview")}
           </button>
-          <button type="button" onClick={() => onQuickAction("סכם את המקורות לתקציר מנהלים בנקודות קצרות.")}
+          <button type="button" onClick={() => onQuickAction(t("workspaceWidgets.notebookLM.promptSummary"))}
             className="flex shrink-0 items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-700 transition hover:bg-teal-500/20 dark:text-teal-300">
-            <AlignLeft className="h-3 w-3" /> תקציר
+            <AlignLeft className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.quickSummary")}
           </button>
-          <button type="button" onClick={() => onQuickAction("צור מפת חשיבה היררכית של הרעיונות המרכזיים.")}
+          <button type="button" onClick={() => onQuickAction(t("workspaceWidgets.notebookLM.promptMindMap"))}
             className="flex shrink-0 items-center gap-2 rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-1.5 text-xs font-medium text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)]">
-            <BrainCircuit className="h-3 w-3" /> מפת חשיבה
+            <BrainCircuit className="h-3 w-3" aria-hidden /> {t("workspaceWidgets.notebookLM.quickMindMap")}
           </button>
           <button type="button" disabled={isIssuingDocument} onClick={() => setIssuePromptOpen(true)}
             className="flex shrink-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-200">
@@ -210,14 +211,19 @@ export function NotebookChatPanel({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="הקלד שאלה..."
-            className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-2.5 pl-12 pr-4 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:border-indigo-500 focus:outline-none"
+            placeholder={t("workspaceWidgets.notebookLM.askPlaceholder")}
+            className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-2.5 ps-12 pe-4 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:border-indigo-500 focus:outline-none"
             disabled={isLoading}
           />
-          <button type="submit" disabled={isLoading || !input.trim()}
-            className="absolute left-2 rounded-lg bg-[color:var(--win-accent,#6366f1)] p-2 text-white hover:opacity-90 disabled:opacity-50">
-            <Send className="h-4 w-4 rtl:-scale-x-100" />
-          </button>
+          <OsIconButton
+            type="submit"
+            label={t("workspaceWidgets.notebookLM.askPlaceholder")}
+            size="sm"
+            disabled={isLoading || !input.trim()}
+            className="absolute start-2 bg-[color:var(--win-accent,#6366f1)] text-white hover:opacity-90"
+          >
+            <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden />
+          </OsIconButton>
         </form>
       </div>
     </div>

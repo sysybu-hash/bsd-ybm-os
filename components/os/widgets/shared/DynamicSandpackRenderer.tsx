@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { Loader2 } from "lucide-react";
 
 interface DynamicSandpackRendererProps {
@@ -101,6 +102,8 @@ function buildSrcDoc(code: string): string {
 }
 
 export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpackRendererProps) {
+  const { t } = useI18n();
+
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -146,10 +149,10 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 p-6 text-center">
           <div className="text-4xl">⚠️</div>
           <div className="text-base font-semibold text-gray-800">
-            הקוד שנוצר לא תקין — נסה שוב
+            {t("workspaceWidgets.sharedUi.invalidCode")}
           </div>
           <div className="text-sm text-gray-500 max-w-md break-words" dir="ltr">
-            {runtimeError ?? "הרכיב שנוצר נקטע או מכיל שגיאת תחביר. שלח שוב את הבקשה."}
+            {runtimeError ?? t("workspaceWidgets.sharedUi.invalidCodeHint")}
           </div>
         </div>
       )}

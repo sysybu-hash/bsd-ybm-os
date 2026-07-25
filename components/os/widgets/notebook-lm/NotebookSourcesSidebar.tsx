@@ -6,6 +6,7 @@ import { FileText, FolderOpen, Loader2, Save, Upload } from "lucide-react";
 import { SCAN_ACCEPT_SUMMARY } from "@/lib/scan-mime";
 import ItemActions from "@/components/os/ItemActions";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+import { OsButton } from "@/components/os/ui";
 import { toast } from "sonner";
 import type { Source, SavedNotebookSummary, ProjectOption } from "./types";
 
@@ -87,30 +88,22 @@ export function NotebookSourcesSidebar({
           ))}
         </select>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={isSaving}
+          <OsButton
+            variant="primary"
+            size="sm"
+            className="flex-1 justify-center"
+            loading={isSaving}
+            icon={<Save className="h-3 w-3" aria-hidden />}
             onClick={onSave}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             {t(`${P}.save`)}
-          </button>
-          <button
-            type="button"
-            onClick={onToggleSavedPanel}
-            className="flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-medium text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-card)]"
-          >
-            <FolderOpen className="h-3 w-3" />
+          </OsButton>
+          <OsButton variant="secondary" size="sm" icon={<FolderOpen className="h-3 w-3" aria-hidden />} onClick={onToggleSavedPanel}>
             {t(`${P}.load`)}
-          </button>
-          <button
-            type="button"
-            onClick={onNewNotebook}
-            className="rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-card)]"
-          >
+          </OsButton>
+          <OsButton variant="secondary" size="sm" onClick={onNewNotebook}>
             {t(`${P}.newNotebook`)}
-          </button>
+          </OsButton>
           <KnowledgeVaultAttachButton onSelect={onKnowledgeVaultSelect} />
         </div>
       </div>

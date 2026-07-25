@@ -535,7 +535,13 @@
     "saveToErp": "שמור ל-ERP"
   },
   "common": {
-    "loading": "טוען…"
+    "loading": "טוען…",
+    "cancel": "ביטול",
+    "refresh": "רענון",
+    "clear": "נקה",
+    "close": "סגור",
+    "retry": "נסה שוב",
+    "save": "שמור"
   },
   "erpStats": {
     "trendFirst": "חודש ראשון עם נתונים",

@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { Calendar, Loader2, RefreshCw } from "lucide-react";
+import { Calendar, RefreshCw } from "lucide-react";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import { useSettingsCalendarSection } from "./useSettingsCalendarSection";
 
 type SettingsCalendarSectionProps = {
@@ -20,8 +22,8 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
 
   if (loading) {
     return (
-      <section className="flex justify-center border-t border-[color:var(--border-main)]/30 py-8 pt-6">
-        <Loader2 className="animate-spin text-violet-500" size={24} />
+      <section className="border-t border-[color:var(--border-main)]/30 pt-6">
+        <WidgetState variant="loading" />
       </section>
     );
   }
@@ -53,15 +55,13 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
             <div className="mb-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
               <p className="mb-3 text-sm text-[color:var(--foreground-main)]">{t(`${S}.suggestBody`)}</p>
               {!status.connected ? (
-                <button type="button" onClick={handleConnect}
-                  className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500">
+                <OsButton variant="primary" onClick={handleConnect}>
                   {t(`${S}.connectCta`)}
-                </button>
+                </OsButton>
               ) : (
-                <button type="button" onClick={() => { setWizardStep(0); void loadCalendars(); }}
-                  className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500">
+                <OsButton variant="primary" onClick={() => { setWizardStep(0); void loadCalendars(); }}>
                   {t(`${S}.setupCta`)}
-                </button>
+                </OsButton>
               )}
             </div>
           ) : null}
@@ -89,15 +89,12 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                 <p className="text-xs text-red-500">{status.settings.lastSyncError}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void handleSyncNow()} disabled={syncing}
-                  className="flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold">
-                  {syncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                <OsButton variant="secondary" loading={syncing} icon={<RefreshCw size={16} aria-hidden />} onClick={() => void handleSyncNow()}>
                   {t(`${S}.syncNow`)}
-                </button>
-                <button type="button" onClick={() => void handlePause()}
-                  className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold text-[color:var(--foreground-muted)]">
+                </OsButton>
+                <OsButton variant="secondary" onClick={() => void handlePause()}>
                   {t(`${S}.pause`)}
-                </button>
+                </OsButton>
               </div>
             </div>
           ) : null}
@@ -117,10 +114,9 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                       </option>
                     ))}
                   </select>
-                  <button type="button" onClick={() => setWizardStep(1)} disabled={!selectedCalendarId}
-                    className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+                  <OsButton variant="primary" disabled={!selectedCalendarId} onClick={() => setWizardStep(1)}>
                     {t(`${S}.next`)}
-                  </button>
+                  </OsButton>
                 </>
               ) : null}
 
@@ -141,11 +137,10 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                     </label>
                   ))}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setWizardStep(0)} className="text-sm font-bold">{t(`${S}.back`)}</button>
-                    <button type="button" onClick={() => setWizardStep(2)}
-                      className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white">
+                    <OsButton variant="quiet" onClick={() => setWizardStep(0)}>{t(`${S}.back`)}</OsButton>
+                    <OsButton variant="primary" onClick={() => setWizardStep(2)}>
                       {t(`${S}.next`)}
-                    </button>
+                    </OsButton>
                   </div>
                 </>
               ) : null}
@@ -169,12 +164,10 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                     </select>
                   ) : null}
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setWizardStep(1)} className="text-sm font-bold">{t(`${S}.back`)}</button>
-                    <button type="button" onClick={() => void handleActivate()} disabled={activating}
-                      className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500">
-                      {activating ? <Loader2 size={16} className="animate-spin" /> : null}
+                    <OsButton variant="quiet" onClick={() => setWizardStep(1)}>{t(`${S}.back`)}</OsButton>
+                    <OsButton variant="primary" loading={activating} onClick={() => void handleActivate()}>
                       {t(`${S}.activate`)}
-                    </button>
+                    </OsButton>
                   </div>
                 </>
               ) : null}

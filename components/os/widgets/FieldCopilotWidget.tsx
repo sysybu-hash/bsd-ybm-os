@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import WidgetState from "@/components/os/WidgetState";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useFieldCopilotSession } from "@/hooks/useFieldCopilotSession";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
@@ -142,12 +142,7 @@ export default function FieldCopilotWidget({ liveData, openWorkspaceWidget }: Fi
   const showNavBack = step > 0;
 
   if (authStatus === "loading" || (!session.draft && session.loading && !showHistory)) {
-    return (
-      <div className="flex h-full min-h-[200px] items-center justify-center gap-2 text-sm text-[color:var(--foreground-muted)]">
-        <Loader2 className="animate-spin" size={20} />
-        {t("workspaceWidgets.fieldCopilot.loading")}
-      </div>
-    );
+    return <WidgetState variant="loading" message={t("workspaceWidgets.fieldCopilot.loading")} />;
   }
 
   // ── History screen ───────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton } from "@/components/os/ui";
 import type { OfficeExpenseFormState } from "./types";
 
 type Props = {
@@ -93,26 +94,13 @@ export default function OfficeExpenseForm({
       </div>
       {formError ? <p className="mt-2 text-xs text-rose-500">{formError}</p> : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={onSubmit}
-          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
-        >
-          {saving
-            ? t("workspaceWidgets.officeExpenses.saving")
-            : editingId
-              ? t("workspaceWidgets.officeExpenses.save")
-              : t("workspaceWidgets.officeExpenses.add")}
-        </button>
+        <OsButton variant="primary" size="sm" loading={saving} onClick={onSubmit}>
+          {editingId ? t("workspaceWidgets.officeExpenses.save") : t("workspaceWidgets.officeExpenses.add")}
+        </OsButton>
         {editingId ? (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-[color:var(--border-main)] px-3 py-1.5 text-xs"
-          >
+          <OsButton variant="secondary" size="sm" onClick={onCancel}>
             {t("workspaceWidgets.officeExpenses.cancel")}
-          </button>
+          </OsButton>
         ) : null}
       </div>
     </section>

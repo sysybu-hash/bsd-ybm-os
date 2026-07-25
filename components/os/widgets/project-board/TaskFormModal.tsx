@@ -3,13 +3,14 @@
 import React from "react";
 import { Plus, X, Save } from "lucide-react";
 import CommentsThread from "@/components/os/shared/CommentsThread";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { BoardColumnId, BoardPriorityId } from "@/lib/tasks/board-mapping";
 import { columns } from "./constants";
 import type { Contact, TaskFormState } from "./types";
 
 const inputClass =
-  "w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 text-slate-900 dark:text-slate-200";
-const labelClass = "text-[10px] font-bold text-slate-500 uppercase tracking-widest";
+  "w-full bg-[color:var(--surface-soft)] border border-[color:var(--border-main)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[color:var(--win-accent,var(--accent))]/50 text-[color:var(--foreground-main)]";
+const labelClass = "text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest";
 
 export type TaskFormModalProps = {
   open: boolean;
@@ -41,20 +42,15 @@ export function TaskFormModal({
   if (!open) return null;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto overscroll-y-contain">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl my-auto">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto overscroll-y-contain">
+      <div className="w-full max-w-lg bg-[color:var(--surface-card)] border border-[color:var(--border-main)] rounded-2xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl my-auto">
         <div className="flex items-center justify-between mb-4 sm:mb-8">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <Plus className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400" size={24} /> {title}
+          <h3 className="text-xl font-bold text-[color:var(--foreground-main)] flex items-center gap-3">
+            <Plus className="text-[color:var(--win-accent,#6366f1)]" size={24} aria-hidden /> {title}
           </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full text-slate-500 transition-all"
-            aria-label={t("workspaceWidgets.confirm.cancel")}
-          >
-            <X size={20} />
-          </button>
+          <OsIconButton label={t("workspaceWidgets.confirm.cancel")} className="rounded-full" onClick={onClose}>
+            <X size={20} aria-hidden />
+          </OsIconButton>
         </div>
 
         <div className="space-y-4 mb-8 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
@@ -158,13 +154,14 @@ export function TaskFormModal({
 
         {taskId ? <CommentsThread targetId={taskId} targetType="TASK" /> : null}
 
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
+          className="h-12 w-full justify-center shadow-xl"
+          icon={<Save size={18} aria-hidden />}
           onClick={onSave}
-          className="w-full h-12 bg-[color:var(--win-accent,#6366f1)] hover:opacity-90 text-white font-bold rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
         >
-          <Save size={18} /> {saveLabel}
-        </button>
+          {saveLabel}
+        </OsButton>
       </div>
     </div>
   );

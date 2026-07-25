@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, ExternalLink, FileText, Loader2, PackageCheck, Send, XCircle } from "lucide-react";
+import { Download, ExternalLink, FileText, PackageCheck, Send, XCircle } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import { emitProcurementMutation, useProcurementSync } from "@/lib/events/procurement-sync";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
@@ -102,19 +104,17 @@ export default function ProcurementOrdersTab({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6 text-[color:var(--foreground-muted)]">
-        <Loader2 className="me-2 h-5 w-5 animate-spin" />
-        {t(`${prefix}.loading`)}
-      </div>
-    );
+    return <WidgetState variant="loading" message={t(`${prefix}.loading`)} />;
   }
 
   if (error) {
     return (
-      <div className="p-6 text-center text-sm text-red-600">
-        {t("workspaceWidgets.procurement.loadError")}
-      </div>
+      <WidgetState
+        variant="error"
+        message={t("workspaceWidgets.procurement.loadError")}
+        onRetry={() => void reload()}
+        retryLabel={t("common.retry")}
+      />
     );
   }
 
@@ -177,7 +177,7 @@ export default function ProcurementOrdersTab({
                 </span>
               ) : null}
               {hasDocument ? (
-                <span className="text-[color:var(--brand-accent)]">{t(`${prefix}.documentReady`)}</span>
+                <span className="text-[color:var(--win-accent,var(--accent))]">{t(`${prefix}.documentReady`)}</span>
               ) : null}
             </div>
 
@@ -197,70 +197,71 @@ export default function ProcurementOrdersTab({
             {(canSend || canReceive || canCancel || hasDocument || !hasDocument) && (
               <div className="mt-4 flex flex-wrap gap-2 border-t border-[color:var(--border-main)] pt-3">
                 {!hasDocument && canSend ? (
-                  <button
-                    type="button"
-                    disabled={isBusy}
+                  <OsButton
+                    variant="secondary"
+                    size="sm"
+                    loading={isBusy}
+                    icon={<FileText className="h-3.5 w-3.5" aria-hidden />}
                     onClick={() => void issueDocument(order, false)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border-main)] px-3 py-1.5 text-sm font-medium text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] disabled:opacity-50"
                   >
-                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                     {t(`${prefix}.issueDocument`)}
-                  </button>
+                  </OsButton>
                 ) : null}
                 {canSend ? (
-                  <button
-                    type="button"
-                    disabled={isBusy}
+                  <OsButton
+                    variant="primary"
+                    size="sm"
+                    loading={isBusy}
+                    icon={<Send className="h-3.5 w-3.5" aria-hidden />}
                     onClick={() => void sendToSupplier(order)}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)]/10 px-3 py-1.5 text-sm font-medium text-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent)]/20 disabled:opacity-50"
                   >
-                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     {t(`${prefix}.markSent`)}
-                  </button>
+                  </OsButton>
                 ) : null}
                 {hasDocument ? (
                   <>
-                    <button
-                      type="button"
+                    <OsButton
+                      variant="secondary"
+                      size="sm"
                       disabled={isBusy}
+                      icon={<Download className="h-3.5 w-3.5" aria-hidden />}
                       onClick={() => void downloadPdf(order)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border-main)] px-3 py-1.5 text-sm text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] disabled:opacity-50"
                     >
-                      <Download className="h-3.5 w-3.5" />
                       {t(`${prefix}.downloadPdf`)}
-                    </button>
+                    </OsButton>
                     {openWorkspaceWidget ? (
-                      <button
-                        type="button"
+                      <OsButton
+                        variant="secondary"
+                        size="sm"
+                        icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden />}
                         onClick={() => openDocument(order)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border-main)] px-3 py-1.5 text-sm text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)]"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
                         {t(`${prefix}.openDocument`)}
-                      </button>
+                      </OsButton>
                     ) : null}
                   </>
                 ) : null}
                 {canReceive && onReceive ? (
-                  <button
-                    type="button"
+                  <OsButton
+                    variant="secondary"
+                    size="sm"
+                    className="bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400"
+                    icon={<PackageCheck className="h-3.5 w-3.5" aria-hidden />}
                     onClick={() => onReceive(order)}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600/10 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400"
                   >
-                    <PackageCheck className="h-3.5 w-3.5" />
                     {t(`${prefix}.receive`)}
-                  </button>
+                  </OsButton>
                 ) : null}
                 {canCancel ? (
-                  <button
-                    type="button"
-                    disabled={isBusy}
+                  <OsButton
+                    variant="secondary"
+                    size="sm"
+                    loading={isBusy}
+                    icon={<XCircle className="h-3.5 w-3.5" aria-hidden />}
                     onClick={() => void patchStatus(order.id, "CANCELLED")}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border-main)] px-3 py-1.5 text-sm text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] disabled:opacity-50"
                   >
-                    <XCircle className="h-3.5 w-3.5" />
                     {t(`${prefix}.cancel`)}
-                  </button>
+                  </OsButton>
                 ) : null}
               </div>
             )}

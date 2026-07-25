@@ -2,6 +2,7 @@
 
 import { Redo2, Undo2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 
 interface PreviewToolbarProps {
   title: string;
@@ -15,9 +16,6 @@ interface PreviewToolbarProps {
 }
 
 const PREFIX = "workspaceWidgets.appBuilder";
-
-const actionBtnClass =
-  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-[color:var(--surface-soft)] text-[color:var(--foreground-main)]";
 
 /**
  * Header above the App Builder preview — title, optional hint, undo/redo.
@@ -49,14 +47,24 @@ export function PreviewToolbar({
 
       {showHistory ? (
         <div className="flex shrink-0 items-center gap-1.5">
-          <button type="button" onClick={onUndo} disabled={!canUndo} title={t(`${PREFIX}.undo`)} className={actionBtnClass}>
-            <Undo2 className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />
+          <OsButton
+            variant="quiet"
+            size="sm"
+            disabled={!canUndo}
+            icon={<Undo2 className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />}
+            onClick={onUndo}
+          >
             <span className="hidden sm:inline">{t(`${PREFIX}.undo`)}</span>
-          </button>
-          <button type="button" onClick={onRedo} disabled={!canRedo} title={t(`${PREFIX}.redo`)} className={actionBtnClass}>
-            <Redo2 className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />
+          </OsButton>
+          <OsButton
+            variant="quiet"
+            size="sm"
+            disabled={!canRedo}
+            icon={<Redo2 className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden />}
+            onClick={onRedo}
+          >
             <span className="hidden sm:inline">{t(`${PREFIX}.redo`)}</span>
-          </button>
+          </OsButton>
           <span className="text-[11px] font-medium text-[color:var(--foreground-muted)]">
             {t(`${PREFIX}.versionLabel`, { current: String(index), total: String(total) })}
           </span>

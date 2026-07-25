@@ -1,16 +1,19 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { Loader2, LayoutList, LayoutGrid, Rows3, Table2, Sparkles, Library, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import GoogleDriveDecodeReviewPanel from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
+import { OsButton, OsIconButton, OsSearchInput } from "@/components/os/ui";
 import type { GoogleDriveWidgetProps, GoogleFile } from "./google-drive/types";
 import { useGoogleDriveWidget } from "./google-drive/useGoogleDriveWidget";
 import { DriveFileList } from "./google-drive/DriveFileList";
 import { DriveHeader } from "./google-drive/DriveHeader";
 
 export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget }: GoogleDriveWidgetProps) {
+  const { locale } = useI18n();
   const s = useGoogleDriveWidget({ liveData, openWorkspaceWidget });
   const {
     dir, t, drivePrefix,
@@ -78,13 +81,9 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
           onOpenCrm={openWorkspaceWidget ? () => openWorkspaceWidget("crmTable", null) : undefined}
         />
         <div className="shrink-0 border-t border-[color:var(--border-main)] p-3">
-          <button
-            type="button"
-            onClick={handleBrowseOrg}
-            className="w-full rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
-          >
+          <OsButton variant="secondary" className="w-full justify-center" onClick={handleBrowseOrg}>
             {t(`${drivePrefix}.browseOrg`)}
-          </button>
+          </OsButton>
         </div>
       </div>
     );
@@ -111,30 +110,24 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
 
       {/* Search + toolbar */}
       <div className="p-4 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/30">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="חפש בדרייב..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)]"
-          />
-        </div>
+        <OsSearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          label={t("workspaceWidgets.googleDrive.searchPlaceholder")}
+        />
         {workspace ? (
           <p className="mt-2 text-[10px] text-[color:var(--foreground-muted)] font-semibold">
-            תיקיית סנכרון: {workspace.folderName}
-            {lastSyncAt ? ` · סונכרן ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+            {t("workspaceWidgets.googleDrive.syncFolder", { folder: workspace.folderName })}
+            {lastSyncAt ? ` · ${t("workspaceWidgets.googleDrive.syncedAt", { time: new Date(lastSyncAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) })}` : ""}
           </p>
         ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-[color:var(--border-main)] overflow-hidden">
             {([["list", LayoutList], ["grid", LayoutGrid], ["compact", Rows3], ["details", Table2]] as const).map(
               ([mode, Icon]) => (
-                <button key={mode} type="button" onClick={() => setView(mode)}
-                  className={`p-2 ${viewMode === mode ? "bg-violet-500/15 text-violet-700" : "text-[color:var(--foreground-muted)] hover:bg-black/5"}`}
-                  title={mode} aria-label={mode}>
-                  <Icon size={16} />
-                </button>
+                <OsIconButton key={mode} label={mode} size="sm" active={viewMode === mode} onClick={() => setView(mode)}>
+                  <Icon size={16} aria-hidden />
+                </OsIconButton>
               ),
             )}
           </div>
@@ -152,7 +145,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
                 });
               }}
             />
-            פענוח אוטומטי אחרי סנכרון
+            {t("workspaceWidgets.googleDrive.autoDecode")}
           </label>
           {selectableFiles.length > 0 ? (
             <button type="button"
@@ -160,7 +153,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
                 prev.size === selectableFiles.length ? new Set() : new Set(selectableFiles.map((f) => f.id))
               )}
               className="text-[10px] font-bold text-violet-600 underline">
-              {selectedIds.size === selectableFiles.length ? "בטל הכל" : "בחר הכל"}
+              {t(selectedIds.size === selectableFiles.length ? "workspaceWidgets.googleDrive.deselectAll" : "workspaceWidgets.googleDrive.selectAll")}
             </button>
           ) : null}
         </div>
@@ -169,13 +162,18 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
       {/* Decode selection bar */}
       {selectedIds.size > 0 ? (
         <div className="flex items-center gap-2 border-b border-violet-500/20 bg-violet-500/10 px-4 py-2">
-          <span className="text-xs font-bold">{selectedIds.size} נבחרו</span>
-          <button type="button" disabled={decoding}
+          <span className="text-xs font-bold">{t("workspaceWidgets.googleDrive.selectedCount", { count: String(selectedIds.size) })}</span>
+          <OsButton
+            variant="primary"
+            size="sm"
+            loading={decoding}
             onClick={() => void runDecodeBatch([...selectedIds]).then(() => setSelectedIds(new Set()))}
-            className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-50">
-            {decoding ? <Loader2 size={12} className="animate-spin inline" /> : "פענח נבחרים"}
-          </button>
-          <button type="button" onClick={() => setSelectedIds(new Set())} className="text-[10px] font-bold underline">נקה</button>
+          >
+            {t("workspaceWidgets.googleDrive.decodeSelected")}
+          </OsButton>
+          <OsButton variant="quiet" size="sm" className="underline" onClick={() => setSelectedIds(new Set())}>
+            {t("workspaceWidgets.googleDrive.clear")}
+          </OsButton>
         </div>
       ) : null}
 
@@ -193,13 +191,13 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
       {/* Footer */}
       <div className="p-3 md:p-4 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/30 flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">
         <div className="flex flex-wrap gap-2">
-          <span>{files.length} פריטים</span>
+          <span>{t("workspaceWidgets.googleDrive.itemsCount", { count: String(files.length) })}</span>
           <span>•</span>
-          <span>סנכרון אוטומטי כל 90 שנ׳{lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+          <span>{t("workspaceWidgets.googleDrive.autoSyncEvery")}{lastSyncAt ? ` · ${new Date(lastSyncAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
         </div>
         <div className={`flex items-center gap-1 ${driveError ? "text-rose-500" : syncing ? "text-amber-500" : "text-emerald-500"}`}>
           <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${driveError ? "bg-rose-500" : syncing ? "bg-amber-500" : "bg-emerald-500"}`} />
-          {driveError ? "נדרש חיבור Google" : syncing ? "מסנכרן..." : "מחובר ומסונכרן"}
+          {t(driveError ? "workspaceWidgets.googleDrive.needsConnection" : syncing ? "workspaceWidgets.googleDrive.syncing" : "workspaceWidgets.googleDrive.connected")}
         </div>
       </div>
 

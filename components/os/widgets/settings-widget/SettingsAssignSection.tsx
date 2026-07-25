@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Loader2, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
+import { OsButton } from "@/components/os/ui";
 
 type AssignRole = { value: string; label: string };
 
@@ -56,15 +57,15 @@ export function SettingsAssignSection({
           </select>
         </div>
         <div>
-          <button
-            type="button"
+          <OsButton
+            variant="primary"
+            className="w-full justify-center md:w-auto"
+            loading={assigning}
+            icon={<UserPlus size={18} aria-hidden />}
             onClick={onAssign}
-            disabled={assigning}
-            className="w-full md:w-auto bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
           >
-            {assigning ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
             {t(`${S}.assignSubmit`)}
-          </button>
+          </OsButton>
         </div>
       </div>
     </section>

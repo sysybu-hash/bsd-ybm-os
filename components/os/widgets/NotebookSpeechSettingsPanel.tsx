@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { RotateCcw, Save, Settings2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
+import { OsButton } from "@/components/os/ui";
 import {
   DEFAULT_NOTEBOOK_SPEECH_SETTINGS,
   listHebrewVoices,
@@ -53,7 +54,7 @@ export default function NotebookSpeechSettingsPanel({
 
   const handleReset = () => {
     setDraft({ ...DEFAULT_NOTEBOOK_SPEECH_SETTINGS });
-    toast.message("אופסו לברירת מחדל — לחץ «שמור»");
+    toast.message(t("workspaceWidgets.settings.speechResetHint"));
   };
 
   return (
@@ -66,17 +67,17 @@ export default function NotebookSpeechSettingsPanel({
       >
         <span className="flex items-center gap-2 text-xs font-bold text-[color:var(--foreground-main)]">
           <Settings2 className="h-4 w-4 text-[color:var(--win-accent,#6366f1)]" aria-hidden />
-          הגדרות סגנון דיבור
+          {t("workspaceWidgets.settings.speechTitle")}
         </span>
         <span className="text-[10px] font-semibold text-[color:var(--foreground-muted)]">
-          {expanded ? "הסתר" : "הצג"}
+          {t(expanded ? "workspaceWidgets.settings.hide" : "workspaceWidgets.settings.show")}
         </span>
       </button>
 
       {expanded ? (
         <div className="space-y-3 border-t border-[color:var(--border-main)] px-3 py-3">
           <div>
-            <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">סגנון דיבור</label>
+            <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.settings.speechStyle")}</label>
             <select
               value={draft.speechStyle}
               onChange={(e) =>
@@ -97,7 +98,7 @@ export default function NotebookSpeechSettingsPanel({
           </div>
 
           <div>
-            <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">קול (דפדפן)</label>
+            <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.settings.browserVoice")}</label>
             <select
               value={draft.voiceURI ?? ""}
               onChange={(e) =>
@@ -108,7 +109,7 @@ export default function NotebookSpeechSettingsPanel({
               }
               className="w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2.5 py-2 text-xs font-bold text-[color:var(--foreground-main)]"
             >
-              <option value="">אוטומטי לפי סגנון</option>
+              <option value="">{t("workspaceWidgets.settings.autoByStyle")}</option>
               {voices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
                   {v.name} ({v.lang})
@@ -116,13 +117,13 @@ export default function NotebookSpeechSettingsPanel({
               ))}
             </select>
             {voices.length === 0 ? (
-              <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-300">לא נמצאו קולות עברית — ישמש קול ברירת מחדל.</p>
+              <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-300">{t("workspaceWidgets.settings.noHebrewVoices")}</p>
             ) : null}
           </div>
 
           <div>
             <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-              מהירות ({draft.rate.toFixed(2)})
+              {t("workspaceWidgets.settings.rate")} ({draft.rate.toFixed(2)})
             </label>
             <input
               type="range"
@@ -137,7 +138,7 @@ export default function NotebookSpeechSettingsPanel({
 
           <div>
             <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-              גובה צליל ({draft.pitch.toFixed(2)})
+              {t("workspaceWidgets.settings.pitch")} ({draft.pitch.toFixed(2)})
             </label>
             <input
               type="range"
@@ -152,7 +153,7 @@ export default function NotebookSpeechSettingsPanel({
 
           <div>
             <label className="mb-1 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-              עוצמה ({Math.round(draft.volume * 100)}%)
+              {t("workspaceWidgets.settings.volume")} ({Math.round(draft.volume * 100)}%)
             </label>
             <input
               type="range"
@@ -166,36 +167,21 @@ export default function NotebookSpeechSettingsPanel({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] px-2.5 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-            >
-              <RotateCcw className="h-3 w-3" aria-hidden />
-              איפוס
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2.5 py-1.5 text-[10px] font-bold text-white hover:opacity-90"
-            >
-              <Save className="h-3 w-3" aria-hidden />
-              שמור
-            </button>
+            <OsButton variant="secondary" size="sm" icon={<RotateCcw className="h-3 w-3" aria-hidden />} onClick={handleReset}>
+              {t("workspaceWidgets.settings.reset")}
+            </OsButton>
+            <OsButton variant="primary" size="sm" icon={<Save className="h-3 w-3" aria-hidden />} onClick={handleSave}>
+              {t("workspaceWidgets.settings.save")}
+            </OsButton>
             {onPreview ? (
-              <button
-                type="button"
-                onClick={onPreview}
-                className="inline-flex items-center gap-1 rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 py-1.5 text-[10px] font-bold text-teal-700 dark:text-teal-300"
-              >
-                <Volume2 className="h-3 w-3" aria-hidden />
-                תצוגה מקדימה
-              </button>
+              <OsButton variant="secondary" size="sm" icon={<Volume2 className="h-3 w-3" aria-hidden />} onClick={onPreview}>
+                {t("workspaceWidgets.settings.preview")}
+              </OsButton>
             ) : null}
           </div>
           {previewSnippet ? (
             <p className="text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
-              תצוגה מקדימה: «{previewSnippet.slice(0, 80)}
+              {t("workspaceWidgets.settings.previewLabel")}: «{previewSnippet.slice(0, 80)}
               {previewSnippet.length > 80 ? "…" : ""}»
             </p>
           ) : null}

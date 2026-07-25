@@ -44,7 +44,7 @@ const defaultStartDate = new Date(new Date().setDate(new Date().getDate() - 30))
 
 export function useMeckanoReports() {
   const { data: session } = useSession();
-  const { dir, t } = useI18n();
+  const { dir, t, locale } = useI18n();
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<MeckanoProject[]>([]);
@@ -173,7 +173,7 @@ export function useMeckanoReports() {
   };
 
   return {
-    dir, t,
+    dir, t, locale,
     reports, employees, projects,
     isLoading, error, filters, setFilters,
     fetchReports, exportToCSV, downloadPDF,

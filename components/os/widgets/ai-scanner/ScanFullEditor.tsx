@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, Download, FileJson, FileSpreadshe
 import type { DocumentAnalysis } from "./types";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import { downloadBlob, rowsToCsv } from "@/lib/export-file";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import {
   BOQ_MODES, HeaderFields, LineItemsEditor, BoqEditor,
   emptyBoqRow as _emptyBoqRow, computeLineTotal,
@@ -180,16 +181,16 @@ export function ScanFullEditor({
           <div className="flex items-center gap-1">
             {/* Export dropdown */}
             <div className="relative">
-              <button
-                type="button"
+              <OsButton
+                variant="secondary"
+                size="sm"
+                icon={<Download size={13} aria-hidden />}
                 onClick={() => exportActions.setExportOpen((o) => !o)}
-                className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 px-2.5 py-1.5 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 title={tr("scanner.export", "ייצוא")}
               >
-                <Download size={13} aria-hidden />
                 {tr("scanner.export", "ייצוא")}
                 <ChevronDown size={11} aria-hidden />
-              </button>
+              </OsButton>
               {exportActions.exportOpen && (
                 <div className="absolute end-0 top-full z-50 mt-1 min-w-[160px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-xl">
                   <button type="button" onClick={exportActions.exportCsv}
@@ -215,9 +216,9 @@ export function ScanFullEditor({
                 </div>
               )}
             </div>
-            <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-black/5">
-              <X size={18} />
-            </button>
+            <OsIconButton label={tr("scanner.close", "סגור")} size="sm" onClick={onClose}>
+              <X size={18} aria-hidden />
+            </OsIconButton>
           </div>
         </div>
 
@@ -283,11 +284,14 @@ export function ScanFullEditor({
           </Section>
         )}
 
-        <button type="button"
+        <OsButton
+          variant="primary"
+          className="w-full justify-center py-3 text-sm font-black"
+          icon={<Save size={18} aria-hidden />}
           onClick={() => { onChange({ ...analysis, vendor: v5.vendor, taxId: v5.taxId ?? undefined, amount: v5.total, date: v5.date ?? analysis.date, v5 }); onConfirm(); }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] py-3 text-sm font-black text-white hover:bg-emerald-500">
-          <Save size={18} /> {confirmLabel ?? tr("scanner.confirmExpense", "אשר ושמור")}
-        </button>
+        >
+          {confirmLabel ?? tr("scanner.confirmExpense", "אשר ושמור")}
+        </OsButton>
       </div>
     </div>
   );

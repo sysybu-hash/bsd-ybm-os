@@ -11,16 +11,21 @@ export function useDocumentData() {
   const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null);
   const [issuedList, setIssuedList] = useState<IssuedDocEntry[]>([]);
   const [issuedListLoading, setIssuedListLoading] = useState(true);
+  const [issuedListError, setIssuedListError] = useState(false);
 
   const fetchIssuedDocuments = useCallback(async () => {
     try {
       setIssuedListLoading(true);
+      setIssuedListError(false);
       const res = await fetch("/api/erp/issued-documents", { credentials: "include" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setIssuedListError(true);
+        return;
+      }
       const data = (await res.json()) as { documents?: IssuedDocEntry[] };
       setIssuedList(data.documents ?? []);
     } catch {
-      /* optional list */
+      setIssuedListError(true);
     } finally {
       setIssuedListLoading(false);
     }
@@ -75,6 +80,7 @@ export function useDocumentData() {
     orgSettings,
     issuedList,
     issuedListLoading,
+    issuedListError,
     fetchIssuedDocuments,
     fetchContacts,
   };

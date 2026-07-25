@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { BarChart3, Plus, Search, ArrowRight } from "lucide-react";
+import { BarChart3, Plus, ArrowRight, RefreshCw } from "lucide-react";
+import { OsButton, OsIconButton, OsSearchInput } from "@/components/os/ui";
 
 type BoardHeaderProps = {
   embedded: boolean;
@@ -12,6 +13,7 @@ type BoardHeaderProps = {
   setSearchQuery: (v: string) => void;
   onNewTask: () => void;
   onSwitchProject: () => void;
+  onRefresh?: () => void;
 };
 
 /** כותרת לוח המשימות — גרסה מלאה (עם החלפת פרויקט) או קומפקטית ל-embedded */
@@ -24,39 +26,34 @@ export function BoardHeader({
   setSearchQuery,
   onNewTask,
   onSwitchProject,
+  onRefresh,
 }: BoardHeaderProps) {
   const searchInput = (
-    <div className="relative min-w-0 flex-1">
-      <Search
-        className="absolute end-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"
-        size={14}
-        aria-hidden
-      />
-      <input
-        type="text"
-        placeholder={t(`${boardPrefix}.searchPlaceholder`)}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 py-2 pe-9 ps-3 text-sm text-[color:var(--foreground-main)] placeholder:text-[color:var(--foreground-muted)] focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-      />
-    </div>
+    <OsSearchInput
+      value={searchQuery}
+      onChange={setSearchQuery}
+      label={t(`${boardPrefix}.searchPlaceholder`)}
+      className="min-w-0 flex-1"
+    />
   );
 
   const newTaskButton = (
-    <button
-      type="button"
-      onClick={onNewTask}
-      className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-3 py-2 text-xs font-bold text-white hover:opacity-90 transition-all"
-    >
-      <Plus size={15} aria-hidden />
+    <OsButton variant="primary" size="sm" icon={<Plus size={15} aria-hidden />} onClick={onNewTask}>
       {t(`${boardPrefix}.newTask`)}
-    </button>
+    </OsButton>
   );
+
+  const refreshButton = onRefresh ? (
+    <OsIconButton label={t("common.refresh")} size="sm" onClick={onRefresh}>
+      <RefreshCw size={16} aria-hidden />
+    </OsIconButton>
+  ) : null;
 
   if (embedded) {
     return (
       <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border-main)] px-3 py-2">
         {searchInput}
+        {refreshButton}
         {newTaskButton}
       </div>
     );
@@ -66,7 +63,7 @@ export function BoardHeader({
     <div className="shrink-0 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
       {/* Top row: icon + title + new task */}
       <div className="flex items-center gap-3 px-3 py-2.5 sm:px-6 sm:py-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-400 sm:h-10 sm:w-10">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--win-accent,#6366f1)]/10 text-[color:var(--win-accent,#6366f1)] sm:h-10 sm:w-10">
           <BarChart3 size={20} aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
@@ -80,14 +77,15 @@ export function BoardHeader({
       {/* Bottom row: search + switch */}
       <div className="flex items-center gap-2 px-3 pb-2.5 sm:px-6">
         {searchInput}
-        <button
-          type="button"
+        {refreshButton}
+        <OsButton
+          variant="secondary"
+          size="sm"
+          icon={<ArrowRight size={13} className="rtl:rotate-180" aria-hidden />}
           onClick={onSwitchProject}
-          className="flex shrink-0 items-center gap-1 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] transition-all"
         >
-          <ArrowRight size={13} className="rtl:rotate-180" aria-hidden />
           <span className="hidden sm:inline">{t(`${boardPrefix}.switchProject`)}</span>
-        </button>
+        </OsButton>
       </div>
     </div>
   );

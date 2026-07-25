@@ -1,6 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Bot } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { MobileScreenHeader } from "@/components/dashboard-mobile/MobileScreenHeader";
+import { classicSectionById } from "@/lib/classic/sections";
 
 const AiChatFullWidget = dynamic(
   () => import("@/components/os/widgets/AiChatFullWidget"),
@@ -15,5 +19,13 @@ const AiChatFullWidget = dynamic(
 );
 
 export default function AiTabPage() {
-  return <AiChatFullWidget />;
+  const { t } = useI18n();
+  const section = classicSectionById("aiChat");
+
+  return (
+    <div>
+      {section ? <MobileScreenHeader title={t(section.labelKey)} icon={Bot} /> : null}
+      <AiChatFullWidget />
+    </div>
+  );
 }

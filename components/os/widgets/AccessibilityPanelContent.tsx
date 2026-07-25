@@ -120,7 +120,7 @@ export default function AccessibilityPanelContent({
           </Link>
           {" · "}
           <a
-            href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent("נגישות האתר")}`}
+            href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent(t("workspaceWidgets.accessibility.mailSubject"))}`}
             className="font-bold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
           >
             {t("accessibility.feedbackEmail")}

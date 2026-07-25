@@ -49,7 +49,7 @@ export function ArchiveFilesSection({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <div className="custom-scrollbar min-h-0 min-w-0 flex-1 overflow-auto p-4 md:p-6">
         {loading ? (
-          <WidgetState variant="loading" message="טוען ארכיון…" />
+          <WidgetState variant="loading" message={t("workspaceWidgets.erpArchive.loadingArchive")} />
         ) : loadError ? (
           <WidgetState variant="error" message={loadError} onRetry={fetchArchive} />
         ) : files.length === 0 ? (
@@ -58,11 +58,11 @@ export function ArchiveFilesSection({
           <div className="overflow-x-auto">
             <div className="min-w-[420px] space-y-2">
               <div className="mb-2 grid grid-cols-12 border-b border-[color:var(--border-main)]/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                <div className="col-span-5">שם</div>
-                <div className="col-span-2 text-center">פרויקט</div>
+                <div className="col-span-5">{t("workspaceWidgets.erpArchive.colName")}</div>
+                <div className="col-span-2 text-center">{t("workspaceWidgets.erpArchive.colProject")}</div>
                 <div className="col-span-2 text-center">{listSourceColumnLabel}</div>
-                <div className="col-span-2 text-center">עודכן</div>
-                <div className="col-span-1 text-center">גודל</div>
+                <div className="col-span-2 text-center">{t("workspaceWidgets.erpArchive.colUpdated")}</div>
+                <div className="col-span-1 text-center">{t("workspaceWidgets.erpArchive.colSize")}</div>
               </div>
               {files.map((file) => {
                 const selected = selectedFile?.id === file.id;
@@ -81,7 +81,7 @@ export function ArchiveFilesSection({
                       </span>
                       <span className="col-span-2 truncate text-center text-[11px] font-bold text-[color:var(--foreground-muted)]">{file.projectName}</span>
                       <span className="col-span-2 truncate text-center text-[11px] text-[color:var(--foreground-muted)]">
-                        {archiveView === "shared" ? file.ownerName ?? "—" : file.source === "issued" ? "מונפק" : "סריקה"}
+                        {archiveView === "shared" ? file.ownerName ?? "—" : t(file.source === "issued" ? "workspaceWidgets.erpArchive.sourceIssued" : "workspaceWidgets.erpArchive.sourceScan")}
                       </span>
                       <span className="col-span-1 text-center text-[11px] text-[color:var(--foreground-muted)]">{new Date(file.updatedAt).toLocaleDateString("he-IL")}</span>
                       <span className="col-span-1 text-end text-[10px] text-[color:var(--foreground-muted)] opacity-80">{file.sizeLabel}</span>
@@ -123,7 +123,7 @@ export function ArchiveFilesSection({
                     <div className="mb-1 w-full truncate text-sm font-bold text-[color:var(--foreground-main)]">{file.name}</div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">{file.projectName}</div>
                     {archiveView === "shared" && file.ownerName ? (
-                      <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">מאת {file.ownerName}</div>
+                      <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">{t("workspaceWidgets.erpArchive.byOwner", { name: file.ownerName ?? "" })}</div>
                     ) : null}
                   </button>
                 </div>

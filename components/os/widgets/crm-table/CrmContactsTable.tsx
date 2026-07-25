@@ -1,12 +1,19 @@
 "use client";
 
 import React from "react";
-import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat } from "lucide-react";
+import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat, ChevronRight } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { intlLocaleForApp } from "@/lib/i18n/intl-locale";
 import type { AppLocale } from "@/lib/i18n/config";
 import type { Client, OpenWorkspaceWidgetFn } from "./types";
+
+const STATUS_CLASS: Record<string, string> = {
+  active: "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-400",
+  lead: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+};
+const STATUS_FALLBACK_CLASS = "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]";
 
 type CrmContactsTableProps = {
   clients: Client[];
@@ -37,6 +44,69 @@ export function CrmContactsTable({
 }: CrmContactsTableProps) {
   const { locale } = useI18n();
   const dateLocale = intlLocaleForApp(locale as AppLocale);
+  const isMobile = useMediaQuery("(max-width: 639px)");
+
+  if (isMobile) {
+    return (
+      <>
+        <ul className="divide-y divide-[color:var(--border-main)]/30">
+          {loading
+            ? [1, 2, 3, 4, 5].map((i) => (
+                <li key={i} className="animate-pulse px-3 py-3">
+                  <div className="h-14 rounded-xl bg-[color:var(--foreground-muted)]/10" />
+                </li>
+              ))
+            : clients.map((client) => (
+                <li key={client.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(client)}
+                    className="flex w-full items-center gap-3 px-3 py-3 text-start active:bg-[color:var(--foreground-muted)]/5"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] text-xs font-bold text-[color:var(--foreground-main)]">
+                      {client.name?.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-bold text-[color:var(--foreground-main)]">{client.name}</span>
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${
+                            STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
+                          }`}
+                        >
+                          {client.status}
+                        </span>
+                      </div>
+                      {client.phone ? (
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[color:var(--foreground-muted)]">
+                          <Phone size={11} aria-hidden />
+                          {client.phone}
+                        </div>
+                      ) : null}
+                    </div>
+                    <ChevronRight size={16} className="shrink-0 rtl:rotate-180 text-[color:var(--foreground-muted)]" aria-hidden />
+                  </button>
+                </li>
+              ))}
+        </ul>
+
+        {hasMore && !loading && (
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="mx-auto my-4 block rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)]/80 px-6 py-2 text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--foreground-muted)]/10 disabled:opacity-50"
+          >
+            {loadingMore ? t("workspaceWidgets.crmTable.loading") : t("workspaceWidgets.crmTable.loadMore")}
+          </button>
+        )}
+
+        {!loading && clients.length === 0 && (
+          <WidgetState variant="empty" message={t("workspaceWidgets.crmTable.empty")} />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -69,7 +139,7 @@ export function CrmContactsTable({
                   >
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-xs font-bold border border-[color:var(--border-main)] text-[color:var(--foreground-main)]">
+                        <div className="w-10 h-10 rounded-full bg-[color:var(--surface-soft)] flex items-center justify-center text-xs font-bold border border-[color:var(--border-main)] text-[color:var(--foreground-main)]">
                           {client.name?.charAt(0)}
                         </div>
                         <div>
@@ -94,11 +164,7 @@ export function CrmContactsTable({
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                          client.status === "active"
-                            ? "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-400"
-                            : client.status === "lead"
-                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                              : "bg-slate-500/10 text-slate-500 dark:text-slate-400"
+                          STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
                         }`}
                       >
                         {client.status}
@@ -190,7 +256,7 @@ export function CrmContactsTable({
                               e.stopPropagation();
                               onEdit(client);
                             }}
-                            className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                            className="p-2 hover:bg-[color:var(--surface-soft)] rounded-lg text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-all"
                           >
                             <Edit3 size={14} aria-hidden />
                           </button>
@@ -198,7 +264,7 @@ export function CrmContactsTable({
                             type="button"
                             aria-label={t("workspaceWidgets.itemActions.delete")}
                             onClick={(e) => onDelete(client.id, e)}
-                            className="p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-700 dark:text-rose-400 transition-all"
+                            className="p-2 hover:bg-rose-500/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-rose-600 dark:hover:text-rose-400 transition-all"
                           >
                             <Trash2 size={14} aria-hidden />
                           </button>

@@ -7,6 +7,7 @@ import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { AiChatMessages } from "@/components/os/widgets/ai-chat/AiChatMessages";
 import { useAppBuilderAssistant } from "@/hooks/use-app-builder-assistant";
+import { OsIconButton } from "@/components/os/ui";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 type Props = {
@@ -69,23 +70,17 @@ export default function AppBuilderAssistantPanel({
         </span>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => c.setShowSettings(true)}
-            aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
-          >
+          <OsIconButton label={t("workspaceWidgets.aiChat.chatSettings")} onClick={() => c.setShowSettings(true)}>
             <Settings2 size={16} aria-hidden />
-          </button>
+          </OsIconButton>
           {c.messages.length > 0 ? (
-            <button
-              type="button"
+            <OsIconButton
+              label={t("workspaceWidgets.appBuilder.clearChat")}
+              className="text-rose-500 hover:bg-rose-500/10"
               onClick={() => c.setMessages([])}
-              aria-label={t("workspaceWidgets.appBuilder.clearChat")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
             >
               <Trash2 size={16} aria-hidden />
-            </button>
+            </OsIconButton>
           ) : null}
         </div>
       </div>
@@ -130,18 +125,18 @@ export default function AppBuilderAssistantPanel({
               disabled={c.isLoading}
               className="min-w-0 flex-1 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:opacity-60"
             />
-            <button
+            <OsIconButton
               type="submit"
+              label={t("workspaceWidgets.appBuilder.chatSend")}
               disabled={c.isLoading || !c.input.trim()}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--accent)] px-3 py-2.5 text-white transition hover:opacity-90 disabled:opacity-60"
-              aria-label={t("workspaceWidgets.appBuilder.chatSend")}
+              className="bg-[color:var(--accent)] text-white hover:opacity-90"
             >
               {c.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
                 <Send className="h-4 w-4 rtl:rotate-180" aria-hidden />
               )}
-            </button>
+            </OsIconButton>
           </form>
         </div>
       ) : null}

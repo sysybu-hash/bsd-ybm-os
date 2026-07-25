@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { capturePhotoFromVideo, useCameraStream } from "@/hooks/useCameraStream";
 import CameraPreviewFrame from "./CameraPreviewFrame";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 const MAX_PHOTOS = 8;
 
@@ -71,33 +72,34 @@ export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto
             flipDisabled={busy}
           />
           <div className="flex gap-2">
-            <button
-              type="button"
+            <OsButton
+              variant="primary"
+              className="min-h-[52px] flex-1 justify-center bg-emerald-600 hover:bg-emerald-500 active:scale-95"
               disabled={busy || atLimit}
+              loading={snapBusy}
+              icon={<Camera size={20} aria-hidden />}
               onClick={() => void snapPhoto()}
-              className="flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
             >
-              {snapBusy ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
               {t("workspaceWidgets.fieldCopilot.photoShutter")}
-            </button>
-            <button
-              type="button"
+            </OsButton>
+            <OsIconButton
+              label={t("workspaceWidgets.fieldCopilot.photoGallery")}
+              size="md"
+              className="min-h-[52px] w-auto px-4 active:scale-95"
               disabled={busy}
               onClick={() => galleryRef.current?.click()}
-              className="flex min-h-[52px] items-center justify-center rounded-xl border border-[color:var(--border-main)] px-4 active:scale-95 transition"
-              aria-label={t("workspaceWidgets.fieldCopilot.photoGallery")}
             >
-              <ImagePlus size={20} />
-            </button>
-            <button
-              type="button"
+              <ImagePlus size={20} aria-hidden />
+            </OsIconButton>
+            <OsIconButton
+              label={t("workspaceWidgets.fieldCopilot.cameraClose")}
+              size="md"
+              className="min-h-[52px] w-auto px-3 active:scale-95"
               disabled={uploading || opening}
               onClick={() => stop()}
-              className="flex min-h-[52px] items-center justify-center rounded-xl border border-[color:var(--border-main)] px-3 active:scale-95 transition"
-              aria-label={t("workspaceWidgets.fieldCopilot.cameraClose")}
             >
-              <VideoOff size={18} />
-            </button>
+              <VideoOff size={18} aria-hidden />
+            </OsIconButton>
           </div>
         </div>
       ) : null}
@@ -114,17 +116,17 @@ export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto
                 className="h-full w-full object-cover"
                 loading="lazy"
               />
-              <button
-                type="button"
-                onClick={() => void handleDelete(id)}
+              <OsIconButton
+                label={t("workspaceWidgets.fieldCopilot.photoDelete")}
+                size="sm"
+                className="absolute end-1 top-1 touch-manipulation rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-rose-600"
                 disabled={deletingId === id || uploading}
-                className="absolute end-1 top-1 flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-rose-600 disabled:opacity-60"
-                aria-label={t("workspaceWidgets.fieldCopilot.photoDelete")}
+                onClick={() => void handleDelete(id)}
               >
                 {deletingId === id
-                  ? <Loader2 size={12} className="animate-spin" />
-                  : <X size={12} />}
-              </button>
+                  ? <Loader2 size={12} className="animate-spin" aria-hidden />
+                  : <X size={12} aria-hidden />}
+              </OsIconButton>
             </div>
           ))}
           {/* Upload in-progress placeholder */}
@@ -146,28 +148,29 @@ export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto
       {/* Action buttons — shown when camera not open */}
       {!previewOpen ? (
         <div className="flex gap-2 px-4 pb-4">
-          <button
-            type="button"
+          <OsButton
+            variant="primary"
+            className="min-h-[48px] flex-1 justify-center bg-emerald-600 hover:bg-emerald-500 active:scale-95"
             disabled={busy || atLimit}
+            loading={opening}
+            icon={<Camera size={20} aria-hidden />}
             onClick={() => void openCamera()}
-            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
           >
-            {opening ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
             {opening
               ? t("workspaceWidgets.fieldCopilot.cameraOpening")
               : atLimit
                 ? t("workspaceWidgets.fieldCopilot.photoLimitReached")
                 : t("workspaceWidgets.fieldCopilot.cameraOpenPhoto")}
-          </button>
-          <button
-            type="button"
+          </OsButton>
+          <OsIconButton
+            label={t("workspaceWidgets.fieldCopilot.photoGallery")}
+            size="md"
+            className="min-h-[48px] w-auto px-4 active:scale-95"
             disabled={busy || atLimit}
             onClick={() => galleryRef.current?.click()}
-            className="flex min-h-[48px] items-center justify-center rounded-xl border border-[color:var(--border-main)] px-4 disabled:opacity-40 active:scale-95 transition"
-            aria-label={t("workspaceWidgets.fieldCopilot.photoGallery")}
           >
-            <ImagePlus size={20} />
-          </button>
+            <ImagePlus size={20} aria-hidden />
+          </OsIconButton>
         </div>
       ) : null}
 

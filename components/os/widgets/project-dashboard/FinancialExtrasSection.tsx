@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton } from "@/components/os/ui";
 import type { DashboardData } from "./types";
 import { formatMoney } from "./utils";
 
@@ -25,9 +26,10 @@ export function FinancialExtrasSection({ data, apiBase, refresh, t }: Props) {
             <span>{e.description}</span>
             <div className="flex items-center gap-2">
               <span>{formatMoney(e.cost)}</span>
-              <button
-                type="button"
-                className="text-amber-400 underline"
+              <OsButton
+                variant="quiet"
+                size="sm"
+                className="!px-0 text-amber-400 underline"
                 onClick={async () => {
                   await fetch(`${apiBase}/extras`, {
                     method: "PATCH", credentials: "include",
@@ -38,7 +40,7 @@ export function FinancialExtrasSection({ data, apiBase, refresh, t }: Props) {
                 }}
               >
                 {e.isApproved ? t("projectDashboard.approved") : t("projectDashboard.approve")}
-              </button>
+              </OsButton>
             </div>
           </li>
         ))}
@@ -57,9 +59,9 @@ export function FinancialExtrasSection({ data, apiBase, refresh, t }: Props) {
           value={extraCost}
           onChange={(e) => setExtraCost(e.target.value)}
         />
-        <button
-          type="button"
-          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-2 py-1 text-xs text-white"
+        <OsButton
+          variant="primary"
+          size="sm"
           onClick={async () => {
             if (!extraDesc || !extraCost) return;
             await fetch(`${apiBase}/extras`, {
@@ -73,7 +75,7 @@ export function FinancialExtrasSection({ data, apiBase, refresh, t }: Props) {
           }}
         >
           {t("projectDashboard.add")}
-        </button>
+        </OsButton>
       </div>
     </section>
   );

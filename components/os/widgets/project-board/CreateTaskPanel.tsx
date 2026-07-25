@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Calendar, Loader2, Plus } from "lucide-react";
+import { Calendar, Plus } from "lucide-react";
 import { toast } from "sonner";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import { emitProjectMutation } from "@/lib/events/project-sync";
 import { createLogger } from "@/lib/logger";
 import type { BoardColumnId, BoardPriorityId } from "@/lib/tasks/board-mapping";
@@ -14,7 +15,7 @@ const log = createLogger("create-task-panel");
 const boardPrefix = "workspaceWidgets.projectBoard";
 
 const inputClass =
-  "w-full rounded-md border border-border-main bg-surface-soft px-3 py-2 text-sm text-foreground-main transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent)]";
+  "w-full rounded-md border border-border-main bg-surface-soft px-3 py-2 text-sm text-foreground-main transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[color:var(--win-accent,var(--accent))]";
 const labelClass = "mb-1 block text-sm font-medium text-foreground-muted";
 
 type FormState = {
@@ -109,26 +110,18 @@ export default function CreateTaskPanel({
 
   const footer = (
     <div className="flex justify-end gap-3">
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-md px-4 py-2 text-sm font-medium text-foreground-main transition-colors hover:bg-surface-soft"
-        disabled={isSubmitting}
-      >
+      <OsButton variant="quiet" disabled={isSubmitting} onClick={onClose}>
         {t("workspaceWidgets.confirm.cancel")}
-      </button>
-      <button
+      </OsButton>
+      <OsButton
         type="submit"
+        variant="primary"
         form="create-task-panel-form"
-        disabled={isSubmitting || !formData.title.trim()}
-        className="flex items-center gap-2 rounded-md bg-[color:var(--brand-accent)] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 disabled:opacity-50"
+        disabled={!formData.title.trim()}
+        loading={isSubmitting}
       >
-        {isSubmitting ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          t(`${boardPrefix}.saveNew`)
-        )}
-      </button>
+        {t(`${boardPrefix}.saveNew`)}
+      </OsButton>
     </div>
   );
 
@@ -137,7 +130,7 @@ export default function CreateTaskPanel({
       open={open}
       onClose={onClose}
       title={t(`${boardPrefix}.addTitle`)}
-      headerStart={<Plus className="h-4 w-4 text-[color:var(--brand-accent)]" aria-hidden />}
+      headerStart={<Plus className="h-4 w-4 text-[color:var(--win-accent,var(--accent))]" aria-hidden />}
       panelWidth={450}
       footer={footer}
       showZoom={false}

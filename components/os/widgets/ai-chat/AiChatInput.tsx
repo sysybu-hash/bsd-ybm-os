@@ -4,6 +4,7 @@ import React from "react";
 import { Paperclip, Send } from "lucide-react";
 import { toast } from "sonner";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 type AiChatInputProps = {
   input: string;
@@ -28,14 +29,9 @@ export function AiChatInput({
       {attachment ? (
         <div className="mb-2 flex items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
           <span className="truncate max-w-[240px]">{attachment.name}</span>
-          <button
-            type="button"
-            onClick={onClearAttachment}
-            className="text-red-500 hover:underline"
-            aria-label={t("workspaceWidgets.aiChat.removeAttachment")}
-          >
+          <OsButton variant="quiet" size="sm" className="!px-0 text-red-500 hover:underline" onClick={onClearAttachment}>
             {t("workspaceWidgets.aiChat.removeAttachment")}
-          </button>
+          </OsButton>
         </div>
       ) : null}
       <form onSubmit={onSubmit} className="relative flex gap-2 sm:gap-3">
@@ -46,14 +42,13 @@ export function AiChatInput({
           className="hidden"
           onChange={(e) => onAttachFile(e.target.files?.[0] ?? null)}
         />
-        <button
-          type="button"
+        <OsIconButton
+          label={t("workspaceWidgets.aiChat.attachFile")}
+          className="p-2.5 shadow-sm dark:shadow-none sm:p-3"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 sm:p-3 bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80 border border-[color:var(--border-main)] rounded-xl text-[color:var(--foreground-muted)] transition-all shadow-sm dark:shadow-none"
-          aria-label={t("workspaceWidgets.aiChat.attachFile")}
         >
-          <Paperclip size={18} />
-        </button>
+          <Paperclip size={18} aria-hidden />
+        </OsIconButton>
         <KnowledgeVaultAttachButton
           onSelect={(item) => {
             if (item.parsedSummary && typeof item.parsedSummary === "object") {

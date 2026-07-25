@@ -162,7 +162,7 @@ export default function OfficeExpensesWidget() {
       </p>
 
       {!canManage ? (
-        <p className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-[11px] leading-relaxed text-slate-800 dark:border-slate-700/50 dark:bg-slate-900/30 dark:text-slate-200">
+        <p className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-[11px] leading-relaxed text-[color:var(--foreground-main)]">
           {t("workspaceWidgets.officeExpenses.readOnlyBanner")}
         </p>
       ) : null}

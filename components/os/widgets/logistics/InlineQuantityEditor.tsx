@@ -85,7 +85,7 @@ export default function InlineQuantityEditor({
         type="number"
         value={value}
         onChange={(e) => setValue(Number(e.target.value))}
-        className="w-16 text-center bg-surface-card border border-border-strong rounded py-1 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-brand-accent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-16 text-center bg-surface-card border border-border-strong rounded py-1 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-[color:var(--win-accent,var(--accent))] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         disabled={isLoading}
         autoFocus
         onKeyDown={(e) => {

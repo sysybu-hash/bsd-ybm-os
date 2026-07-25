@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   showBack: boolean;
@@ -29,26 +30,22 @@ export default function FieldCopilotNavBar({
       data-testid="field-copilot-nav"
     >
       {showBack ? (
-        <button
-          type="button"
-          onClick={onBack}
-          className="min-h-[44px] rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold"
-        >
+        <OsButton variant="secondary" className="min-h-[44px]" onClick={onBack}>
           {t("workspaceWidgets.fieldCopilot.navBack")}
-        </button>
+        </OsButton>
       ) : (
         <span className="min-h-[44px] min-w-[4rem]" aria-hidden />
       )}
       {showContinue ? (
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
           data-testid="field-copilot-continue"
+          className="min-h-[44px] flex-1 justify-center bg-amber-600 hover:bg-amber-500 md:max-w-[240px] md:flex-none"
           disabled={continueDisabled}
           onClick={onContinue}
-          className="min-h-[44px] flex-1 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40 md:max-w-[240px] md:flex-none"
         >
           {continueLabel ?? t("workspaceWidgets.fieldCopilot.navContinue")}
-        </button>
+        </OsButton>
       ) : null}
     </div>
   );

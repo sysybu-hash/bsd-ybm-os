@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, FolderPlus, Trash2, X } from "lucide-react";
+import { ChevronRight, FolderPlus, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
+import OsConfirmDialog from "@/components/os/OsConfirmDialog";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 export type ProjectListItem = { id: string; name: string; isActive?: boolean };
 
@@ -46,14 +48,14 @@ export default function ProjectPickerPanel({
 
   const addProjectButton =
     onAddProject != null ? (
-      <button
-        type="button"
+      <OsButton
+        variant="primary"
+        className="w-full justify-center sm:w-auto"
+        icon={<FolderPlus size={16} aria-hidden />}
         onClick={onAddProject}
-        className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:opacity-90 sm:w-auto"
       >
-        <FolderPlus size={16} aria-hidden />
         {t(addProjectLabelKey)}
-      </button>
+      </OsButton>
     ) : null;
 
   if (loading) {
@@ -69,13 +71,9 @@ export default function ProjectPickerPanel({
           <div className="flex w-full max-w-xs flex-col gap-2">
             {addProjectButton}
             {onOpenCrm && openCrmKey ? (
-              <button
-                type="button"
-                onClick={onOpenCrm}
-                className="rounded-lg border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
-              >
+              <OsButton variant="secondary" onClick={onOpenCrm}>
                 {t(openCrmKey)}
-              </button>
+              </OsButton>
             ) : null}
           </div>
         }
@@ -116,71 +114,46 @@ export default function ProjectPickerPanel({
                 {p.isActive === false ? t(statusInactiveKey) : t(statusActiveKey)}
               </span>
             </button>
-            <ChevronLeft size={16} className="shrink-0 text-indigo-500/80" aria-hidden />
+            <ChevronRight size={16} className="shrink-0 rtl:rotate-180 text-[color:var(--win-accent,#6366f1)]/80" aria-hidden />
             {onDelete ? (
-              <button
-                type="button"
-                title="מחק פרויקט"
+              <OsIconButton
+                label={t("workspaceWidgets.sharedUi.deleteProject")}
+                size="sm"
+                className="me-2 text-rose-500/70 hover:bg-rose-500/10 hover:text-rose-600"
                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
-                className="me-2 shrink-0 rounded-lg p-1.5 text-rose-500/70 hover:bg-rose-500/10 hover:text-rose-600"
               >
-                <Trash2 size={13} />
-              </button>
+                <Trash2 size={13} aria-hidden />
+              </OsIconButton>
             ) : null}
           </div>
         ))}
       </div>
 
       {/* Confirm delete dialog */}
-      {confirmDeleteId ? (() => {
-        const project = projects.find((p) => p.id === confirmDeleteId);
+      {(() => {
+        const project = confirmDeleteId ? projects.find((p) => p.id === confirmDeleteId) : undefined;
         return (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xs rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] p-5 shadow-2xl" dir={dir}>
-              <div className="mb-3 flex items-start gap-2">
-                <Trash2 size={18} className="mt-0.5 shrink-0 text-rose-500" />
-                <div>
-                  <p className="text-sm font-bold text-[color:var(--foreground)]">מחיקת פרויקט</p>
-                  <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
-                    האם למחוק את <strong>{project?.name}</strong>?<br />
-                    כל הנתונים (משימות, BOQ, מילסטונים) יימחקו לצמיתות.
-                  </p>
-                </div>
-                <button type="button" onClick={() => setConfirmDeleteId(null)} className="ms-auto shrink-0 rounded-lg p-1 hover:bg-[color:var(--surface-elevated)]">
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteId(null)}
-                  disabled={deleting}
-                  className="flex-1 rounded-lg border border-[color:var(--border-main)] py-2 text-xs font-bold disabled:opacity-50"
-                >
-                  ביטול
-                </button>
-                <button
-                  type="button"
-                  disabled={deleting}
-                  onClick={async () => {
-                    if (!onDelete) return;
-                    setDeleting(true);
-                    try {
-                      await onDelete(confirmDeleteId);
-                      setConfirmDeleteId(null);
-                    } finally {
-                      setDeleting(false);
-                    }
-                  }}
-                  className="flex-1 rounded-lg bg-rose-600 py-2 text-xs font-bold text-white hover:bg-rose-500 disabled:opacity-50"
-                >
-                  {deleting ? "מוחק…" : "מחק"}
-                </button>
-              </div>
-            </div>
-          </div>
+          <OsConfirmDialog
+            open={confirmDeleteId !== null}
+            title={t("workspaceWidgets.sharedUi.deleteProjectTitle")}
+            message={`${t("workspaceWidgets.sharedUi.deleteProjectQuestion")} ${project?.name ?? ""}? ${t("workspaceWidgets.sharedUi.deleteProjectWarning")}`}
+            destructive
+            confirmLabel={t(deleting ? "workspaceWidgets.sharedUi.deleting" : "workspaceWidgets.sharedUi.delete")}
+            cancelLabel={t("workspaceWidgets.sharedUi.cancel")}
+            onCancel={() => setConfirmDeleteId(null)}
+            onConfirm={async () => {
+              if (!onDelete || !confirmDeleteId) return;
+              setDeleting(true);
+              try {
+                await onDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              } finally {
+                setDeleting(false);
+              }
+            }}
+          />
         );
-      })() : null}
+      })()}
     </div>
   );
 }

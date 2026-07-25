@@ -18,7 +18,11 @@
       "titleLine1": "One system to run your business",
       "titleLine2": "Clients, documents, billing & control",
       "subtitle": "Smart document scanning, CRM, cash flow and AI — all in one place, without jumping between systems.",
-      "heroChips": ["CRM & clients", "Smart docs & scanning", "Billing, cash flow & control"],
+      "heroChips": [
+        "CRM & clients",
+        "Smart docs & scanning",
+        "Billing, cash flow & control"
+      ],
       "ctaRegister": "Create account",
       "ctaDemo": "Sign in to demo"
     },
@@ -490,6 +494,21 @@
       "footerCompanyTitle": "Company",
       "footerLegalTitle": "Legal",
       "footerContactBlurb": "Want a demo or enterprise rollout? Let’s talk."
+    },
+    "contactPage": {
+      "title": "Contact us",
+      "subtitle": "Have a question? Want a demo? Fill in the form and we'll get back to you within one business day.",
+      "nameLabel": "Full name *",
+      "emailLabel": "Email *",
+      "phoneLabel": "Phone",
+      "messageLabel": "Message",
+      "submit": "Send message",
+      "successTitle": "Got it — thank you!",
+      "successBody": "We'll be in touch shortly.",
+      "consent": "By submitting you agree to receive relevant updates from us.",
+      "privacyLink": "Privacy policy",
+      "genericError": "Something went wrong",
+      "networkError": "Network error — please try again"
     }
   }
 }

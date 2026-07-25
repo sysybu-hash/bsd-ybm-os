@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, History, Loader2, MapPin, Plus, Search } from "lucide-react";
+import { CheckCircle2, History, MapPin, Plus } from "lucide-react";
 import { emitLogisticsMutation, useLogisticsSync } from "@/lib/events/logistics-sync";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton, OsSearchInput } from "@/components/os/ui";
 import AssetHistoryPanel from "./AssetHistoryPanel";
 import AssetCheckoutPanel from "./AssetCheckoutPanel";
 import AssetFormPanel from "./AssetFormPanel";
@@ -12,9 +14,6 @@ import type { LogisticsAssetRow } from "./types";
 import { useLogisticsAssets } from "./useLogisticsData";
 
 const prefix = "workspaceWidgets.logistics";
-
-const inputClass =
-  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] ps-9 pe-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent)]";
 
 export default function LogisticsAssetsTab() {
   const { t } = useI18n();
@@ -44,33 +43,26 @@ export default function LogisticsAssetsTab() {
   return (
     <div className="flex h-full flex-col p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute start-3 top-2.5 h-4 w-4 text-[color:var(--foreground-muted)]" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t(`${prefix}.assets.searchPlaceholder`)}
-            className={inputClass}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setFormOpen(true)}
-          className="inline-flex items-center gap-2 rounded-md bg-[color:var(--brand-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
+        <OsSearchInput
+          className="max-w-md flex-1"
+          value={search}
+          onChange={setSearch}
+          label={t(`${prefix}.assets.searchPlaceholder`)}
+        />
+        <OsButton variant="primary" icon={<Plus className="h-4 w-4" aria-hidden />} onClick={() => setFormOpen(true)}>
           {t(`${prefix}.assets.addAsset`)}
-        </button>
+        </OsButton>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center text-[color:var(--foreground-muted)]">
-          <Loader2 className="me-2 h-5 w-5 animate-spin" />
-          {t(`${prefix}.loading`)}
-        </div>
+        <WidgetState variant="loading" message={t(`${prefix}.loading`)} />
       ) : error ? (
-        <div className="text-center text-sm text-red-600">{t(`${prefix}.loadError`)}</div>
+        <WidgetState
+          variant="error"
+          message={t(`${prefix}.loadError`)}
+          onRetry={() => void reload()}
+          retryLabel={t("common.retry")}
+        />
       ) : assets.length === 0 ? (
         <div className="text-center text-sm text-[color:var(--foreground-muted)]">
           {t(`${prefix}.assets.empty`)}
@@ -115,25 +107,26 @@ export default function LogisticsAssetsTab() {
                   )}
                 </div>
                 <div className="mt-4 flex justify-end gap-3 border-t border-[color:var(--border-main)] pt-4">
-                  <button
-                    type="button"
+                  <OsButton
+                    variant="quiet"
+                    size="sm"
+                    icon={<History className="h-3.5 w-3.5" aria-hidden />}
                     onClick={() => setHistoryAsset(asset)}
-                    className="inline-flex items-center gap-1 text-sm text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
                   >
-                    <History className="h-3.5 w-3.5" />
                     {t(`${prefix}.assets.historyCta`)}
-                  </button>
-                  <button
-                    type="button"
+                  </OsButton>
+                  <OsButton
+                    variant="quiet"
+                    size="sm"
+                    className="text-[color:var(--win-accent,var(--accent))]"
                     onClick={() =>
                       isAvailable ? setCheckoutAsset(asset) : void handleCheckIn(asset)
                     }
-                    className="text-sm font-medium text-[color:var(--brand-accent)] hover:opacity-80"
                   >
                     {isAvailable
                       ? t(`${prefix}.assets.checkOutCta`)
                       : t(`${prefix}.assets.checkInCta`)}
-                  </button>
+                  </OsButton>
                 </div>
               </div>
             );

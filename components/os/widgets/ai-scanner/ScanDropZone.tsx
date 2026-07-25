@@ -3,6 +3,7 @@
 import React from "react";
 import { Upload, Loader2, ArrowRight, Sparkles, Camera } from "lucide-react";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
+import { OsButton } from "@/components/os/ui";
 import { SCAN_ACCEPT_SUMMARY } from "@/lib/scan-mime";
 import type { QueueItem } from "./types";
 import { formatMsg } from "./constants";
@@ -128,24 +129,24 @@ export function ScanDropZone({
           {/* Action buttons — stacked on mobile, row on desktop */}
           <div className="mt-4 flex w-full max-w-xs flex-col gap-2 sm:flex-row sm:justify-center">
             {/* Upload from gallery/files */}
-            <button
-              type="button"
+            <OsButton
+              variant="secondary"
+              className="min-h-[48px] flex-1 justify-center border-orange-500/30 bg-orange-500/10 text-[color:var(--accent)] shadow-sm active:scale-95 hover:bg-orange-500/20 dark:text-orange-200"
+              icon={<Upload size={16} aria-hidden />}
               onClick={() => fileInputRef.current?.click()}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm font-bold text-[color:var(--accent)] shadow-sm transition active:scale-95 hover:bg-orange-500/20 dark:text-orange-200"
             >
-              <Upload size={16} aria-hidden />
               {tr("scanner.selectFiles", "העלה קובץ")}
-            </button>
+            </OsButton>
 
             {/* Camera capture — mobile only, hidden on desktop */}
-            <button
-              type="button"
+            <OsButton
+              variant="secondary"
+              className="min-h-[48px] flex-1 justify-center border-indigo-500/30 bg-indigo-500/10 text-[color:var(--accent)] shadow-sm active:scale-95 hover:bg-indigo-500/20 dark:text-indigo-200 sm:hidden"
+              icon={<Camera size={16} aria-hidden />}
               onClick={() => (cameraInputRef ?? fileInputRef).current?.click()}
-              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-[color:var(--accent)] shadow-sm transition active:scale-95 hover:bg-indigo-500/20 dark:text-indigo-200 sm:hidden"
             >
-              <Camera size={16} aria-hidden />
               {tr("scanner.capturePhoto", "צלם מסמך")}
-            </button>
+            </OsButton>
           </div>
 
           {queue.length > 0 ? (

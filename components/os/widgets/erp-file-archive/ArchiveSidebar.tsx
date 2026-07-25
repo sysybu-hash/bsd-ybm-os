@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { ArrowUpRight, Clock, Folder, HardDrive, Trash2 } from "lucide-react";
 import type { ArchiveView, ErpArchiveFile, ProjectRow } from "./types";
 import AccountingExportPanel from "@/components/os/widgets/AccountingExportPanel";
@@ -26,6 +27,8 @@ export function ArchiveSidebar({
   trashCount,
   onSelectScope,
 }: ArchiveSidebarProps) {
+  const { t } = useI18n();
+
   const sidebarActiveAll = archiveView === "active" && !recentOnly && projectId === null;
 
   return (
@@ -33,7 +36,7 @@ export function ArchiveSidebar({
       <div className="flex flex-1 min-h-0 flex-col overflow-auto p-3 sm:p-6">
         <div className="mb-8 flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <HardDrive size={20} aria-hidden />
-          <span className="text-sm font-black uppercase tracking-widest">ארכיון ERP</span>
+          <span className="text-sm font-black uppercase tracking-widest">{t("workspaceWidgets.erpArchive.sidebarTitle")}</span>
         </div>
 
         <nav className="space-y-1">
@@ -47,7 +50,7 @@ export function ArchiveSidebar({
             }`}
           >
             <Folder size={16} className="text-amber-600 dark:text-amber-400" aria-hidden />
-            כל הארכיון
+            {t("workspaceWidgets.erpArchive.navAll")}
           </button>
           <button
             type="button"
@@ -59,7 +62,7 @@ export function ArchiveSidebar({
             }`}
           >
             <Clock size={16} aria-hidden />
-            אחרונים
+            {t("workspaceWidgets.erpArchive.navRecent")}
           </button>
           <button
             type="button"
@@ -71,7 +74,7 @@ export function ArchiveSidebar({
             }`}
           >
             <ArrowUpRight size={16} aria-hidden />
-            שותפו איתי
+            {t("workspaceWidgets.erpArchive.navShared")}
           </button>
           <button
             type="button"
@@ -84,7 +87,7 @@ export function ArchiveSidebar({
           >
             <span className="flex items-center gap-3">
               <Trash2 size={16} aria-hidden />
-              פח אשפה
+              {t("workspaceWidgets.erpArchive.navTrash")}
             </span>
             {trashCount > 0 ? (
               <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold">{trashCount}</span>
@@ -94,11 +97,11 @@ export function ArchiveSidebar({
 
         <div className="mt-10">
           <span className="mb-4 block px-4 text-[10px] font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
-            פרויקטים
+            {t("workspaceWidgets.erpArchive.navProjects")}
           </span>
           <div className="space-y-1">
             {projects.length === 0 ? (
-              <p className="px-4 text-xs text-[color:var(--foreground-muted)]">אין פרויקטים</p>
+              <p className="px-4 text-xs text-[color:var(--foreground-muted)]">{t("workspaceWidgets.erpArchive.noProjects")}</p>
             ) : (
               projects.map((p) => (
                 <button
@@ -126,11 +129,11 @@ export function ArchiveSidebar({
 
       <div className="border-t border-[color:var(--border-main)] p-6">
         <div className="flex items-center justify-between text-[10px] font-bold text-[color:var(--foreground-muted)]">
-          <span>קבצים בארגון</span>
+          <span>{t("workspaceWidgets.erpArchive.orgFiles")}</span>
           <span className="text-[color:var(--foreground-main)] opacity-90">{totalCount}</span>
         </div>
         <p className="mt-1 text-[10px] text-[color:var(--foreground-muted)] opacity-80">
-          תוצאות במסך: {filesCount}
+          {t("workspaceWidgets.erpArchive.resultsOnScreen", { count: String(filesCount) })}
         </p>
       </div>
     </div>

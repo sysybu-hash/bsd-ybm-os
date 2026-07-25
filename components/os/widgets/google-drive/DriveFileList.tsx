@@ -10,12 +10,12 @@ import {
   FileCode,
   CheckSquare,
   Square,
-  Loader2,
 } from "lucide-react";
 import type { DriveDecodeStatus } from "@prisma/client";
 import { decodeStatusLabel } from "@/lib/google-drive-decode-routing";
 import type { GoogleFile } from "./types";
 import type { DriveViewMode } from "@/lib/google-drive-view-mode";
+import WidgetState from "@/components/os/WidgetState";
 
 export function getFileIcon(mimeType: string) {
   if (mimeType === "application/vnd.google-apps.folder")
@@ -28,7 +28,7 @@ export function getFileIcon(mimeType: string) {
     return <FileText className="text-orange-500" size={20} />;
   if (mimeType.includes("javascript") || mimeType.includes("json") || mimeType.includes("html"))
     return <FileCode className="text-blue-500" size={20} />;
-  return <File className="text-slate-400" size={20} />;
+  return <File className="text-[color:var(--foreground-muted)]" size={20} />;
 }
 
 export function statusBadge(status: DriveDecodeStatus | null | undefined) {
@@ -42,7 +42,7 @@ export function statusBadge(status: DriveDecodeStatus | null | undefined) {
           ? "bg-amber-500/15 text-amber-700"
           : status === "NEEDS_REVIEW"
             ? "bg-violet-500/15 text-violet-700"
-            : "bg-slate-500/10 text-slate-500";
+            : "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]";
   return (
     <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${color}`}>
       {label}
@@ -83,41 +83,25 @@ export function DriveFileList({
   const { t } = useI18n();
   if (driveError && !loading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4">
-        <p className="text-sm font-bold text-rose-500 max-w-md leading-relaxed">{driveError}</p>
-        {reauthUrl ? (
-          <button
-            type="button"
-            onClick={() => { window.location.assign(reauthUrl); }}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-lg transition-all"
-          >
-            התחברות מחדש עם Google
-          </button>
-        ) : null}
-      </div>
+      <WidgetState
+        variant="error"
+        message={driveError}
+        onRetry={reauthUrl ? () => window.location.assign(reauthUrl) : undefined}
+        retryLabel={t("workspaceWidgets.googleDrive.reconnect")}
+      />
     );
   }
 
   if (loading) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center opacity-40">
-        <Loader2 size={40} className="text-blue-600 animate-spin mb-4" />
-        <p className="text-sm font-bold uppercase tracking-widest">טוען קבצים...</p>
-      </div>
-    );
+    return <WidgetState variant="loading" message={t("workspaceWidgets.googleDrive.loadingFiles")} />;
   }
 
   if (files.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-center opacity-40 p-8">
-        <div className="w-20 h-20 rounded-full bg-slate-500/10 flex items-center justify-center mb-6">
-          <Folder size={40} className="text-slate-400" />
-        </div>
-        <h3 className="text-lg font-bold mb-2">לא נמצאו קבצים</h3>
-        <p className="text-xs text-[color:var(--foreground-muted)] max-w-xs leading-relaxed font-medium">
-          העלו קובץ או המתינו לסנכרון מתיקיית {workspace?.folderName ?? "BSD-YBM"} ב-Drive.
-        </p>
-      </div>
+      <WidgetState
+        variant="empty"
+        message={t("workspaceWidgets.googleDrive.noFilesHint", { folder: workspace?.folderName ?? "BSD-YBM" })}
+      />
     );
   }
 
@@ -204,7 +188,7 @@ export function DriveFileList({
               <td className="p-3 font-bold truncate max-w-[200px]">{file.name}</td>
               <td className="p-3 text-[10px] font-mono text-[color:var(--foreground-muted)]">
                 {file.mimeType === "application/vnd.google-apps.folder"
-                  ? "תיקייה"
+                  ? t("workspaceWidgets.googleDrive.folder")
                   : file.mimeType.split("/").pop()}
               </td>
               <td className="p-3">{isFile(file) ? statusBadge(file.decodeStatus) : "—"}</td>
@@ -242,7 +226,7 @@ export function DriveFileList({
                 type="button"
                 className="shrink-0 p-1"
                 onClick={(e) => { e.stopPropagation(); onToggleSelect(file.id); }}
-                aria-label={selectedIds.has(file.id) ? "בטל בחירה" : "בחר"}
+                aria-label={t(selectedIds.has(file.id) ? "workspaceWidgets.googleDrive.deselect" : "workspaceWidgets.googleDrive.select")}
               >
                 {selectedIds.has(file.id) ? (
                   <CheckSquare size={18} className="text-violet-600" />
@@ -269,7 +253,7 @@ export function DriveFileList({
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-[10px] text-[color:var(--foreground-muted)] font-mono uppercase tracking-tighter">
                   {file.mimeType === "application/vnd.google-apps.folder"
-                    ? "תיקייה"
+                    ? t("workspaceWidgets.googleDrive.folder")
                     : file.mimeType.split("/").pop()?.toUpperCase()}
                 </p>
                 {isFile(file) ? statusBadge(file.decodeStatus) : null}

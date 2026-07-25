@@ -3,6 +3,7 @@
 import { Copy, Download, ExternalLink, Library, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineTelemetry } from "@/lib/tri-engine-extract";
 import type { ScanValidationResult } from "@/lib/scan-validate";
@@ -72,9 +73,9 @@ export default function ScanResultsPanel({
   const metaRows = [
     { label: t("scanner.source"), value: v5.vendor },
     { label: t("scanner.document"), value: v5.docType },
-    { label: "פרויקט", value: meta?.project },
-    { label: "לקוח", value: meta?.client },
-    { label: "תאריך", value: meta?.documentDate ?? v5.date },
+    { label: t("workspaceWidgets.scanPanel.project"), value: meta?.project },
+    { label: t("workspaceWidgets.scanPanel.client"), value: meta?.client },
+    { label: t("workspaceWidgets.scanPanel.date"), value: meta?.documentDate ?? v5.date },
   ].filter((r) => r.value && r.value !== "לא צוין" && r.value !== "UNKNOWN");
 
   return (
@@ -105,7 +106,7 @@ export default function ScanResultsPanel({
         <div className="rounded-xl border border-amber-400/30 bg-amber-50/60 dark:bg-amber-900/10 p-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              ביטחון פענוח
+              {t("workspaceWidgets.scanPanel.confidence")}
             </p>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-black ${
@@ -151,7 +152,7 @@ export default function ScanResultsPanel({
             </p>
             {!hasSuccessfulEngine(telemetry) ? (
               <span className="rounded-md bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-300">
-                לא התקבל פענוח מוצלח
+                {t("workspaceWidgets.scanPanel.noSuccessfulScan")}
               </span>
             ) : null}
           </div>
@@ -216,35 +217,32 @@ export default function ScanResultsPanel({
           className="flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-50/60 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100/80 dark:border-blue-400/20 dark:bg-blue-900/10 dark:text-blue-400 dark:hover:bg-blue-900/20"
         >
           <ExternalLink size={13} aria-hidden />
-          צפה במסמך ב-Drive
+          {t("workspaceWidgets.scanPanel.viewInDrive")}
         </a>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => void copyJson()} className="os-btn-secondary flex items-center gap-1.5 text-xs">
-          <Copy size={14} aria-hidden />
+        <OsButton variant="secondary" size="sm" icon={<Copy size={14} aria-hidden />} onClick={() => void copyJson()}>
           JSON
-        </button>
-        <button type="button" onClick={exportCsv} className="os-btn-secondary flex items-center gap-1.5 text-xs">
-          <Download size={14} aria-hidden />
+        </OsButton>
+        <OsButton variant="secondary" size="sm" icon={<Download size={14} aria-hidden />} onClick={exportCsv}>
           CSV
-        </button>
+        </OsButton>
         {onConfirmErp ? (
-          <button type="button" onClick={onConfirmErp} className="os-btn-primary flex items-center gap-1.5 text-xs">
-            <Save size={14} aria-hidden />
+          <OsButton variant="primary" size="sm" icon={<Save size={14} aria-hidden />} onClick={onConfirmErp}>
             {t("scanner.results.confirmErp")}
-          </button>
+          </OsButton>
         ) : null}
         {onSaveNotebook ? (
-          <button
-            type="button"
-            disabled={savingNotebook}
+          <OsButton
+            variant="primary"
+            size="sm"
+            loading={savingNotebook}
+            icon={<Library size={14} aria-hidden />}
             onClick={onSaveNotebook}
-            className="os-btn-primary flex items-center gap-1.5 text-xs"
           >
-            <Library size={14} aria-hidden />
             {t("scanner.saveToNotebook")}
-          </button>
+          </OsButton>
         ) : null}
       </div>
     </div>

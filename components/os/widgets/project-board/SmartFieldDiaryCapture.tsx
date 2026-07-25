@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Loader2, Sparkles } from "lucide-react";
+import { Camera, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import type { SiteDiaryAnalysis } from "@/lib/validation/schemas/site-diary-report";
 
 type Props = {
@@ -138,23 +139,19 @@ export default function SmartFieldDiaryCapture({
         onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
       />
 
-      <button
-        type="button"
-        disabled={isAnalyzing}
-        onClick={() => inputRef.current?.click()}
+      <OsButton
+        variant={compact ? "secondary" : "primary"}
         className={
           compact
-            ? "inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-medium text-sky-700 disabled:opacity-60 dark:text-sky-300"
-            : "flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 py-3 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98] disabled:opacity-60"
+            ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+            : "w-full justify-center bg-sky-600 py-3 shadow-sm hover:bg-sky-500 active:scale-[0.98]"
         }
+        loading={isAnalyzing}
+        icon={<Camera className="h-4 w-4" aria-hidden />}
+        onClick={() => inputRef.current?.click()}
       >
-        {isAnalyzing ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-        ) : (
-          <Camera className="h-4 w-4" aria-hidden />
-        )}
         {isAnalyzing ? t(`${prefix}.analyzing`) : label}
-      </button>
+      </OsButton>
 
       {taskId && !compact && !preview ? (
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-[color:var(--foreground-muted)]">
@@ -180,13 +177,14 @@ export default function SmartFieldDiaryCapture({
               {t(`${prefix}.issues`)}: {preview.issues.join("; ")}
             </p>
           ) : null}
-          <button
-            type="button"
-            className="mt-2 text-xs font-medium text-[color:var(--brand-accent)]"
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="mt-2 !px-0 text-[color:var(--win-accent,var(--accent))]"
             onClick={resetPreview}
           >
             {t(`${prefix}.captureAnother`)}
-          </button>
+          </OsButton>
         </div>
       ) : null}
     </div>

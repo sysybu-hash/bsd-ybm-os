@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import DynamicRenderer from "@/components/AppBuilder/DynamicRenderer";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
 import { DynamicSandpackRenderer } from "@/components/os/widgets/shared/DynamicSandpackRenderer";
@@ -112,9 +114,8 @@ export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWi
       ) : uiSchema ? (
         <div className="absolute inset-2 sm:inset-3 overflow-y-auto overscroll-y-contain custom-scrollbar rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)]">
           {regenerating ? (
-            <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 p-6 text-center">
-              <Loader2 size={28} className="animate-spin text-indigo-400" />
-              <p className="text-sm font-medium text-[color:var(--foreground-muted)]">{t(`${prefix}.generating`)}</p>
+            <div className="flex h-full min-h-[240px] items-center justify-center">
+              <WidgetState variant="loading" message={t(`${prefix}.generating`)} />
             </div>
           ) : (
             <>
@@ -125,14 +126,14 @@ export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWi
                 readOnly={readOnlyLoaded}
               />
               <div className="sticky bottom-0 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 p-3 backdrop-blur-sm">
-                <button
-                  type="button"
+                <OsButton
+                  variant="primary"
+                  className="w-full justify-center"
+                  icon={<RefreshCw size={14} aria-hidden />}
                   onClick={() => void handleRegenerate(uiSchema, appName)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90"
                 >
-                  <RefreshCw size={14} />
                   {t(`${prefix}.generate`)}
-                </button>
+                </OsButton>
               </div>
             </>
           )}

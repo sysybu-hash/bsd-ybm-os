@@ -2,14 +2,20 @@
 
 import React, { useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import PublicPageShell from "@/components/landing/marketing/PublicPageShell";
+import { useI18n } from "@/components/os/system/I18nProvider";
+
+const FIELD_CLS =
+  "w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-2.5 text-sm shadow-sm focus:border-[color:var(--brand-accent,#4f46e5)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent,#4f46e5)]/20";
 
 export default function ContactPage() {
+  const { t } = useI18n();
+  const tc = (suffix: string) => t(`marketingHome.contactPage.${suffix}`);
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [state, setState] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [errMsg, setErrMsg] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setState("sending");
     try {
       const res = await fetch("/api/leads", {
@@ -18,76 +24,113 @@ export default function ContactPage() {
         body: JSON.stringify({ ...form, source: "contact-page" }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) { setErrMsg(json.error ?? "שגיאה"); setState("error"); return; }
+      if (!res.ok) {
+        setErrMsg(json.error ?? tc("genericError"));
+        setState("error");
+        return;
+      }
       void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelLeadSubmitted }) => {
         trackFunnelLeadSubmitted("contact-page");
       });
       setState("success");
     } catch {
-      setErrMsg("שגיאת רשת — נסה שוב"); setState("error");
+      setErrMsg(tc("networkError"));
+      setState("error");
     }
   };
 
-  if (state === "success") {
-    return (
-      <main dir="rtl" className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="text-center">
-          <CheckCircle2 size={52} className="mx-auto mb-4 text-emerald-500" />
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">קיבלנו! תודה.</h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">ניצור איתך קשר בקרוב.</p>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main dir="rtl" className="mx-auto max-w-xl px-4 py-12">
-      <h1 className="mb-2 text-3xl font-black text-slate-900 dark:text-white">צור קשר</h1>
-      <p className="mb-8 text-slate-600 dark:text-slate-400">
-        יש שאלה? רוצה הדגמה? מלא את הטופס ונחזור אליך תוך יום עסקים.
-      </p>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSubmit(e);
-        }}
-        className="space-y-4"
-      >
-        <div>
-          <label htmlFor="contact-name" className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-300">שם מלא *</label>
-          <input id="contact-name" required className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900"
-            value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+    <PublicPageShell
+      heroTitle={tc("title")}
+      heroSubtitle={state === "success" ? undefined : tc("subtitle")}
+    >
+      {state === "success" ? (
+        <div className="flex min-h-[40vh] items-center justify-center px-4">
+          <div className="text-center">
+            <CheckCircle2 size={52} className="mx-auto mb-4 text-emerald-500" aria-hidden />
+            <h2 className="text-2xl font-black">{tc("successTitle")}</h2>
+            <p className="mt-2 text-[color:var(--foreground-muted)]">{tc("successBody")}</p>
+          </div>
         </div>
-        <div>
-          <label htmlFor="contact-email" className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-300">אימייל *</label>
-          <input id="contact-email" type="email" required className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900"
-            value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-        </div>
-        <div>
-          <label htmlFor="contact-phone" className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-300">טלפון</label>
-          <input id="contact-phone" type="tel" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900"
-            value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-        </div>
-        <div>
-          <label htmlFor="contact-message" className="mb-1 block text-sm font-bold text-slate-700 dark:text-slate-300">הודעה</label>
-          <textarea id="contact-message" rows={4} className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900"
-            value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
-        </div>
+      ) : (
+        <div className="mx-auto max-w-xl px-4 py-10">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSubmit();
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label htmlFor="contact-name" className="mb-1 block text-sm font-bold">
+                {tc("nameLabel")}
+              </label>
+              <input
+                id="contact-name"
+                required
+                className={FIELD_CLS}
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="contact-email" className="mb-1 block text-sm font-bold">
+                {tc("emailLabel")}
+              </label>
+              <input
+                id="contact-email"
+                type="email"
+                required
+                className={FIELD_CLS}
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="contact-phone" className="mb-1 block text-sm font-bold">
+                {tc("phoneLabel")}
+              </label>
+              <input
+                id="contact-phone"
+                type="tel"
+                className={FIELD_CLS}
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label htmlFor="contact-message" className="mb-1 block text-sm font-bold">
+                {tc("messageLabel")}
+              </label>
+              <textarea
+                id="contact-message"
+                rows={4}
+                className={`${FIELD_CLS} resize-none`}
+                value={form.message}
+                onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+              />
+            </div>
 
-        {state === "error" ? <p className="text-sm text-rose-600">{errMsg}</p> : null}
+            {state === "error" ? <p className="text-sm text-rose-600">{errMsg}</p> : null}
 
-        <button type="submit" disabled={state === "sending"}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60">
-          {state === "sending" ? <Loader2 size={18} className="animate-spin" /> : null}
-          שלח הודעה
-        </button>
+            <button
+              type="submit"
+              disabled={state === "sending"}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand-accent,#4f46e5)] py-3 font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {state === "sending" ? <Loader2 size={18} className="animate-spin" aria-hidden /> : null}
+              {tc("submit")}
+            </button>
 
-        <p className="text-center text-[11px] text-slate-400">
-          בשליחה אתה מסכים לקבל מאיתנו מידע רלוונטי.{" "}
-          <a href="/privacy" className="underline">מדיניות פרטיות</a>
-        </p>
-      </form>
-    </main>
+            <p className="text-center text-[11px] text-[color:var(--foreground-muted)]">
+              {tc("consent")}{" "}
+              <a href="/privacy" className="underline">
+                {tc("privacyLink")}
+              </a>
+            </p>
+          </form>
+        </div>
+      )}
+    </PublicPageShell>
   );
 }

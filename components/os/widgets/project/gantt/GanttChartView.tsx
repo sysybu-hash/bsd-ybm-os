@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { BookOpen, ChevronDown, ChevronRight, ListTree, Pencil } from "lucide-react";
 import { PROJECT_SUB_DOMAIN_BY_ID } from "@/lib/project-sub-domains";
 import {
@@ -33,16 +34,16 @@ type GanttChartViewProps = {
 const NAME_W = 220;
 const ROW_H  = 44;
 
-type StatusMeta = { label: string; dot: string };
+type StatusMeta = { labelKey: string; dot: string };
 function getStatusMeta(task: FlatTask): StatusMeta | null {
   const now = Date.now();
   const end = new Date(task.endDate ?? "").getTime();
   if (task.status === "DONE" || task.progress >= 100)
-    return { label: "הושלם", dot: "bg-emerald-500" };
+    return { labelKey: "projectDashboard.statusDone", dot: "bg-emerald-500" };
   if (end && end < now && task.progress < 100)
-    return { label: "באיחור", dot: "bg-rose-500" };
+    return { labelKey: "projectDashboard.statusLate", dot: "bg-rose-500" };
   if (task.status === "IN_PROGRESS")
-    return { label: "בביצוע", dot: "bg-blue-500" };
+    return { labelKey: "projectDashboard.statusInProgress", dot: "bg-blue-500" };
   return null;
 }
 
@@ -51,6 +52,7 @@ export function GanttChartView({
   hideConstructionFeatures, scale, labels,
   onEdit, onProgressChange, onDatesChange, onOpenDiary, onCreateDiary,
 }: GanttChartViewProps) {
+  const { t } = useI18n();
   const span = range.max - range.min || 1;
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const [chartWidthPx, setChartWidthPx] = useState(800);
@@ -171,7 +173,7 @@ export function GanttChartView({
                     {statusMeta ? (
                       <span className="flex items-center gap-0.5 text-[9px] text-[color:var(--foreground-muted)]">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
-                        {statusMeta.label}
+                        {t(statusMeta.labelKey)}
                       </span>
                     ) : null}
                     {trade ? (

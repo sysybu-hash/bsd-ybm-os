@@ -2,6 +2,7 @@
 
 import { ClipboardList, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { FieldCopilotDraft } from "@/lib/validation/schemas/field-copilot";
 
 const PREFIX = "workspaceWidgets.fieldCopilot.history";
@@ -67,23 +68,23 @@ export default function SessionHistoryPanel({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300"
+            icon={<Plus size={14} aria-hidden />}
             onClick={onNew}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-[color:var(--win-accent,#6366f1)] transition hover:bg-indigo-500/10 dark:text-indigo-300"
           >
-            <Plus size={14} aria-hidden />
             {t(`${PREFIX}.newSession` as Parameters<typeof t>[0])}
-          </button>
-          <button
-            type="button"
-            onClick={onRefresh}
+          </OsButton>
+          <OsIconButton
+            label={t(`${PREFIX}.refresh` as Parameters<typeof t>[0])}
+            size="sm"
             disabled={loading}
-            aria-label={t(`${PREFIX}.refresh` as Parameters<typeof t>[0])}
-            className="inline-flex items-center rounded-lg px-2 py-1.5 text-xs text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] disabled:opacity-50"
+            onClick={onRefresh}
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} aria-hidden />
-          </button>
+          </OsIconButton>
         </div>
       </div>
 

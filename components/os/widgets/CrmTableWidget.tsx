@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
-import { Users, UserPlus, Download, Hash, Upload, Search, Sparkles } from "lucide-react";
+import { Users, UserPlus, Download, Hash, Upload, RefreshCw, Sparkles } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import WidgetState from "@/components/os/WidgetState";
+import { OsButton, OsIconButton, OsSearchInput } from "@/components/os/ui";
 import type { CrmTableWidgetProps } from "./crm-table/types";
 import { useCrmTable } from "./crm-table/useCrmTable";
 import { AddClientModal } from "./crm-table/AddClientModal";
@@ -60,50 +61,46 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <input type="file" accept=".csv" className="hidden" ref={s.fileInputRef} onChange={s.handleImportCSV} />
-            <button
-              type="button"
+            <OsIconButton
+              label={t("common.refresh")}
+              onClick={() => void s.fetchClients()}
+              disabled={s.loading}
+            >
+              <RefreshCw size={16} className={s.loading ? "animate-spin" : ""} aria-hidden />
+            </OsIconButton>
+            <OsButton
+              variant="secondary"
               onClick={() => s.fileInputRef.current?.click()}
               disabled={s.isImporting}
-              className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5 flex items-center gap-2 text-xs font-bold"
+              icon={s.isImporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Upload size={16} aria-hidden />}
             >
-              {s.isImporting ? <Hash className="animate-spin" size={18} /> : <Upload size={18} />}
-              <span>{t("workspaceWidgets.crmTable.importCsv")}</span>
-            </button>
-            <button
-              type="button"
+              {t("workspaceWidgets.crmTable.importCsv")}
+            </OsButton>
+            <OsButton
+              variant="secondary"
               onClick={() => void s.handleExportCsv()}
               disabled={s.isExporting}
-              aria-label={t("workspaceWidgets.crmTable.exportCsv")}
-              className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5 flex items-center gap-2 text-xs font-bold"
+              icon={s.isExporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Download size={16} aria-hidden />}
             >
-              {s.isExporting ? <Hash className="animate-spin" size={18} /> : <Download size={18} aria-hidden />}
-              <span>{t("workspaceWidgets.crmTable.exportCsv")}</span>
-            </button>
-            <button
-              type="button"
+              {t("workspaceWidgets.crmTable.exportCsv")}
+            </OsButton>
+            <OsButton
+              variant="primary"
               onClick={() => s.setIsAddingClient(true)}
-              className="bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+              icon={<UserPlus size={16} aria-hidden />}
             >
-              <UserPlus size={18} /> {t("workspaceWidgets.crmTable.newClient")}
-            </button>
+              {t("workspaceWidgets.crmTable.newClient")}
+            </OsButton>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
-          <div className="relative flex-1 md:max-w-md">
-            <Search
-              className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"
-              size={16}
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={s.searchQuery}
-              onChange={(e) => s.setSearchQuery(e.target.value)}
-              placeholder={t("workspaceWidgets.crmTable.searchPlaceholder")}
-              className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] py-2 pe-10 ps-3 text-sm"
-            />
-          </div>
+          <OsSearchInput
+            value={s.searchQuery}
+            onChange={s.setSearchQuery}
+            label={t("workspaceWidgets.crmTable.searchPlaceholder")}
+            className="flex-1 md:max-w-md"
+          />
           <label className="flex items-center gap-2 text-xs font-bold text-[color:var(--foreground-muted)] cursor-pointer">
             <input
               type="checkbox"

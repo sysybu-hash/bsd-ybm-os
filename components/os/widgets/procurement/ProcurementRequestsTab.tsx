@@ -1,10 +1,12 @@
 "use client";
 
-import { AlertCircle, ArrowRightLeft, Loader2, Plus } from "lucide-react";
+import { AlertCircle, ArrowRightLeft, Plus } from "lucide-react";
 import { useProcurementSync } from "@/lib/events/procurement-sync";
 import { useLogisticsSync } from "@/lib/events/logistics-sync";
 import type { ProcurementRequestRow } from "@/lib/validation/schemas/procurement";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import { useProcurementRequests } from "./useProcurementData";
 
 const prefix = "workspaceWidgets.procurement";
@@ -49,24 +51,20 @@ export default function ProcurementRequestsTab({ onCreatePo, onNewRequest }: Pro
     <div className="flex h-full flex-col p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[color:var(--foreground-muted)]">{t(`${prefix}.requests.hint`)}</p>
-        <button
-          type="button"
-          onClick={() => onNewRequest?.()}
+        <OsButton
+          variant="secondary"
           disabled={!onNewRequest}
-          className="inline-flex items-center gap-2 rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-4 py-2 text-sm font-medium text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-card)] disabled:cursor-not-allowed disabled:opacity-50"
+          icon={<Plus className="h-4 w-4" aria-hidden />}
+          onClick={() => onNewRequest?.()}
         >
-          <Plus className="h-4 w-4" />
           {t(`${prefix}.requests.newRequest`)}
-        </button>
+        </OsButton>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-1 items-center justify-center text-[color:var(--foreground-muted)]">
-          <Loader2 className="me-2 h-5 w-5 animate-spin" />
-          {t(`${prefix}.requests.scanning`)}
-        </div>
+        <WidgetState variant="loading" message={t(`${prefix}.requests.scanning`)} />
       ) : error ? (
-        <div className="text-center text-sm text-red-600">{t(`${prefix}.loadError`)}</div>
+        <WidgetState variant="error" message={t(`${prefix}.loadError`)} onRetry={() => void reload()} retryLabel={t("common.retry")} />
       ) : requests.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-window border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-12 text-center">
           <AlertCircle className="mb-3 h-12 w-12 text-[color:var(--foreground-muted)] opacity-20" />
@@ -110,15 +108,16 @@ export default function ProcurementRequestsTab({ onCreatePo, onNewRequest }: Pro
                       {request.quantityNeeded}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onCreatePo?.(request)}
+                  <OsButton
+                    variant="secondary"
+                    size="sm"
+                    className="bg-[color:var(--win-accent,var(--accent))]/10 text-[color:var(--win-accent,var(--accent))] hover:bg-[color:var(--win-accent,var(--accent))]/20"
                     disabled={!onCreatePo}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)]/10 px-3 py-1.5 text-sm font-medium text-[color:var(--brand-accent)] transition-colors hover:bg-[color:var(--brand-accent)]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    icon={<ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />}
+                    onClick={() => onCreatePo?.(request)}
                   >
-                    <ArrowRightLeft className="h-3.5 w-3.5" />
                     {t(`${prefix}.requests.createPo`)}
-                  </button>
+                  </OsButton>
                 </div>
               </div>
             );

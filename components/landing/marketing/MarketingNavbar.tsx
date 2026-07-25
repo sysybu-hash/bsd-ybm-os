@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
@@ -64,6 +65,24 @@ export default function MarketingNavbar({ onLogin, onRegister }: Props) {
           >
             <Menu className="h-7 w-7" strokeWidth={2.5} aria-hidden />
           </button>
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t("marketingHome.nav.product")}>
+            {(
+              [
+                ["/pricing", "marketingHome.nav.pricing"],
+                ["/solutions", "marketingHome.nav.solutions"],
+                ["/blog", "marketingHome.editorial.nav.blog"],
+                ["/contact", "marketingHome.nav.contact"],
+              ] as const
+            ).map(([href, key]) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-lg px-3 py-1.5 text-sm font-bold text-[color:var(--mkt-fg-muted)] transition hover:bg-white/10 hover:text-[color:var(--mkt-fg)]"
+              >
+                {t(key)}
+              </Link>
+            ))}
+          </nav>
         </div>
 
         <div className="flex items-center gap-2">

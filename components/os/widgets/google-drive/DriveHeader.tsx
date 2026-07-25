@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { HardDrive, ChevronLeft, RefreshCw, Upload, Loader2 } from "lucide-react";
+import { HardDrive, ChevronLeft, RefreshCw, Upload } from "lucide-react";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import { toast } from "sonner";
 type DriveHeaderProps = {
   t: (key: string) => string;
@@ -81,29 +82,28 @@ export function DriveHeader({
             else toast.success(item.name);
           }}
         />
-        <button
-          type="button"
+        <OsIconButton
+          label={t("workspaceWidgets.googleDrive.refreshSync")}
           onClick={() => void handleRefresh()}
-          className="p-2 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] transition-all"
-          title="רענון וסנכרון"
         >
-          <RefreshCw size={18} className={loading || syncing ? "animate-spin" : ""} />
-        </button>
+          <RefreshCw size={18} className={loading || syncing ? "animate-spin" : ""} aria-hidden />
+        </OsIconButton>
         <input
           ref={fileInputRef as React.RefObject<HTMLInputElement>}
           type="file"
           className="hidden"
           onChange={(e) => void handleUpload(e)}
         />
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
+          size="sm"
           disabled={uploading || Boolean(driveError)}
+          loading={uploading}
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-900/20 transition-all"
+          icon={<Upload size={14} aria-hidden />}
         >
-          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          <span>העלה קובץ</span>
-        </button>
+          {t("workspaceWidgets.googleDrive.uploadFile")}
+        </OsButton>
       </div>
     </div>
   );

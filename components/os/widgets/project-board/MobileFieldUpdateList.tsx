@@ -86,7 +86,7 @@ export default function MobileFieldUpdateList({
                 <button
                   type="button"
                   onClick={() => onStatusChange(task.id, "in-progress")}
-                  className="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-brand-accent py-3 text-sm font-medium text-white shadow-sm transition-transform active:scale-95"
+                  className="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-[color:var(--win-accent,var(--accent))] py-3 text-sm font-medium text-white shadow-sm transition-transform active:scale-95"
                 >
                   <PlayCircle className="h-5 w-5" aria-hidden />
                   {t(`${prefix}.startWork`)}

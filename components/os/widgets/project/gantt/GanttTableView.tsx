@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { Pencil, Trash2 } from "lucide-react";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 import { PROJECT_SUB_DOMAIN_BY_ID } from "@/lib/project-sub-domains";
@@ -15,20 +16,21 @@ type GanttTableViewProps = {
   onProgressChange: (taskId: string, progress: number) => Promise<void>;
 };
 
-type StatusMeta = { label: string; cls: string };
+type StatusMeta = { labelKey: string; cls: string };
 function getStatusMeta(task: GanttTask): StatusMeta | null {
   const now = Date.now();
   const end = new Date(task.endDate ?? "").getTime();
   if (task.status === "DONE" || task.progress >= 100)
-    return { label: "הושלם", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
+    return { labelKey: "projectDashboard.statusDone", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
   if (end && end < now && task.progress < 100)
-    return { label: "באיחור", cls: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" };
+    return { labelKey: "projectDashboard.statusLate", cls: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" };
   if (task.status === "IN_PROGRESS")
-    return { label: "בביצוע", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
+    return { labelKey: "projectDashboard.statusInProgress", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
   return null;
 }
 
 export function GanttTableView({ tasks, labels, onEdit, onDelete, onProgressChange }: GanttTableViewProps) {
+  const { t } = useI18n();
   const flatTasks = useMemo(() => flattenTaskTree(tasks, new Set()), [tasks]);
 
   return (
@@ -57,7 +59,7 @@ export function GanttTableView({ tasks, labels, onEdit, onDelete, onProgressChan
                     <span className="font-medium text-[color:var(--foreground-main)]">{task.title}</span>
                     {badge ? (
                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${badge.cls}`}>
-                        {badge.label}
+                        {t(badge.labelKey)}
                       </span>
                     ) : null}
                   </div>

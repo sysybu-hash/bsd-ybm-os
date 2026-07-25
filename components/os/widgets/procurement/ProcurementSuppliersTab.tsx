@@ -9,7 +9,7 @@ import { useProcurementSuppliers } from "./useProcurementData";
 const prefix = "workspaceWidgets.procurement.suppliers";
 
 const inputClass =
-  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent)]";
+  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--win-accent,var(--accent))]";
 
 type Props = {
   enabled?: boolean;
@@ -89,7 +89,7 @@ export default function ProcurementSuppliersTab({ enabled = true }: Props) {
           type="button"
           disabled={isSaving}
           onClick={() => void handleAdd()}
-          className="mt-3 inline-flex items-center gap-2 rounded-md bg-[color:var(--brand-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="mt-3 inline-flex items-center gap-2 rounded-md bg-[color:var(--win-accent,var(--accent))] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {t(`${prefix}.addButton`)}

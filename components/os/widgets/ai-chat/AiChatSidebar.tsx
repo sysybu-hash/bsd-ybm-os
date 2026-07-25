@@ -3,6 +3,7 @@
 import React from "react";
 import { MessageSquare, Sparkles, Trash2 } from "lucide-react";
 import { StickyPanelHeader } from "@/components/ui/StickyPanelHeader";
+import { OsButton } from "@/components/os/ui";
 
 type AiChatSidebarProps = {
   provider: "gemini" | "openai" | "claude";
@@ -57,7 +58,7 @@ export function AiChatSidebar({ provider, onSetProvider, onClear, t }: AiChatSid
           {t("workspaceWidgets.aiChat.recentChats")}
         </span>
         <div className="space-y-1">
-          {["ניתוח תקציב וילה", "השוואת מחירי בטון", "דרישות בטיחות אתר"].map((h) => (
+          {[t("workspaceWidgets.aiChat.hint1"), t("workspaceWidgets.aiChat.hint2"), t("workspaceWidgets.aiChat.hint3")].map((h) => (
             <button
               key={h}
               type="button"
@@ -71,14 +72,14 @@ export function AiChatSidebar({ provider, onSetProvider, onClear, t }: AiChatSid
 
       {/* ── Footer: clear history ────────────────────────────────────── */}
       <div className="p-3 border-t border-border-main">
-        <button
-          type="button"
+        <OsButton
+          variant="quiet"
+          className="w-full justify-center hover:text-rose-600 dark:hover:text-rose-400 hover:bg-red-500/5"
+          icon={<Trash2 size={14} aria-hidden />}
           onClick={onClear}
-          className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition-colors text-foreground-muted hover:text-rose-600 dark:hover:text-rose-400 hover:bg-red-500/5"
         >
-          <Trash2 size={14} aria-hidden />
           {t("workspaceWidgets.aiChat.clearHistory")}
-        </button>
+        </OsButton>
       </div>
 
     </div>

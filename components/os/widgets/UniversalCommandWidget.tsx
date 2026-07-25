@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Cpu, FilePlus, FolderPlus, Search, Sparkles, type LucideIcon } from "lucide-react";
+import { Cpu, FilePlus, FolderPlus, Search, SearchX, Sparkles, type LucideIcon } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/crm-table/types";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WindowBody from "@/components/os/layout/WindowBody";
+import { WindowEmptyState } from "@/components/os/window-kit/WindowEmptyState";
+import { OsButton, OsSearchInput } from "@/components/os/ui";
 import { fetchWorkspaceSearch, type WorkspaceSearchHit } from "@/lib/workspace-search-client";
 
 type UniversalCommandWidgetProps = {
@@ -87,13 +89,13 @@ export default function UniversalCommandWidget({
 }: UniversalCommandWidgetProps) {
   const { t, dir } = useI18n();
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<WorkspaceSearchHit[]>([]);
+  const [hits, setHits] = useState<WorkspaceSearchHit[] | null>(null);
   const [searching, setSearching] = useState(false);
 
   const runSearch = async () => {
     const query = q.trim();
     if (query.length < 2) {
-      setHits([]);
+      setHits(null);
       return;
     }
     setSearching(true);
@@ -112,6 +114,8 @@ export default function UniversalCommandWidget({
     }
   };
 
+  const searched = hits !== null;
+
   return (
     <WindowBody className="gap-6 p-3 md:p-6" dir={dir}>
       <header className="border-b border-[color:var(--border-main)] pb-4">
@@ -128,42 +132,54 @@ export default function UniversalCommandWidget({
             void runSearch();
           }}
         >
-          <label className="sr-only" htmlFor="uc-workspace-search">
-            {t("workspaceWidgets.commandCenter.title")}
-          </label>
-          <input
-            id="uc-workspace-search"
+          <OsSearchInput
             value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="min-h-[44px] flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 text-sm"
-            placeholder={t("workspaceWidgets.commandCenter.searchPlaceholder")}
+            onChange={(v) => {
+              setQ(v);
+              if (v.trim().length < 2) setHits(null);
+            }}
+            label={t("workspaceWidgets.commandCenter.searchPlaceholder")}
+            className="min-h-[44px] flex-1"
           />
-          <button
+          <OsButton
             type="submit"
-            className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 text-sm font-bold text-white"
+            variant="primary"
+            loading={searching}
             disabled={searching}
+            icon={<Search size={16} aria-hidden />}
+            className="min-h-[44px]"
           >
-            <Search size={16} aria-hidden />
-            {searching ? "…" : t("workspaceWidgets.onboarding.next")}
-          </button>
+            {searching ? t("workspaceWidgets.commandCenter.searching") : t("workspaceWidgets.onboarding.next")}
+          </OsButton>
         </form>
-        {hits.length > 0 ? (
-          <ul className="mt-2 space-y-1">
-            {hits.map((hit) => (
-              <li key={`${hit.type}-${hit.id}`}>
-                <button
-                  type="button"
-                  onClick={() => openHit(hit)}
-                  className="w-full rounded-md px-2 py-1.5 text-start text-sm hover:bg-[color:var(--surface-soft)]"
-                >
-                  <span className="font-medium">{hit.name}</span>
-                  <span className="ms-2 text-[10px] uppercase text-[color:var(--foreground-muted)]">
-                    {hit.type}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+
+        {searched ? (
+          hits.length > 0 ? (
+            <ul className="mt-2 space-y-1" aria-label={t("workspaceWidgets.commandCenter.resultsLabel")}>
+              {hits.map((hit) => (
+                <li key={`${hit.type}-${hit.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => openHit(hit)}
+                    className="w-full rounded-md px-2 py-1.5 text-start text-sm hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--win-accent,var(--accent))]"
+                  >
+                    <span className="font-medium">{hit.name}</span>
+                    <span className="ms-2 text-[10px] uppercase text-[color:var(--foreground-muted)]">
+                      {hit.type}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-2">
+              <WindowEmptyState
+                icon={<SearchX size={22} aria-hidden />}
+                title={t("workspaceWidgets.commandCenter.noResultsTitle")}
+                description={t("workspaceWidgets.commandCenter.noResultsBody")}
+              />
+            </div>
+          )
         ) : null}
       </header>
 
@@ -178,7 +194,7 @@ export default function UniversalCommandWidget({
               type="button"
               onClick={() => openWorkspaceWidget?.(action.target, action.liveData ?? null)}
               aria-label={heading}
-              className={`group flex min-h-[44px] flex-col rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-5 text-start shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--surface-soft)] ${accent.hover}`}
+              className={`group flex min-h-[44px] flex-col rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-5 text-start shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--win-accent,var(--accent))] ${accent.hover}`}
             >
               <div className="mb-3 flex items-center justify-between">
                 <span className={`rounded-lg p-2.5 transition-all ${accent.icon}`}>

@@ -7,6 +7,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useHelpCenter } from "./help-center/useHelpCenter";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
@@ -183,19 +184,19 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                     </div>
                   ) : null}
                   {s.activeGuide.openWidget && openWorkspaceWidget ? (
-                    <button
-                      type="button"
+                    <OsButton
+                      variant="primary"
+                      className="mt-4 min-h-[44px]"
+                      icon={<ExternalLink size={16} aria-hidden />}
                       onClick={() =>
                         openWorkspaceWidget(
                           s.activeGuide!.openWidget!,
                           s.activeGuide!.openWidgetData ?? null,
                         )
                       }
-                      className="mt-4 flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white"
                     >
-                      <ExternalLink size={16} aria-hidden />
                       {t("workspaceWidgets.helpCenter.openRelevantScreen")}
-                    </button>
+                    </OsButton>
                   ) : null}
                 </>
               ) : (
@@ -235,14 +236,14 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
 
       <footer className="flex shrink-0 flex-wrap gap-2 border-t border-[color:var(--border-main)] p-3 max-md:px-3">
         {openWorkspaceWidget ? (
-          <button
-            type="button"
+          <OsButton
+            variant="primary"
+            className="min-h-[44px] md:text-xs"
+            icon={<MessageCircle size={16} aria-hidden />}
             onClick={() => openWorkspaceWidget("aiChatFull", { prompt: t("workspaceWidgets.helpCenter.aiChatPrompt") })}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white md:text-xs"
           >
-            <MessageCircle size={16} aria-hidden />
             {t("workspaceWidgets.helpCenter.openAiChat")}
-          </button>
+          </OsButton>
         ) : null}
         <Link
           href="/help"

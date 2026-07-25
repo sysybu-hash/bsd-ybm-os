@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FolderPlus, Loader2, Save, X } from "lucide-react";
+import { FolderPlus, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { createProjectWithClientAction } from "@/app/actions/crm";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 type ContactRow = { id: string; name: string };
 
@@ -132,15 +133,14 @@ export default function AddProjectForm({ onCreated, onCancel }: AddProjectFormPr
           {t(`${prefix}.title`)}
         </h3>
         {onCancel ? (
-          <button
-            type="button"
-            onClick={onCancel}
+          <OsIconButton
+            label={t("workspaceWidgets.confirm.cancel")}
+            className="rounded-full"
             disabled={saving}
-            className="rounded-full p-2 text-[color:var(--foreground-muted)] transition-colors hover:bg-[color:var(--surface-elevated)]"
-            aria-label={t("workspaceWidgets.confirm.cancel")}
+            onClick={onCancel}
           >
-            <X size={20} />
-          </button>
+            <X size={20} aria-hidden />
+          </OsIconButton>
         ) : null}
       </div>
 
@@ -250,15 +250,15 @@ export default function AddProjectForm({ onCreated, onCancel }: AddProjectFormPr
         )}
       </div>
 
-      <button
-        type="button"
+      <OsButton
+        variant="primary"
+        className="mt-5 h-12 w-full justify-center bg-[color:var(--accent)] text-[color:var(--accent-contrast)] hover:bg-[color:var(--accent-strong)]"
+        loading={saving}
+        icon={<Save size={18} aria-hidden />}
         onClick={() => void handleSave()}
-        disabled={saving}
-        className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] text-sm font-bold text-[color:var(--accent-contrast)] shadow-sm transition-colors hover:bg-[color:var(--accent-strong)] disabled:opacity-60"
       >
-        {saving ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Save size={18} aria-hidden />}
         {saving ? t(`${prefix}.saving`) : t(`${prefix}.save`)}
-      </button>
+      </OsButton>
     </div>
   );
 }

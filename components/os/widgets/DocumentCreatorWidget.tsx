@@ -9,7 +9,8 @@ import InvoiceDocumentView from "@/components/os/widgets/invoice/InvoiceDocument
 import DocumentPreview from "@/components/os/widgets/invoice/DocumentPreview";
 import DocumentClientPicker from "@/components/os/widgets/invoice/DocumentClientPicker";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
-import { Calendar, CreditCard, Loader2, Send } from "lucide-react";
+import { Calendar, CreditCard, Send } from "lucide-react";
+import { OsButton } from "@/components/os/ui";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 import { toast } from "sonner";
 import type { DocType } from "@prisma/client";
@@ -39,7 +40,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
     return (
       <DocGeneratedSuccess
         generatedDoc={d.generatedDoc}
-        docTypeLabel={d.selectedTypeMeta?.labelHe ?? "מסמך"}
+        docTypeLabel={d.selectedTypeMeta?.labelHe ?? t("workspaceWidgets.documentCreator.docFallback")}
         onDownloadPDF={() => void d.downloadPDF()}
         onReset={() => { d.setGeneratedDoc(null); d.navigateIssued(null); }}
       />
@@ -71,7 +72,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
             ))}
           </select>
           <h2 className="truncate text-sm font-bold text-[color:var(--foreground-main)]">
-            מחולל מסמכים חכם
+            {t("workspaceWidgets.documentCreator.smartGeneratorTitle")}
           </h2>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -99,6 +100,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
           <IssuedDocumentsList
             issuedList={d.issuedList}
             issuedListLoading={d.issuedListLoading}
+            issuedListError={d.issuedListError}
             onOpen={(id) => d.navigateIssued(id)}
             onRefresh={() => void d.fetchIssuedDocuments()}
           />
@@ -132,7 +134,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">3</div>
-                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">מספר מסמך</h3>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.docNumber")}</h3>
                   </div>
                   <input
                     type="number"
@@ -140,17 +142,17 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                     inputMode="numeric"
                     value={d.documentNumberInput}
                     onChange={(e) => d.setDocumentNumberInput(e.target.value)}
-                    placeholder={d.suggestedNumber != null ? String(d.suggestedNumber) : "אוטומטי"}
+                    placeholder={d.suggestedNumber != null ? String(d.suggestedNumber) : t("workspaceWidgets.documentCreator.autoNumber")}
                     className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 text-[color:var(--foreground-main)]"
                   />
                   <p className="mt-1.5 text-[10px] text-[color:var(--foreground-muted)]">
-                    מתמלא אוטומטית — ניתן לשנות ידנית
+                    {t("workspaceWidgets.documentCreator.autoFillHint")}
                   </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">4</div>
-                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך הנפקה</h3>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.issueDate")}</h3>
                   </div>
                   <div className="relative">
                     <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
@@ -165,7 +167,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">5</div>
-                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תאריך פירעון</h3>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.dueDate")}</h3>
                   </div>
                   <div className="relative">
                     <Calendar className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
@@ -183,14 +185,14 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">6</div>
-                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">אמצעי תשלום</h3>
+                    <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.paymentMethod")}</h3>
                   </div>
                   <div className="relative">
                     <CreditCard className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
                     <select className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-[color:var(--foreground-main)]">
-                      <option>PayPlus (אשראי)</option>
-                      <option>העברה בנקאית</option>
-                      <option>צ&apos;ק / מזומן</option>
+                      <option>{t("workspaceWidgets.documentCreator.payPlus")}</option>
+                      <option>{t("workspaceWidgets.documentCreator.bankTransfer")}</option>
+                      <option>{t("workspaceWidgets.documentCreator.checkCash")}</option>
                     </select>
                   </div>
                 </div>
@@ -201,7 +203,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
             <section className="min-w-0 @2xl:sticky @2xl:top-0 @2xl:self-start">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-6 h-6 rounded-full bg-[color:var(--background-main)]/50 flex items-center justify-center text-[10px] font-bold text-[color:var(--foreground-muted)] border border-[color:var(--border-main)]">7</div>
-                <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">תצוגה מקדימה</h3>
+                <h3 className="text-sm font-bold text-[color:var(--foreground-muted)]">{t("workspaceWidgets.documentCreator.preview")}</h3>
               </div>
               {d.selectedTypeMeta ? (
                 <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">{d.selectedTypeMeta.descriptionHe}</p>
@@ -230,18 +232,15 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
 
       {/* Footer — shrink-0 so flex scroll body keeps a definite height */}
       <div className="shrink-0 p-6 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
+          className="h-14 w-full justify-center rounded-2xl text-lg font-black shadow-xl"
+          loading={d.loading}
+          disabled={!d.clientNameInput.trim()}
           onClick={() => void d.generateDocument()}
-          disabled={d.loading || !d.clientNameInput.trim()}
-          className="w-full h-14 bg-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 text-white font-black text-lg rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3"
         >
-          {d.loading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <>הפק {d.selectedTypeMeta?.labelHe ?? "מסמך"} <Send className="w-5 h-5" /></>
-          )}
-        </button>
+          {t("workspaceWidgets.documentCreator.generate", { type: d.selectedTypeMeta?.labelHe ?? t("workspaceWidgets.documentCreator.docFallback") })} <Send className="w-5 h-5" aria-hidden />
+        </OsButton>
       </div>
 
       {/* Draft panel */}
@@ -267,18 +266,17 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
             ))}
           </ul>
           <p className="text-sm text-[color:var(--foreground-muted)]">
-            לפני מע״מ: ₪{billing.net.toLocaleString()} · מע״מ ({formatVatPercent(d.vatRatePercent)}%): ₪{billing.vat.toLocaleString()}
+            {t("workspaceWidgets.documentCreator.preVatLabel", { vat: String(formatVatPercent(d.vatRatePercent)) })}
+            {": ₪"}{billing.net.toLocaleString()}
+            {" · "}
+            {t("workspaceWidgets.documentCreator.vatAmountLabel", { amount: billing.vat.toLocaleString() })}
           </p>
           <p className="text-lg font-black text-[color:var(--accent)] dark:text-emerald-400">
             ₪{billing.total.toLocaleString()}
           </p>
-          <button
-            type="button"
-            onClick={() => void d.generateDocument()}
-            className="w-full rounded-xl bg-[color:var(--accent)] py-3 text-sm font-bold text-white hover:opacity-90"
-          >
+          <OsButton variant="primary" className="w-full justify-center py-3" onClick={() => void d.generateDocument()}>
             {t("workspaceWidgets.docCreator.draftConfirm")}
-          </button>
+          </OsButton>
         </div>
       </OsFloatingPanel>
     </div>

@@ -17,9 +17,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Plus } from "lucide-react";
 import type { LineItemV5 } from "@/lib/scan-schema-v5";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 
 // ── Sortable row ──────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ type SortableRowProps = {
 };
 
 function SortableRow({ id, row, onUpdate, onRemove }: SortableRowProps) {
+  const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -48,7 +50,7 @@ function SortableRow({ id, row, onUpdate, onRemove }: SortableRowProps) {
         <button
           type="button"
           className="cursor-grab touch-none text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
-          aria-label="גרור לסידור מחדש"
+          aria-label={t("workspaceWidgets.fieldCopilot.dragToReorder")}
           {...attributes}
           {...listeners}
         >
@@ -138,7 +140,7 @@ export default function BoqReviewTable({ rows, onChange }: Props) {
           <table className="w-full min-w-[540px] text-sm">
             <thead>
               <tr className="border-b bg-[color:var(--surface-soft)] text-start text-xs">
-                <th className="w-6 p-2" aria-label="גרור" />
+                <th className="w-6 p-2" aria-label={t("workspaceWidgets.fieldCopilot.dragHandle")} />
                 <th className="p-2">{t("workspaceWidgets.fieldCopilot.colDescription")}</th>
                 <th className="p-2 w-20">{t("workspaceWidgets.fieldCopilot.colQty")}</th>
                 <th className="p-2 w-24">{t("workspaceWidgets.fieldCopilot.colPrice")}</th>
@@ -159,9 +161,9 @@ export default function BoqReviewTable({ rows, onChange }: Props) {
           </table>
         </SortableContext>
       </DndContext>
-      <button type="button" onClick={addRow} className="w-full py-2 text-xs font-bold text-sky-600">
-        + {t("workspaceWidgets.fieldCopilot.addRow")}
-      </button>
+      <OsButton variant="quiet" className="w-full justify-center text-sky-600" icon={<Plus size={12} aria-hidden />} onClick={addRow}>
+        {t("workspaceWidgets.fieldCopilot.addRow")}
+      </OsButton>
     </div>
   );
 }

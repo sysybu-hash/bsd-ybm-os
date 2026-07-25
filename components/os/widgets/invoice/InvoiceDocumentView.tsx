@@ -35,7 +35,7 @@ type InvoiceDocumentViewProps = {
 };
 
 export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: InvoiceDocumentViewProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [doc, setDoc] = useState<IssuedDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -260,10 +260,10 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
 
       <div className="mt-3 space-y-1 text-end text-sm">
         <p className="text-[color:var(--foreground-muted)]">
-          לפני מע״מ: ₪{doc.amount.toLocaleString("he-IL")}
+          {t("workspaceWidgets.invoice.preVat")}: ₪{doc.amount.toLocaleString(locale)}
         </p>
         <p className="text-[color:var(--foreground-muted)]">
-          מע״מ: ₪{doc.vat.toLocaleString("he-IL")}
+          {t("workspaceWidgets.invoice.vat")}: ₪{doc.vat.toLocaleString(locale)}
         </p>
         <p className="font-bold text-[color:var(--foreground-main)]">
           {t("workspaceWidgets.invoice.total")}: ₪{doc.total.toLocaleString("he-IL")}
@@ -281,7 +281,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
       {doc.contactPhone ? (
         <a
           href={`https://wa.me/${doc.contactPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
-            `שלום ${doc.clientName}, תזכורת לתשלום חשבונית ${doc.number} — ${doc.total} ₪`,
+            t("workspaceWidgets.invoice.reminderText", { client: doc.clientName, number: String(doc.number), total: String(doc.total) }),
           )}`}
           target="_blank"
           rel="noopener noreferrer"

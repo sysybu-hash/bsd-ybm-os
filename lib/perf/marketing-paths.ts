@@ -31,6 +31,8 @@ export function shouldSkipServiceWorkerRegistration(
 const LIGHT_PUBLIC_PATHS = new Set([
   "/about",
   "/contact",
+  "/pricing",
+  "/solutions",
   "/help",
   "/privacy",
   "/terms",

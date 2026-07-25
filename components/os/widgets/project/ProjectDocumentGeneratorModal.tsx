@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { FileOutput, HardHat, X } from "lucide-react";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import {
   getProjectSubDomainsForIndustry,
@@ -49,12 +51,14 @@ export default function ProjectDocumentGeneratorModal({
   contactName,
   initialDomain = "ALL",
   boqLines = [],
-  title = "מחולל מסמכים",
+  title,
   openWorkspaceWidget,
   onOpenBoq,
   onOpenDiary,
   organizationIndustry,
 }: Props) {
+  const { t, dir } = useI18n();
+
   const [filterDomain, setFilterDomain] = React.useState<ProjectSubDomainId | "ALL">(initialDomain);
   const subDomains = useMemo(
     () => getProjectSubDomainsForIndustry(organizationIndustry),
@@ -107,7 +111,7 @@ export default function ProjectDocumentGeneratorModal({
       onOpenDiary?.({
         description:
           typeof live.projectName === "string"
-            ? `יומן עבודה — ${live.projectName}`
+            ? t("projectDashboard.docGenWorkDiary", { project: live.projectName })
             : undefined,
       });
       onClose();
@@ -128,27 +132,23 @@ export default function ProjectDocumentGeneratorModal({
       <div
         className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+        dir={dir}
       >
         <header className="flex items-center gap-2 border-b border-[color:var(--border-main)] px-4 py-3">
           <FileOutput size={18} className="text-amber-700 dark:text-amber-300" />
           <h2 id="doc-gen-title" className="flex-1 text-sm font-bold">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 hover:bg-[color:var(--surface-elevated)]"
-            aria-label="סגור"
-          >
-            <X size={16} />
-          </button>
+          <OsIconButton label={t("projectDashboard.close")} size="sm" onClick={onClose}>
+            <X size={16} aria-hidden />
+          </OsIconButton>
         </header>
 
         {openWorkspaceWidget ? (
           <div className="border-b border-[color:var(--border-main)] px-4 py-2">
-            <button
-              type="button"
+            <OsButton
+              variant="secondary"
+              className="w-full justify-center border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-200"
               onClick={() => {
                 openWorkspaceWidget("fieldCopilot", {
                   projectId,
@@ -159,10 +159,9 @@ export default function ProjectDocumentGeneratorModal({
                 });
                 onClose();
               }}
-              className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-700 dark:text-amber-200 hover:bg-amber-500/20"
             >
-              קופיילוט שטח — צלם / דבר מהאתר
-            </button>
+              {t("projectDashboard.fieldCopilotCta")}
+            </OsButton>
           </div>
         ) : null}
 
@@ -174,7 +173,7 @@ export default function ProjectDocumentGeneratorModal({
               filterDomain === "ALL" ? "bg-amber-500/25 text-amber-100" : "hover:bg-[color:var(--surface-elevated)]"
             }`}
           >
-            הכל
+            {t("projectDashboard.all")}
           </button>
           {subDomains.map((d) => (
             <button
@@ -208,7 +207,7 @@ export default function ProjectDocumentGeneratorModal({
               className="flex w-full items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-3 text-start text-[11px] font-bold text-amber-800 dark:text-amber-200 hover:bg-amber-500/20"
             >
               <HardHat size={18} className="shrink-0" />
-              <span>קופיילוט שטח — הצעה מהירה מהאתר</span>
+              <span>{t("projectDashboard.fieldCopilotQuick")}</span>
             </button>
           ) : null}
           {grouped.map(({ domain, entries }) => (
@@ -236,7 +235,7 @@ export default function ProjectDocumentGeneratorModal({
 
         {boqLines.length > 0 ? (
           <p className="border-t border-[color:var(--border-main)] px-3 py-2 text-[10px] text-[color:var(--foreground-muted)]">
-            {boqLines.length} שורות BOQ ימולאו אוטומטית במסמך
+            {t("projectDashboard.boqLinesAutofill", { count: String(boqLines.length) })}
           </p>
         ) : null}
       </div>

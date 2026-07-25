@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import type { DashboardData, TabId } from "./types";
 import {
   buildRecentActivity,
@@ -136,13 +137,14 @@ export default function ProjectOverviewTab({ data, onNavigateTab }: ProjectOverv
               {t("projectDashboard.overview.recentActivity")}
             </h4>
             {onNavigateTab ? (
-              <button
-                type="button"
+              <OsButton
+                variant="quiet"
+                size="sm"
+                className="!px-0 text-[color:var(--win-accent,var(--accent))]"
                 onClick={() => onNavigateTab("diary")}
-                className="text-sm font-medium text-[color:var(--brand-accent)] transition-opacity hover:opacity-80"
               >
                 {t("projectDashboard.overview.viewAll")}
-              </button>
+              </OsButton>
             ) : null}
           </div>
           <div className="p-5">
@@ -225,20 +227,12 @@ export default function ProjectOverviewTab({ data, onNavigateTab }: ProjectOverv
             ) : null}
             {onNavigateTab ? (
               <div className="flex flex-wrap gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => onNavigateTab("tasks")}
-                  className="rounded-lg border border-border-main px-3 py-1.5 text-xs font-bold text-foreground-main transition-colors hover:bg-surface-soft"
-                >
+                <OsButton variant="secondary" size="sm" onClick={() => onNavigateTab("tasks")}>
                   {t("projectDashboard.tabs.tasks")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigateTab("financial")}
-                  className="rounded-lg border border-border-main px-3 py-1.5 text-xs font-bold text-foreground-main transition-colors hover:bg-surface-soft"
-                >
+                </OsButton>
+                <OsButton variant="secondary" size="sm" onClick={() => onNavigateTab("financial")}>
                   {t("projectDashboard.tabs.financial")}
-                </button>
+                </OsButton>
               </div>
             ) : null}
           </div>

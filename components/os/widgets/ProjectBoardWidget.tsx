@@ -183,6 +183,7 @@ export default function ProjectBoardWidget({ projectId, openWorkspaceWidget, emb
           }
         }}
         onSwitchProject={handleClearProject}
+        onRefresh={() => void refreshTasks()}
       />
 
       {/* ── Board body ───────────────────────────────────────── */}

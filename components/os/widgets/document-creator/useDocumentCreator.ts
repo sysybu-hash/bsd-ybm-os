@@ -44,7 +44,7 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
   const {
     contacts, setContacts,
     fetchingContacts, orgSettings,
-    issuedList, issuedListLoading,
+    issuedList, issuedListLoading, issuedListError,
     fetchIssuedDocuments,
   } = useDocumentData();
 
@@ -294,6 +294,7 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
     issuedDocumentId,
     issuedList,
     issuedListLoading,
+    issuedListError,
     vatRatePercent,
     selectedTypeMeta,
     documentNumberInput,

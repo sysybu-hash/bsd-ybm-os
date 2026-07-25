@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageCircle, Loader2, Copy, Check } from "lucide-react";
+import { MessageCircle, Copy, Check } from "lucide-react";
+import { OsButton } from "@/components/os/ui";
 
 type SettingsWhatsappSectionProps = {
   t: (key: string) => string;
@@ -79,14 +80,14 @@ export function SettingsWhatsappSection({ t }: SettingsWhatsappSectionProps) {
             <span className="font-mono text-3xl font-black tracking-[0.3em] text-[color:var(--foreground-main)]">
               {code}
             </span>
-            <button
-              type="button"
+            <OsButton
+              variant="secondary"
+              size="sm"
+              icon={copied ? <Check size={14} className="text-emerald-500" aria-hidden /> : <Copy size={14} aria-hidden />}
               onClick={() => void copyCode()}
-              className="flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)] hover:border-emerald-500/40"
             >
-              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
               {t(`${S}.copy`)}
-            </button>
+            </OsButton>
           </div>
           <ol className="list-inside list-decimal space-y-1 text-xs leading-relaxed text-[color:var(--foreground-muted)]">
             <li>{t(`${S}.step1`)}</li>
@@ -98,25 +99,25 @@ export function SettingsWhatsappSection({ t }: SettingsWhatsappSectionProps) {
               {t(`${S}.expiresAt`).replace("{time}", expiryLabel)}
             </p>
           ) : null}
-          <button
-            type="button"
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="mt-3 text-emerald-600 dark:text-emerald-400"
+            loading={loading}
             onClick={() => void generate()}
-            disabled={loading}
-            className="mt-3 text-xs font-bold text-emerald-600 hover:underline disabled:opacity-60 dark:text-emerald-400"
           >
             {t(`${S}.regenerate`)}
-          </button>
+          </OsButton>
         </div>
       ) : (
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
+          loading={loading}
+          icon={<MessageCircle size={18} aria-hidden />}
           onClick={() => void generate()}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-emerald-500 disabled:opacity-60"
         >
-          {loading ? <Loader2 size={18} className="animate-spin" /> : <MessageCircle size={18} />}
           {t(`${S}.generate`)}
-        </button>
+        </OsButton>
       )}
 
       {error ? <p className="mt-3 text-xs font-semibold text-rose-500">{error}</p> : null}

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { FileStack, Upload } from "lucide-react";
 import { getProjectSubDomainsForIndustry, type ProjectSubDomainId } from "@/lib/project-sub-domains";
 import ProjectGanttChart from "@/components/os/widgets/project/ProjectGanttChart";
 import ProjectDocumentGeneratorModal from "@/components/os/widgets/project/ProjectDocumentGeneratorModal";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
+import { OsButton } from "@/components/os/ui";
 import type { ProjectSchedulePanelProps } from "./schedule-panel/types";
 import { useScheduleData } from "./schedule-panel/useScheduleData";
 import { ScheduleDomainSidebar } from "./schedule-panel/ScheduleDomainSidebar";
@@ -25,6 +27,8 @@ export default function ProjectSchedulePanel({
   organizationIndustry,
   hideConstructionFeatures = false,
 }: ProjectSchedulePanelProps) {
+  const { t } = useI18n();
+
   const projectSubDomains = useMemo(
     () => getProjectSubDomainsForIndustry(organizationIndustry),
     [organizationIndustry],
@@ -98,23 +102,25 @@ export default function ProjectSchedulePanel({
             e.target.value = "";
           }}
         />
-        <button
-          type="button"
+        <OsButton
+          variant="primary"
+          size="sm"
+          className="bg-amber-600/90 hover:bg-amber-500"
+          icon={<Upload size={14} aria-hidden />}
           onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-lg bg-amber-600/90 px-2.5 py-1.5 text-xs font-medium text-white"
         >
-          <Upload size={14} />
           {labels.importSchedule}
-        </button>
+        </OsButton>
         {openWorkspaceWidget ? (
-          <button
-            type="button"
+          <OsButton
+            variant="secondary"
+            size="sm"
+            className="border-amber-500/40 bg-amber-500/10 text-amber-100"
+            icon={<FileStack size={14} aria-hidden />}
             onClick={() => setDocModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-100"
           >
-            <FileStack size={14} />
             {labels.docGeneratorTitle}
-          </button>
+          </OsButton>
         ) : null}
         <p className="text-[10px] text-[color:var(--foreground-muted)]">XML / CSV (MS Project)</p>
         {selectedDomain !== "ALL" ? (
@@ -170,7 +176,7 @@ export default function ProjectSchedulePanel({
               children: (
                 <>
                   <div className="border-b border-[color:var(--border-main)] px-2 py-1.5 text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                    תתי תחומים
+                    {t("projectDashboard.subTrades")}
                   </div>
                   {sidebar}
                 </>

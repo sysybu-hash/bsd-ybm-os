@@ -39,7 +39,7 @@ export function BoardColumn({
           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${column.color}`}>
             {t(`${boardPrefix}.columns.${column.titleKey}`)}
           </span>
-          <span className="text-xs text-slate-500 font-bold">{tasks.length}</span>
+          <span className="text-xs text-[color:var(--foreground-muted)] font-bold">{tasks.length}</span>
         </div>
       </div>
 

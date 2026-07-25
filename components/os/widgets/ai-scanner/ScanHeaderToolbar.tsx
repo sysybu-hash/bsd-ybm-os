@@ -8,6 +8,7 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { EngineMeta, QueueItem } from "./types";
 import { EngineSelector } from "./EngineSelector";
 import { ScanOutboxBadge } from "./ScanOutboxBadge";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 type ScanClassification = { scanMode: string; confidence: number; rationale?: string; uncertain?: boolean };
 
@@ -42,9 +43,6 @@ type ScanHeaderToolbarProps = {
 
 const selectClass =
   "h-9 shrink-0 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 text-[11px] font-bold";
-const iconBtn =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-main)] text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] disabled:opacity-40";
-
 export function ScanHeaderToolbar({
   t, tr, scannerPrefix, boundProjectName, clearProject,
   userInstruction, persistInstruction, setInstructionsOpen,
@@ -68,44 +66,40 @@ export function ScanHeaderToolbar({
             {boundProjectName ? t(`${scannerPrefix}.subtitleScoped`) : t("scanner.subtitle")}
           </p>
         </div>
-        <button
-          type="button"
+        <OsButton
+          variant="secondary"
+          size="sm"
+          className="!h-8"
+          icon={<ArrowRight size={13} className="rtl:rotate-180" aria-hidden />}
           onClick={clearProject}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-2 text-[11px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
           title={t(`${scannerPrefix}.switchProject`)}
-          aria-label={t(`${scannerPrefix}.switchProject`)}
         >
-          <ArrowRight size={13} className="rtl:rotate-180" aria-hidden />
           <span className="hidden md:inline">{t(`${scannerPrefix}.switchProject`)}</span>
-        </button>
+        </OsButton>
         {pendingCount > 0 ? (
-          <button
-            type="button"
+          <OsButton
+            variant="primary"
+            size="sm"
+            className="!h-8"
+            icon={<ScanLine size={14} aria-hidden />}
             onClick={onStartScan}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] px-3 text-[11px] font-bold text-white shadow-sm hover:from-orange-500"
           >
-            <ScanLine size={14} aria-hidden />
             {tr("workspaceWidgets.aiScanner.scanNow", "סרוק עכשיו")} ({pendingCount})
-          </button>
+          </OsButton>
         ) : (
-          <button
-            type="button"
+          <OsButton
+            variant="secondary"
+            size="sm"
+            className="!h-8"
+            icon={<ScanLine size={14} aria-hidden />}
             onClick={onPickFiles}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 text-[11px] font-bold text-[color:var(--accent)] hover:bg-orange-500/15 dark:text-orange-300"
           >
-            <ScanLine size={14} aria-hidden />
             {tr("workspaceWidgets.aiScanner.pickFiles", "בחר קבצים לסריקה")}
-          </button>
+          </OsButton>
         )}
-        <button
-          type="button"
-          onClick={onOpenCamera}
-          className={iconBtn}
-          title={tr("scanner.cameraOpen", "צלם מסמך")}
-          aria-label={tr("scanner.cameraOpen", "צלם מסמך")}
-        >
+        <OsIconButton label={tr("scanner.cameraOpen", "צלם מסמך")} onClick={onOpenCamera}>
           <Camera size={15} aria-hidden />
-        </button>
+        </OsIconButton>
         <ScanOutboxBadge tr={tr} />
       </div>
 
@@ -140,35 +134,26 @@ export function ScanHeaderToolbar({
           aria-label={tr("scanner.instructionPlaceholder", "הנחיות ל-AI")}
           className="hidden h-9 w-40 shrink-0 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 text-[11px] font-semibold sm:block"
         />
-        <button
-          type="button"
-          onClick={() => setInstructionsOpen(true)}
-          className={iconBtn}
-          aria-label={tr("scanner.instructionsBtn", "הנחיות")}
-        >
+        <OsIconButton label={tr("scanner.instructionsBtn", "הנחיות")} onClick={() => setInstructionsOpen(true)}>
           <Settings2 size={15} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={openPreviewPanel}
+        </OsIconButton>
+        <OsIconButton
+          label={tr("scanner.preview", "תצוגה מקדימה")}
           disabled={queue.length === 0 && !previewUrl && pendingCount === 0}
-          className={iconBtn}
-          aria-label={tr("scanner.preview", "תצוגה מקדימה")}
+          onClick={openPreviewPanel}
         >
           <Eye size={15} aria-hidden />
-        </button>
-        <button
-          type="button"
+        </OsIconButton>
+        <OsIconButton
+          label={tr("scanner.resultsPanel", "תוצאות")}
+          disabled={!lastScanV5}
           onClick={() => {
             setResultsPanelOpen(true);
             pushScannerView({ openResultsPanel: true });
           }}
-          disabled={!lastScanV5}
-          className={iconBtn}
-          aria-label={tr("scanner.resultsPanel", "תוצאות")}
         >
           <FileText size={15} aria-hidden />
-        </button>
+        </OsIconButton>
 
         {scanClassification ? (
           <span

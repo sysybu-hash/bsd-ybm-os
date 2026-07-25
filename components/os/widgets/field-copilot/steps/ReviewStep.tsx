@@ -11,6 +11,7 @@ import { unifiedSaveFromClient } from "@/lib/scan/unified-save-client";
 import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
 import BoqReviewTable from "../review/BoqReviewTable";
 import AssumptionsList from "../review/AssumptionsList";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   draft: FieldCopilotDraft | null;
@@ -113,22 +114,21 @@ export default function ReviewStep({ draft, onUpdate }: Props) {
       {/* Quick share — WhatsApp + Print/PDF */}
       {rows.length > 0 ? (
         <div className="flex flex-wrap gap-2 border-t border-[color:var(--border-main)] pt-3">
-          <button
-            type="button"
+          <OsButton
+            variant="secondary"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+            icon={<MessageCircle size={14} aria-hidden />}
             onClick={() => openWhatsAppShare(buildBoqShareText(draft, rows, locale))}
-            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-500/20 dark:text-emerald-300"
           >
-            <MessageCircle size={14} aria-hidden />
             {t("workspaceWidgets.fieldCopilot.shareWhatsApp")}
-          </button>
-          <button
-            type="button"
+          </OsButton>
+          <OsButton
+            variant="secondary"
+            icon={<FileText size={14} aria-hidden />}
             onClick={() => printBoqPdf(draft, rows, locale)}
-            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)] transition hover:bg-[color:var(--surface-card)]"
           >
-            <FileText size={14} aria-hidden />
             {t("workspaceWidgets.fieldCopilot.sharePdf")}
-          </button>
+          </OsButton>
         </div>
       ) : null}
 
@@ -141,16 +141,14 @@ export default function ReviewStep({ draft, onUpdate }: Props) {
             hasProject={!!draft?.projectId}
             tr={tr}
           />
-          <button
-            type="button"
-            disabled={saving}
+          <OsButton
+            variant="primary"
+            className="w-full justify-center"
+            loading={saving}
             onClick={() => void onUnifiedSave()}
-            className="w-full rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
           >
-            {saving
-              ? tr("workspaceWidgets.documentScan.saving", "שומר…")
-              : tr("workspaceWidgets.documentScan.confirmSave", "אשר ושמור")}
-          </button>
+            {tr("workspaceWidgets.documentScan.confirmSave", "אשר ושמור")}
+          </OsButton>
           {saveMessage ? <p className="text-xs text-[color:var(--foreground-muted)]">{saveMessage}</p> : null}
         </div>
       ) : null}

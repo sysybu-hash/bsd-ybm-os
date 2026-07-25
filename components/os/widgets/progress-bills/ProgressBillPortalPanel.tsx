@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Loader2, Send } from "lucide-react";
+import { Check, Send } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 import type { ProgressBillPortalRow } from "@/lib/validation/schemas/progress-bill-portal";
 
 type ProjectOption = { id: string; name: string };
@@ -167,23 +169,18 @@ export default function ProgressBillPortalPanel() {
             />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => void handleCreate(false)}
-              className="os-btn-secondary text-xs font-bold"
-            >
+            <OsButton variant="secondary" size="sm" disabled={submitting} onClick={() => void handleCreate(false)}>
               {t("workspaceWidgets.progressBills.saveDraft")}
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
+            </OsButton>
+            <OsButton
+              variant="primary"
+              size="sm"
+              loading={submitting}
+              icon={<Send size={14} aria-hidden />}
               onClick={() => void handleCreate(true)}
-              className="os-btn-primary flex items-center gap-2 text-xs font-bold"
             >
-              {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               {t("workspaceWidgets.progressBills.submit")}
-            </button>
+            </OsButton>
           </div>
         </section>
 
@@ -194,9 +191,7 @@ export default function ProgressBillPortalPanel() {
             {t("workspaceWidgets.progressBills.listTitle")}
           </h3>
           {loading ? (
-            <p className="text-sm text-[color:var(--foreground-muted)]">
-              {t("workspaceWidgets.progressBills.loading")}
-            </p>
+            <WidgetState variant="loading" message={t("workspaceWidgets.progressBills.loading")} />
           ) : bills.length === 0 ? (
             <p className="text-sm text-[color:var(--foreground-muted)]">
               {t("workspaceWidgets.progressBills.empty")}
@@ -224,35 +219,35 @@ export default function ProgressBillPortalPanel() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {bill.status === "DRAFT" ? (
-                      <button
-                        type="button"
-                        disabled={actingId === bill.id}
+                      <OsButton
+                        variant="secondary"
+                        size="sm"
+                        loading={actingId === bill.id}
                         onClick={() => void handleAction(bill.id, "submit")}
-                        className="os-btn-secondary text-xs font-bold"
                       >
                         {t("workspaceWidgets.progressBills.submit")}
-                      </button>
+                      </OsButton>
                     ) : null}
                     {bill.status === "SUBMITTED" ? (
-                      <button
-                        type="button"
-                        disabled={actingId === bill.id}
+                      <OsButton
+                        variant="primary"
+                        size="sm"
+                        loading={actingId === bill.id}
+                        icon={<Check size={14} aria-hidden />}
                         onClick={() => void handleAction(bill.id, "approve")}
-                        className="os-btn-primary flex items-center gap-1 text-xs font-bold"
                       >
-                        <Check size={14} />
                         {t("workspaceWidgets.progressBills.approve")}
-                      </button>
+                      </OsButton>
                     ) : null}
                     {bill.status === "APPROVED" ? (
-                      <button
-                        type="button"
-                        disabled={actingId === bill.id}
+                      <OsButton
+                        variant="secondary"
+                        size="sm"
+                        loading={actingId === bill.id}
                         onClick={() => void handleAction(bill.id, "pay")}
-                        className="os-btn-secondary text-xs font-bold"
                       >
                         {t("workspaceWidgets.progressBills.markPaid")}
-                      </button>
+                      </OsButton>
                     ) : null}
                   </div>
                 </div>

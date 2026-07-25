@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { CheckSquare, Square, AlertTriangle, CheckCircle2, Circle } from "lucide-react";
 import type { BlueprintAnalysis } from "@/lib/projects/blueprint-analysis-schema";
 import type { BlueprintPreviewState } from "./useBlueprintPreviewState";
@@ -9,20 +10,21 @@ const inputCls = "rounded border border-[color:var(--border-main)]/60 bg-transpa
 const numInputCls = `${inputCls} w-20 text-left ltr`;
 
 export function ConfidenceChip({ value }: { value?: number }) {
+  const { t } = useI18n();
   if (value === undefined) return null;
   if (value >= 0.8) return (
     <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-700 dark:text-emerald-200">
-      <CheckCircle2 size={9} />דיוק גבוה
+      <CheckCircle2 size={9} aria-hidden />{t("projectDashboard.bpAccuracyHigh")}
     </span>
   );
   if (value >= 0.5) return (
     <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-200">
-      <Circle size={9} />דיוק בינוני
+      <Circle size={9} aria-hidden />{t("projectDashboard.bpAccuracyMedium")}
     </span>
   );
   return (
     <span className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] text-rose-700 dark:text-rose-300">
-      <AlertTriangle size={9} />בדוק בעצמך
+      <AlertTriangle size={9} aria-hidden />{t("projectDashboard.bpAccuracyCheck")}
     </span>
   );
 }
@@ -39,15 +41,16 @@ function toggleIndex(setFn: React.Dispatch<React.SetStateAction<Set<number>>>, i
 type SectionsProps = { data: BlueprintAnalysis; s: BlueprintPreviewState };
 
 export function TasksSection({ data, s }: SectionsProps) {
+  const { t } = useI18n();
   if (data.tasks.length === 0) return null;
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">משימות לגנט</h3>
+        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">{t("projectDashboard.bpTasksForGantt")}</h3>
         <span className="rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[9px] text-indigo-700 dark:text-indigo-200">{data.tasks.length}</span>
         <button type="button" className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
           onClick={() => s.toggleAll(s.selectedTasks, s.setSelectedTasks, data.tasks.length)}>
-          {s.selectedTasks.size === data.tasks.length ? "בטל הכל" : "בחר הכל"}
+          {t(s.selectedTasks.size === data.tasks.length ? "projectDashboard.deselectAll" : "projectDashboard.selectAll")}
         </button>
       </div>
       <div className="space-y-1.5">
@@ -67,23 +70,23 @@ export function TasksSection({ data, s }: SectionsProps) {
                   onChange={(e) => s.setTaskEdits((prev) => prev.map((t, j) => j === i ? { ...t, name: e.target.value } : t))} />
                 <div className="flex flex-wrap gap-2">
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    קטגוריה
+                    {t("projectDashboard.colCategory")}
                     <input type="text" className={`w-24 ${inputCls}`} value={edit.tradeCategory}
                       onChange={(e) => s.setTaskEdits((prev) => prev.map((t, j) => j === i ? { ...t, tradeCategory: e.target.value } : t))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    משך
+                    {t("projectDashboard.colDuration")}
                     <input type="number" className={`w-12 ${inputCls} ltr text-left`} value={edit.durationDays}
                       onChange={(e) => s.setTaskEdits((prev) => prev.map((t, j) => j === i ? { ...t, durationDays: e.target.value } : t))} />
-                    ימים
+                    {t("projectDashboard.colDays")}
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    התחלה
+                    {t("projectDashboard.colStart")}
                     <input type="date" className={inputCls} value={edit.startDate}
                       onChange={(e) => s.setTaskEdits((prev) => prev.map((t, j) => j === i ? { ...t, startDate: e.target.value } : t))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    סיום
+                    {t("projectDashboard.colEnd")}
                     <input type="date" className={inputCls} value={edit.endDate}
                       onChange={(e) => s.setTaskEdits((prev) => prev.map((t, j) => j === i ? { ...t, endDate: e.target.value } : t))} />
                   </label>
@@ -98,15 +101,16 @@ export function TasksSection({ data, s }: SectionsProps) {
 }
 
 export function MilestonesSection({ data, s }: SectionsProps) {
+  const { t } = useI18n();
   if (data.milestones.length === 0) return null;
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">אבני דרך ותשלום</h3>
+        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">{t("projectDashboard.bpMilestonesAndPayment")}</h3>
         <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-200">{data.milestones.length}</span>
         <button type="button" className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
           onClick={() => s.toggleAll(s.selectedMilestones, s.setSelectedMilestones, data.milestones.length)}>
-          {s.selectedMilestones.size === data.milestones.length ? "בטל הכל" : "בחר הכל"}
+          {t(s.selectedMilestones.size === data.milestones.length ? "projectDashboard.deselectAll" : "projectDashboard.selectAll")}
         </button>
       </div>
       <div className="space-y-1.5">
@@ -125,20 +129,20 @@ export function MilestonesSection({ data, s }: SectionsProps) {
                   onChange={(e) => s.setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, name: e.target.value } : m))} />
                 <div className="flex flex-wrap gap-2">
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    אחוז
+                    {t("projectDashboard.colPercent")}
                     <input type="number" min={0} max={100} className={numInputCls}
                       value={edit.percent}
                       onChange={(e) => s.setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, percent: e.target.value } : m))} />
                     %
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    סכום ₪
+                    {t("projectDashboard.colAmount")}
                     <input type="number" min={0} className={numInputCls}
                       value={edit.amount}
                       onChange={(e) => s.setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, amount: e.target.value } : m))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    תיאור
+                    {t("projectDashboard.colDescription")}
                     <input type="text" className={`w-40 ${inputCls}`}
                       value={edit.description}
                       onChange={(e) => s.setMilestoneEdits((prev) => prev.map((m, j) => j === i ? { ...m, description: e.target.value } : m))} />
@@ -154,20 +158,21 @@ export function MilestonesSection({ data, s }: SectionsProps) {
 }
 
 export function BoqSection({ data, s }: SectionsProps) {
+  const { t, locale } = useI18n();
   if (data.boqLineItems.length === 0) return null;
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">סעיפי כתב כמויות</h3>
+        <h3 className="text-xs font-semibold text-[color:var(--foreground)]">{t("projectDashboard.bpBoqItems")}</h3>
         <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] text-emerald-700 dark:text-emerald-200">{data.boqLineItems.length}</span>
         {s.boqTotal > 0 ? (
           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:text-emerald-200">
-            {`סה"כ: ₪${s.boqTotal.toLocaleString("he-IL")}`}
+            {`${t("projectDashboard.bpBoqTotal")}: ₪${s.boqTotal.toLocaleString(locale)}`}
           </span>
         ) : null}
         <button type="button" className="mr-auto text-[9px] text-[color:var(--foreground-muted)] underline"
           onClick={() => s.toggleAll(s.selectedBoq, s.setSelectedBoq, data.boqLineItems.length)}>
-          {s.selectedBoq.size === data.boqLineItems.length ? "בטל הכל" : "בחר הכל"}
+          {t(s.selectedBoq.size === data.boqLineItems.length ? "projectDashboard.deselectAll" : "projectDashboard.selectAll")}
         </button>
       </div>
       <div className="space-y-1.5">
@@ -189,27 +194,27 @@ export function BoqSection({ data, s }: SectionsProps) {
                   onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, description: e.target.value } : q))} />
                 <div className="flex flex-wrap gap-2">
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    קטגוריה
+                    {t("projectDashboard.colCategory")}
                     <input type="text" className={`w-24 ${inputCls}`} value={edit.tradeCategory}
                       onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, tradeCategory: e.target.value } : q))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    תוכנית
+                    {t("projectDashboard.colPlan")}
                     <input type="text" className={`w-16 ${inputCls}`} value={edit.drawingRef}
                       onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, drawingRef: e.target.value } : q))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    יחידה
+                    {t("projectDashboard.colUnit")}
                     <input type="text" className={`w-12 ${inputCls}`} value={edit.unit}
                       onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, unit: e.target.value } : q))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    כמות
+                    {t("projectDashboard.colQuantity")}
                     <input type="number" min={0} className={numInputCls} value={edit.quantity}
                       onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, quantity: e.target.value } : q))} />
                   </label>
                   <label className="flex items-center gap-1 text-[9px] text-[color:var(--foreground-muted)]">
-                    {`מחיר/יח'`}
+                    {t("projectDashboard.colUnitPrice")}
                     <input type="number" min={0} className={numInputCls} value={edit.unitPrice}
                       onChange={(e) => s.setBoqEdits((prev) => prev.map((q, j) => j === i ? { ...q, unitPrice: e.target.value } : q))} />
                   </label>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { pickVideoRecorderMime, useCameraStream } from "@/hooks/useCameraStream";
 import CameraPreviewFrame from "./CameraPreviewFrame";
+import { OsButton } from "@/components/os/ui";
 
 const MAX_SEC = 90;
 
@@ -98,15 +99,17 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h4 className="font-bold text-sm">{t("workspaceWidgets.fieldCopilot.videoTitle")}</h4>
         {hasVideo && videoAssetId ? (
-          <button
-            type="button"
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+            loading={deleting}
+            disabled={uploading}
+            icon={<Trash2 size={11} aria-hidden />}
             onClick={() => void handleDelete()}
-            disabled={deleting || uploading}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-rose-600 hover:bg-rose-500/10 dark:text-rose-400 transition disabled:opacity-50"
           >
-            <Trash2 size={11} />
             {t("workspaceWidgets.fieldCopilot.videoDelete")}
-          </button>
+          </OsButton>
         ) : null}
       </div>
 
@@ -123,15 +126,15 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
           <p className="mt-2 text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             {t("workspaceWidgets.fieldCopilot.videoSaved")}
           </p>
-          <button
-            type="button"
+          <OsButton
+            variant="secondary"
+            className="mt-3 min-h-[44px] w-full justify-center border-violet-500/40 bg-violet-500/10 text-violet-700 active:scale-95 dark:text-violet-300"
             disabled={uploading || opening}
+            icon={<Video size={18} aria-hidden />}
             onClick={() => void openPreview()}
-            className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-violet-500/40 bg-violet-500/10 text-sm font-bold text-violet-700 dark:text-violet-300 transition active:scale-95"
           >
-            <Video size={18} />
             {t("workspaceWidgets.fieldCopilot.videoRerecord")}
-          </button>
+          </OsButton>
         </div>
       ) : null}
 
@@ -159,35 +162,35 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
           ) : null}
           <div className="flex flex-wrap gap-2">
             {recording ? (
-              <button
-                type="button"
+              <OsButton
+                variant="danger"
+                className="min-h-[48px] flex-1 justify-center active:scale-95"
                 disabled={uploading}
+                icon={<Square size={20} aria-hidden />}
                 onClick={stopRecording}
-                className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
               >
-                <Square size={20} />
                 {t("workspaceWidgets.fieldCopilot.videoStop")}
-              </button>
+              </OsButton>
             ) : (
               <>
-                <button
-                  type="button"
+                <OsButton
+                  variant="primary"
+                  className="min-h-[48px] flex-1 justify-center bg-violet-600 hover:bg-violet-500 active:scale-95"
                   disabled={uploading || opening || !active}
+                  icon={<Video size={20} aria-hidden />}
                   onClick={() => void startRecording()}
-                  className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-violet-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
                 >
-                  <Video size={20} />
                   {t("workspaceWidgets.fieldCopilot.videoStart")}
-                </button>
-                <button
-                  type="button"
+                </OsButton>
+                <OsButton
+                  variant="secondary"
+                  className="min-h-[48px] px-4 active:scale-95"
                   disabled={uploading || opening}
+                  icon={<VideoOff size={18} aria-hidden />}
                   onClick={closeCamera}
-                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-[color:var(--border-main)] px-4 font-bold active:scale-95 transition"
                 >
-                  <VideoOff size={18} />
                   {t("workspaceWidgets.fieldCopilot.cameraClose")}
-                </button>
+                </OsButton>
               </>
             )}
           </div>
@@ -206,17 +209,18 @@ export default function VideoCapturePanel({ hasVideo, videoAssetId, onVideo, onD
               <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">
                 {t("workspaceWidgets.fieldCopilot.videoHint")}
               </p>
-              <button
-                type="button"
-                disabled={uploading || opening}
+              <OsButton
+                variant="primary"
+                className="min-h-[48px] w-full justify-center bg-violet-600 hover:bg-violet-500 active:scale-95"
+                loading={opening}
+                disabled={uploading}
+                icon={<Video size={20} aria-hidden />}
                 onClick={() => void openPreview()}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-violet-600 font-bold text-white disabled:opacity-40 active:scale-95 transition"
               >
-                <Video size={20} />
                 {opening
                   ? t("workspaceWidgets.fieldCopilot.cameraOpening")
                   : t("workspaceWidgets.fieldCopilot.cameraOpenVideo")}
-              </button>
+              </OsButton>
             </>
           )}
         </div>

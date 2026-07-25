@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
+import { OsIconButton } from "@/components/os/ui";
 import { StatCard, ChartContainer } from "@/components/os/widgets/shared/WidgetCard";
 import { useDashboardStats } from "@/components/os/useDashboardStats";
 import {
@@ -150,11 +152,20 @@ export default function CashflowWidget({
               {t("workspaceWidgets.cashflowView.title")}
             </h2>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-200">
-            <span
-              className={`h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 ${isLivePulse ? "animate-ping" : ""}`}
-            />
-            {t("workspaceWidgets.cashflowView.liveBadge")}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-200">
+              <span
+                className={`h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-300 ${isLivePulse ? "animate-ping" : ""}`}
+              />
+              {t("workspaceWidgets.cashflowView.liveBadge")}
+            </div>
+            <OsIconButton
+              label={t("common.refresh")}
+              size="sm"
+              onClick={() => void fetchDashboardStats()}
+            >
+              <RefreshCw size={15} aria-hidden />
+            </OsIconButton>
           </div>
         </div>
       </div>
@@ -182,11 +193,11 @@ export default function CashflowWidget({
           subtitle={t("workspaceWidgets.cashflowView.chartSubtitle")}
           actionElement={
             <div className="flex items-center gap-3" dir="ltr">
-              <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5 text-xs text-[color:var(--foreground-muted)]">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                 {t("workspaceWidgets.cashflowView.legendRevenue")}
               </span>
-              <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5 text-xs text-[color:var(--foreground-muted)]">
                 <span className="h-2 w-2 rounded-full bg-rose-500 dark:bg-rose-400" />
                 {t("workspaceWidgets.cashflowView.legendExpenses")}
               </span>
@@ -196,7 +207,7 @@ export default function CashflowWidget({
         >
           <div className="min-w-0 overflow-x-auto pb-1">
             <div
-              className="flex h-36 min-w-[300px] items-end justify-between gap-1.5 border-b border-slate-200 pb-3 sm:gap-3 dark:border-slate-700/50"
+              className="flex h-36 min-w-[300px] items-end justify-between gap-1.5 border-b border-[color:var(--border-main)] pb-3 sm:gap-3"
               dir="ltr"
             >
               {cashflow.trend.map((item) => {
@@ -208,8 +219,8 @@ export default function CashflowWidget({
                     onClick={() => setSelectedPoint(item)}
                     className={`flex h-full flex-1 flex-col items-center justify-end gap-2 rounded-xl px-1 transition-colors ${
                       isSelected
-                        ? "bg-slate-100 dark:bg-slate-700/50"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                        ? "bg-[color:var(--surface-soft)]"
+                        : "hover:bg-[color:var(--surface-soft)]/60"
                     }`}
                   >
                     <div className="flex h-full w-full items-end justify-center gap-1.5">
@@ -224,7 +235,7 @@ export default function CashflowWidget({
                         title={`${item.month} ${t("workspaceWidgets.cashflowView.legendExpenses")}: ${nis.format(item.expenses)}`}
                       />
                     </div>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">{item.month}</span>
+                    <span className="text-[11px] text-[color:var(--foreground-muted)]">{item.month}</span>
                   </button>
                 );
               })}
@@ -233,7 +244,7 @@ export default function CashflowWidget({
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-emerald-200 bg-green-50 px-4 py-3 dark:border-emerald-800/60 dark:bg-green-500/10">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <p className="text-xs font-medium text-[color:var(--foreground-muted)]">
                 {t("workspaceWidgets.cashflowView.runwayLabel")}
               </p>
               <p className="mt-1 font-bold text-emerald-700 dark:text-emerald-400">
@@ -245,18 +256,18 @@ export default function CashflowWidget({
               </p>
             </div>
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-800/60 dark:bg-red-500/10">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <p className="text-xs font-medium text-[color:var(--foreground-muted)]">
                 {t("workspaceWidgets.cashflowView.payablesLabel")}
               </p>
               <p className="mt-1 font-bold text-rose-700 dark:text-rose-400">
                 {nis.format(cashflow.overview.upcomingPayables)}
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700/60 dark:bg-slate-800">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-4 py-3">
+              <p className="text-xs font-medium text-[color:var(--foreground-muted)]">
                 {selectedPoint?.month ?? t("workspaceWidgets.cashflowView.detailLabel")}
               </p>
-              <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <p className="mt-1 text-sm font-semibold text-[color:var(--foreground-main)]">
                 {selectedPoint
                   ? t("workspaceWidgets.cashflowView.netMonth", {
                       amount: nis.format(selectedPoint.revenue - selectedPoint.expenses),

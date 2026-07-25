@@ -7,6 +7,7 @@ import { ScanEngineBar } from "@/components/os/scan/shared/ScanEngineBar";
 import { ScanControlBar } from "@/components/os/widgets/ai-scanner/ScanControlBar";
 import { useOfficeExpenseScan } from "@/components/os/widgets/office-expense-scan/useOfficeExpenseScan";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import type { ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 
 type Props = {
@@ -63,11 +64,11 @@ export default function OfficeExpenseScanPanel({ onExpenseSaved }: Props) {
             <Receipt size={14} className="text-[color:var(--win-accent,#6366f1)]" aria-hidden />
             {activeModeLabel}
           </span>
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((open) => !open)}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-elevated)] hover:text-[color:var(--foreground-main)]"
+          <OsButton
+            variant="quiet"
+            size="sm"
             aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((open) => !open)}
           >
             {t("workspaceWidgets.officeExpenses.scanAdvanced")}
             <ChevronDown
@@ -75,7 +76,7 @@ export default function OfficeExpenseScanPanel({ onExpenseSaved }: Props) {
               className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`}
               aria-hidden
             />
-          </button>
+          </OsButton>
         </div>
       ) : null}
 

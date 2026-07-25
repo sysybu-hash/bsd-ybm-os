@@ -2,6 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import { officeExpenseNis } from "./types";
 
@@ -63,22 +64,21 @@ export default function OfficeExpenseList({
             <span className="font-semibold">{officeExpenseNis.format(row.total)}</span>
             {canManage ? (
               <>
-                <button
-                  type="button"
-                  aria-label={t("workspaceWidgets.officeExpenses.edit")}
-                  className="rounded p-1 hover:bg-[color:var(--surface-elevated)]"
+                <OsIconButton
+                  label={t("workspaceWidgets.officeExpenses.edit")}
+                  size="sm"
                   onClick={() => onEdit(row)}
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("workspaceWidgets.officeExpenses.delete")}
-                  className="rounded p-1 text-rose-500 hover:bg-rose-500/10"
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                </OsIconButton>
+                <OsIconButton
+                  label={t("workspaceWidgets.officeExpenses.delete")}
+                  size="sm"
+                  className="text-rose-500 hover:bg-rose-500/10"
                   onClick={() => onDeleteRequest(row.id)}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </OsIconButton>
               </>
             ) : null}
           </div>
@@ -86,16 +86,9 @@ export default function OfficeExpenseList({
         ))}
       </ul>
       {hasMore ? (
-        <button
-          type="button"
-          disabled={loadingMore}
-          onClick={onLoadMore}
-          className="mt-3 w-full rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-medium text-[color:var(--win-accent,#6366f1)] hover:bg-indigo-50 disabled:opacity-60 dark:hover:bg-indigo-950/30"
-        >
-          {loadingMore
-            ? t("workspaceWidgets.officeExpenses.loadingMore")
-            : t("workspaceWidgets.officeExpenses.loadMore")}
-        </button>
+        <OsButton variant="secondary" className="mt-3 w-full justify-center" loading={loadingMore} onClick={onLoadMore}>
+          {t("workspaceWidgets.officeExpenses.loadMore")}
+        </OsButton>
       ) : null}
     </>
   );

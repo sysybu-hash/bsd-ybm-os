@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { formatShortDate } from "@/lib/ui-formatters";
+import WidgetState from "@/components/os/WidgetState";
 import type { ContactTimelineEvent } from "./types";
 
 type Props = {
@@ -31,22 +32,22 @@ export function ClientTimelineTab({ clientId, t }: Props) {
     return () => { cancelled = true; };
   }, [clientId]);
 
-  if (loading) return <p className="text-sm text-slate-500">{t("workspaceWidgets.crmTable.timelineLoading")}</p>;
+  if (loading) return <WidgetState variant="loading" message={t("workspaceWidgets.crmTable.timelineLoading")} />;
 
   if (timeline.length === 0) return (
-    <p className="text-sm text-slate-500">{t("workspaceWidgets.crmTable.timelineEmpty")}</p>
+    <WidgetState variant="empty" message={t("workspaceWidgets.crmTable.timelineEmpty")} />
   );
 
   return (
     <ul className="space-y-3">
       {timeline.map((ev) => (
-        <li key={ev.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/5 dark:bg-white/5">
-          <div className="mb-1 flex justify-between gap-2 text-xs text-slate-500">
+        <li key={ev.id} className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-4">
+          <div className="mb-1 flex justify-between gap-2 text-xs text-[color:var(--foreground-muted)]">
             <span className="font-bold uppercase tracking-wider">{ev.kind}</span>
             <time dateTime={ev.at}>{formatShortDate(ev.at)}</time>
           </div>
-          <p className="font-bold text-slate-900 dark:text-white">{ev.title}</p>
-          {ev.detail ? <p className="mt-1 text-xs text-slate-500">{ev.detail}</p> : null}
+          <p className="font-bold text-[color:var(--foreground-main)]">{ev.title}</p>
+          {ev.detail ? <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">{ev.detail}</p> : null}
         </li>
       ))}
     </ul>

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import OsFloatingPanel from "@/components/os/layout/OsFloatingPanel";
+import { OsButton } from "@/components/os/ui";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
 const prefix = "workspaceWidgets.logistics.inventory";
 
 const inputClass =
-  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent)]";
+  "w-full rounded-md border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-sm text-[color:var(--foreground-main)] focus:outline-none focus:ring-2 focus:ring-[color:var(--win-accent,var(--accent))]";
 const labelClass = "mb-1 block text-sm font-medium text-[color:var(--foreground-muted)]";
 
 type Props = {
@@ -88,22 +88,12 @@ export default function InventoryItemFormPanel({ open, onClose, onSaved }: Props
       title={t(`${prefix}.formTitle`)}
       footer={
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-[color:var(--border-main)] px-4 py-2 text-sm"
-          >
+          <OsButton variant="secondary" onClick={onClose}>
             {t("common.cancel")}
-          </button>
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => void handleSubmit()}
-            className="inline-flex items-center gap-2 rounded-md bg-[color:var(--brand-accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          </OsButton>
+          <OsButton variant="primary" loading={isSubmitting} onClick={() => void handleSubmit()}>
             {t(`${prefix}.save`)}
-          </button>
+          </OsButton>
         </div>
       }
     >

@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { CalendarViewMode } from "./types";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 type CalendarWidgetHeaderProps = {
   dir: "rtl" | "ltr";
@@ -103,61 +104,41 @@ export function CalendarWidgetHeader({
               {viewBtn("agenda", viewAgendaLabel, List)}
             </div>
             {onAddEvent ? (
-              <button
-                type="button"
+              <OsButton
+                variant="secondary"
+                size="sm"
+                className="bg-violet-600 text-white hover:bg-violet-500 border-transparent"
+                icon={<Plus size={15} aria-hidden />}
                 onClick={onAddEvent}
-                className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-violet-500"
               >
-                <Plus size={15} />
                 <span className="hidden sm:inline">{addEventLabel}</span>
-              </button>
+              </OsButton>
             ) : null}
-            <button
-              type="button"
-              onClick={onPrint}
-              className="p-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-colors"
-              aria-label={printLabel}
-              title={printLabel}
-            >
-              <Printer size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="p-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-colors disabled:opacity-50"
-              aria-label={refreshLabel}
-            >
-              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-            </button>
+            <OsIconButton label={printLabel} onClick={onPrint}>
+              <Printer size={16} aria-hidden />
+            </OsIconButton>
+            <OsIconButton label={refreshLabel} disabled={refreshing} onClick={onRefresh}>
+              <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} aria-hidden />
+            </OsIconButton>
           </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onPrevPeriod}
-              className="p-2 rounded-lg hover:bg-[color:var(--surface-card)]/80 text-[color:var(--foreground-muted)]"
-              aria-label="Previous"
-            >
-              <PrevIcon size={18} />
-            </button>
-            <button
-              type="button"
+            <OsIconButton label="Previous" onClick={onPrevPeriod}>
+              <PrevIcon size={18} aria-hidden />
+            </OsIconButton>
+            <OsButton
+              variant="secondary"
+              size="sm"
+              className="border-violet-500/30 text-violet-600 hover:bg-violet-500/10 dark:text-violet-400"
               onClick={onToday}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
             >
               {todayLabel}
-            </button>
-            <button
-              type="button"
-              onClick={onNextPeriod}
-              className="p-2 rounded-lg hover:bg-[color:var(--surface-card)]/80 text-[color:var(--foreground-muted)]"
-              aria-label="Next"
-            >
-              <NextIcon size={18} />
-            </button>
+            </OsButton>
+            <OsIconButton label="Next" onClick={onNextPeriod}>
+              <NextIcon size={18} aria-hidden />
+            </OsIconButton>
           </div>
           <p className="text-sm font-bold text-[color:var(--foreground-main)] tabular-nums">
             {rangeLabel}

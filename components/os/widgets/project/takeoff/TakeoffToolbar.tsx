@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { SQM_UNIT } from "./types";
 import type { TakeoffState } from "./useTakeoffState";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 type TakeoffToolbarProps = {
   state: TakeoffState;
@@ -74,37 +75,19 @@ export function TakeoffToolbar({ state, saving }: TakeoffToolbarProps) {
             <div className="mx-1 h-6 w-px bg-[color:var(--border-main)]" />
 
             {/* ניווט */}
-            <button
-              type="button"
+            <OsIconButton
+              label={t("workspaceWidgets.takeoff.pan")}
+              active={mode === "pan"}
               onClick={() => setMode(mode === "pan" ? "idle" : "pan")}
-              title={t("workspaceWidgets.takeoff.pan")}
-              aria-label={t("workspaceWidgets.takeoff.pan")}
-              className={`rounded-lg p-2 transition-colors ${
-                mode === "pan"
-                  ? "bg-[color:var(--win-accent,#6366f1)] text-white"
-                  : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-              }`}
             >
-              <Move className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => applyZoomAtPoint(1.2)}
-              title={t("workspaceWidgets.takeoff.zoomIn")}
-              aria-label={t("workspaceWidgets.takeoff.zoomIn")}
-              className="rounded-lg p-2 text-[color:var(--foreground-muted)] transition-colors hover:bg-[color:var(--surface-soft)]"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => applyZoomAtPoint(1 / 1.2)}
-              title={t("workspaceWidgets.takeoff.zoomOut")}
-              aria-label={t("workspaceWidgets.takeoff.zoomOut")}
-              className="rounded-lg p-2 text-[color:var(--foreground-muted)] transition-colors hover:bg-[color:var(--surface-soft)]"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </button>
+              <Move className="h-4 w-4" aria-hidden />
+            </OsIconButton>
+            <OsIconButton label={t("workspaceWidgets.takeoff.zoomIn")} onClick={() => applyZoomAtPoint(1.2)}>
+              <ZoomIn className="h-4 w-4" aria-hidden />
+            </OsIconButton>
+            <OsIconButton label={t("workspaceWidgets.takeoff.zoomOut")} onClick={() => applyZoomAtPoint(1 / 1.2)}>
+              <ZoomOut className="h-4 w-4" aria-hidden />
+            </OsIconButton>
             <span className="min-w-[3rem] text-center font-mono text-xs text-[color:var(--foreground-muted)]">
               {Math.round(scale * 100)}%
             </span>
@@ -112,55 +95,40 @@ export function TakeoffToolbar({ state, saving }: TakeoffToolbarProps) {
             <div className="mx-1 h-6 w-px bg-[color:var(--border-main)]" />
 
             {/* מדידה */}
-            <button
-              type="button"
+            <OsButton
+              variant={mode === "calibrate" ? "primary" : "quiet"}
+              icon={<Ruler className="h-4 w-4" aria-hidden />}
               onClick={() => {
                 setMode("calibrate");
                 setCalibrationPoints([]);
               }}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                mode === "calibrate"
-                  ? "bg-[color:var(--win-accent,#6366f1)] text-white"
-                  : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-              }`}
             >
-              <Ruler className="h-4 w-4" />
               {t("workspaceWidgets.takeoff.calibrate")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("measure")}
+            </OsButton>
+            <OsButton
+              variant={mode === "measure" ? "primary" : "quiet"}
               disabled={!ppm}
+              icon={<Hexagon className="h-4 w-4" aria-hidden />}
               title={!ppm ? t("workspaceWidgets.takeoff.needCalibrate") : ""}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                !ppm
-                  ? "cursor-not-allowed text-[color:var(--foreground-muted)] opacity-50"
-                  : mode === "measure"
-                    ? "bg-[color:var(--win-accent,#6366f1)] text-white"
-                    : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
-              }`}
+              onClick={() => setMode("measure")}
             >
-              <Hexagon className="h-4 w-4" />
               {t("workspaceWidgets.takeoff.measurePolygon")}
-            </button>
-            <button
-              type="button"
-              onClick={undoLastPoint}
+            </OsButton>
+            <OsIconButton
+              label={t("workspaceWidgets.takeoff.undo")}
               disabled={mode !== "measure" || measurePoints.length === 0}
-              title={t("workspaceWidgets.takeoff.undo")}
-              aria-label={t("workspaceWidgets.takeoff.undo")}
-              className="rounded-lg p-2 text-[color:var(--foreground-muted)] transition-colors hover:bg-[color:var(--surface-soft)] disabled:opacity-40"
+              onClick={undoLastPoint}
             >
-              <Undo2 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+              <Undo2 className="h-4 w-4" aria-hidden />
+            </OsIconButton>
+            <OsButton
+              variant="quiet"
+              className="text-rose-500 hover:bg-rose-500/10"
+              icon={<Trash2 className="h-4 w-4" aria-hidden />}
               onClick={resetMeasurement}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
             >
-              <Trash2 className="h-4 w-4" />
               {t("workspaceWidgets.takeoff.clear")}
-            </button>
+            </OsButton>
           </>
         ) : null}
       </div>

@@ -2,6 +2,7 @@
 
 import { Share2 } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 
 const PREFIX = "workspaceWidgets.appBuilder";
 
@@ -64,20 +65,25 @@ export function SaveAppForm({
           </span>
         </label>
       ) : onShareNow && !readOnlyLoaded ? (
-        <button
-          type="button"
+        <OsButton
+          variant="secondary"
+          className="justify-center border-indigo-500/20 bg-indigo-500/5 text-[color:var(--accent)] hover:bg-indigo-500/15 dark:text-indigo-300"
+          loading={sharingIdea}
+          icon={<Share2 size={12} aria-hidden />}
           onClick={onShareNow}
-          disabled={sharingIdea}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs font-medium text-[color:var(--accent)] dark:text-indigo-300 transition hover:bg-indigo-500/15 disabled:opacity-60"
         >
-          <Share2 size={12} aria-hidden />
-          {sharingIdea ? "שולח…" : t(`${PREFIX}.shareIdeaLabel`)}
-        </button>
+          {t(`${PREFIX}.shareIdeaLabel`)}
+        </OsButton>
       ) : null}
-      <button type="button" onClick={onSave} disabled={saving || readOnlyLoaded}
-        className={`w-full rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${isEditing ? "bg-[color:var(--accent)] text-white hover:opacity-90" : "border border-indigo-500/40 bg-indigo-500/10 text-[color:var(--accent)] dark:text-indigo-300 hover:bg-indigo-500/20"}`}>
-        {saving ? t(`${PREFIX}.saving`) : isEditing ? t(`${PREFIX}.updateApp`) : t(`${PREFIX}.saveApp`)}
-      </button>
+      <OsButton
+        variant={isEditing ? "primary" : "secondary"}
+        className={`w-full justify-center ${isEditing ? "" : "border-indigo-500/40 bg-indigo-500/10 text-[color:var(--accent)] hover:bg-indigo-500/20 dark:text-indigo-300"}`}
+        disabled={readOnlyLoaded}
+        loading={saving}
+        onClick={onSave}
+      >
+        {isEditing ? t(`${PREFIX}.updateApp`) : t(`${PREFIX}.saveApp`)}
+      </OsButton>
     </div>
   );
 }

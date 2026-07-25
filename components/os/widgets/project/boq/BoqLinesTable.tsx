@@ -19,13 +19,13 @@ export function BoqLinesTable({ lines, editCell, patchLine, deleteLine, t }: Boq
       <table className="w-full min-w-[520px] text-xs">
         <thead>
           <tr className="bg-[color:var(--surface-elevated)] text-[color:var(--foreground-muted)]">
-            <th className="p-2 text-start">תיאור</th>
-            <th className="p-2">יחידה</th>
-            <th className="p-2">כמות</th>
-            <th className="p-2">מחיר</th>
-            <th className="p-2">סה״כ</th>
-            <th className="p-2">בוצע</th>
-            <th className="p-2">מקדם</th>
+            <th className="p-2 text-start">{t("projectDashboard.boqColDescription")}</th>
+            <th className="p-2">{t("projectDashboard.boqColUnit")}</th>
+            <th className="p-2">{t("projectDashboard.boqColQuantity")}</th>
+            <th className="p-2">{t("projectDashboard.boqColPrice")}</th>
+            <th className="p-2">{t("projectDashboard.boqColTotal")}</th>
+            <th className="p-2">{t("projectDashboard.boqColDone")}</th>
+            <th className="p-2">{t("projectDashboard.boqColFactor")}</th>
             <th className="p-2" aria-label={t("workspaceWidgets.projectBoq.deleteRow")} />
           </tr>
         </thead>

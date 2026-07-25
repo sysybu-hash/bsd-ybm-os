@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMeckanoAccess } from "@/hooks/use-meckano-access";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton } from "@/components/os/ui";
 import type { DashboardData } from "./types";
 import { formatDate } from "./utils";
 
@@ -26,6 +27,7 @@ export function DiaryTab({
   initialDesc,
   initialTaskId,
 }: DiaryTabProps) {
+
   const { allowed: meckanoAllowed } = useMeckanoAccess();
   const [desc, setDesc] = useState(initialDesc ?? "");
   const [linkTaskId, setLinkTaskId] = useState<string | null>(initialTaskId ?? null);
@@ -44,9 +46,9 @@ export function DiaryTab({
   return (
     <div className="space-y-4">
       {meckanoAllowed ? (
-        <button
-          type="button"
-          className="rounded-lg border border-[color:var(--border-main)] px-2 py-1 text-xs"
+        <OsButton
+          variant="secondary"
+          size="sm"
           onClick={async () => {
             const res = await fetch(`${apiBase}/sync-meckano`, {
               method: "POST",
@@ -61,8 +63,8 @@ export function DiaryTab({
             await refresh();
           }}
         >
-          סנכרון ממקאנו ליומן
-        </button>
+          {t("projectDashboard.diarySyncMeckano")}
+        </OsButton>
       ) : null}
 
       <form
@@ -112,9 +114,9 @@ export function DiaryTab({
             onChange={(e) => setProgress(e.target.value)}
             aria-label={t("projectDashboard.progress")}
           />
-          <button type="submit" className="rounded-lg bg-emerald-600 px-3 py-1 text-xs text-white">
+          <OsButton type="submit" variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-500">
             {t("projectDashboard.saveDiary")}
-          </button>
+          </OsButton>
         </div>
       </form>
 
