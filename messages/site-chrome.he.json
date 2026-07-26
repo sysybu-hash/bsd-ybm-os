@@ -1,4 +1,9 @@
 {
+  "workspaceShell": {
+    "header": {
+      "localeAria": "שפת ממשק"
+    }
+  },
   "siteFooter": {
     "lead": "מערכת ניהול חכמה מבוססת AI לשיפור פריון העבודה וניהול פיננסי מתקדם.",
     "navSystem": "מערכת",

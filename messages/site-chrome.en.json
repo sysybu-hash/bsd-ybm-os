@@ -1,4 +1,9 @@
 {
+  "workspaceShell": {
+    "header": {
+      "localeAria": "Interface language"
+    }
+  },
   "siteFooter": {
     "lead": "AI-powered management for better productivity and financial control.",
     "navSystem": "Product",

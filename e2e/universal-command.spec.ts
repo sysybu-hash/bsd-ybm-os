@@ -24,6 +24,11 @@ async function gotoWorkspace(page: Parameters<typeof tryCredentialsSignIn>[0], u
 }
 
 async function openCommandCenter(page: Parameters<typeof tryCredentialsSignIn>[0]) {
+  // The greeting heading only renders when no windows are open — reset the
+  // persisted layout first (other specs sharing this seeded account leave
+  // windows open server-side).
+  await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
+
   // Load the workspace and wait for it to fully hydrate (greeting visible), then drive
   // the widget open through the app's popstate handler — deterministic, avoids the
   // app-wide cold deep-link-after-login race that clears ?w= before hydration.

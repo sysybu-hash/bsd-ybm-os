@@ -7,7 +7,9 @@ import { test, expect } from "@playwright/test";
 import { dismissCookieBannerIfVisible, primeCookieConsent } from "./helpers";
 
 test.describe("Growth — public blog & contact", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    const origin = baseURL ?? "http://localhost:3001";
+    await page.context().addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
     await primeCookieConsent(page);
   });
 
