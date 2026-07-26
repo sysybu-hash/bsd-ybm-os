@@ -29,10 +29,11 @@ test.describe("Document Scan — auth protection", () => {
     expect([401, 403, 302]).toContain(res.status());
   });
 
-  test("scan share endpoint requires valid share token", async ({ request }) => {
+  test("scan share endpoint rejects unauthenticated GET without a 500", async ({ request }) => {
+    // /api/scan/share is the PWA Web Share Target handler (POST-only, no share-token
+    // lookup) — a GET here should be rejected gracefully (auth/method), never crash.
     const res = await request.get("/api/scan/share?token=invalid_token_for_testing");
-    // 404 for unknown token, not 500
-    expect([404, 400]).toContain(res.status());
+    expect([401, 403, 404, 405]).toContain(res.status());
   });
 
   test("scan engine-meta requires auth", async ({ request }) => {
@@ -143,40 +144,44 @@ test.describe("Document Scan — authenticated happy path (mocked extract)", () 
     test.skip(!signed, "E2E credentials / seed unavailable");
     await waitForAuthenticatedApiSession(page);
 
-    await page.route("**/api/scan/tri-engine**", async (route) => {
+    const mockV5 = {
+      schemaVersion: 5,
+      documentMetadata: {
+        project: null,
+        client: null,
+        documentDate: null,
+        drawingRefs: null,
+        discipline: null,
+        sheetIndex: null,
+        sourceFileName: "e2e-fixture.jpg",
+        scanMode: "GENERAL_DOCUMENT",
+      },
+      billOfQuantities: [],
+      lineItems: [{ description: "E2E line", lineTotal: 10 }],
+      vendor: "E2E Vendor",
+      total: 10,
+      date: "2026-07-16",
+      docType: "GENERAL",
+      summary: "E2E mock extraction",
+      priceAlertPending: false,
+    };
+
+    // The real scan flow POSTs to the streaming NDJSON endpoint, not a plain
+    // JSON response — mock that shape (telemetry -> partial_v5 -> done lines).
+    await page.route("**/api/scan/tri-engine/stream**", async (route) => {
       if (route.request().method() !== "POST") {
         await route.continue();
         return;
       }
+      const lines = [
+        { type: "telemetry", telemetry: { enginesUsed: ["mock"], latencyMs: 1 } },
+        { type: "partial_v5", v5: mockV5 },
+        { type: "done", ok: true, aiData: { vendor: "E2E Vendor", total: 10 } },
+      ];
       await route.fulfill({
         status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          v5: {
-            schemaVersion: 5,
-            documentMetadata: {
-              project: null,
-              client: null,
-              documentDate: null,
-              drawingRefs: null,
-              discipline: null,
-              sheetIndex: null,
-              sourceFileName: "e2e-fixture.jpg",
-              scanMode: "GENERAL_DOCUMENT",
-            },
-            billOfQuantities: [],
-            lineItems: [{ description: "E2E line", lineTotal: 10 }],
-            vendor: "E2E Vendor",
-            total: 10,
-            date: "2026-07-16",
-            docType: "GENERAL",
-            summary: "E2E mock extraction",
-            priceAlertPending: false,
-          },
-          aiData: { vendor: "E2E Vendor", total: 10 },
-          telemetry: { enginesUsed: ["mock"], latencyMs: 1 },
-        }),
+        contentType: "application/x-ndjson; charset=utf-8",
+        body: lines.map((l) => JSON.stringify(l)).join("\n") + "\n",
       });
     });
 
@@ -187,7 +192,15 @@ test.describe("Document Scan — authenticated happy path (mocked extract)", () 
     const shell = widgetShell(page, "documentsHub");
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
+    // The scan tab gates its file input behind a project picker — pick an active
+    // project (an inactive one may not allow scanning).
+    const projectListbox = shell.getByRole("listbox");
+    await expect(projectListbox).toBeVisible({ timeout: 20_000 });
+    const activeOption = projectListbox.getByRole("option").filter({ hasNotText: /Inactive|לא פעיל/i }).first();
+    await activeOption.click();
+
     const fileInput = shell.locator('input[type="file"]').first();
+    await expect(fileInput).toBeAttached({ timeout: 15_000 });
     if (await fileInput.count()) {
       await fileInput.setInputFiles({
         name: "e2e-fixture.jpg",
@@ -198,6 +211,11 @@ test.describe("Document Scan — authenticated happy path (mocked extract)", () 
         ),
       });
     }
+
+    // Selecting a file only stages it — scanning starts when "Scan now" is pressed.
+    const runScanBtn = shell.getByRole("button", { name: /Scan now|סרוק עכשיו/i }).first();
+    await expect(runScanBtn).toBeEnabled({ timeout: 10_000 });
+    await runScanBtn.click();
 
     await expect(
       shell.getByText(/E2E Vendor|E2E mock|שמירה|יעד|ספק|review|סיכום/i).first(),
