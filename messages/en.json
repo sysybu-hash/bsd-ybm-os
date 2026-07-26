@@ -1334,28 +1334,35 @@
       "document": "Document",
       "inventory": "Inventory"
     },
-    "LAWYER": {
+    "LEGAL": {
       "label": "Law Firm",
       "client": "Client / Represented",
       "project": "Legal Case",
       "document": "Legal Filing",
       "inventory": "Library"
     },
-    "ACCOUNTANT": {
+    "ACCOUNTING": {
       "label": "Accounting / Tax",
       "client": "Taxpayer / Client",
       "project": "Audit / Report",
       "document": "Accounting Doc",
       "inventory": "Archive"
     },
-    "CONTRACTOR": {
+    "CONSTRUCTION": {
       "label": "Contracting / Construction",
       "client": "Developer / Client",
       "project": "Worksite / Project",
       "document": "Bill of Quantities",
       "inventory": "Equipment"
     },
-    "HEALTH": {
+    "COMPANY_MGMT": {
+      "label": "Business / Company Management",
+      "client": "Client / Business Partner",
+      "project": "Initiative / Project",
+      "document": "Document / Contract / Proposal",
+      "inventory": "Inventory / Procurement"
+    },
+    "MEDICAL": {
       "label": "Health / Clinic",
       "client": "Patient",
       "project": "Treatment Series",
