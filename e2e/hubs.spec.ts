@@ -34,6 +34,9 @@ async function signIn(page: Parameters<typeof signInWithRetries>[0]) {
   const signed = await signInWithRetries(page);
   await dismissCookieBannerIfVisible(page);
   if (!signed) test.skip(true, "E2E credentials not configured");
+  // The quick-grid launcher and hub tiles only render with zero windows open —
+  // other specs sharing this seeded account persist open windows server-side.
+  await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
   await waitForAuthenticatedWorkspace(page);
   await dismissWorkspaceOverlays(page);
   return signed;
@@ -152,9 +155,11 @@ test.describe("dashboard hubs", () => {
       )
       .catch(() => {});
 
-    const projectPicker = shell.getByText(/בחרו פרויקט|Choose a project/i).first();
-    const addProject = shell.getByRole("button", { name: /הוסף פרויקט|Add project/i }).first();
-    await expect(projectPicker.or(addProject)).toBeVisible({ timeout: 30_000 });
+    // .first() on each side still leaves 2 matches when both are on screen at
+    // once (the normal case) — .or() needs the .first() applied to the union.
+    const projectPicker = shell.getByText(/בחרו פרויקט|Choose a project/i);
+    const addProject = shell.getByRole("button", { name: /הוסף פרויקט|Add project/i });
+    await expect(projectPicker.or(addProject).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
 
