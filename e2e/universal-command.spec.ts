@@ -34,7 +34,7 @@ async function openCommandCenter(page: Parameters<typeof tryCredentialsSignIn>[0
   // app-wide cold deep-link-after-login race that clears ?w= before hydration.
   await gotoWorkspace(page, workspaceUrl({}));
   await dismissWorkspaceOverlays(page);
-  await expect(page.getByRole("heading", { name: /ערב טוב|בוקר טוב|צהריים|שלום|good/i }).first())
+  await expect(page.getByRole("heading", { name: /ערב טוב|בוקר טוב|צהריים|לילה טוב|שלום|good/i }).first())
     .toBeVisible({ timeout: 30_000 });
 
   const shell = widgetShell(page, "universalCommand");

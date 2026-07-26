@@ -208,7 +208,7 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
   const mobileNav = page.getByTestId("mobile-bottom-nav");
   const workspaceNav = page.getByRole("complementary", { name: /Workspace navigation|ניווט/i });
   const hubGreeting = page.getByRole("heading", {
-    name: /Good (morning|afternoon|evening)|בוקר טוב|צהריים טובים|ערב טוב/i,
+    name: /Good (morning|afternoon|evening|night)|בוקר טוב|צהריים טובים|ערב טוב|לילה טוב/i,
   });
   await expect(sidebar.or(mobileNav).or(workspaceNav).or(hubGreeting).first()).toBeVisible({
     timeout: 30000,

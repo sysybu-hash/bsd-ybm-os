@@ -33,7 +33,14 @@ test.describe("marketing preview landing", () => {
   test("renders cinematic hero and RTL", async ({ page }) => {
     await expect(page.locator(".marketing-cinematic")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-    await expect(page.locator("video.mkt-video-bg")).toBeVisible();
+
+    // VideoBackground.tsx deliberately stays static-only (poster, no <video> mount) below
+    // the 767px breakpoint and under prefers-reduced-motion — a performance/data-saving
+    // choice, not a bug — so only assert the video mounts on non-mobile viewports.
+    const viewport = page.viewportSize();
+    if (!viewport || viewport.width >= 768) {
+      await expect(page.locator("video.mkt-video-bg")).toBeVisible();
+    }
   });
 
   // The "modules"/"pricing" sections don't sit inline on the scrollable page —
