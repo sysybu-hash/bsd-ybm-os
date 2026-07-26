@@ -295,6 +295,9 @@
   },
   "workspaceShell": {
     "refreshingOverlay": "Refreshing workspace…",
+    "header": {
+      "localeAria": "Interface language"
+    },
     "topBar": {
       "toolbarAria": "Top bar actions",
       "searchAria": "Search",
@@ -1498,6 +1501,10 @@
     "chrome": {
       "closeAria": "Close {title}",
       "closeLabel": "Close",
+      "backAria": "Go back in {title}",
+      "forwardAria": "Go forward in {title}",
+      "minimizeAria": "Minimize {title}",
+      "restoreMinimizedAria": "Restore {title}",
       "maximizeAria": "Maximize {title}",
       "restoreAria": "Restore {title}",
       "zoomInAria": "Zoom in {title}",
@@ -2338,6 +2345,9 @@
       "newNotebook": "New",
       "noSavedNotebooks": "No saved notebooks",
       "deleteNotebook": "Delete notebook",
+      "renameSourceTitle": "Rename source",
+      "deleteNotebookTitle": "Delete notebook",
+      "deleteNotebookMessage": "Delete this notebook? This cannot be undone.",
       "sourcesHeading": "Knowledge Sources",
       "noSources": "No sources uploaded yet.",
       "loaded": "Notebook loaded",

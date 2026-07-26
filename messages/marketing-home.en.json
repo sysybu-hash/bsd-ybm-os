@@ -24,7 +24,8 @@
         "Billing, cash flow & control"
       ],
       "ctaRegister": "Create account",
-      "ctaDemo": "Sign in to demo"
+      "ctaDemo": "Sign in to demo",
+      "omnibarLabel": "Quick action — sign up or sign in"
     },
     "overview": {
       "eyebrow": "Overview",
@@ -465,6 +466,7 @@
       "heroLead": "One OS connecting site, office, clients and documents — CRM and ERP with a modular AI layer, built for construction and trades.",
       "heroCta": "Book a demo",
       "heroSecondaryCta": "Create account",
+      "quotesSectionTitle": "What people say",
       "projectsSectionTitle": "Projects",
       "projectCardCta": "Details",
       "projectCards": [

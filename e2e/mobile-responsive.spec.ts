@@ -12,6 +12,8 @@ import {
   tryCredentialsSignIn,
   workspaceUrl,
   dismissCookieBannerIfVisible,
+  gotoWorkspaceProject,
+  E2E_PROJECT_ID,
 } from "./helpers";
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 }; // iPhone 14 Pro
@@ -195,8 +197,8 @@ test.describe("mobile responsive — layout", () => {
   });
 
   test("tab bar in hub widget supports horizontal scroll when needed", async ({ page }) => {
-    await page.goto(workspaceUrl({ w: "projectsHub" }), { waitUntil: "domcontentloaded" });
-    await dismissWorkspaceOverlays(page);
+    test.skip(!E2E_PROJECT_ID, "Run npm run seed:test for E2E_PROJECT_ID");
+    await gotoWorkspaceProject(page, E2E_PROJECT_ID);
     const shell = page.locator("[data-widget-shell]").first();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 

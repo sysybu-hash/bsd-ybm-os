@@ -295,6 +295,9 @@
   },
   "workspaceShell": {
     "refreshingOverlay": "מעדכן את מרחב העבודה…",
+    "header": {
+      "localeAria": "שפת ממשק"
+    },
     "topBar": {
       "toolbarAria": "פעולות סרגל עליון",
       "searchAria": "חיפוש",
@@ -1498,6 +1501,10 @@
     "chrome": {
       "closeAria": "סגור {title}",
       "closeLabel": "סגור",
+      "backAria": "חזרה ב־{title}",
+      "forwardAria": "קדימה ב־{title}",
+      "minimizeAria": "מזער {title}",
+      "restoreMinimizedAria": "שחזר {title}",
       "maximizeAria": "הגדל {title}",
       "restoreAria": "הקטן {title}",
       "zoomInAria": "הגדל תצוגה ב־{title}",
@@ -2338,6 +2345,9 @@
       "newNotebook": "חדש",
       "noSavedNotebooks": "אין מחברות שמורות",
       "deleteNotebook": "מחק מחברת",
+      "renameSourceTitle": "שינוי שם המקור",
+      "deleteNotebookTitle": "מחיקת מחברת",
+      "deleteNotebookMessage": "האם למחוק את המחברת? הפעולה בלתי הפיכה.",
       "sourcesHeading": "מקורות ידע",
       "noSources": "טרם הועלו מקורות.",
       "loaded": "המחברת נטענה",

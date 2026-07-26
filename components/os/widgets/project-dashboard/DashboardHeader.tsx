@@ -276,16 +276,19 @@ export function DashboardHeader({
         </div>
       ) : null}
 
-      <div className="mt-1.5 flex gap-0.5 overflow-x-auto">
+      <div className="mt-1.5 flex gap-0.5 overflow-x-auto" role="tablist">
         {tabs.map((tab) => {
           const Icon = tab.icon;
+          const selected = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={selected}
               onClick={() => setActiveTab(tab.id)}
               className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
-                activeTab === tab.id
+                selected
                   ? "bg-amber-500/20 text-amber-700 dark:text-amber-200"
                   : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-elevated)]"
               }`}

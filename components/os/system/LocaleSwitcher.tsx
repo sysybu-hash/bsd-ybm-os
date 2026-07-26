@@ -44,10 +44,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
   }, [open]);
 
   const current = (SELECTABLE_LOCALES.includes(locale as AppLocale) ? locale : "he") as AppLocale;
-  const aria =
-    t("workspaceShell.header.localeAria") !== "workspaceShell.header.localeAria"
-      ? t("workspaceShell.header.localeAria")
-      : "שפת ממשק";
+  const aria = t("workspaceShell.header.localeAria");
 
   const pickName = (loc: AppLocale) => {
     const names = LOCALE_NAMES[loc];

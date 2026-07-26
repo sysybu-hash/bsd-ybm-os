@@ -78,7 +78,8 @@
         "confirm": "Подтверждение",
         "of": "из",
         "step": "Шаг",
-        "specialization": "Специализация"
+        "specialization": "Специализация",
+        "password": "Пароль"
       },
       "types": {
         "home": {
@@ -124,6 +125,10 @@
         "trade": "Специализация",
         "specialization": "Специализация"
       },
+      "industrySection": "Сфера бизнеса в системе",
+      "industryConstruction": "Строительство и подряд",
+      "industryCompany": "Управление бизнесом / компанией",
+      "industryHint": "Это можно изменить позже в настройках организации.",
       "construction": {
         "lead": "BSD-YBM для строительства и смежных профессий. Выберите специализацию — так настраиваются ИИ и документы.",
         "selectLabel": "Тип бизнеса / специализация",
@@ -154,7 +159,81 @@
         "autoSignInFailed": "Аккаунт создан, но автоматический вход не удался - войдите вручную.",
         "passwordInvalid": "Проверьте пароль и подтверждение",
         "registerFailed": "Регистрация не удалась",
-        "networkError": "Ошибка сети"
+        "networkError": "Ошибка сети",
+        "emailHint": "После настройки можно входить по email/паролю, Google или биометрии.",
+        "passwordLabel": "Пароль",
+        "passwordConfirm": "Подтверждение пароля",
+        "generatePassword": "Сгенерировать надёжный пароль",
+        "copyPassword": "Скопировано",
+        "passwordRequirements": "Минимум 12 символов, включая заглавную, строчную буквы и цифру.",
+        "passwordGenerated": "Надёжный пароль сгенерирован",
+        "passwordMismatch": "Пароли не совпадают"
+      },
+      "heroTitle": "Добро пожаловать",
+      "heroBody": "Безопасный вход через Google, email и пароль или биометрию после первого входа.",
+      "bullet1": "Надёжный пароль со встроенным генератором",
+      "bullet2": "Запомнить меня — меньше повторных входов",
+      "bullet3": "Отпечаток пальца / Face ID после первого входа",
+      "tabs": {
+        "login": "Вход",
+        "register": "Регистрация"
+      },
+      "loginTitle": "Вход",
+      "loginSubtitle": "Выберите способ входа",
+      "registerSubtitle": "Создайте новую организацию или присоединитесь по приглашению",
+      "login": {
+        "remember": "Запомнить меня на этом устройстве",
+        "passkey": "Войти по отпечатку пальца / Face ID",
+        "passkeyShort": "Биометрический вход",
+        "forgot": "Забыли пароль",
+        "errorEmpty": "Введите email и пароль",
+        "errorInvalid": "Неверный email или пароль",
+        "updateError": "Ошибка",
+        "updateSuccess": "Пароль обновлён"
+      },
+      "forgot": {
+        "title": "Сброс пароля",
+        "body": "Если аккаунт существует, мы отправим ссылку на email.",
+        "submit": "Отправить ссылку",
+        "sent": "Если аккаунт существует, письмо отправлено.",
+        "error": "Не удалось отправить",
+        "invalidEmail": "Неверный email"
+      },
+      "reset": {
+        "title": "Новый пароль",
+        "body": "Выберите надёжный пароль (от 12 символов).",
+        "placeholder": "Новый пароль",
+        "submit": "Сохранить"
+      },
+      "passkey": {
+        "offerTitle": "Более быстрый биометрический вход",
+        "offerBody": "Включите отпечаток пальца или Face ID для входа без пароля в следующий раз.",
+        "offerEnable": "Включить сейчас",
+        "offerLater": "Может быть позже",
+        "dismiss": "Закрыть",
+        "registerSuccess": "Биометрический вход включён",
+        "registerFailed": "Не удалось зарегистрировать биометрическое устройство",
+        "defaultDevice": "Это устройство",
+        "unsupported": "Биометрический вход не поддерживается в этом браузере",
+        "delete": "Удалить",
+        "deleted": "Устройство удалено",
+        "deleteFailed": "Не удалось удалить",
+        "loginUnavailable": "Биометрический вход недоступен",
+        "verifyFailed": "Ошибка биометрической проверки",
+        "loginFailed": "Ошибка входа",
+        "loginCancelled": "Биометрический вход отменён или не удался"
+      },
+      "security": {
+        "passwordTitle": "Пароль для входа",
+        "passwordDesc": "Пользователи только с Google: установите пароль, чтобы также входить по email.",
+        "currentPassword": "Текущий пароль (если есть)",
+        "newPassword": "Новый пароль",
+        "savePassword": "Сохранить пароль",
+        "passwordSaved": "Пароль сохранён",
+        "passkeyTitle": "Биометрический вход",
+        "passkeyDesc": "Управление устройствами отпечатка пальца / Face ID.",
+        "noPasskeys": "Нет зарегистрированных устройств",
+        "addPasskey": "Добавить биометрическое устройство"
       }
     }
   },
@@ -271,7 +350,19 @@
     "configAi": "Выбор движков",
     "preview": "Предпросмотр",
     "noPreview": "Нет предпросмотра",
-    "results": "Результаты разбора",
+    "results": {
+      "summary": "Сводка",
+      "telemetry": "Движки",
+      "lineDesc": "Описание",
+      "qty": "Кол-во",
+      "amount": "Сумма",
+      "copied": "Скопировано",
+      "copyJson": "Копировать JSON",
+      "exportCsv": "Экспорт CSV",
+      "saveNotebook": "Сохранить в блокнот",
+      "confirmErp": "Подтвердить в ERP"
+    },
+    "saveToNotebook": "Сохранить в NotebookLM",
     "source": "Источник",
     "document": "Тип документа",
     "modeAuto": "Авто",
@@ -325,7 +416,29 @@
     "csvColUnitPrice": "Цена за ед.",
     "csvColLineTotal": "Итого строки",
     "csvColCurrency": "Валюта",
-    "csvColSku": "Артикул"
+    "csvColSku": "Артикул",
+    "fieldVendor": "Поставщик",
+    "fieldTaxId": "ИНН",
+    "fieldTotal": "Итого",
+    "fieldDate": "Дата",
+    "fieldDocType": "Тип документа",
+    "fieldProject": "Проект",
+    "noLineItems": "Нет строк позиций",
+    "addRow": "Добавить строку",
+    "colDescription": "Описание",
+    "colQuantity": "Количество",
+    "colUnitPrice": "Цена за единицу",
+    "colLineTotal": "Итого строки",
+    "phItemDescription": "Описание позиции",
+    "phQuantity": "Количество",
+    "phPrice": "Цена",
+    "removeRow": "Удалить строку",
+    "colItemRef": "Раздел",
+    "colUnit": "Единица",
+    "phItemRef": "Раздел",
+    "phDescription": "Описание",
+    "phUnit": "Ед.",
+    "addBoqRow": "Добавить строку BOQ"
   },
   "accessibility": {
     "toolbar": "Доступность",

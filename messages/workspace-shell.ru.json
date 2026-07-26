@@ -295,6 +295,9 @@
   },
   "workspaceShell": {
     "refreshingOverlay": "Обновление рабочей области…",
+    "header": {
+      "localeAria": "Язык интерфейса"
+    },
     "topBar": {
       "toolbarAria": "Действия верхней панели",
       "searchAria": "Поиск",
@@ -1498,6 +1501,10 @@
     "chrome": {
       "closeAria": "Закрыть {title}",
       "closeLabel": "Закрыть",
+      "backAria": "Назад в {title}",
+      "forwardAria": "Вперёд в {title}",
+      "minimizeAria": "Свернуть в панель {title}",
+      "restoreMinimizedAria": "Восстановить {title}",
       "maximizeAria": "Развернуть {title}",
       "restoreAria": "Свернуть {title}",
       "zoomInAria": "Увеличить {title}",
@@ -2338,6 +2345,9 @@
       "newNotebook": "Новый",
       "noSavedNotebooks": "Нет сохранённых тетрадей",
       "deleteNotebook": "Удалить тетрадь",
+      "renameSourceTitle": "Переименовать источник",
+      "deleteNotebookTitle": "Удаление тетради",
+      "deleteNotebookMessage": "Удалить эту тетрадь? Действие необратимо.",
       "sourcesHeading": "Источники знаний",
       "noSources": "Источники не загружены.",
       "loaded": "Блокнот загружен",

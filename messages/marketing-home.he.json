@@ -24,7 +24,8 @@
         "חיוב, תזרים ובקרה"
       ],
       "ctaRegister": "פתיחת חשבון",
-      "ctaDemo": "כניסה להדגמה"
+      "ctaDemo": "כניסה להדגמה",
+      "omnibarLabel": "פעולה מהירה — הרשמה או כניסה"
     },
     "overview": {
       "eyebrow": "סקירה כללית",
@@ -465,6 +466,7 @@
       "heroLead": "אתר, משרד, לקוחות ומסמכים — ברצף עבודה אחד, עם CRM, ERP ושכבת AI.",
       "heroCta": "קבעו הדגמה",
       "heroSecondaryCta": "פתיחת חשבון",
+      "quotesSectionTitle": "מה אומרים עלינו",
       "projectsSectionTitle": "פרויקטים",
       "projectCardCta": "לפרטים",
       "projectCards": [

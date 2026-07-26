@@ -143,7 +143,7 @@ export default function NotebookLMWidget({
       {/* Dialogs render as portals — unaffected by split layout */}
       <OsPromptDialog
         open={nb.renameSourceId !== null}
-        title={t("notebook.renameSourceTitle")}
+        title={t("workspaceWidgets.notebookLM.renameSourceTitle")}
         defaultValue={nb.renameSourceDefault}
         onConfirm={nb.confirmRenameSource}
         onCancel={() => nb.setRenameSourceId(null)}
@@ -159,8 +159,8 @@ export default function NotebookLMWidget({
       />
       <OsConfirmDialog
         open={nb.deleteNotebookId !== null}
-        title={t("notebook.deleteNotebookTitle")}
-        message={t("notebook.deleteNotebookMessage")}
+        title={t("workspaceWidgets.notebookLM.deleteNotebookTitle")}
+        message={t("workspaceWidgets.notebookLM.deleteNotebookMessage")}
         destructive
         onConfirm={() => void nb.confirmDeleteSaved()}
         onCancel={() => nb.setDeleteNotebookId(null)}
