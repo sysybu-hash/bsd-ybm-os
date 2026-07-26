@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { jsonUnauthorized } from "@/lib/api-json";
 import { PRESENCE_ONLINE_MS } from "@/lib/admin/login-presence";
 
 export const dynamic = "force-dynamic";
 
 /** Heartbeat נוכחות — מעדכן lastSeenAt לכל היותר פעם ב־~45 שנ׳ */
-export async function POST() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id?.trim();
-  if (!userId) return jsonUnauthorized();
-
+export const POST = withWorkspacesAuth(async (_req, { userId }) => {
   const now = new Date();
   const minGapMs = Math.floor(PRESENCE_ONLINE_MS / 4);
 
@@ -33,4 +27,4 @@ export async function POST() {
   });
 
   return NextResponse.json({ ok: true });
-}
+});
