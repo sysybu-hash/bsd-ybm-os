@@ -588,7 +588,11 @@
         "save": "שמור",
         "nameRequired": "יש להזין שם פריט",
         "saveFailed": "שמירת הפריט נכשלה",
-        "saveSuccess": "פריט המלאי נוסף"
+        "saveSuccess": "פריט המלאי נוסף",
+        "decreaseQty": "הפחת כמות",
+        "increaseQty": "הוסף כמות",
+        "saveQty": "שמור כמות",
+        "cancelEdit": "בטל עריכה"
       },
       "assets": {
         "searchPlaceholder": "חיפוש ציוד ומספרים סידוריים…",

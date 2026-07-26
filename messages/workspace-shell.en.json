@@ -588,7 +588,11 @@
         "save": "Save",
         "nameRequired": "Name is required",
         "saveFailed": "Could not save item",
-        "saveSuccess": "Item added"
+        "saveSuccess": "Item added",
+        "decreaseQty": "Decrease quantity",
+        "increaseQty": "Increase quantity",
+        "saveQty": "Save quantity",
+        "cancelEdit": "Cancel edit"
       },
       "assets": {
         "searchPlaceholder": "Search equipment or serial numbers…",

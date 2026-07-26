@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import { Check, X, Minus, Plus } from "lucide-react";
 import { emitLogisticsMutation } from "@/lib/events/logistics-sync";
 import { createLogger } from "@/lib/logger";
+import { useI18n } from "@/components/os/system/I18nProvider";
+
+const prefix = "workspaceWidgets.logistics.inventory";
 
 const log = createLogger("inline-quantity-editor");
 
@@ -20,6 +23,7 @@ export default function InlineQuantityEditor({
   unit,
   onUpdateComplete,
 }: InlineQuantityEditorProps) {
+  const { t } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState<number>(currentQuantity);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +80,7 @@ export default function InlineQuantityEditor({
         onClick={() => setValue((v) => Math.max(0, v - 1))}
         className="p-1 text-foreground-muted hover:text-foreground-main bg-surface-soft rounded"
         disabled={isLoading}
-        aria-label="Decrease quantity"
+        aria-label={t(`${prefix}.decreaseQty`)}
       >
         <Minus className="w-4 h-4" />
       </button>
@@ -102,7 +106,7 @@ export default function InlineQuantityEditor({
         onClick={() => setValue((v) => v + 1)}
         className="p-1 text-foreground-muted hover:text-foreground-main bg-surface-soft rounded"
         disabled={isLoading}
-        aria-label="Increase quantity"
+        aria-label={t(`${prefix}.increaseQty`)}
       >
         <Plus className="w-4 h-4" />
       </button>
@@ -113,7 +117,7 @@ export default function InlineQuantityEditor({
           onClick={() => void handleSave()}
           disabled={isLoading}
           className="text-emerald-500 hover:opacity-80"
-          aria-label="Save quantity"
+          aria-label={t(`${prefix}.saveQty`)}
         >
           <Check className="w-4 h-4" />
         </button>
@@ -125,7 +129,7 @@ export default function InlineQuantityEditor({
           }}
           disabled={isLoading}
           className="text-foreground-muted hover:opacity-80"
-          aria-label="Cancel edit"
+          aria-label={t(`${prefix}.cancelEdit`)}
         >
           <X className="w-4 h-4" />
         </button>
