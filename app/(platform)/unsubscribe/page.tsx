@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
   title: "הסרה מרשימת תפוצה — BSD-YBM",
   robots: { index: false, follow: false },
+  alternates: { canonical: `${getCanonicalSiteUrl()}/unsubscribe` },
 };
 
 export default async function UnsubscribePage({

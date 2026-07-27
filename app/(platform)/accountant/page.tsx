@@ -4,12 +4,14 @@ import { authOptions } from "@/lib/auth";
 import { isAccountantRole } from "@/lib/accountant-auth";
 import { isOrgAdminRole } from "@/lib/workspace-access";
 import AccountantPortalClient from "@/components/accountant/AccountantPortalClient";
+import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "פורטל רואה חשבון · BSD-YBM OS",
   robots: { index: false, follow: false },
+  alternates: { canonical: `${getCanonicalSiteUrl()}/accountant` },
 };
 
 export default async function AccountantPortalPage() {
