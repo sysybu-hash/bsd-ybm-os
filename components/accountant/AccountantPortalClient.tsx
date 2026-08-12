@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Download, FileText, Receipt, Loader2, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type IssuedDoc = {
   id: string;
@@ -36,11 +37,11 @@ function ils(n: number): string {
 }
 
 export default function AccountantPortalClient({ orgName }: { orgName: string }) {
+  const { t, dir } = useI18n();
   const [docs, setDocs] = useState<IssuedDoc[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [formats, setFormats] = useState<ExportFormat[]>([]);
   const [loading, setLoading] = useState(true);
-  // אתחול ריק ב-SSR ומילוי ב-effect — מונע אי-התאמת hydration מ-new Date() שונה בשרת/לקוח.
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [format, setFormat] = useState("bkmvdata");
@@ -76,11 +77,11 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
         }
       }
     } catch {
-      toast.error("טעינת הנתונים נכשלה");
+      toast.error(t("accountantPortal.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadData();
@@ -103,7 +104,7 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? "הייצוא נכשל");
+        throw new Error(data.error ?? t("accountantPortal.exportFailed"));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -112,23 +113,25 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
       a.download = `accounting-${format}-${fromDate}_${toDate}.txt`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("הייצוא הורד");
+      toast.success(t("accountantPortal.exportSuccess"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "הייצוא נכשל");
+      toast.error(err instanceof Error ? err.message : t("accountantPortal.exportFailed"));
     } finally {
       setExporting(false);
     }
-  }, [format, fromDate, toDate]);
+  }, [format, fromDate, toDate, t]);
 
-  const fmtOptions = formats.length ? formats : [{ id: "bkmvdata", label: "מבנה אחיד (BKMVDATA)" }];
+  const fmtOptions = formats.length
+    ? formats
+    : [{ id: "bkmvdata", label: t("accountantPortal.defaultFormat") }];
 
   return (
-    <div dir="rtl" className="mx-auto min-h-screen max-w-5xl px-4 py-6 text-[color:var(--foreground-main)]">
+    <div dir={dir} className="mx-auto min-h-screen max-w-5xl px-4 py-6 text-[color:var(--foreground-main)]">
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-black">פורטל רואה חשבון</h1>
+          <h1 className="text-xl font-black">{t("accountantPortal.title")}</h1>
           <p className="text-sm text-[color:var(--foreground-muted)]">
-            {orgName ? `${orgName} · ` : ""}גישת קריאה וייצוא בלבד
+            {orgName ? `${orgName} · ` : ""}{t("accountantPortal.subtitle")}
           </p>
         </div>
         <button
@@ -137,19 +140,18 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
           className="flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
         >
           <LogOut size={14} aria-hidden />
-          יציאה
+          {t("accountantPortal.signOut")}
         </button>
       </header>
 
-      {/* ייצוא הנהלת חשבונות */}
       <section className="mb-6 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
           <Download size={16} className="text-emerald-500" aria-hidden />
-          ייצוא הנהלת חשבונות
+          {t("accountantPortal.exportSection")}
         </h2>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--foreground-muted)]">
-            מתאריך
+            {t("accountantPortal.fromDate")}
             <input
               type="date"
               value={fromDate}
@@ -158,7 +160,7 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
             />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--foreground-muted)]">
-            עד תאריך
+            {t("accountantPortal.toDate")}
             <input
               type="date"
               value={toDate}
@@ -167,7 +169,7 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
             />
           </label>
           <label className="flex flex-col gap-1 text-xs font-semibold text-[color:var(--foreground-muted)]">
-            פורמט
+            {t("accountantPortal.format")}
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
@@ -187,7 +189,7 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
             className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
           >
             {exporting ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
-            ייצא והורד
+            {t("accountantPortal.exportButton")}
           </button>
         </div>
       </section>
@@ -198,15 +200,14 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {/* מסמכים שהופקו */}
           <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
               <FileText size={16} className="text-[color:var(--accent)]" aria-hidden />
-              מסמכים שהופקו ({docs.length})
+              {t("accountantPortal.documentsTitle")} ({docs.length})
             </h2>
             <div className="max-h-[50vh] overflow-y-auto">
               {docs.length === 0 ? (
-                <p className="py-6 text-center text-xs text-[color:var(--foreground-muted)]">אין מסמכים.</p>
+                <p className="py-6 text-center text-xs text-[color:var(--foreground-muted)]">{t("accountantPortal.noDocuments")}</p>
               ) : (
                 <ul className="space-y-1.5">
                   {docs.slice(0, 100).map((d) => (
@@ -225,15 +226,14 @@ export default function AccountantPortalClient({ orgName }: { orgName: string })
             </div>
           </section>
 
-          {/* הוצאות */}
           <section className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-bold">
               <Receipt size={16} className="text-amber-500" aria-hidden />
-              הוצאות ({expenses.length})
+              {t("accountantPortal.expensesTitle")} ({expenses.length})
             </h2>
             <div className="max-h-[50vh] overflow-y-auto">
               {expenses.length === 0 ? (
-                <p className="py-6 text-center text-xs text-[color:var(--foreground-muted)]">אין הוצאות.</p>
+                <p className="py-6 text-center text-xs text-[color:var(--foreground-muted)]">{t("accountantPortal.noExpenses")}</p>
               ) : (
                 <ul className="space-y-1.5">
                   {expenses.slice(0, 100).map((e) => (

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
-import { AUTOMATION_CATALOG } from "@/lib/os-automations/catalog";
+import { AUTOMATION_CATALOG, automationLabel } from "@/lib/os-automations/catalog";
 import { Section } from "@/components/admin/platform-admin/SettingsControls";
 
 type AutomationsPanelProps = {
@@ -11,9 +11,10 @@ type AutomationsPanelProps = {
   onChange: (next: Record<string, boolean>) => void;
   /** Scoped translator — receives a key under `platformAdmin.settings`. */
   t: (suffix: string, params?: Record<string, string>) => string;
+  locale?: string;
 };
 
-export function AutomationsPanel({ automationEnabled, onChange, t }: AutomationsPanelProps) {
+export function AutomationsPanel({ automationEnabled, onChange, t, locale = "he" }: AutomationsPanelProps) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -21,12 +22,14 @@ export function AutomationsPanel({ automationEnabled, onChange, t }: Automations
     if (!q) return AUTOMATION_CATALOG;
     return AUTOMATION_CATALOG.filter(
       (e) =>
+        automationLabel(e, locale).toLowerCase().includes(q) ||
         e.labelHe.toLowerCase().includes(q) ||
         e.labelEn.toLowerCase().includes(q) ||
+        e.labelRu.toLowerCase().includes(q) ||
         e.id.toLowerCase().includes(q) ||
         e.keywords.some((w) => w.toLowerCase().includes(q)),
     );
-  }, [query]);
+  }, [query, locale]);
 
   const enabledCount = AUTOMATION_CATALOG.filter((e) => automationEnabled[e.id] !== false).length;
 
@@ -88,7 +91,7 @@ export function AutomationsPanel({ automationEnabled, onChange, t }: Automations
               key={entry.id}
               className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-[color:var(--surface-soft)]"
             >
-              <span className="min-w-0 truncate font-bold">{entry.labelHe}</span>
+              <span className="min-w-0 truncate font-bold">{automationLabel(entry, locale)}</span>
               <input
                 type="checkbox"
                 className="h-4 w-4 shrink-0 accent-blue-600"

@@ -11,8 +11,8 @@ import {
   UserPlus,
   Zap,
 } from "lucide-react";
-import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construction-trades";
-import { INDUSTRY_CONFIGS, industryLabelHe, type IndustryType } from "@/lib/professions/config";
+import { CONSTRUCTION_TRADE_IDS } from "@/lib/construction-trades";
+import { INDUSTRY_CONFIGS, type IndustryType } from "@/lib/professions/config";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { PlatformConfig } from "@/lib/platform-settings";
 import {
@@ -55,16 +55,6 @@ const FEATURE_FLAGS: Array<{
   { key: "fieldCopilotEnabled", labelKey: "flagFieldCopilot", hintKey: "flagFieldCopilotHint" },
 ];
 
-const INDUSTRY_OPTIONS = (Object.keys(INDUSTRY_CONFIGS) as IndustryType[]).map((id) => ({
-  id,
-  label: industryLabelHe(id),
-}));
-
-const TRADE_OPTIONS = CONSTRUCTION_TRADE_IDS.map((id) => ({
-  id,
-  label: constructionTradeLabelHe(id),
-}));
-
 type SettingsTabProps = {
   platformConfig: PlatformConfig;
   setPlatformConfig: (v: PlatformConfig) => void;
@@ -78,10 +68,19 @@ export function SettingsTab({
   savingSettings,
   onSave,
 }: SettingsTabProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   /** Scoped translator for this tab's namespace. */
   const ts = (suffix: string, params?: Record<string, string>) =>
     t(`platformAdmin.settings.${suffix}`, params);
+
+  const industryOptions = (Object.keys(INDUSTRY_CONFIGS) as IndustryType[]).map((id) => ({
+    id,
+    label: t(`professions.${id}.label`),
+  }));
+  const tradeOptions = CONSTRUCTION_TRADE_IDS.map((id) => ({
+    id,
+    label: t(`constructionTradeLabels.${id}`),
+  }));
 
   const patch = (p: Partial<PlatformConfig>) => setPlatformConfig({ ...platformConfig, ...p });
   const patchFlag = (flag: FlagKey, value: boolean) =>
@@ -165,14 +164,14 @@ export function SettingsTab({
               label={ts("industryLabel")}
               hint={ts("industryHint")}
               value={platformConfig.defaultIndustryForRegistration}
-              options={INDUSTRY_OPTIONS}
+              options={industryOptions}
               onChange={(v) => patch({ defaultIndustryForRegistration: v })}
             />
             <SelectField
               label={ts("tradeLabel")}
               hint={ts("tradeHint")}
               value={platformConfig.defaultConstructionTrade}
-              options={TRADE_OPTIONS}
+              options={tradeOptions}
               onChange={(v) => patch({ defaultConstructionTrade: v })}
             />
           </div>
@@ -228,6 +227,7 @@ export function SettingsTab({
         automationEnabled={platformConfig.automationEnabled}
         onChange={(next) => patch({ automationEnabled: next })}
         t={ts}
+        locale={locale}
       />
 
       <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-3 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 px-1 py-3 backdrop-blur">
