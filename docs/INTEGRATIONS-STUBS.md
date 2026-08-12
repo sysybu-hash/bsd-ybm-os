@@ -26,10 +26,19 @@
 - ייבוא `.mpp` דרך `MPP_CONVERT_URL` (שירות המרה חיצוני) → pipeline XML קיים.
 - בלי converter: `mpp_converter_not_configured` (ברור). XML/CSV נשארים נתמכים.
 
+## Google Contacts (CRM import) — `/api/crm/contacts/import-google`
+
+- People API scope: `contacts.readonly` (via reconnect / integrations OAuth).
+- **Existing users must reconnect Google** (Settings → «Reconnect Google») so the new scope is granted.
+- GET: preview up to 200 contacts; POST: import selected/all with email dedupe (case-insensitive) per org.
+
 ## pgvector
 
 - מיגרציה + dual-write + ANN search כש-`USE_PGVECTOR=true` אחרי `migrate deploy`.
-- Fallback: JSON + cosine ב-JS.
+- Fallback: JSON + cosine ב-JS, עם סף קשיח:
+  - Knowledge vault chunks: `JSON_COSINE_MAX_CHUNKS` (=400) ב-`lib/knowledge-vault/chunk-index.ts`
+  - Contact embeddings: 400 שורות ב-`lib/crm/contact-embedding-index.ts`
+- מעל הסף — יש להפעיל pgvector; אחרת החיפוש סורק רק את ה-N הראשונים (לא full-scan בלתי מוגבל).
 
 ## Admin self-heal — `POST /api/admin/self-heal`
 
