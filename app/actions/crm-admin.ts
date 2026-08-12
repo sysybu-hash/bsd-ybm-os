@@ -15,12 +15,17 @@ import {
   parseSubscriptionTier,
 } from "@/lib/subscription-tier-config";
 import { isAdmin } from "@/lib/is-admin";
+import {
+  financeMutationRoles,
+  requireOSAdminAction,
+  requireWorkspaceAction,
+} from "@/lib/server-action-auth";
 
 export type { ClientAiTableRow, ClientAiResult } from "@/lib/crm-client-ai";
 import { createLogger } from "@/lib/logger";
 const log = createLogger("crm-admin");
 
-/** ׳ ׳™׳×׳•׳— AI ׳׳׳§׳•׳— ג€” Gemini Flash (FREE) / Pro (PRO+ ׳׳• SUPER_ADMIN) */
+/** ניתוח AI ללקוח — Gemini Flash (FREE) / Pro (PRO+ או SUPER_ADMIN) */
 export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
   const apiKey =
     env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() ||
@@ -29,7 +34,7 @@ export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
     return {
       ok: false,
       error:
-        "׳—׳¡׳¨ ׳׳₪׳×׳— Gemini ׳‘׳©׳¨׳× (GOOGLE_GENERATIVE_AI_API_KEY ׳׳• GEMINI_API_KEY).",
+        "חסר מפתח Gemini בשרת (GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY).",
     };
   }
 
@@ -38,17 +43,24 @@ export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
     if (!session?.user?.id) {
       return {
         ok: false,
-        error: "׳™׳© ׳׳”׳×׳—׳‘׳¨ ׳׳׳¢׳¨׳›׳× ׳›׳“׳™ ׳׳‘׳¦׳¢ ׳ ׳™׳×׳•׳— AI.",
+        error: "יש להתחבר למערכת כדי לבצע ניתוח AI.",
       };
     }
 
-    const userOrgId = session.user.organizationId ?? null;
     const platformOwner = isAdmin(session.user.email);
-    if (userOrgId !== orgId && !platformOwner) {
-      return {
-        ok: false,
-        error: "׳׳™׳ ׳׳ ׳”׳¨׳©׳׳” ׳׳ ׳×׳— ׳ ׳×׳•׳ ׳™׳ ׳©׳ ׳׳¨׳’׳•׳ ׳–׳”.",
-      };
+    if (!platformOwner) {
+      const auth = await requireWorkspaceAction({
+        allowedRoles: financeMutationRoles(),
+      });
+      if (!auth.ok) {
+        return { ok: false, error: auth.error };
+      }
+      if (auth.ctx.organizationId !== orgId) {
+        return {
+          ok: false,
+          error: "אין לך הרשאה לנתח נתונים של ארגון זה.",
+        };
+      }
     }
 
     const org = await prisma.organization.findUnique({
@@ -70,7 +82,7 @@ export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
     });
 
     if (!org) {
-      return { ok: false, error: "׳׳ ׳ ׳׳¦׳ ׳ ׳×׳•׳ ׳™׳ ׳¢׳ ׳”׳׳¨׳’׳•׳." };
+      return { ok: false, error: "לא נמצאו נתונים על הארגון." };
     }
 
     const modelToUse = resolveCrmGeminiModel(
@@ -81,23 +93,23 @@ export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
 
     const tableData = buildTableDataFromInvoices(org.invoices);
 
-    const prompt = `׳׳×׳” ׳׳ ׳×׳— ׳׳§׳•׳— B2B ׳‘׳׳¢׳¨׳›׳× BSD-YBM.
-׳׳”׳׳ ׳ ׳×׳•׳ ׳™ ׳×׳©׳׳•׳׳™׳ (׳‘׳©׳§׳׳™׳). ׳׳›׳ ׳©׳•׳¨׳” ׳›׳‘׳¨ ׳—׳•׳©׳‘׳” ׳¢׳׳׳× PayPlus ׳‘׳“׳™׳•׳§ ׳›ײ¾1.2% ׳׳”׳‘׳¨׳•׳˜׳• + 1.2 ׳©"׳—, ׳•׳”׳ ׳˜׳• ג€” ׳׳ ׳×׳©׳ ׳” ׳׳¡׳₪׳¨׳™׳.
+    const prompt = `אתה מנתח לקוח B2B במערכת BSD-YBM.
+להלן נתוני תשלומים (בשקלים). לכל שורה כבר חושבה עמלת PayPlus בדיוק כ־1.2% מהברוטו + 1.2 ש"ח, והנטו — אל תשנה מספרים.
 
-׳©׳ ׳׳¨׳’׳•׳: ${org.name}
-׳׳™׳׳™׳™׳ ׳§׳©׳¨: ${org.users[0]?.email ?? "׳׳ ׳™׳“׳•׳¢"}
+שם ארגון: ${org.name}
+אימייל קשר: ${org.users[0]?.email ?? "לא ידוע"}
 
-׳ ׳×׳•׳ ׳™ ׳˜׳‘׳׳” (JSON):
+נתוני טבלה (JSON):
 ${JSON.stringify(tableData, null, 0)}
 
-׳”׳—׳–׳¨ ׳׳ ׳•׳¨׳§ ׳׳•׳‘׳™׳™׳§׳˜ JSON ׳×׳§׳ ׳™ (׳‘׳׳™ markdown, ׳‘׳׳™ backticks) ׳‘׳׳‘׳ ׳” ׳”׳׳“׳•׳™׳§:
+החזר אך ורק אובייקט JSON תקני (בלי markdown, בלי backticks) במבנה המדויק:
 {
-  "summary": "׳₪׳¡׳§׳” ׳§׳¦׳¨׳” ׳‘׳¢׳‘׳¨׳™׳× ׳¢׳ ׳׳¦׳‘ ׳”׳×׳©׳׳•׳׳™׳ ׳•׳”׳׳§׳•׳—",
-  "alerts": ["׳”׳×׳¨׳׳” ׳׳•׳₪׳¦׳™׳•׳ ׳׳™׳× ג€” ׳׳׳©׳ ׳׳§׳•׳— ׳¨׳“׳•׳ ׳׳ ׳׳™׳ ׳×׳©׳׳•׳ 30+ ׳™׳•׳", "..."],
-  "recommendation": "׳”׳׳׳¦׳” ׳¢׳¡׳§׳™׳× ׳§׳¦׳¨׳” ׳׳©׳™׳׳•׳¨ ׳”׳׳§׳•׳—"
+  "summary": "פסקה קצרה בעברית על מצב התשלומים והלקוח",
+  "alerts": ["התראה אופציונלית — למשל לקוח רדום אם אין תשלום 30+ יום", "..."],
+  "recommendation": "המלצה עסקית קצרה לשימור הלקוח"
 }
 
-׳׳ ׳׳™׳ ׳”׳×׳¨׳׳•׳× ג€” ׳”׳—׳–׳¨ ׳׳¢׳¨׳ ׳¨׳™׳§ [].`;
+אם אין התראות — החזר מערך ריק [].`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelToUse)}:generateContent?key=${apiKey}`,
@@ -115,11 +127,11 @@ ${JSON.stringify(tableData, null, 0)}
         typeof (data as { error?: { message?: string } }).error?.message ===
         "string"
           ? (data as { error: { message: string } }).error.message
-          : "׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”";
+          : "שגיאה לא ידועה";
       log.error("Gemini HTTP:", response.status, data);
       return {
         ok: false,
-        error: `׳©׳’׳™׳׳” ׳-Gemini (${response.status}): ${msg}`,
+        error: `שגיאה מ-Gemini (${response.status}): ${msg}`,
       };
     }
 
@@ -144,15 +156,15 @@ ${JSON.stringify(tableData, null, 0)}
         recommendation?: string;
       };
       summary =
-        typeof parsed.summary === "string" ? parsed.summary : rawText || "ג€”";
+        typeof parsed.summary === "string" ? parsed.summary : rawText || "—";
       recommendation =
-        typeof parsed.recommendation === "string" ? parsed.recommendation : "ג€”";
+        typeof parsed.recommendation === "string" ? parsed.recommendation : "—";
       if (Array.isArray(parsed.alerts)) {
         alerts = parsed.alerts.filter((a): a is string => typeof a === "string");
       }
     } catch {
-      summary = rawText || "׳׳ ׳ ׳™׳×׳ ׳׳₪׳¨׳¡׳¨ ׳׳× ׳×׳©׳•׳‘׳× ׳”׳׳•׳“׳.";
-      recommendation = "ג€”";
+      summary = rawText || "לא ניתן לפרסר את תשובת המודל.";
+      recommendation = "—";
     }
 
     return {
@@ -165,33 +177,33 @@ ${JSON.stringify(tableData, null, 0)}
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     log.error("analyzeClientAI:", message);
-    return { ok: false, error: "׳©׳’׳™׳׳× ׳¨׳©׳× ׳׳• ׳©׳¨׳× ׳‘׳ ׳™׳×׳•׳— AI." };
+    return { ok: false, error: "שגיאת רשת או שרת בניתוח AI." };
   }
 }
 
 export async function deleteOrganization(id: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !isAdmin(session.user.email)) {
-    return { error: "׳׳™׳ ׳”׳¨׳©׳׳” ׳׳׳—׳™׳§׳× ׳׳¨׳’׳•׳" };
+  const gate = await requireOSAdminAction();
+  if (!gate.ok) {
+    return { error: "אין הרשאה למחיקת ארגון" };
   }
   try {
     await prisma.organization.delete({ where: { id } });
-revalidatePath("/app/crm");
-revalidatePath("/app");
+    revalidatePath("/app/crm");
+    revalidatePath("/app");
     return { success: true as const };
   } catch {
-    return { error: "׳©׳’׳™׳׳” ׳‘׳׳—׳™׳§׳× ׳”׳׳¨׳’׳•׳" };
+    return { error: "שגיאה במחיקת הארגון" };
   }
 }
 
 export async function updateOrgPlan(id: string, tierRaw: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !isAdmin(session.user.email)) {
-    return { error: "׳׳™׳ ׳”׳¨׳©׳׳” ׳׳¢׳“׳›׳•׳ ׳׳¡׳׳•׳ ׳׳¨׳’׳•׳" };
+  const gate = await requireOSAdminAction();
+  if (!gate.ok) {
+    return { error: "אין הרשאה לעדכון מסלול ארגון" };
   }
   const tier = parseSubscriptionTier(tierRaw);
   if (!tier) {
-    return { error: "׳¨׳׳× ׳׳ ׳•׳™ ׳׳ ׳—׳•׳§׳™׳×" };
+    return { error: "רמת מנוי לא חוקית" };
   }
   const balances = defaultScanBalancesForTier(tier);
   try {
@@ -204,34 +216,33 @@ export async function updateOrgPlan(id: string, tierRaw: string) {
         maxCompanies: balances.maxCompanies,
       },
     });
-revalidatePath("/app/crm");
-revalidatePath("/app");
-revalidatePath("/app/settings/billing");
+    revalidatePath("/app/crm");
+    revalidatePath("/app");
+    revalidatePath("/app/settings/billing");
     return { success: true as const };
   } catch {
-    return { error: "׳©׳’׳™׳׳” ׳‘׳¢׳“׳›׳•׳ ׳”׳×׳•׳›׳ ׳™׳×" };
+    return { error: "שגיאה בעדכון התוכנית" };
   }
 }
 
 export async function updateOrganizationName(id: string, name: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !isAdmin(session.user.email)) {
-    return { error: "׳׳™׳ ׳”׳¨׳©׳׳” ׳׳¢׳“׳›׳•׳ ׳©׳ ׳׳¨׳’׳•׳" };
+  const gate = await requireOSAdminAction();
+  if (!gate.ok) {
+    return { error: "אין הרשאה לעדכון שם ארגון" };
   }
   const trimmed = name.trim();
   if (trimmed.length < 2) {
-    return { error: "׳©׳ ׳§׳¦׳¨ ׳׳“׳™" };
+    return { error: "שם קצר מדי" };
   }
   try {
     await prisma.organization.update({
       where: { id },
       data: { name: trimmed },
     });
-revalidatePath("/app/crm");
-revalidatePath("/app");
+    revalidatePath("/app/crm");
+    revalidatePath("/app");
     return { success: true as const };
   } catch {
-    return { error: "׳©׳’׳™׳׳” ׳‘׳¢׳“׳›׳•׳ ׳”׳©׳" };
+    return { error: "שגיאה בעדכון השם" };
   }
 }
-

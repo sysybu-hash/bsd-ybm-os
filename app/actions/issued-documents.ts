@@ -7,6 +7,11 @@ import { DocStatus, DocType } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateIssuedDocumentTotals } from "@/lib/billing-calculations";
+import { allocateNextDocumentNumber } from "@/lib/finance-numbering";
+import {
+  financeMutationRoles,
+  requireWorkspaceAction,
+} from "@/lib/server-action-auth";
 import { createLogger } from "@/lib/logger";
 const log = createLogger("issued-documents");
 
@@ -24,28 +29,24 @@ export type CreateIssuedDocumentResult =
 export async function createIssuedDocument(
   data: CreateIssuedDocumentInput,
 ): Promise<CreateIssuedDocumentResult> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return { ok: false, error: "׳™׳© ׳׳”׳×׳—׳‘׳¨ ׳׳׳¢׳¨׳›׳×." };
+  const auth = await requireWorkspaceAction({ allowedRoles: financeMutationRoles() });
+  if (!auth.ok) {
+    return { ok: false, error: auth.error === "נדרשת התחברות" ? "יש להתחבר למערכת." : auth.error };
   }
-  if (!session.user.organizationId) {
-    return { ok: false, error: "׳׳ ׳ ׳׳¦׳ ׳׳¨׳’׳•׳ ׳׳©׳•׳™׳." };
-  }
-
-  const orgId = session.user.organizationId;
+  const orgId = auth.ctx.organizationId;
 
   const clientName = data.clientName.trim();
   if (clientName.length < 1) {
-    return { ok: false, error: "׳ ׳ ׳׳׳׳ ׳©׳ ׳׳§׳•׳—." };
+    return { ok: false, error: "נא למלא שם לקוח." };
   }
 
   if (!Object.values(DocType).includes(data.type)) {
-    return { ok: false, error: "׳¡׳•׳’ ׳׳¡׳׳ ׳׳ ׳×׳§׳™׳." };
+    return { ok: false, error: "סוג מסמך לא תקין." };
   }
 
   const netAmount = Number(data.netAmount);
   if (!Number.isFinite(netAmount) || netAmount < 0) {
-    return { ok: false, error: "׳¡׳›׳•׳ ׳׳₪׳ ׳™ ׳׳¢׳´׳ ׳׳ ׳×׳§׳™׳." };
+    return { ok: false, error: "סכום לפני מע״מ לא תקין." };
   }
 
   const itemsJson: Prisma.InputJsonValue = Array.isArray(data.items)
@@ -58,7 +59,7 @@ export async function createIssuedDocument(
   });
 
   if (!org) {
-    return { ok: false, error: "׳”׳׳¨׳’׳•׳ ׳׳ ׳ ׳׳¦׳." };
+    return { ok: false, error: "הארגון לא נמצא." };
   }
 
   const { vat, total } = calculateIssuedDocumentTotals(
@@ -69,38 +70,33 @@ export async function createIssuedDocument(
     data.type,
   );
 
-  const lastDoc = await prisma.issuedDocument.findFirst({
-    where: { organizationId: orgId, type: data.type },
-    orderBy: { number: "desc" },
-    select: { number: true },
-  });
-
-  const nextNumber = (lastDoc?.number ?? 1000) + 1;
-
   try {
-    const newDoc = await prisma.issuedDocument.create({
-      data: {
-        organizationId: orgId,
-        type: data.type,
-        number: nextNumber,
-        clientName,
-        amount: netAmount,
-        vat,
-        total,
-        items: itemsJson,
-        status: DocStatus.PENDING,
-      },
+    const newDoc = await prisma.$transaction(async (tx) => {
+      const nextNumber = await allocateNextDocumentNumber(tx, orgId, data.type);
+      return tx.issuedDocument.create({
+        data: {
+          organizationId: orgId,
+          type: data.type,
+          number: nextNumber,
+          clientName,
+          amount: netAmount,
+          vat,
+          total,
+          items: itemsJson,
+          status: DocStatus.PENDING,
+        },
+      });
     });
 
-revalidatePath("/app/settings/billing");
+    revalidatePath("/app/settings/billing");
     return { ok: true, docNumber: newDoc.number };
   } catch (e) {
     log.error("createIssuedDocument", e);
-    return { ok: false, error: "׳©׳׳™׳¨׳× ׳”׳׳¡׳׳ ׳ ׳›׳©׳׳”." };
+    return { ok: false, error: "שמירת המסמך נכשלה." };
   }
 }
 
-/* ג”€ג”€ג”€ Update existing issued document ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ */
+/* ────── Update existing issued document ──────────────────────────────────────────────────────────────────────────── */
 
 export type UpdateIssuedDocumentInput = {
   id: string;
@@ -119,31 +115,31 @@ export type UpdateIssuedDocumentResult =
 export async function updateIssuedDocument(
   data: UpdateIssuedDocumentInput,
 ): Promise<UpdateIssuedDocumentResult> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) {
-    return { ok: false, error: "׳™׳© ׳׳”׳×׳—׳‘׳¨ ׳׳׳¢׳¨׳›׳×." };
+  const auth = await requireWorkspaceAction({ allowedRoles: financeMutationRoles() });
+  if (!auth.ok) {
+    return { ok: false, error: auth.error === "נדרשת התחברות" ? "יש להתחבר למערכת." : auth.error };
   }
-  const orgId = session.user.organizationId;
+  const orgId = auth.ctx.organizationId;
 
   const clientName = data.clientName.trim();
-  if (!clientName) return { ok: false, error: "׳ ׳ ׳׳׳׳ ׳©׳ ׳׳§׳•׳—." };
-  if (!Object.values(DocType).includes(data.type)) return { ok: false, error: "׳¡׳•׳’ ׳׳¡׳׳ ׳׳ ׳×׳§׳™׳." };
-  if (!Object.values(DocStatus).includes(data.status)) return { ok: false, error: "׳¡׳˜׳˜׳•׳¡ ׳׳ ׳×׳§׳™׳." };
+  if (!clientName) return { ok: false, error: "נא למלא שם לקוח." };
+  if (!Object.values(DocType).includes(data.type)) return { ok: false, error: "סוג מסמך לא תקין." };
+  if (!Object.values(DocStatus).includes(data.status)) return { ok: false, error: "סטטוס לא תקין." };
 
   const netAmount = Number(data.netAmount);
-  if (!Number.isFinite(netAmount) || netAmount < 0) return { ok: false, error: "׳¡׳›׳•׳ ׳׳ ׳×׳§׳™׳." };
+  if (!Number.isFinite(netAmount) || netAmount < 0) return { ok: false, error: "סכום לא תקין." };
 
   const doc = await prisma.issuedDocument.findFirst({
     where: { id: data.id, organizationId: orgId },
     select: { id: true },
   });
-  if (!doc) return { ok: false, error: "׳׳¡׳׳ ׳׳ ׳ ׳׳¦׳." };
+  if (!doc) return { ok: false, error: "מסמך לא נמצא." };
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { companyType: true, isReportable: true, vatRatePercent: true },
   });
-  if (!org) return { ok: false, error: "׳׳¨׳’׳•׳ ׳׳ ׳ ׳׳¦׳." };
+  if (!org) return { ok: false, error: "ארגון לא נמצא." };
 
   const { vat, total } = calculateIssuedDocumentTotals(
     netAmount,
@@ -186,26 +182,26 @@ revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
     log.error("updateIssuedDocument", e);
-    return { ok: false, error: "׳¢׳“׳›׳•׳ ׳”׳׳¡׳׳ ׳ ׳›׳©׳." };
+    return { ok: false, error: "עדכון המסמך נכשל." };
   }
 }
 
-/* ג”€ג”€ג”€ Delete issued document ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ */
+/* ────── Delete issued document ────────────────────────────────────────────────────────────────────────────────────────────── */
 
 export type DeleteIssuedDocumentResult =
   | { ok: true }
   | { ok: false; error: string };
 
 export async function deleteIssuedDocument(id: string): Promise<DeleteIssuedDocumentResult> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) return { ok: false, error: "׳™׳© ׳׳”׳×׳—׳‘׳¨." };
-  const orgId = session.user.organizationId;
+  const auth = await requireWorkspaceAction({ allowedRoles: financeMutationRoles() });
+  if (!auth.ok) return { ok: false, error: auth.error === "נדרשת התחברות" ? "יש להתחבר." : auth.error };
+  const orgId = auth.ctx.organizationId;
 
   const doc = await prisma.issuedDocument.findFirst({
     where: { id, organizationId: orgId },
     select: { id: true },
   });
-  if (!doc) return { ok: false, error: "׳׳¡׳׳ ׳׳ ׳ ׳׳¦׳." };
+  if (!doc) return { ok: false, error: "מסמך לא נמצא." };
 
   try {
     await prisma.issuedDocument.delete({ where: { id } });
@@ -213,7 +209,7 @@ revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
     log.error("deleteIssuedDocument", e);
-    return { ok: false, error: "׳׳—׳™׳§׳× ׳”׳׳¡׳׳ ׳ ׳›׳©׳׳”." };
+    return { ok: false, error: "מחיקת המסמך נכשלה." };
   }
 }
 
@@ -235,16 +231,16 @@ export async function exportMonthlyReport(
 ): Promise<ExportMonthlyReportResult> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.organizationId) {
-    return { ok: false, error: "׳’׳™׳©׳” ׳ ׳“׳—׳×׳”" };
+    return { ok: false, error: "גישה נדחתה" };
   }
 
   const m = Number(month);
   const y = Number(year);
   if (!Number.isInteger(m) || m < 1 || m > 12) {
-    return { ok: false, error: "׳—׳•׳“׳© ׳׳ ׳×׳§׳™׳" };
+    return { ok: false, error: "חודש לא תקין" };
   }
   if (!Number.isInteger(y) || y < 2000 || y > 2100) {
-    return { ok: false, error: "׳©׳ ׳” ׳׳ ׳×׳§׳™׳ ׳”" };
+    return { ok: false, error: "שנה לא תקינה" };
   }
 
   const startDate = new Date(y, m - 1, 1, 0, 0, 0, 0);
@@ -259,10 +255,10 @@ export async function exportMonthlyReport(
   });
 
   if (docs.length === 0) {
-    return { ok: false, error: "׳׳ ׳ ׳׳¦׳׳• ׳׳¡׳׳›׳™׳ ׳׳—׳•׳“׳© ׳–׳”" };
+    return { ok: false, error: "לא נמצאו מסמכים לחודש זה" };
   }
 
-  const headers = ["׳׳¡׳₪׳¨", "׳×׳׳¨׳™׳", "׳׳§׳•׳—", "׳¡׳•׳’", "׳ ׳˜׳•", "׳׳¢׳´׳", "׳¡׳”׳´׳›", "׳¡׳˜׳˜׳•׳¡"];
+  const headers = ["מספר", "תאריך", "לקוח", "סוג", "נטו", "מע״מ", "סה״כ", "סטטוס"];
   const csvRows = docs.map((d) => [
     csvCell(d.number),
     csvCell(new Date(d.date).toLocaleDateString("he-IL")),
