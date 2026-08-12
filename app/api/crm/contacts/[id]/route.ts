@@ -5,6 +5,7 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonNotFound } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 import { assignContactProject } from "@/lib/workspace-api/project-crm-sync";
+import { serializeContactStatus } from "@/lib/crm/pipeline-status";
 
 const patchContactSchema = z.object({
   name: z.string().min(1).optional(),
@@ -12,6 +13,7 @@ const patchContactSchema = z.object({
   phone: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   status: z.string().optional(),
+  value: z.number().finite().nonnegative().optional().nullable(),
   projectId: z.string().nullable().optional(),
   tags: z.array(z.string().min(1).max(40)).max(20).optional(),
 });
@@ -95,6 +97,7 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchConta
         body.phone !== undefined ||
         body.notes !== undefined ||
         body.status !== undefined ||
+        body.value !== undefined ||
         body.tags !== undefined
       ) {
         await prisma.contact.updateMany({
@@ -104,7 +107,8 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchConta
             ...(body.email !== undefined ? { email: body.email } : {}),
             ...(body.phone !== undefined ? { phone: body.phone } : {}),
             ...(body.notes !== undefined ? { notes: body.notes } : {}),
-            ...(body.status !== undefined ? { status: body.status.toUpperCase() } : {}),
+            ...(body.status !== undefined ? { status: serializeContactStatus(body.status) } : {}),
+            ...(body.value !== undefined ? { value: body.value } : {}),
             ...(body.tags !== undefined ? { tags: body.tags } : {}),
           },
         });

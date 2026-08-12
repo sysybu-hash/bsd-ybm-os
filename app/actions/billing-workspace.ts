@@ -23,15 +23,15 @@ export async function saveBillingWorkspaceAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return { ok: false, error: "׳ ׳“׳¨׳©׳× ׳”׳×׳—׳‘׳¨׳•׳×" };
+    return { ok: false, error: "נדרשת התחברות" };
   }
   const orgId = session.user.organizationId ?? null;
   const role = String(session.user.role ?? "");
   if (!orgId) {
-    return { ok: false, error: "׳׳™׳ ׳׳¨׳’׳•׳ ׳׳©׳•׳™׳" };
+    return { ok: false, error: "אין ארגון משויך" };
   }
   if (!canEdit(role)) {
-    return { ok: false, error: "׳¨׳§ ׳׳ ׳”׳ ׳׳¨׳’׳•׳ ׳¨׳©׳׳™ ׳׳©׳׳•׳¨" };
+    return { ok: false, error: "רק מנהל ארגון רשאי לשמור" };
   }
 
   const cleanLines: InsuranceExpenseLine[] = (workspace.insuranceLines ?? [])
@@ -83,7 +83,7 @@ export async function saveBillingWorkspaceAction(
     return { ok: true };
   } catch (e) {
     log.error("saveBillingWorkspaceAction", e);
-    return { ok: false, error: "׳©׳׳™׳¨׳” ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "שמירה נכשלה" };
   }
 }
 

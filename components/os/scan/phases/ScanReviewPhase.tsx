@@ -9,7 +9,7 @@ type ScanReviewPhaseProps = {
   onChange: (a: DocumentAnalysis) => void;
   onClose: () => void;
   onContinueToSave: () => void;
-  tr: (key: string, fallback: string) => string;
+  t: (key: string) => string;
   embeddedInScrollParent?: boolean;
 };
 
@@ -19,7 +19,7 @@ export function ScanReviewPhase({
   onChange,
   onClose,
   onContinueToSave,
-  tr,
+  t,
   embeddedInScrollParent,
 }: ScanReviewPhaseProps) {
   return (
@@ -28,9 +28,9 @@ export function ScanReviewPhase({
       onChange={onChange}
       onClose={onClose}
       onConfirm={onContinueToSave}
-      tr={tr}
+      t={t}
       embeddedInScrollParent={embeddedInScrollParent}
-      confirmLabel={tr("workspaceWidgets.documentScan.continueToSave", "המשך לשמירה")}
+      confirmLabel={t("workspaceWidgets.documentScan.continueToSave")}
     />
   );
 }

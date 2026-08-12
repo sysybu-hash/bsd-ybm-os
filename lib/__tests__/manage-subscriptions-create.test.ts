@@ -11,6 +11,10 @@ jest.mock("@/lib/executive-subscription-super-admin", () => ({
   isExecutiveSubscriptionSuperAdmin: jest.fn(() => true),
 }));
 
+jest.mock("@/lib/is-admin", () => ({
+  isAdmin: jest.fn(() => true),
+}));
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findFirst: jest.fn() },

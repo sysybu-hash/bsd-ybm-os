@@ -3,8 +3,9 @@
 import React from "react";
 import { Building2, Save, Trash2 } from "lucide-react";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
-import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
-import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
+import { ADMIN_SUBSCRIPTION_TIER_OPTIONS } from "@/lib/subscription-tier-config";
+import { normalizeIndustryType } from "@/lib/professions/config";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { osFieldClassName } from "@/components/os/ui/os-field";
 
 const ORG_STATUSES = ["ACTIVE", "INACTIVE", "PENDING_APPROVAL", "TRIAL"] as const;
@@ -36,6 +37,11 @@ export function OrgEditorPanel({
   deleteOrgConfirm, setDeleteOrgConfirm,
   busyAction, onSaveSubscription, onAdjustScans, onDeleteOrg, t,
 }: OrgEditorPanelProps) {
+  const { t: tRoot } = useI18n();
+  const tierLabel = (tier: string) => tRoot(`subscriptionTierLabels.${tier}`);
+  const industryLabel = (id: string) =>
+    tRoot(`professions.${normalizeIndustryType(id)}.label`);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -56,8 +62,8 @@ export function OrgEditorPanel({
           onChange={(e) => onIndustryChange(e.target.value)}
           className={`${osFieldClassName} mt-1 font-normal`}
         >
-          <option value="CONSTRUCTION">{industryLabelHe("CONSTRUCTION")}</option>
-          <option value="COMPANY_MGMT">{industryLabelHe("COMPANY_MGMT")}</option>
+          <option value="CONSTRUCTION">{industryLabel("CONSTRUCTION")}</option>
+          <option value="COMPANY_MGMT">{industryLabel("COMPANY_MGMT")}</option>
         </select>
       </label>
 
@@ -84,7 +90,7 @@ export function OrgEditorPanel({
           className={`${osFieldClassName} mt-1 font-normal`}
         >
           {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => (
-            <option key={tier} value={tier}>{tierLabelHe(tier)}</option>
+            <option key={tier} value={tier}>{tierLabel(tier)}</option>
           ))}
         </select>
       </label>

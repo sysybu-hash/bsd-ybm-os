@@ -1,14 +1,22 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
 import AiChatFullWidget from "@/components/os/widgets/AiChatFullWidget";
-import AppBuilderWidget from "@/components/os/widgets/AppBuilderWidget";
-import NotebookLMWidget from "@/components/os/widgets/NotebookLMWidget";
 import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubShell";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
+
+const AppBuilderWidget = dynamic(() => import("@/components/os/widgets/AppBuilderWidget"), {
+  ssr: false,
+  loading: () => null,
+});
+const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), {
+  ssr: false,
+  loading: () => null,
+});
 
 const TABS: HubTabDef[] = [
   { id: "chat", labelKey: "workspaceWidgets.hubs.ai.tabs.chat" },

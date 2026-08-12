@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { CommandCenterCanvas } from "./command-center/CommandCenterCanvas";
 import { BlueprintForkDialog } from "./blueprint/BlueprintForkDialog";
 import type { useAiScannerState } from "@/components/os/widgets/ai-scanner/useAiScannerState";
@@ -21,7 +21,14 @@ type DocumentScanShellProps = {
  * לוח המנועים והשמירה גלויים בו-זמנית (מחליף את זרימת 4 השלבים הישנה).
  */
 export function DocumentScanShell({ state, compactMode = false, showIntakeControls = true }: DocumentScanShellProps) {
-  const { tr, scanQueue } = state;
+  const { t, scanQueue } = state;
+  const tr = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v === key ? fallback : v;
+    },
+    [t],
+  );
   const {
     pendingAnalysis,
     previewFileName,

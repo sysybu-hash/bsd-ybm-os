@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, X, User, Mail, Phone, Save } from "lucide-react";
+import { UserPlus, X, User, Mail, Phone, Save, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import type { Client } from "./types";
+import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 import { CrmOverlayPortal } from "./CrmOverlayPortal";
 import { OsButton, OsIconButton } from "@/components/os/ui";
+import { pipelineStatusOptions } from "./constants";
 
 type AddClientModalProps = {
   onClose: () => void;
@@ -21,8 +23,9 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
     name: string;
     email: string;
     phone: string;
-    status: Client["status"];
-  }>({ name: "", email: "", phone: "", status: "lead" });
+    status: CrmPipelineStatus;
+    value: string;
+  }>({ name: "", email: "", phone: "", status: "LEAD", value: "" });
   const [saving, setSaving] = useState(false);
 
   const handleAdd = async () => {
@@ -30,12 +33,23 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
       toast.error(t("workspaceWidgets.crmTable.nameEmailRequired"));
       return;
     }
+    const parsedValue = form.value.trim() ? Number.parseFloat(form.value) : null;
+    if (form.value.trim() && (parsedValue == null || Number.isNaN(parsedValue) || parsedValue < 0)) {
+      toast.error(t("workspaceWidgets.crmTable.valueInvalid"));
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/crm/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone || null,
+          status: form.status,
+          value: parsedValue,
+        }),
       });
       if (res.ok) {
         toast.success(t("workspaceWidgets.crmTable.created"));
@@ -102,18 +116,32 @@ export function AddClientModal({ onClose, onCreated, t }: AddClientModalProps) {
             </div>
           </div>
           <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">{t("workspaceWidgets.crmTable.valueLabel")}</label>
+            <div className="relative">
+              <Banknote className="absolute end-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]" size={16} aria-hidden />
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="0"
+                className={FIELD_CLS}
+                value={form.value}
+                onChange={(e) => setForm({ ...form, value: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest">{t("workspaceWidgets.crmTable.addClientStatus")}</label>
             <select
               className={`${FIELD_CLS} appearance-none`}
               value={form.status}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "active" || v === "lead" || v === "inactive") setForm({ ...form, status: v });
-              }}
+              onChange={(e) => setForm({ ...form, status: e.target.value as CrmPipelineStatus })}
             >
-              <option value="lead">{t("workspaceWidgets.crmTable.addClientStatusLead")}</option>
-              <option value="active">{t("workspaceWidgets.crmTable.addClientStatusActive")}</option>
-              <option value="inactive">{t("workspaceWidgets.crmTable.addClientStatusInactive")}</option>
+              {pipelineStatusOptions(t).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

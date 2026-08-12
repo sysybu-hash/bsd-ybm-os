@@ -62,11 +62,10 @@ export const authOptions: NextAuthOptions = {
             clientId: googleSignInCreds.clientId,
             clientSecret: googleSignInCreds.clientSecret,
             /**
-             * נדרש: משתמשים נוצרים ידנית / דרך הזמנה ללא Account record.
-             * בלי הפלאג הזה NextAuth יזרוק OAuthAccountNotLinked.
-             * הנתונים הפגומים שגרמו לבאג תוקנו ישירות ב-DB.
+             * קישור לפי אימייל בלבד מסוכן — משתמשים מוזמנים מקשרים Google
+             * במפורש דרך /api/auth/google-link אחרי התחברות (סיסמה/הזמנה).
              */
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
             authorization: {
               params: {
                 /** select_account בלבד — consent מלא רק ב-reconnect (Drive) / Contacts */

@@ -3,26 +3,13 @@
 import React, { useMemo, useState } from "react";
 import { Loader2, Plus, Search, UserPlus } from "lucide-react";
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
-import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
-import { BUSINESS_LINE_IDS, businessLineLabelHe } from "@/lib/business-lines";
-import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construction-trades";
-import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
+import { ADMIN_SUBSCRIPTION_TIER_OPTIONS } from "@/lib/subscription-tier-config";
+import { BUSINESS_LINE_IDS } from "@/lib/business-lines";
+import { CONSTRUCTION_TRADE_IDS } from "@/lib/construction-trades";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { osFieldInlineClassName } from "@/components/os/ui/os-field";
 import { OrgEditorPanel } from "@/components/admin/platform-admin/OrgEditorPanel";
-
-/** Trade/business-line options for the currently selected industry. */
-function specialtyOptions(industry: string) {
-  return normalizeIndustryType(industry) === "COMPANY_MGMT"
-    ? BUSINESS_LINE_IDS.map((id) => ({ id: id as string, label: businessLineLabelHe(id) }))
-    : CONSTRUCTION_TRADE_IDS.map((id) => ({ id: id as string, label: constructionTradeLabelHe(id) }));
-}
-
-function specialtyLabel(org: ExecutiveOrgRow) {
-  return normalizeIndustryType(org.industry) === "COMPANY_MGMT"
-    ? businessLineLabelHe((org.constructionTrade ?? "GENERAL_BUSINESS") as (typeof BUSINESS_LINE_IDS)[number])
-    : constructionTradeLabelHe((org.constructionTrade ?? "GENERAL_CONTRACTOR") as (typeof CONSTRUCTION_TRADE_IDS)[number]);
-}
 
 type SubscriptionsTabProps = {
   orgs: ExecutiveOrgRow[];
@@ -68,16 +55,33 @@ export function SubscriptionsTab(props: SubscriptionsTabProps) {
   const { t } = useI18n();
   const ts = (suffix: string, params?: Record<string, string>) =>
     t(`platformAdmin.orgs.${suffix}`, params);
+  const tierLabel = (tier: string) => t(`subscriptionTierLabels.${tier}`);
+  const industryLabel = (id?: string | null) =>
+    t(`professions.${normalizeIndustryType(id)}.label`);
+  const specialtyOptions = (industry: string) =>
+    normalizeIndustryType(industry) === "COMPANY_MGMT"
+      ? BUSINESS_LINE_IDS.map((id) => ({ id: id as string, label: t(`businessLineLabels.${id}`) }))
+      : CONSTRUCTION_TRADE_IDS.map((id) => ({ id: id as string, label: t(`constructionTradeLabels.${id}`) }));
+  const specialtyLabel = (org: ExecutiveOrgRow) =>
+    normalizeIndustryType(org.industry) === "COMPANY_MGMT"
+      ? t(`businessLineLabels.${org.constructionTrade ?? "GENERAL_BUSINESS"}`)
+      : t(`constructionTradeLabels.${org.constructionTrade ?? "GENERAL_CONTRACTOR"}`);
   const [filter, setFilter] = useState("");
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return orgs;
-    return orgs.filter((o) =>
-      [o.name, o.primaryEmail ?? "", industryLabelHe(o.industry), specialtyLabel(o)]
-        .some((v) => v.toLowerCase().includes(q)),
-    );
-  }, [orgs, filter]);
+    return orgs.filter((o) => {
+      const industry = t(`professions.${normalizeIndustryType(o.industry)}.label`);
+      const specialty =
+        normalizeIndustryType(o.industry) === "COMPANY_MGMT"
+          ? t(`businessLineLabels.${o.constructionTrade ?? "GENERAL_BUSINESS"}`)
+          : t(`constructionTradeLabels.${o.constructionTrade ?? "GENERAL_CONTRACTOR"}`);
+      return [o.name, o.primaryEmail ?? "", industry, specialty].some((v) =>
+        v.toLowerCase().includes(q),
+      );
+    });
+  }, [orgs, filter, t]);
 
   const canCreate = createEmail.trim() !== "" && createOrgName.trim() !== "";
 
@@ -105,7 +109,7 @@ export function SubscriptionsTab(props: SubscriptionsTabProps) {
             <select value={createTier} onChange={(e) => setCreateTier(e.target.value)}
               disabled={createVip} className={osFieldInlineClassName}>
               {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => (
-                <option key={tier} value={tier}>{tierLabelHe(tier)}</option>
+                <option key={tier} value={tier}>{tierLabel(tier)}</option>
               ))}
             </select>
             <select
@@ -117,8 +121,8 @@ export function SubscriptionsTab(props: SubscriptionsTabProps) {
               }}
               className={osFieldInlineClassName}
             >
-              <option value="CONSTRUCTION">{industryLabelHe("CONSTRUCTION")}</option>
-              <option value="COMPANY_MGMT">{industryLabelHe("COMPANY_MGMT")}</option>
+              <option value="CONSTRUCTION">{industryLabel("CONSTRUCTION")}</option>
+              <option value="COMPANY_MGMT">{industryLabel("COMPANY_MGMT")}</option>
             </select>
             <select value={createConstructionTrade} onChange={(e) => setCreateConstructionTrade(e.target.value)}
               className={osFieldInlineClassName}>
@@ -194,9 +198,9 @@ export function SubscriptionsTab(props: SubscriptionsTabProps) {
                       >
                         <td className="p-2 font-semibold">{o.name}</td>
                         <td className="p-2 text-xs text-[color:var(--foreground-muted)]">{o.primaryEmail ?? "—"}</td>
-                        <td className="p-2 text-xs">{industryLabelHe(o.industry)}</td>
+                        <td className="p-2 text-xs">{industryLabel(o.industry)}</td>
                         <td className="p-2 text-xs">{specialtyLabel(o)}</td>
-                        <td className="p-2">{tierLabelHe(o.subscriptionTier)}</td>
+                        <td className="p-2">{tierLabel(o.subscriptionTier)}</td>
                         <td className="p-2 text-xs">
                           {t(`platformAdmin.orgs.status${o.subscriptionStatus}`)}
                         </td>

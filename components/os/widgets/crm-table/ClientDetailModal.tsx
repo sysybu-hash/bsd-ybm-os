@@ -1,12 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Edit3 } from "lucide-react";
+import { X, Edit3, Send } from "lucide-react";
 import { OsIconButton } from "@/components/os/ui";
 import type { Client, ProjectOption, OpenWorkspaceWidgetFn } from "./types";
+import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 import { CrmOverlayPortal } from "./CrmOverlayPortal";
 import { ClientTimelineTab } from "./ClientTimelineTab";
 import { ClientDetailsSection } from "./ClientDetailsSection";
+import {
+  PIPELINE_STATUS_CLASS,
+  openQuoteCreatorForContact,
+  pipelineStatusOptions,
+} from "./constants";
 
 type CrmSyncStatus = "unlinked" | "syncing" | "synced" | "linked";
 
@@ -17,6 +23,7 @@ type ClientDetailModalProps = {
   onChange: (updated: Client) => void;
   onClose: () => void;
   onSave: () => Promise<void>;
+  onQuickStatusChange: (status: CrmPipelineStatus) => Promise<void>;
   projectOptions: ProjectOption[];
   savingProject: boolean;
   creatingProject: boolean;
@@ -35,6 +42,7 @@ export function ClientDetailModal({
   onChange,
   onClose,
   onSave,
+  onQuickStatusChange,
   projectOptions,
   savingProject,
   creatingProject,
@@ -46,8 +54,19 @@ export function ClientDetailModal({
   t,
 }: ClientDetailModalProps) {
   const [activeTab, setActiveTab] = useState<"details" | "timeline">("details");
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const tagsString = (client.tags ?? []).join(", ");
+
+  const handleQuickStatus = async (status: CrmPipelineStatus) => {
+    if (status === client.status || statusSaving) return;
+    setStatusSaving(true);
+    try {
+      await onQuickStatusChange(status);
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   return (
     <CrmOverlayPortal>
@@ -60,17 +79,19 @@ export function ClientDetailModal({
             <div className="min-w-0">
               <h3 className="text-xl sm:text-3xl font-black text-[color:var(--foreground-main)] mb-1 sm:mb-2 truncate">{client.name}</h3>
               <div className="flex flex-wrap gap-2 items-center">
-                <span
-                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                    client.status === "active"
-                      ? "bg-[color:var(--state-success)]/10 text-[color:var(--state-success)]"
-                      : client.status === "lead"
-                        ? "bg-[color:var(--state-info)]/10 text-[color:var(--state-info)]"
-                        : "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]"
-                  }`}
+                <select
+                  value={client.status}
+                  disabled={statusSaving}
+                  onChange={(e) => void handleQuickStatus(e.target.value as CrmPipelineStatus)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-0 cursor-pointer ${PIPELINE_STATUS_CLASS[client.status]}`}
+                  aria-label={t("workspaceWidgets.crmTable.addClientStatus")}
                 >
-                  {client.status}
-                </span>
+                  {pipelineStatusOptions(t).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
                 {(client.tags ?? []).map((tag) => (
                   <span
                     key={tag}
@@ -82,7 +103,17 @@ export function ClientDetailModal({
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 shrink-0">
+            {openWorkspaceWidget ? (
+              <button
+                type="button"
+                onClick={() => openQuoteCreatorForContact(openWorkspaceWidget, client)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-2 text-[10px] font-bold text-indigo-800 dark:text-indigo-200 hover:bg-indigo-500/20 transition-colors"
+              >
+                <Send size={14} aria-hidden />
+                <span className="hidden sm:inline">{t("workspaceWidgets.crmTable.sendQuote")}</span>
+              </button>
+            ) : null}
             <OsIconButton
               label={t("workspaceWidgets.itemActions.edit")}
               active={isEditing}

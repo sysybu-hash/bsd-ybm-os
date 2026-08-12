@@ -11,6 +11,9 @@ import { useCrmTable } from "./crm-table/useCrmTable";
 import { AddClientModal } from "./crm-table/AddClientModal";
 import { ClientDetailModal } from "./crm-table/ClientDetailModal";
 import { CrmContactsTable } from "./crm-table/CrmContactsTable";
+import { CRM_PIPELINE_STATUSES } from "@/lib/crm/pipeline-status";
+import { pipelineStatusLabel } from "./crm-table/constants";
+import { GoogleImportModal } from "./crm-table/GoogleImportModal";
 
 export type { CrmTableWidgetProps };
 export type { OpenWorkspaceWidgetFn } from "./crm-table/types";
@@ -19,9 +22,9 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
   const { dir, t } = useI18n();
   const s = useCrmTable({ openWorkspaceWidget, t });
 
-  if (s.loading && s.clients.length === 0)
+  if (s.loading && s.allClients.length === 0)
     return <WidgetState variant="loading" message={t("workspaceWidgets.crmTable.loading")} />;
-  if (s.loadError && s.clients.length === 0)
+  if (s.loadError && s.allClients.length === 0)
     return (
       <WidgetState
         variant="error"
@@ -78,6 +81,14 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             </OsButton>
             <OsButton
               variant="secondary"
+              onClick={() => s.setShowGoogleImport(true)}
+              disabled={s.isImporting}
+              icon={<Download size={16} aria-hidden />}
+            >
+              {t("workspaceWidgets.crmTable.importGoogle")}
+            </OsButton>
+            <OsButton
+              variant="secondary"
               onClick={() => void s.handleExportCsv()}
               disabled={s.isExporting}
               icon={s.isExporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Download size={16} aria-hidden />}
@@ -117,6 +128,19 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             </span>
           ) : null}
           <select
+            value={s.statusFilter}
+            onChange={(e) => s.setStatusFilter(e.target.value as typeof s.statusFilter)}
+            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-xs font-bold"
+            aria-label={t("workspaceWidgets.crmTable.statusFilter")}
+          >
+            <option value="">{t("workspaceWidgets.crmTable.allStatuses")}</option>
+            {CRM_PIPELINE_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {pipelineStatusLabel(status, t)}
+              </option>
+            ))}
+          </select>
+          <select
             value={s.tagFilter}
             onChange={(e) => s.setTagFilter(e.target.value)}
             className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-xs font-bold"
@@ -135,6 +159,15 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       {s.isAddingClient && (
         <AddClientModal onClose={() => s.setIsAddingClient(false)} onCreated={() => void s.fetchClients()} t={t} />
       )}
+      {s.showGoogleImport && (
+        <GoogleImportModal
+          onClose={() => s.setShowGoogleImport(false)}
+          onImported={s.handleGoogleImported}
+          t={t}
+          fetchPreview={s.fetchGooglePreview}
+          runImport={s.runGoogleImport}
+        />
+      )}
       {s.selectedClient && (
         <ClientDetailModal
           client={s.selectedClient}
@@ -146,6 +179,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             s.setIsEditing(false);
           }}
           onSave={s.handleUpdateClient}
+          onQuickStatusChange={s.handleQuickStatusChange}
           projectOptions={s.projectOptions}
           savingProject={s.savingProject}
           creatingProject={s.creatingProject}

@@ -8,14 +8,17 @@ import { downloadAuthenticatedFile } from "@/lib/client/download-api-file";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { Client, CrmTableWidgetProps } from "./types";
+import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 import {
   checkProjectChangeApi,
   deleteContactApi,
   fetchContactByIdApi,
   fetchContactsPageApi,
+  fetchGoogleContactsPreviewApi,
   fetchProjectOptionsApi,
   fetchProjectSyncMetaApi,
   importContactsApi,
+  importGoogleContactsApi,
   postSemanticSearchApi,
   updateContactApi,
 } from "./crm-table-api";
@@ -32,9 +35,11 @@ export function useCrmTable({
   const [semanticMode, setSemanticMode] = useState(false);
   const [semanticFallback, setSemanticFallback] = useState(false);
   const [tagFilter, setTagFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<CrmPipelineStatus | "">("");
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showGoogleImport, setShowGoogleImport] = useState(false);
   const [selectedClient, setSelectedClientState] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -89,6 +94,11 @@ export function useCrmTable({
     }
     return [...set].sort((a, b) => a.localeCompare(b, "he"));
   }, [clients]);
+
+  const filteredClients = useMemo(() => {
+    if (!statusFilter) return clients;
+    return clients.filter((c) => c.status === statusFilter);
+  }, [clients, statusFilter]);
 
   const loadProjectOptions = useCallback(async () => {
     try {
@@ -246,6 +256,7 @@ export function useCrmTable({
         phone: selectedClient.phone,
         notes: selectedClient.notes,
         status: selectedClient.status,
+        value: selectedClient.value,
         projectId: selectedClient.projectId,
         tags: selectedClient.tags ?? [],
       });
@@ -313,6 +324,21 @@ export function useCrmTable({
     }
   };
 
+  const handleQuickStatusChange = async (status: CrmPipelineStatus) => {
+    if (!selectedClient) return;
+    try {
+      const refreshed = await updateContactApi(selectedClient.id, { status });
+      if (refreshed) {
+        setSelectedClient((prev) => (prev?.id === refreshed.id ? { ...prev, ...refreshed } : prev));
+        setClients((prev) => prev.map((c) => (c.id === refreshed.id ? { ...c, ...refreshed } : c)));
+        toast.success(t("workspaceWidgets.crmTable.updated"));
+        void fetchClients();
+      } else throw new Error("update failed");
+    } catch {
+      toast.error(t("workspaceWidgets.crmTable.updateFailed"));
+    }
+  };
+
   const openProjectHub = (client?: Client) => {
     const target = client ?? selectedClient;
     if (!target?.projectId || !openWorkspaceWidget) return;
@@ -373,8 +399,28 @@ export function useCrmTable({
     }
   };
 
+  const fetchGooglePreview = useCallback(async () => {
+    return fetchGoogleContactsPreviewApi(t("workspaceWidgets.crmTable.googleImportFailed"));
+  }, [t]);
+
+  const runGoogleImport = useCallback(
+    async (payload: { importAll?: boolean; ids?: string[] }) => {
+      const result = await importGoogleContactsApi(payload);
+      if (result.ok) {
+        toast.success(result.message ?? t("workspaceWidgets.crmTable.googleImportSuccess"));
+      }
+      return result;
+    },
+    [t],
+  );
+
+  const handleGoogleImported = useCallback(() => {
+    void fetchClients(false);
+  }, [fetchClients]);
+
   return {
-    clients,
+    clients: filteredClients,
+    allClients: clients,
     loading,
     loadError,
     deleteTargetId,
@@ -386,11 +432,15 @@ export function useCrmTable({
     semanticFallback,
     tagFilter,
     setTagFilter,
+    statusFilter,
+    setStatusFilter,
     allTags,
     isAddingClient,
     setIsAddingClient,
     isImporting,
     isExporting,
+    showGoogleImport,
+    setShowGoogleImport,
     selectedClient,
     setSelectedClient,
     isEditing,
@@ -405,10 +455,14 @@ export function useCrmTable({
     fetchClients,
     confirmDeleteClient,
     handleUpdateClient,
+    handleQuickStatusChange,
     saveClientProject,
     handleCreateProjectForClient,
     openProjectHub,
     handleImportCSV,
     handleExportCsv,
+    fetchGooglePreview,
+    runGoogleImport,
+    handleGoogleImported,
   };
 }

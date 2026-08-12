@@ -39,7 +39,7 @@ const QUICK_PROMPT_KEYS = [
 ] as const;
 
 export default function AdminAssistantTab({ onNavigateTab }: Props) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const ts = useCallback(
     (suffix: string) => t(`platformAdmin.assistant.${suffix}`),
     [t],
@@ -134,7 +134,7 @@ export default function AdminAssistantTab({ onNavigateTab }: Props) {
   );
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col gap-3" dir="rtl">
+    <div className="flex h-full min-h-[420px] flex-col gap-3" dir={dir}>
       <div className="flex flex-wrap gap-2">
         {QUICK_PROMPT_KEYS.map((key) => {
           const q = ts(key);

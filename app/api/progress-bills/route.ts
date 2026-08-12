@@ -25,7 +25,10 @@ export const GET = withWorkspacesAuth(
           ...(projectId ? { projectId } : {}),
         },
         orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-        include: { project: { select: { name: true } } },
+        include: {
+          project: { select: { name: true } },
+          lines: true,
+        },
       });
 
       return NextResponse.json({
@@ -57,6 +60,7 @@ export const POST = withWorkspacesAuth(
         amount: parsed.data.amount,
         completionPercent: parsed.data.completionPercent,
         submit: parsed.data.submit,
+        lines: parsed.data.lines,
       });
 
       return NextResponse.json({

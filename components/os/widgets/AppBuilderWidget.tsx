@@ -1,18 +1,26 @@
 "use client";
 
 import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { RefreshCw } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import { OsButton } from "@/components/os/ui";
 import DynamicRenderer from "@/components/AppBuilder/DynamicRenderer";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
-import { DynamicSandpackRenderer } from "@/components/os/widgets/shared/DynamicSandpackRenderer";
 import { PreviewToolbar } from "@/components/os/widgets/app-builder/PreviewToolbar";
 import { SavedAppsPanel } from "@/components/os/widgets/app-builder/SavedAppsPanel";
 import { SaveAppForm } from "@/components/os/widgets/app-builder/SaveAppForm";
 import AppBuilderAssistantPanel from "@/components/os/widgets/app-builder/AppBuilderAssistantPanel";
 import { buildSandpackPlaceholder } from "@/components/os/widgets/app-builder/app-builder-helpers";
 import { useAppBuilder } from "@/components/os/widgets/app-builder/useAppBuilder";
+
+const DynamicSandpackRenderer = dynamic(
+  () =>
+    import("@/components/os/widgets/shared/DynamicSandpackRenderer").then((m) => ({
+      default: m.DynamicSandpackRenderer,
+    })),
+  { ssr: false, loading: () => null },
+);
 
 type AppBuilderWidgetProps = {
   /** When rendered inside AI Hub — uses hub scroll/fill contract instead of own sticky chrome. */

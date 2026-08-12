@@ -57,10 +57,15 @@ export function normalizeAutomationIntent(raw: string): AutomationIntent | null 
   return INTENT_SET.has(key) ? key : null;
 }
 
-function labelForLocale(entry: AutomationCatalogEntry, locale: AppLocale): string {
-  if (locale === "en") return entry.labelEn;
-  if (locale === "ru") return entry.labelRu;
+export function automationLabel(entry: AutomationCatalogEntry, locale?: string): string {
+  const loc = normalizeLocale(locale) as AppLocale;
+  if (loc === "en") return entry.labelEn;
+  if (loc === "ru") return entry.labelRu;
   return entry.labelHe;
+}
+
+function labelForLocale(entry: AutomationCatalogEntry, locale: AppLocale): string {
+  return automationLabel(entry, locale);
 }
 
 export function automationCatalogForPrompt(locale?: string): string {

@@ -114,6 +114,14 @@ export function SettingsDriveSection({
         <OsButton variant="primary" loading={driveSaving} icon={<Save size={16} aria-hidden />} onClick={onSave}>
           {t(`${S}.saveDriveSettings`)}
         </OsButton>
+        <OsButton
+          variant="secondary"
+          onClick={() => {
+            window.location.assign("/api/auth/google-link?callbackUrl=/?w=settings");
+          }}
+        >
+          {t(`${S}.connectGoogleSignIn`)}
+        </OsButton>
         <OsButton variant="secondary" onClick={() => { window.location.assign("/api/auth/google-reconnect?callbackUrl=/"); }}>
           {t(`${S}.reconnectGoogle`)}
         </OsButton>

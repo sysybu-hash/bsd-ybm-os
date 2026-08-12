@@ -4,7 +4,6 @@ import React from "react";
 import { Upload, Loader2, ArrowRight, Sparkles, Camera } from "lucide-react";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import { OsButton } from "@/components/os/ui";
-import { SCAN_ACCEPT_SUMMARY } from "@/lib/scan-mime";
 import type { QueueItem } from "./types";
 import { formatMsg } from "./constants";
 
@@ -25,7 +24,6 @@ type ScanDropZoneProps = {
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   applyFilePreview: (file: File) => void;
   t: (key: string) => string;
-  tr: (key: string, fallback: string) => string;
   compact?: boolean;
 };
 
@@ -46,7 +44,6 @@ export function ScanDropZone({
   onFileInputChange,
   applyFilePreview,
   t,
-  tr,
   compact = false,
 }: ScanDropZoneProps) {
   const doneCount = queue.filter((q) => q.status === "done").length;
@@ -85,7 +82,7 @@ export function ScanDropZone({
           {queueProgress ? (
             <>
               <p className="text-center text-xs font-bold text-[color:var(--foreground-main)]">
-                {formatMsg(tr("scanner.scanProgress", "סורק {current} מתוך {total}: {name}"), {
+                {formatMsg(t("scanner.scanProgress"), {
                   current: queueProgress.current,
                   total: queueProgress.total,
                   name: queueProgress.name,
@@ -123,7 +120,7 @@ export function ScanDropZone({
             {t("scanner.drop")}
           </p>
           <p className="mt-1 max-w-[18rem] text-center text-[10px] leading-relaxed text-[color:var(--foreground-muted)]">
-            {tr("scanner.acceptHint", SCAN_ACCEPT_SUMMARY)}
+            {t("scanner.acceptHint")}
           </p>
 
           {/* Action buttons — stacked on mobile, row on desktop */}
@@ -135,7 +132,7 @@ export function ScanDropZone({
               icon={<Upload size={16} aria-hidden />}
               onClick={() => fileInputRef.current?.click()}
             >
-              {tr("scanner.selectFiles", "העלה קובץ")}
+              {t("scanner.selectFiles")}
             </OsButton>
 
             {/* Camera capture — mobile only, hidden on desktop */}
@@ -145,13 +142,13 @@ export function ScanDropZone({
               icon={<Camera size={16} aria-hidden />}
               onClick={() => (cameraInputRef ?? fileInputRef).current?.click()}
             >
-              {tr("scanner.capturePhoto", "צלם מסמך")}
+              {t("scanner.capturePhoto")}
             </OsButton>
           </div>
 
           {queue.length > 0 ? (
             <p className="mt-2 text-[10px] font-bold text-orange-500">
-              {doneCount}/{queue.length} {tr("scanner.filesQueued", "קבצים בתור")}
+              {doneCount}/{queue.length} {t("scanner.filesQueued")}
             </p>
           ) : null}
         </div>
@@ -196,12 +193,12 @@ export function ScanDropZone({
                 }
               >
                 {item.status === "done"
-                  ? tr("scanner.queueStatusDone", "הושלם")
+                  ? t("scanner.queueStatusDone")
                   : item.status === "error"
-                    ? tr("scanner.queueStatusError", "שגיאה")
+                    ? t("scanner.queueStatusError")
                     : item.status === "processing"
-                      ? tr("scanner.queueStatusProcessing", "מעבד")
-                      : tr("scanner.queueStatusPending", "ממתין")}
+                      ? t("scanner.queueStatusProcessing")
+                      : t("scanner.queueStatusPending")}
               </span>
             </li>
           ))}
@@ -213,7 +210,7 @@ export function ScanDropZone({
             url={previewUrl}
             mime={previewMime}
             fileName={previewFileName}
-            emptyLabel={tr("scanner.noPreview", "אין תצוגה מקדימה לסוג קובץ זה")}
+            emptyLabel={t("scanner.noPreview")}
           />
         </div>
       ) : null}

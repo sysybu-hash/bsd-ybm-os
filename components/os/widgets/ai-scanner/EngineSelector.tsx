@@ -11,7 +11,7 @@ type EngineSelectorProps = {
   customEngines?: string[];
   onCustomEnginesChange?: (engines: string[]) => void;
   engineMeta: EngineMeta | null;
-  tr: (key: string, fallback: string) => string;
+  t: (key: string) => string;
 };
 
 type ChipDef = {
@@ -42,17 +42,17 @@ const CUSTOM_ENGINE_OPTIONS: { id: string; label: string; cfg: keyof EngineMeta[
   { id: "mistral", label: "Pixtral", cfg: "mistral" },
 ];
 
-export function EngineSelector({ value, onChange, customEngines = [], onCustomEnginesChange, engineMeta, tr }: EngineSelectorProps) {
+export function EngineSelector({ value, onChange, customEngines = [], onCustomEnginesChange, engineMeta, t }: EngineSelectorProps) {
   const [customOpen, setCustomOpen] = useState(false);
   const chips: ChipDef[] = [
-    { id: "AUTO", label: tr("scanner.modeAuto", "אוטומטי"), tone: "border-indigo-500/50 bg-indigo-500/15 text-[color:var(--accent)] dark:text-indigo-300" },
+    { id: "AUTO", label: t("scanner.modeAuto"), tone: "border-indigo-500/50 bg-indigo-500/15 text-[color:var(--accent)] dark:text-indigo-300" },
     { id: "SINGLE_GEMINI", label: "Gemini", cfg: "gemini", tone: "border-purple-500/50 bg-purple-500/15 text-purple-700 dark:text-purple-300" },
     { id: "SINGLE_OPENAI", label: "OpenAI", cfg: "openai", tone: "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
     { id: "SINGLE_ANTHROPIC", label: "Claude", cfg: "anthropic", tone: "border-orange-500/50 bg-orange-500/15 text-[color:var(--accent)] dark:text-orange-300" },
     { id: "SINGLE_DOCUMENT_AI", label: "Document AI", cfg: "documentAI", tone: "border-sky-500/50 bg-sky-500/15 text-sky-700 dark:text-sky-300" },
     { id: "SINGLE_MISTRAL", label: "Pixtral", cfg: "mistral", tone: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-    { id: "MULTI_PARALLEL", label: tr("scanner.modeMulti", "ריבוי מנועים"), tone: "border-rose-500/50 bg-rose-500/15 text-rose-700 dark:text-rose-300" },
-    { id: "CUSTOM_PARALLEL", label: tr("scanner.modeCustom", "בחירה ידנית"), tone: "border-violet-500/50 bg-violet-500/15 text-violet-700 dark:text-violet-300" },
+    { id: "MULTI_PARALLEL", label: t("scanner.modeMulti"), tone: "border-rose-500/50 bg-rose-500/15 text-rose-700 dark:text-rose-300" },
+    { id: "CUSTOM_PARALLEL", label: t("scanner.modeCustom"), tone: "border-violet-500/50 bg-violet-500/15 text-violet-700 dark:text-violet-300" },
   ];
 
   return (
@@ -60,7 +60,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
     <div
       className="no-scrollbar flex items-center gap-1.5 overflow-x-auto"
       role="group"
-      aria-label={tr("scanner.configAi", "מנועים")}
+      aria-label={t("scanner.configAi")}
     >
       {chips.map((chip) => {
         const configured = chip.cfg ? Boolean(engineMeta?.configured[chip.cfg]) : true;
@@ -70,8 +70,8 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
         const tooltip = configured
           ? chip.label
           : missing.length
-            ? `${chip.label} — ${tr("scanner.engineMissing", "חסר")}: ${missing.join(", ")}`
-            : `${chip.label} — ${tr("scanner.engineNotConfigured", "לא מוגדר")}`;
+            ? `${chip.label} — ${t("scanner.engineMissing")}: ${missing.join(", ")}`
+            : `${chip.label} — ${t("scanner.engineNotConfigured")}`;
         return (
           <button
             key={chip.id}
@@ -96,7 +96,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
     {value === "CUSTOM_PARALLEL" && onCustomEnginesChange && (
       <div className="mt-2 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
         <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-violet-700 dark:text-violet-300">
-          {tr("scanner.selectEngines", "בחר מנועים להרצה מקבילה")}
+          {t("scanner.selectEngines")}
         </p>
         <div className="flex flex-wrap gap-2">
           {CUSTOM_ENGINE_OPTIONS.map((opt) => {
@@ -108,7 +108,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
                   !configured ? "cursor-not-allowed opacity-40" : checked ? "border-violet-500/60 bg-violet-500/20 text-violet-700 dark:text-violet-300" : "border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
                 }`}
-                title={!configured ? `${opt.label} — ${tr("scanner.engineNotConfigured", "לא מוגדר")}` : opt.label}
+                title={!configured ? `${opt.label} — ${t("scanner.engineNotConfigured")}` : opt.label}
               >
                 <input
                   type="checkbox"
@@ -131,7 +131,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
         </div>
         {customEngines.length === 0 && (
           <p className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400">
-            {tr("scanner.selectAtLeastOne", "בחר לפחות מנוע אחד")}
+            {t("scanner.selectAtLeastOne")}
           </p>
         )}
       </div>

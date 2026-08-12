@@ -1,4 +1,5 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
+import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 
 export type IssuedDocumentRow = {
   id: string;
@@ -17,7 +18,8 @@ export interface Client {
   email: string | null;
   phone: string | null;
   notes: string | null;
-  status: "active" | "lead" | "inactive";
+  status: CrmPipelineStatus;
+  value: number | null;
   lastContact: string;
   totalProjects: number;
   projectId: string | null;

@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import type { DocType } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { allocateNextDocumentNumber } from "@/lib/finance-numbering";
 import { readRequestMessages } from "@/lib/i18n/server-messages";
 import { getIndustryProfile } from "@/lib/professions/runtime";
 import { templateDraftMode } from "@/lib/professional-template-draft";
@@ -66,47 +67,43 @@ export async function createDraftFromProfessionalTemplateAction(templateId: stri
   }
 
   const docType: DocType = "INVOICE";
-  const last = await prisma.issuedDocument.findFirst({
-    where: { organizationId: orgId, type: docType },
-    orderBy: { number: "desc" },
-    select: { number: true },
-  });
-  const nextNumber = (last?.number ?? 1000) + 1;
-
-  const created = await prisma.issuedDocument.create({
-    data: {
-      type: docType,
-      number: nextNumber,
-      clientName: `טיוטה · ${template.label}`,
-      amount: 0,
-      vat: 0,
-      total: 0,
-      items: [
-        {
-          desc: template.description,
-          qty: 1,
-          price: 0,
-          professionalTemplateId: template.id,
-          professionalTemplateKind: template.kind,
-        },
-      ] as unknown as object,
-      status: "PENDING",
-      organizationId: orgId,
-    },
-    select: {
-      id: true,
-      type: true,
-      number: true,
-      date: true,
-      dueDate: true,
-      clientName: true,
-      amount: true,
-      vat: true,
-      total: true,
-      status: true,
-      items: true,
-      contactId: true,
-    },
+  const created = await prisma.$transaction(async (tx) => {
+    const nextNumber = await allocateNextDocumentNumber(tx, orgId, docType);
+    return tx.issuedDocument.create({
+      data: {
+        type: docType,
+        number: nextNumber,
+        clientName: `טיוטה · ${template.label}`,
+        amount: 0,
+        vat: 0,
+        total: 0,
+        items: [
+          {
+            desc: template.description,
+            qty: 1,
+            price: 0,
+            professionalTemplateId: template.id,
+            professionalTemplateKind: template.kind,
+          },
+        ] as unknown as object,
+        status: "PENDING",
+        organizationId: orgId,
+      },
+      select: {
+        id: true,
+        type: true,
+        number: true,
+        date: true,
+        dueDate: true,
+        clientName: true,
+        amount: true,
+        vat: true,
+        total: true,
+        status: true,
+        items: true,
+        contactId: true,
+      },
+    });
   });
 
   const itemsRaw = Array.isArray(created.items) ? created.items : [];
