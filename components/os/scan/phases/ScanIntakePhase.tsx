@@ -63,13 +63,13 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
             customEngines={customEngines}
             onCustomEnginesChange={onCustomEnginesChange}
             engineMeta={engineMeta}
-            tr={tr}
+            t={dropProps.t}
           />
           <select
             value={scanModeOverride}
             onChange={(e) => setScanModeOverride(e.target.value as ScanModeUiSelection)}
             className="rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-[11px] font-bold"
-            aria-label={tr("workspaceWidgets.documentScan.scanMode", "מצב סריקה")}
+            aria-label={dropProps.t("workspaceWidgets.documentScan.scanMode")}
           >
             {scanModes.map((m) => (
               <option key={m.id} value={m.id}>
@@ -79,7 +79,7 @@ export function ScanIntakePhase(props: ScanIntakePhaseProps) {
           </select>
         </div>
       ) : null}
-      <ScanDropZone {...dropProps} tr={tr} t={dropProps.t} hasPendingAnalysis={false} compact={compact} />
+      <ScanDropZone {...dropProps} t={dropProps.t} hasPendingAnalysis={false} compact={compact} />
     </div>
   );
 }

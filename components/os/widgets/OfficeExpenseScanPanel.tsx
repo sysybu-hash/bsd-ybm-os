@@ -86,7 +86,7 @@ export default function OfficeExpenseScanPanel({ onExpenseSaved }: Props) {
             value={engineRunMode}
             onChange={setEngineRunMode}
             engineMeta={engineMeta}
-            tr={tr}
+            t={(key) => tr(key, key)}
           />
           <select
             value={scanModeOverride}

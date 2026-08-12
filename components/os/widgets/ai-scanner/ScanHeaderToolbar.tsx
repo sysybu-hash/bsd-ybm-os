@@ -14,7 +14,6 @@ type ScanClassification = { scanMode: string; confidence: number; rationale?: st
 
 type ScanHeaderToolbarProps = {
   t: (key: string) => string;
-  tr: (key: string, fallback: string) => string;
   scannerPrefix: string;
   boundProjectName: string;
   clearProject: () => void;
@@ -44,7 +43,7 @@ type ScanHeaderToolbarProps = {
 const selectClass =
   "h-9 shrink-0 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 text-[11px] font-bold";
 export function ScanHeaderToolbar({
-  t, tr, scannerPrefix, boundProjectName, clearProject,
+  t, scannerPrefix, boundProjectName, clearProject,
   userInstruction, persistInstruction, setInstructionsOpen,
   openPreviewPanel, queue, previewUrl, lastScanV5,
   setResultsPanelOpen, pushScannerView, scanClassification, engineRunMode,
@@ -84,7 +83,7 @@ export function ScanHeaderToolbar({
             icon={<ScanLine size={14} aria-hidden />}
             onClick={onStartScan}
           >
-            {tr("workspaceWidgets.aiScanner.scanNow", "סרוק עכשיו")} ({pendingCount})
+            {t("workspaceWidgets.aiScanner.scanNow")} ({pendingCount})
           </OsButton>
         ) : (
           <OsButton
@@ -94,13 +93,13 @@ export function ScanHeaderToolbar({
             icon={<ScanLine size={14} aria-hidden />}
             onClick={onPickFiles}
           >
-            {tr("workspaceWidgets.aiScanner.pickFiles", "בחר קבצים לסריקה")}
+            {t("workspaceWidgets.aiScanner.pickFiles")}
           </OsButton>
         )}
-        <OsIconButton label={tr("scanner.cameraOpen", "צלם מסמך")} onClick={onOpenCamera}>
+        <OsIconButton label={t("scanner.cameraOpen")} onClick={onOpenCamera}>
           <Camera size={15} aria-hidden />
         </OsIconButton>
-        <ScanOutboxBadge tr={tr} />
+        <ScanOutboxBadge t={t} />
       </div>
 
       {/* Row 2 — clickable engine selector (single row, all engines) */}
@@ -109,7 +108,7 @@ export function ScanHeaderToolbar({
           value={engineRunMode}
           onChange={setEngineRunMode}
           engineMeta={engineMeta}
-          tr={tr}
+          t={t}
         />
       </div>
 
@@ -119,7 +118,7 @@ export function ScanHeaderToolbar({
           value={scanModeOverride}
           onChange={(e) => setScanModeOverride(e.target.value as ScanModeUiSelection)}
           className={selectClass}
-          aria-label={tr("scanner.scanMode", "מצב סריקה")}
+          aria-label={t("scanner.scanMode")}
         >
           {scanModes.map((m) => (
             <option key={m.id} value={m.id}>{m.label}</option>
@@ -130,22 +129,22 @@ export function ScanHeaderToolbar({
           type="text"
           value={userInstruction}
           onChange={(e) => persistInstruction(e.target.value)}
-          placeholder={tr("scanner.instructionPlaceholder", "הנחיות ל-AI…")}
-          aria-label={tr("scanner.instructionPlaceholder", "הנחיות ל-AI")}
+          placeholder={t("scanner.instructionPlaceholder")}
+          aria-label={t("scanner.instructionPlaceholder")}
           className="hidden h-9 w-40 shrink-0 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 text-[11px] font-semibold sm:block"
         />
-        <OsIconButton label={tr("scanner.instructionsBtn", "הנחיות")} onClick={() => setInstructionsOpen(true)}>
+        <OsIconButton label={t("scanner.instructionsBtn")} onClick={() => setInstructionsOpen(true)}>
           <Settings2 size={15} aria-hidden />
         </OsIconButton>
         <OsIconButton
-          label={tr("scanner.preview", "תצוגה מקדימה")}
+          label={t("scanner.preview")}
           disabled={queue.length === 0 && !previewUrl && pendingCount === 0}
           onClick={openPreviewPanel}
         >
           <Eye size={15} aria-hidden />
         </OsIconButton>
         <OsIconButton
-          label={tr("scanner.resultsPanel", "תוצאות")}
+          label={t("scanner.resultsPanel")}
           disabled={!lastScanV5}
           onClick={() => {
             setResultsPanelOpen(true);
@@ -161,7 +160,7 @@ export function ScanHeaderToolbar({
             title={scanClassification.rationale}
           >
             {isAutoDetectScanMode(scanModeOverride)
-              ? tr("scanner.detectedDocType", "זוהה")
+              ? t("scanner.detectedDocType")
               : null}
             {" "}
             {scanModes.find((m) => m.id === scanClassification.scanMode)?.label ??
@@ -177,7 +176,7 @@ export function ScanHeaderToolbar({
           <span className="text-amber-800 dark:text-amber-300">
             <strong>{scanClassification.scanMode}</strong>
             {" — "}
-            {tr("scanner.classificationUncertainHint", "ניתן לשנות סוג מסמך בבורר למעלה")}
+            {t("scanner.classificationUncertainHint")}
           </span>
         </div>
       )}
