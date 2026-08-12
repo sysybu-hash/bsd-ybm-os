@@ -8,11 +8,11 @@ const log = createLogger("qstash-fanout");
 const DEFAULT_BATCH = 25;
 
 export function isQStashConfigured(): boolean {
-  return Boolean(process.env.QSTASH_TOKEN?.trim());
+  return Boolean(env.QSTASH_TOKEN?.trim());
 }
 
 function appBaseUrl(): string {
-  const explicit = process.env.QSTASH_TARGET_BASE_URL?.trim();
+  const explicit = env.QSTASH_TARGET_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
   const site = env.NEXT_PUBLIC_SITE_URL?.trim() || env.NEXTAUTH_URL?.trim();
   if (site) return site.replace(/\/$/, "");
@@ -44,7 +44,7 @@ export async function publishOrgFanout(
   path: string,
   orgIds: string[],
 ): Promise<{ published: number; skipped: boolean }> {
-  const token = process.env.QSTASH_TOKEN?.trim();
+  const token = env.QSTASH_TOKEN?.trim();
   const cronSecret = env.CRON_SECRET?.trim();
   if (!token || !cronSecret || orgIds.length === 0) {
     return { published: 0, skipped: true };

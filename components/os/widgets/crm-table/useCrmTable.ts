@@ -14,14 +14,13 @@ import {
   deleteContactApi,
   fetchContactByIdApi,
   fetchContactsPageApi,
-  fetchGoogleContactsPreviewApi,
   fetchProjectOptionsApi,
   fetchProjectSyncMetaApi,
   importContactsApi,
-  importGoogleContactsApi,
   postSemanticSearchApi,
   updateContactApi,
 } from "./crm-table-api";
+import { useCrmGoogleImport } from "./useCrmGoogleImport";
 
 export function useCrmTable({
   openWorkspaceWidget,
@@ -399,24 +398,12 @@ export function useCrmTable({
     }
   };
 
-  const fetchGooglePreview = useCallback(async () => {
-    return fetchGoogleContactsPreviewApi(t("workspaceWidgets.crmTable.googleImportFailed"));
-  }, [t]);
-
-  const runGoogleImport = useCallback(
-    async (payload: { importAll?: boolean; ids?: string[] }) => {
-      const result = await importGoogleContactsApi(payload);
-      if (result.ok) {
-        toast.success(result.message ?? t("workspaceWidgets.crmTable.googleImportSuccess"));
-      }
-      return result;
+  const { fetchGooglePreview, runGoogleImport, handleGoogleImported } = useCrmGoogleImport({
+    t,
+    onImported: () => {
+      void fetchClients(false);
     },
-    [t],
-  );
-
-  const handleGoogleImported = useCallback(() => {
-    void fetchClients(false);
-  }, [fetchClients]);
+  });
 
   return {
     clients: filteredClients,

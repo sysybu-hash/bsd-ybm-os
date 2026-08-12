@@ -20,10 +20,17 @@
 
 | פריט | סטטוס |
 |------|--------|
-| CSP smoke ידני (Google/PayPal/mic) | כותרת CSP בפרוד ✓; תרחישי דפדפן — Owner |
+| CSP smoke ידני (Google/PayPal/mic) | כותרת CSP בפרוד ✓ (בלי `unsafe-eval`); תרחישי דפדפן מלאים — Owner |
+| Preview DB isolation | חסום עד Neon `preview` + Vercel Preview env כללי — ראו `docs/ops/hardening-closeout.md` |
+| Google link redirect URI | קוד ב-main; Owner מוסיף URI ב-Cloud Console |
 | SLO alerts בקונסולות | הוראות ב-`SLO.md` — Owner לסמן |
 | Google OAuth verification | RUNBOOK — Owner |
 | מפתחות ITA/Stripe/MPP worker בפרוד | soft-gate עד credentials |
+
+## Closeout 2026-08-12
+
+- Integration merged: PR #31 → `main`
+- Status log: [docs/ops/closeout-status-2026-08-12.md](./ops/closeout-status-2026-08-12.md)
 
 ## סביבה
 

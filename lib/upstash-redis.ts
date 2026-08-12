@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { env } from "@/lib/env";
 
 let redisClient: Redis | null | undefined;
 
@@ -6,11 +7,13 @@ let redisClient: Redis | null | undefined;
 export function getUpstashRedis(): Redis | null {
   if (redisClient !== undefined) return redisClient;
   try {
-    if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.KV_REST_API_URL) {
+    const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
+    const token = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
+    if (!url?.trim() || !token?.trim()) {
       redisClient = null;
       return null;
     }
-    redisClient = Redis.fromEnv();
+    redisClient = new Redis({ url, token });
     return redisClient;
   } catch {
     redisClient = null;

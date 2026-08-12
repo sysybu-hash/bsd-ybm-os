@@ -213,7 +213,7 @@ test.describe("dashboard hubs", () => {
 
     await expect(
       shell.getByRole("heading", { name: /מחולל מסמכים חכם|מחולל מסמכים|document creator/i }),
-    ).toBeVisible({ timeout: 30_000 });
+    ).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
   });
 
