@@ -25,7 +25,7 @@ function parseEmailList(raw: string | undefined): string[] {
 }
 
 function isProductionRuntime(): boolean {
-  return process.env.NODE_ENV === "production";
+  return env.NODE_ENV === "production";
 }
 
 /** כל כתובות הסופר-אדמין (env: OS_ADMIN_EMAILS או OS_ADMIN_EMAIL, מופרד בפסיק) */

@@ -15,7 +15,7 @@ export const maxDuration = 300;
 const log = createLogger("cron/analyze-queue");
 
 function processBaseUrl(): string {
-  const explicit = process.env.QSTASH_TARGET_BASE_URL?.trim();
+  const explicit = env.QSTASH_TARGET_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
   const site = env.NEXT_PUBLIC_SITE_URL?.trim() || env.NEXTAUTH_URL?.trim();
   if (site) return site.replace(/\/$/, "");
@@ -24,9 +24,9 @@ function processBaseUrl(): string {
 }
 
 async function maybeScheduleFollowUpDrain() {
-  const token = process.env.QSTASH_TOKEN?.trim();
+  const token = env.QSTASH_TOKEN?.trim();
   const secret =
-    process.env.ANALYZE_QUEUE_SECRET?.trim() || env.CRON_SECRET?.trim();
+    env.ANALYZE_QUEUE_SECRET?.trim() || env.CRON_SECRET?.trim();
   if (!isQStashConfigured() || !token || !secret) return;
 
   try {

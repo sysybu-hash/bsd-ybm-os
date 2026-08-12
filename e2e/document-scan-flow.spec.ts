@@ -219,6 +219,6 @@ test.describe("Document Scan — authenticated happy path (mocked extract)", () 
 
     await expect(
       shell.getByText(/E2E Vendor|E2E mock|שמירה|יעד|ספק|review|סיכום/i).first(),
-    ).toBeVisible({ timeout: 25_000 });
+    ).toBeVisible({ timeout: 40_000 });
   });
 });

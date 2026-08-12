@@ -157,7 +157,13 @@ const serverSchema = z.object({
 
   // --- Redis / Upstash ---
   UPSTASH_REDIS_REST_URL: optStr,
+  UPSTASH_REDIS_REST_TOKEN: optStr,
   KV_REST_API_URL: optStr,
+  KV_REST_API_TOKEN: optStr,
+  /** Upstash QStash token for org fan-out cron jobs */
+  QSTASH_TOKEN: optStr,
+  /** Optional absolute base URL for QStash callbacks (defaults to site/auth URL) */
+  QSTASH_TARGET_BASE_URL: optStr,
 
   // --- Push Notifications (VAPID) ---
   VAPID_PUBLIC_KEY: optStr,
