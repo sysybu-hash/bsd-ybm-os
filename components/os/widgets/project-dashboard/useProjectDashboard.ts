@@ -181,7 +181,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       toast.error((json.error as string) ?? t("projectDashboard.errors.load"));
       return;
     }
-    toast.success(t("projectDashboard.deleteSuccess") || "הפרויקט נמחק");
+    toast.success(t("projectDashboard.deleteSuccess"));
     setProjectsList((prev) => prev.filter((p) => p.id !== id));
     if (resolvedId === id) {
       setResolvedId("");
@@ -203,10 +203,20 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       return;
     }
     const parts: string[] = [];
-    if ((json.tasksCreated as number) > 0) parts.push(`${json.tasksCreated as number} משימות`);
-    if ((json.milestonesCreated as number) > 0) parts.push(`${json.milestonesCreated as number} אבני דרך`);
-    if ((json.boqItemsCreated as number) > 0) parts.push(`${json.boqItemsCreated as number} סעיפי BOQ`);
-    toast.success(parts.length > 0 ? `יובאו: ${parts.join(", ")}` : (json.message as string ?? t("projectDashboard.blueprintSuccess")));
+    if ((json.tasksCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportTasks").replace("{count}", String(json.tasksCreated)));
+    }
+    if ((json.milestonesCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportMilestones").replace("{count}", String(json.milestonesCreated)));
+    }
+    if ((json.boqItemsCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportBoq").replace("{count}", String(json.boqItemsCreated)));
+    }
+    toast.success(
+      parts.length > 0
+        ? t("projectDashboard.blueprintImportSummary").replace("{parts}", parts.join(", "))
+        : (json.message as string ?? t("projectDashboard.blueprintSuccess")),
+    );
     setBlueprintPreview(null);
     await refresh();
   };

@@ -230,7 +230,7 @@ export async function loadCommercialHubSnapshot(
       current.totalValue += contact.value ?? 0;
       current.pendingCollection += totalPending;
       current.billedTotal += totalBilled;
-      if (contact.status !== "CLOSED_LOST") {
+      if (!["LOST", "CLOSED_LOST"].includes(contact.status)) {
         current.activeDeals += 1;
       }
       projectMetrics.set(contact.project.id, current);

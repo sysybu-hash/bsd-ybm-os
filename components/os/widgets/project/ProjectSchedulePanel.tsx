@@ -1,16 +1,21 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { FileStack, Upload } from "lucide-react";
 import { getProjectSubDomainsForIndustry, type ProjectSubDomainId } from "@/lib/project-sub-domains";
-import ProjectGanttChart from "@/components/os/widgets/project/ProjectGanttChart";
 import ProjectDocumentGeneratorModal from "@/components/os/widgets/project/ProjectDocumentGeneratorModal";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
 import { OsButton } from "@/components/os/ui";
 import type { ProjectSchedulePanelProps } from "./schedule-panel/types";
 import { useScheduleData } from "./schedule-panel/useScheduleData";
 import { ScheduleDomainSidebar } from "./schedule-panel/ScheduleDomainSidebar";
+
+const ProjectGanttChart = dynamic(
+  () => import("@/components/os/widgets/project/ProjectGanttChart"),
+  { ssr: false, loading: () => null },
+);
 
 export default function ProjectSchedulePanel({
   projectId,

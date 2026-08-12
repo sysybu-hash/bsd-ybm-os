@@ -5,6 +5,13 @@ import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { TakeoffMeasurement } from "@/components/os/widgets/project/TakeoffModule";
 
+export type BoqPhaseColumn = {
+  id?: string;
+  phaseIndex: number;
+  coefficient: number | null;
+  phaseAmount: number | null;
+};
+
 export type BoqLine = {
   id: string;
   description: string;
@@ -15,7 +22,11 @@ export type BoqLine = {
   isWorkDone: boolean;
   progressCoefficient: number | null;
   isSectionSubtotal: boolean;
+  phaseColumns?: BoqPhaseColumn[];
 };
+
+/** Number of milestone phase columns shown in BOQ table (2–5). */
+export const BOQ_PHASE_COUNT = 3;
 
 export type BoqSubTab = "quote" | "boq" | "bills" | "milestones";
 
@@ -94,7 +105,10 @@ export function useBoqPanelState(apiBase: string) {
     window.open(`${apiBase}/export/excel?type=${type}`, "_blank");
   };
 
-  const patchLine = async (id: string, patch: Partial<BoqLine>) => {
+  const patchLine = async (
+    id: string,
+    patch: Partial<BoqLine> & { phaseColumns?: BoqPhaseColumn[] },
+  ) => {
     const res = await fetch(`${apiBase}/boq`, {
       method: "PATCH",
       credentials: "include",
@@ -118,6 +132,26 @@ export function useBoqPanelState(apiBase: string) {
     const v = raw.trim() === "" ? null : Number(raw);
     if (v == null || !Number.isFinite(v) || v < 0) return;
     if (v !== l[field]) void patchLine(l.id, { [field]: v });
+  };
+
+  const editPhaseCoefficient = (l: BoqLine, phaseIndex: number, raw: string) => {
+    const coef = raw.trim() === "" ? null : Number(raw);
+    if (coef != null && (!Number.isFinite(coef) || coef < 0)) return;
+    const existing = Array.isArray(l.phaseColumns) ? [...l.phaseColumns] : [];
+    const idx = existing.findIndex((c) => c.phaseIndex === phaseIndex);
+    const next: BoqPhaseColumn = {
+      phaseIndex,
+      coefficient: coef,
+      phaseAmount: coef != null ? l.lineTotal * coef : null,
+    };
+    if (idx >= 0) existing[idx] = { ...existing[idx], ...next };
+    else existing.push(next);
+    // Keep all known phases so upsert stays consistent
+    const merged = Array.from({ length: BOQ_PHASE_COUNT }, (_, i) => {
+      const found = existing.find((c) => c.phaseIndex === i);
+      return found ?? { phaseIndex: i, coefficient: null, phaseAmount: null };
+    });
+    void patchLine(l.id, { phaseColumns: merged } as Partial<BoqLine>);
   };
 
   const deleteLine = async (id: string) => {
@@ -230,6 +264,7 @@ export function useBoqPanelState(apiBase: string) {
     exportExcel,
     patchLine,
     editCell,
+    editPhaseCoefficient,
     deleteLine,
     clearAllLines,
     saveTakeoffMeasurement,

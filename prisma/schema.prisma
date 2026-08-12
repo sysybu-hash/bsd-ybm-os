@@ -80,6 +80,7 @@ model Organization {
   financialInsight         FinancialInsight?
   invoices                 Invoice[]
   issuedDocuments          IssuedDocument[]
+  issuedDocumentSequences  IssuedDocumentSequence[]
   meckanoZones             MeckanoZone[]
   organizationInvites      OrganizationInvite[]
   productPriceObservations ProductPriceObservation[]
@@ -881,6 +882,17 @@ model FinancialInsight {
   content        String
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+/// מונה אטומי למספרי IssuedDocument לפי ארגון וסוג מסמך
+model IssuedDocumentSequence {
+  organizationId String
+  type           DocType
+  lastNumber     Int          @default(1000)
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, type])
 }
 
 /// מסמכי מס שהארגון מנפיק (חשבונית / קבלה וכו׳) — לא כמו מודל Document של קבצים סרוקים ב־ERP
