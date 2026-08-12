@@ -1,26 +1,60 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2, RefreshCw, Shield } from "lucide-react";
-import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
-import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
+import { ADMIN_SUBSCRIPTION_TIER_OPTIONS } from "@/lib/subscription-tier-config";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import { osFieldClassName } from "@/components/os/ui/os-field";
-import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { usePlatformAdmin } from "./platform-admin/usePlatformAdmin";
-import { SubscriptionsTab } from "./platform-admin/SubscriptionsTab";
-import { UsersTab } from "./platform-admin/UsersTab";
-import { SettingsTab } from "./platform-admin/SettingsTab";
-import { IdeasTab } from "./platform-admin/IdeasTab";
-import { HealthTab } from "./platform-admin/HealthTab";
-import { MailTab } from "./platform-admin/MailTab";
-import { LoginLogTab } from "./platform-admin/LoginLogTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
+const tabLoading = () => (
+  <div className="flex items-center justify-center py-16 text-[color:var(--foreground-muted)]">
+    <Loader2 size={22} className="animate-spin" aria-hidden />
+  </div>
+);
+
+const AdminAssistantTab = dynamic(() => import("@/components/admin/AdminAssistantTab"), {
+  loading: tabLoading,
+});
+const SubscriptionsTab = dynamic(
+  () => import("./platform-admin/SubscriptionsTab").then((m) => ({ default: m.SubscriptionsTab })),
+  { loading: tabLoading },
+);
+const UsersTab = dynamic(
+  () => import("./platform-admin/UsersTab").then((m) => ({ default: m.UsersTab })),
+  { loading: tabLoading },
+);
+const SettingsTab = dynamic(
+  () => import("./platform-admin/SettingsTab").then((m) => ({ default: m.SettingsTab })),
+  { loading: tabLoading },
+);
+const IdeasTab = dynamic(
+  () => import("./platform-admin/IdeasTab").then((m) => ({ default: m.IdeasTab })),
+  { loading: tabLoading },
+);
+const HealthTab = dynamic(
+  () => import("./platform-admin/HealthTab").then((m) => ({ default: m.HealthTab })),
+  { loading: tabLoading },
+);
+const MailTab = dynamic(
+  () => import("./platform-admin/MailTab").then((m) => ({ default: m.MailTab })),
+  { loading: tabLoading },
+);
+const LoginLogTab = dynamic(
+  () => import("./platform-admin/LoginLogTab").then((m) => ({ default: m.LoginLogTab })),
+  { loading: tabLoading },
+);
+
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
-  const { t } = useI18n();
+  const { t, dir, locale } = useI18n();
   const p = usePlatformAdmin();
+  const tierLabel = (tier: string) => t(`subscriptionTierLabels.${tier}`);
+  const industryLabel = (id?: string | null) =>
+    t(`professions.${normalizeIndustryType(id)}.label`);
 
   const shellClass =
     variant === "page"
@@ -28,7 +62,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
       : "h-full flex flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]";
 
   return (
-    <div className={shellClass} dir="rtl">
+    <div className={shellClass} dir={dir}>
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] p-4">
         <div className="flex items-center gap-3">
@@ -127,7 +161,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                 {t("platformAdmin.console.planToApprove")}
                 <select value={p.approvePlan} onChange={(e) => p.setApprovePlan(e.target.value)} className={`mt-1 block ${osFieldClassName}`}>
                   {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => (
-                    <option key={tier} value={tier}>{tierLabelHe(tier)}</option>
+                    <option key={tier} value={tier}>{tierLabel(tier)}</option>
                   ))}
                 </select>
               </label>
@@ -152,10 +186,10 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                         {u.organizationName ?? t("platformAdmin.pending.noOrg")}
                         {u.organizationIndustry ? (
                           <span className="me-1 rounded bg-[color:var(--surface-soft)] px-1.5 py-0.5 font-bold">
-                            {industryLabelHe(u.organizationIndustry)}
+                            {industryLabel(u.organizationIndustry)}
                           </span>
                         ) : null}
-                        {" · "}{new Date(u.createdAt).toLocaleString("he-IL")}
+                        {" · "}{new Date(u.createdAt).toLocaleString(locale)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">

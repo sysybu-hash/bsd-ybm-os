@@ -62,11 +62,11 @@ export default function JewishCalendarWidget() {
   }
 
   const weekday =
-    locale === "he" || locale === "ar"
+    locale === "he"
       ? data.gregorian.weekdayHe
       : data.gregorian.weekdayEn;
   const gregDisplay =
-    locale === "he" || locale === "ar"
+    locale === "he"
       ? data.gregorian.displayHe
       : data.gregorian.displayEn;
 

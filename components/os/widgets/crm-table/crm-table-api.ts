@@ -140,3 +140,69 @@ export async function importContactsApi(
   }
   return { ok: true, message: result.message };
 }
+
+export type GoogleContactPreviewRow = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  alreadyExists?: boolean;
+};
+
+type GoogleImportApiResult = {
+  ok: boolean;
+  contacts?: GoogleContactPreviewRow[];
+  message?: string;
+  error?: string;
+  code?: string;
+  reauthUrl?: string;
+};
+
+function parseGoogleImportError(data: Record<string, unknown>, fallback: string): GoogleImportApiResult {
+  return {
+    ok: false,
+    error: typeof data.error === "string" ? data.error : fallback,
+    code: typeof data.code === "string" ? data.code : undefined,
+    reauthUrl: typeof data.reauthUrl === "string" ? data.reauthUrl : undefined,
+  };
+}
+
+export async function fetchGoogleContactsPreviewApi(
+  errorMessage: string,
+): Promise<GoogleImportApiResult> {
+  const res = await fetch("/api/crm/contacts/import-google", { credentials: "include" });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) return parseGoogleImportError(data, errorMessage);
+  const rows = Array.isArray(data.contacts) ? data.contacts : [];
+  return {
+    ok: true,
+    contacts: rows.map((c) => {
+      const row = c as Record<string, unknown>;
+      return {
+        id: String(row.id ?? ""),
+        name: String(row.name ?? ""),
+        email: typeof row.email === "string" ? row.email : null,
+        phone: typeof row.phone === "string" ? row.phone : null,
+        alreadyExists: Boolean(row.alreadyExists),
+      };
+    }),
+  };
+}
+
+export async function importGoogleContactsApi(payload: {
+  importAll?: boolean;
+  ids?: string[];
+}): Promise<GoogleImportApiResult> {
+  const res = await fetch("/api/crm/contacts/import-google", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) return parseGoogleImportError(data, "Google import failed");
+  return {
+    ok: true,
+    message: typeof data.message === "string" ? data.message : undefined,
+  };
+}

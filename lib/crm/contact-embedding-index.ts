@@ -72,10 +72,12 @@ export async function searchContactsByEmbedding(
     return pgHits.filter((h) => h.score > 0.35).map((h) => h.contactId);
   }
 
+  /** Hard cap for JSON cosine when pgvector is unavailable (see INTEGRATIONS-STUBS). */
+  const JSON_COSINE_MAX_CONTACTS = 400;
   const rows = await prisma.contactSearchEmbedding.findMany({
     where: { organizationId },
     select: { contactId: true, embedding: true },
-    take: 500,
+    take: JSON_COSINE_MAX_CONTACTS,
   });
 
   const scored = rows

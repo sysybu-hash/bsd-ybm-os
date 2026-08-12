@@ -40,13 +40,13 @@ export function useDriveData(autoDecodeOnSync: boolean) {
     try {
       const res = await fetch("/api/os/google-drive/sync", { method: "POST", credentials: "include" });
       const { ok, data, parseError } = await parseJsonResponse<{ error?: string; lastSyncAt?: string }>(res);
-      if (!ok) throw new Error(driveApiError(data, parseError, "סנכרון נכשל"));
-      if (!data) throw new Error(parseError ?? "סנכרון נכשל");
+      if (!ok) throw new Error(driveApiError(data, parseError, t("workspaceWidgets.googleDrive.syncFailed")));
+      if (!data) throw new Error(parseError ?? t("workspaceWidgets.googleDrive.syncFailed"));
       setLastSyncAt(data.lastSyncAt ?? new Date().toISOString());
       if (!silent) toast.success(t("workspaceWidgets.googleDrive.syncDone"));
       return true;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "סנכרון נכשל";
+      const message = error instanceof Error ? error.message : t("workspaceWidgets.googleDrive.syncFailed");
       if (!silent) toast.error(message);
       return false;
     } finally {
@@ -73,7 +73,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         }>(res);
         if (ok) {
           if (!data) {
-            const msg = driveApiError(data, parseError, "שגיאה בטעינת קבצים");
+            const msg = driveApiError(data, parseError, t("workspaceWidgets.googleDrive.loadError"));
             setDriveError(msg);
             throw new Error(msg);
           }
@@ -82,13 +82,13 @@ export function useDriveData(autoDecodeOnSync: boolean) {
             setWorkspace({ folderId: data.workspaceFolderId, folderName: data.workspaceFolderName });
           }
         } else {
-          const msg = driveApiError(data, parseError, "שגיאה בטעינת קבצים");
+          const msg = driveApiError(data, parseError, t("workspaceWidgets.googleDrive.loadError"));
           setDriveError(msg);
           if (typeof data?.reauthUrl === "string") setReauthUrl(data.reauthUrl);
           throw new Error(msg);
         }
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "שגיאה בטעינת קבצים";
+        const message = error instanceof Error ? error.message : t("workspaceWidgets.googleDrive.loadError");
         setDriveError((prev) => prev ?? message);
         toast.error(t("workspaceWidgets.googleDrive.loadError") + ": " + message);
       } finally {
@@ -109,17 +109,17 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         sync?: { lastSyncAt?: string };
       }>(res);
       if (!ok) {
-        const msg = driveApiError(data, parseError, "שגיאה באתחול Drive");
+        const msg = driveApiError(data, parseError, t("workspaceWidgets.googleDrive.initError"));
         setDriveError(msg);
         if (typeof data?.reauthUrl === "string") setReauthUrl(data.reauthUrl);
         throw new Error(msg);
       }
       if (!data) {
-        throw new Error(driveApiError(data, parseError, "שגיאה באתחול Drive"));
+        throw new Error(driveApiError(data, parseError, t("workspaceWidgets.googleDrive.initError")));
       }
       const ws = data.workspace;
       if (!ws?.folderId || !ws.folderName) {
-        throw new Error("שגיאה באתחול Drive");
+        throw new Error(t("workspaceWidgets.googleDrive.initError"));
       }
       setWorkspace(ws);
       setFolderPath([{ id: ws.folderId, name: ws.folderName }]);
@@ -186,7 +186,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
           method: "POST", credentials: "include", body: form,
         });
         const { ok, data, parseError } = await parseJsonResponse<{ error?: string }>(res);
-        if (!ok) throw new Error(driveApiError(data, parseError, "העלאה נכשלה"));
+        if (!ok) throw new Error(driveApiError(data, parseError, t("workspaceWidgets.googleDrive.uploadFailed")));
         toast.success(`${t("workspaceWidgets.googleDrive.uploaded")}: ${file.name}`);
         await handleRefresh();
       } catch (error: unknown) {
@@ -211,8 +211,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
           body: JSON.stringify({ mode: "preview", fileIds }),
         });
         const { ok, data, parseError } = await parseJsonResponse<{ error?: string; results?: ReviewEditableItem[] }>(res);
-        if (!ok) throw new Error(driveApiError(data, parseError, "פענוח נכשל"));
-        if (!data) throw new Error(parseError ?? "פענוח נכשל");
+        if (!ok) throw new Error(driveApiError(data, parseError, t("workspaceWidgets.googleDrive.decodeFailed")));
+        if (!data) throw new Error(parseError ?? t("workspaceWidgets.googleDrive.decodeFailed"));
         const results = (data.results ?? []) as ReviewEditableItem[];
         const editable: ReviewEditableItem[] = results.map((r) => ({
           ...r,
@@ -261,7 +261,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         }),
       });
       const { ok, data, parseError } = await parseJsonResponse<{ error?: string }>(res);
-      if (!ok) throw new Error(driveApiError(data, parseError, "שמירה נכשלה"));
+      if (!ok) throw new Error(driveApiError(data, parseError, t("workspaceWidgets.googleDrive.saveFailed")));
       toast.success(t("workspaceWidgets.googleDrive.docsSaved"));
       setReviewOpen(false);
       setReviewItems([]);
@@ -287,7 +287,7 @@ export function useDriveData(autoDecodeOnSync: boolean) {
       void initWorkspace();
     } else if (params.get("google_reconnect") === "missing_refresh") {
       toast.error(
-        "Google לא הנפיק refresh token. הסירו גישה לאפליקציה בחשבון Google (ניהול חשבון → אבטחה → גישה של צד שלישי), ואז לחצו שוב «התחברות מחדש».",
+        t("workspaceWidgets.googleDrive.googleRefreshTokenError"),
         { duration: 12_000 },
       );
       params.delete("google_reconnect");

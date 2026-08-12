@@ -7,6 +7,7 @@ import {
 } from "@/lib/procurement/po-lines-to-items";
 import { PoDocumentError } from "@/lib/procurement/po-errors";
 import { updatePoStatus } from "@/lib/procurement/update-po-status";
+import { allocateNextDocumentNumber } from "@/lib/finance-numbering";
 import { prisma } from "@/lib/prisma";
 
 const log = createLogger("procurement-po-document");
@@ -15,18 +16,6 @@ const MAX_NUMBER_ALLOC_ATTEMPTS = 3;
 
 function isUniqueConstraintError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
-}
-
-async function allocatePurchaseOrderDocNumber(
-  tx: Prisma.TransactionClient,
-  orgId: string,
-): Promise<number> {
-  const last = await tx.issuedDocument.findFirst({
-    where: { organizationId: orgId, type: "PURCHASE_ORDER" },
-    orderBy: { number: "desc" },
-    select: { number: true },
-  });
-  return (last?.number ?? 1000) + 1;
 }
 
 export async function createIssuedDocumentFromPurchaseOrder(
@@ -59,7 +48,7 @@ export async function createIssuedDocumentFromPurchaseOrder(
   for (let attempt = 0; attempt < MAX_NUMBER_ALLOC_ATTEMPTS; attempt++) {
     try {
       const result = await prisma.$transaction(async (tx) => {
-        const number = await allocatePurchaseOrderDocNumber(tx, orgId);
+        const number = await allocateNextDocumentNumber(tx, orgId, "PURCHASE_ORDER");
         const doc = await tx.issuedDocument.create({
           data: {
             organizationId: orgId,

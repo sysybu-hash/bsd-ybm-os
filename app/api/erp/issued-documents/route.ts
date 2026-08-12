@@ -8,6 +8,7 @@ import { getApiErrorMessage, resolveApiLocaleFromRequest } from "@/lib/i18n/api-
 import { requestItaAllocation } from "@/lib/services/ita-service";
 import type { DocType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { allocateNextDocumentNumber } from "@/lib/finance-numbering";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest } from "@/lib/api-json";
@@ -32,7 +33,7 @@ const createIssuedDocumentSchema = z.object({
   type: z.enum(ISSUED_DOC_TYPES),
   clientName: z.string().trim().min(1),
   items: z.array(issuedDocumentItemSchema).min(1),
-  /** Manual document number — if omitted, auto MAX+1 for type in org */
+  /** Manual document number — if omitted, allocated via IssuedDocumentSequence */
   number: z.coerce.number().int().positive().optional(),
   /** Issue date (ISO date or datetime) — defaults to now */
   date: z.string().trim().min(1).optional(),
@@ -52,8 +53,16 @@ export const GET = withWorkspacesAuth(async (req, { orgId }) => {
   const url = new URL(req.url);
   const nextFor = url.searchParams.get("nextFor");
   if (nextFor && (ISSUED_DOC_TYPES as readonly string[]).includes(nextFor)) {
+    const type = nextFor as DocType;
+    const seq = await prisma.issuedDocumentSequence.findUnique({
+      where: { organizationId_type: { organizationId: orgId, type } },
+      select: { lastNumber: true },
+    });
+    if (seq) {
+      return NextResponse.json({ nextNumber: seq.lastNumber + 1 });
+    }
     const last = await prisma.issuedDocument.findFirst({
-      where: { organizationId: orgId, type: nextFor as DocType },
+      where: { organizationId: orgId, type },
       orderBy: { number: "desc" },
       select: { number: true },
     });
@@ -147,15 +156,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
   for (let attempt = 1; attempt <= MAX_NUMBER_ALLOC_ATTEMPTS; attempt += 1) {
     try {
       doc = await prisma.$transaction(async (tx) => {
-        let nextNumber = manualNumber;
-        if (nextNumber == null) {
-          const last = await tx.issuedDocument.findFirst({
-            where: { organizationId: orgId, type },
-            orderBy: { number: "desc" },
-            select: { number: true },
-          });
-          nextNumber = (last?.number ?? 1000) + 1;
-        }
+        const nextNumber =
+          manualNumber ?? (await allocateNextDocumentNumber(tx, orgId, type));
 
         return tx.issuedDocument.create({
           data: {

@@ -85,6 +85,8 @@ npm run product-brochure:build
 
 ## 3. Google Contacts OAuth (לייבוא CRM)
 
+**סטטוס קוד:** ייבוא חי — CRM → «ייבוא מ-Google» (`/api/crm/contacts/import-google`). נדרש reconnect עם scope `contacts.readonly` + People API ב-Google Cloud.
+
 ### Google Cloud Console
 
 1. פרויקט OAuth קיים (אותו של `GOOGLE_CLIENT_ID` / `SECRET`).

@@ -1,18 +1,26 @@
-# סנכרון סכמת Prisma ל-Neon — רץ על שרתי GitHub (עוקף חסימת פורט 5432 במחשב מקומי).
+# EMERGENCY ONLY — prefer `prisma migrate deploy` (see quality-gate migrate-deploy job).
+# `db push` skips migration history and can drift production schema.
 #
 # הגדרה חד-פעמית ב-GitHub → Repo → Settings → Secrets and variables → Actions:
 #   DATABASE_URL  — מחרוזת Neon עם pooler (כמו ב-Vercel)
 #   DIRECT_URL    — מחרוזת Neon ישירה (בלי pooler), כמו ב-.env.local
 #
-# הרצה: Actions → "Neon Prisma DB Push" → Run workflow
+# הרצה: Actions → "Neon Prisma DB Push (EMERGENCY)" → Run workflow
+# Confirm: type "EMERGENCY" in the input when prompted.
 
-name: Neon Prisma DB Push
+name: Neon Prisma DB Push (EMERGENCY)
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type EMERGENCY to confirm db push against Neon secrets'
+        required: true
+        default: ""
 
 jobs:
   db-push:
+    if: github.event.inputs.confirm == 'EMERGENCY'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,7 +36,7 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Prisma db push
+      - name: Prisma db push (emergency)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}

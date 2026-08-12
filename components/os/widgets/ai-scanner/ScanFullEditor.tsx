@@ -16,7 +16,7 @@ type ScanFullEditorProps = {
   onChange: (next: DocumentAnalysis) => void;
   onClose: () => void;
   onConfirm: () => void;
-  tr: (key: string, fallback: string) => string;
+  t: (key: string) => string;
   /** Parent owns scroll (hub / constrained widget shell) */
   embeddedInScrollParent?: boolean;
   /** Override confirm button label */
@@ -40,7 +40,7 @@ function Section({ title, children, open, toggle }: {
 
 function useScanExport(
   v5Ref: React.RefObject<ScanExtractionV5 | null>,
-  tr: (key: string, fallback: string) => string,
+  t: (key: string) => string,
 ) {
   const [exportOpen, setExportOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -54,12 +54,12 @@ function useScanExport(
     const v = v5Ref.current;
     if (!v) return;
     const header = [
-      tr("scanner.csvColDescription", "Description"),
-      tr("scanner.csvColQty", "Qty"),
-      tr("scanner.csvColUnitPrice", "Unit price"),
-      tr("scanner.csvColLineTotal", "Line total"),
-      tr("scanner.csvColCurrency", "Currency"),
-      tr("scanner.csvColSku", "SKU"),
+      t("scanner.csvColDescription"),
+      t("scanner.csvColQty"),
+      t("scanner.csvColUnitPrice"),
+      t("scanner.csvColLineTotal"),
+      t("scanner.csvColCurrency"),
+      t("scanner.csvColSku"),
     ];
     const rows = v.lineItems.map((li) => [
       li.description,
@@ -117,7 +117,7 @@ export function ScanFullEditor({
   onChange,
   onClose,
   onConfirm,
-  tr,
+  t,
   embeddedInScrollParent = false,
   confirmLabel,
 }: ScanFullEditorProps) {
@@ -138,7 +138,7 @@ export function ScanFullEditor({
 
   const v5Ref = useRef<ScanExtractionV5 | null>(null);
   v5Ref.current = v5;
-  const exportActions = useScanExport(v5Ref, tr);
+  const exportActions = useScanExport(v5Ref, t);
 
   const [boqOpen, setBoqOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -176,7 +176,7 @@ export function ScanFullEditor({
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold">
             <CheckCircle2 className="text-emerald-500" size={20} />
-            {tr("scanner.fullEditor", "עריכת תוצאת סריקה")}
+            {t("scanner.fullEditor")}
           </h3>
           <div className="flex items-center gap-1">
             {/* Export dropdown */}
@@ -186,9 +186,9 @@ export function ScanFullEditor({
                 size="sm"
                 icon={<Download size={13} aria-hidden />}
                 onClick={() => exportActions.setExportOpen((o) => !o)}
-                title={tr("scanner.export", "ייצוא")}
+                title={t("scanner.export")}
               >
-                {tr("scanner.export", "ייצוא")}
+                {t("scanner.export")}
                 <ChevronDown size={11} aria-hidden />
               </OsButton>
               {exportActions.exportOpen && (
@@ -206,17 +206,17 @@ export function ScanFullEditor({
                   <button type="button" onClick={() => void exportActions.exportPdf()} disabled={exportActions.pdfLoading}
                     className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)] disabled:opacity-50">
                     <FileText size={14} className="text-red-600" aria-hidden />
-                    {exportActions.pdfLoading ? tr("scanner.generating", "מייצר...") : "PDF"}
+                    {exportActions.pdfLoading ? t("scanner.generating") : "PDF"}
                   </button>
                   <button type="button" onClick={exportActions.printDoc}
                     className="flex w-full items-center gap-2 px-3 py-2 text-[12px] hover:bg-[color:var(--surface-soft)] rounded-b-xl">
                     <Printer size={14} className="text-blue-600" aria-hidden />
-                    {tr("scanner.print", "הדפסה")}
+                    {t("scanner.print")}
                   </button>
                 </div>
               )}
             </div>
-            <OsIconButton label={tr("scanner.close", "סגור")} size="sm" onClick={onClose}>
+            <OsIconButton label={t("scanner.close")} size="sm" onClick={onClose}>
               <X size={18} aria-hidden />
             </OsIconButton>
           </div>
@@ -227,28 +227,28 @@ export function ScanFullEditor({
         {autoTotal != null && Math.abs(autoTotal - v5.total) > 0.01 && (
           <div className="flex items-center gap-2 rounded-lg bg-amber-50/80 px-3 py-1.5 text-[11px] dark:bg-amber-900/10">
             <span className="text-amber-700 dark:text-amber-300">
-              {tr("scanner.lineTotalMismatch", "Line total: ₪{amount} — differs from document total").replace(
+              {t("scanner.lineTotalMismatch").replace(
                 "{amount}",
-                autoTotal.toLocaleString("he-IL", { maximumFractionDigits: 2 }),
+                autoTotal.toLocaleString(undefined, { maximumFractionDigits: 2 }),
               )}
             </span>
             <button type="button" onClick={() => patchV5({ total: autoTotal })}
               className="rounded bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-amber-500">
-              {tr("scanner.updateTotal", "Update")}
+              {t("scanner.updateTotal")}
             </button>
           </div>
         )}
 
         <div className="space-y-2">
           <p className="text-[11px] font-black uppercase tracking-wide text-[color:var(--foreground-muted)]">
-            {tr("scanner.lineItemsTitle", "Line items ({count})").replace("{count}", String(v5.lineItems.length))}
+            {t("scanner.lineItemsTitle").replace("{count}", String(v5.lineItems.length))}
           </p>
           <LineItemsEditor items={v5.lineItems} onChange={(items) => patchV5({ lineItems: items })} />
         </div>
 
         {showBoq && (
           <Section
-            title={tr("scanner.boqSectionTitle", "Bill of quantities (BOQ) — {count} rows").replace(
+            title={t("scanner.boqSectionTitle").replace(
               "{count}",
               String(v5.billOfQuantities.length),
             )}
@@ -259,13 +259,13 @@ export function ScanFullEditor({
           </Section>
         )}
 
-        <Section title={tr("scanner.summarySection", "Summary")} open={summaryOpen} toggle={() => setSummaryOpen((o) => !o)}>
+        <Section title={t("scanner.summarySection")} open={summaryOpen} toggle={() => setSummaryOpen((o) => !o)}>
           <textarea value={v5.summary} onChange={(e) => patchV5({ summary: e.target.value })} rows={4}
             className="w-full rounded-lg border border-[color:var(--border-main)] bg-transparent px-2 py-1.5 text-xs leading-relaxed" />
         </Section>
 
         {telemetry && (
-          <Section title={tr("scanner.engineDetails", "פרטי מנועים")} open={telemetryOpen} toggle={() => setTelemetryOpen((o) => !o)}>
+          <Section title={t("scanner.engineDetails")} open={telemetryOpen} toggle={() => setTelemetryOpen((o) => !o)}>
             <div className="space-y-1">
               {Object.entries(telemetry).map(([engine, status]) => {
                 const phase = status.phase as string;
@@ -290,7 +290,7 @@ export function ScanFullEditor({
           icon={<Save size={18} aria-hidden />}
           onClick={() => { onChange({ ...analysis, vendor: v5.vendor, taxId: v5.taxId ?? undefined, amount: v5.total, date: v5.date ?? analysis.date, v5 }); onConfirm(); }}
         >
-          {confirmLabel ?? tr("scanner.confirmExpense", "אשר ושמור")}
+          {confirmLabel ?? t("scanner.confirmExpense")}
         </OsButton>
       </div>
     </div>

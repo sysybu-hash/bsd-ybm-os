@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { Play, Loader2, Coins, Save, UploadCloud } from "lucide-react";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import { EngineSelector } from "@/components/os/widgets/ai-scanner/EngineSelector";
@@ -34,7 +34,7 @@ function costHint(mode: TriEngineRunMode, tr: (k: string, f: string) => string):
  */
 export function CommandCenterCanvas({ state, compactMode = false, showControls = true }: CommandCenterCanvasProps) {
   const {
-    tr,
+    t,
     fileInputRef,
     cameraInputRef,
     fileAccept,
@@ -69,6 +69,14 @@ export function CommandCenterCanvas({ state, compactMode = false, showControls =
     isSaving,
     lockedSaveTargets,
   } = scanQueue;
+
+  const tr = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v === key ? fallback : v;
+    },
+    [t],
+  );
 
   const v5 = lastScanV5 ?? pendingAnalysis?.v5 ?? null;
   const validation = pendingAnalysis?.validation ?? null;
@@ -135,7 +143,7 @@ export function CommandCenterCanvas({ state, compactMode = false, showControls =
           customEngines={customEngines}
           onCustomEnginesChange={setCustomEngines}
           engineMeta={engineMeta}
-          tr={tr}
+          t={t}
         />
       )}
 
@@ -173,9 +181,9 @@ export function CommandCenterCanvas({ state, compactMode = false, showControls =
                 onChange={setPendingAnalysis}
                 onClose={() => setPendingAnalysis(null)}
                 onConfirm={() => void executeUnifiedSave()}
-                tr={tr}
+                t={t}
                 embeddedInScrollParent
-                confirmLabel={tr("scanner.save", "שמור")}
+                confirmLabel={t("scanner.confirmExpense")}
               />
             </div>
           )}

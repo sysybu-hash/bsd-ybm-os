@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, X } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   detectPwaInstallState,
   isAndroidChromeLike,
@@ -46,6 +47,7 @@ type PwaInstallBannerProps = {
 };
 
 export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerProps) {
+  const { t } = useI18n();
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [nativeInstallOffered, setNativeInstallOffered] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -134,32 +136,32 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
   if (installed === null || installed || dismissed) return null;
   if (isStandaloneDisplay()) return null;
 
+  const bodyKey = isIos
+    ? "pwaInstall.ios"
+    : isAndroidChrome
+      ? nativeInstallOffered
+        ? "pwaInstall.androidChromeOffered"
+        : "pwaInstall.androidChrome"
+      : nativeInstallOffered
+        ? "pwaInstall.nativeOffered"
+        : "pwaInstall.default";
+
   return (
     <div
       className="fixed bottom-[calc(var(--mobile-chrome-bottom)+0.5rem)] start-3 end-3 z-[1200] mx-auto flex max-w-lg items-start gap-3 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 shadow-lg md:start-auto md:end-6"
       role="region"
-      aria-label="התקנת אפליקציה"
+      aria-label={t("pwaInstall.ariaLabel")}
     >
       <Download className="mt-0.5 shrink-0 text-[color:var(--win-accent,#6366f1)]" size={20} aria-hidden />
       <div className="min-w-0 flex-1 text-sm">
-        <p className="font-bold text-[color:var(--foreground-main)]">התקינו את BSD-YBM OS</p>
-        <p className="mt-1 text-[color:var(--foreground-muted)]">
-          {isIos
-            ? "ב-Safari: שתף → «הוסף למסך הבית» לחוויית אפליקציה מלאה."
-            : isAndroidChrome
-              ? nativeInstallOffered
-                ? "השתמשו ב«התקן אפליקציה» בשורת הכתובת. אם Play Protect חוסם — עדכנו Chrome מה-Play Store, התקינו מ-www.bsd-ybm.co.il, ואז «התקן בכל זאת»."
-                : "ב-Chrome (⋮) בחרו «התקן אפליקציה». אם מופיעה אזהרת Play Protect — עדכנו Chrome והתקינו מהכתובת www.bsd-ybm.co.il."
-              : nativeInstallOffered
-                ? "הדפדפן מציע התקנה — השתמשו בחץ/אייקון ההתקנה בשורת הכתובת או בתפריט (⋮)."
-                : "להתקנה ללא אזהרות Play Protect השתמשו ב-Chrome העדכני. בדפדפנים אחרים (Samsung Internet וכו') בחרו «הוסף למסך הבית»."}
-        </p>
+        <p className="font-bold text-[color:var(--foreground-main)]">{t("pwaInstall.title")}</p>
+        <p className="mt-1 text-[color:var(--foreground-muted)]">{t(bodyKey)}</p>
       </div>
       <button
         type="button"
         onClick={dismiss}
         className="shrink-0 rounded-lg p-1 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/10"
-        aria-label="סגור"
+        aria-label={t("pwaInstall.close")}
       >
         <X size={18} />
       </button>

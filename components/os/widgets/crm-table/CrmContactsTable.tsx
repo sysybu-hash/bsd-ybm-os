@@ -1,18 +1,20 @@
 "use client";
 
 import React from "react";
-import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat, ChevronRight } from "lucide-react";
+import { Mail, Phone, Edit3, Trash2, LayoutDashboard, HardHat, ChevronRight, Send } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { intlLocaleForApp } from "@/lib/i18n/intl-locale";
+import { formatCurrencyILS } from "@/lib/ui-formatters";
 import type { AppLocale } from "@/lib/i18n/config";
 import type { Client, OpenWorkspaceWidgetFn } from "./types";
+import {
+  PIPELINE_STATUS_CLASS,
+  openQuoteCreatorForContact,
+  pipelineStatusLabel,
+} from "./constants";
 
-const STATUS_CLASS: Record<string, string> = {
-  active: "bg-emerald-500/10 text-[color:var(--accent)] dark:text-emerald-400",
-  lead: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-};
 const STATUS_FALLBACK_CLASS = "bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]";
 
 type CrmContactsTableProps = {
@@ -71,12 +73,17 @@ export function CrmContactsTable({
                         <span className="truncate font-bold text-[color:var(--foreground-main)]">{client.name}</span>
                         <span
                           className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${
-                            STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
+                            PIPELINE_STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
                           }`}
                         >
-                          {client.status}
+                          {pipelineStatusLabel(client.status, t)}
                         </span>
                       </div>
+                      {client.value != null ? (
+                        <div className="mt-0.5 text-[11px] font-bold text-[color:var(--accent)]">
+                          {formatCurrencyILS(client.value)}
+                        </div>
+                      ) : null}
                       {client.phone ? (
                         <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[color:var(--foreground-muted)]">
                           <Phone size={11} aria-hidden />
@@ -116,6 +123,7 @@ export function CrmContactsTable({
             <tr className="text-start text-[10px] font-black text-[color:var(--foreground-muted)] uppercase tracking-[0.15em] border-b border-[color:var(--border-main)]">
               <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnClient")}</th>
               <th className="px-3 py-3 sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnStatus")}</th>
+              <th className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnValue")}</th>
               <th className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">{t("workspaceWidgets.crmTable.columnContact")}</th>
               <th className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">{t("workspaceWidgets.crmTable.columnProjects")}</th>
               <th className="hidden px-3 py-3 md:table-cell md:px-6 md:py-4">{t("workspaceWidgets.crmTable.columnLastContact")}</th>
@@ -126,7 +134,7 @@ export function CrmContactsTable({
             {loading
               ? [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-4">
+                    <td colSpan={7} className="px-6 py-4">
                       <div className="h-12 bg-[color:var(--foreground-muted)]/10 rounded-xl w-full" />
                     </td>
                   </tr>
@@ -164,10 +172,15 @@ export function CrmContactsTable({
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
-                          STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
+                          PIPELINE_STATUS_CLASS[client.status] ?? STATUS_FALLBACK_CLASS
                         }`}
                       >
-                        {client.status}
+                        {pipelineStatusLabel(client.status, t)}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">
+                      <span className="text-[11px] font-black text-[color:var(--accent)]">
+                        {client.value != null ? formatCurrencyILS(client.value) : "—"}
                       </span>
                     </td>
                     <td className="hidden px-3 py-3 sm:table-cell sm:px-6 sm:py-4">
@@ -209,6 +222,23 @@ export function CrmContactsTable({
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center justify-end gap-2 flex-wrap">
+                        {openWorkspaceWidget ? (
+                          <button
+                            type="button"
+                            title={t("workspaceWidgets.crmTable.sendQuote")}
+                            aria-label={t("workspaceWidgets.crmTable.sendQuote")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openQuoteCreatorForContact(openWorkspaceWidget, client);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-2.5 py-1.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-200 hover:bg-indigo-500/20 transition-colors shrink-0"
+                          >
+                            <Send size={12} className="shrink-0" />
+                            <span className="hidden sm:inline">
+                              {t("workspaceWidgets.crmTable.sendQuote")}
+                            </span>
+                          </button>
+                        ) : null}
                         {openWorkspaceWidget ? (
                           <button
                             type="button"

@@ -25,7 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function IdeasTab() {
-  const { t } = useI18n();
+  const { t, dir, locale } = useI18n();
   const ts = (suffix: string, params?: Record<string, string>) =>
     t(`platformAdmin.ideas.${suffix}`, params);
   const statusLabel = (status: string) => ts(STATUS_KEYS[status] ?? "statusPending");
@@ -82,7 +82,7 @@ export function IdeasTab() {
   };
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-4" dir={dir}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -159,7 +159,7 @@ export function IdeasTab() {
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] text-[color:var(--foreground-muted)]">
-                      {new Date(idea.createdAt).toLocaleString("he-IL")}
+                      {new Date(idea.createdAt).toLocaleString(locale)}
                     </p>
                   </div>
 

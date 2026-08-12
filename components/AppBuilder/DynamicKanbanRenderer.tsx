@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { GripVertical, Loader2, Plus, X } from "lucide-react";
 import { saveAppDataAction, listAppDataAction, updateAppDataColumnAction } from "@/app/actions/app-builder";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppBuilderKanbanUI } from "@/lib/validation/schemas/app-builder";
 
 type Props = { schema: AppBuilderKanbanUI; schemaId?: string };
@@ -14,6 +15,8 @@ type Card = {
   data: Record<string, unknown>;
   createdAt: string;
 };
+
+const PREFIX = "workspaceWidgets.appBuilder.dynamicKanban";
 
 const COLUMN_COLORS: Record<string, string> = {
   gray: "border-gray-500/40 bg-gray-500/5",
@@ -35,6 +38,7 @@ function colClass(color?: string) {
 }
 
 export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
+  const { t } = useI18n();
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -74,7 +78,7 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
 
   const handleSave = async () => {
     if (!schemaId || !addingTo) {
-      toast.error("שמרו את האפליקציה תחילה");
+      toast.error(t(`${PREFIX}.saveAppFirst`));
       return;
     }
     setSaving(true);
@@ -87,9 +91,9 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
       if (res.ok) {
         await loadCards();
         setAddingTo(null);
-        toast.success("כרטיסייה נוספה ✓");
+        toast.success(t(`${PREFIX}.cardAdded`));
       } else {
-        toast.error(res.error ?? "שמירה נכשלה");
+        toast.error(res.error ?? t(`${PREFIX}.saveFailed`));
       }
     } finally {
       setSaving(false);
@@ -99,30 +103,26 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
   const moveCard = async (card: Card, toColId: string) => {
     if (!schemaId || card.columnId === toColId) return;
     const fromColId = card.columnId;
-    // Optimistic update
     setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: toColId } : c));
     try {
       const res = await updateAppDataColumnAction({ schemaId, dataId: card.id, columnId: toColId });
       if (!res.ok) {
-        // Rollback on failure
         setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: fromColId } : c));
-        toast.error(res.error ?? "העברה נכשלה");
+        toast.error(res.error ?? t(`${PREFIX}.moveFailed`));
       }
     } catch {
       setCards((prev) => prev.map((c) => c.id === card.id ? { ...c, columnId: fromColId } : c));
-      toast.error("העברה נכשלה");
+      toast.error(t(`${PREFIX}.moveFailed`));
     }
   };
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-[color:var(--foreground-main)]">{schema.title}</h2>
         {loading && <Loader2 size={14} className="animate-spin text-[color:var(--foreground-muted)]" />}
       </div>
 
-      {/* Board */}
       <div className="flex min-h-[300px] gap-3 overflow-x-auto pb-2">
         {schema.columns.map((col) => {
           const colCards = cards.filter((c) => c.columnId === col.id);
@@ -131,7 +131,6 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
               key={col.id}
               className={`flex min-w-[200px] max-w-[240px] flex-shrink-0 flex-col gap-2 rounded-xl border p-2 ${colClass(col.color)}`}
             >
-              {/* Column header */}
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-bold text-[color:var(--foreground-main)]">{col.label}</span>
                 <span className="rounded-full bg-[color:var(--surface-soft)] px-1.5 py-0.5 text-[10px] text-[color:var(--foreground-muted)]">
@@ -139,7 +138,6 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                 </span>
               </div>
 
-              {/* Cards */}
               <div className="flex flex-col gap-1.5">
                 {colCards.map((card) => (
                   <div
@@ -158,7 +156,6 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                         </p>
                       );
                     })}
-                    {/* Move buttons */}
                     <div className="mt-1.5 hidden flex-wrap gap-1 group-hover:flex">
                       {schema.columns
                         .filter((c) => c.id !== col.id)
@@ -178,7 +175,6 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                 ))}
               </div>
 
-              {/* Add card */}
               {addingTo === col.id ? (
                 <div className="flex flex-col gap-1.5 rounded-lg border border-indigo-500/30 bg-[color:var(--surface-card)] p-2">
                   {schema.cardFields.map((f) => (
@@ -197,7 +193,7 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                           onChange={(e) => setForm((p) => ({ ...p, [f.name]: e.target.value }))}
                           className="mt-0.5 w-full rounded border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-2 py-1 text-xs focus:outline-none"
                         >
-                          <option value="">בחר…</option>
+                          <option value="">{t(`${PREFIX}.selectOption`)}</option>
                           {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
                       ) : (
@@ -217,7 +213,7 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                       disabled={saving}
                       className="flex-1 rounded bg-indigo-600 py-1.5 text-[10px] font-bold text-white disabled:opacity-60"
                     >
-                      {saving ? "…" : "הוסף"}
+                      {saving ? "…" : t(`${PREFIX}.add`)}
                     </button>
                     <button
                       type="button"
@@ -234,7 +230,7 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
                   onClick={() => openAddForm(col.id)}
                   className="flex items-center gap-1 rounded-lg border border-dashed border-[color:var(--border-main)] px-2 py-1.5 text-[11px] text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)]"
                 >
-                  <Plus size={11} /> הוסף כרטיסייה
+                  <Plus size={11} /> {t(`${PREFIX}.addCard`)}
                 </button>
               )}
             </div>
@@ -243,7 +239,7 @@ export default function DynamicKanbanRenderer({ schema, schemaId }: Props) {
       </div>
 
       {!schemaId && (
-        <p className="text-xs text-[color:var(--foreground-muted)]">שמרו את האפליקציה כדי להתחיל להוסיף כרטיסיות</p>
+        <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${PREFIX}.saveAppHint`)}</p>
       )}
     </div>
   );

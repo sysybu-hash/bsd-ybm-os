@@ -5,8 +5,8 @@ import { trialEndsAtFromNow } from "@/lib/trial";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
 
 /**
- * ׳׳•׳•׳“׳ ׳©׳™׳© orgId ׳×׳§׳£: ׳׳ ׳—׳¡׳¨ ׳‘׳˜׳•׳§׳ ג€” ׳ ׳˜׳¢׳ ׳׳”׳׳©׳×׳׳© ׳‘׳׳¡׳“.
- * ׳׳ ׳׳™׳ ׳׳¨׳’׳•׳ ׳‘׳›׳׳ ג€” ׳ ׳•׳¦׳¨ ׳׳¨׳’׳•׳ ׳׳™׳©׳™ (׳׳›׳¡׳” ׳׳”׳¡׳›׳™׳׳”).
+ * מוודא שיש orgId תקף: אם חסר בטוקן — נטען מהמשתמש במסד.
+ * אם אין ארגון בכלל — נוצר ארגון אישי (מכסה מהסכימה).
  */
 export async function resolveOrganizationForUser(
   orgId: string,
@@ -41,12 +41,12 @@ export async function resolveOrganizationForUser(
   const label =
     user?.name?.trim() ||
     user?.email?.split("@")[0]?.trim() ||
-    "׳׳¨׳’׳•׳ ׳׳™׳©׳™";
+    "ארגון אישי";
 
   const created = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
       data: {
-        name: `${label} ג€” BSD-YBM`,
+        name: `${label} — BSD-YBM`,
         trialEndsAt: trialEndsAtFromNow(),
       },
       select: { id: true },
@@ -62,8 +62,8 @@ export async function resolveOrganizationForUser(
 }
 
 /**
- * ׳‘׳•׳“׳§ ׳•׳׳ ׳›׳” ׳™׳×׳¨׳× ׳¡׳¨׳™׳§׳” ׳׳₪׳™ ׳¡׳•׳’ ׳׳ ׳•׳¢ (׳–׳•׳ / ׳₪׳¨׳™׳׳™׳•׳).
- * QUOTA_EXCEEDED ג†’ ׳”׳₪׳ ׳™׳” ׳ײ¾/app/settings/billing ׳׳¨׳›׳™׳©׳× ׳‘׳ ׳“׳.
+ * בודק ומנכה יתרת סריקה לפי סוג מנוע (זול / פרימיום).
+ * QUOTA_EXCEEDED → הפניה ל־/app/settings/billing לרכישת בנדל.
  */
 export async function checkAndDeductScanCredit(
   orgId: string,
@@ -84,14 +84,14 @@ export async function checkAndDeductScanCredit(
   if (userRow?.email && isAdmin(userRow.email)) {
     const resolved = await resolveOrganizationForUser(orgId, userId);
     if (!resolved) {
-      return { allowed: false, error: "׳׳©׳×׳׳© ׳׳ ׳ ׳׳¦׳ ׳‘׳׳¢׳¨׳›׳×." };
+      return { allowed: false, error: "משתמש לא נמצא במערכת." };
     }
     return { allowed: true, organizationId: resolved.id };
   }
 
   const resolved = await resolveOrganizationForUser(orgId, userId);
   if (!resolved) {
-    return { allowed: false, error: "׳׳©׳×׳׳© ׳׳ ׳ ׳׳¦׳ ׳‘׳׳¢׳¨׳›׳×." };
+    return { allowed: false, error: "משתמש לא נמצא במערכת." };
   }
 
   const scanType = kind === "premium" ? "PREMIUM" : "CHEAP";
@@ -110,7 +110,7 @@ export async function checkAndDeductScanCredit(
   };
 }
 
-/** @deprecated ׳”׳©׳×׳׳©׳• ׳‘ײ¾checkAndDeductScanCredit ׳¢׳ ׳¡׳•׳’ ׳׳ ׳•׳¢ */
+/** @deprecated השתמשו ב־checkAndDeductScanCredit עם סוג מנוע */
 export async function checkAndDeductCredit(orgId: string, userId: string) {
   return checkAndDeductScanCredit(orgId, userId, "cheap");
 }

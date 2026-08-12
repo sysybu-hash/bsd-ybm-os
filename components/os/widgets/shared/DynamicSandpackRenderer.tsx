@@ -13,19 +13,28 @@ interface DynamicSandpackRendererProps {
 /**
  * Self-contained live renderer for AI-generated React components.
  *
- * Unlike the previous Sandpack-based renderer, this does NOT depend on the
- * CodeSandbox remote bundler (col.csbops.io), which can time out and block all
- * rendering. Instead it transpiles the code in-browser with @babel/standalone
- * inside a sandboxed <iframe>, loading React + Babel + Tailwind from CDN.
- * Runtime/compile errors are posted back via postMessage and shown as a clean
- * card instead of a raw crash.
+ * Transpiles in-browser with @babel/standalone inside a sandboxed <iframe>,
+ * loading pinned React + Babel + Tailwind from CDN. Runtime/compile errors
+ * are posted back via postMessage (source-checked) and shown as a clean card.
  */
 
-// CDNs independent of csbops.io. Tailwind already used elsewhere in the app.
-const REACT_CDN = "https://unpkg.com/react@18/umd/react.production.min.js";
-const REACT_DOM_CDN = "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js";
-const BABEL_CDN = "https://unpkg.com/@babel/standalone@7/babel.min.js";
-const TAILWIND_CDN = "https://cdn.tailwindcss.com";
+// Pinned CDN URLs — do not use floating @latest tags.
+const REACT_CDN = "https://unpkg.com/react@18.3.1/umd/react.production.min.js";
+const REACT_DOM_CDN = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js";
+const BABEL_CDN = "https://unpkg.com/@babel/standalone@7.26.9/babel.min.js";
+const TAILWIND_CDN = "https://cdn.tailwindcss.com/3.4.17";
+
+const IFRAME_CSP = [
+  "default-src 'none'",
+  "script-src https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'unsafe-inline'",
+  "img-src data: blob:",
+  "font-src data:",
+  "connect-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join("; ");
 
 /**
  * Minimal pre-check: only reject empty input. Real syntax/parse errors are
@@ -36,6 +45,11 @@ const TAILWIND_CDN = "https://cdn.tailwindcss.com";
  */
 function findCodeProblem(code: string): string | null {
   return code.trim() ? null : "empty";
+}
+
+/** Prevent injected code from breaking out of the Babel script tag. */
+export function escapeEmbeddedScript(source: string): string {
+  return source.replace(/<\/script/gi, "<\\/script");
 }
 
 function buildSrcDoc(code: string): string {
@@ -58,11 +72,14 @@ function buildSrcDoc(code: string): string {
     userScript = userScript.replace(/export\s+default\s+/, "var __DEFAULT_EXPORT__ = ");
   }
 
+  userScript = escapeEmbeddedScript(userScript);
+
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="${IFRAME_CSP}" />
     <script src="${TAILWIND_CDN}"></script>
     <script src="${REACT_CDN}" crossorigin></script>
     <script src="${REACT_DOM_CDN}" crossorigin></script>
@@ -115,6 +132,7 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
     setRuntimeError(null);
     setIframeReady(false);
     function onMessage(e: MessageEvent) {
+      if (e.source !== iframeRef.current?.contentWindow) return;
       const d = e.data as { __dynRender?: boolean; error?: string } | null;
       if (d && typeof d === "object" && d.__dynRender && d.error) {
         setRuntimeError(String(d.error));
@@ -135,6 +153,7 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
           ref={iframeRef}
           title="Dynamic Preview"
           sandbox="allow-scripts"
+          referrerPolicy="no-referrer"
           srcDoc={srcDoc}
           onLoad={() => setIframeReady(true)}
           className={`w-full h-full border-0 bg-white transition-opacity duration-200 ${iframeReady ? "opacity-100" : "opacity-0"}`}

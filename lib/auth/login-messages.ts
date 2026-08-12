@@ -5,7 +5,7 @@ export const loginErrorMessages: Record<string, string> = {
   AccessDenied: "הגישה נדחתה.",
   Verification: "פג תוקף קישור האימות. נסה שוב.",
   OAuthAccountNotLinked:
-    "האימייל כבר קיים במערכת — נסה שוב להתחבר עם Google (אמור להיקשר אוטומטית).",
+    "האימייל כבר קיים במערכת. התחברו עם סיסמה ואז חברו Google בהגדרות (חיבור Google לכניסה).",
   Callback:
     "התחברות עם Google נכשלה בשלב החזרה לשרת. נסו שוב בעוד דקה; אם נמשך — פנו למנהל המערכת.",
   OAuthCallback:

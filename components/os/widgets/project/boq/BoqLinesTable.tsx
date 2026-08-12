@@ -3,20 +3,29 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
 import type { BoqLine, BoqPanelState } from "./useBoqPanelState";
+import { BOQ_PHASE_COUNT } from "./useBoqPanelState";
 
 type BoqLinesTableProps = {
   lines: BoqLine[];
   editCell: BoqPanelState["editCell"];
+  editPhaseCoefficient: BoqPanelState["editPhaseCoefficient"];
   patchLine: BoqPanelState["patchLine"];
   deleteLine: BoqPanelState["deleteLine"];
   t: BoqPanelState["t"];
 };
 
 /** טבלת שורות BOQ עם עריכה inline — משותפת לטאבים boq / quote / bills */
-export function BoqLinesTable({ lines, editCell, patchLine, deleteLine, t }: BoqLinesTableProps) {
+export function BoqLinesTable({
+  lines,
+  editCell,
+  editPhaseCoefficient,
+  patchLine,
+  deleteLine,
+  t,
+}: BoqLinesTableProps) {
   return (
     <div className="overflow-x-auto rounded-lg border border-[color:var(--border-main)]">
-      <table className="w-full min-w-[520px] text-xs">
+      <table className="w-full min-w-[720px] text-xs">
         <thead>
           <tr className="bg-[color:var(--surface-elevated)] text-[color:var(--foreground-muted)]">
             <th className="p-2 text-start">{t("projectDashboard.boqColDescription")}</th>
@@ -24,6 +33,11 @@ export function BoqLinesTable({ lines, editCell, patchLine, deleteLine, t }: Boq
             <th className="p-2">{t("projectDashboard.boqColQuantity")}</th>
             <th className="p-2">{t("projectDashboard.boqColPrice")}</th>
             <th className="p-2">{t("projectDashboard.boqColTotal")}</th>
+            {Array.from({ length: BOQ_PHASE_COUNT }, (_, i) => (
+              <th key={i} className="p-2">
+                {t("projectDashboard.boqColPhase").replace("{n}", String(i + 1))}
+              </th>
+            ))}
             <th className="p-2">{t("projectDashboard.boqColDone")}</th>
             <th className="p-2">{t("projectDashboard.boqColFactor")}</th>
             <th className="p-2" aria-label={t("workspaceWidgets.projectBoq.deleteRow")} />
@@ -62,6 +76,27 @@ export function BoqLinesTable({ lines, editCell, patchLine, deleteLine, t }: Boq
                 />
               </td>
               <td className="p-2 text-center">{l.lineTotal}</td>
+              {Array.from({ length: BOQ_PHASE_COUNT }, (_, phaseIndex) => {
+                const col = (l.phaseColumns ?? []).find((c) => c.phaseIndex === phaseIndex);
+                return (
+                  <td key={phaseIndex} className="p-2 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      title={
+                        col?.phaseAmount != null
+                          ? String(col.phaseAmount)
+                          : t("projectDashboard.boqPhaseCoefHint")
+                      }
+                      className="w-14 rounded border border-[color:var(--border-main)] bg-transparent px-1 text-center"
+                      defaultValue={col?.coefficient ?? ""}
+                      onBlur={(e) => editPhaseCoefficient(l, phaseIndex, e.target.value)}
+                    />
+                  </td>
+                );
+              })}
               <td className="p-2 text-center">
                 <input
                   type="checkbox"

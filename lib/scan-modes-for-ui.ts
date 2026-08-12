@@ -43,9 +43,9 @@ export const ALL_SCAN_MODES = new Set<ScanModeV5>([
 
 export function getScanModesForUi(
   industryRaw?: string | null,
-  tr?: (key: string, fallback: string) => string,
+  t?: (key: string) => string,
 ): ScanModeUiOption[] {
-  const autoLabel = tr?.("scanner.scanModeAuto", "זיהוי אוטומטי") ?? "זיהוי אוטומטי";
+  const autoLabel = t?.("scanner.scanModeAuto") ?? "זיהוי אוטומטי";
   const base = isCompanyMgmtIndustry(industryRaw) ? COMPANY_SCAN_MODES : CONSTRUCTION_SCAN_MODES;
   return [{ id: SCAN_MODE_AUTO_DETECT, label: autoLabel }, ...base];
 }

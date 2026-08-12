@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { X } from "lucide-react";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import InPageCameraCapture from "@/components/shared/InPageCameraCapture";
@@ -29,7 +29,6 @@ export default function AiScannerWidget({
   const {
     t,
     dir,
-    tr,
     scannerPrefix,
     scanModes,
     fileInputRef,
@@ -63,6 +62,14 @@ export default function AiScannerWidget({
     onFileInputChange,
     pushScannerView,
   } = s;
+
+  const tr = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v === key ? fallback : v;
+    },
+    [t],
+  );
 
   const {
     addFiles,
@@ -139,7 +146,6 @@ export default function AiScannerWidget({
       >
         <ScanHeaderToolbar
           t={t}
-          tr={tr}
           scannerPrefix={scannerPrefix}
           boundProjectName={boundProjectName ?? ""}
           clearProject={clearProject}

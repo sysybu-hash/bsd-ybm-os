@@ -26,14 +26,14 @@ export function useAiScannerState({
   const { t, dir } = useI18n();
   const industryConfig = useIndustryConfig();
   const industryId = industryConfig.id;
-  const tr = useCallback(
+  const trForQueue = useCallback(
     (key: string, fallback: string) => {
       const v = t(key);
       return v === key ? fallback : v;
     },
     [t],
   );
-  const scanModes = useMemo(() => getScanModesForUi(industryId, tr), [industryId, tr]);
+  const scanModes = useMemo(() => getScanModesForUi(industryId, t), [industryId, t]);
   const fileInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const cameraInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const driveImportDoneRef = useRef<string | null>(null);
@@ -72,7 +72,7 @@ export function useAiScannerState({
     userInstruction,
     industryId,
     openWorkspaceWidget,
-    tr,
+    tr: trForQueue,
     defaultSaveTargets: officeExpenseMode ? ["expense"] : undefined,
     lockedSaveTargets: officeExpenseMode ? ["expense"] : undefined,
     onSaveComplete,
@@ -253,15 +253,15 @@ export function useAiScannerState({
   }, [applyFilePreview, previewUrl, queue, pushScannerView, scanQueue.pendingFiles]);
 
   const activeEngineLabel = useMemo(() => {
-    if (!engineMeta) return tr("scanner.processing", "מעבד…");
+    if (!engineMeta) return t("scanner.processing");
     if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
     if (engineRunMode === "SINGLE_OPENAI") return engineMeta.openai?.defaultModelId ?? "OpenAI";
     if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
     if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Pixtral";
-    if (engineRunMode === "MULTI_PARALLEL") return tr("scanner.modeMulti", "ריבוי מנועים");
-    if (engineRunMode === "CUSTOM_PARALLEL") return customEngines.length ? customEngines.join("+") : tr("scanner.modeMulti", "ריבוי מנועים");
-    return tr("scanner.modeAuto", "אוטומטי");
-  }, [engineMeta, engineRunMode, customEngines, tr]);
+    if (engineRunMode === "MULTI_PARALLEL") return t("scanner.modeMulti");
+    if (engineRunMode === "CUSTOM_PARALLEL") return customEngines.length ? customEngines.join("+") : t("scanner.modeMulti");
+    return t("scanner.modeAuto");
+  }, [engineMeta, engineRunMode, customEngines, t]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -276,7 +276,7 @@ export function useAiScannerState({
   }, [addFiles]);
 
   return {
-    t, dir, scannerPrefix,
+    t, tr: trForQueue, dir, scannerPrefix,
     scanModes, fileInputRef, cameraInputRef, fileAccept,
     isDragging, setIsDragging,
     engineMeta, engineRunMode, setEngineRunMode, customEngines, setCustomEngines,
@@ -292,6 +292,6 @@ export function useAiScannerState({
     activeEngineLabel,
     openPreviewPanel, onDrop, onFileInputChange,
     pushScannerView,
-    ENGINE_MODES, tr,
+    ENGINE_MODES,
   };
 }

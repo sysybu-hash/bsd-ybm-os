@@ -10,6 +10,20 @@ type Props = {
   t: (key: string) => string;
 };
 
+const TIMELINE_KIND_KEYS: Record<string, string> = {
+  document: "workspaceWidgets.crmTable.timelineKinds.document",
+  quote: "workspaceWidgets.crmTable.timelineKinds.quote",
+  project: "workspaceWidgets.crmTable.timelineKinds.project",
+  note: "workspaceWidgets.crmTable.timelineKinds.note",
+  work_diary: "workspaceWidgets.crmTable.timelineKinds.workDiary",
+  status: "workspaceWidgets.crmTable.timelineKinds.status",
+};
+
+function timelineKindLabel(kind: string, t: (key: string) => string): string {
+  const key = TIMELINE_KIND_KEYS[kind];
+  return key ? t(key) : kind;
+}
+
 export function ClientTimelineTab({ clientId, t }: Props) {
   const [timeline, setTimeline] = useState<ContactTimelineEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +57,7 @@ export function ClientTimelineTab({ clientId, t }: Props) {
       {timeline.map((ev) => (
         <li key={ev.id} className="rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] p-4">
           <div className="mb-1 flex justify-between gap-2 text-xs text-[color:var(--foreground-muted)]">
-            <span className="font-bold uppercase tracking-wider">{ev.kind}</span>
+            <span className="font-bold uppercase tracking-wider">{timelineKindLabel(ev.kind, t)}</span>
             <time dateTime={ev.at}>{formatShortDate(ev.at)}</time>
           </div>
           <p className="font-bold text-[color:var(--foreground-main)]">{ev.title}</p>

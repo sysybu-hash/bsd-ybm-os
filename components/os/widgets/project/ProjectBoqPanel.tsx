@@ -38,6 +38,7 @@ export default function ProjectBoqPanel({
     exportExcel,
     patchLine,
     editCell,
+    editPhaseCoefficient,
     deleteLine,
     clearAllLines,
     saveTakeoffMeasurement,
@@ -158,6 +159,7 @@ export default function ProjectBoqPanel({
             <BoqLinesTable
               lines={lines}
               editCell={editCell}
+              editPhaseCoefficient={editPhaseCoefficient}
               patchLine={patchLine}
               deleteLine={deleteLine}
               t={t}
@@ -172,6 +174,7 @@ export default function ProjectBoqPanel({
         <BoqLinesTable
           lines={lines}
           editCell={editCell}
+          editPhaseCoefficient={editPhaseCoefficient}
           patchLine={patchLine}
           deleteLine={deleteLine}
           t={t}
