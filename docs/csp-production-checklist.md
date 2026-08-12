@@ -7,15 +7,23 @@
 - כותרת `Content-Security-Policy` נוכחת ב-`https://www.bsd-ybm.co.il/` (כולל PostHog ב-`connect-src`)
 - Redeploy אחרי הגדרת env הושלם עם ה-hardening / all-gaps track
 
+## Preview לפני Production
+
+1. ודאו `CSP_STRICT=true` ב-**Preview** (Vercel env).
+2. הריצו smoke על Preview URL (להלן).
+3. רק אחרי ירוק — Production.
+
 ## תרחישים (אימות בעלים — דפדפן)
 
-סמנו אחרי בדיקה ידנית ב-www (או Preview):
+סמנו אחרי בדיקה ידנית ב-Preview ואז www:
 
 - [x] כותרת CSP פעילה בפרוד (אוטומטי)
 - [ ] התחברות Google (`/login`)
+- [ ] חיבור Google לכניסה (הגדרות → Connect Google for sign-in) אחרי credentials
 - [ ] PayPal modal (הגדרות → תשלום)
 - [ ] קישור PayPlus (יצירת חשבונית)
 - [ ] Gemini Live (Omnibar → מיקרופון)
+- [ ] App Builder preview (iframe sandbox + אין Tailwind CDN לא־מקובע)
 - [ ] PostHog (אין חסימת `us-assets.i.posthog.com` ב-Console) — `connect-src` כולל posthog ברמת כותרת
 - [ ] שאלה ב-NotebookLM
 

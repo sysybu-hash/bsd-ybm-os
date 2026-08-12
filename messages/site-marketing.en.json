@@ -6,11 +6,26 @@
     "title": "Work layers for a construction project — from proposal to supplier invoice.",
     "description": "Each module follows the real field flow: client and site, documents and suppliers, payments and control — with AI that respects your profession settings.",
     "modules": {
-      "clients": { "title": "Clients & work relationships", "body": "CRM that connects statuses, tasks, notes, progress and operational history." },
-      "docs": { "title": "Smart documents", "body": "Intake, scan, analyze, assign and create documents from business context." },
-      "finance": { "title": "Finance & collections", "body": "Cash flow hub, issued documents, ERP links and OS billing settings — separate from the AI screen." },
-      "ai": { "title": "AI Hub & idea engine", "body": "Chat, notebook and app builder — forms, dashboards, Composer, natural-language CRM/docs/scan, and Gemini Live." },
-      "operations": { "title": "Operations & field", "body": "Workflows, inbox and team tools aligned with construction projects." }
+      "clients": {
+        "title": "Clients & work relationships",
+        "body": "CRM that connects statuses, tasks, notes, progress and operational history."
+      },
+      "docs": {
+        "title": "Smart documents",
+        "body": "Intake, scan, analyze, assign and create documents from business context."
+      },
+      "finance": {
+        "title": "Finance & collections",
+        "body": "Cash flow hub, issued documents, ERP links and OS billing settings — separate from the AI screen."
+      },
+      "ai": {
+        "title": "AI Hub & idea engine",
+        "body": "Chat, notebook and app builder — forms, dashboards, Composer, natural-language CRM/docs/scan, and Gemini Live."
+      },
+      "operations": {
+        "title": "Operations & field",
+        "body": "Workflows, inbox and team tools aligned with construction projects."
+      }
     }
   },
   "marketingSolutions": {
@@ -20,10 +35,22 @@
     "title": "Same kind of work — fewer operational headaches.",
     "description": "BSD-YBM is built for construction load: many documents, many stakeholders, and one language between office and site.",
     "items": [
-      { "title": "Developers & project managers", "body": "One picture of sites, commitments, documents and payments — office and field aligned." },
-      { "title": "General contractors & construction firms", "body": "Manage clients, suppliers and subcontractors, invoices and costs — with project profitability insight." },
-      { "title": "Trades (electrical, plumbing, HVAC, finishing…)", "body": "Same CRM & documents backbone — AI tuned to your trade: quotes, invoices and site certificates." },
-      { "title": "Supervision, control and clients", "body": "Track approvals, exceptions and documentation — keep the project file in order." }
+      {
+        "title": "Developers & project managers",
+        "body": "One picture of sites, commitments, documents and payments — office and field aligned."
+      },
+      {
+        "title": "General contractors & construction firms",
+        "body": "Manage clients, suppliers and subcontractors, invoices and costs — with project profitability insight."
+      },
+      {
+        "title": "Trades (electrical, plumbing, HVAC, finishing…)",
+        "body": "Same CRM & documents backbone — AI tuned to your trade: quotes, invoices and site certificates."
+      },
+      {
+        "title": "Supervision, control and clients",
+        "body": "Track approvals, exceptions and documentation — keep the project file in order."
+      }
     ]
   },
   "marketingPricing": {
@@ -38,19 +65,34 @@
         "name": "Starter",
         "price": "Small team · single site",
         "body": "For a pro or lean team that wants order across documents, clients and invoices without scattered spreadsheets.",
-        "points": ["Documents & AI scans", "Project CRM", "Basic billing", "Profession profile (construction)"]
+        "points": [
+          "Documents & AI scans",
+          "Project CRM",
+          "Basic billing",
+          "Profession profile (construction)"
+        ]
       },
       {
         "name": "Growth",
         "price": "Field + office",
         "body": "For an active company with parallel projects — cash flow, roles and supplier tracking.",
-        "points": ["Roles & permissions", "More AI engines", "Collections & billing flows", "Management insights"]
+        "points": [
+          "Roles & permissions",
+          "More AI engines",
+          "Collections & billing flows",
+          "Management insights"
+        ]
       },
       {
         "name": "Enterprise",
         "price": "Custom",
         "body": "For groups with multiple companies/sites, integrations and hands-on onboarding.",
-        "points": ["High scan volumes", "Complex org structure", "Support & onboarding", "Deep customization"]
+        "points": [
+          "High scan volumes",
+          "Complex org structure",
+          "Support & onboarding",
+          "Deep customization"
+        ]
       }
     ]
   },
@@ -90,31 +132,5 @@
     "title": "Professional insights",
     "shellDescription": "Short articles and operational notes—documents, clients and field work in one coherent flow.",
     "body": "We publish professional content here over time: workflow examples, product-layer context for construction trades, and ways teams reduce operational drag. Use Contact to suggest topics."
-  },
-  "publicShell": {
-    "eyebrowSector": "Construction sector",
-    "navHome": "Home",
-    "navProduct": "Product",
-    "navSolutions": "Solutions",
-    "navPricing": "Pricing",
-    "navAbout": "About",
-    "navProfessional": "Insights",
-    "navBrief": "Brief",
-    "navContact": "Contact",
-    "ctaLogin": "Sign in",
-    "ctaStart": "Get started",
-    "footerLead": "BSD-YBM is an intelligent operations system for businesses that want one clear picture of their work.",
-    "authEyebrow": "Sign in",
-    "authHeroTitle": "One workspace, faster decisions, less manual load.",
-    "authHeroLead": "BSD-YBM connects operations, clients, documents, billing and AI so your team shares one business picture.",
-    "authHighlight1": "One system for clients, documents, billing and control",
-    "authHighlight2": "AI embedded in real workflows",
-    "authHighlight3": "Built for professional businesses",
-    "authPanelTitle": "Same product — a clear sign-in experience",
-    "authPanelBody": "Secure sign-in, full localized UI and the same visual language as the rest of the site—so you start fast without confusion.",
-    "authBackToSite": "Back to site",
-    "authViewNewSite": "View the marketing site",
-    "authFooterLead": "Work from one state of truth—without splitting across tools.",
-    "authFooterCopy": "{year} BSD-YBM"
   }
 }

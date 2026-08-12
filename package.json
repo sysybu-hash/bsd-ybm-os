@@ -50,6 +50,8 @@
     "db:migrate:dev": "dotenv -e .env.local -- prisma migrate dev",
     "db:migrate:status": "dotenv -e .env.local -- node scripts/db-migrate-status-neon.mjs",
     "i18n:parity": "node scripts/i18n-key-parity.mjs",
+    "ops:verify-preview-db": "node scripts/verify-preview-db-isolation.mjs",
+    "ops:validate-runbook": "node scripts/validate-runbook-sql.mjs",
     "docs:erd": "node scripts/generate-erd.mjs",
     "docs:openapi": "node scripts/generate-openapi.mjs",
     "load-test:smoke": "node scripts/load-test.mjs",

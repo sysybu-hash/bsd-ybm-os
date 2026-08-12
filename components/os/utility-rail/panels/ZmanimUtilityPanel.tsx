@@ -62,9 +62,9 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
   }
 
   const weekday =
-    locale === "he" || locale === "ar" ? data.gregorian.weekdayHe : data.gregorian.weekdayEn;
+    locale === "he" ? data.gregorian.weekdayHe : data.gregorian.weekdayEn;
   const gregDisplay =
-    locale === "he" || locale === "ar" ? data.gregorian.displayHe : data.gregorian.displayEn;
+    locale === "he" ? data.gregorian.displayHe : data.gregorian.displayEn;
   const zmanLabel = (z: { labelHe: string; labelEn: string }) =>
     locale === "en" || locale === "ru" ? z.labelEn : z.labelHe;
 

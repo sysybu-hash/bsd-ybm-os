@@ -60,8 +60,8 @@
   },
   "workspaceClients": {
     "eyebrow": "Clients Workspace",
-    "heroTitle": "A {clients} hub for status, search, pipeline, and action in one place.",
-    "heroSubtitle": "Your main station for {clients}: pipeline at a glance, fast filters, billing or documents — without getting lost in a giant screen.",
+    "heroTitle": "Project, client and pipeline management — in one place.",
+    "heroSubtitle": "See all projects, open a full project page, and continue to clients and the pipeline when needed.",
     "heroKpiTotalClients": "Total clients",
     "heroKpiActive": "Active",
     "heroKpiProposals": "In proposal",

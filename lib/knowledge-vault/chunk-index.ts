@@ -4,6 +4,8 @@ import { embedText, cosineSimilarity, isEmbeddingConfigured } from "@/lib/embedd
 import { writeKnowledgeVaultChunkEmbedding } from "@/lib/embeddings/pgvector-dual-write";
 
 const CHUNK_SIZE = 1200;
+/** Hard cap for in-process JSON cosine scan when pgvector is unavailable. */
+export const JSON_COSINE_MAX_CHUNKS = 400;
 
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex");
@@ -113,7 +115,7 @@ export async function searchKnowledgeVaultChunks(
       embedding: true,
       driveEntry: { select: { id: true, driveFileId: true, name: true } },
     },
-    take: 800,
+    take: JSON_COSINE_MAX_CHUNKS,
   });
 
   type ChunkRow = (typeof rows)[number];
