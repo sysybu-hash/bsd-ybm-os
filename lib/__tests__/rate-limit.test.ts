@@ -6,11 +6,12 @@ const incr = jest.fn();
 const pexpire = jest.fn();
 const pttl = jest.fn();
 const get = jest.fn();
+const redisMock = { incr, pexpire, pttl, get };
+let redisClient: typeof redisMock | null = null;
 
-jest.mock("@upstash/redis", () => ({
-  Redis: {
-    fromEnv: () => ({ incr, pexpire, pttl, get }),
-  },
+jest.mock("@/lib/upstash-redis", () => ({
+  getUpstashRedis: () => redisClient,
+  __resetUpstashRedisForTests: jest.fn(),
 }));
 
 jest.mock("@/lib/prisma", () => ({
@@ -24,28 +25,16 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import {
-  __resetRateLimitRedisForTests,
-  checkRateLimit,
-  getRateLimitStatus,
-} from "@/lib/rate-limit";
+import { checkRateLimit, getRateLimitStatus } from "@/lib/rate-limit";
 
 describe("checkRateLimit", () => {
-  const prevUrl = process.env.UPSTASH_REDIS_REST_URL;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    __resetRateLimitRedisForTests();
+    redisClient = null;
   });
 
-  afterEach(() => {
-    if (prevUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
-    else process.env.UPSTASH_REDIS_REST_URL = prevUrl;
-    __resetRateLimitRedisForTests();
-  });
-
-  it("uses Redis when Upstash env is set", async () => {
-    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+  it("uses Redis when Upstash client is available", async () => {
+    redisClient = redisMock;
     incr.mockResolvedValue(1);
     pexpire.mockResolvedValue(1);
     pttl.mockResolvedValue(60_000);
@@ -58,9 +47,7 @@ describe("checkRateLimit", () => {
   });
 
   it("falls back to Prisma when Redis is unavailable", async () => {
-    delete process.env.UPSTASH_REDIS_REST_URL;
-    delete process.env.KV_REST_API_URL;
-    __resetRateLimitRedisForTests();
+    redisClient = null;
 
     (prisma.rateLimit.findUnique as jest.Mock).mockResolvedValue({
       key: "rl:local",
@@ -79,7 +66,7 @@ describe("checkRateLimit", () => {
   });
 
   it("getRateLimitStatus reads Redis without incrementing", async () => {
-    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    redisClient = redisMock;
     get.mockResolvedValue(3);
     pttl.mockResolvedValue(30_000);
 
