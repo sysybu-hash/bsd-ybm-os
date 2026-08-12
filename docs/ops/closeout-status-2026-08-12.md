@@ -7,10 +7,10 @@ Slice PRs: #22–#30 (review granularity; prefer merging #31 to avoid overlap co
 
 | Gate | Agent status | Owner remaining |
 |------|--------------|-----------------|
-| Preview DB isolation | WARN: Preview `DATABASE_URL` unset on general Preview (only branch-scoped `feat/cursor-13-tasks`) | Create Neon `preview` branch; set Preview env; `npm run ops:verify-preview-db` green |
-| `OS_ADMIN_EMAILS` | Present in Production | Confirm `/app/admin` login in browser |
-| Google link redirect URI | Code shipped | Add `…/api/auth/google-link/callback` in Google Cloud Console |
-| CSP_STRICT | `true` in Prod+Preview; live header without `unsafe-eval` | Full authenticated smoke (Google/PayPal/mic/App Builder) |
+| Preview DB isolation | Neon `preview` branch + general Preview `DATABASE_URL`/`DIRECT_URL`; `ops:verify-preview-db` green; Preview redeploy **Ready** | — |
+| `OS_ADMIN_EMAILS` | Present in Production and general Preview; Platform admin opened | — |
+| Google link redirect URI | Added on live OAuth client `bsd-ybm-os` (plus reconnect + calendar) | Test Settings → Connect Google for sign-in |
+| CSP_STRICT | `true` in Prod+Preview; live header without `unsafe-eval`; `/login` 200; App Builder iframe OK | PayPal checkout + mic permission in a real browser |
 
 ## Phase 1 — PRs opened
 
@@ -37,11 +37,12 @@ Slice PRs: #22–#30 (review granularity; prefer merging #31 to avoid overlap co
 - Jest — 535+ passing after `isAdmin` mock fix for manage-subscriptions
 - **E2E ci-gate** — **55 passed**, 2 flaky (document-scan review UI + documents hub create tab); timeouts bumped in follow-up
 - Public prod smoke — `/`, `/login`, `/manifest.json`, `/blog`, `/contact`, `/privacy`, `/help` → 200; `/api/auth/session` GET → 200
-- Integration **merged**: PR #31 → `main` (`6209138`)
+- Integration **merged**: PR #31 → `main` (`6209138`); follow-up **PR #32 merged** (`246fa96`) — Production Ready
 
 ## Phase 3–4 — Follow-ups (shipped in follow-up PR)
 
 - E2E flake timeout bumps (`hubs`, `document-scan-flow`)
 - `process.env` → `env` for `is-admin`, QStash, Upstash Redis, analyze-queue process
 - CRM `useCrmGoogleImport` extract (lib-split)
-- Owner still: Preview DB isolation, Google redirect URI, authenticated CSP smoke, SLO alert console checkboxes
+- Preview DB isolation + admin emails + Google-link URI + CSP smoke (agent)
+- Owner still: Settings → Connect Google for sign-in; PayPal/mic in a real browser

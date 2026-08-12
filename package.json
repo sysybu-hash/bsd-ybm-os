@@ -162,7 +162,7 @@
     "lucide-react": "^0.446.0",
     "mammoth": "^1.12.0",
     "next": "^15.5.18",
-    "next-auth": "^4.24.10",
+    "next-auth": "^4.24.15",
     "next-themes": "^0.4.6",
     "nodemailer": "^9.0.3",
     "openai": "^6.37.0",
@@ -187,7 +187,7 @@
     "stripe": "^17.7.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^14.0.1",
+    "uuid": "11.1.1",
     "web-push": "^3.6.7",
     "ws": "^8.20.1",
     "zod": "^4.4.3"
@@ -198,7 +198,9 @@
     "lodash": ">=4.17.24",
     "fast-xml-parser": ">=5.7.0",
     "fast-xml-builder": ">=1.1.7",
-    "nodemailer": "$nodemailer"
+    "nodemailer": "$nodemailer",
+    "websocket-driver": ">=0.7.5",
+    "uuid": "$uuid"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",

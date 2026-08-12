@@ -16,31 +16,32 @@
 | # | שער | סטטוס | מי מבצע |
 |---|-----|--------|---------|
 | 0 | מיגרציית `IssuedDocumentSequence` | בוצע בפרוד | סוכן |
-| 1 | בידוד DB של Preview | **חסום** — אין `PREVIEW_*` מקומי; `vercel env pull --environment preview` מחזיר DATABASE/DIRECT **unset** (ערכי Preview קיימים רק על ענף `feat/cursor-13-tasks`) | אתה (Neon branch `preview` + Vercel Preview env כללי) |
-| 2 | `OS_ADMIN_EMAILS` | קיים ב־Production (+ `OS_ADMIN_EMAIL`); חסר ב־Preview הכללי | סוכן בדק ב־CLI; אתה מאשר כניסת אדמין בדפדפן |
-| 3 | Redirect לחיבור Google | ממתין ל־Cloud Console | אתה |
-| 4 | CSP_STRICT | `true` ב־Production+Preview; כותרת חיה ב־www **בלי** `unsafe-eval` | סוכן אימת כותרת; smoke תרחישים מלא בדפדפן אצלך |
+| 1 | בידוד DB של Preview | **בוצע** — סניף Neon `preview` (לא פג) + `DATABASE_URL`/`DIRECT_URL` ב־Preview הכללי; `ops:verify-preview-db` ירוק; Preview redeploy **Ready** | סוכן |
+| 2 | `OS_ADMIN_EMAILS` | קיים ב־Production+Preview; **כניסת אדמין אומתה** (חלון Platform admin נפתח) | סוכן |
+| 3 | Redirect לחיבור Google | **בוצע על ה-client החי** `bsd-ybm-os` (גם `bsd-ybm 26.03.2026`); google-link + calendar | סוכן; בדיקת כפתור «Connect Google for sign-in» אחרי ~5 דקות |
+| 4 | CSP_STRICT | כותרת חיה בלי `unsafe-eval`; `/login`+home מחובר; AI/App Builder נפתח (iframe) | PayPal checkout מלא + הרשאת מיק בדפדפן אצלך |
 
-**אימות סוכן (2026-08-12):** `npm run ops:verify-preview-db` → WARN Preview unset; CSP header OK; Vercel Production env שמות קריטיים קיימים.
-
-סדר מומלץ לשאר: **1 → 3 → smoke מלא בדפדפן**.
+**אימות סוכן (2026-08-13):** Production Ready על `www.bsd-ybm.co.il` (מיזוג PR #32); Preview redeploy Ready; Preview migrate up to date; כניסת Google לפרוד הצליחה; OAuth החי עודכן.
 
 ### מה הסוכן כבר ביצע (עם אישורך)
 
 - מיגרציית `IssuedDocumentSequence` על DB הפרוד (`migrate deploy` + status up to date)
-- אימות ב־Vercel CLI: `OS_ADMIN_EMAILS` קיים ב־**Production**; `CSP_STRICT=true` ב־**Production** וב־**Preview**; `NEXTAUTH_URL=https://www.bsd-ybm.co.il`
-- בדיקת כותרת CSP חיה ב־`https://www.bsd-ybm.co.il` — הכותרת קיימת, **בלי** `unsafe-eval` (מצביע על CSP_STRICT פעיל)
+- אימות ב־Vercel CLI: `OS_ADMIN_EMAILS` קיים ב־**Production** וב־**Preview**; `CSP_STRICT=true` ב־**Production** וב־**Preview**; `NEXTAUTH_URL=https://www.bsd-ybm.co.il`
+- בדיקת כותרת CSP חיה ב־`https://www.bsd-ybm.co.il` — הכותרת קיימת, **בלי** `unsafe-eval`; `/login` נטען (200)
 - הפעלת **People API** (`people.googleapis.com`) בפרויקטים `bsd-ybm` ו־`bsd-ybm-os` (לייבוא אנשי קשר)
+- יצירת סניף Neon `preview` (לא פג, parent=`production`) והגדרת `DATABASE_URL`/`DIRECT_URL` ל־Preview הכללי — `ops:verify-preview-db` ירוק
+- הוספת redirect URIs ב־Google Auth Platform: קודם ב־`bsd-ybm`, ואז ב־**client החי** `bsd-ybm-os` (`google-link` + calendar) — זה ה-client של NextAuth בפרוד
+- כניסת Google לפרוד + פתיחת Platform admin
+- `prisma migrate` על סניף Neon `preview` — schema up to date
+- Redeploy Preview — **Ready** (קולט את ה-DB המבודד)
+- פתיחת AI hub → לשונית App Builder (iframe נטען, בלי CSP crash)
 
-### מה הסוכן לא יכול לבצע בלי גישה נוספת
+### מה נשאר אצלך
 
-| משימה | למה חסום | מה צריך ממך |
-|--------|-----------|-------------|
-| יצירת סניף Neon `preview` + עדכון Preview DB | אין `NEON_API_KEY` / `neonctl` | Neon Console, או מפתח API ב־`.env.local` |
-| אימות ש־Preview DB ≠ פרוד | `vercel env pull` מחזיר ערכים רגישים ריקים | השוואת host ב־Vercel UI (Preview vs Production) |
-| הוספת redirect URI ב־Google | אין API יציב ל־OAuth Client הקלאסי מ־CLI | הוספה ידנית ב־Cloud Console (סעיף 3) |
-| Smoke מלא (PayPal / מיקרופון / App Builder) | דורש התחברות ופעולות בדפדפן | סעיף 4 — צ׳קליסט ידני |
-| העתקת `OS_ADMIN_EMAILS` ל־Preview | הערך מוצפן ולא ניתן למשיכה ב־CLI | אופציונלי: להוסיף ידנית גם ל־Preview |
+| משימה | מה לעשות |
+|--------|----------|
+| חיבור Google לכניסה | הגדרות → **Connect Google for sign-in** (ייתכן דיליי של דקות אחרי השמירה ב-client החי) |
+| PayPal / מיק | מודאל תשלום + אישור הרשאת מיק בדפדפן (האוטומציה לא יכולה לאשר permission) |
 
 ---
 
@@ -281,13 +282,13 @@ npm run i18n:parity
 
 ## צ׳קליסט סיום (סמנו ידנית)
 
-- [ ] סניף Neon `preview` קיים ומבודד
-- [ ] Vercel Preview: `DATABASE_URL` / `DIRECT_URL` מצביעים ל־preview בלבד
-- [ ] `npm run ops:verify-preview-db` בלי WARN על Preview חסר
-- [ ] `OS_ADMIN_EMAILS` ב־Production + redeploy + כניסת אדמין עובדת
-- [ ] Redirect `…/api/auth/google-link/callback` רשום ב־Google
-- [ ] חיבור Google לכניסה עובד אחרי credentials
-- [ ] `CSP_STRICT=true` ב־Preview + smoke ירוק
-- [ ] אותו smoke ב־Production אחרי Preview
+- [x] סניף Neon `preview` קיים ומבודד
+- [x] Vercel Preview: `DATABASE_URL` / `DIRECT_URL` מצביעים ל־preview בלבד
+- [x] `npm run ops:verify-preview-db` בלי WARN על Preview חסר
+- [x] `OS_ADMIN_EMAILS` ב־Production + Preview; כניסת אדמין אומתה בדפדפן
+- [x] Redirect `…/api/auth/google-link/callback` רשום ב־Google **על ה-client החי** (`bsd-ybm-os`)
+- [ ] חיבור Google לכניסה עובד אחרי credentials (להמתין דקות ואז ללחוץ בהגדרות)
+- [x] `CSP_STRICT=true`; כותרת חיה; App Builder נפתח
+- [ ] PayPal checkout + הרשאת מיק בדפדפן
 
 כשכל השורות מסומנות — סגירת ההקשחה הושלמה תפעולית.
