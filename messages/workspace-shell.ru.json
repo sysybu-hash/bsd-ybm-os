@@ -1101,7 +1101,8 @@
         "syncSuccess": "Готово",
         "paused": "Синхронизация приостановлена",
         "pauseFailed": "Не удалось приостановить",
-        "loadFailed": "Ошибка загрузки"
+        "loadFailed": "Ошибка загрузки",
+        "calendarsLoadFailed": "Не удалось загрузить календари. Разрешите доступ к Google Calendar и продолжите."
       },
       "mail": {
         "sectionTitle": "Письма системы",

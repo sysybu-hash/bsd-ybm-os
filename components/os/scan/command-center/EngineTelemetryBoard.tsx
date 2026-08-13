@@ -16,7 +16,7 @@ const ENGINES: EngineRow[] = [
   { key: "gemini", label: "Gemini" },
   { key: "gpt", label: "OpenAI" },
   { key: "anthropic", label: "Claude" },
-  { key: "mistral", label: "Pixtral" },
+  { key: "mistral", label: "Mistral" },
 ];
 
 /** צבע נקודת הסטטוס לפי שלב המנוע — מותאם ל-light/dark דרך משתני CSS. */

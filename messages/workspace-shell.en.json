@@ -1101,7 +1101,8 @@
         "syncSuccess": "Sync completed",
         "paused": "Sync paused",
         "pauseFailed": "Could not pause",
-        "loadFailed": "Failed to load calendar settings"
+        "loadFailed": "Failed to load calendar settings",
+        "calendarsLoadFailed": "Could not load your calendars. Grant Google Calendar access and continue."
       },
       "mail": {
         "sectionTitle": "System emails",

@@ -84,15 +84,15 @@ export function getAiProvidersPublic(): AiProviderPublic[] {
     },
     {
       id: "mistral",
-      label: "Mistral / Pixtral",
-      description: "Pixtral Large — vision חזק, עברית מצוינת, מחיר תחרותי",
+      label: "Mistral",
+      description: "Mistral Medium 3.5 — multimodal לסריקה, עברית, ו-fallback",
       configured: isMistralConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "groq",
-      label: "Groq (Llama)",
-      description: "מנוע מהיר במיוחד לטקסט ול-fallback בזמן עומס",
+      label: "Groq",
+      description: "מנוע מהיר לטקסט ול-fallback בזמן עומס (GPT-OSS)",
       configured: isGroqConfigured(),
       supportsDocumentScan: false,
     },
@@ -154,42 +154,83 @@ export function assertProviderConfigured(id: AiProviderId): string | null {
   }
 }
 
-/** April 2026 — flagship ויזואלי/הנדסי */
-export const OPENAI_FLAGSHIP_MODEL = "gpt-5.5";
+/** אוגוסט 2026 — GPT-5.6 Sol (alias gpt-5.6) */
+export const OPENAI_FLAGSHIP_MODEL = "gpt-5.6-sol";
 
 export const OPENAI_VISION_FALLBACK_CHAIN: readonly string[] = [
+  "gpt-5.6-sol",
+  "gpt-5.6",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
   "gpt-5.5",
-  "gpt-5.5-2026-04-23",
-  "gpt-5.4",
-  "gpt-5.4-mini",
-  "gpt-4o-mini",
-  "gpt-4o",
 ] as const;
 
-export const ANTHROPIC_FLAGSHIP_MODEL = "claude-sonnet-4-6";
+const OPENAI_MODEL_ALIASES: Record<string, string> = {
+  "gpt-4o": OPENAI_FLAGSHIP_MODEL,
+  "gpt-4o-mini": "gpt-5.6-luna",
+  "gpt-4-turbo": OPENAI_FLAGSHIP_MODEL,
+  "gpt-5.4": "gpt-5.6-terra",
+  "gpt-5.4-mini": "gpt-5.6-luna",
+  "gpt-5.4-turbo": OPENAI_FLAGSHIP_MODEL,
+};
+
+export const ANTHROPIC_FLAGSHIP_MODEL = "claude-sonnet-5";
 
 export const ANTHROPIC_FALLBACK_CHAIN: readonly string[] = [
+  "claude-sonnet-5",
+  "claude-opus-5",
   "claude-sonnet-4-6",
   "claude-opus-4-7",
   "claude-haiku-4-5-20251001",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-haiku-20241022",
 ] as const;
+
+const ANTHROPIC_MODEL_ALIASES: Record<string, string> = {
+  "claude-3-5-sonnet-20241022": ANTHROPIC_FLAGSHIP_MODEL,
+  "claude-3-5-haiku-20241022": "claude-haiku-4-5-20251001",
+  "claude-3-opus-20240229": "claude-opus-5",
+};
+
+export const GROQ_FLAGSHIP_MODEL = "openai/gpt-oss-120b";
+
+const GROQ_MODEL_ALIASES: Record<string, string> = {
+  "llama-3.3-70b-versatile": GROQ_FLAGSHIP_MODEL,
+  "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+};
+
+function resolveOpenAiModelId(raw: string): string {
+  const id = raw.trim();
+  return OPENAI_MODEL_ALIASES[id] ?? id;
+}
+
+function resolveAnthropicModelId(raw: string): string {
+  const id = raw.trim();
+  return ANTHROPIC_MODEL_ALIASES[id] ?? id;
+}
+
+function resolveGroqModelId(raw: string): string {
+  const id = raw.trim();
+  return GROQ_MODEL_ALIASES[id] ?? id;
+}
+
+function resolveMistralModelId(raw: string): string {
+  const id = raw.trim();
+  return MISTRAL_MODEL_ALIASES[id] ?? id;
+}
 
 function dedupeStrings(parts: Array<string | undefined>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const p of parts) {
-    const s = p?.trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
+    const resolved = p?.trim() ? resolveOpenAiModelId(p.trim()) : "";
+    if (!resolved || seen.has(resolved)) continue;
+    seen.add(resolved);
+    out.push(resolved);
   }
   return out;
 }
 
 export function getOpenAiVisionModel(): string {
-  return env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL;
+  return resolveOpenAiModelId(env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL);
 }
 
 /** סדר ניסיונות ל־Chat Completions (תמונה / קובץ שאינו PDF בנתיב הישן) */
@@ -242,15 +283,19 @@ export function getOpenAiChatTextModelCandidates(): string[] {
 }
 
 export function getAnthropicModel(): string {
-  return env.ANTHROPIC_MODEL?.trim() || ANTHROPIC_FLAGSHIP_MODEL;
+  return resolveAnthropicModelId(env.ANTHROPIC_MODEL?.trim() || ANTHROPIC_FLAGSHIP_MODEL);
 }
 
 export function getAnthropicModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
-    uiOverride,
-    env.ANTHROPIC_MODEL?.trim(),
-    ...ANTHROPIC_FALLBACK_CHAIN,
-  ]);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of [uiOverride, env.ANTHROPIC_MODEL?.trim(), ...ANTHROPIC_FALLBACK_CHAIN]) {
+    const s = p?.trim() ? resolveAnthropicModelId(p.trim()) : "";
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
 }
 
 export function isAnthropicModelNotFound(status: number, body: string): boolean {
@@ -271,32 +316,47 @@ export function isAnthropicEligibleForModelFallback(status: number, body: string
 }
 
 export function getGroqModel(): string {
-  return env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
+  return resolveGroqModelId(env.GROQ_MODEL?.trim() || GROQ_FLAGSHIP_MODEL);
 }
 
-/** Mistral / Pixtral model catalog */
-export const MISTRAL_VISION_FLAGSHIP = "pixtral-large-latest";
+/** Mistral Medium 3.5 — מחליף את Pixtral Large (retired) */
+export const MISTRAL_VISION_FLAGSHIP = "mistral-medium-3-5";
 export const MISTRAL_TEXT_FLAGSHIP = "mistral-small-latest";
 
-/** מודל ל-vision / סריקת מסמכים (Pixtral) */
+const MISTRAL_MODEL_ALIASES: Record<string, string> = {
+  "pixtral-large-latest": MISTRAL_VISION_FLAGSHIP,
+  "pixtral-large-2411": MISTRAL_VISION_FLAGSHIP,
+  "pixtral-12b-2409": MISTRAL_TEXT_FLAGSHIP,
+  "mistral-large-latest": MISTRAL_VISION_FLAGSHIP,
+  "mistral-medium-latest": MISTRAL_VISION_FLAGSHIP,
+};
+
+/** מודל ל-vision / סריקת מסמכים */
 export function getMistralVisionModel(): string {
-  return env.MISTRAL_VISION_MODEL?.trim() || MISTRAL_VISION_FLAGSHIP;
+  return resolveMistralModelId(env.MISTRAL_VISION_MODEL?.trim() || MISTRAL_VISION_FLAGSHIP);
 }
 
 /** מודל לצ'אט טקסט */
 export function getMistralModel(): string {
-  return env.MISTRAL_MODEL?.trim() || MISTRAL_TEXT_FLAGSHIP;
+  return resolveMistralModelId(env.MISTRAL_MODEL?.trim() || MISTRAL_TEXT_FLAGSHIP);
 }
 
-/** fallback: נסה pixtral קודם, אחרי זה mistral-large */
 export function getMistralVisionModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of [
     uiOverride,
     env.MISTRAL_VISION_MODEL?.trim(),
     MISTRAL_VISION_FLAGSHIP,
-    "pixtral-12b-2409",          // גרסה קלה יותר
-    "mistral-large-latest",      // fallback ללא vision (PDF text)
-  ]);
+    "mistral-medium-latest",
+    MISTRAL_TEXT_FLAGSHIP,
+  ]) {
+    const s = p?.trim() ? resolveMistralModelId(p.trim()) : "";
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
 }
 
 export function isMistralModelNotFound(status: number, body: string): boolean {

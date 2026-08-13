@@ -309,7 +309,7 @@ export function useGeminiLiveAudio({
   const [state, setState] = useState<GeminiLiveState>("idle");
   const [statusText, setStatusText] = useState(statusLabels.ready);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
-  const [model, setModel] = useState("gemini-2.5-flash-native-audio-latest");
+  const [model, setModel] = useState("gemini-3.1-flash-live-preview");
   const [lastTranscript, setLastTranscript] = useState("");
   const [rateLimitedUntil, setRateLimitedUntil] = useState<Date | null>(() => {
     const untilMs = getGeminiLiveRateLimitCooldownUntilMs();

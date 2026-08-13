@@ -39,7 +39,7 @@ const CUSTOM_ENGINE_OPTIONS: { id: string; label: string; cfg: keyof EngineMeta[
   { id: "openai", label: "OpenAI", cfg: "openai" },
   { id: "anthropic", label: "Claude", cfg: "anthropic" },
   { id: "docai", label: "Document AI", cfg: "documentAI" },
-  { id: "mistral", label: "Pixtral", cfg: "mistral" },
+  { id: "mistral", label: "Mistral", cfg: "mistral" },
 ];
 
 export function EngineSelector({ value, onChange, customEngines = [], onCustomEnginesChange, engineMeta, t }: EngineSelectorProps) {
@@ -50,7 +50,7 @@ export function EngineSelector({ value, onChange, customEngines = [], onCustomEn
     { id: "SINGLE_OPENAI", label: "OpenAI", cfg: "openai", tone: "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
     { id: "SINGLE_ANTHROPIC", label: "Claude", cfg: "anthropic", tone: "border-orange-500/50 bg-orange-500/15 text-[color:var(--accent)] dark:text-orange-300" },
     { id: "SINGLE_DOCUMENT_AI", label: "Document AI", cfg: "documentAI", tone: "border-sky-500/50 bg-sky-500/15 text-sky-700 dark:text-sky-300" },
-    { id: "SINGLE_MISTRAL", label: "Pixtral", cfg: "mistral", tone: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+    { id: "SINGLE_MISTRAL", label: "Mistral", cfg: "mistral", tone: "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300" },
     { id: "MULTI_PARALLEL", label: t("scanner.modeMulti"), tone: "border-rose-500/50 bg-rose-500/15 text-rose-700 dark:text-rose-300" },
     { id: "CUSTOM_PARALLEL", label: t("scanner.modeCustom"), tone: "border-violet-500/50 bg-violet-500/15 text-violet-700 dark:text-violet-300" },
   ];

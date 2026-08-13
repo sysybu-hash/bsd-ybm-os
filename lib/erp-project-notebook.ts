@@ -1,17 +1,22 @@
 import { GoogleGenerativeAI, type Content, type Part } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { withAssistantTemporalContext } from "@/lib/ai/assistant-temporal-context";
-import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import {
+  GEMINI_LITE_MODEL,
+  GEMINI_PREMIUM_TEXT_MODEL,
+  GEMINI_STABLE_TEXT_MODEL,
+  isLikelyGeminiModelUnavailable,
+  resolveGeminiModelId,
+} from "@/lib/gemini-model";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { normalizeLocale } from "@/lib/i18n/config";
 
-/** מודל לצ'אט מחברת פרויקטים — ברירת מחדל: Gemini 3.1 Pro Stable (ניתן לעקוף ב־GEMINI_NOTEBOOK_MODEL). */
-const NOTEBOOK_DEFAULT_MODEL = "gemini-2.5-flash-lite";
+/** מודל לצ'אט מחברת פרויקטים — Lite כברירת מחדל (ניתן לעקוף ב־GEMINI_NOTEBOOK_MODEL). */
+const NOTEBOOK_DEFAULT_MODEL = GEMINI_LITE_MODEL;
 const NOTEBOOK_FALLBACK_MODELS = [
   NOTEBOOK_DEFAULT_MODEL,
-  "gemini-2.5-pro",
-  "gemini-2.0-flash",
-  "gemini-2.5-flash",
+  GEMINI_STABLE_TEXT_MODEL,
+  GEMINI_PREMIUM_TEXT_MODEL,
 ] as const;
 
 function dedupeModels(models: string[]): string[] {
@@ -28,7 +33,9 @@ function dedupeModels(models: string[]): string[] {
 
 function getNotebookModelChain(): string[] {
   return dedupeModels([
-    env.GEMINI_NOTEBOOK_MODEL?.trim() || NOTEBOOK_DEFAULT_MODEL,
+    env.GEMINI_NOTEBOOK_MODEL?.trim()
+      ? resolveGeminiModelId(env.GEMINI_NOTEBOOK_MODEL.trim())
+      : NOTEBOOK_DEFAULT_MODEL,
     ...NOTEBOOK_FALLBACK_MODELS,
   ]);
 }

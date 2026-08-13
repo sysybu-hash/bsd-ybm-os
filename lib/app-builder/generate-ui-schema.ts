@@ -5,12 +5,11 @@ import {
   extractJsonFromModelText,
   parseAndSanitizeUiSchema,
 } from "@/lib/app-builder/sanitize-ui-schema";
-import { env } from "@/lib/env";
-import { GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
+import { getGeminiModelId } from "@/lib/gemini-model";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
-const MODEL = env.GEMINI_MODEL?.trim() || GEMINI_STABLE_TEXT_MODEL;
+const MODEL = getGeminiModelId();
 
 const TYPE_KEEP_INSTRUCTIONS: Partial<Record<AppBuilderUiSchema["type"], string>> = {
   composer:   "Keep type composer; you may add/remove/reorder blocks (dashboard, form, actions, text).",

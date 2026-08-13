@@ -9,7 +9,7 @@ import { generateAppBuilderUiFromPrompt } from "@/lib/app-builder/generate-app-u
 import { appBuilderCapabilitiesForPrompt } from "@/lib/app-builder/platform-capabilities-for-prompt";
 import { looksLikeUiBuildRequest } from "@/lib/app-builder/jsx-preview-utils";
 import { env } from "@/lib/env";
-import { GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
+import { getGeminiModelId } from "@/lib/gemini-model";
 import { jsonBadRequest, jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
@@ -26,7 +26,7 @@ export const maxDuration = 60;
 
 const log = createLogger("ai-app-builder-chat");
 
-const MODEL = env.GEMINI_MODEL?.trim() || GEMINI_STABLE_TEXT_MODEL;
+const MODEL = getGeminiModelId();
 const ORG_REQUESTS_PER_HOUR = 60;
 
 const messageSchema = z.object({

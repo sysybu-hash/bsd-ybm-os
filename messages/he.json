@@ -471,7 +471,7 @@
     "saveSuccess": "המסמך נשמר בהצלחה",
     "saveFailed": "שמירה נכשלה",
     "modeAnthropic": "Claude (Anthropic)",
-    "modeMistral": "Mistral / Pixtral"
+    "modeMistral": "Mistral Medium"
   },
   "fileDropzone": {
     "amountUnknown": "סכום לא זוהה",

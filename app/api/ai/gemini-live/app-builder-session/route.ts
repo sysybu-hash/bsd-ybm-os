@@ -6,7 +6,7 @@ import { isGeminiConfigured } from "@/lib/ai-providers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import {
-  GEMINI_LIVE_MODEL_FALLBACK_CHAIN,
+  getGeminiLiveModelFallbackChain,
   isGeminiApiKeyError,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
@@ -150,7 +150,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     let lastError: unknown;
 
-    for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
+    for (const model of getGeminiLiveModelFallbackChain()) {
       try {
         const payload = await createLiveAuthToken(client, model, settings, systemInstruction, advancedFeatures);
         log.info("app-builder auth token created", { model, orgId });

@@ -182,7 +182,7 @@ function authEnvHintForProvider(id: AiProviderId): string {
     case "gemini":
       return "ב-Vercel: GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY. ב-Google Cloud: חיוב פעיל והפעלת Gemini/Generative Language API.";
     case "openai":
-      return "ב-Vercel: OPENAI_API_KEY (מפתח תקף, מכסה/ארגון). PDF דרך Responses — ברירת מחדל gpt-5.4-turbo; ניתן OPENAI_RESPONSES_MODEL / OPENAI_VISION_MODEL.";
+      return "ב-Vercel: OPENAI_API_KEY (מפתח תקף, מכסה/ארגון). PDF דרך Responses — ברירת מחדל gpt-5.6-sol; ניתן OPENAI_RESPONSES_MODEL / OPENAI_VISION_MODEL.";
     case "anthropic":
       return "ב-Vercel: ANTHROPIC_API_KEY.";
     case "docai":
