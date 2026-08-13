@@ -74,7 +74,7 @@ export async function runSequentialScanMode(params: {
     }
 
     const a = coerceLegacyAiToV5(geminiRaw, fileName, scanMode);
-    a.enginesUsed = ["gemini-3.1-pro-stable"];
+    a.enginesUsed = ["gemini-3.6-flash"];
     await emitPartial(a, "gemini");
 
     const tP = Date.now();
@@ -105,7 +105,7 @@ export async function runSequentialScanMode(params: {
     }
 
     const b = coerceLegacyAiToV5(gptRaw, fileName, scanMode);
-    b.enginesUsed = ["gpt-5.4-turbo"];
+    b.enginesUsed = ["gpt-5.6-sol"];
     v5 = mergeScanResults(a, b, fileName, "DRAWING_BOQ");
     v5.enginesUsed = ["gemini", "openai"];
     await emitPartial(v5, "merged_gemini_openai");

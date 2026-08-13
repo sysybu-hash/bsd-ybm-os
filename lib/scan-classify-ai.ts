@@ -10,6 +10,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { GEMINI_LITE_MODEL, GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
 import { clampScanModeForIndustry } from "@/lib/scan-modes-for-ui";
 import { createLogger } from "@/lib/logger";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
@@ -18,8 +19,8 @@ import type { ScanClassification } from "@/lib/scan-classify";
 const log = createLogger("scan-classify-ai");
 
 /** מודל Flash קל לסיווג בלבד — לא צריך Pro */
-const CLASSIFY_MODEL = "gemini-2.5-flash-lite";
-const FALLBACK_MODEL = "gemini-2.5-flash";
+const CLASSIFY_MODEL = GEMINI_LITE_MODEL;
+const FALLBACK_MODEL = GEMINI_STABLE_TEXT_MODEL;
 
 const SCAN_MODES: ScanModeV5[] = [
   "INVOICE_FINANCIAL",

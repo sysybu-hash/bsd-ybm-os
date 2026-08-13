@@ -270,7 +270,7 @@ export function ScanFullEditor({
               {Object.entries(telemetry).map(([engine, status]) => {
                 const phase = status.phase as string;
                 const color = phase === "ok" ? "text-emerald-600" : phase === "error" ? "text-red-500" : phase === "skipped" ? "text-[color:var(--foreground-muted)]" : "text-amber-500";
-                const label = { documentAI: "Document AI", gemini: "Gemini", gpt: "OpenAI", mistral: "Pixtral", anthropic: "Claude" }[engine] ?? engine;
+                const label = { documentAI: "Document AI", gemini: "Gemini", gpt: "OpenAI", mistral: "Mistral", anthropic: "Claude" }[engine] ?? engine;
                 return (
                   <div key={engine} className="flex items-center justify-between text-[11px]">
                     <span className="font-medium">{label}</span>

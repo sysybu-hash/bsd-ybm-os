@@ -59,7 +59,7 @@ export function createTriEngineProviders(ctx: TriEngineProviderCtx) {
     if (mErr) throw new Error(mErr);
     const raw = await extractDocumentWithMistral(base64, mimeType, fileName, fullInstruction, scanMode);
     const out = coerceLegacyAiToV5(raw, fileName, scanMode);
-    out.enginesUsed = ["mistral-pixtral"];
+    out.enginesUsed = ["mistral-medium"];
     return out;
   };
 

@@ -1,7 +1,6 @@
 /**
- * Mistral / Pixtral document extraction
- * API דומה ל-OpenAI Chat Completions — תואם לחלוטין.
- * Pixtral Large: vision מצוין לגרמושקות, חשבוניות סרוקות, כתב יד, עברית.
+ * Mistral document extraction (Medium 3.5 multimodal).
+ * API דומה ל-OpenAI Chat Completions.
  */
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { env } from "@/lib/env";

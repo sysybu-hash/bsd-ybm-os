@@ -18,11 +18,13 @@ import { getTradeSpecializedPrompt } from "@/lib/trade-specialized-prompt";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import { getApiMessage } from "@/lib/i18n/api-messages";
+import { GEMINI_LITE_MODEL, resolveGeminiModelId } from "@/lib/gemini-model";
 
 export const maxDuration = 120;
 
-const NOTEBOOK_MODEL =
-  env.GEMINI_NOTEBOOK_MODEL?.trim() || "gemini-2.5-flash-lite";
+const NOTEBOOK_MODEL = resolveGeminiModelId(
+  env.GEMINI_NOTEBOOK_MODEL?.trim() || GEMINI_LITE_MODEL,
+);
 const REQUESTS_PER_HOUR = 40;
 
 const chatStreamBodySchema = z.object({

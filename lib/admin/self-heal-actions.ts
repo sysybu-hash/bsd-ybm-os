@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { embedText, isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
 import { writeKnowledgeVaultChunkEmbedding } from "@/lib/embeddings/pgvector-dual-write";
+import { reembedAllVectors } from "@/lib/embeddings/reembed-all";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("admin/self-heal");
@@ -10,6 +11,7 @@ export const SELF_HEAL_ACTIONS = [
   "purge_stale_rate_limits",
   "recount_org_usage",
   "requeue_failed_embeddings",
+  "reembed_all_vectors",
 ] as const;
 
 export type SelfHealAction = (typeof SELF_HEAL_ACTIONS)[number];
@@ -40,6 +42,8 @@ export async function runSelfHealAction(
       return recountOrgUsage(dryRun, organizationId);
     case "requeue_failed_embeddings":
       return requeueFailedEmbeddings(dryRun, organizationId);
+    case "reembed_all_vectors":
+      return reembedAllVectorsAction(dryRun, organizationId);
     default:
       throw new Error(`unknown action: ${action satisfies never}`);
   }
@@ -165,6 +169,51 @@ async function requeueFailedEmbeddings(
     dryRun: false,
     affected: updated,
     details: { candidates: rows.length, updated },
+  };
+}
+
+async function reembedAllVectorsAction(
+  dryRun: boolean,
+  organizationId?: string,
+): Promise<SelfHealResult> {
+  const orgFilter = organizationId ? { organizationId } : {};
+  const chunksTotal = await prisma.knowledgeVaultChunk.count({
+    where: { ...orgFilter, NOT: { content: "" } },
+  });
+  const contactsTotal = await prisma.contactSearchEmbedding.count({
+    where: orgFilter,
+  });
+
+  if (dryRun) {
+    return {
+      action: "reembed_all_vectors",
+      dryRun: true,
+      affected: chunksTotal + contactsTotal,
+      details: { chunksTotal, contactsTotal },
+    };
+  }
+
+  if (!isEmbeddingConfigured()) {
+    return {
+      action: "reembed_all_vectors",
+      dryRun: false,
+      affected: 0,
+      details: { skipped: true, reason: "embeddings_not_configured" },
+    };
+  }
+
+  const result = await reembedAllVectors({
+    organizationId,
+    batchSize: 10,
+    maxChunks: 40,
+    maxContacts: 40,
+  });
+
+  return {
+    action: "reembed_all_vectors",
+    dryRun: false,
+    affected: result.chunksUpdated + result.contactsUpdated,
+    details: { ...result, note: "capped_per_request_rerun_until_complete" },
   };
 }
 

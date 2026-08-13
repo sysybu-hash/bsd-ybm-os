@@ -1101,7 +1101,8 @@
         "syncSuccess": "הסנכרון הושלם",
         "paused": "הסנכרון הושהה",
         "pauseFailed": "לא ניתן להשהות",
-        "loadFailed": "שגיאה בטעינת הגדרות יומן"
+        "loadFailed": "שגיאה בטעינת הגדרות יומן",
+        "calendarsLoadFailed": "לא ניתן לטעון את רשימת היומנים. אשרו גישה ליומן Google והמשיכו."
       },
       "mail": {
         "sectionTitle": "מיילים מהמערכת",

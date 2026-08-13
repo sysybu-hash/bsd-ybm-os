@@ -257,7 +257,7 @@ export function useAiScannerState({
     if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
     if (engineRunMode === "SINGLE_OPENAI") return engineMeta.openai?.defaultModelId ?? "OpenAI";
     if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
-    if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Pixtral";
+    if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Mistral";
     if (engineRunMode === "MULTI_PARALLEL") return t("scanner.modeMulti");
     if (engineRunMode === "CUSTOM_PARALLEL") return customEngines.length ? customEngines.join("+") : t("scanner.modeMulti");
     return t("scanner.modeAuto");

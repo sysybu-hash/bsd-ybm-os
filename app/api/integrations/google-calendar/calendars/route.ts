@@ -1,15 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { jsonBadRequest } from "@/lib/api-json";
-import { accountHasCalendarScope } from "@/lib/google-calendar-oauth";
+import { describeGoogleCalendarListError } from "@/lib/google-calendar-api-errors";
+import { accountHasCalendarScope, buildGoogleCalendarConnectUrl } from "@/lib/google-calendar-oauth";
 import { getGoogleAccountScopeForUser } from "@/lib/google-calendar-eligibility";
 import {
   GoogleCalendarService,
   GoogleOAuthNotLinkedError,
   GoogleOAuthRefreshError,
 } from "@/lib/services/google-calendar";
-import { buildGoogleCalendarConnectUrl } from "@/lib/google-calendar-oauth";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("google-calendar-list");
+
+const WIZARD_CALLBACK = "/?w=settings&calendar=wizard";
+
+function notConnectedResponse(error?: string, code?: string) {
+  return NextResponse.json({
+    connected: false,
+    connectUrl: buildGoogleCalendarConnectUrl(WIZARD_CALLBACK),
+    calendars: [],
+    ...(error ? { error, code } : {}),
+  });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +32,7 @@ export const GET = withWorkspacesAuth(async (req, { userId }) => {
 
   const scope = await getGoogleAccountScopeForUser(userId);
   if (!accountHasCalendarScope(scope)) {
-    return NextResponse.json({
-      connected: false,
-      connectUrl: buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard"),
-      calendars: [],
-    });
+    return notConnectedResponse();
   }
 
   try {
@@ -32,15 +41,13 @@ export const GET = withWorkspacesAuth(async (req, { userId }) => {
     return NextResponse.json({ connected: true, calendars });
   } catch (e) {
     if (e instanceof GoogleOAuthNotLinkedError) {
-      return NextResponse.json({
-        connected: false,
-        connectUrl: buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard"),
-        calendars: [],
-      });
+      return notConnectedResponse();
     }
     if (e instanceof GoogleOAuthRefreshError) {
-      return jsonBadRequest(e.message, "google_refresh_failed");
+      return notConnectedResponse(e.message, "google_refresh_failed");
     }
-    throw e;
+    const info = describeGoogleCalendarListError(e);
+    log.warn("calendar list failed", { code: info.code });
+    return notConnectedResponse(info.message, info.code);
   }
 });

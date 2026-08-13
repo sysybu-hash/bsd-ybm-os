@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { EMBEDDING_OUTPUT_DIM } from "@/lib/embeddings/gemini-embed";
 
 const log = createLogger("embeddings/pgvector");
 
-/** Gemini text-embedding-004 dimension */
-export const EMBEDDING_VECTOR_DIM = 768;
+/** Gemini gemini-embedding-2 truncated dimension (MRL) — תואם לעמודות pgvector */
+export const EMBEDDING_VECTOR_DIM = EMBEDDING_OUTPUT_DIM;
 
 let pgVectorAvailable: boolean | null = null;
 

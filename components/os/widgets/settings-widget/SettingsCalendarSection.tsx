@@ -16,7 +16,7 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
     selectedCalendarId, setSelectedCalendarId,
     syncMode, setSyncMode, consentChecked, setConsentChecked,
     pushEnabled, setPushEnabled, reminderMinutes, setReminderMinutes,
-    activating, syncing, showWizard, loadCalendars,
+    activating, syncing, calendarsLoading, showWizard, startSetup,
     handleConnect, handleActivate, handleSyncNow, handlePause,
   } = useSettingsCalendarSection(t);
 
@@ -29,7 +29,7 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
   }
 
   return (
-    <section className="border-t border-[color:var(--border-main)]/30 pt-6">
+    <section className="border-t border-[color:var(--border-main)]/30 pt-6 pb-8">
       <div className="mb-4 flex items-center gap-2">
         <Calendar size={18} className="text-violet-500" />
         <h3 className="text-sm font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
@@ -59,7 +59,7 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                   {t(`${S}.connectCta`)}
                 </OsButton>
               ) : (
-                <OsButton variant="primary" onClick={() => { setWizardStep(0); void loadCalendars(); }}>
+                <OsButton variant="primary" loading={calendarsLoading} onClick={() => void startSetup()}>
                   {t(`${S}.setupCta`)}
                 </OsButton>
               )}
@@ -100,10 +100,20 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
           ) : null}
 
           {showWizard && status.connected ? (
-            <div className="space-y-4 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 p-4">
+            <div id="calendar-sync-wizard" className="space-y-4 rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 p-4">
               <h4 className="text-sm font-bold">{t(`${S}.wizardTitle`)}</h4>
 
               {wizardStep === 0 ? (
+                calendarsLoading && calendars.length === 0 ? (
+                  <WidgetState variant="loading" />
+                ) : calendars.length === 0 ? (
+                  <>
+                    <p className="text-sm text-[color:var(--foreground-muted)]">{t(`${S}.calendarsLoadFailed`)}</p>
+                    <OsButton variant="primary" onClick={handleConnect}>
+                      {t(`${S}.connectCta`)}
+                    </OsButton>
+                  </>
+                ) : (
                 <>
                   <label className="text-xs font-bold text-[color:var(--foreground-muted)]">{t(`${S}.pickCalendar`)}</label>
                   <select value={selectedCalendarId} onChange={(e) => setSelectedCalendarId(e.target.value)}
@@ -118,6 +128,7 @@ export function SettingsCalendarSection({ t }: SettingsCalendarSectionProps) {
                     {t(`${S}.next`)}
                   </OsButton>
                 </>
+                )
               ) : null}
 
               {wizardStep === 1 ? (

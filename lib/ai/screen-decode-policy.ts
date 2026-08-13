@@ -1,5 +1,6 @@
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
 import { env } from "@/lib/env";
+import { GEMINI_STABLE_TEXT_MODEL, resolveGeminiModelId } from "@/lib/gemini-model";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 
 export type ScreenType =
@@ -21,9 +22,12 @@ export type ScreenDecodePolicy = {
 };
 
 // המודל בפועל נקבע ע"י getModelChainForScanMode() — primaryModel הוא שדה תצוגה בלבד.
-const SCAN_DISPLAY_FLASH = env.GEMINI_INVOICE_MODEL?.trim() ?? "gemini-3.5-flash";
-const SCAN_DISPLAY_BLUEPRINT =
-  env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() ?? "gemini-3.5-flash";
+const SCAN_DISPLAY_FLASH = resolveGeminiModelId(
+  env.GEMINI_INVOICE_MODEL?.trim() ?? GEMINI_STABLE_TEXT_MODEL,
+);
+const SCAN_DISPLAY_BLUEPRINT = resolveGeminiModelId(
+  env.GEMINI_BLUEPRINT_PRIMARY_MODEL?.trim() ?? GEMINI_STABLE_TEXT_MODEL,
+);
 
 export const SCREEN_AI_POLICY: Record<ScreenType, ScreenDecodePolicy> = {
   invoice: {

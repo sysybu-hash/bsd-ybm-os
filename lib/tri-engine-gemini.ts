@@ -1,13 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
-import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import {
+  GEMINI_LITE_MODEL,
+  GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_STABLE_TEXT_MODEL,
+  isLikelyGeminiModelUnavailable,
+} from "@/lib/gemini-model";
 
-/** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
+/** מודלי Flash נתמכים ב-Gemini API */
 export const GEMINI_FLASH_PREFERRED = [
-  "gemini-3.5-flash",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+  GEMINI_STABLE_TEXT_MODEL,
+  GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_LITE_MODEL,
 ] as const;
 
 export async function geminiMultimodal(

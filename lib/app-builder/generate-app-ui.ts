@@ -8,13 +8,12 @@ import {
   isLikelyReactComponent,
   sanitizeGeneratedJsx,
 } from "@/lib/app-builder/jsx-preview-utils";
-import { env } from "@/lib/env";
-import { GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
+import { getGeminiModelId } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 const log = createLogger("app-builder-generate-ui");
-const MODEL = env.GEMINI_MODEL?.trim() || GEMINI_STABLE_TEXT_MODEL;
+const MODEL = getGeminiModelId();
 
 export type GenerateAppBuilderUiResult = {
   uiSchema?: AppBuilderUiSchema;

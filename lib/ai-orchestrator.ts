@@ -3,8 +3,10 @@ import { env } from "@/lib/env";
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { Groq } from 'groq-sdk';
-import { getGeminiModelId } from '@/lib/gemini-model';
+import { getGeminiModelId, resolveGeminiModelId } from '@/lib/gemini-model';
 import {
+  ANTHROPIC_FLAGSHIP_MODEL,
+  OPENAI_FLAGSHIP_MODEL,
   getAnthropicModelCandidates,
   getGroqModel,
   getOpenAiChatTextModelCandidates,
@@ -40,7 +42,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
   switch (provider) {
     case 'gemini': {
       const model = getGenAI().getGenerativeModel({
-        model: env.CRM_ANALYSIS_GEMINI_MODEL?.trim() || getGeminiModelId(),
+        model: resolveGeminiModelId(env.CRM_ANALYSIS_GEMINI_MODEL?.trim() || getGeminiModelId()),
       });
       const result = await model.generateContent(
         imageBase64 ? [prompt, { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }] : [prompt],
@@ -50,7 +52,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
 
     case 'openai': {
       const oaiRes = await getOpenAI().chat.completions.create({
-        model: getOpenAiChatTextModelCandidates()[0] ?? 'gpt-5.5',
+        model: getOpenAiChatTextModelCandidates()[0] ?? OPENAI_FLAGSHIP_MODEL,
         messages: [{ role: 'user', content: prompt }],
       });
       return oaiRes.choices?.[0]?.message?.content ?? '';
@@ -58,7 +60,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
 
     case 'claude': {
       const claudeRes = await getAnthropic().messages.create({
-        model: getAnthropicModelCandidates()[0] ?? 'claude-sonnet-4-6',
+        model: getAnthropicModelCandidates()[0] ?? ANTHROPIC_FLAGSHIP_MODEL,
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
       });

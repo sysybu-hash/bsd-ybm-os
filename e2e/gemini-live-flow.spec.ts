@@ -15,7 +15,7 @@ import { tryCredentialsSignIn } from "./helpers";
 
 const MOCK_SESSION = {
   token: "e2e-mock-live-token",
-  model: "gemini-2.5-flash-live-preview",
+  model: "gemini-3.1-flash-live-preview",
   expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   newSessionExpiresAt: new Date(Date.now() + 120 * 1000).toISOString(),
   responseMode: "audio_text",

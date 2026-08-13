@@ -471,7 +471,7 @@
     "saveSuccess": "Document saved successfully",
     "saveFailed": "Save failed",
     "modeAnthropic": "Claude (Anthropic)",
-    "modeMistral": "Mistral / Pixtral"
+    "modeMistral": "Mistral Medium"
   },
   "fileDropzone": {
     "amountUnknown": "Amount not detected",
