@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import {
   ensureEditTrailingEmptySlot,
@@ -58,6 +59,7 @@ export function useLauncherActions({
   organizationIndustry, userId, picker,
   setConfig, setPicker, setAnnounce,
 }: UseLauncherActionsArgs) {
+  const { t } = useI18n();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persist = useCallback(
@@ -113,25 +115,25 @@ export function useLauncherActions({
       if (!moved) return;
       slots.splice(toIndex, 0, moved);
       persist(setZoneSlots(config, zone, slots));
-      setAnnounce("סדר האריחים עודכן");
+      setAnnounce(t("workspaceWidgets.launcher.announceReordered"));
     },
-    [config, persist, zoneSlots, setAnnounce],
+    [config, persist, zoneSlots, setAnnounce, t],
   );
 
   const moveQuickGridCell = useCallback(
     (from: GridCellCoord, to: GridCellCoord) => {
       if (from.row === to.row && from.col === to.col) return;
       persist(setZoneSlots(config, "quickGrid", moveQuickGridSlot(config.quickGrid, from, to)));
-      setAnnounce("מיקום האריח עודכן");
+      setAnnounce(t("workspaceWidgets.launcher.announceMoved"));
     },
-    [config, persist, setAnnounce],
+    [config, persist, setAnnounce, t],
   );
 
   const removeAt = useCallback(
     (zone: LauncherZone, index: number, coord?: GridCellCoord) => {
       if (zone === "quickGrid" && coord) {
         persist(setZoneSlots(config, zone, config.quickGrid.filter((s) => !(s.row === coord.row && s.col === coord.col))));
-        setAnnounce("האריח הוסר");
+        setAnnounce(t("workspaceWidgets.launcher.announceRemoved"));
         return;
       }
       const slots = [...zoneSlots(zone)];
@@ -143,9 +145,9 @@ export function useLauncherActions({
         next = setZoneSlots(next, zone, ensureEditTrailingEmptySlot(next[zone], canAddMore));
       }
       persist(next);
-      setAnnounce("האריח הוסר");
+      setAnnounce(t("workspaceWidgets.launcher.announceRemoved"));
     },
-    [config, editMode, permissionCtx, persist, zoneSlots, setAnnounce],
+    [config, editMode, permissionCtx, persist, zoneSlots, setAnnounce, t],
   );
 
   const openPickerAt = useCallback(
@@ -183,12 +185,12 @@ export function useLauncherActions({
       }
       persist(next);
       setPicker(null);
-      setAnnounce("אפליקציה הוחלפה");
+      setAnnounce(t("workspaceWidgets.launcher.announceReplaced"));
       void import("@/lib/analytics/workspace-events").then(({ trackLauncherWidgetAdded }) => {
         trackLauncherWidgetAdded(type, zone);
       });
     },
-    [config, editMode, permissionCtx, persist, picker, setPicker, setAnnounce],
+    [config, editMode, permissionCtx, persist, picker, setPicker, setAnnounce, t],
   );
 
   const pickerOptions = useMemo(() => {
@@ -201,8 +203,8 @@ export function useLauncherActions({
 
   const resetToDefault = useCallback(() => {
     persist(getDefaultLauncherConfig(organizationIndustry, { isPlatformAdmin }));
-    setAnnounce("שוחזר לברירת מחדל");
-  }, [persist, organizationIndustry, isPlatformAdmin, setAnnounce]);
+    setAnnounce(t("workspaceWidgets.launcher.announceReset"));
+  }, [persist, organizationIndustry, isPlatformAdmin, setAnnounce, t]);
 
   const enterEditMode = useCallback(() => {
     let next = { ...config, quickGrid: ensureQuickGridPositions(config.quickGrid) };

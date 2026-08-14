@@ -9,6 +9,7 @@ import {
   writeJewishCalendarPrefs,
 } from "@/lib/jewish-calendar/prefs";
 import type { JewishCalendarLocation } from "@/lib/jewish-calendar/types";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 const GEO_TIMEOUT_MS = 8000;
 const GEO_OPTIONS: PositionOptions = {
@@ -39,19 +40,20 @@ function geoErrorKind(error: GeolocationPositionError): "denied" | "unavailable"
 }
 
 export function useJewishCalendarLocation() {
+  const { t } = useI18n();
   const [ready, setReady] = useState(false);
   const [locationHint, setLocationHint] = useState<string | null>(null);
   const [suggestLocationPicker, setSuggestLocationPicker] = useState(false);
   const [locationLabel, setLocationLabel] = useState(getDefaultLocation().nameHe);
 
   const resolveLabel = useCallback((prefs: ReturnType<typeof readJewishCalendarPrefs>) => {
-    if (prefs?.source === "geolocation") return "מיקום שלי";
-    if (prefs?.locationId === "custom") return "מיקום מותאם";
+    if (prefs?.source === "geolocation") return t("workspaceWidgets.jewishCalendar.myLocation");
+    if (prefs?.locationId === "custom") return t("workspaceWidgets.jewishCalendar.customLocation");
     if (prefs?.locationId) {
       return getLocationById(prefs.locationId)?.nameHe ?? getDefaultLocation().nameHe;
     }
     return getDefaultLocation().nameHe;
-  }, []);
+  }, [t]);
 
   const applyGeolocation = useCallback((pos: GeolocationPosition) => {
     writeJewishCalendarPrefs({
@@ -61,11 +63,11 @@ export function useJewishCalendarLocation() {
       elevation: pos.coords.altitude ?? undefined,
       userChoseCity: false,
     });
-    setLocationLabel("מיקום שלי");
+    setLocationLabel(t("workspaceWidgets.jewishCalendar.myLocation"));
     setLocationHint(null);
     setSuggestLocationPicker(false);
     window.dispatchEvent(new CustomEvent("jewish-calendar:prefs-changed"));
-  }, []);
+  }, [t]);
 
   const requestGeolocation = useCallback(
     (fromUserGesture: boolean) =>

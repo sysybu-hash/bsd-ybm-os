@@ -1,7 +1,10 @@
 {
   "workspaceShell": {
     "header": {
-      "localeAria": "שפת ממשק"
+      "localeAria": "שפת ממשק",
+      "themeToggleTitle": "שינוי ערכת נושא",
+      "themeToLight": "מעבר למצב בהיר",
+      "themeToDark": "מעבר למצב כהה"
     }
   },
   "siteFooter": {

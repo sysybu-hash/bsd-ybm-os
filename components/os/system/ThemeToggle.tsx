@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type ThemeToggleProps = {
   className?: string;
@@ -11,6 +12,7 @@ type ThemeToggleProps = {
 
 export default function ThemeToggle({ className = "", variant = "default" }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -39,8 +41,12 @@ export default function ThemeToggle({ className = "", variant = "default" }: The
       type="button"
       onClick={toggle}
       className={`${variantClass} ${className}`.trim()}
-      title="שינוי ערכת נושא"
-      aria-label={isDark ? "מעבר למצב בהיר" : "מעבר למצב כהה"}
+      title={t("workspaceShell.header.themeToggleTitle")}
+      aria-label={
+        isDark
+          ? t("workspaceShell.header.themeToLight")
+          : t("workspaceShell.header.themeToDark")
+      }
     >
       {isDark ? <Sun size={15} aria-hidden /> : <Moon size={15} aria-hidden />}
     </button>
