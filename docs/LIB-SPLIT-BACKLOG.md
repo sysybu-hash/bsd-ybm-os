@@ -1,6 +1,19 @@
 # Backlog — קבצים ≥300 שורות
 
-עדכון: 2026-08-12 — `npm run lib:line-count` אחרי closeout
+עדכון: 2026-08-14 — `npm run lib:line-count` אחרי פיצול P4
+
+**P4 (2026-08-14):** logic count 30 → **24** (יעד &lt;25 הושג)
+
+| לפני | אחרי | פעולה |
+|------|------|--------|
+| 374 | 159 + 218 | `ai-providers.ts` → `ai-provider-models.ts` (קטלוג מודלים ושרשראות fallback) |
+| 392 | 78 + 95 + 116 + 125 | `quick-grid.ts` → `-metrics` / `-slots` / `-edit` (barrel עם re-export) |
+| 391 | 268 + 152 | `os-automations/registry.ts` → `registry-api-actions.ts` (מטפלים מבוססי API) |
+| 346 | 246 + 117 | `scan/tri-engine-api-common.ts` → `tri-engine-persist-erp.ts` |
+| 333 | 266 + 80 | `workspace/load-commercial-hub.ts` → `commercial-hub-types.ts` |
+| 315 | 163 + 169 | `professions/runtime.ts` → `industry-profiles.ts` (טבלת פרופילי ענפים) |
+
+כל הפיצולים הם חילוץ טהור עם `export *` / re-export — ללא שינוי התנהגות; `npm run verify` ירוק.
 
 **P3 (2026-08-12):**
 
@@ -8,7 +21,7 @@
 |------|------|--------|
 | ~439 | ~420 | `useCrmTable.ts` → `useCrmGoogleImport.ts` (Google Contacts helpers) |
 
-**יעד:** logic count &lt; 25 · המשך פיצול `quick-grid`, `registry`, `ProgressBillPortalPanel` (גדל ב-closeout).
+**יעד הבא:** `useCrmTable` (456), `useAppBuilder` (400), `ProgressBillPortalPanel` (385) — הוקים מונוליטיים.
 
 **bulk OK (מוחרג מ-logic count):** `lib/help-center/content.*.ts`, `lib/i18n/keys.ts`, `lib/construction-trades-patches.ts`, `lib/pdf/product-brochure-v2-styles.ts`, `lib/pdf/brochure-styles/*`, `lib/pdf/product-brochure-html.ts`, `lib/pdf/marketing-onepager-html.ts`, `lib/pdf/system-specification-html.ts`, `lib/pdf/invoice-print-html.ts`.
 

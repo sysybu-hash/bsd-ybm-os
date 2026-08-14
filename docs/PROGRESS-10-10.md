@@ -10,7 +10,7 @@
 | תשתית Prod | `DATABASE_URL`, `SENTRY_DSN`, `CRON_SECRET`, PostHog, PayPal client id — Vercel Production |
 | Crons | `vercel.json` — 14 נתיבים כולל cashflow-guardian, lifecycle-emails, google-calendar-push |
 | Onboarding | `FirstDayWizard` + `LauncherV2MigrationBanner` ב-`OmniCanvasWorkspace` |
-| lib split | logic count ≥300: **24** (יעד &lt;25); bulk OK ל-CSS/locale |
+| lib split | logic count ≥300: **24** (יעד &lt;25); bulk OK ל-CSS/locale — נבדק מחדש 2026-08-14 אחרי פיצול P4 |
 | Lighthouse | landing desktop **91/100/100/100**; CI gates מתועדים |
 | E2E / verify | jest 454; audit rate-limits כולל WhatsApp HMAC allowlist |
 | Ops docs | LAUNCH / KPI / DR drill / RUNBOOK on-call / SLO |
@@ -43,7 +43,7 @@ npm run lighthouse:matrix:prod
 
 | פריט | הערות |
 |------|--------|
-| `CSP_STRICT=true` Preview→Prod | Preview מוגדר (2026-07-16); smoke ואז Production |
+| `CSP_STRICT=true` Preview→Prod | **הושלם** — אומת 2026-08-14: `vercel env ls production` מציג `CSP_STRICT=true`, והכותרת החיה ב-`https://www.bsd-ybm.co.il/` ללא `unsafe-eval` |
 | PITR מלא בקונסולת Neon | **הושלם 2026-07-16** — `pitr-drill` + `SELECT 1` |
-| Mobile Lighthouse perf → ≥78/90 | שיפור TBT בדפי help/workspace |
-| פיצול לוגיקה שנותרה ≥300 | useCrmTable, user-launcher-config — [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |
+| Mobile Lighthouse perf | נמדד 2026-08-14 מול פרודקשן (14 דפים ציבוריים): `/` 97 · `/help` 95 (TBT 243ms — הפער הישן נסגר) · `/about` 98 · `/login` 97. נותרו 4 דפים עם LCP ~4-4.6s: `/blog` 79, `/contact` 80, `/terms` 81, `/unsubscribe` 81. שכבת auth (workspace) טרם נמדדה |
+| פיצול לוגיקה שנותרה ≥300 | הושלם 2026-08-14 (30→24). הבא בתור: useCrmTable, useAppBuilder, ProgressBillPortalPanel — [LIB-SPLIT-BACKLOG](./LIB-SPLIT-BACKLOG.md) |

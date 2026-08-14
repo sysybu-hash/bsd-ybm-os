@@ -80,7 +80,16 @@ for (const file of files) {
     if (!HEBREW.test(line)) continue;
     if (line.includes('t("') || line.includes("t('")) continue;
     if (line.includes('tr("') || line.includes("tr('")) continue;
-    if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
+    const trimmed = line.trim();
+    // הערות: `//`, גוף בלוק (`*`), ובלוק שנפתח באותה שורה (JSDoc חד-שורתי)
+    if (
+      trimmed.startsWith("//") ||
+      trimmed.startsWith("*") ||
+      trimmed.startsWith("/*") ||
+      trimmed.startsWith("{/*")
+    ) {
+      continue;
+    }
     hits.push({ rel, line: i + 1, snippet: line.trim().slice(0, 80) });
   }
 }
