@@ -1,7 +1,10 @@
 {
   "workspaceShell": {
     "header": {
-      "localeAria": "Interface language"
+      "localeAria": "Interface language",
+      "themeToggleTitle": "Change theme",
+      "themeToLight": "Switch to light mode",
+      "themeToDark": "Switch to dark mode"
     }
   },
   "siteFooter": {

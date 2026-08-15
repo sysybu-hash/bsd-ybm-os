@@ -1368,6 +1368,11 @@
       "desc_save": "After scanning — confirm fields and save to a project. This is the core path."
     },
     "launcher": {
+      "announceReordered": "Tile order updated",
+      "announceMoved": "Tile position updated",
+      "announceRemoved": "Tile removed",
+      "announceReplaced": "App replaced",
+      "announceReset": "Restored to default",
       "editHint": "Drag tiles to grid cells · X to remove · Tap empty cell or + to add",
       "done": "Done",
       "resetDefault": "Reset to default",
@@ -1815,6 +1820,9 @@
       "saveFailed": "Save failed"
     },
     "jewishCalendar": {
+        "searchCity": "Search city…",
+        "myLocation": "My location",
+        "customLocation": "Custom location",
       "title": "Hebrew calendar & zmanim",
       "subtitle": "Hebrew and Gregorian dates with halachic times",
       "loading": "Loading zmanim…",

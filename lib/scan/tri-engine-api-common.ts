@@ -1,4 +1,4 @@
-import type { Session } from "next-auth";
+﻿import type { Session } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
@@ -39,7 +39,7 @@ import { notifyUser } from "@/lib/notify-user";
 
 export const TRI_ENGINE_RATE_PER_HOUR = 40;
 export const TRI_ENGINE_RATE_PER_HOUR_ADMIN = 120;
-/** תיעוד בלבד — בנתיבי App Router חייבים `export const maxDuration = 300` כליטרל (לא ייבוא). */
+/** ׳×׳™׳¢׳•׳“ ׳‘׳׳‘׳“ ג€” ׳‘׳ ׳×׳™׳‘׳™ App Router ׳—׳™׳™׳‘׳™׳ `export const maxDuration = 300` ׳›׳׳™׳˜׳¨׳ (׳׳ ׳™׳™׳‘׳•׳). */
 export const TRI_ENGINE_MAX_DURATION_SEC = 300;
 
 export type TriEngineGateOk = {
@@ -48,8 +48,8 @@ export type TriEngineGateOk = {
   organizationId: string;
   usageWarnings?: ScanUsageWarningId[];
   /**
-   * true כשביקשנו חיוב פרמיום אך מכסת הפרימיום אזלה, וירדנו אוטומטית לחיוב זול.
-   * הקורא משתמש בזה כדי לדלג על מנועי פרמיום (Anthropic) ולהסתפק במסלול הזול.
+   * true ׳›׳©׳‘׳™׳§׳©׳ ׳• ׳—׳™׳•׳‘ ׳₪׳¨׳׳™׳•׳ ׳׳ ׳׳›׳¡׳× ׳”׳₪׳¨׳™׳׳™׳•׳ ׳׳–׳׳”, ׳•׳™׳¨׳“׳ ׳• ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳™׳•׳‘ ׳–׳•׳.
+   * ׳”׳§׳•׳¨׳ ׳׳©׳×׳׳© ׳‘׳–׳” ׳›׳“׳™ ׳׳“׳׳’ ׳¢׳ ׳׳ ׳•׳¢׳™ ׳₪׳¨׳׳™׳•׳ (Anthropic) ׳•׳׳”׳¡׳×׳₪׳§ ׳‘׳׳¡׳׳•׳ ׳”׳–׳•׳.
    */
   downgraded?: boolean;
 };
@@ -61,7 +61,7 @@ export type TriEngineGateResult =
 export async function triEngineAuthorizeAndCharge(
   session: Session | null,
   scanCreditKind: ScanCreditKind,
-  /** כשהחיוב המבוקש הוא פרמיום והמכסה אזלה — לרדת אוטומטית לחיוב זול במקום לחסום. */
+  /** ׳›׳©׳”׳—׳™׳•׳‘ ׳”׳׳‘׳•׳§׳© ׳”׳•׳ ׳₪׳¨׳׳™׳•׳ ׳•׳”׳׳›׳¡׳” ׳׳–׳׳” ג€” ׳׳¨׳“׳× ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳™׳•׳‘ ׳–׳•׳ ׳‘׳׳§׳•׳ ׳׳—׳¡׳•׳. */
   allowPremiumDowngrade = true,
 ): Promise<TriEngineGateResult> {
   if (!session?.user?.id) {
@@ -70,7 +70,7 @@ export async function triEngineAuthorizeAndCharge(
 
   const orgId = session.user.organizationId ?? "";
   if (!orgId) {
-    return { ok: false, status: 400, error: "לא נמצא ארגון" };
+    return { ok: false, status: 400, error: "׳׳ ׳ ׳׳¦׳ ׳׳¨׳’׳•׳" };
   }
 
   const dev = isAdmin(session.user.email);
@@ -83,20 +83,20 @@ export async function triEngineAuthorizeAndCharge(
     return {
       ok: false,
       status: 429,
-      error: "חרגת ממכסת סריקות Tri-Engine לשעה",
+      error: "׳—׳¨׳’׳× ׳׳׳›׳¡׳× ׳¡׳¨׳™׳§׳•׳× Tri-Engine ׳׳©׳¢׳”",
       resetAt: rl.resetAt,
     };
   }
 
   const resolvedOrg = await resolveOrganizationForUser(orgId, session.user.id);
   if (!resolvedOrg) {
-    return { ok: false, status: 400, error: "ארגון לא תקין" };
+    return { ok: false, status: 400, error: "׳׳¨׳’׳•׳ ׳׳ ׳×׳§׳™׳" };
   }
 
   let quota = await checkAndDeductScanCredit(resolvedOrg.id, session.user.id, scanCreditKind);
   let downgraded = false;
 
-  // Graceful downgrade: premium quota exhausted → charge a cheap scan instead and
+  // Graceful downgrade: premium quota exhausted ג†’ charge a cheap scan instead and
   // signal the caller to skip premium engines (e.g. Anthropic for contracts).
   if (
     !quota.allowed &&
@@ -143,7 +143,7 @@ export type TriEngineExtractionInput = {
   engineRunMode: TriEngineRunMode;
   customEngines?: string[];
   userInstruction?: string | null;
-  /** false כשירדנו לחיוב זול — מדלגים על מנועי פרמיום (Anthropic) ב-AUTO. */
+  /** false ׳›׳©׳™׳¨׳“׳ ׳• ׳׳—׳™׳•׳‘ ׳–׳•׳ ג€” ׳׳“׳׳’׳™׳ ׳¢׳ ׳׳ ׳•׳¢׳™ ׳₪׳¨׳׳™׳•׳ (Anthropic) ׳‘-AUTO. */
   allowPremiumEngines?: boolean;
 };
 
@@ -174,7 +174,7 @@ export async function loadTriEngineExtractionInput(
   const industry = userRow?.organization?.industry ?? "CONSTRUCTION";
   const orgTrade = userRow?.organization?.constructionTrade ?? null;
 
-  // ── Step 9b: few-shot correction examples ───────────────────────────────
+  // ג”€ג”€ Step 9b: few-shot correction examples ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   const orgId = userRow?.organization
     ? (await prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }))?.organizationId ?? null
     : null;
@@ -231,108 +231,8 @@ export function buildTriEngineAiDataRecord(
   };
 }
 
-export async function persistTriEngineToErp(params: {
-  file: File;
-  aiData: Record<string, unknown>;
-  userId: string;
-  organizationId: string;
-}): Promise<{ documentId: string; priceSpikes: PriceSpikeAlert[]; driveWebViewLink?: string | null; insights?: import("@/lib/scan-insights").ScanInsights | null }> {
-  const { file, aiData, userId, organizationId } = params;
+export { persistTriEngineToErp } from "@/lib/scan/tri-engine-persist-erp";
 
-  // ── 1. שמירה ל-Google Drive (לא חוסמת — מכשל שקט אם Drive לא מחובר) ──────
-  const driveResult = await archiveScanToDrive(userId, file);
-  const fileDriveId = driveResult.ok ? driveResult.driveFileId : null;
-  const fileDriveWebViewLink = driveResult.ok ? driveResult.driveWebViewLink : null;
-
-  // ── 2. יצירת רשומת Document ב-DB ──────────────────────────────────────────
-  const doc = await prisma.document.create({
-    data: {
-      fileName: file.name,
-      type: String(aiData.docType ?? "UNKNOWN"),
-      status: "PROCESSED",
-      aiData: aiData as Prisma.InputJsonValue,
-      fileDriveId,
-      fileDriveWebViewLink,
-      userId,
-      organizationId,
-    },
-  });
-
-  await persistDocumentLineItemsFromAiData(
-    doc.id,
-    organizationId,
-    typeof aiData.vendor === "string" ? aiData.vendor : null,
-    aiData,
-    {
-      notifyUserId: userId,
-      fileLabel: file.name,
-    },
-  );
-
-  const priceSpikes = await detectAndNotifyPriceSpikes({
-    organizationId,
-    userId,
-    documentId: doc.id,
-    aiData,
-  });
-
-  const emailRow = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  if (emailRow?.email) {
-    const notify = resolveDocNotificationFields(aiData);
-    await sendDocNotification(emailRow.email, notify.vendor, notify.total, {
-      extractionIncomplete: notify.extractionIncomplete,
-    });
-  }
-
-  // ── 5. תובנות עסקיות (כפילויות, ספק↔פרויקט, תנאי תשלום) ──────────────────
-  const insights = await runScanInsights({
-    organizationId,
-    vendor: String(aiData.vendor ?? ""),
-    total: Number(aiData.total ?? 0),
-    date: typeof aiData.date === "string" ? aiData.date : null,
-    summary: typeof aiData.summary === "string" ? aiData.summary : "",
-    documentId: doc.id,
-  }).catch(() => null);
-
-  return {
-    documentId: doc.id,
-    priceSpikes,
-    driveWebViewLink: fileDriveWebViewLink,
-    insights,
-  };
-}
-
-async function detectAndNotifyPriceSpikes(params: {
-  organizationId: string;
-  userId: string;
-  documentId: string;
-  aiData: Record<string, unknown>;
-}): Promise<PriceSpikeAlert[]> {
-  const { organizationId, userId, documentId, aiData } = params;
-  try {
-    const allSpikes = await getPriceSpikeAlerts(organizationId, 32);
-    if (allSpikes.length === 0) return [];
-
-    const relevant = filterAlertsForScan(allSpikes, aiData);
-    if (relevant.length === 0) return [];
-
-    const top = relevant[0]!;
-    const moreCount = relevant.length - 1;
-    const title = `⚠️ זוהתה קפיצת מחיר בסריקה`;
-    const bodyLead = `${top.description}: +${top.changePercent.toFixed(1)}% (₪${top.previousPrice.toFixed(2)} → ₪${top.latestPrice.toFixed(2)})`;
-    const body = moreCount > 0 ? `${bodyLead} ועוד ${moreCount} פריטים` : bodyLead;
-
-    await notifyUser(userId, title, body);
-    void documentId;
-
-    return relevant;
-  } catch {
-    return [];
-  }
-}
 
 export function triEngineNdjsonErrorResponse(
   status: number,
@@ -343,3 +243,4 @@ export function triEngineNdjsonErrorResponse(
     headers: { "Content-Type": "application/x-ndjson; charset=utf-8" },
   });
 }
+

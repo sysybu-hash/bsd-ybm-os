@@ -1368,6 +1368,11 @@
       "desc_save": "אחרי הסריקה — אשרו את השדות ושמרו לפרויקט. זה מסלול העבודה המרכזי."
     },
     "launcher": {
+      "announceReordered": "סדר האריחים עודכן",
+      "announceMoved": "מיקום האריח עודכן",
+      "announceRemoved": "האריח הוסר",
+      "announceReplaced": "אפליקציה הוחלפה",
+      "announceReset": "שוחזר לברירת מחדל",
       "editHint": "גרור לאריח לתא ברשת · X להסרה · הקש על תא ריק או + להוספה",
       "done": "סיום",
       "resetDefault": "שחזר ברירת מחדל",
@@ -1815,6 +1820,9 @@
       "saveFailed": "השמירה נכשלה"
     },
     "jewishCalendar": {
+        "searchCity": "חיפוש עיר…",
+        "myLocation": "מיקום שלי",
+        "customLocation": "מיקום מותאם",
       "title": "לוח עברי וזמנים",
       "subtitle": "תאריך עברי, לועזי וזמני היום",
       "loading": "טוען זמנים…",

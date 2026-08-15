@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin, Navigation } from "lucide-react";
 import type { JewishCalendarLocation } from "@/lib/jewish-calendar/types";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = {
   label: string;
@@ -27,6 +28,7 @@ export function LocationCombobox({
   hint,
   onDismissHint,
 }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<JewishCalendarLocation[]>([]);
@@ -97,7 +99,7 @@ export function LocationCombobox({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="חיפוש עיר…"
+            placeholder={t("workspaceWidgets.jewishCalendar.searchCity")}
             className="mb-2 w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-2 py-1.5 text-xs"
             dir={dir}
             autoFocus
