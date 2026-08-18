@@ -179,7 +179,8 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
               {t("auth.register.labels.email")}
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 className={`mt-1 ${AUTH_INPUT}`}
-                readOnly={Boolean(initialEmail)} autoComplete="email" />
+                readOnly={Boolean(initialEmail)} autoComplete="email"
+                placeholder={t("auth.login.emailPlaceholder")} />
             </label>
             <p className="text-xs text-[color:var(--foreground-muted)]">{t("auth.hub.register.emailHint")}</p>
           </div>
