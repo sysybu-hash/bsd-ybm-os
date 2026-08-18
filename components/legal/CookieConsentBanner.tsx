@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Cookie, Settings2, X } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -20,6 +20,7 @@ export default function CookieConsentBanner() {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const [customize, setCustomize] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
 
@@ -46,15 +47,37 @@ export default function CookieConsentBanner() {
     setCustomize(false);
   }, []);
 
+  // The banner is fixed to the bottom, so it floats over whatever the page
+  // renders there (on /login it covered the register wizard's "next" button
+  // entirely on mobile). Reserve matching space at the end of the document so
+  // every page can still be scrolled clear of it while it is up.
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!visible || !card) return;
+    const apply = () => {
+      document.body.style.setProperty(
+        "padding-bottom",
+        `${Math.ceil(card.getBoundingClientRect().height) + 24}px`,
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+      document.body.style.removeProperty("padding-bottom");
+    };
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
     <div
       role="dialog"
       aria-labelledby="cookie-banner-title"
-      className="fixed inset-x-0 bottom-0 z-[99990] p-3 sm:p-4"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[99990] p-3 sm:p-4"
     >
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+      <div ref={cardRef} className="pointer-events-auto mx-auto max-w-3xl rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-4 shadow-2xl backdrop-blur-xl sm:p-6">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <Cookie className="text-indigo-500" size={22} aria-hidden />
