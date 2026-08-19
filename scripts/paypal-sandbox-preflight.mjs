@@ -115,21 +115,26 @@ async function main() {
       fail(`capture failed (${res.status}): ${JSON.stringify(data).slice(0, 300)}`);
       return;
     }
-    ok(`captured, order status ${data.status}`);
+    ok(`captured, capture call returned status ${data.status}`);
 
-    const u0 = data.purchase_units?.[0] ?? {};
+    // The verifier re-reads the order after capturing rather than parsing the
+    // capture response, so mirror that here instead of inspecting `data`.
+    const settled = await fetchOrder(accessToken, inspectId);
+    const u0 = settled.purchase_units?.[0] ?? {};
     const cap0 = u0.payments?.captures?.[0] ?? {};
     console.log(`  capture id      ${cap0.id}`);
     console.log(`  capture status  ${cap0.status}`);
     console.log(`  amount          ${cap0.amount?.value} ${cap0.amount?.currency_code}`);
+    console.log(`  custom_id on    unit=${u0.custom_id ? "yes" : "no"} capture=${cap0.custom_id ? "yes" : "no"}`);
 
-    // parseCapturePayload's conditions
+    // parseCapturePayload's conditions, including the capture-level fallback
+    const customId = String(u0.custom_id || cap0.custom_id || "");
     const parseOk =
-      data.status === "COMPLETED" && cap0.status === "COMPLETED" && !!u0.custom_id && !!cap0.id;
+      settled.status === "COMPLETED" && cap0.status === "COMPLETED" && !!customId && !!cap0.id;
     console.log(parseOk ? "  ok    parseCapturePayload would accept this" : "  FAIL  parseCapturePayload would reject this");
 
     // verifyRegistrationPayPalOrder's conditions
-    const parts = String(u0.custom_id ?? "").split("|");
+    const parts = customId.split("|");
     const verifyOk =
       parts[0] === "REG" && parts[2] === "TIER" && !!parts[1] && !!parts[3] && parts[3] !== "FREE";
     console.log(
