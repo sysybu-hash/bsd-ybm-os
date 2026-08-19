@@ -322,16 +322,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const planRaw = String(body.plan ?? "").toUpperCase();
+    // `plan` arrives from a client-supplied query parameter and carries no proof
+    // of payment, so it selects nothing on its own — it is kept for funnel
+    // attribution only. A paid tier and a skipped approval require a PayPal
+    // order we can verify server-side, or an invite issued by the org/platform.
     const isDirectPlan = !!body.plan;
     const paymentOrderId = String(body.orderID ?? body.paypalOrderId ?? "").trim();
 
-    // Mapping plan string to SubscriptionTier enum
-    let tier = ["FREE", "HOUSEHOLD", "DEALER", "COMPANY", "CORPORATE"].includes(planRaw)
-       ? (planRaw as import("@prisma/client").SubscriptionTier)
-       : "FREE";
-
-    let shouldApprove = isDirectPlan || !!inviteToken || !!orgInviteToken;
+    let tier: import("@prisma/client").SubscriptionTier = "FREE";
+    let shouldApprove = !!inviteToken || !!orgInviteToken;
 
     if (paymentOrderId) {
       const payment = await verifyRegistrationPayPalOrder(paymentOrderId, normalized);
