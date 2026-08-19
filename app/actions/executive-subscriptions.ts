@@ -16,6 +16,11 @@ import {
 import { sendSubscriptionJoinInviteEmail } from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import { OS_UNLIMITED_CREDITS } from "@/lib/platform-developers";
+import { readTierPricesJson } from "@/lib/billing-pricing";
+import {
+  ADMIN_SUBSCRIPTION_TIER_OPTIONS,
+  tierAllowance,
+} from "@/lib/subscription-tier-config";
 
 async function requireExecutive() {
   const session = await getServerSession(authOptions);
@@ -142,6 +147,93 @@ export async function executiveApplyManualSubscriptionAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "עדכון נכשל" };
+  }
+}
+
+export type TierPricingRow = {
+  tier: SubscriptionTier;
+  /** Price actually charged, i.e. the override when set, otherwise the built-in. */
+  effectiveMonthlyIls: number | null;
+  /** The value compiled into subscription-tier-config. */
+  defaultMonthlyIls: number | null;
+  /** True when an override row exists for this tier. */
+  isOverridden: boolean;
+  cheapScans: number;
+  premiumScans: number;
+  maxCompanies: number;
+};
+
+/** Current price of every tier, with the built-in shown alongside the override. */
+export async function executiveListTierPricingAction(): Promise<
+  TierPricingRow[] | { error: string }
+> {
+  const s = await requireExecutive();
+  if (!s) return { error: "אין הרשאה" };
+
+  const row = await prisma.oSBillingConfig.findUnique({
+    where: { id: "default" },
+    select: { tierMonthlyPricesJson: true },
+  });
+  const overrides = readTierPricesJson(row?.tierMonthlyPricesJson);
+
+  return ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => {
+    const allowance = tierAllowance(tier);
+    const override = overrides[tier];
+    const hasOverride = typeof override === "number" && Number.isFinite(override);
+    return {
+      tier: tier as SubscriptionTier,
+      effectiveMonthlyIls: hasOverride ? override : allowance.monthlyPriceIls,
+      defaultMonthlyIls: allowance.monthlyPriceIls,
+      isOverridden: hasOverride,
+      cheapScans: allowance.cheapScans,
+      premiumScans: allowance.premiumScans,
+      maxCompanies: allowance.maxCompanies,
+    };
+  });
+}
+
+/**
+ * Saves per-tier price overrides.
+ *
+ * Takes a typed map rather than the raw JSON string the older form field used,
+ * so a malformed paste can't land in the column that decides what customers are
+ * charged. A tier mapped to null drops its override and falls back to the
+ * built-in price.
+ */
+export async function executiveSaveTierPricingAction(
+  prices: Record<string, number | null>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const s = await requireExecutive();
+  if (!s) return { ok: false, error: "אין הרשאה" };
+
+  const next: Record<string, number> = {};
+  for (const [rawTier, rawValue] of Object.entries(prices)) {
+    const tier = ADMIN_SUBSCRIPTION_TIER_OPTIONS.find((t) => t === rawTier);
+    if (!tier) return { ok: false, error: `רמת מנוי לא מוכרת: ${rawTier}` };
+    if (rawValue == null) continue; // cleared → fall back to the built-in price
+    if (!Number.isFinite(rawValue) || rawValue < 0) {
+      return { ok: false, error: `מחיר לא תקין עבור ${tier}` };
+    }
+    if (rawValue > 100_000) {
+      return { ok: false, error: `מחיר חריג עבור ${tier}` };
+    }
+    next[tier] = Math.round(rawValue * 100) / 100;
+  }
+
+  try {
+    await prisma.oSBillingConfig.upsert({
+      where: { id: "default" },
+      create: { id: "default", tierMonthlyPricesJson: next },
+      update: { tierMonthlyPricesJson: next },
+    });
+    // The register wizard reads these server-side on /login, and the PayPal
+    // order amount is derived from them.
+    revalidatePath("/login");
+    revalidatePath("/app/admin");
+    revalidatePath("/app/settings/billing");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "שמירת מחירים נכשלה" };
   }
 }
 

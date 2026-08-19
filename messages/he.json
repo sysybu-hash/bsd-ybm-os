@@ -1430,6 +1430,22 @@
       "lookupButton": "חפש",
       "lookupDelete": "מחק משתמש זה",
       "lookupNotFound": "משתמש לא נמצא"
+    },
+    "tierPricing": {
+      "title": "תמחור מנויים",
+      "description": "המחיר כאן הוא מה שהלקוח מחויב בו בפועל — אשף ההרשמה מציג אותו, והזמנת PayPal נוצרת לפיו.",
+      "colTier": "רמה",
+      "colPrice": "מחיר חודשי",
+      "colDefault": "ברירת מחדל בקוד",
+      "colAllowance": "מכסות (רגיל / פרימיום)",
+      "companies": "חברות:",
+      "overridden": "נדרס",
+      "clearHint": "שדה ריק מבטל את הדריסה וחוזר לברירת המחדל בקוד.",
+      "save": "שמירת מחירים",
+      "reload": "טעינה מחדש",
+      "saved": "המחירים נשמרו",
+      "loading": "טוען תמחור…",
+      "invalidPrice": "מחיר לא תקין"
     }
   },
   "professions": {
