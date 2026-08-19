@@ -1430,6 +1430,22 @@
       "lookupButton": "Search",
       "lookupDelete": "Delete this user",
       "lookupNotFound": "User not found"
+    },
+    "tierPricing": {
+      "title": "Subscription pricing",
+      "description": "The price here is what a customer is actually charged — the signup wizard shows it and the PayPal order is created from it.",
+      "colTier": "Tier",
+      "colPrice": "Monthly price",
+      "colDefault": "Built-in default",
+      "colAllowance": "Allowances (standard / premium)",
+      "companies": "companies:",
+      "overridden": "overridden",
+      "clearHint": "An empty field clears the override and falls back to the built-in default.",
+      "save": "Save prices",
+      "reload": "Reload",
+      "saved": "Prices saved",
+      "loading": "Loading pricing…",
+      "invalidPrice": "Invalid price"
     }
   },
   "professions": {

@@ -24,6 +24,10 @@ const SubscriptionsTab = dynamic(
   () => import("./platform-admin/SubscriptionsTab").then((m) => ({ default: m.SubscriptionsTab })),
   { loading: tabLoading },
 );
+const TierPricingPanel = dynamic(
+  () => import("./platform-admin/TierPricingPanel").then((m) => ({ default: m.TierPricingPanel })),
+  { loading: tabLoading },
+);
 const UsersTab = dynamic(
   () => import("./platform-admin/UsersTab").then((m) => ({ default: m.UsersTab })),
   { loading: tabLoading },
@@ -124,6 +128,12 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
 
       {/* ── Content ────────────────────────────────────────────── */}
       <main className={`flex-1 overflow-y-auto p-4 ${variant === "widget" ? "min-h-0" : ""}`}>
+
+        {p.tab === "subscriptions" && (
+          <div className="mb-5">
+            <TierPricingPanel />
+          </div>
+        )}
 
         {p.tab === "subscriptions" && (
           <SubscriptionsTab
