@@ -1,4 +1,7 @@
 import AuthExperience from "@/components/auth/AuthExperience";
+import { getEffectiveTierMonthlyPriceIls } from "@/lib/billing-pricing";
+import { paypalPurchasableTiers } from "@/lib/subscription-tier-config";
+import type { SubscriptionTier } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +26,25 @@ export default async function LoginPage({
   const prefilledEmail = first(sp.email);
   const plan = first(sp.plan) || null;
 
+  // Prices are resolved here rather than in the client, because the effective
+  // price can be overridden per tier in OSBillingConfig. Reading the static
+  // config on the client would show one number and charge another.
+  const tiers = paypalPurchasableTiers();
+  const prices = await Promise.all(
+    tiers.map((t) => getEffectiveTierMonthlyPriceIls(t as SubscriptionTier)),
+  );
+  const tierPrices: Record<string, number> = { FREE: 0 };
+  tiers.forEach((t, i) => {
+    const v = prices[i];
+    if (typeof v === "number") tierPrices[t] = v;
+  });
+
   return (
-    <AuthExperience initialMode={initialMode} prefilledEmail={prefilledEmail} plan={plan} />
+    <AuthExperience
+      initialMode={initialMode}
+      prefilledEmail={prefilledEmail}
+      plan={plan}
+      tierPrices={tierPrices}
+    />
   );
 }

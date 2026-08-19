@@ -32,9 +32,9 @@ export const TYPE_TO_CUSTOMER: Record<OrgTypeKey, CustomerType> = {
   enterprise: "ENTERPRISE",
 };
 
-type Props = { onSwitchToLogin?: () => void };
+type Props = { onSwitchToLogin?: () => void; tierPrices?: Record<string, number> };
 
-export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
+export function useRegisterWizard({ onSwitchToLogin, tierPrices }: Props = {}) {
   const { t, dir } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
@@ -100,7 +100,10 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
     () =>
       (["FREE", ...paypalPurchasableTiers()] as string[]).map((key) => {
         const a = tierAllowance(key);
-        const monthly = a.monthlyPriceIls ?? 0;
+        // The effective price can be overridden per tier in OSBillingConfig, so
+        // prefer what the server resolved. Falling back to the static config
+        // would display a price the PayPal order will not match.
+        const monthly = tierPrices?.[key] ?? a.monthlyPriceIls ?? 0;
         return {
           key,
           label: tierLabelHe(key),
@@ -111,7 +114,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
           premiumScans: a.premiumScans,
         };
       }),
-    [],
+    [tierPrices],
   );
 
   const steps = useMemo(

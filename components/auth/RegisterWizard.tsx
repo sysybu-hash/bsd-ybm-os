@@ -24,10 +24,12 @@ import { useRegisterWizard, type OrgTypeKey } from "./register-wizard/useRegiste
 type Props = {
   embedded?: boolean;
   onSwitchToLogin?: () => void;
+  /** Effective monthly price per tier, resolved server-side. */
+  tierPrices?: Record<string, number>;
 };
 
-export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Props) {
-  const s = useRegisterWizard({ onSwitchToLogin });
+export default function RegisterWizard({ embedded = false, onSwitchToLogin, tierPrices }: Props) {
+  const s = useRegisterWizard({ onSwitchToLogin, tierPrices });
   const {
     t, dir, tenant,
     step, setStep, steps,
