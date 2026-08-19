@@ -12,6 +12,12 @@ import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construc
 import { BUSINESS_LINE_IDS, businessLineLabelHe } from "@/lib/business-lines";
 import { PRELOGIN_TRADE_COOKIE } from "@/lib/prelogin-trade-cookie";
 import { SESSION_MAX_AGE_DEFAULT_SEC } from "@/lib/auth/remember-preference";
+import {
+  parseSubscriptionTier,
+  paypalPurchasableTiers,
+  tierAllowance,
+  tierLabelHe,
+} from "@/lib/subscription-tier-config";
 
 /** Mirrors EMAIL_RE in app/api/register/route.ts so the client rejects the same
  * addresses the server would, instead of failing only after submit. */
@@ -46,6 +52,13 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
   const [orgName, setOrgName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  // `plan` only expresses intent (it grants nothing server-side — see
+  // app/api/register/route.ts); it just preselects the plan step.
+  const [tier, setTier] = useState<string>(
+    () => parseSubscriptionTier(planParam.toUpperCase()) ?? "FREE",
+  );
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
+  const [paypalOrderId, setPaypalOrderId] = useState<string>("");
   const [industry, setIndustry] = useState<"CONSTRUCTION" | "COMPANY_MGMT">("COMPANY_MGMT");
   const [specialization, setSpecialization] = useState<string>("GENERAL_BUSINESS");
   const [busy, setBusy] = useState(false);
@@ -81,12 +94,33 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
     return BUSINESS_LINE_IDS.map((id) => ({ id, label: businessLineLabelHe(id) }));
   }, [industry]);
 
+  const isPaidTier = tier !== "FREE";
+
+  const tierOptions = useMemo(
+    () =>
+      (["FREE", ...paypalPurchasableTiers()] as string[]).map((key) => {
+        const a = tierAllowance(key);
+        const monthly = a.monthlyPriceIls ?? 0;
+        return {
+          key,
+          label: tierLabelHe(key),
+          monthlyPriceIls: monthly,
+          // Annual mirrors getExpectedTierOrderAmountIls: 12 months less 20%.
+          annualPriceIls: Math.round(monthly * 12 * 0.8 * 100) / 100,
+          cheapScans: a.cheapScans,
+          premiumScans: a.premiumScans,
+        };
+      }),
+    [],
+  );
+
   const steps = useMemo(
     () => [
       t("auth.register.steps.type"),
       t("auth.register.steps.specialization"),
       t("auth.register.steps.personal"),
       t("auth.register.steps.orgName"),
+      t("auth.register.steps.plan"),
       t("auth.register.steps.password"),
       t("auth.register.steps.confirm"),
     ],
@@ -124,7 +158,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
       toast.error(t("auth.hub.register.orgNameRequired"));
       return;
     }
-    if (step === 4 && (!passwordMeetsRules(password) || password !== passwordConfirm)) {
+    if (step === 5 && (!passwordMeetsRules(password) || password !== passwordConfirm)) {
       toast.error(t("auth.hub.register.passwordInvalid"));
       return;
     }
@@ -146,6 +180,12 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
       toast.error(t("auth.hub.register.passwordInvalid"));
       return;
     }
+    // A paid tier is only real once PayPal has approved an order; the server
+    // re-verifies the order itself and ignores anything we claim here.
+    if (isPaidTier && !paypalOrderId) {
+      toast.error(t("auth.hub.register.paymentRequired"));
+      return;
+    }
     setBusy(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
@@ -162,6 +202,7 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
           inviteToken: inviteToken || undefined,
           orgInviteToken: orgInviteToken || undefined,
           plan: planParam || undefined,
+          orderID: paypalOrderId || undefined,
           password,
         }),
       });
@@ -225,6 +266,9 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
     name, setName, email, setEmail, initialEmail,
     orgName, setOrgName,
     password, setPassword, passwordConfirm, setPasswordConfirm,
+    tier, setTier, billingCycle, setBillingCycle,
+    tierOptions, isPaidTier,
+    paypalOrderId, setPaypalOrderId,
     industry, setIndustry: handleSetIndustry,
     specialization, setSpecialization,
     specializationOptions,

@@ -110,7 +110,8 @@
         "passwordGenerated": "Strong password generated",
         "passwordMismatch": "Passwords do not match",
         "registerFailed": "Registration failed",
-        "networkError": "Network error"
+        "networkError": "Network error",
+        "paymentRequired": "Complete the payment to finish"
       },
       "passkey": {
         "offerTitle": "Faster biometric sign-in",
@@ -177,7 +178,8 @@
         "confirm": "Confirm & Submit",
         "of": "of",
         "step": "Step",
-        "specialization": "Specialization"
+        "specialization": "Specialization",
+        "plan": "Plan"
       },
       "types": {
         "home": {
@@ -221,7 +223,8 @@
         "email": "Email",
         "joining": "Joining ",
         "trade": "Trade",
-        "specialization": "Specialization"
+        "specialization": "Specialization",
+        "plan": "Plan"
       },
       "industrySection": "Business area in the system",
       "industryConstruction": "Construction & contracting",
@@ -242,7 +245,21 @@
         "cta": "Proceed to Login"
       },
       "specializationConstruction": "Select construction trade",
-      "specializationBusiness": "Select business line"
+      "specializationBusiness": "Select business line",
+      "planSection": "Choose a plan",
+      "cycleMonthly": "Monthly",
+      "cycleAnnual": "Annual",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "freePrice": "Free",
+      "scansSuffix": "standard / premium scans",
+      "planHint": "A paid plan activates right after payment. A free plan waits for admin approval.",
+      "payToFinish": "Pay for the selected plan to finish signing up.",
+      "paymentApproved": "Payment approved — you can finish signing up",
+      "paymentUnavailable": "Payment is unavailable right now. Pick the free plan or contact support.",
+      "paymentLoading": "Loading payment options",
+      "paymentFailed": "Payment failed",
+      "submitPaid": "Complete signup"
     }
   },
   "dashboard": {

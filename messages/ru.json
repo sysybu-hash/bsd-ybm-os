@@ -79,7 +79,8 @@
         "of": "из",
         "step": "Шаг",
         "specialization": "Специализация",
-        "password": "Пароль"
+        "password": "Пароль",
+        "plan": "Тариф"
       },
       "types": {
         "home": {
@@ -123,7 +124,8 @@
         "email": "Email",
         "joining": "Присоединение к ",
         "trade": "Специализация",
-        "specialization": "Специализация"
+        "specialization": "Специализация",
+        "plan": "Тариф"
       },
       "industrySection": "Сфера бизнеса в системе",
       "industryConstruction": "Строительство и подряд",
@@ -144,7 +146,21 @@
         "cta": "Перейти ко входу"
       },
       "specializationConstruction": "Выберите специализацию строительства",
-      "specializationBusiness": "Выберите направление бизнеса"
+      "specializationBusiness": "Выберите направление бизнеса",
+      "planSection": "Выберите тариф",
+      "cycleMonthly": "Помесячно",
+      "cycleAnnual": "Ежегодно",
+      "perMonth": "/мес",
+      "perYear": "/год",
+      "freePrice": "Бесплатно",
+      "scansSuffix": "обычных / премиум сканов",
+      "planHint": "Платный тариф активируется сразу после оплаты. Бесплатный ожидает одобрения администратора.",
+      "payToFinish": "Оплатите выбранный тариф, чтобы завершить регистрацию.",
+      "paymentApproved": "Платёж подтверждён — можно завершить регистрацию",
+      "paymentUnavailable": "Оплата сейчас недоступна. Выберите бесплатный тариф или обратитесь в поддержку.",
+      "paymentLoading": "Загрузка вариантов оплаты",
+      "paymentFailed": "Ошибка оплаты",
+      "submitPaid": "Завершить регистрацию"
     },
     "hub": {
       "register": {
@@ -168,7 +184,8 @@
         "copyPassword": "Скопировано",
         "passwordRequirements": "Минимум 12 символов, включая заглавную, строчную буквы и цифру.",
         "passwordGenerated": "Надёжный пароль сгенерирован",
-        "passwordMismatch": "Пароли не совпадают"
+        "passwordMismatch": "Пароли не совпадают",
+        "paymentRequired": "Завершите оплату, чтобы продолжить"
       },
       "heroTitle": "Добро пожаловать",
       "heroBody": "Безопасный вход через Google, email и пароль или биометрию после первого входа.",
