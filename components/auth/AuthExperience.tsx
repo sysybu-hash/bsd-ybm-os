@@ -29,12 +29,15 @@ type AuthExperienceProps = Readonly<{
   prefilledEmail?: string;
   /** Server-read `?plan=` param for funnel attribution. */
   plan?: string | null;
+  /** Effective monthly price per tier, resolved server-side (may be overridden). */
+  tierPrices?: Record<string, number>;
 }>;
 
 export default function AuthExperience({
   initialMode = "login",
   prefilledEmail = "",
   plan = null,
+  tierPrices,
 }: AuthExperienceProps) {
   const { t, dir } = useI18n();
   const { status } = useSession();
@@ -218,7 +221,7 @@ export default function AuthExperience({
               </>
             )
           ) : (
-            <RegisterWizard embedded onSwitchToLogin={() => setTabAndUrl("login")} />
+            <RegisterWizard embedded onSwitchToLogin={() => setTabAndUrl("login")} tierPrices={tierPrices} />
           )}
 
           <button

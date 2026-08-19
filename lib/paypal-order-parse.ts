@@ -12,10 +12,14 @@ export function parseCapturePayload(data: Record<string, unknown>): {
   const units = data.purchase_units as unknown[] | undefined;
   const u0 = units?.[0] as Record<string, unknown> | undefined;
   if (!u0 || orderStatus !== "COMPLETED") return null;
-  const customId = String(u0.custom_id || "");
   const payments = u0.payments as Record<string, unknown> | undefined;
   const captures = payments?.captures as unknown[] | undefined;
   const cap0 = captures?.[0] as Record<string, unknown> | undefined;
+  // A GET on the order carries custom_id on the purchase unit, but the response
+  // returned by the capture call does not — there it only appears on the capture
+  // itself. Reading just the purchase unit silently loses the tier for a payment
+  // that actually succeeded.
+  const customId = String(u0.custom_id || cap0?.custom_id || "");
   const amount = cap0?.amount as Record<string, unknown> | undefined;
   const value = amount?.value != null ? parseFloat(String(amount.value)) : NaN;
   const currency = String(amount?.currency_code || "");

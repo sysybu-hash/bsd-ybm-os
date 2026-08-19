@@ -110,7 +110,8 @@
         "passwordGenerated": "נוצרה סיסמה חזקה",
         "passwordMismatch": "הסיסמאות אינן תואמות",
         "registerFailed": "הרשמה נכשלה",
-        "networkError": "שגיאת רשת"
+        "networkError": "שגיאת רשת",
+        "paymentRequired": "יש להשלים את התשלום כדי לסיים"
       },
       "passkey": {
         "offerTitle": "כניסה מהירה ביומטרי",
@@ -177,7 +178,8 @@
         "confirm": "אישור ושליחה",
         "of": "מתוך",
         "step": "שלב",
-        "specialization": "התמחות"
+        "specialization": "התמחות",
+        "plan": "מנוי"
       },
       "types": {
         "home": {
@@ -221,7 +223,8 @@
         "email": "אימייל",
         "joining": "הצטרפות ל",
         "trade": "התמחות בענף",
-        "specialization": "התמחות"
+        "specialization": "התמחות",
+        "plan": "מנוי"
       },
       "industrySection": "תחום העסק במערכת",
       "industryConstruction": "בנייה וקבלנות",
@@ -242,7 +245,21 @@
         "cta": "מעבר לכניסה"
       },
       "specializationConstruction": "בחר מקצוע בנייה",
-      "specializationBusiness": "בחר קו עסקי"
+      "specializationBusiness": "בחר קו עסקי",
+      "planSection": "בחרו מנוי",
+      "cycleMonthly": "חודשי",
+      "cycleAnnual": "שנתי",
+      "perMonth": "לחודש",
+      "perYear": "לשנה",
+      "freePrice": "ללא עלות",
+      "scansSuffix": "סריקות רגילות / פרימיום",
+      "planHint": "מנוי בתשלום מופעל מיד לאחר התשלום. מנוי חינם ממתין לאישור מנהל.",
+      "payToFinish": "להשלמת ההרשמה יש לשלם על המנוי שנבחר.",
+      "paymentApproved": "התשלום אושר — אפשר להשלים את ההרשמה",
+      "paymentUnavailable": "התשלום אינו זמין כרגע. בחרו מנוי חינם או פנו לתמיכה.",
+      "paymentLoading": "טוען אפשרויות תשלום",
+      "paymentFailed": "התשלום נכשל",
+      "submitPaid": "השלמת ההרשמה"
     }
   },
   "dashboard": {

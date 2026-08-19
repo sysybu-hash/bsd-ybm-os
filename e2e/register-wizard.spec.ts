@@ -16,6 +16,7 @@ import { test, expect } from "@playwright/test";
 test.use({ locale: "he-IL" });
 
 const NEXT = "המשך";
+const SUBMIT_FREE = "פתיחת דמו ל-30 יום";
 
 type Page = import("@playwright/test").Page;
 
@@ -37,7 +38,7 @@ async function gotoRegister(page: Page) {
   });
   await page.goto("/login?mode=register");
   await expect(consentBanner(page)).toBeVisible();
-  await expect(page.getByText("שלב 1 מתוך 6")).toBeVisible();
+  await expect(page.getByText("שלב 1 מתוך 7")).toBeVisible();
 }
 
 function consentBanner(page: Page) {
@@ -50,7 +51,7 @@ function consentBanner(page: Page) {
  * fail on a lost first click.
  */
 async function advanceTo(page: Page, expectedStep: number) {
-  const marker = page.getByText(`שלב ${expectedStep} מתוך 6`);
+  const marker = page.getByText(`שלב ${expectedStep} מתוך 7`);
   await expect(async () => {
     await page.getByRole("button", { name: NEXT }).click();
     await expect(marker).toBeVisible({ timeout: 2_000 });
@@ -60,7 +61,7 @@ async function advanceTo(page: Page, expectedStep: number) {
 /** Click "next" and require the wizard to stay put (validation rejected it). */
 async function expectBlockedAt(page: Page, step: number) {
   await page.getByRole("button", { name: NEXT }).click();
-  await expect(page.getByText(`שלב ${step} מתוך 6`)).toBeVisible();
+  await expect(page.getByText(`שלב ${step} מתוך 7`)).toBeVisible();
 }
 
 test("the consent banner does not cover the register wizard's next button", async ({ page }) => {
@@ -118,4 +119,38 @@ test("an invalid email is rejected on its own step, not at the summary", async (
   // A valid one advances.
   await page.locator('input[type="email"]').fill("new.user@example.com");
   await advanceTo(page, 4);
+});
+
+/** Walks a fresh visitor to the summary step, optionally picking a paid tier. */
+async function walkToSummary(page: Page, paidTierLabel?: RegExp) {
+  await gotoRegister(page);
+  await advanceTo(page, 2);
+  await advanceTo(page, 3);
+  await page.locator('input[type="email"]').fill("new.user@example.com");
+  await advanceTo(page, 4);
+  await page.getByLabel(/שם/).fill("חברת בדיקה");
+  await advanceTo(page, 5);
+
+  if (paidTierLabel) {
+    await page.getByRole("button", { name: paidTierLabel }).first().click();
+  }
+  await advanceTo(page, 6);
+
+  // The generator fills both password fields with a value that passes the rules.
+  await page.getByRole("button", { name: "צור סיסמה חזקה" }).click();
+  await advanceTo(page, 7);
+}
+
+test("a free plan reaches a submit button on the summary", async ({ page }) => {
+  await walkToSummary(page);
+
+  await expect(page.getByRole("button", { name: SUBMIT_FREE })).toBeVisible();
+  await expect(page.getByText(/להשלמת ההרשמה יש לשלם/)).toHaveCount(0);
+});
+
+test("a paid plan demands payment and withholds the submit button", async ({ page }) => {
+  await walkToSummary(page, /^חברה/);
+
+  await expect(page.getByText(/להשלמת ההרשמה יש לשלם/)).toBeVisible();
+  await expect(page.getByRole("button", { name: SUBMIT_FREE })).toHaveCount(0);
 });
