@@ -26,7 +26,11 @@ export async function verifyRegistrationPayPalOrder(
   try {
     let raw = await paypalFetchOrder(id);
     if (String(raw.status ?? "") !== "COMPLETED") {
-      raw = await capturePayPalOrder(id);
+      await capturePayPalOrder(id);
+      // Re-read rather than parsing the capture response: the capture payload
+      // omits custom_id on the purchase unit, and custom_id is what decides the
+      // tier. Losing it here would take the money and grant nothing.
+      raw = await paypalFetchOrder(id);
     }
 
     const parsed = parseCapturePayload(raw);

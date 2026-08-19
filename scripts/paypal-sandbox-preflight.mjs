@@ -102,6 +102,48 @@ async function main() {
   const accessToken = await token();
   ok("authenticated against sandbox");
 
+  if (inspectId && process.argv.includes("--capture")) {
+    // Captures the approved order and replays exactly what
+    // lib/paypal-order-parse.ts + lib/register-paypal-verify.ts read, so the
+    // last unverified hop is proven without writing anything to a database.
+    const res = await fetch(`${base}/v2/checkout/orders/${inspectId}/capture`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      fail(`capture failed (${res.status}): ${JSON.stringify(data).slice(0, 300)}`);
+      return;
+    }
+    ok(`captured, order status ${data.status}`);
+
+    const u0 = data.purchase_units?.[0] ?? {};
+    const cap0 = u0.payments?.captures?.[0] ?? {};
+    console.log(`  capture id      ${cap0.id}`);
+    console.log(`  capture status  ${cap0.status}`);
+    console.log(`  amount          ${cap0.amount?.value} ${cap0.amount?.currency_code}`);
+
+    // parseCapturePayload's conditions
+    const parseOk =
+      data.status === "COMPLETED" && cap0.status === "COMPLETED" && !!u0.custom_id && !!cap0.id;
+    console.log(parseOk ? "  ok    parseCapturePayload would accept this" : "  FAIL  parseCapturePayload would reject this");
+
+    // verifyRegistrationPayPalOrder's conditions
+    const parts = String(u0.custom_id ?? "").split("|");
+    const verifyOk =
+      parts[0] === "REG" && parts[2] === "TIER" && !!parts[1] && !!parts[3] && parts[3] !== "FREE";
+    console.log(
+      verifyOk
+        ? `  ok    verifyRegistrationPayPalOrder would return tier=${parts[3]} for ${parts[1]}`
+        : "  FAIL  verifyRegistrationPayPalOrder would reject this custom_id",
+    );
+    if (!parseOk || !verifyOk) process.exitCode = 1;
+    console.log(
+      "\n  Registering with this orderID and that exact email would create an ACTIVE org on the tier above.\n",
+    );
+    return;
+  }
+
   if (inspectId) {
     const order = await fetchOrder(accessToken, inspectId);
     const pu = order.purchase_units?.[0] ?? {};
