@@ -57,6 +57,10 @@ PayPal approve → capture round trip works end to end.
 
 ---
 
+> On Windows `cmd.exe`, `<` and `>` are redirection operators. Never type the
+> angle brackets from a placeholder — paste the real value instead, or the shell
+> fails with "The syntax of the command is incorrect".
+
 ## 1. Preflight (no clicking)
 
 With the dev server running against the scratch env:
@@ -81,7 +85,7 @@ Then it prints the approval link. Add `--cycle=annual` to check annual pricing.
 Open the printed link, approve with a sandbox buyer account, then:
 
 ```bash
-node scripts/paypal-sandbox-preflight.mjs --inspect=<ORDER_ID>
+node scripts/paypal-sandbox-preflight.mjs --order=THE_ORDER_ID_PRINTED_ABOVE
 ```
 
 Expect `status: APPROVED`, the right amount, and a `custom_id` that parses.

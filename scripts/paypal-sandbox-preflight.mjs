@@ -11,7 +11,7 @@
  *
  *   node scripts/paypal-sandbox-preflight.mjs --tier=COMPANY
  *   node scripts/paypal-sandbox-preflight.mjs --tier=COMPANY --cycle=annual
- *   node scripts/paypal-sandbox-preflight.mjs --inspect=<ORDER_ID>   # after approving
+ *   node scripts/paypal-sandbox-preflight.mjs --order=5AB12345CD678901E  # after approving
  */
 
 import { config } from "dotenv";
@@ -28,7 +28,7 @@ const tier = String(arg("tier", "COMPANY")).toUpperCase();
 const cycle = String(arg("cycle", "monthly")).toLowerCase() === "annual" ? "annual" : "monthly";
 const email = String(arg("email", "sandbox-buyer@example.com")).toLowerCase();
 const appUrl = String(arg("app", "http://localhost:3000")).replace(/\/$/, "");
-const inspectId = arg("inspect", "");
+const inspectId = arg("order", "") || arg("inspect", "");
 
 const paypalEnv = (process.env.PAYPAL_ENV ?? "").trim().toLowerCase();
 const isSandbox = paypalEnv === "sandbox" || paypalEnv === "test";
@@ -157,7 +157,7 @@ async function main() {
   console.log("\n--- the only step that needs a human ---");
   console.log(approve?.href ?? "(no approval link returned)");
   console.log("\nApprove it with a sandbox buyer account, then run:");
-  console.log(`  node scripts/paypal-sandbox-preflight.mjs --inspect=${created.id}\n`);
+  console.log(`  node scripts/paypal-sandbox-preflight.mjs --order=${created.id}\n`);
 }
 
 main().catch((err) => {
