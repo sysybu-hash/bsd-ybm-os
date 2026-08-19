@@ -13,6 +13,10 @@ import { BUSINESS_LINE_IDS, businessLineLabelHe } from "@/lib/business-lines";
 import { PRELOGIN_TRADE_COOKIE } from "@/lib/prelogin-trade-cookie";
 import { SESSION_MAX_AGE_DEFAULT_SEC } from "@/lib/auth/remember-preference";
 
+/** Mirrors EMAIL_RE in app/api/register/route.ts so the client rejects the same
+ * addresses the server would, instead of failing only after submit. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export type OrgTypeKey = "home" | "freelancer" | "company" | "enterprise";
 
 export const TYPE_TO_CUSTOMER: Record<OrgTypeKey, CustomerType> = {
@@ -110,6 +114,16 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
   };
 
   const goNext = () => {
+    // Validate each step as it is left, so a required field can't be skipped
+    // and only surface as a failure on the final summary step.
+    if (step === 2 && !EMAIL_RE.test(email.trim())) {
+      toast.error(t("auth.hub.forgot.invalidEmail"));
+      return;
+    }
+    if (step === 3 && orgName.trim().length < 2) {
+      toast.error(t("auth.hub.register.orgNameRequired"));
+      return;
+    }
     if (step === 4 && (!passwordMeetsRules(password) || password !== passwordConfirm)) {
       toast.error(t("auth.hub.register.passwordInvalid"));
       return;
@@ -118,8 +132,16 @@ export function useRegisterWizard({ onSwitchToLogin }: Props = {}) {
   };
 
   const submit = async () => {
-    if (!email.includes("@")) { toast.error(t("auth.register.labels.email")); return; }
-    if (orgName.trim().length < 2) { toast.error(orgNameLabel); return; }
+    if (!EMAIL_RE.test(email.trim())) {
+      toast.error(t("auth.hub.forgot.invalidEmail"));
+      setStep(2);
+      return;
+    }
+    if (orgName.trim().length < 2) {
+      toast.error(t("auth.hub.register.orgNameRequired"));
+      setStep(3);
+      return;
+    }
     if (!passwordMeetsRules(password) || password !== passwordConfirm) {
       toast.error(t("auth.hub.register.passwordInvalid"));
       return;
