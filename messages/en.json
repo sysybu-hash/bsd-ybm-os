@@ -97,6 +97,7 @@
         "copyPassword": "Copied",
         "passwordRequirements": "At least 12 characters with upper, lower, and a digit.",
         "passwordInvalid": "Check password and confirmation",
+        "orgNameRequired": "Enter an organization name (at least 2 characters)",
         "pendingTitle": "Request received",
         "pendingDesc": "Your account was created and is waiting for admin approval. You cannot enter the workspace until then.",
         "pendingNext": "After approval you will get an email, then sign in with the email and password you chose. This usually takes up to one business day.",
