@@ -61,6 +61,10 @@ jest.mock("@/lib/password", () => ({
   validatePasswordStrength: jest.fn(() => ({ ok: true })),
 }));
 
+jest.mock("@/lib/register-paypal-verify", () => ({
+  verifyRegistrationPayPalOrder: jest.fn().mockResolvedValue({ ok: false }),
+}));
+
 jest.mock("@/lib/trial", () => ({
   trialEndsAtFromNow: jest.fn(() => new Date("2026-05-12T00:00:00.000Z")),
 }));
@@ -76,6 +80,11 @@ jest.mock("@/lib/platform-settings", () => ({
   getDefaultIndustryForRegistration: jest.fn().mockResolvedValue("CONSTRUCTION"),
   isRegistrationOpen: jest.fn().mockResolvedValue(true),
 }));
+
+import { verifyRegistrationPayPalOrder } from "@/lib/register-paypal-verify";
+
+const mockVerifyRegistrationPayPalOrder =
+  verifyRegistrationPayPalOrder as jest.MockedFunction<typeof verifyRegistrationPayPalOrder>;
 
 // Helper to cast mocks
 const mockPrisma = prisma as any;
@@ -169,7 +178,7 @@ describe("POST /api/register", () => {
     });
   });
 
-  test("creates active signup for a direct paid plan", async () => {
+  test("a plan query param alone grants no paid tier and no auto-approval", async () => {
     const response = await POST(
       createMockRequest({
         email: "pro@example.com",
@@ -188,32 +197,59 @@ describe("POST /api/register", () => {
         type: "ENTERPRISE",
         industry: "CONSTRUCTION",
         constructionTrade: "general",
-        subscriptionTier: "COMPANY",
-        subscriptionStatus: "ACTIVE",
-        trialEndsAt: null,
-        cheapScansRemaining: 200,
-        premiumScansRemaining: 40,
-        maxCompanies: 2,
+        // `plan` is client-supplied and proves nothing about payment.
+        subscriptionTier: "FREE",
+        subscriptionStatus: "PENDING_APPROVAL",
         users: {
           create: {
             email: "pro@example.com",
             name: "Pro User",
             role: "ORG_ADMIN",
-            accountStatus: "ACTIVE",
+            accountStatus: "PENDING_APPROVAL",
             passwordHash: "hashed",
           },
         },
       }),
     });
-    expect(mockSendAccessApprovedEmail).toHaveBeenCalledWith(
-      "pro@example.com",
-      "Pro User",
-      expect.objectContaining({
-        variant: "registration_active",
-        temporaryPassword: "GeneratedPass1!",
+    // Goes down the pending-approval path, not the "you're active" one.
+    expect(mockSendAccessApprovedEmail).not.toHaveBeenCalled();
+    expect(mockSendRegistrationWelcomeEmail).toHaveBeenCalled();
+    expect(mockSendNewRegistrationPendingAdminEmail).toHaveBeenCalled();
+  });
+
+  test("a verified PayPal order does grant the paid tier and activates the account", async () => {
+    mockVerifyRegistrationPayPalOrder.mockResolvedValueOnce({
+      ok: true,
+      tier: "COMPANY",
+      captureId: "CAPTURE-1",
+    });
+
+    const response = await POST(
+      createMockRequest({
+        email: "pro@example.com",
+        name: "Pro User",
+        organizationName: "Paid Org",
+        plan: "corporate", // ignored — the verified order is what counts
+        orderID: "PAYPAL-ORDER-1",
+        orgType: "enterprise",
+        industry: "CONSTRUCTION",
       }),
     );
-    expect(mockSendRegistrationWelcomeEmail).not.toHaveBeenCalled();
+
+    expect(response.status).toBe(200);
+    expect(mockVerifyRegistrationPayPalOrder).toHaveBeenCalledWith(
+      "PAYPAL-ORDER-1",
+      "pro@example.com",
+    );
+    expect(mockPrisma.organization.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        subscriptionTier: "COMPANY",
+        subscriptionStatus: "ACTIVE",
+        users: {
+          create: expect.objectContaining({ accountStatus: "ACTIVE" }),
+        },
+      }),
+    });
   });
 
   test("creates COMPANY_MGMT org when industry is business", async () => {
