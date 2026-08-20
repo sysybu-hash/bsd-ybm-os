@@ -143,6 +143,24 @@ describe("POST /api/register/paypal/create-order", () => {
     expect(parts[3]).toBe("COMPANY");
   });
 
+  test("flags a credentials failure distinctly from a rejected order", async () => {
+    mockCreateOrder.mockRejectedValueOnce(new Error("Client Authentication failed"));
+
+    const authRes = await POST(
+      createMockRequest({ email: "buyer@example.com", tier: "COMPANY" }),
+    );
+    expect(authRes.status).toBe(502);
+    await expect(authRes.json()).resolves.toMatchObject({ code: "paypal_auth_failed" });
+
+    mockCreateOrder.mockRejectedValueOnce(new Error("CURRENCY_NOT_SUPPORTED"));
+
+    const orderRes = await POST(
+      createMockRequest({ email: "buyer@example.com", tier: "COMPANY" }),
+    );
+    expect(orderRes.status).toBe(502);
+    await expect(orderRes.json()).resolves.toMatchObject({ code: "paypal_order_rejected" });
+  });
+
   test("reports unavailable when PayPal is not configured", async () => {
     mockConfigured.mockReturnValue(false);
 

@@ -10,6 +10,7 @@ import { createPayPalOrderId } from "@/lib/billing/paypal-order";
 import { parseSubscriptionTier, tierLabelHe } from "@/lib/subscription-tier-config";
 import { getExpectedTierOrderAmountIls } from "@/lib/billing-pricing";
 import { createLogger } from "@/lib/logger";
+import { env } from "@/lib/env";
 
 const log = createLogger("register-paypal-create-order");
 
@@ -89,7 +90,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    log.error("register paypal create-order failed", { error: msg });
-    return jsonBadGateway("יצירת הזמנה נכשלה");
+    // Distinguish "our credentials are wrong" from "PayPal rejected the order".
+    // Both used to surface as one opaque 502, which made a misconfigured
+    // PAYPAL_CLIENT_ID/SECRET pair indistinguishable from a bad request — the
+    // client saw "order creation failed" and the cause lived only in the logs.
+    const isAuth =
+      /invalid_client|Client Authentication failed|PayPal token HTTP|חסר PAYPAL_CLIENT_SECRET/i.test(msg);
+    log.error("register paypal create-order failed", {
+      error: msg,
+      kind: isAuth ? "auth" : "order_rejected",
+      // Which PayPal environment the server actually talked to. Empty
+      // PAYPAL_ENV means live, which is easy to get wrong when the credentials
+      // configured alongside it are sandbox ones.
+      paypalEnv: env.PAYPAL_ENV ?? "(unset → live)",
+    });
+    // The message stays generic; only the code differs, so nothing upstream leaks.
+    return jsonBadGateway(
+      "יצירת הזמנה נכשלה",
+      isAuth ? "paypal_auth_failed" : "paypal_order_rejected",
+    );
   }
 }
