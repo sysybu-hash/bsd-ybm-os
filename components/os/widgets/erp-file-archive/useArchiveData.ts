@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
+import { downloadErpScanDocumentFile } from "@/lib/erp-archive-download-client";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
@@ -118,9 +119,13 @@ export function useArchiveData() {
     setPreviewLoading(true);
     void (async () => {
       try {
-        const res = await fetch(`/api/erp/documents/${selectedFile.sourceId}`, { credentials: "include", cache: "no-store" });
-        if (!res.ok) throw new Error("מסמך לא נמצא");
-        const data = (await res.json()) as {
+        const docId = selectedFile.sourceId;
+        const [metaRes, fileRes] = await Promise.all([
+          fetch(`/api/erp/documents/${docId}`, { credentials: "include", cache: "no-store" }),
+          fetch(`/api/erp/documents/${docId}/file`, { credentials: "include", cache: "no-store" }),
+        ]);
+        if (!metaRes.ok) throw new Error("מסמך לא נמצא");
+        const data = (await metaRes.json()) as {
           document?: ScanDocPreview & { aiData?: unknown };
         };
         if (cancelled) return;
@@ -133,7 +138,22 @@ export function useArchiveData() {
             aiRaw && typeof aiRaw === "object" && !Array.isArray(aiRaw)
               ? (aiRaw as Record<string, unknown>)
               : null;
-          setScanDoc({ ...doc, aiData });
+          setScanDoc({
+            id: doc.id,
+            fileName: doc.fileName,
+            type: doc.type,
+            fileDriveId: doc.fileDriveId ?? null,
+            fileDriveWebViewLink: doc.fileDriveWebViewLink ?? null,
+            aiData,
+            lineItems: doc.lineItems,
+          });
+        }
+        if (fileRes.ok) {
+          const blob = await fileRes.blob();
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          pdfBlobUrlRef.current = url;
+          setPdfBlobUrl(url);
         }
       } catch { if (!cancelled) setPreviewError("לא ניתן לטעון פרטי סריקה"); }
       finally { if (!cancelled) setPreviewLoading(false); }
@@ -145,7 +165,9 @@ export function useArchiveData() {
   useEffect(() => {
     if (!openMenuId) return;
     const onDocClick = (ev: MouseEvent) => {
-      if ((ev.target as HTMLElement).closest("[data-archive-menu]")) return;
+      const target = ev.target as HTMLElement;
+      if (target.closest("[data-archive-menu]")) return;
+      if (target.closest("[data-archive-menu-trigger]")) return;
       setOpenMenuId(null);
     };
     document.addEventListener("mousedown", onDocClick);
@@ -183,7 +205,9 @@ export function useArchiveData() {
       if (!r.ok) toast.error(r.error); else toast.success(`${t("workspaceWidgets.fileArchive.downloading")}: ${r.filename}`);
       return;
     }
-    toast.message("בקרוב", { description: "הורדת קובץ מקור לסריקות תתווסף בהמשך." });
+    const r = await downloadErpScanDocumentFile(file.sourceId, file.name);
+    if (!r.ok) toast.error(r.error);
+    else toast.success(`${t("workspaceWidgets.fileArchive.downloading")}: ${r.filename}`);
   };
 
   const confirmDelete = async () => {

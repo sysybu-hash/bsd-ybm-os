@@ -5,12 +5,12 @@ export function getVapidKeys(): { publicKey: string; privateKey: string; subject
   const privateKey = env.VAPID_PRIVATE_KEY?.trim();
   const subject =
     env.VAPID_SUBJECT?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    env.NEXT_PUBLIC_SITE_URL?.trim() ||
     "mailto:support@bsd-ybm.co.il";
   if (!publicKey || !privateKey) return null;
   return { publicKey, privateKey, subject };
 }
 
 export function getVapidPublicKey(): string | null {
-  return env.VAPID_PUBLIC_KEY?.trim() ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? null;
+  return env.VAPID_PUBLIC_KEY?.trim() ?? env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? null;
 }

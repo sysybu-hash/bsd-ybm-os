@@ -1,0 +1,81 @@
+name: Load Smoke
+
+# Weekly load smoke against a locally-built server + on-demand dispatch.
+# Thresholds: p95 < 1s, error rate < 0.1% (scripts/load-test.mjs exits non-zero on breach).
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Optional external BASE_URL (e.g. preview deployment). Empty = build & run locally."
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 3 * * 1" # שני 03:00 UTC
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  load-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bsd_ybm_load
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/bsd_ybm_load
+      NEXTAUTH_SECRET: load-smoke-secret-load-smoke-secret
+      NEXTAUTH_URL: http://127.0.0.1:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate + push schema
+        if: ${{ inputs.base_url == '' }}
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+
+      - name: Build
+        if: ${{ inputs.base_url == '' }}
+        run: npm run build
+
+      - name: Start server
+        if: ${{ inputs.base_url == '' }}
+        run: |
+          npm run start &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
+              echo "server up after ${i}s"; break
+            fi
+            sleep 1
+            if [ "$i" = "60" ]; then echo "server never came up"; exit 1; fi
+          done
+
+      - name: Run load smoke
+        env:
+          BASE_URL: ${{ inputs.base_url || 'http://127.0.0.1:3000' }}
+          LOAD_REQUESTS: "100"
+          LOAD_CONCURRENCY: "20"
+        run: npm run load-test:smoke

@@ -106,7 +106,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         },
       ],
       tips: ["On mobile, use the “More” button to reach all apps."],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "windows",
@@ -135,7 +136,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Status", body: "The status line above the Omnibar shows the last action or an error." },
       ],
       omnibarExamples: ["open clients", "scan invoice", "open notebook", "add task to project X"],
-      openWidget: "aiChatFull",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"chat"},
     },
     {
       id: "dashboard-kpi",
@@ -149,7 +151,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Recent activity", body: "List of recent documents with a quick link to the archive." },
         { title: "Quick actions", body: "The empty state offers shortcut cards to main apps." },
       ],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "scanner-upload",
@@ -166,7 +169,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Save to notebook", body: "“Save to notebook” creates a NotebookLM source from the scan." },
       ],
       tips: ["Add custom “scan instructions” before uploading."],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "scanner-engines",
@@ -179,7 +183,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Balances", body: "“Economy” (Gemini) and “premium” (OpenAI) scans are deducted per organization settings." },
         { title: "Errors", body: "If a scan fails — check format, size, or try a single-engine mode." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "crm-clients",
@@ -207,7 +212,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Filter", body: "Filter by date, client, or payment status." },
         { title: "Export", body: "Export PDF or CSV for accounting per permissions." },
       ],
-      openWidget: "erpArchive",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "doc-creator",
@@ -221,7 +227,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Line items", body: "Add items, prices, and VAT — preview matches business type." },
         { title: "Generate", body: "Generate PDF and send to client or save as draft." },
       ],
-      openWidget: "docCreator",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"create"},
     },
     {
       id: "drive-sync",
@@ -250,7 +257,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Chat", body: "Ask questions — answers are grounded in sources only." },
         { title: "Save", body: "Notebooks are saved per user/organization." },
       ],
-      openWidget: "notebookLM",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"notebook"},
     },
     {
       id: "meckano-attendance",
@@ -313,7 +321,7 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Open CRM", body: "Launch Clients from the launcher or Omnibar." },
         { title: "Projects", body: "Link internal projects to clients — no BOQ." },
       ],
-      openWidget: "crm",
+      openWidget: "crmTable",
     },
     {
       id: "company-mgmt-projects",
@@ -325,7 +333,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Timeline", body: "Open the project timeline — dependencies without BOQ rows." },
         { title: "Documents", body: "Business-oriented project documents only." },
       ],
-      openWidget: "project",
+      openWidget: "projectsHub",
+      openWidgetData: {"tab":"project"},
     },
     {
       id: "company-mgmt-erp",
@@ -337,7 +346,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Archive", body: "Issued and draft documents like the general path." },
         { title: "Creator", body: "Document studio supports business templates." },
       ],
-      openWidget: "erp",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "company-mgmt-scan",
@@ -349,7 +359,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Scan modes", body: "Scanner offers business modes (not site/blueprint) for your industry." },
         { title: "To ERP", body: "After approval — save to archive or issue a document." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "company-mgmt-profession",
@@ -374,7 +385,8 @@ export const HELP_CENTER_EN: HelpCenterData = {
         { title: "Balance", body: "Check remaining scans on the plan (Settings / admin)." },
         { title: "Engine", body: "Try a single-engine mode or clearer scan instructions." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
   ],
   globalFaq: [

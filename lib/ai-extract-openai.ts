@@ -50,6 +50,7 @@ async function extractDocumentWithOpenAIPdf(
       },
       body: JSON.stringify({
         model,
+        temperature: 0,
         input: [
           {
             role: "user",
@@ -113,6 +114,7 @@ export async function extractDocumentWithOpenAI(
       body: JSON.stringify({
         model,
         max_tokens: 2048,
+        temperature: 0,
         response_format: { type: "json_object" },
         messages: [
           {

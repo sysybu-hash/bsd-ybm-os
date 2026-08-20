@@ -1,13 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
-import { isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
+import {
+  GEMINI_LITE_MODEL,
+  GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_STABLE_TEXT_MODEL,
+  isLikelyGeminiModelUnavailable,
+} from "@/lib/gemini-model";
 
-/** מודלי Flash נתמכים ב-Gemini API — ללא 1.5-flash-002 (מחזיר 404 אצל רוב המפתחות) */
+/** מודלי Flash נתמכים ב-Gemini API */
 export const GEMINI_FLASH_PREFERRED = [
-  "gemini-3.5-flash",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+  GEMINI_STABLE_TEXT_MODEL,
+  GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_LITE_MODEL,
 ] as const;
 
 export async function geminiMultimodal(
@@ -22,11 +27,22 @@ export async function geminiMultimodal(
   let lastErr: unknown = null;
   for (const modelId of modelChain) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent([
-        `${instruction}\nReturn a single JSON object only, no markdown.`,
-        { inlineData: { data: base64, mimeType } },
-      ]);
+      const model = genAI.getGenerativeModel(
+        { model: modelId },
+        { apiVersion: undefined },
+      );
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `${instruction}\nReturn a single JSON object only, no markdown.` },
+              { inlineData: { data: base64, mimeType } },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" },
+      });
       return parseModelJsonText(result.response.text());
     } catch (err: unknown) {
       lastErr = err;

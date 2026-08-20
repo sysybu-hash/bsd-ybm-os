@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dismissCookieBannerIfVisible, tryCredentialsSignIn } from "./helpers";
+import { dismissCookieBannerIfVisible, tryCredentialsSignIn, workspaceUrl } from "./helpers";
 
 test.describe("Help center i18n & mobile nav", () => {
   test.beforeEach(async ({ context, baseURL }) => {
@@ -17,9 +17,12 @@ test.describe("Help center i18n & mobile nav", () => {
     test.skip(!signed, "אין משתמש E2E");
 
     await dismissCookieBannerIfVisible(page);
-    await page.getByRole("button", { name: /Help|עזרה/i }).first().click();
+    // Navigate directly rather than clicking the sidebar launcher — a persisted
+    // workspace layout can already have a Help center window open, which makes
+    // clicking through the sidebar unreliable across runs.
+    await page.goto(workspaceUrl({ w: "helpCenter" }), { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("heading", { name: /Help center|מרכז העזרה/i }),
+      page.getByRole("heading", { name: /Help center|מרכז העזרה/i }).first(),
     ).toBeVisible({ timeout: 15_000 });
   });
 

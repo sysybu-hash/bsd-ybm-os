@@ -2,6 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { AccountStatus, CustomerType } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -27,23 +28,24 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("manage-subscriptions");
 
 async function requireSuperAdmin() {
+  const { requireOSAdminAction } = await import("@/lib/server-action-auth");
+  const gate = await requireOSAdminAction();
+  if (!gate.ok) return null;
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email || !isExecutiveSubscriptionSuperAdmin(session.user.email)) {
-    return null;
-  }
+  if (!session?.user?.email) return null;
   return session;
 }
 
 function revalidateSubscriptionSurfaces() {
   revalidatePath("/app/admin");
-  revalidatePath("/app/documents/erp");
+  revalidateErpDocumentsSurfaces();
   revalidatePath("/app/settings/billing");
   revalidatePath("/app/settings/overview");
 }
 
 export async function manageSubsListOrganizationsAction(): Promise<ExecutiveOrgRow[] | { error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { error: "אין הרשאה" };
 
   const orgs = await prisma.organization.findMany({
     orderBy: { createdAt: "desc" },
@@ -95,13 +97,13 @@ export async function manageSubsSaveTenantDomainAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const organizationId = String(formData.get("organizationId") ?? "").trim();
   const domainOrNull = normalizeTenantDomainInput(String(formData.get("tenantPublicDomain") ?? ""));
 
-  if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
-  if (domainOrNull === "") return { ok: false, error: "׳“׳•׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
+  if (!organizationId) return { ok: false, error: "חסר ארגון" };
+  if (domainOrNull === "") return { ok: false, error: "דומיין לא תקין" };
 
   try {
     if (domainOrNull) {
@@ -113,7 +115,7 @@ export async function manageSubsSaveTenantDomainAction(
         select: { id: true },
       });
       if (clash) {
-        return { ok: false, error: "׳”׳“׳•׳׳™׳™׳ ׳›׳‘׳¨ ׳‘׳©׳™׳׳•׳© ׳‘׳׳¨׳’׳•׳ ׳׳—׳¨" };
+        return { ok: false, error: "הדומיין כבר בשימוש בארגון אחר" };
       }
     }
 
@@ -126,7 +128,7 @@ export async function manageSubsSaveTenantDomainAction(
     return { ok: true };
   } catch (e) {
     log.error("manageSubsSaveTenantDomainAction", e);
-    return { ok: false, error: "׳©׳׳™׳¨׳× ׳“׳•׳׳™׳™׳ ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "שמירת דומיין נכשלה" };
   }
 }
 
@@ -134,7 +136,7 @@ export async function manageSubsCreateManualUserAction(
   formData: FormData,
 ): Promise<{ ok: true; emailed: boolean; mailError?: string } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim() || null;
@@ -150,8 +152,8 @@ export async function manageSubsCreateManualUserAction(
       ? normalizeBusinessLine(tradeRaw)
       : normalizeConstructionTrade(tradeRaw);
 
-  if (!email.includes("@")) return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
-  if (organizationName.length < 2) return { ok: false, error: "׳©׳ ׳׳¨׳’׳•׳ ׳§׳¦׳¨ ׳׳“׳™" };
+  if (!email.includes("@")) return { ok: false, error: "אימייל לא תקין" };
+  if (organizationName.length < 2) return { ok: false, error: "שם ארגון קצר מדי" };
 
   const orgType = Object.values(CustomerType).includes(typeRaw as CustomerType)
     ? (typeRaw as CustomerType)
@@ -161,7 +163,7 @@ export async function manageSubsCreateManualUserAction(
     where: { email: { equals: email, mode: "insensitive" } },
     select: { id: true },
   });
-  if (existing) return { ok: false, error: "׳׳©׳×׳׳© ׳¢׳ ׳”׳׳™׳׳™׳™׳ ׳”׳–׳” ׳›׳‘׳¨ ׳§׳™׳™׳" };
+  if (existing) return { ok: false, error: "משתמש עם האימייל הזה כבר קיים" };
 
   const plain = generateProvisionPassword();
   const passwordHash = await hashPassword(plain);
@@ -253,15 +255,15 @@ export async function manageSubsAdjustScansAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const organizationId = String(formData.get("organizationId") ?? "").trim();
   const cheapDelta = Number(formData.get("cheapDelta") ?? 0);
   const premiumDelta = Number(formData.get("premiumDelta") ?? 0);
 
-  if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
+  if (!organizationId) return { ok: false, error: "חסר ארגון" };
   if (!Number.isFinite(cheapDelta) || !Number.isFinite(premiumDelta)) {
-    return { ok: false, error: "׳׳¡׳₪׳¨׳™׳ ׳׳ ׳×׳§׳™׳ ׳™׳" };
+    return { ok: false, error: "מספרים לא תקינים" };
   }
 
   try {
@@ -269,7 +271,7 @@ export async function manageSubsAdjustScansAction(
       where: { id: organizationId },
       select: { cheapScansRemaining: true, premiumScansRemaining: true },
     });
-    if (!org) return { ok: false, error: "׳׳¨׳’׳•׳ ׳׳ ׳ ׳׳¦׳" };
+    if (!org) return { ok: false, error: "ארגון לא נמצא" };
 
     await prisma.organization.update({
       where: { id: organizationId },
@@ -282,7 +284,7 @@ export async function manageSubsAdjustScansAction(
     revalidateSubscriptionSurfaces();
     return { ok: true };
   } catch {
-    return { ok: false, error: "׳¢׳“׳›׳•׳ ׳™׳×׳¨׳” ׳ ׳›׳©׳" };
+    return { ok: false, error: "עדכון יתרה נכשל" };
   }
 }
 
@@ -290,15 +292,15 @@ export async function manageSubsSendTierInviteAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const tierRaw = String(formData.get("tier") ?? "").trim();
   const daysRaw = Number(formData.get("validDays") ?? 14);
 
-  if (!email.includes("@")) return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
+  if (!email.includes("@")) return { ok: false, error: "אימייל לא תקין" };
   const tier = parseSubscriptionTier(tierRaw);
-  if (!tier) return { ok: false, error: "׳¨׳׳× ׳׳ ׳•׳™ ׳׳ ׳×׳§׳™׳ ׳”" };
+  if (!tier) return { ok: false, error: "רמת מנוי לא תקינה" };
 
   const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 14;
   const token = randomBytes(24).toString("base64url");
@@ -322,7 +324,7 @@ export async function manageSubsSendTierInviteAction(
     const mail = await sendSubscriptionTierInvitationEmail(email, {
       tierLabel: `${tierLabelHe(tier)} (${tier})`,
       registerUrl,
-      expiresNote: `׳”׳§׳™׳©׳•׳¨ ׳×׳§׳£ ׳-${days} ׳™׳׳™׳. ׳™׳© ׳׳”׳™׳¨׳©׳ ׳¢׳ ׳׳•׳×׳• ׳׳™׳׳™׳™׳.`,
+      expiresNote: `הקישור תקף ל-${days} ימים. יש להירשם עם אותו אימייל.`,
     });
     if (!mail.ok) return { ok: false, error: mail.error };
 
@@ -330,7 +332,7 @@ export async function manageSubsSendTierInviteAction(
     return { ok: true };
   } catch (e) {
     log.error("manageSubsSendTierInviteAction", e);
-    return { ok: false, error: "׳©׳׳™׳¨׳× ׳”׳–׳׳ ׳” ׳׳• ׳©׳׳™׳—׳× ׳׳™׳™׳ ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "שמירת הזמנה או שליחת מייל נכשלה" };
   }
 }
 
@@ -338,7 +340,7 @@ export async function manageSubsUpdateSubscriptionAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const organizationId = String(formData.get("organizationId") ?? "").trim();
   const tierRaw = String(formData.get("tier") ?? "").trim();
@@ -347,9 +349,9 @@ export async function manageSubsUpdateSubscriptionAction(
   const industryRaw = String(formData.get("industry") ?? "").trim();
 
   const tier = parseSubscriptionTier(tierRaw);
-  if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
-  if (!tier) return { ok: false, error: "׳¨׳׳× ׳׳ ׳•׳™ ׳׳ ׳×׳§׳™׳ ׳”" };
-  if (!statusRaw) return { ok: false, error: "׳¡׳˜׳˜׳•׳¡ ׳׳ ׳•׳™ ׳—׳¡׳¨" };
+  if (!organizationId) return { ok: false, error: "חסר ארגון" };
+  if (!tier) return { ok: false, error: "רמת מנוי לא תקינה" };
+  if (!statusRaw) return { ok: false, error: "סטטוס מנוי חסר" };
 
   try {
     const industry = industryRaw ? normalizeIndustryType(industryRaw) : undefined;
@@ -388,7 +390,7 @@ export async function manageSubsUpdateSubscriptionAction(
     return { ok: true };
   } catch (e) {
     log.error("manageSubsUpdateSubscriptionAction", e);
-    return { ok: false, error: "׳¢׳“׳›׳•׳ ׳׳ ׳•׳™ ׳ ׳›׳©׳" };
+    return { ok: false, error: "עדכון מנוי נכשל" };
   }
 }
 
@@ -396,21 +398,21 @@ export async function manageSubsDeleteUserByEmailAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const actor = s.user?.email?.trim().toLowerCase() ?? "";
-  if (!email.includes("@")) return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
-  if (email === actor) return { ok: false, error: "׳׳ ׳ ׳™׳×׳ ׳׳׳—׳•׳§ ׳׳× ׳”׳׳©׳×׳׳© ׳”׳׳—׳•׳‘׳¨" };
+  if (!email.includes("@")) return { ok: false, error: "אימייל לא תקין" };
+  if (email === actor) return { ok: false, error: "לא ניתן למחוק את המשתמש המחובר" };
   if (isExecutiveSubscriptionSuperAdmin(email)) {
-    return { ok: false, error: "׳׳ ׳ ׳™׳×׳ ׳׳׳—׳•׳§ ׳׳× ׳—׳©׳‘׳•׳ ׳”׳¡׳•׳₪׳¨-׳׳“׳׳™׳" };
+    return { ok: false, error: "לא ניתן למחוק את חשבון הסופר-אדמין" };
   }
 
   const target = await prisma.user.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
     select: { id: true },
   });
-  if (!target) return { ok: false, error: "׳”׳׳©׳×׳׳© ׳׳ ׳ ׳׳¦׳" };
+  if (!target) return { ok: false, error: "המשתמש לא נמצא" };
 
   try {
     const org = await prisma.user.findUnique({ where: { id: target.id }, select: { organizationId: true } });
@@ -422,7 +424,7 @@ export async function manageSubsDeleteUserByEmailAction(
     return { ok: true };
   } catch (e) {
     log.error("manageSubsDeleteUserByEmailAction", e);
-    return { ok: false, error: "׳׳—׳™׳§׳× ׳׳©׳×׳׳© ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "מחיקת משתמש נכשלה" };
   }
 }
 
@@ -430,23 +432,23 @@ export async function manageSubsDeleteOrganizationAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireSuperAdmin();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const organizationId = String(formData.get("organizationId") ?? "").trim();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
-  if (!organizationId) return { ok: false, error: "׳—׳¡׳¨ ׳׳¨׳’׳•׳" };
-  if (!confirmation) return { ok: false, error: "׳™׳© ׳׳”׳§׳׳™׳“ ׳׳× ׳©׳ ׳”׳׳¨׳’׳•׳ ׳›׳“׳™ ׳׳׳—׳•׳§." };
+  if (!organizationId) return { ok: false, error: "חסר ארגון" };
+  if (!confirmation) return { ok: false, error: "יש להקליד את שם הארגון כדי למחוק." };
 
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { id: true, name: true },
   });
-  if (!org) return { ok: false, error: "׳”׳׳¨׳’׳•׳ ׳׳ ׳ ׳׳¦׳" };
+  if (!org) return { ok: false, error: "הארגון לא נמצא" };
   if (s.user?.organizationId === organizationId) {
-    return { ok: false, error: "׳׳ ׳ ׳™׳×׳ ׳׳׳—׳•׳§ ׳׳× ׳”׳׳¨׳’׳•׳ ׳”׳׳—׳•׳‘׳¨ ׳›׳¨׳’׳¢." };
+    return { ok: false, error: "לא ניתן למחוק את הארגון המחובר כרגע." };
   }
   if (confirmation !== org.name) {
-    return { ok: false, error: "׳©׳ ׳”׳׳¨׳’׳•׳ ׳׳ ׳×׳•׳׳ ׳׳׳™׳©׳•׳¨ ׳”׳׳—׳™׳§׳”." };
+    return { ok: false, error: "שם הארגון לא תואם לאישור המחיקה." };
   }
 
   try {
@@ -458,7 +460,7 @@ export async function manageSubsDeleteOrganizationAction(
     return { ok: true };
   } catch (e) {
     log.error("manageSubsDeleteOrganizationAction", e);
-    return { ok: false, error: "׳׳—׳™׳§׳× ׳׳¨׳’׳•׳ ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "מחיקת ארגון נכשלה" };
   }
 }
 

@@ -50,7 +50,7 @@ export default function FirstDayWizardPanel({
       <div className="p-4">
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+            <p className="text-xs font-bold uppercase tracking-wide text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300">
               {t("workspaceWidgets.onboarding.eyebrow")}
             </p>
             <h2 className="text-base font-black text-[color:var(--foreground-main)]">
@@ -83,7 +83,7 @@ export default function FirstDayWizardPanel({
                 <CheckCircle2 size={16} className="shrink-0 text-emerald-500" aria-hidden />
               ) : (
                 <span
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] ${i === step ? "border-2 border-indigo-500 text-indigo-600" : "border border-current"}`}
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] ${i === step ? "border-2 border-indigo-500 text-[color:var(--win-accent,#6366f1)]" : "border border-current"}`}
                 >
                   {i + 1}
                 </span>
@@ -101,7 +101,7 @@ export default function FirstDayWizardPanel({
           <button
             type="button"
             onClick={onPrimary}
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-500"
+            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
           >
             {step < steps.length - 1
               ? t("workspaceWidgets.onboarding.next")

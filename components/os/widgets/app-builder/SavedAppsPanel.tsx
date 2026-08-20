@@ -4,6 +4,7 @@ import { FolderOpen, Loader2, Plus, RefreshCw, Trash2, Wand2 } from "lucide-reac
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppSchemaListItem } from "@/app/actions/app-builder";
 import { schemaTypeIcon } from "@/components/os/widgets/app-builder/app-builder-helpers";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 const PREFIX = "workspaceWidgets.appBuilder";
 
@@ -51,23 +52,25 @@ export function SavedAppsPanel({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button type="button" onClick={onNewApp}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-500/10">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="text-[color:var(--accent)] dark:text-indigo-300"
+            icon={<Plus className="h-3.5 w-3.5" aria-hidden />}
+            onClick={onNewApp}
+          >
             {t(`${PREFIX}.newApp`)}
-          </button>
-          <button type="button" onClick={onRefresh} disabled={loadingSaved}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] disabled:opacity-60"
-            aria-label={t(`${PREFIX}.refreshSavedApps`)}>
+          </OsButton>
+          <OsIconButton label={t(`${PREFIX}.refreshSavedApps`)} size="sm" disabled={loadingSaved} onClick={onRefresh}>
             <RefreshCw className={`h-3.5 w-3.5 ${loadingSaved ? "animate-spin" : ""}`} aria-hidden />
-          </button>
+          </OsIconButton>
         </div>
       </div>
 
       {/* Gallery */}
       {templates.length > 0 ? (
         <section className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2">
-          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[color:var(--accent)] dark:text-indigo-300">
             <Wand2 className="h-3.5 w-3.5" aria-hidden />
             {t(`${PREFIX}.galleryTitle`)}
           </h3>
@@ -125,12 +128,14 @@ export function SavedAppsPanel({
                     {isLoading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-indigo-400" aria-hidden /> : null}
                   </button>
                   {!app.isGlobal ? (
-                    <button type="button" onClick={() => onDeleteSaved(app)}
+                    <OsIconButton
+                      label={t(`${PREFIX}.deleteAppAria`, { name: app.name })}
                       disabled={isDeleting || isLoading}
-                      className="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent px-2 text-red-400 transition hover:border-red-500/30 hover:bg-red-500/10 disabled:opacity-60"
-                      aria-label={t(`${PREFIX}.deleteAppAria`, { name: app.name })}>
+                      className="text-red-400 hover:border-red-500/30 hover:bg-red-500/10"
+                      onClick={() => onDeleteSaved(app)}
+                    >
                       {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}
-                    </button>
+                    </OsIconButton>
                   ) : null}
                 </li>
               );

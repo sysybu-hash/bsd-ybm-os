@@ -1,14 +1,26 @@
 import { prisma } from "@/lib/prisma";
 import { documentTypeLabel } from "@/lib/document-types";
+import { normalizeContactStatus } from "@/lib/crm/pipeline-status";
 import type { DocType } from "@prisma/client";
 
 export type ContactTimelineEvent = {
   id: string;
   at: string;
-  kind: "document" | "quote" | "project" | "note" | "work_diary";
+  kind: "document" | "quote" | "project" | "note" | "work_diary" | "status";
   title: string;
   detail?: string;
 };
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  PENDING: "ממתין לחתימה",
+  CLOSED_WON: "נחתם",
+  CLOSED_LOST: "נדחה",
+  SIGNED: "נחתם",
+};
+
+function formatIls(amount: number): string {
+  return `₪${amount.toLocaleString("he-IL")}`;
+}
 
 export async function buildContactTimeline(
   contactId: string,
@@ -20,6 +32,8 @@ export async function buildContactTimeline(
       id: true,
       name: true,
       notes: true,
+      status: true,
+      value: true,
       createdAt: true,
       projectId: true,
       project: { select: { id: true, name: true, createdAt: true } },
@@ -32,13 +46,20 @@ export async function buildContactTimeline(
           number: true,
           total: true,
           status: true,
+          date: true,
           createdAt: true,
         },
       },
       quotes: {
         orderBy: { createdAt: "desc" },
         take: 40,
-        select: { id: true, amount: true, status: true, createdAt: true },
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       },
     },
   });
@@ -51,8 +72,19 @@ export async function buildContactTimeline(
       at: contact.createdAt.toISOString(),
       kind: "note",
       title: "לקוח נוצר במערכת",
+      detail: contact.value != null && contact.value > 0 ? `ערך עסקה: ${formatIls(contact.value)}` : undefined,
     },
   ];
+
+  const pipelineStatus = normalizeContactStatus(contact.status);
+  if (pipelineStatus !== "LEAD") {
+    events.push({
+      id: `contact-status-${contact.id}`,
+      at: contact.createdAt.toISOString(),
+      kind: "status",
+      title: `סטטוס צינור מכירות: ${pipelineStatus}`,
+    });
+  }
 
   if (contact.notes?.trim()) {
     events.push({
@@ -75,23 +107,38 @@ export async function buildContactTimeline(
 
   for (const doc of contact.issuedDocuments) {
     const label = documentTypeLabel(doc.type as DocType);
+    const isQuote = doc.type === "QUOTE";
     events.push({
       id: `doc-${doc.id}`,
-      at: doc.createdAt.toISOString(),
-      kind: "document",
+      at: (doc.date ?? doc.createdAt).toISOString(),
+      kind: isQuote ? "quote" : "document",
       title: `${label} #${doc.number}`,
-      detail: `₪${doc.total.toLocaleString("he-IL")} · ${doc.status}`,
+      detail: `${formatIls(doc.total)} · ${doc.status}`,
     });
   }
 
   for (const quote of contact.quotes) {
+    const statusLabel = QUOTE_STATUS_LABELS[quote.status] ?? quote.status;
+    const signedAt =
+      quote.status === "CLOSED_WON" || quote.status === "SIGNED"
+        ? quote.updatedAt.toISOString()
+        : quote.createdAt.toISOString();
     events.push({
       id: `quote-${quote.id}`,
       at: quote.createdAt.toISOString(),
       kind: "quote",
-      title: `Quote · ${quote.amount}`,
-      detail: quote.status,
+      title: `הצעת מחיר · ${formatIls(quote.amount)}`,
+      detail: statusLabel,
     });
+    if (quote.updatedAt.getTime() > quote.createdAt.getTime() + 1000) {
+      events.push({
+        id: `quote-update-${quote.id}`,
+        at: signedAt,
+        kind: "quote",
+        title: `עדכון הצעת מחיר · ${formatIls(quote.amount)}`,
+        detail: statusLabel,
+      });
+    }
   }
 
   if (contact.projectId) {

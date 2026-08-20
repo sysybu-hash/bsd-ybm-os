@@ -5,7 +5,7 @@ import { getMarketingMessages } from "@/lib/i18n/load-messages";
 import { skipToMainLabel } from "@/lib/skip-to-main-label";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/os/system/I18nProvider";
-import StructuredDataScript from "@/components/seo/StructuredDataScript";
+import MarketingStructuredDataDeferred from "@/components/layout/MarketingStructuredDataDeferred";
 import { MarketingAnalyticsClient } from "@/components/layout/MarketingAnalyticsClient";
 import MarketingLayoutExtras from "@/components/layout/MarketingLayoutExtras";
 import { MARKETING_HERO_CRITICAL_INLINE_CSS } from "@/lib/marketing/hero-critical-inline-css";
@@ -38,7 +38,7 @@ export default function MarketingSiteLayout({ locale, children }: Props) {
             {mainSkipLabel}
           </a>
           <div id="site-main" tabIndex={-1} className="outline-none focus:outline-none">
-            <StructuredDataScript />
+            <MarketingStructuredDataDeferred />
             {children}
             <MarketingLayoutExtras />
           </div>

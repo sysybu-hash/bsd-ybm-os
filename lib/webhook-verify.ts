@@ -111,7 +111,7 @@ export function shouldRejectPayPlusRequest(result: WebhookVerifyResult): boolean
     });
     return false;
   }
-  if (result === "missing" && process.env.NODE_ENV !== "production") {
+  if (result === "missing" && env.NODE_ENV !== "production") {
     // Development convenience: allow unsigned requests so local tooling works.
     log.warn("payplus_webhook_sig_skipped_dev");
     return false;

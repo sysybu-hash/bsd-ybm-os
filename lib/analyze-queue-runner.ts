@@ -3,6 +3,13 @@ import type { DocumentScanJob } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { processDocumentAction } from "@/app/actions/process-document";
 import { isDocumentScanRateLimitError, parseJobFileData, type DocumentScanFilePayload } from "@/lib/analyze-queue";
+import {
+  mapLegacyAnalysisTypeToScanMode,
+  mapLegacyProviderToEngineRunMode,
+  unifiedExtractFromFile,
+} from "@/lib/scan/unified-extract";
+import { unifiedSaveScan } from "@/lib/scan/unified-save";
+import { isScanUnifiedV2Enabled } from "@/lib/scan/feature-flag";
 import { createLogger } from "@/lib/logger";
 const log = createLogger("analyze-queue-runner");
 
@@ -71,6 +78,61 @@ export async function executeDocumentScanJob(job: DocumentScanJob): Promise<void
   try {
     const payload = parseJobFileData(job.fileData);
     const file = await fileFromPayload(payload);
+
+    if (isScanUnifiedV2Enabled()) {
+      const scanMode =
+        payload.scanMode ?? mapLegacyAnalysisTypeToScanMode(payload.analysisType);
+      const engineRunMode =
+        payload.engineRunMode ?? mapLegacyProviderToEngineRunMode(payload.provider);
+
+      const extracted = await unifiedExtractFromFile({
+        file,
+        userId: job.userId,
+        scanMode,
+        engineRunMode,
+        industry: payload.industry,
+      });
+
+      let resultData: Record<string, unknown> = {
+        success: true,
+        data: extracted.aiData,
+        v5: extracted.v5,
+        telemetry: extracted.telemetry,
+      };
+
+      if (payload.persist) {
+        const saved = await unifiedSaveScan(
+          {
+            file,
+            fileName: payload.fileName,
+            v5: extracted.v5,
+            aiData: extracted.aiData,
+            target: "erp",
+            userId: job.userId,
+            organizationId: job.organizationId,
+          },
+          { userId: job.userId, organizationId: job.organizationId, industry: payload.industry },
+        );
+        if (!saved.ok) {
+          throw new Error(saved.error ?? "שמירה נכשלה");
+        }
+        resultData = {
+          ...resultData,
+          documentId: saved.documentId,
+          driveWebViewLink: saved.driveWebViewLink,
+        };
+      }
+
+      await prisma.documentScanJob.update({
+        where: { id: job.id },
+        data: {
+          status: "COMPLETED",
+          result: resultData as Prisma.InputJsonValue,
+          error: null,
+        },
+      });
+      return;
+    }
 
     const formData = new FormData();
     formData.append("file", file);

@@ -112,6 +112,18 @@ export default function MarketingHeroOmnibarUI({ omnibar, variant = "hero" }: Pr
             <span className="hidden sm:inline">{t("marketingHome.cinematic.omnibarSend")}</span>
           </button>
         </div>
+
+        {showHint ? (
+          <p className="mkt-omnibar-hint text-center text-xs text-slate-400">
+            {t("marketingHome.cinematic.omnibarHint")}{" "}
+            <Link
+              href={omnibar.registerHref}
+              className="font-semibold text-amber-300/90 underline-offset-2 hover:underline"
+            >
+              {t("marketingHome.cinematic.omnibarJoinCta")}
+            </Link>
+          </p>
+        ) : null}
       </form>
 
       {omnibar.showPanel ? (
@@ -123,16 +135,6 @@ export default function MarketingHeroOmnibarUI({ omnibar, variant = "hero" }: Pr
           voiceActive={omnibar.voiceActive}
           onClear={omnibar.clearChat}
         />
-      ) : showHint ? (
-        <p className="mkt-omnibar-hint mt-2 text-center text-xs text-slate-400">
-          {t("marketingHome.cinematic.omnibarHint")}{" "}
-          <Link
-            href={omnibar.registerHref}
-            className="font-semibold text-amber-300/90 underline-offset-2 hover:underline"
-          >
-            {t("marketingHome.cinematic.omnibarJoinCta")}
-          </Link>
-        </p>
       ) : null}
     </div>
   );

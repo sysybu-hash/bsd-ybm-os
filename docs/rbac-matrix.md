@@ -27,6 +27,7 @@
 | `/api/projects/*` (update, detail, [id]/notes) | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/quotes` | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/expenses/confirm` | `withWorkspacesAuth` | כל המשתמשים | |
+| `/api/office-expenses` | `withWorkspacesAuth` + `allowedRoles` | GET: ORG_ADMIN / SUPER_ADMIN / PROJECT_MGR; POST/PATCH/DELETE: ORG_ADMIN / SUPER_ADMIN | audit log `OFFICE_EXPENSE:*`; סריקת משרד ב-`/api/scan/save` דורשת ORG_ADMIN+ |
 | `/api/documents/issued/*` (drafts, [id]/export, sign) | `withWorkspacesAuth` | כל המשתמשים | drafts → unique per user |
 | `/api/notebooklm/*` (notebooks, chat, audio-overview, from-scan, extract-pdf) | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/meckano/*` (access, employees, projects, reports, reports/export-pdf, zones, clock-in) | `withWorkspacesAuth` + Meckano API key | כל המשתמשים | API key per-org ב-Organization |

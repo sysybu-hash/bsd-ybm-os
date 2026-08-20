@@ -1,4 +1,4 @@
-import { getIndustryConfig, type IndustryType } from "@/lib/professions/config";
+﻿import { getIndustryConfig, type IndustryType } from "@/lib/professions/config";
 import type { MessageTree } from "@/lib/i18n/keys";
 import {
   mergeConstructionTradeLabel,
@@ -18,27 +18,18 @@ import {
   type ConstructionTradeId,
 } from "@/lib/construction-trades";
 
-export type ProfessionalTemplateKind = "OFFICIAL" | "APPROVAL" | "FORM" | "REPORT";
-export type OfficialIssuedDocumentType = "INVOICE" | "RECEIPT" | "INVOICE_RECEIPT" | "CREDIT_NOTE";
+import {
+  INDUSTRY_PROFILES,
+  type IndustryProfileBase,
+} from "@/lib/professions/industry-profiles";
 
-export type ProfessionalDocumentTemplate = {
-  id: string;
-  label: string;
-  description: string;
-  kind: ProfessionalTemplateKind;
-  issuedDocumentType?: OfficialIssuedDocumentType;
-};
+export type {
+  IndustryProfileBase,
+  OfficialIssuedDocumentType,
+  ProfessionalDocumentTemplate,
+  ProfessionalTemplateKind,
+} from "@/lib/professions/industry-profiles";
 
-type IndustryProfileBase = {
-  clientsLabel: string;
-  documentsLabel: string;
-  recordsLabel: string;
-  /** תווית טאב ERP/כספים — כשלא מוגדר משתמשים ב-documentsLabel */
-  financeNavLabel?: string;
-  homeTitle: string;
-  homeDescription: string;
-  templates: ProfessionalDocumentTemplate[];
-};
 
 export type IndustryProfile = IndustryProfileBase & {
   id: IndustryType;
@@ -53,7 +44,7 @@ export type IndustryProfile = IndustryProfileBase & {
     label: string;
     description: string;
   }>;
-  /** מזהה התמחות בענף הבנייה — כשלא רלוונטי undefined */
+  /** ׳׳–׳”׳” ׳”׳×׳׳—׳•׳× ׳‘׳¢׳ ׳£ ׳”׳‘׳ ׳™׳™׳” ג€” ׳›׳©׳׳ ׳¨׳׳•׳•׳ ׳˜׳™ undefined */
   constructionTradeId?: ConstructionTradeId;
   constructionTradeLabel?: string;
   businessLineId?: BusinessLineId;
@@ -71,149 +62,6 @@ type IndustryOverrides = {
   }>;
 };
 
-const INDUSTRY_PROFILES: Record<IndustryType, IndustryProfileBase> = {
-  GENERAL: {
-    clientsLabel: "לקוחות",
-    documentsLabel: "מסמכים",
-    recordsLabel: "מסמכים ואישורים",
-    homeTitle: "מרכז עבודה אחד לכל התהליך העסקי.",
-    homeDescription: "כל לקוח, מסמך וחיוב מסתנכרנים למסך עבודה ברור שמכוון לעסק כללי או רב-תחומי.",
-    templates: [
-      { id: "INVOICE", label: "חשבונית מס", description: "מסמך חיוב רשמי ללקוח.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-      { id: "RECEIPT", label: "קבלה", description: "אישור תשלום רשמי.", kind: "OFFICIAL", issuedDocumentType: "RECEIPT" },
-      { id: "SERVICE_REPORT", label: "דוח שירות", description: "סיכום ביצוע או טיפול פנימי.", kind: "REPORT" },
-      { id: "WORK_APPROVAL", label: "אישור ביצוע", description: "אישור פנימי או מול לקוח על סיום משימה.", kind: "APPROVAL" },
-    ],
-  },
-  LEGAL: {
-    clientsLabel: "מיוצגים ותיקים",
-    documentsLabel: "תיקים ומסמכים",
-    recordsLabel: "מסמכים משפטיים ואישורים",
-    homeTitle: "מרחב עבודה שמדבר שפה משפטית.",
-    homeDescription: "התפריטים, הכותרות והמסמכים מותאמים לניהול מיוצגים, תיקים, חוזים ואישורים משפטיים.",
-    templates: [
-      { id: "ENGAGEMENT_AGREEMENT", label: "הסכם ייצוג", description: "מסמך פתיחת תיק והתקשרות עם לקוח.", kind: "FORM" },
-      { id: "COURT_FILING_APPROVAL", label: "אישור הגשה לבית משפט", description: "אישור פנימי/חיצוני להגשת מסמך משפטי.", kind: "APPROVAL" },
-      { id: "CASE_SUMMARY", label: "סיכום תיק", description: "דוח מצב תיק, מועדים וסיכונים.", kind: "REPORT" },
-      { id: "INVOICE", label: "חשבונית שכר טרחה", description: "חיוב רשמי על שירות משפטי.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-    ],
-  },
-  ACCOUNTING: {
-    clientsLabel: "לקוחות מס וביקורת",
-    documentsLabel: "דוחות ומסמכי חשבונאות",
-    recordsLabel: "דוחות, מסמכים ואישורי מס",
-    homeTitle: "מערכת שמותאמת למשרד חשבונאות פעיל.",
-    homeDescription: "המסכים וה-AI בנויים לנישומים, דוחות, ביקורות ואישורי מס במקום מונחים כלליים.",
-    templates: [
-      { id: "BOOKKEEPING_REPORT", label: "סיכום הנהלת חשבונות", description: "סיכום חודשי או תקופתי ללקוח.", kind: "REPORT" },
-      { id: "TAX_APPROVAL", label: "אישור מס", description: "אישור הגשה, תיאום או בקרה ללקוח.", kind: "APPROVAL" },
-      { id: "AUDIT_MEMO", label: "מזכר ביקורת", description: "סיכום ממצאים ופעולות מתקנות.", kind: "REPORT" },
-      { id: "INVOICE", label: "חשבונית שירותי הנהלת חשבונות", description: "חיוב רשמי עבור שירותי המשרד.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-    ],
-  },
-  COMPANY_MGMT: {
-    clientsLabel: "לקוחות ושותפים",
-    documentsLabel: "מסמכים וחוזים",
-    recordsLabel: "הצעות, חוזים ואישורים",
-    financeNavLabel: "כספים",
-    homeTitle: "מרכז עבודה לניהול העסק והחברה.",
-    homeDescription:
-      "לקוחות, פרויקטים פנימיים, מסמכים וחיובים במסך אחד — בלי שפת אתרי בנייה.",
-    templates: [
-      {
-        id: "QUOTE_PROPOSAL",
-        label: "הצעת מחיר",
-        description: "הצעה מסודרת ללקוח או לשותף.",
-        kind: "FORM",
-      },
-      {
-        id: "SERVICE_CONTRACT",
-        label: "חוזה שירות",
-        description: "הסכם התקשרות ותנאי ביצוע.",
-        kind: "FORM",
-      },
-      {
-        id: "ACTIVITY_REPORT",
-        label: "דוח ביצוע / סטטוס",
-        description: "סיכום תקופתי או דוח פרויקט.",
-        kind: "REPORT",
-      },
-      {
-        id: "INTERNAL_APPROVAL",
-        label: "אישור הנהלה",
-        description: "אישור הוצאה, רכש או ביצוע.",
-        kind: "APPROVAL",
-      },
-      {
-        id: "INVOICE",
-        label: "חשבונית מס",
-        description: "חיוב רשמי ללקוח.",
-        kind: "OFFICIAL",
-        issuedDocumentType: "INVOICE",
-      },
-      {
-        id: "RECEIPT",
-        label: "קבלה",
-        description: "אישור תשלום.",
-        kind: "OFFICIAL",
-        issuedDocumentType: "RECEIPT",
-      },
-    ],
-  },
-  CONSTRUCTION: {
-    clientsLabel: "פרויקטים",
-    documentsLabel: "יומנים, תוכניות ומסמכי שטח",
-    financeNavLabel: "כספים",
-    recordsLabel: "אישורי שטח ומסמכי פרויקט",
-    homeTitle: "מרחב עבודה לפרויקטים, אישורי שטח וחומרי בנייה.",
-    homeDescription: "הממשק משנה שפה לניהול אתרים, אישורי ביצוע, יומני עבודה וחומרי גלם.",
-    templates: [
-      { id: "SITE_LOG", label: "יומן עבודה", description: "דיווח יומי על צוות, חומרים והתקדמות.", kind: "REPORT" },
-      { id: "MATERIAL_APPROVAL", label: "אישור חומר/אספקה", description: "אישור קבלה או שימוש בחומרי בנייה.", kind: "APPROVAL" },
-      { id: "WORK_COMPLETION", label: "אישור סיום שלב", description: "אישור מסירה או סיום שלב לפרויקט.", kind: "APPROVAL" },
-      { id: "INVOICE", label: "חשבונית קבלן", description: "חיוב רשמי עבור עבודות או שלבים.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-    ],
-  },
-  MEDICAL: {
-    clientsLabel: "מטופלים ותיקים קליניים",
-    documentsLabel: "תיקי טיפול ומסמכים רפואיים",
-    recordsLabel: "טפסי טיפול, אישורים וסיכומים",
-    homeTitle: "מרכז עבודה שמדבר קליניקה ולא רק CRM.",
-    homeDescription: "כותרות, מסמכים ופענוחי AI מותאמים למטופלים, טיפולים, מרשמים ואישורי טיפול.",
-    templates: [
-      { id: "CONSENT_FORM", label: "טופס הסכמה", description: "אישור חתום או פנימי לפני טיפול.", kind: "APPROVAL" },
-      { id: "TREATMENT_SUMMARY", label: "סיכום טיפול", description: "דוח מהלך טיפול והמלצות להמשך.", kind: "REPORT" },
-      { id: "REFERRAL_APPROVAL", label: "אישור הפניה", description: "אישור או תיעוד להפניה חיצונית.", kind: "APPROVAL" },
-      { id: "RECEIPT", label: "קבלה על טיפול", description: "אישור תשלום רשמי למטופל.", kind: "OFFICIAL", issuedDocumentType: "RECEIPT" },
-    ],
-  },
-  RETAIL: {
-    clientsLabel: "לקוחות, ספקים ומלאי",
-    documentsLabel: "מסמכי מלאי וסחר",
-    recordsLabel: "אישורי מלאי ומסמכי אספקה",
-    homeTitle: "ניהול מסחר ומלאי מתוך מסך עבודה אחד.",
-    homeDescription: "המערכת מתאימה את השפה להזמנות, אספקות, מלאי וספקים במקום מונחים כלליים.",
-    templates: [
-      { id: "DELIVERY_CONFIRMATION", label: "אישור אספקה", description: "תיעוד קבלה או מסירה של מלאי.", kind: "APPROVAL" },
-      { id: "INVENTORY_REPORT", label: "דוח פערי מלאי", description: "סיכום חריגות, חוסרים ועדכון מדפים.", kind: "REPORT" },
-      { id: "PURCHASE_ORDER", label: "הזמנת רכש", description: "מסמך פנימי או חיצוני להזמנה מספק.", kind: "FORM" },
-      { id: "INVOICE", label: "חשבונית רכש/מכירה", description: "חיוב רשמי מול ספק או לקוח.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-    ],
-  },
-  REAL_ESTATE: {
-    clientsLabel: "קונים, שוכרים ונכסים",
-    documentsLabel: "נכסים, חוזים ומסמכים",
-    recordsLabel: "אישורי נכס ודוחות תיווך",
-    homeTitle: "מרחב עבודה שמכוון לנכסים, עסקאות ואישורים.",
-    homeDescription: "המערכת מחליפה שפה כללית בשפה של נכסים, עסקאות, שוכרים ואישורי מסירה.",
-    templates: [
-      { id: "PROPERTY_SUMMARY", label: "סיכום נכס", description: "סיכום נתוני נכס, בעלות וסטטוס.", kind: "REPORT" },
-      { id: "TENANCY_APPROVAL", label: "אישור שכירות", description: "אישור תהליך שכירות, מסירה או חידוש.", kind: "APPROVAL" },
-      { id: "VIEWING_REPORT", label: "דוח פגישה בנכס", description: "תיעוד סיור, פגישה או סטטוס עסקה.", kind: "REPORT" },
-      { id: "INVOICE", label: "חשבונית תיווך/ניהול", description: "חיוב רשמי על שירותי תיווך או ניהול.", kind: "OFFICIAL", issuedDocumentType: "INVOICE" },
-    ],
-  },
-};
 
 function readOverrides(raw: unknown): IndustryOverrides {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -274,9 +122,9 @@ export function getIndustryProfile(
   const baseIndustryLabel = pickMessageString(localeMessages ?? undefined, `professions.${config.id}.label`) ?? config.label;
   const industryLabel =
     config.id === "CONSTRUCTION"
-      ? `${baseIndustryLabel} · ${tradeLabel}`
+      ? `${baseIndustryLabel} ֲ· ${tradeLabel}`
       : config.id === "COMPANY_MGMT"
-        ? `${baseIndustryLabel} · ${lineLabel}`
+        ? `${baseIndustryLabel} ֲ· ${lineLabel}`
         : baseIndustryLabel;
 
   const clientsBase =
@@ -312,3 +160,4 @@ export function getIndustryProfile(
     businessLineLabel: config.id === "COMPANY_MGMT" ? lineLabel : undefined,
   };
 }
+

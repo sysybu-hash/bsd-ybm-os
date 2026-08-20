@@ -7,12 +7,11 @@ import { captureProductEvent } from "@/lib/analytics/posthog-client";
 import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-constants";
 import FirstDayWizardPanel, { type WizardStep } from "@/components/os/onboarding/FirstDayWizardPanel";
 
+/** Core path only: project → scan → first save. */
 const STEPS: readonly WizardStep[] = [
-  { id: "login", titleKey: "workspaceWidgets.onboarding.stepLogin" },
-  { id: "finance", titleKey: "workspaceWidgets.onboarding.stepFinance" },
+  { id: "project", titleKey: "workspaceWidgets.onboarding.stepProject" },
   { id: "scan", titleKey: "workspaceWidgets.onboarding.stepScan" },
-  { id: "drive", titleKey: "workspaceWidgets.onboarding.stepDrive" },
-  { id: "fieldCopilot", titleKey: "workspaceWidgets.onboarding.stepFieldCopilot" },
+  { id: "save", titleKey: "workspaceWidgets.onboarding.stepSave" },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -40,17 +39,14 @@ function openForStep(
   onOpenWidget: FirstDayWizardProps["onOpenWidget"],
 ): void {
   switch (stepId) {
-    case "finance":
-      onOpenWidget("financeHub", { tab: "overview" });
+    case "project":
+      onOpenWidget("projectsHub", null);
       break;
     case "scan":
       onOpenWidget("documentsHub", { tab: "scan" });
       break;
-    case "drive":
-      onOpenWidget("googleDrive", null);
-      break;
-    case "fieldCopilot":
-      onOpenWidget("fieldCopilot", null);
+    case "save":
+      onOpenWidget("documentsHub", { tab: "scan" });
       break;
     default:
       break;
@@ -99,9 +95,7 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
 
   const onPrimary = () => {
     void trackWizard(`step_${current.id}`);
-    if (current.id !== "login") {
-      openForStep(current.id, onOpenWidget);
-    }
+    openForStep(current.id, onOpenWidget);
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
     } else {

@@ -8,7 +8,7 @@ import { formatGeminiLiveUserMessage } from "@/lib/gemini-live-user-message";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import {
-  GEMINI_LIVE_MODEL_FALLBACK_CHAIN,
+  getGeminiLiveModelFallbackChain,
   isGeminiApiKeyError,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
     let lastError: unknown;
 
-    for (const model of GEMINI_LIVE_MODEL_FALLBACK_CHAIN) {
+    for (const model of getGeminiLiveModelFallbackChain()) {
       try {
         const payload = await createLiveAuthToken(client, model, settings, systemInstruction);
         log.info("marketing live token created", {

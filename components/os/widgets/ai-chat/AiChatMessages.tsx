@@ -5,6 +5,7 @@ import { Bot, Loader2, Send, User } from "lucide-react";
 
 import ReactMarkdown from "react-markdown";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
+import { WindowEmptyState } from "@/components/os/window-kit/WindowEmptyState";
 import type { Message } from "./types";
 
 type AiChatMessagesProps = {
@@ -93,17 +94,11 @@ export function AiChatMessages({
       {children}
 
       {messages.length === 0 && chatTab === "text" && (
-        <div className="flex min-h-[10rem] flex-col items-center justify-center py-6 text-center opacity-40">
-          <div className="w-20 h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
-            <Bot size={40} className="text-purple-600 dark:text-purple-400" />
-          </div>
-          <h3 className="text-xl font-bold text-[color:var(--foreground-main)] mb-2">
-            {t(emptyTitleKey)}
-          </h3>
-          <p className="text-sm text-[color:var(--foreground-muted)] max-w-xs leading-relaxed">
-            {t(emptySubtitleKey)}
-          </p>
-        </div>
+        <WindowEmptyState
+          icon={<Bot size={28} aria-hidden />}
+          title={t(emptyTitleKey)}
+          description={t(emptySubtitleKey)}
+        />
       )}
 
       {messages.map((m) => (

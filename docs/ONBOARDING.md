@@ -172,6 +172,22 @@ PAYPLUS_SECRET_KEY=
 PAYPLUS_PAYMENT_PAGE_UID=
 ```
 
+### WhatsApp Cloud API (Meta) — optional
+
+מאפשר ללקוחות לשלוח צילום חשבונית בוואטסאפ והיא נסרקת אוטומטית לפרויקט.
+נדרש App + מספר עסקי ב-Meta Developers / Meta Business.
+
+```env
+WHATSAPP_VERIFY_TOKEN=      # מחרוזת שרירותית — אימות ה-webhook (GET handshake)
+WHATSAPP_APP_SECRET=        # App Secret — אימות חתימת X-Hub-Signature-256
+WHATSAPP_ACCESS_TOKEN=      # System-user token — הורדת מדיה + שליחת תשובות
+WHATSAPP_PHONE_NUMBER_ID=   # מזהה מספר העסק לשליחה
+WHATSAPP_API_VERSION=       # אופציונלי, ברירת מחדל v21.0
+```
+
+- Webhook URL: `https://<host>/api/webhooks/whatsapp` (Verify Token = `WHATSAPP_VERIFY_TOKEN`).
+- חיבור מספר: המשתמש מפיק קוד חד-פעמי (`POST /api/whatsapp/link-code`) ושולח אותו בוואטסאפ.
+
 ### Email (transactional mail)
 
 Configure **one** transport in `.env.local` (see `.env.example`):

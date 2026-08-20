@@ -4,11 +4,12 @@ import {
   dismissWorkspaceOverlays,
   primeCookieConsent,
   tryCredentialsSignIn,
+  waitForAuthenticatedWorkspace,
 } from "./helpers";
 
 const MOBILE_PROJECTS = new Set(["mobile-chrome", "mobile-safari"]);
 
-const LANDING_H1 = /מערכת הפעלה|Business OS/i;
+const LANDING_H1 = /מערכת אחת לניהול העסק|One system to run your business/i;
 const LANDING_CTA = /פתיחת חשבון|Create account/i;
 const AUTH_HERO = /ברוכים הבאים|Welcome/i;
 const AUTH_TAB_SIGN_IN = /כניסה|Sign in/i;
@@ -105,12 +106,16 @@ test.describe("Site quality", () => {
 
   test("desktop workspace shows sidebar when signed in", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "רק דסקטופ כרום");
+    await page.setViewportSize({ width: 1280, height: 900 });
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש credentials ב-DB — דלג או הגדר E2E_EMAIL / E2E_PASSWORD");
 
     await dismissCookieBannerIfVisible(page);
     await dismissWorkspaceOverlays(page);
-    await expect(page.getByRole("navigation", { name: /יישומים|Apps/i })).toBeVisible({ timeout: 15000 });
+    await waitForAuthenticatedWorkspace(page);
+    await expect(
+      page.getByRole("complementary", { name: /Workspace navigation|ניווט סביבת עבודה/i }),
+    ).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
   });
 

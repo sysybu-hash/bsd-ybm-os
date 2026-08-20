@@ -1,42 +1,49 @@
 import { env } from "@/lib/env";
 
 /**
- * קטלוג מודלי Gemini — עודכן לפי Google I/O 2026 (19/05).
+ * קטלוג מודלי Gemini — עודכן 13/08/2026.
  * @see https://ai.google.dev/gemini-api/docs/models
- * @see https://dev.to/googleai/gemini-35-flash-developer-guide-1i46
+ * @see https://ai.google.dev/gemini-api/docs/deprecations
  */
 
-export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-05-26";
+export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-08-13";
 
-/** GA — Google I/O 2026 (19/05) */
-export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.5-flash";
+/** GA — יולי 2026 */
+export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.6-flash";
+
+/** GA — יולי 2026; סיווג / throughput */
+export const GEMINI_LITE_MODEL = "gemini-3.5-flash-lite";
+
+/** Flash הקודם — עדיין GA, fallback */
+export const GEMINI_PREVIOUS_FLASH_MODEL = "gemini-3.5-flash";
+
+/** Pro ל-CRM פרימיום / ניתוח עמוק */
+export const GEMINI_PREMIUM_TEXT_MODEL = "gemini-3.1-pro-preview";
 
 /** מיושן; נשמר לתאימות env */
 export const GEMINI_LEGACY_PREVIEW_MODEL = "gemini-3-flash-preview";
 
+/** גרמושקה / BOQ */
+export const GEMINI_BLUEPRINT_PRIMARY_MODEL = GEMINI_STABLE_TEXT_MODEL;
 
-/** גרמושקה / BOQ — אותו מודל GA (קוד + סוכנים) */
-export const GEMINI_BLUEPRINT_PRIMARY_MODEL = "gemini-3.5-flash";
+/** Live API — המומלץ הרשמי */
+export const GEMINI_LIVE_PRIMARY_MODEL = "gemini-3.1-flash-live-preview";
 
-/**
- * Live API — אודיו native.
- */
+/** Live API — native audio (fallback עד כיבוי 2.5) */
 export const GEMINI_LIVE_NATIVE_AUDIO_MODEL = "gemini-2.5-flash-native-audio-latest";
 
-/** יציב ראשון — preview models עלולים להחזיר Internal error ב-WebSocket. */
+/** 3.1 Live ראשון; 2.5 native-audio כגיבוי ליציבות WebSocket. */
 export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
+  GEMINI_LIVE_PRIMARY_MODEL,
   GEMINI_LIVE_NATIVE_AUDIO_MODEL,
   "gemini-2.5-flash-native-audio-preview-12-2025",
-  "gemini-2.5-flash-native-audio-preview-09-2025",
-  "gemini-3.1-flash-live-preview",
 ] as const;
 
-/** שרשרת טקסט (צ'אט, מסמכים) */
+/** שרשרת טקסט (צ'אט, מסמכים) — ללא דור 2.5 (כיבוי 16/10/2026) */
 export const GEMINI_MODEL_FALLBACK_TIER: readonly string[] = [
   GEMINI_STABLE_TEXT_MODEL,
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "gemini-2.5-flash-lite",
+  GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_LITE_MODEL,
   "gemini-3.1-flash-lite",
 ] as const;
 
@@ -47,29 +54,39 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
   "gemini-1.5-flash-8b": GEMINI_STABLE_TEXT_MODEL,
   "gemini-1.5-flash-002": GEMINI_STABLE_TEXT_MODEL,
   "gemini-1.5-flash-latest": GEMINI_STABLE_TEXT_MODEL,
-  "gemini-1.5-pro": "gemini-2.5-pro",
+  "gemini-1.5-pro": GEMINI_PREMIUM_TEXT_MODEL,
   "gemini-3-flash-preview": GEMINI_STABLE_TEXT_MODEL,
-  "gemini-3.1-pro": "gemini-2.5-pro",
-  "gemini-3.1-pro-stable": "gemini-2.5-pro",
+  "gemini-3.1-pro": GEMINI_PREMIUM_TEXT_MODEL,
+  "gemini-3.1-pro-stable": GEMINI_PREMIUM_TEXT_MODEL,
   "gemini-3.1-flash": GEMINI_STABLE_TEXT_MODEL,
   "gemini-3.1-flash-stable": GEMINI_STABLE_TEXT_MODEL,
-  "gemini-3.1-flash-live": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
-  "gemini-3.1-flash-live-preview": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
-  "gemini-2.0-flash-001": "gemini-2.5-flash",
-  "gemini-2.0-flash": "gemini-2.5-flash",
-  "gemini-2.0-flash-lite": "gemini-2.5-flash-lite",
-  "gemini-2.0-flash-exp": "gemini-2.5-pro",
-  "gemini-2.0-pro-stable": "gemini-2.5-pro",
-  "gemini-2.0-flash-live-001": GEMINI_LIVE_NATIVE_AUDIO_MODEL,
+  "gemini-3.1-flash-live": GEMINI_LIVE_PRIMARY_MODEL,
+  "gemini-3.1-flash-live-preview": GEMINI_LIVE_PRIMARY_MODEL,
+  "gemini-2.5-flash-live-preview": GEMINI_LIVE_PRIMARY_MODEL,
+  "gemini-2.5-flash": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-2.5-pro": GEMINI_PREMIUM_TEXT_MODEL,
+  "gemini-2.5-flash-lite": GEMINI_LITE_MODEL,
+  "gemini-2.0-flash-001": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-2.0-flash": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-2.0-flash-lite": GEMINI_LITE_MODEL,
+  "gemini-2.0-flash-exp": GEMINI_PREMIUM_TEXT_MODEL,
+  "gemini-2.0-pro-stable": GEMINI_PREMIUM_TEXT_MODEL,
+  "gemini-2.0-flash-live-001": GEMINI_LIVE_PRIMARY_MODEL,
 };
+
+export function resolveGeminiModelId(raw: string): string {
+  const id = raw.trim();
+  return LEGACY_MODEL_ALIASES[id] ?? id;
+}
 
 export function getGeminiLiveModelId(): string {
   const fromEnv = env.GEMINI_LIVE_MODEL?.trim();
-  if (fromEnv) {
-    if (fromEnv.includes("live")) return fromEnv;
-    return LEGACY_MODEL_ALIASES[fromEnv] ?? fromEnv;
-  }
-  return GEMINI_LIVE_MODEL_FALLBACK_CHAIN[0] ?? GEMINI_LIVE_NATIVE_AUDIO_MODEL;
+  if (fromEnv) return resolveGeminiModelId(fromEnv);
+  return GEMINI_LIVE_PRIMARY_MODEL;
+}
+
+export function getGeminiLiveModelFallbackChain(): string[] {
+  return dedupeModels([getGeminiLiveModelId(), ...GEMINI_LIVE_MODEL_FALLBACK_CHAIN]);
 }
 
 function dedupeModels(ids: string[]): string[] {
@@ -89,7 +106,7 @@ export function getGeminiModelId(): string {
     env.GEMINI_MODEL?.trim() ||
     env.GOOGLE_GENERATIVE_AI_MODEL?.trim();
   const raw = fromEnv || GEMINI_STABLE_TEXT_MODEL;
-  return LEGACY_MODEL_ALIASES[raw] ?? raw;
+  return resolveGeminiModelId(raw);
 }
 
 export function getGeminiModelFallbackChain(): string[] {
@@ -97,42 +114,55 @@ export function getGeminiModelFallbackChain(): string[] {
   return dedupeModels([primary, ...GEMINI_MODEL_FALLBACK_TIER]);
 }
 
+function chainWithOptionalEnv(fromEnv: string | undefined, extras: string[]): string[] {
+  return dedupeModels([
+    ...(fromEnv ? [resolveGeminiModelId(fromEnv)] : []),
+    ...extras,
+  ]);
+}
+
 /** שרשרת לפענוח גרמושקה / תוכניות ביצוע */
 export function getBlueprintAnalysisModelChain(): string[] {
   const flashOnly = env.BLUEPRINT_USE_FLASH_ONLY === true;
   const fromEnv = env.GEMINI_BLUEPRINT_MODEL?.trim();
-  const primary = flashOnly ? "gemini-2.5-flash-lite" : GEMINI_BLUEPRINT_PRIMARY_MODEL;
-  return dedupeModels([
-    ...(fromEnv ? [fromEnv] : []),
-    primary,
-    ...GEMINI_MODEL_FALLBACK_TIER,
-  ]);
+  const primary = flashOnly ? GEMINI_LITE_MODEL : GEMINI_BLUEPRINT_PRIMARY_MODEL;
+  return chainWithOptionalEnv(fromEnv, [primary, ...GEMINI_MODEL_FALLBACK_TIER]);
 }
 
 /** שרשרות לפי סוג סריקה — ניתנות לדריסה דרך env vars */
 export function getInvoiceModelChain(): string[] {
-  const fromEnv = env.GEMINI_INVOICE_MODEL?.trim();
-  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+  return chainWithOptionalEnv(env.GEMINI_INVOICE_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 export function getQuoteModelChain(): string[] {
-  const fromEnv = env.GEMINI_QUOTE_MODEL?.trim();
-  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+  return chainWithOptionalEnv(env.GEMINI_QUOTE_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 export function getSiteLogModelChain(): string[] {
-  const fromEnv = env.GEMINI_SITE_LOG_MODEL?.trim();
-  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+  return chainWithOptionalEnv(env.GEMINI_SITE_LOG_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 export function getProgressBillModelChain(): string[] {
-  const fromEnv = env.GEMINI_PROGRESS_BILL_MODEL?.trim();
-  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+  return chainWithOptionalEnv(env.GEMINI_PROGRESS_BILL_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 export function getGeneralModelChain(): string[] {
-  const fromEnv = env.GEMINI_GENERAL_MODEL?.trim();
-  return dedupeModels([...(fromEnv ? [fromEnv] : []), GEMINI_STABLE_TEXT_MODEL, ...GEMINI_MODEL_FALLBACK_TIER]);
+  return chainWithOptionalEnv(env.GEMINI_GENERAL_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
+  ]);
 }
 
 /** בוחר שרשרת מודל לפי סוג סריקה */
@@ -173,7 +203,12 @@ export function isLikelyGeminiModelUnavailable(err: unknown): boolean {
     lower.includes("resource exhausted") ||
     lower.includes("too many requests") ||
     lower.includes("quota") ||
-    lower.includes("does not exist")
+    lower.includes("does not exist") ||
+    // 400 מה-API יכול להיות כשל זמני/ספציפי-למודל בעיבוד תמונה — כדאי לנסות
+    // מודל אחר בשרשרת לפני שנכשלים לגמרי.
+    (lower.includes("400") &&
+      (lower.includes("unable to process input image") ||
+        lower.includes("bad request")))
   );
 }
 

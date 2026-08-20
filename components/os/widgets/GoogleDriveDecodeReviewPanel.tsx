@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import { Loader2, X } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { X } from "lucide-react";
 import type { DriveDecodePreviewItem } from "@/lib/google-drive-decode-types";
 import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 
 export type ReviewEditableItem = DriveDecodePreviewItem & {
   editedClientName: string;
@@ -30,6 +32,8 @@ export default function GoogleDriveDecodeReviewPanel({
   onSaveAll,
   onSkip,
 }: Props) {
+  const { t, dir } = useI18n();
+
   if (!open) return null;
 
   const pending = items.filter((i) => i.decodeStatus === "NEEDS_REVIEW" || i.needsReview);
@@ -44,24 +48,24 @@ export default function GoogleDriveDecodeReviewPanel({
         type="button"
         className="fixed inset-0 bg-black/50"
         style={{ zIndex: OS_MODAL_BACKDROP_Z }}
-        aria-label="סגור"
+        aria-label={t("workspaceWidgets.googleDrive.close")}
         onClick={onClose}
       />
       <div
         className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-2xl"
         style={{ zIndex: OS_MODAL_PANEL_Z }}
-        dir="rtl"
+        dir={dir}
       >
         <div className="flex items-center justify-between border-b border-[color:var(--border-main)] px-4 py-3">
-          <h3 className="text-sm font-black">תוצאות פענוח — אישור שמירה</h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-black/5" aria-label="סגור">
-            <X size={18} />
-          </button>
+          <h3 className="text-sm font-black">{t("workspaceWidgets.googleDrive.decodeTitle")}</h3>
+          <OsIconButton label={t("workspaceWidgets.googleDrive.close")} onClick={onClose}>
+            <X size={18} aria-hidden />
+          </OsIconButton>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-4 space-y-4">
           {pending.length === 0 ? (
-            <p className="text-sm text-[color:var(--foreground-muted)]">אין פריטים הממתינים לאישור.</p>
+            <p className="text-sm text-[color:var(--foreground-muted)]">{t("workspaceWidgets.googleDrive.noPending")}</p>
           ) : (
             pending.map((item) => (
               <div
@@ -74,7 +78,7 @@ export default function GoogleDriveDecodeReviewPanel({
                 ) : (
                   <>
                     <label className="block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                      סוג מסמך
+                      {t("workspaceWidgets.googleDrive.docType")}
                       <input
                         value={item.editedDocType}
                         onChange={(e) =>
@@ -84,18 +88,18 @@ export default function GoogleDriveDecodeReviewPanel({
                       />
                     </label>
                     <label className="block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                      שם לקוח
+                      {t("workspaceWidgets.googleDrive.clientName")}
                       <input
                         value={item.editedClientName}
                         onChange={(e) =>
                           onChange(item.driveFileId, { editedClientName: e.target.value })
                         }
-                        placeholder="הזינו שם לקוח"
+                        placeholder={t("workspaceWidgets.googleDrive.clientPlaceholder")}
                         className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-1.5 text-sm"
                       />
                     </label>
                     <label className="block text-[10px] font-bold text-[color:var(--foreground-muted)]">
-                      יעד שמירה
+                      {t("workspaceWidgets.googleDrive.saveTarget")}
                       <select
                         value={item.editedTarget}
                         onChange={(e) =>
@@ -105,17 +109,18 @@ export default function GoogleDriveDecodeReviewPanel({
                         }
                         className="mt-1 w-full rounded-lg border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-1.5 text-sm"
                       >
-                        <option value="ERP">ERP — ארכיון מסמכים</option>
-                        <option value="CRM">CRM — לקוח</option>
+                        <option value="ERP">{t("workspaceWidgets.googleDrive.targetErp")}</option>
+                        <option value="CRM">{t("workspaceWidgets.googleDrive.targetCrm")}</option>
                       </select>
                     </label>
-                    <button
-                      type="button"
+                    <OsButton
+                      variant="quiet"
+                      size="sm"
+                      className="!px-0 text-[10px] text-[color:var(--foreground-muted)] underline"
                       onClick={() => onSkip(item.driveFileId)}
-                      className="text-[10px] font-bold text-[color:var(--foreground-muted)] underline"
                     >
-                      דלג
-                    </button>
+                      {t("workspaceWidgets.googleDrive.skip")}
+                    </OsButton>
                   </>
                 )}
               </div>
@@ -124,21 +129,18 @@ export default function GoogleDriveDecodeReviewPanel({
         </div>
 
         <div className="flex gap-2 border-t border-[color:var(--border-main)] p-4">
-          <button
-            type="button"
-            disabled={saving || pending.length === 0}
+          <OsButton
+            variant="primary"
+            className="flex-1 justify-center"
+            disabled={pending.length === 0}
+            loading={saving}
             onClick={onSaveAll}
-            className="flex-1 rounded-xl bg-violet-600 py-2.5 text-xs font-black text-white disabled:opacity-50"
           >
-            {saving ? <Loader2 size={14} className="mx-auto animate-spin" /> : "שמור הכל"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[color:var(--border-main)] px-4 py-2.5 text-xs font-bold"
-          >
-            סגור
-          </button>
+            {t("workspaceWidgets.googleDrive.saveAll")}
+          </OsButton>
+          <OsButton variant="secondary" onClick={onClose}>
+            {t("workspaceWidgets.googleDrive.close")}
+          </OsButton>
         </div>
       </div>
     </div>

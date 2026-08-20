@@ -12,6 +12,14 @@ describe("accountUsesRestrictedGoogleScopes", () => {
     );
   });
 
+  it("treats contacts.readonly as integrations scope", () => {
+    expect(
+      accountUsesRestrictedGoogleScopes(
+        "openid https://www.googleapis.com/auth/contacts.readonly",
+      ),
+    ).toBe(true);
+  });
+
   it("sign-in-only scopes use sign-in client", () => {
     expect(accountUsesRestrictedGoogleScopes("openid email profile")).toBe(false);
   });

@@ -1,7 +1,9 @@
 import { inferMimeFromFileName, isSupportedScanMime, MAX_SCAN_FILE_BYTES } from "@/lib/scan-mime";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
+import { ALL_SCAN_MODES } from "@/lib/scan-modes-for-ui";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
 import {
+  isAnthropicConfigured,
   isDocAiConfigured,
   isGeminiConfigured,
   isMistralConfigured,
@@ -12,6 +14,7 @@ export type TriEngineRunMode =
   | "AUTO"
   | "MULTI_SEQUENTIAL"
   | "MULTI_PARALLEL"
+  | "CUSTOM_PARALLEL"
   | "SINGLE_DOCUMENT_AI"
   | "SINGLE_GEMINI"
   | "SINGLE_OPENAI"
@@ -20,16 +23,7 @@ export type TriEngineRunMode =
 
 export function parseScanMode(raw: string | null): ScanModeV5 {
   const u = String(raw ?? "").toUpperCase();
-  if (
-    u === "INVOICE_FINANCIAL" ||
-    u === "DRAWING_BOQ" ||
-    u === "GENERAL_DOCUMENT" ||
-    u === "QUOTE_BOQ" ||
-    u === "PROGRESS_BILL" ||
-    u === "SITE_LOG"
-  ) {
-    return u;
-  }
+  if (ALL_SCAN_MODES.has(u as ScanModeV5)) return u as ScanModeV5;
   return "GENERAL_DOCUMENT";
 }
 
@@ -39,6 +33,7 @@ export function parseTriEngineRunMode(raw: string | null): TriEngineRunMode {
     u === "AUTO" ||
     u === "MULTI_SEQUENTIAL" ||
     u === "MULTI_PARALLEL" ||
+    u === "CUSTOM_PARALLEL" ||
     u === "SINGLE_DOCUMENT_AI" ||
     u === "SINGLE_GEMINI" ||
     u === "SINGLE_OPENAI" ||
@@ -50,7 +45,18 @@ export function parseTriEngineRunMode(raw: string | null): TriEngineRunMode {
   return "AUTO";
 }
 
-type TriEngineProvider = "docai" | "gemini" | "openai" | "mistral";
+type TriEngineProvider = "docai" | "gemini" | "openai" | "mistral" | "anthropic";
+
+/** מנועי פרמיום — נוכחותם במסלול הופכת את הסריקה לחיוב פרמיום. */
+const PREMIUM_PROVIDERS: ReadonlySet<TriEngineProvider> = new Set(["docai", "openai", "anthropic"]);
+
+/**
+ * מצבי scanMode שבהם Anthropic/Claude מצטיין (PDF נייטיב, מסמכים ארוכים/נרטיביים)
+ * ולכן מנותב ב-AUTO כמנוע ראשי — בכפוף לזמינות קרדיט פרמיום (downgrade חינני בשער).
+ */
+export function scanModeFavorsAnthropic(scanMode: ScanModeV5): boolean {
+  return scanMode === "CONTRACT";
+}
 
 function selectedProvidersForTriEngine(
   scanMode: ScanModeV5,
@@ -60,6 +66,7 @@ function selectedProvidersForTriEngine(
   if (engineRunMode === "SINGLE_GEMINI") return ["gemini"];
   if (engineRunMode === "SINGLE_OPENAI") return ["openai"];
   if (engineRunMode === "SINGLE_MISTRAL") return ["mistral"];
+  if (engineRunMode === "SINGLE_ANTHROPIC") return ["anthropic"];
   if (engineRunMode === "MULTI_PARALLEL") {
     return scanMode === "INVOICE_FINANCIAL" ? ["docai", "gemini", "openai"] : ["gemini", "openai"];
   }
@@ -68,10 +75,13 @@ function selectedProvidersForTriEngine(
       ? ["docai", "openai", "gemini"]
       : scanMode === "DRAWING_BOQ"
         ? ["gemini", "openai"]
-        : ["gemini"];
+        : scanModeFavorsAnthropic(scanMode) && isAnthropicConfigured()
+          ? ["anthropic", "gemini"]
+          : ["gemini"];
   }
   if (scanMode === "INVOICE_FINANCIAL") return ["docai", "openai", "gemini"];
   if (scanMode === "DRAWING_BOQ") return ["gemini", "openai"];
+  if (scanModeFavorsAnthropic(scanMode) && isAnthropicConfigured()) return ["anthropic", "gemini"];
   return ["gemini"];
 }
 
@@ -79,6 +89,7 @@ function isProviderConfigured(provider: TriEngineProvider): boolean {
   if (provider === "docai") return isDocAiConfigured();
   if (provider === "openai") return isOpenAiConfigured();
   if (provider === "mistral") return isMistralConfigured();
+  if (provider === "anthropic") return isAnthropicConfigured();
   return isGeminiConfigured();
 }
 
@@ -87,7 +98,7 @@ export function triEngineCreditKindFor(
   engineRunMode: TriEngineRunMode,
 ): ScanCreditKind {
   const providers = selectedProvidersForTriEngine(scanMode, engineRunMode);
-  return providers.some((provider) => provider === "docai" || provider === "openai") ? "premium" : "cheap";
+  return providers.some((provider) => PREMIUM_PROVIDERS.has(provider)) ? "premium" : "cheap";
 }
 
 export type ParsedTriEngineForm = {
@@ -99,6 +110,9 @@ export type ParsedTriEngineForm = {
   userInstruction: string | null;
   openAiModel?: string;
   engineRunMode: TriEngineRunMode;
+  /** מנועים מותאמים אישית — בשימוש עם CUSTOM_PARALLEL */
+  customEngines?: string[];
+  docTypeAutoDetect: boolean;
 };
 
 /** מחזיר null אם חסר קובץ */
@@ -134,8 +148,27 @@ export function parseTriEngineFormData(formData: FormData): ParsedTriEngineForm 
   const engineRunMode = parseTriEngineRunMode(
     typeof formData.get("engineRunMode") === "string" ? (formData.get("engineRunMode") as string) : null,
   );
+  const docTypeAutoDetect = formData.get("docTypeAutoDetect") === "true";
 
-  return { file, scanMode, persist, projectLabel, clientLabel, userInstruction, openAiModel, engineRunMode };
+  const rawCustomEngines = typeof formData.get("customEngines") === "string"
+    ? (formData.get("customEngines") as string).trim()
+    : "";
+  const customEngines = rawCustomEngines
+    ? rawCustomEngines.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    file,
+    scanMode,
+    persist,
+    projectLabel,
+    clientLabel,
+    userInstruction,
+    openAiModel,
+    engineRunMode,
+    customEngines,
+    docTypeAutoDetect,
+  };
 }
 
 export function validateTriEngineRequest(parsed: ParsedTriEngineForm):

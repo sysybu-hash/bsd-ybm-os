@@ -8,6 +8,7 @@ import {
   dismissWorkspaceUrlIntentForWidget,
   useWorkspaceUrlSync,
 } from "@/hooks/use-workspace-url-sync";
+import { useWorkspaceHardwareBack } from "@/hooks/use-workspace-hardware-back";
 import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
@@ -28,6 +29,7 @@ type Props = {
   toggleMaximize: (id: string) => void;
   toggleMinimize: (id: string) => void;
   updateZoom: (id: string, delta: number) => void;
+  updateWidgetLiveData: (id: string, liveData: Record<string, unknown> | null) => void;
 };
 
 export default function OmniCanvasWorkspaceBody({
@@ -42,6 +44,7 @@ export default function OmniCanvasWorkspaceBody({
   toggleMaximize,
   toggleMinimize,
   updateZoom,
+  updateWidgetLiveData,
 }: Props) {
   const wsNav = useWorkspaceNavigation();
   const { data: session } = useSession();
@@ -51,11 +54,17 @@ export default function OmniCanvasWorkspaceBody({
   const handleCloseWidget = useCallback(
     (id: string) => {
       const widget = widgets.find((w) => w.id === id);
+      let matchedUrl = false;
       if (widget && typeof window !== "undefined") {
         const intent = parseWorkspaceUrl(new URLSearchParams(window.location.search));
-        if (intent) dismissWorkspaceUrlIntentForWidget(widget, intent);
+        if (intent) matchedUrl = dismissWorkspaceUrlIntentForWidget(widget, intent);
       }
       closeWidget(id);
+      // If the closed window was the one reflected in the URL (?w=…), strip it from the
+      // address bar immediately. Otherwise a refresh re-opens it from the deep link.
+      if (matchedUrl && typeof window !== "undefined") {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
     },
     [widgets, closeWidget],
   );
@@ -96,6 +105,19 @@ export default function OmniCanvasWorkspaceBody({
     return widgets.find((w) => w.zIndex === topZ);
   }, [widgets]);
 
+  const getFocusedWidgetId = useCallback(
+    () => getFocusedWidget()?.id,
+    [getFocusedWidget],
+  );
+
+  useWorkspaceHardwareBack({
+    enabled: hasHydrated && widgets.length > 0,
+    getFocusedWidgetId,
+    chromeBack: wsNav.chromeBack,
+    focusWidget,
+    closeWidget: handleCloseWidget,
+  });
+
   const { syncUrlFromFocusedWidget } = useWorkspaceUrlSync({
     hasHydrated,
     widgets,
@@ -103,6 +125,7 @@ export default function OmniCanvasWorkspaceBody({
     focusWidget,
     findWidgetByType,
     getWidgetViewState: wsNav.getWidgetViewState,
+    updateWidgetLiveData,
   });
 
   const onWidgetViewChange = useCallback(

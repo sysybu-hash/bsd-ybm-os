@@ -109,13 +109,22 @@ export function previewPayloadFromDraft(params: {
   orgName: string;
   orgTaxId?: string;
   orgCompanyType?: string;
+  /** Issue date ISO (YYYY-MM-DD) or Date — defaults to today */
+  issueDate?: string | Date;
   dueDate?: string;
 }): InvoiceExportPayload {
+  const issue =
+    params.issueDate instanceof Date
+      ? params.issueDate
+      : params.issueDate
+        ? new Date(params.issueDate)
+        : new Date();
+  const issueSafe = Number.isNaN(issue.getTime()) ? new Date() : issue;
   return {
     type: params.type,
     number: params.number ?? 0,
     clientName: params.clientName,
-    date: new Date().toLocaleDateString("he-IL"),
+    date: issueSafe.toLocaleDateString("he-IL"),
     dueDate: params.dueDate,
     amount: params.net,
     vat: params.vat,

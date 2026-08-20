@@ -68,6 +68,7 @@
       "login": {
         "remember": "Remember me on this device",
         "passkey": "Sign in with fingerprint / Face ID",
+        "passkeyShort": "Biometric sign-in",
         "forgot": "Forgot password",
         "errorEmpty": "Enter email and password",
         "errorInvalid": "Invalid email or password",
@@ -96,13 +97,21 @@
         "copyPassword": "Copied",
         "passwordRequirements": "At least 12 characters with upper, lower, and a digit.",
         "passwordInvalid": "Check password and confirmation",
+        "orgNameRequired": "Enter an organization name (at least 2 characters)",
         "pendingTitle": "Request received",
-        "pendingDesc": "After admin approval, sign in with your email and password.",
-        "successDesc": "Account created. Sign in with your email and password.",
+        "pendingDesc": "Your account was created and is waiting for admin approval. You cannot enter the workspace until then.",
+        "pendingNext": "After approval you will get an email, then sign in with the email and password you chose. This usually takes up to one business day.",
+        "pendingLoginCta": "Back to sign in",
+        "pendingContactCta": "Contact support",
+        "pendingHomeCta": "Back to home",
+        "pendingMailSubject": "Pending registration - BSD-YBM",
+        "successDesc": "Account created. Taking you to the workspace...",
+        "autoSignInFailed": "Account created, but automatic sign-in failed - please sign in manually.",
         "passwordGenerated": "Strong password generated",
         "passwordMismatch": "Passwords do not match",
         "registerFailed": "Registration failed",
-        "networkError": "Network error"
+        "networkError": "Network error",
+        "paymentRequired": "Complete the payment to finish"
       },
       "passkey": {
         "offerTitle": "Faster biometric sign-in",
@@ -169,7 +178,8 @@
         "confirm": "Confirm & Submit",
         "of": "of",
         "step": "Step",
-        "specialization": "Specialization"
+        "specialization": "Specialization",
+        "plan": "Plan"
       },
       "types": {
         "home": {
@@ -213,8 +223,13 @@
         "email": "Email",
         "joining": "Joining ",
         "trade": "Trade",
-        "specialization": "Specialization"
+        "specialization": "Specialization",
+        "plan": "Plan"
       },
+      "industrySection": "Business area in the system",
+      "industryConstruction": "Construction & contracting",
+      "industryCompany": "Business / company management",
+      "industryHint": "You can change this later in organization settings.",
       "construction": {
         "lead": "BSD-YBM is built for construction and allied trades. Pick your trade to align AI scanning and documents.",
         "selectLabel": "Business type / trade",
@@ -230,7 +245,21 @@
         "cta": "Proceed to Login"
       },
       "specializationConstruction": "Select construction trade",
-      "specializationBusiness": "Select business line"
+      "specializationBusiness": "Select business line",
+      "planSection": "Choose a plan",
+      "cycleMonthly": "Monthly",
+      "cycleAnnual": "Annual",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "freePrice": "Free",
+      "scansSuffix": "standard / premium scans",
+      "planHint": "A paid plan activates right after payment. A free plan waits for admin approval.",
+      "payToFinish": "Pay for the selected plan to finish signing up.",
+      "paymentApproved": "Payment approved — you can finish signing up",
+      "paymentUnavailable": "Payment is unavailable right now. Pick the free plan or contact support.",
+      "paymentLoading": "Loading payment options",
+      "paymentFailed": "Payment failed",
+      "submitPaid": "Complete signup"
     }
   },
   "dashboard": {
@@ -346,10 +375,24 @@
     "configAi": "Choose Engines",
     "preview": "Preview",
     "noPreview": "No Preview",
-    "results": "Scan Results",
+    "results": {
+      "summary": "Summary",
+      "telemetry": "Engines",
+      "lineDesc": "Description",
+      "qty": "Qty",
+      "amount": "Amount",
+      "copied": "Copied",
+      "copyJson": "Copy JSON",
+      "exportCsv": "Export CSV",
+      "saveNotebook": "Save to notebook",
+      "confirmErp": "Confirm to ERP"
+    },
+    "saveToNotebook": "Save to NotebookLM",
     "source": "Source",
     "document": "Document Type",
     "modeAuto": "Automatic",
+    "scanModeAuto": "Auto-detect type",
+    "detectedDocType": "Detected",
     "modeMulti": "Multi-engine",
     "modeGemini": "Gemini only",
     "modeOpenai": "OpenAI only",
@@ -382,7 +425,89 @@
     "chatServerError": "Server error",
     "chatNoReply": "No reply from AI.",
     "chatNetworkError": "Could not reach the server.",
-    "actionsApplied": "Actions completed"
+    "actionsApplied": "Actions completed",
+    "fullEditor": "Edit scan result",
+    "export": "Export",
+    "generating": "Generating…",
+    "print": "Print",
+    "engineDetails": "Engine details",
+    "lineTotalMismatch": "Line total: ₪{amount} — differs from document total",
+    "updateTotal": "Update",
+    "lineItemsTitle": "Line items ({count})",
+    "boqSectionTitle": "Bill of quantities (BOQ) — {count} rows",
+    "summarySection": "Summary",
+    "csvColDescription": "Description",
+    "csvColQty": "Qty",
+    "csvColUnitPrice": "Unit price",
+    "csvColLineTotal": "Line total",
+    "csvColCurrency": "Currency",
+    "csvColSku": "SKU",
+    "fieldVendor": "Vendor",
+    "fieldTaxId": "Tax ID",
+    "fieldTotal": "Total",
+    "fieldDate": "Date",
+    "fieldDocType": "Document type",
+    "fieldProject": "Project",
+    "noLineItems": "No line items",
+    "addRow": "Add row",
+    "colDescription": "Description",
+    "colQuantity": "Quantity",
+    "colUnitPrice": "Unit price",
+    "colLineTotal": "Line total",
+    "phItemDescription": "Item description",
+    "phQuantity": "Quantity",
+    "phPrice": "Price",
+    "removeRow": "Remove row",
+    "colItemRef": "Item ref",
+    "colUnit": "Unit",
+    "phItemRef": "Item ref",
+    "phDescription": "Description",
+    "phUnit": "Unit",
+    "addBoqRow": "Add BOQ row",
+    "scanStopped": "Scan stopped",
+    "instructionsTitle": "Decoding instructions",
+    "instructionsBtn": "Instructions",
+    "instructionPlaceholder": "Instructions for AI…",
+    "resultsPanel": "Results",
+    "saveToNotebookDone": "Saved to notebook",
+    "saveToNotebookFailed": "Save failed",
+    "noScanYet": "No scan to save",
+    "classification": "Classification",
+    "modeCustom": "Manual selection",
+    "engineMissing": "Missing",
+    "engineNotConfigured": "Not configured",
+    "selectEngines": "Select engines to run in parallel",
+    "selectAtLeastOne": "Select at least one engine",
+    "cameraOpen": "Capture document",
+    "scanMode": "Scan mode",
+    "classificationUncertainHint": "You can change the document type in the selector above",
+    "capturePhoto": "Capture document",
+    "close": "Close",
+    "outboxSyncNow": "Sync pending scans",
+    "outboxPending": "Pending sync",
+    "outboxSaved": "Offline — scan saved and will sync when back online",
+    "saveSuccess": "Document saved successfully",
+    "saveFailed": "Save failed",
+    "modeAnthropic": "Claude (Anthropic)",
+    "modeMistral": "Mistral Medium"
+  },
+  "fileDropzone": {
+    "amountUnknown": "Amount not detected",
+    "startedTitle": "AI analysis started",
+    "startedMessage": "{name} was sent to the unified scanner.",
+    "unknownVendor": "Unknown vendor",
+    "noAnalysis": "No analysis returned.",
+    "expenseTitle": "Smart expense detected",
+    "expenseMessage": "{vendor} | {amount} | Suggested project: {project}. {summary}",
+    "confirmExpense": "Confirm expense",
+    "viewProject": "View project",
+    "failedTitle": "Document analysis failed",
+    "failedMessage": "{name} could not be analyzed. Try again or check the AI API key.",
+    "overlayEyebrow": "Drop a file anywhere",
+    "overlayEyebrowBusy": "Analyzing document…",
+    "overlayTitle": "Release to run AI analysis",
+    "overlayTitleBusy": "AI analysis started",
+    "overlayBody": "BSD-YBM will read the file, send it to the analysis engine, and create a smart alert in the command center."
   },
   "accessibility": {
     "toolbar": "Accessibility",
@@ -485,7 +610,13 @@
     "saveToErp": "Save to ERP"
   },
   "common": {
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "refresh": "Refresh",
+    "clear": "Clear",
+    "close": "Close",
+    "retry": "Retry",
+    "save": "Save"
   },
   "erpStats": {
     "trendFirst": "First month with data",
@@ -561,14 +692,14 @@
     "planFreeF1": "1 CRM organisation",
     "planFreeF2": "Basic AI analysis",
     "planFreeF3": "Scan quota counter",
-    "planFreeF4": "5 IssuedDocument files",
+    "planFreeF4": "5 issued documents",
     "planProLabel": "PRO",
     "planProPrice": "₪99",
     "planProSub": "per month | up to 5 users",
     "planProF1": "All features",
     "planProF2": "Advanced AI analysis",
     "planProF3": "Subscription management",
-    "planProF4": "100 IssuedDocument files",
+    "planProF4": "100 issued documents per month",
     "planProF5": "Digital signature",
     "planEntLabel": "ENTERPRISE",
     "planEntPrice": "Contact us",
@@ -622,7 +753,7 @@
     "subtitle": "Global cash flow, user activity and price alerts across all organisations.",
     "linkIntelligence": "Full Intelligence board",
     "incomeBadge": "Revenue",
-    "incomeMeta": "Total IssuedDocument",
+    "incomeMeta": "Total issued documents",
     "incomeHint": "Sum of totals from all issued documents (non-cancelled), all organisations.",
     "expenseBadge": "ERP expenses",
     "expenseMeta": "Total Document / aiData",
@@ -642,7 +773,7 @@
   "executiveCharts": {
     "title": "Annual cash flow {year}",
     "subtitle": "Revenue vs ERP expenses (by month, all organisations)",
-    "legendIncome": "Revenue (IssuedDocument)",
+    "legendIncome": "Revenue (issued documents)",
     "legendExpense": "Expenses (Document / ERP)"
   },
   "aiBubble": {
@@ -836,7 +967,9 @@
     "authBackToSite": "Back to site",
     "authViewNewSite": "View the marketing site",
     "authFooterLead": "Work from one state of truth—without splitting across tools.",
-    "authFooterCopy": "{year} BSD-YBM"
+    "authFooterCopy": "{year} BSD-YBM",
+    "navProfessional": "Insights",
+    "navBrief": "Brief"
   },
   "pricing": {
     "headline": "Plans Adapted to Your Avenue",
@@ -914,7 +1047,423 @@
     "broadcastFailed": "Broadcast failed",
     "broadcastSentN": "Sent to {n} users",
     "testEmailSentTo": "Test email sent",
-    "testEmailFailed": "Test email failed"
+    "testEmailFailed": "Test email failed",
+    "tabs": {
+      "subscriptions": "Subscriptions",
+      "pending": "Registrations",
+      "users": "Users",
+      "logins": "Logins",
+      "broadcast": "Broadcast",
+      "health": "Health",
+      "ideas": "Ideas",
+      "assistant": "Admin assistant",
+      "settings": "Settings"
+    },
+    "logins": {
+      "title": "Login log & connection status",
+      "subtitle": "Who is connected now and who signed in recently — provider and IP included.",
+      "lastChecked": "Updated: {time}",
+      "refresh": "Refresh",
+      "search": "Search",
+      "searchPlaceholder": "Email or name…",
+      "loadFailed": "Failed to load login log",
+      "summaryOnline": "Online",
+      "summaryAway": "Away",
+      "summaryOffline": "Offline",
+      "summaryLoginsToday": "Logins today",
+      "connectionsTitle": "Subscriber connection status",
+      "connectionsHint": "Online = activity in the last 3 minutes · Away = up to 30 minutes · otherwise offline.",
+      "eventsTitle": "Login log",
+      "colStatus": "Status",
+      "colUser": "User",
+      "colOrg": "Organization",
+      "colLastSeen": "Last seen",
+      "colLastLogin": "Last login",
+      "colWhen": "When",
+      "colProvider": "Provider",
+      "colIp": "IP",
+      "statusOnline": "Online",
+      "statusAway": "Away",
+      "statusOffline": "Offline",
+      "providerGoogle": "Google",
+      "providerCredentials": "Email/password",
+      "providerPasskey": "Passkey",
+      "emptyConnections": "No users to show",
+      "emptyEvents": "No login rows yet — they appear after the next sign-in"
+    },
+    "mail": {
+      "tab": "Email",
+      "title": "Email",
+      "subtitle": "Turn system emails on or off. Keep it simple.",
+      "masterOn": "Email sending is on",
+      "masterOff": "Email sending is off",
+      "masterOnHint": "The system can send emails according to the options below",
+      "masterOffHint": "No emails will be sent — including automatic ones",
+      "transportOk": "Ready to send ({transport}) · from: {from}",
+      "transportMissing": "Email service is not configured on the server (Resend/SMTP)",
+      "whatToSend": "What to send",
+      "channels": {
+        "transactional": "System emails",
+        "transactionalHint": "Account verification, invites, important notices",
+        "digest": "Daily summary",
+        "digestHint": "Bundled notifications in one email per day (around noon)",
+        "lifecycle": "Subscription reminders",
+        "lifecycleHint": "Trial ending and win-back for inactive users",
+        "notifications": "In-app notification emails",
+        "notificationsHint": "Overdue tasks, scanned invoices, and similar",
+        "collection": "Collection reminders to clients",
+        "collectionHint": "Payment reminders with invoice attached"
+      },
+      "save": "Save",
+      "sendTest": "Send test email",
+      "advanced": "More settings",
+      "advancedHint": "Sender addresses and manual runs — only if needed.",
+      "fromOverride": "Sender address (empty = default)",
+      "fromPlaceholder": "yb@bsd-ybm.co.il",
+      "replyOverride": "Reply-To address",
+      "trialDays": "Days before trial ends",
+      "inactiveDays": "Days inactive before win-back",
+      "runDigestNow": "Send daily summary now",
+      "runLifecycleNow": "Send subscription reminders now",
+      "digestRan": "Daily summary ran",
+      "lifecycleRan": "Subscription reminders ran",
+      "actionFailed": "Action failed",
+      "respectRestDays": "Do not send on Shabbat and Jewish holidays",
+      "respectRestDaysHint": "When on — no outbound mail from candle lighting (Jerusalem) until havdalah, including Chol HaMoed."
+    },
+    "health": {
+      "title": "System health",
+      "subtitle": "Service checks and environment variables (values never shown)",
+      "refresh": "Refresh check",
+      "sendTestEmail": "Send test email",
+      "sendingTestEmail": "Sending…",
+      "lastChecked": "Last checked: {time}",
+      "loading": "Loading health data…",
+      "empty": "Click «Refresh check» to load status",
+      "servicesTitle": "Services",
+      "envTitle": "Environment variables",
+      "statusConfigured": "Configured",
+      "statusMissing": "Missing",
+      "kindRequired": "Required",
+      "kindRecommended": "Recommended",
+      "kindOptional": "Optional",
+      "services": {
+        "database": {
+          "name": "Database"
+        },
+        "aiEngine": {
+          "name": "AI engine"
+        },
+        "email": {
+          "name": "Email"
+        },
+        "payments": {
+          "name": "Payments"
+        },
+        "auth": {
+          "name": "Authentication"
+        }
+      },
+      "serviceDetail": {
+        "databaseConnected": "Connected",
+        "databaseError": "Connection error",
+        "aiProviders": "Active providers: {providers}",
+        "aiNone": "No AI key — AI features unavailable",
+        "authOk": "Auth secret configured",
+        "authMissing": "Missing NEXTAUTH_SECRET — sign-in may fail",
+        "emailOk": "{transport} · sender: {domain}",
+        "emailMissing": "Missing RESEND or SMTP — emails will not send",
+        "paypalConfigured": "OS PayPal configured",
+        "paypalMissing": "OS PayPal not configured",
+        "paypalClientOk": "PayPal API configured",
+        "payplusOk": "PayPlus available",
+        "payplusMissing": "No PayPlus"
+      },
+      "envGroups": {
+        "core": "Core",
+        "auth": "Authentication",
+        "ai": "Artificial intelligence",
+        "email": "Email",
+        "payments": "Payments",
+        "cron": "Cron / queues",
+        "integrations": "Integrations"
+      },
+      "env": {
+        "databaseUrl": {
+          "label": "DATABASE_URL",
+          "hint": "PostgreSQL (Neon) connection"
+        },
+        "nextAuthSecret": {
+          "label": "NEXTAUTH_SECRET",
+          "hint": "Session and cookie signing"
+        },
+        "nextAuthUrl": {
+          "label": "NEXTAUTH_URL",
+          "hint": "Auth base URL"
+        },
+        "googleOAuth": {
+          "label": "GOOGLE_CLIENT_*",
+          "hint": "OAuth for Drive and Google integrations"
+        },
+        "googleAi": {
+          "label": "GEMINI_API_KEY",
+          "hint": "Primary AI engine (Gemini)"
+        },
+        "openai": {
+          "label": "OPENAI_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "anthropic": {
+          "label": "ANTHROPIC_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "groq": {
+          "label": "GROQ_API_KEY",
+          "hint": "Alternative AI provider"
+        },
+        "documentAi": {
+          "label": "DOCUMENT_AI",
+          "hint": "Google Document AI for scanning"
+        },
+        "resend": {
+          "label": "RESEND_API_KEY",
+          "hint": "Email via Resend"
+        },
+        "smtpHost": {
+          "label": "SMTP_HOST",
+          "hint": "Alternative SMTP server"
+        },
+        "mailFrom": {
+          "label": "MAIL_FROM",
+          "hint": "Default sender address"
+        },
+        "paypalClient": {
+          "label": "PAYPAL_CLIENT_*",
+          "hint": "PayPal REST API"
+        },
+        "osPaypal": {
+          "label": "OS_PAYPAL_*",
+          "hint": "Platform operator PayPal"
+        },
+        "payplus": {
+          "label": "PAYPLUS_*",
+          "hint": "PayPlus for Israeli payments"
+        },
+        "cronSecret": {
+          "label": "CRON_SECRET",
+          "hint": "Cron endpoint authentication"
+        },
+        "analyzeQueueSecret": {
+          "label": "ANALYZE_QUEUE_SECRET",
+          "hint": "Document analyze queue auth"
+        },
+        "upstashRedis": {
+          "label": "UPSTASH_REDIS",
+          "hint": "Redis / rate limiting"
+        },
+        "posthog": {
+          "label": "POSTHOG_*",
+          "hint": "Analytics and tracking"
+        },
+        "vapid": {
+          "label": "VAPID_*",
+          "hint": "Browser push notifications"
+        },
+        "meckano": {
+          "label": "MECKANO_API_KEY",
+          "hint": "Meckano integration"
+        }
+      }
+    },
+    "assistant": {
+      "greeting": "Hi. I'm the admin assistant — I can check system health, ENV status, subscriptions and signups. How can I help?",
+      "navigating": "Navigating to the requested tab",
+      "pendingActions": "Actions pending approval",
+      "executing": "Executing…",
+      "approve": "Approve",
+      "cancel": "Cancel",
+      "title": "Admin Assistant",
+      "thinking": "Thinking…",
+      "inputPlaceholder": "Ask about health, ENV, subscriptions…",
+      "inputAria": "Message to admin assistant",
+      "sendAria": "Send",
+      "suggestHealth": "What's the system health status?",
+      "suggestEnv": "Which ENV variables are missing?",
+      "suggestPending": "How many pending signups are there?",
+      "suggestTiers": "Summarize subscriptions by tier"
+    },
+    "console": {
+      "title": "BSD-YBM Admin",
+      "subtitle": "Subscriptions, users, and platform settings",
+      "refresh": "Refresh",
+      "backToWorkspace": "Back to workspace",
+      "fullAdmin": "Full admin",
+      "planToApprove": "Plan to approve",
+      "role": "Role",
+      "roleOrgAdmin": "Org admin",
+      "roleProjectMgr": "Project manager",
+      "roleEmployee": "Employee",
+      "broadcastTitle": "Notification title",
+      "broadcastBody": "Notification content for all active users",
+      "broadcastSend": "Send broadcast"
+    },
+    "confirm": {
+      "createdMailFailed": "Subscription created, but the email failed to send: {error}",
+      "createdMailFailedGeneric": "Subscription created, but sending the email failed — check RESEND_API_KEY or SMTP on Vercel",
+      "deleteOrg": "Delete the organization \"{name}\" and all its users and data? This cannot be undone.",
+      "deleteUser": "Delete the user {email}?",
+      "saveFailedFallback": "Save failed"
+    },
+    "orgs": {
+      "scansLine": "Cheap scans remaining: {cheap} · Premium scans: {premium}",
+      "industryLabel": "Industry",
+      "specialtyBusiness": "Business line",
+      "specialtyConstruction": "Construction specialty",
+      "tierLabel": "Subscription tier",
+      "statusLabel": "Status",
+      "statusACTIVE": "Active",
+      "statusINACTIVE": "Inactive",
+      "statusPENDING_APPROVAL": "Pending approval",
+      "statusTRIAL": "Trial",
+      "saveSubscription": "Save subscription",
+      "adjustTitle": "Adjust scan quota",
+      "cheapDelta": "Cheap scans change",
+      "premiumDelta": "Premium scans change",
+      "adjustScans": "Update quota",
+      "dangerTitle": "Danger zone",
+      "deleteConfirmPlaceholder": "Type \"{name}\" to confirm deletion",
+      "deleteOrg": "Delete organization",
+      "closeForm": "Close form",
+      "newOrg": "New organization",
+      "createTitle": "Create organization & admin",
+      "adminEmail": "Admin email",
+      "fullName": "Full name",
+      "orgName": "Organization name",
+      "vip": "VIP (no plan limit)",
+      "createButton": "Create organization",
+      "filterPlaceholder": "Search by name, email, industry…",
+      "countLabel": "{shown} of {total}",
+      "empty": "No organizations yet",
+      "noMatches": "No matching organizations",
+      "colOrg": "Organization",
+      "colEmail": "Email",
+      "colIndustry": "Industry",
+      "colSpecialty": "Specialty",
+      "colTier": "Plan",
+      "colStatus": "Status",
+      "selectPrompt": "Select an organization from the list to edit"
+    },
+    "settings": {
+      "title": "Platform settings",
+      "subtitle": "Maintenance, registration, trial and feature flags for the whole system",
+      "maintenanceOn": "Maintenance mode on",
+      "maintenanceOff": "System open to users",
+      "maintenanceOnHint": "Regular users cannot sign in — platform admins only",
+      "maintenanceOffHint": "Sign-in and use are available as usual",
+      "maintenanceMessageLabel": "Maintenance message",
+      "maintenanceMessagePlaceholder": "The system is under maintenance. Back soon…",
+      "accessTitle": "Access & registration",
+      "registrationOpen": "Registration open",
+      "registrationOpenHint": "When off — new accounts cannot be created from the site",
+      "industryLabel": "Default industry on registration",
+      "industryHint": "Shown as the default in the registration wizard",
+      "tradeLabel": "Default construction specialty",
+      "tradeHint": "Relevant when the industry is construction",
+      "trialTitle": "Trial period",
+      "trialDays": "Trial days",
+      "trialDaysHint": "Number of days for a new trial plan",
+      "trialScans": "Trial scans",
+      "trialScansHint": "Scan quota for a new organization on trial",
+      "flagsTitle": "Feature flags",
+      "flagsSubtitle": "Global toggles for advanced capabilities",
+      "flagMeckanoGlobal": "Meckano for all organizations",
+      "flagMeckanoGlobalHint": "Enables Meckano attendance even without per-org setup",
+      "flagGeminiLive": "Gemini Live",
+      "flagGeminiLiveHint": "Live voice conversations with Gemini in the workspace",
+      "flagAiChatLive": "AI chat defaults to Live",
+      "flagAiChatLiveHint": "Opens AI chat in Live mode by default",
+      "flagGeminiLiveAdvanced": "Advanced Gemini Live features",
+      "flagGeminiLiveAdvancedHint": "Advanced tools in Live chat (requires Gemini Live)",
+      "flagDriveSync": "Drive sync by default",
+      "flagDriveSyncHint": "Offers Google Drive connection for new organizations",
+      "flagKnowledgeVault": "Knowledge Vault",
+      "flagKnowledgeVaultHint": "Enables the Knowledge Vault area in the workspace",
+      "flagFieldCopilot": "Field Copilot",
+      "flagFieldCopilotHint": "Quick assistant for construction sites and field work",
+      "requiresGeminiLive": "Requires Gemini Live to be enabled first",
+      "unsaved": "You have unsaved changes",
+      "saving": "Saving…",
+      "save": "Save settings",
+      "automationsTitle": "Automations",
+      "automationsSubtitle": "Enable/disable automatic AI actions across the system",
+      "automationsSearch": "Search automation…",
+      "automationsEnableAll": "Enable all",
+      "automationsDisableAll": "Disable all",
+      "automationsCount": "{enabled} of {total} enabled",
+      "automationsEmpty": "No matching automations found"
+    },
+    "ideas": {
+      "statusPending": "Pending",
+      "statusApproved": "Approved",
+      "statusRejected": "Rejected",
+      "loadFailed": "Failed to load ideas",
+      "loadError": "Error loading ideas",
+      "title": "Community idea pool",
+      "subtitle": "Ideas subscribers chose to share — no org/user data",
+      "refresh": "Refresh",
+      "filterAll": "All",
+      "loading": "Loading ideas…",
+      "emptyAll": "No ideas right now",
+      "emptyFiltered": "No ideas with status \"{status}\" right now",
+      "toggleClose": "Close",
+      "toggleJson": "JSON",
+      "approve": "Approve",
+      "reject": "Reject",
+      "promote": "Promote to global template"
+    },
+    "users": {
+      "addTitle": "Add user to organization",
+      "email": "Email *",
+      "name": "Name",
+      "selectOrg": "Select organization *",
+      "roleOrgAdmin": "Org admin",
+      "roleProjectMgr": "Project manager",
+      "roleEmployee": "Employee",
+      "roleClient": "Client",
+      "sendCredentials": "Send login credentials by email",
+      "addButton": "Add user",
+      "listTitle": "User directory",
+      "filterPlaceholder": "Search by email, name, organization…",
+      "countLabel": "{shown} of {total}",
+      "empty": "No users yet",
+      "noMatches": "No matching users found",
+      "colEmail": "Email",
+      "colOrg": "Organization",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "deleteUser": "Delete user",
+      "lookupTitle": "Quick lookup",
+      "lookupPlaceholder": "Email to search",
+      "lookupButton": "Search",
+      "lookupDelete": "Delete this user",
+      "lookupNotFound": "User not found"
+    },
+    "tierPricing": {
+      "title": "Subscription pricing",
+      "description": "The price here is what a customer is actually charged — the signup wizard shows it and the PayPal order is created from it.",
+      "colTier": "Tier",
+      "colPrice": "Monthly price",
+      "colDefault": "Built-in default",
+      "colAllowance": "Allowances (standard / premium)",
+      "companies": "companies:",
+      "overridden": "overridden",
+      "clearHint": "An empty field clears the override and falls back to the built-in default.",
+      "save": "Save prices",
+      "reload": "Reload",
+      "saved": "Prices saved",
+      "loading": "Loading pricing…",
+      "invalidPrice": "Invalid price"
+    }
   },
   "professions": {
     "GENERAL": {
@@ -924,28 +1473,35 @@
       "document": "Document",
       "inventory": "Inventory"
     },
-    "LAWYER": {
+    "LEGAL": {
       "label": "Law Firm",
       "client": "Client / Represented",
       "project": "Legal Case",
       "document": "Legal Filing",
       "inventory": "Library"
     },
-    "ACCOUNTANT": {
+    "ACCOUNTING": {
       "label": "Accounting / Tax",
       "client": "Taxpayer / Client",
       "project": "Audit / Report",
       "document": "Accounting Doc",
       "inventory": "Archive"
     },
-    "CONTRACTOR": {
+    "CONSTRUCTION": {
       "label": "Contracting / Construction",
       "client": "Developer / Client",
       "project": "Worksite / Project",
       "document": "Bill of Quantities",
       "inventory": "Equipment"
     },
-    "HEALTH": {
+    "COMPANY_MGMT": {
+      "label": "Business / Company Management",
+      "client": "Client / Business Partner",
+      "project": "Initiative / Project",
+      "document": "Document / Contract / Proposal",
+      "inventory": "Inventory / Procurement"
+    },
+    "MEDICAL": {
       "label": "Health / Clinic",
       "client": "Patient",
       "project": "Treatment Series",
@@ -966,6 +1522,34 @@
       "document": "Contract / Deed",
       "inventory": "Listings"
     }
+  },
+  "pwaInstall": {
+    "ariaLabel": "Install app",
+    "title": "Install BSD-YBM OS",
+    "close": "Close",
+    "ios": "In Safari: Share → “Add to Home Screen” for a full app experience.",
+    "androidChromeOffered": "Use “Install app” in the address bar. If Play Protect blocks it — update Chrome from the Play Store, install from www.bsd-ybm.co.il, then “Install anyway”.",
+    "androidChrome": "In Chrome (⋮) choose “Install app”. If Play Protect warns — update Chrome and install from www.bsd-ybm.co.il.",
+    "nativeOffered": "Your browser offers installation — use the install icon in the address bar or menu (⋮).",
+    "default": "For a smooth install without Play Protect warnings, use an up-to-date Chrome. In other browsers (Samsung Internet, etc.) choose “Add to Home Screen”."
+  },
+  "accountantPortal": {
+    "title": "Accountant portal",
+    "subtitle": "Read-only access and export",
+    "signOut": "Sign out",
+    "exportSection": "Accounting export",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "format": "Format",
+    "defaultFormat": "Uniform structure (BKMVDATA)",
+    "exportButton": "Export and download",
+    "loadFailed": "Failed to load data",
+    "exportFailed": "Export failed",
+    "exportSuccess": "Export downloaded",
+    "documentsTitle": "Issued documents",
+    "noDocuments": "No documents.",
+    "expensesTitle": "Expenses",
+    "noExpenses": "No expenses."
   },
   "siteFeedback": {
     "fabLabel": "Feedback",
@@ -994,5 +1578,12 @@
     "createClientFailed": "Failed to create client",
     "clientAdded": "New client added to CRM",
     "createClientError": "Error creating client"
+  },
+  "subscriptionTierLabels": {
+    "FREE": "Free (trial)",
+    "HOUSEHOLD": "Household",
+    "DEALER": "Licensed dealer",
+    "COMPANY": "Company",
+    "CORPORATE": "Corporate"
   }
 }

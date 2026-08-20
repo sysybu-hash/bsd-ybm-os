@@ -1,25 +1,42 @@
 # Backlog — קבצים ≥300 שורות
 
-עדכון: 2026-06-04 — `npm run lib:line-count`
+עדכון: 2026-08-14 — `npm run lib:line-count` אחרי פיצול P4
 
-**P0 הושלם:** `lib/pdf/product-brochure-v2-html.ts` → `product-brochure-v2-data.ts` + `product-brochure-v2-assets.ts` + `product-brochure-v2-styles.ts` + `product-brochure-v2-sections.ts` (224 שורות builder).
+**P4 (2026-08-14):** logic count 30 → **24** (יעד &lt;25 הושג)
 
-**P1 (2026-06-07):** `tri-engine-types`, `tri-engine-parse`, `tri-engine-extract-validated`, `tri-engine-extract-providers`, `tri-engine-extract-helpers`, `user-launcher-config.layout`.
+| לפני | אחרי | פעולה |
+|------|------|--------|
+| 374 | 159 + 218 | `ai-providers.ts` → `ai-provider-models.ts` (קטלוג מודלים ושרשראות fallback) |
+| 392 | 78 + 95 + 116 + 125 | `quick-grid.ts` → `-metrics` / `-slots` / `-edit` (barrel עם re-export) |
+| 391 | 268 + 152 | `os-automations/registry.ts` → `registry-api-actions.ts` (מטפלים מבוססי API) |
+| 346 | 246 + 117 | `scan/tri-engine-api-common.ts` → `tri-engine-persist-erp.ts` |
+| 333 | 266 + 80 | `workspace/load-commercial-hub.ts` → `commercial-hub-types.ts` |
+| 315 | 163 + 169 | `professions/runtime.ts` → `industry-profiles.ts` (טבלת פרופילי ענפים) |
+
+כל הפיצולים הם חילוץ טהור עם `export *` / re-export — ללא שינוי התנהגות; `npm run verify` ירוק.
+
+**P3 (2026-08-12):**
+
+| לפני | אחרי | פעולה |
+|------|------|--------|
+| ~439 | ~420 | `useCrmTable.ts` → `useCrmGoogleImport.ts` (Google Contacts helpers) |
+
+**יעד הבא:** `useCrmTable` (456), `useAppBuilder` (400), `ProgressBillPortalPanel` (385) — הוקים מונוליטיים.
+
+**bulk OK (מוחרג מ-logic count):** `lib/help-center/content.*.ts`, `lib/i18n/keys.ts`, `lib/construction-trades-patches.ts`, `lib/pdf/product-brochure-v2-styles.ts`, `lib/pdf/brochure-styles/*`, `lib/pdf/product-brochure-html.ts`, `lib/pdf/marketing-onepager-html.ts`, `lib/pdf/system-specification-html.ts`, `lib/pdf/invoice-print-html.ts`.
+
+**logic ≥300 שנותרו (מתוך ספירה אחרונה):**
 
 | שורות | קובץ | שלב מוצע |
 |------|------|----------|
-| 883 | `lib/pdf/product-brochure-v2-styles.ts` | CSS bulk — OK |
-| 548 | `lib/tri-engine-extract.ts` | invoice path → `tri-engine-extract-invoice.ts` |
-| 548 | `lib/launcher/user-launcher-config.ts` | פיצול modules |
-| 512 | `lib/mail.ts` | `lib/mail/` |
-| 511 | `lib/tri-engine-extract.ts` | `lib/scan/` |
-| 465 | `lib/launcher/launcher-icons.ts` | registry נפרד |
-| 443 | `lib/ai-extract-docai.ts` | `lib/google/` |
-| 438 | `lib/i18n/keys.ts` | generated / OK |
-| 426 | `components/.../ClientProjectStep.tsx` | parts |
-| 425–410 | `lib/help-center/content.*.ts` | locale bulk OK |
-| 422 | `lib/tri-engine-api-common.ts` | `lib/scan/` |
-| 415 | `lib/auth.ts` | `lib/auth/` |
-| 404 | `lib/workspace/window-layout-policy.ts` | workspace |
+| 392 | `lib/launcher/quick-grid.ts` | layout |
+| 391 | `lib/os-automations/registry.ts` | registry split |
+| 385 | `ProgressBillPortalPanel.tsx` | portal sections |
+| 350 | `lib/projects/blueprint-analyze.ts` | instruction extract |
+| 346 | `lib/ai-chat.ts` / `tri-engine-api-common` | scan/ai split |
 
-יעד: אף קובץ לוגיקה >300 (מלבד locale keys ו-generated).
+---
+
+**P2 (2026-07-15):** `useScanQueue`, `tri-engine-extract`, `product-brochure-v2-styles`, `blueprint-excel`, `launcher-icons` — ראה היסטוריית P2 בקומיטים קודמים.
+
+**P0:** TakeoffModule, ProjectBoqPanel, BlueprintPreviewModal, ProjectBoardWidget, OmniCanvasWorkspace — הושלם 2026-07-05.

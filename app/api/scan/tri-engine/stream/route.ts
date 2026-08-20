@@ -14,10 +14,11 @@ import {
   triEngineNdjsonErrorResponse,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-api-common";
-import { classifyScanDocumentHeuristic, isExplicitClientScanMode } from "@/lib/scan-classify";
+import { classifyScanDocumentHeuristic, shouldAutoClassifyDocumentType } from "@/lib/scan-classify";
 import { classifyScanDocumentByContent } from "@/lib/scan-classify-ai";
 import { resolveTriEnginePlan } from "@/lib/scan-engine-router";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkAiServicesAvailable } from "@/lib/ai-kill-switch";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("scan-tri-engine-stream");
@@ -27,6 +28,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
+  const aiGate = checkAiServicesAvailable();
+  if (!aiGate.ok) {
+    return triEngineNdjsonErrorResponse(503, { error: aiGate.message, code: aiGate.code });
+  }
+
   const userRow = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true },
@@ -79,7 +85,13 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   let engineRunMode = parsed.engineRunMode;
   let resolvedClassification = null as Awaited<ReturnType<typeof classifyScanDocumentByContent>>;
 
-  if (engineRunMode === "AUTO" && !isExplicitClientScanMode(parsed.scanMode)) {
+  if (
+    shouldAutoClassifyDocumentType({
+      scanMode: parsed.scanMode,
+      engineRunMode,
+      docTypeAutoDetect: parsed.docTypeAutoDetect,
+    })
+  ) {
     const mime = parsed.file.type || "application/octet-stream";
     const heuristic = classifyScanDocumentHeuristic({
       fileName: parsed.file.name,
@@ -129,6 +141,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
     parsed.openAiModel,
     engineRunMode,
     parsed.userInstruction,
+    !gate.downgraded,
   );
 
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -141,9 +154,9 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
 
   (async () => {
     try {
-      await writeLine({ type: "start", usageWarnings: gate.usageWarnings });
+      await writeLine({ type: "start", usageWarnings: gate.usageWarnings, downgraded: gate.downgraded });
 
-      if (parsed.engineRunMode === "AUTO" && resolvedClassification) {
+      if (resolvedClassification && (parsed.docTypeAutoDetect || parsed.engineRunMode === "AUTO")) {
         const plan = resolveTriEnginePlan(resolvedClassification.scanMode, "AUTO");
         await writeLine({
           type: "classification",
@@ -159,6 +172,7 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
 
       const { v5, telemetry, validation } = await runTriEngineExtractionValidated({
         ...input,
+        customEngines: parsed.customEngines,
         onProgress: async (e: TriEngineProgressEvent) => {
           await writeLine(e);
         },

@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { OsButton } from "@/components/os/ui";
 
 type Format = "bkmvdata" | "priority" | "hashavshevet";
 
 export default function AccountingExportPanel() {
+  const { t } = useI18n();
+
   const [formats, setFormats] = useState<Format[]>([]);
   const [format, setFormat] = useState<Format>("bkmvdata");
   const [loading, setLoading] = useState(false);
@@ -43,7 +47,7 @@ export default function AccountingExportPanel() {
       });
       if (!res.ok) {
         const j = (await res.json()) as { error?: string };
-        toast.error(j.error ?? "שגיאה בייצוא");
+        toast.error(j.error ?? t("workspaceWidgets.accountingExport.exportError"));
         return;
       }
       const blob = await res.blob();
@@ -56,23 +60,23 @@ export default function AccountingExportPanel() {
       a.download = fileName;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("קובץ ייצוא הורד");
+      toast.success(t("workspaceWidgets.accountingExport.downloaded"));
     } catch {
-      toast.error("שגיאת רשת");
+      toast.error(t("workspaceWidgets.accountingExport.networkError"));
     } finally {
       setLoading(false);
     }
   };
 
   const labels: Record<Format, string> = {
-    bkmvdata: "מבנה אחיד (מע״מ)",
+    bkmvdata: t("workspaceWidgets.accountingExport.formatBkmvdata"),
     priority: "Priority (CSV)",
-    hashavshevet: "חשבשבת (CSV)",
+    hashavshevet: t("workspaceWidgets.accountingExport.formatHashavshevet"),
   };
 
   return (
     <div className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 p-3 space-y-2">
-      <p className="text-xs font-bold">ייצוא לחשבונאות (ישראל)</p>
+      <p className="text-xs font-bold">{t("workspaceWidgets.accountingExport.title")}</p>
       <select
         value={format}
         onChange={(e) => setFormat(e.target.value as Format)}
@@ -84,15 +88,15 @@ export default function AccountingExportPanel() {
           </option>
         ))}
       </select>
-      <button
-        type="button"
-        disabled={loading}
+      <OsButton
+        variant="primary"
+        className="w-full justify-center"
+        loading={loading}
+        icon={<Download size={14} aria-hidden />}
         onClick={() => void download()}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-700 py-2 text-xs font-bold text-white disabled:opacity-50"
       >
-        {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-        הורד ייצוא (חודש אחרון)
-      </button>
+        {t("workspaceWidgets.accountingExport.download")}
+      </OsButton>
     </div>
   );
 }

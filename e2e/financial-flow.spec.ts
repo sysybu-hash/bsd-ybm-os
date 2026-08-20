@@ -101,8 +101,9 @@ test.describe("Webhook security", () => {
       data: { event_type: "PAYMENT.CAPTURE.COMPLETED" },
       headers: { "content-type": "application/json" },
     });
-    // Without valid PayPal verification headers, expect rejection
-    expect([400, 401, 500]).toContain(res.status());
+    // Without valid PayPal verification headers, expect rejection.
+    // 503 = PayPal env not configured (CI / local without secrets).
+    expect([400, 401, 500, 503]).toContain(res.status());
     expect(res.status()).not.toBe(200);
   });
 });

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton } from "@/components/os/ui";
 import { BUSINESS_PAYMENT_MILESTONE_PRESETS } from "@/lib/project-payment-milestones";
 import type { DashboardData } from "./types";
 import { formatMilestoneLabel } from "./utils";
@@ -44,9 +45,10 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
       {isCompanyMgmt && data.milestones.length === 0 ? (
         <div className="mb-2 rounded-lg border border-dashed border-[color:var(--border-main)] p-3 text-xs text-[color:var(--foreground-muted)]">
           <p>{t("projectDashboard.milestonesEmptyBusiness")}</p>
-          <button
-            type="button"
-            className="mt-2 rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+          <OsButton
+            variant="primary"
+            size="sm"
+            className="mt-2"
             onClick={async () => {
               const existing = new Set(data.milestones.map((m) => m.name.trim()));
               for (const preset of BUSINESS_PAYMENT_MILESTONE_PRESETS) {
@@ -62,7 +64,7 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
             }}
           >
             {t("projectDashboard.applyBusinessMilestones")}
-          </button>
+          </OsButton>
         </div>
       ) : null}
       <ul className="space-y-1 text-xs">
@@ -99,7 +101,7 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
           type="number"
           min={0}
           max={100}
-          placeholder="אחוז (0–100)"
+          placeholder={t("projectDashboard.percentPlaceholder")}
           value={milestonePercent}
           onChange={(e) => setMilestonePercent(e.target.value)}
         />
@@ -110,9 +112,10 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
           value={milestoneAmount}
           onChange={(e) => setMilestoneAmount(e.target.value)}
         />
-        <button
-          type="button"
-          className="rounded-lg bg-indigo-600 px-2 py-1 text-xs text-white"
+        <OsButton
+          variant="primary"
+          size="sm"
+          icon={<Plus size={14} aria-hidden />}
           onClick={async () => {
             if (!milestoneName) return;
             const pct = milestonePercent ? Number(milestonePercent) : undefined;
@@ -133,8 +136,8 @@ export function FinancialMilestonesSection({ data, apiBase, isCompanyMgmt, refre
             await refresh();
           }}
         >
-          <Plus size={14} className="inline" /> {t("projectDashboard.add")}
-        </button>
+          {t("projectDashboard.add")}
+        </OsButton>
       </div>
     </section>
   );

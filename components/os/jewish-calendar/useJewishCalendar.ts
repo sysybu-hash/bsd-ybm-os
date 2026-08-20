@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DaySnapshot } from "@/lib/jewish-calendar/types";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { useJewishCalendarLocation } from "./useJewishCalendarLocation";
 
 const ISRAEL_TZ = "Asia/Jerusalem";
@@ -32,6 +34,12 @@ export function useJewishCalendar() {
   const { ready: locReady, locationHint, suggestLocationPicker, locationLabel, setCity, useMyLocation, dismissLocationHint, queryParams } =
     useJewishCalendarLocation();
   const [viewDate, setViewDate] = useState(() => israelDateIso());
+  const applyView = useCallback((view: WidgetViewState) => {
+    if (typeof view.viewDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(view.viewDate)) {
+      setViewDate(view.viewDate);
+    }
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyView);
   const [data, setData] = useState<DaySnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,9 +111,25 @@ export function useJewishCalendar() {
     return nextZman.minutesFromMidnight - nowMin;
   }, [nextZman, now]);
 
-  const goToday = useCallback(() => setViewDate(israelDateIso()), []);
-  const goPrev = useCallback(() => setViewDate((d) => shiftDateIso(d, -1)), []);
-  const goNext = useCallback(() => setViewDate((d) => shiftDateIso(d, 1)), []);
+  const goToday = useCallback(() => {
+    const d = israelDateIso();
+    setViewDate(d);
+    pushView({ viewDate: d });
+  }, [pushView]);
+  const goPrev = useCallback(() => {
+    setViewDate((prev) => {
+      const d = shiftDateIso(prev, -1);
+      queueMicrotask(() => pushView({ viewDate: d }));
+      return d;
+    });
+  }, [pushView]);
+  const goNext = useCallback(() => {
+    setViewDate((prev) => {
+      const d = shiftDateIso(prev, 1);
+      queueMicrotask(() => pushView({ viewDate: d }));
+      return d;
+    });
+  }, [pushView]);
 
   const formatZmanTime = useCallback((iso: string) => {
     return new Date(iso).toLocaleTimeString("he-IL", {

@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import { X } from "lucide-react";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { ProjectSubDomain } from "@/lib/project-sub-domains";
 import type { BoqLinePrefill } from "@/lib/project-document-catalog";
 import type { ProjectSubDomainId } from "@/lib/project-sub-domains";
@@ -26,6 +28,8 @@ export function GanttTaskForm({
   draft, setDraft, editingId, saving, linkTasks, projectSubDomains,
   boqLines, hideConstructionFeatures, labels, onSave, onCancel,
 }: GanttTaskFormProps) {
+  const { t } = useI18n();
+
   const set = <K extends keyof GanttTaskDraft>(key: K, val: GanttTaskDraft[K]) =>
     setDraft({ ...draft, [key]: val });
 
@@ -35,10 +39,9 @@ export function GanttTaskForm({
         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
           {editingId ? labels.editTask : labels.newTaskTitle}
         </p>
-        <button type="button" onClick={onCancel}
-          className="rounded-md p-1 text-[color:var(--foreground-muted)] hover:bg-[color:var(--border-main)] hover:text-[color:var(--foreground-main)]">
-          <X size={14} />
-        </button>
+        <OsIconButton label={labels.cancel} size="sm" onClick={onCancel}>
+          <X size={14} aria-hidden />
+        </OsIconButton>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -84,7 +87,7 @@ export function GanttTaskForm({
               value={draft.progress}
               onChange={(e) => set("progress", Number(e.target.value))} />
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-[color:var(--border-main)]">
-              <div className="h-full rounded-full bg-indigo-500 transition-all"
+              <div className="h-full rounded-full bg-[color:var(--win-accent,#6366f1)] transition-all"
                 style={{ width: `${Math.min(100, draft.progress)}%` }} />
             </div>
             <span className="text-[11px] tabular-nums text-[color:var(--foreground-muted)]">{draft.progress}%</span>
@@ -119,26 +122,23 @@ export function GanttTaskForm({
               <option key={t.id} value={t.id}>{t.title}</option>
             ))}
           </select>
-          <span className="text-[9px] text-[color:var(--foreground-muted)]">Ctrl + לחיצה לבחירה מרובה</span>
+          <span className="text-[9px] text-[color:var(--foreground-muted)]">{t("projectDashboard.ganttMultiSelectHint")}</span>
         </label>
       </div>
 
       <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={saving || !draft.title.trim()}
+        <OsButton
+          variant="primary"
+          className="min-h-[36px]"
+          disabled={!draft.title.trim()}
+          loading={saving}
           onClick={onSave}
-          className="min-h-[36px] rounded-lg bg-indigo-600 px-5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
         >
-          {saving ? "שומר…" : labels.save}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="min-h-[36px] rounded-lg border border-[color:var(--border-main)] px-4 text-xs text-[color:var(--foreground-muted)] transition-colors hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]"
-        >
+          {labels.save}
+        </OsButton>
+        <OsButton variant="secondary" className="min-h-[36px]" onClick={onCancel}>
           {labels.cancel}
-        </button>
+        </OsButton>
       </div>
     </div>
   );

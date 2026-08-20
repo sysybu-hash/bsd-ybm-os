@@ -1,6 +1,6 @@
 import type { WidgetType } from "@/hooks/use-window-manager";
 
-export type TabId = "financial" | "diary" | "gantt" | "ai" | "settings";
+export type TabId = "overview" | "tasks" | "financial" | "diary" | "gantt" | "ai" | "settings";
 
 export type DashboardData = {
   id: string;
@@ -49,6 +49,7 @@ export type DashboardData = {
     startDate: string | null;
     endDate: string | null;
     progress: number;
+    status?: string;
     dependencies: string | null;
     description?: string | null;
     linkedBoqLineId?: string | null;

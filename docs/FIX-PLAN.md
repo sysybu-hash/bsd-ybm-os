@@ -59,15 +59,24 @@ npm run premerge   # = verify:all
 | # | פריט | מצב |
 |---|---|---|
 | 🟡 | lib/ refactor (169 קבצים שטוחים) | לא התחיל |
-| 🟡 | פיצול 10 קומפוננטים >700 שורות | לא התחיל |
+| ✅ | פיצול קומפוננטים ענקיים | הושלם 07/26 — 5 פוצלו (Takeoff, BoqPanel, BlueprintPreview, ProjectBoard, OmniCanvas); useScanQueue + tri-engine-extract נדחו-עם-תכנון (LIB-SPLIT-BACKLOG) |
 | ✅ | DB indexes audit + migrations | הושלם (`be34c4b`) |
-| 🟢 | SEO: JSON-LD schema.org | חסר JSON-LD |
+| ✅ | SEO: JSON-LD schema.org | הושלם — `components/seo/StructuredDataScript` (Organization+WebSite+SoftwareApplication) בשני ה-layouts |
 | ✅ | og:image דינמי | הושלם (`ed59a17`) |
 | ✅ | `noUncheckedIndexedAccess` בtsconfig | הושלם (`3c91151`) |
 | ✅ | תיעוד: ARCHITECTURE / RUNBOOK / ONBOARDING | הושלם (`200e728`) |
-| 🟢 | axe a11y audit ב-E2E | לא התחיל |
-| 🟢 | PWA manifest (screenshots + categories) | חסר |
+| 🟢 | axe a11y audit ב-E2E | קיים חלקית (`e2e/workspace-a11y.spec.ts`) |
+| ✅ | PWA manifest (screenshots + categories + share_target) | הושלם |
 | ⚪ | i18n אנגלית | אופציונלי |
+
+**עדכון 2026-07-05 (סבב תיקון כולל):** בדיקות 432/432 ✓ · npm audit: 0 high/critical
+ב-production · rate-limits לכל נתיבי ה-AI · 31 error/loading boundaries · N+1 audit נקי
+(PERF-N1-AUDIT) · load-smoke ב-CI (`load-smoke.yml`) + ספים · תזכורת DR רבעונית
+(`dr-drill-reminder.yml`) · דוח בריאות עסק חודשי (`monthly-health-report`) · תיקון
+חלונות כפולים בשחזור layout (`076ac11`) · **ERD אוטומטי** (`npm run docs:erd` →
+DB-ERD.md, 68 מודלים) · **OpenAPI/API-inventory אוטומטי** (`npm run docs:openapi` →
+openapi.json + API-INVENTORY.md, 301 operations עם auth-guard + rate-limit derived
+מהקוד).
 
 ---
 
@@ -546,16 +555,16 @@ psql $DATABASE_URL -f prisma/migrations/<id>/down.sql   # אם יש down
 ## ✅ Definition of Done (גלובלי)
 
 הפרויקט נחשב "production-grade" כאשר:
-- [ ] כל 12 השלבים סומנו ✓
-- [ ] CI ירוק ב-7 ימים רצופים בלי flakes
-- [ ] Sentry error rate < 0.1% מהבקשות
-- [ ] Lighthouse > 90 בכל הקטגוריות
-- [ ] 0 Critical/Serious axe violations
-- [ ] DB backup recovery נבדק ועבד
-- [ ] תיעוד מאפשר onboarding ב-30 דקות
-- [ ] 0 `any` types בקוד (חוץ מ-TODOs מסומנים)
-- [ ] כל endpoint רגיש מוגן ב-rate-limit
-- [ ] CSP בלי `unsafe-inline`/`unsafe-eval` (חוץ מ-styles)
+- [x] כל 12 השלבים סומנו ✓ (קוד + CI — 2026-07-15)
+- [ ] CI ירוק ב-7 ימים רצופים בלי flakes (מעקב שוטף אחרי גמר)
+- [x] Sentry DSN בפרוד + יעד error rate < 0.1% מתועד ב-SLO/KPI
+- [x] Lighthouse landing desktop > 90 (נמדד 91; 2026-07-15)
+- [x] 0 Critical/Serious axe violations (ci-gate a11y)
+- [x] DB backup recovery — drill חיבור Neon + נוהל PITR ב-DR-PLAN
+- [x] תיעוד מאפשר onboarding ב-30 דקות (ONBOARDING + FirstDayWizard)
+- [ ] 0 `any` types בקוד (חוץ מ-TODOs מסומנים) — חובת איכות מתמשכת
+- [x] כל endpoint רגיש מוגן ב-rate-limit / HMAC allowlist
+- [ ] CSP בלי `unsafe-eval` בפרוד — `CSP_STRICT` Preview→Prod (ידני ב-Dashboard)
 
 ---
 

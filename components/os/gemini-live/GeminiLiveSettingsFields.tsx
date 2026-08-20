@@ -32,7 +32,7 @@ export function ToggleRow({
       </span>
       <input
         type="checkbox"
-        className="mt-1 h-4 w-4 shrink-0 rounded border-[color:var(--border-main)] text-indigo-600 focus:ring-indigo-500/40"
+        className="mt-1 h-4 w-4 shrink-0 rounded border-[color:var(--border-main)] text-[color:var(--win-accent,#6366f1)] focus:ring-indigo-500/40"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />

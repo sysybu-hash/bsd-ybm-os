@@ -1,25 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Plus, X } from "lucide-react";
 import { saveAppDataAction, listAppDataAction } from "@/app/actions/app-builder";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppBuilderCalendarUI } from "@/lib/validation/schemas/app-builder";
 
 type Props = { schema: AppBuilderCalendarUI; schemaId?: string };
 
 type CalEvent = {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   title: string;
   data: Record<string, unknown>;
 };
 
-const DAYS_HE = ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"];
-const MONTHS_HE = [
-  "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
-  "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
-];
+const PREFIX = "workspaceWidgets.appBuilder.dynamicCalendar";
 
 const hebrewDayFmt = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", { day: "numeric" });
 const hebrewMonthFmt = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", { month: "long", year: "numeric" });
@@ -39,12 +36,22 @@ function toYMD(d: Date): string {
 }
 
 export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
+  const { t, locale } = useI18n();
   const dateField = schema.eventFields.find((f) => f.isDate);
   const titleField = schema.eventFields.find((f) => !f.isDate);
 
+  const dayLabels = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => t(`${PREFIX}.days.${i}`)),
+    [t],
+  );
+  const monthLabels = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => t(`${PREFIX}.months.${i}`)),
+    [t],
+  );
+
   const [today] = useState(() => new Date());
   const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -62,7 +69,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
           .map((r) => {
             const d = r.data as Record<string, unknown>;
             const rawDate = dateField ? String(d[dateField.name] ?? "") : "";
-            const title = titleField ? String(d[titleField.name] ?? "אירוע") : "אירוע";
+            const title = titleField ? String(d[titleField.name] ?? t(`${PREFIX}.defaultEvent`)) : t(`${PREFIX}.defaultEvent`);
             return { id: r.id, date: rawDate.slice(0, 10), title, data: d };
           })
           .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
@@ -71,19 +78,17 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [schemaId, dateField, titleField]);
+  }, [schemaId, dateField, titleField, t]);
 
   useEffect(() => { void loadEvents(); }, [loadEvents]);
 
-  // Build month grid (Sun-Sat)
   const firstDay = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const startDow = firstDay.getDay(); // 0=Sun
+  const startDow = firstDay.getDay();
   const cells: (number | null)[] = [
     ...Array(startDow).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
-  // pad to full weeks
   while (cells.length % 7 !== 0) cells.push(null);
 
   const eventsOnDay = (day: number) => {
@@ -112,7 +117,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
   };
 
   const handleSave = async () => {
-    if (!schemaId) { toast.error("שמרו את האפליקציה תחילה"); return; }
+    if (!schemaId) { toast.error(t(`${PREFIX}.saveAppFirst`)); return; }
     setSaving(true);
     try {
       const formData: Record<string, unknown> = {};
@@ -121,9 +126,9 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
       if (res.ok) {
         await loadEvents();
         setShowForm(false);
-        toast.success("אירוע נוסף ✓");
+        toast.success(t(`${PREFIX}.eventAdded`));
       } else {
-        toast.error(res.error ?? "שמירה נכשלה");
+        toast.error(res.error ?? t(`${PREFIX}.saveFailed`));
       }
     } finally {
       setSaving(false);
@@ -134,7 +139,6 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-[color:var(--foreground-main)]">{schema.title}</h2>
         <div className="flex items-center gap-1">
@@ -142,32 +146,31 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
             <ChevronRight size={14} aria-hidden />
           </button>
           <span className="min-w-[7rem] text-center text-sm font-semibold text-[color:var(--foreground-main)]">
-            {MONTHS_HE[viewMonth]} {viewYear}
+            {monthLabels[viewMonth]} {viewYear}
           </span>
           <button type="button" onClick={nextMonth} className="workspace-chrome-btn inline-flex">
             <ChevronLeft size={14} aria-hidden />
           </button>
           {loading && <Loader2 size={12} className="animate-spin text-[color:var(--foreground-muted)]" />}
         </div>
-        {/* Hebrew month name */}
-        <p className="text-[10px] text-[color:var(--foreground-muted)] text-end pe-1">
-          {hebrewMonthYear(viewYear, viewMonth)}
-        </p>
+        {locale === "he" ? (
+          <p className="text-[10px] text-[color:var(--foreground-muted)] text-end pe-1">
+            {hebrewMonthYear(viewYear, viewMonth)}
+          </p>
+        ) : null}
       </div>
 
-      {/* Day headers */}
       <div className="grid grid-cols-7 text-center text-[10px] font-bold text-[color:var(--foreground-muted)]">
-        {DAYS_HE.map((d) => <div key={d}>{d}</div>)}
+        {dayLabels.map((d) => <div key={d}>{d}</div>)}
       </div>
 
-      {/* Calendar grid — min-h adapts to screen: taller cells on larger screens */}
       <div className="grid content-start grid-cols-7 gap-px overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--border-main)]">
         {cells.map((day, i) => {
           if (!day) return <div key={i} className="min-h-[44px] sm:min-h-[56px] bg-[color:var(--background-main)]/60 p-0.5 sm:p-1" />;
           const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayEvents = eventsOnDay(day);
           const isToday = ymd === todayYMD;
-          const hebDay = toHebrewDay(viewYear, viewMonth, day);
+          const hebDay = locale === "he" ? toHebrewDay(viewYear, viewMonth, day) : "";
           return (
             <button
               key={i}
@@ -210,7 +213,6 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
         })}
       </div>
 
-      {/* Add event modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowForm(false)}>
           <div
@@ -219,7 +221,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
           >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold text-[color:var(--foreground-main)]">
-                הוסף אירוע — {selectedDay}
+                {t(`${PREFIX}.addEventTitle`).replace("{date}", selectedDay ?? "")}
               </h3>
               <button type="button" onClick={() => setShowForm(false)} className="workspace-chrome-btn inline-flex">
                 <X size={14} />
@@ -238,7 +240,7 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
                       onChange={(e) => setForm((p) => ({ ...p, [f.name]: e.target.value }))}
                       className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
                     >
-                      <option value="">בחר…</option>
+                      <option value="">{t(`${PREFIX}.selectOption`)}</option>
                       {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : (
@@ -258,14 +260,14 @@ export default function DynamicCalendarRenderer({ schema, schemaId }: Props) {
               disabled={saving}
               className="mt-4 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white disabled:opacity-60"
             >
-              {saving ? "שומר…" : "הוסף אירוע"}
+              {saving ? t(`${PREFIX}.saving`) : t(`${PREFIX}.addEvent`)}
             </button>
           </div>
         </div>
       )}
 
       {!schemaId && (
-        <p className="text-xs text-[color:var(--foreground-muted)]">שמרו את האפליקציה כדי להתחיל להוסיף אירועים</p>
+        <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${PREFIX}.saveAppHint`)}</p>
       )}
     </div>
   );

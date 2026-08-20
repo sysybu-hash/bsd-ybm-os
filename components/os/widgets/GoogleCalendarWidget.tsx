@@ -117,14 +117,14 @@ export default function GoogleCalendarWidget({ openWorkspaceWidget }: GoogleCale
         <div className="gcal-no-print flex shrink-0 items-center gap-2 border-b border-blue-400/20 bg-blue-50/60 px-3 py-2 text-xs dark:bg-blue-900/10">
           <span className="shrink-0 text-blue-600 dark:text-blue-400">📅</span>
           <span className="flex-1 text-blue-800 dark:text-blue-300">
-            מציג משימות ופרויקטים בלבד. לסנכרון עם Google Calendar —
+            {t("workspaceWidgets.googleCalendar.tasksOnlyHint")}
           </span>
           <button
             type="button"
             onClick={() => openWorkspaceWidget?.("settings", { tab: "calendar" })}
             className="shrink-0 rounded-lg bg-blue-600 px-2 py-1 font-bold text-white hover:bg-blue-500"
           >
-            חבר
+            {t("workspaceWidgets.googleCalendar.connect")}
           </button>
         </div>
       )}

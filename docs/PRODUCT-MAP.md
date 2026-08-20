@@ -1,6 +1,6 @@
 # מפת מוצר — BSD-YBM OS (מרחב עבודה)
 
-> עדכון: 2026-05-25 · Launcher v2 + Hub widgets
+> עדכון: 2026-07-15 · Launcher v2 + Hub widgets + Onboarding v2 + Growth/KV/Phase 3–4
 
 ## אריחי מרכז (Quick Grid — ברירת מחדל)
 
@@ -60,8 +60,24 @@
 - ניתן להוסיף **Google Drive** וכל ווידג'ט מ-[`lib/os-assistant/widget-catalog.ts`](../lib/os-assistant/widget-catalog.ts).
 - מפתח שמירה: `bsd_ybm_launcher_v2` (גרסה 1 לא ממוזגת אוטומטית — משתמשים עם פריסה ישנה מקבלים ברירת מחדל 6 Hub).
 
+## משטחי צמיחה ו-Phase 3–4 (2026-07)
+
+| משטח | נתיב / API |
+|------|------------|
+| Blog / Contact / Leads | `/blog`, `/contact`, lifecycle cron |
+| Knowledge Vault | חיפוש סמנטי + `KnowledgeVaultPicker` |
+| BOQ agent / Accounting export | API + E2E smoke |
+| COMPANY_MGMT | מצב ניהול עסק — ראה `company-management-mode.md` |
+
+## Onboarding
+
+- `FirstDayWizard` — 5 שלבים (login → finance → scan → drive → fieldCopilot)
+- `LauncherV2MigrationBanner` — באנר מיגרציה ל-launcher v2
+
 ## קישורים לתיעוד
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [ONBOARDING.md](./ONBOARDING.md) — מיגרציות DB, env
 - [RUNBOOK.md](./RUNBOOK.md)
+- [LAUNCH-CHECKLIST.md](./LAUNCH-CHECKLIST.md)
+- [KPI-SIGNOFF.md](./KPI-SIGNOFF.md)

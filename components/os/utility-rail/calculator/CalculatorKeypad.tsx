@@ -37,7 +37,7 @@ const BASIC_KEYS: KeyDef[][] = [
     { label: "±", value: "±" },
     { label: "0", value: "0" },
     { label: ".", value: "." },
-    { label: "=", value: "=", className: "bg-indigo-600 text-white hover:bg-indigo-500" },
+    { label: "=", value: "=", className: "bg-[color:var(--win-accent,#6366f1)] text-white hover:opacity-90" },
   ],
 ];
 

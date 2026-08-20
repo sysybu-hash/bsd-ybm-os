@@ -1,23 +1,64 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, Loader2, RefreshCw, Shield } from "lucide-react";
-import { ADMIN_SUBSCRIPTION_TIER_OPTIONS, tierLabelHe } from "@/lib/subscription-tier-config";
-import { normalizeIndustryType, industryLabelHe } from "@/lib/professions/config";
+import { Loader2, RefreshCw, Shield } from "lucide-react";
+import { ADMIN_SUBSCRIPTION_TIER_OPTIONS } from "@/lib/subscription-tier-config";
+import { normalizeIndustryType } from "@/lib/professions/config";
 import { osFieldClassName } from "@/components/os/ui/os-field";
-import AdminAssistantTab from "@/components/admin/AdminAssistantTab";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { usePlatformAdmin } from "./platform-admin/usePlatformAdmin";
-import { SubscriptionsTab } from "./platform-admin/SubscriptionsTab";
-import { UsersTab } from "./platform-admin/UsersTab";
-import { SettingsTab } from "./platform-admin/SettingsTab";
-import { IdeasTab } from "./platform-admin/IdeasTab";
 import { TABS, type PlatformAdminConsoleProps, type TabId } from "./platform-admin/types";
 
+const tabLoading = () => (
+  <div className="flex items-center justify-center py-16 text-[color:var(--foreground-muted)]">
+    <Loader2 size={22} className="animate-spin" aria-hidden />
+  </div>
+);
+
+const AdminAssistantTab = dynamic(() => import("@/components/admin/AdminAssistantTab"), {
+  loading: tabLoading,
+});
+const SubscriptionsTab = dynamic(
+  () => import("./platform-admin/SubscriptionsTab").then((m) => ({ default: m.SubscriptionsTab })),
+  { loading: tabLoading },
+);
+const TierPricingPanel = dynamic(
+  () => import("./platform-admin/TierPricingPanel").then((m) => ({ default: m.TierPricingPanel })),
+  { loading: tabLoading },
+);
+const UsersTab = dynamic(
+  () => import("./platform-admin/UsersTab").then((m) => ({ default: m.UsersTab })),
+  { loading: tabLoading },
+);
+const SettingsTab = dynamic(
+  () => import("./platform-admin/SettingsTab").then((m) => ({ default: m.SettingsTab })),
+  { loading: tabLoading },
+);
+const IdeasTab = dynamic(
+  () => import("./platform-admin/IdeasTab").then((m) => ({ default: m.IdeasTab })),
+  { loading: tabLoading },
+);
+const HealthTab = dynamic(
+  () => import("./platform-admin/HealthTab").then((m) => ({ default: m.HealthTab })),
+  { loading: tabLoading },
+);
+const MailTab = dynamic(
+  () => import("./platform-admin/MailTab").then((m) => ({ default: m.MailTab })),
+  { loading: tabLoading },
+);
+const LoginLogTab = dynamic(
+  () => import("./platform-admin/LoginLogTab").then((m) => ({ default: m.LoginLogTab })),
+  { loading: tabLoading },
+);
+
 export default function PlatformAdminConsole({ variant = "page" }: PlatformAdminConsoleProps) {
-  const { t } = useI18n();
+  const { t, dir, locale } = useI18n();
   const p = usePlatformAdmin();
+  const tierLabel = (tier: string) => t(`subscriptionTierLabels.${tier}`);
+  const industryLabel = (id?: string | null) =>
+    t(`professions.${normalizeIndustryType(id)}.label`);
 
   const shellClass =
     variant === "page"
@@ -25,7 +66,7 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
       : "h-full flex flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]";
 
   return (
-    <div className={shellClass} dir="rtl">
+    <div className={shellClass} dir={dir}>
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border-main)] p-4">
         <div className="flex items-center gap-3">
@@ -33,8 +74,10 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             <Shield size={22} />
           </span>
           <div>
-            <h1 className="text-lg font-black">ניהול BSD-YBM</h1>
-            <p className="text-xs text-[color:var(--foreground-muted)]">מנויים, משתמשים והגדרות פלטפורמה</p>
+            <h1 className="text-lg font-black">{t("platformAdmin.console.title")}</h1>
+            <p className="text-xs text-[color:var(--foreground-muted)]">
+              {t("platformAdmin.console.subtitle")}
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -43,16 +86,20 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             onClick={() => void p.refreshAll()}
             className="flex items-center gap-2 rounded-xl border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold hover:bg-[color:var(--surface-soft)]"
           >
-            {p.loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            רענון
+            {p.loading ? (
+              <Loader2 size={14} className="animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw size={14} aria-hidden />
+            )}
+            {t("platformAdmin.console.refresh")}
           </button>
           {variant === "page" ? (
             <Link href="/" className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500">
-              חזרה למרחב העבודה
+              {t("platformAdmin.console.backToWorkspace")}
             </Link>
           ) : (
             <Link href="/app/admin" className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-xs font-bold hover:bg-[color:var(--surface-soft)]">
-              ניהול מלא
+              {t("platformAdmin.console.fullAdmin")}
             </Link>
           )}
         </div>
@@ -60,20 +107,20 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
 
       {/* ── Tab nav ────────────────────────────────────────────── */}
       <nav className="flex gap-1 overflow-x-auto border-b border-[color:var(--border-main)] px-2 py-2">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = p.tab === t.id;
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = p.tab === tab.id;
           return (
             <button
-              key={t.id}
+              key={tab.id}
               type="button"
-              onClick={() => p.selectTab(t.id)}
+              onClick={() => p.selectTab(tab.id)}
               className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
                 active ? "bg-blue-600 text-white" : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
               }`}
             >
               <Icon size={14} />
-              {t.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -81,6 +128,12 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
 
       {/* ── Content ────────────────────────────────────────────── */}
       <main className={`flex-1 overflow-y-auto p-4 ${variant === "widget" ? "min-h-0" : ""}`}>
+
+        {p.tab === "subscriptions" && (
+          <div className="mb-5">
+            <TierPricingPanel />
+          </div>
+        )}
 
         {p.tab === "subscriptions" && (
           <SubscriptionsTab
@@ -104,7 +157,6 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
             createIndustry={p.createIndustry} setCreateIndustry={p.setCreateIndustry}
             createConstructionTrade={p.createConstructionTrade} setCreateConstructionTrade={p.setCreateConstructionTrade}
             busyAction={p.busyAction}
-            platformConfig={p.platformConfig}
             onSaveSubscription={() => void p.handleSaveSubscription()}
             onAdjustScans={() => void p.handleAdjustScans()}
             onCreateOrg={() => void p.handleCreateOrg()}
@@ -116,17 +168,19 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3 rounded-xl border border-[color:var(--border-main)] p-3">
               <label className="text-xs font-bold">
-                תוכנית לאישור
+                {t("platformAdmin.console.planToApprove")}
                 <select value={p.approvePlan} onChange={(e) => p.setApprovePlan(e.target.value)} className={`mt-1 block ${osFieldClassName}`}>
-                  {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((t) => <option key={t} value={t}>{tierLabelHe(t)}</option>)}
+                  {ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => (
+                    <option key={tier} value={tier}>{tierLabel(tier)}</option>
+                  ))}
                 </select>
               </label>
               <label className="text-xs font-bold">
-                תפקיד
+                {t("platformAdmin.console.role")}
                 <select value={p.approveRole} onChange={(e) => p.setApproveRole(e.target.value)} className={`mt-1 block ${osFieldClassName}`}>
-                  <option value="ORG_ADMIN">מנהל ארגון</option>
-                  <option value="PROJECT_MGR">מנהל פרויקטים</option>
-                  <option value="EMPLOYEE">עובד</option>
+                  <option value="ORG_ADMIN">{t("platformAdmin.console.roleOrgAdmin")}</option>
+                  <option value="PROJECT_MGR">{t("platformAdmin.console.roleProjectMgr")}</option>
+                  <option value="EMPLOYEE">{t("platformAdmin.console.roleEmployee")}</option>
                 </select>
               </label>
             </div>
@@ -142,10 +196,10 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
                         {u.organizationName ?? t("platformAdmin.pending.noOrg")}
                         {u.organizationIndustry ? (
                           <span className="me-1 rounded bg-[color:var(--surface-soft)] px-1.5 py-0.5 font-bold">
-                            {industryLabelHe(u.organizationIndustry)}
+                            {industryLabel(u.organizationIndustry)}
                           </span>
                         ) : null}
-                        {" · "}{new Date(u.createdAt).toLocaleString("he-IL")}
+                        {" · "}{new Date(u.createdAt).toLocaleString(locale)}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -194,52 +248,42 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
         {p.tab === "broadcast" && (
           <div className="max-w-lg space-y-3">
             <input value={p.broadcastTitle} onChange={(e) => p.setBroadcastTitle(e.target.value)}
-              placeholder="כותרת התראה" className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
+              placeholder={t("platformAdmin.console.broadcastTitle")}
+              className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
             <textarea value={p.broadcastBody} onChange={(e) => p.setBroadcastBody(e.target.value)}
-              placeholder="תוכן ההתראה לכל המשתמשים הפעילים" rows={6}
+              placeholder={t("platformAdmin.console.broadcastBody")} rows={6}
               className="w-full rounded-xl border border-[color:var(--border-main)] p-3 text-sm" />
             <button type="button" onClick={() => void p.handleBroadcast()}
-              className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">
-              שלח שידור
+              disabled={!p.broadcastTitle.trim() || !p.broadcastBody.trim()}
+              className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+              {t("platformAdmin.console.broadcastSend")}
             </button>
           </div>
         )}
 
+        {p.tab === "logins" && <LoginLogTab />}
+
         {p.tab === "health" && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => void p.loadHealth()}
-                className="rounded-xl border border-[color:var(--border-main)] px-4 py-2 text-sm font-bold">
-                רענן בדיקה
-              </button>
-              <button type="button" disabled={p.testingEmail} onClick={() => void p.handleTestEmail()}
-                className="rounded-xl bg-[color:var(--accent)] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-                {p.testingEmail ? "שולח…" : "שלח מייל בדיקה"}
-              </button>
-            </div>
-            {p.health?.statuses?.map((s) => (
-              <div key={s.name} className={`rounded-xl border p-3 ${s.ok ? "border-emerald-500/30" : "border-rose-500/40"}`}>
-                <p className="font-bold">{s.name}</p>
-                <p className="text-xs text-[color:var(--foreground-muted)]">{s.detail}</p>
-              </div>
-            ))}
-            {p.envStatus ? (
-              <div className="rounded-xl border border-[color:var(--border-main)] p-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                  <Activity size={12} className="me-1 inline" />
-                  משתני סביבה
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {Object.entries(p.envStatus).map(([k, v]) => (
-                    <li key={k} className="flex justify-between">
-                      <span>{k}</span>
-                      <span className={v ? "text-emerald-600" : "text-rose-500"}>{v ? "מוגדר" : "חסר"}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
+          <HealthTab
+            health={p.health}
+            loading={p.healthLoading}
+            testingEmail={p.testingEmail}
+            selfHealBusy={p.selfHealBusy}
+            onRefresh={() => void p.loadHealth()}
+            onTestEmail={() => void p.handleTestEmail()}
+            onSelfHealDryRun={() => void p.handleSelfHealDryRun()}
+          />
+        )}
+
+        {p.tab === "mail" && p.platformConfig && (
+          <MailTab
+            platformConfig={p.platformConfig}
+            setPlatformConfig={p.setPlatformConfig}
+            savingSettings={p.savingSettings}
+            onSave={() => void p.savePlatformSettings()}
+            testingEmail={p.testingEmail}
+            onTestEmail={() => void p.handleTestEmail()}
+          />
         )}
 
         {p.tab === "ideas" && <IdeasTab />}

@@ -8,11 +8,14 @@ import type { ProjectListItem } from "@/components/os/widgets/shared/ProjectPick
 type UseProjectPickerOptions = {
   initialProjectId?: string;
   listErrorKey?: string;
+  /** כש-true — לא מציג בוחר פרויקט גם בלי projectId (למשל הוצאות משרד) */
+  skipProjectPicker?: boolean;
 };
 
 export function useProjectPicker({
   initialProjectId = "",
   listErrorKey = "workspaceWidgets.projectPicker.loadFailed",
+  skipProjectPicker = false,
 }: UseProjectPickerOptions = {}) {
   const { t } = useI18n();
   const [resolvedProjectId, setResolvedProjectId] = useState(initialProjectId);
@@ -71,7 +74,7 @@ export function useProjectPicker({
     void loadProjectsList();
   }, [loadProjectsList]);
 
-  const showProjectPicker = !resolvedProjectId;
+  const showProjectPicker = !skipProjectPicker && !resolvedProjectId;
 
   return {
     resolvedProjectId,

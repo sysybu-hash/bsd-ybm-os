@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dismissCookieBannerIfVisible, tryCredentialsSignIn } from "./helpers";
+import {
+  dismissCookieBannerIfVisible,
+  dismissWorkspaceOverlays,
+  tryCredentialsSignIn,
+  waitForAuthenticatedWorkspace,
+} from "./helpers";
 
 test.describe("Workspace automations", () => {
   test.beforeEach(async ({ context, baseURL }) => {
@@ -8,6 +13,8 @@ test.describe("Workspace automations", () => {
   });
 
   async function openOmnibar(page: Page) {
+    await waitForAuthenticatedWorkspace(page);
+    await dismissWorkspaceOverlays(page);
     await dismissCookieBannerIfVisible(page);
     const omnibar = page.getByRole("textbox", { name: /חיפוש|פקודה|command/i }).first();
     if (!(await omnibar.isVisible().catch(() => false))) return null;
@@ -18,6 +25,7 @@ test.describe("Workspace automations", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ");
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     const omnibar = await openOmnibar(page);
     if (!omnibar) {
       test.skip(true, "אין Omnibar גלוי");
@@ -32,6 +40,7 @@ test.describe("Workspace automations", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ");
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     const omnibar = await openOmnibar(page);
     if (!omnibar) {
       test.skip(true, "אין Omnibar");
@@ -49,6 +58,7 @@ test.describe("Workspace automations", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ");
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     await dismissCookieBannerIfVisible(page);
     const aiNav = page.getByRole("button", { name: /עוזר AI|AI assistant|AI-ассистент/i }).first();
     if (!(await aiNav.isVisible().catch(() => false))) {
@@ -68,6 +78,7 @@ test.describe("Workspace automations", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ");
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     const omnibar = await openOmnibar(page);
     if (!omnibar) {
       test.skip(true, "אין Omnibar");
@@ -82,6 +93,7 @@ test.describe("Workspace automations", () => {
     test.skip(testInfo.project.name !== "chromium", "דסקטופ");
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     await dismissCookieBannerIfVisible(page);
     await page.keyboard.press("Control+Alt+Tab");
     await expect(page.getByText(/חלונות|windows|switcher/i).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
@@ -92,6 +104,7 @@ test.describe("Workspace automations", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const signed = await tryCredentialsSignIn(page);
     test.skip(!signed, "אין משתמש E2E");
+    await waitForAuthenticatedWorkspace(page);
     await dismissCookieBannerIfVisible(page);
     const nav = page.getByRole("navigation", { name: /ניווט מהיר|mobile/i }).first();
     if (await nav.isVisible().catch(() => false)) {

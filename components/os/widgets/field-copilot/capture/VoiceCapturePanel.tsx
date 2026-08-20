@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import { getFieldCopilotLivePrompt } from "@/lib/field-copilot/instruction";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   transcript: string;
@@ -55,43 +56,43 @@ export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTr
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h4 className="font-bold text-sm">{t("workspaceWidgets.fieldCopilot.voiceTitle")}</h4>
         {transcript ? (
-          <button
-            type="button"
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+            icon={<Trash2 size={11} aria-hidden />}
             onClick={onClearTranscript}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-rose-600 hover:bg-rose-500/10 dark:text-rose-400 transition"
-            title={t("workspaceWidgets.fieldCopilot.voiceClear")}
           >
-            <Trash2 size={11} />
             {t("workspaceWidgets.fieldCopilot.voiceClear")}
-          </button>
+          </OsButton>
         ) : null}
       </div>
 
       {/* Record button */}
       <div className="px-4 pb-3">
-        <button
-          type="button"
-          onClick={toggle}
-          className={`relative flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-xl font-bold text-sm transition active:scale-95 ${
+        <OsButton
+          variant="primary"
+          className={`relative min-h-[52px] w-full justify-center active:scale-95 ${
             liveOn
-              ? "bg-rose-600 text-white shadow-lg shadow-rose-500/25"
-              : "bg-sky-600 text-white shadow-lg shadow-sky-500/20"
+              ? "bg-rose-600 shadow-lg shadow-rose-500/25 hover:bg-rose-500"
+              : "bg-sky-600 shadow-lg shadow-sky-500/20 hover:bg-sky-500"
           }`}
+          onClick={toggle}
         >
           {liveOn ? (
             <>
               {/* Pulse ring while recording */}
               <span className="absolute inset-0 rounded-xl animate-ping bg-rose-500/30 pointer-events-none" aria-hidden />
-              <MicOff size={20} />
+              <MicOff size={20} aria-hidden />
               {t("workspaceWidgets.fieldCopilot.voiceStop")}
             </>
           ) : (
             <>
-              <Mic size={20} />
+              <Mic size={20} aria-hidden />
               {t("workspaceWidgets.fieldCopilot.voiceStart")}
             </>
           )}
-        </button>
+        </OsButton>
 
         {/* Status line */}
         <p className={`mt-2 text-center text-[10px] font-semibold ${liveOn ? "text-rose-500" : "text-[color:var(--foreground-muted)]"}`}>
@@ -115,15 +116,14 @@ export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTr
             <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">
               {t("workspaceWidgets.fieldCopilot.voiceTranscript")}
             </span>
-            <button
-              type="button"
+            <OsButton
+              variant="quiet"
+              size="sm"
+              icon={<RotateCcw size={10} aria-hidden />}
               onClick={() => onTranscript("")}
-              className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-bold text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] transition"
-              title={t("workspaceWidgets.fieldCopilot.voiceResetTranscript")}
             >
-              <RotateCcw size={10} />
               {t("workspaceWidgets.fieldCopilot.voiceResetTranscript")}
-            </button>
+            </OsButton>
           </div>
           <textarea
             value={transcript}

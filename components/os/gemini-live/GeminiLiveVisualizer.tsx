@@ -32,7 +32,7 @@ export default function GeminiLiveVisualizer({ active, speaking, className = "" 
             duration: 0.65 + (i % 4) * 0.08,
             ease: [0.42, 0, 0.58, 1] as const,
           },
-          className: `w-1 rounded-full ${speaking ? "bg-indigo-500" : "bg-emerald-500/60"}`,
+          className: `w-1 rounded-full ${speaking ? "bg-[color:var(--win-accent,#6366f1)]" : "bg-emerald-500/60"}`,
         }),
       ),
     ),

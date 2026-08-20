@@ -18,7 +18,7 @@ export function JewishZmanimTimeline({ zmanim, nowMinutes, nextZmanId, isToday }
       <div className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-[color:var(--border-main)]" />
       {isToday ? (
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-indigo-500"
+          className="absolute top-0 bottom-0 w-0.5 bg-[color:var(--win-accent,#6366f1)]"
           style={{ left: `calc(${(nowMinutes / (24 * 60)) * 100}% + 8px)` }}
           aria-hidden
         />

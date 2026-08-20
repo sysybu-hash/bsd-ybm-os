@@ -2,8 +2,8 @@
 
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
+import { OsButton } from "@/components/os/ui";
 
 export type CalendarEventDraft = {
   summary: string;
@@ -172,22 +172,17 @@ export default function CalendarEventModal({
           {err ? <p className="mt-3 text-xs font-bold text-rose-500">{err}</p> : null}
 
           <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg border border-[color:var(--border-main)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground-muted)]"
-            >
+            <OsButton variant="secondary" onClick={onCancel}>
               {labels.cancel}
-            </button>
-            <button
-              type="button"
+            </OsButton>
+            <OsButton
+              variant="primary"
+              className="bg-violet-600 hover:bg-violet-500"
+              loading={saving}
               onClick={submit}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-60"
             >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : null}
               {labels.save}
-            </button>
+            </OsButton>
           </div>
         </DialogPanel>
       </div>

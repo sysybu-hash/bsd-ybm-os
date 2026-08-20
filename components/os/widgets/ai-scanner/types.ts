@@ -3,7 +3,8 @@ import type { ScanValidationResult } from "@/lib/scan-validate";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
 export type EngineMeta = {
-  configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean };
+  configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean; anthropic?: boolean };
+  missingConfig?: { documentAI?: string[]; gemini?: string[]; openai?: string[]; mistral?: string[]; anthropic?: string[] };
   gemini?: { primaryLabel?: string };
   openai?: { defaultModelId?: string };
   mistral?: { primaryLabel?: string };
@@ -35,7 +36,7 @@ export interface ScanHistoryItem {
   status: "success" | "warning" | "error";
 }
 
-export type QueueStatus = "pending" | "processing" | "done" | "error";
+export type QueueStatus = "pending" | "processing" | "done" | "error" | "queued";
 
 export interface QueueItem {
   id: string;
@@ -49,4 +50,10 @@ export type AiScannerWidgetProps = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
   /** מוצג כטאב בתוך documentsHub — ללא פתיחת חלון נפרד */
   embeddedInHub?: boolean;
+  /** סריקה ישירה להוצאת משרד — ללא פרויקט, שמירה ליעד expense בלבד */
+  officeExpenseMode?: boolean;
+  /** מצב סריקה ראשוני (למשל INVOICE_FINANCIAL להוצאות משרד) */
+  initialScanModeOverride?: import("@/lib/scan-modes-for-ui").ScanModeUiSelection;
+  /** נקרא אחרי שמירה מוצלחת של סריקה */
+  onSaveComplete?: () => void;
 };

@@ -44,10 +44,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
   }, [open]);
 
   const current = (SELECTABLE_LOCALES.includes(locale as AppLocale) ? locale : "he") as AppLocale;
-  const aria =
-    t("workspaceShell.header.localeAria") !== "workspaceShell.header.localeAria"
-      ? t("workspaceShell.header.localeAria")
-      : "שפת ממשק";
+  const aria = t("workspaceShell.header.localeAria");
 
   const pickName = (loc: AppLocale) => {
     const names = LOCALE_NAMES[loc];
@@ -117,7 +114,7 @@ export default function LocaleSwitcher({ compact = false, embedded = false, clas
                 type="button"
                 onClick={() => void changeLocale(loc)}
                 className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-start text-sm font-bold transition hover:bg-[color:var(--surface-soft)] ${
-                  loc === current ? "text-indigo-500" : "text-[color:var(--foreground-main)]"
+                  loc === current ? "text-[color:var(--win-accent,#6366f1)]" : "text-[color:var(--foreground-main)]"
                 }`}
               >
                 <span>{pickName(loc)}</span>

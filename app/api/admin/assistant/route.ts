@@ -5,7 +5,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withOSAdmin } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest, jsonServiceUnavailable } from "@/lib/api-json";
+import { jsonBadRequest, jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { getGeminiModelId } from "@/lib/gemini-model";
 import { buildAdminAssistantSystemPrompt } from "@/lib/admin-assistant/system-prompt";
@@ -38,6 +39,11 @@ export const POST = withOSAdmin(async (req, { email: adminEmail }) => {
   try {
     if (!isGeminiConfigured()) {
       return jsonServiceUnavailable("Gemini לא מוגדר", "gemini_not_configured");
+    }
+
+    const rl = await checkRateLimit(`admin-assistant:${adminEmail}`, 30, 60 * 60 * 1000);
+    if (!rl.success) {
+      return jsonTooManyRequests("חריגה ממכסת שיחות העוזר — נסו שוב בעוד שעה.");
     }
 
     resetRequestPendingActions();

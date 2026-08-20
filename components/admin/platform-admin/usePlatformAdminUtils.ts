@@ -4,20 +4,37 @@ import { useCallback, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { toast } from "sonner";
 
+/** Shape returned by `GET /api/admin/check-user`. */
+export type AdminUserLookup =
+  | { found: false }
+  | {
+      found: true;
+      user: {
+        id: string;
+        email: string;
+        name: string | null;
+        role: string;
+        accountStatus: string;
+        organizationId: string | null;
+        lastLoginAt: string | null;
+      };
+    };
+
 /** User lookup, broadcast notification, and test-email — independent of org/subscription state. */
 export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
   const { t } = useI18n();
   const [userEmail, setUserEmail] = useState("");
-  const [userLookup, setUserLookup] = useState<Record<string, unknown> | null>(null);
+  const [userLookup, setUserLookup] = useState<AdminUserLookup | null>(null);
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastBody, setBroadcastBody] = useState("");
   const [testingEmail, setTestingEmail] = useState(false);
+  const [selfHealBusy, setSelfHealBusy] = useState(false);
 
   const handleLookupUser = useCallback(async () => {
     const email = userEmail.trim().toLowerCase();
     if (!email) return;
     const res = await fetch(`/api/admin/check-user?email=${encodeURIComponent(email)}`, { credentials: "include" });
-    const data = await res.json();
+    const data = (await res.json()) as AdminUserLookup & { error?: string };
     if (!res.ok) { toast.error(data.error ?? t("platformAdmin.searchFailed")); return; }
     setUserLookup(data);
   }, [userEmail, t]);
@@ -52,10 +69,30 @@ export function usePlatformAdminUtils(loadHealth: () => Promise<void>) {
     }
   }, [loadHealth, t]);
 
+  const handleSelfHealDryRun = useCallback(async () => {
+    setSelfHealBusy(true);
+    try {
+      const res = await fetch("/api/admin/self-heal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "purge_stale_rate_limits", dryRun: true }),
+      });
+      const data = (await res.json()) as { affected?: number; status?: string; error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? "Self-heal failed");
+        return;
+      }
+      toast.success(`Self-heal dry-run: ${data.affected ?? 0} stale rate-limit rows`);
+    } finally {
+      setSelfHealBusy(false);
+    }
+  }, []);
+
   return {
     userEmail, setUserEmail, userLookup, setUserLookup,
     broadcastTitle, setBroadcastTitle, broadcastBody, setBroadcastBody,
-    testingEmail,
-    handleLookupUser, handleBroadcast, handleTestEmail,
+    testingEmail, selfHealBusy,
+    handleLookupUser, handleBroadcast, handleTestEmail, handleSelfHealDryRun,
   };
 }

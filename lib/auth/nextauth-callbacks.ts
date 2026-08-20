@@ -9,6 +9,7 @@ import { isLoginAllowedByAllowlist } from "@/lib/login-allowlist";
 import { sendWelcomeEmail } from "@/lib/mail";
 import { persistGoogleOAuthAccountFromNextAuth } from "@/lib/google-account-tokens";
 import { createLogger } from "@/lib/logger";
+import { readClientRequestMeta } from "@/lib/admin/login-presence";
 
 const log = createLogger("auth");
 
@@ -236,15 +237,31 @@ export const nextAuthEvents: NonNullable<NextAuthOptions["events"]> = {
 
       const before = await prisma.user.findFirst({
         where: { email: { equals: emailRaw, mode: "insensitive" } },
-        select: { id: true, lastLoginAt: true, name: true },
+        select: { id: true, lastLoginAt: true, name: true, organizationId: true },
       });
 
       const isFirstAppLogin = before != null && before.lastLoginAt == null;
+      const now = new Date();
 
       await prisma.user.updateMany({
         where: { email: { equals: emailRaw, mode: "insensitive" } },
-        data: { lastLoginAt: new Date() },
+        data: { lastLoginAt: now, lastSeenAt: now },
       });
+
+      if (before?.id) {
+        const meta = await readClientRequestMeta();
+        await prisma.loginEvent.create({
+          data: {
+            userId: before.id,
+            organizationId: before.organizationId,
+            email: emailRaw.toLowerCase(),
+            provider: account?.provider ?? null,
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            createdAt: now,
+          },
+        });
+      }
 
       if (isFirstAppLogin) {
         void sendWelcomeEmail(emailRaw, before.name ?? null).catch((err) =>

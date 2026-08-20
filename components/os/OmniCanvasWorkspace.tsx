@@ -2,7 +2,6 @@
 
 import React, { Suspense } from "react";
 import dynamic from "next/dynamic";
-import { PanelRightOpen } from "lucide-react";
 import { AutomationRunnerProvider } from "@/components/os/AutomationRunnerContext";
 import OSHeader from "@/components/os/layout/OSHeader";
 import { WorkspaceNavigationProvider } from "@/components/os/navigation/WorkspaceNavigationProvider";
@@ -11,10 +10,13 @@ import OSDock from "@/components/os/layout/OSDock";
 import MinimizedWidgetsBar from "@/components/os/layout/MinimizedWidgetsBar";
 import MobileBottomNav from "@/components/os/layout/MobileBottomNav";
 import { LauncherConfigProvider, useLauncherConfig } from "@/components/os/launcher/LauncherConfigProvider";
+import { OmniCanvasSidebarRail, OmniCanvasWorkspaceInset } from "@/components/os/layout/OmniCanvasChrome";
 import LauncherEditBanner from "@/components/os/launcher/LauncherEditBanner";
 import WorkspaceUtilityRail from "@/components/os/utility-rail/WorkspaceUtilityRail";
 import { useOmniCanvasState } from "./omni-canvas/useOmniCanvasState";
-import type { WidgetType } from "@/hooks/use-window-manager";
+import { useMobileViewportSync } from "@/hooks/use-mobile-viewport-sync";
+import { useLockPortraitOrientation } from "@/hooks/use-lock-portrait-orientation";
+import { useOsBootReport } from "@/components/os/boot/OsBootHost";
 
 /** Deferred chrome — not needed for LCP / first paint */
 const OSSidebar = dynamic(() => import("@/components/os/layout/OSSidebar"), { ssr: false });
@@ -22,6 +24,10 @@ const PwaInstallBanner = dynamic(() => import("@/components/os/system/PwaInstall
 const PasskeyOfferModal = dynamic(() => import("@/components/auth/PasskeyOfferModal"), { ssr: false });
 const LauncherPickerSheet = dynamic(() => import("@/components/os/launcher/LauncherPickerSheet"), { ssr: false });
 const FirstDayWizard = dynamic(() => import("@/components/os/onboarding/FirstDayWizard"), { ssr: false });
+const LauncherV2MigrationBanner = dynamic(
+  () => import("@/components/os/onboarding/LauncherV2MigrationBanner"),
+  { ssr: false },
+);
 const NotificationCenter = dynamic(() => import("@/components/os/NotificationCenter"), { ssr: false });
 const FileDropzone = dynamic(() => import("@/components/os/FileDropzone"), { ssr: false });
 const WindowSwitcher = dynamic(() => import("@/components/os/layout/WindowSwitcher"), { ssr: false });
@@ -31,90 +37,19 @@ const KnowledgeVaultWorkspaceBridge = dynamic(
   { ssr: false },
 );
 
-/** מסתיר את רail הסרגל בעריכת quick grid על מסך הבית — מונע כפילות UI */
-function OmniCanvasSidebarRail({
-  widgetsCount,
-  sidebarRailVisible,
-  hasMaximizedWidget,
-  sidebarRailPeek,
-  setSidebarRailPeek,
-  isSidebarOpen,
-  setIsSidebarOpen,
-  openWidget,
-  sidebarAria,
-}: {
-  widgetsCount: number;
-  sidebarRailVisible: boolean;
-  hasMaximizedWidget: boolean;
-  sidebarRailPeek: boolean;
-  setSidebarRailPeek: (v: boolean) => void;
-  isSidebarOpen: boolean;
-  setIsSidebarOpen: (v: boolean) => void;
-  openWidget: (type: WidgetType) => void;
-  sidebarAria: string;
-}) {
-  const { editMode } = useLauncherConfig();
-  const hideForHomeGridEdit = editMode && widgetsCount === 0;
-  const railVisible = sidebarRailVisible && !hideForHomeGridEdit;
-
-  // לשונית ההצצה: מוצגת כשיש widget ממוקסם והסרגל מכווץ —
-  // אינה תלויה ב-railVisible (שתלוי בעצמו ב-peek → תלות מעגלית).
-  const showPeekTab = hasMaximizedWidget && !sidebarRailPeek && !hideForHomeGridEdit;
-
-  return (
-    <>
-      {showPeekTab ? (
-        <button
-          type="button"
-          className="os-sidebar-peek-rail fixed z-[1190] hidden md:flex items-center justify-center"
-          onMouseEnter={() => setSidebarRailPeek(true)}
-          onClick={() => setSidebarRailPeek(true)}
-          onFocus={() => setSidebarRailPeek(true)}
-          aria-label={sidebarAria}
-          title={sidebarAria}
-        >
-          <PanelRightOpen size={16} aria-hidden className="rtl:rotate-180" />
-        </button>
-      ) : null}
-
-      <OSSidebar
-        openWidget={(type) => {
-          openWidget(type);
-          setIsSidebarOpen(false);
-          setSidebarRailPeek(false);
-        }}
-        isOpen={isSidebarOpen}
-        closeSidebar={() => setIsSidebarOpen(false)}
-        hidden={!railVisible}
-        onMouseLeave={() => hasMaximizedWidget && setSidebarRailPeek(false)}
-      />
-    </>
-  );
-}
-
-function OmniCanvasWorkspaceInset({
-  widgetsCount,
-  sidebarRailVisible,
-  children,
-}: {
-  widgetsCount: number;
-  sidebarRailVisible: boolean;
-  children: React.ReactNode;
-}) {
-  const { editMode } = useLauncherConfig();
-  const padSidebar = sidebarRailVisible && !(editMode && widgetsCount === 0);
-
-  return (
-    <div
-      className={`absolute inset-0 z-[1] flex min-h-0 flex-col overflow-hidden pt-[var(--workspace-inset-top)] pb-[var(--mobile-chrome-bottom)] md:pb-[var(--desktop-dock-clearance)] ${padSidebar ? "md:ps-[calc(var(--os-sidebar-rail-width)+var(--os-sidebar-gap))]" : ""}`}
-    >
-      {children}
-    </div>
-  );
-}
-
 export default function OmniCanvasWorkspace() {
+  useMobileViewportSync();
+  useLockPortraitOrientation();
+  return (
+    <LauncherConfigProvider>
+      <OmniCanvasWorkspaceInner />
+    </LauncherConfigProvider>
+  );
+}
+
+function OmniCanvasWorkspaceInner() {
   const s = useOmniCanvasState();
+  const { bootReady: launcherBootReady } = useLauncherConfig();
   const {
     t, dir,
     mounted, sessionStatus, everAuthenticated,
@@ -139,6 +74,7 @@ export default function OmniCanvasWorkspace() {
     toggleMinimize,
     restoreWidget,
     updateZoom,
+    updateWidgetLiveData,
     isCleanDashboard, toggleWorkState,
     hasMaximizedWidget, sidebarRailVisible,
     openWorkspaceWidget,
@@ -172,37 +108,40 @@ export default function OmniCanvasWorkspace() {
     };
   }, [hasMaximizedWidget]);
 
-  // Show spinner only on first load, NOT on silent background session refetches
-  if (!mounted || (!everAuthenticated && sessionStatus === "loading")) {
-    return (
-      <div
-        className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-[color:var(--background-main)] text-[color:var(--foreground-muted)]"
-        dir={dir}
-      >
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"
-          role="progressbar"
-          aria-label={t("workspaceWidgets.page.loading")}
-        />
-        <p className="mt-4 text-sm font-semibold">{t("workspaceWidgets.page.loading")}</p>
-      </div>
-    );
-  }
+  const sessionBlocking = !everAuthenticated && sessionStatus === "loading";
+  const { reportBoot, showSplash, blockPointer } = useOsBootReport();
+
+  React.useEffect(() => {
+    reportBoot({
+      mounted,
+      sessionBlocking,
+      hasHydrated,
+      launcherBootReady,
+    });
+  }, [reportBoot, mounted, sessionBlocking, hasHydrated, launcherBootReady]);
 
   return (
-    <LauncherConfigProvider>
     <AutomationRunnerProvider value={automationContextValue}>
     <KnowledgeVaultWorkspaceBridge assistantToolDeps={automationRunner.deps}>
-    <main className="quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300" dir={dir}>
+    <main
+      className={`quiet-shell fixed inset-0 h-[100dvh] w-full overflow-hidden font-sans selection:bg-indigo-500/20 transition-colors duration-300 ${
+        blockPointer ? "pointer-events-none" : ""
+      }`}
+      dir={dir}
+      aria-hidden={blockPointer}
+    >
       <PwaInstallBanner suppress={widgets.some((w) => !w.isMinimized)} />
-      <PasskeyOfferModal />
+      {!showSplash ? <PasskeyOfferModal /> : null}
       <LauncherEditBanner />
+      <LauncherV2MigrationBanner />
       <LauncherPickerSheet />
-      <FirstDayWizard
-        onOpenWidget={(type, data) => {
-          openWorkspaceWidget(type, data);
-        }}
-      />
+      {!showSplash ? (
+        <FirstDayWizard
+          onOpenWidget={(type, data) => {
+            openWorkspaceWidget(type, data);
+          }}
+        />
+      ) : null}
       <div className="absolute inset-0 z-0 bg-[color:var(--background-main)]" />
       <div className="absolute inset-x-0 top-16 z-0 h-px bg-[color:var(--border-main)]" />
 
@@ -253,6 +192,7 @@ export default function OmniCanvasWorkspace() {
               toggleMaximize={toggleMaximize}
               toggleMinimize={toggleMinimize}
               updateZoom={updateZoom}
+              updateWidgetLiveData={updateWidgetLiveData}
             />
           </Suspense>
         </WorkspaceNavigationProvider>
@@ -286,7 +226,7 @@ export default function OmniCanvasWorkspace() {
         onCloseWidget={closeWidget}
       />
 
-      <div className="md:hidden">
+      <div className="hidden mobile-vp:contents">
         <MobileBottomNav
           openWidget={openWidget}
           onOpenOmnibar={() => setMobileOmnibarOpen(true)}
@@ -318,10 +258,19 @@ export default function OmniCanvasWorkspace() {
         anchorRef={bellButtonRef}
         confirmExpense={async () => undefined}
       />
-      <FileDropzone onProcessed={(n) => setNotifications((prev) => [n, ...prev])} onLatency={setApiLatency} />
+      <FileDropzone
+        onProcessed={(n) => setNotifications((prev) => [n, ...prev])}
+        onLatency={setApiLatency}
+        onRouteToScanner={() =>
+          openWorkspaceWidget("documentsHub", {
+            tab: "scan",
+            autoScan: true,
+            source: "dropzone",
+          })
+        }
+      />
     </main>
     </KnowledgeVaultWorkspaceBridge>
     </AutomationRunnerProvider>
-    </LauncherConfigProvider>
   );
 }

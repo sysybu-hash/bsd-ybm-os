@@ -20,13 +20,14 @@ export async function loadFinanceForecast(organizationId: string): Promise<Finan
   const contacts = await prisma.contact.findMany({
     where: {
       organizationId,
-      status: { in: ["LEAD", "ACTIVE", "PROPOSAL"] },
+      status: { in: ["LEAD", "QUALIFIED", "ACTIVE", "PROPOSAL"] },
     },
     select: { value: true, status: true },
   });
 
   const statusProbability: Record<string, number> = {
     LEAD: 0.15,
+    QUALIFIED: 0.35,
     ACTIVE: 0.35,
     PROPOSAL: 0.65,
   };

@@ -208,3 +208,9 @@ export function getBusinessLineProfileOverlay(lineRaw?: string | null): Business
 export function isCompanyMgmtIndustry(industryRaw?: string | null): boolean {
   return normalizeIndustryType(industryRaw) === "COMPANY_MGMT";
 }
+
+/** ענפי שטח שמקבלים logisticsHub בברירת מחדל של ה-Launcher */
+export function isLogisticsLauncherIndustry(industryRaw?: string | null): boolean {
+  const industry = normalizeIndustryType(industryRaw);
+  return industry === "CONSTRUCTION" || industry === "REAL_ESTATE";
+}

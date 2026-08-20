@@ -3,7 +3,8 @@
 > **Version**: 1.0 | **Date**: 2026-05-21
 > **Owner**: yohanan.bukshpan
 > **Review cadence**: Quarterly + after any P0 incident
-> **תרגיל אחרון (PITR)**: 2026-06-04 — `npm run ops:neon-dr-drill` (חיבור + checklist); תרגיל PITR מלא בקונסולת Neon — לסמן ב-[KPI-SIGNOFF](./KPI-SIGNOFF.md) לאחר השלמה ידנית
+> **תרגיל אחרון (חיבור Neon)**: 2026-07-15 — `npm run ops:neon-dr-drill` (reachable, 12 orgs)  
+> **PITR קונסולה**: 2026-07-16 — branch `pitr-drill` מ-`production` (past point in time) + `SELECT 1` ב-SQL Editor — עבר; branch נמחק אחרי האימות
 
 ---
 
@@ -129,9 +130,9 @@ If Gemini is down (most common):
 
 If ALL AI providers are down (rare):
 ```bash
-# Temporarily set DISABLE_AI_FALLBACK=1 in Vercel env vars
-# This causes scan/chat features to return a friendly "service unavailable" instead of infinite retrying
-# NOT YET IMPLEMENTED — add to backlog
+# Set DISABLE_AI_FALLBACK=1 in Vercel env vars
+# Scan/chat features return a friendly "service unavailable" (503) instead of retrying fallbacks
+# IMPLEMENTED — lib/ai-kill-switch.ts · wired in ai-chat, unified-extract, process-document, scan/tri-engine
 ```
 
 ---

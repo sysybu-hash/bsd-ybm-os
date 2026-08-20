@@ -59,7 +59,7 @@ export default function WorkspaceUtilityRail({ openWidget, suppressOnMobile = fa
 
   return (
     <div
-      className={`os-utility-rail-host pointer-events-none fixed z-[1185] ${suppressOnMobile ? "max-md:hidden" : ""}`}
+      className={`os-utility-rail-host pointer-events-none fixed z-[1185] ${suppressOnMobile ? "mobile-vp:hidden" : ""}`}
     >
       {/* Wrapper stays pointer-events-none so the empty top/bottom of the rail
           column never intercepts clicks meant for content underneath — e.g. a

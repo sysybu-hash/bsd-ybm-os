@@ -113,10 +113,10 @@ const serverSchema = z.object({
   GROQ_API_KEY: optStr,
   GROQ_MODEL: optStr,
   MIND_STUDIO_API_KEY: optStr,
-  // Mistral / Pixtral
+  // Mistral
   MISTRAL_API_KEY: optStr,
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
-  MISTRAL_VISION_MODEL: optStr, // default: pixtral-large-latest (vision/scan)
+  MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
 
   // --- Analytics ---
   POSTHOG_API_KEY: optStr,
@@ -157,7 +157,13 @@ const serverSchema = z.object({
 
   // --- Redis / Upstash ---
   UPSTASH_REDIS_REST_URL: optStr,
+  UPSTASH_REDIS_REST_TOKEN: optStr,
   KV_REST_API_URL: optStr,
+  KV_REST_API_TOKEN: optStr,
+  /** Upstash QStash token for org fan-out cron jobs */
+  QSTASH_TOKEN: optStr,
+  /** Optional absolute base URL for QStash callbacks (defaults to site/auth URL) */
+  QSTASH_TARGET_BASE_URL: optStr,
 
   // --- Push Notifications (VAPID) ---
   VAPID_PUBLIC_KEY: optStr,
@@ -169,10 +175,34 @@ const serverSchema = z.object({
 
   // --- ITA (רשות המסים) ---
   ITA_PRODUCTION_KEY: optStr,
+  /** Base URL for ITA allocation API (required with ITA_PRODUCTION_KEY for live calls) */
+  ITA_API_URL: optStr,
+  /** מאפשר מספרי הקצאה mock — רק local/E2E; אסור בפרודקשן */
+  ALLOW_ITA_MOCK: optBool,
+
+  // --- Payments: Stripe ---
+  STRIPE_SECRET_KEY: optStr,
+  STRIPE_WEBHOOK_SECRET: optStr,
+  /** Optional price IDs — e.g. STRIPE_PRICE_HOUSEHOLD_MONTHLY via process.env */
+  STRIPE_PRICE_HOUSEHOLD_MONTHLY: optStr,
+  STRIPE_PRICE_HOUSEHOLD_ANNUAL: optStr,
+  STRIPE_PRICE_DEALER_MONTHLY: optStr,
+  STRIPE_PRICE_DEALER_ANNUAL: optStr,
+  STRIPE_PRICE_COMPANY_MONTHLY: optStr,
+  STRIPE_PRICE_COMPANY_ANNUAL: optStr,
+  STRIPE_PRICE_CORPORATE_MONTHLY: optStr,
+  STRIPE_PRICE_CORPORATE_ANNUAL: optStr,
 
   // --- Cron / Queue security ---
   CRON_SECRET: optStr,
   ANALYZE_QUEUE_SECRET: optStr,
+
+  // --- WhatsApp Cloud API (Meta) ---
+  WHATSAPP_VERIFY_TOKEN: optStr, // אימות ה-webhook (GET hub.verify_token)
+  WHATSAPP_APP_SECRET: optStr, // אימות חתימת X-Hub-Signature-256
+  WHATSAPP_ACCESS_TOKEN: optStr, // הורדת מדיה + שליחת תשובות (Graph API)
+  WHATSAPP_PHONE_NUMBER_ID: optStr, // מזהה מספר העסק לשליחה
+  WHATSAPP_API_VERSION: optStr, // ברירת מחדל v21.0
 
   // --- Admin / Tenant ---
   OS_ADMIN_EMAIL: optStr,
@@ -189,10 +219,18 @@ const serverSchema = z.object({
 
   // --- Feature flags ---
   BLUEPRINT_USE_FLASH_ONLY: optBool,
+  /** מסלול סריקה מאוחד V2 (Tri-Engine בכל הכניסות) — כבוי = legacy processDocumentAction */
+  SCAN_UNIFIED_V2: optBool,
+  /** P1 DR — כיבוי fallback/retry AI; סריקה/צ'אט מחזירים 503 ידידותי */
+  DISABLE_AI_FALLBACK: optBool,
   ENABLE_DEBUG_SESSION: optBool,
   /** CSP ללא unsafe-eval (staging) — Next.js עדיין דורש unsafe-inline לרוב ה-builds */
   CSP_STRICT: optBool,
   PRISMA_USE_NEON_DRIVER: optBool,
+  /** Native pgvector dual-write (requires migration + extension) */
+  USE_PGVECTOR: optBool,
+  /** External MS Project .mpp → XML converter (POST multipart) */
+  MPP_CONVERT_URL: optStr,
 
   // --- Site verification (SEO) ---
   GOOGLE_SITE_VERIFICATION: optStr,
@@ -315,3 +353,16 @@ export const clientEnv = {
 };
 
 export type Env = ReturnType<typeof validateEnv>;
+
+/**
+ * Edge/middleware-safe env reads — no Zod validation, no server-schema side effects.
+ * Use in middleware.ts instead of importing the full `env` proxy.
+ */
+export const edgeEnv = {
+  get nextAuthSecret(): string {
+    return process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? "";
+  },
+  get isVercel(): boolean {
+    return Boolean(process.env.VERCEL);
+  },
+};

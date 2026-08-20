@@ -3,7 +3,7 @@
 import { useI18n } from "@/components/os/system/I18nProvider";
 import React, { Suspense } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, Loader2, Save, Settings, ShieldCheck, Upload } from "lucide-react";
+import { Image as ImageIcon, Save, Settings, ShieldCheck, Upload } from "lucide-react";
 import ProfessionSettingsPanel from "@/components/os/widgets/settings/ProfessionSettingsPanel";
 import PasskeySecuritySection from "@/components/auth/PasskeySecuritySection";
 import { useSettingsWidget } from "./settings-widget/useSettingsWidget";
@@ -11,7 +11,11 @@ import { SettingsBusinessProfile } from "./settings-widget/SettingsBusinessProfi
 import { SettingsDriveSection } from "./settings-widget/SettingsDriveSection";
 import { SettingsCalendarSection } from "./settings-widget/SettingsCalendarSection";
 import { SettingsAssignSection } from "./settings-widget/SettingsAssignSection";
+import { SettingsWhatsappSection } from "./settings-widget/SettingsWhatsappSection";
+import { SettingsMailSection } from "./settings-widget/SettingsMailSection";
 import WindowBody from "@/components/os/layout/WindowBody";
+import WidgetState from "@/components/os/WidgetState";
+import { OsButton } from "@/components/os/ui";
 
 const S = "workspaceWidgets.settings";
 
@@ -20,10 +24,17 @@ export default function SettingsWidget() {
   const sw = useSettingsWidget();
 
   if (sw.loading) {
+    return <WidgetState variant="loading" />;
+  }
+
+  if (sw.loadError) {
     return (
-      <div className="flex items-center justify-center h-full bg-transparent">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
-      </div>
+      <WidgetState
+        variant="error"
+        message={t(`${S}.errors.loadFailed`)}
+        onRetry={() => void sw.fetchSettings()}
+        retryLabel={t("common.retry")}
+      />
     );
   }
 
@@ -43,14 +54,15 @@ export default function SettingsWidget() {
               <p className="text-xs text-[color:var(--foreground-muted)]">{t(`${S}.subtitle`)}</p>
             </div>
           </div>
-          <button
+          <OsButton
+            variant="primary"
             onClick={() => void sw.handleSave()}
-            disabled={sw.saving}
-            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+            loading={sw.saving}
+            icon={<Save size={18} aria-hidden />}
+            className="w-full justify-center md:w-auto"
           >
-            {sw.saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             {t(`${S}.saveChanges`)}
-          </button>
+          </OsButton>
         </div>
       }
       scrollClassName="widget-canvas p-4 sm:p-8"
@@ -98,12 +110,13 @@ export default function SettingsWidget() {
                   <Upload size={14} /> {t(`${S}.chooseFile`)}
                   <input type="file" className="hidden" accept="image/*" onChange={sw.handleLogoUpload} />
                 </label>
-                <button
+                <OsButton
+                  variant="quiet"
+                  className="text-rose-500 hover:bg-rose-500/5"
                   onClick={() => sw.setSettings((prev) => ({ ...prev, logoSvg: "" }))}
-                  className="px-4 py-2 text-rose-500 text-xs font-bold hover:bg-rose-500/5 rounded-xl transition-all"
                 >
                   {t(`${S}.removeLogo`)}
-                </button>
+                </OsButton>
               </div>
             </div>
           </section>
@@ -135,11 +148,15 @@ export default function SettingsWidget() {
             />
           )}
 
+          {sw.showAssignPanel && <SettingsWhatsappSection t={t} />}
+
+          <SettingsMailSection t={t} canManage={sw.showAssignPanel} />
+
           {/* Security */}
           <section className="pt-6 border-t border-[color:var(--border-main)]/30">
             <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-6">
               <div className="mb-4 flex items-start gap-4">
-                <div className="rounded-lg bg-indigo-500/10 p-2 text-indigo-500">
+                <div className="rounded-lg bg-indigo-500/10 p-2 text-[color:var(--win-accent,#6366f1)]">
                   <ShieldCheck size={20} />
                 </div>
                 <div>

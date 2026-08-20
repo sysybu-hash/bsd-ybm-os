@@ -1,6 +1,7 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { AccountStatus, type SubscriptionTier, type UserRole } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -73,7 +74,7 @@ export async function approveOrganizationAction(
       }),
     ]);
     revalidatePath("/app/admin");
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/settings/overview");
     return { ok: true };
@@ -137,7 +138,7 @@ export async function approvePendingRegistrationAction(
       }),
     ]);
     revalidatePath("/app/admin");
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/settings/overview");
 
@@ -199,7 +200,7 @@ export async function rejectPendingRegistrationAction(
     }
 
     revalidatePath("/app/admin");
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/settings/overview");
     return { ok: true };

@@ -62,9 +62,9 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
   }
 
   const weekday =
-    locale === "he" || locale === "ar" ? data.gregorian.weekdayHe : data.gregorian.weekdayEn;
+    locale === "he" ? data.gregorian.weekdayHe : data.gregorian.weekdayEn;
   const gregDisplay =
-    locale === "he" || locale === "ar" ? data.gregorian.displayHe : data.gregorian.displayEn;
+    locale === "he" ? data.gregorian.displayHe : data.gregorian.displayEn;
   const zmanLabel = (z: { labelHe: string; labelEn: string }) =>
     locale === "en" || locale === "ru" ? z.labelEn : z.labelHe;
 
@@ -155,7 +155,7 @@ export default function ZmanimUtilityPanel({ onOpenFullWidget }: Props) {
         <button
           type="button"
           onClick={onOpenFullWidget}
-          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white"
+          className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs font-bold text-white"
         >
           {t(`${R}.openFullWidget`)}
         </button>

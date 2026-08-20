@@ -10,6 +10,7 @@ import {
   createFieldCopilotSessionSchema,
   patchFieldCopilotSessionSchema,
 } from "@/lib/validation/schemas/field-copilot";
+import { ensureFieldCopilotSchema } from "@/lib/field-copilot/ensure-schema";
 import { mapSessionToDraft } from "@/lib/field-copilot/session-mapper";
 import { prismaErrorCode, prismaErrorMessage } from "@/lib/prisma-error-message";
 
@@ -66,6 +67,17 @@ export const POST = withWorkspacesAuth(async (req, { userId, orgId }) => {
   if (!parsed.success) return jsonBadRequest("בקשה לא תקינה", "invalid_body");
 
   try {
+    const schemaReady = await ensureFieldCopilotSchema();
+    if (!schemaReady) {
+      return NextResponse.json(
+        {
+          error: "מודול קופיילוט שטח לא זמין. הריצו npm run db:migrate או פנו לתמיכה.",
+          code: "field_copilot_schema_missing",
+        },
+        { status: 503 },
+      );
+    }
+
     const member = await prisma.user.findFirst({
       where: { id: userId, organizationId: orgId },
       select: { id: true },

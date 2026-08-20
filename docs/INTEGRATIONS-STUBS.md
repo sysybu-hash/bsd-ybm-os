@@ -1,27 +1,54 @@
 # אינטגרציות — סטטוס ואבטחה
 
-מסמך זה מתאר שירותים שטרם מומשו במלואם. **אין לממש self-heal אוטומטי בפרודקשן** ללא אפיון אבטחה.
+מסמך זה מתאר שירותים עם soft-gate או אפיון אבטחה מיוחד. עדכון: 2026-07-16 (all-gaps track).
 
 ## מס הכנסה (ITA) — `lib/services/ita-service.ts`
 
-- דורש `ITA_PRODUCTION_KEY` ב-Vercel / `.env.local` לחיבור production.
-- ללא מפתח: המערכת מחזירה מספר הקצאה mock (`isMock: true`) ורושמת אזהרה בלוג.
-- מימוש API מלא לפי מפרט רשמי — פרויקט נפרד כשיש מפתח production מאושר.
+- אין מספרי הקצאה מדומים בפרודקשן.
+- Live HTTP כש-`ITA_PRODUCTION_KEY` **ו-**`ITA_API_URL` מוגדרים → `POST {ITA_API_URL}/allocation`.
+- מפתח בלי URL / בלי מפתח כשנדרש הקצאה → כשל ברור; הנפקה → **422**.
+- Mock רק אם `ALLOW_ITA_MOCK=true` (local / E2E).
+
+## תשלומים — Refunds / Stripe
+
+| נתיב | סטטוס |
+|------|--------|
+| `POST /api/billing/refunds` | PayPal + PayPlus (+ Stripe gateway) — org admin |
+| Stripe Checkout | `POST /api/billing/stripe/create-checkout` — soft-gate בלי `STRIPE_SECRET_KEY` |
+| Stripe webhooks | `/api/webhooks/stripe` — דורש `STRIPE_WEBHOOK_SECRET` |
 
 ## Google Calendar — `/api/integrations/google-calendar/*`
 
-סנכרון opt-in: המשתמש מאשר ובוחר `READ_ONLY` או `BIDIRECTIONAL` ב-`PUT .../settings/activate`. Cron: `google-calendar-sync`, `google-calendar-push`.
+סנכרון opt-in חי. Legacy GET **לא** מחזיר «בפיתוח» — `syncRoutes` כשלא מחובר.
 
-## Google Calendar (legacy route) — `GET /api/integrations/google-calendar`
+## MPP (MS Project)
 
-- מוגן ב-`withWorkspacesAuth`.
-- מחזיר `connected: false` והודעה «בפיתוח».
-- OAuth מלא (scopes, tokens ב-DB, סנכרון אירועים) — שלב עתידי.
+- ייבוא `.mpp` דרך `MPP_CONVERT_URL` (שירות המרה חיצוני) → pipeline XML קיים.
+- בלי converter: `mpp_converter_not_configured` (ברור). XML/CSV נשארים נתמכים.
+
+## Google Contacts (CRM import) — `/api/crm/contacts/import-google`
+
+- People API scope: `contacts.readonly` (via reconnect / integrations OAuth).
+- **Existing users must reconnect Google** (Settings → «Reconnect Google») so the new scope is granted.
+- GET: preview up to 200 contacts; POST: import selected/all with email dedupe (case-insensitive) per org.
+
+## pgvector
+
+- מיגרציה + dual-write + ANN search כש-`USE_PGVECTOR=true` אחרי `migrate deploy`.
+- Fallback: JSON + cosine ב-JS, עם סף קשיח:
+  - Knowledge vault chunks: `JSON_COSINE_MAX_CHUNKS` (=400) ב-`lib/knowledge-vault/chunk-index.ts`
+  - Contact embeddings: 400 שורות ב-`lib/crm/contact-embedding-index.ts`
+- מעל הסף — יש להפעיל pgvector; אחרת החיפוש סורק רק את ה-N הראשונים (לא full-scan בלתי מוגבל).
 
 ## Admin self-heal — `POST /api/admin/self-heal`
 
-- מוגן ב-`withOSAdmin` בלבד.
-- Stub: מחזיר `status: "skipped"` — לא מבצע תיקוני DB אוטומטיים.
+- מוגן ב-`withOSAdmin`; `dryRun` ברירת מחדל **true**.
+- ראו [`SELF-HEAL-SECURITY.md`](./SELF-HEAL-SECURITY.md).
+- אין auto-cron בלי opt-in.
+
+## AI kill switch
+
+- `DISABLE_AI_FALLBACK=true` → 503 ידידותי על scan/chat (ראו DR-PLAN §6).
 
 ## PostHog (אירועי מוצר)
 

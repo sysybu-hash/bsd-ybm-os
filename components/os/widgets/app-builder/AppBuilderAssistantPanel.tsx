@@ -7,6 +7,7 @@ import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { AiChatMessages } from "@/components/os/widgets/ai-chat/AiChatMessages";
 import { useAppBuilderAssistant } from "@/hooks/use-app-builder-assistant";
+import { OsIconButton } from "@/components/os/ui";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
   onSchemaApplied: (schema: AppBuilderUiSchema) => void;
   /** Called when the API returns jsxCode — passed straight to Sandpack */
   onCodeApplied?: (code: string) => void;
+  /** Schema without JSX — trigger preview rebuild */
+  onRegeneratePreview?: (schema: AppBuilderUiSchema) => void;
   /**
    * Embedded mode — renders without internal flex-1/overflow so the parent
    * scroll container handles all overflow. Pass to AiChatMessages too.
@@ -21,25 +24,31 @@ type Props = {
   embedded?: boolean;
 };
 
-export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaApplied, onCodeApplied, embedded = false }: Props) {
+export default function AppBuilderAssistantPanel({
+  currentUiSchema,
+  onSchemaApplied,
+  onCodeApplied,
+  onRegeneratePreview,
+  embedded = false,
+}: Props) {
   const { t } = useI18n();
-  const c = useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCodeApplied });
+  const c = useAppBuilderAssistant({ currentUiSchema, onSchemaApplied, onCodeApplied, onRegeneratePreview });
   const inputAreaRef = useRef<HTMLDivElement>(null);
 
   const sectionClass = embedded
-    ? "flex flex-col rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30"
+    ? "flex flex-col rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30 overflow-hidden"
     : "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/30";
 
   return (
     <section className={sectionClass}>
-      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 px-3 py-2 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/95 px-3 py-2.5 backdrop-blur-sm sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
             <button
               type="button"
               onClick={c.handleLiveTab}
               className={`rounded-lg px-2.5 py-1.5 text-xs font-black ${
-                c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"
+                c.chatTab === "live" ? "bg-[color:var(--accent)] text-white" : "text-[color:var(--foreground-muted)]"
               }`}
             >
               {t("workspaceWidgets.appBuilder.tabLive")}
@@ -49,7 +58,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
             type="button"
             onClick={c.handleTextTab}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-black ${
-              c.chatTab === "text" ? "bg-purple-600 text-white" : "text-[color:var(--foreground-muted)]"
+              c.chatTab === "text" ? "bg-[color:var(--accent)] text-white" : "text-[color:var(--foreground-muted)]"
             }`}
           >
             {t("workspaceWidgets.appBuilder.tabText")}
@@ -61,23 +70,17 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
         </span>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => c.setShowSettings(true)}
-            aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
-          >
+          <OsIconButton label={t("workspaceWidgets.aiChat.chatSettings")} onClick={() => c.setShowSettings(true)}>
             <Settings2 size={16} aria-hidden />
-          </button>
+          </OsIconButton>
           {c.messages.length > 0 ? (
-            <button
-              type="button"
+            <OsIconButton
+              label={t("workspaceWidgets.appBuilder.clearChat")}
+              className="text-rose-500 hover:bg-rose-500/10"
               onClick={() => c.setMessages([])}
-              aria-label={t("workspaceWidgets.appBuilder.clearChat")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
             >
               <Trash2 size={16} aria-hidden />
-            </button>
+            </OsIconButton>
           ) : null}
         </div>
       </div>
@@ -111,7 +114,7 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
       {c.chatTab === "text" ? (
         <div
           ref={inputAreaRef}
-          className="shrink-0 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-3"
+          className="shrink-0 border-t border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 p-3 sm:p-4"
         >
           <form onSubmit={(e) => void c.handleSend(e)} className="flex gap-2">
             <input
@@ -122,18 +125,18 @@ export default function AppBuilderAssistantPanel({ currentUiSchema, onSchemaAppl
               disabled={c.isLoading}
               className="min-w-0 flex-1 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:opacity-60"
             />
-            <button
+            <OsIconButton
               type="submit"
+              label={t("workspaceWidgets.appBuilder.chatSend")}
               disabled={c.isLoading || !c.input.trim()}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-indigo-600 px-3 py-2.5 text-white transition hover:bg-indigo-500 disabled:opacity-60"
-              aria-label={t("workspaceWidgets.appBuilder.chatSend")}
+              className="bg-[color:var(--accent)] text-white hover:opacity-90"
             >
               {c.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
                 <Send className="h-4 w-4 rtl:rotate-180" aria-hidden />
               )}
-            </button>
+            </OsIconButton>
           </form>
         </div>
       ) : null}

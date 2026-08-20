@@ -8,13 +8,14 @@ import {
   promoteIdeaToGlobalTemplateAction,
   type AppIdeaItem,
 } from "@/app/actions/app-ideas";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "ממתין",
-  approved: "מאושר",
-  rejected: "נדחה",
+const STATUS_KEYS: Record<string, string> = {
+  pending: "statusPending",
+  approved: "statusApproved",
+  rejected: "statusRejected",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -24,6 +25,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function IdeasTab() {
+  const { t, dir, locale } = useI18n();
+  const ts = (suffix: string, params?: Record<string, string>) =>
+    t(`platformAdmin.ideas.${suffix}`, params);
+  const statusLabel = (status: string) => ts(STATUS_KEYS[status] ?? "statusPending");
   const [ideas, setIdeas] = useState<AppIdeaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,15 +44,17 @@ export function IdeasTab() {
       if (res.ok) {
         setIdeas(res.ideas);
       } else {
-        setLoadError(res.error ?? "טעינת הרעיונות נכשלה");
+        setLoadError(res.error ?? ts("loadFailed"));
         setIdeas([]);
       }
     } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : "שגיאה בטעינת רעיונות");
+      setLoadError(err instanceof Error ? err.message : ts("loadError"));
       setIdeas([]);
     } finally {
       setLoading(false);
     }
+    // `ts` is derived from the i18n context and is stable per locale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   useEffect(() => { void load(); }, [load]);
@@ -75,14 +82,12 @@ export function IdeasTab() {
   };
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-4" dir={dir}>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-black">מאגר רעיונות מהקהילה</h2>
-          <p className="text-xs text-[color:var(--foreground-muted)]">
-            רעיונות שמנויים בחרו לשתף — ללא נתוני ארגון/משתמש
-          </p>
+          <h2 className="text-base font-black">{ts("title")}</h2>
+          <p className="text-xs text-[color:var(--foreground-muted)]">{ts("subtitle")}</p>
         </div>
         <button
           type="button"
@@ -90,8 +95,8 @@ export function IdeasTab() {
           disabled={loading}
           className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold hover:bg-[color:var(--surface-soft)] disabled:opacity-60"
         >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          רענן
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} aria-hidden />
+          {ts("refresh")}
         </button>
       </div>
 
@@ -108,7 +113,7 @@ export function IdeasTab() {
                 : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"
             }`}
           >
-            {f === "all" ? "הכל" : STATUS_LABELS[f]}
+            {f === "all" ? ts("filterAll") : statusLabel(f)}
           </button>
         ))}
       </nav>
@@ -116,7 +121,7 @@ export function IdeasTab() {
       {/* List */}
       {loading ? (
         <div className="flex items-center gap-2 py-8 text-sm text-[color:var(--foreground-muted)]">
-          <Loader2 size={16} className="animate-spin" /> טוען רעיונות…
+          <Loader2 size={16} className="animate-spin" aria-hidden /> {ts("loading")}
         </div>
       ) : loadError ? (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-400">
@@ -124,7 +129,7 @@ export function IdeasTab() {
         </div>
       ) : ideas.length === 0 ? (
         <p className="py-8 text-center text-sm text-[color:var(--foreground-muted)]">
-          אין רעיונות {filter !== "all" ? `בסטטוס "${STATUS_LABELS[filter]}"` : ""} כרגע
+          {filter === "all" ? ts("emptyAll") : ts("emptyFiltered", { status: statusLabel(filter) })}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -150,11 +155,11 @@ export function IdeasTab() {
                         </span>
                       ) : null}
                       <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${STATUS_COLORS[idea.status] ?? ""}`}>
-                        {STATUS_LABELS[idea.status] ?? idea.status}
+                        {STATUS_KEYS[idea.status] ? statusLabel(idea.status) : idea.status}
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] text-[color:var(--foreground-muted)]">
-                      {new Date(idea.createdAt).toLocaleString("he-IL")}
+                      {new Date(idea.createdAt).toLocaleString(locale)}
                     </p>
                   </div>
 
@@ -165,7 +170,7 @@ export function IdeasTab() {
                       onClick={() => setExpanded(isExpanded ? null : idea.id)}
                       className="rounded-lg border border-[color:var(--border-main)] px-2.5 py-1.5 text-[11px] font-bold hover:bg-[color:var(--surface-soft)]"
                     >
-                      {isExpanded ? "סגור" : "JSON"}
+                      {isExpanded ? ts("toggleClose") : ts("toggleJson")}
                     </button>
                     {idea.status !== "approved" && (
                       <button
@@ -174,8 +179,8 @@ export function IdeasTab() {
                         onClick={() => void handleStatus(idea.id, "approved")}
                         className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-bold text-emerald-400 disabled:opacity-50"
                       >
-                        {isBusy ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-                        אשר
+                        {isBusy ? <Loader2 size={11} className="animate-spin" aria-hidden /> : <CheckCircle2 size={11} aria-hidden />}
+                        {ts("approve")}
                       </button>
                     )}
                     {idea.status !== "rejected" && (
@@ -185,8 +190,8 @@ export function IdeasTab() {
                         onClick={() => void handleStatus(idea.id, "rejected")}
                         className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] font-bold text-rose-400 disabled:opacity-50"
                       >
-                        {isBusy ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
-                        דחה
+                        {isBusy ? <Loader2 size={11} className="animate-spin" aria-hidden /> : <XCircle size={11} aria-hidden />}
+                        {ts("reject")}
                       </button>
                     )}
                     {idea.status === "approved" && (
@@ -196,8 +201,8 @@ export function IdeasTab() {
                         onClick={() => void handlePromote(idea.id)}
                         className="flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-bold text-blue-400 disabled:opacity-50"
                       >
-                        {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Globe size={11} />}
-                        קדם לתבנית גלובלית
+                        {isBusy ? <Loader2 size={11} className="animate-spin" aria-hidden /> : <Globe size={11} aria-hidden />}
+                        {ts("promote")}
                       </button>
                     )}
                   </div>

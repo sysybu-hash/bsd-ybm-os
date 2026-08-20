@@ -1,5 +1,7 @@
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
+import { scanModeFavorsAnthropic } from "@/lib/tri-engine-parse";
+import { isAnthropicConfigured } from "@/lib/ai-providers";
 
 export type ResolvedEnginePlan = {
   scanMode: ScanModeV5;
@@ -36,6 +38,16 @@ export function resolveTriEnginePlan(
       scanMode,
       effectiveRunMode: "MULTI_SEQUENTIAL",
       providerChain: ["gemini", "openai"],
+    };
+  }
+  // Contracts → Claude primary (native PDF, long narrative). MULTI_SEQUENTIAL so the
+  // per-scanMode CONTRACT branch in runTriEngineExtraction is reached; billed premium.
+  // Falls back to Gemini at extract time if premium credit was downgraded.
+  if (scanModeFavorsAnthropic(scanMode) && isAnthropicConfigured()) {
+    return {
+      scanMode,
+      effectiveRunMode: "MULTI_SEQUENTIAL",
+      providerChain: ["anthropic", "gemini"],
     };
   }
   return {

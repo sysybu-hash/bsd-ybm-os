@@ -1,5 +1,6 @@
 "use server";
 
+/** @deprecated Prefer `unifiedExtractFromFile` / `unifiedSaveScan`. Legacy path runs only when SCAN_UNIFIED_V2=false. */
 import { createHash } from "crypto";
 import { env } from "@/lib/env";
 import { Prisma } from "@prisma/client";
@@ -30,6 +31,7 @@ import { readRequestMessages } from "@/lib/i18n/server-messages";
 import { getMergedIndustryConfig } from "@/lib/construction-trades";
 import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { sendDocNotification } from "./send-doc-notification";
+import { resolveDocNotificationFields } from "@/lib/scan/notification-fields";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import {
   inferMimeFromFileName,
@@ -38,6 +40,13 @@ import {
   isDocxMime,
 } from "@/lib/scan-mime";
 import { createLogger } from "@/lib/logger";
+import { isScanUnifiedV2Enabled } from "@/lib/scan/feature-flag";
+import {
+  mapLegacyAnalysisTypeToScanMode,
+  unifiedExtractFromFile,
+} from "@/lib/scan/unified-extract";
+import { unifiedSaveScan } from "@/lib/scan/unified-save";
+import { AI_SERVICE_UNAVAILABLE_CODE, checkAiServicesAvailable } from "@/lib/ai-kill-switch";
 const log = createLogger("process-document");
 
 function getGeminiKey(): string | undefined {
@@ -46,7 +55,7 @@ function getGeminiKey(): string | undefined {
 
 export type ProcessDocumentResult =
   | { success: true; data: unknown }
-  | { success: false; error: string; code?: "QUOTA_EXCEEDED" };
+  | { success: false; error: string; code?: "QUOTA_EXCEEDED" | typeof AI_SERVICE_UNAVAILABLE_CODE };
 
 /**
  * חילוץ מול Gemini עם קובץ בינארי אחד (למשל PDF שלם ב־base64).
@@ -173,7 +182,7 @@ function authEnvHintForProvider(id: AiProviderId): string {
     case "gemini":
       return "ב-Vercel: GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY. ב-Google Cloud: חיוב פעיל והפעלת Gemini/Generative Language API.";
     case "openai":
-      return "ב-Vercel: OPENAI_API_KEY (מפתח תקף, מכסה/ארגון). PDF דרך Responses — ברירת מחדל gpt-5.4-turbo; ניתן OPENAI_RESPONSES_MODEL / OPENAI_VISION_MODEL.";
+      return "ב-Vercel: OPENAI_API_KEY (מפתח תקף, מכסה/ארגון). PDF דרך Responses — ברירת מחדל gpt-5.6-sol; ניתן OPENAI_RESPONSES_MODEL / OPENAI_VISION_MODEL.";
     case "anthropic":
       return "ב-Vercel: ANTHROPIC_API_KEY.";
     case "docai":
@@ -183,12 +192,20 @@ function authEnvHintForProvider(id: AiProviderId): string {
   }
 }
 
+/**
+ * @deprecated Use `unifiedExtractFromFile` + `unifiedSaveScan` directly. Kept as a thin wrapper for legacy API callers.
+ */
 export async function processDocumentAction(
   formData: FormData,
   userId: string,
   orgId: string,
   persist: boolean = true,
 ): Promise<ProcessDocumentResult> {
+  const aiGate = checkAiServicesAvailable();
+  if (!aiGate.ok) {
+    return { success: false, error: aiGate.message, code: aiGate.code };
+  }
+
   let effectiveProviderForError: AiProviderId | undefined;
   let requestedProviderForError: AiProviderId | undefined;
 
@@ -224,6 +241,50 @@ export async function processDocumentAction(
       rawScanModel !== "default"
         ? rawScanModel
         : undefined;
+
+    if (isScanUnifiedV2Enabled()) {
+      const scanMode = mapLegacyAnalysisTypeToScanMode(analysisId);
+      const extraction = await unifiedExtractFromFile({
+        file,
+        userId,
+        scanMode,
+        industry: userIndustry,
+        openAiModel: scanModel,
+      });
+      let documentId: string | undefined;
+      if (persist) {
+        const saved = await unifiedSaveScan(
+          {
+            file,
+            fileName: file.name,
+            v5: extraction.v5,
+            aiData: extraction.aiData,
+            target: "erp",
+            userId,
+            organizationId: orgId,
+          },
+          { userId, organizationId: orgId, industry: userIndustry },
+        );
+        if (!saved.ok) {
+          return { success: false, error: saved.error ?? "שמירה נכשלה" };
+        }
+        documentId = saved.documentId;
+      }
+      return {
+        success: true,
+        data: {
+          ...extraction.aiData,
+          documentId,
+          _unified: true,
+          _v5: extraction.v5,
+        },
+      };
+    }
+
+    log.warn(
+      "DEPRECATED legacy process-document path (SCAN_UNIFIED_V2=false). " +
+        "Migrate callers to unifiedExtractFromFile / unifiedSaveScan.",
+    );
 
     // Industry adaptation for AI instructions (בנייה + התמחות נלווית) — כולל תרגום UI כשיש
     const industryConfig = getMergedIndustryConfig(userIndustry, orgTrade, uiMessages);
@@ -429,11 +490,10 @@ export async function processDocumentAction(
     });
 
     if (user?.email && !fromCache) {
-      await sendDocNotification(
-        user.email,
-        String(aiData.vendor ?? "ספק כללי"),
-        Number(aiData.total ?? 0),
-      );
+      const notify = resolveDocNotificationFields(aiData);
+      await sendDocNotification(user.email, notify.vendor, notify.total, {
+        extractionIncomplete: notify.extractionIncomplete,
+      });
     }
 
     return {

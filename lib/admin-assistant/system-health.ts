@@ -1,42 +1,60 @@
+import { getAdminEnvChecks } from "@/lib/admin/env-status";
 import { hasOSPayPalConfigured } from "@/lib/platform-paypal";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import {
-  getMailFrom,
-  isMailTransportConfigured,
-  isResendConfigured,
-  isSmtpConfigured,
-  mailTransportLabel,
-} from "@/lib/mail-config";
+import { summarizeMailTransport } from "@/lib/admin/env-status";
 
 export type AdminServiceStatus = {
-  name: string;
+  id: "database" | "aiEngine" | "email" | "payments" | "auth";
   ok: boolean;
-  detail: string;
+  meta?: Record<string, string>;
 };
 
-export async function getAdminSystemHealth(): Promise<{
+export type AdminSystemHealth = {
   checkedAt: string;
   statuses: AdminServiceStatus[];
-}> {
+  envChecks: ReturnType<typeof getAdminEnvChecks>;
+};
+
+function aiProviders(): string[] {
+  const providers: string[] = [];
+  if (env.GOOGLE_GENERATIVE_AI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim()) {
+    providers.push("Gemini");
+  }
+  if (env.OPENAI_API_KEY?.trim()) providers.push("OpenAI");
+  if (env.ANTHROPIC_API_KEY?.trim()) providers.push("Anthropic");
+  if (env.GROQ_API_KEY?.trim()) providers.push("Groq");
+  return providers;
+}
+
+export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
   const statuses: AdminServiceStatus[] = [];
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-    statuses.push({ name: "Database", ok: true, detail: "מחובר" });
+    statuses.push({ id: "database", ok: true });
   } catch {
-    statuses.push({ name: "Database", ok: false, detail: "שגיאת חיבור" });
+    statuses.push({ id: "database", ok: false });
   }
 
+  const providers = aiProviders();
   statuses.push({
-    name: "AI Engine",
-    ok: Boolean(
-      env.GOOGLE_GENERATIVE_AI_API_KEY ||
-        env.GEMINI_API_KEY ||
-        env.OPENAI_API_KEY ||
-        env.ANTHROPIC_API_KEY,
-    ),
-    detail: "בדיקת מפתחות API",
+    id: "aiEngine",
+    ok: providers.length > 0,
+    meta: { providers: providers.join(", ") },
+  });
+
+  const authOk = Boolean(env.NEXTAUTH_SECRET?.trim() || env.AUTH_SECRET?.trim());
+  statuses.push({ id: "auth", ok: authOk });
+
+  const mail = summarizeMailTransport();
+  statuses.push({
+    id: "email",
+    ok: mail.ok,
+    meta: {
+      transport: mail.transport,
+      fromDomain: mail.fromDomain ?? "",
+    },
   });
 
   const payplusOk = Boolean(
@@ -44,25 +62,24 @@ export async function getAdminSystemHealth(): Promise<{
       env.PAYPLUS_SECRET_KEY?.trim() &&
       env.PAYPLUS_PAYMENT_PAGE_UID?.trim(),
   );
+  const paypalClientOk = Boolean(
+    env.PAYPAL_CLIENT_ID?.trim() && env.PAYPAL_CLIENT_SECRET?.trim(),
+  );
   const platformPaypal = hasOSPayPalConfigured();
-  const mailOk = isMailTransportConfigured();
+  const paymentsOk = payplusOk || paypalClientOk || platformPaypal;
   statuses.push({
-    name: "דואר (מייל)",
-    ok: mailOk,
-    detail: mailOk
-      ? `${mailTransportLabel()} · שולח: ${getMailFrom()}${isResendConfigured() ? "" : isSmtpConfigured() ? " (SMTP)" : ""}`
-      : "חסר RESEND_API_KEY או SMTP_HOST — מיילים לא יישלחו",
+    id: "payments",
+    ok: paymentsOk,
+    meta: {
+      payplus: payplusOk ? "ok" : "missing",
+      paypalClient: paypalClientOk ? "ok" : "missing",
+      osPaypal: platformPaypal ? "ok" : "missing",
+    },
   });
 
-  statuses.push({
-    name: "תשלומים",
-    ok: true,
-    detail: [
-      "ארגונים: PayPal לפי הגדרות DB",
-      platformPaypal ? "BSD-YBM-OS: PayPal ENV מוגדר" : "BSD-YBM-OS: PayPal ENV לא מוגדר",
-      payplusOk ? "PayPlus API זמין" : "ללא PayPlus API",
-    ].join(" · "),
-  });
-
-  return { checkedAt: new Date().toISOString(), statuses };
+  return {
+    checkedAt: new Date().toISOString(),
+    statuses,
+    envChecks: getAdminEnvChecks(),
+  };
 }

@@ -1,27 +1,35 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Mail } from "lucide-react";
 import BrandHomeLink from "@/components/brand/BrandHomeLink";
 import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import PasswordFields from "@/components/auth/PasswordFields";
+import OsBootSplash from "@/components/os/boot/OsBootSplash";
+import { toast } from "sonner";
 import { passwordMeetsRules } from "@/lib/auth/client-password";
+import { SITE_CONTACT } from "@/lib/site-contact";
 import {
   AUTH_INPUT,
   AUTH_BTN_PRIMARY,
+  AUTH_BTN_SECONDARY,
   AUTH_OPTION_CARD,
   AUTH_OPTION_CARD_ACTIVE,
   AUTH_OPTION_CARD_IDLE,
 } from "@/components/auth/auth-ui";
+import PayPalRegisterButtons from "@/components/auth/register-wizard/PayPalRegisterButtons";
 import { useRegisterWizard, type OrgTypeKey } from "./register-wizard/useRegisterWizard";
 
 type Props = {
   embedded?: boolean;
   onSwitchToLogin?: () => void;
+  /** Effective monthly price per tier, resolved server-side. */
+  tierPrices?: Record<string, number>;
 };
 
-export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Props) {
-  const s = useRegisterWizard({ onSwitchToLogin });
+export default function RegisterWizard({ embedded = false, onSwitchToLogin, tierPrices }: Props) {
+  const s = useRegisterWizard({ onSwitchToLogin, tierPrices });
   const {
     t, dir, tenant,
     step, setStep, steps,
@@ -29,23 +37,53 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
     name, setName, email, setEmail, initialEmail,
     orgName, setOrgName,
     password, setPassword, passwordConfirm, setPasswordConfirm,
+    tier, setTier, billingCycle, setBillingCycle,
+    tierOptions, isPaidTier, paypalOrderId, setPaypalOrderId,
     industry, setIndustry,
     specialization, setSpecialization, specializationOptions,
-    busy, done, pendingApproval,
+    busy, done, pendingApproval, enteringWorkspace,
     goLogin, goNext, submit,
   } = s;
 
   const BackIcon = dir === "rtl" ? ChevronRight : ChevronLeft;
   const NextIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
 
-  const successBlock = (
+  if (enteringWorkspace) {
+    return <OsBootSplash phase="register" />;
+  }
+
+  const successBlock = pendingApproval ? (
+    <div className="rounded-xl border border-amber-500/30 bg-[color:var(--surface-soft)] p-6 text-center">
+      <Clock3 className="mx-auto mb-4 text-amber-500" size={48} aria-hidden />
+      <h3 className="text-lg font-black">{t("auth.hub.register.pendingTitle")}</h3>
+      <p className="mt-3 text-sm leading-relaxed text-[color:var(--foreground-muted)]">
+        {t("auth.hub.register.pendingDesc")}
+      </p>
+      <p className="mt-3 text-xs leading-relaxed text-[color:var(--foreground-muted)]">
+        {t("auth.hub.register.pendingNext")}
+      </p>
+      <div className="mt-6 flex flex-col gap-2">
+        <button type="button" onClick={() => goLogin(true)} className={AUTH_BTN_PRIMARY}>
+          {t("auth.hub.register.pendingLoginCta")}
+        </button>
+        <a
+          href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent(t("auth.hub.register.pendingMailSubject"))}`}
+          className={`${AUTH_BTN_SECONDARY} inline-flex items-center justify-center gap-2`}
+        >
+          <Mail size={16} aria-hidden />
+          {t("auth.hub.register.pendingContactCta")}
+        </a>
+        <Link href="/" className="mt-1 text-xs font-bold text-[color:var(--accent)] hover:underline">
+          {t("auth.hub.register.pendingHomeCta")}
+        </Link>
+      </div>
+    </div>
+  ) : (
     <div className="rounded-xl border border-emerald-500/30 bg-[color:var(--surface-soft)] p-6 text-center">
       <CheckCircle2 className="mx-auto mb-4 text-emerald-500" size={48} aria-hidden />
-      <h3 className="text-lg font-black">
-        {pendingApproval ? t("auth.hub.register.pendingTitle") : t("auth.register.success.title")}
-      </h3>
+      <h3 className="text-lg font-black">{t("auth.register.success.title")}</h3>
       <p className="mt-3 text-sm text-[color:var(--foreground-muted)]">
-        {pendingApproval ? t("auth.hub.register.pendingDesc") : t("auth.hub.register.successDesc")}
+        {t("auth.hub.register.successDesc")}
       </p>
       <button type="button" onClick={() => goLogin(true)} className={`mt-6 ${AUTH_BTN_PRIMARY}`}>
         {t("auth.register.success.cta")}
@@ -147,7 +185,8 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
               {t("auth.register.labels.email")}
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 className={`mt-1 ${AUTH_INPUT}`}
-                readOnly={Boolean(initialEmail)} autoComplete="email" />
+                readOnly={Boolean(initialEmail)} autoComplete="email"
+                placeholder={t("auth.login.emailPlaceholder")} />
             </label>
             <p className="text-xs text-[color:var(--foreground-muted)]">{t("auth.hub.register.emailHint")}</p>
           </div>
@@ -163,8 +202,49 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           </label>
         )}
 
-        {/* Step 4: Password */}
+        {/* Step 4: Plan */}
         {step === 4 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold text-[color:var(--foreground-muted)]">
+                {t("auth.register.planSection")}
+              </p>
+              <div className="flex rounded-lg border border-[color:var(--border-main)] p-0.5 text-xs font-bold">
+                {(["monthly", "annual"] as const).map((c) => (
+                  <button key={c} type="button" onClick={() => setBillingCycle(c)}
+                    className={`rounded-md px-2.5 py-1 transition ${billingCycle === c ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+                    {c === "monthly" ? t("auth.register.cycleMonthly") : t("auth.register.cycleAnnual")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              {tierOptions.map((opt) => {
+                const price = billingCycle === "annual" ? opt.annualPriceIls : opt.monthlyPriceIls;
+                return (
+                  <button key={opt.key} type="button" onClick={() => setTier(opt.key)}
+                    className={`rounded-xl border p-3 text-start transition ${tier === opt.key ? AUTH_OPTION_CARD_ACTIVE : AUTH_OPTION_CARD_IDLE}`}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-black">{opt.label}</span>
+                      <span className="text-sm font-bold">
+                        {price > 0
+                          ? `₪${price} ${billingCycle === "annual" ? t("auth.register.perYear") : t("auth.register.perMonth")}`
+                          : t("auth.register.freePrice")}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
+                      {opt.cheapScans} / {opt.premiumScans} {t("auth.register.scansSuffix")}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-[color:var(--foreground-muted)]">{t("auth.register.planHint")}</p>
+          </div>
+        )}
+
+        {/* Step 5: Password */}
+        {step === 5 && (
           <PasswordFields
             password={password} confirm={passwordConfirm}
             onPasswordChange={setPassword} onConfirmChange={setPasswordConfirm}
@@ -180,14 +260,47 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
           />
         )}
 
-        {/* Step 5: Confirmation summary */}
-        {step === 5 && (
+        {/* Step 6: Confirmation summary */}
+        {step === 6 && (
           <ul className="space-y-3 text-sm">
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.type")}: </span><strong>{t(`auth.register.types.${orgType}.label`)}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.specialization")}: </span><strong>{specializationOptions.find((o) => o.id === specialization)?.label ?? specialization}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.name")}: </span><strong>{name || "—"}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.email")}: </span><strong>{email}</strong></li>
             <li><span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.orgName")}: </span><strong>{orgName}</strong></li>
+            <li>
+              <span className="text-[color:var(--foreground-muted)]">{t("auth.register.summary.plan")}: </span>
+              <strong>{tierOptions.find((o) => o.key === tier)?.label ?? tier}</strong>
+            </li>
+
+            {isPaidTier ? (
+              <li className="!mt-5 border-t border-[color:var(--border-main)] pt-4">
+                {paypalOrderId ? (
+                  <p className="flex items-center gap-2 font-bold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={18} aria-hidden />
+                    {t("auth.register.paymentApproved")}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mb-3 text-xs text-[color:var(--foreground-muted)]">
+                      {t("auth.register.payToFinish")}
+                    </p>
+                    <PayPalRegisterButtons
+                      email={email.trim().toLowerCase()}
+                      tier={tier}
+                      billingCycle={billingCycle}
+                      onApproved={setPaypalOrderId}
+                      onError={(m) => toast.error(m)}
+                      labels={{
+                        unavailable: t("auth.register.paymentUnavailable"),
+                        loading: t("auth.register.paymentLoading"),
+                        failed: t("auth.register.paymentFailed"),
+                      }}
+                    />
+                  </>
+                )}
+              </li>
+            ) : null}
           </ul>
         )}
       </div>
@@ -211,10 +324,14 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin }: Pr
             {t("auth.register.next")}
             <NextIcon size={16} aria-hidden />
           </button>
+        ) : isPaidTier && !paypalOrderId ? (
+          // Payment happens in the PayPal buttons above; submitting before the
+          // payer approves would only be rejected server-side.
+          null
         ) : (
           <button type="button" disabled={busy} onClick={() => void submit()}
             className="ms-auto inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-60">
-            {busy ? "…" : t("auth.register.submit")}
+            {busy ? "…" : isPaidTier ? t("auth.register.submitPaid") : t("auth.register.submit")}
           </button>
         )}
       </div>

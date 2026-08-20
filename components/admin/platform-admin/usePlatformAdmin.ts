@@ -27,6 +27,7 @@ import {
 import type { ExecutiveOrgRow } from "@/app/actions/executive-subscriptions";
 import { normalizeIndustryType } from "@/lib/professions/config";
 import type { PlatformConfig } from "@/lib/platform-settings";
+import type { AdminSystemHealth } from "@/lib/admin-assistant/system-health";
 import { TABS, type TabId } from "./types";
 import { usePlatformAdminUtils } from "./usePlatformAdminUtils";
 
@@ -61,7 +62,8 @@ export function usePlatformAdmin() {
   const [provisionRole, setProvisionRole] = useState("EMPLOYEE");
   const [provisionSendEmail, setProvisionSendEmail] = useState(true);
   const [busyAction, setBusyAction] = useState(false);
-  const [health, setHealth] = useState<{ checkedAt?: string; statuses?: { name: string; ok: boolean; detail: string }[] } | null>(null);
+  const [health, setHealth] = useState<AdminSystemHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
   const [envStatus, setEnvStatus] = useState<Record<string, boolean> | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -100,10 +102,18 @@ export function usePlatformAdmin() {
   }, [t]);
 
   const loadHealth = useCallback(async () => {
-    const res = await fetch("/api/admin/system-health", { credentials: "include" });
-    const data = await res.json();
-    if (!res.ok) { toast.error(t("platformAdmin.loadHealthFailed")); return; }
-    setHealth(data);
+    setHealthLoading(true);
+    try {
+      const res = await fetch("/api/admin/system-health", { credentials: "include" });
+      const data = (await res.json()) as AdminSystemHealth & { error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? t("platformAdmin.loadHealthFailed"));
+        return;
+      }
+      setHealth(data);
+    } finally {
+      setHealthLoading(false);
+    }
   }, [t]);
 
   const refreshAll = useCallback(async () => {
@@ -192,7 +202,9 @@ export function usePlatformAdmin() {
       const r = await manageSubsCreateManualUserAction(fd);
       if (!r.ok) { toast.error(r.error); return; }
       if (r.emailed) toast.success(t("platformAdmin.newSubscriptionEmailed"));
-      else toast.warning(r.mailError ? `מנוי נוצר, אך המייל לא נשלח: ${r.mailError}` : "מנוי נוצר, אך שליחת המייל נכשלה — בדקו RESEND_API_KEY או SMTP ב-Vercel");
+      else toast.warning(r.mailError
+        ? t("platformAdmin.confirm.createdMailFailed", { error: r.mailError })
+        : t("platformAdmin.confirm.createdMailFailedGeneric"));
       setShowCreateOrg(false); setCreateEmail(""); setCreateName(""); setCreateOrgName(""); setCreateTier("FREE"); setCreateVip(false);
       setCreateIndustry(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION"));
       setCreateConstructionTrade(normalizeIndustryType(platformConfig?.defaultIndustryForRegistration ?? "CONSTRUCTION") === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
@@ -202,7 +214,7 @@ export function usePlatformAdmin() {
 
   const handleDeleteOrg = async () => {
     if (!selectedOrg) return;
-    if (!window.confirm(`למחוק את הארגון «${selectedOrg.name}» ואת כל המשתמשים והנתונים שלו? פעולה בלתי הפיכה.`)) return;
+    if (!window.confirm(t("platformAdmin.confirm.deleteOrg", { name: selectedOrg.name }))) return;
     setBusyAction(true);
     try {
       const fd = new FormData();
@@ -215,7 +227,7 @@ export function usePlatformAdmin() {
   };
 
   const handleDeleteUser = async (email: string) => {
-    if (!window.confirm(`למחוק את המשתמש ${email}?`)) return;
+    if (!window.confirm(t("platformAdmin.confirm.deleteUser", { email }))) return;
     setBusyAction(true);
     try {
       const fd = new FormData();
@@ -253,7 +265,7 @@ export function usePlatformAdmin() {
         body: JSON.stringify(platformConfig),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "שמירה נכשלה");
+      if (!res.ok) throw new Error(data.error ?? t("platformAdmin.confirm.saveFailedFallback"));
       setPlatformConfig(data.config);
       toast.success(t("platformAdmin.platformSettingsSaved"));
     } catch (e) { toast.error(e instanceof Error ? e.message : t("platformAdmin.saveFailed")); }
@@ -276,7 +288,7 @@ export function usePlatformAdmin() {
     adminUsers, provisionEmail, setProvisionEmail, provisionName, setProvisionName,
     provisionOrgId, setProvisionOrgId, provisionRole, setProvisionRole,
     provisionSendEmail, setProvisionSendEmail,
-    health, envStatus, savingSettings,
+    health, healthLoading, envStatus, savingSettings,
     handleSaveSubscription, handleAdjustScans, handleApprovePending, handleRejectPending,
     handleCreateOrg, handleDeleteOrg, handleDeleteUser, handleProvisionUser,
     savePlatformSettings, loadHealth,

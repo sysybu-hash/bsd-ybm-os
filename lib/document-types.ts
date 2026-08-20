@@ -44,6 +44,12 @@ export const ISSUED_DOCUMENT_TYPES: DocumentTypeOption[] = [
     descriptionHe: "זיכוי / ביטול חלקי או מלא של חשבונית קודמת",
     color: "rose",
   },
+  {
+    id: "PURCHASE_ORDER",
+    labelHe: "הזמנת רכש",
+    descriptionHe: "הזמנה רשמית לספק — מסמך רכש ממותג",
+    color: "sky",
+  },
 ];
 
 export function documentTypeLabel(type: string): string {

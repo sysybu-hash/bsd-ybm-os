@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** Navigates and retries on Firefox NS_BINDING_ABORTED / "interrupted by another navigation". */
 async function safeGoto(
@@ -30,11 +30,27 @@ async function safeGoto(
 
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
+export const E2E_PM_EMAIL = process.env.E2E_PM_EMAIL ?? "pm@bsd-demo.test";
+export const E2E_PM_PASSWORD = process.env.E2E_PM_PASSWORD ?? E2E_PASSWORD;
 
-function readSeedMarker(): { e2eProjectId?: string; e2eContactId?: string } {
+export type E2eCredentials = { email: string; password: string };
+
+function readSeedMarker(): {
+  e2eProjectId?: string;
+  e2eContactId?: string;
+  e2eOfficeExpenseId?: string;
+  companyMgmtOrganizationId?: string;
+  companyMgmtEmail?: string;
+} {
   try {
     const p = path.resolve(process.cwd(), ".e2e-demo-seeded.json");
-    return JSON.parse(fs.readFileSync(p, "utf8")) as { e2eProjectId?: string; e2eContactId?: string };
+    return JSON.parse(fs.readFileSync(p, "utf8")) as {
+      e2eProjectId?: string;
+      e2eContactId?: string;
+      e2eOfficeExpenseId?: string;
+      companyMgmtOrganizationId?: string;
+      companyMgmtEmail?: string;
+    };
   } catch {
     return {};
   }
@@ -44,6 +60,16 @@ const seedMarker = readSeedMarker();
 
 export const E2E_PROJECT_ID = process.env.E2E_PROJECT_ID ?? seedMarker.e2eProjectId ?? "";
 export const E2E_CONTACT_ID = process.env.E2E_CONTACT_ID ?? seedMarker.e2eContactId ?? "";
+export const E2E_OFFICE_EXPENSE_ID =
+  process.env.E2E_OFFICE_EXPENSE_ID ?? seedMarker.e2eOfficeExpenseId ?? "";
+export const E2E_COMPANY_MGMT_ORG_ID =
+  process.env.E2E_COMPANY_MGMT_ORG_ID ?? seedMarker.companyMgmtOrganizationId ?? "";
+export const E2E_COMPANY_MGMT_EMAIL =
+  process.env.E2E_COMPANY_MGMT_EMAIL ?? seedMarker.companyMgmtEmail ?? "company@bsd-demo.test";
+/** Seeded company-mgmt demo project id pattern: `${orgId}-demo-project`. */
+export const E2E_COMPANY_MGMT_PROJECT_ID =
+  process.env.E2E_COMPANY_MGMT_PROJECT_ID ??
+  (E2E_COMPANY_MGMT_ORG_ID ? `${E2E_COMPANY_MGMT_ORG_ID}-demo-project` : "");
 
 /** Canonical workspace URL at `/` with query params (use `w` for widget type). */
 export function workspaceUrl(params: Record<string, string>): string {
@@ -63,17 +89,67 @@ import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-
 const FIRST_DAY_WIZARD_KEY = FIRST_DAY_WIZARD_STORAGE_KEY;
 const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 const LAUNCHER_STORAGE_KEY = "bsd_ybm_launcher_v2";
+const LAUNCHER_STORAGE_KEY_LEGACY = "bsd_ybm_launcher_v1";
+const PWA_INSTALL_DISMISS_KEY = "bsd-ybm-pwa-install-dismissed";
+
+/**
+ * מסמן לטאב הזה לא למחוק את פריסת החלונות בניווט הבא —
+ * primeE2eBrowserStorage מנקה layout בכל ניווט (בידוד בדיקות), אבל בדיקות
+ * restore-אחרי-reload צריכות שה-layout ישרוד את הטעינה מחדש.
+ */
+export async function keepWorkspaceLayoutAcrossReload(page: Page): Promise<void> {
+  await page.evaluate(() => localStorage.setItem("__e2e_keep_layout", "1"));
+}
+
+/**
+ * מנקה את פריסת החלונות ב*שרת* עבור המשתמש המחובר. חובה במובייל: בדיקות
+ * בתצוגת דסקטופ מוקדם יותר בריצה שומרות layout לשרת עבור אותו משתמש-seed,
+ * ובדיקות מובייל מושכות אותו ב-hydration (ה-fetch לא חסום לפי viewport, רק
+ * הכתיבה). קורא אחרי התחברות.
+ */
+export async function clearServerWorkspaceLayout(page: Page): Promise<void> {
+  try {
+    await page.evaluate(async () => {
+      await fetch("/api/user/workspace-layout", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ widgets: [] }),
+      });
+    });
+  } catch {
+    /* best-effort */
+  }
+}
 
 /** מונע מודל Passkey ואשף יום ראשון מלחסום קליקים ב-E2E. */
 export async function primeE2eBrowserStorage(page: Page) {
   await page.addInitScript(
-    ({ passkeyKey, wizardKey, launcherBannerKey, launcherStorageKey, layoutKeys }) => {
+    ({
+      passkeyKey,
+      wizardKey,
+      launcherBannerKey,
+      launcherStorageKey,
+      launcherLegacyKey,
+      pwaDismissKey,
+      layoutKeys,
+      layoutPrefix,
+    }) => {
       try {
         localStorage.setItem(passkeyKey, "1");
         localStorage.setItem(wizardKey, "dismissed");
         localStorage.setItem(launcherBannerKey, "1");
         localStorage.setItem(launcherStorageKey, "{}");
+        localStorage.removeItem(launcherLegacyKey);
+        sessionStorage.setItem(pwaDismissKey, "1");
         for (const k of layoutKeys) localStorage.removeItem(k);
+        // בדיקות restore-אחרי-reload מציבות דגל opt-out כדי שה-layout ישרוד ניווט
+        if (localStorage.getItem("__e2e_keep_layout") !== "1") {
+          for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+            const key = localStorage.key(i);
+            if (key?.startsWith(layoutPrefix)) localStorage.removeItem(key);
+          }
+        }
       } catch {
         /* ignore */
       }
@@ -83,6 +159,8 @@ export async function primeE2eBrowserStorage(page: Page) {
       wizardKey: FIRST_DAY_WIZARD_KEY,
       launcherBannerKey: LAUNCHER_V2_BANNER_KEY,
       launcherStorageKey: LAUNCHER_STORAGE_KEY,
+      launcherLegacyKey: LAUNCHER_STORAGE_KEY_LEGACY,
+      pwaDismissKey: PWA_INSTALL_DISMISS_KEY,
       layoutKeys: [
         "bsd_ybm_layout_quiet_v6",
         "bsd_ybm_layout_quiet_v5",
@@ -90,6 +168,7 @@ export async function primeE2eBrowserStorage(page: Page) {
         "bsd_ybm_layout_quiet_v4",
         "bsd_ybm_layout_snapshot_session",
       ],
+      layoutPrefix: "bsd_ybm_layout_quiet_v7:",
     },
   );
 }
@@ -112,15 +191,66 @@ export async function primeCookieConsent(page: Page) {
 
 /** מחכה שה-workspace נטען אחרי התחברות (לא דף נחיתה / login). */
 export async function waitForAuthenticatedWorkspace(page: Page) {
+  await expect
+    .poll(
+      () => {
+        try {
+          return !new URL(page.url()).pathname.includes("/login");
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30_000, message: "Expected to leave login route" },
+    )
+    .toBe(true);
+
   const sidebar = page.getByRole("navigation", { name: /יישומים|Apps/i });
   const mobileNav = page.getByTestId("mobile-bottom-nav");
   const workspaceNav = page.getByRole("complementary", { name: /Workspace navigation|ניווט/i });
   const hubGreeting = page.getByRole("heading", {
-    name: /Good (morning|afternoon|evening)|בוקר טוב|צהריים טובים|ערב טוב/i,
+    name: /Good (morning|afternoon|evening|night)|בוקר טוב|צהריים טובים|ערב טוב|לילה טוב/i,
   });
   await expect(sidebar.or(mobileNav).or(workspaceNav).or(hubGreeting).first()).toBeVisible({
     timeout: 30000,
   });
+}
+
+/** Scoped widget shell — topmost window for the given widget type (avoids strict-mode multi-match). */
+export function widgetShell(page: Page, widgetId: string) {
+  return page.locator(`[data-widget-shell][id^="${widgetId}-"]`).last();
+}
+
+/** Waits until the hub shell shows the expected tab as selected (deep links can lag). */
+export async function expectHubTabSelected(shell: Locator, tabName: RegExp): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const text = (await shell.getByRole("tab", { selected: true }).textContent()) ?? "";
+        return tabName.test(text);
+      },
+      { timeout: 20_000, message: `Expected selected hub tab matching ${tabName}` },
+    )
+    .toBe(true);
+}
+
+/**
+ * Deep links may focus an existing hub without switching tabs — click the tab when needed.
+ */
+export async function ensureHubTabFromDeepLink(shell: Locator, tabName: RegExp): Promise<void> {
+  const tab = shell.getByRole("tab", { name: tabName });
+  await expect(tab).toBeVisible({ timeout: 15_000 });
+  if ((await tab.getAttribute("aria-selected")) !== "true") {
+    await tab.scrollIntoViewIfNeeded();
+    await tab.click({ force: true });
+  }
+  await expectHubTabSelected(shell, tabName);
+}
+
+/** Waits for executive hub shell and the office-expenses tab to be active. */
+export async function waitForExecutiveHubOfficeExpenses(page: Page) {
+  const shell = widgetShell(page, "executiveHub");
+  await expect(shell).toBeVisible({ timeout: 30_000 });
+  await ensureHubTabFromDeepLink(shell, /הוצאות משרד|office expenses/i);
 }
 
 /** סלקטור לחלון פרויקטים / מרכז שליטה (hub או standalone). */
@@ -220,7 +350,18 @@ async function hasAuthenticatedSession(page: Page): Promise<boolean> {
   });
 }
 
-async function credentialsSignInViaApi(page: Page): Promise<boolean> {
+async function ensureAuthenticatedWorkspace(page: Page): Promise<boolean> {
+  if (!(await hasAuthenticatedSession(page))) return false;
+  if (new URL(page.url()).pathname.includes("/login")) return false;
+  try {
+    await waitForAuthenticatedWorkspace(page);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function credentialsSignInViaApi(page: Page, credentials: E2eCredentials): Promise<boolean> {
   const ok = await page.evaluate(
     async ({ email, password }) => {
       const csrf = (await fetch(`${window.location.origin}/api/auth/csrf`).then((r) => r.json())) as {
@@ -248,12 +389,12 @@ async function credentialsSignInViaApi(page: Page): Promise<boolean> {
       const session = await fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json());
       return Boolean((session as { user?: { email?: string } }).user?.email);
     },
-    { email: E2E_EMAIL, password: E2E_PASSWORD },
+    credentials,
   );
   return ok;
 }
 
-async function credentialsSignInViaUi(page: Page): Promise<boolean> {
+async function credentialsSignInViaUi(page: Page, credentials: E2eCredentials): Promise<boolean> {
   const emailInput = page
     .getByPlaceholder(/אימייל|email/i)
     .or(page.getByLabel(/אימייל|email/i))
@@ -267,29 +408,74 @@ async function credentialsSignInViaUi(page: Page): Promise<boolean> {
   if (!(await emailInput.isVisible({ timeout: 12_000 }).catch(() => false))) {
     return false;
   }
-  await emailInput.fill(E2E_EMAIL);
-  await passwordInput.fill(E2E_PASSWORD);
+  await emailInput.fill(credentials.email);
+  await passwordInput.fill(credentials.password);
   await submit.click();
   await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 35_000 });
   return hasAuthenticatedSession(page);
 }
 
-export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
+export async function signInWithRetries(
+  page: Page,
+  attempts = 4,
+  credentials: E2eCredentials = { email: E2E_EMAIL, password: E2E_PASSWORD },
+): Promise<boolean> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const signed = await tryCredentialsSignIn(page, credentials);
+    if (signed) {
+      try {
+        await waitForAuthenticatedApiSession(page);
+        return true;
+      } catch {
+        /* session cookie not ready yet — retry sign-in */
+      }
+    }
+    await page.waitForTimeout(600 + attempt * 600);
+  }
+  return false;
+}
+
+/** ממתין ל-session cookie לפני קריאות API ב-E2E. */
+export async function waitForAuthenticatedApiSession(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get("/api/auth/session");
+        if (!res.ok()) return false;
+        const data = (await res.json()) as { user?: { email?: string } };
+        return Boolean(data.user?.email);
+      },
+      { timeout: 30_000, message: "Expected authenticated API session" },
+    )
+    .toBe(true);
+}
+
+export async function tryCredentialsSignIn(
+  page: Page,
+  credentials: E2eCredentials = { email: E2E_EMAIL, password: E2E_PASSWORD },
+): Promise<boolean> {
   try {
     await primeCookieConsent(page);
     await primeE2eBrowserStorage(page);
     await page.goto("/login");
     await page.waitForLoadState("domcontentloaded");
 
-    if (await credentialsSignInViaApi(page)) {
-      await page.goto("/");
-      await waitForAuthenticatedWorkspace(page);
+    if (await credentialsSignInViaApi(page, credentials)) {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      if (await ensureAuthenticatedWorkspace(page)) {
+        await dismissWorkspaceOverlays(page);
+        return true;
+      }
+      await page.goto("/login", { waitUntil: "domcontentloaded" });
+    }
+
+    if (await ensureAuthenticatedWorkspace(page)) {
       await dismissWorkspaceOverlays(page);
       return true;
     }
 
-    if (await credentialsSignInViaUi(page)) {
-      await waitForAuthenticatedWorkspace(page);
+    if (await credentialsSignInViaUi(page, credentials)) {
+      if (!(await ensureAuthenticatedWorkspace(page))) return false;
       await dismissWorkspaceOverlays(page);
       return true;
     }
@@ -303,9 +489,57 @@ export async function tryCredentialsSignIn(page: Page): Promise<boolean> {
   }
 }
 
+/** התחברות כמשתמש PROJECT_MGR (pm@bsd-demo.test אחרי seed). */
+export async function tryProjectMgrSignIn(page: Page): Promise<boolean> {
+  return tryCredentialsSignIn(page, { email: E2E_PM_EMAIL, password: E2E_PM_PASSWORD });
+}
+
 /** כפתור Hub ברשת המהירה (לא אייקון בסרגל הצד). */
 export function hubQuickGridButton(page: Page, name: RegExp) {
   return page.getByRole("listitem").filter({ has: page.getByRole("button", { name }) }).getByRole("button").first();
+}
+
+/** פותח Hub מהרשת המהירה, או deep link אם האריח לא מוצג (למשל פיננסים בתעשיית בנייה). */
+export async function openHubFromLauncher(
+  page: Page,
+  opts: { quickGridName: RegExp; widget: string; tab?: string },
+): Promise<void> {
+  const btn = hubQuickGridButton(page, opts.quickGridName);
+  if (await btn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await btn.click();
+    await dismissWorkspaceOverlays(page);
+    return;
+  }
+  const url = opts.tab
+    ? workspaceUrl({ w: opts.widget, tab: opts.tab })
+    : workspaceUrl({ w: opts.widget });
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await dismissWorkspaceOverlays(page);
+}
+
+export async function openFinanceHub(page: Page): Promise<void> {
+  await openHubFromLauncher(page, {
+    quickGridName: /פיננסים|finance/i,
+    widget: "financeHub",
+  });
+}
+
+/** פותח Hub כלשהו לבדיקות shell — מעדיף אריח זמין ברשת המהירה. */
+export async function openAnyHubFromQuickGrid(page: Page): Promise<void> {
+  const candidates = [
+    /מרכז מנהל|executive/i,
+    /פיננסים|finance/i,
+    /פרויקטים|projects hub/i,
+    /מסמכים|documents hub/i,
+  ];
+  for (const name of candidates) {
+    const btn = hubQuickGridButton(page, name);
+    if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await btn.click();
+      return;
+    }
+  }
+  await openFinanceHub(page);
 }
 
 /** מחכה שהווידג'ט סיים טעינה ומציג UI אינטראקטיבי (לא רק shell ריק). */
@@ -371,46 +605,106 @@ export async function dismissCookieBannerIfVisible(page: Page) {
   const accept = page.getByRole("button", { name: /קבל את כל העוגיות|Accept all cookies/i });
   if (await accept.isVisible().catch(() => false)) {
     await accept.click();
+    await accept.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  }
+}
+
+async function dismissLauncherMigrationBanner(page: Page): Promise<void> {
+  const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
+  if (!(await migrationBanner.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const dismissBtn = migrationBanner.getByRole("button", {
+    name: /הבנתי|Got it|Понятно|Close|סגירה|Dismiss|סגור/i,
+  });
+  if (await dismissBtn.isVisible().catch(() => false)) {
+    await dismissBtn.click({ force: true });
+  } else {
+    await migrationBanner.locator("button").first().click({ force: true });
+  }
+  await migrationBanner.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissPasskeyOffer(page: Page): Promise<void> {
+  const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
+  if (!(await passkeyDialog.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const later = passkeyDialog.getByRole("button", { name: /אולי אחר כך|Maybe later/i });
+  const close = passkeyDialog.getByRole("button", { name: /סגירה|Close/i });
+  if (await later.isVisible().catch(() => false)) {
+    await later.click({ force: true });
+  } else if (await close.isVisible().catch(() => false)) {
+    await close.click({ force: true });
+  }
+  await passkeyDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissFirstDayWizard(page: Page): Promise<void> {
+  const wizard = page.getByTestId("first-day-wizard");
+  if (!(await wizard.isVisible({ timeout: 1500 }).catch(() => false))) return;
+
+  const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
+  const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
+  if (await skip.isVisible().catch(() => false)) {
+    await skip.click({ force: true });
+  } else if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click({ force: true });
+  }
+  await wizard.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+}
+
+async function dismissPwaInstallBanner(page: Page): Promise<void> {
+  const pwaRegion = page.getByRole("region", { name: /התקנת אפליקציה|Install app/i });
+  if (!(await pwaRegion.isVisible({ timeout: 1000 }).catch(() => false))) return;
+
+  const close = pwaRegion.getByRole("button", { name: /סגור|Close/i });
+  if (await close.isVisible().catch(() => false)) {
+    await close.click({ force: true });
+    await pwaRegion.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   }
 }
 
 /** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
 export async function dismissWorkspaceOverlays(page: Page) {
-  const migrationBanner = page.getByTestId("launcher-v2-migration-banner");
-  if (await migrationBanner.isVisible({ timeout: 2000 }).catch(() => false)) {
-    const dismissBtn = migrationBanner.getByRole("button", { name: /הבנתי|Got it|Close|סגירה/i });
-    if (await dismissBtn.isVisible().catch(() => false)) {
-      await dismissBtn.click();
-    } else {
-      await migrationBanner.locator("button").first().click();
-    }
-    await migrationBanner.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-  }
+  for (let pass = 0; pass < 3; pass++) {
+    // Prevent Launcher v2 migration banner from covering quick-grid / hub chrome in E2E.
+    await page
+      .evaluate(
+        ({ launcherBannerKey, launcherStorageKey, launcherLegacyKey, wizardKey, passkeyKey, pwaDismissKey }) => {
+          try {
+            localStorage.setItem(launcherBannerKey, "1");
+            localStorage.setItem(launcherStorageKey, "{}");
+            localStorage.removeItem(launcherLegacyKey);
+            localStorage.setItem(wizardKey, "dismissed");
+            localStorage.setItem(passkeyKey, "1");
+            sessionStorage.setItem(pwaDismissKey, "1");
+          } catch {
+            /* ignore */
+          }
+        },
+        {
+          launcherBannerKey: LAUNCHER_V2_BANNER_KEY,
+          launcherStorageKey: LAUNCHER_STORAGE_KEY,
+          launcherLegacyKey: LAUNCHER_STORAGE_KEY_LEGACY,
+          wizardKey: FIRST_DAY_WIZARD_KEY,
+          passkeyKey: PASSKEY_OFFER_KEY,
+          pwaDismissKey: PWA_INSTALL_DISMISS_KEY,
+        },
+      )
+      .catch(() => {});
 
-  const passkeyDialog = page.locator('[aria-labelledby="passkey-offer-title"]');
-  try {
-    await passkeyDialog.waitFor({ state: "visible", timeout: 4000 });
-    const later = passkeyDialog.getByRole("button", { name: /אולי אחר כך|Maybe later/i });
-    const close = passkeyDialog.getByRole("button", { name: /סגירה|Close/i });
-    if (await later.isVisible().catch(() => false)) {
-      await later.click();
-    } else if (await close.isVisible().catch(() => false)) {
-      await close.click();
-    }
-    await passkeyDialog.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-  } catch {
-    /* passkey offer not shown */
-  }
+    await dismissCookieBannerIfVisible(page);
+    await dismissLauncherMigrationBanner(page);
+    await dismissPasskeyOffer(page);
+    await dismissFirstDayWizard(page);
+    await dismissPwaInstallBanner(page);
 
-  const wizard = page.getByTestId("first-day-wizard");
-  if (await wizard.isVisible({ timeout: 5000 }).catch(() => false)) {
-    const skip = wizard.getByRole("button", { name: /דלג|Skip/i });
-    const dismiss = wizard.getByRole("button", { name: /סגור|Close/i });
-    if (await skip.isVisible().catch(() => false)) {
-      await skip.click();
-    } else if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click();
-    }
-    await wizard.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    const blocking = page
+      .getByTestId("launcher-v2-migration-banner")
+      .or(page.getByTestId("first-day-wizard"))
+      .or(page.locator('[aria-labelledby="passkey-offer-title"]'))
+      .or(page.getByRole("dialog", { name: /עוגיות|cookies/i }));
+    const stillVisible = await blocking.first().isVisible({ timeout: 500 }).catch(() => false);
+    if (!stillVisible) break;
+    await page.waitForTimeout(300);
   }
 }

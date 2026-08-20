@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { OsButton } from "@/components/os/ui";
 
 type Suggestion = {
   action: "add" | "update" | "note";
@@ -26,6 +28,8 @@ export default function BoqAgentPanel({
   apiBase: string;
   onApplied: () => void;
 }) {
+  const { t } = useI18n();
+
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AgentResponse | null>(null);
@@ -45,13 +49,13 @@ export default function BoqAgentPanel({
       });
       const json = (await res.json()) as AgentResponse & { error?: string };
       if (!res.ok) {
-        toast.error(json.error ?? "שגיאה בסוכן BOQ");
+        toast.error(json.error ?? t("projectDashboard.boqAgentError"));
         return;
       }
       setResult(json);
       setSelected(new Set(json.suggestions.map((_, i) => i)));
     } catch {
-      toast.error("שגיאת רשת");
+      toast.error(t("projectDashboard.networkError"));
     } finally {
       setLoading(false);
     }
@@ -61,7 +65,7 @@ export default function BoqAgentPanel({
     if (!result) return;
     const suggestions = result.suggestions.filter((_, i) => selected.has(i));
     if (suggestions.length === 0) {
-      toast.error("בחר לפחות הצעה אחת");
+      toast.error(t("projectDashboard.boqAgentPickOne"));
       return;
     }
     setLoading(true);
@@ -74,15 +78,15 @@ export default function BoqAgentPanel({
       });
       const json = (await res.json()) as { applied?: number; error?: string };
       if (!res.ok) {
-        toast.error(json.error ?? "שגיאה ביישום");
+        toast.error(json.error ?? t("projectDashboard.boqAgentApplyError"));
         return;
       }
-      toast.success(`יושמו ${json.applied ?? 0} שורות`);
+      toast.success(t("projectDashboard.boqAgentApplied", { count: String(json.applied ?? 0) }));
       setResult(null);
       setPrompt("");
       onApplied();
     } catch {
-      toast.error("שגיאת רשת");
+      toast.error(t("projectDashboard.networkError"));
     } finally {
       setLoading(false);
     }
@@ -101,25 +105,26 @@ export default function BoqAgentPanel({
     <div className="rounded-xl border border-violet-500/25 bg-violet-500/5 p-3 space-y-2">
       <p className="flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-200">
         <Sparkles size={14} />
-        סוכן כתב כמויות (AI)
+        {t("projectDashboard.boqAgentTitle")}
       </p>
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         rows={2}
         dir="auto"
-        placeholder='לדוגמה: "הוסף סעיפי איטום לגג" או "עדכן מחירי ריצוף"'
+        placeholder={t("projectDashboard.boqAgentPlaceholder")}
         className="w-full resize-none rounded-lg border border-[color:var(--border-main)] bg-transparent px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500/40"
       />
-      <button
-        type="button"
-        disabled={loading || prompt.trim().length < 3}
+      <OsButton
+        variant="primary"
+        className="w-full justify-center bg-violet-600 hover:bg-violet-500"
+        disabled={prompt.trim().length < 3}
+        loading={loading && !result}
+        icon={<Sparkles size={14} aria-hidden />}
         onClick={() => void runAgent()}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 py-2 text-xs font-bold text-white disabled:opacity-50"
       >
-        {loading && !result ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-        {loading && !result ? "מנתח..." : "הצע שינויים"}
-      </button>
+        {t(loading && !result ? "projectDashboard.boqAgentAnalyzing" : "projectDashboard.boqAgentSuggest")}
+      </OsButton>
 
       {result ? (
         <div className="space-y-2 text-xs">
@@ -136,7 +141,7 @@ export default function BoqAgentPanel({
                   />
                   <span>
                     <span className="font-bold text-violet-700 dark:text-violet-300">
-                      {s.action === "add" ? "הוסף" : s.action === "update" ? "עדכן" : "הערה"}:
+                      {t(s.action === "add" ? "projectDashboard.actionAdd" : s.action === "update" ? "projectDashboard.actionUpdate" : "projectDashboard.actionNote")}:
                     </span>{" "}
                     {s.description}
                     {s.rationale ? (
@@ -149,14 +154,14 @@ export default function BoqAgentPanel({
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            disabled={loading}
+          <OsButton
+            variant="primary"
+            className="w-full justify-center bg-emerald-600 hover:bg-emerald-500"
+            loading={loading}
             onClick={() => void applySelected()}
-            className="w-full rounded-lg bg-emerald-600 py-2 font-bold text-white disabled:opacity-50"
           >
-            {loading ? "מיישם..." : "יישם נבחרים"}
-          </button>
+            {t("projectDashboard.boqAgentApplySelected")}
+          </OsButton>
         </div>
       ) : null}
     </div>

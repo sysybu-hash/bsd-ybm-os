@@ -2,6 +2,7 @@
 
 import { FileText, ListChecks, ScrollText } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { OsButton } from "@/components/os/ui";
 import type { FieldCopilotHandoffTarget } from "@/lib/field-copilot/handoff";
 
 type Props = {
@@ -21,16 +22,16 @@ export default function ProduceActions({ busy, onHandoff }: Props) {
   return (
     <div className="grid gap-3 sm:grid-cols-1">
       {buttons.map(({ target, icon: Icon, label }) => (
-        <button
+        <OsButton
           key={target}
-          type="button"
+          variant="primary"
+          className="min-h-[52px] justify-center"
           disabled={busy}
+          icon={<Icon size={20} aria-hidden />}
           onClick={() => onHandoff(target)}
-          className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-slate-800 font-bold text-white disabled:opacity-50 dark:bg-slate-200 dark:text-slate-900"
         >
-          <Icon size={20} />
           {label}
-        </button>
+        </OsButton>
       ))}
     </div>
   );

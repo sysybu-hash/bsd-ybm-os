@@ -18,6 +18,7 @@ type Options = {
   focusWidget: (id: string) => void;
   findWidgetByType: (type: WidgetType) => ActiveWidget | undefined;
   getWidgetViewState: (widgetId: string) => WidgetViewState | null;
+  updateWidgetLiveData?: (id: string, liveData: Record<string, unknown> | null) => void;
 };
 
 /** Survives Suspense/remount when router.replace updates searchParams. */
@@ -54,6 +55,7 @@ export function useWorkspaceUrlSync({
   focusWidget,
   findWidgetByType,
   getWidgetViewState,
+  updateWidgetLiveData,
 }: Options) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,6 +63,9 @@ export function useWorkspaceUrlSync({
   const prevWidgetsRef = useRef<ActiveWidget[]>([]);
   /** מונע לולאת focusWidget → widgets → effect (Maximum update depth / error boundary). */
   const fulfilledFocusRef = useRef<string | null>(null);
+  /** On a fresh page load, a `?w=…&wid=…` URL is a self-written focus link from a previous
+   *  session — not user intent. We strip it once so reloads restore ONLY the saved layout. */
+  const initialUrlStripped = useRef(false);
 
   const intentFingerprint = useCallback(
     (intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) =>
@@ -77,21 +82,31 @@ export function useWorkspaceUrlSync({
           ? intent.viewState.projectId
           : null;
       if (projectId) return widget.liveData?.projectId === projectId;
-      if (intent.widgetInstanceId) {
-        if (intent.widgetInstanceId === widget.id) return true;
-        // Stale wid after remount/restore — still the same logical window.
-        return true;
-      }
       return true;
     },
     [],
   );
 
+  const findWidgetForIntent = useCallback(
+    (intent: NonNullable<ReturnType<typeof parseWorkspaceUrl>>) => {
+      if (intent.widgetInstanceId) {
+        const byId = widgets.find((w) => w.id === intent.widgetInstanceId);
+        if (byId) return byId;
+      }
+      return widgets.find((w) => widgetMatchesUrlIntent(w, intent));
+    },
+    [widgets, widgetMatchesUrlIntent],
+  );
+
   const resolveIntent = useCallback((): ReturnType<typeof parseWorkspaceUrl> => {
-    const fromHook = parseWorkspaceUrl(searchParams);
-    if (fromHook) return fromHook;
-    if (typeof window === "undefined") return null;
-    return parseWorkspaceUrl(new URLSearchParams(window.location.search));
+    // The real, current URL is the only ground truth — a raw (non-router) history
+    // mutation elsewhere can leave the useSearchParams() hook value stale, which
+    // would otherwise make a URL we already stripped keep appearing to "have" a
+    // deep link forever. Only fall back to the hook value for SSR.
+    if (typeof window !== "undefined") {
+      return parseWorkspaceUrl(new URLSearchParams(window.location.search));
+    }
+    return parseWorkspaceUrl(searchParams);
   }, [searchParams]);
 
   const writeUrl = useCallback(
@@ -179,6 +194,23 @@ export function useWorkspaceUrlSync({
     const intent = resolveIntent();
     if (!intent) return;
 
+    // First processing after hydration: if the URL carries a window instance id (`wid`),
+    // it's a stale self-written focus link from a previous session — strip it and don't
+    // auto-open. The saved layout (use-window-manager) is the single source of truth for
+    // what reopens, so a refresh restores exactly the windows the user left — nothing else.
+    // Intentional deep links (launcher, emails) use `?w=X` WITHOUT a `wid` and still open.
+    if (!initialUrlStripped.current) {
+      initialUrlStripped.current = true;
+      if (intent.widgetInstanceId && typeof window !== "undefined") {
+        dismissedWorkspaceIntentFp = intentFingerprint(intent);
+        // router.replace (not the raw History API) so Next's own useSearchParams()
+        // state updates too — a raw history.replaceState call can leave it stale,
+        // causing this same "stale wid" URL to keep being read as if still present.
+        router.replace(window.location.pathname, { scroll: false });
+        return;
+      }
+    }
+
     const fp = intentFingerprint(intent);
 
     const projectId =
@@ -187,15 +219,18 @@ export function useWorkspaceUrlSync({
         ? intent.viewState.projectId
         : null;
 
-    const matchingWidget = intent.widgetInstanceId
-      ? widgets.find((w) => w.id === intent.widgetInstanceId)
-      : widgets.find((w) => {
-          if (w.type !== intent.widgetType) return false;
-          if (projectId) return w.liveData?.projectId === projectId;
-          return true;
-        });
+    const matchingWidget = findWidgetForIntent(intent);
 
     if (matchingWidget) {
+      const viewState = intent.viewState;
+      if (viewState && Object.keys(viewState).length > 0 && updateWidgetLiveData) {
+        const merged: Record<string, unknown> = { ...(matchingWidget.liveData ?? {}), ...viewState };
+        const prevKey = JSON.stringify(matchingWidget.liveData ?? {});
+        const nextKey = JSON.stringify(merged);
+        if (prevKey !== nextKey) {
+          updateWidgetLiveData(matchingWidget.id, merged);
+        }
+      }
       const focusKey = `${fp}:${matchingWidget.id}`;
       if (fulfilledFocusRef.current !== focusKey) {
         fulfilledFocusRef.current = focusKey;
@@ -209,6 +244,17 @@ export function useWorkspaceUrlSync({
     }
 
     fulfilledFocusRef.current = null;
+
+    // A `?w=X&wid=Y` URL carries a specific window instance id. Reaching this branch means
+    // no open window matches that id — i.e. it's a stale self-written focus URL left over
+    // from a previous session/refresh (the instance no longer exists). Don't resurrect the
+    // window; strip the deep link so a refresh starts clean. (Intentional deep links — from
+    // the launcher, emails, etc. — carry `?w=X` without a `wid` and still open below.)
+    if (intent.widgetInstanceId && typeof window !== "undefined") {
+      dismissedWorkspaceIntentFp = fp;
+      router.replace(window.location.pathname, { scroll: false });
+      return;
+    }
 
     if (dismissedWorkspaceIntentFp === fp) return;
     if (fulfilledOpenIntentFp === fp) return;
@@ -224,10 +270,14 @@ export function useWorkspaceUrlSync({
         }
       : null;
     openWidget(intent.widgetType, liveData);
-  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint]);
+  }, [hasHydrated, searchParams, widgets, openWidget, focusWidget, resolveIntent, intentFingerprint, findWidgetForIntent, updateWidgetLiveData, router]);
 
   useEffect(() => {
     const onPopState = () => {
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (path === "/login" || path.startsWith("/login/")) return;
+      }
       skipNextWrite.current = true;
       dismissedWorkspaceIntentFp = null;
       fulfilledOpenIntentFp = null;

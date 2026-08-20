@@ -122,7 +122,7 @@ export function SettingsTab({ data, resolvedId, refresh, t }: SettingsTabProps) 
       <button
         type="submit"
         disabled={saving}
-        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+        className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-xs text-white disabled:opacity-50"
       >
         {saving ? t("projectDashboard.saving") : t("projectDashboard.saveSettings")}
       </button>

@@ -121,5 +121,6 @@ export const POST = withWorkspacesAuth(
       return apiErrorResponse(error, "accounting-export");
     }
   },
-  { schema: exportSchema },
+  // POST מייצר קובץ בלבד (לא משנה מצב) — מותר לרו"ח קריאה-בלבד.
+  { schema: exportSchema, allowReadOnlyRoles: true },
 );

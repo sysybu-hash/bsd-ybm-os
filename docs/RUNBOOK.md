@@ -1,9 +1,16 @@
 ﻿# BSD-YBM Intelligence ג€” Production Runbook
 
-> **Last updated**: 2026-06-04  
+> **Last updated**: 2026-07-15  
 > This document is for **on-call engineers and deployment owners**.  
 > For architecture details see `docs/ARCHITECTURE.md`.  
 > For onboarding see `docs/ONBOARDING.md`.
+
+### On-call ownership
+
+| Role | Contact | Channel |
+|------|---------|---------|
+| Primary on-call | yohanan.bukshpan | GitHub + Vercel project `bsd-ybm-os` |
+| Escalation | Project owner (same) | Sentry + Vercel deployment emails |
 
 ---
 
@@ -73,8 +80,15 @@ git push origin main
 
 Every PR gets a Vercel Preview URL. Preview environments:
 - Have `VERCEL_ENV=preview` (bots blocked in robots.txt)
-- Use the **same production database** unless `DATABASE_URL` is overridden
-- Use real external APIs ג€” be careful with payment testing
+- **Must use a separate Neon branch** (`preview`) — never share production `DATABASE_URL` / `DIRECT_URL`
+- Set Preview-only DB vars in Vercel (or `PREVIEW_DATABASE_URL` / `PREVIEW_DIRECT_URL` for `scripts/vercel-push-env-from-local.mjs`)
+- Prefer sandbox payment/email credentials on Preview; do not fire production webhooks from Preview
+
+**Verify isolation** (compare hosts/db names only — never paste full connection strings into tickets):
+
+```bash
+node scripts/verify-preview-db-isolation.mjs
+```
 
 ---
 
@@ -107,12 +121,21 @@ Register **all** of these in Google Cloud Console → Credentials → OAuth 2.0 
 | Flow | Redirect URI |
 |------|----------------|
 | NextAuth sign-in | `https://www.bsd-ybm.co.il/api/auth/callback/google` |
+| Explicit Google link (sign-in) | `https://www.bsd-ybm.co.il/api/auth/google-link/callback` |
 | Drive reconnect | `https://www.bsd-ybm.co.il/api/auth/google-reconnect/callback` |
 | Calendar connect | `https://www.bsd-ybm.co.il/api/integrations/google/calendar/callback` |
+
+Invited / credentials users must link Google via Settings → **Connect Google for sign-in** (not blind email linking).
 
 Set `NEXTAUTH_URL` and `AUTH_URL` on Vercel to `https://www.bsd-ybm.co.il` (**with www**). Apex redirects to www in `next.config.js`, but Google OAuth URIs must match exactly.
 
 After scope errors: Settings → reconnect Google (Drive) or Calendar wizard.
+
+### Google OAuth / Drive verification (external)
+
+סטטוס Owner (2026-07-16): האפליקציה חיה בפרוד עם OAuth redirects למעלה. אם Google Cloud Console עדיין ב-**Testing** / verification Pending — זה לא חוסם שימוש פנימי; להשלים Publishing + verification לפני שיווק רחב ל-100+ משתמשים חיצוניים. Runbook: [google-oauth-verification-runbook-he.md](./google-oauth-verification-runbook-he.md).
+
+- [ ] Console verification / Production status (Owner)
 
 ### Rotating a Secret
 
@@ -157,16 +180,23 @@ npx prisma migrate status
 SELECT status, COUNT(*) FROM "DocumentScanJob"
 GROUP BY status ORDER BY status;
 
--- Check recent rate limit hits
-SELECT key, COUNT(*) FROM "RateLimit"
-WHERE "windowStart" > NOW() - INTERVAL '1 hour'
-GROUP BY key ORDER BY COUNT(*) DESC LIMIT 20;
+-- Check recent rate limit state (schema: count + resetAt)
+SELECT key, count, "resetAt", "updatedAt"
+FROM "RateLimit"
+WHERE "resetAt" > NOW() - INTERVAL '1 hour'
+ORDER BY count DESC
+LIMIT 20;
 
--- Check active subscriptions
-SELECT o.name, b."planId", b."status"
-FROM "OSBillingConfig" b
-JOIN "Organization" o ON b."organizationId" = o.id
-WHERE b."status" = 'active';
+-- Platform billing singleton (not per-org)
+SELECT id, "tierMonthlyPricesJson", "paypalClientIdPublic", "updatedAt"
+FROM "OSBillingConfig"
+WHERE id = 'default';
+
+-- Active org subscriptions live on Organization
+SELECT id, name, "subscriptionTier", "subscriptionStatus", "trialEndsAt"
+FROM "Organization"
+WHERE "subscriptionStatus" IN ('ACTIVE', 'TRIAL')
+ORDER BY name;
 
 -- Recent PayPlus transactions
 SELECT id, status, "paidAt", "payplusTransactionId"
@@ -232,7 +262,7 @@ vercel logs --follow --filter "api/webhooks"
 2. Check `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` is set
 3. If Gemini is down: system should auto-fallback to OpenAI (check `OPENAI_API_KEY`)
 4. Check scan queue: `SELECT status, COUNT(*) FROM "DocumentScanJob" GROUP BY status`
-5. If queue is stuck: manually re-queue with `status = 'pending'` update
+5. If queue is stuck: manually re-queue with `status = 'PENDING'` update
 
 ### P2 ג€” Auth Issues
 
@@ -270,6 +300,22 @@ curl -X GET https://bsd-ybm.co.il/api/cron/financial-insights \
 | Contact Embeddings | `/api/cron/contact-embeddings` | Sun 03:00 |
 
 Env checklist: [VERCEL-ENV-CHECKLIST.md](./VERCEL-ENV-CHECKLIST.md). Manual trigger: GET any path with `Authorization: Bearer $CRON_SECRET`.
+
+### Timezone — UTC vs Asia/Jerusalem
+
+- **Vercel Cron** schedules in `vercel.json` are **UTC**.
+- **Sentry Crons** monitors created via `withCronGuard` / `Sentry.withMonitor` often use **`Asia/Jerusalem`**.
+- A "missed check-in" near DST or around midnight Israel time can be a **false alarm** — verify the UTC schedule and last successful run in Vercel logs before paging.
+- All cron routes must use `withCronGuard` (incl. `/api/analyze-queue/process`).
+
+### Ops alerts checklist (human)
+
+See also [SLO.md](./SLO.md). Enable once:
+
+1. Sentry → 5xx / error rate spike → on-call
+2. Sentry Crons → missed check-in (mind timezone above)
+3. Vercel → Deployment Failed notification
+4. PostHog → alert on `session_create_failed` anomaly
 
 **If a cron is consistently failing:**
 1. Check Sentry for the `cron_failure` event and its `error` field
@@ -374,10 +420,10 @@ pg_dump "$DATABASE_URL" \
 ### Clear Document Scan Queue
 
 ```sql
--- Re-queue all stuck jobs
+-- Re-queue all stuck jobs (enum: PENDING | PROCESSING | COMPLETED | FAILED)
 UPDATE "DocumentScanJob"
-SET status = 'pending', "errorMessage" = NULL, "attempts" = 0
-WHERE status = 'processing'
+SET status = 'PENDING', error = 'manual_stale_requeue'
+WHERE status = 'PROCESSING'
   AND "updatedAt" < NOW() - INTERVAL '30 minutes';
 ```
 
@@ -415,10 +461,10 @@ npm run prebuild:4   # prisma-generate-safe
 ### View Rate Limit State
 
 ```sql
-SELECT key, hits, "windowStart"
+SELECT key, count, "resetAt", "updatedAt"
 FROM "RateLimit"
-WHERE "windowStart" > NOW() - INTERVAL '5 minutes'
-ORDER BY hits DESC;
+WHERE "resetAt" > NOW() - INTERVAL '5 minutes'
+ORDER BY count DESC;
 ```
 
 ### Grant Admin Access

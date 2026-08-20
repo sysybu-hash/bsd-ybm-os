@@ -73,7 +73,7 @@ BSD-YBM Intelligence is a **Hebrew-first, RTL** ERP/CRM/OS built for Israeli con
 | UI | React 18 + Tailwind CSS 3 + Radix UI headless |
 | State / Data | TanStack Query v5 (server state), React state (local) |
 | ORM | Prisma 6 + `@prisma/adapter-neon` |
-| Database | Neon serverless PostgreSQL (pgvector enabled) |
+| Database | Neon serverless PostgreSQL (embeddings as JSON + JS cosine; native pgvector deferred) |
 | Cache / Rate-limit | Upstash Redis (HTTP, serverless-safe) |
 | Auth | NextAuth v4 + `@next-auth/prisma-adapter`, WebAuthn/Passkeys via `@simplewebauthn` |
 | AI (primary) | Google Gemini 2.5 Flash/Pro via `@google/genai` + `@ai-sdk/google` |
@@ -188,16 +188,22 @@ export const POST = withWorkspacesAuth(
 **What it does:**
 1. Validates NextAuth JWT session
 2. Resolves `orgId` from session (verified against DB)
-3. Applies per-user rate limiting (via Upstash Redis or Prisma `RateLimit` table)
+3. Applies per-user rate limiting via `lib/rate-limit.ts`
 4. Returns structured JSON errors with Hebrew messages
 
 ### Rate Limiting
 
-Two strategies:
-- **IP-based** (`applyRateLimit` from `lib/rate-limit.ts`) — for unauthenticated endpoints (auth, sign)
-- **User-ID-based** (`rateLimit` option in `withWorkspacesAuth`) — for authenticated endpoints
+`checkRateLimit` / `applyRateLimit` in `lib/rate-limit.ts`:
 
-All violations log to `createLogger("rate-limit")` with `Retry-After` headers returned.
+1. **Preferred:** Upstash Redis (`UPSTASH_REDIS_REST_URL` / `KV_REST_API_URL`) — atomic `INCR` + `PEXPIRE`
+2. **Fallback:** Prisma `RateLimit` table when Redis env is missing or Redis errors (local/CI)
+
+Strategies:
+
+- **IP-based** (`applyRateLimit`) — unauthenticated endpoints (auth, register, sign)
+- **User-ID-based** (`rateLimit` option in `withWorkspacesAuth`) — authenticated endpoints
+
+Violations log to `createLogger("rate-limit")` with `Retry-After` headers.
 
 ### Cron Routes
 
@@ -233,7 +239,7 @@ All 5 cron routes are protected via `withCronGuard` (`lib/cron-guard.ts`):
 | `PushSubscription` | Web Push endpoint registrations |
 | `FinancialInsight` | AI-generated daily financial summaries |
 
-**Database**: Neon serverless Postgres (connection pooling via `@prisma/adapter-neon`, pgvector for embeddings).
+**Database**: Neon serverless Postgres (connection pooling via `@prisma/adapter-neon`). Embeddings stored as JSON with in-process cosine similarity; native pgvector is intentionally deferred.
 
 ---
 

@@ -15,6 +15,8 @@ const NAV: { kind: LegalDocKind; path: string; label: Record<AppLocale, string> 
   { kind: "legal", path: "/legal", label: { he: "משפטי", en: "Legal", ru: "Правовая" } },
 ];
 
+const ABOUT_LABEL: Record<AppLocale, string> = { he: "אודות", en: "About", ru: "О нас" };
+
 export default function PublicLegalLayout({ kind, locale }: PublicLegalLayoutProps) {
   const doc = getLegalDocument(kind, locale);
   const dir = locale === "he" ? "rtl" : "ltr";
@@ -36,7 +38,7 @@ export default function PublicLegalLayout({ kind, locale }: PublicLegalLayoutPro
           </Link>
         ))}
         <Link href="/about" className="rounded-lg px-3 py-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]">
-          {locale === "en" ? "About" : locale === "ru" ? "О нас" : "אודות"}
+          {ABOUT_LABEL[locale]}
         </Link>
       </nav>
       <article className="mx-auto max-w-3xl px-4 py-8">

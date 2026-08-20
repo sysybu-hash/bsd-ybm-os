@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { getServerSession } from "next-auth";
 import { Prisma, type SubscriptionTier } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -15,6 +16,11 @@ import {
 import { sendSubscriptionJoinInviteEmail } from "@/lib/mail";
 import { trialEndsAtFromNow } from "@/lib/trial";
 import { OS_UNLIMITED_CREDITS } from "@/lib/platform-developers";
+import { readTierPricesJson } from "@/lib/billing-pricing";
+import {
+  ADMIN_SUBSCRIPTION_TIER_OPTIONS,
+  tierAllowance,
+} from "@/lib/subscription-tier-config";
 
 async function requireExecutive() {
   const session = await getServerSession(authOptions);
@@ -43,7 +49,7 @@ export async function executiveListOrganizationsAction(): Promise<
   ExecutiveOrgRow[] | { error: string }
 > {
   const s = await requireExecutive();
-  if (!s) return { error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { error: "אין הרשאה" };
 
   const orgs = await prisma.organization.findMany({
     orderBy: { createdAt: "desc" },
@@ -85,17 +91,17 @@ export async function executiveListOrganizationsAction(): Promise<
 
 export type ManualTierMode = "standard" | "vip" | "trial";
 
-/** ׳¢׳“׳›׳•׳ ׳׳ ׳•׳™ ׳™׳“׳ ׳™: ׳¨׳’׳™׳ (׳׳₪׳™ ׳׳›׳¡׳•׳× ׳¨׳׳”), VIP (׳׳›׳¡׳•׳× ׳’׳‘׳•׳”׳•׳×), ׳׳• ׳”׳¨׳¦׳” (FREE + ׳ ׳™׳¡׳™׳•׳) */
+/** עדכון מנוי ידני: רגיל (לפי מכסות רמה), VIP (מכסות גבוהות), או הרצה (FREE + ניסיון) */
 export async function executiveApplyManualSubscriptionAction(
   organizationId: string,
   tierRaw: string,
   mode: ManualTierMode,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireExecutive();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const tier = parseSubscriptionTier(tierRaw);
-  if (!tier) return { ok: false, error: "׳¨׳׳” ׳׳ ׳—׳•׳§׳™׳×" };
+  if (!tier) return { ok: false, error: "רמה לא חוקית" };
 
   try {
     if (mode === "trial") {
@@ -135,12 +141,99 @@ export async function executiveApplyManualSubscriptionAction(
         },
       });
     }
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     revalidatePath("/app/clients");
     return { ok: true };
   } catch {
-    return { ok: false, error: "׳¢׳“׳›׳•׳ ׳ ׳›׳©׳" };
+    return { ok: false, error: "עדכון נכשל" };
+  }
+}
+
+export type TierPricingRow = {
+  tier: SubscriptionTier;
+  /** Price actually charged, i.e. the override when set, otherwise the built-in. */
+  effectiveMonthlyIls: number | null;
+  /** The value compiled into subscription-tier-config. */
+  defaultMonthlyIls: number | null;
+  /** True when an override row exists for this tier. */
+  isOverridden: boolean;
+  cheapScans: number;
+  premiumScans: number;
+  maxCompanies: number;
+};
+
+/** Current price of every tier, with the built-in shown alongside the override. */
+export async function executiveListTierPricingAction(): Promise<
+  TierPricingRow[] | { error: string }
+> {
+  const s = await requireExecutive();
+  if (!s) return { error: "אין הרשאה" };
+
+  const row = await prisma.oSBillingConfig.findUnique({
+    where: { id: "default" },
+    select: { tierMonthlyPricesJson: true },
+  });
+  const overrides = readTierPricesJson(row?.tierMonthlyPricesJson);
+
+  return ADMIN_SUBSCRIPTION_TIER_OPTIONS.map((tier) => {
+    const allowance = tierAllowance(tier);
+    const override = overrides[tier];
+    const hasOverride = typeof override === "number" && Number.isFinite(override);
+    return {
+      tier: tier as SubscriptionTier,
+      effectiveMonthlyIls: hasOverride ? override : allowance.monthlyPriceIls,
+      defaultMonthlyIls: allowance.monthlyPriceIls,
+      isOverridden: hasOverride,
+      cheapScans: allowance.cheapScans,
+      premiumScans: allowance.premiumScans,
+      maxCompanies: allowance.maxCompanies,
+    };
+  });
+}
+
+/**
+ * Saves per-tier price overrides.
+ *
+ * Takes a typed map rather than the raw JSON string the older form field used,
+ * so a malformed paste can't land in the column that decides what customers are
+ * charged. A tier mapped to null drops its override and falls back to the
+ * built-in price.
+ */
+export async function executiveSaveTierPricingAction(
+  prices: Record<string, number | null>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const s = await requireExecutive();
+  if (!s) return { ok: false, error: "אין הרשאה" };
+
+  const next: Record<string, number> = {};
+  for (const [rawTier, rawValue] of Object.entries(prices)) {
+    const tier = ADMIN_SUBSCRIPTION_TIER_OPTIONS.find((t) => t === rawTier);
+    if (!tier) return { ok: false, error: `רמת מנוי לא מוכרת: ${rawTier}` };
+    if (rawValue == null) continue; // cleared → fall back to the built-in price
+    if (!Number.isFinite(rawValue) || rawValue < 0) {
+      return { ok: false, error: `מחיר לא תקין עבור ${tier}` };
+    }
+    if (rawValue > 100_000) {
+      return { ok: false, error: `מחיר חריג עבור ${tier}` };
+    }
+    next[tier] = Math.round(rawValue * 100) / 100;
+  }
+
+  try {
+    await prisma.oSBillingConfig.upsert({
+      where: { id: "default" },
+      create: { id: "default", tierMonthlyPricesJson: next },
+      update: { tierMonthlyPricesJson: next },
+    });
+    // The register wizard reads these server-side on /login, and the PayPal
+    // order amount is derived from them.
+    revalidatePath("/login");
+    revalidatePath("/app/admin");
+    revalidatePath("/app/settings/billing");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "שמירת מחירים נכשלה" };
   }
 }
 
@@ -148,7 +241,7 @@ export async function executiveSaveBillingConfigAction(formData: FormData): Prom
   { ok: true } | { ok: false; error: string }
 > {
   const s = await requireExecutive();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const paypalRaw = String(formData.get("paypalClientId") ?? "").trim();
   const pricesRaw = String(formData.get("tierPricesJson") ?? "").trim();
@@ -158,7 +251,7 @@ export async function executiveSaveBillingConfigAction(formData: FormData): Prom
     try {
       tierMonthlyPricesJson = JSON.parse(pricesRaw) as Prisma.InputJsonValue;
     } catch {
-      return { ok: false, error: "JSON ׳׳—׳™׳¨׳™׳ ׳׳ ׳×׳§׳™׳" };
+      return { ok: false, error: "JSON מחירים לא תקין" };
     }
   }
 
@@ -175,11 +268,11 @@ export async function executiveSaveBillingConfigAction(formData: FormData): Prom
         tierMonthlyPricesJson,
       },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch {
-    return { ok: false, error: "׳©׳׳™׳¨׳” ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "שמירה נכשלה" };
   }
 }
 
@@ -187,28 +280,28 @@ export async function executiveSendJoinInviteAction(formData: FormData): Promise
   { ok: true } | { ok: false; error: string }
 > {
   const s = await requireExecutive();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const headline = String(formData.get("headline") ?? "").trim() || "׳”׳•׳–׳׳ ׳×׳ ׳-BSD-YBM";
+  const headline = String(formData.get("headline") ?? "").trim() || "הוזמנתם ל-BSD-YBM";
   const bodyText = String(formData.get("bodyText") ?? "").trim();
   const tierHint = String(formData.get("tierHint") ?? "").trim();
 
   if (!email || !email.includes("@")) {
-    return { ok: false, error: "׳׳™׳׳™׳™׳ ׳׳ ׳×׳§׳™׳" };
+    return { ok: false, error: "אימייל לא תקין" };
   }
 
   const tierLine = tierHint
-    ? `\n\n׳¨׳׳× ׳׳ ׳•׳™ ׳׳•׳¦׳¢׳×: ${tierLabelHe(tierHint)} (${tierHint}).`
+    ? `\n\nרמת מנוי מוצעת: ${tierLabelHe(tierHint)} (${tierHint}).`
     : "";
   const fullBody =
     bodyText ||
-    `׳©׳׳•׳,
+    `שלום,
 
-׳”׳•׳–׳׳ ׳×׳ ׳׳”׳¦׳˜׳¨׳£ ׳׳₪׳׳˜׳₪׳•׳¨׳׳× BSD-YBM ג€” ׳ ׳™׳”׳•׳ ERP, ׳¡׳¨׳™׳§׳•׳× AI ׳•׳—׳™׳•׳‘ ׳‘׳—׳©׳‘׳•׳ ׳׳—׳“.${tierLine}
+הוזמנתם להצטרף לפלטפורמת BSD-YBM — ניהול ERP, סריקות AI וחיוב בחשבון אחד.${tierLine}
 
-׳‘׳‘׳¨׳›׳”,
-׳¦׳•׳•׳× BSD-YBM`;
+בברכה,
+צוות BSD-YBM`;
 
   const r = await sendSubscriptionJoinInviteEmail(email, {
     headline,
@@ -224,20 +317,20 @@ export async function executiveUpdateBundlePriceAction(
   priceIls: number,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const s = await requireExecutive();
-  if (!s) return { ok: false, error: "׳׳™׳ ׳”׳¨׳©׳׳”" };
+  if (!s) return { ok: false, error: "אין הרשאה" };
   if (!Number.isFinite(priceIls) || priceIls <= 0) {
-    return { ok: false, error: "׳׳—׳™׳¨ ׳׳ ׳—׳•׳§׳™" };
+    return { ok: false, error: "מחיר לא חוקי" };
   }
   try {
     await prisma.scanBundle.update({
       where: { id: bundleId },
       data: { priceIls },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch {
-    return { ok: false, error: "׳¢׳“׳›׳•׳ ׳ ׳›׳©׳" };
+    return { ok: false, error: "עדכון נכשל" };
   }
 }
 

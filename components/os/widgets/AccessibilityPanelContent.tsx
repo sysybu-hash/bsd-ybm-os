@@ -60,10 +60,15 @@ export default function AccessibilityPanelContent({
     <div className="flex w-full flex-col">
       <div className="p-4">
         <section className="mb-4">
-          <label className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]">
+          <label
+            htmlFor="accessibility-font-scale"
+            className="mb-1.5 block text-[10px] font-bold text-[color:var(--foreground-muted)]"
+          >
             {t("accessibility.fontScale")}
           </label>
           <select
+            id="accessibility-font-scale"
+            aria-label={t("accessibility.fontScale")}
             value={value.fontScale}
             onChange={(e) => onChange({ ...value, fontScale: e.target.value as AccessibilityFontScale })}
             className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-xs font-bold"
@@ -115,7 +120,7 @@ export default function AccessibilityPanelContent({
           </Link>
           {" · "}
           <a
-            href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent("נגישות האתר")}`}
+            href={`mailto:${SITE_CONTACT.email}?subject=${encodeURIComponent(t("workspaceWidgets.accessibility.mailSubject"))}`}
             className="font-bold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
           >
             {t("accessibility.feedbackEmail")}
@@ -127,7 +132,7 @@ export default function AccessibilityPanelContent({
           <button
             type="button"
             onClick={save}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-indigo-500"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--win-accent,#6366f1)] px-4 py-2.5 text-xs font-black text-white transition-colors hover:opacity-90"
           >
             <Save size={16} aria-hidden />
             {t("accessibility.save")}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllPosts } from "@/lib/blog/blog-content";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
+import PublicPageShell from "@/components/landing/marketing/PublicPageShell";
 
 export const metadata: Metadata = {
   title: "בלוג BSD-YBM — טיפים לקבלנים ומנהלי פרויקטים",
@@ -21,7 +22,8 @@ export default function BlogIndexPage() {
   const posts = getAllPosts();
 
   return (
-    <main dir="rtl" className="mx-auto max-w-4xl px-4 py-12">
+    <PublicPageShell>
+      <div dir="rtl" className="mx-auto max-w-4xl px-4 py-12">
       <header className="mb-10 text-center">
         <h1 className="text-3xl font-black text-slate-900 dark:text-white md:text-4xl">
           בלוג BSD-YBM
@@ -68,6 +70,7 @@ export default function BlogIndexPage() {
           </Link>
         ))}
       </div>
-    </main>
+      </div>
+    </PublicPageShell>
   );
 }

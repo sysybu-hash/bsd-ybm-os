@@ -139,6 +139,34 @@ export function getMarketingMessages(locale: string): MessageTree {
   return merged as MessageTree;
 }
 
+/** Slim message set for workspace routes — excludes marketing-home, site-marketing, brand-brief. */
+export function getWorkspaceMessages(locale: string): MessageTree {
+  const code = normalizeLocale(locale) as AppLocale;
+  const base = PACKS[code] ?? PACKS.en;
+  const tradePack =
+    code === "he"
+      ? (constructionTradesHe as unknown as Record<string, unknown>)
+      : code === "en"
+        ? (constructionTradesEn as unknown as Record<string, unknown>)
+        : code === "ru"
+          ? (constructionTradesRu as unknown as Record<string, unknown>)
+          : {};
+  const businessPack =
+    code === "he"
+      ? (businessLinesHe as unknown as Record<string, unknown>)
+      : code === "en"
+        ? (businessLinesEn as unknown as Record<string, unknown>)
+        : code === "ru"
+          ? (businessLinesRu as unknown as Record<string, unknown>)
+          : {};
+  let merged = deepMerge(base as unknown as Record<string, unknown>, tradePack);
+  merged = deepMerge(merged, businessPack);
+  merged = deepMerge(merged, workspaceExtras(code));
+  merged = deepMerge(merged, siteChromeExtras(code));
+  merged = deepMerge(merged, workspaceAreasExtras(code));
+  return merged as MessageTree;
+}
+
 export function getMessages(locale: string): MessageTree {
   const code = normalizeLocale(locale) as AppLocale;
   const base = PACKS[code] ?? PACKS.en;

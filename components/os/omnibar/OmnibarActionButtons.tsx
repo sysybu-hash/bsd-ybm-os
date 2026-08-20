@@ -40,7 +40,7 @@ export function OmnibarActionButtons({
         <SlidersHorizontal size={18} aria-hidden />
       </button>
       <button type="button" onClick={onToggleLive}
-        className={`${btnClass} ${voiceActive ? "border-transparent bg-indigo-600 text-white shadow-sm" : rateLimitActive ? "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300" : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
+        className={`${btnClass} ${voiceActive ? "border-transparent bg-[color:var(--win-accent,#6366f1)] text-white shadow-sm" : rateLimitActive ? "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300" : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"}`}
         title={rateLimitActive && voiceStatus === "idle" && rateLimitLabel ? rateLimitLabel : voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
         aria-label={voiceStatus !== "idle" ? t("workspaceWidgets.omnibar.voiceOff") : t("workspaceWidgets.omnibar.voiceOn")}
         aria-pressed={voiceStatus !== "idle"}>

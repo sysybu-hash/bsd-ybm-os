@@ -2,6 +2,9 @@
  * NextAuth (getToken ב-edge) קובע `secureCookie` לפי `NEXTAUTH_URL?.startsWith("https://")`.
  * אם בפרודקשן הוגדר `http://...`, מחפשים `next-auth.session-token` במקום `__Secure-next-auth.session-token`
  * והסשן "נעלם" — 401 ב־middleware למרות שהמשתמש מחובר.
+ *
+ * חריגה מכללי env.ts: הקובץ קורא *וכותב* את process.env.NEXTAUTH_URL בזמן ריצה
+ * (לפני ש-NextAuth קורא אותו) — env.ts הוא snapshot ולא משקף מוטציה כזו.
  */
 function isLoopbackAuthHost(hostname: string): boolean {
   const h = hostname.toLowerCase();

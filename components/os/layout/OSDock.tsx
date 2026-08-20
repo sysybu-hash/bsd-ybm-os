@@ -36,7 +36,7 @@ export default function OSDock({
   assistantToolDeps,
 }: OSDockProps) {
   return (
-    <footer className="pointer-events-none fixed inset-x-0 bottom-0 z-[1100] hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:block md:px-6">
+    <footer className="pointer-events-none fixed inset-x-0 bottom-0 z-[1100] hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] desktop-vp:block desktop-vp:px-6">
       <div className="pointer-events-auto mx-auto max-w-3xl">
         <Omnibar
           status="ready"

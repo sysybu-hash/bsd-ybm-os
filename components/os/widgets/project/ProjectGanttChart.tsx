@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   BarChart2, List, Plus, Trash2, CalendarDays, CalendarRange, Calendar,
 } from "lucide-react";
 import { getProjectSubDomainsForIndustry } from "@/lib/project-sub-domains";
+import { OsButton } from "@/components/os/ui";
 import { GanttTaskForm } from "./gantt/GanttTaskForm";
 import { GanttChartView } from "./gantt/GanttChartView";
 import { GanttTableView } from "./gantt/GanttTableView";
@@ -20,6 +22,7 @@ export default function ProjectGanttChart({
   allTasks,
   boqLines = [],
   onProgressChange,
+  onDatesChange,
   onSaveTask,
   onDeleteTask,
   onClearAll,
@@ -29,6 +32,8 @@ export default function ProjectGanttChart({
   organizationIndustry,
   hideConstructionFeatures = false,
 }: GanttProps) {
+  const { t } = useI18n();
+
   const projectSubDomains = useMemo(
     () => getProjectSubDomainsForIndustry(organizationIndustry),
     [organizationIndustry],
@@ -85,7 +90,7 @@ export default function ProjectGanttChart({
 
   const handleClearAll = async () => {
     if (!onClearAll) return;
-    if (!confirm("למחוק את כל המשימות? פעולה זו אינה הפיכה.")) return;
+    if (!confirm(t("projectDashboard.ganttClearConfirm"))) return;
     setClearing(true);
     try { await onClearAll(); } finally { setClearing(false); }
   };
@@ -95,24 +100,19 @@ export default function ProjectGanttChart({
     return (
       <div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-[color:var(--border-main)] bg-[color:var(--surface-soft)]/50 py-14 text-center">
         <div className="rounded-full bg-indigo-100 p-4 dark:bg-indigo-900/30">
-          <BarChart2 size={28} className="text-indigo-500" />
+          <BarChart2 size={28} className="text-[color:var(--win-accent,#6366f1)]" />
         </div>
         <div>
           <p className="text-sm font-semibold text-[color:var(--foreground-main)]">
             {labels.noTasks}
           </p>
           <p className="mt-1 text-xs text-[color:var(--foreground-muted)]">
-            הוסף משימות ידנית או ייבא קובץ XML / CSV
+            {t("projectDashboard.ganttEmptyHint")}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
-        >
-          <Plus size={14} />
+        <OsButton variant="primary" size="sm" icon={<Plus size={14} aria-hidden />} onClick={openCreate}>
           {labels.addTask}
-        </button>
+        </OsButton>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function ProjectGanttChart({
                 onClick={() => setScale(key)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   scale === key
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-[color:var(--win-accent,#6366f1)] text-white"
                     : "text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)]"
                 }`}
               >
@@ -183,26 +183,21 @@ export default function ProjectGanttChart({
 
         {/* Secondary: clear all */}
         {onClearAll && tasks.length > 0 ? (
-          <button
-            type="button"
-            disabled={clearing}
+          <OsButton
+            variant="danger"
+            size="sm"
+            loading={clearing}
+            icon={<Trash2 size={12} aria-hidden />}
             onClick={() => void handleClearAll()}
-            className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/40"
           >
-            <Trash2 size={12} />
-            נקה הכל
-          </button>
+            {t("projectDashboard.ganttClearAll")}
+          </OsButton>
         ) : null}
 
         {/* Primary: add task */}
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700"
-        >
-          <Plus size={13} />
+        <OsButton variant="primary" size="sm" icon={<Plus size={13} aria-hidden />} onClick={openCreate}>
           {labels.addTask}
-        </button>
+        </OsButton>
       </div>
 
       {/* Task count pill */}
@@ -211,7 +206,7 @@ export default function ProjectGanttChart({
           <span className="rounded-full bg-[color:var(--surface-soft)] px-2 py-0.5 font-medium text-[color:var(--foreground-main)]">
             {tasks.length}
           </span>
-          <span>משימות בפרויקט</span>
+          <span>{t("projectDashboard.ganttTasksInProject")}</span>
           <LegendRow labels={labels} />
         </div>
       ) : null}
@@ -239,6 +234,7 @@ export default function ProjectGanttChart({
           scale={scale} labels={labels}
           onEdit={openEdit}
           onProgressChange={onProgressChange}
+          onDatesChange={onDatesChange}
           onOpenDiary={onOpenDiary}
           onCreateDiary={onCreateDiary}
         />
@@ -255,19 +251,20 @@ export default function ProjectGanttChart({
 }
 
 function LegendRow({ labels }: { labels: GanttProps["labels"] }) {
+  const { t } = useI18n();
   return (
     <div className="ms-auto flex items-center gap-3">
       <span className="flex items-center gap-1">
-        <span className="h-2 w-4 rounded-sm bg-indigo-500" />
+        <span className="h-2 w-4 rounded-sm bg-[color:var(--win-accent,#6366f1)]" />
         {labels.ganttProgress ?? "בביצוע"}
       </span>
       <span className="flex items-center gap-1">
         <span className="h-2 w-4 rounded-sm bg-emerald-500" />
-        הושלם
+        {t("projectDashboard.statusDone")}
       </span>
       <span className="flex items-center gap-1">
         <span className="h-2 w-4 rounded-sm bg-rose-500" />
-        באיחור
+        {t("projectDashboard.statusLate")}
       </span>
       <span className="flex items-center gap-1">
         <span className="inline-block h-3 w-0.5 rounded-full bg-blue-500" />

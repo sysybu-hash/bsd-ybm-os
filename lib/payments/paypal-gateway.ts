@@ -15,6 +15,7 @@ import {
   isPayPalServerConfigured,
   paypalCaptureOrder,
   paypalCreateOrderBody,
+  paypalRefundCapture,
   verifyPayPalWebhookSignature,
 } from "@/lib/paypal-server";
 import { createLogger } from "@/lib/logger";
@@ -86,11 +87,25 @@ export class PayPalGateway extends PaymentGateway {
     return paypalCaptureOrder(orderId);
   }
 
-  async refund(_params: RefundParams): Promise<RefundResult> {
+  async refund(params: RefundParams): Promise<RefundResult> {
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        refundId: null,
+        message: "PayPal not configured — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET",
+      };
+    }
+
+    const result = await paypalRefundCapture({
+      captureId: params.transactionId,
+      amount: params.amount,
+      reason: params.reason,
+    });
+
     return {
-      success: false,
-      refundId: null,
-      message: "PayPal refund via API — use PayPal dashboard or capture reversal flow.",
+      success: result.success,
+      refundId: result.refundId,
+      message: result.message,
     };
   }
 }

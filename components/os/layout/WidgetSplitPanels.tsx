@@ -55,26 +55,27 @@ function WidgetSplitPanelsGroup({
   const [stacked, setStacked] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${stackBelowPx - 1}px)`);
-    const readWidth = () => window.visualViewport?.width ?? window.innerWidth;
-    let stackedNow = mq.matches || readWidth() < stackBelowPx;
+    const readShortEdge = () => {
+      const w = window.visualViewport?.width ?? window.innerWidth;
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      return Math.min(w, h);
+    };
+    let stackedNow = readShortEdge() < stackBelowPx;
 
     const apply = () => {
-      const width = readWidth();
+      const shortEdge = readShortEdge();
       if (stackedNow) {
-        if (width >= stackBelowPx + 48) stackedNow = false;
-      } else if (width < stackBelowPx) {
+        if (shortEdge >= stackBelowPx + 48) stackedNow = false;
+      } else if (shortEdge < stackBelowPx) {
         stackedNow = true;
       }
       setStacked(stackedNow);
     };
 
     apply();
-    mq.addEventListener("change", apply);
     window.addEventListener("resize", apply);
     window.visualViewport?.addEventListener("resize", apply);
     return () => {
-      mq.removeEventListener("change", apply);
       window.removeEventListener("resize", apply);
       window.visualViewport?.removeEventListener("resize", apply);
     };

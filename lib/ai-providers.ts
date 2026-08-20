@@ -1,12 +1,20 @@
-import { isAnyDocAiProcessorConfigured } from "@/lib/ai-extract-docai";
+﻿import { isAnyDocAiProcessorConfigured } from "@/lib/ai-extract-docai";
 import { env } from "@/lib/env";
 
+export {
+  AI_SERVICE_UNAVAILABLE_CODE,
+  AI_SERVICE_UNAVAILABLE_MESSAGE,
+  AiServiceUnavailableError,
+  assertAiServicesAvailable,
+  checkAiServicesAvailable,
+  isAiFallbackDisabled,
+} from "@/lib/ai-kill-switch";
+
 /**
- * ספקי AI נתמכים לפי מפתחות ב-.env / Vercel.
- * שים לב: MindStudio נשאר כסוג שמור לאחור, אבל לא נחשף ב-UI עד שתהיה אינטגרציית runtime אמיתית.
+ * ׳¡׳₪׳§׳™ AI ׳ ׳×׳׳›׳™׳ ׳׳₪׳™ ׳׳₪׳×׳—׳•׳× ׳‘-.env / Vercel.
  */
 
-export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "mindstudio" | "docai";
+export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "docai";
 
 export type AiProviderPublic = {
   id: AiProviderId;
@@ -44,10 +52,6 @@ export function isMistralConfigured(): boolean {
   return has(env.MISTRAL_API_KEY);
 }
 
-export function isMindStudioConfigured(): boolean {
-  return has(env.MIND_STUDIO_API_KEY);
-}
-
 export function isDocAiConfigured(): boolean {
   const creds =
     has(env.GOOGLE_DOCUMENT_AI_CREDENTIALS) ||
@@ -60,42 +64,42 @@ export function getAiProvidersPublic(): AiProviderPublic[] {
     {
       id: "gemini",
       label: "Google Gemini",
-      description: "סריקת מסמכים רב-ממדית, ניתוח נתונים משולב ו-vision",
+      description: "׳¡׳¨׳™׳§׳× ׳׳¡׳׳›׳™׳ ׳¨׳‘-׳׳׳“׳™׳×, ׳ ׳™׳×׳•׳— ׳ ׳×׳•׳ ׳™׳ ׳׳©׳•׳׳‘ ׳•-vision",
       configured: isGeminiConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "openai",
       label: "OpenAI GPT",
-      description: "מנוע שיחה וניתוח כללי עם תמיכה במסמכים מתקדמים",
+      description: "׳׳ ׳•׳¢ ׳©׳™׳—׳” ׳•׳ ׳™׳×׳•׳— ׳›׳׳׳™ ׳¢׳ ׳×׳׳™׳›׳” ׳‘׳׳¡׳׳›׳™׳ ׳׳×׳§׳“׳׳™׳",
       configured: isOpenAiConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "anthropic",
       label: "Anthropic Claude",
-      description: "מנוע ניתוח וכתיבה ארגונית לעומק",
+      description: "׳׳ ׳•׳¢ ׳ ׳™׳×׳•׳— ׳•׳›׳×׳™׳‘׳” ׳׳¨׳’׳•׳ ׳™׳× ׳׳¢׳•׳׳§",
       configured: isAnthropicConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "mistral",
-      label: "Mistral / Pixtral",
-      description: "Pixtral Large — vision חזק, עברית מצוינת, מחיר תחרותי",
+      label: "Mistral",
+      description: "Mistral Medium 3.5 ג€” multimodal ׳׳¡׳¨׳™׳§׳”, ׳¢׳‘׳¨׳™׳×, ׳•-fallback",
       configured: isMistralConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "groq",
-      label: "Groq (Llama)",
-      description: "מנוע מהיר במיוחד לטקסט ול-fallback בזמן עומס",
+      label: "Groq",
+      description: "׳׳ ׳•׳¢ ׳׳”׳™׳¨ ׳׳˜׳§׳¡׳˜ ׳•׳-fallback ׳‘׳–׳׳ ׳¢׳•׳׳¡ (GPT-OSS)",
       configured: isGroqConfigured(),
       supportsDocumentScan: false,
     },
     {
       id: "docai",
       label: "Google Document AI",
-      description: "OCR מוסדי ברמת דיוק גבוהה למסמכים מורכבים",
+      description: "OCR ׳׳•׳¡׳“׳™ ׳‘׳¨׳׳× ׳“׳™׳•׳§ ׳’׳‘׳•׳”׳” ׳׳׳¡׳׳›׳™׳ ׳׳•׳¨׳›׳‘׳™׳",
       configured: isDocAiConfigured(),
       supportsDocumentScan: true,
     },
@@ -110,15 +114,15 @@ export function normalizeAiProviderId(raw: string | null | undefined): AiProvide
     value === "groq" ||
     value === "gemini" ||
     value === "mistral" ||
-    value === "mindstudio" ||
     value === "docai"
   ) {
     return value as AiProviderId;
   }
+  if (value === "mindstudio") return "gemini";
   return "gemini";
 }
 
-/** לפחות מנוע צ'אט אחד — Gemini / OpenAI / Anthropic / Groq */
+/** ׳׳₪׳—׳•׳× ׳׳ ׳•׳¢ ׳¦'׳׳˜ ׳׳—׳“ ג€” Gemini / OpenAI / Anthropic / Groq */
 export function isAnyAiChatProviderConfigured(): boolean {
   return (
     isGeminiConfigured() ||
@@ -132,180 +136,24 @@ export function isAnyAiChatProviderConfigured(): boolean {
 export function assertProviderConfigured(id: AiProviderId): string | null {
   switch (id) {
     case "gemini":
-      return isGeminiConfigured() ? null : "חסר GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY";
+      return isGeminiConfigured() ? null : "׳—׳¡׳¨ GOOGLE_GENERATIVE_AI_API_KEY ׳׳• GEMINI_API_KEY";
     case "openai":
-      return isOpenAiConfigured() ? null : "חסר OPENAI_API_KEY";
+      return isOpenAiConfigured() ? null : "׳—׳¡׳¨ OPENAI_API_KEY";
     case "anthropic":
-      return isAnthropicConfigured() ? null : "חסר ANTHROPIC_API_KEY";
+      return isAnthropicConfigured() ? null : "׳—׳¡׳¨ ANTHROPIC_API_KEY";
     case "groq":
-      return isGroqConfigured() ? null : "חסר GROQ_API_KEY";
+      return isGroqConfigured() ? null : "׳—׳¡׳¨ GROQ_API_KEY";
     case "mistral":
-      return isMistralConfigured() ? null : "חסר MISTRAL_API_KEY";
-    case "mindstudio":
-      return "MindStudio עדיין לא מחובר ב-runtime בפרויקט הזה";
+      return isMistralConfigured() ? null : "׳—׳¡׳¨ MISTRAL_API_KEY";
     case "docai":
       return isDocAiConfigured()
         ? null
-        : "חסר GOOGLE_DOCUMENT_AI_PROCESSOR_ID ו־אחד מ: GOOGLE_DOCUMENT_AI_CREDENTIALS או GOOGLE_APPLICATION_CREDENTIALS_JSON";
+        : "׳—׳¡׳¨ GOOGLE_DOCUMENT_AI_PROCESSOR_ID ׳•ײ¾׳׳—׳“ ׳: GOOGLE_DOCUMENT_AI_CREDENTIALS ׳׳• GOOGLE_APPLICATION_CREDENTIALS_JSON";
     default:
-      return "ספק לא ידוע";
+      return "׳¡׳₪׳§ ׳׳ ׳™׳“׳•׳¢";
   }
 }
 
-/** April 2026 — flagship ויזואלי/הנדסי */
-export const OPENAI_FLAGSHIP_MODEL = "gpt-5.5";
+/** קטלוג מודלים ושרשראות fallback — פוצל ל-ai-provider-models.ts (נשמר re-export לתאימות) */
+export * from "@/lib/ai-provider-models";
 
-export const OPENAI_VISION_FALLBACK_CHAIN: readonly string[] = [
-  "gpt-5.5",
-  "gpt-5.5-2026-04-23",
-  "gpt-5.4",
-  "gpt-5.4-mini",
-  "gpt-4o-mini",
-  "gpt-4o",
-] as const;
-
-export const ANTHROPIC_FLAGSHIP_MODEL = "claude-sonnet-4-6";
-
-export const ANTHROPIC_FALLBACK_CHAIN: readonly string[] = [
-  "claude-sonnet-4-6",
-  "claude-opus-4-7",
-  "claude-haiku-4-5-20251001",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-haiku-20241022",
-] as const;
-
-function dedupeStrings(parts: Array<string | undefined>): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const p of parts) {
-    const s = p?.trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
-
-export function getOpenAiVisionModel(): string {
-  return env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL;
-}
-
-/** סדר ניסיונות ל־Chat Completions (תמונה / קובץ שאינו PDF בנתיב הישן) */
-export function getOpenAiChatVisionModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
-    uiOverride,
-    env.OPENAI_VISION_MODEL?.trim(),
-    OPENAI_FLAGSHIP_MODEL,
-    ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
-  ]);
-}
-
-/** סדר ניסיונות ל־Responses API (PDF) */
-export function getOpenAiResponsesModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
-    uiOverride,
-    env.OPENAI_RESPONSES_MODEL?.trim(),
-    env.OPENAI_VISION_MODEL?.trim(),
-    OPENAI_FLAGSHIP_MODEL,
-    ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
-  ]);
-}
-
-export function isOpenAiModelNotFound(status: number, body: string): boolean {
-  if (status === 404) return true;
-  const b = body.toLowerCase();
-  return (
-    b.includes("model_not_found") ||
-    b.includes("does not exist") ||
-    b.includes("invalid_model") ||
-    (b.includes("the model") && b.includes("not found"))
-  );
-}
-
-/** 404 / דגם לא קיים / מגבלת קצב — מעבר למודל הבא */
-export function isOpenAiEligibleForModelFallback(status: number, body: string): boolean {
-  if (isOpenAiModelNotFound(status, body)) return true;
-  if (status === 429) return true;
-  const b = body.toLowerCase();
-  return b.includes("rate_limit") || b.includes("too many requests");
-}
-
-/** צ'אט טקסט בלבד (ללא vision) — fallback דומה לסריקה */
-export function getOpenAiChatTextModelCandidates(): string[] {
-  return dedupeStrings([
-    env.OPENAI_CHAT_MODEL?.trim(),
-    OPENAI_FLAGSHIP_MODEL,
-    ...OPENAI_VISION_FALLBACK_CHAIN.filter((m) => m !== OPENAI_FLAGSHIP_MODEL),
-  ]);
-}
-
-export function getAnthropicModel(): string {
-  return env.ANTHROPIC_MODEL?.trim() || ANTHROPIC_FLAGSHIP_MODEL;
-}
-
-export function getAnthropicModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
-    uiOverride,
-    env.ANTHROPIC_MODEL?.trim(),
-    ...ANTHROPIC_FALLBACK_CHAIN,
-  ]);
-}
-
-export function isAnthropicModelNotFound(status: number, body: string): boolean {
-  if (status === 404) return true;
-  const b = body.toLowerCase();
-  return (
-    (b.includes("invalid_request_error") && b.includes("model")) ||
-    b.includes("model_not_found") ||
-    (b.includes("model") && b.includes("not found"))
-  );
-}
-
-export function isAnthropicEligibleForModelFallback(status: number, body: string): boolean {
-  if (isAnthropicModelNotFound(status, body)) return true;
-  if (status === 429) return true;
-  const b = body.toLowerCase();
-  return b.includes("rate_limit") || b.includes("too many requests");
-}
-
-export function getGroqModel(): string {
-  return env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
-}
-
-/** Mistral / Pixtral model catalog */
-export const MISTRAL_VISION_FLAGSHIP = "pixtral-large-latest";
-export const MISTRAL_TEXT_FLAGSHIP = "mistral-small-latest";
-
-/** מודל ל-vision / סריקת מסמכים (Pixtral) */
-export function getMistralVisionModel(): string {
-  return env.MISTRAL_VISION_MODEL?.trim() || MISTRAL_VISION_FLAGSHIP;
-}
-
-/** מודל לצ'אט טקסט */
-export function getMistralModel(): string {
-  return env.MISTRAL_MODEL?.trim() || MISTRAL_TEXT_FLAGSHIP;
-}
-
-/** fallback: נסה pixtral קודם, אחרי זה mistral-large */
-export function getMistralVisionModelCandidates(uiOverride?: string): string[] {
-  return dedupeStrings([
-    uiOverride,
-    env.MISTRAL_VISION_MODEL?.trim(),
-    MISTRAL_VISION_FLAGSHIP,
-    "pixtral-12b-2409",          // גרסה קלה יותר
-    "mistral-large-latest",      // fallback ללא vision (PDF text)
-  ]);
-}
-
-export function isMistralModelNotFound(status: number, body: string): boolean {
-  if (status === 404) return true;
-  const b = body.toLowerCase();
-  return b.includes("model not found") || b.includes("unknown model");
-}
-
-export function isMistralEligibleForModelFallback(status: number, body: string): boolean {
-  if (isMistralModelNotFound(status, body)) return true;
-  if (status === 429) return true;
-  const b = body.toLowerCase();
-  return b.includes("rate_limit") || b.includes("too many requests");
-}

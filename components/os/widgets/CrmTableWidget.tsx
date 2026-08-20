@@ -1,15 +1,19 @@
 "use client";
 
 import React from "react";
-import { Users, UserPlus, Download, Hash, Upload, Search, Sparkles } from "lucide-react";
+import { Users, UserPlus, Download, Hash, Upload, RefreshCw, Sparkles } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import WidgetState from "@/components/os/WidgetState";
+import { OsButton, OsIconButton, OsSearchInput } from "@/components/os/ui";
 import type { CrmTableWidgetProps } from "./crm-table/types";
 import { useCrmTable } from "./crm-table/useCrmTable";
 import { AddClientModal } from "./crm-table/AddClientModal";
 import { ClientDetailModal } from "./crm-table/ClientDetailModal";
 import { CrmContactsTable } from "./crm-table/CrmContactsTable";
+import { CRM_PIPELINE_STATUSES } from "@/lib/crm/pipeline-status";
+import { pipelineStatusLabel } from "./crm-table/constants";
+import { GoogleImportModal } from "./crm-table/GoogleImportModal";
 
 export type { CrmTableWidgetProps };
 export type { OpenWorkspaceWidgetFn } from "./crm-table/types";
@@ -18,9 +22,9 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
   const { dir, t } = useI18n();
   const s = useCrmTable({ openWorkspaceWidget, t });
 
-  if (s.loading && s.clients.length === 0)
+  if (s.loading && s.allClients.length === 0)
     return <WidgetState variant="loading" message={t("workspaceWidgets.crmTable.loading")} />;
-  if (s.loadError && s.clients.length === 0)
+  if (s.loadError && s.allClients.length === 0)
     return (
       <WidgetState
         variant="error"
@@ -48,7 +52,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col gap-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-[color:var(--accent)] dark:text-emerald-400">
               <Users size={24} />
             </div>
             <div>
@@ -60,50 +64,54 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <input type="file" accept=".csv" className="hidden" ref={s.fileInputRef} onChange={s.handleImportCSV} />
-            <button
-              type="button"
+            <OsIconButton
+              label={t("common.refresh")}
+              onClick={() => void s.fetchClients()}
+              disabled={s.loading}
+            >
+              <RefreshCw size={16} className={s.loading ? "animate-spin" : ""} aria-hidden />
+            </OsIconButton>
+            <OsButton
+              variant="secondary"
               onClick={() => s.fileInputRef.current?.click()}
               disabled={s.isImporting}
-              className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5 flex items-center gap-2 text-xs font-bold"
+              icon={s.isImporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Upload size={16} aria-hidden />}
             >
-              {s.isImporting ? <Hash className="animate-spin" size={18} /> : <Upload size={18} />}
-              <span>{t("workspaceWidgets.crmTable.importCsv")}</span>
-            </button>
-            <button
-              type="button"
+              {t("workspaceWidgets.crmTable.importCsv")}
+            </OsButton>
+            <OsButton
+              variant="secondary"
+              onClick={() => s.setShowGoogleImport(true)}
+              disabled={s.isImporting}
+              icon={<Download size={16} aria-hidden />}
+            >
+              {t("workspaceWidgets.crmTable.importGoogle")}
+            </OsButton>
+            <OsButton
+              variant="secondary"
               onClick={() => void s.handleExportCsv()}
               disabled={s.isExporting}
-              aria-label={t("workspaceWidgets.crmTable.exportCsv")}
-              className="p-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition-all border border-slate-200 dark:border-white/5 flex items-center gap-2 text-xs font-bold"
+              icon={s.isExporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Download size={16} aria-hidden />}
             >
-              {s.isExporting ? <Hash className="animate-spin" size={18} /> : <Download size={18} aria-hidden />}
-              <span>{t("workspaceWidgets.crmTable.exportCsv")}</span>
-            </button>
-            <button
-              type="button"
+              {t("workspaceWidgets.crmTable.exportCsv")}
+            </OsButton>
+            <OsButton
+              variant="primary"
               onClick={() => s.setIsAddingClient(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20"
+              icon={<UserPlus size={16} aria-hidden />}
             >
-              <UserPlus size={18} /> {t("workspaceWidgets.crmTable.newClient")}
-            </button>
+              {t("workspaceWidgets.crmTable.newClient")}
+            </OsButton>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
-          <div className="relative flex-1 md:max-w-md">
-            <Search
-              className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground-muted)]"
-              size={16}
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={s.searchQuery}
-              onChange={(e) => s.setSearchQuery(e.target.value)}
-              placeholder={t("workspaceWidgets.crmTable.searchPlaceholder")}
-              className="w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] py-2 pe-10 ps-3 text-sm"
-            />
-          </div>
+          <OsSearchInput
+            value={s.searchQuery}
+            onChange={s.setSearchQuery}
+            label={t("workspaceWidgets.crmTable.searchPlaceholder")}
+            className="flex-1 md:max-w-md"
+          />
           <label className="flex items-center gap-2 text-xs font-bold text-[color:var(--foreground-muted)] cursor-pointer">
             <input
               type="checkbox"
@@ -119,6 +127,19 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
               {t("workspaceWidgets.crmTable.semanticFallback")}
             </span>
           ) : null}
+          <select
+            value={s.statusFilter}
+            onChange={(e) => s.setStatusFilter(e.target.value as typeof s.statusFilter)}
+            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-xs font-bold"
+            aria-label={t("workspaceWidgets.crmTable.statusFilter")}
+          >
+            <option value="">{t("workspaceWidgets.crmTable.allStatuses")}</option>
+            {CRM_PIPELINE_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {pipelineStatusLabel(status, t)}
+              </option>
+            ))}
+          </select>
           <select
             value={s.tagFilter}
             onChange={(e) => s.setTagFilter(e.target.value)}
@@ -138,6 +159,15 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       {s.isAddingClient && (
         <AddClientModal onClose={() => s.setIsAddingClient(false)} onCreated={() => void s.fetchClients()} t={t} />
       )}
+      {s.showGoogleImport && (
+        <GoogleImportModal
+          onClose={() => s.setShowGoogleImport(false)}
+          onImported={s.handleGoogleImported}
+          t={t}
+          fetchPreview={s.fetchGooglePreview}
+          runImport={s.runGoogleImport}
+        />
+      )}
       {s.selectedClient && (
         <ClientDetailModal
           client={s.selectedClient}
@@ -149,6 +179,7 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             s.setIsEditing(false);
           }}
           onSave={s.handleUpdateClient}
+          onQuickStatusChange={s.handleQuickStatusChange}
           projectOptions={s.projectOptions}
           savingProject={s.savingProject}
           creatingProject={s.creatingProject}

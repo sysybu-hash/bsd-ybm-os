@@ -1,7 +1,8 @@
 import type { Session } from "next-auth";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { jsonBadRequest } from "@/lib/api-json";
+import { jsonBadRequest, jsonTooManyRequests } from "@/lib/api-json";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { runAiChat, getUserFacingAiErrorMessage } from "@/lib/ai-chat";
 import { getServerLocale } from "@/lib/i18n/server";
 import { interpretDoneFallback } from "@/lib/i18n/ai-locale";
@@ -36,6 +37,11 @@ export const POST = withWorkspacesAuth(
     try {
       locale = await getServerLocale();
       const message = data.message.trim();
+
+      const rl = await checkRateLimit(`interpret:user:${ctx.userId}`, 60, 60 * 1000);
+      if (!rl.success) {
+        return jsonTooManyRequests(getApiMessage("rate_limited", locale));
+      }
 
       const userRow = await prisma.user.findUnique({
         where: { id: ctx.userId },

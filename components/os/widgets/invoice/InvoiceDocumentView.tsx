@@ -7,6 +7,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import { deleteIssuedDocument, updateIssuedDocument } from "@/app/actions/issued-documents";
 import type { DocStatus, DocType } from "@prisma/client";
 import InvoiceActionBar from "@/components/os/widgets/invoice/InvoiceActionBar";
+import CommentsThread from "@/components/os/shared/CommentsThread";
 
 type LineItem = { desc: string; qty: number; price: number };
 
@@ -34,7 +35,7 @@ type InvoiceDocumentViewProps = {
 };
 
 export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: InvoiceDocumentViewProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [doc, setDoc] = useState<IssuedDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -172,7 +173,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
         </h2>
         <p className="text-xs text-[color:var(--foreground-muted)]">{doc.type}</p>
         {doc.itaAllocationNumber ? (
-          <p className="mt-1 text-xs font-semibold text-indigo-600">
+          <p className="mt-1 text-xs font-semibold text-[color:var(--win-accent,#6366f1)]">
             {t("workspaceWidgets.invoice.itaAllocation")}: {doc.itaAllocationNumber}
           </p>
         ) : null}
@@ -259,10 +260,10 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
 
       <div className="mt-3 space-y-1 text-end text-sm">
         <p className="text-[color:var(--foreground-muted)]">
-          לפני מע״מ: ₪{doc.amount.toLocaleString("he-IL")}
+          {t("workspaceWidgets.invoice.preVat")}: ₪{doc.amount.toLocaleString(locale)}
         </p>
         <p className="text-[color:var(--foreground-muted)]">
-          מע״מ: ₪{doc.vat.toLocaleString("he-IL")}
+          {t("workspaceWidgets.invoice.vat")}: ₪{doc.vat.toLocaleString(locale)}
         </p>
         <p className="font-bold text-[color:var(--foreground-main)]">
           {t("workspaceWidgets.invoice.total")}: ₪{doc.total.toLocaleString("he-IL")}
@@ -280,7 +281,7 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
       {doc.contactPhone ? (
         <a
           href={`https://wa.me/${doc.contactPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
-            `שלום ${doc.clientName}, תזכורת לתשלום חשבונית ${doc.number} — ${doc.total} ₪`,
+            t("workspaceWidgets.invoice.reminderText", { client: doc.clientName, number: String(doc.number), total: String(doc.total) }),
           )}`}
           target="_blank"
           rel="noopener noreferrer"
@@ -289,6 +290,8 @@ export default function InvoiceDocumentView({ issuedDocumentId, onDeleted }: Inv
           {t("workspaceWidgets.invoice.whatsappReminder")}
         </a>
       ) : null}
+
+      <CommentsThread targetId={issuedDocumentId} targetType="DOC" />
     </div>
   );
 }

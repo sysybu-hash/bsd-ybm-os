@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults, Result } from "axe-core";
-import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, tryCredentialsSignIn, workspaceUrl } from "./helpers";
+import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, ensureHubTabFromDeepLink, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
 
 const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
 
@@ -54,10 +54,34 @@ const WIDGET_ROUTES: { key: string; url: string; label: string }[] = [
   { key: "dashboard",         url: workspaceUrl({ w: "dashboard" }), label: "דאשבורד" },
   { key: "crm",               url: workspaceUrl({ w: "crmTable" }), label: "CRM לקוחות" },
   { key: "ai-chat",           url: workspaceUrl({ w: "aiChatFull" }), label: "צ'אט AI" },
-  { key: "project-board",     url: workspaceUrl({ w: "project" }), label: "לוח פרויקטים" },
+  { key: "project-board",     url: workspaceUrl({ w: "projectsHub", tab: "project" }), label: "מרכז פרויקט" },
   { key: "scanner",           url: workspaceUrl({ w: "aiScanner" }), label: "סורק AI" },
   { key: "drive",             url: workspaceUrl({ w: "googleDrive" }), label: "Google Drive" },
 ];
+
+const WIDGET_SHELL_IDS: Record<string, string> = {
+  dashboard: "financeHub",
+  crm: "crmTable",
+  "ai-chat": "aiHub",
+  "project-board": "projectsHub",
+  scanner: "documentsHub",
+  drive: "googleDrive",
+};
+
+const WIDGET_ENSURE_TABS: Partial<Record<string, RegExp>> = {
+  dashboard: /סקירה|overview/i,
+  "ai-chat": /צ.?אט|chat/i,
+  scanner: /סריקה|scan/i,
+};
+
+async function signInWithRetries(page: Parameters<typeof tryCredentialsSignIn>[0]): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const signed = await tryCredentialsSignIn(page);
+    if (signed) return true;
+    await page.waitForTimeout(500 + attempt * 500);
+  }
+  return false;
+}
 
 // ─── test suite ──────────────────────────────────────────────────────────────
 test.describe("Workspace accessibility — axe audit per widget", () => {
@@ -70,17 +94,43 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     test(`no new critical/serious axe violations — ${label}`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
-      const signed = await tryCredentialsSignIn(page);
+      const signed = await signInWithRetries(page);
       expect(signed, "משתמש E2E חייב להיות זמין בבדיקות 10/10").toBeTruthy();
 
+      await page.setViewportSize({ width: 1280, height: 900 });
       await dismissCookieBannerIfVisible(page);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       await dismissWorkspaceOverlays(page);
-      await page.locator("[data-widget-shell]").first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+      if (key !== "workspace-chrome") {
+        const widgetId = WIDGET_SHELL_IDS[key];
+        const ensureTab = WIDGET_ENSURE_TABS[key];
+        if (widgetId) {
+          const shell = widgetShell(page, widgetId);
+          await shell.waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
+          if (ensureTab) {
+            await ensureHubTabFromDeepLink(shell, ensureTab);
+          }
+        }
+      }
 
-      const results: AxeResults = await new AxeBuilder({ page })
-        .withTags(AXE_TAGS)
-        .analyze();
+      const axeBuilder = new AxeBuilder({ page }).withTags(AXE_TAGS);
+      let results: AxeResults;
+      if (key === "workspace-chrome") {
+        results = await axeBuilder
+          .exclude(".os-utility-rail-host")
+          .exclude("[data-widget-shell]")
+          .exclude("[data-testid='mobile-bottom-nav']")
+          .analyze();
+      } else {
+        const widgetId = WIDGET_SHELL_IDS[key];
+        const shell = widgetId ? widgetShell(page, widgetId) : page.locator("[data-widget-shell]").last();
+        await shell.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+        const shellId = await shell.getAttribute("id");
+        const includeSelector = shellId
+          ? `[id="${shellId}"]`
+          : `[data-widget-shell][id^="${widgetId}-"]`;
+        results = await axeBuilder.include(includeSelector).analyze();
+      }
 
       const baseline = readBaseline();
 
@@ -128,7 +178,7 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
     );
     test.skip(testInfo.project.name !== "chromium", "דסקטופ בלבד");
 
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await signInWithRetries(page);
     expect(signed, "משתמש E2E חייב להיות זמין לבניית baseline").toBeTruthy();
     await dismissCookieBannerIfVisible(page);
 

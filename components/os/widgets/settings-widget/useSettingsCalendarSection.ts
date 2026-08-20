@@ -51,6 +51,8 @@ export function useSettingsCalendarSection(t: (key: string, vars?: Record<string
   const [reminderMinutes, setReminderMinutes] = useState(15);
   const [activating, setActivating] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [wizardStarted, setWizardStarted] = useState(false);
+  const [calendarsLoading, setCalendarsLoading] = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -72,27 +74,44 @@ export function useSettingsCalendarSection(t: (key: string, vars?: Record<string
     }
   }, [t]);
 
-  const loadCalendars = useCallback(async () => {
+  const loadCalendars = useCallback(async (): Promise<{ ok: boolean; needsConnect: boolean }> => {
+    setCalendarsLoading(true);
     try {
       const res = await fetch("/api/integrations/google-calendar/calendars", {
         credentials: "include",
         cache: "no-store",
       });
-      const data = (await res.json()) as { calendars?: CalendarListItem[]; connected?: boolean };
-      if (data.connected && data.calendars) {
+      const data = (await res.json().catch(() => ({}))) as {
+        calendars?: CalendarListItem[];
+        connected?: boolean;
+        error?: string;
+        code?: string;
+      };
+      if (data.connected && data.calendars && data.calendars.length > 0) {
         setCalendars(data.calendars);
-        if (!selectedCalendarId && data.calendars[0]) {
-          setSelectedCalendarId(data.calendars[0]!.id);
-        }
+        setSelectedCalendarId((current) => {
+          if (current && data.calendars!.some((c) => c.id === current)) return current;
+          const primary = data.calendars!.find((c) => c.primary);
+          return primary?.id || data.calendars![0]!.id;
+        });
+        return { ok: true, needsConnect: false };
       }
+      setCalendars([]);
+      toast.error(data.error || t(`${S}.calendarsLoadFailed`));
+      return { ok: false, needsConnect: data.code !== "calendar_api_disabled" };
     } catch {
       setCalendars([]);
+      toast.error(t(`${S}.calendarsLoadFailed`));
+      return { ok: false, needsConnect: true };
+    } finally {
+      setCalendarsLoading(false);
     }
-  }, [selectedCalendarId]);
+  }, [t]);
 
   useEffect(() => { void loadStatus(); }, [loadStatus]);
   useEffect(() => {
     if (wizardOpen && status.connected) {
+      setWizardStarted(true);
       setWizardStep(0);
       void loadCalendars();
     }
@@ -100,6 +119,21 @@ export function useSettingsCalendarSection(t: (key: string, vars?: Record<string
 
   const handleConnect = () => {
     window.location.href = buildGoogleCalendarConnectUrl("/?w=settings&calendar=wizard");
+  };
+
+  const startSetup = async () => {
+    setWizardStarted(true);
+    setWizardStep(0);
+    const result = await loadCalendars();
+    requestAnimationFrame(() => {
+      document.getElementById("calendar-sync-wizard")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    if (!result.ok && result.needsConnect) {
+      handleConnect();
+    }
   };
 
   const handleActivate = async () => {
@@ -163,7 +197,7 @@ export function useSettingsCalendarSection(t: (key: string, vars?: Record<string
     }
   };
 
-  const showWizard = wizardStep >= 0 && (wizardOpen || (!status.active && status.connected));
+  const showWizard = wizardStep >= 0 && status.connected && (wizardOpen || wizardStarted);
 
   return {
     S, loading, status, calendars, wizardStep, setWizardStep,
@@ -172,8 +206,8 @@ export function useSettingsCalendarSection(t: (key: string, vars?: Record<string
     consentChecked, setConsentChecked,
     pushEnabled, setPushEnabled,
     reminderMinutes, setReminderMinutes,
-    activating, syncing, showWizard,
-    loadCalendars,
+    activating, syncing, calendarsLoading, showWizard,
+    startSetup,
     handleConnect, handleActivate, handleSyncNow, handlePause,
   };
 }

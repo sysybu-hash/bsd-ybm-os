@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { assignContactProject } from "@/lib/workspace-api/project-crm-sync";
+import { serializeContactStatus } from "@/lib/crm/pipeline-status";
 
 const createContactSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
   status: z.string().optional(),
+  value: z.number().finite().nonnegative().optional().nullable(),
   notes: z.string().optional().nullable(),
   projectId: z.string().nullable().optional(),
   tags: z.array(z.string().min(1).max(40)).max(20).optional(),
@@ -117,7 +119,8 @@ export const POST = withWorkspacesAuth(
           phone: body.phone ?? null,
           notes: body.notes ?? null,
           tags: body.tags ?? [],
-          status: (body.status ?? "LEAD").toUpperCase(),
+          status: serializeContactStatus(body.status),
+          value: body.value ?? null,
           organizationId: orgId,
           projectId: null,
         },
@@ -133,6 +136,7 @@ export const POST = withWorkspacesAuth(
           email: true,
           phone: true,
           status: true,
+          value: true,
           notes: true,
           project: { select: { id: true, name: true } },
         },

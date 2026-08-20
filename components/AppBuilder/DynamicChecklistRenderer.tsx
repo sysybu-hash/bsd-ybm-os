@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, Circle, ClipboardCheck, RotateCcw } from "lucide-react";
 import { saveAppDataAction } from "@/app/actions/app-builder";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { AppBuilderChecklistUI } from "@/lib/validation/schemas/app-builder";
 
 type Props = {
@@ -16,7 +17,10 @@ type ItemState = {
   note: string;
 };
 
+const PREFIX = "workspaceWidgets.appBuilder.dynamicChecklist";
+
 export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
+  const { t } = useI18n();
   const [items, setItems] = useState<Record<string, ItemState>>(() =>
     Object.fromEntries(schema.items.map((i) => [i.id, { checked: false, note: "" }])),
   );
@@ -46,7 +50,7 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
 
   const handleSave = async () => {
     if (!schemaId) {
-      toast.error("שמרו את האפליקציה לפני שמירת ביצוע הצ'ק-ליסט");
+      toast.error(t(`${PREFIX}.saveAppFirst`));
       return;
     }
     setSaving(true);
@@ -59,9 +63,9 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
       const res = await saveAppDataAction({ schemaId, formData });
       if (res.ok) {
         setSaved(true);
-        toast.success("הצ'ק-ליסט נשמר בהצלחה ✓");
+        toast.success(t(`${PREFIX}.saved`));
       } else {
-        toast.error(res.error ?? "שמירה נכשלה");
+        toast.error(res.error ?? t(`${PREFIX}.saveFailed`));
       }
     } finally {
       setSaving(false);
@@ -70,7 +74,6 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-5 w-5 shrink-0 text-indigo-400" aria-hidden />
@@ -86,7 +89,6 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
         </span>
       </div>
 
-      {/* Progress bar */}
       <div className="h-2 w-full overflow-hidden rounded-full bg-[color:var(--surface-soft)]">
         <div
           className={`h-full rounded-full transition-all duration-300 ${
@@ -100,7 +102,6 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
         />
       </div>
 
-      {/* Items */}
       <ul className="flex flex-col gap-2">
         {schema.items.map((item) => {
           const state = items[item.id] ?? { checked: false, note: "" };
@@ -123,7 +124,7 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
                 <span className={`flex-1 text-sm ${state.checked ? "text-[color:var(--foreground-muted)] line-through" : "text-[color:var(--foreground-main)]"}`}>
                   {item.label}
                   {item.required && !state.checked ? (
-                    <span className="ms-1 text-[10px] font-bold text-rose-400">*חובה</span>
+                    <span className="ms-1 text-[10px] font-bold text-rose-400">{t(`${PREFIX}.requiredMark`)}</span>
                   ) : null}
                 </span>
               </button>
@@ -133,7 +134,7 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
                     type="text"
                     value={state.note}
                     onChange={(e) => setNote(item.id, e.target.value)}
-                    placeholder="הוסף הערה…"
+                    placeholder={t(`${PREFIX}.notePlaceholder`)}
                     className="w-full bg-transparent py-1 text-xs text-[color:var(--foreground-muted)] placeholder:text-[color:var(--foreground-muted)]/50 focus:outline-none"
                   />
                 </div>
@@ -143,7 +144,6 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
         })}
       </ul>
 
-      {/* Actions */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -151,7 +151,7 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
           className="flex items-center gap-1.5 rounded-lg border border-[color:var(--border-main)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)]"
         >
           <RotateCcw size={12} aria-hidden />
-          אפס
+          {t(`${PREFIX}.reset`)}
         </button>
         <button
           type="button"
@@ -159,11 +159,11 @@ export default function DynamicChecklistRenderer({ schema, schemaId }: Props) {
           disabled={saving || saved || !allRequired}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? "שומר…" : saved ? "✓ נשמר" : "שמור ביצוע"}
+          {saving ? t(`${PREFIX}.saving`) : saved ? t(`${PREFIX}.savedLabel`) : t(`${PREFIX}.saveExecution`)}
         </button>
       </div>
       {!allRequired && (
-        <p className="text-[10px] text-rose-400">יש לסמן את כל הפריטים החובה לפני שמירה</p>
+        <p className="text-[10px] text-rose-400">{t(`${PREFIX}.requiredBeforeSave`)}</p>
       )}
     </div>
   );

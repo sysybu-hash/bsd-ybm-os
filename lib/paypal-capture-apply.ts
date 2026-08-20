@@ -2,6 +2,7 @@ import { CompanyType, DocStatus, DocType, type SubscriptionTier } from "@prisma/
 import { prisma } from "@/lib/prisma";
 import { VAT_RATE } from "@/lib/billing-calculations";
 import { getExpectedTierOrderAmountIls } from "@/lib/billing-pricing";
+import { allocateNextDocumentNumber } from "@/lib/finance-numbering";
 import { tierLabelHe, defaultScanBalancesForTier, parseSubscriptionTier } from "@/lib/subscription-tier-config";
 import { createLogger } from "@/lib/logger";
 const log = createLogger("paypal-capture-apply");
@@ -112,12 +113,7 @@ export async function applyPayPalCaptureResult(params: {
           },
         });
 
-        const lastDoc = await tx.issuedDocument.findFirst({
-          where: { organizationId: orgIdFromOrder, type: docType },
-          orderBy: { number: "desc" },
-          select: { number: true },
-        });
-        const nextNumber = (lastDoc?.number ?? 1000) + 1;
+        const nextNumber = await allocateNextDocumentNumber(tx, orgIdFromOrder, docType);
 
         await tx.issuedDocument.create({
           data: {
@@ -181,12 +177,7 @@ export async function applyPayPalCaptureResult(params: {
           },
         });
 
-        const lastDoc = await tx.issuedDocument.findFirst({
-          where: { organizationId: orgIdFromOrder, type: docType },
-          orderBy: { number: "desc" },
-          select: { number: true },
-        });
-        const nextNumber = (lastDoc?.number ?? 1000) + 1;
+        const nextNumber = await allocateNextDocumentNumber(tx, orgIdFromOrder, docType);
 
         await tx.issuedDocument.create({
           data: {

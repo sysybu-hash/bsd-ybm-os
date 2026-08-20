@@ -61,6 +61,7 @@ export type GanttProps = {
   boqLines?: BoqLinePrefill[];
   labels: GanttLabels;
   onProgressChange: (taskId: string, progress: number) => Promise<void>;
+  onDatesChange?: (taskId: string, startDate: string, endDate: string) => Promise<void> | void;
   onSaveTask: (draft: GanttTaskDraft, taskId?: string) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onClearAll?: () => Promise<void>;

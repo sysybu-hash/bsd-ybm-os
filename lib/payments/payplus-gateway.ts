@@ -14,7 +14,7 @@ import {
   type RefundParams,
   type RefundResult,
 } from "./gateway-interface";
-import { createPayPlusPaymentPage, isPayPlusConfigured } from "@/lib/payplus";
+import { createPayPlusPaymentPage, isPayPlusConfigured, refundPayPlusByTransactionUid } from "@/lib/payplus";
 import { readRawBody, verifyPayPlusWebhook, shouldRejectPayPlusRequest } from "@/lib/webhook-verify";
 import { createLogger } from "@/lib/logger";
 
@@ -67,14 +67,25 @@ export class PayPlusGateway extends PaymentGateway {
     return { valid, eventType, transactionId, amount, payload };
   }
 
-  async refund(_params: RefundParams): Promise<RefundResult> {
-    // PayPlus refund via API — to be implemented per business requirements.
-    // Placeholder returns a structured not-implemented response rather than throwing.
-    log.warn("payplus_refund_not_implemented", { transactionId: _params.transactionId });
+  async refund(params: RefundParams): Promise<RefundResult> {
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        refundId: null,
+        message: "PayPlus not configured — set PAYPLUS_API_KEY and PAYPLUS_SECRET_KEY",
+      };
+    }
+
+    const result = await refundPayPlusByTransactionUid({
+      transactionUid: params.transactionId,
+      amount: params.amount,
+      moreInfo: params.reason,
+    });
+
     return {
-      success: false,
-      refundId: null,
-      message: "PayPlus refund not yet implemented — process manually via PayPlus dashboard.",
+      success: result.success,
+      refundId: result.refundId,
+      message: result.message,
     };
   }
 }

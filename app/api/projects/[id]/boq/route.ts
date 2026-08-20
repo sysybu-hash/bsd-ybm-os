@@ -95,6 +95,12 @@ export const POST = withWorkspacesAuthDynamic<{ id: string }, typeof createLineS
   { schema: createLineSchema },
 );
 
+const phaseColumnSchema = z.object({
+  phaseIndex: z.number().int().min(0).max(4),
+  coefficient: z.number().nonnegative().nullable().optional(),
+  phaseAmount: z.number().nonnegative().nullable().optional(),
+});
+
 const patchLineSchema = z.object({
   id: z.string(),
   executedQuantity: z.number().optional(),
@@ -103,6 +109,8 @@ const patchLineSchema = z.object({
   quantity: z.number().optional(),
   unitPrice: z.number().optional(),
   description: z.string().optional(),
+  /** 2–5 phase columns (phaseIndex 0–4) */
+  phaseColumns: z.array(phaseColumnSchema).max(5).optional(),
 });
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchLineSchema>(
@@ -124,22 +132,56 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchLineS
       const lineTotal =
         body.quantity != null || body.unitPrice != null ? quantity * unitPrice : line.lineTotal;
 
-      const updated = await prisma.projectBoqLine.update({
-        where: { id: line.id },
-        data: {
-          executedQuantity: body.executedQuantity,
-          progressCoefficient: body.progressCoefficient,
-          isWorkDone: body.isWorkDone,
-          quantity: body.quantity,
-          unitPrice: body.unitPrice,
-          description: body.description,
-          lineTotal,
-        },
-        include: { phaseColumns: true },
+      const updated = await prisma.$transaction(async (tx) => {
+        if (body.phaseColumns) {
+          const seen = new Set<number>();
+          for (const col of body.phaseColumns) {
+            if (seen.has(col.phaseIndex)) {
+              throw new Error("PHASE_INDEX_DUP");
+            }
+            seen.add(col.phaseIndex);
+            const coef = col.coefficient ?? null;
+            const amount =
+              col.phaseAmount ??
+              (coef != null && Number.isFinite(lineTotal) ? lineTotal * coef : null);
+            await tx.projectBoqPhaseColumn.upsert({
+              where: {
+                boqLineId_phaseIndex: { boqLineId: line.id, phaseIndex: col.phaseIndex },
+              },
+              create: {
+                boqLineId: line.id,
+                phaseIndex: col.phaseIndex,
+                coefficient: coef,
+                phaseAmount: amount,
+              },
+              update: {
+                coefficient: coef,
+                phaseAmount: amount,
+              },
+            });
+          }
+        }
+
+        return tx.projectBoqLine.update({
+          where: { id: line.id },
+          data: {
+            executedQuantity: body.executedQuantity,
+            progressCoefficient: body.progressCoefficient,
+            isWorkDone: body.isWorkDone,
+            quantity: body.quantity,
+            unitPrice: body.unitPrice,
+            description: body.description,
+            lineTotal,
+          },
+          include: { phaseColumns: true },
+        });
       });
 
       return NextResponse.json(updated);
     } catch (error) {
+      if (error instanceof Error && error.message === "PHASE_INDEX_DUP") {
+        return NextResponse.json({ error: "phaseIndex כפול" }, { status: 400 });
+      }
       return apiErrorResponse(error, "Project BOQ PATCH");
     }
   },

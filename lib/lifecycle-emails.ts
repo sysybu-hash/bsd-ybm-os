@@ -115,28 +115,46 @@ export async function sendReactivationNudge(
 // ── Cron runner ───────────────────────────────────────────────────────────────
 
 export async function runLifecycleCampaigns(): Promise<{ sent: number; skipped: number }> {
+  const { canRunLifecycleEmails, getPlatformMailConfig } = await import(
+    "@/lib/mail/platform-mail-settings"
+  );
+  if (!(await canRunLifecycleEmails())) {
+    return { sent: 0, skipped: 0 };
+  }
+
+  const mailCfg = await getPlatformMailConfig();
+  const trialWindowDays = mailCfg.lifecycleTrialDaysBefore;
+  const inactiveDays = mailCfg.lifecycleInactiveDays;
+
   let sent = 0;
   let skipped = 0;
   const now = new Date();
 
-  // Trial ending: FREE tier, ~3 days before expiry
+  // Trial ending: FREE tier, ~N days before expiry (admin-configurable)
   const trialEndingSoon = await prisma.organization.findMany({
     where: {
       subscriptionTier: "FREE",
       subscriptionStatus: "ACTIVE",
       trialEndsAt: {
-        gte: new Date(now.getTime() + 2 * 86400000),
-        lte: new Date(now.getTime() + 4 * 86400000),
+        gte: new Date(now.getTime() + (trialWindowDays - 1) * 86400000),
+        lte: new Date(now.getTime() + (trialWindowDays + 1) * 86400000),
       },
     },
     select: {
+      id: true,
       users: { select: { email: true, name: true }, take: 1, where: { role: "ORG_ADMIN" } },
       trialEndsAt: true,
     },
     take: 500,
   });
 
+  const { orgAllowsLifecycle, emailAllowsLifecycle } = await import("@/lib/mail/org-mail-settings");
+
   for (const org of trialEndingSoon) {
+    if (!(await orgAllowsLifecycle(org.id))) {
+      skipped++;
+      continue;
+    }
     const admin = org.users[0];
     if (!admin || !org.trialEndsAt) continue;
     const daysLeft = Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / 86400000);
@@ -148,10 +166,10 @@ export async function runLifecycleCampaigns(): Promise<{ sent: number; skipped: 
     }
   }
 
-  // Re-activation: users who haven't logged in for ~7 days
+  // Re-activation: users who haven't logged in for ~N days
   const inactiveUsers = await prisma.user.findMany({
     where: {
-      lastLoginAt: { lte: new Date(now.getTime() - 7 * 86400000) },
+      lastLoginAt: { lte: new Date(now.getTime() - inactiveDays * 86400000) },
       accountStatus: "ACTIVE",
     },
     select: { email: true, name: true, lastLoginAt: true },
@@ -159,9 +177,13 @@ export async function runLifecycleCampaigns(): Promise<{ sent: number; skipped: 
   });
 
   for (const user of inactiveUsers) {
+    if (!(await emailAllowsLifecycle(user.email))) {
+      skipped++;
+      continue;
+    }
     const daysSince = user.lastLoginAt
       ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / 86400000)
-      : 7;
+      : inactiveDays;
     try {
       await sendReactivationNudge(user.email, user.name, daysSince);
       sent++;

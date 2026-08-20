@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { extractAiDataFromScanJobResult } from "@/lib/scan-job-result";
 import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { saveScannedDocumentSchema } from "@/lib/validation/save-scanned-document";
@@ -270,7 +271,7 @@ export async function saveScannedDocumentAction(
       });
     }
 
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/clients");
     revalidatePath("/app/documents");
     revalidatePath("/app/inbox");

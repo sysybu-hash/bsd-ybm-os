@@ -10,7 +10,6 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import { resolveWidgetOpen } from "@/lib/os-assistant/resolve-widget-open";
 import { isSubscriberWidgetVisible } from "@/lib/launcher/subscriber-widgets";
-import { parseWorkspaceUrl } from "@/lib/workspace-url";
 import type { SearchResult } from "./types";
 import { useNotificationsFeed } from "./useNotificationsFeed";
 import { useOmniCanvasHandlers } from "./useOmniCanvasHandlers";
@@ -27,12 +26,14 @@ export function useOmniCanvasState() {
   const [systemMessage, setSystemMessage] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [hasOpenedDefaults, setHasOpenedDefaults] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sidebarRailPeek, setSidebarRailPeek] = useState(false);
   const [mobileOmnibarOpen, setMobileOmnibarOpen] = useState(false);
   const [windowSwitcherOpen, setWindowSwitcherOpen] = useState(false);
   const bellButtonRef = useRef<HTMLButtonElement>(null);
+
+  const userId = session?.user?.id ?? null;
+  const authReady = sessionStatus !== "loading";
 
   const {
     widgets,
@@ -48,11 +49,11 @@ export function useOmniCanvasState() {
     restoreWidget,
     updateZoom,
     clearLayout,
-    isFirstTime,
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
-  } = useWindowManager();
+    updateWidgetLiveData,
+  } = useWindowManager({ userId, authReady });
 
   const openWorkspaceWidget = useCallback(
     (
@@ -80,7 +81,8 @@ export function useOmniCanvasState() {
   );
 
   const hasMaximizedWidget = widgets.some((w) => w.isMaximized && !w.isMinimized);
-  const sidebarRailVisible = !hasMaximizedWidget || sidebarRailPeek;
+  // הסרגל תמיד גלוי בדסקטופ; במצב חלון מלא הוא מתכווץ לאייקונים (collapsed) במקום להסתתר.
+  const sidebarRailVisible = true;
 
   const handleApplyScreenLayout = useCallback(() => {
     if (widgets.length === 0) {
@@ -169,33 +171,6 @@ export function useOmniCanvasState() {
 
   useEffect(() => { setSystemMessage(t("workspaceWidgets.page.systemReady")); }, [t]);
 
-  useEffect(() => {
-    if (!hasHydrated || !session || widgets.length > 0 || !isFirstTime || hasOpenedDefaults || isCleanDashboard) return;
-    if (typeof window !== "undefined") {
-      const deepLink = parseWorkspaceUrl(new URLSearchParams(window.location.search));
-      if (deepLink) return;
-    }
-    setHasOpenedDefaults(true);
-    const timer = setTimeout(() => {
-      if (typeof window !== "undefined") {
-        const deepLinkNow = parseWorkspaceUrl(new URLSearchParams(window.location.search));
-        if (deepLinkNow) return;
-      }
-      openWorkspaceWidget("financeHub", { tab: "overview" });
-      setTimeout(() => openWidget("crmTable"), 300);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [
-    hasHydrated,
-    session,
-    widgets.length,
-    openWidget,
-    openWorkspaceWidget,
-    hasOpenedDefaults,
-    isFirstTime,
-    isCleanDashboard,
-  ]);
-
   return {
     t, dir, locale,
     mounted, sessionStatus, everAuthenticated,
@@ -212,7 +187,7 @@ export function useOmniCanvasState() {
     // window manager
     widgets, hasHydrated, openWidget, closeWidget, focusWidget,
     updateWidgetPosition, updateWidgetSize, toggleMaximize, toggleMinimize, restoreWidget,
-    updateZoom,
+    updateZoom, updateWidgetLiveData,
     isCleanDashboard, toggleWorkState,
     // computed
     hasMaximizedWidget, sidebarRailVisible,

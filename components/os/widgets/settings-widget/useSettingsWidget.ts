@@ -13,6 +13,7 @@ const ASSIGN_ROLE_KEYS = [
   { value: "EMPLOYEE", labelKey: "workspaceWidgets.settings.roles.employee" },
   { value: "PROJECT_MGR", labelKey: "workspaceWidgets.settings.roles.projectMgr" },
   { value: "CLIENT", labelKey: "workspaceWidgets.settings.roles.client" },
+  { value: "ACCOUNTANT", labelKey: "workspaceWidgets.settings.roles.accountant" },
   { value: "ORG_ADMIN", labelKey: "workspaceWidgets.settings.roles.orgAdmin" },
 ] as const;
 
@@ -41,6 +42,7 @@ export function useSettingsWidget() {
   const { data: session, status: sessionStatus } = useSession();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [settings, setSettings] = useState<OrgSettings>({
@@ -88,6 +90,7 @@ export function useSettingsWidget() {
   // ── fetch ─────────────────────────────────────────────────────────────────
   const fetchSettings = useCallback(async () => {
     try {
+      setLoadError(false);
       const res = await fetch("/api/organization", { credentials: "include", cache: "no-store" });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -140,6 +143,7 @@ export function useSettingsWidget() {
       }
     } catch {
       toast.error(t(`${S}.errors.loadFailed`));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -264,12 +268,13 @@ export function useSettingsWidget() {
   };
 
   return {
-    loading, saving, settings, setSettings,
+    loading, loadError, saving, settings, setSettings,
     assignEmail, setAssignEmail, assignRole, setAssignRole, assigning, assignRoles,
     showAssignPanel,
     driveSettings, setDriveSettings, driveSaving, driveFolders, driveFoldersLoading,
     orgIndustry, orgSpecialization,
     session,
+    fetchSettings,
     handleLogoUpload, handleSave, handleSaveDriveSettings, handleAssignUser,
   };
 }

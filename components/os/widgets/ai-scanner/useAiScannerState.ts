@@ -6,21 +6,34 @@ import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { useProjectPicker } from "@/hooks/use-project-picker";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useIndustryConfig } from "@/hooks/use-industry-config";
-import { defaultScanModeForIndustry, getScanModesForUi } from "@/lib/scan-modes-for-ui";
+import { defaultScanModeForIndustry, getScanModesForUi, type ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import { buildScanFileAcceptAttribute } from "@/lib/scan-mime";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import type { ScanModeV5 } from "@/lib/scan-schema-v5";
-import { useScanQueue } from "./useScanQueue";
+import { useDocumentScanSession } from "@/hooks/useDocumentScanSession";
+import { consumePendingScanIntake } from "@/lib/scan/pending-intake";
 import { ENGINE_MODES, SCAN_INSTRUCTION_KEY } from "./constants";
 import type { AiScannerWidgetProps } from "./types";
 
 const scannerPrefix = "workspaceWidgets.aiScanner";
 
-export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWidgetProps) {
+export function useAiScannerState({
+  liveData,
+  openWorkspaceWidget,
+  officeExpenseMode = false,
+  initialScanModeOverride,
+  onSaveComplete,
+}: AiScannerWidgetProps) {
   const { t, dir } = useI18n();
   const industryConfig = useIndustryConfig();
   const industryId = industryConfig.id;
-  const scanModes = useMemo(() => getScanModesForUi(industryId), [industryId]);
+  const trForQueue = useCallback(
+    (key: string, fallback: string) => {
+      const v = t(key);
+      return v === key ? fallback : v;
+    },
+    [t],
+  );
+  const scanModes = useMemo(() => getScanModesForUi(industryId, t), [industryId, t]);
   const fileInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const cameraInputRef = useRef<HTMLInputElement>(null) as React.RefObject<HTMLInputElement>;
   const driveImportDoneRef = useRef<string | null>(null);
@@ -28,28 +41,42 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
 
   const [isDragging, setIsDragging] = useState(false);
   const [engineMeta, setEngineMeta] = useState<{
-    configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean };
+    configured: { documentAI: boolean; gemini: boolean; openai: boolean; mistral: boolean; anthropic?: boolean };
     gemini?: { primaryLabel?: string };
     openai?: { defaultModelId?: string };
     mistral?: { primaryLabel?: string };
   } | null>(null);
   const [engineRunMode, setEngineRunMode] = useState<TriEngineRunMode>("AUTO");
-  const [scanModeOverride, setScanModeOverride] = useState<ScanModeV5>(() => defaultScanModeForIndustry(industryId));
+  const [customEngines, setCustomEngines] = useState<string[]>([]);
+  const [scanModeOverride, setScanModeOverride] = useState<ScanModeUiSelection>(() =>
+    initialScanModeOverride ?? defaultScanModeForIndustry(industryId),
+  );
   const [userInstruction, setUserInstruction] = useState("");
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [previewPanelOpen, setPreviewPanelOpen] = useState(false);
   const [resultsPanelOpen, setResultsPanelOpen] = useState(false);
   const [stackScannerPanels, setStackScannerPanels] = useState(false);
 
-  const tr = useCallback((key: string, fallback: string) => {
-    const v = t(key);
-    return v !== key ? v : fallback;
-  }, [t]);
-
   const { resolvedProjectId: boundProjectId, selectedProjectName: boundProjectName, projectsList, projectsListLoading, showProjectPicker, loadProjectsList, selectProject, clearProject } =
-    useProjectPicker({ initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "", listErrorKey: `${scannerPrefix}.loadFailed` });
+    useProjectPicker({
+      initialProjectId: typeof liveData?.projectId === "string" ? liveData.projectId : "",
+      listErrorKey: `${scannerPrefix}.loadFailed`,
+      skipProjectPicker: officeExpenseMode,
+    });
 
-  const scanQueue = useScanQueue({ engineRunMode, scanModeOverride, boundProjectId, userInstruction, industryId, openWorkspaceWidget, tr });
+  const scanQueue = useDocumentScanSession({
+    engineRunMode,
+    customEngines,
+    scanModeOverride,
+    boundProjectId,
+    userInstruction,
+    industryId,
+    openWorkspaceWidget,
+    tr: trForQueue,
+    defaultSaveTargets: officeExpenseMode ? ["expense"] : undefined,
+    lockedSaveTargets: officeExpenseMode ? ["expense"] : undefined,
+    onSaveComplete,
+  });
   const { queue, previewUrl, applyFilePreview, runFileQueue, addFiles, startScan, pendingFiles, confirmAnalysis, saveToNotebook, pendingAnalysis, setPendingAnalysis, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
 
   // ── nav ───────────────────────────────────────────────────────────────────
@@ -60,7 +87,19 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
   const { pushView: pushScannerView } = useSyncedWidgetNavigation(applyScannerNav);
 
   // ── effects ───────────────────────────────────────────────────────────────
-  useEffect(() => { setScanModeOverride(defaultScanModeForIndustry(industryId)); }, [industryId]);
+  useEffect(() => {
+    const { files, autoScan: shouldAuto } = consumePendingScanIntake();
+    if (files.length) {
+      addFiles(files);
+      if (shouldAuto || liveData?.autoScan === true) void startScan();
+    }
+  }, [liveData?.autoScan, addFiles, startScan]);
+
+  useEffect(() => {
+    if (!officeExpenseMode) {
+      setScanModeOverride(defaultScanModeForIndustry(industryId));
+    }
+  }, [industryId, officeExpenseMode]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -88,9 +127,22 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     if (typeof inst === "string" && inst.trim()) setUserInstruction(inst.trim());
     if (liveData?.openInstructions) setInstructionsOpen(true);
     const mode = liveData?.engineRunMode;
-    if (typeof mode === "string" && ["AUTO", "MULTI_PARALLEL", "SINGLE_GEMINI", "SINGLE_OPENAI", "SINGLE_DOCUMENT_AI"].includes(mode)) setEngineRunMode(mode as TriEngineRunMode);
+    if (
+      typeof mode === "string" &&
+      [
+        "AUTO",
+        "MULTI_PARALLEL",
+        "SINGLE_GEMINI",
+        "SINGLE_OPENAI",
+        "SINGLE_DOCUMENT_AI",
+        "SINGLE_MISTRAL",
+        "SINGLE_ANTHROPIC",
+      ].includes(mode)
+    ) {
+      setEngineRunMode(mode as TriEngineRunMode);
+    }
     const sm = liveData?.scanMode;
-    if (typeof sm === "string") setScanModeOverride(sm as ScanModeV5);
+    if (typeof sm === "string") setScanModeOverride(sm as ScanModeUiSelection);
     const pid = liveData?.projectId;
     if (typeof pid === "string") selectProject(pid);
    
@@ -192,20 +244,24 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     if (!previewUrl && queue.length > 0) {
       const active = queue.find((q) => q.status === "processing") ?? [...queue].reverse().find((q) => q.status === "done") ?? queue[queue.length - 1];
       if (active) applyFilePreview(active.file);
+    } else if (!previewUrl && scanQueue.pendingFiles.length > 0) {
+      const staged = scanQueue.pendingFiles[scanQueue.pendingFiles.length - 1];
+      if (staged) applyFilePreview(staged);
     }
     setPreviewPanelOpen(true);
     pushScannerView({ openPreviewPanel: true });
-  }, [applyFilePreview, previewUrl, queue, pushScannerView]);
+  }, [applyFilePreview, previewUrl, queue, pushScannerView, scanQueue.pendingFiles]);
 
   const activeEngineLabel = useMemo(() => {
-    if (!engineMeta) return tr("scanner.processing", "מעבד…");
+    if (!engineMeta) return t("scanner.processing");
     if (engineRunMode === "SINGLE_GEMINI") return engineMeta.gemini?.primaryLabel ?? "Gemini";
     if (engineRunMode === "SINGLE_OPENAI") return engineMeta.openai?.defaultModelId ?? "OpenAI";
     if (engineRunMode === "SINGLE_DOCUMENT_AI") return "Document AI";
-    if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Pixtral";
-    if (engineRunMode === "MULTI_PARALLEL") return tr("scanner.modeMulti", "ריבוי מנועים");
-    return tr("scanner.modeAuto", "אוטומטי");
-  }, [engineMeta, engineRunMode, tr]);
+    if (engineRunMode === "SINGLE_MISTRAL") return engineMeta.mistral?.primaryLabel ?? "Mistral";
+    if (engineRunMode === "MULTI_PARALLEL") return t("scanner.modeMulti");
+    if (engineRunMode === "CUSTOM_PARALLEL") return customEngines.length ? customEngines.join("+") : t("scanner.modeMulti");
+    return t("scanner.modeAuto");
+  }, [engineMeta, engineRunMode, customEngines, t]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -220,10 +276,10 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
   }, [addFiles]);
 
   return {
-    t, dir, scannerPrefix,
+    t, tr: trForQueue, dir, scannerPrefix,
     scanModes, fileInputRef, cameraInputRef, fileAccept,
     isDragging, setIsDragging,
-    engineMeta, engineRunMode, setEngineRunMode,
+    engineMeta, engineRunMode, setEngineRunMode, customEngines, setCustomEngines,
     scanModeOverride, setScanModeOverride,
     userInstruction, persistInstruction,
     instructionsOpen, setInstructionsOpen,
@@ -236,6 +292,6 @@ export function useAiScannerState({ liveData, openWorkspaceWidget }: AiScannerWi
     activeEngineLabel,
     openPreviewPanel, onDrop, onFileInputChange,
     pushScannerView,
-    ENGINE_MODES, tr,
+    ENGINE_MODES,
   };
 }

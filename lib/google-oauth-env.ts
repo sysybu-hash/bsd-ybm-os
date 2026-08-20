@@ -5,9 +5,13 @@
  * אם GOOGLE_SIGNIN_* לא מוגדרים — משתמשים ב-GOOGLE_CLIENT_ID / SECRET לכל הזרימות (התנהגות קודמת).
  */
 
-import { GOOGLE_DRIVE_FILE_SCOPE } from "@/lib/google-drive-config";
+import {
+  GOOGLE_CONTACTS_READONLY_SCOPE,
+  GOOGLE_DRIVE_FILE_SCOPE,
+} from "@/lib/google-drive-config";
 
 const CALENDAR_SCOPE_MARKER = "googleapis.com/auth/calendar";
+const CONTACTS_SCOPE_MARKER = GOOGLE_CONTACTS_READONLY_SCOPE;
 const FULL_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
 
 function scopeListIncludesFullDrive(scope: string): boolean {
@@ -48,6 +52,7 @@ export function isGoogleIntegrationsOAuthConfigured(): boolean {
 export function accountUsesRestrictedGoogleScopes(scope: string | null | undefined): boolean {
   const s = scope ?? "";
   if (s.includes(CALENDAR_SCOPE_MARKER)) return true;
+  if (s.includes(CONTACTS_SCOPE_MARKER)) return true;
   if (s.includes(GOOGLE_DRIVE_FILE_SCOPE)) return true;
   return scopeListIncludesFullDrive(s);
 }

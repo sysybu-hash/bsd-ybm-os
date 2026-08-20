@@ -4,6 +4,7 @@ import React, { useCallback, useEffect } from "react";
 import AdaptiveWidgetShell from "@/components/os/AdaptiveWidgetShell";
 import type { ActiveWidget } from "@/hooks/use-window-manager";
 import { useWorkspaceNavigation } from "@/components/os/navigation/WorkspaceNavigationProvider";
+import { getWindowIdentity } from "@/lib/os/window-identity";
 
 type Props = {
   widget: ActiveWidget;
@@ -44,11 +45,17 @@ export default function ManagedWidgetShell({
 
   const canGoBack = wsNav.canChromeBack(widget.id);
   const canGoForward = wsNav.canChromeForward(widget.id);
+  const { accent, Icon } = getWindowIdentity(widget.type);
 
   const handleBack = useCallback(() => {
     const result = wsNav.chromeBack(widget.id);
-    if (result.focusWidgetId) onRequestFocusWidget(result.focusWidgetId);
-  }, [wsNav, widget.id, onRequestFocusWidget]);
+    if (result.focusWidgetId) {
+      onRequestFocusWidget(result.focusWidgetId);
+      return;
+    }
+    if (result.handled) return;
+    onClose();
+  }, [wsNav, widget.id, onRequestFocusWidget, onClose]);
 
   const handleForward = useCallback(() => {
     const result = wsNav.chromeForward(widget.id);
@@ -79,6 +86,8 @@ export default function ManagedWidgetShell({
       onBack={handleBack}
       onForward={handleForward}
       maximizeHiddenOnMobile={false}
+      accent={accent}
+      headerIcon={<Icon size={15} aria-hidden />}
     >
       {children}
     </AdaptiveWidgetShell>

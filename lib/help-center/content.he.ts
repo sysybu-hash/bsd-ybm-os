@@ -106,7 +106,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         },
       ],
       tips: ["השתמשו בכפתור «עוד» במובייל לגישה לכל היישומים."],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "windows",
@@ -135,7 +136,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "סטטוס", body: "שורת הסטטוס מעל ה-Omnibar מציגה פעולה אחרונה או שגיאה." },
       ],
       omnibarExamples: ["פתח לקוחות", "סרוק חשבונית", "פתח מחברת", "הוסף משימה לפרויקט X"],
-      openWidget: "aiChatFull",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"chat"},
     },
     {
       id: "dashboard-kpi",
@@ -149,7 +151,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "פעילות אחרונה", body: "רשימת מסמכים אחרונים עם קישור מהיר לארכיון." },
         { title: "פעולות מהירות", body: "מסך ריק מציע כרטיסי קיצור ליישומים מרכזיים." },
       ],
-      openWidget: "dashboard",
+      openWidget: "financeHub",
+      openWidgetData: {"tab":"overview"},
     },
     {
       id: "scanner-upload",
@@ -166,7 +169,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "שמירה למחברת", body: "כפתור שמירה למחברת יוצר מקור מסריקה ב-NotebookLM." },
       ],
       tips: ["הוסיפו «הנחיות סריקה» מותאמות אישית לפני ההעלאה."],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "scanner-engines",
@@ -179,7 +183,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "יתרות", body: "סריקות «זולות» (Gemini) ו«פרימיום» (OpenAI) מנוכות לפי הגדרות הארגון." },
         { title: "שגיאות", body: "אם סריקה נכשלה — בדקו פורמט, גודל, או נסו מצב מנוע יחיד." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "crm-clients",
@@ -207,7 +212,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "סינון", body: "סננו לפי תאריך, לקוח או סטטוס תשלום." },
         { title: "ייצוא", body: "ייצוא PDF או CSV לרואה חשבון לפי הרשאות." },
       ],
-      openWidget: "erpArchive",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "doc-creator",
@@ -221,7 +227,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "שורות", body: "הוסיפו פריטים, מחירים ומע\"מ — התצוגה מותאמת לסוג העסק." },
         { title: "הפקה", body: "הפיקו PDF ושלחו ללקוח או שמרו כטיוטה." },
       ],
-      openWidget: "docCreator",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"create"},
     },
     {
       id: "drive-sync",
@@ -250,7 +257,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "שיחה", body: "שאלו שאלות — התשובות מבוססות על המקורות בלבד." },
         { title: "שמירה", body: "מחברות נשמרות לפי משתמש/ארגון." },
       ],
-      openWidget: "notebookLM",
+      openWidget: "aiHub",
+      openWidgetData: {"tab":"notebook"},
     },
     {
       id: "meckano-attendance",
@@ -319,7 +327,7 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "כניסה", body: "פתחו את יישום הלקוחות מהמפעיל או מ-Omnibar." },
         { title: "שיוך לפרויקט", body: "פרויקטים פנימיים מקושרים ללקוחות כמו במסלול בנייה, בלי כתב כמויות." },
       ],
-      openWidget: "crm",
+      openWidget: "crmTable",
     },
     {
       id: "company-mgmt-projects",
@@ -331,7 +339,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "לוח זמנים", body: "בפרויקט פתחו לוח זמנים — תלויות ומשימות ללא שורות BOQ." },
         { title: "מסמכים", body: "מסמכי פרויקט מותאמים לעסק (הצעות, חוזים, דוחות) ללא תוכניות ביצוע." },
       ],
-      openWidget: "project",
+      openWidget: "projectsHub",
+      openWidgetData: {"tab":"project"},
     },
     {
       id: "company-mgmt-erp",
@@ -343,7 +352,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "ארכיון", body: "מסמכים מונפקים וממתינים — כמו במסלול הכללי." },
         { title: "מחולל", body: "מחולל המסמכים תומך בתבניות עסקיות." },
       ],
-      openWidget: "erp",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"archive"},
     },
     {
       id: "company-mgmt-scan",
@@ -355,7 +365,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "מצב סריקה", body: "הסורק מציע מצבי עסק (לא תוכנית/שטח) לפי ענף הארגון." },
         { title: "העברה ל-ERP", body: "לאחר אישור — שמירה לארכיון או הפקת מסמך." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
     {
       id: "company-mgmt-profession",
@@ -384,7 +395,8 @@ export const HELP_CENTER_HE: HelpCenterData = {
         { title: "יתרה", body: "בדקו שנשארו סריקות במנוי (הגדרות / מנהל)." },
         { title: "מנוע", body: "נסו מצב מנוע יחיד או הנחיות סריקה ברורות יותר." },
       ],
-      openWidget: "aiScanner",
+      openWidget: "documentsHub",
+      openWidgetData: {"tab":"scan"},
     },
   ],
   globalFaq: [

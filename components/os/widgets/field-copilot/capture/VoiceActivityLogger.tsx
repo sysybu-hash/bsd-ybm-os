@@ -16,6 +16,7 @@ import { Mic, MicOff, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useWebSpeechFallback } from "@/hooks/useWebSpeechFallback";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   /** API base path for work diaries, e.g. /api/projects/[id] */
@@ -50,14 +51,14 @@ export function VoiceActivityLogger({ apiBase, projectName, onSaved }: Props) {
       });
       if (!res.ok) {
         const j = (await res.json()) as { error?: string };
-        toast.error(j.error ?? "שגיאה בשמירת יומן");
+        toast.error(j.error ?? t("workspaceWidgets.fieldCopilot.diarySaveError"));
         return;
       }
-      toast.success("יומן קולי נשמר בהצלחה");
+      toast.success(t("workspaceWidgets.fieldCopilot.diarySaved"));
       setTranscript("");
       onSaved?.();
     } catch {
-      toast.error("שגיאה בשמירת יומן");
+      toast.error(t("workspaceWidgets.fieldCopilot.diarySaveError"));
     } finally {
       setSaving(false);
     }
@@ -68,7 +69,7 @@ export function VoiceActivityLogger({ apiBase, projectName, onSaved }: Props) {
   if (!speech.supported) {
     return (
       <div className="rounded-xl border border-dashed border-[color:var(--border-main)] p-3 text-center text-xs text-[color:var(--foreground-muted)]">
-        זיהוי קול אינו נתמך בדפדפן זה. השתמש ב-Chrome לניסיון מלא.
+        {t("workspaceWidgets.fieldCopilot.speechUnsupported")}
       </div>
     );
   }
@@ -77,34 +78,37 @@ export function VoiceActivityLogger({ apiBase, projectName, onSaved }: Props) {
     <div className="space-y-2 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 p-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold">
-          {projectName ? `יומן קולי — ${projectName}` : "יומן קולי מהיר"}
+          {projectName ? t("workspaceWidgets.fieldCopilot.voiceDiaryTitled", { project: projectName }) : t("workspaceWidgets.fieldCopilot.voiceDiaryQuick")}
         </p>
         {transcript ? (
-          <button type="button" onClick={() => setTranscript("")}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-rose-600 hover:bg-rose-50 dark:text-rose-400">
-            <Trash2 size={10} /> נקה
-          </button>
+          <OsButton
+            variant="quiet"
+            size="sm"
+            className="text-rose-600 hover:bg-rose-50 dark:text-rose-400"
+            icon={<Trash2 size={10} aria-hidden />}
+            onClick={() => setTranscript("")}
+          >
+            {t("workspaceWidgets.fieldCopilot.clear")}
+          </OsButton>
         ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={isListening ? speech.stop : speech.start}
-        className={`flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl font-bold text-sm transition active:scale-95 ${
-          isListening
-            ? "bg-rose-600 text-white"
-            : "bg-sky-600 text-white"
+      <OsButton
+        variant="primary"
+        className={`relative min-h-[44px] w-full justify-center active:scale-95 ${
+          isListening ? "bg-rose-600 hover:bg-rose-500" : "bg-sky-600 hover:bg-sky-500"
         }`}
+        onClick={isListening ? speech.stop : speech.start}
       >
         {isListening ? (
           <>
             <span className="absolute animate-ping rounded-full bg-rose-400/40" style={{ width: 40, height: 40 }} aria-hidden />
-            <MicOff size={18} /> עצור הקלטה
+            <MicOff size={18} aria-hidden /> {t("workspaceWidgets.fieldCopilot.stopRecording")}
           </>
         ) : (
-          <><Mic size={18} /> הקלט יומן קולי</>
+          <><Mic size={18} aria-hidden /> {t("workspaceWidgets.fieldCopilot.recordVoiceDiary")}</>
         )}
-      </button>
+      </OsButton>
 
       {speech.error ? (
         <p className="text-[10px] text-rose-500">{speech.error}</p>
@@ -124,17 +128,18 @@ export function VoiceActivityLogger({ apiBase, projectName, onSaved }: Props) {
             rows={3}
             className="w-full resize-none rounded-lg border border-[color:var(--border-main)] bg-transparent px-2 py-1.5 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-sky-500/30"
             dir="auto"
-            placeholder="ערוך לפי הצורך לפני שמירה..."
+            placeholder={t("workspaceWidgets.fieldCopilot.editBeforeSave")}
           />
-          <button
-            type="button"
-            disabled={saving || !transcript.trim()}
+          <OsButton
+            variant="primary"
+            className="w-full justify-center bg-emerald-600 hover:bg-emerald-500"
+            disabled={!transcript.trim()}
+            loading={saving}
+            icon={<Save size={15} aria-hidden />}
             onClick={() => void handleSave()}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-sm font-bold text-white disabled:opacity-50 hover:bg-emerald-500"
           >
-            <Save size={15} />
-            {saving ? "שומר..." : "שמור כיומן עבודה"}
-          </button>
+            {t("workspaceWidgets.fieldCopilot.saveAsWorkDiary")}
+          </OsButton>
         </>
       ) : null}
     </div>

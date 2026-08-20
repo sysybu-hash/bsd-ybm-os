@@ -7,10 +7,13 @@ import { test, expect } from "@playwright/test";
 import {
   dismissWorkspaceOverlays,
   hubQuickGridButton,
+  openFinanceHub,
   primeCookieConsent,
   tryCredentialsSignIn,
   workspaceUrl,
   dismissCookieBannerIfVisible,
+  gotoWorkspaceProject,
+  E2E_PROJECT_ID,
 } from "./helpers";
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 }; // iPhone 14 Pro
@@ -33,8 +36,8 @@ test.describe("mobile responsive — layout", () => {
   // ─── widget shell ─────────────────────────────────────────────────────────────
 
   test("widget shell fills full width on mobile", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    await openFinanceHub(page);
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const box = await shell.boundingBox();
@@ -44,7 +47,7 @@ test.describe("mobile responsive — layout", () => {
 
   test("widget content does not cause horizontal scroll", async ({ page }) => {
     await hubQuickGridButton(page, /מסמכים|documents hub/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     // scrollWidth should equal clientWidth (no horizontal overflow)
@@ -57,7 +60,7 @@ test.describe("mobile responsive — layout", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     // Wait for cashflow to render
@@ -96,7 +99,7 @@ test.describe("mobile responsive — layout", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const createTab = shell.getByRole("tab", { name: /הפקה|create/i });
@@ -123,7 +126,7 @@ test.describe("mobile responsive — layout", () => {
   test("CRM client detail modal is scrollable on mobile", async ({ page }) => {
     await page.goto(workspaceUrl({ w: "crmTable" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     // Click the first client row
@@ -146,8 +149,20 @@ test.describe("mobile responsive — layout", () => {
   test("Google Drive header buttons wrap on mobile", async ({ page }) => {
     await page.goto(workspaceUrl({ w: "googleDrive" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
+
+    // Google Drive opens to a project picker — browse org-wide to reach the file list
+    const browseAllBtn = shell.getByRole("button", { name: /דפדוף בכל הארגון|browse.*organization/i });
+    if (await browseAllBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await browseAllBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    const reconnectBtn = shell.getByRole("button", { name: /התחברות מחדש|reconnect/i });
+    if (await reconnectBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      test.skip(true, "Google Drive is not connected in this environment");
+    }
 
     // The upload button should be visible (not cut off)
     const uploadBtn = shell.getByRole("button", { name: /העלה קובץ|Upload/i });
@@ -168,7 +183,7 @@ test.describe("mobile responsive — layout", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     // Find category chip buttons (all/invoice/quote/contract)
@@ -194,9 +209,9 @@ test.describe("mobile responsive — layout", () => {
   });
 
   test("tab bar in hub widget supports horizontal scroll when needed", async ({ page }) => {
-    await page.goto(workspaceUrl({ w: "projectsHub" }), { waitUntil: "domcontentloaded" });
-    await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    test.skip(!E2E_PROJECT_ID, "Run npm run seed:test for E2E_PROJECT_ID");
+    await gotoWorkspaceProject(page, E2E_PROJECT_ID);
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const tablist = shell.getByRole("tablist");
@@ -223,8 +238,8 @@ test.describe("mobile responsive — narrow viewport (360px)", () => {
   });
 
   test("finance hub renders without horizontal overflow at 360px", async ({ page }) => {
-    await hubQuickGridButton(page, /פיננסים|finance/i).click();
-    const shell = page.locator("[data-widget-shell]").first();
+    await openFinanceHub(page);
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const overflow = await shell.evaluate((el) => el.scrollWidth > el.clientWidth + 2);
@@ -234,7 +249,7 @@ test.describe("mobile responsive — narrow viewport (360px)", () => {
   test("CRM table renders without horizontal overflow at 360px", async ({ page }) => {
     await page.goto(workspaceUrl({ w: "crmTable" }), { waitUntil: "domcontentloaded" });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const overflow = await shell.evaluate((el) => el.scrollWidth > el.clientWidth + 2);
@@ -246,7 +261,7 @@ test.describe("mobile responsive — narrow viewport (360px)", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissWorkspaceOverlays(page);
-    const shell = page.locator("[data-widget-shell]").first();
+    const shell = page.locator("[data-widget-shell]").last();
     await expect(shell).toBeVisible({ timeout: 20_000 });
 
     const createTab = shell.getByRole("tab", { name: /הפקה|create/i });

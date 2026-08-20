@@ -10,8 +10,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: [
-          "var(--font-heebo)",
-          "var(--font-assistant)",
+          "var(--font-sans)",
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
@@ -124,6 +123,10 @@ module.exports = {
   plugins: [
     require("tailwindcss-animate"),
     require("@tailwindcss/container-queries"),
+    function ({ addVariant }) {
+      addVariant("mobile-vp", '[data-mobile-viewport="true"] &');
+      addVariant("desktop-vp", '[data-mobile-viewport="false"] &');
+    },
     function ({ addUtilities, theme }) {
       addUtilities({
         ".bg-grid-white": {

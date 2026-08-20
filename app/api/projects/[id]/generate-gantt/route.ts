@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest } from "@/lib/api-json";
+import { jsonBadRequest, jsonTooManyRequests } from "@/lib/api-json";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
@@ -57,6 +58,11 @@ const responseSchema = z.object({
 export const POST = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId, userId }, segment) => {
   const { id: projectId } = await segment.params;
   try {
+    const rl = await checkRateLimit(`gantt-generate:user:${userId}`, 15, 60 * 60 * 1000);
+    if (!rl.success) {
+      return jsonTooManyRequests("חריגה ממכסת יצירת לוחות גאנט — נסו שוב מאוחר יותר.");
+    }
+
     const industryBlock = await guardConstructionOnlyApi(orgId);
     if (industryBlock) return industryBlock;
 

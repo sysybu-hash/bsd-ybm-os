@@ -5,7 +5,7 @@ import { parseSubscriptionTier, tierAllowance, type SubscriptionTierKey } from "
 
 type TierPricesMap = Partial<Record<SubscriptionTierKey, number>>;
 
-function readTierPricesJson(raw: unknown): TierPricesMap {
+export function readTierPricesJson(raw: unknown): TierPricesMap {
   if (!raw || typeof raw !== "object") return {};
   const out: TierPricesMap = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {

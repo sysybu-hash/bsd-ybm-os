@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   AlertCircle, Calendar, ChevronRight, Edit3, Layers, Loader2, Save, TrendingUp,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { DocumentLineItem, ErpDocument, PriceComparison } from "./useErpDocuments";
 
 type Props = {
@@ -26,6 +28,7 @@ export function ErpDocumentDetail({
   setSelectedDoc, setEditValues, startEditing, saveLineItem,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useI18n();
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -33,12 +36,15 @@ export function ErpDocumentDetail({
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50">
         <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4 md:gap-0">
           <div>
-            <button
+            <OsButton
+              variant="quiet"
+              size="sm"
+              className="mb-4 !px-0"
+              icon={<ChevronRight className="w-4 h-4 rtl:rotate-180" aria-hidden />}
               onClick={() => setSelectedDoc(null)}
-              className="mb-4 flex items-center gap-2 text-sm text-[color:var(--foreground-muted)] hover:text-[color:var(--foreground-main)] transition-colors"
             >
-              <ChevronRight className="w-4 h-4 rtl:rotate-180" /> חזרה לרשימה
-            </button>
+              {t("workspaceWidgets.erpArchive.backToList")}
+            </OsButton>
             <h2 className="text-xl font-bold text-[color:var(--foreground-main)] mb-1">{selectedDoc.fileName}</h2>
             <div className="flex flex-wrap items-center gap-2 text-sm text-[color:var(--foreground-muted)]">
               <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(selectedDoc.createdAt).toLocaleDateString("he-IL")}</span>
@@ -49,7 +55,7 @@ export function ErpDocumentDetail({
             </div>
           </div>
           <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex flex-col items-end shadow-sm dark:shadow-none">
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">סה&quot;כ מסמך</span>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-1">{t("workspaceWidgets.erpArchive.documentTotal")}</span>
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
               ₪{(selectedDoc.lineItems?.reduce((sum, item) => sum + (item.lineTotal ?? 0), 0) ?? 0).toLocaleString()}
             </span>
@@ -61,7 +67,7 @@ export function ErpDocumentDetail({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm font-bold text-[color:var(--foreground-main)]">היסטוריית מחירים: {priceComparison.productName}</span>
+                <span className="text-sm font-bold text-[color:var(--foreground-main)]">{t("workspaceWidgets.erpArchive.priceHistory", { product: priceComparison.productName })}</span>
               </div>
             </div>
             <div className="h-32 w-full">
@@ -95,10 +101,10 @@ export function ErpDocumentDetail({
             <thead>
               <tr className="text-right text-xs font-bold text-[color:var(--foreground-muted)] uppercase tracking-widest border-b border-[color:var(--border-main)]/30">
                 <th className="pb-3 pr-2 w-10">#</th>
-                <th className="pb-3 pr-4 text-right">תיאור פריט</th>
-                <th className="pb-3 px-4 text-center w-24">כמות</th>
-                <th className="pb-3 px-4 text-center w-32">מחיר יחידה</th>
-                <th className="pb-3 pl-4 text-left w-32">סה&quot;כ</th>
+                <th className="pb-3 pr-4 text-right">{t("workspaceWidgets.erpArchive.itemDescription")}</th>
+                <th className="pb-3 px-4 text-center w-24">{t("workspaceWidgets.erpArchive.itemQuantity")}</th>
+                <th className="pb-3 px-4 text-center w-32">{t("workspaceWidgets.erpArchive.itemUnitPrice")}</th>
+                <th className="pb-3 pl-4 text-left w-32">{t("workspaceWidgets.erpArchive.itemTotal")}</th>
                 <th className="pb-3 w-20"></th>
               </tr>
             </thead>
@@ -118,7 +124,7 @@ export function ErpDocumentDetail({
                         <span className="text-sm font-medium text-[color:var(--foreground-main)]">{item.description}</span>
                         {item.priceAlertPending ? (
                           <span className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-                            <AlertCircle className="w-3 h-3" /> נדרש עדכון מחיר
+                            <AlertCircle className="w-3 h-3" aria-hidden /> {t("workspaceWidgets.erpArchive.priceUpdateNeeded")}
                           </span>
                         ) : null}
                       </div>
@@ -155,15 +161,24 @@ export function ErpDocumentDetail({
                   <td className="py-4 text-center">
                     <div className="flex justify-center gap-2">
                       {editingLineId === item.id ? (
-                        <button onClick={() => saveLineItem(item.id)} disabled={isUpdating}
-                          className="p-1.5 bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors">
-                          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-white" />}
-                        </button>
+                        <OsIconButton
+                          label={t("common.save")}
+                          size="sm"
+                          disabled={isUpdating}
+                          className="bg-emerald-500 text-white hover:bg-emerald-600"
+                          onClick={() => saveLineItem(item.id)}
+                        >
+                          {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Save className="w-4 h-4" aria-hidden />}
+                        </OsIconButton>
                       ) : (
-                        <button onClick={() => startEditing(item)}
-                          className="p-1.5 hover:bg-[color:var(--foreground-muted)]/10 rounded-lg text-[color:var(--foreground-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                          <Edit3 className="w-4 h-4" />
-                        </button>
+                        <OsIconButton
+                          label={t("workspaceWidgets.itemActions.edit")}
+                          size="sm"
+                          className="text-[color:var(--foreground-muted)] opacity-100 hover:text-emerald-600 dark:hover:text-emerald-400 sm:opacity-0 sm:group-hover:opacity-100"
+                          onClick={() => startEditing(item)}
+                        >
+                          <Edit3 className="w-4 h-4" aria-hidden />
+                        </OsIconButton>
                       )}
                     </div>
                   </td>

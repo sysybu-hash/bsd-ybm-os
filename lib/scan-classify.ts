@@ -38,6 +38,16 @@ export function isExplicitClientScanMode(scanMode: string): boolean {
   return EXPLICIT_CLIENT_SCAN_MODES.has(scanMode);
 }
 
+/** האם להריץ סיווג סוג מסמך (הוריסטיקה + AI) לפני החילוץ */
+export function shouldAutoClassifyDocumentType(input: {
+  scanMode: ScanModeV5;
+  engineRunMode: string;
+  docTypeAutoDetect: boolean;
+}): boolean {
+  if (isExplicitClientScanMode(input.scanMode)) return false;
+  return input.docTypeAutoDetect || input.engineRunMode === "AUTO";
+}
+
 export function classifyScanDocumentHeuristic(input: {
   fileName: string;
   mimeType: string;

@@ -101,11 +101,11 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
         body: JSON.stringify({ fileId: file.id, fileName: file.name, mimeType: file.mimeType }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "הוספה למחברת נכשלה");
+      if (!res.ok) throw new Error(data.error ?? t("workspaceWidgets.googleDrive.addToNotebookFailed"));
       openWorkspaceWidget("notebookLM", { notebookId: data.notebookId, title: data.title, preloadSources: data.preloadSources });
       toast.success(file.mimeType === "application/vnd.google-apps.folder"
-        ? `תיקייה «${file.name}» נוספה למחברת`
-        : `«${file.name}» נוסף למחברת`);
+        ? t("workspaceWidgets.googleDrive.notebookFolderAdded").replace("{name}", file.name)
+        : t("workspaceWidgets.googleDrive.notebookFileAdded").replace("{name}", file.name));
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("workspaceWidgets.googleDrive.addToNotebookFailed"));
     } finally {
@@ -119,7 +119,9 @@ export function useGoogleDriveWidget({ liveData = null, openWorkspaceWidget }: G
       return;
     }
     if (!openWorkspaceWidget) { toast.error(t("workspaceWidgets.googleDrive.scannerOpenError")); return; }
-    openWorkspaceWidget("aiScanner", {
+    openWorkspaceWidget("documentsHub", {
+      tab: "scan",
+      source: "drive",
       projectId: boundProjectId || nav?.currentView?.projectId,
       driveImportFile: { fileId: file.id, fileName: file.name, mimeType: file.mimeType },
     });

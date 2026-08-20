@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { embedText, cosineSimilarity, isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
+import {
+  searchContactsPgvector,
+  writeContactSearchEmbeddingVector,
+} from "@/lib/embeddings/pgvector-dual-write";
 
 function contactSearchText(c: {
   name: string;
@@ -31,14 +35,14 @@ export async function syncContactEmbeddingsForOrg(organizationId: string): Promi
     const textHash = hashText(text);
     const existing = await prisma.contactSearchEmbedding.findUnique({
       where: { contactId: c.id },
-      select: { textHash: true },
+      select: { id: true, textHash: true },
     });
     if (existing?.textHash === textHash) continue;
 
     const embedding = await embedText(text);
     if (!embedding) continue;
 
-    await prisma.contactSearchEmbedding.upsert({
+    const row = await prisma.contactSearchEmbedding.upsert({
       where: { contactId: c.id },
       create: {
         organizationId,
@@ -47,7 +51,9 @@ export async function syncContactEmbeddingsForOrg(organizationId: string): Promi
         embedding,
       },
       update: { textHash, embedding },
+      select: { id: true },
     });
+    await writeContactSearchEmbeddingVector(row.id, embedding);
     updated++;
   }
   return updated;
@@ -61,10 +67,17 @@ export async function searchContactsByEmbedding(
   const queryVec = await embedText(query);
   if (!queryVec) return [];
 
+  const pgHits = await searchContactsPgvector(organizationId, queryVec, limit);
+  if (pgHits && pgHits.length > 0) {
+    return pgHits.filter((h) => h.score > 0.35).map((h) => h.contactId);
+  }
+
+  /** Hard cap for JSON cosine when pgvector is unavailable (see INTEGRATIONS-STUBS). */
+  const JSON_COSINE_MAX_CONTACTS = 400;
   const rows = await prisma.contactSearchEmbedding.findMany({
     where: { organizationId },
     select: { contactId: true, embedding: true },
-    take: 500,
+    take: JSON_COSINE_MAX_CONTACTS,
   });
 
   const scored = rows

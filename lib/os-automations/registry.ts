@@ -2,6 +2,12 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
 import { normalizeAutomationIntent } from "@/lib/os-automations/catalog";
 import { checkAutomationIntentEnabled } from "@/lib/os-automations/check-intent-enabled";
+import {
+  createContactAction,
+  createTaskAction,
+  executeUserCommandAction,
+  searchClientAction,
+} from "@/lib/os-automations/registry-api-actions";
 import type {
   AutomationAction,
   AutomationResult,
@@ -13,32 +19,20 @@ import type {
   ParseActionResponse,
 } from "@/lib/os-automations/types";
 
-function mapTaskStatus(raw: unknown): string | undefined {
-  const s = String(raw ?? "").toLowerCase();
-  if (s === "todo" || s === "לביצוע") return "TODO";
-  if (s === "in-progress" || s === "in_progress" || s === "בתהליך") return "IN_PROGRESS";
-  if (s === "review" || s === "בביקורת") return "REVIEW";
-  if (s === "done" || s === "הושלם") return "DONE";
-  return undefined;
-}
-
-function mapTaskPriority(raw: unknown): string | undefined {
-  const p = String(raw ?? "").toLowerCase();
-  if (p === "low" || p === "נמוך") return "LOW";
-  if (p === "high" || p === "גבוה") return "HIGH";
-  if (p === "medium" || p === "בינוני") return "MEDIUM";
-  return undefined;
-}
-
-const WIDGET_BY_INTENT: Partial<Record<string, WidgetType>> = {
-  open_dashboard: "dashboard",
-  open_crm: "crmTable",
-  open_project_board: "projectBoard",
-  open_erp_archive: "erpArchive",
-  open_meckano_reports: "meckanoReports",
-  open_google_drive: "googleDrive",
-  open_settings: "settings",
-  open_accessibility: "accessibility",
+const WIDGET_BY_INTENT: Partial<
+  Record<string, { type: WidgetType; liveData?: Record<string, unknown> }>
+> = {
+  open_dashboard: { type: "financeHub", liveData: { tab: "overview" } },
+  open_crm: { type: "crmTable" },
+  open_project_board: {
+    type: "projectsHub",
+    liveData: { tab: "project", dashboardTab: "tasks" },
+  },
+  open_erp_archive: { type: "documentsHub", liveData: { tab: "archive" } },
+  open_meckano_reports: { type: "meckanoReports" },
+  open_google_drive: { type: "googleDrive" },
+  open_settings: { type: "settings" },
+  open_accessibility: { type: "accessibility" },
 };
 
 function widgetPayload(params: Record<string, unknown>): Record<string, unknown> | null {
@@ -78,14 +72,19 @@ export async function runAutomationAction(
     case "open_google_drive":
     case "open_settings":
     case "open_accessibility": {
-      const w = WIDGET_BY_INTENT[intent];
-      if (!w) return { ok: false };
-      deps.openWidget(w, widgetPayload(params));
+      const route = WIDGET_BY_INTENT[intent];
+      if (!route) return { ok: false };
+      deps.openWidget(route.type, {
+        ...(route.liveData ?? {}),
+        ...widgetPayload(params),
+      });
       return { ok: true };
     }
     case "open_scanner":
     case "scan_with_instructions": {
-      deps.openWidget("aiScanner", {
+      deps.openWidget("documentsHub", {
+        tab: "scan",
+        source: "automation",
         userInstruction: String(params.userInstruction ?? ""),
         engineRunMode: String(params.engineRunMode ?? "AUTO"),
         scanMode: params.scanMode,
@@ -107,19 +106,20 @@ export async function runAutomationAction(
       return { ok: true, message: "נפתח קופיילוט שטח" };
     }
     case "show_scan_preview": {
-      deps.openWidget("aiScanner", { openPreviewPanel: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", openPreviewPanel: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "show_scan_results": {
-      deps.openWidget("aiScanner", { openResultsPanel: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", openResultsPanel: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "confirm_scan_to_erp": {
-      deps.openWidget("aiScanner", { confirmToErp: true, ...widgetPayload(params) });
+      deps.openWidget("documentsHub", { tab: "scan", confirmToErp: true, ...widgetPayload(params) });
       return { ok: true };
     }
     case "open_ai_chat": {
-      deps.openWidget("aiChatFull", {
+      deps.openWidget("aiHub", {
+        tab: "chat",
         provider: String(params.provider ?? "gemini"),
         prompt: String(params.prompt ?? ""),
         ...widgetPayload(params),
@@ -127,7 +127,8 @@ export async function runAutomationAction(
       return { ok: true };
     }
     case "open_notebook": {
-      deps.openWidget("notebookLM", {
+      deps.openWidget("aiHub", {
+        tab: "notebook",
         notebookId: params.notebookId,
         title: params.title,
         preloadSources: params.preloadSources,
@@ -138,7 +139,8 @@ export async function runAutomationAction(
     case "create_invoice":
     case "create_quote": {
       const p = params as InvoiceDraftParams;
-      deps.openWidget("docCreator", {
+      deps.openWidget("documentsHub", {
+        tab: "create",
         automation: "invoice_draft",
         docType: intent === "create_quote" ? "quote" : "invoice",
         contactId: p.contactId,
@@ -150,102 +152,18 @@ export async function runAutomationAction(
       });
       return { ok: true, message: intent === "create_quote" ? "נפתחה הצעת מחיר" : "נפתחה חשבונית" };
     }
-    case "create_task": {
-      const p = params as CreateTaskParams;
-      const title = String(p.title ?? "").trim();
-      const projectName = String(p.projectName ?? p.project ?? "כללי").trim();
-      if (!title) return { ok: false, message: "חסר כותרת משימה" };
-      try {
-        const res = await fetch("/api/projects/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            title,
-            projectName,
-            status: mapTaskStatus(p.status) ?? "TODO",
-            priority: mapTaskPriority(p.priority) ?? "MEDIUM",
-            dueDate: p.dueDate,
-            budget: p.budget,
-          }),
-        });
-        const data = (await res.json()) as { success?: boolean; error?: string };
-        if (!res.ok || !data.success) {
-          return { ok: false, message: data.error ?? "יצירת משימה נכשלה" };
-        }
-        deps.openWidget("projectBoard");
-        const msg = `נוספה משימה «${title}» בפרויקט ${projectName}`;
-        deps.setSystemMessage(msg);
-        return { ok: true, message: msg };
-      } catch {
-        return { ok: false, message: "שגיאה ביצירת משימה" };
-      }
-    }
-    case "create_contact": {
-      const p = params as CreateContactParams;
-      const name = String(p.name ?? p.clientName ?? "").trim();
-      if (!name) return { ok: false, message: "חסר שם לקוח" };
-      try {
-        const res = await fetch("/api/crm/contacts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            name,
-            email: p.email ?? null,
-            phone: p.phone ?? null,
-            notes: p.notes ?? null,
-          }),
-        });
-        const data = (await res.json()) as { success?: boolean; error?: string };
-        if (!res.ok || !data.success) {
-          return { ok: false, message: data.error ?? "יצירת לקוח נכשלה" };
-        }
-        deps.openWidget("crmTable");
-        const msg = `נוצר לקוח «${name}»`;
-        deps.setSystemMessage(msg);
-        return { ok: true, message: msg };
-      } catch {
-        return { ok: false, message: "שגיאה ביצירת לקוח" };
-      }
-    }
-    case "execute_user_command": {
-      const message = String(params.message ?? params.command ?? "").trim();
-      if (!message) return { ok: false, message: "חסרה פקודה" };
-      try {
-        const res = await fetch("/api/os/assistant/parse-action", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ message }),
-        });
-        if (!res.ok) return { ok: false, message: "לא ניתן לפרש את הבקשה" };
-        const data = (await res.json()) as ParseActionResponse & { error?: string };
-        if (data.error) return { ok: false, message: data.error };
-        if (data.actions?.length) {
-          const results = await runAutomationPlan(data.actions, deps);
-          const failed = results.filter((r) => !r.ok);
-          const reply = data.reply?.trim();
-          if (reply) deps.setSystemMessage(reply);
-          if (failed.length > 0) {
-            return { ok: false, message: reply ?? "חלק מהפעולות נכשלו" };
-          }
-          return { ok: true, message: reply ?? `בוצעו ${data.actions.length} פעולות` };
-        }
-        if (data.reply?.trim()) {
-          deps.setSystemMessage(data.reply.trim());
-          return { ok: true, message: data.reply.trim() };
-        }
-        return { ok: false, message: "לא זוהתה פעולה לביצוע" };
-      } catch {
-        return { ok: false, message: "שגיאה בביצוע הפקודה" };
-      }
-    }
+    case "create_task":
+      return createTaskAction(params as CreateTaskParams, deps);
+    case "create_contact":
+      return createContactAction(params as CreateContactParams, deps);
+    case "execute_user_command":
+      return executeUserCommandAction(params, deps, runAutomationPlan);
     case "edit_issued_document":
     case "assign_document_project": {
       const id = String(params.issuedDocumentId ?? params.documentId ?? "");
       if (!id) return { ok: false, message: "Missing document id" };
-      deps.openWidget("docCreator", {
+      deps.openWidget("documentsHub", {
+        tab: "create",
         issuedDocumentId: id,
         projectId: params.projectId,
       });
@@ -254,7 +172,11 @@ export async function runAutomationAction(
     case "delete_issued_document": {
       const id = String(params.issuedDocumentId ?? params.documentId ?? "");
       if (!id) return { ok: false };
-      deps.openWidget("docCreator", { issuedDocumentId: id, requestDelete: true });
+      deps.openWidget("documentsHub", {
+        tab: "create",
+        issuedDocumentId: id,
+        requestDelete: true,
+      });
       return { ok: true };
     }
     case "export_document": {
@@ -269,10 +191,14 @@ export async function runAutomationAction(
     case "save_scan_to_notebook": {
       const last = typeof window !== "undefined" ? sessionStorage.getItem("bsd_last_scan_payload") : null;
       if (!last) {
-        deps.openWidget("aiScanner");
+        deps.openWidget("documentsHub", { tab: "scan" });
         return { ok: true, message: "Open scanner first" };
       }
-      deps.openWidget("aiScanner", { triggerSaveToNotebook: true, ...JSON.parse(last) });
+      deps.openWidget("documentsHub", {
+        tab: "scan",
+        triggerSaveToNotebook: true,
+        ...JSON.parse(last),
+      });
       return { ok: true };
     }
     case "close_widget": {
@@ -313,23 +239,8 @@ export async function runAutomationAction(
     case "switch_window":
       deps.openWindowSwitcher?.();
       return { ok: true };
-    case "search_client": {
-      const q = String(params.query ?? params.clientName ?? "").trim();
-      if (!q) return { ok: false };
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
-        const data = await res.json();
-        const results = Array.isArray(data.results) ? data.results : [];
-        if (results[0]?.type === "project") {
-          deps.openWidget("project", { name: results[0].name });
-        } else {
-          deps.openWidget("crmTable");
-        }
-      } catch {
-        return { ok: false };
-      }
-      return { ok: true };
-    }
+    case "search_client":
+      return searchClientAction(params, deps);
     case "open_project": {
       const name = String(params.name ?? params.projectName ?? "");
       const projectId = String(params.projectId ?? params.id ?? "").trim();
@@ -339,7 +250,6 @@ export async function runAutomationAction(
       });
       return { ok: true };
     }
-    case "open_field_copilot":
     case "create_field_quote": {
       deps.openWidget("fieldCopilot", {
         contactId: params.contactId,

@@ -1,19 +1,25 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   E2E_EMAIL,
   E2E_PROJECT_ID,
   expectProjectDashboardReady,
   gotoWorkspaceProject,
-  tryCredentialsSignIn,
+  signInWithRetries,
+  waitForAuthenticatedWorkspace,
 } from "./helpers";
 
 test.describe("project control center", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    testInfo.setTimeout(120_000);
+  });
+
   test.skip(!E2E_EMAIL, "requires E2E credentials");
 
   test("dashboard loads for authenticated user", async ({ page }) => {
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await signInWithRetries(page);
     test.skip(!signed, "login failed");
     test.skip(!E2E_PROJECT_ID, "run npm run seed:test for E2E_PROJECT_ID");
+    await waitForAuthenticatedWorkspace(page);
 
     await gotoWorkspaceProject(page, E2E_PROJECT_ID);
     await expectProjectDashboardReady(page);

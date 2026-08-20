@@ -1,13 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { FileText, MessageCircle } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import type { FieldCopilotDraft } from "@/lib/validation/schemas/field-copilot";
 import type { LineItemV5, ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import { buildBoqShareText, openWhatsAppShare, printBoqPdf } from "@/lib/field-copilot/quick-share";
+import { ScanDestinationPicker } from "@/components/os/scan/shared/ScanDestinationPicker";
+import { unifiedSaveFromClient } from "@/lib/scan/unified-save-client";
+import type { UnifiedSaveTarget } from "@/lib/scan/unified-scan-types";
 import BoqReviewTable from "../review/BoqReviewTable";
 import AssumptionsList from "../review/AssumptionsList";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   draft: FieldCopilotDraft | null;
@@ -31,14 +35,64 @@ function getLineItems(draft: FieldCopilotDraft | null): LineItemV5[] {
 
 export default function ReviewStep({ draft, onUpdate }: Props) {
   const { t, locale } = useI18n();
+  const tr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
   const rows = useMemo(() => getLineItems(draft), [draft]);
   const assumptions = draft?.assumptions ?? [];
+  const [saveTargets, setSaveTargets] = useState<UnifiedSaveTarget[]>(
+    draft?.projectId ? ["project"] : ["erp"],
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const missingPrices = rows.some((r) => r.description.trim() && (r.unitPrice ?? 0) <= 0);
+  const v5 = draft?.analysis as ScanExtractionV5 | undefined;
 
   const saveRows = async (nextRows: LineItemV5[]) => {
     const analysis = { ...(draft?.analysis as object), lineItems: nextRows };
     await onUpdate({ analysis });
+  };
+
+  const onUnifiedSave = async () => {
+    if (!v5 || !draft) return;
+    const targets = saveTargets.length ? saveTargets : (["erp"] as UnifiedSaveTarget[]);
+    if (!targets.length) {
+      setSaveMessage(tr("workspaceWidgets.documentScan.savePickOne", "בחרו לפחות יעד שמירה אחד"));
+      return;
+    }
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const fileName = `${draft.projectName ?? draft.contactName ?? "field-copilot"}-boq.json`;
+      const file = new File([JSON.stringify(v5)], fileName, { type: "application/json" });
+      let saved = 0;
+      for (const target of targets) {
+        const result = await unifiedSaveFromClient(file, {
+          target,
+          fileName,
+          v5,
+          projectId: draft.projectId ?? undefined,
+          contactId: draft.contactId ?? undefined,
+        });
+        if (!result.ok) {
+          setSaveMessage(result.error ?? tr("workspaceWidgets.documentScan.saveFailed", "השמירה נכשלה"));
+          return;
+        }
+        saved++;
+      }
+      setSaveMessage(
+        saved > 1
+          ? tr("workspaceWidgets.documentScan.saveMultiSuccess", "נשמר ל-{count} יעדים").replace(
+              "{count}",
+              String(saved),
+            )
+          : tr("workspaceWidgets.documentScan.saveSuccess", "נשמר בהצלחה"),
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -60,22 +114,42 @@ export default function ReviewStep({ draft, onUpdate }: Props) {
       {/* Quick share — WhatsApp + Print/PDF */}
       {rows.length > 0 ? (
         <div className="flex flex-wrap gap-2 border-t border-[color:var(--border-main)] pt-3">
-          <button
-            type="button"
+          <OsButton
+            variant="secondary"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+            icon={<MessageCircle size={14} aria-hidden />}
             onClick={() => openWhatsAppShare(buildBoqShareText(draft, rows, locale))}
-            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-500/20 dark:text-emerald-300"
           >
-            <MessageCircle size={14} aria-hidden />
             {t("workspaceWidgets.fieldCopilot.shareWhatsApp")}
-          </button>
-          <button
-            type="button"
+          </OsButton>
+          <OsButton
+            variant="secondary"
+            icon={<FileText size={14} aria-hidden />}
             onClick={() => printBoqPdf(draft, rows, locale)}
-            className="flex items-center gap-1.5 rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)] px-3 py-2 text-xs font-bold text-[color:var(--foreground-main)] transition hover:bg-[color:var(--surface-card)]"
           >
-            <FileText size={14} aria-hidden />
             {t("workspaceWidgets.fieldCopilot.sharePdf")}
-          </button>
+          </OsButton>
+        </div>
+      ) : null}
+
+      {v5 ? (
+        <div className="space-y-3 border-t border-[color:var(--border-main)] pt-3">
+          <p className="text-sm font-bold">{tr("workspaceWidgets.documentScan.savePhaseTitle", "שמירת מסמך")}</p>
+          <ScanDestinationPicker
+            values={saveTargets}
+            onChange={setSaveTargets}
+            hasProject={!!draft?.projectId}
+            tr={tr}
+          />
+          <OsButton
+            variant="primary"
+            className="w-full justify-center"
+            loading={saving}
+            onClick={() => void onUnifiedSave()}
+          >
+            {tr("workspaceWidgets.documentScan.confirmSave", "אשר ושמור")}
+          </OsButton>
+          {saveMessage ? <p className="text-xs text-[color:var(--foreground-muted)]">{saveMessage}</p> : null}
         </div>
       ) : null}
 

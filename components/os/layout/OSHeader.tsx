@@ -39,7 +39,7 @@ const HeaderIconButton = React.forwardRef<
       className={cn(
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150",
         active
-          ? "bg-indigo-500/15 text-indigo-500 dark:text-indigo-300"
+          ? "bg-indigo-500/15 text-[color:var(--win-accent,#6366f1)] dark:text-indigo-300"
           : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)]",
         className,
       )}
@@ -131,7 +131,7 @@ export default function OSHeader({
                 <ToolbarDivider />
                 <HeaderIconButton
                   onClick={onOpenWindowSwitcher}
-                  className="hidden md:flex"
+                  className="hidden desktop-vp:flex"
                   title={t("workspaceWidgets.windowSwitcher.title")}
                   aria-label={t("workspaceWidgets.windowSwitcher.title")}
                 >
@@ -143,7 +143,7 @@ export default function OSHeader({
             {onApplyScreenLayout ? (
               <HeaderIconButton
                 onClick={onApplyScreenLayout}
-                className="hidden md:flex"
+                className="hidden desktop-vp:flex"
                 title={t("workspaceShell.topBar.screenLayout.title")}
                 aria-label={t("workspaceShell.topBar.screenLayout.aria")}
               >
@@ -193,7 +193,7 @@ export default function OSHeader({
               className="group flex min-w-0 items-center gap-2 rounded-lg py-0.5 ps-1.5 pe-2 transition hover:bg-[color:var(--surface-soft)]"
               aria-label={t("workspaceWidgets.page.settingsOpen")}
             >
-              <div className="hidden min-w-0 flex-col items-end text-end md:flex">
+              <div className="hidden min-w-0 flex-col items-end text-end desktop-vp:flex">
                 <span className="max-w-[8.5rem] truncate text-[11px] font-bold leading-tight text-[color:var(--foreground-main)]">
                   {userName}
                 </span>

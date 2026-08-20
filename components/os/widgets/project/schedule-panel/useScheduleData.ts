@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DocType } from "@prisma/client";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import {
@@ -9,9 +9,19 @@ import {
 } from "@/lib/project-document-catalog";
 import { resolveTaskTradeId } from "@/lib/project-task-trade";
 import { type ProjectSubDomain, type ProjectSubDomainId } from "@/lib/project-sub-domains";
+import { emitProjectMutation, useProjectSync } from "@/lib/events/project-sync";
+import { createLogger } from "@/lib/logger";
 import { toast } from "sonner";
 import type { GanttTask, GanttTaskDraft } from "@/components/os/widgets/project/ProjectGanttChart";
 import type { ScheduleTaskRow, ScheduleLabels } from "./types";
+
+const log = createLogger("schedule-data");
+
+function toScheduleIso(dateInput: string): string {
+  const parsed = new Date(dateInput);
+  if (Number.isNaN(parsed.getTime())) return new Date().toISOString();
+  return parsed.toISOString();
+}
 
 type UseScheduleDataParams = {
   projectId: string;
@@ -43,6 +53,14 @@ export function useScheduleData({
   onOpenDiary,
 }: UseScheduleDataParams) {
   const [boqLines, setBoqLines] = useState<BoqLinePrefill[]>([]);
+
+  const notifyMutation = useCallback(() => {
+    emitProjectMutation(projectId);
+  }, [projectId]);
+
+  useProjectSync(projectId, () => {
+    void onRefresh();
+  });
 
   useEffect(() => {
     if (hideConstructionFeatures) {
@@ -148,6 +166,7 @@ export function useScheduleData({
       return;
     }
     toast.success(labels.importSuccess.replace("{count}", String(json.imported ?? 0)));
+    notifyMutation();
     await onRefresh();
   };
 
@@ -173,6 +192,7 @@ export function useScheduleData({
       throw new Error("save failed");
     }
     toast.success(labels.taskSaved);
+    notifyMutation();
     await onRefresh();
   };
 
@@ -187,6 +207,7 @@ export function useScheduleData({
       return;
     }
     toast.success(labels.taskDeleted);
+    notifyMutation();
     await onRefresh();
   };
 
@@ -232,6 +253,7 @@ export function useScheduleData({
       return;
     }
     toast.success(labels.taskSaved);
+    notifyMutation();
     await onRefresh();
     onOpenDiary?.({ taskId: task.id, description: task.title });
   };
@@ -247,18 +269,62 @@ export function useScheduleData({
       return;
     }
     toast.success(`${(json.deleted as number) ?? 0} משימות נמחקו`);
+    notifyMutation();
     await onRefresh();
   };
 
   const onProgressChange = async (taskId: string, progress: number) => {
-    await fetch(`${apiBase}/tasks/schedule`, {
+    const res = await fetch(`${apiBase}/tasks/schedule`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tasks: [{ id: taskId, progress }] }),
     });
+    if (!res.ok) {
+      log.error("gantt_progress_patch_failed", { taskId, status: res.status });
+      toast.error(labels.taskSaveFailed);
+      await onRefresh();
+      return;
+    }
+    notifyMutation();
     await onRefresh();
   };
+
+  const updateTaskDates = useCallback(
+    async (taskId: string, startDate: string, endDate: string, progress?: number) => {
+      try {
+        const res = await fetch(`${apiBase}/tasks/schedule`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tasks: [
+              {
+                id: taskId,
+                startDate: toScheduleIso(startDate),
+                endDate: toScheduleIso(endDate),
+                ...(progress !== undefined ? { progress } : {}),
+              },
+            ],
+          }),
+        });
+        if (!res.ok) {
+          const json = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(json.error ?? "schedule_patch_failed");
+        }
+        notifyMutation();
+        await onRefresh();
+      } catch (err: unknown) {
+        log.error("gantt_dates_patch_failed", {
+          message: err instanceof Error ? err.message : String(err),
+          taskId,
+        });
+        toast.error(labels.taskSaveFailed);
+        await onRefresh();
+      }
+    },
+    [apiBase, labels.taskSaveFailed, notifyMutation, onRefresh],
+  );
 
   return {
     boqLines,
@@ -272,5 +338,6 @@ export function useScheduleData({
     openDoc,
     createDiaryForTask,
     onProgressChange,
+    updateTaskDates,
   };
 }

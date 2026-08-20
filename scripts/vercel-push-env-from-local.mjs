@@ -1,5 +1,9 @@
 /**
- * דוחף משתנים מ־`.env` ואז מ־`.env.local` (המקומי גובר) ל־Vercel — **production** בלבד.
+ * דוחף משתנים מ־`.env` ואז מ־`.env.local` (המקומי גובר) ל־Vercel — production + preview.
+ *
+ * בידוד DB: `DATABASE_URL` / `DIRECT_URL` לעולם לא נדחפים ל־Preview מערכי Production.
+ * ל־Preview יש להגדיר `PREVIEW_DATABASE_URL` + `PREVIEW_DIRECT_URL` (או להגדיר ידנית בדשבורד).
+ *
  * אופציה: --only=KEY1,KEY2,... (ערכים מקומיים בלבד, ללא הדפסת סודות).
  */
 import { readFileSync, existsSync } from "node:fs";
@@ -48,6 +52,8 @@ function loadMergedEnvPairs() {
  */
 /** Preview — פריסות ענף; Production — bsd-ybm.co.il */
 const ENVIRONMENTS = ["production", "preview"];
+/** Never copy production DB credentials into Preview. */
+const PREVIEW_DB_KEYS = new Set(["DATABASE_URL", "DIRECT_URL"]);
 const DELAY_MS = 650;
 const NEVER_SENSITIVE = new Set([
   "NEXTAUTH_URL",
@@ -132,10 +138,10 @@ function resolveValueForOnlyKey(key, byKey) {
     key === "PREMIUM_GEMINI_MODEL"
   ) {
     const defaults = {
-      GEMINI_MODEL: "gemini-2.5-flash",
-      GEMINI_NOTEBOOKLM_MODEL: "gemini-2.5-flash",
-      CRM_ANALYSIS_GEMINI_MODEL: "gemini-2.5-flash",
-      PREMIUM_GEMINI_MODEL: "gemini-2.5-pro",
+      GEMINI_MODEL: "gemini-3.6-flash",
+      GEMINI_NOTEBOOKLM_MODEL: "gemini-3.6-flash",
+      CRM_ANALYSIS_GEMINI_MODEL: "gemini-3.6-flash",
+      PREMIUM_GEMINI_MODEL: "gemini-3.1-pro-preview",
     };
     return defaults[key];
   }
@@ -171,6 +177,14 @@ function resolveValueForOnlyKey(key, byKey) {
     if (!v) {
       console.error("חסר DATABASE_URL ב-.env / .env.local");
       process.exit(1);
+    }
+    return v;
+  }
+  if (key === "PREVIEW_DATABASE_URL" || key === "PREVIEW_DIRECT_URL") {
+    const v = byKey[key];
+    if (!v) {
+      console.warn(`[דילוג] ${key} — לא מוגדר מקומית`);
+      return null;
     }
     return v;
   }
@@ -244,14 +258,44 @@ function main() {
     sleepSync(DELAY_MS);
   }
 
+  /** Resolve the value to push for a given key + Vercel environment. */
+  function valueForEnvironment(key, env, byKeyMap) {
+    if (env === "preview" && PREVIEW_DB_KEYS.has(key)) {
+      const previewKey =
+        key === "DATABASE_URL" ? "PREVIEW_DATABASE_URL" : "PREVIEW_DIRECT_URL";
+      const previewVal = byKeyMap[previewKey]?.trim();
+      if (!previewVal) {
+        console.warn(
+          `[דילוג] ${key} → preview — חסר ${previewKey}. הגדירו Neon preview branch בדשבורד או ב-.env.`,
+        );
+        return null;
+      }
+      return previewVal;
+    }
+    if (key === "PREVIEW_DATABASE_URL" || key === "PREVIEW_DIRECT_URL") {
+      // These are source-only keys; never push under that name.
+      return null;
+    }
+    return resolveValueForOnlyKey(key, byKeyMap);
+  }
+
+  const previewDbReady =
+    Boolean(byKey.PREVIEW_DATABASE_URL?.trim()) &&
+    Boolean(byKey.PREVIEW_DIRECT_URL?.trim() || byKey.PREVIEW_DATABASE_URL?.trim());
+  if (!previewDbReady) {
+    console.warn(
+      "[אזהרה] PREVIEW_DATABASE_URL / PREVIEW_DIRECT_URL חסרים — לא יידחפו DB credentials ל־Preview (בידוד מפרודקשן).\n",
+    );
+  }
+
   if (onlyKeys?.length) {
     console.log(
       `מצב --only: ${onlyKeys.length} משתנים → ${ENVIRONMENTS.join(", ")} (NEXTAUTH_URL לפי קובץ / ברירת מחדל).\n`,
     );
     for (const key of onlyKeys) {
-      const val = resolveValueForOnlyKey(key, byKey);
-      if (val == null) continue;
       for (const env of ENVIRONMENTS) {
+        const val = valueForEnvironment(key, env, byKey);
+        if (val == null) continue;
         run(key, val, env);
       }
     }
@@ -260,14 +304,21 @@ function main() {
       byKey.AUTH_URL ||
       byKey.NEXT_PUBLIC_SITE_URL ||
       PRODUCTION_NEXTAUTH_URL;
-    const filtered = pairs.filter((p) => p.key !== "NEXTAUTH_URL");
+    const filtered = pairs.filter(
+      (p) =>
+        p.key !== "NEXTAUTH_URL" &&
+        p.key !== "PREVIEW_DATABASE_URL" &&
+        p.key !== "PREVIEW_DIRECT_URL",
+    );
 
     console.log(
       `מעלה ${filtered.length} משתנים ל־${ENVIRONMENTS.join(", ")} (+ NEXTAUTH_URL).\n`,
     );
 
-    for (const { key, val } of filtered) {
+    for (const { key } of filtered) {
       for (const env of ENVIRONMENTS) {
+        const val = valueForEnvironment(key, env, byKey);
+        if (val == null) continue;
         run(key, val, env);
       }
     }

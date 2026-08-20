@@ -1,24 +1,30 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { revalidateErpDocumentsSurfaces } from "@/lib/workspace-revalidate";
 import { prisma } from "@/lib/prisma";
+import {
+  financeMutationRoles,
+  requireOSAdminAction,
+  requireWorkspaceAction,
+} from "@/lib/server-action-auth";
 import { createLogger } from "@/lib/logger";
 const log = createLogger("billing-invoice");
 
+/** Test invoice — blocked for regular users in production (platform admin only). */
 export async function createTestInvoiceAction(): Promise<
   { ok: true } | { ok: false; error: string }
 > {
-  const session = await getServerSession(authOptions);
-  const orgId = session?.user?.organizationId;
+  if (process.env.NODE_ENV === "production") {
+    const admin = await requireOSAdminAction();
+    if (!admin.ok) {
+      return { ok: false, error: "חשבונית בדיקה זמינה רק למנהל פלטפורמה בפרודקשן" };
+    }
+  }
 
-  if (!session?.user?.id) {
-    return { ok: false, error: "׳ ׳“׳¨׳©׳× ׳”׳×׳—׳‘׳¨׳•׳×" };
-  }
-  if (!orgId) {
-    return { ok: false, error: "׳׳™׳ ׳׳¨׳’׳•׳ ׳׳©׳•׳™׳ ׳׳׳©׳×׳׳©" };
-  }
+  const auth = await requireWorkspaceAction({ allowedRoles: financeMutationRoles() });
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const orgId = auth.ctx.organizationId;
 
   try {
     await prisma.invoice.create({
@@ -26,46 +32,40 @@ export async function createTestInvoiceAction(): Promise<
         organizationId: orgId,
         amount: 250,
         status: "PENDING",
-        description: "׳—׳©׳‘׳•׳ ׳™׳× ׳‘׳“׳™׳§׳” ׳׳¡׳׳™׳§׳× PayPlus",
+        description: "חשבונית בדיקה לסליקת PayPlus",
         invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
-        customerName: "׳™׳•׳—׳ ׳ ׳‘׳•׳§׳©׳₪׳ - ׳˜׳¡׳˜",
+        customerName: "יוחנן בוקשפן - טסט",
         customerEmail: "test@bsd-ybm.co.il",
       },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
     log.error("createTestInvoiceAction", e);
-    return { ok: false, error: "׳™׳¦׳™׳¨׳× ׳—׳©׳‘׳•׳ ׳™׳× ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "יצירת חשבונית נכשלה" };
   }
 }
 
 const AMOUNT_MIN = 1;
 const AMOUNT_MAX = 100_000;
 
-/** ׳‘׳§׳©׳× ׳×׳©׳׳•׳ (Invoice) ׳‘׳¡׳›׳•׳ ׳׳‘׳—׳™׳¨׳” ג€” ׳׳•׳₪׳™׳¢׳” ׳‘׳˜׳‘׳׳× ׳”׳—׳™׳•׳‘ + PayPal.Me */
+/** בקשת תשלום (Invoice) בסכום לבחירה — מופיעה בטבלת החיוב + PayPal.Me */
 export async function createQuickPaymentInvoiceAction(
   amountRaw: unknown,
   descriptionRaw?: unknown,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const session = await getServerSession(authOptions);
-  const orgId = session?.user?.organizationId;
-
-  if (!session?.user?.id) {
-    return { ok: false, error: "׳ ׳“׳¨׳©׳× ׳”׳×׳—׳‘׳¨׳•׳×" };
-  }
-  if (!orgId) {
-    return { ok: false, error: "׳׳™׳ ׳׳¨׳’׳•׳ ׳׳©׳•׳™׳ ׳׳׳©׳×׳׳©" };
-  }
+  const auth = await requireWorkspaceAction({ allowedRoles: financeMutationRoles() });
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const orgId = auth.ctx.organizationId;
 
   const n = typeof amountRaw === "number" ? amountRaw : Number(amountRaw);
   if (!Number.isFinite(n) || n < AMOUNT_MIN || n > AMOUNT_MAX) {
-    return { ok: false, error: `׳¡׳›׳•׳ ׳—׳™׳™׳‘ ׳׳”׳™׳•׳× ׳‘׳™׳ ${AMOUNT_MIN} ׳ײ¾${AMOUNT_MAX} ג‚×` };
+    return { ok: false, error: `סכום חייב להיות בין ${AMOUNT_MIN} ל־${AMOUNT_MAX} ₪` };
   }
   const amount = Math.round(n * 100) / 100;
   const description =
-    String(descriptionRaw ?? "").trim() || `׳‘׳§׳©׳× ׳×׳©׳׳•׳ ג‚×${amount.toLocaleString("he-IL")}`;
+    String(descriptionRaw ?? "").trim() || `בקשת תשלום ₪${amount.toLocaleString("he-IL")}`;
 
   try {
     await prisma.invoice.create({
@@ -75,16 +75,15 @@ export async function createQuickPaymentInvoiceAction(
         status: "PENDING",
         description,
         invoiceNumber: `REQ-${Date.now().toString(36).toUpperCase()}`,
-        customerName: session.user.name?.trim() || "׳׳§׳•׳—",
-        customerEmail: session.user.email?.trim() || null,
+        customerName: auth.ctx.email?.split("@")[0] || "לקוח",
+        customerEmail: auth.ctx.email,
       },
     });
-    revalidatePath("/app/documents/erp");
+    revalidateErpDocumentsSurfaces();
     revalidatePath("/app/settings/billing");
     return { ok: true };
   } catch (e) {
     log.error("createQuickPaymentInvoiceAction", e);
-    return { ok: false, error: "׳™׳¦׳™׳¨׳× ׳‘׳§׳©׳× ׳×׳©׳׳•׳ ׳ ׳›׳©׳׳”" };
+    return { ok: false, error: "יצירת בקשת תשלום נכשלה" };
   }
 }
-

@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import HelpCenterWidget from "@/components/os/widgets/HelpCenterWidget";
 import { COOKIE_LOCALE, isRtlLocale, normalizeLocale } from "@/lib/i18n/config";
 import { buildPublicPageMetadata } from "@/lib/google-publish/public-page-metadata";
@@ -18,12 +15,11 @@ const BACK_LABEL: Record<string, string> = {
   ru: "← Назад к рабочему столу",
 };
 
+// HelpCenterWidget's content (guides, FAQ) is entirely static/generic — no
+// account-specific data — and this page is declared public in sitemap.ts and
+// buildPublicPageMetadata("help") (index:true). It must stay reachable by
+// anonymous visitors and search crawlers, not gated behind login.
 export default async function HelpPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    redirect("/login?callbackUrl=/help");
-  }
-
   const locale = normalizeLocale((await cookies()).get(COOKIE_LOCALE)?.value);
   const dir = isRtlLocale(locale) ? "rtl" : "ltr";
 

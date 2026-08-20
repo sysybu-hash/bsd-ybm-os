@@ -1,4 +1,4 @@
-import { Modality, type LiveConnectConfig } from "@google/genai";
+import { Modality, type FunctionDeclaration, type LiveConnectConfig } from "@google/genai";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { GEMINI_LIVE_MODALITY } from "@/lib/gemini-live/api-constants";
 import { buildRealtimeInputConfig } from "@/lib/gemini-live/realtime-input-config";
@@ -66,19 +66,26 @@ export function buildLiveConnectConfig(
 export function buildFullLiveConnectConfig(
   settings: GeminiLiveVoiceSettings,
   systemInstruction: string,
-  options?: { advancedFeatures?: boolean; model?: string; includeTools?: boolean },
+  options?: {
+    advancedFeatures?: boolean;
+    model?: string;
+    includeTools?: boolean;
+    toolDeclarations?: FunctionDeclaration[];
+  },
 ): LiveConnectConfig {
   const resolvedSettings =
     options?.model != null
       ? coalesceLiveVoiceSettingsForModel(settings, options.model)
       : settings;
   const base = buildLiveConnectConfig(resolvedSettings, options?.model);
-  const includeTools = options?.includeTools !== false;
+  const toolDeclarations =
+    options?.toolDeclarations ??
+    (options?.includeTools !== false ? getOsAssistantLiveToolDeclarations() : undefined);
   return {
     ...base,
     systemInstruction: { parts: [{ text: systemInstruction }] },
-    ...(includeTools
-      ? { tools: [{ functionDeclarations: getOsAssistantLiveToolDeclarations() }] }
+    ...(toolDeclarations?.length
+      ? { tools: [{ functionDeclarations: toolDeclarations }] }
       : {}),
     speechConfig: {
       voiceConfig: {

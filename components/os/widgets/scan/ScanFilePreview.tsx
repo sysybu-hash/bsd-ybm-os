@@ -1,6 +1,7 @@
 "use client";
 
 import { isOfficeMime, scanPreviewKind } from "@/lib/scan-preview";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type ScanFilePreviewProps = {
   url: string | null;
@@ -23,6 +24,8 @@ export default function ScanFilePreview({
   openInWorkspaceLabel,
   onOpenInWorkspace,
 }: ScanFilePreviewProps) {
+  const { t } = useI18n();
+
   if (!url || !mime) {
     return <p className="text-sm text-[color:var(--foreground-muted)]">{emptyLabel}</p>;
   }
@@ -64,13 +67,14 @@ export default function ScanFilePreview({
   const hint =
     noPreviewHint ??
     (isOfficeMime(mime)
-      ? "תצוגה מקדימה אינה זמינה לקבצי Office בדפדפן."
+      ? t("workspaceWidgets.scanPanel.officePreviewUnavailable")
       : emptyLabel);
 
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[color:var(--border-main)] bg-[color:var(--surface-card)]/40 px-4 py-6 text-center">
       <p className="text-sm text-[color:var(--foreground-muted)]">{hint}</p>
       <PreviewFallbackActions
+        t={t}
         url={url}
         fileName={fileName}
         openInWorkspaceLabel={openInWorkspaceLabel}
@@ -85,7 +89,9 @@ function PreviewFallbackActions({
   fileName,
   openInWorkspaceLabel,
   onOpenInWorkspace,
+  t,
 }: {
+  t: (key: string) => string;
   url: string;
   fileName: string;
   openInWorkspaceLabel?: string;
@@ -105,9 +111,9 @@ function PreviewFallbackActions({
       <a
         href={url}
         download={fileName}
-        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-indigo-500"
+        className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-3 py-1.5 text-[11px] font-bold text-white hover:opacity-90"
       >
-        הורדה
+        {t("workspaceWidgets.scanPanel.download")}
       </a>
     </div>
   );

@@ -40,6 +40,7 @@ async function resetDemoOrg(organizationId, userIds) {
   await prisma.quote.deleteMany({ where: { organizationId } });
   await prisma.issuedDocument.deleteMany({ where: { organizationId } });
   await prisma.invoice.deleteMany({ where: { organizationId } });
+  await prisma.expenseRecord.deleteMany({ where: { organizationId } });
   await prisma.contact.deleteMany({ where: { organizationId } });
   await prisma.project.deleteMany({ where: { organizationId } });
   await prisma.cloudIntegration.deleteMany({ where: { organizationId } });
@@ -429,6 +430,23 @@ async function main() {
     }),
   ]);
 
+  const demoOfficeExpense = await prisma.expenseRecord.create({
+    data: {
+      organizationId: organization.id,
+      vendorName: "E2E Demo Office Rent",
+      invoiceNumber: "E2E-OFF-1",
+      description: "Seeded for E2E office expenses RBAC",
+      expenseDate: daysAgo(30),
+      amountNet: 5000,
+      vat: 850,
+      total: 5850,
+      allocation: "OFFICE",
+      status: "POSTED",
+      projectId: null,
+      contactId: null,
+    },
+  });
+
   await Promise.all([
     prisma.invoice.create({
       data: {
@@ -746,8 +764,11 @@ async function main() {
   const e2eEnvExample = `# העתק ל-e2e/.env.local לבדיקות Playwright
 E2E_EMAIL=owner@bsd-demo.test
 E2E_PASSWORD=${PASSWORD}
+E2E_PM_EMAIL=pm@bsd-demo.test
+E2E_PM_PASSWORD=${PASSWORD}
 E2E_PROJECT_ID=${tower.id}
 E2E_CONTACT_ID=${contacts[0].id}
+E2E_OFFICE_EXPENSE_ID=${demoOfficeExpense.id}
 `;
   const e2eExamplePath = path.resolve(process.cwd(), "e2e/.env.example");
   fs.writeFileSync(e2eExamplePath, e2eEnvExample, "utf8");
@@ -761,8 +782,10 @@ E2E_CONTACT_ID=${contacts[0].id}
         companyMgmtOrganizationId: companyMgmtOrg.id,
         companyMgmtEmail: "company@bsd-demo.test",
         email: "owner@bsd-demo.test",
+        pmEmail: "pm@bsd-demo.test",
         e2eProjectId: tower.id,
         e2eContactId: contacts[0].id,
+        e2eOfficeExpenseId: demoOfficeExpense.id,
       },
       null,
       2,

@@ -45,6 +45,8 @@ export const POST = withWorkspacesAuth(async (_req, ctx, data) => {
       newRole = "PROJECT_MGR";
     } else if (r === "CLIENT" && isOrgLead) {
       newRole = "CLIENT";
+    } else if (r === "ACCOUNTANT" && isOrgLead) {
+      newRole = "ACCOUNTANT";
     } else if (r === "EMPLOYEE") {
       newRole = "EMPLOYEE";
     }

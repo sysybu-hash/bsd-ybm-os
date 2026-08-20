@@ -9,7 +9,7 @@ import type { UserRole } from "@prisma/client";
 import { sendOrganizationTeamInviteEmail } from "@/lib/mail";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 
-const ASSIGNABLE: UserRole[] = ["EMPLOYEE", "PROJECT_MGR", "CLIENT", "ORG_ADMIN"];
+const ASSIGNABLE: UserRole[] = ["EMPLOYEE", "PROJECT_MGR", "CLIENT", "ORG_ADMIN", "ACCOUNTANT"];
 
 function parseInviteRole(raw: string): UserRole {
   return ASSIGNABLE.includes(raw as UserRole) ? (raw as UserRole) : "EMPLOYEE";

@@ -33,6 +33,7 @@ import {
   getPlatformConfig,
   isRegistrationOpen,
 } from "@/lib/platform-settings";
+import { verifyRegistrationPayPalOrder } from "@/lib/register-paypal-verify";
 
 const log = createLogger("register");
 
@@ -75,7 +76,9 @@ async function resolveRegistrationPassword(
 }
 
 export async function POST(req: NextRequest) {
-  // 5 הרשמות לשעה per IP — מגן על יצירת חשבונות-ספאם וברוט-פורס
+  // Burst + hourly caps per IP
+  const burst = await applyRateLimit(req, "register:burst", 3, 60_000);
+  if (burst) return burst;
   const limited = await applyRateLimit(req, "register", 5, 60 * 60 * 1000);
   if (limited) return limited;
   try {
@@ -90,6 +93,8 @@ export async function POST(req: NextRequest) {
       orgInviteToken?: string;
       plan?: string;
       password?: string;
+      orderID?: string;
+      paypalOrderId?: string;
     };
 
     const emailRaw = String(body.email ?? "").trim();
@@ -219,6 +224,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({
         ok: true,
+        pendingApproval: false,
         message: plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — התחברו בדף הכניסה."
           : "ההרשמה הושלמה. התחברו בדף הכניסה עם האימייל והסיסמה שבחרתם.",
@@ -309,22 +315,31 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json({
         ok: true,
+        pendingApproval: false,
         message: plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל."
           : "ההרשמה הושלמה — התחברו במייל והסיסמה שבחרתם.",
       });
     }
 
-    const planRaw = String(body.plan ?? "").toUpperCase();
+    // `plan` arrives from a client-supplied query parameter and carries no proof
+    // of payment, so it selects nothing on its own — it is kept for funnel
+    // attribution only. A paid tier and a skipped approval require a PayPal
+    // order we can verify server-side, or an invite issued by the org/platform.
     const isDirectPlan = !!body.plan;
+    const paymentOrderId = String(body.orderID ?? body.paypalOrderId ?? "").trim();
 
-    // Mapping plan string to SubscriptionTier enum
-    const tier = ["FREE", "HOUSEHOLD", "DEALER", "COMPANY", "CORPORATE"].includes(planRaw)
-       ? (planRaw as import("@prisma/client").SubscriptionTier)
-       : "FREE";
+    let tier: import("@prisma/client").SubscriptionTier = "FREE";
+    let shouldApprove = !!inviteToken || !!orgInviteToken;
 
-    // Only general signup (no plan, no invite) goes to PENDING_APPROVAL
-    const shouldApprove = isDirectPlan || !!inviteToken || !!orgInviteToken;
+    if (paymentOrderId) {
+      const payment = await verifyRegistrationPayPalOrder(paymentOrderId, normalized);
+      if (payment.ok) {
+        shouldApprove = true;
+        tier = payment.tier;
+      }
+    }
+
     const initialStatus = shouldApprove ? AccountStatus.ACTIVE : AccountStatus.PENDING_APPROVAL;
     const initialSubStatus = shouldApprove ? "ACTIVE" : "PENDING_APPROVAL";
 
@@ -387,6 +402,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({
       ok: true,
+      pendingApproval: !shouldApprove,
       message: shouldApprove
         ? plainForEmail
           ? "ההרשמה הושלמה. פרטי הסיסמה נשלחו לאימייל — ניתן להתחבר כעת."

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { BriefcaseBusiness, Loader2, Save } from "lucide-react";
+import { BriefcaseBusiness, Save } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { updateIndustryProfileAction } from "@/app/actions/org-settings";
@@ -10,6 +10,7 @@ import { CONSTRUCTION_TRADE_IDS, constructionTradeLabelHe } from "@/lib/construc
 import { INDUSTRY_CONFIGS, type IndustryType } from "@/lib/professions/config";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { osFieldClassName } from "@/components/os/ui/os-field";
+import { OsButton } from "@/components/os/ui";
 
 const SELECTABLE_INDUSTRIES: IndustryType[] = ["CONSTRUCTION", "COMPANY_MGMT"];
 
@@ -38,7 +39,7 @@ export default function ProfessionSettingsPanel({
   if (!isOrgAdmin) {
     return (
       <p className="text-xs text-[color:var(--foreground-muted)]">
-        רק מנהל ארגון יכול לשנות את תחום העסק וההתמחות.
+        {t("workspaceWidgets.profession.adminOnly")}
       </p>
     );
   }
@@ -76,13 +77,13 @@ export default function ProfessionSettingsPanel({
     >
       <header className="flex items-center gap-2 text-sm font-bold">
         <BriefcaseBusiness size={16} className="text-amber-400" />
-        {industry === "COMPANY_MGMT" ? "תחום העסק / החברה" : "תחום בנייה וקבלנות"}
+        {t(industry === "COMPANY_MGMT" ? "workspaceWidgets.profession.titleCompany" : "workspaceWidgets.profession.titleConstruction")}
       </header>
       <p className="text-[11px] text-[color:var(--foreground-muted)]">
-        בחירת הענף משנה את אוצר המילים, מצבי הסריקה, תתי-תחומים בפרויקטים ותפריט ההפעלה.
+        {t("workspaceWidgets.profession.hint")}
       </p>
       <label className="block text-[11px]">
-        <span className="text-[color:var(--foreground-muted)]">ענף</span>
+        <span className="text-[color:var(--foreground-muted)]">{t("workspaceWidgets.profession.industry")}</span>
         <select
           className={`${osFieldClassName} mt-1 w-full`}
           value={industry}
@@ -96,7 +97,7 @@ export default function ProfessionSettingsPanel({
         </select>
       </label>
       <label className="block text-[11px]">
-        <span className="text-[color:var(--foreground-muted)]">התמחות</span>
+        <span className="text-[color:var(--foreground-muted)]">{t("workspaceWidgets.profession.specialty")}</span>
         <select
           className={`${osFieldClassName} mt-1 w-full`}
           value={specialization}
@@ -109,15 +110,9 @@ export default function ProfessionSettingsPanel({
           ))}
         </select>
       </label>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={save}
-        className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
-      >
-        {pending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-        שמירת תחום והתמחות
-      </button>
+      <OsButton variant="primary" size="sm" loading={pending} icon={<Save size={14} aria-hidden />} onClick={save}>
+        {t("workspaceWidgets.profession.save")}
+      </OsButton>
     </section>
   );
 }

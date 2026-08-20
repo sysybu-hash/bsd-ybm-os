@@ -28,6 +28,9 @@ interface ShellProps {
   onBack?: () => void;
   onForward?: () => void;
   maximizeHiddenOnMobile?: boolean;
+  /** Window Identity — אקצנט (גוון) ואייקון ייחודיים לחלון */
+  accent?: string;
+  headerIcon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -54,11 +57,14 @@ export default function AdaptiveWidgetShell({
   onBack,
   onForward,
   maximizeHiddenOnMobile = false,
+  accent,
+  headerIcon,
   children,
 }: ShellProps) {
   const { dir } = useI18n();
 
   const {
+    isMobile,
     mobileOrMaximized,
     currentSize, position,
     setIsDragging,
@@ -70,6 +76,11 @@ export default function AdaptiveWidgetShell({
     initialOffset, size, isMaximized, workspaceBoundsRef,
     zoom, dir, onPositionChange, onResize,
   });
+
+  // Maximized on desktop must clear the always-visible sidebar rail; real mobile
+  // (no sidebar) spans the full width. Driven by JS (not a Tailwind class) so it
+  // can't be over-constrained by a competing `width: 100%` rule.
+  const desktopMaximized = isMaximized && !isMobile;
 
   return (
     <section
@@ -85,13 +96,25 @@ export default function AdaptiveWidgetShell({
         isFocused && !mobileOrMaximized ? "workspace-window--focused" : ""
       } ${
         mobileOrMaximized
-          ? "workspace-window--mobile flex min-h-0 flex-col fixed inset-x-0 top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !h-auto !max-h-none !w-full !max-w-[100dvw] !rounded-none !shadow-none md:absolute md:inset-0 md:!top-0 md:!bottom-0 md:!h-full md:!max-h-full md:flex-none"
+          ? "workspace-window--mobile flex min-h-0 flex-col fixed top-[var(--workspace-inset-top)] bottom-[var(--workspace-inset-bottom)] !h-auto !max-h-none !rounded-none !shadow-none"
           : "absolute max-w-[100dvw]"
       }`}
       style={
         mobileOrMaximized
-          ? { zIndex, display: isMinimized ? "none" : undefined }
-          : {
+          ? ({
+              // Left/right (not width) so the box auto-sizes to fill the gap —
+              // setting both width:100% and an inset-start offset would be
+              // over-constrained and the browser silently drops one of them.
+              insetInlineStart: desktopMaximized
+                ? "calc(var(--os-sidebar-rail-width) + var(--os-sidebar-gap))"
+                : 0,
+              insetInlineEnd: 0,
+              maxWidth: "100dvw",
+              zIndex,
+              display: isMinimized ? "none" : undefined,
+              "--win-accent": accent,
+            } as React.CSSProperties)
+          : ({
               width: `${currentSize.width}px`,
               height: `${currentSize.height}px`,
               maxWidth: `${ws.width}px`,
@@ -100,7 +123,8 @@ export default function AdaptiveWidgetShell({
               top: `${clampedTop}px`,
               zIndex,
               display: isMinimized ? "none" : undefined,
-            }
+              "--win-accent": accent,
+            } as React.CSSProperties)
       }
       dir={dir}
       aria-hidden={isMinimized || undefined}
@@ -112,13 +136,14 @@ export default function AdaptiveWidgetShell({
         data-window-body
         className={
           mobileOrMaximized
-            ? "relative flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-y-auto max-md:overscroll-contain max-md:[-webkit-overflow-scrolling:touch]"
+            ? "relative flex min-h-0 flex-1 flex-col overflow-hidden overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
             : "absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-[inherit]"
         }
       >
         <WorkspaceWindowChrome
           title={title}
           titleId={`${id}-title`}
+          headerStart={headerIcon ? <span className="workspace-window-icon" aria-hidden>{headerIcon}</span> : undefined}
           onClose={onClose}
           zoom={zoom}
           onZoomDelta={(delta) => onZoomChange?.(delta)}
@@ -134,7 +159,7 @@ export default function AdaptiveWidgetShell({
           closeTouchTarget={mobileOrMaximized}
           headerClassName={
             mobileOrMaximized
-              ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-20 max-md:bg-[color:var(--surface-card)]"
+              ? "cursor-default pt-[max(0.5rem,env(safe-area-inset-top))] sticky top-0 z-20 bg-[color:var(--surface-card)]"
               : "cursor-move touch-none"
           }
           onHeaderMouseDown={(e) => {
@@ -146,10 +171,15 @@ export default function AdaptiveWidgetShell({
           }}
         />
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] max-md:flex-none max-md:overflow-visible">
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent text-[color:var(--foreground-main)] ${mobileOrMaximized ? "flex-none overflow-visible" : ""}`}>
           <div
             data-shell-scroll
-            className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 max-md:min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${
+            className={`shell-scroll-host custom-scrollbar min-h-0 flex-1 h-0 ${
+              mobileOrMaximized
+                ? "min-h-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+                : /* Inset scroll+scrollbar from window edges so ResizeHandles (w-1/h-1) do not steal drag */
+                  "md:pb-0 mr-2 mb-1.5 ml-0.5"
+            } [-webkit-overflow-scrolling:touch] [touch-action:pan-y] ${
               zoomActive ? "overflow-auto" : "overflow-y-auto overflow-x-hidden"
             }`}
           >

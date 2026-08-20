@@ -1,15 +1,25 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, type MutableRefObject } from 'react';
 import {
   buildWidgetLayout,
+  clampWidgetLayoutToWorkspace,
   isMobileViewport,
-  normalizeWidgetForViewport,
 } from '@/lib/workspace/window-layout-policy';
 import { computeProfessionalLayout } from '@/lib/workspace/screen-layout-generator';
 import { readWorkspaceBounds } from '@/lib/workspace/workspace-bounds-registry';
 import { normalizeWidgetAction } from '@/lib/os-assistant/widget-catalog';
 import { resolveWidgetOpen } from '@/lib/os-assistant/resolve-widget-open';
+import {
+  LEGACY_GLOBAL_LAYOUT_KEY,
+  parseWorkspaceLayoutFromStorage,
+  scrubWorkspaceLayout,
+  workspaceLayoutStorageKey,
+} from '@/lib/workspace/user-workspace-layout';
+import {
+  isApiCooldown,
+  markApiCooldownFromResponse,
+} from '@/lib/client/api-rate-limit-backoff';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger("window-manager");
@@ -42,7 +52,11 @@ export type WidgetType =
   | 'projectsHub'
   | 'documentsHub'
   | 'aiHub'
-  | 'appBuilder';
+  | 'appBuilder'
+  | 'logisticsHub'
+  | 'procurementHub'
+  | 'executiveHub'
+  | 'universalCommand';
 
 export interface ActiveWidget {
   id: string;
@@ -69,17 +83,81 @@ function migrateRestoredWidget(w: ActiveWidget): ActiveWidget {
     resolved?.liveData != null
       ? { ...live, ...resolved.liveData }
       : live;
-  return normalizeWidgetForViewport({
+  const migrated: ActiveWidget = {
     ...w,
     type,
     liveData: mergedLive && Object.keys(mergedLive).length > 0 ? mergedLive : null,
-  });
+  };
+  // Keep saved desktop coordinates in memory on mobile — shell renders fullscreen locally.
+  if (typeof window !== 'undefined' && isMobileViewport()) return migrated;
+  return clampWidgetLayoutToWorkspace(migrated);
 }
 
-const STORAGE_KEY = 'bsd_ybm_layout_quiet_v6';
-const PREVIOUS_STORAGE_KEY = 'bsd_ybm_layout_quiet_v5';
-const LEGACY_STORAGE_KEY = 'bsd_ybm_layout_quiet_v3';
+function canPersistWorkspaceLayout(): boolean {
+  return typeof window !== 'undefined' && !isMobileViewport();
+}
+
+const LEGACY_STORAGE_KEYS = [
+  LEGACY_GLOBAL_LAYOUT_KEY,
+  'bsd_ybm_layout_quiet_v5',
+  'bsd_ybm_layout_quiet_v4',
+  'bsd_ybm_layout_quiet_v3',
+] as const;
 const SNAPSHOT_KEY = 'bsd_ybm_layout_snapshot_session';
+const WORKSPACE_LAYOUT_API_KEY = 'api:user/workspace-layout';
+
+/**
+ * Cross-tab sync channel name — without this, two open tabs of the same user
+ * each hold their own in-memory `widgets` copy with no coordination. A stale
+ * background tab can later re-save its old state and clobber a fresh close
+ * made in another tab (last-write-wins, no version check). BroadcastChannel
+ * lets every open tab adopt a change the instant another tab makes it.
+ */
+function workspaceLayoutChannelName(userId: string): string {
+  return `bsd_ybm_workspace_layout:${userId}`;
+}
+
+type WorkspaceLayoutBroadcastMessage = { widgets: ActiveWidget[]; ts: number };
+
+function removeLegacyGlobalLayoutKeys(): void {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch { /* quota */ }
+  }
+}
+
+/**
+ * מסיר כפילויות מ-layout משוחזר: אותו type עם אותו liveData = אותו חלון לוגי.
+ * layout שמור יכול לצבור כפילויות (מרוץ בין שחזור-URL לשחזור-שרת, מיזוג בין טאבים) —
+ * ואז השחזור פותח את אותו hub פעמיים זה-על-זה. שומרים את המופע העליון (zIndex גבוה).
+ * חלונות מאותו type עם liveData שונה (למשל שני פרויקטים) נשמרים כולם.
+ */
+function dedupeRestoredWidgets(widgets: ActiveWidget[]): ActiveWidget[] {
+  const byKey = new Map<string, ActiveWidget>();
+  for (const w of widgets) {
+    const key = `${w.type}:${JSON.stringify(w.liveData ?? null)}`;
+    const existing = byKey.get(key);
+    if (!existing || (w.zIndex ?? 0) > (existing.zIndex ?? 0)) byKey.set(key, w);
+  }
+  return widgets.filter((w) => byKey.get(`${w.type}:${JSON.stringify(w.liveData ?? null)}`) === w);
+}
+
+function applyRestoredWidgets(
+  widgets: ActiveWidget[],
+  setWidgets: (w: ActiveWidget[]) => void,
+  nextZIndexRef: MutableRefObject<number>,
+): void {
+  const restored = dedupeRestoredWidgets(widgets.map((w) => migrateRestoredWidget(w)));
+  setWidgets(restored);
+  const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
+  nextZIndexRef.current = maxZ + 1;
+}
+
+type UseWindowManagerOptions = {
+  userId: string | null;
+  authReady: boolean;
+};
 
 const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }> = {
   project: { width: 1120, height: 780 },
@@ -108,73 +186,227 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   financeHub: { width: 1040, height: 780 },
   projectsHub: { width: 1120, height: 780 },
   documentsHub: { width: 1040, height: 780 },
-  aiHub: { width: 720, height: 750 },
+  aiHub: { width: 1100, height: 780 },
   appBuilder: { width: 1100, height: 780 },
+  logisticsHub: { width: 1040, height: 780 },
+  procurementHub: { width: 1040, height: 780 },
+  executiveHub: { width: 1080, height: 800 },
+  universalCommand: { width: 920, height: 640 },
 };
 
-export function useWindowManager() {
+// True after the first successful server-sync in this browser session.
+// Prevents stale-localStorage flash on first page load while preserving
+// instant layout restore during in-session user switches.
+let _sessionServerSynced = false;
+
+export function useWindowManager({ userId, authReady }: UseWindowManagerOptions) {
   const [widgets, setWidgets] = useState<ActiveWidget[]>([]);
   const [hasHydrated, setHasHydrated] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(false);
   const [isCleanDashboard, setIsCleanDashboard] = useState(false);
   const nextZIndexRef = useRef(100);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeUserIdRef = useRef<string | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  /** True for exactly one save-effect run right after adopting another tab's
+   *  broadcast — skips re-broadcasting/re-PATCHing an unchanged echo. */
+  const applyingRemoteUpdateRef = useRef(false);
 
-  // Persistence: Load
+  // (Re)open the cross-tab channel whenever the active user changes.
   useEffect(() => {
-    try {
-      let raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        raw = localStorage.getItem(PREVIOUS_STORAGE_KEY);
-        if (raw) localStorage.removeItem(PREVIOUS_STORAGE_KEY);
-      }
-      if (!raw) {
-        const v4 = localStorage.getItem('bsd_ybm_layout_quiet_v4');
-        if (v4) {
-          raw = v4;
-          localStorage.removeItem('bsd_ybm_layout_quiet_v4');
-        }
-      }
-      if (!raw) {
-        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (legacy) {
-          raw = legacy;
-          localStorage.removeItem(LEGACY_STORAGE_KEY);
-        }
-      }
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const restored = parsed
-            .filter(
-              (w) =>
-                w &&
-                typeof w.id === 'string' &&
-                typeof w.type === 'string' &&
-                normalizeWidgetAction(w.type),
-            )
-            .map((w) => migrateRestoredWidget(w as ActiveWidget)) as ActiveWidget[];
-          setWidgets(restored);
-          const maxZ = Math.max(...restored.map((w) => w.zIndex || 100), 100);
-          nextZIndexRef.current = maxZ + 1;
-          setIsFirstTime(false);
-        }
-      } else {
-        setIsFirstTime(true);
-      }
-    } catch (e) {
-      log.warn("localStorage load error", { error: e instanceof Error ? e.message : String(e) });
-      setIsFirstTime(true);
-    } finally {
-      setHasHydrated(true);
+    if (!userId || typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
+      return;
     }
+    const channel = new BroadcastChannel(workspaceLayoutChannelName(userId));
+    broadcastChannelRef.current = channel;
+    channel.onmessage = (event: MessageEvent<WorkspaceLayoutBroadcastMessage>) => {
+      const data = event.data;
+      if (!data || !Array.isArray(data.widgets)) return;
+      applyingRemoteUpdateRef.current = true;
+      applyRestoredWidgets(data.widgets, setWidgets, nextZIndexRef);
+    };
+    return () => {
+      channel.close();
+      if (broadcastChannelRef.current === channel) broadcastChannelRef.current = null;
+    };
+  }, [userId]);
+
+  const persistLayout = useCallback((
+    nextWidgets: ActiveWidget[],
+    targetUserId: string,
+    options?: { force?: boolean },
+  ) => {
+    if (typeof window === 'undefined') return;
+    const sanitized = scrubWorkspaceLayout(nextWidgets);
+    const storageKey = workspaceLayoutStorageKey(targetUserId);
+    try {
+      broadcastChannelRef.current?.postMessage({ widgets: sanitized, ts: Date.now() } satisfies WorkspaceLayoutBroadcastMessage);
+    } catch {
+      /* BroadcastChannel unsupported or already closed — server sync below still applies */
+    }
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(sanitized));
+    } catch (e) {
+      log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
+    }
+    // Server sync stays desktop-only (perf — see f3cf2c6). Mobile still gets the
+    // localStorage write above, so an OS-triggered tab reload (e.g. after the native
+    // camera app opens and Android discards the tab under memory pressure) restores
+    // the open widget instead of dropping back to the empty home screen.
+    if (!options?.force && !canPersistWorkspaceLayout()) return;
+    if (isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) return;
+    void fetch("/api/user/workspace-layout", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ widgets: sanitized }),
+    })
+      .then((res) => {
+        markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res);
+      })
+      .catch(() => { /* network */ });
   }, []);
 
-  // Persistence: Save
+  // Persistence: load per user (server + user-scoped localStorage)
   useEffect(() => {
-    if (hasHydrated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
+    if (!authReady) return;
+
+    if (!userId) {
+      setWidgets([]);
+      setHasHydrated(true);
+      activeUserIdRef.current = null;
+      return;
     }
-  }, [widgets, hasHydrated]);
+
+    let cancelled = false;
+    activeUserIdRef.current = userId;
+    const layoutUserId = userId;
+
+    const storageKey = workspaceLayoutStorageKey(layoutUserId);
+    let localWidgets = parseWorkspaceLayoutFromStorage(
+      typeof window !== "undefined" ? localStorage.getItem(storageKey) : null,
+    );
+    if (localWidgets.length === 0) {
+      const legacyRaw =
+        typeof window !== "undefined" ? localStorage.getItem(LEGACY_GLOBAL_LAYOUT_KEY) : null;
+      localWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
+    }
+
+    // Phase 1 (sync): apply cached layout into state.
+    // On first page load (_sessionServerSynced=false) we intentionally do NOT mark
+    // hasHydrated yet — this prevents a stale-localStorage flash where an old widget
+    // flickers before Phase 2 overwrites it with the real server layout.
+    // On subsequent in-session user switches Phase 1 fires after _sessionServerSynced
+    // is already true, so we restore instantly as before.
+    if (localWidgets.length > 0) {
+      applyRestoredWidgets(localWidgets, setWidgets, nextZIndexRef);
+    } else {
+      setWidgets([]);
+    }
+    if (_sessionServerSynced) {
+      setHasHydrated(true);
+    }
+
+    // Phase 2 (async): reconcile with server in background
+    async function syncFromServer() {
+      let resolvedWidgets: ActiveWidget[] = localWidgets;
+
+      try {
+        if (!isApiCooldown(WORKSPACE_LAYOUT_API_KEY)) {
+          const res = await fetch("/api/user/workspace-layout", { credentials: "include" });
+          if (markApiCooldownFromResponse(WORKSPACE_LAYOUT_API_KEY, res)) {
+            resolvedWidgets = localWidgets;
+          } else if (res.ok) {
+            const data = (await res.json()) as { widgets?: unknown };
+            const serverWidgets = scrubWorkspaceLayout(data.widgets ?? null);
+            if (serverWidgets.length > 0) {
+              resolvedWidgets = serverWidgets;
+              try {
+                localStorage.setItem(storageKey, JSON.stringify(serverWidgets));
+              } catch { /* quota */ }
+            } else if (localWidgets.length > 0) {
+              resolvedWidgets = localWidgets;
+              persistLayout(localWidgets, layoutUserId, { force: true });
+            } else {
+              const legacyRaw =
+                typeof window !== "undefined" ? localStorage.getItem(LEGACY_GLOBAL_LAYOUT_KEY) : null;
+              const legacyWidgets = parseWorkspaceLayoutFromStorage(legacyRaw);
+              if (legacyWidgets.length > 0) {
+                resolvedWidgets = legacyWidgets;
+                persistLayout(legacyWidgets, layoutUserId, { force: true });
+              }
+              removeLegacyGlobalLayoutKeys();
+            }
+          } else if (localWidgets.length > 0) {
+            resolvedWidgets = localWidgets;
+          }
+        } else if (localWidgets.length > 0) {
+          resolvedWidgets = localWidgets;
+        }
+      } catch (e) {
+        log.warn("workspace layout hydrate error", {
+          error: e instanceof Error ? e.message : String(e),
+        });
+        if (localWidgets.length > 0) {
+          resolvedWidgets = localWidgets;
+        }
+      }
+
+      if (cancelled || activeUserIdRef.current !== layoutUserId) return;
+
+      if (resolvedWidgets.length > 0) {
+        applyRestoredWidgets(resolvedWidgets, setWidgets, nextZIndexRef);
+      } else {
+        setWidgets([]);
+      }
+      // Mark session as synced — subsequent in-session user switches can use Phase 1
+      // instant restore without risk of flashing stale data on cold page load.
+      _sessionServerSynced = true;
+      setHasHydrated(true);
+    }
+
+    void syncFromServer();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, userId, persistLayout]);
+
+  // Persistence: save per user — localStorage on every platform, debounced server sync desktop-only
+  useEffect(() => {
+    if (!hasHydrated || !userId || activeUserIdRef.current !== userId) return;
+
+    const storageKey = workspaceLayoutStorageKey(userId);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(widgets));
+    } catch (e) {
+      log.warn("localStorage save error", { error: e instanceof Error ? e.message : String(e) });
+    }
+
+    // This run is just adopting a change another tab already broadcast and saved —
+    // mirror to localStorage (above) only, skip re-broadcasting/re-PATCHing the same data.
+    if (applyingRemoteUpdateRef.current) {
+      applyingRemoteUpdateRef.current = false;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      return;
+    }
+
+    // When all windows are closed, persist to server immediately (no debounce) so that
+    // a fast page refresh sees the cleared state from the server and does not re-open
+    // the old layout via Phase 2.
+    if (widgets.length === 0) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      persistLayout([], userId);
+    } else {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        if (activeUserIdRef.current !== userId) return;
+        persistLayout(widgets, userId);
+      }, 400);
+    }
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [widgets, hasHydrated, userId, persistLayout]);
 
   const openWidget = useCallback((type: WidgetType, data: Record<string, unknown> | null = null): string => {
     const resolved = resolveWidgetOpen(type, data);
@@ -263,9 +495,25 @@ export function useWindowManager() {
     setWidgets(prev => prev.map(w => w.id === id ? { ...w, zoom: Math.max(0.5, Math.min(2, (w.zoom || 1) + delta)) } : w));
   }, []);
 
+  const updateWidgetLiveData = useCallback(
+    (id: string, liveData: Record<string, unknown> | null) => {
+      setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, liveData } : w)));
+    },
+    [],
+  );
+
   const closeWidget = useCallback((id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
-  }, []);
+    setWidgets(prev => {
+      const next = prev.filter(w => w.id !== id);
+      // Flush to the server immediately (force, bypassing the 400ms debounce) so a
+      // refresh right after closing can't restore the window from a stale server copy.
+      if (userId) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        persistLayout(next, userId, { force: true });
+      }
+      return next;
+    });
+  }, [userId, persistLayout]);
 
   const focusWidget = useCallback((id: string) => {
     const nextZ = nextZIndexRef.current + 1;
@@ -287,8 +535,13 @@ export function useWindowManager() {
 
   const clearLayout = useCallback(() => {
     setWidgets([]);
-    localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    if (userId) {
+      try {
+        localStorage.removeItem(workspaceLayoutStorageKey(userId));
+      } catch { /* quota */ }
+      persistLayout([], userId);
+    }
+  }, [userId, persistLayout]);
 
   const enterCleanDashboard = useCallback(() => {
     if (typeof sessionStorage !== 'undefined') {
@@ -343,7 +596,7 @@ export function useWindowManager() {
         zById.set(w.id, z);
       }
       nextZIndexRef.current = z + 1;
-      return prev.map((w) => {
+      const next = prev.map((w) => {
         const cell = layouts.get(w.id);
         const nextZ = zById.get(w.id) ?? w.zIndex;
         if (!cell) {
@@ -357,8 +610,16 @@ export function useWindowManager() {
           zIndex: nextZ,
         };
       });
+      if (userId) {
+        queueMicrotask(() => {
+          if (activeUserIdRef.current === userId) {
+            persistLayout(next, userId);
+          }
+        });
+      }
+      return next;
     });
-  }, []);
+  }, [userId, persistLayout]);
 
   const openWidgetFocused = useCallback(
     (
@@ -396,9 +657,9 @@ export function useWindowManager() {
     restoreWidget,
     updateZoom,
     clearLayout,
-    isFirstTime,
     isCleanDashboard,
     toggleWorkState,
     applyProfessionalLayout,
+    updateWidgetLiveData,
   };
 }

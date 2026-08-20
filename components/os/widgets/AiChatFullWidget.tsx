@@ -6,6 +6,7 @@ import { Settings2, Trash2 } from "lucide-react";
 import GeminiLiveSettingsSheet from "@/components/os/GeminiLiveSettingsSheet";
 import GeminiLivePanel from "@/components/os/gemini-live/GeminiLivePanel";
 import WidgetSplitPanels from "@/components/os/layout/WidgetSplitPanels";
+import { OsIconButton } from "@/components/os/ui";
 import { useAiChatState } from "./ai-chat/useAiChatState";
 import { AiChatSidebar } from "./ai-chat/AiChatSidebar";
 import { AiChatMessages } from "./ai-chat/AiChatMessages";
@@ -49,13 +50,13 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         {/* טאבים */}
         <div className="flex items-center gap-1.5 min-w-0">
           {c.osAssistant.featureFlags.geminiLiveEnabled !== false ? (
-            <button type="button" onClick={c.handleLiveTab}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "live" ? "bg-indigo-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+            <button type="button" onClick={c.handleLiveTab} aria-pressed={c.chatTab === "live"}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition ${c.chatTab === "live" ? "bg-[color:var(--win-accent,var(--accent))] text-white" : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"}`}>
               {t("workspaceWidgets.aiChat.tabLive")}
             </button>
           ) : null}
-          <button type="button" onClick={c.handleTextTab}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-black ${c.chatTab === "text" ? "bg-purple-600 text-white" : "text-[color:var(--foreground-muted)]"}`}>
+          <button type="button" onClick={c.handleTextTab} aria-pressed={c.chatTab === "text"}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition ${c.chatTab === "text" ? "bg-[color:var(--win-accent,var(--accent))] text-white" : "text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]"}`}>
             {t("workspaceWidgets.aiChat.tabText")}
           </button>
         </div>
@@ -70,25 +71,18 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
         {/* כפתורי ניהול */}
         <div className="flex shrink-0 items-center gap-1">
           {/* הגדרות Gemini */}
-          <button
-            type="button"
-            onClick={() => c.setShowSettings(true)}
-            aria-label={t("workspaceWidgets.aiChat.chatSettings")}
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--foreground-muted)]/10"
-          >
+          <OsIconButton label={t("workspaceWidgets.aiChat.chatSettings")} onClick={() => c.setShowSettings(true)}>
             <Settings2 size={17} aria-hidden />
-          </button>
+          </OsIconButton>
           {/* סיום שיחה */}
           {c.messages.length > 0 && (
-            <button
-              type="button"
+            <OsIconButton
+              label={t("workspaceWidgets.aiChat.clearHistory")}
               onClick={() => c.setMessages([])}
-              aria-label={t("workspaceWidgets.aiChat.clearHistory")}
-              title={t("workspaceWidgets.aiChat.clearHistory")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-rose-500 transition hover:bg-rose-500/10"
+              className="text-rose-500 hover:!border-rose-500/40 hover:!bg-rose-500/10"
             >
               <Trash2 size={17} aria-hidden />
-            </button>
+            </OsIconButton>
           )}
         </div>
       </div>

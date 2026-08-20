@@ -7,6 +7,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useHelpCenter } from "./help-center/useHelpCenter";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
+import { OsButton } from "@/components/os/ui";
 
 type Props = {
   openWorkspaceWidget?: (type: WidgetType, data?: Record<string, unknown> | null) => void;
@@ -100,8 +101,8 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           ) : null}
         </div>
       ) : (
-        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain md:flex-row md:overflow-visible [-webkit-overflow-scrolling:touch]">
-          <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:self-start md:sticky md:top-0 md:border-e md:border-b-0 md:p-2">
+        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain md:flex-row md:overflow-hidden [-webkit-overflow-scrolling:touch]">
+          <aside className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-48 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
             <div className="flex gap-2 max-md:flex-row md:flex-col" role="tablist" aria-label={t("workspaceWidgets.helpCenter.guidesSection")}>
               {s.content.categories.map((c) => (
                 <button
@@ -125,7 +126,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
-            <nav className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-56 md:self-start md:sticky md:top-0 md:border-e md:border-b-0 md:p-2">
+            <nav className="shrink-0 border-b border-[color:var(--border-main)] max-md:overflow-x-auto max-md:px-2 max-md:py-3 md:w-56 md:min-h-0 md:overflow-y-auto md:border-e md:border-b-0 md:p-2">
               <div className="flex gap-2 max-md:flex-row md:flex-col">
                 {s.guidesInCategory.map((g) => (
                   <button
@@ -143,7 +144,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
               </div>
             </nav>
 
-            <article className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 max-md:px-3 md:overflow-visible md:p-4">
+            <article className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 max-md:px-3 md:p-4">
               {s.activeGuide ? (
                 <>
                   <h3 className="text-xl font-black leading-snug">{s.activeGuide.title}</h3>
@@ -157,7 +158,7 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-xs font-black text-sky-700">
                           {i + 1}
                         </span>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-bold text-sm">{step.title}</p>
                           <p className="mt-1 text-sm leading-relaxed text-[color:var(--foreground-muted)]">{step.body}</p>
                         </div>
@@ -183,14 +184,19 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
                     </div>
                   ) : null}
                   {s.activeGuide.openWidget && openWorkspaceWidget ? (
-                    <button
-                      type="button"
-                      onClick={() => openWorkspaceWidget(s.activeGuide!.openWidget!)}
-                      className="mt-4 flex min-h-[44px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white"
+                    <OsButton
+                      variant="primary"
+                      className="mt-4 min-h-[44px]"
+                      icon={<ExternalLink size={16} aria-hidden />}
+                      onClick={() =>
+                        openWorkspaceWidget(
+                          s.activeGuide!.openWidget!,
+                          s.activeGuide!.openWidgetData ?? null,
+                        )
+                      }
                     >
-                      <ExternalLink size={16} aria-hidden />
                       {t("workspaceWidgets.helpCenter.openRelevantScreen")}
-                    </button>
+                    </OsButton>
                   ) : null}
                 </>
               ) : (
@@ -230,14 +236,14 @@ export default function HelpCenterWidget({ openWorkspaceWidget }: Props) {
 
       <footer className="flex shrink-0 flex-wrap gap-2 border-t border-[color:var(--border-main)] p-3 max-md:px-3">
         {openWorkspaceWidget ? (
-          <button
-            type="button"
+          <OsButton
+            variant="primary"
+            className="min-h-[44px] md:text-xs"
+            icon={<MessageCircle size={16} aria-hidden />}
             onClick={() => openWorkspaceWidget("aiChatFull", { prompt: t("workspaceWidgets.helpCenter.aiChatPrompt") })}
-            className="flex min-h-[44px] items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white md:text-xs"
           >
-            <MessageCircle size={16} aria-hidden />
             {t("workspaceWidgets.helpCenter.openAiChat")}
-          </button>
+          </OsButton>
         ) : null}
         <Link
           href="/help"

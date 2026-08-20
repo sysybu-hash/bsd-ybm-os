@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Removed meckano test script — false positive in git history"
+paths = [
+  '''(?i)(?:^|/)test-meckano\.js$''',
+]

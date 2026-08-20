@@ -33,42 +33,42 @@
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site daily log",
-          "description": "Crew, panels, milestones & progress.",
+          "label": "Дневник работ на объекте",
+          "description": "Бригада, щиты, этапы и прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "ELEC_TEST_APPROVAL",
-          "label": "Test / installation certificate",
-          "description": "Signed electrical inspection with standard references.",
+          "label": "Акт испытания / монтажа",
+          "description": "Подписанный акт электропроверки со ссылками на нормы.",
           "kind": "APPROVAL"
         },
         {
           "id": "ELEC_SUPPLY_APPROVAL",
-          "label": "Electrical material supply approval",
-          "description": "Confirm receipt of cables, boards or fixtures.",
+          "label": "Подтверждение поставки электроматериалов",
+          "description": "Подтверждение получения кабелей, щитов или светильников.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Electrical works invoice",
-          "description": "Official billing for phases or projects.",
+          "label": "Счёт за электромонтажные работы",
+          "description": "Официальный счёт за этапы или объекты.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "ELECTRICAL_TEST_CERT": {
-          "label": "Test certificate / installation approval",
-          "description": "Detect standard, inspection date and signatories"
+          "label": "Акт испытания / допуск монтажа",
+          "description": "Определить норму, дату проверки и подписантов"
         },
         "MATERIAL_ORDER": {
-          "label": "Material / supplier order",
-          "description": "Cables, boards, lighting — quantities & prices"
+          "label": "Заказ материалов / поставщику",
+          "description": "Кабели, щиты, свет — количества и цены"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Crew, phases and daily progress"
+          "label": "Журнал работ на объекте",
+          "description": "Бригада, этапы и ежедневный прогресс"
         }
       },
       "resultColumns": {
@@ -98,42 +98,42 @@
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site daily log",
-          "description": "Crew, phases and daily progress.",
+          "label": "Дневник работ на объекте",
+          "description": "Бригада, этапы и ежедневный прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "PLUMB_PRESSURE_APPROVAL",
-          "label": "Pressure / leak-test approval",
-          "description": "Signed test record with results.",
+          "label": "Допуск испытания давлением / на утечки",
+          "description": "Подписанный акт испытания с результатами.",
           "kind": "APPROVAL"
         },
         {
           "id": "PLUMB_MATERIAL_APPROVAL",
-          "label": "Plumbing material supply approval",
-          "description": "Confirm materials received on site.",
+          "label": "Подтверждение поставки сантехники",
+          "description": "Подтвердить получение материалов на объекте.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Plumbing invoice",
-          "description": "Official billing for works or phases.",
+          "label": "Счёт за сантехнику",
+          "description": "Официальный счёт за работы или этапы.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "PLUMBING_SUPPLY_ORDER": {
-          "label": "Material order (pipes / fittings)",
-          "description": "Line items, quantities & supplier"
+          "label": "Заказ материалов (трубы / фитинги)",
+          "description": "Позиции, количества и поставщик"
         },
         "PRESSURE_TEST_REPORT": {
-          "label": "Pressure / leak test",
-          "description": "Dates, outcomes and approvals"
+          "label": "Испытание давлением / на утечки",
+          "description": "Даты, результаты и согласования"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Crew progress on site"
+          "label": "Журнал работ на объекте",
+          "description": "Прогресс бригады на объекте"
         }
       },
       "resultColumns": {
@@ -144,61 +144,61 @@
     },
     "HVAC": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / HVAC system",
-        "document": "Equipment orders, commissioning & supplier invoices",
-        "inventory": "HVAC units, copper lines & accessories"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / система HVAC",
+        "document": "Заказы оборудования, пусконаладка и счета поставщиков",
+        "inventory": "Агрегаты HVAC, медные линии и комплектующие"
       },
       "clientsLabel": "Заказчики, подрядчики и объекты ВКВ",
-      "documentsLabel": "Equipment orders, commissioning & installation reports",
-      "recordsLabel": "Startup approvals, commissioning checks & supplier docs",
+      "documentsLabel": "Заказы оборудования, пусконаладка и акты монтажа",
+      "recordsLabel": "Допуски запуска, пусконаладка и документы поставщиков",
       "homeTitle": "Центр управления для ВКВ — оборудование, объекты, акты.",
-      "homeDescription": "Track units, commissioning logs, site diaries and invoices with AI that reads model numbers, capacities and locations.",
+      "homeDescription": "Отслеживайте агрегаты, журналы пусконаладки, дневники и счета с ИИ, который читает модели, мощности и локации.",
       "scanner": {
         "title": "Разбор документов ВКВ",
-        "subtitle": "Units, chillers, installs & balancing",
+        "subtitle": "Агрегаты, чиллеры, монтаж и балансировка",
         "dropzoneTitle": "Загрузите заказы, пусконаладку или фото",
-        "dropzoneSub": "Follow equipment tags and milestones on site"
+        "dropzoneSub": "Отслеживайте метки оборудования и этапы на объекте"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site installation log",
-          "description": "Crews, phases and progress.",
+          "label": "Журнал монтажа на объекте",
+          "description": "Бригады, этапы и прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "HVAC_COMMISSION_APPROVAL",
-          "label": "Commissioning / completion approval",
-          "description": "Signed startup checklist for handover.",
+          "label": "Пусконаладка / акт завершения",
+          "description": "Подписанный чек-лист запуска для передачи.",
           "kind": "APPROVAL"
         },
         {
           "id": "HVAC_EQUIP_APPROVAL",
-          "label": "HVAC equipment delivery approval",
-          "description": "Confirm units and accessories received.",
+          "label": "Поставка оборудования HVAC",
+          "description": "Подтвердить получение агрегатов и комплектующих.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "HVAC invoice",
-          "description": "Official billing for project or phase.",
+          "label": "Счёт HVAC",
+          "description": "Официальный счёт за проект или этап.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "HVAC_ORDER": {
-          "label": "HVAC equipment order",
-          "description": "Models, kW/BTU and quantities"
+          "label": "Заказ оборудования HVAC",
+          "description": "Модели, кВт/BTU и количества"
         },
         "COMMISSIONING_DOC": {
-          "label": "Commissioning / startup",
-          "description": "Startup tests and dates"
+          "label": "Пусконаладка / запуск",
+          "description": "Пусковые испытания и даты"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Crew and progress"
+          "label": "Журнал работ на объекте",
+          "description": "Бригада и прогресс"
         }
       },
       "resultColumns": {
@@ -209,61 +209,61 @@
     },
     "PAINTING": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / floor & space",
-        "document": "Paint quantities, material orders & field reports",
-        "inventory": "Paint, tools & application materials"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / этаж и помещение",
+        "document": "Объёмы краски, заказы материалов и полевые отчёты",
+        "inventory": "Краска, инструменты и материалы нанесения"
       },
       "clientsLabel": "Заказчики и объекты малярных работ",
-      "documentsLabel": "Quantities, paint orders & finishing drawings",
-      "recordsLabel": "Finishing-stage approvals, quantities & deliveries",
+      "documentsLabel": "Объёмы, заказы краски и чертежи отделки",
+      "recordsLabel": "Согласования этапов отделки, объёмы и поставки",
       "homeTitle": "Центр управления для малярки и отделки.",
-      "homeDescription": "Manage quantities, orders, site logs and invoices with AI that understands coats, colors and square meters.",
+      "homeDescription": "Ведите объёмы, заказы, журналы и счета с ИИ, который понимает слои, цвета и квадратные метры.",
       "scanner": {
         "title": "Разбор документов по покраске",
-        "subtitle": "Areas, materials and coats",
+        "subtitle": "Зоны, материалы и слои",
         "dropzoneTitle": "Загрузите ведомости, заказы или накладные",
-        "dropzoneSub": "Track layers, colors and coverage"
+        "dropzoneSub": "Отслеживайте слои, цвета и покрытие"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site daily log",
-          "description": "Finishing stages, crews & progress.",
+          "label": "Дневник работ на объекте",
+          "description": "Этапы отделки, бригады и прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "PAINT_SCOPE_APPROVAL",
-          "label": "Paint scope / stage approval",
-          "description": "Approve quantities or completion of a paint stage.",
+          "label": "Допуск объёма / этапа покраски",
+          "description": "Подтвердить объёмы или завершение этапа покраски.",
           "kind": "APPROVAL"
         },
         {
           "id": "PAINT_MATERIAL_APPROVAL",
-          "label": "Paint & consumables supply approval",
-          "description": "Confirm receipt of buckets and materials.",
+          "label": "Поставка краски и расходников",
+          "description": "Подтвердить получение вёдер и материалов.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Painting & finishing invoice",
-          "description": "Official billing per phase or m².",
+          "label": "Счёт за покраску и отделку",
+          "description": "Официальный счёт за этап или м².",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "PAINT_QUANTITY": {
-          "label": "Paint quantities / areas",
-          "description": "m², coats and paint system"
+          "label": "Объёмы краски / зоны",
+          "description": "м², слои и система окраски"
         },
         "MATERIAL_ORDER": {
-          "label": "Material order",
-          "description": "Buckets, rollers, application"
+          "label": "Заказ материалов",
+          "description": "Вёдра, валики, нанесение"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Finishing stages"
+          "label": "Журнал работ на объекте",
+          "description": "Этапы отделки"
         }
       },
       "resultColumns": {
@@ -274,61 +274,61 @@
     },
     "FLOORING": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / room & floor",
-        "document": "Tile orders, delivery notes & measurements",
-        "inventory": "Tile, stone & adhesives"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / комната и этаж",
+        "document": "Заказы плитки, накладные и замеры",
+        "inventory": "Плитка, камень и клеи"
       },
       "clientsLabel": "Заказчики и объекты напольных покрытий",
-      "documentsLabel": "m² orders, delivery notes & shop drawings",
-      "recordsLabel": "Supply approvals, batches & flooring completion",
+      "documentsLabel": "Заказы м², накладные и рабочие чертежи",
+      "recordsLabel": "Согласования поставки, партии и завершение напольных работ",
       "homeTitle": "Центр управления для плитки и камня.",
-      "homeDescription": "Track m² orders, batches, deliveries and site logs with AI that reads SKUs and quantities.",
+      "homeDescription": "Отслеживайте заказы м², партии, поставки и журналы с ИИ, который читает SKU и количества.",
       "scanner": {
         "title": "Разбор документов по напольным покрытиям",
-        "subtitle": "Cuts, quantities and logistics",
+        "subtitle": "Раскрой, количества и логистика",
         "dropzoneTitle": "Загрузите заказы, накладные или планы",
-        "dropzoneSub": "Monitor batches and installation progress"
+        "dropzoneSub": "Контролируйте партии и прогресс монтажа"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site daily log",
-          "description": "Flooring crews & phases.",
+          "label": "Дневник работ на объекте",
+          "description": "Бригады и этапы напольных работ.",
           "kind": "REPORT"
         },
         {
           "id": "FLOOR_DELIVERY_APPROVAL",
-          "label": "Flooring / batch delivery approval",
-          "description": "Confirm materials received on site.",
+          "label": "Поставка партии напольных материалов",
+          "description": "Подтвердить получение материалов на объекте.",
           "kind": "APPROVAL"
         },
         {
           "id": "FLOOR_PHASE_APPROVAL",
-          "label": "Flooring phase completion approval",
-          "description": "Approve handover of area or phase.",
+          "label": "Завершение этапа напольных работ",
+          "description": "Подтвердить передачу зоны или этапа.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Flooring invoice",
-          "description": "Official billing for areas or phases.",
+          "label": "Счёт за напольные работы",
+          "description": "Официальный счёт за зоны или этапы.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "TILE_ORDER": {
-          "label": "Tile / ceramic order",
-          "description": "Sizes, m² and batch"
+          "label": "Заказ плитки / керамики",
+          "description": "Размеры, м² и партия"
         },
         "DELIVERY_NOTE": {
-          "label": "Delivery note",
-          "description": "Items delivered to site"
+          "label": "Накладная",
+          "description": "Позиции, доставленные на объект"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Progress"
+          "label": "Журнал работ на объекте",
+          "description": "Прогресс"
         }
       },
       "resultColumns": {
@@ -339,61 +339,61 @@
     },
     "ALUMINUM": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / openings & floors",
-        "document": "Measurements, profile & glass orders",
-        "inventory": "Profiles, glass & installation hardware"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / проёмы и этажи",
+        "document": "Замеры, заказы профиля и стекла",
+        "inventory": "Профили, стекло и монтажная фурнитура"
       },
       "clientsLabel": "Заказчики и объекты алюминия/стекла",
-      "documentsLabel": "Opening drawings, profile & glass orders",
-      "recordsLabel": "Measurement approvals, supply & installation",
+      "documentsLabel": "Чертежи проёмов, заказы профиля и стекла",
+      "recordsLabel": "Согласования замеров, поставка и монтаж",
       "homeTitle": "Центр управления для алюминия и остекления.",
-      "homeDescription": "Measurements, orders, installation logs and invoices with AI that reads profiles and glass specs.",
+      "homeDescription": "Замеры, заказы, журналы монтажа и счета с ИИ, который читает профили и спецификации стекла.",
       "scanner": {
         "title": "Разбор документов по алюминию и стеклу",
-        "subtitle": "Frames, sizes and fabrication",
+        "subtitle": "Рамы, размеры и изготовление",
         "dropzoneTitle": "Загрузите чертежи, заказы или фото",
-        "dropzoneSub": "Track openings and fabrication status"
+        "dropzoneSub": "Отслеживайте проёмы и статус изготовления"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site installation log",
-          "description": "Openings, crews & progress.",
+          "label": "Журнал монтажа на объекте",
+          "description": "Проёмы, бригады и прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "ALU_MEASURE_APPROVAL",
-          "label": "Measurement / fabrication approval",
-          "description": "Signed measurements for production.",
+          "label": "Замер / допуск к изготовлению",
+          "description": "Подписанные замеры для производства.",
           "kind": "APPROVAL"
         },
         {
           "id": "ALU_GLASS_APPROVAL",
-          "label": "Glass / profile supply approval",
-          "description": "Confirm materials received on site.",
+          "label": "Поставка стекла / профиля",
+          "description": "Подтвердить получение материалов на объекте.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Aluminum invoice",
-          "description": "Official billing per phase or opening.",
+          "label": "Счёт за алюминиевые работы",
+          "description": "Официальный счёт за этап или проём.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "ALU_MEASUREMENT": {
-          "label": "Measurements / sash drawing",
-          "description": "Opening sizes and profiles"
+          "label": "Замеры / чертёж створки",
+          "description": "Размеры проёмов и профили"
         },
         "GLASS_ORDER": {
-          "label": "Glass order",
-          "description": "Thickness, type and dimensions"
+          "label": "Заказ стекла",
+          "description": "Толщина, тип и размеры"
         },
         "SITE_LOG": {
-          "label": "Installation log",
-          "description": "Site execution"
+          "label": "Журнал монтажа",
+          "description": "Исполнение на объекте"
         }
       },
       "resultColumns": {
@@ -404,61 +404,61 @@
     },
     "FINISHING": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / interior space",
-        "document": "Joinery & kitchen orders and delivery notes",
-        "inventory": "Doors, kitchens & built-ins"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / внутреннее помещение",
+        "document": "Заказы столярки и кухонь, накладные",
+        "inventory": "Двери, кухни и встроенная мебель"
       },
       "clientsLabel": "Заказчики и объекты внутренней отделки",
-      "documentsLabel": "Joinery & kitchen orders and delivery notes",
-      "recordsLabel": "Installation approvals, handovers & finishing stages",
+      "documentsLabel": "Заказы столярки и кухонь, накладные",
+      "recordsLabel": "Согласования монтажа, передачи и этапы отделки",
       "homeTitle": "Центр управления для внутренней отделки.",
-      "homeDescription": "Orders, deliveries, installation logs and invoices in one place with AI tuned to joinery and kitchens.",
+      "homeDescription": "Заказы, поставки, журналы монтажа и счета в одном месте с ИИ для столярки и кухонь.",
       "scanner": {
         "title": "Разбор документов отделки",
-        "subtitle": "Doors, kitchens, cabinets — orders & supply",
+        "subtitle": "Двери, кухни, шкафы — заказы и поставка",
         "dropzoneTitle": "Загрузите заказы кухонь/столярки или накладные",
-        "dropzoneSub": "Track rooms, suppliers and install progress"
+        "dropzoneSub": "Отслеживайте помещения, поставщиков и прогресс монтажа"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Site work & install log",
-          "description": "Spaces, crews & phases.",
+          "label": "Журнал работ и монтажа",
+          "description": "Помещения, бригады и этапы.",
           "kind": "REPORT"
         },
         {
           "id": "FINISH_INSTALL_APPROVAL",
-          "label": "Finishing install / handover approval",
-          "description": "Approve item or room handover to client.",
+          "label": "Монтаж отделки / акт передачи",
+          "description": "Подтвердить передачу изделия или помещения клиенту.",
           "kind": "APPROVAL"
         },
         {
           "id": "FINISH_SUPPLY_APPROVAL",
-          "label": "Finishing supply approval",
-          "description": "Confirm receipt of kitchen, doors or casework.",
+          "label": "Подтверждение поставки отделки",
+          "description": "Подтвердить получение кухни, дверей или мебели.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Interior finishing invoice",
-          "description": "Official billing per phase or item.",
+          "label": "Счёт за внутреннюю отделку",
+          "description": "Официальный счёт за этап или позицию.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "JOINERY_ORDER": {
-          "label": "Joinery / kitchen order",
-          "description": "Specs and delivery dates"
+          "label": "Заказ столярки / кухни",
+          "description": "Спецификации и даты поставки"
         },
         "DELIVERY_NOTE": {
-          "label": "Delivery note",
-          "description": "Items received"
+          "label": "Накладная",
+          "description": "Полученные позиции"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Installation"
+          "label": "Журнал работ на объекте",
+          "description": "Монтаж"
         }
       },
       "resultColumns": {
@@ -469,61 +469,61 @@
     },
     "LANDSCAPING": {
       "vocabulary": {
-        "client": "Client / general contractor",
-        "project": "Site / landscape zone",
-        "document": "Quotes, plant & irrigation orders",
-        "inventory": "Plants, hardscape & irrigation parts"
+        "client": "Заказчик / генподрядчик",
+        "project": "Объект / ландшафтная зона",
+        "document": "Сметы, заказы растений и полива",
+        "inventory": "Растения, твёрдые покрытия и детали полива"
       },
       "clientsLabel": "Заказчики и ландшафтные объекты",
-      "documentsLabel": "Quotes, material orders & landscape plans",
-      "recordsLabel": "Execution approvals, supply & exterior phases",
+      "documentsLabel": "Сметы, заказы материалов и ландшафтные планы",
+      "recordsLabel": "Согласования исполнения, поставка и наружные этапы",
       "homeTitle": "Центр управления для ландшафта и двора.",
-      "homeDescription": "Quotes, supply, site logs and invoices with AI that understands irrigation, planting and hardscape.",
+      "homeDescription": "Сметы, поставка, журналы и счета с ИИ для полива, посадки и твёрдых покрытий.",
       "scanner": {
         "title": "Разбор ландшафтных документов",
-        "subtitle": "Planting, irrigation, exterior paving",
+        "subtitle": "Посадка, полив, наружное мощение",
         "dropzoneTitle": "Загрузите сметы, спецификации орошения или фото",
-        "dropzoneSub": "Track zones, materials and execution"
+        "dropzoneSub": "Отслеживайте зоны, материалы и исполнение"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Field work log",
-          "description": "Execution, crews & progress.",
+          "label": "Журнал полевых работ",
+          "description": "Исполнение, бригады и прогресс.",
           "kind": "REPORT"
         },
         {
           "id": "LAND_PHASE_APPROVAL",
-          "label": "Landscape / exterior phase approval",
-          "description": "Approve completion of phase or zone.",
+          "label": "Допуск ландшафтного / наружного этапа",
+          "description": "Подтвердить завершение этапа или зоны.",
           "kind": "APPROVAL"
         },
         {
           "id": "LAND_SUPPLY_APPROVAL",
-          "label": "Plant / material supply approval",
-          "description": "Confirm materials received on site.",
+          "label": "Поставка растений / материалов",
+          "description": "Подтвердить получение материалов на объекте.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Landscaping invoice",
-          "description": "Official billing per phase or scope.",
+          "label": "Счёт за благоустройство",
+          "description": "Официальный счёт за этап или объём работ.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "LANDSCAPE_QUOTE": {
-          "label": "Landscaping quote",
-          "description": "Areas, trees, irrigation system"
+          "label": "Смета на благоустройство",
+          "description": "Зоны, деревья, система полива"
         },
         "IRRIGATION_PARTS": {
-          "label": "Irrigation parts",
-          "description": "Sprinklers, pipes, controllers"
+          "label": "Детали полива",
+          "description": "Разбрызгиватели, трубы, контроллеры"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Execution"
+          "label": "Журнал работ на объекте",
+          "description": "Исполнение"
         }
       },
       "resultColumns": {
@@ -534,61 +534,61 @@
     },
     "SUBCONTRACTOR_OTHER": {
       "vocabulary": {
-        "client": "General contractor / client",
-        "project": "Site / sub-package",
-        "document": "Quotes, progress invoices & field reports",
-        "inventory": "Materials by sub-package"
+        "client": "Генподрядчик / заказчик",
+        "project": "Объект / субпакет",
+        "document": "Сметы, промежуточные счета и полевые отчёты",
+        "inventory": "Материалы по субпакету"
       },
       "clientsLabel": "Генподрядчики и заказчики",
-      "documentsLabel": "Sub quotes, progress billing & field certificates",
-      "recordsLabel": "Progress approvals, supply & phase close-out",
+      "documentsLabel": "Сметы субподряда, промежуточные счета и полевые акты",
+      "recordsLabel": "Согласования прогресса, поставка и закрытие этапа",
       "homeTitle": "Центр управления для субподряда — сметы, выполнение, оплата.",
-      "homeDescription": "Manage quotes, progress invoices, site diaries and approvals with AI tuned to subcontract packages.",
+      "homeDescription": "Ведите сметы, промежуточные счета, дневники и согласования с ИИ под пакеты субподряда.",
       "scanner": {
         "title": "Разбор документов субподряда",
-        "subtitle": "Quotes, invoices and field evidence",
+        "subtitle": "Сметы, счета и полевые подтверждения",
         "dropzoneTitle": "Загрузите сметы, счета по этапам или отчёты",
-        "dropzoneSub": "Track phases, percentages and cashflow"
+        "dropzoneSub": "Отслеживайте этапы, проценты и денежный поток"
       },
       "templates": [
         {
           "id": "SITE_LOG",
-          "label": "Field reporting log",
-          "description": "Execution, crew and daily notes.",
+          "label": "Журнал полевой отчётности",
+          "description": "Исполнение, бригада и ежедневные записи.",
           "kind": "REPORT"
         },
         {
           "id": "SUB_PROGRESS_APPROVAL",
-          "label": "Progress / percentage approval",
-          "description": "Approve phase or percent complete.",
+          "label": "Допуск прогресса / процента",
+          "description": "Подтвердить этап или процент готовности.",
           "kind": "APPROVAL"
         },
         {
           "id": "SUB_QUOTE_ACCEPTANCE",
-          "label": "Sub quote acceptance / adjustment",
-          "description": "Document approval or scope change.",
+          "label": "Принятие / корректировка сметы субподряда",
+          "description": "Согласование документа или изменение объёма.",
           "kind": "APPROVAL"
         },
         {
           "id": "INVOICE",
-          "label": "Progress / sub invoice",
-          "description": "Official billing by phase or percent.",
+          "label": "Промежуточный счёт субподряда",
+          "description": "Официальный счёт по этапу или проценту.",
           "kind": "OFFICIAL",
           "issuedDocumentType": "INVOICE"
         }
       ],
       "analysisTypes": {
         "SUB_QUOTE": {
-          "label": "Subcontractor quote",
-          "description": "Scope, units and pricing"
+          "label": "Смета субподрядчика",
+          "description": "Объём, единицы и цены"
         },
         "PROGRESS_INVOICE": {
-          "label": "Progress / application invoice",
-          "description": "Percentages and stages"
+          "label": "Промежуточный / исполнительный счёт",
+          "description": "Проценты и этапы"
         },
         "SITE_LOG": {
-          "label": "Site work log",
-          "description": "Field reporting"
+          "label": "Журнал работ на объекте",
+          "description": "Полевая отчётность"
         }
       },
       "resultColumns": {

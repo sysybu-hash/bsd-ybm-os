@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { prisma } from "@/lib/prisma";
-import { runTriEngineExtractionValidated } from "@/lib/tri-engine-extract-validated";
-import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
 import { getMessages } from "@/lib/i18n/load-messages";
 import { normalizeLocale } from "@/lib/i18n/config";
-import { createOrganizationNotification } from "@/lib/notifications-service";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest } from "@/lib/api-json";
+import { unifiedExtractFromFile } from "@/lib/scan/unified-extract";
+import { mapLegacyAnalysisTypeToScanMode } from "@/lib/scan/unified-extract";
+import { unifiedSaveScan } from "@/lib/scan/unified-save";
+import { inferScreenTypeFromFileForIndustry } from "@/lib/ai/screen-decode-policy";
+import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 
 export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
   try {
@@ -18,70 +20,56 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
     });
 
     const formData = await request.formData();
-    const file = formData.get("file") as File;
-
+    const file = formData.get("file") as File | null;
     if (!file) {
       return jsonBadRequest("No file uploaded", "missing_file");
     }
 
-    const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString("base64");
-    const mimeType = file.type || "image/jpeg";
+    const industry = org?.industry ?? "CONSTRUCTION";
+    const analysisType = (formData.get("analysisType") as string | null) ?? "INVOICE";
+    const scanModeRaw = formData.get("scanMode") as string | null;
+    const scanMode: ScanModeV5 =
+      scanModeRaw && scanModeRaw.length > 0
+        ? (scanModeRaw as ScanModeV5)
+        : mapLegacyAnalysisTypeToScanMode(analysisType);
 
-    const cookieJar = await cookies();
-    const locale = normalizeLocale(cookieJar.get("bsd-locale")?.value);
-    const messages = getMessages(locale);
+    const persist = formData.get("persist") === "true";
 
-    const extraction = await runTriEngineExtractionValidated({
-      base64,
-      mimeType,
-      fileName: file.name,
-      scanMode: "INVOICE_FINANCIAL",
-      locale,
-      industry: org?.industry || "CONSTRUCTION",
-      orgTrade: org?.constructionTrade || "GENERAL_CONTRACTOR",
-      messages,
+    const extraction = await unifiedExtractFromFile({
+      file,
+      userId,
+      scanMode,
+      industry,
+      engineRunMode: "AUTO",
     });
 
     const { v5, aiData } = extraction;
 
-    const dbDoc = await prisma.document.create({
-      data: {
-        fileName: file.name,
-        type: v5.docType || "UNKNOWN",
-        userId,
-        organizationId: orgId,
-        aiData: aiData as object,
-        status: "PROCESSED",
-      },
-    });
+    let documentId: string | undefined;
+    if (persist) {
+      const saved = await unifiedSaveScan(
+        {
+          file,
+          fileName: file.name,
+          v5,
+          aiData,
+          target: "expense",
+          userId,
+          organizationId: orgId,
+        },
+        { userId, organizationId: orgId, industry },
+      );
+      if (!saved.ok) {
+        return NextResponse.json({ success: false, error: saved.error }, { status: 500 });
+      }
+      documentId = saved.documentId;
+    }
 
-    await persistDocumentLineItemsFromAiData(dbDoc.id, orgId, v5.vendor || null, aiData, {
-      notifyUserId: userId,
-      fileLabel: file.name,
-    });
-
-    const expense = await prisma.expenseRecord.create({
-      data: {
-        organizationId: orgId,
-        vendorName: v5.vendor || "לא צוין",
-        amountNet: v5.total / 1.17,
-        vat: v5.total - v5.total / 1.17,
-        total: v5.total,
-        expenseDate: v5.date ? new Date(v5.date) : new Date(),
-        description: v5.summary,
-        status: "POSTED",
-        sourceDocumentId: dbDoc.id,
-        aiExtractedJson: aiData as object,
-        allocation: "PROJECT",
-      },
-    });
-
-    await createOrganizationNotification(
-      orgId,
-      "חשבונית חדשה נסרקה",
-      `${v5.vendor} | ₪${v5.total.toLocaleString()} | מחכה לאישור שלך`,
-    );
+    const cookieJar = await cookies();
+    const locale = normalizeLocale(cookieJar.get("bsd-locale")?.value);
+    const messages = getMessages(locale);
+    void messages;
+    void inferScreenTypeFromFileForIndustry;
 
     return NextResponse.json({
       success: true,
@@ -90,29 +78,11 @@ export const POST = withWorkspacesAuth(async (request, { orgId, userId }) => {
         vendor: v5.vendor,
         taxId: v5.taxId,
         projectSuggestion: v5.documentMetadata?.project || "פרויקט כללי",
-        confidence: 0.95,
+        confidence: v5.confidenceScore ?? 0.95,
         summary: v5.summary,
+        documentId,
       },
-      notification: {
-        id: `smart-expense-${dbDoc.id}`,
-        title: "Smart Expense Detected",
-        message: `${v5.vendor} | ₪${v5.total.toLocaleString()} | שיוך מוצע: ${v5.documentMetadata?.project || "פרויקט כללי"}`,
-        severity: "success",
-        createdAt: new Date().toISOString(),
-        actions: [
-          {
-            label: "Confirm Expense",
-            action: "confirmExpense",
-            payload: {
-              documentId: dbDoc.id,
-              expenseId: expense.id,
-              vendor: v5.vendor,
-              taxId: v5.taxId || "",
-              amount: String(v5.total),
-            },
-          },
-        ],
-      },
+      v5,
     });
   } catch (err: unknown) {
     return apiErrorResponse(err, "Analysis/Persist Error");

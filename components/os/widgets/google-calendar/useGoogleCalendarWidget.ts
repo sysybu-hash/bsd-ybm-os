@@ -12,7 +12,11 @@ import {
   startOfWeek,
   weekStartsOnForLocale,
 } from "@/lib/client/google-calendar-week";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { CalendarEventRow, CalendarViewMode } from "./types";
+
+const CALENDAR_VIEWS: CalendarViewMode[] = ["week", "month", "agenda"];
 
 function buildEventsByDay(events: CalendarEventRow[], days: Date[]): Map<string, CalendarEventRow[]> {
   const map = new Map<string, CalendarEventRow[]>();
@@ -41,7 +45,21 @@ export function useGoogleCalendarWidget(
   const [calendarSummary, setCalendarSummary] = useState<string | null>(null);
   const [calendarColor, setCalendarColor] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(false);
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
+  const [viewMode, setViewModeState] = useState<CalendarViewMode>("week");
+  const applyView = useCallback((view: WidgetViewState) => {
+    const mode = view.viewMode;
+    if (typeof mode === "string" && (CALENDAR_VIEWS as string[]).includes(mode)) {
+      setViewModeState(mode as CalendarViewMode);
+    }
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyView);
+  const setViewMode = useCallback(
+    (mode: CalendarViewMode) => {
+      setViewModeState(mode);
+      pushView({ viewMode: mode });
+    },
+    [pushView],
+  );
   const [viewAnchor, setViewAnchor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [creating, setCreating] = useState(false);

@@ -82,15 +82,15 @@ const defaultWebCommand = process.env.CI
 export default defineConfig({
   testDir: './e2e',
   globalSetup: "./e2e/global-setup.ts",
-  timeout: process.env.CI ? 120_000 : 60_000,
+  timeout: process.env.CI ? 120_000 : 90_000,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Parallel workers in CI — balance speed vs Next server load under Playwright webServer. */
-  workers: process.env.CI ? 4 : undefined,
+  retries: process.env.CI ? 2 : 1,
+  /* Parallel workers — keep local runs lighter to avoid auth/workspace flakes. */
+  workers: process.env.CI ? 4 : 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

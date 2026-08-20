@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { HardDrive, Loader2, Save } from "lucide-react";
+import { HardDrive, Save } from "lucide-react";
+import { OsButton } from "@/components/os/ui";
 import { DEFAULT_GOOGLE_DRIVE_FOLDER_NAME } from "@/lib/google-drive-config";
 import type { DriveSettings } from "./useSettingsWidget";
 
@@ -110,22 +111,20 @@ export function SettingsDriveSection({
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={driveSaving}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
-        >
-          {driveSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+        <OsButton variant="primary" loading={driveSaving} icon={<Save size={16} aria-hidden />} onClick={onSave}>
           {t(`${S}.saveDriveSettings`)}
-        </button>
-        <button
-          type="button"
-          onClick={() => { window.location.assign("/api/auth/google-reconnect?callbackUrl=/"); }}
-          className="px-5 py-2 border border-[color:var(--border-main)] rounded-xl text-sm font-bold text-[color:var(--foreground-main)] hover:bg-[color:var(--surface-soft)] transition-all"
+        </OsButton>
+        <OsButton
+          variant="secondary"
+          onClick={() => {
+            window.location.assign("/api/auth/google-link?callbackUrl=/?w=settings");
+          }}
         >
+          {t(`${S}.connectGoogleSignIn`)}
+        </OsButton>
+        <OsButton variant="secondary" onClick={() => { window.location.assign("/api/auth/google-reconnect?callbackUrl=/"); }}>
           {t(`${S}.reconnectGoogle`)}
-        </button>
+        </OsButton>
       </div>
     </section>
   );

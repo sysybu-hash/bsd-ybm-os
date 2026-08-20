@@ -1,5 +1,7 @@
 # SLOs — BSD-YBM OS
 
+> עדכון: 2026-08-12 — אחרי master closeout (PR #31). צ'קליסט הפעלת התראות נשאר Owner.
+
 ## זמינות
 
 | שירות | יעד | חלון |
@@ -22,13 +24,43 @@
 |-----|-----|
 | p95 `/api/auth/session` | <500ms |
 | p95 routes כבדים (CRM list) | <1s |
-| Lighthouse Performance (landing) | ≥90 |
+| Lighthouse Performance (landing desktop) | ≥90 |
+| Lighthouse Performance (landing mobile) | ≥78 ביניים → ≥90 |
 
-## התראות
+## התראות — צ'קליסט הפעלה (Owner)
 
-- Sentry: spike 5xx, cron miss
-- PostHog: anomaly על `session_create_failed`
-- Vercel: deployment failure
+לא ניתן ליצור rules ב-Sentry/PostHog מהריפו בלי API token ייעודי. הוראות לחיצה:
+
+### 1. Sentry — Error spike
+1. Sentry → Project `bsd-ybm-os` → Alerts → Create Alert
+2. Condition: error rate / issue frequency spike (למשל &gt; 0.5% ב-5 דק׳)
+3. Action: email / Slack ל-on-call
+
+- [ ] **Sentry** error spike מוגדר
+
+### 2. Sentry Crons
+1. ודאו `SENTRY_DSN` בפרוד
+2. אחרי הרצת crons — מופיעים monitors לכל slug מ-`withCronGuard`
+3. **Timezone:** Vercel Cron = **UTC**; מוניטורים לעיתים `Asia/Jerusalem` — ראו [RUNBOOK.md](./RUNBOOK.md) למניעת false miss. יישור מומלץ: הגדרת monitor schedule ל-UTC תואם `vercel.json`
+
+- [ ] **Sentry Crons** monitors מאומתים (UTC מיושר)
+
+### 3. PostHog — `session_create_failed`
+1. PostHog → Insights → event `session_create_failed`
+2. Alerts → anomaly / threshold
+
+- [ ] **PostHog** alert מוגדר
+
+### 4. Vercel — Deployment Failed
+1. Vercel → Project → Settings → Notifications
+2. Enable Deployment Failed → owner email
+
+- [ ] **Vercel** deploy-fail notification מופעל
+
+| מקור | כלל | קוד / הערה |
+|------|-----|------------|
+| Sentry Crons | Missed check-in | `lib/cron-guard.ts` → `Sentry.withMonitor` |
+| Vercel Cron schedule | UTC | תעדו ב-RUNBOOK; יישרו monitors ל-UTC |
 
 ## Error budget
 

@@ -28,14 +28,15 @@ export function CategoryGlyph({ category }: { category: ArchiveFileCategory }) {
   );
 }
 
-export function categoryChipLabel(cat: ArchiveFileCategory | "all"): string {
+/** Returns an i18n key under workspaceWidgets.erpArchive for the category chip. */
+export function categoryChipLabelKey(cat: ArchiveFileCategory | "all"): string {
   switch (cat) {
-    case "all": return "הכל";
-    case "invoice": return "חשבוניות";
-    case "quote": return "הצעות";
-    case "contract": return "חוזים";
-    case "SIGNED_QUOTE": return "חתומים";
-    case "other": return "אחר";
+    case "all": return "workspaceWidgets.erpArchive.filterAll";
+    case "invoice": return "workspaceWidgets.erpArchive.filterInvoice";
+    case "quote": return "workspaceWidgets.erpArchive.filterQuote";
+    case "contract": return "workspaceWidgets.erpArchive.filterContract";
+    case "SIGNED_QUOTE": return "workspaceWidgets.erpArchive.filterSigned";
+    case "other": return "workspaceWidgets.erpArchive.filterOther";
     default: return cat;
   }
 }

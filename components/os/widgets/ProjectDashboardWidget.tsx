@@ -13,7 +13,9 @@ import { FinancialTab } from "./project-dashboard/FinancialTab";
 import { DiaryTab } from "./project-dashboard/DiaryTab";
 import { SettingsTab } from "./project-dashboard/SettingsTab";
 import { DashboardHeader } from "./project-dashboard/DashboardHeader";
+import ProjectOverviewTab from "./project-dashboard/ProjectOverviewTab";
 import { useProjectDashboard } from "./project-dashboard/useProjectDashboard";
+import ProjectBoardWidget from "./ProjectBoardWidget";
 
 const NotebookLMWidget = dynamic(() => import("@/components/os/widgets/NotebookLMWidget"), {
   loading: () => (
@@ -43,7 +45,12 @@ export default function ProjectDashboardWidget({
     diaryInitialTaskId, setDiaryInitialTaskId,
     showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
-    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile,
+    selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush, onBlueprintFile, deleteProject,
+    blueprintEnginesUsed,
+    blueprintEngineRunMode, setBlueprintEngineRunMode,
+    blueprintInstruction, setBlueprintInstruction,
+    blueprintCustomEngines, setBlueprintCustomEngines,
+    blueprintUseOcr, setBlueprintUseOcr,
   } = s;
 
   if (showProjectPicker) {
@@ -52,6 +59,7 @@ export default function ProjectDashboardWidget({
         projects={projectsList}
         loading={projectsListLoading}
         onSelect={selectProject}
+        onDelete={deleteProject}
         titleKey="projectDashboard.pickProjectTitle"
         descKey="projectDashboard.pickProjectDesc"
         loadingKey="projectDashboard.pickProjectLoading"
@@ -114,28 +122,54 @@ export default function ProjectDashboardWidget({
         resetWorkspace={resetWorkspace}
         togglePush={togglePush}
         onBlueprintFile={onBlueprintFile}
+        blueprintEngineRunMode={blueprintEngineRunMode}
+        setBlueprintEngineRunMode={setBlueprintEngineRunMode}
+        blueprintInstruction={blueprintInstruction}
+        setBlueprintInstruction={setBlueprintInstruction}
+        blueprintCustomEngines={blueprintCustomEngines}
+        setBlueprintCustomEngines={setBlueprintCustomEngines}
+        blueprintUseOcr={blueprintUseOcr}
+        setBlueprintUseOcr={setBlueprintUseOcr}
         openWorkspaceWidget={openWorkspaceWidget}
       />
 
       {blueprintPreview ? (
         <BlueprintPreviewModal
           data={blueprintPreview}
+          enginesUsed={blueprintEnginesUsed}
+          projectName={data.name}
           onConfirm={confirmBlueprintImport}
           onClose={() => setBlueprintPreview(null)}
         />
       ) : null}
 
-      <div data-widget-scroll-pane className="custom-scrollbar flex flex-col p-2 md:p-3">
+      <div data-widget-scroll-pane className="custom-scrollbar flex min-h-0 flex-1 flex-col">
+        {activeTab === "overview" && (
+          <ProjectOverviewTab data={data} onNavigateTab={setActiveTab} />
+        )}
+        {activeTab === "tasks" && (
+          <div className="flex min-h-[420px] flex-1 flex-col">
+            <ProjectBoardWidget
+              projectId={resolvedId}
+              openWorkspaceWidget={openWorkspaceWidget}
+              embedded
+            />
+          </div>
+        )}
         {activeTab === "financial" && (
-          <FinancialTab
-            data={data}
-            apiBase={apiBase}
-            isCompanyMgmt={isCompanyMgmt}
-            refresh={refresh}
-            t={t}
-          />
+          <div className="p-2 md:p-3">
+            <FinancialTab
+              data={data}
+              apiBase={apiBase}
+              isCompanyMgmt={isCompanyMgmt}
+              refresh={refresh}
+              t={t}
+              openWorkspaceWidget={openWorkspaceWidget}
+            />
+          </div>
         )}
         {activeTab === "diary" && (
+          <div className="p-2 md:p-3">
           <DiaryTab
             data={data}
             apiBase={apiBase}
@@ -144,8 +178,10 @@ export default function ProjectDashboardWidget({
             initialDesc={diaryInitialDesc}
             initialTaskId={diaryInitialTaskId}
           />
+          </div>
         )}
         {activeTab === "gantt" && (
+          <div className="p-2 md:p-3">
           <ProjectSchedulePanel
             projectId={resolvedId}
             projectName={data.name}
@@ -169,12 +205,15 @@ export default function ProjectDashboardWidget({
             }
             labels={buildGanttLabels(t)}
           />
+          </div>
         )}
         {activeTab === "settings" && (
-          <SettingsTab data={data} resolvedId={resolvedId} refresh={refresh} t={t} />
+          <div className="p-2 md:p-3">
+            <SettingsTab data={data} resolvedId={resolvedId} refresh={refresh} t={t} />
+          </div>
         )}
         {activeTab === "ai" && (
-          <div className="flex min-h-[280px] flex-1 flex-col">
+          <div className="flex min-h-[280px] flex-1 flex-col p-2 md:p-3">
             <NotebookLMWidget liveData={{ projectId: resolvedId, name: data.name }} />
           </div>
         )}

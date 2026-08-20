@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
+import { isWonPipelineStatus } from "@/lib/crm/pipeline-status";
 import { prisma } from "@/lib/prisma";
 import { assignContactProject, syncProjectCrmContact } from "@/lib/workspace-api/project-crm-sync";
 import { seedDefaultPaymentMilestonesIfEmpty } from "@/lib/workspace-api/seed-project-milestones";
@@ -318,7 +319,7 @@ export async function updateContactStatusAction(contactId: string, status: strin
   await prisma.contact.update({ where: { id: contactId }, data: { status } });
 
   /* ── סנכרון ERP: כשעסקה נסגרת בהצלחה — צור חשבונית ממתינה אוטומטית ── */
-  if (status === "CLOSED_WON") {
+  if (isWonPipelineStatus(status)) {
     const existingInvoice = await prisma.issuedDocument.findFirst({
       where: { contactId, organizationId: ctx.orgId, type: "INVOICE" },
       select: { id: true },

@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { MoreVertical } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
 import { ArchivePreviewPanel } from "./ArchivePreviewPanel";
-import { ArchiveActionMenu } from "./ArchiveActionMenu";
+import { ArchiveMenuTrigger } from "./ArchiveMenuTrigger";
 import { CategoryGlyph } from "./utils";
 import type { ErpArchiveFile, ScanDocPreview } from "./types";
 
@@ -50,7 +49,7 @@ export function ArchiveFilesSection({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <div className="custom-scrollbar min-h-0 min-w-0 flex-1 overflow-auto p-4 md:p-6">
         {loading ? (
-          <WidgetState variant="loading" message="טוען ארכיון…" />
+          <WidgetState variant="loading" message={t("workspaceWidgets.erpArchive.loadingArchive")} />
         ) : loadError ? (
           <WidgetState variant="error" message={loadError} onRetry={fetchArchive} />
         ) : files.length === 0 ? (
@@ -59,11 +58,11 @@ export function ArchiveFilesSection({
           <div className="overflow-x-auto">
             <div className="min-w-[420px] space-y-2">
               <div className="mb-2 grid grid-cols-12 border-b border-[color:var(--border-main)]/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground-muted)]">
-                <div className="col-span-5">שם</div>
-                <div className="col-span-2 text-center">פרויקט</div>
+                <div className="col-span-5">{t("workspaceWidgets.erpArchive.colName")}</div>
+                <div className="col-span-2 text-center">{t("workspaceWidgets.erpArchive.colProject")}</div>
                 <div className="col-span-2 text-center">{listSourceColumnLabel}</div>
-                <div className="col-span-2 text-center">עודכן</div>
-                <div className="col-span-1 text-center">גודל</div>
+                <div className="col-span-2 text-center">{t("workspaceWidgets.erpArchive.colUpdated")}</div>
+                <div className="col-span-1 text-center">{t("workspaceWidgets.erpArchive.colSize")}</div>
               </div>
               {files.map((file) => {
                 const selected = selectedFile?.id === file.id;
@@ -82,17 +81,19 @@ export function ArchiveFilesSection({
                       </span>
                       <span className="col-span-2 truncate text-center text-[11px] font-bold text-[color:var(--foreground-muted)]">{file.projectName}</span>
                       <span className="col-span-2 truncate text-center text-[11px] text-[color:var(--foreground-muted)]">
-                        {archiveView === "shared" ? file.ownerName ?? "—" : file.source === "issued" ? "מונפק" : "סריקה"}
+                        {archiveView === "shared" ? file.ownerName ?? "—" : t(file.source === "issued" ? "workspaceWidgets.erpArchive.sourceIssued" : "workspaceWidgets.erpArchive.sourceScan")}
                       </span>
                       <span className="col-span-1 text-center text-[11px] text-[color:var(--foreground-muted)]">{new Date(file.updatedAt).toLocaleDateString("he-IL")}</span>
                       <span className="col-span-1 text-end text-[10px] text-[color:var(--foreground-muted)] opacity-80">{file.sizeLabel}</span>
                     </button>
                     <div className="relative col-span-1 flex items-center justify-end">
-                      <button type="button" aria-label={t("workspaceWidgets.itemActions.actionsMenu")} className="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/10 hover:text-[color:var(--foreground-main)]"
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}>
-                        <MoreVertical size={16} aria-hidden />
-                      </button>
-                      {openMenuId === file.id ? <ArchiveActionMenu {...actionMenuProps} file={file} className="absolute end-4 top-10 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl" /> : null}
+                      <ArchiveMenuTrigger
+                        {...actionMenuProps}
+                        file={file}
+                        isOpen={openMenuId === file.id}
+                        onToggle={() => setOpenMenuId((id) => (id === file.id ? null : file.id))}
+                        menuLabel={t("workspaceWidgets.itemActions.actionsMenu")}
+                      />
                     </div>
                   </div>
                 );
@@ -106,11 +107,14 @@ export function ArchiveFilesSection({
               return (
                 <div key={file.id} className={`relative flex flex-col items-center rounded-2xl border p-4 pt-10 text-center shadow-sm transition-all dark:shadow-none ${selected ? "border-amber-500/50 bg-[color:var(--surface-card)]/90" : "border-[color:var(--border-main)] bg-[color:var(--surface-card)]/50 hover:bg-[color:var(--surface-card)]/80"}`}>
                   <div className="absolute end-2 top-2">
-                    <button type="button" aria-label={t("workspaceWidgets.itemActions.actionsMenu")} className="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/15"
-                      onClick={(e) => { e.stopPropagation(); setOpenMenuId((id) => (id === file.id ? null : file.id)); }}>
-                      <MoreVertical size={16} aria-hidden />
-                    </button>
-                    {openMenuId === file.id ? <ArchiveActionMenu {...actionMenuProps} file={file} className="absolute end-0 top-9 z-30 min-w-[168px] rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] py-1 shadow-xl" /> : null}
+                    <ArchiveMenuTrigger
+                      {...actionMenuProps}
+                      file={file}
+                      isOpen={openMenuId === file.id}
+                      onToggle={() => setOpenMenuId((id) => (id === file.id ? null : file.id))}
+                      menuLabel={t("workspaceWidgets.itemActions.actionsMenu")}
+                      buttonClassName="rounded-lg p-1.5 text-[color:var(--foreground-muted)] hover:bg-[color:var(--foreground-muted)]/15"
+                    />
                   </div>
                   <button type="button" onClick={() => handlePreview(file)} aria-label={t("workspaceWidgets.itemActions.previewFile", { name: file.name })} className="flex w-full flex-col items-center text-center">
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--foreground-muted)]/10 text-[color:var(--foreground-muted)]">
@@ -119,7 +123,7 @@ export function ArchiveFilesSection({
                     <div className="mb-1 w-full truncate text-sm font-bold text-[color:var(--foreground-main)]">{file.name}</div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground-muted)]">{file.projectName}</div>
                     {archiveView === "shared" && file.ownerName ? (
-                      <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">מאת {file.ownerName}</div>
+                      <div className="mt-1 text-[10px] text-[color:var(--foreground-muted)]">{t("workspaceWidgets.erpArchive.byOwner", { name: file.ownerName ?? "" })}</div>
                     ) : null}
                   </button>
                 </div>

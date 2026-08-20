@@ -10,5 +10,592 @@
     "FINISHING": "גמר פנים (דלתות, מטבח…)",
     "LANDSCAPING": "גינון קשיח / חוץ",
     "SUBCONTRACTOR_OTHER": "קבלן משנה / אחר"
+  },
+  "constructionTrades": {
+    "ELECTRICAL": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / לוח חשמל",
+        "document": "תעודות בדיקה, הזמנות רכש וחשבוניות חשמל",
+        "inventory": "חומרי חשמל, לוחות ותאורה"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי חשמל",
+      "documentsLabel": "תעודות, שרטוטים והזמנות רכש חשמל",
+      "recordsLabel": "אישורי התקנה, בדיקות ובקרת איכות חשמל",
+      "homeTitle": "מרכז תפעול לצוותי חשמל — מהאתר ועד הניירת.",
+      "homeDescription": "יומני אתר, תעודות בדיקה, הזמנות ספקים וחשבוניות במרחב עבודה אחד, עם AI המותאם לתקני חשמל ובטיחות.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי חשמל",
+        "subtitle": "תעודות בדיקה, הזמנות חומרים וחשבוניות ספקים — הקשר חשמלי",
+        "dropzoneTitle": "העלו תעודות בדיקה, חשבוניות או הזמנות חומרים",
+        "dropzoneSub": "מעקב אחר לוחות, מעגלים ואישורים באתר"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן אתר יומי",
+          "description": "צוות, לוחות, אבני דרך והתקדמות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "ELEC_TEST_APPROVAL",
+          "label": "תעודת בדיקה / התקנה",
+          "description": "בדיקת חשמל חתומה עם הפניות לתקן.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "ELEC_SUPPLY_APPROVAL",
+          "label": "אישור אספקת חומרי חשמל",
+          "description": "אישור קבלת כבלים, לוחות או גופי תאורה.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית עבודות חשמל",
+          "description": "חיוב רשמי לפי שלבים או פרויקטים.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "ELECTRICAL_TEST_CERT": {
+          "label": "תעודת בדיקה / אישור התקנה",
+          "description": "זיהוי תקן, תאריך בדיקה וחותמים"
+        },
+        "MATERIAL_ORDER": {
+          "label": "הזמנת חומרים / ספק",
+          "description": "כבלים, לוחות, תאורה — כמויות ומחירים"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "צוות, שלבים והתקדמות יומית"
+        }
+      },
+      "resultColumns": {
+        "site_or_panel": "אתר / לוח",
+        "standard_ref": "תקן / אישור",
+        "approval_status": "סטטוס"
+      }
+    },
+    "PLUMBING": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / מערכת (מים / ביוב / מכלים)",
+        "document": "הזמנות צינורות, בדיקות לחץ וחשבוניות ספקים",
+        "inventory": "צינורות, אביזרים ואטמים"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי אינסטלציה",
+      "documentsLabel": "הזמנות חומרים, בדיקות לחץ ותוכניות מים / ביוב",
+      "recordsLabel": "אישורי אינסטלציה, בדיקות לחץ ורישומי אספקה",
+      "homeTitle": "מרכז תפעול לאינסטלטורים — מסמכי שטח ואישורים.",
+      "homeDescription": "מעקב אחר הזמנות, בדיקות לחץ, יומני אתר וחשבוניות ספקים עם AI שמבין מערכות מים וביוב.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי אינסטלציה",
+        "subtitle": "הזמנות צינורות, משלוחים, מכלים וספקים",
+        "dropzoneTitle": "העלו לוחות צינורות, בדיקות לחץ או הזמנות רכש",
+        "dropzoneSub": "מעקב אחר מערכות, ספקים והתקדמות באתר"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן אתר יומי",
+          "description": "צוות, שלבים והתקדמות יומית.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "PLUMB_PRESSURE_APPROVAL",
+          "label": "אישור בדיקת לחץ / דליפה",
+          "description": "רישום בדיקה חתום עם תוצאות.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "PLUMB_MATERIAL_APPROVAL",
+          "label": "אישור אספקת חומרי אינסטלציה",
+          "description": "אישור קבלת חומרים באתר.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית אינסטלציה",
+          "description": "חיוב רשמי לעבודות או שלבים.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "PLUMBING_SUPPLY_ORDER": {
+          "label": "הזמנת חומרים (צינורות / אביזרים)",
+          "description": "שורות, כמויות וספק"
+        },
+        "PRESSURE_TEST_REPORT": {
+          "label": "בדיקת לחץ / דליפה",
+          "description": "תאריכים, תוצאות ואישורים"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "התקדמות צוות באתר"
+        }
+      },
+      "resultColumns": {
+        "system_type": "מערכת (מים / ביוב / מכל)",
+        "material_type": "חומר עיקרי",
+        "supplier": "ספק"
+      }
+    },
+    "HVAC": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / מערכת מיזוג",
+        "document": "הזמנות ציוד, הפעלה וחשבוניות ספקים",
+        "inventory": "יחידות מיזוג, צנרת נחושת ואביזרים"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי מיזוג",
+      "documentsLabel": "הזמנות ציוד, הפעלה ודוחות התקנה",
+      "recordsLabel": "אישורי הפעלה, בדיקות הפעלה ומסמכי ספקים",
+      "homeTitle": "מרכז תפעול למיזוג — ציוד, אתרים ואישורים.",
+      "homeDescription": "מעקב אחר יחידות, יומני הפעלה, יומני אתר וחשבוניות עם AI שקורא דגמים, הספקים ומיקומים.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי מיזוג",
+        "subtitle": "יחידות, צ'ילרים, התקנות ואיזון",
+        "dropzoneTitle": "העלו הזמנות מיזוג, גיליונות הפעלה או תמונות",
+        "dropzoneSub": "מעקב אחר תגי ציוד ואבני דרך באתר"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן התקנה באתר",
+          "description": "צוותים, שלבים והתקדמות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "HVAC_COMMISSION_APPROVAL",
+          "label": "אישור הפעלה / השלמה",
+          "description": "רשימת הפעלה חתומה למסירה.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "HVAC_EQUIP_APPROVAL",
+          "label": "אישור אספקת ציוד מיזוג",
+          "description": "אישור קבלת יחידות ואביזרים.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית מיזוג",
+          "description": "חיוב רשמי לפרויקט או שלב.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "HVAC_ORDER": {
+          "label": "הזמנת ציוד מיזוג",
+          "description": "דגמים, kW/BTU וכמויות"
+        },
+        "COMMISSIONING_DOC": {
+          "label": "הפעלה / עלייה לקו",
+          "description": "בדיקות הפעלה ותאריכים"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "צוות והתקדמות"
+        }
+      },
+      "resultColumns": {
+        "equipment_tag": "ציוד / דגם",
+        "capacity": "הספק / פלט",
+        "location": "מיקום באתר"
+      }
+    },
+    "PAINTING": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / קומה וחלל",
+        "document": "כמויות צבע, הזמנות חומרים ודוחות שטח",
+        "inventory": "צבע, כלים וחומרי יישום"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי צבע",
+      "documentsLabel": "כמויות, הזמנות צבע ושרטוטי גמר",
+      "recordsLabel": "אישורי שלב גמר, כמויות ומשלוחים",
+      "homeTitle": "מרכז תפעול לצבע וגמר — שטחים, חומרים ואישורים.",
+      "homeDescription": "ניהול כמויות, הזמנות, יומני אתר וחשבוניות עם AI שמבין שכבות, צבעים ומ\"ר.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי צבע וגמר",
+        "subtitle": "שטחים, חומרים ושכבות",
+        "dropzoneTitle": "העלו לוחות צבע, כתבי כמויות או תעודות משלוח",
+        "dropzoneSub": "מעקב אחר שכבות, צבעים וכיסוי"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן אתר יומי",
+          "description": "שלבי גמר, צוותים והתקדמות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "PAINT_SCOPE_APPROVAL",
+          "label": "אישור היקף / שלב צבע",
+          "description": "אישור כמויות או השלמת שלב צבע.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "PAINT_MATERIAL_APPROVAL",
+          "label": "אישור אספקת צבע וצרכנים",
+          "description": "אישור קבלת דליים וחומרים.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית צבע וגמר",
+          "description": "חיוב רשמי לפי שלב או מ\"ר.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "PAINT_QUANTITY": {
+          "label": "כמויות צבע / שטחים",
+          "description": "מ\"ר, שכבות ומערכת צבע"
+        },
+        "MATERIAL_ORDER": {
+          "label": "הזמנת חומרים",
+          "description": "דליים, רולרים, יישום"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "שלבי גמר"
+        }
+      },
+      "resultColumns": {
+        "area_sqm": "שטח (מ\"ר)",
+        "layers": "שכבות",
+        "color_code": "צבע / קוד"
+      }
+    },
+    "FLOORING": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / חדר וקומה",
+        "document": "הזמנות ריצוף, תעודות משלוח ומדידות",
+        "inventory": "ריצוף, אבן ודבקים"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי ריצוף",
+      "documentsLabel": "הזמנות מ\"ר, תעודות משלוח ושרטוטי ייצור",
+      "recordsLabel": "אישורי אספקה, אצוות והשלמת ריצוף",
+      "homeTitle": "מרכז תפעול לריצוף ואבן — כמויות, אספקה ואישורים.",
+      "homeDescription": "מעקב אחר הזמנות מ\"ר, אצוות, משלוחים ויומני אתר עם AI שקורא מק\"טים וכמויות.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי ריצוף ואבן",
+        "subtitle": "חיתוכים, כמויות ולוגיסטיקה",
+        "dropzoneTitle": "העלו הזמנות ריצוף, תעודות משלוח או פריסות",
+        "dropzoneSub": "מעקב אחר אצוות והתקדמות התקנה"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן אתר יומי",
+          "description": "צוותי ריצוף ושלבים.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "FLOOR_DELIVERY_APPROVAL",
+          "label": "אישור משלוח ריצוף / אצווה",
+          "description": "אישור קבלת חומרים באתר.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "FLOOR_PHASE_APPROVAL",
+          "label": "אישור השלמת שלב ריצוף",
+          "description": "אישור מסירת אזור או שלב.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית ריצוף",
+          "description": "חיוב רשמי לאזורים או שלבים.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "TILE_ORDER": {
+          "label": "הזמנת ריצוף / קרמיקה",
+          "description": "מידות, מ\"ר ואצווה"
+        },
+        "DELIVERY_NOTE": {
+          "label": "תעודת משלוח",
+          "description": "פריטים שנמסרו באתר"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "התקדמות"
+        }
+      },
+      "resultColumns": {
+        "tile_sku": "מק\"ט / מידה",
+        "qty_sqm": "כמות (מ\"ר)",
+        "batch": "אצווה"
+      }
+    },
+    "ALUMINUM": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / פתחים וקומות",
+        "document": "מדידות, הזמנות פרופיל וזכוכית",
+        "inventory": "פרופילים, זכוכית וחומרי התקנה"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי אלומיניום",
+      "documentsLabel": "שרטוטי פתחים, הזמנות פרופיל וזכוכית",
+      "recordsLabel": "אישורי מדידה, אספקה והתקנה",
+      "homeTitle": "מרכז תפעול לאלומיניום וזכוכית — פתחים, מידות ואישורים.",
+      "homeDescription": "מדידות, הזמנות, יומני התקנה וחשבוניות עם AI שקורא פרופילים ומפרטי זכוכית.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי אלומיניום וזכוכית",
+        "subtitle": "מסגרות, מידות וייצור",
+        "dropzoneTitle": "העלו שרטוטי ייצור, הזמנות או תמונות מהאתר",
+        "dropzoneSub": "מעקב אחר פתחים וסטטוס ייצור"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן התקנה באתר",
+          "description": "פתחים, צוותים והתקדמות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "ALU_MEASURE_APPROVAL",
+          "label": "אישור מדידה / ייצור",
+          "description": "מדידות חתומות לייצור.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "ALU_GLASS_APPROVAL",
+          "label": "אישור אספקת זכוכית / פרופיל",
+          "description": "אישור קבלת חומרים באתר.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית אלומיניום",
+          "description": "חיוב רשמי לפי שלב או פתח.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "ALU_MEASUREMENT": {
+          "label": "מדידות / שרטוט כנף",
+          "description": "מידות פתחים ופרופילים"
+        },
+        "GLASS_ORDER": {
+          "label": "הזמנת זכוכית",
+          "description": "עובי, סוג ומידות"
+        },
+        "SITE_LOG": {
+          "label": "יומן התקנה",
+          "description": "ביצוע באתר"
+        }
+      },
+      "resultColumns": {
+        "opening_ref": "פתח",
+        "profile": "פרופיל",
+        "glass_spec": "מפרט זכוכית"
+      }
+    },
+    "FINISHING": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / חלל פנים",
+        "document": "הזמנות נגרות ומטבח ותעודות משלוח",
+        "inventory": "דלתות, מטבחים ונגרות מובנית"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי גמר פנים",
+      "documentsLabel": "הזמנות נגרות ומטבח ותעודות משלוח",
+      "recordsLabel": "אישורי התקנה, מסירות ושלבי גמר",
+      "homeTitle": "מרכז תפעול לגמר פנים — מטבחים, דלתות ואישורים.",
+      "homeDescription": "הזמנות, משלוחים, יומני התקנה וחשבוניות במקום אחד עם AI המותאם לנגרות ומטבחים.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי גמר פנים",
+        "subtitle": "דלתות, מטבחים, ארונות — הזמנות ואספקה",
+        "dropzoneTitle": "העלו הזמנות מטבח/נגרות או תעודות משלוח",
+        "dropzoneSub": "מעקב אחר חדרים, ספקים והתקדמות התקנה"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן עבודה והתקנה באתר",
+          "description": "חללים, צוותים ושלבים.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "FINISH_INSTALL_APPROVAL",
+          "label": "אישור התקנה / מסירת גמר",
+          "description": "אישור מסירת פריט או חדר ללקוח.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "FINISH_SUPPLY_APPROVAL",
+          "label": "אישור אספקת גמר",
+          "description": "אישור קבלת מטבח, דלתות או נגרות.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית גמר פנים",
+          "description": "חיוב רשמי לפי שלב או פריט.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "JOINERY_ORDER": {
+          "label": "הזמנת נגרות / מטבח",
+          "description": "מפרטים ותאריכי אספקה"
+        },
+        "DELIVERY_NOTE": {
+          "label": "תעודת משלוח",
+          "description": "פריטים שהתקבלו"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "התקנה"
+        }
+      },
+      "resultColumns": {
+        "room_ref": "חלל",
+        "item_desc": "פריט",
+        "supplier": "ספק"
+      }
+    },
+    "LANDSCAPING": {
+      "vocabulary": {
+        "client": "לקוח / קבלן ראשי",
+        "project": "אתר / אזור נוף",
+        "document": "הצעות מחיר, הזמנות צמחייה והשקיה",
+        "inventory": "צמחייה, קשיח נוף וחלקי השקיה"
+      },
+      "clientsLabel": "לקוחות, קבלנים ואתרי גינון",
+      "documentsLabel": "הצעות מחיר, הזמנות חומרים ותוכניות נוף",
+      "recordsLabel": "אישורי ביצוע, אספקה ושלבי חוץ",
+      "homeTitle": "מרכז תפעול לגינון וחוץ — היקף, חומרים ואישורים.",
+      "homeDescription": "הצעות מחיר, אספקה, יומני אתר וחשבוניות עם AI שמבין השקיה, שתילה וקשיח נוף.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי גינון",
+        "subtitle": "שתילה, השקיה, ריצוף חוץ",
+        "dropzoneTitle": "העלו הצעות נוף, רשימות השקיה או תמונות",
+        "dropzoneSub": "מעקב אחר אזורים, חומרים וביצוע"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן עבודה בשטח",
+          "description": "ביצוע, צוותים והתקדמות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "LAND_PHASE_APPROVAL",
+          "label": "אישור שלב נוף / חוץ",
+          "description": "אישור השלמת שלב או אזור.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "LAND_SUPPLY_APPROVAL",
+          "label": "אישור אספקת צמחייה / חומרים",
+          "description": "אישור קבלת חומרים באתר.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית גינון",
+          "description": "חיוב רשמי לפי שלב או היקף.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "LANDSCAPE_QUOTE": {
+          "label": "הצעת מחיר גינון",
+          "description": "אזורים, עצים, מערכת השקיה"
+        },
+        "IRRIGATION_PARTS": {
+          "label": "חלקי השקיה",
+          "description": "ממטרות, צינורות, בקרים"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "ביצוע"
+        }
+      },
+      "resultColumns": {
+        "zone": "אזור",
+        "plant_or_material": "צמח / חומר",
+        "qty": "כמות"
+      }
+    },
+    "SUBCONTRACTOR_OTHER": {
+      "vocabulary": {
+        "client": "קבלן ראשי / לקוח",
+        "project": "אתר / תת-חבילה",
+        "document": "הצעות מחיר, חשבוניות התקדמות ודוחות שטח",
+        "inventory": "חומרים לפי תת-חבילה"
+      },
+      "clientsLabel": "קבלנים ראשיים ולקוחות",
+      "documentsLabel": "הצעות משנה, חיוב התקדמות ותעודות שטח",
+      "recordsLabel": "אישורי התקדמות, אספקה וסגירת שלבים",
+      "homeTitle": "מרכז תפעול לקבלני משנה — הצעות, ביצוע וחיוב.",
+      "homeDescription": "ניהול הצעות, חשבוניות התקדמות, יומני אתר ואישורים עם AI המותאם לחבילות משנה.",
+      "scanner": {
+        "title": "אינטליגנציה למסמכי קבלן משנה",
+        "subtitle": "הצעות, חשבוניות וראיות מהשטח",
+        "dropzoneTitle": "העלו הצעות משנה, חשבוניות התקדמות או דוחות אתר",
+        "dropzoneSub": "מעקב אחר שלבים, אחוזים ותזרים"
+      },
+      "templates": [
+        {
+          "id": "SITE_LOG",
+          "label": "יומן דיווח שטח",
+          "description": "ביצוע, צוות והערות יומיות.",
+          "kind": "REPORT"
+        },
+        {
+          "id": "SUB_PROGRESS_APPROVAL",
+          "label": "אישור התקדמות / אחוז",
+          "description": "אישור שלב או אחוז השלמה.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "SUB_QUOTE_ACCEPTANCE",
+          "label": "קבלת / עדכון הצעת משנה",
+          "description": "תיעוד אישור או שינוי היקף.",
+          "kind": "APPROVAL"
+        },
+        {
+          "id": "INVOICE",
+          "label": "חשבונית התקדמות / משנה",
+          "description": "חיוב רשמי לפי שלב או אחוז.",
+          "kind": "OFFICIAL",
+          "issuedDocumentType": "INVOICE"
+        }
+      ],
+      "analysisTypes": {
+        "SUB_QUOTE": {
+          "label": "הצעת מחיר קבלן משנה",
+          "description": "היקף, יחידות ותמחור"
+        },
+        "PROGRESS_INVOICE": {
+          "label": "חשבונית התקדמות / תביעה",
+          "description": "אחוזים ושלבים"
+        },
+        "SITE_LOG": {
+          "label": "יומן עבודה באתר",
+          "description": "דיווח שטח"
+        }
+      },
+      "resultColumns": {
+        "project_site": "אתר",
+        "phase": "שלב",
+        "total": "סה\"כ"
+      }
+    }
   }
 }

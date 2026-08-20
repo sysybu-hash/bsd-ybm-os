@@ -6,15 +6,19 @@ export const HUB_WIDGET_TYPES = [
   "projectsHub",
   "documentsHub",
   "aiHub",
+  "logisticsHub",
+  "procurementHub",
 ] as const satisfies readonly WidgetType[];
 
 export type HubWidgetType = (typeof HUB_WIDGET_TYPES)[number];
 
 const HUB_TAB_COUNTS: Record<HubWidgetType, number> = {
   financeHub: 2,
-  projectsHub: 2,
+  projectsHub: 0,
   documentsHub: 3,
-  aiHub: 2,
+  aiHub: 3,
+  logisticsHub: 2,
+  procurementHub: 3,
 };
 
 export function isHubWidget(type: WidgetType): type is HubWidgetType {

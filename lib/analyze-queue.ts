@@ -29,6 +29,8 @@ export type InlineScanFilePayload = {
   language: string;
   model: string;
   persist: boolean;
+  scanMode?: import("@/lib/scan-schema-v5").ScanModeV5;
+  engineRunMode?: import("@/lib/tri-engine-api-common").TriEngineRunMode;
 };
 
 export type UrlScanFilePayload = {
@@ -42,6 +44,8 @@ export type UrlScanFilePayload = {
   language: string;
   model: string;
   persist: boolean;
+  scanMode?: import("@/lib/scan-schema-v5").ScanModeV5;
+  engineRunMode?: import("@/lib/tri-engine-api-common").TriEngineRunMode;
 };
 
 export type DocumentScanFilePayload = InlineScanFilePayload | UrlScanFilePayload;
@@ -57,6 +61,8 @@ export function parseJobFileData(raw: string): DocumentScanFilePayload {
   const language = String(j.language ?? "auto");
   const model = String(j.model ?? "");
   const persist = j.persist === true || j.persist === "true";
+  const scanModeRaw = typeof j.scanMode === "string" ? j.scanMode : undefined;
+  const engineRunModeRaw = typeof j.engineRunMode === "string" ? j.engineRunMode : undefined;
 
   if (kind === "url") {
     const url = String(j.url ?? "");
@@ -74,6 +80,10 @@ export function parseJobFileData(raw: string): DocumentScanFilePayload {
       language,
       model,
       persist,
+      ...(scanModeRaw ? { scanMode: scanModeRaw as import("@/lib/scan-schema-v5").ScanModeV5 } : {}),
+      ...(engineRunModeRaw
+        ? { engineRunMode: engineRunModeRaw as import("@/lib/tri-engine-api-common").TriEngineRunMode }
+        : {}),
     };
   }
 
@@ -93,6 +103,10 @@ export function parseJobFileData(raw: string): DocumentScanFilePayload {
     language,
     model,
     persist,
+    ...(scanModeRaw ? { scanMode: scanModeRaw as import("@/lib/scan-schema-v5").ScanModeV5 } : {}),
+    ...(engineRunModeRaw
+      ? { engineRunMode: engineRunModeRaw as import("@/lib/tri-engine-api-common").TriEngineRunMode }
+      : {}),
   };
 }
 

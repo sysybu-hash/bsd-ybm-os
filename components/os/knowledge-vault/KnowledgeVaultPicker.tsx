@@ -90,7 +90,7 @@ export default function KnowledgeVaultPicker({
           className="mb-3 w-full rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-3 py-2 text-sm"
         />
         {useSemantic ? (
-          <p className="mb-2 flex items-center gap-1 text-[10px] text-indigo-500">
+          <p className="mb-2 flex items-center gap-1 text-[10px] text-[color:var(--win-accent,#6366f1)]">
             <Sparkles size={12} />
             {semanticSearching ? t("knowledgeVault.semanticSearching") : t("knowledgeVault.semanticActive")}
           </p>

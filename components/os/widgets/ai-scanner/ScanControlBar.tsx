@@ -3,7 +3,7 @@
 import React from "react";
 import { ArrowRight, RotateCcw, Save, ScanLine, Square, Trash2 } from "lucide-react";
 
-export type ScanUiPhase = "idle" | "processing" | "review" | "results";
+export type ScanUiPhase = "idle" | "processing" | "review" | "save" | "results";
 
 type ScanControlBarProps = {
   phase: ScanUiPhase;
@@ -13,6 +13,8 @@ type ScanControlBarProps = {
   hasContent: boolean;
   /** Files selected but not yet scanned. */
   pendingCount?: number;
+  /** At least one queue item errored — show retry button. */
+  hasFailedItems?: boolean;
   onPickFiles?: () => void;
   onStartScan?: () => void;
   onClearPending?: () => void;
@@ -21,6 +23,7 @@ type ScanControlBarProps = {
   onContinueToSave?: () => void;
   onScanMore?: () => void;
   onReset?: () => void;
+  onRetry?: () => void;
 };
 
 const PREFIX = "workspaceWidgets.aiScanner";
@@ -29,8 +32,9 @@ const base =
   "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40";
 const ghost = `${base} border border-[color:var(--border-main)] bg-[color:var(--surface-card)]/60 text-[color:var(--foreground-muted)] hover:bg-[color:var(--surface-soft)]`;
 const danger = `${base} border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300 hover:bg-rose-500/15`;
-const primary = `${base} bg-gradient-to-l from-orange-600 to-amber-500 text-white shadow-md shadow-orange-500/20 hover:from-orange-500`;
+const primary = `${base} bg-gradient-to-l from-[color:var(--accent)] to-[color:var(--accent-strong)] text-white shadow-md shadow-orange-500/20 hover:from-orange-500`;
 const success = `${base} bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20`;
+const warn = `${base} border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15`;
 
 export function ScanControlBar({
   phase,
@@ -38,6 +42,7 @@ export function ScanControlBar({
   tr,
   hasContent,
   pendingCount = 0,
+  hasFailedItems = false,
   onPickFiles,
   onStartScan,
   onClearPending,
@@ -46,11 +51,12 @@ export function ScanControlBar({
   onContinueToSave,
   onScanMore,
   onReset,
+  onRetry,
 }: ScanControlBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-main)]/80 bg-[color:var(--surface-card)]/40 px-3 py-2.5 backdrop-blur-md">
       {/* Secondary cluster — start side */}
-      {(phase === "review" || phase === "results") && onBack ? (
+      {(phase === "review" || phase === "save" || phase === "results") && onBack ? (
         <button type="button" onClick={onBack} className={ghost}>
           <ArrowRight size={14} className="rtl:rotate-180" aria-hidden />
           {t(`${PREFIX}.back`)}
@@ -60,7 +66,7 @@ export function ScanControlBar({
       {hasContent && onReset ? (
         <button type="button" onClick={onReset} className={ghost}>
           <Trash2 size={14} aria-hidden />
-          {tr(`${PREFIX}.resetWindow`, "איפוס החלון")}
+          {tr(`${PREFIX}.resetWindow`, "נקה הכל")}
         </button>
       ) : null}
 
@@ -68,6 +74,14 @@ export function ScanControlBar({
         <button type="button" onClick={onClearPending} className={ghost}>
           <Trash2 size={14} aria-hidden />
           {tr(`${PREFIX}.clearPending`, "נקה")}
+        </button>
+      ) : null}
+
+      {/* Retry — visible when at least one file/engine failed */}
+      {hasFailedItems && onRetry && (phase === "review" || phase === "results") ? (
+        <button type="button" onClick={onRetry} className={warn}>
+          <RotateCcw size={14} aria-hidden />
+          {tr(`${PREFIX}.retry`, "נסה שוב")}
         </button>
       ) : null}
 
@@ -87,10 +101,10 @@ export function ScanControlBar({
           </button>
         ) : null}
 
-        {phase === "results" && onScanMore ? (
+        {(phase === "review" || phase === "results" || phase === "save") && onScanMore ? (
           <button type="button" onClick={onScanMore} className={primary}>
             <ScanLine size={14} aria-hidden />
-            {tr(`${PREFIX}.scanMore`, "סריקה נוספת")}
+            {tr(`${PREFIX}.newScan`, "סריקה חדשה")}
           </button>
         ) : null}
 

@@ -13,6 +13,7 @@ export async function sendCollectionRequest(issuedDocumentId: string): Promise<S
     include: {
       organization: {
         select: {
+          id: true,
           name: true,
           taxId: true,
           vatRatePercent: true,
@@ -33,6 +34,16 @@ export async function sendCollectionRequest(issuedDocumentId: string): Promise<S
   const toEmail = doc.contact?.email?.trim();
   if (!toEmail) {
     return { ok: false, error: "אין אימייל ללקוח — עדכנו את איש הקשר ב-CRM" };
+  }
+
+  const { canSendCollectionReminderEmails } = await import("@/lib/mail/platform-mail-settings");
+  if (!(await canSendCollectionReminderEmails())) {
+    return { ok: false, error: "תזכורות גבייה במייל כבויות בהגדרות האדמין" };
+  }
+
+  const { orgAllowsCollectionEmails } = await import("@/lib/mail/org-mail-settings");
+  if (!(await orgAllowsCollectionEmails(doc.organizationId))) {
+    return { ok: false, error: "תזכורות גבייה במייל כבויות בהגדרות המנוי" };
   }
 
   const payload = buildInvoiceExportPayload(doc, doc.organization);

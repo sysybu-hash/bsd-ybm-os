@@ -7,6 +7,7 @@ const log = createLogger("health");
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// npm_package_version הוא metadata של תהליך npm, לא קונפיג — חריגה מכללי env.ts.
 const APP_VERSION = process.env.npm_package_version ?? "1.0.0";
 
 /**

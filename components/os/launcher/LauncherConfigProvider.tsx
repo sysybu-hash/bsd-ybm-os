@@ -40,6 +40,8 @@ type PickerState = { zone: LauncherZone; slotIndex: number; row?: number; col?: 
 type LauncherConfigContextValue = {
   config: UserLauncherConfig;
   hydrated: boolean;
+  /** Local + first server reconcile done — safe to dismiss OS boot splash */
+  bootReady: boolean;
   editMode: boolean;
   setEditMode: (on: boolean) => void;
   enterEditMode: () => void;
@@ -68,6 +70,7 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const isPlatformAdmin = useIsPlatformAdmin();
   const { allowed: meckanoEnabled } = useMeckanoAccess();
   const [hydrated, setHydrated] = useState(false);
+  const [bootReady, setBootReady] = useState(false);
   const launcherDefaultOptions = useMemo(
     () => ({ isPlatformAdmin }),
     [isPlatformAdmin],
@@ -82,34 +85,52 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
   const userId = session?.user?.id ?? null;
 
   const userEmail = session?.user?.email ?? null;
+  const userRole = session?.user?.role ?? null;
   const permissionCtx = useMemo<LauncherPermissionContext>(
-    () => ({ isPlatformAdmin, meckanoEnabled, organizationIndustry, userEmail }),
-    [isPlatformAdmin, meckanoEnabled, organizationIndustry, userEmail],
+    () => ({
+      isPlatformAdmin,
+      meckanoEnabled,
+      organizationIndustry,
+      userEmail,
+      role: userRole,
+    }),
+    [isPlatformAdmin, meckanoEnabled, organizationIndustry, userEmail, userRole],
   );
 
   useEffect(() => {
     let cancelled = false;
-    async function hydrate() {
-      let base = parseLauncherConfigFromStorage(
-        typeof window !== "undefined" ? localStorage.getItem(LAUNCHER_STORAGE_KEY) : null,
-        organizationIndustry,
-        launcherDefaultOptions,
-      );
-      if (userId) {
-        try {
-          if (!isApiCooldown(LAUNCHER_CONFIG_KEY)) {
-            const res = await fetch("/api/user/launcher-config", { credentials: "include" });
-            if (markApiCooldownFromResponse(LAUNCHER_CONFIG_KEY, res)) {
-              /* use local storage only during cooldown */
-            } else if (res.ok) {
-              const data = (await res.json()) as { config?: unknown };
-              base = data.config
-                ? resolveStoredLauncherConfig(data.config, organizationIndustry, launcherDefaultOptions)
-                : getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions);
-            }
+
+    // Phase 1 (sync): localStorage immediately — no wait for API
+    const localBase = parseLauncherConfigFromStorage(
+      typeof window !== "undefined" ? localStorage.getItem(LAUNCHER_STORAGE_KEY) : null,
+      organizationIndustry,
+      launcherDefaultOptions,
+    );
+    const localSanitized = scrubLauncherConfig(
+      sanitizeConfig(localBase, permissionCtx),
+      organizationIndustry,
+      launcherDefaultOptions,
+    );
+    setConfig(localSanitized);
+    setHydrated(true);
+
+    // Phase 2 (async): reconcile with server in background
+    async function syncFromServer() {
+      if (!userId) return;
+      let base = localBase;
+      try {
+        if (!isApiCooldown(LAUNCHER_CONFIG_KEY)) {
+          const res = await fetch("/api/user/launcher-config", { credentials: "include" });
+          if (markApiCooldownFromResponse(LAUNCHER_CONFIG_KEY, res)) {
+            /* use local storage only during cooldown */
+          } else if (res.ok) {
+            const data = (await res.json()) as { config?: unknown };
+            base = data.config
+              ? resolveStoredLauncherConfig(data.config, organizationIndustry, launcherDefaultOptions)
+              : getDefaultLauncherConfig(organizationIndustry, launcherDefaultOptions);
           }
-        } catch { /* offline */ }
-      }
+        }
+      } catch { /* offline */ }
       if (cancelled) return;
       const sanitized = scrubLauncherConfig(
         sanitizeConfig(base, permissionCtx),
@@ -117,14 +138,19 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
         launcherDefaultOptions,
       );
       setConfig(sanitized);
-      setHydrated(true);
       try {
         const migrated = JSON.stringify(sanitized);
         const previous = typeof window !== "undefined" ? localStorage.getItem(LAUNCHER_STORAGE_KEY) : null;
         if (previous !== migrated) localStorage.setItem(LAUNCHER_STORAGE_KEY, migrated);
       } catch { /* quota */ }
     }
-    void hydrate();
+    void (async () => {
+      try {
+        await syncFromServer();
+      } finally {
+        if (!cancelled) setBootReady(true);
+      }
+    })();
     return () => { cancelled = true; };
   }, [organizationIndustry, userId, isPlatformAdmin, meckanoEnabled, launcherDefaultOptions, permissionCtx]);
 
@@ -159,14 +185,14 @@ export function LauncherConfigProvider({ children }: { children: React.ReactNode
 
   const value = useMemo<LauncherConfigContextValue>(
     () => ({
-      config, hydrated, editMode, setEditMode, announce, picker,
+      config, hydrated, bootReady, editMode, setEditMode, announce, picker,
       permissionCtx,
       enterEditMode,
       exitEditMode,
       ...restActions,
     }),
      
-    [config, hydrated, editMode, announce, picker, permissionCtx, restActions, enterEditMode, exitEditMode],
+    [config, hydrated, bootReady, editMode, announce, picker, permissionCtx, restActions, enterEditMode, exitEditMode],
   );
 
   return (

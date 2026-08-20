@@ -2,12 +2,30 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BarChart3, BookOpen, Calendar, Settings } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, KanbanSquare, LayoutDashboard, Settings } from "lucide-react";
 import { registerWebPush, unregisterWebPush } from "@/lib/push/register-client";
+import { useProjectSync } from "@/lib/events/project-sync";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
+import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
+import { useWidgetNavigationOptional } from "@/components/os/navigation/WidgetNavigationProvider";
+import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { TabId, DashboardData, ProjectListItem, ProjectDashboardWidgetProps } from "./types";
 import { PUSH_KEY } from "./utils";
+
+const DASHBOARD_TABS: TabId[] = [
+  "overview",
+  "tasks",
+  "financial",
+  "diary",
+  "gantt",
+  "ai",
+  "settings",
+];
+
+function isDashboardTab(value: unknown): value is TabId {
+  return typeof value === "string" && (DASHBOARD_TABS as string[]).includes(value);
+}
 
 export function useProjectDashboard({ projectId, projectName, openWorkspaceWidget }: ProjectDashboardWidgetProps) {
   const { t, dir } = useI18n();
@@ -17,10 +35,22 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [loading, setLoading] = useState(Boolean(projectId || projectName));
   const [projectsList, setProjectsList] = useState<ProjectListItem[]>([]);
   const [projectsListLoading, setProjectsListLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>("financial");
+  const [activeTab, setActiveTabState] = useState<TabId>("overview");
+  const nav = useWidgetNavigationOptional();
+  const applyDashboardView = useCallback((view: WidgetViewState) => {
+    if (isDashboardTab(view.dashboardTab)) {
+      setActiveTabState(view.dashboardTab);
+    }
+  }, []);
+  const { pushView } = useSyncedWidgetNavigation(applyDashboardView);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [uploadingBlueprint, setUploadingBlueprint] = useState(false);
   const [blueprintPreview, setBlueprintPreview] = useState<import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis | null>(null);
+  const [blueprintEnginesUsed, setBlueprintEnginesUsed] = useState<string[]>([]);
+  const [blueprintEngineRunMode, setBlueprintEngineRunMode] = useState<import("@/lib/projects/blueprint-analyze").BlueprintEngineRunMode>("AUTO");
+  const [blueprintInstruction, setBlueprintInstruction] = useState("");
+  const [blueprintCustomEngines, setBlueprintCustomEngines] = useState<string[]>([]);
+  const [blueprintUseOcr, setBlueprintUseOcr] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [diaryInitialDesc, setDiaryInitialDesc] = useState<string | undefined>();
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
@@ -97,6 +127,11 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     void loadProjectsList();
   }, [projectId, projectName, resolvedId, refresh, loadProjectsList]);
 
+  const syncProjectId = resolvedId || projectId;
+  useProjectSync(syncProjectId || undefined, () => {
+    void refresh();
+  });
+
   const togglePush = async () => {
     const next = !pushEnabled;
     if (next) {
@@ -118,14 +153,39 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       fd.append("file", file);
       fd.append("projectId", resolvedId);
       fd.append("preview", "true");
+      fd.append("engineRunMode", blueprintEngineRunMode);
+      if (blueprintInstruction.trim()) fd.append("userInstruction", blueprintInstruction.trim());
+      if (blueprintEngineRunMode === "CUSTOM_PARALLEL" && blueprintCustomEngines.length > 0) {
+        fd.append("customEngines", JSON.stringify(blueprintCustomEngines));
+      }
+      fd.append("useOcrPrepass", blueprintUseOcr ? "true" : "false");
       const res = await fetch("/api/projects/analyze-blueprint", { method: "POST", credentials: "include", body: fd });
-      const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? t("projectDashboard.errors.blueprint")); return; }
+      const json = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) { toast.error((json.error as string) ?? t("projectDashboard.errors.blueprint")); return; }
+      setBlueprintEnginesUsed(Array.isArray(json.enginesUsed) ? (json.enginesUsed as string[]) : []);
       setBlueprintPreview(json as import("@/lib/projects/blueprint-analysis-schema").BlueprintAnalysis);
     } catch {
       toast.error(t("projectDashboard.errors.blueprint"));
     } finally {
       setUploadingBlueprint(false);
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    const res = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      toast.error((json.error as string) ?? t("projectDashboard.errors.load"));
+      return;
+    }
+    toast.success(t("projectDashboard.deleteSuccess"));
+    setProjectsList((prev) => prev.filter((p) => p.id !== id));
+    if (resolvedId === id) {
+      setResolvedId("");
+      setData(null);
     }
   };
 
@@ -143,17 +203,41 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       return;
     }
     const parts: string[] = [];
-    if ((json.tasksCreated as number) > 0) parts.push(`${json.tasksCreated as number} משימות`);
-    if ((json.milestonesCreated as number) > 0) parts.push(`${json.milestonesCreated as number} אבני דרך`);
-    if ((json.boqItemsCreated as number) > 0) parts.push(`${json.boqItemsCreated as number} סעיפי BOQ`);
-    toast.success(parts.length > 0 ? `יובאו: ${parts.join(", ")}` : (json.message as string ?? t("projectDashboard.blueprintSuccess")));
+    if ((json.tasksCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportTasks").replace("{count}", String(json.tasksCreated)));
+    }
+    if ((json.milestonesCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportMilestones").replace("{count}", String(json.milestonesCreated)));
+    }
+    if ((json.boqItemsCreated as number) > 0) {
+      parts.push(t("projectDashboard.blueprintImportBoq").replace("{count}", String(json.boqItemsCreated)));
+    }
+    toast.success(
+      parts.length > 0
+        ? t("projectDashboard.blueprintImportSummary").replace("{parts}", parts.join(", "))
+        : (json.message as string ?? t("projectDashboard.blueprintSuccess")),
+    );
     setBlueprintPreview(null);
     await refresh();
   };
 
+  const setActiveTab = useCallback(
+    (id: TabId) => {
+      setActiveTabState(id);
+      const cur = nav?.currentView ?? {};
+      pushView({
+        tab: typeof cur.tab === "string" ? cur.tab : "project",
+        projectId: resolvedId || (typeof cur.projectId === "string" ? cur.projectId : null),
+        name: data?.name ?? (typeof cur.name === "string" ? cur.name : null),
+        dashboardTab: id,
+      });
+    },
+    [nav?.currentView, pushView, resolvedId, data?.name],
+  );
+
   useEffect(() => {
     if (isCompanyMgmt && activeTab === "diary") setActiveTab("gantt");
-  }, [isCompanyMgmt, activeTab]);
+  }, [isCompanyMgmt, activeTab, setActiveTab]);
 
   const clearProjectSelection = useCallback(() => {
     setData(null);
@@ -162,14 +246,16 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   }, [loadProjectsList]);
 
   const resetWorkspace = useCallback(() => {
-    setActiveTab("financial");
+    setActiveTab("overview");
     setDiaryInitialDesc(undefined);
     setDiaryInitialTaskId(undefined);
     toast.success(t("projectDashboard.resetWorkspaceDone"));
-  }, [t]);
+  }, [t, setActiveTab]);
 
   const tabs = useMemo(() => {
     const all: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
+      { id: "overview", label: t("projectDashboard.tabs.overview"), icon: LayoutDashboard },
+      { id: "tasks", label: t("projectDashboard.tabs.tasks"), icon: KanbanSquare },
       { id: "financial", label: isCompanyMgmt ? t("projectDashboard.tabs.financialBusiness") : t("projectDashboard.tabs.financial"), icon: BarChart3 },
       { id: "diary", label: t("projectDashboard.tabs.diary"), icon: BookOpen },
       { id: "gantt", label: t("projectDashboard.tabs.gantt"), icon: Calendar },
@@ -192,6 +278,12 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     showProjectPicker, isCompanyMgmt, industryId, features,
     tabs,
     selectProject, refresh, clearProjectSelection, resetWorkspace, togglePush,
+    blueprintEnginesUsed,
+    blueprintEngineRunMode, setBlueprintEngineRunMode,
+    blueprintInstruction, setBlueprintInstruction,
+    blueprintCustomEngines, setBlueprintCustomEngines,
+    blueprintUseOcr, setBlueprintUseOcr,
+    deleteProject,
     onBlueprintFile, confirmBlueprintImport, loadProjectsList,
     openWorkspaceWidget,
   };
