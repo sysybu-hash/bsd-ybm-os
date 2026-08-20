@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { env } from "@/lib/env";
+// `env` is the server proxy: in the browser it does a dynamic process.env[key]
+// lookup, which Next cannot inline at build time, so every NEXT_PUBLIC_* read
+// through it is undefined on the client. `clientEnv` uses static literal reads.
+import { clientEnv } from "@/lib/env";
 
 /**
  * Minimal shape of the pieces of the PayPal JS SDK this component touches.
@@ -111,7 +114,7 @@ export default function PayPalRegisterButtons({
   const latest = useRef({ email, tier, billingCycle, onApproved, onError });
   latest.current = { email, tier, billingCycle, onApproved, onError };
 
-  const clientId = env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
+  const clientId = clientEnv.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
 
   useEffect(() => {
     if (!clientId) {
