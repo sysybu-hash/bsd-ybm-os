@@ -136,7 +136,10 @@ const nextConfig = {
       bodySizeLimit: "10mb",
     },
     optimizePackageImports: ["lucide-react", "framer-motion", "@headlessui/react"],
-    cssChunking: "strict",
+    // cssChunking: "strict" removed in the Next 16 upgrade — it is webpack-only,
+    // and Next 16 builds with Turbopack by default. Turbopack does its own CSS
+    // chunking. Re-measure LCP with `npm run lighthouse:matrix:prod` before
+    // concluding anything about the perf impact.
     // inlineCss disabled: the CSS chunks (~27KB gzip total) are smaller than the
     // overhead added by inlining into HTML (pushes LCP element deeper into HTML stream).
     // inlineCss: true,

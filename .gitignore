@@ -90,3 +90,6 @@ e2e/_mobile-shot.spec.ts
 docs/BSD-YBM-OS-architecture-report.pdf
 docs/architecture-report.html
 docs/ov.png
+
+# local scratch (i18n patches, promo builds)
+tmp/

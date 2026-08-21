@@ -1,0 +1,111 @@
+# ריצת E2E מלאה — לילית.
+#
+# Quality Gate מריץ רק את `test:e2e:ci-gate` (4 קבצי spec) על כל PR, כדי
+# לשמור על זמן המחזור. המשמעות היא ששאר החבילה לא נבדקה ב-CI כלל — כשלים
+# ב-accountant-portal, office-expenses ו-mobile-responsive נצברו בלי שאיש
+# ידע. הג'וב הזה סוגר את הפער: החבילה המלאה, פעם ביום.
+name: E2E (nightly)
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # כל יום 01:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-nightly:
+    name: Playwright nightly (full suite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NEXTAUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
+      AUTH_SECRET: ci-e2e-nextauth-secret-minimum-32-chars-long
+      NEXTAUTH_URL: http://127.0.0.1:3001
+      AUTH_URL: http://127.0.0.1:3001
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3001
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+      E2E_EMAIL: owner@bsd-demo.test
+      E2E_PASSWORD: Demo!2026
+      E2E_PM_EMAIL: pm@bsd-demo.test
+      E2E_PM_PASSWORD: Demo!2026
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            next-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare build env
+        run: node scripts/ci-prepare-build-env.mjs
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Apply database schema
+        run: npx prisma db push --skip-generate
+
+      - name: Seed E2E test data
+        run: node scripts/seed-test-data.mjs
+
+      - name: Production build
+        run: npm run build
+
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright chromium only (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install chromium
+
+      - name: E2E nightly (full suite)
+        run: npm run test:e2e:nightly
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-nightly
+          path: playwright-report/
+          retention-days: 14
