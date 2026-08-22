@@ -459,7 +459,7 @@ async function main() {
         customerName: organization.name,
         customerEmail: "owner@bsd-demo.test",
         paidAt: daysAgo(3),
-        payplusTransactionId: "demo-payplus-sub-0001",
+        gatewayTransactionId: "demo-gateway-sub-0001",
         lastWebhookPayload: { provider: "demo", status: "paid" },
       },
     }),

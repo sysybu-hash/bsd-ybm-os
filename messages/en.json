@@ -1175,9 +1175,7 @@
         "emailMissing": "Missing RESEND or SMTP — emails will not send",
         "paypalConfigured": "OS PayPal configured",
         "paypalMissing": "OS PayPal not configured",
-        "paypalClientOk": "PayPal API configured",
-        "payplusOk": "PayPlus available",
-        "payplusMissing": "No PayPlus"
+        "paypalClientOk": "PayPal API configured"
       },
       "envGroups": {
         "core": "Core",
@@ -1244,10 +1242,6 @@
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "Platform operator PayPal"
-        },
-        "payplus": {
-          "label": "PAYPLUS_*",
-          "hint": "PayPlus for Israeli payments"
         },
         "cronSecret": {
           "label": "CRON_SECRET",

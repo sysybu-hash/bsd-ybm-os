@@ -2,7 +2,7 @@
 
 > נוצר אוטומטית מ-[`prisma/schema.prisma`](../prisma/schema.prisma) ע"י
 > `node scripts/generate-erd.mjs`. אל תערוך ידנית — הרץ מחדש אחרי שינוי סכמה.
-> 68 מודלים.
+> 71 מודלים.
 
 ```mermaid
 erDiagram
@@ -234,9 +234,19 @@ erDiagram
     String image
     String passwordHash
     DateTime lastLoginAt
+    DateTime lastSeenAt
     DateTime scanHistoryClearedAt
     Json launcherConfigJson
-    Json workspaceLayoutJson
+  }
+  LoginEvent {
+    String id PK
+    String userId
+    String organizationId
+    String email
+    String provider
+    String ip
+    String userAgent
+    DateTime createdAt
   }
   UserPasskey {
     String id PK
@@ -386,6 +396,11 @@ erDiagram
     String content
     DateTime updatedAt
   }
+  IssuedDocumentSequence {
+    String organizationId
+    Int lastNumber
+    DateTime updatedAt
+  }
   IssuedDocument {
     String id PK
     Int number
@@ -419,7 +434,7 @@ erDiagram
     String status
     Float amount
     String currency
-    String payplusTransactionId UK
+    String gatewayTransactionId UK
     DateTime paidAt
     Json lastWebhookPayload
     DateTime createdAt
@@ -730,6 +745,15 @@ erDiagram
     String inventoryItemId
     String purchaseOrderId
   }
+  WhatsappLink {
+    String id PK
+    String phone UK
+    String organizationId
+    String userId
+    DateTime verifiedAt
+    DateTime createdAt
+    DateTime lastMessageAt
+  }
   MeckanoZone }o-- : ""
   MeckanoZone  : ""
   OrganizationInvite }o-- : ""
@@ -768,7 +792,10 @@ erDiagram
   User  : ""
   User  : ""
   User  : ""
+  User  : ""
+  User  : ""
   User }o-- : ""
+  LoginEvent }o-- : ""
   Notebook }o-- : ""
   Notebook }o-- : ""
   Notebook  : ""
@@ -785,6 +812,7 @@ erDiagram
   Contact }o-- : ""
   ContactSearchEmbedding }o-- : ""
   FinancialInsight }o-- : ""
+  IssuedDocumentSequence }o-- : ""
   ExpenseRecord }o-- : ""
   ExpenseRecord }o-- : ""
   ExpenseRecord }o-- : ""
@@ -822,6 +850,7 @@ erDiagram
   PurchaseOrder }o-- : ""
   PurchaseOrder }o-- : ""
   PurchaseOrder  : ""
+  WhatsappLink }o-- : ""
 ```
 
 ## מיגרציות

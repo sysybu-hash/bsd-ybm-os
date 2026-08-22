@@ -138,7 +138,7 @@ export default async function RootOgImage() {
 
           {/* Bottom: Feature pills — flexDirection:row-reverse כדי שה-pills יהיו בסדר RTL */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flexDirection: "row-reverse" }}>
-            {["AI Hub + מחולל", "חתימה דיגיטלית", "PayPlus / PayPal", "WebAuthn Passkeys", "ישראלי-100%"].map((f) => (
+            {["AI Hub + מחולל", "חתימה דיגיטלית", "PayPal", "WebAuthn Passkeys", "ישראלי-100%"].map((f) => (
               <div
                 key={f}
                 style={{

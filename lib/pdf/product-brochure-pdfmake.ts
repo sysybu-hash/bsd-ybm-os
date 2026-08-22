@@ -207,7 +207,7 @@ function buildDocDefinition(): TDocumentDefinitions {
       bullets([
         "שולחן עבודה עם חלונות צפים, סרגל יישומים ו-Omnibar — פקודות טבעיות לפתיחת כלים.",
         "שישה Hub מרכזיים: פיננסים, פרויקטים, CRM, מסמכים, קופיילוט שטח (בנייה), ובינה מלאכותית.",
-        "אינטגרציות: Google (התחברות, Drive, Calendar), Meckano, PayPal, PayPlus, Gemini Live.",
+        "אינטגרציות: Google (התחברות, Drive, Calendar), Meckano, PayPal, Gemini Live.",
         "רב-לשוניות מלאה: עברית (ברירת מחדל), אנגלית ורוסית — RTL מובנה.",
         "אבטחה: אימות NextAuth, הרשאות לפי ארגון ותפקיד, Rate limiting, ניטור Sentry.",
       ]),
@@ -278,7 +278,7 @@ function buildDocDefinition(): TDocumentDefinitions {
       bullets([
         "Google OAuth — כניסה מהירה; Google Drive ו-Calendar לסנכרון קבצים ויומן.",
         "Meckano — שעון נוכחות, אזורים, דוחות, סנכרון אנשי קשר ל-CRM.",
-        "PayPal ו-PayPlus — גבייה, מנויים, Webhooks מאומתים (HMAC).",
+        "PayPal — גבייה, מנויים, Webhooks מאומתים.",
         "חתימה דיגיטלית — קישור חתימה להצעות מחיר; מעקב סטטוס.",
         "הזמנות לארגון — הזמנת משתמשים ל-workspace.",
         "PostHog — אנליטיקת מוצר; Sentry — ניטור שגיאות.",

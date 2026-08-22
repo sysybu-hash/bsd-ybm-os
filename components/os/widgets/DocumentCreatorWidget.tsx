@@ -190,7 +190,7 @@ export default function DocumentCreatorWidget({ liveData = null, embeddedInHub =
                   <div className="relative">
                     <CreditCard className="absolute right-3 top-3 w-4 h-4 text-[color:var(--foreground-muted)]" />
                     <select className="w-full bg-[color:var(--surface-card)]/50 border border-[color:var(--border-main)] rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 appearance-none text-[color:var(--foreground-main)]">
-                      <option>{t("workspaceWidgets.documentCreator.payPlus")}</option>
+                      <option>{t("workspaceWidgets.documentCreator.creditCard")}</option>
                       <option>{t("workspaceWidgets.documentCreator.bankTransfer")}</option>
                       <option>{t("workspaceWidgets.documentCreator.checkCash")}</option>
                     </select>

@@ -2,7 +2,7 @@
  * Abstract Payment Gateway Interface
  *
  * Defines a provider-agnostic contract for payment operations.
- * Both PayPlus and PayPal (and any future gateway) implement this interface,
+ * PayPal and Stripe (and any future gateway) implement this interface,
  * enabling the billing layer to be gateway-independent.
  *
  * Phase 4.1 — Local Moat Infrastructure

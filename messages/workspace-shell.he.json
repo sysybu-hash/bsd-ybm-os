@@ -1820,9 +1820,9 @@
       "saveFailed": "השמירה נכשלה"
     },
     "jewishCalendar": {
-        "searchCity": "חיפוש עיר…",
-        "myLocation": "מיקום שלי",
-        "customLocation": "מיקום מותאם",
+      "searchCity": "חיפוש עיר…",
+      "myLocation": "מיקום שלי",
+      "customLocation": "מיקום מותאם",
       "title": "לוח עברי וזמנים",
       "subtitle": "תאריך עברי, לועזי וזמני היום",
       "loading": "טוען זמנים…",
@@ -2570,7 +2570,7 @@
       "issueDate": "תאריך הנפקה",
       "dueDate": "תאריך פירעון",
       "paymentMethod": "אמצעי תשלום",
-      "payPlus": "PayPlus (אשראי)",
+      "creditCard": "כרטיס אשראי",
       "bankTransfer": "העברה בנקאית",
       "checkCash": "צ׳ק / מזומן",
       "preview": "תצוגה מקדימה",

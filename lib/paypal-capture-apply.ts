@@ -39,7 +39,7 @@ export async function applyPayPalCaptureResult(params: {
   }
 
   const existing = await prisma.invoice.findUnique({
-    where: { payplusTransactionId: captureId },
+    where: { gatewayTransactionId: captureId },
     select: { id: true },
   });
   if (existing) {
@@ -145,7 +145,7 @@ export async function applyPayPalCaptureResult(params: {
             invoiceNumber: `PP-${captureId.slice(-10)}`,
             customerName: org.name,
             customerEmail: notifyEmail,
-            payplusTransactionId: captureId,
+            gatewayTransactionId: captureId,
             paidAt: new Date(),
           },
         });
@@ -209,7 +209,7 @@ export async function applyPayPalCaptureResult(params: {
             invoiceNumber: `PP-${captureId.slice(-10)}`,
             customerName: org.name,
             customerEmail: notifyEmail,
-            payplusTransactionId: captureId,
+            gatewayTransactionId: captureId,
             paidAt: new Date(),
           },
         });

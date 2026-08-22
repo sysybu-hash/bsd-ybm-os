@@ -57,21 +57,15 @@ export async function getAdminSystemHealth(): Promise<AdminSystemHealth> {
     },
   });
 
-  const payplusOk = Boolean(
-    env.PAYPLUS_API_KEY?.trim() &&
-      env.PAYPLUS_SECRET_KEY?.trim() &&
-      env.PAYPLUS_PAYMENT_PAGE_UID?.trim(),
-  );
   const paypalClientOk = Boolean(
     env.PAYPAL_CLIENT_ID?.trim() && env.PAYPAL_CLIENT_SECRET?.trim(),
   );
   const platformPaypal = hasOSPayPalConfigured();
-  const paymentsOk = payplusOk || paypalClientOk || platformPaypal;
+  const paymentsOk = paypalClientOk || platformPaypal;
   statuses.push({
     id: "payments",
     ok: paymentsOk,
     meta: {
-      payplus: payplusOk ? "ok" : "missing",
       paypalClient: paypalClientOk ? "ok" : "missing",
       osPaypal: platformPaypal ? "ok" : "missing",
     },

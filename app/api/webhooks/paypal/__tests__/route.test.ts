@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Unlike the Stripe/PayPlus webhook tests, PayPal's signature check
+ * Unlike the Stripe webhook tests, PayPal's signature check
  * (verifyPayPalWebhookSignature) calls PayPal's own REST verification
  * endpoint over the network — it can't be exercised with a locally-computed
  * signature. This test mocks that one function and instead proves the

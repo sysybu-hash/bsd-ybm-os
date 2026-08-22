@@ -1175,9 +1175,7 @@
         "emailMissing": "חסר RESEND או SMTP — מיילים לא יישלחו",
         "paypalConfigured": "PayPal OS מוגדר",
         "paypalMissing": "PayPal OS לא מוגדר",
-        "paypalClientOk": "PayPal API מוגדר",
-        "payplusOk": "PayPlus זמין",
-        "payplusMissing": "ללא PayPlus"
+        "paypalClientOk": "PayPal API מוגדר"
       },
       "envGroups": {
         "core": "תשתית",
@@ -1244,10 +1242,6 @@
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "PayPal של מפעיל הפלטפורמה"
-        },
-        "payplus": {
-          "label": "PAYPLUS_*",
-          "hint": "PayPlus לתשלומים ישראליים"
         },
         "cronSecret": {
           "label": "CRON_SECRET",

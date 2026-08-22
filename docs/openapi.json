@@ -222,6 +222,29 @@
         }
       }
     },
+    "/api/admin/login-log": {
+      "get": {
+        "summary": "GET /api/admin/login-log",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/admin/logs": {
       "get": {
         "summary": "GET /api/admin/logs",
@@ -255,6 +278,29 @@
           }
         ],
         "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/admin/mail/actions": {
+      "post": {
+        "summary": "POST /api/admin/mail/actions",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "os-admin",
         "x-rate-limited": false,
         "responses": {
           "200": {
@@ -965,6 +1011,45 @@
         }
       }
     },
+    "/api/auth/google-link/callback": {
+      "get": {
+        "summary": "GET /api/auth/google-link/callback",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "jwt",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/auth/google-link": {
+      "get": {
+        "summary": "GET /api/auth/google-link",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "x-auth-guard": "public",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/auth/google-reconnect/callback": {
       "get": {
         "summary": "GET /api/auth/google-reconnect/callback",
@@ -1195,6 +1280,52 @@
     "/api/billing/paypal/create-order": {
       "post": {
         "summary": "POST /api/billing/paypal/create-order",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/billing/refunds": {
+      "post": {
+        "summary": "POST /api/billing/refunds",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/billing/stripe/create-checkout": {
+      "post": {
+        "summary": "POST /api/billing/stripe/create-checkout",
         "tags": [
           "billing"
         ],
@@ -1450,6 +1581,50 @@
           },
           "429": {
             "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/crm/contacts/import-google": {
+      "get": {
+        "summary": "GET /api/crm/contacts/import-google",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/crm/contacts/import-google",
+        "tags": [
+          "crm"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         }
       }
@@ -4505,6 +4680,50 @@
         }
       }
     },
+    "/api/org/mail-prefs": {
+      "get": {
+        "summary": "GET /api/org/mail-prefs",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/org/mail-prefs",
+        "tags": [
+          "org"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/org/resend-verification": {
       "post": {
         "summary": "POST /api/org/resend-verification",
@@ -4926,6 +5145,127 @@
         "summary": "GET /api/os/google-drive/workspace",
         "tags": [
           "os"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": false,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/planner": {
+      "get": {
+        "summary": "GET /api/planner",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/planner",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/planner",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/planner",
+        "tags": [
+          "planner"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/presence/heartbeat": {
+      "post": {
+        "summary": "POST /api/presence/heartbeat",
+        "tags": [
+          "presence"
         ],
         "security": [
           {
@@ -6358,6 +6698,32 @@
         }
       }
     },
+    "/api/register/paypal/create-order": {
+      "post": {
+        "summary": "POST /api/register/paypal/create-order",
+        "tags": [
+          "register"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-auth-guard": "workspace-session",
+        "x-rate-limited": true,
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
     "/api/register": {
       "post": {
         "summary": "POST /api/register",
@@ -6904,25 +7270,18 @@
         }
       }
     },
-    "/api/webhooks/payplus": {
+    "/api/webhooks/stripe": {
       "post": {
-        "summary": "POST /api/webhooks/payplus",
+        "summary": "POST /api/webhooks/stripe",
         "tags": [
           "webhooks"
         ],
-        "security": [
-          {
-            "webhookSignature": []
-          }
-        ],
-        "x-auth-guard": "webhook-hmac",
+        "security": [],
+        "x-auth-guard": "public",
         "x-rate-limited": false,
         "responses": {
           "200": {
             "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         }
       }

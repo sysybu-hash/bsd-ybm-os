@@ -94,7 +94,7 @@ export async function analyzeClientAI(orgId: string): Promise<ClientAiResult> {
     const tableData = buildTableDataFromInvoices(org.invoices);
 
     const prompt = `אתה מנתח לקוח B2B במערכת BSD-YBM.
-להלן נתוני תשלומים (בשקלים). לכל שורה כבר חושבה עמלת PayPlus בדיוק כ־1.2% מהברוטו + 1.2 ש"ח, והנטו — אל תשנה מספרים.
+להלן נתוני תשלומים (בשקלים, סכומי ברוטו). אל תשנה מספרים.
 
 שם ארגון: ${org.name}
 אימייל קשר: ${org.users[0]?.email ?? "לא ידוע"}

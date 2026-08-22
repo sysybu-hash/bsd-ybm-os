@@ -607,7 +607,7 @@
     "featureInvTitle": "Документы",
     "featureInvDesc": "Счета для любого бизнеса в стандарте Kano.",
     "featureFlowTitle": "Анализ денежного потока",
-    "featureFlowDesc": "Финансовые сводки с расчётами PayPlus.",
+    "featureFlowDesc": "Финансовые сводки и анализ денежного потока.",
     "planFreeLabel": "FREE / пробный",
     "planFreePrice": "₪0",
     "planFreeSub": "До 30 дней | один пользователь",
@@ -902,9 +902,7 @@
         "emailMissing": "Нет RESEND или SMTP",
         "paypalConfigured": "OS PayPal настроен",
         "paypalMissing": "OS PayPal не настроен",
-        "paypalClientOk": "PayPal API настроен",
-        "payplusOk": "PayPlus доступен",
-        "payplusMissing": "Без PayPlus"
+        "paypalClientOk": "PayPal API настроен"
       },
       "envGroups": {
         "core": "Ядро",
@@ -971,10 +969,6 @@
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "PayPal оператора"
-        },
-        "payplus": {
-          "label": "PAYPLUS_*",
-          "hint": "PayPlus"
         },
         "cronSecret": {
           "label": "CRON_SECRET",

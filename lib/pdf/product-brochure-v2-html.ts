@@ -195,7 +195,7 @@ ${showcaseHtml}
     <p>
       התמחות מובהקת בענף <strong>הבנייה</strong>, בתהליכי <strong>הפקת מסמכים</strong>,
       ובחיבור בין כלים ארגוניים. הסטאק הטכנולוגי: Next.js · TypeScript · PostgreSQL ·
-      Prisma · Gemini Live · PayPlus · Sentry.
+      Prisma · Gemini Live · PayPal · Sentry.
     </p>
   </div>
 
