@@ -40,3 +40,36 @@
 **P2 (2026-07-15):** `useScanQueue`, `tri-engine-extract`, `product-brochure-v2-styles`, `blueprint-excel`, `launcher-icons` — ראה היסטוריית P2 בקומיטים קודמים.
 
 **P0:** TakeoffModule, ProjectBoqPanel, BlueprintPreviewModal, ProjectBoardWidget, OmniCanvasWorkspace — הושלם 2026-07-05.
+
+---
+
+## 2026-08-23
+
+| לפני | אחרי | פעולה |
+|------|------|--------|
+| 456 | 414 + 77 | `useCrmTable.ts` → `useCrmCsvTransfer.ts` (ייבוא/ייצוא CSV, לפי התקדים של `useCrmGoogleImport`) |
+
+**היעד <25 עדיין לא הושג — logic count = 27.**
+
+חשוב לדעת: הספירה עלתה מ-24 (חתימת 10/10 ב-2026-08-14) ל-27 **לפני** העבודה
+הזו. `git checkout main && npm run lib:line-count` מחזיר גם הוא 27. העלייה
+מקורה בעבודה שנכנסה בין החתימה להיום, לא בפיצול הזה.
+
+הפיצול הנוכחי הוריד קובץ אחד מ-456 ל-414 — שיפור אמיתי בקריאוּת, אבל הוא
+**לא מוריד את הספירה**, כי המדד סופר קבצים ≥300 ו-414 עדיין מעליו.
+
+כדי לחזור מתחת ל-25 צריך להוריד שלושה קבצים אל מתחת ל-300. המועמדים הזולים
+ביותר הם אלה שיושבים ממש על הסף:
+
+| שורות | קובץ |
+|---|---|
+| 300 | `components/os/widgets/project-board/useProjectBoard.ts` |
+| 301 | `components/os/NotificationCenter.tsx` |
+| 301 | `components/os/widgets/project/gantt/GanttChartView.tsx` |
+| 304 | `lib/professions/config.ts` |
+| 305 | `components/os/widgets/project-dashboard/DashboardHeader.tsx` |
+| 307 | `lib/api-handler.ts` |
+
+**אזהרה:** לגזום קבצים שיושבים על 300-307 רק כדי לעבור מדד זה משחק במספר,
+לא שיפור. עדיף לפצל את המונוליטים האמיתיים — `useAppBuilder` (400),
+`ProgressBillPortalPanel` (385) — גם אם הספירה זזה לאט יותר.
