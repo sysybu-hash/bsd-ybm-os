@@ -13,7 +13,7 @@
 
 | נתיב | סטטוס |
 |------|--------|
-| `POST /api/billing/refunds` | PayPal + PayPlus (+ Stripe gateway) — org admin |
+| `POST /api/billing/refunds` | PayPal (+ Stripe gateway) — org admin |
 | Stripe Checkout | `POST /api/billing/stripe/create-checkout` — soft-gate בלי `STRIPE_SECRET_KEY` |
 | Stripe webhooks | `/api/webhooks/stripe` — דורש `STRIPE_WEBHOOK_SECRET` |
 

@@ -1,3 +1,9 @@
+// Poisons any client-component import chain that reaches this module. Without
+// it, Turbopack (Next 16's default bundler) will happily pull PrismaClient into
+// a browser chunk, and the failure surfaces only at runtime as "PrismaClient is
+// unable to run in this browser environment". With it, the offending import is
+// a build error that names the file.
+import "server-only";
 import { PrismaClient } from "@prisma/client";
 import { env } from "@/lib/env";
 import { PrismaNeon } from "@prisma/adapter-neon";

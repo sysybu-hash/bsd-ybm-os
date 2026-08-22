@@ -1,23 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import {
+  isMeckanoSubscriberEmail,
+  MECKANO_SUBSCRIBER_EMAIL,
+  type SessionLike,
+} from "@/lib/meckano-subscriber";
 
-export const MECKANO_SUBSCRIBER_EMAIL = "jbuildgca@gmail.com";
-export const MECKANO_ACCESS_ERROR = `Meckano זמין רק למנוי ${MECKANO_SUBSCRIBER_EMAIL}.`;
-
-export type SessionLike = {
-  user?: {
-    email?: string | null;
-    organizationId?: string | null;
-  } | null;
-} | null | undefined;
-
-export function normalizeMeckanoEmail(email: string | null | undefined) {
-  return email?.trim().toLowerCase() ?? "";
-}
-
-export function isMeckanoSubscriberEmail(email: string | null | undefined) {
-  return normalizeMeckanoEmail(email) === MECKANO_SUBSCRIBER_EMAIL;
-}
+// Re-exported so the ~15 server-side callers keep one import site. Client code
+// must import from "@/lib/meckano-subscriber" directly — this module reaches
+// Prisma and is poisoned by `server-only`.
+export {
+  MECKANO_ACCESS_ERROR,
+  MECKANO_SUBSCRIBER_EMAIL,
+  isMeckanoSubscriberEmail,
+  normalizeMeckanoEmail,
+  type SessionLike,
+} from "@/lib/meckano-subscriber";
 
 export async function isMeckanoEnabledForOrganization(organizationId: string | null | undefined) {
   if (!organizationId) {

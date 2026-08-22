@@ -5,7 +5,7 @@ import {
 } from "@/lib/tri-engine-api-common";
 import { saveScannedDocumentAction } from "@/app/actions/save-scanned-document";
 import { resolvePolicyForIndustry, inferScreenTypeFromFileForIndustry } from "@/lib/ai/screen-decode-policy";
-import { runScanPostActionsServer } from "@/lib/ai/scan-post-actions";
+import { runScanPostActionsServer } from "@/lib/ai/scan-post-actions.server";
 import { v5ToPersistableAiData } from "@/lib/scan-schema-v5";
 import { createExpenseFromScan } from "@/lib/workspace-api/expense-from-scan";
 import { createLogger } from "@/lib/logger";

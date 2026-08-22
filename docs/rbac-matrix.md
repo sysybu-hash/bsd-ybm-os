@@ -7,7 +7,7 @@
 - כל route ב-`app/api/` עובר דרך אחד מ-3 ה-wrappers ב-[lib/api-handler.ts](../lib/api-handler.ts):
   - `withWorkspacesAuth` — דורש NextAuth session + `organizationId`. ה-context הוא `{ orgId, userId, role }`. ברירת מחדל לרוב routes.
   - `withAdminAuth` — דורש `isAdmin(role)` מ-[lib/is-admin.ts](../lib/is-admin.ts) (PLATFORM_ADMIN / SUPER_ADMIN / ORG_ADMIN). ל-`/api/admin/*`.
-  - allowlist — webhook routes ציבוריים (`/api/webhooks/paypal`, `/api/webhooks/payplus`) ו-`/api/auth/*` מטופלים ב-[middleware.ts](../middleware.ts).
+  - allowlist — webhook routes ציבוריים (`/api/webhooks/paypal`, `/api/webhooks/stripe`, `/api/webhooks/whatsapp`) ו-`/api/auth/*` מטופלים ב-[middleware.ts](../middleware.ts).
 - אכיפת ה-RBAC נעשית **בשרת בלבד**. ה-widget guard ב-`PlatformAdminWidget` הוא רק UX, לא אבטחה.
 - `scripts/audit-api-routes.mjs` רץ ב-CI ובודק אוטומטית שאין route ללא wrapper.
 
@@ -18,7 +18,6 @@
 | `/api/auth/*` (NextAuth) | allowlist ב-middleware | ציבורי | התחברות/הרשמה — חייב להיות ציבורי |
 | `/api/register` | allowlist | ציבורי | יוצר משתמש חדש |
 | `/api/webhooks/paypal` | allowlist + signature | PayPal IPN | אימות חתימה ב-route |
-| `/api/webhooks/payplus` | allowlist + signature | PayPlus | אימות חתימה ב-route |
 | `/api/ai/*` (chat/providers/Gemini) | `withWorkspacesAuth` | כל המשתמשים | בודק quota + rate-limit |
 | `/api/analyze`, `/api/analyze-queue/*` | `withWorkspacesAuth` | כל המשתמשים | סריקות AI עם quota |
 | `/api/scan/*` | `withWorkspacesAuth` | כל המשתמשים | חיסור scan credit ב-route |
@@ -31,7 +30,7 @@
 | `/api/documents/issued/*` (drafts, [id]/export, sign) | `withWorkspacesAuth` | כל המשתמשים | drafts → unique per user |
 | `/api/notebooklm/*` (notebooks, chat, audio-overview, from-scan, extract-pdf) | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/meckano/*` (access, employees, projects, reports, reports/export-pdf, zones, clock-in) | `withWorkspacesAuth` + Meckano API key | כל המשתמשים | API key per-org ב-Organization |
-| `/api/integrations/*` (google-drive/*, payplus link) | `withWorkspacesAuth` + OAuth token | כל המשתמשים | refresh tokens מוצפנים |
+| `/api/integrations/*` (google-drive/*) | `withWorkspacesAuth` + OAuth token | כל המשתמשים | refresh tokens מוצפנים |
 | `/api/os/google-drive/*` | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/os/automations/*` | `withWorkspacesAuth` | כל המשתמשים | |
 | `/api/os/assistant/*` (parse-action, interpret) | `withWorkspacesAuth` | כל המשתמשים | |

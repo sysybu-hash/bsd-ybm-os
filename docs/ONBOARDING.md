@@ -164,14 +164,6 @@ MECKANO_API_KEY=    # from Meckano → Settings → API
 
 Without this key, the Meckano widget shows a "missing API key" placeholder.
 
-### PayPlus (Israeli payment gateway — optional)
-
-```env
-PAYPLUS_API_KEY=
-PAYPLUS_SECRET_KEY=
-PAYPLUS_PAYMENT_PAGE_UID=
-```
-
 ### WhatsApp Cloud API (Meta) — optional
 
 מאפשר ללקוחות לשלוח צילום חשבונית בוואטסאפ והיא נסרקת אוטומטית לפרויקט.

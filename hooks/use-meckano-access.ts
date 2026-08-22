@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
+import { isMeckanoSubscriberEmail } from "@/lib/meckano-subscriber";
 
 export function useMeckanoAccess() {
   const { data: session, status } = useSession();

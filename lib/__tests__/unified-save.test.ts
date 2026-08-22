@@ -47,7 +47,7 @@ jest.mock("@/lib/logger", () => ({
 }));
 
 import { unifiedSaveScan, buildAiDataForSave } from "@/lib/scan/unified-save";
-import { runScanPostActionsServer } from "@/lib/ai/scan-post-actions";
+import { runScanPostActionsServer } from "@/lib/ai/scan-post-actions.server";
 import { isScanUnifiedV2Enabled } from "@/lib/scan/feature-flag";
 
 function sampleV5(overrides?: Partial<ScanExtractionV5>): ScanExtractionV5 {

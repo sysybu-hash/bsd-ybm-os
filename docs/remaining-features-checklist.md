@@ -9,7 +9,7 @@
 | MPP ישיר | בוצע (soft-gate) | `MPP_CONVERT_URL` + convert client |
 | pgvector ב-Neon | בוצע (soft-gate) | `USE_PGVECTOR` + ANN search + JSON fallback |
 | Gemini Live E2E | בוצע (CI harness) | `e2e/gemini-live-flow.spec.ts`; mic אמיתי — Owner staging |
-| Refunds API | בוצע | PayPal/PayPlus/Stripe gateways |
+| Refunds API | בוצע | PayPal/Stripe gateways |
 | ITA HTTP | בוצע (soft-gate) | `ITA_API_URL` + key |
 | Stripe | בוצע (soft-gate) | checkout + webhooks |
 | Self-heal מאובטח | בוצע | dry-run + allowlist |

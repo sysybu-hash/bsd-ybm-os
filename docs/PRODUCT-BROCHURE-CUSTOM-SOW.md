@@ -8,7 +8,7 @@
 |-----|-----|
 | לקוח / ארגון | |
 | מודולים מופעלים | פיננסים, CRM, ארכיון, Meckano, … |
-| אינטגרציות מאומתות | Google Contacts, Meckano API, PayPlus, … |
+| אינטגרציות מאומתות | Google Contacts, Meckano API, PayPal, … |
 | תאריך UAT | |
 | חתימת לקוח | |
 
