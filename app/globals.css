@@ -44,6 +44,12 @@
     --accent-strong: #1d4ed8;
     --accent-soft: #eff6ff;
     --accent-contrast: #ffffff;
+    /* Accent used as TEXT. Distinct from --accent, which also backs filled
+       controls where white sits on top — lightening that token to fix text
+       contrast would break the button. On the auth pages the accent text sits
+       over decorative gradient blobs, and axe composites those: #3b82f6 on the
+       blended #0f2733 measured 4.2:1, under the 4.5:1 AA floor. */
+    --accent-text: #1d4ed8;
 
     --radius-sm: 8px;
     --radius-md: 10px;
@@ -163,6 +169,7 @@
     --accent-strong: #2563eb;
     --accent-soft: rgba(59, 130, 246, 0.16);
     --accent-contrast: #ffffff;
+    --accent-text: #60a5fa;
     --canvas: var(--background-main);
     --canvas-raised: var(--surface-card);
     --canvas-sunken: var(--surface-soft);
