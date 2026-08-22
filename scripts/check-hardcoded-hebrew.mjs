@@ -78,8 +78,15 @@ for (const file of files) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
     if (!HEBREW.test(line)) continue;
-    if (line.includes('t("') || line.includes("t('")) continue;
-    if (line.includes('tr("') || line.includes("tr('")) continue;
+    // A translated string: t("key"), t(`${P}.key`), tr("key", "fallback"), ...
+    // The backtick form is the common one in this repo (widgets build keys from
+    // a PREFIX constant), and matching only quotes reported ~800 false hits and
+    // made the audit useless as a gate.
+    if (/\bt(?:r)?\s*\(\s*[`"']/.test(line)) continue;
+    // A per-locale entry in a { he, en, ru } record — that IS the translation.
+    if (/^\s*(?:he|en|ru|ar)\s*:\s*[`"']/.test(line.trim())) continue;
+    // A locale record written on one line: { he: "...", en: "...", ru: "..." }
+    if (/\bhe\s*:\s*[`"']/.test(line) && /\ben\s*:\s*[`"']/.test(line)) continue;
     const trimmed = line.trim();
     // הערות: `//`, גוף בלוק (`*`), ובלוק שנפתח באותה שורה (JSDoc חד-שורתי)
     if (
@@ -94,7 +101,7 @@ for (const file of files) {
   }
 }
 
-const MAX_REPORT = 40;
+const MAX_REPORT = Number(process.env.HEB_MAX_REPORT ?? 40);
 console.log(`Hardcoded Hebrew scan: ${hits.length} line(s)`);
 if (pathArgs.length > 0) {
   console.log(`  scope: ${pathArgs.join(", ")}`);

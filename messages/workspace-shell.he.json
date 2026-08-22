@@ -491,6 +491,10 @@
       "minCharsHint": "הקלידו לפחות 2 תווים לחיפוש"
     },
     "unsupportedWidget": "סוג חלון לא נתמך ({type})",
+    "errorBoundary": {
+      "title": "הווידג׳ט נתקל בתקלה",
+      "body": "אפשר לנסות לטעון אותו מחדש."
+    },
     "retry": "נסה שוב",
     "hubs": {
       "tabListAria": "טאבים בחלון",

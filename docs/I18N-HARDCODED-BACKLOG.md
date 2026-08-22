@@ -1,0 +1,69 @@
+# חוב: מחרוזות עברית קשיחות
+
+## המספרים (2026-08-23)
+
+`npm run audit:hebrew-hardcode` → **987 שורות**.
+
+הסקריפט חודד בסבב הזה, ולכן המספר **עלה** מ-855 ל-987. זה שיפור ולא נסיגה:
+
+| מה תוקן בסקריפט | ההשפעה |
+|---|---|
+| זיהוי `tr(\`${PREFIX}.key\`, "fallback")` | הפסיק לדווח על מאות תרגומים תקינים שנכתבים עם template literal |
+| `\b` לפני `t(` | הפסיק **להסתיר** הפרות אמיתיות. `line.includes('t("')` דילג על כל שורה שמכילה את הרצף — כולל `showToast("חסרים פרטי הוצאה")` ו-`format("...")` |
+| זיהוי רשומות `{ he, en, ru }` | הפסיק לדווח על מפות תרגום כהפרה |
+
+`HEB_MAX_REPORT=2000 npm run audit:hebrew-hardcode` מדפיס את הרשימה המלאה.
+
+## הפילוח — וזו הנקודה
+
+| איפה | שורות | אחוז |
+|---|---|---|
+| `app/api/**` + `app/actions/**` (צד שרת) | **848** | 86% |
+| דפי `app/**` | 74 | 7% |
+| `components/**` (UI ממשי) | 65 | 7% |
+
+**86% מהחוב אינו UI.** אלה הודעות שגיאה שראוטים ופעולות שרת מחזירים.
+
+## ההחלטה שחסומה
+
+הראוטים כבר מחזירים `code` לצד `message` — למשל
+`app/api/register/paypal/create-order/route.ts` מחזיר
+`{ error: "יצירת הזמנה נכשלה", code: "paypal_auth_failed" }`.
+
+שתי דרכים, וצריך להכריע לפני שנוגעים ב-848:
+
+1. **השרת מחזיר קודים בלבד, הלקוח מתרגם.** נכון ארכיטקטונית — השרת לא יודע
+   את שפת המשתמש, ו-`Accept-Language` אינו אמין. דורש מפתח i18n לכל קוד
+   ומעבר על כל צרכן שמציג `error` גולמי.
+2. **השרת מתרגם לפי הבקשה.** פחות שינוי בלקוח, אבל מכניס i18n לשכבת ה-API
+   ומשאיר את הבעיה בלוגים.
+
+עד שתתקבל הכרעה, אין טעם לתרגם שורה אחת מה-848.
+
+## מה שכן טופל
+
+| קובץ | מה היה |
+|---|---|
+| `components/os/WidgetErrorBoundary.tsx` | "הווידג׳ט נתקל בתקלה" / "לנסות שוב" קשיחים ב-JSX. גבול שגיאה שכל משתמש רואה, בעברית בלבד. פוצל לקומפוננטת פונקציה שקוראת `useI18n` (class לא יכול), עם fallback מפורש כי `useI18n` מחזיר את המפתח כשאין provider |
+| `components/os/system/TradeProfileProvider.tsx` | `businessLineLabel: "עסק כללי"` התעלם מהפרופיל לגמרי והיה שגוי ב-en/ru. יושר לדפוס של הנתיב הרגיל |
+
+## מה שנשאר ב-`components/` (65)
+
+חלק ניכר אינו הפרה:
+
+- `msg.includes("מנהל")`, `!text.startsWith("שגיאה")` — **התאמת** טקסט, לא הצגה
+- `ScanDestinationPicker` — דפוס `{ labelKey, fallback }` תקין
+
+הפרות אמיתיות שכן נותרו, לפי סדר עדיפות:
+
+1. `components/os/NotificationCenter.tsx:103,129` — `showToast` בעברית
+2. `components/os/widgets/erp-file-archive/useArchiveData.ts` — 7 הודעות שגיאה
+3. `components/os/widgets/ai-scanner/useAiScannerState.ts` — 6 toasts
+4. `components/os/widgets/erp-documents/useErpDocuments.ts:118` — `confirm()` בעברית
+5. `components/os/widgets/meckano-reports/useMeckanoReports.ts` — 3 הודעות
+6. `components/os/widgets/notebook-lm/useNotebookLM.ts` — כותרת ברירת מחדל
+
+## למה זה עדיין לא שער חוסם
+
+`process.exit(0)` בסוף הסקריפט. להפוך אותו לחוסם רק אחרי ש-`components/` ירד
+לאפס — אחרת הוא יחסום כל PR על חוב קיים.

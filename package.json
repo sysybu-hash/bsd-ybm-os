@@ -36,7 +36,7 @@
     "audit:client-env": "node scripts/audit-client-env.mjs",
     "audit:unpaid-tiers": "node scripts/audit-unpaid-paid-tiers.mjs",
     "audit:hebrew-hardcode": "node scripts/check-hardcoded-hebrew.mjs",
-    "verify": "npm run lint && npx tsc --noEmit && npm run audit:api && npm run audit:rate-limits && npm run audit:client-env && npm test",
+    "verify": "npm run lint && npx tsc --noEmit && npm run audit:api && npm run audit:rate-limits && npm run audit:client-env && npm run audit:process-env && npm test",
     "verify:all": "npm run verify && playwright test --project=chromium --project=mobile-chrome --workers=1 --retries=1",
     "premerge": "npm run verify:all",
     "verify:e2e:seeded": "npm run seed:test && playwright test",

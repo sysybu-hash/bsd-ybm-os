@@ -491,6 +491,10 @@
       "minCharsHint": "Type at least 2 characters to search"
     },
     "unsupportedWidget": "Unsupported window type ({type})",
+    "errorBoundary": {
+      "title": "This widget hit an error",
+      "body": "You can try loading it again."
+    },
     "retry": "Try again",
     "hubs": {
       "tabListAria": "Window tabs",
