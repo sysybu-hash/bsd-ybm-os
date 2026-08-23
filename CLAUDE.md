@@ -15,7 +15,7 @@
 | DB | Neon serverless PostgreSQL via Prisma 6 |
 | Auth | NextAuth v4 + SimpleWebAuthn (passkeys) |
 | AI | Gemini 2.5 (primary), Anthropic Claude, OpenAI, Groq, Google DocumentAI |
-| Payments | PayPal + PayPlus (Israeli) |
+| Payments | PayPal |
 | Monitoring | Sentry + Sentry Crons, PostHog |
 | Styling | Tailwind CSS, RTL-first (Hebrew) |
 | Testing | Jest (unit), Playwright (E2E), @axe-core/playwright (a11y) |
@@ -62,8 +62,10 @@
 - Default locale: `he` (Hebrew, RTL). Secondary: `en`, `ru`.
 
 ### 7. Webhooks
-- Verify HMAC before processing. PayPlus: `lib/webhook-verify.ts` → `verifyPayPlusWebhook()`.
-- Read raw body once with `readRawBody()` before JSON parsing.
+- Verify the signature before processing — every webhook route, no exceptions.
+- Read raw body once with `readRawBody()` from `lib/webhook-verify.ts` before JSON parsing.
+- PayPal: `verifyPayPalWebhookSignature()`. Stripe: `verifyStripeWebhookEvent()`.
+  WhatsApp: `verifyWhatsappSignature()` (HMAC-SHA256, `x-hub-signature-256`).
 
 ### 8. PII
 - Logger auto-redacts: email, Israeli ID (9-digit), phone, API keys, credit cards.
@@ -132,6 +134,16 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 2. **`noUncheckedIndexedAccess`**: Array/record index returns `T | undefined`. Use `!` when bounds-checked in a loop, `?? fallback` otherwise.
 3. **RTL icons**: Use `className="rtl:rotate-180"` on directional icons (arrows, chevrons).
 4. **`force-dynamic`**: Add `export const dynamic = "force-dynamic"` to any route that reads cookies/session.
-5. **PayPlus signature**: Always validate before processing. Dev mode allows missing header with a warning; prod rejects.
+5. **Webhook signatures**: Always validate before processing. A route that parses the body first has already lost.
 6. **Gemini model chain**: Try primary → fallback models. `isLikelyGeminiModelUnavailable()` detects quota errors.
 7. **Tenant routing**: `lib/tenant-host.ts` controls multi-tenancy. Platform host check happens in `app/layout.tsx`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

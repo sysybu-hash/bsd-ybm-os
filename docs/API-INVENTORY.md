@@ -1,7 +1,7 @@
 # API Inventory
 
 > נוצר אוטומטית ע"י `node scripts/generate-openapi.mjs` מתוך `app/api/**/route.ts`.
-> 304 מסלולים (method + path). מקור מלא: [`docs/openapi.json`](./openapi.json).
+> 320 מסלולים (method + path). מקור מלא: [`docs/openapi.json`](./openapi.json).
 
 | Method | Path | Auth guard | Rate-limited |
 |--------|------|-----------|--------------|
@@ -13,8 +13,10 @@
 | `GET` | `/api/admin/check-user` | os-admin | — |
 | `POST` | `/api/admin/fix-roles` | os-admin | — |
 | `GET` | `/api/admin/health` | os-admin | — |
+| `GET` | `/api/admin/login-log` | os-admin | — |
 | `GET` | `/api/admin/logs` | workspace-session | — |
 | `DELETE` | `/api/admin/logs` | workspace-session | — |
+| `POST` | `/api/admin/mail/actions` | os-admin | — |
 | `GET` | `/api/admin/platform-settings` | os-admin | — |
 | `PATCH` | `/api/admin/platform-settings` | os-admin | — |
 | `POST` | `/api/admin/self-heal` | os-admin | — |
@@ -45,6 +47,8 @@
 | `GET` | `/api/auth/{nextauth}` | public | — |
 | `POST` | `/api/auth/{nextauth}` | public | — |
 | `POST` | `/api/auth/forgot-password` | public | ✓ |
+| `GET` | `/api/auth/google-link/callback` | jwt | — |
+| `GET` | `/api/auth/google-link` | public | — |
 | `GET` | `/api/auth/google-reconnect/callback` | jwt | — |
 | `GET` | `/api/auth/google-reconnect` | public | — |
 | `GET` | `/api/auth/google-start` | public | ✓ |
@@ -58,6 +62,8 @@
 | `POST` | `/api/auth/set-password` | public | ✓ |
 | `POST` | `/api/billing/paypal/capture-order` | workspace-session | — |
 | `POST` | `/api/billing/paypal/create-order` | workspace-session | — |
+| `POST` | `/api/billing/refunds` | workspace-session | — |
+| `POST` | `/api/billing/stripe/create-checkout` | workspace-session | — |
 | `POST` | `/api/chat/legacy` | workspace-session | ✓ |
 | `POST` | `/api/chat` | workspace-session | — |
 | `GET` | `/api/comments` | workspace-session | ✓ |
@@ -68,6 +74,8 @@
 | `DELETE` | `/api/crm/contacts/{id}` | workspace-session | — |
 | `GET` | `/api/crm/contacts/{id}/timeline` | workspace-session | ✓ |
 | `GET` | `/api/crm/contacts/export` | workspace-session | ✓ |
+| `GET` | `/api/crm/contacts/import-google` | workspace-session | — |
+| `POST` | `/api/crm/contacts/import-google` | workspace-session | — |
 | `GET` | `/api/crm/contacts` | workspace-session | — |
 | `POST` | `/api/crm/contacts` | workspace-session | — |
 | `POST` | `/api/crm/import` | workspace-session | — |
@@ -201,6 +209,8 @@
 | `GET` | `/api/org-invite/preview` | public | ✓ |
 | `GET` | `/api/org/check-email-verified` | workspace-session | — |
 | `GET` | `/api/org/insights/daily` | workspace-session | — |
+| `GET` | `/api/org/mail-prefs` | workspace-session | — |
+| `PATCH` | `/api/org/mail-prefs` | workspace-session | — |
 | `POST` | `/api/org/resend-verification` | workspace-session | — |
 | `GET` | `/api/org/scan-lookups` | workspace-session | — |
 | `GET` | `/api/organization` | workspace-session | — |
@@ -220,6 +230,11 @@
 | `POST` | `/api/os/google-drive/to-notebook` | workspace-session | — |
 | `POST` | `/api/os/google-drive/upload` | workspace-session | — |
 | `GET` | `/api/os/google-drive/workspace` | workspace-session | — |
+| `GET` | `/api/planner` | workspace-session | ✓ |
+| `POST` | `/api/planner` | workspace-session | ✓ |
+| `PATCH` | `/api/planner` | workspace-session | ✓ |
+| `DELETE` | `/api/planner` | workspace-session | ✓ |
+| `POST` | `/api/presence/heartbeat` | workspace-session | — |
 | `POST` | `/api/procurement/orders/{id}/issue-document` | workspace-session | ✓ |
 | `POST` | `/api/procurement/orders/{id}` | workspace-session | ✓ |
 | `PATCH` | `/api/procurement/orders/{id}` | workspace-session | ✓ |
@@ -281,6 +296,7 @@
 | `POST` | `/api/push/subscribe` | workspace-session | — |
 | `DELETE` | `/api/push/subscribe` | workspace-session | — |
 | `POST` | `/api/quotes` | workspace-session | — |
+| `POST` | `/api/register/paypal/create-order` | workspace-session | ✓ |
 | `POST` | `/api/register` | public | ✓ |
 | `GET` | `/api/reports/finance-csv` | workspace-session | ✓ |
 | `GET` | `/api/scan/engine-meta` | workspace-session | — |
@@ -305,7 +321,7 @@
 | `GET` | `/api/user/workspace-layout` | workspace-session | ✓ |
 | `PATCH` | `/api/user/workspace-layout` | workspace-session | ✓ |
 | `POST` | `/api/webhooks/paypal` | webhook-hmac | — |
-| `POST` | `/api/webhooks/payplus` | webhook-hmac | — |
+| `POST` | `/api/webhooks/stripe` | public | — |
 | `GET` | `/api/webhooks/whatsapp` | webhook-hmac | — |
 | `POST` | `/api/webhooks/whatsapp` | webhook-hmac | — |
 | `POST` | `/api/whatsapp/link-code` | workspace-session | ✓ |

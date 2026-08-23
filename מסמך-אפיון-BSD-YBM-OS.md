@@ -16,7 +16,7 @@
 | אימות | **NextAuth v4** (`next-auth`) עם Prisma Adapter — אסטרטגיית סשן **JWT** |
 | פריסה | **Vercel** (`vercel.json` — Cron jobs) |
 
-**תחום עסקי (מאפיין קוד):** מערכת ניהול / „מערכת הפעלה” לארגונים בענף **הבנייה** — CRM, ERP (מסמכים, הוצאות, חשבוניות מס), סריקות AI, אינטגרציית **מקאנו** (שעון / אזורים), גבייה (PayPal, PayPlus), דוחות, ועוד.
+**תחום עסקי (מאפיין קוד):** מערכת ניהול / „מערכת הפעלה” לארגונים בענף **הבנייה** — CRM, ERP (מסמכים, הוצאות, חשבוניות מס), סריקות AI, אינטגרציית **מקאנו** (שעון / אזורים), גבייה (PayPal), דוחות, ועוד.
 
 ---
 
@@ -141,7 +141,7 @@
 ### 4.9 גבייה ותשלומים
 
 - `api/billing/paypal/create-order/route.ts`, `api/billing/paypal/capture-order/route.ts`
-- `api/webhooks/paypal/route.ts`, `api/webhooks/payplus/route.ts`
+- `api/webhooks/paypal/route.ts`, `api/webhooks/stripe/route.ts`
 
 ### 4.10 ארגון, הזמנות, הצעות מחיר חתומות
 
@@ -265,7 +265,7 @@
 ## 13. תלויות עסקיות/טכנולוגיות בולטות (מ־`package.json`)
 
 AI: `@ai-sdk/*`, `ai`, `@google/generative-ai`, `@google/genai`, `@anthropic-ai/sdk`, `openai`, `groq-sdk`, `@google-cloud/documentai`  
-תשלומים: PayPal SDK, לוגיקת PayPlus בקוד  
+תשלומים: PayPal SDK  
 מייל: `nodemailer`, `resend`  
 PDF/דוחות: `jspdf`, `jspdf-autotable`, `@react-pdf/renderer`  
 אחר: `firebase-admin`, `googleapis`, `bcryptjs`, `zod`, `@tanstack/react-query`, `recharts`, `leaflet`, `papaparse`, `mammoth`, `react-markdown`, `sonner`, `next-themes`

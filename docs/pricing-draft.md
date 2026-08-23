@@ -1,6 +1,6 @@
 # Pricing draft (not billed yet)
 
-Proposed metering for a future billing iteration (PayPlus / Stripe already exist for subscriptions):
+Proposed metering for a future billing iteration (PayPal / Stripe already exist for subscriptions):
 
 | Dimension | Suggested free / trial | Paid |
 |-----------|------------------------|------|

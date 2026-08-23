@@ -70,9 +70,6 @@ function serviceDetail(
         meta.osPaypal === "ok"
           ? t("platformAdmin.health.serviceDetail.paypalConfigured")
           : t("platformAdmin.health.serviceDetail.paypalMissing"),
-        meta.payplus === "ok"
-          ? t("platformAdmin.health.serviceDetail.payplusOk")
-          : t("platformAdmin.health.serviceDetail.payplusMissing"),
       ];
       if (meta.paypalClient === "ok") {
         parts.unshift(t("platformAdmin.health.serviceDetail.paypalClientOk"));

@@ -41,8 +41,6 @@ function safeUrlHost(raw?: string): string | undefined {
 }
 
 export function getAdminEnvChecks(): AdminEnvCheckGroup[] {
-  const payplusOk =
-    has(env.PAYPLUS_API_KEY) && has(env.PAYPLUS_SECRET_KEY) && has(env.PAYPLUS_PAYMENT_PAGE_UID);
   const paypalClientOk = has(env.PAYPAL_CLIENT_ID) && has(env.PAYPAL_CLIENT_SECRET);
 
   return [
@@ -128,11 +126,6 @@ export function getAdminEnvChecks(): AdminEnvCheckGroup[] {
         {
           id: "osPaypal",
           configured: hasOSPayPalConfigured(),
-          kind: "optional",
-        },
-        {
-          id: "payplus",
-          configured: payplusOk,
           kind: "optional",
         },
       ],

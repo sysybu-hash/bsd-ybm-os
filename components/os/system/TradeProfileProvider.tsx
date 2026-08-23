@@ -72,9 +72,13 @@ export function useTradeProfile(): TradeProfileContextValue {
       isCompanyMgmt: false,
       features: mergedConfig.features,
       constructionTradeId: "GENERAL_CONTRACTOR",
-      constructionTradeLabel: profile.constructionTradeLabel ?? "קבלן ראשי",
+      // Mirror the in-provider path above: take the label the profile computed
+      // and fall back to the id, never to a hard-coded Hebrew string. The old
+      // businessLineLabel ignored the profile outright and always said
+      // "עסק כללי", which was wrong in en/ru.
+      constructionTradeLabel: profile.constructionTradeLabel ?? "GENERAL_CONTRACTOR",
       businessLineId: "GENERAL_BUSINESS",
-      businessLineLabel: "עסק כללי",
+      businessLineLabel: profile.businessLineLabel ?? "GENERAL_BUSINESS",
     };
   }
   return ctx;

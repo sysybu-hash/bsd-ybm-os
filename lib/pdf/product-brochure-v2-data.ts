@@ -133,7 +133,7 @@ export const TECH_STACK: FeatureCard[] = [
   { icon: ICONS.database, title: "PostgreSQL (Neon)", desc: "Prisma 6, מיגרציות מנוהלות, גיבוי DR" },
   { icon: ICONS.shieldCheck, title: "Auth + Passkeys", desc: "NextAuth + SimpleWebAuthn, חיבור Google" },
   { icon: ICONS.bot, title: "AI רב-מודלי", desc: "Gemini 2.5, Claude, OpenAI, Groq" },
-  { icon: ICONS.creditCard, title: "תשלומים", desc: "PayPal + PayPlus (ישראלי) + חשבוניות" },
+  { icon: ICONS.creditCard, title: "תשלומים", desc: "PayPal + חשבוניות" },
   { icon: ICONS.activity, title: "ניטור Enterprise", desc: "Sentry, PostHog, Sentry Crons, Lighthouse CI" },
 ];
 

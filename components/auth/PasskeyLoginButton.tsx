@@ -84,6 +84,10 @@ export default function PasskeyLoginButton({
         return;
       }
       writeRememberPreference(remember);
+      // Hard navigation on purpose: the session cookie was just issued, and a
+      // client-side router.push() would re-render server components against the
+      // pre-login session. A full load is what picks the new cookie up.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/";
     } catch (e) {
       log.error("passkey login failed", { error: e instanceof Error ? e.message : String(e) });

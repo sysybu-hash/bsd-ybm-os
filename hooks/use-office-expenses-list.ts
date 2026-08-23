@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
-import { OFFICE_EXPENSES_PAGE_SIZE } from "@/lib/workspace-api/office-expenses";
+import { OFFICE_EXPENSES_PAGE_SIZE } from "@/lib/workspace-api/office-expenses-constants";
 
 export type OfficeExpenseFilters = {
   q: string;

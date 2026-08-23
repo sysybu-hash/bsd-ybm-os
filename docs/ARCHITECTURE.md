@@ -47,7 +47,6 @@ BSD-YBM Intelligence is a **Hebrew-first, RTL** ERP/CRM/OS built for Israeli con
    │  Groq           │
    │  Google DocAI   │
    │  PayPal         │
-   │  PayPlus (IL)   │
    │  Meckano (IL)   │
    │  Google Drive   │
    └─────────────────┘
@@ -59,7 +58,7 @@ BSD-YBM Intelligence is a **Hebrew-first, RTL** ERP/CRM/OS built for Israeli con
 - **Documents** — Quotes, Invoices, Issued Documents (PDF/HTML)
 - **AI Scan** — Multi-engine document processing (Gemini + OpenAI + DocAI)
 - **Knowledge Vault** — Org-scoped embedding/RAG store
-- **Billing** — PayPal + PayPlus payment processing, subscription management
+- **Billing** — PayPal payment processing, subscription management
 - **Automation** — Low-code rules engine for workspace automations
 - **Observability** — Sentry, PostHog, Lighthouse CI, Sentry Crons
 
@@ -82,7 +81,7 @@ BSD-YBM Intelligence is a **Hebrew-first, RTL** ERP/CRM/OS built for Israeli con
 | AI (fast) | Groq Llama 3 via `groq-sdk` |
 | Document AI | Google Cloud Document AI (`@google-cloud/documentai`) |
 | PDF | `@react-pdf/renderer`, `jspdf`, `@sparticuz/chromium` |
-| Payments | PayPal (`@paypal/react-paypal-js`) + PayPlus (REST) |
+| Payments | PayPal (`@paypal/react-paypal-js`) |
 | Push | Firebase Admin + Web Push |
 | Storage | Google Cloud Storage / Google Drive API |
 | Monitoring | `@sentry/nextjs`, PostHog, Lighthouse CI |
@@ -102,7 +101,7 @@ app/
   api/
     ai/                     ← AI endpoints (chat, assistant, scan)
     auth/                   ← passkey, set-password, reset-password, ...
-    billing/                ← subscription, paypal, payplus
+    billing/                ← subscription, paypal
     cron/                   ← scheduled jobs (financial-insights, task-reminders, ...)
     crm/                    ← contacts, import
     documents/              ← issued docs, PDF export
@@ -111,7 +110,7 @@ app/
     og/                     ← dynamic OG image generation
     projects/               ← project CRUD + BOQ
     scan/                   ← document scan queue
-    webhooks/               ← paypal, payplus
+    webhooks/               ← paypal, stripe, whatsapp
     ...
   app/                      ← authenticated workspace (OmniCanvas)
     admin/                  ← platform admin (super-admin only)
@@ -227,7 +226,7 @@ All 5 cron routes are protected via `withCronGuard` (`lib/cron-guard.ts`):
 | `Document` | Raw scanned/uploaded document |
 | `IssuedDocument` | Finalized invoices/quotes with PDF |
 | `Quote` | Pre-issue quote for client signature |
-| `Invoice` | Issued invoices, PayPlus/PayPal transaction IDs |
+| `Invoice` | Issued invoices, gateway transaction IDs (`gatewayTransactionId`) |
 | `DocumentScanJob` | AI scan queue entry (pending/processing/done) |
 | `DocumentScanCache` | Cached AI extraction result |
 | `KnowledgeVault*` | Embedded document chunks for RAG |
@@ -302,7 +301,7 @@ Implemented via `@simplewebauthn/server` (server) + `@simplewebauthn/browser` (c
 | Org-scoped | All DB queries filter by `organizationId` from session |
 | Admin | `isAdmin(email)` check against `ADMIN_EMAILS` env var |
 | Cron | `Authorization: Bearer CRON_SECRET` header |
-| Webhooks | HMAC-SHA256 (`PAYPLUS_SECRET_KEY`) / PayPal signature API |
+| Webhooks | PayPal signature API · Stripe `verifyStripeWebhookEvent` · WhatsApp HMAC-SHA256 |
 
 ---
 
@@ -313,11 +312,6 @@ Implemented via `@simplewebauthn/server` (server) + `@simplewebauthn/browser` (c
 - Capture: client-side + server verify
 - Webhook: `/api/webhooks/paypal` — verifies via PayPal's `verify-webhook-signature` endpoint (requires `PAYPAL_WEBHOOK_ID`)
 - Applies: `applyPayPalCaptureResult()` → updates `Invoice.status = PAID`
-
-### PayPlus (Israeli)
-- Payment page generation: `lib/payplus.ts` → PayPlus REST API
-- Webhook: `/api/webhooks/payplus` — HMAC-SHA256 verification with `PAYPLUS_SECRET_KEY`
-- Signed with timing-safe compare (`crypto.timingSafeEqual`)
 
 ---
 
@@ -407,7 +401,6 @@ Critical ones:
 | `CRON_SECRET` | Protects cron routes from public access |
 | `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring |
 | `PAYPAL_WEBHOOK_ID` | PayPal webhook signature verification |
-| `PAYPLUS_SECRET_KEY` | PayPlus HMAC-SHA256 webhook verification |
 
 ---
 
@@ -416,7 +409,7 @@ Critical ones:
 | Control | Implementation |
 |---|---|
 | Rate limiting | IP-based (unauthenticated) + user-based (authenticated) via `applyRateLimit` / `withWorkspacesAuth` |
-| Webhook verification | PayPal: server-side signature API. PayPlus: HMAC-SHA256 + `timingSafeEqual` |
+| Webhook verification | PayPal: server-side signature API. Stripe/WhatsApp: HMAC + `timingSafeEqual` |
 | PII in logs | Automatic redaction in `lib/logger.ts` |
 | Secret scanning | Gitleaks in CI on every push |
 | Dependency audit | `npm audit --audit-level=critical` in CI |

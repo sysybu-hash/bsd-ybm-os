@@ -1,5 +1,4 @@
 import type { CompanyType as PrismaCompanyType, DocType } from "@prisma/client";
-import { payPlusFeeIls } from "@/lib/crm-client-ai";
 import { DEFAULT_VAT_RATE_PERCENT, resolveVatRatePercent, vatRateDecimal } from "@/lib/vat-config";
 
 /** @deprecated השתמשו ב-resolveVatRatePercent — נשמר לתאימות */
@@ -96,8 +95,4 @@ export function calculateDocumentTotalsFromOrg(
     resolveVatRatePercent(org.vatRatePercent),
     options?.docType,
   );
-}
-
-export function calculatePayPlusNet(grossAmount: number) {
-  return payPlusFeeIls(grossAmount);
 }

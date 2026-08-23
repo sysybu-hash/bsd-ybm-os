@@ -2,9 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import Papa from "papaparse";
 import { createProjectForContact } from "@/app/actions/crm";
-import { downloadAuthenticatedFile } from "@/lib/client/download-api-file";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { Client, CrmTableWidgetProps } from "./types";
@@ -16,11 +14,11 @@ import {
   fetchContactsPageApi,
   fetchProjectOptionsApi,
   fetchProjectSyncMetaApi,
-  importContactsApi,
   postSemanticSearchApi,
   updateContactApi,
 } from "./crm-table-api";
 import { useCrmGoogleImport } from "./useCrmGoogleImport";
+import { useCrmCsvTransfer } from "./useCrmCsvTransfer";
 
 export function useCrmTable({
   openWorkspaceWidget,
@@ -36,8 +34,6 @@ export function useCrmTable({
   const [tagFilter, setTagFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<CrmPipelineStatus | "">("");
   const [isAddingClient, setIsAddingClient] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [showGoogleImport, setShowGoogleImport] = useState(false);
   const [selectedClient, setSelectedClientState] = useState<Client | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -352,57 +348,20 @@ export function useCrmTable({
     );
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsImporting(true);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const data = results.data as Record<string, string>[];
-        if (!data.length) {
-          toast.error(t("workspaceWidgets.crmTable.importEmpty"));
-          setIsImporting(false);
-          return;
-        }
-        try {
-          const result = await importContactsApi(data);
-          if (result.ok) {
-            toast.success(result.message ?? t("workspaceWidgets.crmTable.importSuccess"));
-            void fetchClients();
-          } else throw new Error(result.error || t("workspaceWidgets.crmTable.importFailed"));
-        } catch (err: unknown) {
-          toast.error(err instanceof Error ? err.message : t("workspaceWidgets.crmTable.importFailed"));
-        } finally {
-          setIsImporting(false);
-          if (fileInputRef.current) fileInputRef.current.value = "";
-        }
-      },
-      error: () => {
-        toast.error(t("workspaceWidgets.crmTable.importCsvError"));
-        setIsImporting(false);
-      },
-    });
-  };
-
-  const handleExportCsv = async () => {
-    setIsExporting(true);
-    try {
-      await downloadAuthenticatedFile("/api/crm/contacts/export", "crm-contacts.csv");
-      toast.success(t("workspaceWidgets.crmTable.exportSuccess"));
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("workspaceWidgets.crmTable.exportFailed"));
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const { fetchGooglePreview, runGoogleImport, handleGoogleImported } = useCrmGoogleImport({
     t,
     onImported: () => {
       void fetchClients(false);
     },
+  });
+
+  const { isImporting, isExporting, handleImportCSV, handleExportCsv } = useCrmCsvTransfer({
+    t,
+    onImported: () => {
+      void fetchClients();
+    },
+    fileInputRef,
   });
 
   return {

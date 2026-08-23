@@ -150,11 +150,6 @@ const serverSchema = z.object({
   OS_PAYPAL_MERCHANT_EMAIL: optStr,
   OS_PAYPAL_ME_SLUG: optStr,
 
-  // --- Payments: PayPlus ---
-  PAYPLUS_API_KEY: optStr,
-  PAYPLUS_SECRET_KEY: optStr,
-  PAYPLUS_PAYMENT_PAGE_UID: optStr,
-
   // --- Redis / Upstash ---
   UPSTASH_REDIS_REST_URL: optStr,
   UPSTASH_REDIS_REST_TOKEN: optStr,

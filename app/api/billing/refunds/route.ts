@@ -17,7 +17,7 @@ import { createLogger } from "@/lib/logger";
 const log = createLogger("billing-refunds");
 
 const refundBodySchema = z.object({
-  gateway: z.enum(["paypal", "payplus", "stripe"]),
+  gateway: z.enum(["paypal", "stripe"]),
   transactionId: z.string().min(1),
   amount: z.number().positive().optional(),
   reason: z.string().max(255).optional(),
@@ -46,14 +46,14 @@ export const POST = withWorkspacesAuth(
             where: { id: data.invoiceId, organizationId: orgId },
           })
         : await prisma.invoice.findFirst({
-            where: { organizationId: orgId, payplusTransactionId: transactionId },
+            where: { organizationId: orgId, gatewayTransactionId: transactionId },
           });
 
       if (data.invoiceId && !invoice) {
         return jsonNotFound("חשבונית לא נמצאה בארגון", "invoice_not_found");
       }
 
-      if (invoice && invoice.payplusTransactionId && invoice.payplusTransactionId !== transactionId) {
+      if (invoice && invoice.gatewayTransactionId && invoice.gatewayTransactionId !== transactionId) {
         return jsonBadRequest("מזהה עסקה לא תואם לחשבונית", "transaction_mismatch");
       }
 

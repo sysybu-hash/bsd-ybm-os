@@ -105,7 +105,7 @@ const STATUS_MATRIX: StatusRow[] = [
   { module: "Executive + Progress Bills", status: "חדש", note: "PR #21 — ממתין merge ל-main" },
   { module: "Procurement + Logistics", status: "חדש", note: "מיגרציות DB + API + Hub UI" },
   { module: "תגובות הקשריות (Comments)", status: "חדש", note: "משימות, מסמכים, ארכיון ERP" },
-  { module: "חיוב PayPal / PayPlus", status: "מוכן", note: "Webhooks מאומתים HMAC" },
+  { module: "חיוב PayPal", status: "מוכן", note: "Webhooks מאומתים" },
   { module: "Meckano + Google Calendar", status: "מוכן", note: "Cron sync" },
   { module: "Knowledge Vault RAG", status: "מוגבל", note: "כבוי בפרוד — feature flag" },
   { module: "ITA (מס הכנסה)", status: "מוגבל", note: "Hard-fail מעל סף ההקצאה; mock רק ב-local/E2E (ALLOW_ITA_MOCK)" },
@@ -160,7 +160,7 @@ export function buildSystemSpecificationHtml(): string {
     ["DB", "PostgreSQL (Neon) · Prisma 6 · 68 מודלים · 38 מיגרציות"],
     ["Auth", "NextAuth 4 · Passkeys · JWT · multi-tenant"],
     ["AI", "Gemini 2.5 · Document AI · OpenAI · Anthropic · Tri-Engine"],
-    ["תשלומים", "PayPal · PayPlus (ישראל)"],
+    ["תשלומים", "PayPal"],
     ["ניטור", "Sentry · PostHog (EU) · Cron monitors"],
     ["איכות", "ESLint strict · Jest (382) · Playwright E2E · verify עבר מקומית"],
     ["Hosting", "Vercel — push ל-main → production אוטומטי"],
@@ -197,7 +197,7 @@ export function buildSystemSpecificationHtml(): string {
     ["procurement", "5", "ספקים, דרישות, PO, קליטה"],
     ["logistics", "6", "מלאי, נכסים, checkout"],
     ["crm", "7", "אנשי קשר, embeddings"],
-    ["billing / webhooks", "4", "PayPal, PayPlus"],
+    ["billing / webhooks", "3", "PayPal, Stripe, WhatsApp"],
     ["executive / progress-bills", "3", "סטטיסטיקות, חשבונות חלקיים"],
     ["comments", "1", "תגובות הקשריות TASK/DOC"],
     ["admin / cron / meckano", "37+", "תפעול, סנכרונים"],
@@ -290,7 +290,7 @@ export function buildSystemSpecificationHtml(): string {
       <p>רמות: FREE · HOUSEHOLD · DEALER · COMPANY · CORPORATE. מכסות סריקה cheap/premium. ניסיון · אישור מנהל · lifecycle emails.</p>
       <h3>אינטגרציות</h3>
       ${table(["שירות", "סטטוס"], ([
-        ["PayPal / PayPlus", "מוכן — webhooks מאומתים"],
+        ["PayPal", "מוכן — webhooks מאומתים"],
         ["Google Drive / Calendar", "מוכן — OAuth + cron"],
         ["Meckano", "מוכן — דוחות נוכחות"],
         ["NotebookLM", "מוכן — מחברת AI"],

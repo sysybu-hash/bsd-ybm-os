@@ -48,6 +48,19 @@ test.describe("office expenses", () => {
     ]);
 
     await expect(shell.getByText(vendor)).toBeVisible({ timeout: 15_000 });
+
+    // Clean up: without this every run leaves a row behind, the table grows
+    // without bound, and fixtures fall off the first page (see the read-only
+    // test below).
+    const created = await page.request.get(
+      `/api/office-expenses?skip=0&take=30&q=${encodeURIComponent(vendor)}`,
+    );
+    if (created.ok()) {
+      const body = (await created.json()) as { expenses?: { id: string }[] };
+      for (const row of body.expenses ?? []) {
+        await page.request.delete(`/api/office-expenses/${row.id}`);
+      }
+    }
   });
 
   test("office expenses API returns paginated list for authenticated session", async ({ page }) => {
@@ -203,6 +216,13 @@ test.describe("office expenses — PROJECT_MGR read-only", () => {
     await expect(shell.getByRole("button", { name: /ערוך|edit/i })).toHaveCount(0);
     await expect(shell.getByRole("button", { name: /מחק|delete/i })).toHaveCount(0);
 
+    // Search for the seeded row rather than expecting it on page 1. Every run of
+    // the tests above creates an expense dated today and nothing deletes it, so
+    // the fixture — dated 30 days back — sinks below the 30-row first page once
+    // enough runs have accumulated. Filtering makes this independent of volume.
+    await shell
+      .getByPlaceholder(/חיפוש ספק|search vendor/i)
+      .fill("E2E Demo Office Rent");
     await expect(shell.getByText(/E2E Demo Office Rent/i)).toBeVisible({ timeout: 15_000 });
   });
 });

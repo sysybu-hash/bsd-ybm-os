@@ -20,7 +20,7 @@ BSD-YBM-OS היא **מערכת הפעלה עסקית מבוססת דפדפן** �
 | אוטומציה משרדית | סריקה → ERP, Drive, NotebookLM |
 | עוזר חכם | Omnibar, אוטומציות טבעיות, Gemini Live |
 | תפעול שטח | Meckano, דוחות נוכחות |
-| מנוי וחיוב | PayPal, PayPlus, מכסות סריקה |
+| מנוי וחיוב | PayPal, מכסות סריקה |
 
 ---
 
@@ -51,7 +51,7 @@ flowchart TB
   API --> Gemini[Gemini / AI]
   API --> Google[Google APIs]
   API --> ITA[ITA mock/API]
-  API --> Pay[PayPal / PayPlus]
+  API --> Pay[PayPal]
   Cron[Vercel Cron] --> API
 ```
 
@@ -181,7 +181,6 @@ flowchart TB
 - מודל `Quote` + token
 - דף חתימה: `/sign/[id]`
 - API: `/api/sign/[id]`, `/api/erp/quotes`
-- אופציונלי: קישור PayPlus
 
 ### 5.6 גבייה אוטומטית
 
@@ -271,7 +270,6 @@ flowchart TB
 | Gemini | פעיל | מודלים ב-`lib/gemini-model.ts` |
 | Document AI | לפי env | חשבוניות סרוקות |
 | PayPal | פעיל | מנוי + webhooks |
-| PayPlus | לפי env | תשלומי הצעות |
 | Meckano | פעיל | מפתח per-org |
 | ITA | Mock | עד `ITA_PRODUCTION_KEY` + מימוש |
 | PostHog | פעיל | אירועי מוצר |
@@ -328,7 +326,7 @@ flowchart TB
 ## 12. אבטחה ותאימות
 
 - JWT לכל API מוגן
-- Webhooks: PayPal, PayPlus — ללא auth (חתימה/סוד)
+- Webhooks: PayPal, Stripe, WhatsApp — ללא auth (חתימה/סוד)
 - Rate limiting: מודל `RateLimit`
 - לוג פעילות: `ActivityLog`
 - `/.well-known/security.txt`
@@ -358,7 +356,7 @@ flowchart TB
 | `ANALYZE_QUEUE_SECRET` | תור סריקה |
 | `ITA_PRODUCTION_KEY` | מספר הקצאה |
 | `NEXT_PUBLIC_POSTHOG_*` | אנליטיקה |
-| PayPal / PayPlus keys | תשלומים |
+| PayPal keys | תשלומים |
 
 רשימה מלאה: `.env.example`, `docs/DEPLOY.md`
 
@@ -441,7 +439,7 @@ Auth: Account, Session, VerificationToken
 - `/api/meckano/*`
 
 ### חיוב
-- `/api/billing/paypal/*`, `/api/webhooks/paypal`, `/api/webhooks/payplus`
+- `/api/billing/paypal/*`, `/api/webhooks/paypal`, `/api/webhooks/stripe`
 
 ### Cron
 - `/api/cron/financial-insights`, `task-reminders`, `collection-reminders`, `/api/analyze-queue/process`

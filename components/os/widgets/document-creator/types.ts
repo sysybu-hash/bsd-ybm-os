@@ -30,7 +30,6 @@ export type GeneratedDocState = {
   token: string;
   documentNumber: number;
   signUrl: string;
-  paymentLink?: string;
   clientName: string;
   items: DocItem[];
   amount: number;

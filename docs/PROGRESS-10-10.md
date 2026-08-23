@@ -20,7 +20,7 @@
 | פריט | הערה |
 |------|------|
 | pgvector native | JSON + cosine ב-JS |
-| Refunds API | ידני בדשבורד PayPal/PayPlus |
+| Refunds API | ידני בדשבורד PayPal |
 | MPP (mpxj) | XML/CSV/Excel בלבד |
 | ITA production מלא | mock בלי מפתח — פרויקט נפרד |
 | Admin self-heal | stub — לא אוטומציה בפרוד |

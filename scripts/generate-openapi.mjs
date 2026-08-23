@@ -41,7 +41,7 @@ function detectAuth(src) {
   if (/withCronGuard\b|assertAnalyzeQueueProcessAuthorized\b/.test(src)) return "cron-secret";
   if (/withWorkspacesAuthDynamic\b/.test(src)) return "workspace-session";
   if (/withWorkspacesAuth\b/.test(src)) return "workspace-session";
-  if (/verify\w*WebhookSignature|verifyWebhook|verifyPayPlus|readRawBody|gateway\.verifyWebhook/.test(src)) return "webhook-hmac";
+  if (/verify\w*WebhookSignature|verifyWebhook|readRawBody|gateway\.verifyWebhook/.test(src)) return "webhook-hmac";
   if (/getToken\b/.test(src)) return "jwt";
   return "public";
 }

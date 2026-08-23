@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   E2E_EMAIL,
   dismissWorkspaceOverlays,
+  primeCookieConsent,
   signInWithRetries,
   tryProjectMgrSignIn,
   waitForAuthenticatedWorkspace,
@@ -15,8 +16,15 @@ import {
 test.describe("accountant portal RBAC", () => {
   test.skip(!E2E_EMAIL, "requires E2E credentials");
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async ({ page, baseURL }, testInfo) => {
     testInfo.setTimeout(120_000);
+    // Pin the UI language. Without a bsd-locale cookie the middleware
+    // negotiates from Accept-Language, and Playwright's browser sends en-US —
+    // so the portal renders "Accountant portal" while the assertions below
+    // look for "פורטל רואה חשבון". Every other spec pins this the same way.
+    const origin = baseURL ?? "http://localhost:3001";
+    await page.context().addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
+    await primeCookieConsent(page);
   });
 
   test("org admin can preview the accountant portal", async ({ page }) => {

@@ -27,7 +27,7 @@
 | File storage | Google Drive API (per-org) | Out-of-scope — user-owned data |
 | Auth | NextAuth + Neon DB sessions | Covered by DB DR |
 | AI services | Gemini / OpenAI / Anthropic | Tri-engine fallback (see §8) |
-| Payments | PayPal / PayPlus | External — contact PayPal support |
+| Payments | PayPal | External — contact PayPal support |
 | CDN / Edge | Vercel Edge Network | Auto-redundant |
 
 ---
@@ -145,99 +145,3 @@ If ALL AI providers are down (rare):
 3. Resend failed events manually from PayPal dashboard.
 4. Check `PAYPAL_WEBHOOK_ID` env var matches the webhook ID in dashboard.
 
-### PayPlus (Israeli)
-1. Log in to PayPlus merchant portal.
-2. Verify endpoint URL: `https://bsd-ybm.co.il/api/webhooks/payplus`.
-3. Verify `PAYPLUS_SECRET_KEY` matches.
-4. Check Sentry for 401 errors → indicates HMAC mismatch.
-
----
-
-## 8. AI engine fallback architecture
-
-```
-User request
-     │
-     ▼
-Gemini 2.5 Flash ──(quota/error)──► Gemini 2.0 Flash
-                                         │
-                                    (quota/error)
-                                         ▼
-                                    OpenAI GPT-4o
-                                         │
-                                    (quota/error)
-                                         ▼
-                                    Anthropic Claude
-                                         │
-                                    (quota/error)
-                                         ▼
-                                    Groq Llama
-                                         │
-                                    (all fail)
-                                         ▼
-                                    503 error to user
-```
-
-Fallback logic: `lib/gemini-model.ts` → `isLikelyGeminiModelUnavailable()`.
-
----
-
-## 9. Data retention and deletion
-
-| Data type | Retention | Deletion trigger |
-|-----------|-----------|-----------------|
-| User accounts | Until deletion request | User requests account deletion via Settings |
-| Scan documents | 90 days (configurable) | Automated cron: `app/api/cron/cleanup-old-scans` |
-| Audit logs | 1 year | Manual (admin) |
-| Sessions | 30 days (inactivity) | NextAuth session cleanup |
-| Issued documents | 7 years (legal, IL) | Manual only |
-
----
-
-## 10. Communication during incidents
-
-| Audience | Channel | Template |
-|----------|---------|----------|
-| All users | Status page (TBD) + email | "We are experiencing an issue with [feature]. ETA: [X]. Updates every 30 min." |
-| Admin users | In-app notification | Push notification via `lib/notifications-service.ts` |
-| Dev team | Internal Slack/WhatsApp | Tag @yohanan.bukshpan |
-
----
-
-## 11. Post-incident review (PIR) template
-
-After every P0/P1, complete within 48 hours:
-
-```markdown
-## PIR — [incident title] — [date]
-
-**Duration**: X hours Y minutes
-**Impact**: X% of users affected, Y feature impacted
-**Root cause**: ...
-**Timeline**:
-- HH:MM — First alert / user report
-- HH:MM — Investigation started
-- HH:MM — Root cause identified
-- HH:MM — Fix deployed
-- HH:MM — Service restored
-
-**What went well**: ...
-**What went wrong**: ...
-**Action items**:
-- [ ] item 1 (owner, due date)
-- [ ] item 2 (owner, due date)
-```
-
----
-
-## 12. Recovery verification checklist
-
-After ANY restore operation:
-
-- [ ] `curl https://bsd-ybm.co.il/api/health` returns 200
-- [ ] Login works (Google OAuth + credentials)
-- [ ] Create a test invoice — verify it appears in DB
-- [ ] Scan a test document — verify AI analysis returns
-- [ ] Check Sentry — no new errors in last 5 minutes
-- [ ] Check PostHog — active sessions visible
-- [ ] Notify users that service is restored

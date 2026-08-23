@@ -5,7 +5,7 @@
 ## 1. מה המוצר
 
 **BSD-YBM OS** — מערכת תפעול לעסקים בבנייה ומקצועות: CRM, פרויקטים, ERP/מסמכים, סריקת AI, חיוב, Field Copilot, AI Hub, מחולל אפליקציות.  
-Stack: Next.js 15 App Router · Prisma/Neon · NextAuth · PostHog · Sentry · PayPlus/PayPal.
+Stack: Next.js 16 App Router · Prisma/Neon · NextAuth · PostHog · Sentry · PayPal.
 
 ## 2. בידוד דיירים (Tenant isolation)
 
@@ -61,7 +61,7 @@ FREE tier
 
 ### תשלום
 
-- Webhooks: `app/api/webhooks/payplus`, `paypal` — אימות HMAC (`lib/webhook-verify.ts`).
+- Webhooks: `app/api/webhooks/paypal`, `stripe`, `whatsapp` — אימות חתימה לפני עיבוד (`lib/webhook-verify.ts` → `readRawBody`).
 - PayPal orders: `app/api/billing/paypal/*`.
 - הגדרות ארגון: `OSBillingConfig` / `billingWorkspaceJson` (JSON).
 
@@ -123,7 +123,7 @@ FREE tier
 
 | רכיב | נתיב |
 |------|------|
-| PaymentGateway | `lib/payments/gateway-interface.ts` — PayPlus + PayPal; capture: `PayPalGateway.captureOrder` / `lib/billing/paypal-order.ts` |
+| PaymentGateway | `lib/payments/gateway-interface.ts` — PayPal (+ Stripe, schema בלבד); capture: `PayPalGateway.captureOrder` / `lib/billing/paypal-order.ts` |
 | Refunds | Gateway `refund()` → מדיניות ידנית בדשבורד ספק (RUNBOOK) |
 | pgvector | **לא בשימוש** — embeddings ב-JSON + cosine ב-JS |
 | ייצוא חשבונאות | `app/api/accounting/export` — bkmvdata, priority, hashavshevet |

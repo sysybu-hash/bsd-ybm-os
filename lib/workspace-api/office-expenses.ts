@@ -1,5 +1,9 @@
 import { ExpenseAllocation, ExpenseRecordStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  OFFICE_EXPENSES_PAGE_SIZE,
+  OFFICE_EXPENSES_MAX_PAGE_SIZE,
+} from "@/lib/workspace-api/office-expenses-constants";
 import type { FinanceExpenseRow } from "@/lib/finance-workspace-types";
 import type {
   CreateOfficeExpenseInput,
@@ -7,8 +11,12 @@ import type {
   UpdateOfficeExpenseInput,
 } from "@/lib/validation/schemas/office-expenses";
 
-export const OFFICE_EXPENSES_PAGE_SIZE = 30;
-export const OFFICE_EXPENSES_MAX_PAGE_SIZE = 100;
+// Re-exported for server callers; client code must import from
+// "@/lib/workspace-api/office-expenses-constants" — this module is server-only.
+export {
+  OFFICE_EXPENSES_PAGE_SIZE,
+  OFFICE_EXPENSES_MAX_PAGE_SIZE,
+} from "@/lib/workspace-api/office-expenses-constants";
 
 export type ListOfficeExpensesResult = {
   expenses: FinanceExpenseRow[];

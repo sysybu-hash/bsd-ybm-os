@@ -87,13 +87,15 @@ test.describe("Financial API — rate limiting on public register", () => {
 });
 
 test.describe("Webhook security", () => {
-  test("PayPlus webhook rejects missing HMAC signature in production", async ({ request }) => {
-    const res = await request.post("/api/webhooks/payplus", {
-      data: { event_type: "payment.success", transaction_uid: "fake" },
+  test("Stripe webhook rejects an unsigned payload", async ({ request }) => {
+    const res = await request.post("/api/webhooks/stripe", {
+      data: { type: "checkout.session.completed", data: { object: {} } },
       headers: { "content-type": "application/json" },
     });
-    // Should reject with 401 (invalid signature) or 400
-    expect([400, 401, 429]).toContain(res.status());
+    // 400 = signature missing/invalid. 503 = Stripe env not configured
+    // (CI / local without secrets). Never 200 for an unsigned body.
+    expect([400, 401, 429, 503]).toContain(res.status());
+    expect(res.status()).not.toBe(200);
   });
 
   test("PayPal webhook endpoint exists", async ({ request }) => {

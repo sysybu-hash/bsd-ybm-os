@@ -112,7 +112,6 @@ Outputs a colored table of all 90 vars: `ג“ OK` / `ג  WARN` / `ג— 
 | `CRON_SECRET` | Cron routes return 401 ג€” jobs don't run |
 | `SENTRY_DSN` | Errors not captured (app still works) |
 | `PAYPAL_WEBHOOK_ID` | PayPal webhooks rejected ג€” manual payment marking needed |
-| `PAYPLUS_SECRET_KEY` | PayPlus webhooks rejected in prod ג€” payments not auto-applied |
 
 ### Google OAuth redirect URIs (production)
 
@@ -198,10 +197,10 @@ FROM "Organization"
 WHERE "subscriptionStatus" IN ('ACTIVE', 'TRIAL')
 ORDER BY name;
 
--- Recent PayPlus transactions
-SELECT id, status, "paidAt", "payplusTransactionId"
+-- Recent gateway transactions
+SELECT id, status, "paidAt", "gatewayTransactionId"
 FROM "Invoice"
-WHERE "payplusTransactionId" IS NOT NULL
+WHERE "gatewayTransactionId" IS NOT NULL
 ORDER BY "paidAt" DESC LIMIT 10;
 ```
 
@@ -249,12 +248,11 @@ vercel logs --follow --filter "api/webhooks"
 
 ### P1 ג€” Payments Not Processing
 
-1. Check PayPal/PayPlus status pages
-2. Check `/api/webhooks/paypal` and `/api/webhooks/payplus` logs in Sentry
+1. Check the PayPal status page
+2. Check `/api/webhooks/paypal` logs in Sentry
 3. Verify `PAYPAL_WEBHOOK_ID` is set and correct
-4. Verify `PAYPLUS_SECRET_KEY` is set and not rotated on PayPlus side
-5. Check Sentry for `payplus_webhook_rejected` or `paypal_webhook_rejected` events
-6. **Manual fallback**: find the transaction in PayPlus/PayPal dashboard, manually update `Invoice.status = 'PAID'` in DB
+4. Check Sentry for `paypal_webhook_rejected` events
+5. **Manual fallback**: find the transaction in the PayPal dashboard, manually update `Invoice.status = 'PAID'` in DB
 
 ### P1 ג€” AI Features Degraded
 
@@ -333,20 +331,13 @@ In PayPal Developer Dashboard ג†’ Webhooks:
 2. Events: `PAYMENT.CAPTURE.COMPLETED`
 3. Copy the **Webhook ID** ג†’ set `PAYPAL_WEBHOOK_ID` in Vercel env
 
-### PayPlus Webhook Setup
-
-In PayPlus dashboard ג†’ Settings ג†’ Webhooks:
-1. Endpoint URL: `https://bsd-ybm.co.il/api/webhooks/payplus`
-2. The shared secret should match `PAYPLUS_SECRET_KEY`
-3. Events: payment completion (IPN)
-
 ### Testing Webhooks Locally
 
 ```bash
 # Use Vercel CLI to tunnel local server
 vercel dev
 
-# Then use PayPal Sandbox / PayPlus test mode
+# Then use PayPal Sandbox
 # Or use ngrok: ngrok http 3000
 ```
 

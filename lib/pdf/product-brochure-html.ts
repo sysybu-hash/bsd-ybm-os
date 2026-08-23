@@ -395,7 +395,7 @@ p.body { margin: 0 0 10px; color: #475569; font-size: 10pt; }
   ${bullets([
     "שולחן עבודה עם חלונות צפים, סרגל יישומים ו-Omnibar.",
     "שישה Hub מרכזיים + יישומים נפרדים (Drive, Meckano, הגדרות).",
-    "אינטגרציות: Google, Meckano, PayPal, PayPlus, Gemini Live.",
+    "אינטגרציות: Google, Meckano, PayPal, Gemini Live.",
     "עברית, אנגלית ורוסית — RTL מובנה.",
     "אבטחה ארגונית: הרשאות, Rate limiting, Sentry.",
   ])}
@@ -416,7 +416,7 @@ ${showcasePages}
 <section class="page">
   ${sectionBand("אינטגרציות ואמינות", "Enterprise-ready")}
   ${bullets([
-    "Google OAuth, Drive, Calendar · Meckano · PayPal / PayPlus.",
+    "Google OAuth, Drive, Calendar · Meckano · PayPal.",
     "חתימה דיגיטלית · הזמנות משתמשים · PostHog · Sentry.",
     "PostgreSQL (Neon) + Prisma · JWT · CSP · גיבוי DR.",
     "בדיקות: Jest, Playwright, axe.",

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
+import { isMeckanoSubscriberEmail } from "@/lib/meckano-subscriber";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Papa from "papaparse";

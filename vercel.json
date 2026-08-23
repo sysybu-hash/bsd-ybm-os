@@ -1,4 +1,5 @@
 {
+  "regions": ["fra1"],
   "functions": {
     "app/api/documents/issued/[id]/export/route.ts": {
       "maxDuration": 60

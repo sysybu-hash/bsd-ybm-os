@@ -43,7 +43,6 @@
 | `PAYPAL_CLIENT_SECRET` | Billing | Server only |
 | `PAYPAL_WEBHOOK_ID` | Webhooks | Signature verification |
 | `PAYPAL_ENV` | Billing | `sandbox` or `live` |
-| PayPlus vars | Billing | Per `lib/env.ts` / PayPlus dashboard |
 
 ## Email
 

@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { createNumberedDocument } from "@/lib/finance-numbering";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
-import "@/lib/payments/register-gateways";
-import { getGateway } from "@/lib/payments/gateway-interface";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import { v4 as uuidv4 } from "uuid";
 import { createLogger } from "@/lib/logger";
@@ -56,35 +54,13 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       contactId,
     });
 
-    // 3. Generate PayPlus link if configured
-    let paymentLink = null;
     const siteBase = getCanonicalSiteUrl().replace(/\/$/, "");
-    const payplus = getGateway("payplus");
-    if (payplus.isConfigured() && clientEmail) {
-      try {
-        const checkout = await payplus.createCheckout({
-          amount: totals.total,
-          currencyCode: "ILS",
-          itemName: `הצעת מחיר #${issuedDoc.number} - ${clientName}`,
-          customerName: clientName,
-          customerEmail: clientEmail,
-          successUrl: `${siteBase}/sign/success`,
-          errorUrl: `${siteBase}/sign/error`,
-          callbackUrl: `${siteBase}/api/webhooks/payplus`,
-          metadata: { organizationId: orgId, quoteId: quote.id },
-        });
-        paymentLink = { url: checkout.checkoutUrl, paymentPageUid: checkout.providerRef };
-      } catch (payplusError) {
-        log.error("PayPlus link generation failed", { error: payplusError instanceof Error ? payplusError.message : String(payplusError) });
-      }
-    }
 
     return NextResponse.json({
       success: true,
       quoteId: quote.id,
       token: quote.token,
       documentNumber: issuedDoc.number,
-      paymentLink,
       signUrl: `${siteBase}/sign/${token}`,
     });
   } catch (error: unknown) {

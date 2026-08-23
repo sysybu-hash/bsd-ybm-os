@@ -136,7 +136,20 @@ export default defineConfig({
     : {
         command: process.env.PLAYWRIGHT_WEB_COMMAND ?? defaultWebCommand,
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        /**
+         * Opt-in, not the local default.
+         *
+         * `!process.env.CI` used to mean any server already on the port got
+         * reused — including one left behind by an interrupted run, still
+         * serving pre-edit code. A whole suite then reports failures that have
+         * nothing to do with the working tree, and nothing says so. That is
+         * silently-wrong results, which is worse than a slow start.
+         *
+         * Set PLAYWRIGHT_REUSE_SERVER=1 when you are iterating against a dev
+         * server you started yourself and know is current. Otherwise a busy
+         * port now fails loudly instead of lying.
+         */
+        reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
         stdout: "pipe",
         stderr: "pipe",
         timeout: 180_000,

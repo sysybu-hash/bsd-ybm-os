@@ -88,7 +88,7 @@ All events follow the convention `noun_verb` (snake_case). Super-properties (set
 | Event | Trigger | Properties |
 |-------|---------|-----------|
 | `subscription_plan_viewed` | Pricing page opened | `current_plan: string` |
-| `subscription_upgrade_started` | User clicks upgrade | `target_plan: string`, `gateway: "paypal" \| "payplus"` |
+| `subscription_upgrade_started` | User clicks upgrade | `target_plan: string`, `gateway: "paypal" \| "stripe"` |
 | `subscription_upgrade_completed` | Payment success | `plan: string`, `amount: number`, `currency: string` |
 | `subscription_cancelled` | Subscription cancelled | `plan: string`, `reason: string` |
 | `trial_started` | Trial period begins | `plan: string`, `days: number` |

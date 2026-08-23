@@ -49,7 +49,6 @@ const SENSITIVE_PROTECTED_ALLOWLIST = new Map([
   ["app/api/auth/google-reconnect/callback/route.ts", "session + signed-state protected"],
   ["app/api/auth/google-link/route.ts", "session-protected (getServerSession)"],
   ["app/api/auth/google-link/callback/route.ts", "session + signed-state protected"],
-  ["app/api/webhooks/payplus/route.ts", "HMAC-SHA256 timing-safe verified (signature הוא ה-auth)"],
   ["app/api/webhooks/paypal/route.ts", "PayPal signature verified"],
   ["app/api/webhooks/stripe/route.ts", "Stripe signature verified (verifyStripeWebhookEvent; signature הוא ה-auth)"],
   [

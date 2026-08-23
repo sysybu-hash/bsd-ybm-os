@@ -73,7 +73,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin, tier
           <Mail size={16} aria-hidden />
           {t("auth.hub.register.pendingContactCta")}
         </a>
-        <Link href="/" className="mt-1 text-xs font-bold text-[color:var(--accent)] hover:underline">
+        <Link href="/" className="mt-1 text-xs font-bold text-[color:var(--accent-text)] hover:underline">
           {t("auth.hub.register.pendingHomeCta")}
         </Link>
       </div>
@@ -339,7 +339,7 @@ export default function RegisterWizard({ embedded = false, onSwitchToLogin, tier
       {!embedded ? (
         <p className="mt-4 text-center text-sm text-[color:var(--foreground-muted)]">
           {t("auth.register.alreadyHave")}{" "}
-          <button type="button" onClick={() => goLogin()} className="font-bold text-[color:var(--accent)]">
+          <button type="button" onClick={() => goLogin()} className="font-bold text-[color:var(--accent-text)]">
             {t("auth.register.loginLink")}
           </button>
         </p>

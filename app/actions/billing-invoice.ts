@@ -32,7 +32,7 @@ export async function createTestInvoiceAction(): Promise<
         organizationId: orgId,
         amount: 250,
         status: "PENDING",
-        description: "חשבונית בדיקה לסליקת PayPlus",
+        description: "חשבונית בדיקה לסליקה",
         invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
         customerName: "יוחנן בוקשפן - טסט",
         customerEmail: "test@bsd-ybm.co.il",

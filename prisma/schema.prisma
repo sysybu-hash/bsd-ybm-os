@@ -969,15 +969,15 @@ model ExpenseRecord {
   @@index([contactId])
 }
 
-/// חשבונית / תשלום — עדכון סטטוס מ־PayPlus (או ספקים אחרים) דרך webhook
+/// חשבונית / תשלום — עדכון סטטוס מספק הסליקה דרך webhook
 model Invoice {
   id                   String       @id @default(cuid())
   organizationId       String
   status               String       @default("PENDING")
   amount               Float?
   currency             String       @default("ILS")
-  /// מזהה עסקה ב־PayPlus (uid) לאחר אישור
-  payplusTransactionId String?      @unique
+  /// מזהה עסקה אצל ספק הסליקה לאחר אישור (PayPal capture id / Stripe payment intent)
+  gatewayTransactionId String?      @unique
   paidAt               DateTime?
   lastWebhookPayload   Json?
   createdAt            DateTime     @default(now())

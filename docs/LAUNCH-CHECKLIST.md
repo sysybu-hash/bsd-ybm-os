@@ -5,7 +5,7 @@
 ## אבטחה
 
 - [x] `npm audit` — CI (critical gate)
-- [x] כל webhook עם אימות HMAC (PayPlus)
+- [x] כל webhook עם אימות חתימה לפני עיבוד
 - [x] `orgId` בכל query מאומת (RLS לוגי) — `withWorkspacesAuth`
 - [x] Rate limits — default על workspace API + auth/KV מפורשים (`audit:rate-limits`); WhatsApp webhook ב-HMAC allowlist
 

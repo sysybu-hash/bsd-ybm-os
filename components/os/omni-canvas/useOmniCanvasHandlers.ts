@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { isMeckanoSubscriberEmail } from "@/lib/meckano-access";
+import { isMeckanoSubscriberEmail } from "@/lib/meckano-subscriber";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import type { OSNotification, OSNotificationAction } from "@/components/os/NotificationCenter";
 import type { SearchResult } from "./types";

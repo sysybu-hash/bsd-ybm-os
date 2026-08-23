@@ -185,17 +185,17 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
 
       <p className="order-2 hidden text-center text-xs leading-relaxed text-[color:var(--foreground-muted)] md:block">
         {t("auth.loginOs.googleScopeNote")}{" "}
-        <Link href="/privacy" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+        <Link href="/privacy" className="font-semibold text-[color:var(--accent-text)] underline-offset-2 hover:underline">
           {t("auth.loginOs.privacyLink")}
         </Link>
         {" · "}
-        <Link href="/terms" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+        <Link href="/terms" className="font-semibold text-[color:var(--accent-text)] underline-offset-2 hover:underline">
           {t("auth.loginOs.termsLink")}
         </Link>
         {" · "}
         <Link
           href="/integrations/google"
-          className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline"
+          className="font-semibold text-[color:var(--accent-text)] underline-offset-2 hover:underline"
         >
           {t("auth.loginOs.googleIntegrationsLink")}
         </Link>
@@ -238,7 +238,7 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
             <button
               type="button"
               onClick={onForgotPassword}
-              className="shrink-0 text-xs font-bold text-[color:var(--accent)] hover:underline sm:text-sm"
+              className="shrink-0 text-xs font-bold text-[color:var(--accent-text)] hover:underline sm:text-sm"
             >
               {t("auth.hub.login.forgot")}
             </button>
@@ -258,11 +258,11 @@ export default function LoginPanel({ t, prefilledEmail = "", onForgotPassword }:
       </div>
 
       <p className="order-6 text-center text-[10px] leading-relaxed text-[color:var(--foreground-muted)] md:hidden">
-        <Link href="/privacy" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+        <Link href="/privacy" className="font-semibold text-[color:var(--accent-text)] underline-offset-2 hover:underline">
           {t("auth.loginOs.privacyLink")}
         </Link>
         {" · "}
-        <Link href="/terms" className="font-semibold text-[color:var(--accent)] underline-offset-2 hover:underline">
+        <Link href="/terms" className="font-semibold text-[color:var(--accent-text)] underline-offset-2 hover:underline">
           {t("auth.loginOs.termsLink")}
         </Link>
       </p>

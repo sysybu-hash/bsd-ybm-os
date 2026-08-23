@@ -117,12 +117,20 @@ export function SettingsDriveSection({
         <OsButton
           variant="secondary"
           onClick={() => {
+            // Route handler that 302s to Google's OAuth consent screen — a
+            // cross-origin redirect the Next router cannot follow. Must be a
+            // real browser navigation.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.assign("/api/auth/google-link?callbackUrl=/?w=settings");
           }}
         >
           {t(`${S}.connectGoogleSignIn`)}
         </OsButton>
-        <OsButton variant="secondary" onClick={() => { window.location.assign("/api/auth/google-reconnect?callbackUrl=/"); }}>
+        {/* Same cross-origin OAuth redirect as above. */}
+        <OsButton variant="secondary" onClick={() => {
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign("/api/auth/google-reconnect?callbackUrl=/");
+        }}>
           {t(`${S}.reconnectGoogle`)}
         </OsButton>
       </div>

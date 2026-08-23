@@ -2,7 +2,7 @@ import type { WidgetType } from "@/hooks/use-window-manager";
 import {
   MECKANO_SUBSCRIBER_EMAIL,
   normalizeMeckanoEmail,
-} from "@/lib/meckano-access";
+} from "@/lib/meckano-subscriber";
 
 /** אפליקציות שמותקנות למנוי בודד — לא מוצגות לשאר המשתמשים בארגון. */
 export const SUBSCRIBER_ONLY_WIDGETS: Partial<Record<WidgetType, string>> = {

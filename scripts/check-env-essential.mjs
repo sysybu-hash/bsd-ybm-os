@@ -146,13 +146,7 @@ if (!mailOk) warnings.push("No email provider configured — password reset, inv
 // ─── PAYMENTS ────────────────────────────────────────────────────────────────
 optional("PAYPAL_CLIENT_ID", "PayPal payments");
 optional("PAYPAL_CLIENT_SECRET", "PayPal payments");
-optional("PAYPLUS_API_KEY", "PayPlus payments (IL)");
-optional("PAYPLUS_SECRET_KEY", "PayPlus webhook HMAC verification");
-optional("PAYPLUS_PAYMENT_PAGE_UID", "PayPlus payment page");
 
-warnIf("PAYPLUS_API_KEY",
-  has("PAYPLUS_API_KEY") && !has("PAYPLUS_SECRET_KEY"),
-  "PAYPLUS_API_KEY set but PAYPLUS_SECRET_KEY missing — webhook verification will fail in prod");
 
 // ─── CRON / SECURITY ─────────────────────────────────────────────────────────
 optional("CRON_SECRET", "Cron route auth — required in prod");

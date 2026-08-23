@@ -77,8 +77,8 @@ const nextConfig = {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com https://*.payplus.co.il wss://generativelanguage.googleapis.com",
-        "frame-src https://www.paypal.com https://*.paypal.com https://payplus.co.il https://*.payplus.co.il",
+        "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com wss://generativelanguage.googleapis.com",
+        "frame-src https://www.paypal.com https://*.paypal.com",
         "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
@@ -136,7 +136,10 @@ const nextConfig = {
       bodySizeLimit: "10mb",
     },
     optimizePackageImports: ["lucide-react", "framer-motion", "@headlessui/react"],
-    cssChunking: "strict",
+    // cssChunking: "strict" removed in the Next 16 upgrade — it is webpack-only,
+    // and Next 16 builds with Turbopack by default. Turbopack does its own CSS
+    // chunking. Re-measure LCP with `npm run lighthouse:matrix:prod` before
+    // concluding anything about the perf impact.
     // inlineCss disabled: the CSS chunks (~27KB gzip total) are smaller than the
     // overhead added by inlining into HTML (pushes LCP element deeper into HTML stream).
     // inlineCss: true,

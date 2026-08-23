@@ -21,7 +21,6 @@
 - [ ] התחברות Google (`/login`)
 - [ ] חיבור Google לכניסה (הגדרות → Connect Google for sign-in) אחרי credentials
 - [ ] PayPal modal (הגדרות → תשלום)
-- [ ] קישור PayPlus (יצירת חשבונית)
 - [ ] Gemini Live (Omnibar → מיקרופון)
 - [ ] App Builder preview (iframe sandbox + אין Tailwind CDN לא־מקובע)
 - [ ] PostHog (אין חסימת `us-assets.i.posthog.com` ב-Console) — `connect-src` כולל posthog ברמת כותרת
