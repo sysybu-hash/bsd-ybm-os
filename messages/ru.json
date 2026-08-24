@@ -966,6 +966,10 @@
           "label": "PAYPAL_CLIENT_*",
           "hint": "PayPal REST API"
         },
+        "paypalWebhook": {
+          "label": "PAYPAL_WEBHOOK_ID",
+          "hint": "Проверка подписи webhook — без неё платежи не применяются автоматически"
+        },
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "PayPal оператора"

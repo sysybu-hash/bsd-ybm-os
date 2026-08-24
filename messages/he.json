@@ -1239,6 +1239,10 @@
           "label": "PAYPAL_CLIENT_*",
           "hint": "PayPal REST API"
         },
+        "paypalWebhook": {
+          "label": "PAYPAL_WEBHOOK_ID",
+          "hint": "אימות חתימת webhook — בלעדיו תשלומים לא ייושמו אוטומטית"
+        },
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "PayPal של מפעיל הפלטפורמה"
