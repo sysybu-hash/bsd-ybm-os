@@ -44,30 +44,59 @@
 `/terms` (80) מול `/privacy` (96) הם דפים משפטיים כמעט זהים מבנית, מאותו סט
 מסלולים. **ההבדל הוא בתוכן הדף עצמו**, לא בקונפיגורציה.
 
-## חשד שנבדק ונפסל — הלוגו
+## אלמנט ה-LCP — נמצא
 
-ה-`<img>` של הלוגו נראה חשוד:
+הרצת Lighthouse ישירה עם `lcp-breakdown-insight` ו-`lcp-discovery-insight`
+נתנה את התשובה:
 
-```html
-<img sizes="80px" width="560" height="387" loading="lazy"
-     srcSet="…w=32… w=48… w=64… …"
-     src="/_next/image?url=%2Flogos%2Flogo-day-transparent.png&w=3840&q=75">
+```
+selector : a.inline-flex > div.inline-flex > span.box-border > img.block
+path     : … BODY > … > FOOTER > … > IMG
+rect     : top=732  width=72  height=50
+snippet  : <img … loading="lazy" … sizes="80px">
 ```
 
-וריאנט 3840px עבור לוגו שמוצג ב-80px. **אבל זו התנהגות מתועדת של
-`next/image`:** כשמסופק `sizes`, Next מייצר srcSet רחב ומצביע ב-`src` על
-הווריאנט הגדול ביותר כ-fallback. דפדפנים מודרניים בוחרים מה-`srcSet` לפי
-`sizes` ולא נוגעים ב-`src`.
+**אלמנט ה-LCP הוא הלוגו ב-footer, והוא היה `loading="lazy"`.**
 
-**זה לא פגם ולא הסבר.** נרשם כאן כדי שלא ייחקר שוב.
+ה-checklist של `lcp-discovery-insight` אמר זאת מפורשות:
 
-## מה שנשאר לא מוסבר
+| בדיקה | לפני | אחרי |
+|---|---|---|
+| `requestDiscoverable` | ✅ | ✅ |
+| **`eagerlyLoaded`** — "LCP resources should not use loading=lazy" | ❌ | **✅** |
+| `priorityHinted` | ❌ | ❌ |
 
-הכשלים המשותפים לארבעת האיטיים: `lcp-discovery-insight` (משאב ה-LCP לא
-ניתן לגילוי מוקדם מה-HTML) ו-`network-dependency-tree`.
+הוויאפורט במובייל הוא 823px גובה והלוגו יושב ב-732 — **בתוך המסך הראשוני**,
+ובכל זאת נדחה. זה בדיוק ה-anti-pattern: הדפדפן דוחה משאב שנראה מיד.
 
-כדי לזהות את אלמנט ה-LCP בפועל צריך trace או filmstrip מריצת Lighthouse
-בודדת — זה הצעד הבא, ולא נעשה כאן.
+ב-`/privacy` המהיר אלמנט ה-LCP הוא `<p>` — טקסט, בלי טעינת משאב כלל. **זה
+ההבדל** בין הקבוצות: בדפים הקצרים הלוגו ב-footer הוא האלמנט הגדול ביותר
+שנצבע, בעוד בדפים ארוכים יותר יש טקסט גדול ממנו.
+
+### התיקון
+
+`BrandLogo` ו-`BrandHomeLink` קיבלו prop `loading`, ו-`MarketingFooter` מעביר
+`eager`. לא `priority` — הוא היה מוסיף preload בכל דף, כולל ארוכים שבהם הלוגו
+מתחת לקיפול. `eager` רק מבטל את הדחייה.
+
+### תיקון לדיווח קודם
+
+במסמך הזה נכתב קודם שהלוגו "לא פגם ולא הסבר". **זה היה שגוי.** בדקתי אז רק
+את ה-`src` שמצביע על וריאנט 3840px — וזה אכן התנהגות מתועדת של `next/image`
+ואינו פגם. אבל לא בדקתי את `loading="lazy"`, וזה כן היה הסיבה.
+
+## מה שעדיין פתוח
+
+התיקון אומת ברמת ה-audit מקומית (`eagerlyLoaded` עבר מ-false ל-true), אבל
+**המספרים בפועל דורשים דיפלוי** — מדידה מקומית אינה ברת-השוואה למובייל
+מווסת מול CDN. אחרי הפריסה יש להריץ שוב:
+
+```bash
+npm run lighthouse:matrix:prod -- --tier=public --strategy=mobile
+```
+
+`priorityHinted` עדיין false. `fetchpriority="high"` יכול לשפר עוד, אבל הוא
+משמעותי רק כשהמשאב מתחרה על רוחב פס — כאן הוא 72×50 פיקסלים, ולכן לא נגעתי.
 
 ## `/unsubscribe` — SEO 66 היא התראת שווא
 
