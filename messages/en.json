@@ -1239,6 +1239,10 @@
           "label": "PAYPAL_CLIENT_*",
           "hint": "PayPal REST API"
         },
+        "paypalWebhook": {
+          "label": "PAYPAL_WEBHOOK_ID",
+          "hint": "Webhook signature verification — without it payments are not applied automatically"
+        },
         "osPaypal": {
           "label": "OS_PAYPAL_*",
           "hint": "Platform operator PayPal"

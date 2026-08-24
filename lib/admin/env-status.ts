@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import { getMailFrom, isResendConfigured, isSmtpConfigured, mailTransportLabel } from "@/lib/mail-config";
 import { hasOSPayPalConfigured } from "@/lib/platform-paypal";
+import { resolvePayPalEnv } from "@/lib/paypal-server";
 
 export type EnvCheckKind = "required" | "recommended" | "optional";
 
@@ -42,6 +43,7 @@ function safeUrlHost(raw?: string): string | undefined {
 
 export function getAdminEnvChecks(): AdminEnvCheckGroup[] {
   const paypalClientOk = has(env.PAYPAL_CLIENT_ID) && has(env.PAYPAL_CLIENT_SECRET);
+  const paypalEnv = resolvePayPalEnv();
 
   return [
     {
@@ -121,7 +123,18 @@ export function getAdminEnvChecks(): AdminEnvCheckGroup[] {
           id: "paypalClient",
           configured: paypalClientOk,
           kind: "optional",
-          meta: env.PAYPAL_ENV?.trim(),
+          // The resolved environment, not the raw PAYPAL_ENV string. The raw
+          // value is what hides the problem: anything other than "sandbox"
+          // routes to live, so an unset or misspelled value reads as harmless
+          // here while real credentials go to the wrong endpoint and come back
+          // as a flat invalid_client. Runtime logs are not reachable on every
+          // plan, so this panel is the only place the effective target shows.
+          meta: `${paypalEnv.name} → ${new URL(paypalEnv.baseUrl).host}`,
+        },
+        {
+          id: "paypalWebhook",
+          configured: has(env.PAYPAL_WEBHOOK_ID),
+          kind: "optional",
         },
         {
           id: "osPaypal",

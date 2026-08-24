@@ -6,9 +6,28 @@ import { createLogger } from "@/lib/logger";
 
 const log = createLogger("paypal-server");
 
+export const PAYPAL_LIVE_BASE_URL = "https://api-m.paypal.com";
+export const PAYPAL_SANDBOX_BASE_URL = "https://api-m.sandbox.paypal.com";
+
+/**
+ * Which PayPal environment the server actually talks to.
+ *
+ * Live is the default, so anything that is not exactly "sandbox" sends real
+ * credentials to the live endpoint — and PayPal answers a sandbox pair with a
+ * flat `invalid_client`, which looks identical to a wrong password. Before the
+ * trim/lowercase below, "Sandbox", " sandbox" or an empty value all routed to
+ * live in silence. Normalising costs nothing and removes a whole class of
+ * misconfiguration that is invisible until a real signup fails.
+ */
+export function resolvePayPalEnv(): { name: "sandbox" | "live"; baseUrl: string } {
+  const raw = env.PAYPAL_ENV?.trim().toLowerCase() ?? "";
+  return raw === "sandbox"
+    ? { name: "sandbox", baseUrl: PAYPAL_SANDBOX_BASE_URL }
+    : { name: "live", baseUrl: PAYPAL_LIVE_BASE_URL };
+}
+
 function paypalBaseUrl(): string {
-  if (env.PAYPAL_ENV === "sandbox") return "https://api-m.sandbox.paypal.com";
-  return "https://api-m.paypal.com";
+  return resolvePayPalEnv().baseUrl;
 }
 
 export function getPayPalClientId(): string {
