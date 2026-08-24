@@ -1021,7 +1021,8 @@
         "savedLabel": "✓ Saved",
         "saveExecution": "Save completion",
         "requiredBeforeSave": "Mark all required items before saving"
-      }
+      },
+      "regeneratePrompt": "Rebuild the app \"{name}\" from its current schema"
     },
     "helpCenter": {
       "title": "Help center",

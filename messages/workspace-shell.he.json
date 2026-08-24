@@ -1021,7 +1021,8 @@
         "savedLabel": "✓ נשמר",
         "saveExecution": "שמור ביצוע",
         "requiredBeforeSave": "יש לסמן את כל הפריטים החובה לפני שמירה"
-      }
+      },
+      "regeneratePrompt": "בנה מחדש את האפליקציה \"{name}\" לפי הסכמה הנוכחית"
     },
     "helpCenter": {
       "title": "מרכז עזרה",
