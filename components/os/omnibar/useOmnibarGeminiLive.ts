@@ -177,15 +177,26 @@ export function useOmnibarGeminiLive({
     isGeminiLiveRateLimited() ||
     (geminiLive.isRateLimited && !geminiLive.isLiveActive);
 
+  /**
+   * Fallback retry time, captured when the rate limit turns on rather than on
+   * every render. `Date.now()` inside the memo below was impure — the label
+   * would quietly drift later with each re-render, and the React Compiler rules
+   * flag it. This is only reached when neither the cooldown store nor the live
+   * client knows the real deadline.
+   */
+  const [fallbackRetryAt, setFallbackRetryAt] = useState<Date | null>(null);
+  useEffect(() => {
+    setFallbackRetryAt(rateLimitActive ? new Date(Date.now() + 60_000) : null);
+  }, [rateLimitActive]);
+
   const rateLimitLabel = useMemo(() => {
     if (!rateLimitActive) return null;
     const untilMs = getGeminiLiveRateLimitCooldownUntilMs();
     const retryAt =
-      untilMs != null
-        ? new Date(untilMs)
-        : geminiLive.rateLimitedUntil ?? new Date(Date.now() + 60_000);
+      untilMs != null ? new Date(untilMs) : geminiLive.rateLimitedUntil ?? fallbackRetryAt;
+    if (!retryAt) return null;
     return formatGeminiLiveRateLimitMessage(retryAt, locale, t);
-  }, [rateLimitActive, geminiLive.rateLimitedUntil, locale, t]);
+  }, [rateLimitActive, geminiLive.rateLimitedUntil, fallbackRetryAt, locale, t]);
 
   return {
     geminiLiveSettingsOpen, setGeminiLiveSettingsOpen,
