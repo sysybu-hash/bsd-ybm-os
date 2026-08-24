@@ -7,6 +7,22 @@
 import { execSync } from "node:child_process";
 import { applyProjectEnvFiles, getProjectEnv } from "./load-project-env.mjs";
 
+/**
+ * Snapshot the real process environment BEFORE the .env files are merged in.
+ *
+ * `vercel env pull` writes Vercel's own system variables into the pulled file,
+ * so .env.vercel.prod and .env.vercel.production both carry VERCEL="1" and
+ * VERCEL_ENV="production". load-project-env.mjs loads those, which means that
+ * after applyProjectEnvFiles() a plain local run looks exactly like a Vercel
+ * production build. Reading the flags first is the only way to tell the two
+ * apart.
+ */
+const realEnv = {
+  vercel: process.env.VERCEL,
+  githubActions: process.env.GITHUB_ACTIONS,
+  optIn: process.env.PREBUILD_APPLY_SCHEMA,
+};
+
 applyProjectEnvFiles();
 
 const db = (
@@ -45,6 +61,25 @@ const directUrl = (getProjectEnv("DIRECT_URL") || "").trim();
 if (!directUrl) {
   console.log(
     "[ensure-production-schema] skip — DIRECT_URL not set (e.g. preview deploy); schema ops require it",
+  );
+  process.exit(0);
+}
+
+/**
+ * Applying schema changes is a side effect of `npm run build`, which is not
+ * where anyone expects one. A local build against a production DATABASE_URL
+ * silently ran `prisma migrate deploy` against production — that is how the
+ * gatewayTransactionId rename reached the database, unnoticed, during a build.
+ *
+ * Managed builds still need it: Vercel has no separate migration step, so
+ * skipping there would deploy new code against an old schema. Same detection
+ * as scripts/ci-prepare-build-env.mjs.
+ */
+const managedBuild = realEnv.githubActions === "true" || realEnv.vercel === "1";
+if (!managedBuild && realEnv.optIn !== "1") {
+  console.log(
+    "[ensure-production-schema] skip — local build does not touch the database.\n" +
+      "  Run `npm run db:migrate` to apply migrations, or set PREBUILD_APPLY_SCHEMA=1 to include this step in the build.",
   );
   process.exit(0);
 }
