@@ -115,7 +115,7 @@ export function useErpDocuments() {
   };
 
   const deleteDocument = async (id: string) => {
-    if (!confirm("האם אתה בטוח שברצונך למחוק את המסמך?")) return;
+    if (!confirm(t("workspaceWidgets.erp.confirmDeleteDocument"))) return;
     try {
       const res = await fetch(`/api/erp/documents/${id}`, { method: "DELETE" });
       if (res.ok) {

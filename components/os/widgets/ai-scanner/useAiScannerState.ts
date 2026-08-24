@@ -5,6 +5,7 @@ import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation"
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { useProjectPicker } from "@/hooks/use-project-picker";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { resolveApiErrorMessage } from "@/lib/client/parse-json-response";
 import { useIndustryConfig } from "@/hooks/use-industry-config";
 import { defaultScanModeForIndustry, getScanModesForUi, type ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
 import { buildScanFileAcceptAttribute } from "@/lib/scan-mime";
@@ -173,12 +174,12 @@ export function useAiScannerState({
     driveImportDoneRef.current = fileId;
     void (async () => {
       const { toast } = await import("sonner");
-      toast.info(`מוריד מ-Drive: ${fileName}`);
+      toast.info(t("workspaceWidgets.aiScanner.driveDownloading", { name: fileName }));
       try {
         const { inferMimeFromFileName } = await import("@/lib/scan-mime");
         const params = new URLSearchParams({ fileId, fileName, mimeType: typeof mimeType === "string" ? mimeType : "application/octet-stream" });
         const res = await fetch(`/api/os/google-drive/download?${params}`, { credentials: "include" });
-        if (!res.ok) { const data = (await res.json().catch(() => ({}))) as { error?: string }; throw new Error(data.error ?? "הורדה מ-Google Drive נכשלה"); }
+        if (!res.ok) { const data = (await res.json().catch(() => ({}))) as { error?: string }; throw new Error(resolveApiErrorMessage(data, t, t("workspaceWidgets.aiScanner.driveDownloadFailed"))); }
         const blob = await res.blob();
         if (cancelled) return;
         const headerName = res.headers.get("X-Drive-File-Name");
@@ -189,11 +190,11 @@ export function useAiScannerState({
       } catch (err) {
         if (driveImportDoneRef.current === fileId) driveImportDoneRef.current = null;
         const { toast: t2 } = await import("sonner");
-        t2.error(err instanceof Error ? err.message : "ייבוא מ-Drive נכשל");
+        t2.error(err instanceof Error ? err.message : t("workspaceWidgets.aiScanner.driveImportFailed"));
       }
     })();
     return () => { cancelled = true; };
-  }, [liveData?.driveImportFile, runFileQueue]);
+  }, [liveData?.driveImportFile, runFileQueue, t]);
 
   // ── PWA Share Target: auto-load file shared from another app ─────────────
   // When the user shares a file to BSD-YBM from Android/iOS, the server saves it
@@ -214,12 +215,12 @@ export function useAiScannerState({
     // Download and scan
     void (async () => {
       const { toast } = await import("sonner");
-      toast.info(`טוען קובץ משותף: ${sharedFileName}`);
+      toast.info(t("workspaceWidgets.aiScanner.sharedLoading", { name: sharedFileName }));
       try {
         const { inferMimeFromFileName } = await import("@/lib/scan-mime");
         const urlParams = new URLSearchParams({ fileId: sharedDriveId, fileName: sharedFileName, mimeType: inferMimeFromFileName(sharedFileName, "") });
         const res = await fetch(`/api/os/google-drive/download?${urlParams}`, { credentials: "include" });
-        if (!res.ok) throw new Error("הורדת קובץ משותף נכשלה");
+        if (!res.ok) throw new Error(t("workspaceWidgets.aiScanner.sharedDownloadFailed"));
         const blob = await res.blob();
         const resolvedMime = inferMimeFromFileName(sharedFileName, blob.type);
         const file = new File([blob], sharedFileName, { type: resolvedMime });
@@ -227,10 +228,10 @@ export function useAiScannerState({
       } catch (err) {
         driveImportDoneRef.current = null;
         const { toast: t2 } = await import("sonner");
-        t2.error(err instanceof Error ? err.message : "טעינת קובץ משותף נכשלה");
+        t2.error(err instanceof Error ? err.message : t("workspaceWidgets.aiScanner.sharedLoadFailed"));
       }
     })();
-  }, [runFileQueue]);
+  }, [runFileQueue, t]);
 
   useEffect(() => { if (showProjectPicker) void loadProjectsList(); }, [showProjectPicker, loadProjectsList]);
 

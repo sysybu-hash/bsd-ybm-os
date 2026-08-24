@@ -100,7 +100,7 @@ export default function NotificationCenter({
 
   const handleConfirmExpense = async (notification: OSNotification) => {
     if (!notification.details?.amount || !notification.details?.projectName) {
-      showToast("חסרים פרטי הוצאה");
+      showToast(t("workspaceWidgets.notificationCenter.missingExpenseDetails"));
       return;
     }
 
@@ -126,7 +126,7 @@ export default function NotificationCenter({
         }
       }
 
-      showToast("ההוצאה אושרה");
+      showToast(t("workspaceWidgets.notificationCenter.expenseConfirmed"));
       onAction({
         label: t("workspaceWidgets.notificationCenter.close"),
         action: "dismiss",

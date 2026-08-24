@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadIssuedDocumentExport } from "@/lib/invoice-download-client";
 import { downloadErpScanDocumentFile } from "@/lib/erp-archive-download-client";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { resolveApiErrorMessage } from "@/lib/client/parse-json-response";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import { toast } from "sonner";
@@ -66,9 +67,11 @@ export function useArchiveData() {
       const qs = buildArchiveQuery({ q: debouncedQ, category, recentOnly, projectId, view: archiveView });
       const res = await fetch(`/api/erp/archive${qs}`, { credentials: "include", cache: "no-store" });
       if (!res.ok) {
-        let msg = "לא ניתן לטעון את הארכיון";
-        try { const body = (await res.json()) as { error?: string }; if (body?.error) msg = body.error; } catch { /* ignore */ }
-        throw new Error(msg);
+        let body: { error?: string; code?: string } | undefined;
+        try { body = (await res.json()) as { error?: string; code?: string }; } catch { /* ignore */ }
+        throw new Error(
+          resolveApiErrorMessage(body, t, t("workspaceWidgets.fileArchive.loadFailed")),
+        );
       }
       const data = (await res.json()) as ArchiveApiResponse;
       setFiles(Array.isArray(data.files) ? data.files : []);
@@ -76,13 +79,13 @@ export function useArchiveData() {
       setTotalCount(typeof data.totalCount === "number" ? data.totalCount : data.files?.length ?? 0);
       setTrashCount(typeof data.trashCount === "number" ? data.trashCount : 0);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "שגיאת טעינה");
+      setLoadError(e instanceof Error ? e.message : t("workspaceWidgets.fileArchive.loadError"));
       setFiles([]);
       setProjects([]);
     } finally {
       setLoading(false);
     }
-  }, [debouncedQ, category, recentOnly, projectId, archiveView]);
+  }, [debouncedQ, category, recentOnly, projectId, archiveView, t]);
 
   useEffect(() => { void fetchArchive(); }, [fetchArchive]);
 
@@ -105,13 +108,13 @@ export function useArchiveData() {
       void (async () => {
         try {
           const res = await fetch(`/api/documents/issued/${selectedFile.sourceId}/export?format=pdf`, { credentials: "include", cache: "no-store" });
-          if (!res.ok) throw new Error("לא ניתן לטעון תצוגה מקדימה");
+          if (!res.ok) throw new Error(t("workspaceWidgets.fileArchive.previewFailed"));
           const blob = await res.blob();
           if (cancelled) return;
           const url = URL.createObjectURL(blob);
           pdfBlobUrlRef.current = url;
           setPdfBlobUrl(url);
-        } catch { if (!cancelled) setPreviewError("שגיאה בטעינת PDF"); }
+        } catch { if (!cancelled) setPreviewError(t("workspaceWidgets.fileArchive.pdfLoadFailed")); }
         finally { if (!cancelled) setPreviewLoading(false); }
       })();
       return () => { cancelled = true; };
@@ -124,7 +127,7 @@ export function useArchiveData() {
           fetch(`/api/erp/documents/${docId}`, { credentials: "include", cache: "no-store" }),
           fetch(`/api/erp/documents/${docId}/file`, { credentials: "include", cache: "no-store" }),
         ]);
-        if (!metaRes.ok) throw new Error("מסמך לא נמצא");
+        if (!metaRes.ok) throw new Error(t("workspaceWidgets.fileArchive.documentNotFound"));
         const data = (await metaRes.json()) as {
           document?: ScanDocPreview & { aiData?: unknown };
         };
@@ -155,11 +158,11 @@ export function useArchiveData() {
           pdfBlobUrlRef.current = url;
           setPdfBlobUrl(url);
         }
-      } catch { if (!cancelled) setPreviewError("לא ניתן לטעון פרטי סריקה"); }
+      } catch { if (!cancelled) setPreviewError(t("workspaceWidgets.fileArchive.scanDetailsFailed")); }
       finally { if (!cancelled) setPreviewLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [selectedFile]);
+  }, [selectedFile, t]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -192,7 +195,7 @@ export function useArchiveData() {
     });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? "הפעולה נכשלה");
+      throw new Error(resolveApiErrorMessage(body, t, t("workspaceWidgets.fileArchive.actionFailed")));
     }
   }
 
