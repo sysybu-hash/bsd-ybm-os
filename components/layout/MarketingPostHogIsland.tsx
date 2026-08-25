@@ -17,11 +17,13 @@ function PostHogPageView({ client }: { client: typeof posthogJs }) {
 
   useEffect(() => {
     if (!pathname || !getPostHogProjectKey()) return;
-    void import("@/lib/analytics/posthog-client").then(({ initPostHog }) => {
-      initPostHog({ skipConsentCheck: true });
-      const query = searchParams?.toString();
-      const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
-      client.capture("$pageview", { $current_url: url });
+    const query = searchParams?.toString();
+    const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
+    // Queued rather than initialising: see the note in posthog-client.ts. This
+    // effect runs on mount, so initialising here would pull the recorder and
+    // surveys bundles in on first paint.
+    void import("@/lib/analytics/posthog-client").then(({ capturePageview }) => {
+      capturePageview(url);
     });
   }, [pathname, searchParams, client]);
 
@@ -32,10 +34,24 @@ export default function MarketingPostHogIsland() {
   const [client, setClient] = useState<typeof posthogJs | null>(null);
 
   useEffect(() => {
-    void import("@/lib/analytics/posthog-client").then(({ initPostHog, posthog }) => {
-      initPostHog({ skipConsentCheck: true });
-      setClient(posthog);
-    });
+    /**
+     * Deferred to idle, matching CSPostHogProvider. posthog.init() pulls in the
+     * session recorder, surveys and autocapture bundles — 324KB of third-party
+     * script that has no reason to compete with the page it is measuring.
+     */
+    const run = () => {
+      void import("@/lib/analytics/posthog-client").then(({ initPostHog, posthog }) => {
+        initPostHog({ skipConsentCheck: true });
+        setClient(posthog);
+      });
+    };
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(run, { timeout: 8000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const timer = globalThis.setTimeout(run, 2000);
+    return () => globalThis.clearTimeout(timer);
   }, []);
 
   if (!client) return null;

@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { subscribeAnalyticsConsent } from "@/lib/analytics/posthog-consent";
-import { initPostHog, posthog } from "@/lib/analytics/posthog-client";
+import { capturePageview, initPostHog, posthog } from "@/lib/analytics/posthog-client";
 import { getPostHogProjectKey } from "@/lib/analytics/posthog-env";
 
 const PostHogProvider = dynamic(
@@ -18,10 +18,14 @@ function PostHogPageView({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (!enabled || !pathname || !getPostHogProjectKey()) return;
-    initPostHog({ skipConsentCheck: true });
     const query = searchParams?.toString();
     const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
-    posthog.capture("$pageview", { $current_url: url });
+    // Deliberately does NOT initialise. This effect runs on mount, so calling
+    // initPostHog() here loaded PostHog immediately and made the idle deferral
+    // below dead code — measured as 324KB of recorder/surveys/autocapture
+    // arriving 845ms into a workspace load, against an LCP of ~6s. The pageview
+    // is queued and flushed once initialisation actually happens.
+    capturePageview(url);
   }, [pathname, searchParams, enabled]);
 
   return null;
