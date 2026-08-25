@@ -12,22 +12,23 @@
 ומאט את המעבד פי 4. **חיסכון של 90ms בצד השרת הוא רעש מול LCP של 5 שניות.**
 הצוואר שם הוא בצד הלקוח.
 
-## המספרים
+## המספרים — לפני תיקון הלוגו
 
-קו הבסיס: 2026-08-14, `iad1` + Next 15. עכשיו: `fra1` + Next 16.
+קו הבסיס: 2026-08-14, `iad1` + Next 15. הטור השני: `fra1` + Next 16, **לפני**
+שתוקן ה-`loading="lazy"`. התוצאה הסופית בסעיף "התוצאה בפרודקשן" למטה.
 
 | דף | קו בסיס | עכשיו | LCP |
 |---|---|---|---|
-| `/login` | 97 | **99** | 1755ms |
+| `/login` | 97 | 99 | 1755ms |
 | `/about` | 98 | 98 | 1763ms |
 | `/` | 97 | 97 | 1745ms |
 | `/help` | 95 | 96 | 1594ms |
 | `/privacy` | — | 96 | 1448ms |
 | `/legal` | — | 85 | 1455ms |
-| **`/terms`** | 81 | **80** | 4445ms |
-| **`/contact`** | 80 | **79** | 5050ms |
-| **`/blog`** | 79 | **79** | 5050ms |
-| **`/unsubscribe`** | 81 | **75** | 4621ms |
+| `/terms` | 81 | 80 | 4445ms |
+| `/contact` | 80 | 79 | 5050ms |
+| `/blog` | 79 | 79 | 5050ms |
+| `/unsubscribe` | 81 | 75 | 4621ms |
 
 הדפוס אומת בשתי ריצות נפרדות. הפער בין הקבוצות עקבי, לא רעש.
 
@@ -128,21 +129,20 @@ label   : "אנו משתמשים בעוגיות הכרחיות להפעלת הא
 
 מדדו כששום דבר כבד אחר לא רץ, ובדקו את TBT כאינדיקטור לעומס.
 
-## `/unsubscribe` — SEO 66 היא התראת שווא
+## `/unsubscribe` — גם ה-SEO 66 הוא התראת שווא
 
 נכשל ב-`is-crawlable` כי `app/(platform)/unsubscribe/page.tsx:7` מגדיר
 `robots: { index: false, follow: false }`. **זה נכון לדף הסרה מרשימת תפוצה.**
 רשום כאן כדי שלא "יתוקן".
 
-## שכבת auth
-
-טרם נמדדה. `npm run lighthouse:auth:matrix` דורש הרצת
-`lighthouse-auth-setup.mjs` שיוצר state מאומת מול פרודקשן.
-
 ## איך לחזור על המדידה
 
 ```bash
 npm run lighthouse:matrix:prod -- --tier=public --strategy=mobile
+
+# שכבת auth — דורשת state מאומת תחילה
+node scripts/lighthouse-auth-setup.mjs --base=https://www.bsd-ybm.co.il
+node scripts/lighthouse-site-matrix.mjs --base=https://www.bsd-ybm.co.il --tier=auth --strategy=mobile
 ```
 
 הפלט נשמר ל-`reports/pagespeed/<timestamp>-summary.json` עם `failedAudits`
