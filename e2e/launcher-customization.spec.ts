@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { tryCredentialsSignIn } from "./helpers";
+import { E2E_LAUNCHER_EMAIL, signInAsSpecUser } from "./helpers";
 
 /**
  * Shares one seeded account with the other layout-resetting specs (hubs,
@@ -22,7 +22,7 @@ test.describe("launcher customization", () => {
 
   test("enters edit mode and persists reorder", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "mobile-chrome", "drag+drop יציב בדסקטופ בלבד");
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await signInAsSpecUser(page, E2E_LAUNCHER_EMAIL);
     test.skip(!signed, "אין משתמש E2E");
 
     // The launcher grid only renders when no windows are open. Other E2E specs

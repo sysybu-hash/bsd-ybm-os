@@ -31,6 +31,20 @@ async function safeGoto(
 export const E2E_EMAIL = process.env.E2E_EMAIL ?? "owner@bsd-demo.test";
 export const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Demo!2026";
 export const E2E_PM_EMAIL = process.env.E2E_PM_EMAIL ?? "pm@bsd-demo.test";
+
+/**
+ * A dedicated account per layout-resetting spec. These specs each begin by
+ * wiping the signed-in user's server-side workspace layout; sharing one account
+ * meant they overwrote each other whenever Playwright ran them in parallel.
+ * All are ORG_ADMIN in the same organisation, so the seeded data is identical.
+ * Falls back to the shared owner when the seed predates these accounts.
+ */
+export const E2E_HUBS_EMAIL = process.env.E2E_HUBS_EMAIL ?? "e2e-hubs@bsd-demo.test";
+export const E2E_LOGISTICS_EMAIL =
+  process.env.E2E_LOGISTICS_EMAIL ?? "e2e-logistics@bsd-demo.test";
+export const E2E_LAUNCHER_EMAIL =
+  process.env.E2E_LAUNCHER_EMAIL ?? "e2e-launcher@bsd-demo.test";
+export const E2E_COMMAND_EMAIL = process.env.E2E_COMMAND_EMAIL ?? "e2e-command@bsd-demo.test";
 export const E2E_PM_PASSWORD = process.env.E2E_PM_PASSWORD ?? E2E_PASSWORD;
 
 export type E2eCredentials = { email: string; password: string };
@@ -487,6 +501,16 @@ export async function tryCredentialsSignIn(
     }
     return false;
   }
+}
+
+/**
+ * Signs in as a spec's own account, falling back to the shared owner if that
+ * account does not exist yet — a database seeded before these users were added
+ * would otherwise fail every test in the file rather than merely sharing state.
+ */
+export async function signInAsSpecUser(page: Page, email: string): Promise<boolean> {
+  if (await tryCredentialsSignIn(page, { email, password: E2E_PASSWORD })) return true;
+  return tryCredentialsSignIn(page, { email: E2E_EMAIL, password: E2E_PASSWORD });
 }
 
 /** התחברות כמשתמש PROJECT_MGR (pm@bsd-demo.test אחרי seed). */

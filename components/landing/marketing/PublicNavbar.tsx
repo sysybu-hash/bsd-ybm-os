@@ -43,7 +43,7 @@ export default function PublicNavbar() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
-          <BrandHomeLink size="sm" variant="image" tone="auto" />
+          <BrandHomeLink size="sm" variant="image" tone="auto" loading="eager" />
           <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t("marketingHome.nav.product")}>
             {NAV_LINKS.map((l) => (
               <Link key={l.href} href={l.href} className={linkCls(l.href)}>

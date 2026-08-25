@@ -257,7 +257,7 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
           amount: calculateSubtotal(),
         });
         navigateIssued(doc.id);
-        if (data.itaError) toast.warning(`המסמך הופק; מספר הקצאה: ${data.itaError}`);
+        if (data.itaError) toast.warning(t("workspaceWidgets.documentCreator.issuedWithItaError", { detail: String(data.itaError) }));
         toast.success(`${selectedTypeMeta?.labelHe ?? t("workspaceWidgets.documentCreator.docGenerationSuccess")}`);
         void fetchIssuedDocuments();
       } else {

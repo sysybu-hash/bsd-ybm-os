@@ -106,7 +106,7 @@ function buildSrcDoc(code: string): string {
         ${userScript}
 
         if (typeof __DEFAULT_EXPORT__ === "undefined") {
-          throw new Error("לא נמצא רכיב ברירת מחדל (export default)");
+          throw new Error(t("workspaceWidgets.appBuilder.noDefaultExport"));
         }
         const root = ReactDOM.createRoot(document.getElementById("root"));
         root.render(React.createElement(__DEFAULT_EXPORT__));
