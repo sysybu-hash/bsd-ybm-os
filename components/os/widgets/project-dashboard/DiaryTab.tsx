@@ -34,14 +34,19 @@ export function DiaryTab({
   const [workers, setWorkers] = useState("1");
   const [progress, setProgress] = useState("0");
 
-  // Sync when parent navigates here with pre-filled values
-  useEffect(() => {
+  // Sync when parent navigates here with pre-filled values. Adjusted during
+  // render so the fields are already populated on the first paint of the tab.
+  const [lastInitialDesc, setLastInitialDesc] = useState(initialDesc);
+  if (initialDesc !== lastInitialDesc) {
+    setLastInitialDesc(initialDesc);
     if (initialDesc) setDesc(initialDesc);
-  }, [initialDesc]);
+  }
 
-  useEffect(() => {
+  const [lastInitialTaskId, setLastInitialTaskId] = useState(initialTaskId);
+  if (initialTaskId !== lastInitialTaskId) {
+    setLastInitialTaskId(initialTaskId);
     if (initialTaskId !== undefined) setLinkTaskId(initialTaskId ?? null);
-  }, [initialTaskId]);
+  }
 
   return (
     <div className="space-y-4">

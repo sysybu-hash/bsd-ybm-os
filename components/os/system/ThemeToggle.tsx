@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 type ThemeToggleProps = {
   className?: string;
@@ -13,9 +13,7 @@ type ThemeToggleProps = {
 export default function ThemeToggle({ className = "", variant = "default" }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useI18n();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
 
   if (!mounted) {
     return (

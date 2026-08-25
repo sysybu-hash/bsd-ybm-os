@@ -60,7 +60,7 @@ export function WidgetNavigationProvider({
   const [history, setHistory] = useState<NavHistory>(() =>
     initialView ? { entries: [initialView], index: 0 } : emptyHistory(),
   );
-  const bootstrapped = useRef(!!initialView);
+  const [bootstrapped, setBootstrapped] = useState(!!initialView);
   const onViewChangeRef = useRef(onViewChange);
   const lastNotifiedKeyRef = useRef<string | undefined>(undefined);
 
@@ -82,12 +82,13 @@ export function WidgetNavigationProvider({
     setHistory({ entries: [state], index: 0 });
   }, []);
 
-  useEffect(() => {
-    if (initialView && !bootstrapped.current) {
-      bootstrapped.current = true;
-      applyView(initialView);
-    }
-  }, [initialView, applyView]);
+  // A host that resolves its initial view asynchronously hands it over after
+  // mount. Adopt it once, during render, so the widget opens on the right view
+  // instead of rendering the empty one first.
+  if (initialView && !bootstrapped) {
+    setBootstrapped(true);
+    applyView(initialView);
+  }
 
   useEffect(() => {
     const key = currentView ? stateKey(currentView) : "__null__";

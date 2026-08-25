@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Bell, Layers, LayoutGrid, LayoutTemplate, LogOut, Settings, Shield } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
@@ -11,6 +11,7 @@ import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import JewishClockHeaderChip from "@/components/os/jewish-calendar/JewishClockHeaderChip";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 interface OSHeaderProps {
   openWidget?: (type: WidgetType) => void;
@@ -68,7 +69,7 @@ export default function OSHeader({
   const { data: session } = useSession();
   const { t } = useI18n();
   const isPlatformAdmin = useIsPlatformAdmin();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
 
   const userName = session?.user?.name || t("workspaceWidgets.page.defaultUser");
   const userInitials = userName
@@ -77,8 +78,6 @@ export default function OSHeader({
     .join("")
     .toUpperCase()
     .slice(0, 2) || "OS";
-
-  useEffect(() => setMounted(true), []);
 
   const toolbarAria =
     t("workspaceShell.topBar.toolbarAria") !== "workspaceShell.topBar.toolbarAria"

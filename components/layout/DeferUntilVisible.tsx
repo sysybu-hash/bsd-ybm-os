@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useClientFlag } from "@/hooks/use-client-flag";
+
+/** Browsers without IntersectionObserver get the content immediately. */
+const noObserverSupport = () => typeof IntersectionObserver === "undefined";
 
 type Props = Readonly<{
   children: ReactNode;
@@ -17,19 +21,17 @@ export default function DeferUntilVisible({
   minHeight = "24rem",
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const unsupported = useClientFlag(noObserverSupport);
+  const [intersected, setIntersected] = useState(false);
+  const visible = unsupported || intersected;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
+    if (!el || typeof IntersectionObserver === "undefined") return;
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
-          setVisible(true);
+          setIntersected(true);
           obs.disconnect();
         }
       },

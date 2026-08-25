@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 import { ArchiveActionMenu } from "./ArchiveActionMenu";
 import type { ErpArchiveFile } from "./types";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 const MENU_WIDTH = 168;
 const MENU_ESTIMATE = 148;
@@ -37,9 +38,7 @@ export function ArchiveMenuTrigger({
 }: Props) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
 
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
@@ -63,11 +62,16 @@ export function ArchiveMenuTrigger({
     setCoords({ top, left });
   }, []);
 
+  // Drop stale coordinates as the menu closes, during render, so a menu
+  // reopened on another row never flashes at the previous row's position.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) setCoords(null);
+  }
+
   useLayoutEffect(() => {
-    if (!isOpen) {
-      setCoords(null);
-      return;
-    }
+    if (!isOpen) return;
     updatePosition();
     const el = triggerRef.current;
     if (!el) return;

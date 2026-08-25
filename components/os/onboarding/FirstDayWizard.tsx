@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { captureProductEvent } from "@/lib/analytics/posthog-client";
 import { FIRST_DAY_WIZARD_STORAGE_KEY } from "@/lib/onboarding/first-day-wizard-constants";
 import FirstDayWizardPanel, { type WizardStep } from "@/components/os/onboarding/FirstDayWizardPanel";
+import { useClientFlag } from "@/hooks/use-client-flag";
 
 /** Core path only: project → scan → first save. */
 const STEPS: readonly WizardStep[] = [
@@ -15,6 +16,16 @@ const STEPS: readonly WizardStep[] = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
+
+/** The wizard is shown until storage records that it was completed or dismissed. */
+function isWizardUnfinished(): boolean {
+  try {
+    return !localStorage.getItem(FIRST_DAY_WIZARD_STORAGE_KEY);
+  } catch {
+    // Storage blocked (private mode): show the wizard rather than swallow onboarding.
+    return true;
+  }
+}
 
 async function trackWizard(action: string, details?: string) {
   captureProductEvent("wizard_step", { action, details: details ?? "" });
@@ -55,18 +66,13 @@ function openForStep(
 
 export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
   const { status } = useSession();
-  const [open, setOpen] = useState(false);
+  // Two independent conditions rather than one piece of effect-written state:
+  // storage says the wizard is unfinished, and the session has arrived. Closing
+  // it writes storage, but `closed` is what hides it in this render.
+  const unfinished = useClientFlag(isWizardUnfinished);
+  const [closed, setClosed] = useState(false);
+  const open = unfinished && !closed && status === "authenticated";
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    try {
-      const done = localStorage.getItem(FIRST_DAY_WIZARD_STORAGE_KEY);
-      if (!done) setOpen(true);
-    } catch {
-      setOpen(true);
-    }
-  }, [status]);
 
   const complete = useCallback(() => {
     try {
@@ -74,7 +80,7 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
     } catch {
       /* ignore */
     }
-    setOpen(false);
+    setClosed(true);
     void trackWizard("completed");
   }, []);
 
@@ -84,7 +90,7 @@ export default function FirstDayWizard({ onOpenWidget }: FirstDayWizardProps) {
     } catch {
       /* ignore */
     }
-    setOpen(false);
+    setClosed(true);
     void trackWizard("dismissed");
   }, []);
 

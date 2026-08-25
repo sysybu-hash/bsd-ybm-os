@@ -12,6 +12,7 @@ import DashboardCalculators from "@/components/dashboard/DashboardCalculators";
 import { ClassicSidebar } from "@/components/dashboard/ClassicSidebar";
 import { ClassicMobileDrawer } from "@/components/dashboard/ClassicMobileDrawer";
 import { ClassicPane } from "@/components/dashboard/ClassicPane";
+import { useClientFlag } from "@/hooks/use-client-flag";
 
 const loading = () => (
   <div className="flex min-h-[200px] items-center justify-center text-[color:var(--classic-muted)]">
@@ -44,6 +45,15 @@ type TabId =
 type CrmSubTab = "projects" | "clients";
 
 const SIDEBAR_COLLAPSED_KEY = "bsd_ybm_classic_sidebar_collapsed";
+
+function readStoredCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    /* storage unavailable */
+    return false;
+  }
+}
 
 type ProjectListItem = { id: string; name: string; isActive?: boolean };
 
@@ -142,20 +152,15 @@ export default function DashboardShell() {
   const { t, dir } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
+  // The stored preference seeds the toggle; `toggleSidebar` owns it afterwards.
+  const storedCollapsed = useClientFlag(readStoredCollapsed);
+  const [collapsedOverride, setCollapsedOverride] = useState<boolean | null>(null);
+  const sidebarCollapsed = collapsedOverride ?? storedCollapsed;
 
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
+    setCollapsedOverride((prev) => {
+      const next = !(prev ?? readStoredCollapsed());
       try {
         localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
       } catch {

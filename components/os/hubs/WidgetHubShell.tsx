@@ -34,11 +34,16 @@ export default function WidgetHubShell({
     return defaultTab;
   });
 
-  useEffect(() => {
+  // Follow `initialTab` when the host changes it, during render rather than in
+  // an effect. `tabs` is deliberately not part of the comparison: it is a fresh
+  // array on most parent renders, and the old effect re-ran on every one of them.
+  const [lastInitialTab, setLastInitialTab] = useState(initialTab);
+  if (initialTab !== lastInitialTab) {
+    setLastInitialTab(initialTab);
     if (initialTab && tabs.some((tab) => tab.id === initialTab)) {
       setActiveTab(initialTab);
     }
-  }, [initialTab, tabs]);
+  }
 
   const selectTab = useCallback(
     (tabId: string) => {
