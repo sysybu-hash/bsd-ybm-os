@@ -4,8 +4,23 @@
  * Usage:
  *   node scripts/lib-line-count.mjs [--min 300]
  *   node scripts/lib-line-count.mjs [--min 300] [--allowlist path/to/allowlist.txt]
+ *   node scripts/lib-line-count.mjs [--top 10]
  *
- * Prints raw count (all files) and logic count (excluding bulk-OK paths).
+ * The headline figure is `top-N mass`: the total number of lines in the N
+ * largest logic files.
+ *
+ * It replaced a plain count of files >= 300 lines, which was a bad target. Three
+ * rounds of splitting took the biggest files from 456/400/385 down to 414/301/323
+ * and added 18 tests where there had been none — and the count sat at 27-28
+ * throughout, because a file that lands on 301 or 323 is just as "over 300" as
+ * one at 456. The count only moves when a file crosses the threshold, which
+ * rewards shaving a line off a 301-line file and ignores a genuine 456 -> 414.
+ *
+ * Mass moves whenever the code actually gets smaller, so partial progress shows
+ * up. The count is still printed, because "how many files are over the line" is
+ * worth seeing — it just is not the thing to steer by.
+ *
+ * See docs/LIB-SPLIT-BACKLOG.md.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -22,6 +37,7 @@ function readArg(flag) {
 
 const minLines = Number.parseInt(readArg("--min") ?? "300", 10);
 const allowlistPath = readArg("--allowlist");
+const topN = Number.parseInt(readArg("--top") ?? "10", 10);
 
 /** Intentionally large locale/CSS/data dumps — excluded from logic count. */
 const DEFAULT_BULK_OK = [
@@ -93,9 +109,16 @@ results.sort((a, b) => b.lines - a.lines);
 
 const logicResults = results.filter((r) => !r.bulkOk);
 
+const top = logicResults.slice(0, topN);
+const mass = top.reduce((sum, r) => sum + r.lines, 0);
+
 console.log(`Files with >= ${minLines} lines`);
 console.log(`  raw count:   ${results.length}`);
-console.log(`  logic count: ${logicResults.length} (excluding bulk OK)\n`);
+console.log(`  logic count: ${logicResults.length} (excluding bulk OK)`);
+console.log(
+  `  top-${top.length} mass: ${mass} lines  <- the number to steer by; ` +
+    `it drops whenever a large file shrinks, not only when one crosses ${minLines}\n`,
+);
 
 for (const r of results) {
   const tag = r.bulkOk ? " [bulk OK]" : "";
