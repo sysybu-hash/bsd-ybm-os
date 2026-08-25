@@ -19,6 +19,11 @@ test.describe("office expenses", () => {
     await primeCookieConsent(page);
     const signed = await tryCredentialsSignIn(page);
     if (!signed) test.skip(true, "E2E credentials not configured");
+    // Start from an empty workspace: these tests select the last
+    // [data-widget-shell], so a window left open by an earlier test becomes
+    // the element under assertion. The layout-resetting specs used to share
+    // this account and clean up by accident; they now have their own.
+    await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
     await dismissWorkspaceOverlays(page);
   });
 
@@ -162,6 +167,11 @@ test.describe("office expenses — PROJECT_MGR read-only", () => {
     await primeCookieConsent(page);
     const signed = await tryProjectMgrSignIn(page);
     if (!signed) test.skip(true, "E2E PROJECT_MGR credentials not configured");
+    // Start from an empty workspace: these tests select the last
+    // [data-widget-shell], so a window left open by an earlier test becomes
+    // the element under assertion. The layout-resetting specs used to share
+    // this account and clean up by accident; they now have their own.
+    await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
     await dismissWorkspaceOverlays(page);
   });
 

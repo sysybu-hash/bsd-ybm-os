@@ -30,6 +30,13 @@ test.describe("mobile responsive — layout", () => {
     const signed = await tryCredentialsSignIn(page);
     await dismissCookieBannerIfVisible(page);
     if (!signed) test.skip(true, "E2E credentials not configured");
+    // Start from an empty workspace. Several tests here take
+    // `[data-widget-shell]` .last(), so a window left open by an earlier test
+    // silently becomes the element under assertion. This used to be masked:
+    // hubs/logistics/launcher/universal-command shared this account and reset
+    // its layout constantly, cleaning up by accident. They now have their own
+    // accounts, so this spec has to establish its own precondition.
+    await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
     await dismissWorkspaceOverlays(page);
   });
 
@@ -234,6 +241,13 @@ test.describe("mobile responsive — narrow viewport (360px)", () => {
     const signed = await tryCredentialsSignIn(page);
     await dismissCookieBannerIfVisible(page);
     if (!signed) test.skip(true, "E2E credentials not configured");
+    // Start from an empty workspace. Several tests here take
+    // `[data-widget-shell]` .last(), so a window left open by an earlier test
+    // silently becomes the element under assertion. This used to be masked:
+    // hubs/logistics/launcher/universal-command shared this account and reset
+    // its layout constantly, cleaning up by accident. They now have their own
+    // accounts, so this spec has to establish its own precondition.
+    await page.request.patch("/api/user/workspace-layout", { data: { widgets: [] } });
     await dismissWorkspaceOverlays(page);
   });
 
