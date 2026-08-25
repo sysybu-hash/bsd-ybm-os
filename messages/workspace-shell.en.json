@@ -1021,7 +1021,8 @@
         "savedLabel": "✓ Saved",
         "saveExecution": "Save completion",
         "requiredBeforeSave": "Mark all required items before saving"
-      }
+      },
+      "regeneratePrompt": "Rebuild the app \"{name}\" from its current schema"
     },
     "helpCenter": {
       "title": "Help center",
@@ -1567,7 +1568,9 @@
       "approveExpense": "Approve expense",
       "saving": "Saving…",
       "close": "Close",
-      "confirmFailed": "Could not confirm"
+      "confirmFailed": "Could not confirm",
+      "missingExpenseDetails": "Expense details are missing",
+      "expenseConfirmed": "Expense confirmed"
     },
     "chrome": {
       "closeAria": "Close {title}",
@@ -1792,7 +1795,13 @@
       "scanNow": "Scan now",
       "clearPending": "Clear",
       "filesReady": "files ready — press “Scan now”",
-      "removeFile": "Remove"
+      "removeFile": "Remove",
+      "driveDownloading": "Downloading from Drive: {name}",
+      "driveDownloadFailed": "Google Drive download failed",
+      "driveImportFailed": "Drive import failed",
+      "sharedLoading": "Loading shared file: {name}",
+      "sharedDownloadFailed": "Shared file download failed",
+      "sharedLoadFailed": "Loading the shared file failed"
     },
     "documentScan": {
       "continueToSave": "Continue to save",
@@ -2296,7 +2305,8 @@
       "loadListFailed": "Failed to load documents",
       "selectDoc": "Select a document from the list to view details and edit lines",
       "mobileTabList": "List",
-      "mobileTabDetail": "Document"
+      "mobileTabDetail": "Document",
+      "confirmDeleteDocument": "Delete this document?"
     },
     "erpArchive": {
       "mobileTabNav": "Navigation",
@@ -2426,7 +2436,8 @@
       "punchOut": "Clock out",
       "settingsApiKeyLabel": "API key (organization)",
       "settingsApiKeyPlaceholder": "Paste a key from Meckano → Settings",
-      "settingsSaveKey": "Save key"
+      "settingsSaveKey": "Save key",
+      "noPermission": "No permission for Meckano"
     },
     "docCreator": {
       "draftTitle": "Summary before issue",
@@ -2468,7 +2479,7 @@
       "projectNone": "General (no project)",
       "save": "Save",
       "load": "Load",
-      "newNotebook": "New",
+      "newNotebook": "New notebook",
       "noSavedNotebooks": "No saved notebooks",
       "deleteNotebook": "Delete notebook",
       "renameSourceTitle": "Rename source",
@@ -2493,7 +2504,11 @@
       "quickMindMap": "Mind map",
       "promptSummary": "Summarize the sources into a short bulleted executive summary.",
       "promptMindMap": "Create a hierarchical mind map of the key ideas.",
-      "askPlaceholder": "Type a question…"
+      "askPlaceholder": "Type a question…",
+      "notebookNamed": "Notebook — {title}",
+      "sourceNumbered": "Source {n}",
+      "exportFilename": "notebook-document",
+      "projectNotebook": "Project notebook"
     },
     "project": {
       "loadFailed": "Failed to load project",
@@ -2538,7 +2553,14 @@
       "noPreview": "No preview available.",
       "noLineItems": "No line items — download or open the document from the menu.",
       "vendorLabel": "Vendor: ",
-      "totalLabel": "Total: "
+      "totalLabel": "Total: ",
+      "loadFailed": "Could not load the archive",
+      "loadError": "Loading error",
+      "previewFailed": "Could not load the preview",
+      "pdfLoadFailed": "Failed to load the PDF",
+      "documentNotFound": "Document not found",
+      "scanDetailsFailed": "Could not load scan details",
+      "actionFailed": "The action failed"
     },
     "documentCreator": {
       "fillAllItems": "Please fill all item details",

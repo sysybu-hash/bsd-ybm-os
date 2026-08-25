@@ -12,6 +12,7 @@ type BrandHomeLinkProps = {
   tone?: BrandLogoTone;
   className?: string;
   priority?: boolean;
+  loading?: "eager" | "lazy";
   subtitle?: string;
 };
 
@@ -22,6 +23,7 @@ export default function BrandHomeLink({
   tone = "auto",
   className = "",
   priority,
+  loading,
   subtitle,
 }: BrandHomeLinkProps) {
   return (
@@ -35,6 +37,7 @@ export default function BrandHomeLink({
         variant={variant}
         tone={tone}
         priority={priority}
+        loading={loading}
         subtitle={subtitle}
       />
     </Link>

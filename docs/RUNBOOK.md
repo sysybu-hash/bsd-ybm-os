@@ -76,6 +76,34 @@ git push origin main
 > ג ן¸ **Never deploy code that requires a new schema column before running the migration.**  
 > Neon supports zero-downtime schema changes (ADD COLUMN with DEFAULT is instant).
 
+### Who applies migrations, and when
+
+`npm run build` runs `scripts/prebuild.mjs` → `ensure-production-schema.mjs`,
+which applies pending migrations. **On Vercel and GitHub Actions only.**
+
+A local `npm run build` no longer touches the database. This used to be a real
+hazard: building against a production `DATABASE_URL` silently ran
+`prisma migrate deploy` against production, which is how a column rename once
+reached the database unnoticed.
+
+| Where | What happens |
+|---|---|
+| Vercel build | `prisma migrate deploy` — Vercel has no separate migration step, so this must stay |
+| GitHub Actions | `prisma db push` against the ephemeral CI database |
+| Local build | **skipped**, with a message |
+| Local, on purpose | `npm run db:migrate`, or `PREBUILD_APPLY_SCHEMA=1 npm run build` |
+
+The check reads `VERCEL` / `GITHUB_ACTIONS` from the **real process environment,
+before the `.env` files are merged in**. This matters: `vercel env pull` writes
+Vercel's own system variables into the pulled file, so `.env.vercel.prod` and
+`.env.vercel.production` both carry `VERCEL="1"` and `VERCEL_ENV="production"`.
+After `applyProjectEnvFiles()` a plain local run is indistinguishable from a
+production build.
+
+> Same trap applies elsewhere: `scripts/seed-test-data.mjs` and
+> `check-env-essential.mjs` both branch on `VERCEL_ENV === "production"` and see
+> `"production"` locally once those files load.
+
 ### Preview Deployments
 
 Every PR gets a Vercel Preview URL. Preview environments:

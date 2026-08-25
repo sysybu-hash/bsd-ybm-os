@@ -98,6 +98,12 @@ type BrandLogoProps = {
   tone?: BrandLogoTone;
   className?: string;
   priority?: boolean;
+  /**
+   * Defaults to next/image's lazy loading. Set "eager" where this logo is the
+   * LCP element — on short pages the footer lockup sits inside the initial
+   * viewport, and deferring it pushes LCP out by seconds.
+   */
+  loading?: "eager" | "lazy";
   showIcon?: boolean;
   /** מסגרת בהירה מעוצבת סביב BY + bsd-ybm (רק lockup) */
   tile?: boolean;
@@ -116,11 +122,13 @@ function BrandLogoImage({
   size,
   tone,
   priority,
+  loading,
   className,
 }: {
   size: BrandLogoSize;
   tone: BrandLogoTone;
   priority?: boolean;
+  loading?: "eager" | "lazy";
   className?: string;
 }) {
   const maxW = IMAGE_MAX_W[size];
@@ -134,6 +142,8 @@ function BrandLogoImage({
     width: intrinsic.width,
     height: intrinsic.height,
     priority,
+    // next/image rejects loading alongside priority, which already implies eager.
+    ...(priority ? {} : { loading }),
     sizes: `${maxW}px`,
   };
 
@@ -186,6 +196,7 @@ export default function BrandLogo({
   tone = "auto",
   className = "",
   priority,
+  loading,
   showIcon = false,
   tile = true,
   subtitle,
@@ -217,7 +228,7 @@ export default function BrandLogo({
         className={`inline-flex min-w-0 ${subtitleLayoutClass} ${className}`.trim()}
         aria-label={subtitle ? undefined : BRAND_LOGO_ALT}
       >
-        <BrandLogoImage size={size} tone={tone} priority={priority} />
+        <BrandLogoImage size={size} tone={tone} priority={priority} loading={loading} />
         {subtitle ? (
           <span
             className={subtitleTextClass(

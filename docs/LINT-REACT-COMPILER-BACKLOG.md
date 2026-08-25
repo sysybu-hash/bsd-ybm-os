@@ -16,8 +16,8 @@
 |---|---|---|
 | `react-hooks/refs` | 55 | דפוס latest-ref — `onFooRef.current = onFoo` בגוף הרנדר, וקריאת `ref.current` ברנדר |
 | `react-hooks/set-state-in-effect` | 38 | `useEffect(() => setX(prop), [prop])` לסנכרון prop→state |
-| `react-hooks/purity` | 3 | `performance.now()` / `Date.now()` בתוך אתחול `useRef` או `useMemo` |
-| `react-hooks/immutability` | 1 | צובר (`cumulative += ...`) בתוך `map` בתוך `useMemo` |
+| ~~`react-hooks/purity`~~ | ✅ 0 | `performance.now()` / `Date.now()` בתוך אתחול `useRef` או `useMemo` |
+| ~~`react-hooks/immutability`~~ | ✅ 0 | צובר (`cumulative += ...`) בתוך `map` בתוך `useMemo` |
 
 ## נציגים
 
@@ -39,3 +39,25 @@
 ## מקור
 
 `eslint.config.js` — הבלוק האחרון במערך, עם ההסבר המלא.
+
+---
+
+## עדכון 2026-08-24 — שלב 1 הושלם
+
+`react-hooks/purity` ו-`react-hooks/immutability` **הודלקו מחדש** ב-`eslint.config.js`.
+ארבעת המופעים תוקנו:
+
+| קובץ | מה נעשה |
+|---|---|
+| `components/os/boot/useOsBootGate.ts` | ה-timestamp נתפס ב-`useRef` initialiser והוזן לחישוב יחיד. השעון מתחיל עכשיו בתוך ה-effect. ההפרש הוא זמן רנדר-לאפקט מתוך 700ms — רעש, ולמעשה קרוב יותר לכוונה: הספלאש על המסך מרגע הציור |
+| `components/os/omnibar/useOmnibarGeminiLive.ts` | `Date.now()` ב-`useMemo` — התווית **נסחפה קדימה בכל רנדר**. זמן ה-fallback נתפס פעם אחת כשההגבלה נכנסת לתוקף |
+| `components/ui/bento/Donut.tsx` | צובר `let` שמומר ב-`map` → `reduce` שנושא את הצובר |
+
+**נותרו שני חוקים כבויים:**
+
+| חוק | מופעים | למה עדיין כבוי |
+|---|---|---|
+| `react-hooks/set-state-in-effect` | 38 | רובם ניתנים להמרה ל-`key` prop או חישוב נגזר. לטפל בקבוצות לפי ווידג'ט |
+| `react-hooks/refs` | 55 | דפוס latest-ref, לגיטימי ב-React 18. שווה להמתין למעבר ל-React 19 + Compiler |
+
+הערה: התיקון ב-`useOmnibarGeminiLive` מוסיף מופע אחד ל-`set-state-in-effect` — זהו בדיוק המקרה הלגיטימי של החוק הזה, גזירת ערך ברגע שאירוע הופך לאמת.

@@ -18,12 +18,12 @@ const DRAFT_KEY = "notebooklm-draft-v1";
 
 type UseNotebookLMParams = {
   liveData?: Record<string, unknown> | null;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string>) => string;
 };
 
 export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   const [sources, setSources] = useState<Source[]>([]);
-  const [notebookTitle, setNotebookTitle] = useState("מחברת חדשה");
+  const [notebookTitle, setNotebookTitle] = useState(() => t("workspaceWidgets.notebookLM.newNotebook"));
   const [projectId, setProjectId] = useState<string>("");
   const [savedNotebookId, setSavedNotebookId] = useState<string | null>(null);
   const [savedList, setSavedList] = useState<SavedNotebookSummary[]>([]);
@@ -146,7 +146,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
         const { notebookId, created } = await ensureProjectNotebook(pid, title);
         if (!notebookId) return;
         setSavedNotebookId(notebookId);
-        if (created) { setNotebookTitle(title?.trim() ? `מחברת — ${title.trim()}` : "מחברת פרויקט"); return; }
+        if (created) { setNotebookTitle(title?.trim() ? t("workspaceWidgets.notebookLM.notebookNamed", { title: title.trim() }) : t("workspaceWidgets.notebookLM.projectNotebook")); return; }
         void handleLoadNotebook(notebookId);
       })();
     }
@@ -157,10 +157,10 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     if (Array.isArray(preload)) {
       setSources(preload.map((s, i) => {
         const row = s as { name?: string; content?: string; type?: string };
-        return { id: `preload-${i}`, name: String(row.name ?? `מקור ${i + 1}`), content: String(row.content ?? ""), type: row.type === "pdf" ? "pdf" : "text" };
+        return { id: `preload-${i}`, name: String(row.name ?? t("workspaceWidgets.notebookLM.sourceNumbered", { n: String(i + 1) })), content: String(row.content ?? ""), type: row.type === "pdf" ? "pdf" : "text" };
       }));
     }
-  }, [liveData, handleLoadNotebook]);
+  }, [liveData, handleLoadNotebook, t]);
 
   const buildPayload = () => ({
     id: savedNotebookId ?? undefined, title: notebookTitle, projectId: projectId || null,
@@ -186,7 +186,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
   };
 
   const handleNewNotebook = () => {
-    setSavedNotebookId(null); setNotebookTitle("מחברת חדשה"); setProjectId(""); setSources([]); setMessages([]); setAudioScript(null);
+    setSavedNotebookId(null); setNotebookTitle(t("workspaceWidgets.notebookLM.newNotebook")); setProjectId(""); setSources([]); setMessages([]); setAudioScript(null);
     sessionStorage.removeItem(DRAFT_KEY);
   };
 
@@ -229,7 +229,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
     const blob = new Blob([issuedDocumentText], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
-    a.download = `${notebookTitle.replace(/\s+/g, "-").slice(0, 40) || "מסמך-ממחברת"}.md`;
+    a.download = `${notebookTitle.replace(/\s+/g, "-").slice(0, 40) || t("workspaceWidgets.notebookLM.exportFilename")}.md`;
     a.click(); URL.revokeObjectURL(url);
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { OS_BOOT_FADE_MS, OS_BOOT_MIN_MS } from "@/components/os/boot/OsBootSplash";
 
 type Args = {
@@ -20,20 +20,19 @@ export function useOsBootGate({
   hasHydrated,
   launcherBootReady = true,
 }: Args) {
-  const startedAt = useRef(
-    typeof performance !== "undefined" ? performance.now() : Date.now(),
-  );
   const [minElapsed, setMinElapsed] = useState(false);
   const [fading, setFading] = useState(false);
   const [hidden, setHidden] = useState(false);
 
+  // The start timestamp used to be captured in a useRef initialiser, which
+  // calls performance.now() during render — impure, and flagged by the React
+  // Compiler rules. It only ever fed this one subtraction, and the effect runs
+  // a few milliseconds after that render, so the remaining time it computed was
+  // OS_BOOT_MIN_MS minus render-to-effect latency. Out of 700ms that is noise,
+  // and starting the clock here is arguably closer to intent: the splash is on
+  // screen from paint, not from the render pass.
   useEffect(() => {
-    const remaining = Math.max(
-      0,
-      OS_BOOT_MIN_MS -
-        ((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt.current),
-    );
-    const id = window.setTimeout(() => setMinElapsed(true), remaining);
+    const id = window.setTimeout(() => setMinElapsed(true), OS_BOOT_MIN_MS);
     return () => window.clearTimeout(id);
   }, []);
 

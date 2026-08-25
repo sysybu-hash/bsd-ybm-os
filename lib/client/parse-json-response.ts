@@ -11,6 +11,38 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Turn an API error body into text in the user's language.
+ *
+ * Every helper in `lib/api-json.ts` emits `{ error, code }`, and `code` is
+ * stable and machine-readable while `error` is a hard-coded Hebrew string. There
+ * are ~130 distinct codes against ~850 hard-coded messages, so translating by
+ * code is an order of magnitude less work than migrating every call site — and
+ * it puts the decision on the client, which knows the user's locale for certain
+ * rather than guessing from Accept-Language.
+ *
+ * Falls back to the server's own message when the code has no translation, so an
+ * unmapped or brand-new code shows exactly what it shows today. That fallback is
+ * what makes adopting this safe to do gradually. Four codes are deliberately
+ * unmapped because the server interpolates a value into the message that the
+ * code alone cannot carry.
+ */
+export function resolveApiErrorMessage(
+  body: { error?: unknown; code?: unknown } | undefined,
+  t: (key: string) => string,
+  fallback?: string,
+): string {
+  const serverMessage = typeof body?.error === "string" ? body.error : undefined;
+  const code = typeof body?.code === "string" ? body.code : undefined;
+  if (code) {
+    const key = `apiErrors.${code}`;
+    const translated = t(key);
+    // useI18n returns the key itself when there is no entry for it.
+    if (translated && translated !== key) return translated;
+  }
+  return serverMessage ?? fallback ?? t("common.errors.unknown");
+}
+
 export async function parseJsonResponse<T extends Record<string, unknown> = Record<string, unknown>>(
   res: Response,
 ): Promise<ParseJsonResult<T>> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useCodeHistory } from "@/hooks/use-code-history";
 import {
   mapActionError,
@@ -16,13 +16,15 @@ import {
   type AppSchemaListItem,
 } from "@/app/actions/app-builder";
 import { submitAppIdeaAction } from "@/app/actions/app-ideas";
-import { isLikelyReactComponent } from "@/lib/app-builder/jsx-preview-utils";
+import { useAppBuilderSavedApps } from "./useAppBuilderSavedApps";
+import { useAppBuilderAiActions } from "./useAppBuilderAiActions";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 
 /**
- * All state + handlers for the App Builder widget.
- * Extracted from AppBuilderWidget.tsx so the widget stays a thin render layer
- * (mirrors the useProjectDashboard pattern).
+ * Editor state for the App Builder widget, plus the save flow. Stored-app
+ * access lives in useAppBuilderSavedApps and the AI flows in
+ * useAppBuilderAiActions; this composes them and keeps the widget a thin
+ * render layer (mirrors the useProjectDashboard pattern).
  */
 export function useAppBuilder() {
   const { t, dir, locale } = useI18n();
@@ -32,10 +34,6 @@ export function useAppBuilder() {
   const [appDescription, setAppDescription] = useState("");
   const [uiSchema, setUiSchema] = useState<AppBuilderUiSchema | null>(null);
   const [savedSchemaId, setSavedSchemaId] = useState<string | undefined>();
-  const [savedApps, setSavedApps] = useState<AppSchemaListItem[]>([]);
-  const [loadingSaved, setLoadingSaved] = useState(true);
-  const [loadingSchemaId, setLoadingSchemaId] = useState<string | null>(null);
-  const [deletingSchemaId, setDeletingSchemaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [shareIdea, setShareIdea] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,35 +44,8 @@ export function useAppBuilder() {
   const codeHistory = useCodeHistory();
   const generatedCode = codeHistory.current;
   const [mobilePane, setMobilePane] = useState<"build" | "preview">("build");
-  const [regenerating, setRegenerating] = useState(false);
-  const [sharingIdea, setSharingIdea] = useState(false);
 
   const isEditing = Boolean(savedSchemaId);
-
-  const refreshSavedApps = useCallback(async () => {
-    setLoadingSaved(true);
-    try {
-      // Race against an 8-second timeout — Neon serverless cold-starts can hang
-      // the Promise indefinitely without throwing, leaving the spinner forever.
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 8_000),
-      );
-      const result = await Promise.race([listAppSchemasAction(), timeout]);
-      if (result.ok) {
-        setSavedApps(result.schemas);
-      } else {
-        setError(result.error ?? t(`${prefix}.loadSchemaError`));
-      }
-    } catch {
-      setError(t(`${prefix}.loadSchemaError`));
-    } finally {
-      setLoadingSaved(false);
-    }
-  }, [prefix, t]);
-
-  useEffect(() => {
-    void refreshSavedApps();
-  }, [refreshSavedApps]);
 
   const applyCodeFromAssistant = useCallback((code: string) => {
     codeHistory.push(code);
@@ -137,126 +108,57 @@ export function useAppBuilder() {
     codeHistory.reset();
   }, [codeHistory]);
 
-  /** Regenerates JSX from the currently-loaded uiSchema + name via the AI chat route. */
-  const handleRegenerate = useCallback(async (schema: AppBuilderUiSchema, name: string) => {
-    setRegenerating(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/ai-builder/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locale,
-          currentUiSchema: schema,
-          messages: [{ role: "user", content: `בנה מחדש את האפליקציה "${name}" לפי הסכמה הנוכחית` }],
-        }),
-      });
-      const data = (await res.json()) as { jsxCode?: string; uiSchema?: AppBuilderUiSchema; error?: string };
-      const jsxCode = data.jsxCode?.trim();
-      if (jsxCode && isLikelyReactComponent(jsxCode)) {
-        codeHistory.push(jsxCode);
-        setPreviewVersion((v) => v + 1);
-        setMobilePane("preview");
-      } else if (data.uiSchema) {
-        setUiSchema(data.uiSchema);
-        setPreviewVersion((v) => v + 1);
-        setMobilePane("preview");
-      } else {
-        setError(data.error ?? t(`${prefix}.generateError`));
-      }
-    } catch {
-      setError(t(`${prefix}.loadSchemaError`));
-    } finally {
-      setRegenerating(false);
-    }
-  }, [codeHistory, locale, prefix, t]);
-
-  /** Shares the currently-loaded saved app to the community ideas pool. */
-  const handleShareNow = useCallback(async () => {
-    if (!uiSchema || !appName.trim()) return;
-    setSharingIdea(true);
-    try {
-      const res = await submitAppIdeaAction({
-        appName: appName.trim(),
-        appType: uiSchema.type,
-        uiSchema,
-      });
-      if (res.ok) {
-        setSuccess(t(`${prefix}.shareIdeaSuccess`));
-      } else {
-        setError(res.error ?? t(`${prefix}.saveSchemaError`));
-      }
-    } catch {
-      setError(t(`${prefix}.saveSchemaError`));
-    } finally {
-      setSharingIdea(false);
-    }
-  }, [appName, prefix, t, uiSchema]);
-
-  const handleLoadSaved = useCallback(
-    async (schemaId: string) => {
-      setLoadingSchemaId(schemaId);
-      setError(null);
-      setSuccess(null);
-      try {
-        const result = await loadAppSchemaAction(schemaId);
-        if (!result.ok) {
-          setError(t(`${prefix}.loadSchemaError`));
-          return;
-        }
-        setUiSchema(result.schema.uiSchema);
-        setAppName(result.schema.name);
-        setAppDescription(result.schema.description ?? "");
-        setSavedSchemaId(result.schema.id);
-        setReadOnlyLoaded(result.schema.isGlobal);
-        if (result.schema.jsxCode) {
-          codeHistory.push(result.schema.jsxCode);
-        } else {
-          codeHistory.reset();
-        }
-        setPreviewVersion((v) => v + 1);
-      } catch {
-        setError(t(`${prefix}.loadSchemaError`));
-      } finally {
-        setLoadingSchemaId(null);
-      }
+  const {
+    regenerating,
+    sharingIdea,
+    handleRegenerate,
+    handleShareNow: shareNow,
+  } = useAppBuilderAiActions({
+    t,
+    prefix,
+    locale,
+    onError: setError,
+    onSuccess: setSuccess,
+    onCode: (jsxCode) => codeHistory.push(jsxCode),
+    onSchema: setUiSchema,
+    onPreviewReady: () => {
+      setPreviewVersion((v) => v + 1);
+      setMobilePane("preview");
     },
-    [codeHistory, prefix, t],
+  });
+
+  // Kept arg-less so AppBuilderWidget's call site does not change.
+  const handleShareNow = useCallback(
+    () => shareNow(appName, uiSchema),
+    [appName, shareNow, uiSchema],
   );
 
-  const handleDeleteSaved = useCallback(
-    async (app: AppSchemaListItem) => {
-      if (app.isGlobal) {
-        setError(t(`${prefix}.globalAppReadOnly`));
-        return;
-      }
-      if (!window.confirm(t(`${prefix}.deleteAppConfirm`, { name: app.name }))) {
-        return;
-      }
-
-      setDeletingSchemaId(app.id);
-      setError(null);
-      setSuccess(null);
-
-      try {
-        const result = await deleteAppSchemaAction(app.id);
-        if (!result.ok) {
-          setError(result.error ?? t(`${prefix}.deleteSchemaError`));
-          return;
-        }
-        if (savedSchemaId === app.id) {
-          handleNewApp();
-        }
-        setSuccess(t(`${prefix}.deleteSchemaSuccess`));
-        await refreshSavedApps();
-      } catch {
-        setError(t(`${prefix}.deleteSchemaError`));
-      } finally {
-        setDeletingSchemaId(null);
-      }
+  const {
+    savedApps,
+    loadingSaved,
+    deletingSchemaId,
+    loadingSchemaId,
+    refreshSavedApps,
+    handleDeleteSaved,
+    handleLoadSaved,
+  } = useAppBuilderSavedApps({
+    t,
+    prefix,
+    onError: setError,
+    onSuccess: setSuccess,
+    isCurrent: (schemaId) => savedSchemaId === schemaId,
+    onDeletedCurrent: handleNewApp,
+    onLoaded: (schema) => {
+      setUiSchema(schema.uiSchema);
+      setAppName(schema.name);
+      setAppDescription(schema.description ?? "");
+      setSavedSchemaId(schema.id);
+      setReadOnlyLoaded(schema.isGlobal);
+      if (schema.jsxCode) codeHistory.push(schema.jsxCode);
+      else codeHistory.reset();
+      setPreviewVersion((v) => v + 1);
     },
-    [handleNewApp, prefix, refreshSavedApps, savedSchemaId, t],
-  );
+  });
 
   const handleSaveSchema = useCallback(async () => {
     if (readOnlyLoaded) {

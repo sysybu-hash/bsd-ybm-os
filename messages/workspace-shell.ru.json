@@ -1021,7 +1021,8 @@
         "savedLabel": "✓ Сохранено",
         "saveExecution": "Сохранить выполнение",
         "requiredBeforeSave": "Отметьте все обязательные пункты перед сохранением"
-      }
+      },
+      "regeneratePrompt": "Пересоберите приложение \"{name}\" по текущей схеме"
     },
     "helpCenter": {
       "title": "Справочный центр",
@@ -1567,7 +1568,9 @@
       "approveExpense": "Утвердить расход",
       "saving": "Сохранение…",
       "close": "Закрыть",
-      "confirmFailed": "Не удалось подтвердить"
+      "confirmFailed": "Не удалось подтвердить",
+      "missingExpenseDetails": "Отсутствуют данные расхода",
+      "expenseConfirmed": "Расход подтверждён"
     },
     "chrome": {
       "closeAria": "Закрыть {title}",
@@ -1792,7 +1795,13 @@
       "scanNow": "Сканировать",
       "clearPending": "Очистить",
       "filesReady": "файлов готово — нажмите «Сканировать»",
-      "removeFile": "Удалить"
+      "removeFile": "Удалить",
+      "driveDownloading": "Загрузка с Drive: {name}",
+      "driveDownloadFailed": "Не удалось загрузить с Google Drive",
+      "driveImportFailed": "Импорт с Drive не выполнен",
+      "sharedLoading": "Загрузка общего файла: {name}",
+      "sharedDownloadFailed": "Не удалось загрузить общий файл",
+      "sharedLoadFailed": "Не удалось загрузить общий файл"
     },
     "documentScan": {
       "continueToSave": "Продолжить к сохранению",
@@ -2296,7 +2305,8 @@
       "loadListFailed": "Не удалось загрузить список",
       "selectDoc": "Выберите документ из списка для просмотра деталей",
       "mobileTabList": "Список",
-      "mobileTabDetail": "Документ"
+      "mobileTabDetail": "Документ",
+      "confirmDeleteDocument": "Удалить этот документ?"
     },
     "erpArchive": {
       "mobileTabNav": "Навигация",
@@ -2426,7 +2436,8 @@
       "punchOut": "Уход",
       "settingsApiKeyLabel": "API-ключ (организация)",
       "settingsApiKeyPlaceholder": "Вставьте ключ из Meckano → Настройки",
-      "settingsSaveKey": "Сохранить ключ"
+      "settingsSaveKey": "Сохранить ключ",
+      "noPermission": "Нет доступа к Meckano"
     },
     "docCreator": {
       "draftTitle": "Сводка перед выпуском",
@@ -2468,7 +2479,7 @@
       "projectNone": "Общее (без проекта)",
       "save": "Сохранить",
       "load": "Загрузить",
-      "newNotebook": "Новый",
+      "newNotebook": "Новый блокнот",
       "noSavedNotebooks": "Нет сохранённых тетрадей",
       "deleteNotebook": "Удалить тетрадь",
       "renameSourceTitle": "Переименовать источник",
@@ -2493,7 +2504,11 @@
       "quickMindMap": "Интеллект-карта",
       "promptSummary": "Кратко изложите источники в виде маркированного резюме для руководства.",
       "promptMindMap": "Создайте иерархическую интеллект-карту ключевых идей.",
-      "askPlaceholder": "Введите вопрос…"
+      "askPlaceholder": "Введите вопрос…",
+      "notebookNamed": "Блокнот — {title}",
+      "sourceNumbered": "Источник {n}",
+      "exportFilename": "dokument-iz-bloknota",
+      "projectNotebook": "Блокнот проекта"
     },
     "project": {
       "loadFailed": "Не удалось загрузить проект",
@@ -2538,7 +2553,14 @@
       "noPreview": "Предварительный просмотр недоступен.",
       "noLineItems": "Нет детальных строк — скачайте или откройте документ через меню.",
       "vendorLabel": "Поставщик: ",
-      "totalLabel": "Сумма: "
+      "totalLabel": "Сумма: ",
+      "loadFailed": "Не удалось загрузить архив",
+      "loadError": "Ошибка загрузки",
+      "previewFailed": "Не удалось загрузить предпросмотр",
+      "pdfLoadFailed": "Ошибка загрузки PDF",
+      "documentNotFound": "Документ не найден",
+      "scanDetailsFailed": "Не удалось загрузить данные сканирования",
+      "actionFailed": "Действие не выполнено"
     },
     "documentCreator": {
       "fillAllItems": "Пожалуйста, заполните все поля товаров",

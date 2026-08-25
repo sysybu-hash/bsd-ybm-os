@@ -4,6 +4,8 @@ export type DonutSlice = {
   color: string;
 };
 
+type DonutArc = DonutSlice & { dashArray: string; offset: number };
+
 /**
  * Donut — טבעת מחולקת פרוסות עם תוויות.
  */
@@ -26,18 +28,22 @@ export function Donut({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  let cumulative = 0;
-  const arcs = slices.map((slice) => {
-    const fraction = slice.value / total;
-    const dashLength = fraction * circumference;
-    const offset = -(cumulative * circumference);
-    cumulative += fraction;
-    return {
-      ...slice,
-      dashArray: `${dashLength} ${circumference - dashLength}`,
-      offset,
-    };
-  });
+  // reduce rather than a `let` accumulator mutated inside map: the running
+  // offset is carried in the accumulator instead of a variable that outlives
+  // the render, which is what the React Compiler immutability rule objects to.
+  const arcs = slices.reduce<{ items: DonutArc[]; cumulative: number }>(
+    (acc, slice) => {
+      const fraction = slice.value / total;
+      const dashLength = fraction * circumference;
+      acc.items.push({
+        ...slice,
+        dashArray: `${dashLength} ${circumference - dashLength}`,
+        offset: -(acc.cumulative * circumference),
+      });
+      return { items: acc.items, cumulative: acc.cumulative + fraction };
+    },
+    { items: [], cumulative: 0 },
+  ).items;
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>

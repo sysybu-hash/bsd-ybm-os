@@ -8,6 +8,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Papa from "papaparse";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { resolveApiErrorMessage } from "@/lib/client/parse-json-response";
 
 export interface ReportEntry {
   id: string | number;
@@ -94,9 +95,9 @@ export function useMeckanoReports() {
       const res = await fetch("/api/meckano/employees");
       const data = await res.json() as { employees?: Employee[]; error?: string };
       if (res.ok) setEmployees(data.employees ?? []);
-      else if (res.status === 403) setError(data.error ?? "אין הרשאה ל-Meckano");
+      else if (res.status === 403) setError(resolveApiErrorMessage(data, t, t("workspaceWidgets.meckano.noPermission")));
     } catch { /* ignore */ }
-  }, [accessAllowed]);
+  }, [accessAllowed, t]);
 
   const fetchProjects = useCallback(async () => {
     if (!accessAllowed) return;
@@ -104,9 +105,9 @@ export function useMeckanoReports() {
       const res = await fetch("/api/meckano/projects");
       const data = await res.json() as { projects?: MeckanoProject[]; error?: string };
       if (res.ok) setProjects(data.projects ?? []);
-      else if (res.status === 403) setError(data.error ?? "אין הרשאה ל-Meckano");
+      else if (res.status === 403) setError(resolveApiErrorMessage(data, t, t("workspaceWidgets.meckano.noPermission")));
     } catch { /* ignore */ }
-  }, [accessAllowed]);
+  }, [accessAllowed, t]);
 
   const fetchReports = useCallback(async () => {
     setIsLoading(true);
@@ -121,11 +122,12 @@ export function useMeckanoReports() {
       if (res.ok) {
         setReports(data.reports ?? []);
       } else if (res.status !== 403) {
-        setError(data.error ?? null);
-        toast.error(data.error ?? t("workspaceWidgets.meckano.loadFailed"));
+        const message = resolveApiErrorMessage(data, t, t("workspaceWidgets.meckano.loadFailed"));
+        setError(message);
+        toast.error(message);
       }
     } catch {
-      setError("שגיאת תקשורת בטעינת דוחות");
+      setError(t("workspaceWidgets.meckano.networkError"));
       toast.error(t("workspaceWidgets.meckano.networkError"));
     } finally {
       setIsLoading(false);

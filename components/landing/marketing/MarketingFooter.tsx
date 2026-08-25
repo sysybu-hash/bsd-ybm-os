@@ -14,7 +14,10 @@ export default function MarketingFooter() {
         {/* 4-column grid: brand×2 | legal | nav — ממלא את כל הרשת ב-desktop */}
         <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-4">
           <div className="md:col-span-2">
-            <BrandHomeLink size="sm" variant="image" tone="night" />
+            {/* eager: on short pages (/blog, /contact, /terms, /unsubscribe) this
+                lockup is the LCP element and sits inside the first viewport.
+                Lazy-loading it pushed LCP from ~1.5s to ~5s. */}
+            <BrandHomeLink size="sm" variant="image" tone="night" loading="eager" />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">{t("marketingHome.footer.lead")}</p>
           </div>
 

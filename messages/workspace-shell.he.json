@@ -1021,7 +1021,8 @@
         "savedLabel": "✓ נשמר",
         "saveExecution": "שמור ביצוע",
         "requiredBeforeSave": "יש לסמן את כל הפריטים החובה לפני שמירה"
-      }
+      },
+      "regeneratePrompt": "בנה מחדש את האפליקציה \"{name}\" לפי הסכמה הנוכחית"
     },
     "helpCenter": {
       "title": "מרכז עזרה",
@@ -1567,7 +1568,9 @@
       "approveExpense": "אשר הוצאה",
       "saving": "שומר…",
       "close": "סגור",
-      "confirmFailed": "לא ניתן לאשר"
+      "confirmFailed": "לא ניתן לאשר",
+      "missingExpenseDetails": "חסרים פרטי הוצאה",
+      "expenseConfirmed": "ההוצאה אושרה"
     },
     "chrome": {
       "closeAria": "סגור {title}",
@@ -1792,7 +1795,13 @@
       "scanNow": "סרוק עכשיו",
       "clearPending": "נקה",
       "filesReady": "קבצים מוכנים לסריקה — לחץ «סרוק עכשיו»",
-      "removeFile": "הסר"
+      "removeFile": "הסר",
+      "driveDownloading": "מוריד מ-Drive: {name}",
+      "driveDownloadFailed": "הורדה מ-Google Drive נכשלה",
+      "driveImportFailed": "ייבוא מ-Drive נכשל",
+      "sharedLoading": "טוען קובץ משותף: {name}",
+      "sharedDownloadFailed": "הורדת קובץ משותף נכשלה",
+      "sharedLoadFailed": "טעינת קובץ משותף נכשלה"
     },
     "documentScan": {
       "continueToSave": "המשך לשמירה",
@@ -2296,7 +2305,8 @@
       "loadListFailed": "שגיאה בטעינת מסמכים",
       "selectDoc": "בחר מסמך מהרשימה כדי לצפות בפרטים ולערוך שורות",
       "mobileTabList": "רשימה",
-      "mobileTabDetail": "מסמך"
+      "mobileTabDetail": "מסמך",
+      "confirmDeleteDocument": "האם אתה בטוח שברצונך למחוק את המסמך?"
     },
     "erpArchive": {
       "mobileTabNav": "ניווט",
@@ -2426,7 +2436,8 @@
       "punchOut": "יציאה",
       "settingsApiKeyLabel": "מפתח API (ארגון)",
       "settingsApiKeyPlaceholder": "הדביקו מפתח מ-Meckano ← הגדרות",
-      "settingsSaveKey": "שמור מפתח"
+      "settingsSaveKey": "שמור מפתח",
+      "noPermission": "אין הרשאה ל-Meckano"
     },
     "docCreator": {
       "draftTitle": "סיכום לפני הנפקה",
@@ -2468,7 +2479,7 @@
       "projectNone": "כללי (ללא פרויקט)",
       "save": "שמור",
       "load": "טען",
-      "newNotebook": "חדש",
+      "newNotebook": "מחברת חדשה",
       "noSavedNotebooks": "אין מחברות שמורות",
       "deleteNotebook": "מחק מחברת",
       "renameSourceTitle": "שינוי שם המקור",
@@ -2493,7 +2504,11 @@
       "quickMindMap": "מפת חשיבה",
       "promptSummary": "סכם את המקורות לתקציר מנהלים בנקודות קצרות.",
       "promptMindMap": "צור מפת חשיבה היררכית של הרעיונות המרכזיים.",
-      "askPlaceholder": "הקלידו שאלה…"
+      "askPlaceholder": "הקלידו שאלה…",
+      "notebookNamed": "מחברת — {title}",
+      "sourceNumbered": "מקור {n}",
+      "exportFilename": "מסמך-ממחברת",
+      "projectNotebook": "מחברת פרויקט"
     },
     "project": {
       "loadFailed": "שגיאה בטעינת נתוני פרויקט",
@@ -2538,7 +2553,14 @@
       "noPreview": "אין תצוגה זמינה.",
       "noLineItems": "אין שורות מפורטות — ניתן להוריד או לפתוח את המסמך מהתפריט.",
       "vendorLabel": "ספק: ",
-      "totalLabel": "סכום: "
+      "totalLabel": "סכום: ",
+      "loadFailed": "לא ניתן לטעון את הארכיון",
+      "loadError": "שגיאת טעינה",
+      "previewFailed": "לא ניתן לטעון תצוגה מקדימה",
+      "pdfLoadFailed": "שגיאה בטעינת PDF",
+      "documentNotFound": "מסמך לא נמצא",
+      "scanDetailsFailed": "לא ניתן לטעון פרטי סריקה",
+      "actionFailed": "הפעולה נכשלה"
     },
     "documentCreator": {
       "fillAllItems": "אנא מלא את כל פרטי הפריטים",

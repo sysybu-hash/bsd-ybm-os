@@ -14,6 +14,18 @@ import {
   waitForAuthenticatedWorkspace,
 } from "./helpers";
 
+/**
+ * Shares one seeded account with the other layout-resetting specs (hubs,
+ * logistics, launcher-customization, universal-command) and starts by wiping
+ * that account's server-side workspace layout. Run in parallel, one test wipes
+ * the layout while another is opening a window, and the click lands on a shell
+ * being torn down — Playwright reports "subtree intercepts pointer events".
+ *
+ * `default` sequences them within the file without the cascade-skip `serial`
+ * adds. Full isolation needs a per-spec account; see docs/E2E-SHARED-STATE.md.
+ */
+test.describe.configure({ mode: "default" });
+
 async function gotoWorkspace(page: Parameters<typeof signInWithRetries>[0], url: string) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {

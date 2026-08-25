@@ -8,6 +8,18 @@ import {
   workspaceUrl,
 } from "./helpers";
 
+/**
+ * These tests share one seeded account and each begins by resetting that
+ * account's server-side workspace layout. With fullyParallel they run
+ * concurrently in separate workers, so one test wipes the layout while another
+ * is opening a window — the click then lands on a shell that is being torn
+ * down and Playwright reports "subtree intercepts pointer events".
+ *
+ * `default` runs them sequentially within this file without the cascade-skip
+ * that `serial` adds, so a single failure still reports the rest.
+ */
+test.describe.configure({ mode: "default" });
+
 async function gotoWorkspace(page: Parameters<typeof tryCredentialsSignIn>[0], url: string) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
