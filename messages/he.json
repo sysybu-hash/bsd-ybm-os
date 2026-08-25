@@ -621,7 +621,10 @@
       "unknown": "אירעה שגיאה",
       "segmentTitle": "אירעה שגיאה בטעינת העמוד",
       "backHome": "חזרה לדף הבית"
-    }
+    },
+    "actionSucceeded": "הפעולה בוצעה בהצלחה",
+    "actionFailed": "הפעולה נכשלה",
+    "errorPrefix": "שגיאה"
   },
   "erpStats": {
     "trendFirst": "חודש ראשון עם נתונים",
@@ -1679,5 +1682,11 @@
     "transaction_mismatch": "מזהה עסקה לא תואם לחשבונית",
     "unsupported_action": "סוג פעולה לא נתמך",
     "use_notebook_endpoint": "השתמש ב-/api/notebooklm/from-scan למחברת"
+  },
+  "speech": {
+    "unsupported": "הדפדפן שלך לא תומך בזיהוי קולי. נסה כרום.",
+    "notHeard": "לא הצלחתי לשמוע. נסה שוב.",
+    "cannotStart": "לא ניתן להפעיל האזנה. נסה שוב.",
+    "recognitionError": "שגיאת זיהוי קול"
   }
 }

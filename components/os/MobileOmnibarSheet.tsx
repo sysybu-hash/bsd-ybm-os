@@ -61,21 +61,32 @@ export default function MobileOmnibarSheet({
     };
   }, [open, onClose]);
 
-  useEffect(() => {
+  // Drop the transcript as the sheet closes, during render, so reopening never
+  // flashes the previous conversation.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) setChatEntries([]);
-  }, [open]);
+  }
 
-  useEffect(() => {
-    if (!systemMessage.trim()) return;
+  // The status line from the host is folded into the transcript as a system
+  // entry. Adjusted during render for the same reason.
+  const [lastSystemMessage, setLastSystemMessage] = useState(systemMessage);
+  if (systemMessage !== lastSystemMessage) {
+    setLastSystemMessage(systemMessage);
+    if (systemMessage.trim()) applySystemMessage(systemMessage);
+  }
+
+  function applySystemMessage(message: string) {
     setChatEntries((prev) => {
       const last = prev[prev.length - 1];
-      if (last?.role === "system" && last.content === systemMessage) return prev;
+      if (last?.role === "system" && last.content === message) return prev;
       return [
         ...prev.filter((e) => e.id !== "system-status"),
-        { id: "system-status", role: "system", content: systemMessage },
+        { id: "system-status", role: "system", content: message },
       ];
     });
-  }, [systemMessage]);
+  }
 
   const handleCommand = useCallback(
     async (cmd: string) => {

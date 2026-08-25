@@ -29,9 +29,15 @@ export default function OsPromptDialog({
   const { t } = useI18n();
   const [value, setValue] = useState(defaultValue);
 
-  useEffect(() => {
-    if (open) setValue(defaultValue);
-  }, [open, defaultValue]);
+  // Re-seed the field while the dialog is open, adjusted during render rather
+  // than in an effect: React re-runs this component before painting, so the
+  // input never flashes the previous prompt's text the way an effect would.
+  const seed = open ? defaultValue : null;
+  const [lastSeed, setLastSeed] = useState(seed);
+  if (seed !== lastSeed) {
+    setLastSeed(seed);
+    if (seed !== null) setValue(seed);
+  }
 
   const confirm = confirmLabel ?? t("workspaceWidgets.confirm.confirm");
   const cancel = cancelLabel ?? t("workspaceWidgets.confirm.cancel");

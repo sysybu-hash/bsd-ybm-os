@@ -9,10 +9,16 @@ type UseBlueprintPreviewParams = {
   projectName?: string;
   enginesUsed?: string[];
   onConfirm: (selected: BlueprintAnalysis) => Promise<void>;
+  /**
+   * Column headings for the two CSV exports. Passed in because this hook has no
+   * i18n context, and the headings used to be Hebrew literals — an en or ru user
+   * exporting a BOQ got a Hebrew-headed file.
+   */
+  csvHeaders: { tasks: string[]; boq: string[] };
 };
 
 /** מצב הבחירה/עריכה של תצוגת פענוח הגרמושקה + פעולות ייצוא ואישור */
-export function useBlueprintPreviewState({ data, projectName, enginesUsed, onConfirm }: UseBlueprintPreviewParams) {
+export function useBlueprintPreviewState({ data, projectName, enginesUsed, onConfirm, csvHeaders }: UseBlueprintPreviewParams) {
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(
     new Set(data.tasks.map((_, i) => i)),
   );
@@ -93,7 +99,7 @@ export function useBlueprintPreviewState({ data, projectName, enginesUsed, onCon
     const rows = taskEdits.filter((_, i) => selectedTasks.has(i))
       .map((t) => [t.name, t.tradeCategory, t.durationDays, t.startDate, t.endDate]);
     downloadBlob("blueprint-tasks.csv",
-      rowsToCsv([["שם משימה", "קטגוריה", "משך (ימים)", "תחילה", "סיום"], ...rows]),
+      rowsToCsv([csvHeaders.tasks, ...rows]),
       "text/csv");
   };
 
@@ -101,7 +107,7 @@ export function useBlueprintPreviewState({ data, projectName, enginesUsed, onCon
     const rows = boqEdits.filter((_, i) => selectedBoq.has(i))
       .map((b) => [b.description, b.tradeCategory, b.drawingRef, b.unit, b.quantity, b.unitPrice, b.lineTotal, b.note, String(b.confidence ?? "")]);
     downloadBlob("blueprint-boq.csv",
-      rowsToCsv([["תיאור", "קטגוריה", "תוכנית", "יחידה", "כמות", "מחיר/יח'", "סה\"כ", "הערות", "ביטחון"], ...rows]),
+      rowsToCsv([csvHeaders.boq, ...rows]),
       "text/csv");
   };
 

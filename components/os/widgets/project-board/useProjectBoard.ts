@@ -23,6 +23,7 @@ export function useProjectBoard({
   openWorkspaceWidget?: OpenWorkspaceWidgetFn;
 }) {
   const { dir, t } = useI18n();
+  const saveFailedMessage = t("workspaceWidgets.projectBoard.saveFailed");
 
   const {
     resolvedProjectId,
@@ -151,7 +152,7 @@ export function useProjectBoard({
         status: optimistic.status,
         priority: optimistic.priority,
         dueDate: optimistic.dueDate,
-      })) as { task?: { id?: string } };
+      }, saveFailedMessage)) as { task?: { id?: string } };
       if (data.task?.id) {
         setTasks((prev) =>
           prev.map((item) => (item.id === optimisticId ? { ...item, id: data.task!.id! } : item)),
@@ -205,7 +206,7 @@ export function useProjectBoard({
         status: updated.status,
         priority: updated.priority,
         dueDate: updated.dueDate,
-      });
+      }, saveFailedMessage);
       toast.success(t(`${boardPrefix}.updated`));
       if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
@@ -242,7 +243,7 @@ export function useProjectBoard({
     const prev = tasks;
     setTasks((list) => list.map((item) => (item.id === taskId ? { ...item, status: newStatus } : item)));
     try {
-      await syncTask({ ...taskPayloadBase(), ...task, status: newStatus });
+      await syncTask({ ...taskPayloadBase(), ...task, status: newStatus }, saveFailedMessage);
       toast.success(t(`${boardPrefix}.statusUpdated`));
       if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {
@@ -259,7 +260,7 @@ export function useProjectBoard({
       list.map((item) => (item.id === taskId ? { ...item, budget: newBudget } : item)),
     );
     try {
-      await syncTask({ ...taskPayloadBase(), ...task, budget: newBudget });
+      await syncTask({ ...taskPayloadBase(), ...task, budget: newBudget }, saveFailedMessage);
       toast.success(t(`${boardPrefix}.budgetUpdated`));
       if (resolvedProjectId) emitProjectMutation(resolvedProjectId);
     } catch {

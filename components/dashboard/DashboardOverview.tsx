@@ -69,8 +69,12 @@ export default function DashboardOverview({ onNavigate }: { onNavigate?: (tab: s
   const clients = stats?.totalClients ?? 0;
   const hasAny = projects > 0 || clients > 0 || pending > 0 || (stats?.totalRevenue ?? 0) > 0;
   const insight = typeof stats?.aiInsight === "string" ? stats.aiInsight.trim() : "";
+  // Hides the insight card while the model is still working. Both literals are
+  // matched against the model's own output, never rendered.
   const showInsight =
-    insight.length > 0 && !insight.includes("מנתחת נתונים") && !insight.toLowerCase().includes("analyzing");
+    insight.length > 0 &&
+    !insight.includes("מנתחת נתונים") && // i18n-exempt: matched, not shown
+    !insight.toLowerCase().includes("analyzing");
 
   return (
     <div className="space-y-8">

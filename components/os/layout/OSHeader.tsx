@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Bell, Layers, LayoutGrid, LayoutTemplate, LogOut, Settings, Shield } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
@@ -11,6 +11,7 @@ import LocaleSwitcher from "@/components/os/system/LocaleSwitcher";
 import ThemeToggle from "@/components/os/system/ThemeToggle";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import JewishClockHeaderChip from "@/components/os/jewish-calendar/JewishClockHeaderChip";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 interface OSHeaderProps {
   openWidget?: (type: WidgetType) => void;
@@ -68,7 +69,7 @@ export default function OSHeader({
   const { data: session } = useSession();
   const { t } = useI18n();
   const isPlatformAdmin = useIsPlatformAdmin();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
 
   const userName = session?.user?.name || t("workspaceWidgets.page.defaultUser");
   const userInitials = userName
@@ -78,12 +79,7 @@ export default function OSHeader({
     .toUpperCase()
     .slice(0, 2) || "OS";
 
-  useEffect(() => setMounted(true), []);
-
-  const toolbarAria =
-    t("workspaceShell.topBar.toolbarAria") !== "workspaceShell.topBar.toolbarAria"
-      ? t("workspaceShell.topBar.toolbarAria")
-      : "פעולות סרגל עליון";
+  const toolbarAria = t("workspaceShell.topBar.toolbarAria");
 
   return (
     <header className="os-top-header fixed inset-x-0 top-0 z-[1200] w-full border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">

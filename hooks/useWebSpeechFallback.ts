@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type SpeechState = "idle" | "listening" | "error";
 
@@ -51,6 +52,7 @@ export function useWebSpeechFallback(
   onFinalTranscript: (text: string) => void,
   lang = "he-IL",
 ): UseWebSpeechFallbackResult {
+  const { t } = useI18n();
   const [state, setState] = useState<SpeechState>("idle");
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export function useWebSpeechFallback(
 
     recognizer.onerror = (e) => {
       setState("error");
-      setError((e as Event & { error: string }).error ?? "שגיאת זיהוי קול");
+      setError((e as Event & { error: string }).error ?? t("speech.recognitionError"));
     };
 
     recognizer.onend = () => {
@@ -102,7 +104,7 @@ export function useWebSpeechFallback(
     recognizer.start();
     setState("listening");
     setError(null);
-  }, [supported, lang]);
+  }, [supported, lang, t]);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();

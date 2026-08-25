@@ -4,6 +4,11 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { BRAND_LOGO_ALT, BRAND_LOGO_DAY_SRC, BRAND_LOGO_NIGHT_SRC, BRAND_WORDMARK } from "@/lib/brand";
+import { useClientFlag } from "@/hooks/use-client-flag";
+
+function readDarkTheme(): boolean {
+  return document.documentElement.classList.contains("dark");
+}
 
 const BOOT = "workspaceWidgets.boot";
 
@@ -39,16 +44,14 @@ export default function OsBootSplash({
 }: OsBootSplashProps) {
   const { t, dir } = useI18n();
   const [tick, setTick] = useState(0);
-  const [logoSrc, setLogoSrc] = useState(BRAND_LOGO_NIGHT_SRC);
+  // The server cannot know the theme, so it keeps the night logo the splash has
+  // always defaulted to; the client swaps to the day variant if <html> is light.
+  const dark = useClientFlag(readDarkTheme, true);
+  const logoSrc = dark ? BRAND_LOGO_NIGHT_SRC : BRAND_LOGO_DAY_SRC;
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), 2200);
     return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const dark = document.documentElement.classList.contains("dark");
-    setLogoSrc(dark ? BRAND_LOGO_NIGHT_SRC : BRAND_LOGO_DAY_SRC);
   }, []);
 
   const rotatingKeys = ["hintStart", "hintDesktop", "hintAlmost"] as const;

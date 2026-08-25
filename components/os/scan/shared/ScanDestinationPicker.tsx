@@ -13,14 +13,17 @@ type ScanDestinationPickerProps = {
 const OPTIONS: {
   id: UnifiedSaveTarget;
   labelKey: string;
-  fallback: string;
   needsProject?: boolean;
 }[] = [
-  { id: "erp", labelKey: "workspaceWidgets.documentScan.saveTargetErp", fallback: "ERP (ארגון)" },
-  { id: "crm", labelKey: "workspaceWidgets.documentScan.saveTargetCrm", fallback: "CRM" },
-  { id: "project", labelKey: "workspaceWidgets.documentScan.saveTargetProject", fallback: "פרויקט", needsProject: true },
-  { id: "notebook", labelKey: "workspaceWidgets.documentScan.saveTargetNotebook", fallback: "מחברת AI" },
-  { id: "expense", labelKey: "workspaceWidgets.documentScan.saveTargetExpense", fallback: "הוצאה" },
+  // No `fallback` field: all five keys are present in he/en/ru, so the Hebrew
+  // fallbacks were unreachable — and would have shipped Hebrew to en/ru if they
+  // ever had been reached. The id is used as the last resort instead: still
+  // wrong, but locale-neutral rather than Hebrew-for-everyone.
+  { id: "erp", labelKey: "workspaceWidgets.documentScan.saveTargetErp" },
+  { id: "crm", labelKey: "workspaceWidgets.documentScan.saveTargetCrm" },
+  { id: "project", labelKey: "workspaceWidgets.documentScan.saveTargetProject", needsProject: true },
+  { id: "notebook", labelKey: "workspaceWidgets.documentScan.saveTargetNotebook" },
+  { id: "expense", labelKey: "workspaceWidgets.documentScan.saveTargetExpense" },
 ];
 
 export function ScanDestinationPicker({
@@ -68,7 +71,7 @@ export function ScanDestinationPicker({
                 onChange={() => toggle(opt.id)}
                 className="size-4 shrink-0 accent-indigo-600"
               />
-              <span className="min-w-0 flex-1 font-semibold">{tr(opt.labelKey, opt.fallback)}</span>
+              <span className="min-w-0 flex-1 font-semibold">{tr(opt.labelKey, opt.id)}</span>
             </label>
           );
         })}

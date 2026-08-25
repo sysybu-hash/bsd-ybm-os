@@ -39,9 +39,14 @@ export default function GeminiLiveSettingsSheet({
   const { t } = useI18n();
   const [draft, setDraft] = useState<GeminiLiveVoiceSettings>(value);
 
-  useEffect(() => {
-    if (open) setDraft(value);
-  }, [open, value]);
+  // Re-seed the draft each time the sheet opens, during render rather than in
+  // an effect so the controls never show the previous session's settings first.
+  const seed = open ? value : null;
+  const [lastSeed, setLastSeed] = useState(seed);
+  if (seed !== lastSeed) {
+    setLastSeed(seed);
+    if (seed) setDraft(seed);
+  }
 
   const handleSave = () => {
     saveGeminiLiveVoiceSettings(draft);

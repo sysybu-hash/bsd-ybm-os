@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { X } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   LAUNCHER_STORAGE_KEY,
   LAUNCHER_STORAGE_KEY_LEGACY,
 } from "@/lib/launcher/user-launcher-config";
+import { useClientFlag } from "@/hooks/use-client-flag";
 
 export const LAUNCHER_V2_BANNER_KEY = "bsd_ybm_launcher_v2_banner_seen";
 
@@ -23,11 +24,8 @@ function shouldShowBanner(): boolean {
 
 export default function LauncherV2MigrationBanner() {
   const { t } = useI18n();
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setVisible(shouldShowBanner());
-  }, []);
+  const eligible = useClientFlag(shouldShowBanner);
+  const [dismissed, setDismissed] = useState(false);
 
   const dismiss = useCallback(() => {
     try {
@@ -35,10 +33,10 @@ export default function LauncherV2MigrationBanner() {
     } catch {
       /* ignore */
     }
-    setVisible(false);
+    setDismissed(true);
   }, []);
 
-  if (!visible) return null;
+  if (!eligible || dismissed) return null;
 
   return (
     <div

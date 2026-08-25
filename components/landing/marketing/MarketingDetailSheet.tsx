@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { MarketingPanelId } from "@/lib/marketing/marketing-panels";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 type Props = Readonly<{
   panel: MarketingPanelId | null;
@@ -28,11 +29,7 @@ export default function MarketingDetailSheet({
   const { t, dir } = useI18n();
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsMounted();
 
   useEffect(() => {
     if (!panel) return;

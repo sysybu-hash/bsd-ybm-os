@@ -856,7 +856,8 @@
       "saving": "שומר…",
       "saveAsWorkDiary": "שמור כיומן עבודה",
       "dragToReorder": "גרור לסידור מחדש",
-      "dragHandle": "גרור"
+      "dragHandle": "גרור",
+      "noActiveSession": "אין סשן פעיל"
     },
     "appBuilder": {
       "title": "מחולל אפליקציות AI",
@@ -1996,7 +1997,7 @@
       "deleteTitle": "מחיקת משימה",
       "deleteConfirm": "למחוק את המשימה? לא ניתן לשחזר.",
       "loadFailed": "שגיאה בטעינת משימות",
-      "saveFailed": "שמירה נכשלה",
+      "saveFailed": "שגיאת שמירה",
       "deleteFailed": "מחיקה נכשלה",
       "statusUpdated": "סטטוס המשימה עודכן",
       "budgetUpdated": "תקציב המשימה עודכן",
@@ -2294,7 +2295,8 @@
       "typing": "כותב…",
       "hint1": "ניתוח תקציב וילה",
       "hint2": "השוואת מחירי בטון",
-      "hint3": "דרישות בטיחות אתר"
+      "hint3": "דרישות בטיחות אתר",
+      "analyzeAttachment": "נתח את הקובץ המצורף: {name}"
     },
     "erp": {
       "loading": "טוען מסמכים…",
@@ -2649,7 +2651,8 @@
       "saveLabel": "תיאור שורת הכמויות",
       "defaultDescription": "מדידת שטח משרטוט",
       "savedToast": "שורת כתב כמויות נוספה",
-      "saveFailed": "שמירת השורה נכשלה"
+      "saveFailed": "שמירת השורה נכשלה",
+      "sqmUnit": "מ\"ר"
     },
     "ganttAgent": {
       "generate": "✨ צור גאנט ותהליך עבודה",
@@ -2707,6 +2710,12 @@
     },
     "accessibility": {
       "mailSubject": "נגישות האתר"
+    },
+    "scanner": {
+      "vendorUnknown": "לא צוין"
+    },
+    "crm": {
+      "noPhone": "ללא טלפון"
     }
   },
   "geminiLive": {
@@ -2733,7 +2742,23 @@
     "affectiveDialog": "דיאלוג רגשי",
     "affectiveDialogHint": "התאמת טון רגשי (אם נתמך במודל)",
     "sessionResumption": "המשך סשן",
-    "sessionResumptionHint": "שחזור חיבור Live אחרי ניתוק קצר"
+    "sessionResumptionHint": "שחזור חיבור Live אחרי ניתוק קצר",
+    "errorOrgOnly": "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
+    "errorSessionExpired": "פג תוקף ההתחברות. התנתק והתחבר שוב כדי להשתמש בעוזר הקולי.",
+    "errorNoToken": "לא התקבל token עבור Gemini Live",
+    "errorSetupTimeout": "Gemini Live setup timeout — לא התקבל setupComplete מהשרת. נסו שוב או בדקו מפתח API.",
+    "errorNoAudioSupport": "הדפדפן לא תומך ב-Live Audio מלא. עובר למצב תאימות.",
+    "errorClosedUnexpectedly": "חיבור Gemini Live נותק באופן בלתי צפוי (1006)",
+    "errorClosedWithCode": "חיבור Gemini Live נסגר (קוד {code})",
+    "statusReady": "Gemini Live מוכן",
+    "statusConnected": "Gemini Live מחובר. אפשר לדבר.",
+    "statusListening": "מקשיב דרך Gemini Live...",
+    "statusSpeaking": "העוזר מדבר...",
+    "statusInterrupted": "הדיבור הופסק, מקשיב להמשך.",
+    "statusTool": "מבצע פעולה במערכת...",
+    "statusDisconnected": "Gemini Live נותק.",
+    "statusPreparing": "מכין Gemini Live מאובטח...",
+    "statusFallback": "Gemini Live זמין אחרי התחברות ושיוך לארגון."
   },
   "knowledgeVault": {
     "pickerTitle": "מאגר ידע",
@@ -2996,6 +3021,21 @@
     "shortcutScanner": "סורק AI",
     "shortcutNotebook": "מחברת",
     "diarySyncMeckano": "סנכרון ממקאנו ליומן",
-    "percentPlaceholder": "אחוז (0–100)"
+    "percentPlaceholder": "אחוז (0–100)",
+    "workDiaryEntry": "{task} — יומן עבודה",
+    "tasksDeleted": "{count} משימות נמחקו",
+    "csvTaskName": "שם משימה",
+    "csvCategory": "קטגוריה",
+    "csvDurationDays": "משך (ימים)",
+    "csvStart": "תחילה",
+    "csvEnd": "סיום",
+    "csvDescription": "תיאור",
+    "csvDrawing": "תוכנית",
+    "csvUnit": "יחידה",
+    "csvQuantity": "כמות",
+    "csvUnitPrice": "מחיר/יח'",
+    "csvLineTotal": "סה\"כ",
+    "csvNote": "הערות",
+    "csvConfidence": "ביטחון"
   }
 }

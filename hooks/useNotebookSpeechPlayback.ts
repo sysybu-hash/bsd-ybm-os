@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_NOTEBOOK_SPEECH_SETTINGS,
   loadNotebookSpeechSettings,
   pickVoiceForSettings,
   type NotebookSpeechSettings,
 } from "@/lib/notebook-speech-settings";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 export type SpeechPlaybackState = "idle" | "playing" | "paused";
 
@@ -177,11 +178,15 @@ export function useNotebookSpeechPlayback(settings: NotebookSpeechSettings) {
 }
 
 export function useNotebookSpeechSettingsState() {
-  const [settings, setSettings] = useState<NotebookSpeechSettings>(DEFAULT_NOTEBOOK_SPEECH_SETTINGS);
+  // Stored settings cannot be read on the server, so the defaults render first
+  // and the stored values take over once the client is live. `useMemo` keyed on
+  // `mounted` means storage is parsed exactly once, not on every render.
+  const mounted = useIsMounted();
+  const stored = useMemo(
+    () => (mounted ? loadNotebookSpeechSettings() : DEFAULT_NOTEBOOK_SPEECH_SETTINGS),
+    [mounted],
+  );
+  const [override, setOverride] = useState<NotebookSpeechSettings | null>(null);
 
-  useEffect(() => {
-    setSettings(loadNotebookSpeechSettings());
-  }, []);
-
-  return { settings, setSettings };
+  return { settings: override ?? stored, setSettings: setOverride };
 }

@@ -20,7 +20,32 @@ type Props = {
 export default function BlueprintPreviewModal({ data, enginesUsed, projectName, onConfirm, onClose }: Props) {
   const { t, locale } = useI18n();
 
-  const s = useBlueprintPreviewState({ data, projectName, enginesUsed, onConfirm });
+  const s = useBlueprintPreviewState({
+    data,
+    projectName,
+    enginesUsed,
+    onConfirm,
+    csvHeaders: {
+      tasks: [
+        t("projectDashboard.csvTaskName"),
+        t("projectDashboard.csvCategory"),
+        t("projectDashboard.csvDurationDays"),
+        t("projectDashboard.csvStart"),
+        t("projectDashboard.csvEnd"),
+      ],
+      boq: [
+        t("projectDashboard.csvDescription"),
+        t("projectDashboard.csvCategory"),
+        t("projectDashboard.csvDrawing"),
+        t("projectDashboard.csvUnit"),
+        t("projectDashboard.csvQuantity"),
+        t("projectDashboard.csvUnitPrice"),
+        t("projectDashboard.csvLineTotal"),
+        t("projectDashboard.csvNote"),
+        t("projectDashboard.csvConfidence"),
+      ],
+    },
+  });
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm" dir="rtl">

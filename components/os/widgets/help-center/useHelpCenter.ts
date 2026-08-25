@@ -38,7 +38,12 @@ export function useHelpCenter(locale: string) {
 
   const { pushView } = useSyncedWidgetNavigation(applyHelpNav);
 
-  useEffect(() => {
+  // Switching language swaps the whole content pack, so the browse position is
+  // reset to its first guide. Done during render: the old effect painted the
+  // previous locale's selection for a frame before correcting itself.
+  const [lastContent, setLastContent] = useState(content);
+  if (content !== lastContent) {
+    setLastContent(content);
     const firstCategory = content.categories[0]?.id ?? "start";
     const firstGuide =
       content.guides.find((g) => g.categoryId === firstCategory)?.id ?? content.guides[0]?.id ?? null;
@@ -46,7 +51,7 @@ export function useHelpCenter(locale: string) {
     setGuideId(firstGuide);
     setQuery("");
     setFaqOpen(null);
-  }, [locale, content]);
+  }
 
   const guidesInCategory = useMemo(
     () => content.guides.filter((g) => g.categoryId === categoryId),

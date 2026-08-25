@@ -21,7 +21,6 @@ export function useOsBootGate({
   launcherBootReady = true,
 }: Args) {
   const [minElapsed, setMinElapsed] = useState(false);
-  const [fading, setFading] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   // The start timestamp used to be captured in a useRef initialiser, which
@@ -39,9 +38,14 @@ export function useOsBootGate({
   const coreReady =
     mounted && !sessionBlocking && hasHydrated && launcherBootReady && minElapsed;
 
+  // `fading` used to be state that an effect flipped on the render after
+  // coreReady turned true. It is the same value as coreReady — the splash fades
+  // exactly when the OS is ready — so it is derived instead, and the effect is
+  // left owning only the timer that removes the splash once the fade is over.
+  const fading = coreReady;
+
   useEffect(() => {
     if (!coreReady || hidden) return;
-    setFading(true);
     const id = window.setTimeout(() => setHidden(true), OS_BOOT_FADE_MS);
     return () => window.clearTimeout(id);
   }, [coreReady, hidden]);

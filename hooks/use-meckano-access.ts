@@ -1,33 +1,20 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
 import { isMeckanoSubscriberEmail } from "@/lib/meckano-subscriber";
 
+/**
+ * Access is a pure function of the session, so it is computed during render
+ * rather than mirrored into state by an effect. The old version held an
+ * `allowed` state that the effect wrote on every session change, which meant one
+ * extra render on every transition and a `null` window where `loading` was true
+ * even though the answer was already known.
+ */
 export function useMeckanoAccess() {
   const { data: session, status } = useSession();
-  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const loading = status === "loading";
+  const allowed =
+    status === "authenticated" && isMeckanoSubscriberEmail(session?.user?.email);
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (status !== "authenticated") {
-      setAllowed(false);
-      return;
-    }
-
-    if (isMeckanoSubscriberEmail(session?.user?.email)) {
-      setAllowed(true);
-      return;
-    }
-
-    setAllowed(false);
-
-  }, [status, session?.user?.email]);
-
-  const loading = status === "loading" || (status === "authenticated" && allowed === null);
-
-  return {
-    allowed: allowed === true,
-    loading,
-  };
+  return { allowed, loading };
 }

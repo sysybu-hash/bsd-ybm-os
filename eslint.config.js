@@ -21,20 +21,22 @@ module.exports = [
   ...nextCoreWebVitals,
   {
     /**
-     * React Compiler rules, newly enabled by eslint-config-next 16.
-     * They flag 97 pre-existing sites that this repo has always shipped:
-     * the latest-ref pattern (`ref.current = cb` during render), setState
-     * inside an effect for prop-sync, and `Date.now()` in useRef/useMemo
-     * initialisers. None are bugs today, but adopting the rules means a
-     * 93-site refactor with real regression risk — that is its own change,
-     * not a rider on a security upgrade.
+     * The last React Compiler rule still switched off. `purity`,
+     * `immutability` and `set-state-in-effect` have all been migrated and are
+     * enforced by eslint-config-next 16.
+     *
+     * `refs` covers 55 sites, effectively all of them the latest-ref pattern
+     * (`onFooRef.current = onFoo` in the render body). That pattern is correct
+     * under React 18 and the recommended workaround for the stale-closure
+     * problem the repo actually has; the rule exists because the Compiler can
+     * hoist renders, which React 19 makes real. Migrating before that move
+     * would be churn against a constraint that does not yet apply.
      *
      * Tracked in docs/LINT-REACT-COMPILER-BACKLOG.md. Do not add new
-     * violations; re-enable one rule at a time as sites are migrated.
+     * violations.
      */
     rules: {
       "react-hooks/refs": "off",
-      "react-hooks/set-state-in-effect": "off",
     },
   },
 ];

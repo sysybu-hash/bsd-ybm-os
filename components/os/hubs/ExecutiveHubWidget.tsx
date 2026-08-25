@@ -28,12 +28,16 @@ export default function ExecutiveHubWidget({ liveData }: Props) {
       : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
 
-  useEffect(() => {
-    const tab = liveData?.tab;
-    if (typeof tab === "string" && TABS.some((row) => row.id === tab)) {
-      setActiveTab(tab);
+  // Follow the tab the host asks for. Adjusted during render so the widget
+  // paints the requested tab directly instead of the old one for a frame.
+  const requestedTab = liveData?.tab;
+  const [lastRequestedTab, setLastRequestedTab] = useState(requestedTab);
+  if (requestedTab !== lastRequestedTab) {
+    setLastRequestedTab(requestedTab);
+    if (typeof requestedTab === "string" && TABS.some((row) => row.id === requestedTab)) {
+      setActiveTab(requestedTab);
     }
-  }, [liveData?.tab]);
+  }
 
   const applyView = useCallback((view: WidgetViewState) => {
     const tab = view.tab;

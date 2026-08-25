@@ -204,7 +204,24 @@ export async function primeCookieConsent(page: Page) {
 }
 
 /** מחכה שה-workspace נטען אחרי התחברות (לא דף נחיתה / login). */
-export async function waitForAuthenticatedWorkspace(page: Page) {
+/**
+ * Waits for the workspace chrome to be on screen.
+ *
+ * `timeout` is the budget for the whole thing, not per stage. Leaving /login is
+ * a redirect that has either happened or is about to, so it gets a small fixed
+ * slice; the rest goes to waiting for the chrome to render, which against a dev
+ * server includes compiling the route on first hit.
+ *
+ * Callers asking "are we signed in already?" must pass a small budget: this
+ * function costs its full allowance to answer *no*, and the test timeout is 90s
+ * (120s on CI). The speculative probes in `tryCredentialsSignIn` used to run at
+ * the 30s default across two stages, so one sign-in attempt could spend 180s —
+ * the test was killed long before `signInWithRetries` got to retry, so the
+ * retries bought nothing while the probes ate the entire budget.
+ */
+const LEAVE_LOGIN_MS = 8_000;
+
+export async function waitForAuthenticatedWorkspace(page: Page, timeout = 30_000) {
   await expect
     .poll(
       () => {
@@ -214,7 +231,10 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
           return false;
         }
       },
-      { timeout: 30_000, message: "Expected to leave login route" },
+      {
+        timeout: Math.min(LEAVE_LOGIN_MS, timeout),
+        message: "Expected to leave login route",
+      },
     )
     .toBe(true);
 
@@ -225,7 +245,7 @@ export async function waitForAuthenticatedWorkspace(page: Page) {
     name: /Good (morning|afternoon|evening|night)|בוקר טוב|צהריים טובים|ערב טוב|לילה טוב/i,
   });
   await expect(sidebar.or(mobileNav).or(workspaceNav).or(hubGreeting).first()).toBeVisible({
-    timeout: 30000,
+    timeout,
   });
 }
 
@@ -364,11 +384,27 @@ async function hasAuthenticatedSession(page: Page): Promise<boolean> {
   });
 }
 
-async function ensureAuthenticatedWorkspace(page: Page): Promise<boolean> {
+/**
+ * `PROBE_MS` is for the "might we already be signed in?" checks, where the
+ * answer is usually no and the cost of asking is what matters. `CONFIRM_MS` is
+ * for the check after credentials were actually accepted, where the answer is
+ * almost certainly yes and we want to give the workspace room to render.
+ */
+const WORKSPACE_PROBE_MS = 5_000;
+/**
+ * Generous on purpose. Against `next dev` the first hit to a route compiles it,
+ * which can take tens of seconds under parallel workers — this is not padding.
+ */
+const WORKSPACE_CONFIRM_MS = 30_000;
+
+async function ensureAuthenticatedWorkspace(
+  page: Page,
+  timeout = WORKSPACE_CONFIRM_MS,
+): Promise<boolean> {
   if (!(await hasAuthenticatedSession(page))) return false;
   if (new URL(page.url()).pathname.includes("/login")) return false;
   try {
-    await waitForAuthenticatedWorkspace(page);
+    await waitForAuthenticatedWorkspace(page, timeout);
     return true;
   } catch {
     return false;
@@ -429,16 +465,25 @@ async function credentialsSignInViaUi(page: Page, credentials: E2eCredentials): 
   return hasAuthenticatedSession(page);
 }
 
+/**
+ * Two attempts, not four. One `tryCredentialsSignIn` now costs at most ~46s on
+ * the failing path (8s to leave /login + 30s for the chrome, or 5s probe + a UI
+ * sign-in), so two fit inside the 90s test timeout. Four never did: the runner
+ * killed the test inside attempt one, which made attempts three and four dead
+ * code that existed only to be cut short.
+ */
 export async function signInWithRetries(
   page: Page,
-  attempts = 4,
+  attempts = 2,
   credentials: E2eCredentials = { email: E2E_EMAIL, password: E2E_PASSWORD },
 ): Promise<boolean> {
   for (let attempt = 0; attempt < attempts; attempt++) {
     const signed = await tryCredentialsSignIn(page, credentials);
     if (signed) {
       try {
-        await waitForAuthenticatedApiSession(page);
+        // tryCredentialsSignIn already saw an authenticated session, so this is
+        // a re-read that either succeeds at once or means the cookie was lost.
+        await waitForAuthenticatedApiSession(page, 10_000);
         return true;
       } catch {
         /* session cookie not ready yet — retry sign-in */
@@ -450,7 +495,10 @@ export async function signInWithRetries(
 }
 
 /** ממתין ל-session cookie לפני קריאות API ב-E2E. */
-export async function waitForAuthenticatedApiSession(page: Page): Promise<void> {
+export async function waitForAuthenticatedApiSession(
+  page: Page,
+  timeout = 30_000,
+): Promise<void> {
   await expect
     .poll(
       async () => {
@@ -459,7 +507,7 @@ export async function waitForAuthenticatedApiSession(page: Page): Promise<void> 
         const data = (await res.json()) as { user?: { email?: string } };
         return Boolean(data.user?.email);
       },
-      { timeout: 30_000, message: "Expected authenticated API session" },
+      { timeout, message: "Expected authenticated API session" },
     )
     .toBe(true);
 }
@@ -474,22 +522,31 @@ export async function tryCredentialsSignIn(
     await page.goto("/login");
     await page.waitForLoadState("domcontentloaded");
 
+    /**
+     * The API path is conclusive: it already read /api/auth/session and saw a
+     * user, so the credentials are good and the cookie is set. If the workspace
+     * still does not render, the problem is rendering, not authentication —
+     * falling through to the UI form (as this used to) just spends another
+     * minute proving the same credentials work.
+     */
     if (await credentialsSignInViaApi(page, credentials)) {
       await page.goto("/", { waitUntil: "domcontentloaded" });
-      if (await ensureAuthenticatedWorkspace(page)) {
+      if (await ensureAuthenticatedWorkspace(page, WORKSPACE_CONFIRM_MS)) {
         await dismissWorkspaceOverlays(page);
         return true;
       }
-      await page.goto("/login", { waitUntil: "domcontentloaded" });
+      return false;
     }
 
-    if (await ensureAuthenticatedWorkspace(page)) {
+    // A guess: we may already hold a session from an earlier step. Cheap,
+    // because the usual answer is no.
+    if (await ensureAuthenticatedWorkspace(page, WORKSPACE_PROBE_MS)) {
       await dismissWorkspaceOverlays(page);
       return true;
     }
 
     if (await credentialsSignInViaUi(page, credentials)) {
-      if (!(await ensureAuthenticatedWorkspace(page))) return false;
+      if (!(await ensureAuthenticatedWorkspace(page, WORKSPACE_CONFIRM_MS))) return false;
       await dismissWorkspaceOverlays(page);
       return true;
     }

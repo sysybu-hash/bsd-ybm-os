@@ -229,7 +229,7 @@ export function useRegisterWizard({ onSwitchToLogin, tierPrices }: Props = {}) {
       const isPending =
         typeof data.pendingApproval === "boolean"
           ? data.pendingApproval
-          : msg.includes("מנהל") || msg.includes("אישור");
+          : msg.includes("מנהל") || msg.includes("אישור"); // i18n-exempt: matches a server message, not shown
       setPendingApproval(isPending);
       setDone(true);
       void import("@/lib/analytics/marketing-funnel").then(({ trackFunnelRegisterCompleted }) => {

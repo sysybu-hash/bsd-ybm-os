@@ -34,7 +34,15 @@ export function taskToForm(task: Task): TaskFormState {
   };
 }
 
-export async function syncTask(payload: Record<string, unknown>) {
+/**
+ * `saveFailedMessage` is passed in rather than hard-coded: this module has no
+ * i18n context, and the previous Hebrew fallback shipped to en/ru whenever the
+ * server replied without an `error` field.
+ */
+export async function syncTask(
+  payload: Record<string, unknown>,
+  saveFailedMessage: string,
+) {
   const projectId =
     typeof payload.projectId === "string" && payload.projectId.trim()
       ? payload.projectId.trim()
@@ -79,7 +87,7 @@ export async function syncTask(payload: Record<string, unknown>) {
       task?: { id?: string };
     };
     if (!res.ok || data.success === false) {
-      throw new Error(data.error ?? "שגיאת שמירה");
+      throw new Error(data.error ?? saveFailedMessage);
     }
     return data;
   }
@@ -92,7 +100,7 @@ export async function syncTask(payload: Record<string, unknown>) {
   });
   const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
   if (!res.ok || data.success === false) {
-    throw new Error(data.error ?? "שגיאת שמירה");
+    throw new Error(data.error ?? saveFailedMessage);
   }
   return data;
 }

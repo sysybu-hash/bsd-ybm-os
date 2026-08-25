@@ -13,6 +13,7 @@ import {
   formatTelemetrySummaryHe,
   hasSuccessfulEngine,
 } from "@/lib/scan-telemetry-display";
+import { VENDOR_UNKNOWN } from "@/components/os/widgets/ai-scanner/constants";
 
 export type ScanResultsPanelProps = {
   v5: ScanExtractionV5;
@@ -76,7 +77,7 @@ export default function ScanResultsPanel({
     { label: t("workspaceWidgets.scanPanel.project"), value: meta?.project },
     { label: t("workspaceWidgets.scanPanel.client"), value: meta?.client },
     { label: t("workspaceWidgets.scanPanel.date"), value: meta?.documentDate ?? v5.date },
-  ].filter((r) => r.value && r.value !== "לא צוין" && r.value !== "UNKNOWN");
+  ].filter((r) => r.value && r.value !== VENDOR_UNKNOWN && r.value !== "UNKNOWN");
 
   return (
     <div className="space-y-4 text-sm" dir={dir}>

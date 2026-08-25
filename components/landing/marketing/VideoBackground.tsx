@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const VIDEO_DESKTOP = "/marketing/hero-cinematic.mp4";
 const VIDEO_MOBILE = "/marketing/hero-cinematic-mobile.mp4";
 const PAGE_SHOW_RESTORE = "marketing:pageshow-restore";
+const MOBILE_QUERY = "(max-width: 767px)";
 
 function prefersReducedMotionNow(): boolean {
   if (typeof window === "undefined") return false;
@@ -12,14 +14,6 @@ function prefersReducedMotionNow(): boolean {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
     document.documentElement.classList.contains("reduce-motion")
   );
-}
-
-function pickVideoSources(): { mp4: string } {
-  if (typeof window === "undefined") {
-    return { mp4: VIDEO_DESKTOP };
-  }
-  const mobile = window.matchMedia("(max-width: 767px)").matches;
-  return { mp4: mobile ? VIDEO_MOBILE : VIDEO_DESKTOP };
 }
 
 function primeVideoElement(el: HTMLVideoElement) {
@@ -51,10 +45,17 @@ function scheduleDeferredPlay(run: () => void) {
 
 export default function VideoBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [sources, setSources] = useState<{ mp4: string } | null>(null);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
+  const sources = useMemo(
+    () => ({ mp4: isMobile ? VIDEO_MOBILE : VIDEO_DESKTOP }),
+    [isMobile],
+  );
   const [mountVideo, setMountVideo] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [staticOnly, setStaticOnly] = useState(false);
+  // Poster-first: every path through the mount effect below used to set this
+  // true as its first act, so it starts true instead. The MP4 is opted into
+  // after interaction or a long idle, never before.
+  const [staticOnly, setStaticOnly] = useState(true);
 
   const bindPlayback = useCallback(() => {
     const el = videoRef.current;
@@ -135,10 +136,8 @@ export default function VideoBackground() {
   }, [staticOnly, mountVideo]);
 
   useEffect(() => {
-    setSources(pickVideoSources());
-    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const mobileQuery = window.matchMedia(MOBILE_QUERY);
     const onViewportChange = () => {
-      setSources(pickVideoSources());
       setIsPlaying(false);
       setMountVideo(false);
       if (!mobileQuery.matches && !prefersReducedMotionNow()) {
@@ -151,18 +150,10 @@ export default function VideoBackground() {
 
   useEffect(() => {
     const mobile = window.matchMedia("(max-width: 767px)").matches;
-    if (prefersReducedMotionNow() || mobile) {
-      setStaticOnly(true);
-      setIsPlaying(false);
-      setMountVideo(false);
-      return;
-    }
+    // Mobile and reduced-motion never load the MP4 at all: the poster is final.
+    if (prefersReducedMotionNow() || mobile) return;
 
-    // Desktop: poster-first for LCP; load MP4 after interaction or long idle
-    setStaticOnly(true);
-    setIsPlaying(false);
-    setMountVideo(false);
-
+    // Desktop: poster-first for LCP; load MP4 after interaction or long idle.
     let enabled = false;
     const enableVideo = () => {
       if (enabled) return;

@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import type { FieldCopilotDraft } from "@/lib/validation/schemas/field-copilot";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { FieldCopilotHandoffTarget } from "@/lib/field-copilot/handoff";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 async function parseJsonRes<T>(res: Response): Promise<T> {
   const data = (await res.json()) as T & { error?: string };
@@ -60,6 +61,10 @@ async function compressPhoto(file: File): Promise<Blob> {
 }
 
 export function useFieldCopilotSession(initialSessionId?: string) {
+  const { t } = useI18n();
+  // One message, guarding five entry points. Held in a variable so the
+  // dependency arrays below depend on a string rather than on `t` itself.
+  const noSessionError = t("workspaceWidgets.fieldCopilot.noActiveSession");
   const [draft, setDraft] = useState<FieldCopilotDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +143,7 @@ export function useFieldCopilotSession(initialSessionId?: string) {
 
   const patchSession = useCallback(
     async (patch: Record<string, unknown>) => {
-      if (!draft?.id) throw new Error("אין סשן פעיל");
+      if (!draft?.id) throw new Error(noSessionError);
       setLoading(true);
       setError(null);
       try {
@@ -160,12 +165,12 @@ export function useFieldCopilotSession(initialSessionId?: string) {
         setLoading(false);
       }
     },
-    [draft?.id],
+    [draft?.id, noSessionError],
   );
 
   const uploadAsset = useCallback(
     async (file: Blob, kind: "photo" | "video" | "keyframe", mimeType: string) => {
-      if (!draft?.id) throw new Error("אין סשן פעיל");
+      if (!draft?.id) throw new Error(noSessionError);
 
       // Compress photos before encoding
       const toEncode = kind === "photo" && file instanceof File
@@ -214,12 +219,12 @@ export function useFieldCopilotSession(initialSessionId?: string) {
 
       return data.asset;
     },
-    [draft?.id],
+    [draft?.id, noSessionError],
   );
 
   const deleteAsset = useCallback(
     async (assetId: string) => {
-      if (!draft?.id) throw new Error("אין סשן פעיל");
+      if (!draft?.id) throw new Error(noSessionError);
       setError(null);
       try {
         const data = await parseJsonRes<{ draft: FieldCopilotDraft }>(
@@ -235,12 +240,12 @@ export function useFieldCopilotSession(initialSessionId?: string) {
         throw err;
       }
     },
-    [draft?.id],
+    [draft?.id, noSessionError],
   );
 
   const analyze = useCallback(
     async (locale: string) => {
-      if (!draft?.id) throw new Error("אין סשן פעיל");
+      if (!draft?.id) throw new Error(noSessionError);
       setLoading(true);
       setError(null);
       try {
@@ -266,12 +271,12 @@ export function useFieldCopilotSession(initialSessionId?: string) {
         setLoading(false);
       }
     },
-    [draft?.id, loadSession],
+    [draft?.id, loadSession, noSessionError],
   );
 
   const handoff = useCallback(
     async (target: FieldCopilotHandoffTarget) => {
-      if (!draft?.id) throw new Error("אין סשן פעיל");
+      if (!draft?.id) throw new Error(noSessionError);
       const data = await parseJsonRes<{ liveData: Record<string, unknown> }>(
         await fetch("/api/field-copilot/handoff", {
           method: "POST",
@@ -283,7 +288,7 @@ export function useFieldCopilotSession(initialSessionId?: string) {
       await loadSession(draft.id);
       return data.liveData;
     },
-    [draft?.id, loadSession],
+    [draft?.id, loadSession, noSessionError],
   );
 
   return {

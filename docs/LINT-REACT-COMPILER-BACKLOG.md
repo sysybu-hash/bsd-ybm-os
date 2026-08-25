@@ -124,3 +124,65 @@ useEffect(() => { if (open) setValue(defaultValue); }, [open, defaultValue]);
 
 `react-hooks/refs` (55) נשאר אחרון: דפוס latest-ref לגיטימי ב-React 18, וכדאי
 להמתין למעבר ל-React 19 + Compiler לפני שנוגעים בו.
+
+
+---
+
+## 2026-08-25 — `set-state-in-effect` הושלם (42 → 0), החוק הודלק
+
+**שלושה מתוך ארבעת החוקים פעילים.** נותר רק `react-hooks/refs`.
+
+### מה שהתברר כשגוי בניתוח הקודם
+
+הניתוח מ-24.8 מיין ~16 מופעים כ"מחייבים `useSyncExternalStore` — שינוי
+ארכיטקטוני לכל אתר". זה היה נכון באבחנה ושגוי במסקנה: `useSyncExternalStore`
+נדרש **פעם אחת**, בתוך hook משותף, ולא בכל אתר.
+
+| Hook חדש | מחליף |
+|---|---|
+| `hooks/use-is-mounted.ts` | `useState(false)` + `useEffect(() => setMounted(true), [])` — שבעה קבצים כתבו את זה ידנית |
+| `hooks/use-client-flag.ts` | ערך בוליאני שרק הדפדפן יודע — `localStorage`, מחלקת theme, בדיקת יכולת |
+
+### הדפוס לסנכרון prop → state
+
+**התאמה בזמן רנדר**, הדפוס המתועד של React — לא רק ריצוי החוק:
+
+```tsx
+const [lastSeed, setLastSeed] = useState(seed);
+if (seed !== lastSeed) {
+  setLastSeed(seed);
+  if (seed !== null) setValue(seed);
+}
+```
+
+אפקט שמאתחל טופס מצייר פריים אחד עם הערכים הקודמים לפני שהוא מתקן את עצמו.
+`OsPromptDialog`, `OsFloatingPanel`, `ArchiveMenuTrigger` וטאבי ה-hubs סבלו
+כולם מאותו חלון בן פריים.
+
+### state שלא היה צריך להתקיים
+
+| קובץ | מה היה |
+|---|---|
+| `hooks/use-meckano-access.ts` | שיקוף של פונקציה טהורה מה-session לתוך state — רנדר נוסף בכל מעבר, וחלון `null` שבו `loading` היה true אף שהתשובה כבר ידועה |
+| `components/os/boot/useOsBootGate.ts` | `fading` הוא בדיוק `coreReady`; אפקט העתיק אחד לשני באיחור של רנדר |
+| `components/os/navigation/WidgetNavigationProvider.tsx` | ה-ref החד-פעמי הפך ל-state, ובדרך נעלם ref שנכתב מתוך אפקט |
+| `components/os/omnibar/useOmnibarGeminiLive.ts` | `voiceStatus` הוא מיפוי של מצב הלקוח — התווית פיגרה רנדר אחרי החיבור שהיא מתארת |
+| `components/landing/marketing/VideoBackground.tsx` | האפקט קבע `staticOnly/isPlaying/mountVideo` כפעולה ראשונה בכל מסלול — אלה ערכי ההתחלה, שנכתבו באיחור של רנדר |
+
+### ארבעה פטורים מתועדים
+
+לא כל הפרה היא באג. ארבעה אתרים שומרים על האפקט עם `eslint-disable` ונימוק:
+
+| קובץ | למה אין תשובה בזמן רנדר |
+|---|---|
+| `ScrollReveal.tsx` | חייב למדוד היכן האלמנט נחת. התחלה במצב מוסתר תשאיר תוכן בלתי נראה אם JS או IntersectionObserver נכשלים — באג המסך הריק במובייל שהקומפוננטה נכתבה כדי למנוע |
+| `ArchiveMenuTrigger.tsx` | מיקום התפריט נגזר מ-rect נמדד, שלא קיים לפני layout |
+| `PwaInstallBanner.tsx` | `getInstalledRelatedApps()` הוא promise |
+| `useOmnibarGeminiLive.ts` | דדליין ה-retry הוא דגימת שעון. `react-hooks/purity` צודק שאסור לקרוא `Date.now()` ברנדר — זו בדיוק הסחיפה שה-state נוסף כדי לתקן |
+
+### `react-hooks/refs` (55) — עדיין כבוי, וזו החלטה
+
+דפוס latest-ref (`onFooRef.current = onFoo` בגוף הרנדר) הוא **הפתרון המומלץ**
+לבעיית ה-stale closure תחת React 18. החוק קיים כי ה-Compiler רשאי להריץ רנדרים
+מחדש — מגבלה שנכנסת לתוקף עם React 19. מיגרציה עכשיו היא עבודה מול אילוץ שעדיין
+לא חל. **התנאי להתחלה: מעבר ל-React 19.**

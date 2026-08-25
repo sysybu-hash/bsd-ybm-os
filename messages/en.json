@@ -621,7 +621,10 @@
       "unknown": "Something went wrong",
       "segmentTitle": "Something went wrong loading this page",
       "backHome": "Back to home"
-    }
+    },
+    "actionSucceeded": "Done",
+    "actionFailed": "The action failed",
+    "errorPrefix": "Error"
   },
   "erpStats": {
     "trendFirst": "First month with data",
@@ -1679,5 +1682,11 @@
     "transaction_mismatch": "Transaction id does not match the invoice",
     "unsupported_action": "Unsupported action type",
     "use_notebook_endpoint": "Use /api/notebooklm/from-scan for notebooks"
+  },
+  "speech": {
+    "unsupported": "Your browser does not support speech recognition. Try Chrome.",
+    "notHeard": "I did not catch that. Try again.",
+    "cannotStart": "Could not start listening. Try again.",
+    "recognitionError": "Speech recognition error"
   }
 }

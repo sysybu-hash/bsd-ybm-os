@@ -76,8 +76,3 @@ export function buildSandpackPlaceholder(title: string, subtitle: string): strin
 }`;
 }
 
-/** @deprecated Use buildSandpackPlaceholder with i18n strings */
-export const SANDPACK_PLACEHOLDER = buildSandpackPlaceholder(
-  "חלון תצוגה מקדימה",
-  "תארו את הממשק שאתם רוצים בצ׳אט — הוא יופיע כאן מיידית",
-);

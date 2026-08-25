@@ -24,6 +24,14 @@ export function formatMsg(
   );
 }
 
+/**
+ * Placeholder written into `vendor` when extraction found none. It is compared
+ * against in ScanResultsPanel, so the two must stay the same literal — which is
+ * why this is a shared constant rather than a translated string. The display
+ * layer swaps it for `workspaceWidgets.scanner.vendorUnknown`.
+ */
+export const VENDOR_UNKNOWN = "לא צוין"; // i18n-exempt: persisted sentinel, see doc above
+
 export function mapV5ToAnalysis(
   v5: ScanExtractionV5,
   aiData?: Record<string, unknown>,
@@ -31,7 +39,7 @@ export function mapV5ToAnalysis(
   const meta = v5.documentMetadata;
   return {
     amount: Number(v5.total ?? 0),
-    vendor: v5.vendor || "לא צוין",
+    vendor: v5.vendor || VENDOR_UNKNOWN,
     taxId: v5.taxId ?? undefined,
     projectSuggestion: meta?.project ?? meta?.client ?? "",
     // True self-reported model certainty (0–1); falls back to a neutral default

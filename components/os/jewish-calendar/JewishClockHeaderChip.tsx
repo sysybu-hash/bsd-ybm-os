@@ -6,6 +6,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { buildDayQueryParams, readJewishCalendarPrefs } from "@/lib/jewish-calendar/prefs";
 import type { DaySnapshot } from "@/lib/jewish-calendar/types";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 const ISRAEL_TZ = "Asia/Jerusalem";
 
@@ -15,11 +16,9 @@ type Props = {
 
 export default function JewishClockHeaderChip({ openWidget }: Props) {
   const { t } = useI18n();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [now, setNow] = useState(() => new Date());
   const [hebrewLine, setHebrewLine] = useState<string | null>(null);
-
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);

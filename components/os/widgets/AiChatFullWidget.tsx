@@ -29,19 +29,20 @@ export default function AiChatFullWidget({ liveData = null, openWorkspaceWidget 
 
   // ── שעון שיחה — מתחיל כשנשלחת ההודעה הראשונה ──
   const [sessionStart] = useState(() => Date.now());
-  const [elapsed, setElapsed] = useState("00:00");
+  // Only the clock reading is state; the label is formatted during render. The
+  // old version wrote the formatted string from the effect, which meant the
+  // first tick was published a render after it was taken.
+  const [nowMs, setNowMs] = useState(sessionStart);
+  const chatStarted = c.messages.length > 0;
   useEffect(() => {
-    if (c.messages.length === 0) { setElapsed("00:00"); return; }
-    const tick = () => {
-      const s = Math.floor((Date.now() - sessionStart) / 1000);
-      const mm = String(Math.floor(s / 60)).padStart(2, "0");
-      const ss = String(s % 60).padStart(2, "0");
-      setElapsed(`${mm}:${ss}`);
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
+    if (!chatStarted) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [c.messages.length, sessionStart]);
+  }, [chatStarted]);
+  const elapsedSeconds = chatStarted ? Math.floor((nowMs - sessionStart) / 1000) : 0;
+  const elapsed = `${String(Math.floor(elapsedSeconds / 60)).padStart(2, "0")}:${String(
+    elapsedSeconds % 60,
+  ).padStart(2, "0")}`;
 
   const chatArea = (
     <div className="flex min-h-0 flex-1 flex-col relative">

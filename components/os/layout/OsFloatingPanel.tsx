@@ -9,6 +9,7 @@ import WorkspaceWindowChrome from "@/components/os/layout/WorkspaceWindowChrome"
 import { OS_MODAL_BACKDROP_Z, OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 import { usePanelDrag } from "./usePanelDrag";
 import { useFocusTrap } from "./useFocusTrap";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 export type OsFloatingPanelProps = {
   open: boolean;
@@ -39,7 +40,7 @@ export default function OsFloatingPanel({
   onExitComplete,
 }: OsFloatingPanelProps) {
   const { t, dir } = useI18n();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [zoom, setZoom] = useState(1);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -51,8 +52,6 @@ export default function OsFloatingPanel({
   useFocusTrap(panelRef, open && !isMinimized);
 
   const backdropZ = zIndex > OS_MODAL_BACKDROP_Z ? zIndex - 10 : OS_MODAL_BACKDROP_Z;
-
-  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     return () => { document.body.style.overflow = ""; document.querySelectorAll("[data-os-floating-panel-backdrop]").forEach((el) => el.remove()); };
@@ -72,12 +71,21 @@ export default function OsFloatingPanel({
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  // Reset the window chrome when the panel closes, during render rather than in
+  // an effect: a panel reopened straight away used to show the previous zoom and
+  // maximised state for one frame before the effect cleaned it up.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) {
+      setZoom(1);
+      setIsMaximized(false);
+      setIsMinimized(false);
+    }
+  }
+
   useEffect(() => {
-    if (open) return;
-    resetOffset();
-    setZoom(1);
-    setIsMaximized(false);
-    setIsMinimized(false);
+    if (!open) resetOffset();
   }, [open, resetOffset]);
 
   const zoomOrigin = dir === "rtl" ? "top right" : "top left";

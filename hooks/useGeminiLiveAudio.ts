@@ -78,20 +78,34 @@ export type GeminiLiveStatusKey =
 
 export type GeminiLiveStatusLabels = Record<GeminiLiveStatusKey, string>;
 
+/**
+ * Status wording for a surface that has none of its own.
+ *
+ * `statusLabels` is required, and the omnibar and field-copilot callers used to
+ * omit it — which silently gave them the Hebrew defaults in every locale. They
+ * use the shared `geminiLive.status*` group; the AI chat, app builder and
+ * marketing surfaces pass their own `prefix`, because their wording is
+ * deliberately different from each other.
+ */
+export function buildGeminiLiveStatusLabels(
+  t: (key: string) => string,
+  prefix = "geminiLive",
+): GeminiLiveStatusLabels {
+  return {
+    ready: t(`${prefix}.statusReady`),
+    connected: t(`${prefix}.statusConnected`),
+    listening: t(`${prefix}.statusListening`),
+    speaking: t(`${prefix}.statusSpeaking`),
+    interrupted: t(`${prefix}.statusInterrupted`),
+    tool: t(`${prefix}.statusTool`),
+    disconnected: t(`${prefix}.statusDisconnected`),
+    preparing: t(`${prefix}.statusPreparing`),
+    fallback: t(`${prefix}.statusFallback`),
+  };
+}
+
 /** גרסת worklet — עדכן כשמשנים את קבצי public/gemini-live (מניעת cache ישן) */
 const GEMINI_LIVE_WORKLET_VERSION = "2";
-
-const DEFAULT_STATUS_LABELS: GeminiLiveStatusLabels = {
-  ready: "Gemini Live מוכן",
-  connected: "Gemini Live מחובר. אפשר לדבר.",
-  listening: "מקשיב דרך Gemini Live...",
-  speaking: "העוזר מדבר...",
-  interrupted: "הדיבור הופסק, מקשיב להמשך.",
-  tool: "מבצע פעולה במערכת...",
-  disconnected: "Gemini Live נותק.",
-  preparing: "מכין Gemini Live מאובטח...",
-  fallback: "Gemini Live זמין אחרי התחברות ושיוך לארגון.",
-};
 
 type GeminiLiveOptions = {
   enabled: boolean;
@@ -101,7 +115,12 @@ type GeminiLiveOptions = {
   settings?: GeminiLiveVoiceSettings;
   /** מאפשר proactiveAudio / affectiveDialog (דגל פלטפורמה) */
   advancedFeaturesEnabled?: boolean;
-  statusLabels?: Partial<GeminiLiveStatusLabels>;
+  /**
+   * Required, and complete. Every caller builds these from the message packs, so
+   * a partial set merged over Hebrew defaults only ever risked leaking Hebrew
+   * into en/ru — the defaults are gone and the type now says so.
+   */
+  statusLabels: GeminiLiveStatusLabels;
   onUserTranscript?: (text: string, finished: boolean) => void;
   onModelTranscript?: (text: string, finished: boolean) => void;
   onToolCall?: (name: string, args: Record<string, unknown>) => Promise<unknown> | unknown;
@@ -120,7 +139,8 @@ type GeminiLiveOptions = {
   /** כש-false — לא מתחיל חיבור (ממתין להקשר מערכת מהשרת) */
   contextReady?: boolean;
   /** תרגום i18n להודעות שגיאה (מפתחות workspaceWidgets.aiChat.*) */
-  translate?: (key: string) => string;
+  /** Required: the error text below has no Hebrew fallback to fall back to. */
+  translate: (key: string) => string;
   /** נתיב מותאם לטוקן Live (למשל דף שיווק ציבורי) */
   sessionTokenUrl?: string;
   /** ברכת פתיחה מותאמת (למשל דף שיווק — לא workspace) */
@@ -233,6 +253,8 @@ async function fetchLiveSessionToken(
   settings: GeminiLiveVoiceSettings,
   advancedFeaturesEnabled: boolean,
   locale: string | undefined,
+  /** The hook's `translate`; this is module scope, so it has to come in. */
+  translate: (key: string) => string,
   sessionTokenUrl = "/api/ai/gemini-live/session",
 ): Promise<LiveSessionTokenPayload> {
   const isPublicMarketingSession = sessionTokenUrl.includes("/api/marketing/");
@@ -262,15 +284,15 @@ async function fetchLiveSessionToken(
     }
     if (tokenResponse.status === 403) {
       throw new Error(
-        tokenData.error ?? "Gemini Live זמין רק למשתמשים המשויכים לארגון. פנה למנהל המערכת.",
+        tokenData.error ?? translate("geminiLive.errorOrgOnly"),
       );
     }
     if (tokenResponse.status === 401) {
       throw new Error(
-        tokenData.error ?? "פג תוקף ההתחברות. התנתק והתחבר שוב כדי להשתמש בעוזר הקולי.",
+        tokenData.error ?? translate("geminiLive.errorSessionExpired"),
       );
     }
-    throw new Error(tokenData.error ?? "לא התקבל token עבור Gemini Live");
+    throw new Error(tokenData.error ?? translate("geminiLive.errorNoToken"));
   }
   return {
     token: tokenData.token,
@@ -302,10 +324,7 @@ export function useGeminiLiveAudio({
   sessionTokenUrl,
   buildSessionStartUserTurn,
 }: GeminiLiveOptions) {
-  const statusLabels = useMemo(
-    () => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }),
-    [statusLabelsProp],
-  );
+  const statusLabels = statusLabelsProp;
   const [state, setState] = useState<GeminiLiveState>("idle");
   const [statusText, setStatusText] = useState(statusLabels.ready);
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
@@ -411,15 +430,13 @@ export function useGeminiLiveAudio({
           setupTimeoutRef.current = null;
           setupWaiterRef.current = null;
           reject(
-            new Error(
-              "Gemini Live setup timeout — לא התקבל setupComplete מהשרת. נסו שוב או בדקו מפתח API.",
-            ),
+            new Error(translate("geminiLive.errorSetupTimeout")),
           );
         }, timeoutMs);
         setupWaiterRef.current = { resolve, reject };
       });
     },
-    [clearSetupWaiter],
+    [clearSetupWaiter, translate],
   );
 
   useEffect(() => {
@@ -693,7 +710,7 @@ export function useGeminiLiveAudio({
     const AudioCtor = getAudioContextCtor();
     if (!AudioCtor || !navigator.mediaDevices?.getUserMedia || !("AudioWorkletNode" in window)) {
       setState("fallback");
-      setStatusText("הדפדפן לא תומך ב-Live Audio מלא. עובר למצב תאימות.");
+      setStatusText(translate("geminiLive.errorNoAudioSupport"));
       return false;
     }
 
@@ -732,6 +749,7 @@ export function useGeminiLiveAudio({
           settings,
           advancedFeaturesEnabled,
           locale,
+          translate,
           sessionTokenUrl,
         ),
       ]);
@@ -780,8 +798,11 @@ export function useGeminiLiveAudio({
           const closeDetail =
             closeEvent.reason?.trim() ||
             (closeEvent.code === 1006
-              ? "חיבור Gemini Live נותק באופן בלתי צפוי (1006)"
-              : `חיבור Gemini Live נסגר (קוד ${closeEvent.code})`);
+              ? translate("geminiLive.errorClosedUnexpectedly")
+              : translate("geminiLive.errorClosedWithCode").replace(
+                  "{code}",
+                  String(closeEvent.code),
+                ));
           clearSetupWaiter(new Error(closeDetail));
           notifyLiveError(closeDetail);
         } else if (state !== "idle" && intentionalStopRef.current) {

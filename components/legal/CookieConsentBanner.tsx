@@ -10,6 +10,20 @@ import {
   type CookieConsentState,
   parseStoredConsent,
 } from "@/lib/cookie-consent";
+import { useClientFlag } from "@/hooks/use-client-flag";
+
+function readStoredConsent(): CookieConsentState | null {
+  try {
+    return parseStoredConsent(localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY));
+  } catch {
+    /* storage blocked */
+    return null;
+  }
+}
+
+const hasNoStoredConsent = () => readStoredConsent() === null;
+const readStoredAnalytics = () => readStoredConsent()?.analytics ?? false;
+const readStoredMarketing = () => readStoredConsent()?.marketing ?? false;
 
 function writeConsent(state: CookieConsentState) {
   localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, JSON.stringify(state));
@@ -18,21 +32,24 @@ function writeConsent(state: CookieConsentState) {
 
 export default function CookieConsentBanner() {
   const { t } = useI18n();
-  const [visible, setVisible] = useState(false);
   const [customize, setCustomize] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const [analytics, setAnalytics] = useState(false);
-  const [marketing, setMarketing] = useState(false);
 
-  useEffect(() => {
-    const stored = parseStoredConsent(localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY));
-    if (!stored) {
-      setVisible(true);
-      return;
-    }
-    setAnalytics(stored.analytics);
-    setMarketing(stored.marketing);
-  }, []);
+  // No stored choice means the banner is owed; a stored one seeds the toggles
+  // for when the user reopens the settings.
+  const undecided = useClientFlag(hasNoStoredConsent);
+  const storedAnalytics = useClientFlag(readStoredAnalytics);
+  const storedMarketing = useClientFlag(readStoredMarketing);
+  const [dismissed, setDismissed] = useState(false);
+  const [analyticsOverride, setAnalyticsOverride] = useState<boolean | null>(null);
+  const [marketingOverride, setMarketingOverride] = useState<boolean | null>(null);
+
+  const visible = undecided && !dismissed;
+  const analytics = analyticsOverride ?? storedAnalytics;
+  const marketing = marketingOverride ?? storedMarketing;
+  const setAnalytics = setAnalyticsOverride;
+  const setMarketing = setMarketingOverride;
+  const setVisible = (next: boolean) => setDismissed(!next);
 
   const persist = useCallback((analyticsOn: boolean, marketingOn: boolean) => {
     const state: CookieConsentState = {

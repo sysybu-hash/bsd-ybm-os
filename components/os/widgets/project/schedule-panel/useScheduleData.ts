@@ -242,7 +242,7 @@ export function useScheduleData({
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        description: `${task.title} — יומן עבודה`,
+        description: labels.workDiaryEntry.replace("{task}", task.title),
         progress: task.progress,
         linkedTaskId: task.id,
         linkedBoqLineId: task.linkedBoqLineId ?? undefined,
@@ -268,7 +268,9 @@ export function useScheduleData({
       toast.error(json.error ?? labels.taskSaveFailed);
       return;
     }
-    toast.success(`${(json.deleted as number) ?? 0} משימות נמחקו`);
+    toast.success(
+      labels.tasksDeleted.replace("{count}", String((json.deleted as number) ?? 0)),
+    );
     notifyMutation();
     await onRefresh();
   };

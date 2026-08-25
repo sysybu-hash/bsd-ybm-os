@@ -42,23 +42,35 @@ export default function CashflowWidget({
     () => (hasCashflowData(stats) ? mapDashboardStatsToCashflow(stats) : null),
     [stats],
   );
-  const [selectedPoint, setSelectedPoint] = useState<CashflowTrendPoint | null>(null);
+  // The chart defaults to the latest point whenever fresh data lands, and the
+  // user can then click another one. `pickedPoint` holds that choice; it is
+  // cleared during render as soon as a new `cashflow` object arrives, so the
+  // default follows the data without an effect round-trip.
+  const [pickedPoint, setPickedPoint] = useState<CashflowTrendPoint | null>(null);
+  const [lastCashflow, setLastCashflow] = useState(cashflow);
+  if (cashflow !== lastCashflow) {
+    setLastCashflow(cashflow);
+    setPickedPoint(null);
+  }
+  const latestPoint = cashflow ? cashflow.trend[cashflow.trend.length - 1] ?? null : null;
+  const selectedPoint = pickedPoint ?? latestPoint;
+
+  // A short highlight each time the numbers are refetched. The pulse is turned
+  // on during render when `fetchedAt` moves, and the effect only owns the timer
+  // that turns it back off.
   const [isLivePulse, setIsLivePulse] = useState(false);
+  const fetchedAt = cashflow?.fetchedAt;
+  const [lastFetchedAt, setLastFetchedAt] = useState(fetchedAt);
+  if (fetchedAt !== lastFetchedAt) {
+    setLastFetchedAt(fetchedAt);
+    setIsLivePulse(Boolean(fetchedAt));
+  }
 
   useEffect(() => {
-    if (!cashflow) {
-      setSelectedPoint(null);
-      return;
-    }
-    setSelectedPoint(cashflow.trend[cashflow.trend.length - 1] ?? null);
-  }, [cashflow]);
-
-  useEffect(() => {
-    if (!cashflow?.fetchedAt) return;
-    setIsLivePulse(true);
+    if (!isLivePulse) return;
     const timer = window.setTimeout(() => setIsLivePulse(false), 1400);
     return () => window.clearTimeout(timer);
-  }, [cashflow?.fetchedAt]);
+  }, [isLivePulse]);
 
   if (loading) {
     return <WidgetState variant="loading" message={t("workspaceWidgets.cashflowView.loading")} />;
@@ -216,7 +228,7 @@ export default function CashflowWidget({
                   <button
                     key={item.month}
                     type="button"
-                    onClick={() => setSelectedPoint(item)}
+                    onClick={() => setPickedPoint(item)}
                     className={`flex h-full flex-1 flex-col items-center justify-end gap-2 rounded-xl px-1 transition-colors ${
                       isSelected
                         ? "bg-[color:var(--surface-soft)]"
