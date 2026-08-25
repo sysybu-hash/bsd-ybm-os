@@ -22,10 +22,9 @@ export default function ScrollReveal({ children, className = "", delay = 0, eage
   const [revealed, setRevealed] = useState(true);
 
   useEffect(() => {
-    if (eager || reduceMotion) {
-      setRevealed(true);
-      return;
-    }
+    // Content above the fold, and anyone who asked for reduced motion, keeps the
+    // visible default this component starts from — nothing to do.
+    if (eager || reduceMotion) return;
 
     const el = ref.current;
     if (!el) return;
@@ -33,11 +32,16 @@ export default function ScrollReveal({ children, className = "", delay = 0, eage
     // אלמנט שכבר בתוך ה-viewport נשאר גלוי (ללא הבהוב); רק מה שמתחת לקיפול מוסתר ומונפש.
     const rect = el.getBoundingClientRect();
     const inViewNow = rect.top < window.innerHeight && rect.bottom > 0;
-    if (inViewNow) {
-      setRevealed(true);
-      return;
-    }
+    if (inViewNow) return;
 
+    /**
+     * Hiding requires knowing where the element landed, which is only knowable
+     * after layout — there is no render-time answer to exempt this from
+     * set-state-in-effect. Starting hidden instead would leave the content
+     * invisible whenever JS or IntersectionObserver fails, which is the mobile
+     * blank-screen bug this component was written to avoid.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRevealed(false);
     const markVisible = () => setRevealed(true);
 

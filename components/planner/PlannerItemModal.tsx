@@ -65,9 +65,14 @@ export function PlannerItemModal({
   const [reminderMinutes, setReminderMinutes] = useState(15);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    if (initial) {
+  // Seed the form each time the modal opens — from the item being edited, or
+  // from the clicked date for a new one. Done during render rather than in an
+  // effect so it never shows the previous item's values for a frame first.
+  const seedKey = open ? (initial ?? defaultDate) : null;
+  const [lastSeedKey, setLastSeedKey] = useState<PlannerDraft | Date | null>(seedKey);
+  if (seedKey !== lastSeedKey) {
+    setLastSeedKey(seedKey);
+    if (initial && seedKey !== null) {
       setSummary(initial.summary);
       setDateStr(toDateInput(initial.start));
       setStartTime(toTimeInput(initial.start));
@@ -75,11 +80,11 @@ export function PlannerItemModal({
       setAllDay(initial.allDay);
       setKind(initial.kind);
       setReminderMinutes(initial.reminderMinutes ?? 15);
-    } else {
-      const base = new Date(defaultDate);
-      const start = new Date(base);
+      setErr(null);
+    } else if (seedKey !== null) {
+      const start = new Date(defaultDate);
       start.setHours(9, 0, 0, 0);
-      const end = new Date(base);
+      const end = new Date(defaultDate);
       end.setHours(10, 0, 0, 0);
       setSummary("");
       setDateStr(toDateInput(start));
@@ -88,9 +93,9 @@ export function PlannerItemModal({
       setAllDay(false);
       setKind("meeting");
       setReminderMinutes(15);
+      setErr(null);
     }
-    setErr(null);
-  }, [open, defaultDate, initial]);
+  }
 
   const kindLabel = (k: PlannerKind) => {
     if (k === "meeting") return labels.kindMeeting;

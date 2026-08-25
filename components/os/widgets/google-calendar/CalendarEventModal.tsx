@@ -57,20 +57,25 @@ export default function CalendarEventModal({
   const [allDay, setAllDay] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const base = new Date(defaultDate);
-    const start = new Date(base);
-    start.setHours(9, 0, 0, 0);
-    const end = new Date(base);
-    end.setHours(10, 0, 0, 0);
-    setSummary("");
-    setDateStr(toDateInput(start));
-    setStartTime(toTimeInput(start));
-    setEndTime(toTimeInput(end));
-    setAllDay(false);
-    setErr(null);
-  }, [open, defaultDate]);
+  // Seed the form each time the modal opens, during render rather than in an
+  // effect, so it never shows the previous event's values for a frame first.
+  const seed = open ? defaultDate : null;
+  const [lastSeed, setLastSeed] = useState(seed);
+  if (seed !== lastSeed) {
+    setLastSeed(seed);
+    if (seed !== null) {
+      const start = new Date(seed);
+      start.setHours(9, 0, 0, 0);
+      const end = new Date(seed);
+      end.setHours(10, 0, 0, 0);
+      setSummary("");
+      setDateStr(toDateInput(start));
+      setStartTime(toTimeInput(start));
+      setEndTime(toTimeInput(end));
+      setAllDay(false);
+      setErr(null);
+    }
+  }
 
   const submit = () => {
     const [y, m, d] = dateStr.split("-").map(Number);

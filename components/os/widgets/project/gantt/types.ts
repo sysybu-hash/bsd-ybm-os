@@ -48,11 +48,16 @@ export type GanttLabels = {
   workDiary: string;
   createDiary: string;
   newTaskTitle: string;
-  ganttLegend?: string;
-  ganttToday?: string;
-  ganttProgress?: string;
-  ganttDependency?: string;
-  scaleDays?: string;
+  // Required, not optional. `buildGanttLabels` is the only producer and it fills
+  // every one of these from the message packs; the optional markers were what
+  // let Hebrew `?? "..."` fallbacks survive at the call sites, shipping Hebrew
+  // to en/ru if they ever fired. One of them had already drifted — the pack says
+  // "התקדמות" for ganttProgress while the fallback said "בביצוע".
+  ganttLegend: string;
+  ganttToday: string;
+  ganttProgress: string;
+  ganttDependency: string;
+  scaleDays: string;
 };
 
 export type GanttProps = {

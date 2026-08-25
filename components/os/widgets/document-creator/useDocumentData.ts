@@ -36,7 +36,9 @@ export function useDocumentData() {
       const res = await fetch("/api/organization", { credentials: "include" });
       const data = await res.json();
       setOrgSettings({
-        name: data.name || "BSD-YBM תשתיות",
+        // No brand-flavoured demo name here: an organisation that has not set a
+        // name yet should show nothing rather than someone else's.
+        name: data.name || "",
         taxId: data.taxId || "",
         email: data.paypalMerchantEmail || data.adminEmail || "",
         vatRatePercent: resolveVatRatePercent(data.vatRatePercent),

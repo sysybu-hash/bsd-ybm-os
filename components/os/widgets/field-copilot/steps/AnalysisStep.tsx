@@ -16,8 +16,16 @@ export default function AnalysisStep({ loading, onAnalyze, scopeSummary }: Props
   const { t } = useI18n();
   const [progressIdx, setProgressIdx] = useState(0);
 
+  // Restart the rotating hint with each analysis rather than resuming where the
+  // last one left off.
+  const [wasLoading, setWasLoading] = useState(loading);
+  if (loading !== wasLoading) {
+    setWasLoading(loading);
+    setProgressIdx(0);
+  }
+
   useEffect(() => {
-    if (!loading) { setProgressIdx(0); return; }
+    if (!loading) return;
     const id = setInterval(() => setProgressIdx((i) => (i + 1) % PROGRESS_COUNT), 5_000);
     return () => clearInterval(id);
   }, [loading]);

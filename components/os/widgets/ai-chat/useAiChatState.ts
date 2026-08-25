@@ -156,7 +156,8 @@ export function useAiChatState(
       const result = await osAssistant.onToolCall(name, args);
       const text = typeof result === "string" ? result : "Success";
       if (text === "Success") toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
-      else if (text && !text.startsWith("לא ") && !text.startsWith("שגיאה") && !text.toLowerCase().startsWith("error")) toast.success(text);
+      // sniffs the model reply for a refusal before toasting it as a success
+      else if (text && !text.startsWith("לא ") && !text.startsWith("שגיאה") && !text.toLowerCase().startsWith("error")) toast.success(text); // i18n-exempt: matched, not shown
       return result;
     },
     shouldNotifyError: () => liveAutoStartRef.current,
@@ -246,7 +247,11 @@ export function useAiChatState(
       timestamp: formatChatTime(locale),
     };
     setMessages((prev) => [...prev, userMsg]);
-    const sentText = input.trim() || (attachment ? `נתח את הקובץ המצורף: ${attachment.name}` : "");
+    const sentText =
+      input.trim() ||
+      (attachment
+        ? t("workspaceWidgets.aiChat.analyzeAttachment").replace("{name}", attachment.name)
+        : "");
     const sentAttachment = attachment;
     setInput("");
     setAttachment(null);

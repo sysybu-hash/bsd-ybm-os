@@ -856,7 +856,8 @@
       "saving": "Сохранение…",
       "saveAsWorkDiary": "Сохранить как журнал работ",
       "dragToReorder": "Перетащите для изменения порядка",
-      "dragHandle": "Перетащить"
+      "dragHandle": "Перетащить",
+      "noActiveSession": "Нет активной сессии"
     },
     "appBuilder": {
       "title": "AI конструктор приложений",
@@ -2294,7 +2295,8 @@
       "typing": "Печатает…",
       "hint1": "Анализ бюджета виллы",
       "hint2": "Сравнение цен на бетон",
-      "hint3": "Требования безопасности на объекте"
+      "hint3": "Требования безопасности на объекте",
+      "analyzeAttachment": "Проанализируй прикреплённый файл: {name}"
     },
     "erp": {
       "loading": "Загрузка документов…",
@@ -2649,7 +2651,8 @@
       "saveLabel": "Описание строки ведомости",
       "defaultDescription": "Площадь по чертежу",
       "savedToast": "Строка ведомости добавлена",
-      "saveFailed": "Не удалось сохранить строку"
+      "saveFailed": "Не удалось сохранить строку",
+      "sqmUnit": "м²"
     },
     "ganttAgent": {
       "generate": "✨ Создать диаграмму Ганта",
@@ -2707,6 +2710,12 @@
     },
     "accessibility": {
       "mailSubject": "Доступность сайта"
+    },
+    "scanner": {
+      "vendorUnknown": "Не указано"
+    },
+    "crm": {
+      "noPhone": "Нет телефона"
     }
   },
   "geminiLive": {
@@ -2733,7 +2742,23 @@
     "affectiveDialog": "Эмоциональный диалог",
     "affectiveDialogHint": "Адаптация тона (если поддерживается)",
     "sessionResumption": "Возобновление сессии",
-    "sessionResumptionHint": "Восстановление Live после краткого обрыва"
+    "sessionResumptionHint": "Восстановление Live после краткого обрыва",
+    "errorOrgOnly": "Gemini Live доступен только пользователям, привязанным к организации. Обратитесь к администратору.",
+    "errorSessionExpired": "Сессия истекла. Выйдите и войдите снова, чтобы использовать голосового помощника.",
+    "errorNoToken": "Токен для Gemini Live не получен",
+    "errorSetupTimeout": "Тайм-аут настройки Gemini Live — сервер не прислал setupComplete. Повторите попытку или проверьте ключ API.",
+    "errorNoAudioSupport": "Браузер не полностью поддерживает Live Audio. Переход в режим совместимости.",
+    "errorClosedUnexpectedly": "Соединение Gemini Live неожиданно разорвано (1006)",
+    "errorClosedWithCode": "Соединение Gemini Live закрыто (код {code})",
+    "statusReady": "Gemini Live готов",
+    "statusConnected": "Gemini Live подключён. Говорите.",
+    "statusListening": "Слушаю через Gemini Live…",
+    "statusSpeaking": "Помощник говорит…",
+    "statusInterrupted": "Речь прервана, продолжаю слушать.",
+    "statusTool": "Выполняю действие…",
+    "statusDisconnected": "Gemini Live отключён.",
+    "statusPreparing": "Готовлю защищённую сессию Gemini Live…",
+    "statusFallback": "Gemini Live доступен после входа и привязки к организации."
   },
   "knowledgeVault": {
     "pickerTitle": "Хранилище знаний",
@@ -2996,6 +3021,21 @@
     "shortcutScanner": "AI-сканер",
     "shortcutNotebook": "Блокнот",
     "diarySyncMeckano": "Синхронизация из Meckano в журнал",
-    "percentPlaceholder": "Процент (0–100)"
+    "percentPlaceholder": "Процент (0–100)",
+    "workDiaryEntry": "{task} — рабочий журнал",
+    "tasksDeleted": "Удалено задач: {count}",
+    "csvTaskName": "Название задачи",
+    "csvCategory": "Категория",
+    "csvDurationDays": "Длительность (дни)",
+    "csvStart": "Начало",
+    "csvEnd": "Окончание",
+    "csvDescription": "Описание",
+    "csvDrawing": "Чертёж",
+    "csvUnit": "Ед. изм.",
+    "csvQuantity": "Количество",
+    "csvUnitPrice": "Цена за ед.",
+    "csvLineTotal": "Итого",
+    "csvNote": "Примечания",
+    "csvConfidence": "Уверенность"
   }
 }

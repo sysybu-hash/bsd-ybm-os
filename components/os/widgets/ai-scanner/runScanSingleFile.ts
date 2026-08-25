@@ -170,7 +170,9 @@ export async function runScanSingleFile({
           toast.success(`${tr("scanner.actionsApplied", "פעולות הושלמו")}: ${post.applied.join(", ")}`);
         }
       } else if (postPolicy.postActions.length > 0 && !boundProjectId) {
-        toast.message("נדרש projectId לפעולות אוטומטיות אחרי הסריקה");
+        toast.message(
+          tr("scanner.projectRequiredForPostActions", "נדרש projectId לפעולות אוטומטיות אחרי הסריקה"),
+        );
       }
 
       return analysis;

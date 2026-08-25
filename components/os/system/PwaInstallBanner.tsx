@@ -9,6 +9,7 @@ import {
   isIosSafariLike,
   isStandaloneDisplay,
 } from "@/lib/pwa/install-state";
+import { useClientFlag } from "@/hooks/use-client-flag";
 
 const DISMISS_KEY = "bsd-ybm-pwa-install-dismissed";
 const LEGACY_DISMISS_KEY = "bsd:pwa-install-dismissed";
@@ -50,9 +51,11 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
   const { t } = useI18n();
   const [installed, setInstalled] = useState<boolean | null>(null);
   const [nativeInstallOffered, setNativeInstallOffered] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [isIos, setIsIos] = useState(false);
-  const [isAndroidChrome, setIsAndroidChrome] = useState(false);
+  const isIos = useClientFlag(isIosSafariLike);
+  const isAndroidChrome = useClientFlag(isAndroidChromeLike);
+  const storedDismissed = useClientFlag(readDismissed);
+  const [dismissOverride, setDismissOverride] = useState<boolean | null>(null);
+  const dismissed = dismissOverride ?? storedDismissed;
   const wasInstalledRef = useRef(false);
 
   const refreshInstallState = useCallback(async () => {
@@ -61,7 +64,7 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
 
     if (wasInstalledRef.current && !nowInstalled) {
       clearDismissed();
-      setDismissed(false);
+      setDismissOverride(false);
     }
 
     wasInstalledRef.current = nowInstalled;
@@ -75,9 +78,13 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    setIsIos(isIosSafariLike());
-    setIsAndroidChrome(isAndroidChromeLike());
-    setDismissed(readDismissed());
+    /**
+     * `getInstalledRelatedApps()` is a promise, so whether the PWA is already
+     * installed cannot be answered during render the way the platform sniff
+     * above can. The banner stays hidden (`installed === null`) until it
+     * resolves, which is why this has to write state from an effect.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshInstallState();
 
     const onVisible = () => {
@@ -129,7 +136,7 @@ export default function PwaInstallBanner({ suppress = false }: PwaInstallBannerP
 
   const dismiss = () => {
     markDismissed();
-    setDismissed(true);
+    setDismissOverride(true);
   };
 
   if (suppress) return null;

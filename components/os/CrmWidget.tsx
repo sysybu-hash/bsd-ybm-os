@@ -97,7 +97,7 @@ export default function CrmWidget() {
                 </div>
                 <div className="flex flex-col">
                   <div className="font-semibold text-slate-900 dark:text-slate-50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{client.name}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{client.phone || 'ללא טלפון'}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{client.phone || t("workspaceWidgets.crm.noPhone")}</div>
                 </div>
               </div>
             </div>

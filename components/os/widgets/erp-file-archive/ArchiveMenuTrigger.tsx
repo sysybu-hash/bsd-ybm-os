@@ -72,6 +72,13 @@ export function ArchiveMenuTrigger({
 
   useLayoutEffect(() => {
     if (!isOpen) return;
+    /**
+     * The menu is placed from the trigger's measured rect, which does not exist
+     * until after layout — there is no render-time value to derive this from.
+     * `useLayoutEffect` means the position is set before paint, so the menu
+     * never appears at the wrong coordinates.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updatePosition();
     const el = triggerRef.current;
     if (!el) return;

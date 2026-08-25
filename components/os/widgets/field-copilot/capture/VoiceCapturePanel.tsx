@@ -3,7 +3,7 @@
 import { Mic, MicOff, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
-import { useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
+import { buildGeminiLiveStatusLabels, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
 import { getFieldCopilotLivePrompt } from "@/lib/field-copilot/instruction";
 import { OsButton } from "@/components/os/ui";
 
@@ -20,10 +20,13 @@ export default function VoiceCapturePanel({ transcript, onTranscript, onAppendTr
   const { t, locale } = useI18n();
   const [liveOn, setLiveOn] = useState(false);
   const [liveBuffer, setLiveBuffer] = useState("");
+  const liveStatusLabels = useMemo(() => buildGeminiLiveStatusLabels(t), [t]);
 
   const live = useGeminiLiveAudio({
     enabled: liveOn,
     owner: "fieldCopilot",
+    translate: t,
+    statusLabels: liveStatusLabels,
     systemInstruction: getFieldCopilotLivePrompt(locale),
     sessionTokenUrl: sessionTokenUrl ?? "/api/ai/gemini-live/field-copilot-session",
     locale,

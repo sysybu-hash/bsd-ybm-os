@@ -856,7 +856,8 @@
       "saving": "Saving…",
       "saveAsWorkDiary": "Save as work diary",
       "dragToReorder": "Drag to reorder",
-      "dragHandle": "Drag"
+      "dragHandle": "Drag",
+      "noActiveSession": "No active session"
     },
     "appBuilder": {
       "title": "AI App Builder",
@@ -2294,7 +2295,8 @@
       "typing": "Typing…",
       "hint1": "Villa budget analysis",
       "hint2": "Concrete price comparison",
-      "hint3": "Site safety requirements"
+      "hint3": "Site safety requirements",
+      "analyzeAttachment": "Analyse the attached file: {name}"
     },
     "erp": {
       "loading": "Loading documents…",
@@ -2649,7 +2651,8 @@
       "saveLabel": "BOQ line description",
       "defaultDescription": "Area measured from drawing",
       "savedToast": "BOQ line added",
-      "saveFailed": "Failed to save the line"
+      "saveFailed": "Failed to save the line",
+      "sqmUnit": "m²"
     },
     "ganttAgent": {
       "generate": "✨ Generate Gantt & Workflow",
@@ -2707,6 +2710,12 @@
     },
     "accessibility": {
       "mailSubject": "Website accessibility"
+    },
+    "scanner": {
+      "vendorUnknown": "Not specified"
+    },
+    "crm": {
+      "noPhone": "No phone"
     }
   },
   "geminiLive": {
@@ -2733,7 +2742,23 @@
     "affectiveDialog": "Affective dialog",
     "affectiveDialogHint": "Emotional tone adaptation (if supported)",
     "sessionResumption": "Session resumption",
-    "sessionResumptionHint": "Resume Live after brief disconnects"
+    "sessionResumptionHint": "Resume Live after brief disconnects",
+    "errorOrgOnly": "Gemini Live is only available to users attached to an organisation. Contact your administrator.",
+    "errorSessionExpired": "Your session expired. Sign out and back in to use the voice assistant.",
+    "errorNoToken": "No token was returned for Gemini Live",
+    "errorSetupTimeout": "Gemini Live setup timeout — no setupComplete from the server. Try again or check the API key.",
+    "errorNoAudioSupport": "This browser does not fully support Live Audio. Falling back to compatibility mode.",
+    "errorClosedUnexpectedly": "The Gemini Live connection dropped unexpectedly (1006)",
+    "errorClosedWithCode": "The Gemini Live connection closed (code {code})",
+    "statusReady": "Gemini Live ready",
+    "statusConnected": "Gemini Live connected. Go ahead.",
+    "statusListening": "Listening via Gemini Live…",
+    "statusSpeaking": "The assistant is speaking…",
+    "statusInterrupted": "Stopped speaking, still listening.",
+    "statusTool": "Running an action…",
+    "statusDisconnected": "Gemini Live disconnected.",
+    "statusPreparing": "Preparing a secure Gemini Live session…",
+    "statusFallback": "Gemini Live is available once you sign in and join an organisation."
   },
   "knowledgeVault": {
     "pickerTitle": "Knowledge vault",
@@ -2996,6 +3021,21 @@
     "shortcutScanner": "AI scanner",
     "shortcutNotebook": "Notebook",
     "diarySyncMeckano": "Sync from Meckano to diary",
-    "percentPlaceholder": "Percent (0–100)"
+    "percentPlaceholder": "Percent (0–100)",
+    "workDiaryEntry": "{task} — work diary",
+    "tasksDeleted": "{count} tasks deleted",
+    "csvTaskName": "Task name",
+    "csvCategory": "Category",
+    "csvDurationDays": "Duration (days)",
+    "csvStart": "Start",
+    "csvEnd": "End",
+    "csvDescription": "Description",
+    "csvDrawing": "Drawing",
+    "csvUnit": "Unit",
+    "csvQuantity": "Quantity",
+    "csvUnitPrice": "Unit price",
+    "csvLineTotal": "Total",
+    "csvNote": "Notes",
+    "csvConfidence": "Confidence"
   }
 }

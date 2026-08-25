@@ -24,4 +24,9 @@ export type TakeoffMeasurement = {
   points: Point[];
 };
 
-export const SQM_UNIT = 'מ"ר';
+/**
+ * Persisted unit value for measured areas. It is stored on takeoff rows and
+ * compared against, so it stays a stable literal rather than a translated
+ * string — the *displayed* label comes from `workspaceWidgets.takeoff.sqmUnit`.
+ */
+export const SQM_UNIT = 'מ"ר'; // i18n-exempt: persisted unit value, see doc above

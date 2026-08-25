@@ -13,7 +13,6 @@ import {
   ZoomOut,
   Loader2,
 } from "lucide-react";
-import { SQM_UNIT } from "./types";
 import type { TakeoffState } from "./useTakeoffState";
 import { OsButton, OsIconButton } from "@/components/os/ui";
 
@@ -137,7 +136,8 @@ export function TakeoffToolbar({ state, saving }: TakeoffToolbarProps) {
         {ppm ? (
           <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-mono text-emerald-600 dark:text-emerald-400">
             {t("workspaceWidgets.takeoff.areaResult")}{" "}
-            <span className="text-lg font-bold">{currentArea.toFixed(2)}</span> {SQM_UNIT}
+            <span className="text-lg font-bold">{currentArea.toFixed(2)}</span>{" "}
+            {t("workspaceWidgets.takeoff.sqmUnit")}
           </div>
         ) : null}
 

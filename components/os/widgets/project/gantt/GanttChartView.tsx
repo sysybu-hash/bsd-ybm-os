@@ -232,7 +232,7 @@ export function GanttChartView({
               style={{ left: `${todayLeft}%` }}
             >
               <span className="absolute top-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-blue-500 px-1.5 py-0.5 text-[8px] font-semibold text-white shadow">
-                {labels.ganttToday ?? "היום"}
+                {labels.ganttToday}
               </span>
             </span>
           ) : null}

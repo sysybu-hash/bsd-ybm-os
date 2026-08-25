@@ -560,7 +560,10 @@
       "unknown": "Произошла ошибка",
       "segmentTitle": "Не удалось загрузить страницу",
       "backHome": "На главную"
-    }
+    },
+    "actionSucceeded": "Готово",
+    "actionFailed": "Действие не выполнено",
+    "errorPrefix": "Ошибка"
   },
   "erpStats": {
     "trendFirst": "Первый месяц с данными",
@@ -1679,5 +1682,11 @@
     "transaction_mismatch": "Идентификатор транзакции не соответствует счёту",
     "unsupported_action": "Неподдерживаемый тип действия",
     "use_notebook_endpoint": "Используйте /api/notebooklm/from-scan для блокнотов"
+  },
+  "speech": {
+    "unsupported": "Ваш браузер не поддерживает распознавание речи. Попробуйте Chrome.",
+    "notHeard": "Не удалось расслышать. Попробуйте ещё раз.",
+    "cannotStart": "Не удалось начать прослушивание. Попробуйте ещё раз.",
+    "recognitionError": "Ошибка распознавания речи"
   }
 }

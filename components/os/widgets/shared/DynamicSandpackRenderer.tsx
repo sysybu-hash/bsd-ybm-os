@@ -128,9 +128,16 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
   const problem = useMemo(() => findCodeProblem(code), [code]);
   const srcDoc = useMemo(() => (problem ? "" : buildSrcDoc(code)), [code, problem]);
 
-  useEffect(() => {
+  // A new document invalidates the previous run's error and readiness. Cleared
+  // during render so a stale error never paints over the new preview.
+  const [lastSrcDoc, setLastSrcDoc] = useState(srcDoc);
+  if (srcDoc !== lastSrcDoc) {
+    setLastSrcDoc(srcDoc);
     setRuntimeError(null);
     setIframeReady(false);
+  }
+
+  useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.source !== iframeRef.current?.contentWindow) return;
       const d = e.data as { __dynRender?: boolean; error?: string } | null;

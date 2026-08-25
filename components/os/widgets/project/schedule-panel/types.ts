@@ -48,6 +48,10 @@ export type ScheduleLabels = {
   taskSaved: string;
   taskDeleted: string;
   taskSaveFailed: string;
+  /** "{task} — work diary" — the description a diary entry is created with. */
+  workDiaryEntry: string;
+  /** "{count} tasks deleted". */
+  tasksDeleted: string;
   ganttLegend: string;
   ganttToday: string;
   ganttProgress: string;

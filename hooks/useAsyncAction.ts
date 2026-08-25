@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/os/system/I18nProvider";
 import type { ActionResponse } from "@/lib/polish/action-response";
 
 export type AsyncActionOptions = {
@@ -24,6 +25,7 @@ function isActionResponse(value: unknown): value is ActionResponse {
  */
 export function useAsyncAction() {
   const [pending, setPending] = useState(false);
+  const { t } = useI18n();
 
   const run = useCallback(
     async <T,>(fn: () => Promise<T>, opts?: AsyncActionOptions): Promise<T | undefined> => {
@@ -33,15 +35,17 @@ export function useAsyncAction() {
 
         if (isActionResponse(result)) {
           if (!result.success) {
-            toast.error(`שגיאה: ${(result.error ?? "").trim() || opts?.errorToast || "לא ידוע"}`);
+            const detail =
+              (result.error ?? "").trim() || opts?.errorToast || t("common.errors.unknown");
+            toast.error(`${t("common.errorPrefix")}: ${detail}`);
             return result;
           }
-          toast.success(opts?.successToast ?? "הפעולה בוצעה בהצלחה");
+          toast.success(opts?.successToast ?? t("common.actionSucceeded"));
           return result;
         }
 
         if (isOkResult(result) && result.ok === false) {
-          toast.error(result.error?.trim() || opts?.errorToast || "הפעולה נכשלה");
+          toast.error(result.error?.trim() || opts?.errorToast || t("common.actionFailed"));
           return result;
         }
 
@@ -51,13 +55,13 @@ export function useAsyncAction() {
         return result;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        toast.error(msg || opts?.errorToast || "שגיאה");
+        toast.error(msg || opts?.errorToast || t("common.errorPrefix"));
         return undefined;
       } finally {
         setPending(false);
       }
     },
-    [],
+    [t],
   );
 
   return { pending, run };

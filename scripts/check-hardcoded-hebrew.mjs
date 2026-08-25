@@ -12,7 +12,14 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 const HEBREW = /[\u0590-\u05FF]/;
-const ROOTS = ["components", "app"];
+const ROOTS = ["components", "app", "hooks"];
+/**
+ * A line ending in `// i18n-exempt: <reason>` is skipped. Preferred over adding
+ * paths below, because the justification then sits next to the string instead of
+ * in a list nobody reads.
+ */
+const INLINE_EXEMPT = /\/\/\s*i18n-exempt:/;
+
 const ALLOWLIST = [
   /lib\/i18n\//,
   /lib\/help-center\//,
@@ -75,19 +82,49 @@ for (const file of files) {
   if (ALLOWLIST.some((re) => re.test(rel))) continue;
   const src = await readFile(file, "utf8");
   const lines = src.split("\n");
+  /**
+   * Whether we are inside a comment that opened on an earlier line. The check is
+   * line-by-line, so without this a wrapped `{/* ... *\/}` block reports every
+   * line after the first — the opening line is skipped and the prose below it is
+   * not.
+   */
+  let inBlockComment = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
+    const trimmed = line.trim();
+
+    const wasInBlockComment = inBlockComment;
+    if (inBlockComment) {
+      if (/\*\/|\*\/\}/.test(line)) inBlockComment = false;
+    } else if (/(^|[^:])\/\*|\{\/\*/.test(line) && !/\*\/|\*\/\}/.test(line)) {
+      inBlockComment = true;
+    }
+    if (wasInBlockComment) continue;
+
     if (!HEBREW.test(line)) continue;
+    if (INLINE_EXEMPT.test(line)) continue;
     // A translated string: t("key"), t(`${P}.key`), tr("key", "fallback"), ...
     // The backtick form is the common one in this repo (widgets build keys from
     // a PREFIX constant), and matching only quotes reported ~800 false hits and
     // made the audit useless as a gate.
     if (/\bt(?:r)?\s*\(\s*[`"']/.test(line)) continue;
+    /**
+     * The same call wrapped over several lines, where the fallback sits alone on
+     * its own line and carries no `tr(` for the test above to find:
+     *
+     *   const message = tr(
+     *     "workspaceWidgets.documentScan.blueprintForkMessage",
+     *     "…Hebrew fallback…",
+     *   );
+     *
+     * That is the sanctioned pattern, not a violation, so look back a few lines
+     * for a translate call whose parentheses are still open.
+     */
+    if (isInsideOpenTranslateCall(lines, i)) continue;
     // A per-locale entry in a { he, en, ru } record — that IS the translation.
-    if (/^\s*(?:he|en|ru|ar)\s*:\s*[`"']/.test(line.trim())) continue;
+    if (/^\s*(?:he|en|ru|ar)\s*:\s*[`"']/.test(trimmed)) continue;
     // A locale record written on one line: { he: "...", en: "...", ru: "..." }
     if (/\bhe\s*:\s*[`"']/.test(line) && /\ben\s*:\s*[`"']/.test(line)) continue;
-    const trimmed = line.trim();
     // הערות: `//`, גוף בלוק (`*`), ובלוק שנפתח באותה שורה (JSDoc חד-שורתי)
     if (
       trimmed.startsWith("//") ||
@@ -97,7 +134,7 @@ for (const file of files) {
     ) {
       continue;
     }
-    hits.push({ rel, line: i + 1, snippet: line.trim().slice(0, 80) });
+    hits.push({ rel, line: i + 1, snippet: trimmed.slice(0, 80) });
   }
 }
 
@@ -113,5 +150,51 @@ if (hits.length > MAX_REPORT) {
   console.log(`  ... and ${hits.length - MAX_REPORT} more`);
 }
 
-/** informational — exit 0 until backlog cleared */
+/**
+ * True when `index` falls inside the argument list of a `t(` / `tr(` call that
+ * opened on an earlier line. Counts brackets backwards over a short window —
+ * these calls are never long, and scanning the whole file would be both slow and
+ * prone to matching an unrelated call much further up.
+ */
+function isInsideOpenTranslateCall(lines, index) {
+  const LOOKBACK = 4;
+  for (let start = index - 1; start >= 0 && start >= index - LOOKBACK; start--) {
+    const candidate = lines[start] ?? "";
+    if (!/\bt(?:r)?\s*\($/.test(candidate.trimEnd())) continue;
+    let depth = 0;
+    for (let j = start; j < index; j++) {
+      for (const ch of lines[j] ?? "") {
+        if (ch === "(") depth++;
+        else if (ch === ")") depth--;
+      }
+    }
+    if (depth > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * The UI layer is a blocking gate; the server layer is not, yet.
+ *
+ * `components/**` and `hooks/**` are at zero real violations, so a new hard-coded
+ * Hebrew string there is a regression and fails the run. Everything else — the
+ * ~930 error messages in `app/api/**` and `app/actions/**` — is reported and
+ * tolerated: those are migrating gradually behind the `code`-based translation
+ * in lib/client/parse-json-response.ts, and blocking on them would fail every PR
+ * over pre-existing debt.
+ *
+ * See docs/I18N-HARDCODED-BACKLOG.md.
+ */
+const UI_SCOPE = /^(components|hooks)\//;
+const uiHits = hits.filter((h) => UI_SCOPE.test(h.rel));
+if (uiHits.length > 0) {
+  console.error(
+    `\nFAIL: ${uiHits.length} hard-coded Hebrew line(s) in components/ or hooks/.\n` +
+      "  Use t(\"key\") from useI18n, or tr(key, fallback) where no context is available.\n" +
+      "  A string that is matched against rather than displayed belongs in a named,\n" +
+      "  commented constant — see VENDOR_UNKNOWN in components/os/widgets/ai-scanner/constants.ts.",
+  );
+  for (const h of uiHits) console.error(`  ${h.rel}:${h.line}  ${h.snippet}`);
+  process.exit(1);
+}
 process.exit(0);

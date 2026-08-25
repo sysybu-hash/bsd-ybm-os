@@ -118,9 +118,9 @@ export default function ProjectGanttChart({
   }
 
   const scaleButtons: { key: Scale; label: string; icon: typeof CalendarDays }[] = [
-    { key: "days",   label: labels.scaleDays   ?? "ימים",   icon: CalendarDays },
-    { key: "weeks",  label: labels.scaleWeeks  ?? "שבועות", icon: CalendarRange },
-    { key: "months", label: labels.scaleMonths ?? "חודשים", icon: Calendar },
+    { key: "days",   label: labels.scaleDays,   icon: CalendarDays },
+    { key: "weeks",  label: labels.scaleWeeks,  icon: CalendarRange },
+    { key: "months", label: labels.scaleMonths, icon: Calendar },
   ];
 
   return (
@@ -256,7 +256,7 @@ function LegendRow({ labels }: { labels: GanttProps["labels"] }) {
     <div className="ms-auto flex items-center gap-3">
       <span className="flex items-center gap-1">
         <span className="h-2 w-4 rounded-sm bg-[color:var(--win-accent,#6366f1)]" />
-        {labels.ganttProgress ?? "בביצוע"}
+        {labels.ganttProgress}
       </span>
       <span className="flex items-center gap-1">
         <span className="h-2 w-4 rounded-sm bg-emerald-500" />
@@ -268,7 +268,7 @@ function LegendRow({ labels }: { labels: GanttProps["labels"] }) {
       </span>
       <span className="flex items-center gap-1">
         <span className="inline-block h-3 w-0.5 rounded-full bg-blue-500" />
-        {labels.ganttToday ?? "היום"}
+        {labels.ganttToday}
       </span>
     </div>
   );

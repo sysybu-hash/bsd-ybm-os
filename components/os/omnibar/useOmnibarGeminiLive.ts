@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { DEFAULT_GEMINI_LIVE_VOICE_SETTINGS, useGeminiLiveAudio } from "@/hooks/useGeminiLiveAudio";
+import {
+  buildGeminiLiveStatusLabels,
+  DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
+  useGeminiLiveAudio,
+} from "@/hooks/useGeminiLiveAudio";
 import type { GeminiLiveVoiceSettings } from "@/hooks/useGeminiLiveAudio";
 import { loadGeminiLiveVoiceSettings } from "@/lib/gemini-live-voice-settings";
 import { formatGeminiLiveRateLimitMessage } from "@/lib/gemini-live-user-message";
@@ -18,6 +22,7 @@ import {
 } from "@/lib/gemini-live/eligibility";
 import type { OsAssistantUserContext } from "@/lib/os-assistant/user-context";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("omnibar-gemini-live");
@@ -46,15 +51,24 @@ export function useOmnibarGeminiLive({
   sessionUserId, sessionOrgId, osAssistant, userName, locale, t,
 }: UseOmnibarGeminiLiveArgs) {
   const [geminiLiveSettingsOpen, setGeminiLiveSettingsOpen] = useState(false);
-  const [geminiVoiceSettings, setGeminiVoiceSettings] = useState<GeminiLiveVoiceSettings>(DEFAULT_GEMINI_LIVE_VOICE_SETTINGS);
-  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("idle");
+  // Stored settings are unreadable on the server, so the defaults render first
+  // and the stored values take over once the client is live. The memo keys on
+  // `mounted`, so storage is parsed once rather than on every render.
+  const mounted = useIsMounted();
+  const storedVoiceSettings = useMemo(
+    () => (mounted ? loadGeminiLiveVoiceSettings() : DEFAULT_GEMINI_LIVE_VOICE_SETTINGS),
+    [mounted],
+  );
+  const [voiceSettingsOverride, setVoiceSettingsOverride] = useState<GeminiLiveVoiceSettings | null>(null);
+  const geminiVoiceSettings = voiceSettingsOverride ?? storedVoiceSettings;
+  const setGeminiVoiceSettings = setVoiceSettingsOverride;
   const [omnibarLiveOn, setOmnibarLiveOn] = useState(false);
+  const liveStatusLabels = useMemo(() => buildGeminiLiveStatusLabels(t), [t]);
   /** true רק אחרי לחיצה מפורשת על המיקרופון — מונע toast על שגיאות שלא ביקש המשתמש */
   const userRequestedLiveRef = useRef(false);
   /** המשתמש לחץ מיקרופון לפני שההקשר מוכן — מחכים ל-contextReady ואז מתחברים פעם אחת */
   const pendingLiveStartRef = useRef(false);
 
-  useEffect(() => { setGeminiVoiceSettings(loadGeminiLiveVoiceSettings()); }, []);
 
   const liveOrgId = resolveGeminiLiveOrgId(sessionOrgId, osAssistant.context);
   const geminiLiveEligible =
@@ -79,17 +93,19 @@ export function useOmnibarGeminiLive({
     userName,
     greetOnConnect: true,
     translate: t,
+    statusLabels: liveStatusLabels,
     onToolCall: async (name, args) => {
       const result = await osAssistant.onToolCall(name, args);
       const text = typeof result === "string" ? result : "Success";
       if (text === "Success") toast.success(t("workspaceWidgets.omnibar.voiceActionDone"));
-      else if (!text.startsWith("לא ") && !text.startsWith("שגיאה")) toast.success(text);
+      // sniffs the model reply for a refusal before toasting it as a success
+      else if (!text.startsWith("לא ") && !text.startsWith("שגיאה")) toast.success(text); // i18n-exempt: matched, not shown
       return result;
     },
     shouldNotifyError: () => userRequestedLiveRef.current,
     onError: (err) => {
       log.warn("gemini live error", { error: String(err) });
-      setVoiceStatus("error");
+      setErrorLatched(true);
       pendingLiveStartRef.current = false;
       userRequestedLiveRef.current = false;
       toast.error(err);
@@ -125,13 +141,30 @@ export function useOmnibarGeminiLive({
     }
   }, [omnibarLiveOn, geminiLiveEligible, liveContextReady, geminiLive]);
 
-  useEffect(() => {
-    if (geminiLive.state === "connecting") setVoiceStatus("connecting");
-    else if (geminiLive.state === "streaming") setVoiceStatus(geminiLive.isSpeaking ? "speaking" : "listening");
-    else if (geminiLive.state === "ready") setVoiceStatus("listening");
-    else if (geminiLive.state === "error") setVoiceStatus("error");
-    else setVoiceStatus("idle");
-  }, [geminiLive.state, geminiLive.isSpeaking]);
+  /**
+   * `notifyLiveError` can settle the client on "fallback" rather than "error"
+   * while still reporting the failure, so the state mapping below would lose
+   * the error label on its own. This latch carries it, and `toggleLive` clears
+   * it when the user starts a fresh attempt.
+   */
+  const [errorLatched, setErrorLatched] = useState(false);
+
+  // Otherwise a pure mapping of the live client's state, computed rather than
+  // mirrored into state by an effect — which used to leave the label one render
+  // behind the connection it describes.
+  const derivedVoiceStatus: VoiceStatus =
+    geminiLive.state === "connecting"
+      ? "connecting"
+      : geminiLive.state === "streaming"
+        ? geminiLive.isSpeaking
+          ? "speaking"
+          : "listening"
+        : geminiLive.state === "ready"
+          ? "listening"
+          : geminiLive.state === "error"
+            ? "error"
+            : "idle";
+  const voiceStatus: VoiceStatus = errorLatched ? "error" : derivedVoiceStatus;
 
   const statusLabel = useMemo(() => {
     if (voiceStatus === "connecting") return t("workspaceWidgets.omnibar.voiceConnecting");
@@ -168,6 +201,7 @@ export function useOmnibarGeminiLive({
     }
     userRequestedLiveRef.current = true;
     pendingLiveStartRef.current = true;
+    setErrorLatched(false);
     setOmnibarLiveOn(true);
     geminiLive.acknowledgeContextReady();
     void tryStartLive();
@@ -185,7 +219,14 @@ export function useOmnibarGeminiLive({
    * client knows the real deadline.
    */
   const [fallbackRetryAt, setFallbackRetryAt] = useState<Date | null>(null);
+  /**
+   * This one stays in an effect on purpose. The deadline is a wall-clock
+   * sample, and `Date.now()` during render is exactly what `react-hooks/purity`
+   * forbids — the label would drift forward on every re-render, which is the
+   * bug this state was introduced to fix in the first place.
+   */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFallbackRetryAt(rateLimitActive ? new Date(Date.now() + 60_000) : null);
   }, [rateLimitActive]);
 

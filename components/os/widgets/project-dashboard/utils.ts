@@ -75,5 +75,7 @@ export function buildGanttLabels(t: (key: string) => string) {
     taskSaved: t("projectDashboard.taskSaved"),
     taskDeleted: t("projectDashboard.taskDeleted"),
     taskSaveFailed: t("projectDashboard.taskSaveFailed"),
+    workDiaryEntry: t("projectDashboard.workDiaryEntry"),
+    tasksDeleted: t("projectDashboard.tasksDeleted"),
   };
 }

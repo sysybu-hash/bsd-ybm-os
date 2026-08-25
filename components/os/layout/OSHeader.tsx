@@ -79,10 +79,7 @@ export default function OSHeader({
     .toUpperCase()
     .slice(0, 2) || "OS";
 
-  const toolbarAria =
-    t("workspaceShell.topBar.toolbarAria") !== "workspaceShell.topBar.toolbarAria"
-      ? t("workspaceShell.topBar.toolbarAria")
-      : "פעולות סרגל עליון";
+  const toolbarAria = t("workspaceShell.topBar.toolbarAria");
 
   return (
     <header className="os-top-header fixed inset-x-0 top-0 z-[1200] w-full border-b border-[color:var(--border-main)]/80 bg-[color:var(--glass-bg)]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-md md:px-5">

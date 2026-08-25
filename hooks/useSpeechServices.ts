@@ -27,7 +27,7 @@ interface SpeechRecognitionInstance extends EventTarget {
 export function useSpeechServices(
   onTranscriptComplete: (transcript: string) => void,
 ) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const speechLang = localeToSpeechLang(locale);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -47,7 +47,7 @@ export function useSpeechServices(
     };
     const Ctor = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (!Ctor) {
-      setError("הדפדפן שלך לא תומך בזיהוי קולי. נסה כרום.");
+      setError(t("speech.unsupported"));
       return;
     }
 
@@ -75,7 +75,7 @@ export function useSpeechServices(
 
     recognition.onerror = (ev: Event) => {
       log.error("speech recognition error", { event: String(ev) });
-      setError("לא הצלחתי לשמוע. נסה שוב.");
+      setError(t("speech.notHeard"));
       setIsListening(false);
     };
 
@@ -93,7 +93,7 @@ export function useSpeechServices(
       }
       recognitionRef.current = null;
     };
-  }, [speechLang]);
+  }, [speechLang, t]);
 
   const startListening = useCallback(() => {
     setError(null);
@@ -102,12 +102,12 @@ export function useSpeechServices(
       recognitionRef.current?.start();
       setIsListening(true);
     } catch {
-      setError("לא ניתן להפעיל האזנה. נסה שוב.");
+      setError(t("speech.cannotStart"));
       setIsListening(false);
     }
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
-  }, []);
+  }, [t]);
 
   const stopListening = useCallback(() => {
     try {

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AlertCircle, Inbox, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 const centerClass =
   "flex h-full min-h-[200px] flex-col items-center justify-center gap-3 p-6 text-center";
@@ -19,6 +20,8 @@ type WidgetStateProps =
   | { variant: "empty"; message: string; action?: React.ReactNode };
 
 export default function WidgetState(props: WidgetStateProps) {
+  const { t } = useI18n();
+
   if (props.variant === "loading") {
     return (
       <div className={centerClass} aria-live="polite" aria-busy="true">
@@ -48,7 +51,7 @@ export default function WidgetState(props: WidgetStateProps) {
             onClick={props.onRetry}
             className="rounded-lg bg-[color:var(--win-accent,#6366f1)] px-4 py-2 text-xs font-bold text-white transition hover:opacity-90"
           >
-            {props.retryLabel ?? "נסה שוב"}
+            {props.retryLabel ?? t("common.retry")}
           </button>
         ) : null}
       </div>
