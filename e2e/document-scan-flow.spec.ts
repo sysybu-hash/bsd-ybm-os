@@ -12,6 +12,7 @@
 
 import { test, expect } from "@playwright/test";
 import {
+  clearServerWorkspaceLayout,
   E2E_EMAIL,
   E2E_PASSWORD,
   dismissWorkspaceOverlays,
@@ -142,6 +143,11 @@ test.describe("Document Scan — authenticated happy path (mocked extract)", () 
       password: E2E_PASSWORD,
     });
     test.skip(!signed, "E2E credentials / seed unavailable");
+    // Start from an empty workspace: this spec selects the last widget shell,
+    // so a window left open by an earlier test becomes the element under
+    // assertion. The layout-resetting specs used to share this account and
+    // clear it by accident; they now have their own (docs/E2E-SHARED-STATE.md).
+    await clearServerWorkspaceLayout(page);
     await waitForAuthenticatedApiSession(page);
 
     const mockV5 = {

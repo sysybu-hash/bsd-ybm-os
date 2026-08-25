@@ -61,3 +61,66 @@
 | `react-hooks/refs` | 55 | דפוס latest-ref, לגיטימי ב-React 18. שווה להמתין למעבר ל-React 19 + Compiler |
 
 הערה: התיקון ב-`useOmnibarGeminiLive` מוסיף מופע אחד ל-`set-state-in-effect` — זהו בדיוק המקרה הלגיטימי של החוק הזה, גזירת ערך ברגע שאירוע הופך לאמת.
+
+
+---
+
+## 2026-08-25 — ניתוח `set-state-in-effect` (42 הפרות)
+
+הדלקתי את החוק וסקרתי את כל ההפרות. **לא ביצעתי את המיגרציה**, וזו הסיבה:
+**חלק ניכר מהן אינן באגים אלא הדפוס הנכון ב-SSR.**
+
+### שלוש מחלקות
+
+**1. שומר mount ל-SSR** — ~8 קבצים
+
+```tsx
+const [mounted, setMounted] = useState(false);
+useEffect(() => { setMounted(true); }, []);
+```
+
+`MarketingDetailSheet` · `JewishClockHeaderChip` · `OSHeader` · `OsFloatingPanel`
+· `ThemeToggle` · `CrmOverlayPortal` · `ArchiveMenuTrigger`
+
+זהו הדפוס הסטנדרטי ל"אל תרנדר בשרת". **הקוד נכון כפי שהוא.** התיקון תחת חוקי
+ה-Compiler הוא `useSyncExternalStore` עם snapshot לשרת — שינוי ארכיטקטוני לכל
+אתר, לא החלפת שורה.
+
+**2. קריאת API של דפדפן באפקט** — ~8 קבצים
+
+```tsx
+useEffect(() => {
+  const stored = parseStoredConsent(localStorage.getItem(KEY));
+  if (!stored) { setVisible(true); return; }
+  setAnalytics(stored.analytics);
+}, []);
+```
+
+`CookieConsentBanner` ודומיו. **אי אפשר לקרוא `localStorage` ברנדר** בלי
+hydration mismatch. גם כאן הפתרון הוא `useSyncExternalStore`.
+
+**3. סנכרון prop → state** — היתר
+
+```tsx
+useEffect(() => { if (open) setValue(defaultValue); }, [open, defaultValue]);
+```
+
+`OsPromptDialog`, `GeminiLiveSettingsSheet`, `MobileOmnibarSheet`. **אלה כן
+ניתנים לתיקון** — `key` על הקומפוננטה, או התאמת state ברנדר. אבל כל אתר דורש
+שיקול נפרד: מתי בדיוק ה-state צריך להתאפס.
+
+### למה לא עכשיו
+
+~25 קבצים, **רובם ללא כיסוי בדיקות**. מיגרציה ל-`useSyncExternalStore` בקוד לא
+מכוסה, בסוף סשן ארוך, היא בדיוק סוג הריפקטור העיוור שנמנעתי ממנו לכל אורך
+הדרך — ובצדק: שינוי אחד בתשתית הטסטים כן גרם לרגרסיה היום.
+
+### הסדר המומלץ
+
+1. **מחלקה 3 קודם** — ניתנת לתיקון בלי שינוי ארכיטקטוני, וכל אתר עצמאי
+2. **מחלקות 1 ו-2 ביחד** — שתיהן `useSyncExternalStore`; כדאי hook משותף
+   (`useIsMounted`, `useLocalStorageValue`) במקום 16 תיקונים נפרדים
+3. **להדליק את החוק רק בסוף** — הדלקה חלקית אינה אפשרית
+
+`react-hooks/refs` (55) נשאר אחרון: דפוס latest-ref לגיטימי ב-React 18, וכדאי
+להמתין למעבר ל-React 19 + Compiler לפני שנוגעים בו.

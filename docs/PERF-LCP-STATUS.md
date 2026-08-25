@@ -12,22 +12,23 @@
 ומאט את המעבד פי 4. **חיסכון של 90ms בצד השרת הוא רעש מול LCP של 5 שניות.**
 הצוואר שם הוא בצד הלקוח.
 
-## המספרים
+## המספרים — לפני תיקון הלוגו
 
-קו הבסיס: 2026-08-14, `iad1` + Next 15. עכשיו: `fra1` + Next 16.
+קו הבסיס: 2026-08-14, `iad1` + Next 15. הטור השני: `fra1` + Next 16, **לפני**
+שתוקן ה-`loading="lazy"`. התוצאה הסופית בסעיף "התוצאה בפרודקשן" למטה.
 
 | דף | קו בסיס | עכשיו | LCP |
 |---|---|---|---|
-| `/login` | 97 | **99** | 1755ms |
+| `/login` | 97 | 99 | 1755ms |
 | `/about` | 98 | 98 | 1763ms |
 | `/` | 97 | 97 | 1745ms |
 | `/help` | 95 | 96 | 1594ms |
 | `/privacy` | — | 96 | 1448ms |
 | `/legal` | — | 85 | 1455ms |
-| **`/terms`** | 81 | **80** | 4445ms |
-| **`/contact`** | 80 | **79** | 5050ms |
-| **`/blog`** | 79 | **79** | 5050ms |
-| **`/unsubscribe`** | 81 | **75** | 4621ms |
+| `/terms` | 81 | 80 | 4445ms |
+| `/contact` | 80 | 79 | 5050ms |
+| `/blog` | 79 | 79 | 5050ms |
+| `/unsubscribe` | 81 | 75 | 4621ms |
 
 הדפוס אומת בשתי ריצות נפרדות. הפער בין הקבוצות עקבי, לא רעש.
 
@@ -128,22 +129,82 @@ label   : "אנו משתמשים בעוגיות הכרחיות להפעלת הא
 
 מדדו כששום דבר כבד אחר לא רץ, ובדקו את TBT כאינדיקטור לעומס.
 
-## `/unsubscribe` — SEO 66 היא התראת שווא
+## `/unsubscribe` — גם ה-SEO 66 הוא התראת שווא
 
 נכשל ב-`is-crawlable` כי `app/(platform)/unsubscribe/page.tsx:7` מגדיר
 `robots: { index: false, follow: false }`. **זה נכון לדף הסרה מרשימת תפוצה.**
 רשום כאן כדי שלא "יתוקן".
 
-## שכבת auth
-
-טרם נמדדה. `npm run lighthouse:auth:matrix` דורש הרצת
-`lighthouse-auth-setup.mjs` שיוצר state מאומת מול פרודקשן.
-
 ## איך לחזור על המדידה
 
 ```bash
 npm run lighthouse:matrix:prod -- --tier=public --strategy=mobile
+
+# שכבת auth — דורשת state מאומת תחילה
+node scripts/lighthouse-auth-setup.mjs --base=https://www.bsd-ybm.co.il
+node scripts/lighthouse-site-matrix.mjs --base=https://www.bsd-ybm.co.il --tier=auth --strategy=mobile
 ```
 
 הפלט נשמר ל-`reports/pagespeed/<timestamp>-summary.json` עם `failedAudits`
 לכל דף.
+
+---
+
+## שכבת auth — נמדדה לראשונה (2026-08-25)
+
+`node scripts/lighthouse-auth-setup.mjs --base=https://www.bsd-ybm.co.il` ואז
+`--tier=auth`. אימתתי שההתחברות אמיתית: ה-state מכיל
+`__Secure-next-auth.session-token`.
+
+| דף | perf | LCP |
+|---|---|---|
+| `/app/builder` | **46** | 7954ms |
+| `/?w=helpCenter` | 57 | 8838ms |
+| `/workspace` | 58 | 8219ms |
+| `/?w=documentsHub` | 58 | 8368ms |
+| `/?w=settings` | 60 | 8039ms |
+| `/?w=crmTable` | 61 | 8037ms |
+| `/app/admin` | 62 | 7833ms |
+| `/app/settings/profession` | 65 | 7899ms |
+
+**LCP של ~8 שניות בכל שמונת הדפים** — מול 1.6-1.9 בדפים הציבוריים אחרי התיקון.
+עקבי לחלוטין, לא רעש.
+
+### פגם שנמצא ותוקן — 333KB ללוגו של 64px
+
+פירוק התעבורה של `/workspace`:
+
+```
+   333KB  /logos/logo-night-transparent.png      ← הגדול ביותר
+   238KB  /_next/static/…/016zw2840xen3.js
+    84KB  /workspace
+   ───────
+  1419KB  ב-101 בקשות
+```
+
+**התמונה הגדולה מצ'אנק ה-JS הראשי — והיא לוגו.** המקור:
+
+```tsx
+// components/os/boot/OsBootSplash.tsx
+<Image src={logoSrc} width={64} height={64} priority unoptimized />
+```
+
+`unoptimized` עוקף את `/_next/image` לגמרי, ולכן ה-PNG המלא (340,473 בתים)
+הורד כדי לצבוע **64×64 פיקסלים**. `priority` הוסיף preload, כך שזה התחרה על
+רוחב פס בדיוק בתחילת האתחול.
+
+הוסר. מדידה מקומית של אותו נכס:
+
+| | בתים |
+|---|---|
+| מקור גולמי | 340,473 |
+| דרך `/_next/image` ב-`w=128` | **4,445** |
+
+**ירידה של 98.7%.** אימתתי שאין יותר `src="/logos/…"` גולמי ב-HTML של הקליפה.
+
+### מה שעדיין פתוח בשכבת auth
+
+פירוק ה-LCP הראה `Time to first byte: 2430ms` למשאב ה-LCP (לא לדף — הדף עצמו
+ב-120ms). 1419KB ב-101 בקשות הן הרבה לאתחול. הסרת ה-333KB מסירה 23% מהמשקל,
+**אבל היא לא תביא את ה-LCP מ-8 שניות ל-2.** נדרשת מדידה חוזרת אחרי דיפלוי כדי
+לדעת כמה היא כן שווה, ואז חקירה נפרדת של שאר המשקל.

@@ -3,7 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import type { AxeResults, Result } from "axe-core";
-import { dismissCookieBannerIfVisible, dismissWorkspaceOverlays, ensureHubTabFromDeepLink, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
+import { clearServerWorkspaceLayout, dismissCookieBannerIfVisible, dismissWorkspaceOverlays, ensureHubTabFromDeepLink, tryCredentialsSignIn, widgetShell, workspaceUrl } from "./helpers";
 
 const BASELINE_PATH = path.resolve(process.cwd(), "e2e", "a11y-baseline.json");
 
@@ -96,6 +96,11 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
 
       const signed = await signInWithRetries(page);
       expect(signed, "משתמש E2E חייב להיות זמין בבדיקות 10/10").toBeTruthy();
+    // Start from an empty workspace: this spec selects the last widget shell,
+    // so a window left open by an earlier test becomes the element under
+    // assertion. The layout-resetting specs used to share this account and
+    // clear it by accident; they now have their own (docs/E2E-SHARED-STATE.md).
+    await clearServerWorkspaceLayout(page);
 
       await page.setViewportSize({ width: 1280, height: 900 });
       await dismissCookieBannerIfVisible(page);
@@ -180,6 +185,11 @@ test.describe("Workspace accessibility — axe audit per widget", () => {
 
     const signed = await signInWithRetries(page);
     expect(signed, "משתמש E2E חייב להיות זמין לבניית baseline").toBeTruthy();
+    // Start from an empty workspace: this spec selects the last widget shell,
+    // so a window left open by an earlier test becomes the element under
+    // assertion. The layout-resetting specs used to share this account and
+    // clear it by accident; they now have their own (docs/E2E-SHARED-STATE.md).
+    await clearServerWorkspaceLayout(page);
     await dismissCookieBannerIfVisible(page);
 
     const newBaseline: A11yBaseline = {};
