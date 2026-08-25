@@ -67,49 +67,6 @@ export function initPostHog(options?: { skipConsentCheck?: boolean }): void {
   flushPendingPageviews();
 }
 
-/**
- * Runs `fn` once the page has finished loading and the main thread is idle.
- *
- * `requestIdleCallback` alone was not enough. It fires at the first idle gap,
- * which on a workspace load arrives almost immediately — measured against
- * production, deferring the PostHog init to idle moved its bundles from 845ms to
- * 1117ms, still four seconds ahead of LCP. Waiting for `load` first anchors the
- * work behind the page's own resources rather than behind a gap that happens to
- * open early.
- */
-export function runAfterLoadWhenIdle(fn: () => void): () => void {
-  let cancelled = false;
-  let cancelIdle: (() => void) | undefined;
-
-  const schedule = () => {
-    if (cancelled) return;
-    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
-    if (typeof w.requestIdleCallback === "function") {
-      const id = w.requestIdleCallback(() => {
-        if (!cancelled) fn();
-      }, { timeout: 8000 });
-      cancelIdle = () => w.cancelIdleCallback?.(id);
-      return;
-    }
-    const timer = globalThis.setTimeout(() => {
-      if (!cancelled) fn();
-    }, 2000);
-    cancelIdle = () => globalThis.clearTimeout(timer);
-  };
-
-  if (document.readyState === "complete") {
-    schedule();
-  } else {
-    window.addEventListener("load", schedule, { once: true });
-  }
-
-  return () => {
-    cancelled = true;
-    cancelIdle?.();
-    window.removeEventListener("load", schedule);
-  };
-}
-
 export function resetPostHogUser(): void {
   if (typeof window === "undefined" || !getPostHogProjectKey()) return;
   if (!(posthog as { __loaded?: boolean }).__loaded) return;

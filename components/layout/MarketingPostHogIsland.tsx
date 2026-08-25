@@ -39,14 +39,19 @@ export default function MarketingPostHogIsland() {
      * session recorder, surveys and autocapture bundles — 324KB of third-party
      * script that has no reason to compete with the page it is measuring.
      */
-    let cancel: (() => void) | undefined;
-    void import("@/lib/analytics/posthog-client").then(({ initPostHog, posthog, runAfterLoadWhenIdle }) => {
-      cancel = runAfterLoadWhenIdle(() => {
+    const run = () => {
+      void import("@/lib/analytics/posthog-client").then(({ initPostHog, posthog }) => {
         initPostHog({ skipConsentCheck: true });
         setClient(posthog);
       });
-    });
-    return () => cancel?.();
+    };
+    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+    if (typeof w.requestIdleCallback === "function") {
+      const id = w.requestIdleCallback(run, { timeout: 8000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const timer = globalThis.setTimeout(run, 2000);
+    return () => globalThis.clearTimeout(timer);
   }, []);
 
   if (!client) return null;
