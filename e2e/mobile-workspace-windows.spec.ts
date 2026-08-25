@@ -26,6 +26,11 @@ test.describe("mobile workspace windows", () => {
 
     const signed = await signInWithRetries(page);
     test.skip(!signed, "login failed");
+    // Start from an empty workspace: this spec selects the last widget shell,
+    // so a window left open by an earlier test becomes the element under
+    // assertion. The layout-resetting specs used to share this account and
+    // clear it by accident; they now have their own (docs/E2E-SHARED-STATE.md).
+    await clearServerWorkspaceLayout(page);
     await waitForAuthenticatedWorkspace(page);
 
     await gotoWorkspaceProject(page, E2E_PROJECT_ID);
