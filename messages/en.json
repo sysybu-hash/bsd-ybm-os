@@ -618,7 +618,9 @@
     "retry": "Retry",
     "save": "Save",
     "errors": {
-      "unknown": "Something went wrong"
+      "unknown": "Something went wrong",
+      "segmentTitle": "Something went wrong loading this page",
+      "backHome": "Back to home"
     }
   },
   "erpStats": {

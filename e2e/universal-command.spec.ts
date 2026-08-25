@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 import {
+  E2E_COMMAND_EMAIL,
   dismissCookieBannerIfVisible,
   dismissWorkspaceOverlays,
   primeCookieConsent,
+  signInAsSpecUser,
   tryCredentialsSignIn,
   widgetShell,
   workspaceUrl,
@@ -64,7 +66,7 @@ async function openCommandCenter(page: Parameters<typeof tryCredentialsSignIn>[0
 
 async function signIn(page: Parameters<typeof tryCredentialsSignIn>[0]) {
   await primeCookieConsent(page);
-  const signed = await tryCredentialsSignIn(page);
+  const signed = await signInAsSpecUser(page, E2E_COMMAND_EMAIL);
   await dismissCookieBannerIfVisible(page);
   if (!signed) test.skip(true, "E2E credentials not configured");
   await dismissWorkspaceOverlays(page);

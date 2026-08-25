@@ -618,7 +618,9 @@
     "retry": "נסה שוב",
     "save": "שמור",
     "errors": {
-      "unknown": "אירעה שגיאה"
+      "unknown": "אירעה שגיאה",
+      "segmentTitle": "אירעה שגיאה בטעינת העמוד",
+      "backHome": "חזרה לדף הבית"
     }
   },
   "erpStats": {

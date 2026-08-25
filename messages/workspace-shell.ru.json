@@ -1022,7 +1022,8 @@
         "saveExecution": "Сохранить выполнение",
         "requiredBeforeSave": "Отметьте все обязательные пункты перед сохранением"
       },
-      "regeneratePrompt": "Пересоберите приложение \"{name}\" по текущей схеме"
+      "regeneratePrompt": "Пересоберите приложение \"{name}\" по текущей схеме",
+      "noDefaultExport": "Компонент по умолчанию (export default) не найден"
     },
     "helpCenter": {
       "title": "Справочный центр",
@@ -2604,7 +2605,8 @@
       "issuedListError": "Не удалось загрузить документы",
       "retry": "Повторить",
       "searchIssuedPlaceholder": "Поиск по номеру или клиенту…",
-      "noSearchResults": "Совпадений не найдено"
+      "noSearchResults": "Совпадений не найдено",
+      "issuedWithItaError": "Документ выпущен; номер выделения: {detail}"
     },
     "projectBoq": {
       "importFailed": "Ошибка импорта",
@@ -2615,7 +2617,8 @@
       "clearAllConfirm": "Удалить все строки ведомости? Действие необратимо.",
       "rowDeleted": "Строка удалена",
       "allCleared": "Все строки удалены",
-      "deleteFailed": "Не удалось удалить"
+      "deleteFailed": "Не удалось удалить",
+      "confirmImport": "Импортировать {lines} строк и {bills} счетов?"
     },
     "takeoff": {
       "openTool": "Обмер по чертежу",

@@ -1022,7 +1022,8 @@
         "saveExecution": "שמור ביצוע",
         "requiredBeforeSave": "יש לסמן את כל הפריטים החובה לפני שמירה"
       },
-      "regeneratePrompt": "בנה מחדש את האפליקציה \"{name}\" לפי הסכמה הנוכחית"
+      "regeneratePrompt": "בנה מחדש את האפליקציה \"{name}\" לפי הסכמה הנוכחית",
+      "noDefaultExport": "לא נמצא רכיב ברירת מחדל (export default)"
     },
     "helpCenter": {
       "title": "מרכז עזרה",
@@ -2604,7 +2605,8 @@
       "issuedListError": "טעינת המסמכים נכשלה",
       "retry": "נסה שוב",
       "searchIssuedPlaceholder": "חיפוש לפי מספר או לקוח…",
-      "noSearchResults": "לא נמצאו מסמכים תואמים"
+      "noSearchResults": "לא נמצאו מסמכים תואמים",
+      "issuedWithItaError": "המסמך הופק; מספר הקצאה: {detail}"
     },
     "projectBoq": {
       "importFailed": "ייבוא נכשל",
@@ -2615,7 +2617,8 @@
       "clearAllConfirm": "למחוק את כל שורות כתב הכמויות? פעולה זו אינה הפיכה.",
       "rowDeleted": "השורה נמחקה",
       "allCleared": "כל השורות נמחקו",
-      "deleteFailed": "המחיקה נכשלה"
+      "deleteFailed": "המחיקה נכשלה",
+      "confirmImport": "לייבא {lines} שורות ו-{bills} חשבונות?"
     },
     "takeoff": {
       "openTool": "מדידה משרטוט",

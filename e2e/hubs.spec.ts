@@ -6,6 +6,8 @@ import {
   openFinanceHub,
   openAnyHubFromQuickGrid,
   primeCookieConsent,
+  E2E_HUBS_EMAIL,
+  signInAsSpecUser,
   signInWithRetries,
   widgetShell,
   workspaceUrl,
@@ -43,7 +45,7 @@ async function gotoWorkspace(page: Parameters<typeof signInWithRetries>[0], url:
 
 async function signIn(page: Parameters<typeof signInWithRetries>[0]) {
   await primeCookieConsent(page);
-  const signed = await signInWithRetries(page);
+  const signed = await signInAsSpecUser(page, E2E_HUBS_EMAIL);
   await dismissCookieBannerIfVisible(page);
   if (!signed) test.skip(true, "E2E credentials not configured");
   // The quick-grid launcher and hub tiles only render with zero windows open —

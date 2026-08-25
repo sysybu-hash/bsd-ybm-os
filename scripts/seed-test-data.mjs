@@ -48,6 +48,14 @@ async function resetDemoOrg(organizationId, userIds) {
   await prisma.organizationInvite.deleteMany({ where: { organizationId } });
 }
 
+/** Dedicated accounts so layout-resetting specs cannot overwrite each other. */
+const LAYOUT_SPEC_USERS = [
+  { key: "HUBS", email: "e2e-hubs@bsd-demo.test", name: "E2E Hubs" },
+  { key: "LOGISTICS", email: "e2e-logistics@bsd-demo.test", name: "E2E Logistics" },
+  { key: "LAUNCHER", email: "e2e-launcher@bsd-demo.test", name: "E2E Launcher" },
+  { key: "COMMAND", email: "e2e-command@bsd-demo.test", name: "E2E Command" },
+];
+
 async function upsertUser({ email, name, role, organizationId, passwordHash }) {
   return prisma.user.upsert({
     where: { email },
@@ -233,6 +241,20 @@ async function main() {
       organizationId: organization.id,
       passwordHash,
     }),
+    // One ORG_ADMIN per layout-mutating spec. The workspace layout is stored
+    // per user, so specs that reset it (hubs, logistics, launcher-customization,
+    // universal-command) were overwriting each other's state when Playwright ran
+    // them in parallel — see docs/E2E-SHARED-STATE.md. Same organisation, so
+    // they all still see the seeded projects, contacts and expenses.
+    ...LAYOUT_SPEC_USERS.map((u) =>
+      upsertUser({
+        email: u.email,
+        name: u.name,
+        role: "ORG_ADMIN",
+        organizationId: organization.id,
+        passwordHash,
+      }),
+    ),
     upsertUser({
       email: "pm@bsd-demo.test",
       name: "מיכל לוי",
@@ -769,6 +791,7 @@ E2E_PM_PASSWORD=${PASSWORD}
 E2E_PROJECT_ID=${tower.id}
 E2E_CONTACT_ID=${contacts[0].id}
 E2E_OFFICE_EXPENSE_ID=${demoOfficeExpense.id}
+${LAYOUT_SPEC_USERS.map((u) => `E2E_${u.key}_EMAIL=${u.email}`).join(String.fromCharCode(10))}
 `;
   const e2eExamplePath = path.resolve(process.cwd(), "e2e/.env.example");
   fs.writeFileSync(e2eExamplePath, e2eEnvExample, "utf8");
@@ -786,6 +809,9 @@ E2E_OFFICE_EXPENSE_ID=${demoOfficeExpense.id}
         e2eProjectId: tower.id,
         e2eContactId: contacts[0].id,
         e2eOfficeExpenseId: demoOfficeExpense.id,
+        layoutSpecEmails: Object.fromEntries(
+          LAYOUT_SPEC_USERS.map((u) => [u.key.toLowerCase(), u.email]),
+        ),
       },
       null,
       2,

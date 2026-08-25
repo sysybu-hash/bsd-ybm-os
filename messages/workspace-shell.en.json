@@ -1022,7 +1022,8 @@
         "saveExecution": "Save completion",
         "requiredBeforeSave": "Mark all required items before saving"
       },
-      "regeneratePrompt": "Rebuild the app \"{name}\" from its current schema"
+      "regeneratePrompt": "Rebuild the app \"{name}\" from its current schema",
+      "noDefaultExport": "No default export component found"
     },
     "helpCenter": {
       "title": "Help center",
@@ -2604,7 +2605,8 @@
       "issuedListError": "Failed to load documents",
       "retry": "Retry",
       "searchIssuedPlaceholder": "Search by number or client…",
-      "noSearchResults": "No matching documents"
+      "noSearchResults": "No matching documents",
+      "issuedWithItaError": "Document issued; allocation number: {detail}"
     },
     "projectBoq": {
       "importFailed": "Import failed",
@@ -2615,7 +2617,8 @@
       "clearAllConfirm": "Delete all BOQ lines? This cannot be undone.",
       "rowDeleted": "Row deleted",
       "allCleared": "All lines deleted",
-      "deleteFailed": "Delete failed"
+      "deleteFailed": "Delete failed",
+      "confirmImport": "Import {lines} lines and {bills} bills?"
     },
     "takeoff": {
       "openTool": "Drawing takeoff",

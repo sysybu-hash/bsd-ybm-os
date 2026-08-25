@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 import {
+  E2E_LOGISTICS_EMAIL,
   dismissWorkspaceOverlays,
   primeCookieConsent,
+  signInAsSpecUser,
   tryCredentialsSignIn,
   widgetShell,
   workspaceUrl,
@@ -18,7 +20,7 @@ test.describe("logistics hub", () => {
     const origin = baseURL ?? "http://localhost:3001";
     await page.context().addCookies([{ name: "bsd-locale", value: "he", url: origin }]);
     await primeCookieConsent(page);
-    const signed = await tryCredentialsSignIn(page);
+    const signed = await signInAsSpecUser(page, E2E_LOGISTICS_EMAIL);
     if (!signed) test.skip(true, "E2E credentials not configured");
     // A logisticsHub window left open (minimized or otherwise) by another spec
     // sharing this seeded account can make widgetShell()'s `.last()` resolve to

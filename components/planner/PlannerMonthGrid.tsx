@@ -4,7 +4,18 @@ import { Bell, CheckSquare, Users } from "lucide-react";
 import type { PlannerKind } from "@/lib/planner/meta";
 import { dayKey, sameDay, type PlannerEvent } from "./types";
 
-const WEEKDAYS_HE = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
+/**
+ * Weekday initials from Intl rather than a hard-coded Hebrew array — the grid
+ * already receives `locale`, and weekday names are exactly what Intl exists to
+ * localise. A translation table would have to be kept in step with every locale
+ * the app adds; this cannot drift.
+ *
+ * 2026-01-04 is a Sunday, matching the grid's Sunday-first column order.
+ */
+function weekdayInitials(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2026, 0, 4 + i))));
+}
 
 type Props = {
   cells: Date[];
@@ -28,15 +39,16 @@ export function PlannerMonthGrid({
   selectedDay,
   eventsByDay,
   onSelectDay,
+  locale,
 }: Props) {
   const today = new Date();
 
   return (
     <div className="border border-[color:var(--classic-rule,#e7e5e4)]">
       <div className="grid grid-cols-7 border-b border-[color:var(--classic-rule,#e7e5e4)]">
-        {WEEKDAYS_HE.map((label) => (
+        {weekdayInitials(locale).map((label, i) => (
           <div
-            key={label}
+            key={i}
             className="px-1 py-2 text-center text-[11px] font-bold text-[color:var(--classic-muted,#78716c)]"
           >
             {label}

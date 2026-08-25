@@ -85,7 +85,7 @@ export function useBoqPanelState(apiBase: string) {
       toast.error(prev.error ?? t("workspaceWidgets.projectBoq.importFailed"));
       return;
     }
-    if (!confirm(`לייבא ${prev.lineCount} שורות ו-${prev.billCount} חשבונות?`)) return;
+    if (!confirm(t("workspaceWidgets.projectBoq.confirmImport", { lines: String(prev.lineCount), bills: String(prev.billCount) }))) return;
     fd.append("confirm", "true");
     const res = await fetch(`${apiBase}/import/excel`, {
       method: "POST",
