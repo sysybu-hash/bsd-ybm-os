@@ -5,16 +5,8 @@ import { Check, Send } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import { OsButton } from "@/components/os/ui";
-import type { ProgressBillPortalRow } from "@/lib/validation/schemas/progress-bill-portal";
-
-type ProjectOption = { id: string; name: string };
-type BoqOption = {
-  id: string;
-  description: string;
-  quantity: number | null;
-  unitPrice: number | null;
-  lineTotal: number;
-};
+import type { BoqOption, ProgressBillPortalRow, ProjectOption } from "./types";
+import { useProgressBillPortalData } from "./useProgressBillPortalData";
 
 const STATUS_LABEL_KEYS: Record<ProgressBillPortalRow["status"], string> = {
   DRAFT: "workspaceWidgets.progressBills.status.draft",
@@ -25,81 +17,28 @@ const STATUS_LABEL_KEYS: Record<ProgressBillPortalRow["status"], string> = {
 
 export default function ProgressBillPortalPanel() {
   const { t, locale } = useI18n();
-  const [bills, setBills] = useState<ProgressBillPortalRow[]>([]);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [boqLines, setBoqLines] = useState<BoqOption[]>([]);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const [projectId, setProjectId] = useState("");
   const [contractorName, setContractorName] = useState("");
   const [amount, setAmount] = useState("");
   const [completionPercent, setCompletionPercent] = useState("");
 
   const numberLocale = locale === "he" ? "he-IL" : locale === "ru" ? "ru-RU" : "en-GB";
 
-  const loadBills = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/progress-bills", { credentials: "include" });
-      const data = (await res.json()) as { bills?: ProgressBillPortalRow[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? t("workspaceWidgets.progressBills.loadError"));
-      setBills(Array.isArray(data.bills) ? data.bills : []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("workspaceWidgets.progressBills.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  const loadProjects = useCallback(async () => {
-    try {
-      const res = await fetch("/api/projects", { credentials: "include" });
-      const data = (await res.json()) as { projects?: ProjectOption[] };
-      const list = Array.isArray(data.projects) ? data.projects : [];
-      setProjects(list);
-      if (!projectId && list[0]) setProjectId(list[0].id);
-    } catch {
-      setProjects([]);
-    }
-  }, [projectId]);
-
-  const loadBoq = useCallback(async (pid: string) => {
-    if (!pid) {
-      setBoqLines([]);
-      setSelected({});
-      return;
-    }
-    try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/boq`, {
-        credentials: "include",
-      });
-      const data = (await res.json()) as { lines?: BoqOption[] };
-      const lines = Array.isArray(data.lines) ? data.lines : [];
-      setBoqLines(lines);
-      const next: Record<string, string> = {};
-      for (const l of lines) {
-        if (l.quantity != null) next[l.id] = String(l.quantity);
-      }
-      setSelected(next);
-    } catch {
-      setBoqLines([]);
-      setSelected({});
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadBills();
-    void loadProjects();
-  }, [loadBills, loadProjects]);
-
-  useEffect(() => {
-    void loadBoq(projectId);
-  }, [projectId, loadBoq]);
+  const {
+    bills,
+    projects,
+    boqLines,
+    selected,
+    setSelected,
+    projectId,
+    setProjectId,
+    loading,
+    error,
+    setError,
+    reloadBills,
+  } = useProgressBillPortalData({ t });
 
   const selectedLines = useMemo(
     () =>
@@ -161,7 +100,7 @@ export default function ProgressBillPortalPanel() {
       setContractorName("");
       setAmount("");
       setCompletionPercent("");
-      await loadBills();
+      await reloadBills();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("workspaceWidgets.progressBills.createError"));
     } finally {
@@ -181,7 +120,7 @@ export default function ProgressBillPortalPanel() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? t("workspaceWidgets.progressBills.actionError"));
-      await loadBills();
+      await reloadBills();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("workspaceWidgets.progressBills.actionError"));
     } finally {
