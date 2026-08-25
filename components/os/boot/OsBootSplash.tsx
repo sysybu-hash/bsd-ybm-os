@@ -78,7 +78,11 @@ export default function OsBootSplash({
             height={64}
             className="object-contain"
             priority
-            unoptimized
+            // No `unoptimized`: it bypassed /_next/image and pulled the full
+            // 333KB source PNG to paint a 64px icon — the single largest
+            // transfer on the authenticated workspace, ahead of the main JS
+            // chunk, and preloaded so it competed for bandwidth during boot.
+            sizes="64px"
           />
         </div>
 

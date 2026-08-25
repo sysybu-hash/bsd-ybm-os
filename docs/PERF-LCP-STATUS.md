@@ -147,3 +147,64 @@ npm run lighthouse:matrix:prod -- --tier=public --strategy=mobile
 
 הפלט נשמר ל-`reports/pagespeed/<timestamp>-summary.json` עם `failedAudits`
 לכל דף.
+
+---
+
+## שכבת auth — נמדדה לראשונה (2026-08-25)
+
+`node scripts/lighthouse-auth-setup.mjs --base=https://www.bsd-ybm.co.il` ואז
+`--tier=auth`. אימתתי שההתחברות אמיתית: ה-state מכיל
+`__Secure-next-auth.session-token`.
+
+| דף | perf | LCP |
+|---|---|---|
+| `/app/builder` | **46** | 7954ms |
+| `/?w=helpCenter` | 57 | 8838ms |
+| `/workspace` | 58 | 8219ms |
+| `/?w=documentsHub` | 58 | 8368ms |
+| `/?w=settings` | 60 | 8039ms |
+| `/?w=crmTable` | 61 | 8037ms |
+| `/app/admin` | 62 | 7833ms |
+| `/app/settings/profession` | 65 | 7899ms |
+
+**LCP של ~8 שניות בכל שמונת הדפים** — מול 1.6-1.9 בדפים הציבוריים אחרי התיקון.
+עקבי לחלוטין, לא רעש.
+
+### פגם שנמצא ותוקן — 333KB ללוגו של 64px
+
+פירוק התעבורה של `/workspace`:
+
+```
+   333KB  /logos/logo-night-transparent.png      ← הגדול ביותר
+   238KB  /_next/static/…/016zw2840xen3.js
+    84KB  /workspace
+   ───────
+  1419KB  ב-101 בקשות
+```
+
+**התמונה הגדולה מצ'אנק ה-JS הראשי — והיא לוגו.** המקור:
+
+```tsx
+// components/os/boot/OsBootSplash.tsx
+<Image src={logoSrc} width={64} height={64} priority unoptimized />
+```
+
+`unoptimized` עוקף את `/_next/image` לגמרי, ולכן ה-PNG המלא (340,473 בתים)
+הורד כדי לצבוע **64×64 פיקסלים**. `priority` הוסיף preload, כך שזה התחרה על
+רוחב פס בדיוק בתחילת האתחול.
+
+הוסר. מדידה מקומית של אותו נכס:
+
+| | בתים |
+|---|---|
+| מקור גולמי | 340,473 |
+| דרך `/_next/image` ב-`w=128` | **4,445** |
+
+**ירידה של 98.7%.** אימתתי שאין יותר `src="/logos/…"` גולמי ב-HTML של הקליפה.
+
+### מה שעדיין פתוח בשכבת auth
+
+פירוק ה-LCP הראה `Time to first byte: 2430ms` למשאב ה-LCP (לא לדף — הדף עצמו
+ב-120ms). 1419KB ב-101 בקשות הן הרבה לאתחול. הסרת ה-333KB מסירה 23% מהמשקל,
+**אבל היא לא תביא את ה-LCP מ-8 שניות ל-2.** נדרשת מדידה חוזרת אחרי דיפלוי כדי
+לדעת כמה היא כן שווה, ואז חקירה נפרדת של שאר המשקל.
