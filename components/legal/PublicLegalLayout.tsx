@@ -24,7 +24,10 @@ export default function PublicLegalLayout({ kind, locale }: PublicLegalLayoutPro
   return (
     <div className="min-h-dvh bg-[color:var(--background-main)] text-[color:var(--foreground-main)]" dir={dir}>
       <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 border-b border-[color:var(--border-main)] px-4 py-4">
-        <BrandHomeLink size="sm" />
+{/* Header lockup — above the fold by definition, so never lazy. On pages
+            whose largest painted element is this logo it was the LCP and lazy
+            loading pushed LCP past 4s. */}
+        <BrandHomeLink size="sm" loading="eager" />
         <LocaleSwitcher compact />
       </header>
       <nav className="mx-auto flex max-w-3xl gap-2 px-4 py-3 text-sm font-bold">
