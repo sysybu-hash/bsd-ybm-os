@@ -4,7 +4,12 @@ import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { subscribeAnalyticsConsent } from "@/lib/analytics/posthog-consent";
-import { capturePageview, initPostHog, posthog } from "@/lib/analytics/posthog-client";
+import {
+  capturePageview,
+  initPostHog,
+  posthog,
+  runAfterLoadWhenIdle,
+} from "@/lib/analytics/posthog-client";
 import { getPostHogProjectKey } from "@/lib/analytics/posthog-env";
 
 const PostHogProvider = dynamic(
@@ -37,15 +42,8 @@ export function CSPostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => subscribeAnalyticsConsent(setAnalyticsAllowed), []);
 
   useEffect(() => {
-    if (!analyticsAllowed) return;
-    const run = () => initPostHog({ skipConsentCheck: true });
-    const w = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
-    if (typeof w.requestIdleCallback === "function") {
-      const id = w.requestIdleCallback(run, { timeout: 8000 });
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const timer = globalThis.setTimeout(run, 2000);
-    return () => globalThis.clearTimeout(timer);
+    if (!analyticsAllowed) return undefined;
+    return runAfterLoadWhenIdle(() => initPostHog({ skipConsentCheck: true }));
   }, [analyticsAllowed]);
 
   if (!getPostHogProjectKey() || !analyticsAllowed) {
