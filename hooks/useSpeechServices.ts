@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { localeToSpeechLang } from "@/lib/i18n/speech-locale";
 import { createLogger } from "@/lib/logger";
+import { useLatestRef } from "@/hooks/use-latest-ref";
+import { useClientFlag } from "@/hooks/use-client-flag";
 
 const log = createLogger("speech-services");
 
@@ -24,6 +26,12 @@ interface SpeechRecognitionInstance extends EventTarget {
   onend: (() => void) | null;
 }
 
+/** No SpeechRecognition constructor on this browser. */
+function speechRecognitionUnsupported(): boolean {
+  const win = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+  return !win.SpeechRecognition && !win.webkitSpeechRecognition;
+}
+
 export function useSpeechServices(
   onTranscriptComplete: (transcript: string) => void,
 ) {
@@ -32,11 +40,16 @@ export function useSpeechServices(
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  /**
+   * Whether the browser can do speech recognition at all is a fact about the
+   * client, readable during render — not something an effect has to discover
+   * and then write into state. The effect below only wires up the recogniser.
+   */
+  const unsupported = useClientFlag(speechRecognitionUnsupported);
+  const [runtimeError, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const onCompleteRef = useRef(onTranscriptComplete);
-  onCompleteRef.current = onTranscriptComplete;
+  const onCompleteRef = useLatestRef(onTranscriptComplete);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -46,10 +59,9 @@ export function useSpeechServices(
       webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
     };
     const Ctor = win.SpeechRecognition || win.webkitSpeechRecognition;
-    if (!Ctor) {
-      setError(t("speech.unsupported"));
-      return;
-    }
+    // The unsupported message is rendered from `speechUnsupported` below rather
+    // than written here — see the note on that hook call.
+    if (!Ctor) return;
 
     const recognition = new Ctor();
     recognition.continuous = false;
@@ -93,7 +105,7 @@ export function useSpeechServices(
       }
       recognitionRef.current = null;
     };
-  }, [speechLang, t]);
+  }, [speechLang, t, onCompleteRef]);
 
   const startListening = useCallback(() => {
     setError(null);
@@ -136,7 +148,7 @@ export function useSpeechServices(
     isListening,
     isSpeaking,
     transcript,
-    error,
+    error: unsupported ? t("speech.unsupported") : runtimeError,
     startListening,
     stopListening,
     speak,

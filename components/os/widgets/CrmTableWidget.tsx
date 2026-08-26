@@ -20,16 +20,35 @@ export type { OpenWorkspaceWidgetFn } from "./crm-table/types";
 
 export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetProps) {
   const { dir, t } = useI18n();
-  const s = useCrmTable({ openWorkspaceWidget, t });
+  /**
+   * Destructured rather than kept as one `s` object.
+   *
+   * `useCrmTable` returns `fileInputRef` alongside its state, and the React
+   * Compiler infers the whole returned object as ref-like because of it — so
+   * every `loading` / `clients` read counted as accessing a ref during
+   * render, and `react-hooks/refs` reported 43 violations in this one file.
+   * Naming the values individually leaves exactly one ref, used the way a ref
+   * is meant to be used: handed to `ref=` and read inside an event handler.
+   */
+  const { allClients, allTags, clients, confirmDeleteClient, creatingProject, crmSyncStatus,
+    deleteTargetId, fetchClients, fetchGooglePreview, fileInputRef,
+    handleCreateProjectForClient, handleExportCsv, handleGoogleImported, handleImportCSV,
+    handleQuickStatusChange, handleUpdateClient, hasMore, isAddingClient, isEditing,
+    isExporting, isImporting, loadError, loading, loadingMore, openProjectHub, projectOptions,
+    runGoogleImport, saveClientProject, savingProject, searchQuery, selectedClient,
+    semanticFallback, semanticMode, setDeleteTargetId, setIsAddingClient, setIsEditing,
+    setSearchQuery, setSelectedClient, setSemanticMode, setShowGoogleImport, setStatusFilter,
+    setTagFilter, showGoogleImport, statusFilter, tagFilter,
+  } = useCrmTable({ openWorkspaceWidget, t });
 
-  if (s.loading && s.allClients.length === 0)
+  if (loading && allClients.length === 0)
     return <WidgetState variant="loading" message={t("workspaceWidgets.crmTable.loading")} />;
-  if (s.loadError && s.allClients.length === 0)
+  if (loadError && allClients.length === 0)
     return (
       <WidgetState
         variant="error"
-        message={s.loadError}
-        onRetry={() => void s.fetchClients()}
+        message={loadError}
+        onRetry={() => void fetchClients()}
         retryLabel={t("workspaceWidgets.crmTable.retry")}
       />
     );
@@ -41,12 +60,12 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
       dir={dir}
     >
       <OsConfirmDialog
-        open={s.deleteTargetId !== null}
+        open={deleteTargetId !== null}
         title={t("workspaceWidgets.crmTable.deleteTitle")}
         message={t("workspaceWidgets.crmTable.deleteMessage")}
         destructive
-        onConfirm={() => void s.confirmDeleteClient()}
-        onCancel={() => s.setDeleteTargetId(null)}
+        onConfirm={() => void confirmDeleteClient()}
+        onCancel={() => setDeleteTargetId(null)}
       />
 
       <div className="p-4 md:p-6 border-b border-[color:var(--border-main)] bg-[color:var(--background-main)]/50 flex flex-col gap-4">
@@ -63,41 +82,41 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <input type="file" accept=".csv" className="hidden" ref={s.fileInputRef} onChange={s.handleImportCSV} />
+            <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImportCSV} />
             <OsIconButton
               label={t("common.refresh")}
-              onClick={() => void s.fetchClients()}
-              disabled={s.loading}
+              onClick={() => void fetchClients()}
+              disabled={loading}
             >
-              <RefreshCw size={16} className={s.loading ? "animate-spin" : ""} aria-hidden />
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} aria-hidden />
             </OsIconButton>
             <OsButton
               variant="secondary"
-              onClick={() => s.fileInputRef.current?.click()}
-              disabled={s.isImporting}
-              icon={s.isImporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Upload size={16} aria-hidden />}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              icon={isImporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Upload size={16} aria-hidden />}
             >
               {t("workspaceWidgets.crmTable.importCsv")}
             </OsButton>
             <OsButton
               variant="secondary"
-              onClick={() => s.setShowGoogleImport(true)}
-              disabled={s.isImporting}
+              onClick={() => setShowGoogleImport(true)}
+              disabled={isImporting}
               icon={<Download size={16} aria-hidden />}
             >
               {t("workspaceWidgets.crmTable.importGoogle")}
             </OsButton>
             <OsButton
               variant="secondary"
-              onClick={() => void s.handleExportCsv()}
-              disabled={s.isExporting}
-              icon={s.isExporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Download size={16} aria-hidden />}
+              onClick={() => void handleExportCsv()}
+              disabled={isExporting}
+              icon={isExporting ? <Hash className="animate-spin" size={16} aria-hidden /> : <Download size={16} aria-hidden />}
             >
               {t("workspaceWidgets.crmTable.exportCsv")}
             </OsButton>
             <OsButton
               variant="primary"
-              onClick={() => s.setIsAddingClient(true)}
+              onClick={() => setIsAddingClient(true)}
               icon={<UserPlus size={16} aria-hidden />}
             >
               {t("workspaceWidgets.crmTable.newClient")}
@@ -107,29 +126,29 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
 
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <OsSearchInput
-            value={s.searchQuery}
-            onChange={s.setSearchQuery}
+            value={searchQuery}
+            onChange={setSearchQuery}
             label={t("workspaceWidgets.crmTable.searchPlaceholder")}
             className="flex-1 md:max-w-md"
           />
           <label className="flex items-center gap-2 text-xs font-bold text-[color:var(--foreground-muted)] cursor-pointer">
             <input
               type="checkbox"
-              checked={s.semanticMode}
-              onChange={(e) => s.setSemanticMode(e.target.checked)}
+              checked={semanticMode}
+              onChange={(e) => setSemanticMode(e.target.checked)}
               className="rounded border-[color:var(--border-main)]"
             />
             <Sparkles size={14} className="text-violet-500" aria-hidden />
             {t("workspaceWidgets.crmTable.semanticSearch")}
           </label>
-          {s.semanticFallback && s.semanticMode ? (
+          {semanticFallback && semanticMode ? (
             <span className="text-[10px] text-amber-600 dark:text-amber-400">
               {t("workspaceWidgets.crmTable.semanticFallback")}
             </span>
           ) : null}
           <select
-            value={s.statusFilter}
-            onChange={(e) => s.setStatusFilter(e.target.value as typeof s.statusFilter)}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
             className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-xs font-bold"
             aria-label={t("workspaceWidgets.crmTable.statusFilter")}
           >
@@ -141,13 +160,13 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
             ))}
           </select>
           <select
-            value={s.tagFilter}
-            onChange={(e) => s.setTagFilter(e.target.value)}
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
             className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-3 py-2 text-xs font-bold"
             aria-label={t("workspaceWidgets.crmTable.tagFilter")}
           >
             <option value="">{t("workspaceWidgets.crmTable.allTags")}</option>
-            {s.allTags.map((tag) => (
+            {allTags.map((tag) => (
               <option key={tag} value={tag}>
                 {tag}
               </option>
@@ -156,37 +175,37 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
         </div>
       </div>
 
-      {s.isAddingClient && (
-        <AddClientModal onClose={() => s.setIsAddingClient(false)} onCreated={() => void s.fetchClients()} t={t} />
+      {isAddingClient && (
+        <AddClientModal onClose={() => setIsAddingClient(false)} onCreated={() => void fetchClients()} t={t} />
       )}
-      {s.showGoogleImport && (
+      {showGoogleImport && (
         <GoogleImportModal
-          onClose={() => s.setShowGoogleImport(false)}
-          onImported={s.handleGoogleImported}
+          onClose={() => setShowGoogleImport(false)}
+          onImported={handleGoogleImported}
           t={t}
-          fetchPreview={s.fetchGooglePreview}
-          runImport={s.runGoogleImport}
+          fetchPreview={fetchGooglePreview}
+          runImport={runGoogleImport}
         />
       )}
-      {s.selectedClient && (
+      {selectedClient && (
         <ClientDetailModal
-          client={s.selectedClient}
-          isEditing={s.isEditing}
-          setIsEditing={s.setIsEditing}
-          onChange={s.setSelectedClient}
+          client={selectedClient}
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}
+          onChange={setSelectedClient}
           onClose={() => {
-            s.setSelectedClient(null);
-            s.setIsEditing(false);
+            setSelectedClient(null);
+            setIsEditing(false);
           }}
-          onSave={s.handleUpdateClient}
-          onQuickStatusChange={s.handleQuickStatusChange}
-          projectOptions={s.projectOptions}
-          savingProject={s.savingProject}
-          creatingProject={s.creatingProject}
-          crmSyncStatus={s.crmSyncStatus}
-          onSaveProject={s.saveClientProject}
-          onCreateProject={s.handleCreateProjectForClient}
-          onOpenProjectHub={() => s.openProjectHub()}
+          onSave={handleUpdateClient}
+          onQuickStatusChange={handleQuickStatusChange}
+          projectOptions={projectOptions}
+          savingProject={savingProject}
+          creatingProject={creatingProject}
+          crmSyncStatus={crmSyncStatus}
+          onSaveProject={saveClientProject}
+          onCreateProject={handleCreateProjectForClient}
+          onOpenProjectHub={() => openProjectHub()}
           openWorkspaceWidget={openWorkspaceWidget}
           t={t}
         />
@@ -194,21 +213,21 @@ export default function CrmTableWidget({ openWorkspaceWidget }: CrmTableWidgetPr
 
       <div data-widget-scroll-pane className="flex-1 min-h-0 min-w-0 overflow-auto custom-scrollbar relative">
         <CrmContactsTable
-          clients={s.clients}
-          loading={s.loading}
-          hasMore={s.hasMore}
-          loadingMore={s.loadingMore}
-          onSelect={(client) => s.setSelectedClient(client)}
+          clients={clients}
+          loading={loading}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onSelect={(client) => setSelectedClient(client)}
           onEdit={(client) => {
-            s.setSelectedClient(client);
-            s.setIsEditing(true);
+            setSelectedClient(client);
+            setIsEditing(true);
           }}
           onDelete={(id, e) => {
             e.stopPropagation();
-            s.setDeleteTargetId(id);
+            setDeleteTargetId(id);
           }}
-          onLoadMore={() => void s.fetchClients(true)}
-          onOpenProjectHub={(client) => s.openProjectHub(client)}
+          onLoadMore={() => void fetchClients(true)}
+          onOpenProjectHub={(client) => openProjectHub(client)}
           openWorkspaceWidget={openWorkspaceWidget}
           t={t}
         />
