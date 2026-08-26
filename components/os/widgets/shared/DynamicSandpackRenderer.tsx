@@ -136,17 +136,20 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
         />
       )}
       {!problem && !iframeReady && !showError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <Loader2 size={24} className="animate-spin text-gray-300" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--surface-card)]">
+          <Loader2 size={24} className="animate-spin text-[color:var(--foreground-muted)]" />
         </div>
       )}
       {showError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 p-6 text-center">
+        /* Chrome, not preview surface — it follows the workspace theme. The
+           iframe itself stays white because it renders user HTML that assumes
+           a white page. */
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color:var(--surface-card)]/95 p-6 text-center">
           <div className="text-4xl">⚠️</div>
-          <div className="text-base font-semibold text-gray-800">
+          <div className="text-base font-semibold text-[color:var(--foreground-main)]">
             {t("workspaceWidgets.sharedUi.invalidCode")}
           </div>
-          <div className="text-sm text-gray-500 max-w-md break-words" dir="ltr">
+          <div className="max-w-md break-words text-sm text-[color:var(--foreground-muted)]" dir="ltr">
             {runtimeError ?? t("workspaceWidgets.sharedUi.invalidCodeHint")}
           </div>
         </div>
