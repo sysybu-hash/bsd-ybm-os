@@ -35,7 +35,7 @@ export default function RouteErrorBoundary({ error, reset, route, homeHref = "/a
   return (
     <div
       dir={dir}
-      className="flex min-h-screen flex-col items-center justify-center bg-[#0a0c10] px-6 py-16 text-white"
+      className="flex min-h-screen flex-col items-center justify-center bg-[color:var(--background-main)] px-6 py-16 text-[color:var(--foreground-main)]"
     >
       <div className="flex w-full max-w-md flex-col gap-6 text-center">
         <div className="flex justify-center">
@@ -60,11 +60,11 @@ export default function RouteErrorBoundary({ error, reset, route, homeHref = "/a
 
         <div className="flex flex-col gap-2">
           <h1 className="text-xl font-bold">{t("siteErrors.workspaceErrorTitle")}</h1>
-          <p className="text-sm leading-relaxed text-white/50">
+          <p className="text-sm leading-relaxed text-[color:var(--foreground-muted)]">
             {t("siteErrors.workspaceErrorBody")}
           </p>
           {isDev && error?.message ? (
-            <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-white/[0.04] p-3 text-start text-xs text-red-300">
+            <pre className="mt-2 overflow-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 text-start text-xs text-red-300">
               {error.message}
             </pre>
           ) : null}
@@ -80,7 +80,7 @@ export default function RouteErrorBoundary({ error, reset, route, homeHref = "/a
           </button>
           <Link
             href={homeHref}
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-6 py-2.5 text-sm font-bold text-white/80 transition hover:bg-white/[0.07]"
+            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-6 py-2.5 text-sm font-bold text-[color:var(--foreground-main)] transition hover:bg-white/[0.07]"
           >
             {t("siteErrors.backToDashboard")}
           </Link>

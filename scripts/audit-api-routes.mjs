@@ -32,6 +32,20 @@ const ALLOWLIST_NO_WRAPPER = [
   // Public lead capture + email unsubscribe (rate-limited, no workspace session)
   "app/api/leads/route.ts",
   "app/api/unsubscribe/route.ts",
+  /**
+   * App Builder preview shell — a static HTML document, not a data endpoint.
+   *
+   * It reads nothing, writes nothing and takes no parameters: the response is a
+   * constant string of script tags plus a postMessage listener, and the user's
+   * code is handed to it by the parent page after load. There is no session to
+   * scope and nothing for withWorkspacesAuth to protect.
+   *
+   * It exists as a route at all because a srcdoc iframe inherits the parent's
+   * CSP, so the preview needs a document with CSP headers of its own — see the
+   * scoped policy in next.config.js. Middleware still requires a session to
+   * reach it, so this is not a public endpoint.
+   */
+  "app/api/app-builder/preview/route.ts",
 ];
 
 async function walk(dir, acc = []) {

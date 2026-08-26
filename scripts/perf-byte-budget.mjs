@@ -105,6 +105,24 @@ async function measure(context, route) {
 
   const scripts = seen.filter((r) => r.type === "script");
   const largest = scripts.reduce((m, r) => (r.size > m.size ? r : m), { size: 0, url: "" });
+
+  /**
+   * Third-party bytes are tracked separately because they are a different kind
+   * of risk, not just weight. The App Builder preview was pulling
+   * @babel/standalone from unpkg.com — 622KB, the largest asset on the whole
+   * site, and executable code from a host this project does not control. A
+   * total-bytes number alone would have shown a big page; it would not have
+   * shown that most of it came from somewhere else.
+   */
+  const thirdParty = seen.filter((r) => {
+    try {
+      return new URL(r.url).origin !== new URL(BASE).origin;
+    } catch {
+      return false;
+    }
+  });
+  const hosts = [...new Set(thirdParty.filter((r) => r.size > 0).map((r) => new URL(r.url).host))];
+
   await page.close();
 
   return {
@@ -112,6 +130,8 @@ async function measure(context, route) {
     totalKB: Math.round(seen.reduce((s, r) => s + r.size, 0) / 1024),
     scriptKB: Math.round(scripts.reduce((s, r) => s + r.size, 0) / 1024),
     largestScriptKB: Math.round(largest.size / 1024),
+    thirdPartyKB: Math.round(thirdParty.reduce((s, r) => s + r.size, 0) / 1024),
+    thirdPartyHosts: hosts.sort(),
   };
 }
 
@@ -135,7 +155,9 @@ for (const route of routes) {
     console.log(
       `  ${route.pathname.padEnd(34)} ${String(out.requests).padStart(3)} req  ` +
         `${String(out.totalKB).padStart(5)}KB total  ${String(out.scriptKB).padStart(5)}KB js  ` +
-        `${String(out.largestScriptKB).padStart(4)}KB largest`,
+        `${String(out.largestScriptKB).padStart(4)}KB largest  ` +
+        `${String(out.thirdPartyKB).padStart(4)}KB 3p` +
+        (out.thirdPartyHosts.length ? `  [${out.thirdPartyHosts.join(" ")}]` : ""),
     );
   }
 }
@@ -158,7 +180,15 @@ if (flag("check")) {
   for (const [pathname, now] of Object.entries(results)) {
     const before = base[pathname];
     if (!before || now.error || before.error) continue;
-    for (const key of ["totalKB", "scriptKB", "largestScriptKB"]) {
+    // A new third-party host is reported regardless of size: it is a change in
+    // who can run code on the page, which no byte threshold should absorb.
+    const newHosts = (now.thirdPartyHosts ?? []).filter(
+      (h) => !(before.thirdPartyHosts ?? []).includes(h),
+    );
+    if (newHosts.length > 0) {
+      regressions.push(`  ${pathname}  new third-party host(s): ${newHosts.join(", ")}`);
+    }
+    for (const key of ["totalKB", "scriptKB", "largestScriptKB", "thirdPartyKB"]) {
       const limit = before[key] * (1 + TOLERANCE);
       if (now[key] > limit) {
         regressions.push(

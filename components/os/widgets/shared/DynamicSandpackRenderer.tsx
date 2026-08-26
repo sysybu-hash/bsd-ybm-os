@@ -18,23 +18,21 @@ interface DynamicSandpackRendererProps {
  * are posted back via postMessage (source-checked) and shown as a clean card.
  */
 
-// Pinned CDN URLs — do not use floating @latest tags.
-const REACT_CDN = "https://unpkg.com/react@18.3.1/umd/react.production.min.js";
-const REACT_DOM_CDN = "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js";
-const BABEL_CDN = "https://unpkg.com/@babel/standalone@7.26.9/babel.min.js";
-const TAILWIND_CDN = "https://cdn.tailwindcss.com/3.4.17";
-
-const IFRAME_CSP = [
-  "default-src 'none'",
-  "script-src https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'unsafe-inline'",
-  "img-src data: blob:",
-  "font-src data:",
-  "connect-src 'none'",
-  "frame-src 'none'",
-  "base-uri 'none'",
-  "form-action 'none'",
-].join("; ");
+/**
+ * The preview runs in /api/app-builder/preview, not in a `srcdoc`.
+ *
+ * A `srcdoc` iframe inherits the parent page's CSP, and production runs with
+ * CSP_STRICT — no `'unsafe-eval'`, no cdn.tailwindcss.com. The preview's own
+ * `<meta>` CSP cannot widen that, so Babel could not compile and the live
+ * preview was broken in production while working in development. Verified on
+ * the live site: `new Function('return 1+1')` inside a `srcdoc` iframe threw
+ * EvalError even when that iframe's CSP granted `'unsafe-eval'`.
+ *
+ * A document loaded via `src` gets the CSP from its own response headers, so
+ * the widened policy stays scoped to that one route. The runtime URLs and their
+ * SRI hashes live there too.
+ */
+const PREVIEW_URL = "/api/app-builder/preview";
 
 /**
  * Minimal pre-check: only reject empty input. Real syntax/parse errors are
@@ -47,107 +45,79 @@ function findCodeProblem(code: string): string | null {
   return code.trim() ? null : "empty";
 }
 
-/** Prevent injected code from breaking out of the Babel script tag. */
-export function escapeEmbeddedScript(source: string): string {
-  return source.replace(/<\/script/gi, "<\\/script");
-}
 
-function buildSrcDoc(code: string): string {
-  // The user's code is embedded as a Babel <script type="text/babel">.
-  // Strip its import lines (React etc. are provided as globals) and rewrite the
-  // default export to a known name (__DEFAULT_EXPORT__) so we can mount it.
-  let userScript = code
-    // drop ESM import lines — React/hooks are available as globals below
-    .replace(/^\s*import\s.+?;?\s*$/gm, "");
+/**
+ * Normalise AI-generated source so the preview shell can mount it.
+ *
+ * Strips ESM imports (React and its hooks are provided as globals) and rewrites
+ * the default export to a known name. Unchanged from the previous version — only
+ * the HTML wrapper around it moved to the preview route.
+ */
+function prepareUserSource(code: string): string {
+  let userScript = code.replace(/^\s*import\s.+?;?\s*$/gm, "");
 
-  // Case A: `export default function Name(...) {...}` — keep the function
-  // signature intact, drop only the `export default ` prefix, register by name.
+  // Case A: `export default function Name(...) {...}` — keep the signature,
+  // drop only the `export default ` prefix, register by name.
   const namedFn = userScript.match(/export\s+default\s+function\s+([A-Za-z0-9_]+)/);
   if (namedFn?.[1]) {
     const name = namedFn[1];
     userScript = userScript.replace(/export\s+default\s+function\s+/, "function ");
     userScript += `\nvar __DEFAULT_EXPORT__ = ${name};`;
   } else {
-    // Case B: `export default <expr>` (arrow, identifier, anonymous fn, etc.)
+    // Case B: `export default <expr>` (arrow, identifier, anonymous fn, ...)
     userScript = userScript.replace(/export\s+default\s+/, "var __DEFAULT_EXPORT__ = ");
   }
 
-  userScript = escapeEmbeddedScript(userScript);
-
-  return `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="${IFRAME_CSP}" />
-    <script src="${TAILWIND_CDN}"></script>
-    <script src="${REACT_CDN}" crossorigin></script>
-    <script src="${REACT_DOM_CDN}" crossorigin></script>
-    <script src="${BABEL_CDN}"></script>
-    <style>
-      html, body { margin: 0; min-height: 100%; height: auto; }
-      #root { min-height: 100%; }
-      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: auto; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>
-      window.addEventListener("error", function (e) {
-        parent.postMessage({ __dynRender: true, error: (e.error && e.error.message) || e.message }, "*");
-      });
-      window.addEventListener("unhandledrejection", function (e) {
-        parent.postMessage({ __dynRender: true, error: String(e.reason) }, "*");
-      });
-    </script>
-    <script type="text/babel" data-presets="react,typescript">
-      const { useState, useEffect, useRef, useMemo, useCallback, useReducer, useContext, Fragment } = React;
-      try {
-        ${userScript}
-
-        if (typeof __DEFAULT_EXPORT__ === "undefined") {
-          throw new Error(t("workspaceWidgets.appBuilder.noDefaultExport"));
-        }
-        const root = ReactDOM.createRoot(document.getElementById("root"));
-        root.render(React.createElement(__DEFAULT_EXPORT__));
-      } catch (err) {
-        parent.postMessage({ __dynRender: true, error: (err && err.message) || String(err) }, "*");
-      }
-    </script>
-  </body>
-</html>`;
+  return userScript;
 }
 
 export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpackRendererProps) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
 
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const problem = useMemo(() => findCodeProblem(code), [code]);
-  const srcDoc = useMemo(() => (problem ? "" : buildSrcDoc(code)), [code, problem]);
+  const source = useMemo(() => (problem ? "" : prepareUserSource(code)), [code, problem]);
 
-  // A new document invalidates the previous run's error and readiness. Cleared
-  // during render so a stale error never paints over the new preview.
-  const [lastSrcDoc, setLastSrcDoc] = useState(srcDoc);
-  if (srcDoc !== lastSrcDoc) {
-    setLastSrcDoc(srcDoc);
+  // New source invalidates the previous run's error. Cleared during render so a
+  // stale error never paints over the new preview.
+  const [lastSource, setLastSource] = useState(source);
+  if (source !== lastSource) {
+    setLastSource(source);
     setRuntimeError(null);
-    setIframeReady(false);
   }
+
+  const noDefaultExport = t("workspaceWidgets.appBuilder.noDefaultExport");
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (e.source !== iframeRef.current?.contentWindow) return;
-      const d = e.data as { __dynRender?: boolean; error?: string } | null;
-      if (d && typeof d === "object" && d.__dynRender && d.error) {
+      const d = e.data as { __dynRender?: boolean; error?: string; ready?: boolean } | null;
+      if (!d || typeof d !== "object" || !d.__dynRender) return;
+      if (d.error) {
         setRuntimeError(String(d.error));
+        return;
       }
+      if (d.ready) setIframeReady(true);
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [srcDoc]);
+  }, []);
+
+  /**
+   * Hand the source to the shell once it reports ready, and again whenever the
+   * source changes. The iframe is never reloaded for a new version — the 3MB of
+   * Babel is downloaded once per session rather than once per regeneration.
+   */
+  useEffect(() => {
+    if (!iframeReady || !source) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      { __dynRenderCode: source, dir, noDefaultExportMessage: noDefaultExport },
+      "*",
+    );
+  }, [iframeReady, source, dir, noDefaultExport]);
 
   const showError = problem != null || runtimeError != null;
 
@@ -161,23 +131,25 @@ export function DynamicSandpackRenderer({ code, className = "" }: DynamicSandpac
           title="Dynamic Preview"
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
-          srcDoc={srcDoc}
-          onLoad={() => setIframeReady(true)}
+          src={PREVIEW_URL}
           className={`w-full h-full border-0 bg-white transition-opacity duration-200 ${iframeReady ? "opacity-100" : "opacity-0"}`}
         />
       )}
       {!problem && !iframeReady && !showError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <Loader2 size={24} className="animate-spin text-gray-300" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--surface-card)]">
+          <Loader2 size={24} className="animate-spin text-[color:var(--foreground-muted)]" />
         </div>
       )}
       {showError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 p-6 text-center">
+        /* Chrome, not preview surface — it follows the workspace theme. The
+           iframe itself stays white because it renders user HTML that assumes
+           a white page. */
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color:var(--surface-card)]/95 p-6 text-center">
           <div className="text-4xl">⚠️</div>
-          <div className="text-base font-semibold text-gray-800">
+          <div className="text-base font-semibold text-[color:var(--foreground-main)]">
             {t("workspaceWidgets.sharedUi.invalidCode")}
           </div>
-          <div className="text-sm text-gray-500 max-w-md break-words" dir="ltr">
+          <div className="max-w-md break-words text-sm text-[color:var(--foreground-muted)]" dir="ltr">
             {runtimeError ?? t("workspaceWidgets.sharedUi.invalidCodeHint")}
           </div>
         </div>

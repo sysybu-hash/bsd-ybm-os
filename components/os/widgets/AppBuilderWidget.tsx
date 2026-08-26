@@ -11,7 +11,7 @@ import { PreviewToolbar } from "@/components/os/widgets/app-builder/PreviewToolb
 import { SavedAppsPanel } from "@/components/os/widgets/app-builder/SavedAppsPanel";
 import { SaveAppForm } from "@/components/os/widgets/app-builder/SaveAppForm";
 import AppBuilderAssistantPanel from "@/components/os/widgets/app-builder/AppBuilderAssistantPanel";
-import { buildSandpackPlaceholder } from "@/components/os/widgets/app-builder/app-builder-helpers";
+import { AppBuilderPreviewPlaceholder } from "@/components/os/widgets/app-builder/AppBuilderPreviewPlaceholder";
 import { useAppBuilder } from "@/components/os/widgets/app-builder/useAppBuilder";
 
 const DynamicSandpackRenderer = dynamic(
@@ -41,10 +41,6 @@ export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWi
     handleShareNow, handleLoadSaved, handleDeleteSaved, handleSaveSchema, formatDate,
   } = s;
 
-  const placeholderCode = useMemo(
-    () => buildSandpackPlaceholder(t(`${prefix}.previewWindowTitle`), t(`${prefix}.emptyPreview`)),
-    [prefix, t],
-  );
 
   const previewTitle =
     appName.trim() ||
@@ -147,9 +143,9 @@ export default function AppBuilderWidget({ embeddedInHub = false }: AppBuilderWi
           )}
         </div>
       ) : (
-        <DynamicSandpackRenderer
-          key="sandbox-placeholder"
-          code={placeholderCode}
+        <AppBuilderPreviewPlaceholder
+          title={t(`${prefix}.previewWindowTitle`)}
+          subtitle={t(`${prefix}.emptyPreview`)}
           className="absolute inset-2 sm:inset-3"
         />
       )}
