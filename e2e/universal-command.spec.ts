@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   E2E_COMMAND_EMAIL,
   dismissCookieBannerIfVisible,
+  clickReportingOverlap,
   dismissWorkspaceOverlays,
   primeCookieConsent,
   signInAsSpecUser,
@@ -105,7 +106,10 @@ test.describe("universal command center", () => {
 
   test("document card opens the documents hub", async ({ page }) => {
     const shell = await openCommandCenter(page);
-    await shell.getByRole("button", { name: /מסמך|invoice|document/i }).click();
+    await clickReportingOverlap(
+      shell.getByRole("button", { name: /מסמך|invoice|document/i }),
+      "command centre document card",
+    );
 
     await expect(widgetShell(page, "documentsHub")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);
@@ -113,7 +117,10 @@ test.describe("universal command center", () => {
 
   test("scan card opens the documents hub scanner", async ({ page }) => {
     const shell = await openCommandCenter(page);
-    await shell.getByRole("button", { name: /סריקת|scan/i }).click();
+    await clickReportingOverlap(
+      shell.getByRole("button", { name: /סריקת|scan/i }),
+      "command centre scan card",
+    );
 
     await expect(widgetShell(page, "documentsHub")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i })).toHaveCount(0);

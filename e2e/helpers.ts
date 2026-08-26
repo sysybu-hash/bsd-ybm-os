@@ -745,6 +745,63 @@ async function dismissPwaInstallBanner(page: Page): Promise<void> {
 }
 
 /** סוגר מודלים שחוסמים את ה-workspace אחרי כניסה ראשונה (Passkey, אשף onboarding). */
+/**
+ * Click, and if something is covering the target, say what.
+ *
+ * Playwright reports an intercepted click as "subtree intercepts pointer
+ * events" and names the element it wanted to click — never the element actually
+ * on top. That is the whole difficulty with the `universal-command` flake: the
+ * failure text is identical whether the cause is a stale window, a banner, an
+ * animating overlay, or a second copy of the same widget.
+ *
+ * Two hypotheses have already been tested and ruled out, so do not spend time
+ * on them again:
+ *
+ *   - **Account sharing.** `signInAsSpecUser` falls back to the shared owner if
+ *     the spec's own account fails, which would restore the cross-spec layout
+ *     interference these accounts exist to prevent. Instrumented across eight
+ *     runs inside a full parallel suite, the session was always the spec
+ *     account.
+ *   - **Stacked shells.** The retry loop in `openCommandCenter` dispatches
+ *     another popstate if the first render is slow, which could mount a second
+ *     widget window. Never observed: one shell every time, first attempt.
+ *
+ * So the next failure needs evidence rather than another guess. On failure this
+ * reports the element on top at the target's centre, how many widget shells are
+ * mounted, and the target's own box — then rethrows the original error.
+ */
+export async function clickReportingOverlap(target: Locator, label: string): Promise<void> {
+  try {
+    await target.click({ timeout: 15_000 });
+  } catch (err) {
+    const diagnosis = await target
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementsFromPoint(
+          r.left + r.width / 2,
+          r.top + r.height / 2,
+        )[0] as HTMLElement | undefined;
+        return {
+          blockedBy:
+            top && top !== el && !el.contains(top)
+              ? `<${top.tagName.toLowerCase()} class="${String(top.className).slice(0, 120)}">`
+              : "nothing (transient, or the target moved)",
+          widgetShells: document.querySelectorAll("[data-widget-shell]").length,
+          targetBox: `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.left)},${Math.round(r.top)}`,
+        };
+      })
+      .catch(() => null);
+
+    console.error(
+      `[e2e] click on "${label}" was blocked. ` +
+        (diagnosis
+          ? `on top: ${diagnosis.blockedBy}; widget shells mounted: ${diagnosis.widgetShells}; target: ${diagnosis.targetBox}`
+          : "target detached before it could be inspected"),
+    );
+    throw err;
+  }
+}
+
 export async function dismissWorkspaceOverlays(page: Page) {
   for (let pass = 0; pass < 3; pass++) {
     // Prevent Launcher v2 migration banner from covering quick-grid / hub chrome in E2E.
