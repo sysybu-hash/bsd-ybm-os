@@ -36,6 +36,11 @@ const PUBLIC_ALLOWLIST = [
   // Marketing demo — per-visitor cookie quota via checkRateLimit (not IP applyRateLimit)
   "app/api/marketing/demo-scan/route.ts",
   "app/api/marketing/assistant/gemini-live/session/route.ts",
+  // App Builder preview shell — a constant HTML string with no parameters and no
+  // data access, and still behind the session middleware. There is no work to
+  // throttle: rate-limiting it would add a Redis round trip per request to serve
+  // a cacheable static document.
+  "app/api/app-builder/preview/route.ts",
 ];
 
 /**
