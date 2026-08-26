@@ -92,11 +92,40 @@ const nextConfig = {
       { source: "/screenshots/:path*", headers: [{ key: "Cache-Control", value: longCache }] },
       { source: "/fonts/:path*", headers: [{ key: "Cache-Control", value: longCache }] },
     ];
+    /**
+     * The App Builder preview document needs 'unsafe-eval' (@babel/standalone
+     * compiles the user's JSX in the browser) and the Tailwind CDN. Under
+     * CSP_STRICT the site policy grants neither, and a header set by the route
+     * handler does not survive: entries here are applied afterwards and win on
+     * a duplicate key, which is why an earlier attempt to scope this from inside
+     * the route silently kept the global policy.
+     *
+     * Declaring it here, after the catch-all, is what actually overrides it —
+     * and it stays scoped to this one path, so the rest of the site keeps the
+     * strict policy. `connect-src 'none'` is the important line: the preview
+     * runs AI-generated code, and that is what stops it calling home.
+     */
+    const previewCsp = [
+      "default-src 'none'",
+      "script-src https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'unsafe-inline'",
+      "img-src data: blob:",
+      "font-src data:",
+      "connect-src 'none'",
+      "frame-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+    ].join("; ");
+
     return [
       ...assetCache,
       {
         source: "/:path*",
         headers: security,
+      },
+      {
+        source: "/api/app-builder/preview",
+        headers: [{ key: "Content-Security-Policy", value: previewCsp }],
       },
     ];
   },
