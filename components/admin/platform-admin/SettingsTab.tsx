@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   AlertTriangle,
   Loader2,
@@ -88,15 +88,22 @@ export function SettingsTab({
 
   const maintenance = platformConfig.maintenanceMode;
 
-  // Dirty tracking: snapshot on mount, re-snapshot once a save finishes.
+  /**
+   * Dirty tracking: snapshot on mount, re-snapshot once a save finishes.
+   *
+   * The snapshot is state, not a ref. `isDirty` decides whether the unsaved-
+   * changes banner renders, and a ref written from an effect does not trigger a
+   * render — so the banner could survive a save until something unrelated
+   * re-rendered the tab. Adjusting during render also retires the effect.
+   */
   const serialized = JSON.stringify(platformConfig);
-  const savedSnapshot = useRef(serialized);
-  const wasSaving = useRef(savingSettings);
-  useEffect(() => {
-    if (wasSaving.current && !savingSettings) savedSnapshot.current = JSON.stringify(platformConfig);
-    wasSaving.current = savingSettings;
-  }, [savingSettings, platformConfig]);
-  const isDirty = serialized !== savedSnapshot.current;
+  const [savedSnapshot, setSavedSnapshot] = useState(serialized);
+  const [wasSaving, setWasSaving] = useState(savingSettings);
+  if (savingSettings !== wasSaving) {
+    setWasSaving(savingSettings);
+    if (wasSaving && !savingSettings) setSavedSnapshot(serialized);
+  }
+  const isDirty = serialized !== savedSnapshot;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-4" dir="auto">

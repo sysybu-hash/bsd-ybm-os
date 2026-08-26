@@ -21,22 +21,23 @@ module.exports = [
   ...nextCoreWebVitals,
   {
     /**
-     * The last React Compiler rule still switched off. `purity`,
-     * `immutability` and `set-state-in-effect` have all been migrated and are
-     * enforced by eslint-config-next 16.
+     * All four React Compiler rules from eslint-config-next 16 are enforced.
      *
-     * `refs` covers 55 sites, effectively all of them the latest-ref pattern
-     * (`onFooRef.current = onFoo` in the render body). That pattern is correct
-     * under React 18 and the recommended workaround for the stale-closure
-     * problem the repo actually has; the rule exists because the Compiler can
-     * hoist renders, which React 19 makes real. Migrating before that move
-     * would be churn against a constraint that does not yet apply.
+     * `refs` was the last one. It reported 55 violations, but 43 of those were
+     * a single false positive shape: CrmTableWidget kept the whole `useCrmTable`
+     * result in one `s` object, and because that object carries a ref, the
+     * compiler inferred every `s.loading` / `s.clients` read as a ref access.
+     * Naming the values individually cleared all 43 at once.
      *
-     * Tracked in docs/LINT-REACT-COMPILER-BACKLOG.md. Do not add new
-     * violations.
+     * Of the real 12, seven were the latest-ref assignment, now
+     * `hooks/use-latest-ref.ts`; one was a genuine bug (a dirty-state banner
+     * computed from a ref, so it did not re-render after a save); and four carry
+     * a documented eslint-disable in the adaptive shell, two of them lazy
+     * `useState` initialisers the rule cannot distinguish from render.
+     *
+     * Do not add new violations. History in
+     * docs/LINT-REACT-COMPILER-BACKLOG.md.
      */
-    rules: {
-      "react-hooks/refs": "off",
-    },
+    rules: {},
   },
 ];

@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 type SpeechState = "idle" | "listening" | "error";
 
@@ -57,8 +58,7 @@ export function useWebSpeechFallback(
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
   const recognizerRef = useRef<SpeechRecognitionInstance | null>(null);
-  const onFinalRef = useRef(onFinalTranscript);
-  onFinalRef.current = onFinalTranscript;
+  const onFinalRef = useLatestRef(onFinalTranscript);
 
   const supported =
     typeof window !== "undefined" &&
@@ -104,7 +104,7 @@ export function useWebSpeechFallback(
     recognizer.start();
     setState("listening");
     setError(null);
-  }, [supported, lang, t]);
+  }, [supported, lang, t, onFinalRef]);
 
   const stop = useCallback(() => {
     recognizerRef.current?.stop();

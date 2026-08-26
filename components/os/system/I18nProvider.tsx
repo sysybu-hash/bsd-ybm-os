@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  ReactNode,
-  useMemo,
-  useCallback,
-  useState,
-  useEffect,
-  useRef,
-} from "react";
+import { createContext, useContext, ReactNode, useMemo, useCallback, useState, useEffect } from "react";
 import { isRtlLocale } from "@/lib/i18n/config";
 import { createTranslator } from "@/lib/i18n/translate";
 import type { MessageTree } from "@/lib/i18n/keys";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 export type I18nMessagePack = "marketing" | "workspace" | "full";
 
@@ -60,8 +52,7 @@ export function I18nProvider({
 }) {
   const [locale, setLocaleState] = useState(localeProp);
   const [messages, setMessages] = useState(messagesProp);
-  const messagesPropRef = useRef(messagesProp);
-  messagesPropRef.current = messagesProp;
+  const messagesPropRef = useLatestRef(messagesProp);
 
   useEffect(() => {
     setLocaleState(localeProp);
@@ -85,7 +76,7 @@ export function I18nProvider({
     }
     setMessages(messagesPropRef.current);
     return undefined;
-  }, [pack, localeProp, locale]);
+  }, [pack, localeProp, locale, messagesPropRef]);
 
   // bfcache restore can revive a stuck marketing pack while the URL is already workspace.
   useEffect(() => {
@@ -99,7 +90,7 @@ export function I18nProvider({
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
-  }, [locale, localeProp]);
+  }, [locale, localeProp, messagesPropRef]);
 
   const setLocale = useCallback((next: string) => {
     setLocaleState(next);

@@ -8,6 +8,7 @@ import {
   type NotebookSpeechSettings,
 } from "@/lib/notebook-speech-settings";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 export type SpeechPlaybackState = "idle" | "playing" | "paused";
 
@@ -18,8 +19,7 @@ export function useNotebookSpeechPlayback(settings: NotebookSpeechSettings) {
 
   const fullTextRef = useRef("");
   const charIndexRef = useRef(0);
-  const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  const settingsRef = useLatestRef(settings);
 
   const syncPausedFromEngine = useCallback(() => {
     if (typeof window === "undefined") return false;
@@ -76,7 +76,7 @@ export function useNotebookSpeechPlayback(settings: NotebookSpeechSettings) {
 
     setTextLength(raw.length);
     syn.speak(utterance);
-  }, []);
+  }, [settingsRef]);
 
   const play = useCallback(
     (text: string, fromChar = 0) => {

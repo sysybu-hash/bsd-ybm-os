@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 // lookup, which Next cannot inline at build time, so every NEXT_PUBLIC_* read
 // through it is undefined on the client. `clientEnv` uses static literal reads.
 import { clientEnv } from "@/lib/env";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 /**
  * Minimal shape of the pieces of the PayPal JS SDK this component touches.
@@ -107,20 +108,20 @@ export default function PayPalRegisterButtons({
   labels,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [sdkStatus, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
 
   // Keep the latest props reachable from the SDK callbacks without re-rendering
   // the buttons, which would tear down an in-flight payment.
-  const latest = useRef({ email, tier, billingCycle, onApproved, onError });
-  latest.current = { email, tier, billingCycle, onApproved, onError };
+  const latest = useLatestRef({ email, tier, billingCycle, onApproved, onError });
 
   const clientId = clientEnv.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
 
+  // No client id configured is knowable during render, so it is derived rather
+  // than written into state from the effect below.
+  const status = clientId ? sdkStatus : "unavailable";
+
   useEffect(() => {
-    if (!clientId) {
-      setStatus("unavailable");
-      return;
-    }
+    if (!clientId) return;
     let cancelled = false;
 
     void loadPayPalSdk(clientId)
@@ -163,7 +164,7 @@ export default function PayPalRegisterButtons({
     return () => {
       cancelled = true;
     };
-  }, [clientId, labels.failed]);
+  }, [clientId, labels.failed, latest]);
 
   if (status === "unavailable") {
     return (

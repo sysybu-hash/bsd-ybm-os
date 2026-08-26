@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, Download, FileJson, FileSpreadsheet, FileText, Printer, Save, X } from "lucide-react";
 import type { DocumentAnalysis } from "./types";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
@@ -10,6 +10,7 @@ import {
   BOQ_MODES, HeaderFields, LineItemsEditor, BoqEditor,
   emptyBoqRow as _emptyBoqRow, computeLineTotal,
 } from "./scan-editor-parts";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 type ScanFullEditorProps = {
   analysis: DocumentAnalysis;
@@ -136,8 +137,7 @@ export function ScanFullEditor({
     },
   );
 
-  const v5Ref = useRef<ScanExtractionV5 | null>(null);
-  v5Ref.current = v5;
+  const v5Ref = useLatestRef<ScanExtractionV5 | null>(v5);
   const exportActions = useScanExport(v5Ref, t);
 
   const [boqOpen, setBoqOpen] = useState(false);

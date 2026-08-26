@@ -1,0 +1,134 @@
+{
+  "/": {
+    "requests": 60,
+    "totalKB": 1011,
+    "scriptKB": 777,
+    "largestScriptKB": 222
+  },
+  "/login": {
+    "requests": 45,
+    "totalKB": 690,
+    "scriptKB": 491,
+    "largestScriptKB": 73
+  },
+  "/login?mode=register": {
+    "requests": 44,
+    "totalKB": 696,
+    "scriptKB": 500,
+    "largestScriptKB": 73
+  },
+  "/about": {
+    "requests": 52,
+    "totalKB": 655,
+    "scriptKB": 480,
+    "largestScriptKB": 73
+  },
+  "/contact": {
+    "requests": 49,
+    "totalKB": 655,
+    "scriptKB": 484,
+    "largestScriptKB": 73
+  },
+  "/help": {
+    "requests": 40,
+    "totalKB": 644,
+    "scriptKB": 488,
+    "largestScriptKB": 73
+  },
+  "/blog": {
+    "requests": 58,
+    "totalKB": 658,
+    "scriptKB": 482,
+    "largestScriptKB": 73
+  },
+  "/blog/gantt-for-contractors": {
+    "requests": 37,
+    "totalKB": 507,
+    "scriptKB": 395,
+    "largestScriptKB": 73
+  },
+  "/blog/field-copilot-guide": {
+    "requests": 37,
+    "totalKB": 508,
+    "scriptKB": 395,
+    "largestScriptKB": 73
+  },
+  "/privacy": {
+    "requests": 44,
+    "totalKB": 643,
+    "scriptKB": 475,
+    "largestScriptKB": 73
+  },
+  "/terms": {
+    "requests": 44,
+    "totalKB": 638,
+    "scriptKB": 475,
+    "largestScriptKB": 73
+  },
+  "/legal": {
+    "requests": 44,
+    "totalKB": 639,
+    "scriptKB": 475,
+    "largestScriptKB": 73
+  },
+  "/integrations/google": {
+    "requests": 47,
+    "totalKB": 652,
+    "scriptKB": 480,
+    "largestScriptKB": 73
+  },
+  "/unsubscribe": {
+    "requests": 37,
+    "totalKB": 618,
+    "scriptKB": 467,
+    "largestScriptKB": 73
+  },
+  "/workspace": {
+    "requests": 93,
+    "totalKB": 918,
+    "scriptKB": 753,
+    "largestScriptKB": 73
+  },
+  "/?w=documentsHub": {
+    "requests": 93,
+    "totalKB": 946,
+    "scriptKB": 775,
+    "largestScriptKB": 74
+  },
+  "/?w=crmTable": {
+    "requests": 93,
+    "totalKB": 962,
+    "scriptKB": 769,
+    "largestScriptKB": 73
+  },
+  "/?w=settings": {
+    "requests": 96,
+    "totalKB": 936,
+    "scriptKB": 763,
+    "largestScriptKB": 73
+  },
+  "/?w=helpCenter": {
+    "requests": 91,
+    "totalKB": 935,
+    "scriptKB": 766,
+    "largestScriptKB": 73
+  },
+  "/app/admin": {
+    "requests": 120,
+    "totalKB": 972,
+    "scriptKB": 709,
+    "largestScriptKB": 73
+  },
+  "/app/builder": {
+    "requests": 135,
+    "totalKB": 1750,
+    "scriptKB": 1577,
+    "largestScriptKB": 622
+  },
+  "/app/settings/profession": {
+    "requests": 132,
+    "totalKB": 997,
+    "scriptKB": 728,
+    "largestScriptKB": 73
+  }
+}

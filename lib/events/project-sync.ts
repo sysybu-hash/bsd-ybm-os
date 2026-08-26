@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 
 const PROJECT_MUTATION_EVENT = "os:project-mutation";
 
@@ -21,8 +22,7 @@ export function emitProjectMutation(projectId: string): void {
 
 /** Re-run `onUpdate` when another widget mutates the same project. */
 export function useProjectSync(projectId: string | undefined, onUpdate: () => void): void {
-  const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
+  const onUpdateRef = useLatestRef(onUpdate);
 
   useEffect(() => {
     if (!projectId) return;
@@ -36,5 +36,5 @@ export function useProjectSync(projectId: string | undefined, onUpdate: () => vo
 
     window.addEventListener(PROJECT_MUTATION_EVENT, handleMutation);
     return () => window.removeEventListener(PROJECT_MUTATION_EVENT, handleMutation);
-  }, [projectId]);
+  }, [projectId, onUpdateRef]);
 }
