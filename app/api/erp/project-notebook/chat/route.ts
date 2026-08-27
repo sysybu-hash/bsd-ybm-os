@@ -82,7 +82,7 @@ export const POST = withWorkspacesAuth(
           : [];
 
       if (rawSources.length > MAX_SOURCES) {
-        return jsonBadRequest(`ניתן לצרף עד ${MAX_SOURCES} מקורות למחברת.`, "too_many_sources");
+        return jsonBadRequest(`ניתן לצרף עד ${MAX_SOURCES} מקורות למחברת.`, "too_many_sources", { max: String(MAX_SOURCES) });
       }
 
       let totalRaw = 0;
@@ -95,7 +95,7 @@ export const POST = withWorkspacesAuth(
 
         if (!base64 && !text) continue;
         if (!ALLOWED_SOURCE_MIME_TYPES.has(mimeType)) {
-          return jsonBadRequest(`סוג מקור לא נתמך: ${mimeType}`, "invalid_mime");
+          return jsonBadRequest(`סוג מקור לא נתמך: ${mimeType}`, "invalid_mime", { mime: String(mimeType) });
         }
 
         if (base64) {
@@ -121,6 +121,7 @@ export const POST = withWorkspacesAuth(
         return jsonBadRequest(
           `סך גודל המקורות חורג מ-${MAX_TOTAL_RAW_BYTES / 1024 / 1024}MB. הסירו או דחסו קבצים.`,
           "total_size_exceeded",
+          { max: String(MAX_TOTAL_RAW_BYTES / 1024 / 1024) },
         );
       }
 

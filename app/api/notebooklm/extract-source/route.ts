@@ -55,7 +55,7 @@ export const POST = withWorkspacesAuth(async (req, { userId }) => {
 
     const mime = inferMimeFromFileName(file.name, file.type || "application/octet-stream");
     if (!isSupportedScanMime(mime)) {
-      return jsonBadRequest(`סוג קובץ לא נתמך: ${mime}`, "unsupported_type");
+      return jsonBadRequest(`סוג קובץ לא נתמך: ${mime}`, "unsupported_type", { mime: String(mime) });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

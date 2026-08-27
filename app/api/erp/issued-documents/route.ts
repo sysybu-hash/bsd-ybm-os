@@ -148,7 +148,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }, data) => {
       select: { id: true },
     });
     if (taken) {
-      return jsonBadRequest(`מספר מסמך ${manualNumber} כבר קיים לסוג זה.`, "document_number_taken");
+      return jsonBadRequest(`מספר מסמך ${manualNumber} כבר קיים לסוג זה.`, "document_number_taken", { number: String(manualNumber) });
     }
   }
 
