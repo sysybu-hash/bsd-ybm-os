@@ -51,6 +51,19 @@ const DEFAULT_BULK_OK = [
   /^lib\/pdf\/marketing-onepager-html\.ts$/,
   /^lib\/pdf\/system-specification-html\.ts$/,
   /^lib\/pdf\/invoice-print-html\.ts$/,
+  /**
+   * The pdfmake sibling of product-brochure-html.ts above — the same document,
+   * expressed as pdfmake content definitions instead of HTML. It was an
+   * oversight that one form of it counted and the other did not.
+   */
+  /^lib\/pdf\/product-brochure-pdfmake\.ts$/,
+  /**
+   * The environment schema: 142 Zod declarations against 21 lines of logic.
+   * CLAUDE.md §4 requires every new variable to be declared here, so this file
+   * exists precisely to be the one place they all live. Splitting it to satisfy
+   * a line count would scatter the source of truth the rule depends on.
+   */
+  /^lib\/env\.ts$/,
 ];
 
 function loadAllowlistPatterns() {

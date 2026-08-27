@@ -1,5 +1,4 @@
 ﻿import type { Session } from "next-auth";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -20,22 +19,14 @@ export {
   triEngineCreditKindFor,
   validateTriEngineRequest,
 } from "@/lib/tri-engine-parse";
-import { persistDocumentLineItemsFromAiData } from "@/lib/persist-document-lines";
-import { sendDocNotification } from "@/app/actions/send-doc-notification";
-import { resolveDocNotificationFields } from "@/lib/scan/notification-fields";
-import { getPriceSpikeAlerts, type PriceSpikeAlert } from "@/lib/erp-price-spikes";
-import { filterAlertsForScan } from "@/lib/scan-sync-summary";
 import type { MessageTree } from "@/lib/i18n/keys";
 import type { ScanUsageWarningId } from "@/lib/decrement-scan";
 import { API_MSG_UNAUTHORIZED } from "@/lib/api-json";
 import type { ScanCreditKind } from "@/lib/scan-credit-kind";
-import { archiveScanToDrive } from "@/lib/scan-archive-to-drive";
-import { runScanInsights } from "@/lib/scan-insights";
 import {
   getRecentCorrectionExamples,
   buildCorrectionPromptBlock,
 } from "@/lib/scan-corrections-prompt";
-import { notifyUser } from "@/lib/notify-user";
 
 export const TRI_ENGINE_RATE_PER_HOUR = 40;
 export const TRI_ENGINE_RATE_PER_HOUR_ADMIN = 120;

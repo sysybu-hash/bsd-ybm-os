@@ -16,8 +16,7 @@ import type {
   CreateTaskParams,
   InvoiceDraftParams,
   OpenWidgetParams,
-  ParseActionResponse,
-} from "@/lib/os-automations/types";
+  } from "@/lib/os-automations/types";
 
 const WIDGET_BY_INTENT: Partial<
   Record<string, { type: WidgetType; liveData?: Record<string, unknown> }>

@@ -17,7 +17,6 @@
 import { test, expect } from "@playwright/test";
 
 const FAKE_PROJECT_ID = "proj_financial_test_00000000000000";
-const FAKE_ORG_ID = "org_financial_test_000000000000000";
 
 test.describe("Financial API — auth protection", () => {
   test("milestones endpoint requires auth", async ({ request }) => {

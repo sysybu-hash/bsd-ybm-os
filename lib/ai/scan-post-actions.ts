@@ -6,9 +6,7 @@
 import type { ScreenDecodePolicy } from "@/lib/ai/screen-decode-policy";
 import type { ScanExtractionV5 } from "@/lib/scan-schema-v5";
 import type { WidgetType } from "@/hooks/use-window-manager";
-import { createLogger } from "@/lib/logger";
 
-const log = createLogger("scan-post-actions");
 
 export type ScanPostActionContext = {
   projectId: string | null;

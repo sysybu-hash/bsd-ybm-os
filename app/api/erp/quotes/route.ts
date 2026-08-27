@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { createNumberedDocument } from "@/lib/finance-numbering";
 import { calculateDocumentTotalsFromOrg } from "@/lib/billing-calculations";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
 import { v4 as uuidv4 } from "uuid";
-import { createLogger } from "@/lib/logger";
 
-const log = createLogger("erp-quotes");
 
 export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
   const body = await req.json();
-  const { contactId, amount, items, clientName, clientEmail } = body;
+  const { contactId, amount, items, clientName } = body;
 
   if (!contactId || !amount || !clientName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

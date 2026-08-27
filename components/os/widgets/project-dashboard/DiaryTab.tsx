@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { useMeckanoAccess } from "@/hooks/use-meckano-access";
 import { osFieldClassName } from "@/components/os/ui/os-field";

@@ -3,8 +3,7 @@ import {
   INDUSTRY_CONFIGS,
   normalizeIndustryType,
   type IndustryConfig,
-  type IndustryType,
-} from "@/lib/professions/config";
+  } from "@/lib/professions/config";
 export const BUSINESS_LINE_IDS = [
   "GENERAL_BUSINESS",
   "SERVICES",

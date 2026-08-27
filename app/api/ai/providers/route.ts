@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { getAiProvidersPublic } from "@/lib/ai-providers";
 import { getAllowedAiProvidersForPlan } from "@/lib/ai-engine-access";
 import { isAdmin } from "@/lib/is-admin";
-import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("ai-providers");

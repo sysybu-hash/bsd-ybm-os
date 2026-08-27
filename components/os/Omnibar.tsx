@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useOsAssistant } from "@/hooks/use-os-assistant";
 import { useAutomationRunnerContext } from "@/components/os/AutomationRunnerContext";

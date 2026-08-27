@@ -7,7 +7,7 @@ import WidgetHubShell, { type HubTabDef } from "@/components/os/hubs/WidgetHubSh
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { LayoutDashboard } from "lucide-react";
 
 const TABS: HubTabDef[] = [

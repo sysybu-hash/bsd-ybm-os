@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { fetchMeckanoReports } from "@/lib/meckano/reports";
 import { meckanoSessionFromWorkspace, requireMeckanoSession } from "@/lib/meckano-route-auth";
 

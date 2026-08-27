@@ -70,14 +70,6 @@ function minutesFromMidnightIsrael(dt: Date): number {
   return hour * 60 + minute;
 }
 
-function formatTimeIsrael(dt: Date): string {
-  return dt.toLocaleTimeString("he-IL", {
-    timeZone: ISRAEL_TZ,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
 
 function computeZmanim(loc: JewishCalendarLocation, day: Date): ZmanEntry[] {
   const gloc = new GeoLocation(loc.nameEn, loc.lat, loc.lng, loc.elevation, loc.timezone);

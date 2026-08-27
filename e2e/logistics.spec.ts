@@ -4,7 +4,6 @@ import {
   dismissWorkspaceOverlays,
   primeCookieConsent,
   signInAsSpecUser,
-  tryCredentialsSignIn,
   widgetShell,
   workspaceUrl,
 } from "./helpers";

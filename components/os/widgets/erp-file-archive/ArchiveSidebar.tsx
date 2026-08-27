@@ -3,7 +3,7 @@
 import React from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { ArrowUpRight, Clock, Folder, HardDrive, Trash2 } from "lucide-react";
-import type { ArchiveView, ErpArchiveFile, ProjectRow } from "./types";
+import type { ArchiveView, ProjectRow } from "./types";
 import AccountingExportPanel from "@/components/os/widgets/AccountingExportPanel";
 
 type ArchiveSidebarProps = {

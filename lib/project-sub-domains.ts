@@ -1,7 +1,6 @@
 import type { DocType } from "@prisma/client";
 import type { LucideIcon } from "lucide-react";
 import { isCompanyMgmtIndustry } from "@/lib/business-lines";
-import { normalizeIndustryType } from "@/lib/professions/config";
 import {
   Box,
   BrickWall,

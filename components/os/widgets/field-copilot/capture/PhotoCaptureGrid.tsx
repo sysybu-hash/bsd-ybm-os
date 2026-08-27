@@ -19,7 +19,7 @@ type Props = {
 export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto, uploading }: Props) {
   const { t } = useI18n();
   const {
-    videoRef, active, opening, previewOpen, error, setError, start, stop, flip,
+    videoRef, opening, previewOpen, error, setError, start, stop, flip,
   } = useCameraStream({ audio: false });
   const galleryRef = useRef<HTMLInputElement>(null);
   const [snapBusy, setSnapBusy] = useState(false);

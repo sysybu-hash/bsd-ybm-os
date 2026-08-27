@@ -19,7 +19,6 @@ import { useLockPortraitOrientation } from "@/hooks/use-lock-portrait-orientatio
 import { useOsBootReport } from "@/components/os/boot/OsBootHost";
 
 /** Deferred chrome — not needed for LCP / first paint */
-const OSSidebar = dynamic(() => import("@/components/os/layout/OSSidebar"), { ssr: false });
 const PwaInstallBanner = dynamic(() => import("@/components/os/system/PwaInstallBanner"), { ssr: false });
 const PasskeyOfferModal = dynamic(() => import("@/components/auth/PasskeyOfferModal"), { ssr: false });
 const LauncherPickerSheet = dynamic(() => import("@/components/os/launcher/LauncherPickerSheet"), { ssr: false });

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Upload, Loader2, ArrowRight, Sparkles, Camera } from "lucide-react";
+import { Upload, Loader2, Sparkles, Camera } from "lucide-react";
 import ScanFilePreview from "@/components/os/widgets/scan/ScanFilePreview";
 import { OsButton } from "@/components/os/ui";
 import type { QueueItem } from "./types";

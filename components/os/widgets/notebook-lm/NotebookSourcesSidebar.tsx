@@ -7,7 +7,6 @@ import { SCAN_ACCEPT_SUMMARY } from "@/lib/scan-mime";
 import ItemActions from "@/components/os/ItemActions";
 import KnowledgeVaultAttachButton from "@/components/os/knowledge-vault/KnowledgeVaultAttachButton";
 import { OsButton } from "@/components/os/ui";
-import { toast } from "sonner";
 import type { Source, SavedNotebookSummary, ProjectOption } from "./types";
 
 const P = "workspaceWidgets.notebookLM";

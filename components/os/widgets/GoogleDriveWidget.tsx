@@ -3,7 +3,6 @@
 import React, { useCallback } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { Loader2, LayoutList, LayoutGrid, Rows3, Table2, Sparkles, Library, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
 import ProjectPickerPanel from "@/components/os/widgets/shared/ProjectPickerPanel";
 import GoogleDriveDecodeReviewPanel from "@/components/os/widgets/GoogleDriveDecodeReviewPanel";
 import { OsButton, OsIconButton, OsSearchInput } from "@/components/os/ui";
@@ -29,8 +28,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
     handleRefresh, handleFolderClick, navigateToFolder, handleUpload,
     runDecodeBatch, saveReviewItems,
     boundProjectId, boundProjectName,
-    projectsList, projectsListLoading, showProjectPicker, loadProjectsList, selectProject,
-    addToNotebook, runAiScan,
+    projectsList, projectsListLoading, showProjectPicker, loadProjectsList, addToNotebook, runAiScan,
     handleSelectProject, handleClearProject, toggleSelect,
     selectableFiles, handleBrowseOrg,
   } = s;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { runErpProjectNotebookChat, type NotebookChatMessage } from "@/lib/erp-project-notebook";
+import { runErpProjectNotebookChat} from "@/lib/erp-project-notebook";
 import { getServerLocale } from "@/lib/i18n/server";
 
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {

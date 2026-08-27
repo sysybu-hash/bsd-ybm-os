@@ -1,7 +1,6 @@
 import type { GoogleCalendarSyncMode, Task } from "@prisma/client";
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { loadCalendarEligibilityContext } from "@/lib/google-calendar-eligibility";
 import {
   GoogleCalendarService,
   type CalendarEventView,

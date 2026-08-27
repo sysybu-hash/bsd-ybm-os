@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import type {} from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/os/system/I18nProvider";
@@ -63,7 +63,7 @@ type Props = Readonly<{
 
 export default function MarketingCinematicClient({ hero, navVariant = "top" }: Props) {
   const router = useRouter();
-  const { dir, locale, t } = useI18n();
+  const { dir, locale } = useI18n();
   const [mountOmnibar, setMountOmnibar] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [enableVideoLayer, setEnableVideoLayer] = useState(false);

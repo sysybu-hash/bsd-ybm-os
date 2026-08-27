@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { jsonBadRequest } from "@/lib/api-json";
 import { prisma } from "@/lib/prisma";
 import type { DocStatus, DocType } from "@prisma/client";
 

@@ -141,7 +141,8 @@ export function useDriveData(autoDecodeOnSync: boolean) {
         `/api/os/google-drive/files?folderId=${encodeURIComponent(currentFolderId)}`,
         { credentials: "include", cache: "no-store" },
       );
-      const { data, parseError } = await parseJsonResponse<{ files?: GoogleFile[] }>(res);
+      // Opportunistic prefetch: a parse failure simply means no decode batch.
+      const { data } = await parseJsonResponse<{ files?: GoogleFile[] }>(res);
       const pending = (data?.files as GoogleFile[] | undefined)?.filter(
         (f) =>
           f.mimeType !== "application/vnd.google-apps.folder" &&

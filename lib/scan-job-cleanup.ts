@@ -24,13 +24,23 @@ export async function cleanupOldScanJobFileData(): Promise<number> {
   cutoff.setDate(cutoff.getDate() - CLEANUP_AFTER_DAYS);
 
   try {
-    const result = await prisma.documentScanJob.updateMany({
+    // updateMany has no row limit, so the cap has to be applied by selecting
+    // the batch first. Until now MAX_PER_RUN was declared and never used, which
+    // meant a large backlog was rewritten in one unbounded statement.
+    const batch = await prisma.documentScanJob.findMany({
       where: {
         status: { in: ["COMPLETED", "FAILED"] },
         updatedAt: { lt: cutoff },
         // Only clean if not already cleared
         NOT: { fileData: CLEARED_MARKER },
       },
+      select: { id: true },
+      orderBy: { updatedAt: "asc" },
+      take: MAX_PER_RUN,
+    });
+
+    const result = await prisma.documentScanJob.updateMany({
+      where: { id: { in: batch.map((j) => j.id) } },
       data: { fileData: CLEARED_MARKER },
     });
 

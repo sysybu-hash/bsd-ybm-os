@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { UserPlus, X, User, Mail, Phone, Save, Banknote } from "lucide-react";
 import { toast } from "sonner";
-import type { Client } from "./types";
+import type {} from "./types";
 import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 import { CrmOverlayPortal } from "./CrmOverlayPortal";
 import { OsButton, OsIconButton } from "@/components/os/ui";

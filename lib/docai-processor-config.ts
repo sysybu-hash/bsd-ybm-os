@@ -2,8 +2,6 @@ import { v1 } from "@google-cloud/documentai";
 import { env } from "@/lib/env";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 
-const { DocumentProcessorServiceClient } = v1;
-
 type ServiceAccountCredentials = {
   project_id?: string;
 };
@@ -120,7 +118,7 @@ function resolveDocAiLocation(): string {
 }
 
 async function discoverDocAiProcessorResourceName(
-  client: InstanceType<typeof DocumentProcessorServiceClient>,
+  client: InstanceType<typeof v1.DocumentProcessorServiceClient>,
   credentials: ServiceAccountCredentials,
   kind: DocAiProcessorKind,
 ): Promise<string | null> {

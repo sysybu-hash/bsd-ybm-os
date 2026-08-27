@@ -15,13 +15,14 @@ export async function getDashboardStatsAction() {
   try {
     const orgId = session.user.organizationId;
 
-    const [clientsCount, revenueData, documentsCount] = await Promise.all([
+    // The document count used to be fetched here and then dropped on the floor —
+    // a full count() on every dashboard load that nothing ever read.
+    const [clientsCount, revenueData] = await Promise.all([
       prisma.contact.count({ where: { organizationId: orgId } }),
       prisma.issuedDocument.aggregate({
         where: { organizationId: orgId, type: "INVOICE" },
         _sum: { total: true }
       }),
-      prisma.document.count({ where: { organizationId: orgId } })
     ]);
 
     return {

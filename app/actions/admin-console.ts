@@ -1,6 +1,6 @@
 "use server";
 
-import { AccountStatus, type SubscriptionTier, type UserRole } from "@prisma/client";
+import { AccountStatus} from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isAdmin } from "@/lib/is-admin";

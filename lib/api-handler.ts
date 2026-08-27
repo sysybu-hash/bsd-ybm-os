@@ -1,6 +1,6 @@
 import type { UserRole } from "@prisma/client";
 import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { jsonBadRequest, jsonForbidden, jsonTooManyRequests, jsonUnauthorized, jsonValidationFailed } from "@/lib/api-json";

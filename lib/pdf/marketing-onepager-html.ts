@@ -3,7 +3,6 @@ import path from "node:path";
 import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
 
 const SHOT_DIR = path.join(process.cwd(), "assets", "product-brochure-v2");
-const BRAND_DIR = path.join(process.cwd(), "assets", "brand");
 const LOGO_DIR = path.join(process.cwd(), "assets");
 const OFFICIAL_LOGO_DIR = path.join(process.cwd(), "public", "logos");
 
@@ -29,7 +28,6 @@ const LOGO = imgDataUrl(OFFICIAL_LOGO_DIR, "logo-night.png")
   ?? imgDataUrl(LOGO_DIR, "logo-bsd-ybm-center.png");
 const SHOT_HOME = imgDataUrl(SHOT_DIR, "02-workspace-home.png");
 const SHOT_FINANCE = imgDataUrl(SHOT_DIR, "03-finance-hub.png");
-const SHOT_CRM = imgDataUrl(SHOT_DIR, "05-crm-table.png");
 const SHOT_AI = imgDataUrl(SHOT_DIR, "07-ai-hub.png");
 
 // ICONS — small inline lucide-style

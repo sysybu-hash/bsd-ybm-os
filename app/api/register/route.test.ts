@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { POST } from "@/app/api/register/route";
 import { prisma } from "@/lib/prisma";
 import {
@@ -6,7 +5,6 @@ import {
   sendNewRegistrationPendingAdminEmail,
   sendRegistrationWelcomeEmail,
 } from "@/lib/mail";
-import { trialEndsAtFromNow } from "@/lib/trial";
 
 // Mock dependencies
 jest.mock("next/server", () => ({
@@ -92,7 +90,6 @@ const mockSendRegistrationWelcomeEmail = sendRegistrationWelcomeEmail as jest.Mo
 const mockSendAccessApprovedEmail = sendAccessApprovedEmail as jest.Mock;
 const mockSendNewRegistrationPendingAdminEmail =
   sendNewRegistrationPendingAdminEmail as jest.Mock;
-const mockTrialEndsAtFromNow = trialEndsAtFromNow as jest.Mock;
 
 function createMockRequest(body: Record<string, unknown>) {
   return {

@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Send } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import { OsButton } from "@/components/os/ui";
-import type { BoqOption, ProgressBillPortalRow, ProjectOption } from "./types";
+import type { ProgressBillPortalRow} from "./types";
 import { useProgressBillPortalData } from "./useProgressBillPortalData";
 
 const STATUS_LABEL_KEYS: Record<ProgressBillPortalRow["status"], string> = {

@@ -72,7 +72,6 @@ export async function runScanSingleFile({
     const formData = new FormData();
     formData.append("file", file);
     const inferred = inferScreenTypeFromFileForIndustry(file.name, file.type || "", industryId);
-    const policy = resolvePolicyForIndustry(inferred, industryId);
     const autoDetect = isAutoDetectScanMode(scanModeOverride);
     const scanMode = autoDetect
       ? ("GENERAL_DOCUMENT" as ScanModeV5)

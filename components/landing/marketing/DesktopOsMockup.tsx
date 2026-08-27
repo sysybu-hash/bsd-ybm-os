@@ -14,8 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
-const MOCK_NAV_IDS = ["dashboard", "crm", "documents", "billing", "analytics", "settings"] as const;
-type MockNavId = (typeof MOCK_NAV_IDS)[number];
+type MockNavId = "dashboard" | "crm" | "documents" | "billing" | "analytics" | "settings";
 
 const SIDEBAR_ITEMS: ReadonlyArray<{ id: MockNavId; icon: LucideIcon }> = [
   { id: "dashboard", icon: LayoutDashboard },
@@ -26,7 +25,8 @@ const SIDEBAR_ITEMS: ReadonlyArray<{ id: MockNavId; icon: LucideIcon }> = [
   { id: "settings", icon: Settings },
 ];
 
-const LIST_VIEW_IDS = ["crm", "documents", "billing", "analytics", "settings"] as const;
+/** Every mock nav target except the dashboard, which has its own layout. */
+type ListViewId = Exclude<MockNavId, "dashboard">;
 const LIST_ITEM_INDICES = [0, 1, 2] as const;
 const STAT_INDICES = [0, 1, 2, 3] as const;
 const CHART_HEIGHTS = [40, 65, 45, 80, 55, 90, 70] as const;
@@ -40,7 +40,7 @@ function MockListView({
   viewId,
   t,
 }: {
-  viewId: (typeof LIST_VIEW_IDS)[number];
+  viewId: ListViewId;
   t: (key: string) => string;
 }) {
   return (

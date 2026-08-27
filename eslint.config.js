@@ -40,4 +40,32 @@ module.exports = [
      */
     rules: {},
   },
+  {
+    /**
+     * eslint-config-next does not enable no-unused-vars, so dead imports and
+     * abandoned bindings accumulated silently: 135 of them when this rule was
+     * first switched on, including two prisma.count() queries whose results
+     * were awaited on every dashboard load and then discarded, and a cleanup
+     * cap that was declared but never applied.
+     *
+     * `args: "none"` — unused parameters are usually there to reach a later one.
+     * `caughtErrors: "none"` — `catch (err)` without a body reference is fine.
+     *
+     * Known false positive: a value referenced only through `typeof X` in a type
+     * position is reported as unused. Two such cases carry a disable comment.
+     */
+    files: ["**/*.ts", "**/*.tsx"],
+    plugins: { "@typescript-eslint": require("@typescript-eslint/eslint-plugin") },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "none",
+          caughtErrors: "none",
+          ignoreRestSiblings: true,
+          varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ];
