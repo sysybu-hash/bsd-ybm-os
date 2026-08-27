@@ -1,120 +1,120 @@
 {
   "/": {
-    "requests": 60,
-    "totalKB": 1010,
-    "scriptKB": 778,
-    "largestScriptKB": 222,
+    "requests": 59,
+    "totalKB": 731,
+    "scriptKB": 533,
+    "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/login": {
     "requests": 45,
-    "totalKB": 686,
-    "scriptKB": 492,
+    "totalKB": 668,
+    "scriptKB": 472,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/login?mode=register": {
     "requests": 44,
-    "totalKB": 697,
-    "scriptKB": 501,
+    "totalKB": 678,
+    "scriptKB": 481,
     "largestScriptKB": 74,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/about": {
     "requests": 52,
-    "totalKB": 659,
-    "scriptKB": 481,
+    "totalKB": 638,
+    "scriptKB": 460,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/contact": {
     "requests": 49,
-    "totalKB": 658,
-    "scriptKB": 485,
+    "totalKB": 639,
+    "scriptKB": 465,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/help": {
     "requests": 40,
-    "totalKB": 644,
-    "scriptKB": 489,
+    "totalKB": 626,
+    "scriptKB": 469,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/blog": {
     "requests": 58,
-    "totalKB": 664,
-    "scriptKB": 483,
+    "totalKB": 647,
+    "scriptKB": 464,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/blog/gantt-for-contractors": {
     "requests": 37,
-    "totalKB": 505,
-    "scriptKB": 395,
+    "totalKB": 489,
+    "scriptKB": 375,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/blog/field-copilot-guide": {
     "requests": 37,
-    "totalKB": 504,
-    "scriptKB": 395,
+    "totalKB": 487,
+    "scriptKB": 375,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/privacy": {
     "requests": 44,
-    "totalKB": 637,
-    "scriptKB": 477,
-    "largestScriptKB": 74,
+    "totalKB": 627,
+    "scriptKB": 456,
+    "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/terms": {
     "requests": 44,
-    "totalKB": 642,
-    "scriptKB": 477,
+    "totalKB": 621,
+    "scriptKB": 456,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/legal": {
     "requests": 44,
-    "totalKB": 639,
-    "scriptKB": 475,
+    "totalKB": 621,
+    "scriptKB": 457,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/integrations/google": {
     "requests": 47,
-    "totalKB": 650,
-    "scriptKB": 480,
+    "totalKB": 633,
+    "scriptKB": 460,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/unsubscribe": {
-    "requests": 37,
-    "totalKB": 617,
-    "scriptKB": 467,
+    "requests": 36,
+    "totalKB": 597,
+    "scriptKB": 446,
     "largestScriptKB": 73,
     "thirdPartyKB": 0,
     "thirdPartyHosts": []
   },
   "/workspace": {
-    "requests": 83,
-    "totalKB": 886,
-    "scriptKB": 723,
+    "requests": 99,
+    "totalKB": 956,
+    "scriptKB": 786,
     "largestScriptKB": 73,
     "thirdPartyKB": 114,
     "thirdPartyHosts": [
@@ -123,9 +123,9 @@
     ]
   },
   "/?w=documentsHub": {
-    "requests": 84,
-    "totalKB": 937,
-    "scriptKB": 761,
+    "requests": 88,
+    "totalKB": 958,
+    "scriptKB": 779,
     "largestScriptKB": 73,
     "thirdPartyKB": 114,
     "thirdPartyHosts": [
@@ -134,10 +134,10 @@
     ]
   },
   "/?w=crmTable": {
-    "requests": 83,
-    "totalKB": 939,
-    "scriptKB": 757,
-    "largestScriptKB": 74,
+    "requests": 97,
+    "totalKB": 989,
+    "scriptKB": 804,
+    "largestScriptKB": 73,
     "thirdPartyKB": 114,
     "thirdPartyHosts": [
       "us-assets.i.posthog.com",
@@ -145,9 +145,9 @@
     ]
   },
   "/?w=settings": {
-    "requests": 85,
-    "totalKB": 903,
-    "scriptKB": 732,
+    "requests": 100,
+    "totalKB": 971,
+    "scriptKB": 797,
     "largestScriptKB": 73,
     "thirdPartyKB": 114,
     "thirdPartyHosts": [
@@ -156,9 +156,9 @@
     ]
   },
   "/?w=helpCenter": {
-    "requests": 79,
-    "totalKB": 904,
-    "scriptKB": 735,
+    "requests": 94,
+    "totalKB": 978,
+    "scriptKB": 800,
     "largestScriptKB": 73,
     "thirdPartyKB": 114,
     "thirdPartyHosts": [
@@ -167,9 +167,9 @@
     ]
   },
   "/app/admin": {
-    "requests": 114,
-    "totalKB": 943,
-    "scriptKB": 687,
+    "requests": 124,
+    "totalKB": 914,
+    "scriptKB": 746,
     "largestScriptKB": 73,
     "thirdPartyKB": 109,
     "thirdPartyHosts": [
@@ -178,21 +178,21 @@
     ]
   },
   "/app/builder": {
-    "requests": 120,
-    "totalKB": 1034,
-    "scriptKB": 875,
-    "largestScriptKB": 102,
-    "thirdPartyKB": 109,
+    "requests": 133,
+    "totalKB": 1154,
+    "scriptKB": 895,
+    "largestScriptKB": 101,
+    "thirdPartyKB": 76,
     "thirdPartyHosts": [
       "us-assets.i.posthog.com",
       "us.i.posthog.com"
     ]
   },
   "/app/settings/profession": {
-    "requests": 121,
-    "totalKB": 864,
-    "scriptKB": 699,
-    "largestScriptKB": 73,
+    "requests": 136,
+    "totalKB": 936,
+    "scriptKB": 767,
+    "largestScriptKB": 74,
     "thirdPartyKB": 109,
     "thirdPartyHosts": [
       "us-assets.i.posthog.com",
