@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signInWithRetries, workspaceUrl } from "./helpers";
+import { dismissWorkspaceOverlays, signInWithRetries, workspaceUrl } from "./helpers";
 
 /**
  * The App Builder's live preview.
@@ -92,5 +92,36 @@ test.describe("app builder preview", () => {
     expect(result.timeout, "preview shell never reported ready").toBeFalsy();
     expect(result.error, "preview reported a compile or runtime error").toBeFalsy();
     expect(result.ok, "component never reported a mount").toBe(true);
+  });
+
+  /**
+   * Guards the weight fix. The empty state used to be a string of JSX handed to
+   * the sandbox, so merely opening the builder mounted an iframe that pulled
+   * React, Tailwind and 622KB of @babel/standalone from CDNs — to draw an icon
+   * and two lines of text. It is native React now, and no iframe should exist
+   * until there is real generated code to run.
+   */
+  test("opening the builder mounts no preview iframe", async ({ page }) => {
+    const signed = await signInWithRetries(page);
+    if (!signed) test.skip(true, "E2E credentials not configured");
+
+    // The dedicated route, which is how users reach the builder.
+    await page.goto("/app/builder", { waitUntil: "domcontentloaded" });
+    await dismissWorkspaceOverlays(page);
+
+    const shell = page.locator("[data-widget-shell]").first();
+    await expect(shell).toBeVisible({ timeout: 30_000 });
+
+    // The empty preview renders as ordinary markup...
+    await expect(
+      page.getByText(/תצוגה מקדימה|preview window/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
+
+    // ...and nothing has been sandboxed yet.
+    await expect(page.locator("iframe")).toHaveCount(0);
+
+    await expect(
+      page.getByRole("heading", { name: /אירעה תקלה|Something went wrong/i }),
+    ).toHaveCount(0);
   });
 });
