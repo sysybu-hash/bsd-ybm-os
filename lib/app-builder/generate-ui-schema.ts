@@ -8,6 +8,7 @@ import {
 import { getGeminiModelId } from "@/lib/gemini-model";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
 import type { AppBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
+import { dataCatalogForPrompt } from "@/lib/app-builder/data-catalog";
 
 const MODEL = getGeminiModelId();
 
@@ -39,7 +40,28 @@ export function buildRefinePrompt(userRequest: string, existing: AppBuilderUiSch
   ].join("\n");
 }
 export async function generateUiSchemaFromPrompt(prompt: string, locale: string) {
-  const system = `${APP_BUILDER_SYSTEM_PROMPT}\n\n${aiReplyLanguageRule(locale)}`;
+  /**
+   * The data catalogue is part of the system prompt, not just documentation.
+   *
+   * `validateConfig` in app/actions/dashboard-data.ts rejects any groupBy or
+   * valueField outside lib/app-builder/data-catalog.ts, and the rejection is
+   * rendered straight into the card: a generated dashboard came back reading
+   * "invalid_value_field" and "invalid_group_by" where the numbers should have
+   * been.
+   *
+   * The catalogue was only ever shown to the chat model, through
+   * platform-capabilities-for-prompt — never to the model that actually builds
+   * the schema, which was left guessing field names against an allowlist it
+   * could not see. Both now read the same source of truth.
+   */
+  const system = [
+    APP_BUILDER_SYSTEM_PROMPT,
+    "",
+    "Allowed dataConfig combinations — anything else is rejected at render time:",
+    dataCatalogForPrompt(),
+    "",
+    aiReplyLanguageRule(locale),
+  ].join("\n")
 
   const { text } = await generateText({
     model: google(MODEL),
