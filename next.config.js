@@ -78,7 +78,12 @@ const nextConfig = {
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
         "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com wss://generativelanguage.googleapis.com",
-        "frame-src https://www.paypal.com https://*.paypal.com",
+        // 'self' is required for the App Builder preview: the workspace frames
+        // its own /api/app-builder/preview document. frame-src overrides
+        // default-src for frames, so without it the browser refuses to embed a
+        // same-origin page — "Framing ... violates the following Content
+        // Security Policy directive". Verified on production before the fix.
+        "frame-src 'self' https://www.paypal.com https://*.paypal.com",
         "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
