@@ -258,6 +258,34 @@ export function useAppBuilderAssistant({
     void beginLiveSession();
   };
 
+  /**
+   * The build step. Its own request, so the model call gets a full 60s rather
+   * than sharing one with the intent classification that precedes it.
+   */
+  const runBuild = useCallback(
+    async (prompt: string, mode: "build" | "update") => {
+      const res = await fetch("/api/ai-builder/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          locale,
+          mode,
+          currentUiSchema: uiSchemaRef.current ?? undefined,
+        }),
+      });
+      const body = (await res.json()) as {
+        uiSchema?: AppBuilderUiSchema;
+        jsxCode?: string;
+        schemaError?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? "build_failed");
+      return body;
+    },
+    [locale],
+  );
+
   const handleSend = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault();
@@ -288,6 +316,7 @@ export function useAppBuilderAssistant({
 
         const data = (await res.json()) as {
           reply?: string;
+          pendingBuild?: { prompt: string; mode: "build" | "update" } | null;
           uiSchema?: AppBuilderUiSchema;
           jsxCode?: string;
           schemaError?: string;
@@ -310,16 +339,27 @@ export function useAppBuilderAssistant({
           },
         ]);
 
-        const jsxCode = data.jsxCode?.trim();
+        /**
+         * The build is a second request on purpose. The chat route used to
+         * classify intent and generate the UI in one invocation, which shares a
+         * single 60s budget on Vercel and timed out on anything substantial —
+         * the reply never arrived and the message just sat there.
+         */
+        const build = data.pendingBuild;
+        const applied = build
+          ? await runBuild(build.prompt, build.mode)
+          : { jsxCode: data.jsxCode, uiSchema: data.uiSchema, schemaError: data.schemaError };
+
+        const jsxCode = applied.jsxCode?.trim();
         if (jsxCode && isLikelyReactComponent(jsxCode)) {
           onCodeApplied?.(jsxCode);
         }
-        if (data.uiSchema) {
-          onSchemaApplied(data.uiSchema);
+        if (applied.uiSchema) {
+          onSchemaApplied(applied.uiSchema);
           if (!jsxCode && onRegeneratePreview) {
-            onRegeneratePreview(data.uiSchema);
+            onRegeneratePreview(applied.uiSchema);
           }
-        } else if (data.schemaError && !jsxCode) {
+        } else if ((applied.schemaError || build) && !jsxCode) {
           toast.error(t("workspaceWidgets.appBuilder.refineFailed"));
         }
 
@@ -329,13 +369,27 @@ export function useAppBuilderAssistant({
           if (firstFail?.message) {
             toast.error(firstFail.message);
           }
-        }      } catch {
-        toast.error(t("workspaceWidgets.appBuilder.chatSendFailed"));
+        }
+      } catch {
+        const failure = t("workspaceWidgets.appBuilder.chatSendFailed");
+        toast.error(failure);
+        // The toast disappears after a few seconds and the user is left staring
+        // at their own message with no answer, which reads as "nothing
+        // happened". Put the failure in the transcript, where it stays.
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: failure,
+            timestamp: formatChatTime(locale),
+          },
+        ]);
       } finally {
         setIsLoading(false);
       }
     },
-    [automationCtx, input, isLoading, locale, messages, onCodeApplied, onRegeneratePreview, onSchemaApplied, t],
+    [automationCtx, input, isLoading, locale, messages, onCodeApplied, onRegeneratePreview, onSchemaApplied, runBuild, t],
   );
 
   const voiceStatus: "idle" | "connecting" | "listening" | "speaking" | "error" =

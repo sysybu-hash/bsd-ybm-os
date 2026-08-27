@@ -178,20 +178,22 @@ export const POST = withWorkspacesAuth(
         intent.appPrompt?.trim() ||
         (intent.generateApp ? userText : "");
 
-      if (intent.generateApp && effectiveAppPrompt) {
-        const generated = await generateAppBuilderUiFromPrompt({
-          description: effectiveAppPrompt,
-          locale,
-          currentUiSchema: data.currentUiSchema,
-          orgId,
-          mode: refiningExistingApp ? "update" : "build",
-        });
-        uiSchema = generated.uiSchema;
-        jsxCode = generated.jsxCode;
-        if (generated.schemaError) {
-          schemaError = generated.schemaError;
-        }
-      }
+      /**
+       * The build is NOT run here. It used to be, which meant one request made
+       * two sequential model calls inside a single 60s Vercel invocation —
+       * measured timing out at exactly 60s in production with
+       * FUNCTION_INVOCATION_TIMEOUT, leaving the user's message in the
+       * transcript with no reply and only a toast that vanished after a few
+       * seconds.
+       *
+       * The client takes `pendingBuild` to /api/ai-builder/generate as its own
+       * request, so each model call gets a full budget and the chat reply is
+       * shown immediately rather than after the build.
+       */
+      const pendingBuild =
+        intent.generateApp && effectiveAppPrompt
+          ? { prompt: effectiveAppPrompt, mode: refiningExistingApp ? "update" : "build" }
+          : null;
 
       // When the AI decided to build a UI, never trigger OS automation actions —
       // the user is in the App Builder and wants to BUILD, not navigate the OS.
@@ -208,8 +210,9 @@ export const POST = withWorkspacesAuth(
 
       return NextResponse.json({
         reply: intent.reply,
+        pendingBuild,
         uiSchema,
-        jsxCode,                        // ← NEW: raw JSX for Sandpack renderer
+        jsxCode,
         schemaApplied: uiSchema != null,
         schemaError,
         clientActions,
