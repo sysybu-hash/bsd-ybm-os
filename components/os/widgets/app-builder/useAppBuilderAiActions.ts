@@ -44,13 +44,18 @@ export function useAppBuilderAiActions({
       setRegenerating(true);
       onError(null);
       try {
-        const res = await fetch("/api/ai-builder/chat", {
+        // Straight to the build route. This path already knows the schema and
+        // the prompt, so routing it through /chat only added an intent
+        // classification call — and both model calls then shared one 60s Vercel
+        // invocation, which is what made regeneration time out.
+        const res = await fetch("/api/ai-builder/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             locale,
             currentUiSchema: schema,
-            messages: [{ role: "user", content: t(`${prefix}.regeneratePrompt`, { name }) }],
+            mode: "update",
+            prompt: t(`${prefix}.regeneratePrompt`, { name }),
           }),
         });
         const data = (await res.json()) as {
