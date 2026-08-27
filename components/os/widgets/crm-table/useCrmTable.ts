@@ -19,6 +19,7 @@ import {
 } from "./crm-table-api";
 import { useCrmGoogleImport } from "./useCrmGoogleImport";
 import { useCrmCsvTransfer } from "./useCrmCsvTransfer";
+import { useCrmProjectAssignment } from "./useCrmProjectAssignment";
 
 export function useCrmTable({
   openWorkspaceWidget,
@@ -72,13 +73,15 @@ export function useCrmTable({
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [projectOptions, setProjectOptions] = useState<{ id: string; name: string }[]>([]);
-  const [savingProject, setSavingProject] = useState(false);
-  const [creatingProject, setCreatingProject] = useState(false);
-  const [projectSyncMeta, setProjectSyncMeta] = useState<{
-    autoSyncCrm: boolean;
-    primaryContactId: string | null;
-  } | null>(null);
+  const {
+    projectOptions,
+    loadProjectOptions,
+    savingProject,
+    creatingProject,
+    crmSyncStatus,
+    saveClientProject,
+    handleCreateProjectForClient,
+  } = useCrmProjectAssignment({ selectedClient, setSelectedClient, setClients, t });
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -94,14 +97,6 @@ export function useCrmTable({
     if (!statusFilter) return clients;
     return clients.filter((c) => c.status === statusFilter);
   }, [clients, statusFilter]);
-
-  const loadProjectOptions = useCallback(async () => {
-    try {
-      setProjectOptions(await fetchProjectOptionsApi());
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const runSemanticSearch = useCallback(
     async (query: string): Promise<string[] | null> => {
@@ -204,30 +199,6 @@ export function useCrmTable({
     };
   }, [selectedClient?.id]);
 
-  useEffect(() => {
-    if (!selectedClient?.projectId) {
-      setProjectSyncMeta(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const meta = await fetchProjectSyncMetaApi(selectedClient.projectId!);
-      if (!cancelled) setProjectSyncMeta(meta);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedClient?.projectId, selectedClient?.id]);
-
-  const crmSyncStatus: "unlinked" | "syncing" | "synced" | "linked" = (() => {
-    if (savingProject) return "syncing";
-    if (!selectedClient?.projectId) return "unlinked";
-    if (projectSyncMeta?.autoSyncCrm) {
-      return projectSyncMeta.primaryContactId === selectedClient.id ? "synced" : "linked";
-    }
-    return "linked";
-  })();
-
   const confirmDeleteClient = async () => {
     if (!deleteTargetId) return;
     const id = deleteTargetId;
@@ -263,59 +234,6 @@ export function useCrmTable({
       } else throw new Error("update failed");
     } catch {
       toast.error(t("workspaceWidgets.crmTable.updateFailed"));
-    }
-  };
-
-  const saveClientProject = async (projectId: string | null) => {
-    if (!selectedClient || savingProject) return;
-    if (projectId) {
-      const check = await checkProjectChangeApi(selectedClient.id, projectId);
-      if (check) {
-        if (check.allowed === false) {
-          toast.error(check.warn ?? t("workspaceWidgets.crmTable.projectChangeBlocked"));
-          return;
-        }
-        if (check.warn && !window.confirm(check.warn)) return;
-      }
-    }
-    setSavingProject(true);
-    try {
-      const updated =
-        (await updateContactApi(selectedClient.id, { projectId })) ??
-        ({ ...selectedClient, projectId: null, projectName: null, totalProjects: 0 } satisfies Client);
-      setSelectedClient(updated);
-      setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-      toast.success(t("workspaceWidgets.crmTable.projectLinkUpdated"));
-    } catch {
-      toast.error(t("workspaceWidgets.crmTable.projectLinkFailed"));
-    } finally {
-      setSavingProject(false);
-    }
-  };
-
-  const handleCreateProjectForClient = async () => {
-    if (!selectedClient) return;
-    setCreatingProject(true);
-    try {
-      const result = await createProjectForContact({ contactId: selectedClient.id });
-      if (!result.ok) {
-        toast.error(result.error ?? t("workspaceWidgets.crmTable.createProjectFailed"));
-        return;
-      }
-      const updated: Client = {
-        ...selectedClient,
-        projectId: result.projectId,
-        projectName: result.projectName,
-        totalProjects: 1,
-      };
-      setSelectedClient(updated);
-      setClients((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-      await loadProjectOptions();
-      toast.success(t("workspaceWidgets.crmTable.createProjectSuccess"));
-    } catch {
-      toast.error(t("workspaceWidgets.crmTable.createProjectFailed"));
-    } finally {
-      setCreatingProject(false);
     }
   };
 
