@@ -123,6 +123,8 @@ export default function MarketingFieldScanDemo() {
               >
                 <div className="relative flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
                   {scan.previewUrl && !isPdf ? (
+                    /* A blob: URL from the file the visitor just picked —
+                       nothing for the Next image optimizer to fetch. */
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={scan.previewUrl}
