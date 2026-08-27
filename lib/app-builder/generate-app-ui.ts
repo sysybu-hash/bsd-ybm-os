@@ -62,37 +62,58 @@ export async function generateAppBuilderUiFromPrompt(params: {
 
   let uiSchema: AppBuilderUiSchema | undefined;
   let schemaError: string | undefined;
+  let jsxCode: string | undefined;
 
-  const sanitized = await generateUiSchemaFromPrompt(generatorPrompt, params.locale);
-  if (sanitized.ok) {
-    uiSchema = sanitized.schema;
+  /**
+   * The schema and the JSX are generated at the same time, not one after the
+   * other.
+   *
+   * Neither depends on the other — they read the same description — but running
+   * them in sequence made this function cost the sum of two Gemini calls, the
+   * second of which asks for up to 8192 output tokens. On Vercel that shares a
+   * single 60s invocation and reliably blew through it:
+   * FUNCTION_INVOCATION_TIMEOUT, measured at 61s against production, which is
+   * why the App Builder appeared to do nothing at all. In parallel the cost is
+   * the slower of the two rather than both.
+   *
+   * `allSettled`, not `all`: JSX generation is best-effort. A schema still
+   * renders through DynamicRenderer without it, and a rejected JSX call must not
+   * take the schema down with it.
+   */
+  const [schemaResult, jsxResult] = await Promise.allSettled([
+    generateUiSchemaFromPrompt(generatorPrompt, params.locale),
+    generateText({
+      model: google(MODEL),
+      system: JSX_SYSTEM_PROMPT,
+      prompt: description,
+      maxOutputTokens: 8192,
+    }),
+  ]);
+
+  if (schemaResult.status === "fulfilled" && schemaResult.value.ok) {
+    uiSchema = schemaResult.value.schema;
   } else {
     log.warn("ui_schema_rejected", {
-      error: sanitized.error,
+      error:
+        schemaResult.status === "fulfilled" && !schemaResult.value.ok
+          ? schemaResult.value.error
+          : String(schemaResult.status === "rejected" ? schemaResult.reason : "unknown"),
       orgId: params.orgId,
     });
     schemaError = "schema_rejected";
   }
 
-  let jsxCode: string | undefined;
-  try {
-    const { text } = await generateText({
-      model: google(MODEL),
-      system: JSX_SYSTEM_PROMPT,
-      prompt: description,
-      maxOutputTokens: 8192,
-    });
-
-    const cleanCode = sanitizeGeneratedJsx(text);
+  if (jsxResult.status === "fulfilled") {
+    const cleanCode = sanitizeGeneratedJsx(jsxResult.value.text);
     if (isLikelyReactComponent(cleanCode)) {
       jsxCode = cleanCode;
       log.info("jsx_generated", { orgId: params.orgId, chars: jsxCode.length });
     } else {
       log.warn("jsx_invalid", { orgId: params.orgId, chars: cleanCode.length });
     }
-  } catch (jsxErr: unknown) {
+  } else {
     log.warn("jsx_generation_failed", {
-      error: jsxErr instanceof Error ? jsxErr.message : String(jsxErr),
+      error: String(jsxResult.reason),
       orgId: params.orgId,
     });
   }
