@@ -62,81 +62,74 @@ export async function generateAppBuilderUiFromPrompt(params: {
 
   let uiSchema: AppBuilderUiSchema | undefined;
   let schemaError: string | undefined;
-  let jsxCode: string | undefined;
+  const jsxCode: string | undefined = undefined;
 
   /**
-   * The schema and the JSX are generated at the same time, not one after the
-   * other.
+   * Only the schema is generated here.
    *
-   * Neither depends on the other — they read the same description — but running
-   * them in sequence made this function cost the sum of two Gemini calls, the
-   * second of which asks for up to 8192 output tokens. On Vercel that shares a
-   * single 60s invocation and reliably blew through it:
-   * FUNCTION_INVOCATION_TIMEOUT, measured at 61s against production, which is
-   * why the App Builder appeared to do nothing at all. In parallel the cost is
-   * the slower of the two rather than both.
+   * The JSX used to run alongside it. Even in parallel the two share one 60s
+   * Vercel invocation, and the JSX call — up to 16k output tokens — is the long
+   * pole: measured timing out at 61s against production, so the user got
+   * nothing rather than a slower result.
    *
-   * `allSettled`, not `all`: JSX generation is best-effort. A schema still
-   * renders through DynamicRenderer without it, and a rejected JSX call must not
-   * take the schema down with it.
+   * The schema alone is fast and renders through DynamicRenderer, so it is what
+   * a build returns. `generateAppBuilderJsx` upgrades that to a live React
+   * preview from its own request; see app/api/ai-builder/jsx/route.ts.
    */
-  const [schemaResult, jsxResult] = await Promise.allSettled([
-    generateUiSchemaFromPrompt(generatorPrompt, params.locale),
-    generateText({
-      model: google(MODEL),
-      system: JSX_SYSTEM_PROMPT,
-      prompt: description,
-      // A dashboard of a few cards runs past 8192 and came back cut off mid-tag.
-      maxOutputTokens: 16384,
-    }),
-  ]);
-
-  if (schemaResult.status === "fulfilled" && schemaResult.value.ok) {
-    uiSchema = schemaResult.value.schema;
+  const sanitized = await generateUiSchemaFromPrompt(generatorPrompt, params.locale);
+  if (sanitized.ok) {
+    uiSchema = sanitized.schema;
   } else {
-    log.warn("ui_schema_rejected", {
-      error:
-        schemaResult.status === "fulfilled" && !schemaResult.value.ok
-          ? schemaResult.value.error
-          : String(schemaResult.status === "rejected" ? schemaResult.reason : "unknown"),
-      orgId: params.orgId,
-    });
+    log.warn("ui_schema_rejected", { error: sanitized.error, orgId: params.orgId });
     schemaError = "schema_rejected";
   }
 
-  if (jsxResult.status === "fulfilled") {
-    /**
-     * A truncated component is worse than none.
-     *
-     * The model hits the output cap and stops mid-element — observed ending on a
-     * bare "<" after 17k characters. `isLikelyReactComponent` still passed it,
-     * because the opening looks like a component; it is only invalid at the end.
-     * The preview then failed to compile and showed a Babel parse error where a
-     * working UI should have been.
-     *
-     * `finishReason === "length"` is the model telling us exactly this, so the
-     * JSX is dropped and the preview falls back to the UI schema, which renders
-     * through DynamicRenderer and is generated independently.
-     */
-    const truncated = jsxResult.value.finishReason === "length";
-    const cleanCode = truncated ? "" : sanitizeGeneratedJsx(jsxResult.value.text);
-    if (truncated) {
-      log.warn("jsx_truncated", {
-        orgId: params.orgId,
-        chars: jsxResult.value.text.length,
-      });
-    } else if (isLikelyReactComponent(cleanCode)) {
-      jsxCode = cleanCode;
-      log.info("jsx_generated", { orgId: params.orgId, chars: jsxCode.length });
-    } else {
-      log.warn("jsx_invalid", { orgId: params.orgId, chars: cleanCode.length });
-    }
-  } else {
-    log.warn("jsx_generation_failed", {
-      error: String(jsxResult.reason),
-      orgId: params.orgId,
-    });
-  }
-
   return { uiSchema, jsxCode, schemaError };
+}
+
+/**
+ * The live React preview for a prompt — the optional half of a build.
+ *
+ * Returns undefined rather than throwing when the model gives back something
+ * unusable, because the caller already has a working schema-rendered dashboard
+ * and this is an upgrade on top of it.
+ *
+ * Truncation is checked explicitly. The model stops mid-element when it hits the
+ * output cap — observed ending on a bare "<" after 17k characters — and
+ * `isLikelyReactComponent` still accepts it, because only the end is invalid.
+ * The preview then fails to compile and shows a Babel parse error where a
+ * working UI should be, which is strictly worse than not offering the upgrade.
+ */
+export async function generateAppBuilderJsx(
+  description: string,
+  orgId?: string,
+): Promise<string | undefined> {
+  try {
+    const result = await generateText({
+      model: google(MODEL),
+      system: JSX_SYSTEM_PROMPT,
+      prompt: description,
+      maxOutputTokens: 16384,
+    });
+
+    if (result.finishReason === "length") {
+      log.warn("jsx_truncated", { orgId, chars: result.text.length });
+      return undefined;
+    }
+
+    const cleanCode = sanitizeGeneratedJsx(result.text);
+    if (!isLikelyReactComponent(cleanCode)) {
+      log.warn("jsx_invalid", { orgId, chars: cleanCode.length });
+      return undefined;
+    }
+
+    log.info("jsx_generated", { orgId, chars: cleanCode.length });
+    return cleanCode;
+  } catch (err: unknown) {
+    log.warn("jsx_generation_failed", {
+      error: err instanceof Error ? err.message : String(err),
+      orgId,
+    });
+    return undefined;
+  }
 }

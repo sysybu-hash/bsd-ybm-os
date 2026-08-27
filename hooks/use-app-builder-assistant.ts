@@ -363,6 +363,30 @@ export function useAppBuilderAssistant({
           toast.error(t("workspaceWidgets.appBuilder.refineFailed"));
         }
 
+        /**
+         * The live React preview is fetched afterwards, as an upgrade.
+         *
+         * The user already has a dashboard on screen at this point, rendered
+         * from the schema. Asking for the JSX in the same request is what pushed
+         * the build past Vercel's 60s ceiling — it is the expensive half — so it
+         * gets its own invocation and simply does not arrive if it fails.
+         */
+        if (build && !jsxCode && onCodeApplied) {
+          void fetch("/api/ai-builder/jsx", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: build.prompt }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((body: { jsxCode?: string | null } | null) => {
+              const code = body?.jsxCode?.trim();
+              if (code && isLikelyReactComponent(code)) onCodeApplied(code);
+            })
+            .catch(() => {
+              /* the schema-rendered dashboard stands on its own */
+            });
+        }
+
         if (data.clientActions?.length && automationCtx?.runActions) {
           const results = await automationCtx.runActions(data.clientActions);
           const firstFail = results.find((r) => !r.ok);
