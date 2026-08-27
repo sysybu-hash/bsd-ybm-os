@@ -149,7 +149,12 @@ export function useDriveData(autoDecodeOnSync: boolean) {
       );
       if (pending?.length) void runDecodeBatch(pending.map((f) => f.id));
     }
-  }, [runSync, fetchFiles, currentFolderId, autoDecodeOnSync]); // eslint-disable-line react-hooks/exhaustive-deps
+    // `runDecodeBatch` is declared further down this hook, so it cannot appear
+    // in this dependency list without a temporal-dead-zone reference. The
+    // decode pass is opportunistic; running it through the previous render's
+    // copy is harmless because it only takes file ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runSync, fetchFiles, currentFolderId, autoDecodeOnSync]);
 
   const handleFolderClick = useCallback(
     (folder: GoogleFile) => {

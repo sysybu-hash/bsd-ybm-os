@@ -74,8 +74,7 @@ export default function ProjectSchedulePanel({
 
   const filteredTasks = useMemo(
     () => getFilteredTasks(selectedDomain),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ganttTasks, selectedDomain],
+    [getFilteredTasks, selectedDomain],
   );
 
   const sidebar = (

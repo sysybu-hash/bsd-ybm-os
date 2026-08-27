@@ -129,7 +129,10 @@ export function usePlatformAdmin() {
     const def = normalizeIndustryType(platformConfig.defaultIndustryForRegistration);
     setCreateIndustry(def);
     setCreateConstructionTrade(def === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Deliberately keyed on the one field this seeds from. Depending on the
+    // whole `platformConfig` object would reset the operator's in-progress
+    // create-org selections every time any other setting is refetched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platformConfig?.defaultIndustryForRegistration]);
 
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId) ?? null;

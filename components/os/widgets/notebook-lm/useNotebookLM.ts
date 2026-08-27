@@ -92,7 +92,10 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
       if (Array.isArray(d.sources) && d.sources.length) setSources(d.sources);
       if (Array.isArray(d.messages) && d.messages.length) setMessages(uiMessagesFromStored(d.messages));
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Restores the session draft once, keyed on whether a notebook is already
+    // loaded. `setMessages` comes from useChat and is not stable; including it
+    // would replay the draft over the live conversation on every chat render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedNotebookId]);
 
   const loadProjects = useCallback(async () => {
@@ -131,8 +134,7 @@ export function useNotebookLM({ liveData, t }: UseNotebookLMParams) {
       setShowSavedPanel(false);
       toast.success(t("workspaceWidgets.notebookLM.loaded"));
     } catch { toast.error(t("workspaceWidgets.notebookLM.loadFailed")); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
+  }, [t, setMessages]);
 
   const ensuredProjectRef = useRef<string | null>(null);
 

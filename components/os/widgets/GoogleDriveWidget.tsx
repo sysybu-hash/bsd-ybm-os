@@ -63,8 +63,7 @@ export default function GoogleDriveWidget({ liveData = null, openWorkspaceWidget
         <ExternalLink size={16} />
       </button>
     </div>
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [actionFileId]);
+  ), [actionFileId, addToNotebook, runAiScan, t]);
 
   if (showProjectPicker && !orgBrowseMode) {
     return (
