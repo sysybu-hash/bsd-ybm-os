@@ -86,7 +86,8 @@ export async function generateAppBuilderUiFromPrompt(params: {
       model: google(MODEL),
       system: JSX_SYSTEM_PROMPT,
       prompt: description,
-      maxOutputTokens: 8192,
+      // A dashboard of a few cards runs past 8192 and came back cut off mid-tag.
+      maxOutputTokens: 16384,
     }),
   ]);
 
@@ -104,8 +105,27 @@ export async function generateAppBuilderUiFromPrompt(params: {
   }
 
   if (jsxResult.status === "fulfilled") {
-    const cleanCode = sanitizeGeneratedJsx(jsxResult.value.text);
-    if (isLikelyReactComponent(cleanCode)) {
+    /**
+     * A truncated component is worse than none.
+     *
+     * The model hits the output cap and stops mid-element — observed ending on a
+     * bare "<" after 17k characters. `isLikelyReactComponent` still passed it,
+     * because the opening looks like a component; it is only invalid at the end.
+     * The preview then failed to compile and showed a Babel parse error where a
+     * working UI should have been.
+     *
+     * `finishReason === "length"` is the model telling us exactly this, so the
+     * JSX is dropped and the preview falls back to the UI schema, which renders
+     * through DynamicRenderer and is generated independently.
+     */
+    const truncated = jsxResult.value.finishReason === "length";
+    const cleanCode = truncated ? "" : sanitizeGeneratedJsx(jsxResult.value.text);
+    if (truncated) {
+      log.warn("jsx_truncated", {
+        orgId: params.orgId,
+        chars: jsxResult.value.text.length,
+      });
+    } else if (isLikelyReactComponent(cleanCode)) {
       jsxCode = cleanCode;
       log.info("jsx_generated", { orgId: params.orgId, chars: jsxCode.length });
     } else {
