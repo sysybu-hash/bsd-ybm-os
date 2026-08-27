@@ -9,7 +9,6 @@ import {
 } from "@/hooks/useGeminiLiveAudio";
 import { normalizeLocale, type AppLocale } from "@/lib/i18n/config";
 import { buildMarketingPublicUrls } from "@/lib/marketing/canonical-site";
-import { buildMarketingLandingSystemInstruction } from "@/lib/marketing/landing-assistant-prompt";
 import {
   buildMarketingLiveFarewellUserTurn,
   buildMarketingLiveSessionStartUserTurn,
@@ -61,13 +60,39 @@ export function useMarketingHeroOmnibar(t: TranslateFn, localeInput: string) {
     setBrowserOrigin(window.location.origin);
   }, []);
 
-  const systemInstruction = useMemo(
-    () =>
-      buildMarketingLandingSystemInstruction(locale, "voice", {
-        browserOrigin,
-      }),
-    [browserOrigin, locale],
-  );
+  /**
+   * The voice assistant's system instruction, loaded only once someone turns
+   * the microphone on.
+   *
+   * `buildMarketingLandingSystemInstruction` reaches
+   * lib/marketing/landing-knowledge.ts, which imports lib/i18n/load-messages —
+   * all 33 message packs. Because this hook is client-side and the omnibar
+   * island is on the landing page, that put **240KB of message data into the
+   * heaviest chunk on `/`**, the only public route carrying one: 777KB of JS
+   * against ~460KB for every other page. It was downloaded by every visitor to
+   * build a prompt for a feature most of them never start.
+   *
+   * Behind a dynamic import it splits out and is fetched on first activation.
+   * `enabled` below waits for it, so the session cannot open with an empty
+   * instruction — a connection takes longer than this import anyway.
+   */
+  const [systemInstruction, setSystemInstruction] = useState("");
+
+  useEffect(() => {
+    if (!liveOn || systemInstruction) return;
+    let cancelled = false;
+    void import("@/lib/marketing/landing-assistant-prompt").then(
+      ({ buildMarketingLandingSystemInstruction }) => {
+        if (cancelled) return;
+        setSystemInstruction(
+          buildMarketingLandingSystemInstruction(locale, "voice", { browserOrigin }),
+        );
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [liveOn, systemInstruction, locale, browserOrigin]);
 
   const statusLabels: GeminiLiveStatusLabels = useMemo(
     () => ({
@@ -127,7 +152,8 @@ export function useMarketingHeroOmnibar(t: TranslateFn, localeInput: string) {
 
   const geminiLive = useGeminiLiveAudio({
     owner: "marketingOmnibar",
-    enabled: liveOn,
+    // Waits for the instruction, which is imported on demand above.
+    enabled: liveOn && systemInstruction !== "",
     contextReady: true,
     systemInstruction,
     settings: DEFAULT_GEMINI_LIVE_VOICE_SETTINGS,
