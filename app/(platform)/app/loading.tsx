@@ -1,3 +1,5 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 /**
  * app/app/loading.tsx
  * Workspace loading skeleton — shown while workspace layout resolves.
@@ -6,11 +8,10 @@
 export default function WorkspaceLoading() {
   return (
     <div
-     
       className="flex h-screen w-full overflow-hidden bg-[color:var(--background-main)]"
       aria-busy="true"
-      aria-label="טוען סביבת עבודה..."
     >
+      <LoadingAnnouncement />
       {/* Sidebar skeleton */}
       <aside className="hidden w-16 shrink-0 flex-col gap-3 border-l border-[color:var(--border-main)] bg-[color:var(--background-main)] p-2 md:flex">
         {Array.from({ length: 7 }).map((_, i) => (

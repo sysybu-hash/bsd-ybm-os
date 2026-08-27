@@ -1,3 +1,5 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 /**
  * app/about/loading.tsx
  * Loading skeleton for the About page.
@@ -5,11 +7,10 @@
 export default function AboutLoading() {
   return (
     <div
-     
       className="flex min-h-screen flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]"
       aria-busy="true"
-      aria-label="טוען..."
     >
+      <LoadingAnnouncement />
       {/* Nav bar skeleton */}
       <div className="flex items-center justify-between border-b border-[color:var(--border-main)] px-6 py-4">
         <div className="h-8 w-32 animate-pulse rounded-lg bg-[color:var(--border-main)]" />

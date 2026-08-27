@@ -1,3 +1,5 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 /**
  * app/app/settings/loading.tsx
  * Settings page skeleton.
@@ -5,11 +7,11 @@
 export default function SettingsLoading() {
   return (
     <div
-      dir="rtl"
+     
       className="flex min-h-full flex-col gap-4 p-6"
       aria-busy="true"
-      aria-label="טוען הגדרות..."
     >
+      <LoadingAnnouncement />
       {/* Header */}
       <div className="h-7 w-32 animate-pulse rounded-lg bg-white/5" />
 

@@ -1,11 +1,13 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 export default function MarketingPreviewLoading() {
   return (
     <div
-      dir="rtl"
+     
       className="marketing-cinematic min-h-dvh bg-slate-950"
       aria-busy="true"
-      aria-label="טוען תצוגה מקדימה..."
     >
+      <LoadingAnnouncement />
       <div className="h-10 animate-pulse border-b border-amber-500/20 bg-amber-500/10" />
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-24">
         <div className="mx-auto h-12 w-2/3 max-w-xl animate-pulse rounded-2xl bg-white/10" />
