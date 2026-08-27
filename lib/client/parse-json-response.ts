@@ -28,7 +28,7 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
  * code alone cannot carry.
  */
 export function resolveApiErrorMessage(
-  body: { error?: unknown; code?: unknown } | undefined,
+  body: { error?: unknown; code?: unknown; vars?: unknown } | undefined,
   t: (key: string) => string,
   fallback?: string,
 ): string {
@@ -38,9 +38,27 @@ export function resolveApiErrorMessage(
     const key = `apiErrors.${code}`;
     const translated = t(key);
     // useI18n returns the key itself when there is no entry for it.
-    if (translated && translated !== key) return translated;
+    if (translated && translated !== key) return interpolate(translated, body?.vars);
   }
   return serverMessage ?? fallback ?? t("common.errors.unknown");
+}
+
+/**
+ * Fills `{name}` placeholders from the error body's `vars`.
+ *
+ * Errors that name a value — the rejected MIME type, the document number
+ * already in use — used to be built server-side as Hebrew template literals,
+ * which is why they could not be translated from the code alone. The server
+ * sends the values now and the translation supplies the sentence.
+ */
+function interpolate(text: string, vars: unknown): string {
+  if (!vars || typeof vars !== "object") return text;
+  let out = text;
+  for (const [name, value] of Object.entries(vars as Record<string, unknown>)) {
+    if (typeof value !== "string" && typeof value !== "number") continue;
+    out = out.split(`{${name}}`).join(String(value));
+  }
+  return out;
 }
 
 export async function parseJsonResponse<T extends Record<string, unknown> = Record<string, unknown>>(

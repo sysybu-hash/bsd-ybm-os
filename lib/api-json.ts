@@ -10,6 +10,19 @@ export type ApiErrorBody = {
   error: string;
   code?: string;
   issues?: ZodIssue[];
+  /**
+   * Values the client interpolates into the translated message for `code`.
+   *
+   * Several errors are only useful with a detail in them — which MIME type was
+   * rejected, which document number is taken, how many sources are allowed. The
+   * server builds those into a Hebrew template literal, which meant the code
+   * alone could not reproduce the message and those errors had to stay
+   * untranslated.
+   *
+   * Sending the values separately lets `apiErrors.<code>` carry `{placeholders}`
+   * in every locale, so the message is both translated and specific.
+   */
+  vars?: Record<string, string>;
 };
 
 export function jsonUnauthorized(message: string = API_MSG_UNAUTHORIZED) {
@@ -26,8 +39,12 @@ export function jsonForbidden(message: string = API_MSG_FORBIDDEN) {
   );
 }
 
-export function jsonBadRequest(message: string, code = "bad_request") {
-  return NextResponse.json({ error: message, code } satisfies ApiErrorBody, { status: 400 });
+export function jsonBadRequest(
+  message: string,
+  code = "bad_request",
+  vars?: Record<string, string>,
+) {
+  return NextResponse.json({ error: message, code, vars } satisfies ApiErrorBody, { status: 400 });
 }
 
 export function jsonValidationFailed(issues: ZodIssue[], message = API_MSG_VALIDATION_FAILED) {
