@@ -1,3 +1,5 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 /**
  * app/app/admin/loading.tsx
  * Loading skeleton for the Platform Admin Console.
@@ -5,11 +7,10 @@
 export default function AdminLoading() {
   return (
     <div
-     
       className="flex min-h-screen flex-col bg-[color:var(--background-main)] text-[color:var(--foreground-main)]"
       aria-busy="true"
-      aria-label="טוען לוח ניהול..."
     >
+      <LoadingAnnouncement />
       {/* Top bar */}
       <div className="flex items-center gap-4 border-b border-[color:var(--border-main)] px-6 py-4">
         <div className="h-7 w-7 animate-pulse rounded-lg bg-[color:var(--border-main)]" />

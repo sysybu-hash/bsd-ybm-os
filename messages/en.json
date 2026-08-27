@@ -4,7 +4,9 @@
     "errorBody": "An unexpected error occurred. Please try refreshing the page or return home.",
     "retry": "Try again",
     "home": "Back to Home",
-    "login": "Sign In"
+    "login": "Sign In",
+    "signTitle": "The document could not be loaded",
+    "signBody": "Something went wrong loading the document for signing. The link may be invalid or expired."
   },
   "brand": {
     "name": "BSD-YBM",

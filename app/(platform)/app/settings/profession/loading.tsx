@@ -1,6 +1,9 @@
+import { LoadingAnnouncement } from "@/components/errors/LoadingAnnouncement";
+
 export default function ProfessionSettingsLoading() {
   return (
-    <div dir="rtl" className="flex flex-col gap-4 p-6" aria-busy="true" aria-label="טוען הגדרות...">
+    <div className="flex flex-col gap-4 p-6" aria-busy="true">
+      <LoadingAnnouncement />
       <div className="h-7 w-48 animate-pulse rounded-lg bg-white/10" />
       <div className="h-4 w-64 animate-pulse rounded-lg bg-white/5" />
       <div className="mt-4 flex flex-col gap-3">

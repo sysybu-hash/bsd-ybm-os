@@ -25,8 +25,9 @@ const ALLOWLIST = [
   /lib\/help-center\//,
   /e2e\//,
   /\.test\./,
-  /error\.tsx$/,
-  /loading\.tsx$/,
+  // error.tsx and loading.tsx were allowlisted here, which is why nobody ever
+  // saw that every route's error screen shipped Hebrew-only copy. They are
+  // translated now and stay in scope.
   /opengraph/,
   /manifest/,
 ];

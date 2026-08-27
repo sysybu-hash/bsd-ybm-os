@@ -7,6 +7,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
+import { useI18n } from "@/components/os/system/I18nProvider";
 
 type Props = Readonly<{
   error: Error & { digest?: string };
@@ -14,6 +15,13 @@ type Props = Readonly<{
 }>;
 
 export default function SignError({ error, reset }: Props) {
+  const { t } = useI18n();
+  // The signing page is reached by external recipients, who may land before the
+  // provider mounts; useI18n returns the key in that case, so fall back to text.
+  const tr = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
   useEffect(() => {
     Sentry.captureException(error, {
       extra: { digest: error.digest, route: "sign/[id]" },
@@ -24,8 +32,7 @@ export default function SignError({ error, reset }: Props) {
 
   return (
     <div
-     
-      className="flex min-h-screen flex-col items-center justify-center bg-[color:var(--background-main)] px-4 py-12 text-[color:var(--foreground-main)]"
+      className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-4 py-12 text-slate-100"
     >
       <div className="flex w-full max-w-md flex-col gap-6 text-center">
         <div className="flex justify-center">
@@ -45,12 +52,12 @@ export default function SignError({ error, reset }: Props) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-bold">לא ניתן לטעון את המסמך</h1>
-          <p className="text-sm leading-relaxed text-[color:var(--foreground-muted)]">
-            אירעה שגיאה בטעינת המסמך לחתימה. ייתכן שהקישור אינו תקף או שפג תוקפו.
+          <h1 className="text-xl font-bold">{tr("siteErrors.signTitle", "The document could not be loaded")}</h1>
+          <p className="text-sm leading-relaxed text-slate-400">
+            {tr("siteErrors.signBody", "Something went wrong loading the document for signing.")}
           </p>
           {isDev && error?.message && (
-            <pre className="mt-2 overflow-auto rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] p-3 text-right text-xs text-red-300">
+            <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-white/5 p-3 text-right text-xs text-red-300">
               {error.message}
             </pre>
           )}
@@ -62,13 +69,13 @@ export default function SignError({ error, reset }: Props) {
             onClick={() => reset()}
             className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            נסה שוב
+            {tr("siteErrors.retry", "Try again")}
           </button>
           <Link
             href="/"
-            className="rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] px-6 py-2.5 text-sm font-bold text-[color:var(--foreground-main)] transition hover:bg-white/[0.07]"
+            className="rounded-xl border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-bold text-slate-100 transition hover:bg-white/[0.07]"
           >
-            עמוד הבית
+            {tr("common.errors.backHome", "Home")}
           </Link>
         </div>
       </div>
