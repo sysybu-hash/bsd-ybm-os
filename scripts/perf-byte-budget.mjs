@@ -188,7 +188,15 @@ if (flag("check")) {
     if (newHosts.length > 0) {
       regressions.push(`  ${pathname}  new third-party host(s): ${newHosts.join(", ")}`);
     }
-    for (const key of ["totalKB", "scriptKB", "largestScriptKB", "thirdPartyKB"]) {
+    /**
+     * `thirdPartyKB` is deliberately not thresholded. PostHog loads its
+     * recorder, surveys and autocapture bundles on an idle callback, so how many
+     * of them land inside the settle window varies run to run — it flagged
+     * /app/builder at 76KB -> 109KB with no code change at all. The host list
+     * above is the signal worth alarming on; the byte count is reported for
+     * context only.
+     */
+    for (const key of ["totalKB", "scriptKB", "largestScriptKB"]) {
       const limit = before[key] * (1 + TOLERANCE);
       if (now[key] > limit) {
         regressions.push(
