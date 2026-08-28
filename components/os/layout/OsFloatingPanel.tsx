@@ -33,6 +33,14 @@ const MAX_ZOOM = 2;
 export const FLOATING_PANEL_EXIT_MS = 220;
 const EXIT_MS = FLOATING_PANEL_EXIT_MS;
 
+let openFloatingPanelCount = 0;
+
+/** Whether any OsFloatingPanel is currently open (and not minimized), e.g. so a
+ * parent widget can skip its own Escape handling in favor of the topmost dialog. */
+export function isAnyFloatingPanelOpen(): boolean {
+  return openFloatingPanelCount > 0;
+}
+
 export default function OsFloatingPanel({
   open, onClose, title, titleId = "os-floating-panel-title", children,
   className = "", zIndex = OS_MODAL_PANEL_Z, panelWidth = 560,
@@ -63,6 +71,12 @@ export default function OsFloatingPanel({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open || isMinimized) return;
+    openFloatingPanelCount++;
+    return () => { openFloatingPanelCount--; };
+  }, [open, isMinimized]);
 
   useEffect(() => {
     if (!open) return;

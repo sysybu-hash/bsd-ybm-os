@@ -13,6 +13,7 @@ import type { ActiveWidget, WidgetType } from "@/hooks/use-window-manager";
 import { registerWorkspaceBoundsRef } from "@/lib/workspace/workspace-bounds-registry";
 import type { OpenWorkspaceWidgetFn } from "@/components/os/widgets/CrmTableWidget";
 import { WidgetContent } from "./WidgetContent";
+import { isAnyFloatingPanelOpen } from "./OsFloatingPanel";
 
 interface OSWorkspaceProps {
   widgets: ActiveWidget[];
@@ -54,6 +55,7 @@ export default function OSWorkspace({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || visibleWidgets.length === 0) return;
+      if (isAnyFloatingPanelOpen()) return;
       const topWidget = [...visibleWidgets].sort((a, b) => {
         if (a.isMaximized && !b.isMaximized) return -1;
         if (!a.isMaximized && b.isMaximized) return 1;
