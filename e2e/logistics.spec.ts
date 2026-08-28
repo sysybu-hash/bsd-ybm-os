@@ -139,12 +139,12 @@ test.describe("logistics hub", () => {
     const historyPanel = page.getByRole("dialog").filter({ hasText: /היסטוריית תנועות|movement history/i });
     await expect(historyPanel).toBeVisible({ timeout: 10_000 });
     await expect(historyPanel.getByText(/יציאה לשטח|checked out/i)).toBeVisible({ timeout: 15_000 });
-    // OsFloatingPanel's close button's aria-label is "סגור <title>" / "Close <title>"
-    // (workspaceWidgets.chrome.closeAria), not the exact word "סגור"/"close" — match the
-    // prefix. (Escape is unreliable here: OSWorkspace.tsx's own global Escape handler
-    // races with the panel's and can close the whole logisticsHub widget instead.)
-    await historyPanel.getByRole("button", { name: /^סגור|^close/i }).click();
+    // Escape should close only the topmost dialog, not the logisticsHub widget behind it
+    // (OSWorkspace.tsx's global Escape handler skips its own close/minimize while a floating
+    // panel is open — see isAnyFloatingPanelOpen() in OsFloatingPanel.tsx).
+    await page.keyboard.press("Escape");
     await expect(historyPanel).toBeHidden({ timeout: 10_000 });
+    await expect(assetCard).toBeVisible({ timeout: 10_000 });
 
     // ── Check back in ───────────────────────────────────────────────────────
     await assetCard.getByRole("button", { name: /החזר למחסן|check in/i }).click();
