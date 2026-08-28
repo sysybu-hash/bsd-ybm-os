@@ -34,6 +34,9 @@ export default function InPageCameraCapture({ onCapture, onClose, onFallbackToFi
   useEffect(() => {
     void start();
     return () => stop();
+    // Mount-only by design: `start` and `stop` are re-created by
+    // useCameraStream on each render, and depending on them would tear the
+    // camera down and reopen it mid-capture.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

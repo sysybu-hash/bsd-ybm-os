@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLatestRef } from "@/hooks/use-latest-ref";
 import {
   countOutbox,
   flushScanOutbox,
@@ -44,23 +45,42 @@ export function useScanOutbox() {
     }
   }, []);
 
+  /**
+   * The latch is a ref, not the `syncing` state, because the guard has to hold
+   * between the call and the commit that would flip the state. Every record is
+   * posted with persist:"true", so a second flush overlapping the first
+   * re-submits records the first has not finished clearing — duplicate
+   * documents, not merely duplicate work.
+   */
+  const syncingRef = useRef(false);
+
   const sync = useCallback(async (): Promise<{ synced: number; remaining: number }> => {
-    if (syncing) return { synced: 0, remaining: count };
+    if (syncingRef.current) return { synced: 0, remaining: count };
+    syncingRef.current = true;
     setSyncing(true);
     try {
       const result = await flushScanOutbox(submitRecord);
       setCount(result.remaining);
       return result;
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
-  }, [syncing, count]);
+  }, [count]);
+
+  /**
+   * The listener is registered once, so it must not close over `sync` directly:
+   * `sync` is re-created whenever `count` changes, and the mount-time copy
+   * would keep reporting a stale queue. Reading it through a latest-ref keeps
+   * the subscription stable while still calling the current function.
+   */
+  const syncRef = useLatestRef(sync);
 
   useEffect(() => {
     void refresh();
     if (typeof window === "undefined") return;
 
-    const onOnline = () => void sync();
+    const onOnline = () => void syncRef.current();
     window.addEventListener("online", onOnline);
     // רענון תקופתי קליל — תופס רשומות שנוספו מחלון/טאב אחר.
     const interval = window.setInterval(() => void refresh(), 15_000);
@@ -68,8 +88,7 @@ export function useScanOutbox() {
       window.removeEventListener("online", onOnline);
       window.clearInterval(interval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refresh, syncRef]);
 
   return { count, syncing, sync, refresh };
 }

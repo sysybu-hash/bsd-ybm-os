@@ -88,6 +88,11 @@ const SHELL = `<!DOCTYPE html>
               '); }\\n' +
               'ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(__DEFAULT_EXPORT__));';
             var out = window.Babel.transform(wrapped, { presets: ["react", "typescript"], filename: "preview.tsx" }).code;
+            // Evaluating the generated component is the entire purpose of this
+            // document. It runs inside a srcdoc iframe whose own CSP allows no
+            // connect-src and no nested frames, and the code arrives by
+            // postMessage rather than through HTML parsing, so there is no
+            // </script> breakout to worry about either.
             // eslint-disable-next-line no-new-func
             new Function(out)();
           } catch (err) {

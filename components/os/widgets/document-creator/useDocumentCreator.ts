@@ -164,7 +164,10 @@ export function useDocumentCreator(liveData: Record<string, unknown> | null | un
       );
     }
     setShowDraft(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Keyed on `liveData` alone on purpose. `contacts` is read to resolve a
+    // name, but adding it would re-apply the whole AI draft whenever the
+    // contact list refreshes — overwriting whatever the user has since typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveData]);
 
   // ── item helpers ──────────────────────────────────────────────────────────

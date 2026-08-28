@@ -178,7 +178,12 @@ export function useCrmTable({
       void fetchClients(false);
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [searchQuery, tagFilter, semanticMode]); // eslint-disable-line react-hooks/exhaustive-deps
+    // `fetchClients` is intentionally absent: it is re-created on every page
+    // change, and including it would turn each pagination click into a second
+    // debounced refetch. The effect only needs to fire when a filter changes,
+    // and the render that changes one already supplies the current fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, tagFilter, semanticMode]);
 
   useEffect(() => {
     if (!selectedClient?.id) return;

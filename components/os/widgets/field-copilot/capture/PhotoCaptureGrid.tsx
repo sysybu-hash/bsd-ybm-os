@@ -109,6 +109,9 @@ export default function PhotoCaptureGrid({ photoAssetIds, onPhoto, onDeletePhoto
         <div className="grid grid-cols-3 gap-2 px-4 pb-3 sm:grid-cols-4">
           {photoAssetIds.map((id) => (
             <div key={id} className="relative aspect-square overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-soft)]">
+              {/* An authenticated API route, not a static asset: the image
+                  optimizer would fetch it server-side without the session
+                  cookie and get a 401. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/field-copilot/assets/${id}`}
