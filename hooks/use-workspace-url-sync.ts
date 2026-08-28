@@ -279,10 +279,28 @@ export function useWorkspaceUrlSync({
         if (path === "/login" || path.startsWith("/login/")) return;
       }
       skipNextWrite.current = true;
+      // The user navigated deliberately, so a previous dismissal no longer applies.
       dismissedWorkspaceIntentFp = null;
-      fulfilledOpenIntentFp = null;
+
       const intent = parseWorkspaceUrl(new URLSearchParams(window.location.search));
-      if (!intent) return;
+      if (!intent) {
+        fulfilledOpenIntentFp = null;
+        return;
+      }
+
+      /**
+       * Claim the intent *before* opening rather than clearing it.
+       *
+       * The same navigation also changes `searchParams`, so the effect above
+       * re-runs — and it runs before `widgets` contains the window opened here,
+       * which makes its `findWidgetForIntent` miss. With the fingerprint
+       * cleared, its `fulfilledOpenIntentFp === fp` guard passed too, and it
+       * opened a second window of the same widget. Whether it won that race
+       * depended on timing, which is why deep links only sometimes produced a
+       * duplicate.
+       */
+      fulfilledOpenIntentFp = intentFingerprint(intent);
+
       const existing = findWidgetByType(intent.widgetType);
       if (existing) focusWidget(existing.id);
       else
@@ -293,7 +311,7 @@ export function useWorkspaceUrlSync({
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [findWidgetByType, focusWidget, openWidget]);
+  }, [findWidgetByType, focusWidget, openWidget, intentFingerprint]);
 
   return { writeUrl, syncUrlFromFocusedWidget };
 }

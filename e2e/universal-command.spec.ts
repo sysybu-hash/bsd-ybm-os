@@ -53,14 +53,36 @@ async function openCommandCenter(page: Parameters<typeof tryCredentialsSignIn>[0
     .toBeVisible({ timeout: 30_000 });
 
   const shell = widgetShell(page, "universalCommand");
+  const allShells = page.locator('[data-widget-shell][id^="universalCommand-"]');
+
+  /**
+   * The retry used to dispatch popstate unconditionally. `openWidget` appends a
+   * new window every time, so when the first open took longer than the 15s
+   * probe — which it does on a loaded machine — the retry opened a *second*
+   * command centre. Two shells then overlap, `widgetShell` resolves `.last()`,
+   * and the click lands on the other window's card:
+   *
+   *   [e2e] click on "command centre scan card" was blocked.
+   *     on top: <h3 class="text-base font-semibold ...">; widget shells mounted: 2
+   *
+   * Playwright reported the button as visible, enabled and stable throughout,
+   * because it was — just not on top. Re-dispatching only when nothing is open
+   * makes the retry idempotent.
+   */
   for (let attempt = 0; attempt < 3; attempt++) {
-    await page.evaluate(() => {
-      window.history.pushState({}, "", "/?w=universalCommand");
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
-    if (await shell.isVisible({ timeout: 15_000 }).catch(() => false)) return shell;
+    if ((await allShells.count()) === 0) {
+      await page.evaluate(() => {
+        window.history.pushState({}, "", "/?w=universalCommand");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+    }
+    if (await shell.isVisible({ timeout: 15_000 }).catch(() => false)) break;
     await page.waitForTimeout(1000);
   }
+
+  // `.last()` is only meaningful while there is exactly one, so assert it
+  // rather than letting a duplicate turn into an unexplained click timeout.
+  await expect(allShells).toHaveCount(1);
   await expect(shell).toBeVisible({ timeout: 15_000 });
   return shell;
 }
