@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { toast } from "sonner";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { captureProductEvent } from "@/lib/analytics/posthog-client";
 import { runAutomationPlan } from "@/lib/os-automations/registry";

@@ -5,15 +5,12 @@ import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { isGeminiConfigured } from "@/lib/ai-providers";
 import { APP_BUILDER_CHAT_SYSTEM_PROMPT } from "@/lib/app-builder/chat-system-prompt";
-import { generateAppBuilderUiFromPrompt } from "@/lib/app-builder/generate-app-ui";
 import { appBuilderCapabilitiesForPrompt } from "@/lib/app-builder/platform-capabilities-for-prompt";
 import { looksLikeUiBuildRequest } from "@/lib/app-builder/jsx-preview-utils";
-import { env } from "@/lib/env";
 import { getGeminiModelId } from "@/lib/gemini-model";
 import { jsonBadRequest, jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { aiReplyLanguageRule } from "@/lib/i18n/ai-locale";
-import { createLogger } from "@/lib/logger";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizeAutomationIntent } from "@/lib/os-automations/catalog";
@@ -24,7 +21,6 @@ import { appBuilderUiSchema } from "@/lib/validation/schemas/app-builder";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const log = createLogger("ai-app-builder-chat");
 
 const MODEL = getGeminiModelId();
 const ORG_REQUESTS_PER_HOUR = 60;

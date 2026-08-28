@@ -119,7 +119,6 @@ export function GanttChartView({
     [onDatesChange],
   );
 
-  const rowIndexMap = new Map(flatTasks.map((t, i) => [t.id, i]));
 
   return (
     <div className="overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-[color:var(--surface-card)] shadow-sm">

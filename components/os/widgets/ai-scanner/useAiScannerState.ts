@@ -78,7 +78,7 @@ export function useAiScannerState({
     lockedSaveTargets: officeExpenseMode ? ["expense"] : undefined,
     onSaveComplete,
   });
-  const { queue, previewUrl, applyFilePreview, runFileQueue, addFiles, startScan, pendingFiles, confirmAnalysis, saveToNotebook, pendingAnalysis, setPendingAnalysis, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
+  const { queue, previewUrl, applyFilePreview, runFileQueue, addFiles, startScan, saveToNotebook, setLastScanV5, setLastScanFileName, lastScanV5, lastScanFileName } = scanQueue;
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const applyScannerNav = useCallback((view: WidgetViewState) => {

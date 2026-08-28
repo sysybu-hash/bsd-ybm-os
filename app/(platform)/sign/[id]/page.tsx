@@ -20,7 +20,6 @@ interface SignDocument {
 type SignatureCanvasInstance = React.ElementRef<typeof SignatureCanvas>;
 import { 
   CheckCircle2, 
-  FileText, 
   PenTool, 
   RotateCcw, 
   ShieldCheck,
@@ -80,7 +79,7 @@ export default function SigningPage() {
       if (!res.ok) throw new Error('הסנכרון נכשל');
       setIsSigned(true);
       toast.success('המסמך נחתם וסונכרן בהצלחה');
-    } catch (err) {
+    } catch {
       toast.error('שגיאה בשליחת החתימה, אנא נסה שוב');
     } finally {
       setIsSubmitting(false);

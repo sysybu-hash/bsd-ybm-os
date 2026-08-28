@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getAssistantVisibleTranscript } from "@/lib/ai/filter-assistant-visible-text";
 import {
   formatGeminiLiveUserMessage,
@@ -29,7 +29,6 @@ import {
 } from "@/lib/gemini-live/audio-codec";
 import {
   deliverModelTranscript,
-  deliverUserTranscript,
   flushUserTranscriptTurn,
 } from "@/lib/gemini-live/transcript-delivery";
 

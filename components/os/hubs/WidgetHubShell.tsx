@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { widgetScrollPaneClass } from "@/lib/workspace/widget-shell-layout";
 

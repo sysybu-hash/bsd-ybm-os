@@ -8,8 +8,7 @@ import { downloadBlob, rowsToCsv } from "@/lib/export-file";
 import { OsButton, OsIconButton } from "@/components/os/ui";
 import {
   BOQ_MODES, HeaderFields, LineItemsEditor, BoqEditor,
-  emptyBoqRow as _emptyBoqRow, computeLineTotal,
-} from "./scan-editor-parts";
+  emptyBoqRow as _emptyBoqRow, } from "./scan-editor-parts";
 import { useLatestRef } from "@/hooks/use-latest-ref";
 
 type ScanFullEditorProps = {

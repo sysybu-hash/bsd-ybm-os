@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { isGeminiConfigured } from "@/lib/ai-providers";
-import { generateUiSchemaFromPrompt } from "@/lib/app-builder/generate-ui-schema";
 import { jsonBadRequest, jsonServiceUnavailable, jsonTooManyRequests } from "@/lib/api-json";
 import { getServerLocale } from "@/lib/i18n/server";
 import { createLogger } from "@/lib/logger";

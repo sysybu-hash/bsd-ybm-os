@@ -2,18 +2,14 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { createProjectForContact } from "@/app/actions/crm";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";
 import type { Client, CrmTableWidgetProps } from "./types";
 import type { CrmPipelineStatus } from "@/lib/crm/pipeline-status";
 import {
-  checkProjectChangeApi,
   deleteContactApi,
   fetchContactByIdApi,
   fetchContactsPageApi,
-  fetchProjectOptionsApi,
-  fetchProjectSyncMetaApi,
   postSemanticSearchApi,
   updateContactApi,
 } from "./crm-table-api";

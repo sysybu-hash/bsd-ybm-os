@@ -1,5 +1,5 @@
 import { normalizeWidgetAction } from "@/lib/os-assistant/widget-catalog";
-import type { WidgetType } from "@/hooks/use-window-manager";
+import type {} from "@/hooks/use-window-manager";
 import { runAutomationPlan } from "@/lib/os-automations/registry";
 import type { AutomationAction, AutomationRunnerDeps } from "@/lib/os-automations/types";
 

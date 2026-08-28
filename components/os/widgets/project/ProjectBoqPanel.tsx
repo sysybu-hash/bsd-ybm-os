@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Loader2, Download, Upload, Ruler, Sparkles, Trash2 } from "lucide-react";
+import { Download, Upload, Ruler, Sparkles, Trash2 } from "lucide-react";
 import OsConfirmDialog from "@/components/os/OsConfirmDialog";
 import WidgetState from "@/components/os/WidgetState";
 import { OsButton } from "@/components/os/ui";

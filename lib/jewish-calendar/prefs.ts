@@ -1,4 +1,3 @@
-import { getDefaultLocation } from "./locations";
 import type { JewishCalendarPrefs } from "./types";
 import { JEWISH_CALENDAR_PREFS_KEY } from "./types";
 

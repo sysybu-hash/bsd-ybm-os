@@ -1,4 +1,4 @@
-import type { WidgetType } from "@/hooks/use-window-manager";
+import type {} from "@/hooks/use-window-manager";
 
 export const MOBILE_BREAKPOINT_PX = 768;
 

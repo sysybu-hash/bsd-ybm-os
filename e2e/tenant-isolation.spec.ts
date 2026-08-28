@@ -23,7 +23,6 @@ import {
   waitForAuthenticatedApiSession,
 } from "./helpers";
 
-const FAKE_ORG_ID = "org_nonexistent_idor_test_00000000";
 const FAKE_PROJECT_ID = "proj_nonexistent_idor_test_000000";
 const FAKE_CONTACT_ID = "contact_nonexistent_idor_test_0000";
 

@@ -1,4 +1,4 @@
-import type { DataConfig } from "@/lib/validation/schemas/app-builder";
+import type {} from "@/lib/validation/schemas/app-builder";
 
 export type ChartDataPoint = { name: string; value: number };
 

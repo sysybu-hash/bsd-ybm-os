@@ -12,7 +12,6 @@ export default function CrmWidget() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
 
   const fetchClients = async (query = '') => {
     setLoading(true);

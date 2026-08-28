@@ -4,14 +4,13 @@ import {
   readScanProjectClientLabels,
   scannedDocumentNeedsCompletion,
 } from "@/lib/commercial-billing-helpers";
-import { loadFinanceForecast, type FinanceForecast } from "@/lib/finance-forecast";
+import { loadFinanceForecast} from "@/lib/finance-forecast";
 
 export * from "@/lib/workspace/commercial-hub-types";
 import type {
   CommercialClientSnapshot,
   CommercialDocumentDraftSnapshot,
   CommercialHubSnapshot,
-  CommercialIssuedDocumentSnapshot,
   CommercialProjectSnapshot,
 } from "@/lib/workspace/commercial-hub-types";
 

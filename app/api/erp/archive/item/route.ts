@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withWorkspacesAuth } from "@/lib/api-handler";
-import { jsonBadRequest, jsonNotFound } from "@/lib/api-json";
+import { jsonNotFound } from "@/lib/api-json";
 
 const archiveItemActionSchema = z.object({
   source: z.enum(["issued", "document"]),

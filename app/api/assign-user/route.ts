@@ -57,7 +57,7 @@ export const POST = withWorkspacesAuth(async (_req, ctx, data) => {
     });
 
     return NextResponse.json({ success: true, user: updatedUser.name, role: updatedUser.role });
-  } catch (err: unknown) {
+  } catch {
     return jsonBadRequest(
       "המשתמש חייב להתחבר למערכת לפחות פעם אחת לפני השיוך",
       "user_not_ready",

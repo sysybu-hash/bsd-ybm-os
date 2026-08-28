@@ -67,7 +67,6 @@ export function buildFieldCopilotDocCreatorLiveData(input: {
     return { action: "open_boq", projectId: input.projectId, projectName: input.projectName };
   }
 
-  const templateId = input.target === "ORDER_AGREEMENT" ? "ORDER_AGREEMENT" : "QUOTE";
   const entry = findCatalogEntry(input.target);
   if (!entry) {
     return {

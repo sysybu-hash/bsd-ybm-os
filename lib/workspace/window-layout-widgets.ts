@@ -6,8 +6,7 @@ import {
   DESKTOP_WINDOW_WIDTH_RATIO,
   getViewportSize,
   getWorkspaceContentSize,
-  isMobileViewport,
-} from "@/lib/workspace/window-layout-viewport";
+  } from "@/lib/workspace/window-layout-viewport";
 
 export function resolveShellDesktopDimensions(
   workspace: { width: number; height: number },

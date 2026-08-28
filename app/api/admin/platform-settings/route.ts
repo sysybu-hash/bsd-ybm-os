@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { withOSAdmin } from "@/lib/api-handler";
 import { jsonBadRequest } from "@/lib/api-json";
 import { getAdminEnvStatusRecord } from "@/lib/admin/env-status";

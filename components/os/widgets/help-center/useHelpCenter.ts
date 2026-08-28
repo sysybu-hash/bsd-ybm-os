@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSyncedWidgetNavigation } from "@/hooks/use-synced-widget-navigation";
 import type { WidgetViewState } from "@/lib/workspace-navigation/types";

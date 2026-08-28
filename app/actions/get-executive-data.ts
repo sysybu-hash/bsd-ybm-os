@@ -17,13 +17,12 @@ export async function getExecutiveDataAction() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [revenueSum, pendingExpenses, newLeads, totalDocs] = await Promise.all([
+    // Same as get-dashboard-stats: a PENDING-document count was queried here and
+    // never read. Dropped rather than bound to an unused name.
+    const [revenueSum, newLeads, totalDocs] = await Promise.all([
       prisma.issuedDocument.aggregate({
         where: { organizationId: orgId, type: "INVOICE" },
         _sum: { total: true }
-      }),
-      prisma.document.count({
-        where: { organizationId: orgId, status: "PENDING" },
       }),
       prisma.contact.count({
         where: { organizationId: orgId, createdAt: { gte: thirtyDaysAgo } }

@@ -169,7 +169,6 @@ export function buildWeekendBands(
   while (cursor.getTime() <= max) {
     if (isWeekend(cursor)) {
       const start = cursor.getTime();
-      const end = start + 86400000;
       bands.push({
         left: ((start - min) / span) * 100,
         width: (86400000 / span) * 100,

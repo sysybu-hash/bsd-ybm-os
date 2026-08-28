@@ -1,9 +1,9 @@
 "use client";
 
 import { toast } from "sonner";
-import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
-import type { ScanModeUiSelection } from "@/lib/scan-modes-for-ui";
-import type { WidgetType } from "@/hooks/use-window-manager";
+import type {} from "@/lib/tri-engine-api-common";
+import type {} from "@/lib/scan-modes-for-ui";
+import type {} from "@/hooks/use-window-manager";
 import { enqueueScan, isNetworkError } from "@/lib/offline/scan-outbox";
 import type { DocumentAnalysis, QueueItem, ScanHistoryItem } from "./types";
 import { formatMsg } from "./constants";

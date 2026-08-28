@@ -1,9 +1,4 @@
 import React from "react";
-import { 
-  Scale, Stethoscope, Building2, Calculator, 
-  ShoppingCart, HardHat, FileText, Bot, 
-  Briefcase, Landmark, ShieldCheck, Home, Gavel
-} from "lucide-react";
 
 /**
  * 🚀 BSD-YBM: MODULAR INDUSTRY CONFIGURATION SYSTEM

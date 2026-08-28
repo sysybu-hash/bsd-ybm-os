@@ -62,33 +62,11 @@ function SideNavButton({
   );
 }
 
-function NavSideBalanceSlot() {
-  return <span className="min-h-[44px] min-w-0" aria-hidden />;
-}
 
 function NavSideGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid min-w-0 flex-1 grid-cols-3 items-end gap-0">{children}</div>;
 }
 
-function WindowSwitcherButton({
-  onOpen,
-  label,
-}: {
-  onOpen: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex min-h-[44px] w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg py-0.5 text-[color:var(--foreground-muted)] transition hover:bg-[color:var(--surface-soft)] hover:text-[color:var(--foreground-main)] active:scale-95"
-      aria-label={label}
-    >
-      <Layers size={21} strokeWidth={1.75} className="max-[380px]:h-[19px] max-[380px]:w-[19px] shrink-0 sm:h-[22px] sm:w-[22px]" aria-hidden />
-      <span className={NAV_LABEL_CLASS}>{label}</span>
-    </button>
-  );
-}
 
 function MoreNavButton({
   label,

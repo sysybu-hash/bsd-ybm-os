@@ -5,7 +5,6 @@ import {
   E2E_PROJECT_ID,
   dismissCookieBannerIfVisible,
   dismissWorkspaceOverlays,
-  expectProjectDashboardReady,
   tryCredentialsSignIn,
   waitForAuthenticatedWorkspace,
   workspaceUrl,

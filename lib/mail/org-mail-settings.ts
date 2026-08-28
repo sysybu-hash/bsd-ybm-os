@@ -5,7 +5,6 @@
 
 import { prisma } from "@/lib/prisma";
 import {
-  orgMailPrefsSchema,
   parseOrgMailPrefs,
   type OrgMailPrefs,
 } from "@/lib/mail/org-mail-prefs-shared";

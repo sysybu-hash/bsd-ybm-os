@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Sparkles, Layers, Settings2 } from "lucide-react";
 import type { TriEngineRunMode } from "@/lib/tri-engine-api-common";
 import type { EngineMeta } from "./types";
@@ -43,7 +43,6 @@ const CUSTOM_ENGINE_OPTIONS: { id: string; label: string; cfg: keyof EngineMeta[
 ];
 
 export function EngineSelector({ value, onChange, customEngines = [], onCustomEnginesChange, engineMeta, t }: EngineSelectorProps) {
-  const [customOpen, setCustomOpen] = useState(false);
   const chips: ChipDef[] = [
     { id: "AUTO", label: t("scanner.modeAuto"), tone: "border-indigo-500/50 bg-indigo-500/15 text-[color:var(--accent)] dark:text-indigo-300" },
     { id: "SINGLE_GEMINI", label: "Gemini", cfg: "gemini", tone: "border-purple-500/50 bg-purple-500/15 text-purple-700 dark:text-purple-300" },

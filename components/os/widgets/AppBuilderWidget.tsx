@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { RefreshCw } from "lucide-react";
 import WidgetState from "@/components/os/WidgetState";
