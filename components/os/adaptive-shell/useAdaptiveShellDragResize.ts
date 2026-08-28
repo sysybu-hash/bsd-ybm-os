@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   RESIZE_MIN_WINDOW_HEIGHT,
   RESIZE_MIN_WINDOW_WIDTH,
@@ -11,6 +11,18 @@ import {
 export type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 const SNAP_THRESHOLD = 24;
+
+/**
+ * The workspace size before anything has been measured. Deliberately free of
+ * any ref access so it can seed state during the first render; the layout
+ * effect below replaces it with the real measurement before the browser
+ * paints, so this fallback is never actually visible.
+ */
+function viewportWorkspaceSize() {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  return { width: Math.max(320, vw - 24), height: Math.max(400, vh - 130) };
+}
 
 type DragResizeArgs = {
   initialOffset?: { x: number; y: number };
@@ -33,17 +45,60 @@ export function useAdaptiveShellDragResize({
   onPositionChange,
   onResize,
 }: DragResizeArgs) {
-  const getWorkspaceSize = useCallback(() => {
+  const measureWorkspace = useCallback(() => {
     const el = workspaceBoundsRef?.current;
     if (el) {
       const w = el.clientWidth;
       const h = el.clientHeight;
       if (w > 0 && h > 0) return { width: w, height: h };
     }
-    const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
-    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-    return { width: Math.max(320, vw - 24), height: Math.max(400, vh - 130) };
+    return viewportWorkspaceSize();
   }, [workspaceBoundsRef]);
+
+  /**
+   * The measured workspace, mirrored into state.
+   *
+   * It used to be read straight off `workspaceBoundsRef` during render. That
+   * is what `react-hooks/refs` objects to, and the rule was right that it cost
+   * something real: when the workspace resized and nothing else changed state,
+   * the ref moved and no render followed, so the window went on painting at
+   * its previous clamp until some unrelated update happened to arrive.
+   *
+   * A ResizeObserver on the bounds element is the fix. The setter returns the
+   * previous object when the dimensions are identical, so an observer firing
+   * on a resize that did not change the box does not cascade a render through
+   * every consumer of `ws` — which was the objection to doing this earlier.
+   *
+   * The initial value still has to come from the element: seeding from the
+   * viewport instead and correcting in a layout effect was tried, and it
+   * mis-centres the window on the first paint, because `position` is derived
+   * from the workspace size once and nothing re-centres it afterwards.
+   */
+  // A lazy initialiser runs exactly once, on mount, before any commit, so this
+  // is not a read during render. The rule cannot tell a lazy initialiser from
+  // the render body, which is the whole of its complaint here.
+  // eslint-disable-next-line react-hooks/refs
+  const [workspaceSize, setWorkspaceSize] = useState(measureWorkspace);
+
+  useLayoutEffect(() => {
+    const sync = () =>
+      setWorkspaceSize((prev) => {
+        const next = measureWorkspace();
+        return prev.width === next.width && prev.height === next.height ? prev : next;
+      });
+
+    sync();
+
+    const el = workspaceBoundsRef?.current;
+    const observer =
+      el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(sync) : undefined;
+    observer?.observe(el!);
+    window.addEventListener("resize", sync);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [measureWorkspace, workspaceBoundsRef]);
 
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== "undefined" && isMobileViewport(),
@@ -64,30 +119,21 @@ export function useAdaptiveShellDragResize({
     (dim: { width: number; height: number }) => {
       if (isMobile || isMaximized) return { x: 0, y: 0 };
       if (initialOffset) return initialOffset;
-      const ws = getWorkspaceSize();
       return {
-        x: Math.max(0, Math.round(ws.width / 2 - dim.width / 2)),
-        y: Math.max(0, Math.round(ws.height / 2 - dim.height / 2)),
+        x: Math.max(0, Math.round(workspaceSize.width / 2 - dim.width / 2)),
+        y: Math.max(0, Math.round(workspaceSize.height / 2 - dim.height / 2)),
       };
     },
-    [isMobile, isMaximized, initialOffset, getWorkspaceSize],
+    [isMobile, isMaximized, initialOffset, workspaceSize],
   );
 
-  /**
-   * `getWorkspaceSize()` reads `workspaceBoundsRef`. Inside a lazy `useState`
-   * initialiser that runs exactly once, on mount, before any commit — so the
-   * "ref read during render" the rule is warning about cannot happen here. The
-   * rule cannot tell a lazy initialiser from the render body.
-   */
-  // eslint-disable-next-line react-hooks/refs
   const [currentSize, setCurrentSize] = useState(() => {
-    const ws = getWorkspaceSize();
-    if (isMobile || isMaximized) return { width: ws.width, height: ws.height };
-    return resolveDesktopDimensions(ws);
+    if (isMobile || isMaximized) {
+      return { width: workspaceSize.width, height: workspaceSize.height };
+    }
+    return resolveDesktopDimensions(workspaceSize);
   });
 
-  // Same one-shot initialiser; see the note above.
-  // eslint-disable-next-line react-hooks/refs
   const [position, setPosition] = useState(() => getInitialPosition(currentSize));
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -120,18 +166,17 @@ export function useAdaptiveShellDragResize({
 
   const clampToWorkspace = useCallback(
     (pos: { x: number; y: number }, dim: { width: number; height: number }) => {
-      const ws = getWorkspaceSize();
       return {
-        x: Math.max(0, Math.min(pos.x, Math.max(0, ws.width - dim.width))),
-        y: Math.max(0, Math.min(pos.y, Math.max(0, ws.height - dim.height))),
+        x: Math.max(0, Math.min(pos.x, Math.max(0, workspaceSize.width - dim.width))),
+        y: Math.max(0, Math.min(pos.y, Math.max(0, workspaceSize.height - dim.height))),
       };
     },
-    [getWorkspaceSize],
+    [workspaceSize],
   );
 
   const applySnap = useCallback(
     (pos: { x: number; y: number }, dim: { width: number; height: number }) => {
-      const ws = getWorkspaceSize();
+      const ws = workspaceSize;
       return {
         x: pos.x < SNAP_THRESHOLD ? 0
           : pos.x + dim.width > ws.width - SNAP_THRESHOLD ? Math.max(0, ws.width - dim.width)
@@ -141,7 +186,7 @@ export function useAdaptiveShellDragResize({
           : pos.y,
       };
     },
-    [getWorkspaceSize],
+    [workspaceSize],
   );
 
   const moveWindow = useCallback(
@@ -172,7 +217,7 @@ export function useAdaptiveShellDragResize({
         default: break;
       }
 
-      const ws = getWorkspaceSize();
+      const ws = workspaceSize;
       newW = Math.max(resizeMinWidth(ws.width), Math.min(newW, ws.width));
       newH = Math.max(RESIZE_MIN_WINDOW_HEIGHT, Math.min(newH, ws.height));
 
@@ -186,7 +231,7 @@ export function useAdaptiveShellDragResize({
       setPosition({ x: newL, y: newT });
       setCurrentSize({ width: newW, height: newH });
     },
-    [clampToWorkspace, getWorkspaceSize, resizeMinWidth],
+    [clampToWorkspace, workspaceSize, resizeMinWidth],
   );
 
   useEffect(() => {
@@ -218,26 +263,23 @@ export function useAdaptiveShellDragResize({
     return () => { window.removeEventListener("mousemove", handleMove); window.removeEventListener("mouseup", handleUp); };
   }, [isDragging, isResizing, moveWindow, resizeWindow, onPositionChange, onResize, clampToWorkspace, applySnap]);
 
-  /**
-   * These two DO read the measured workspace bounds while rendering, and the
-   * rule is right that it is not free: if the workspace resizes without any
-   * state changing, the ref moves and nothing re-renders, so the window paints
-   * at its previous clamp until the next render from another cause.
-   *
-   * The honest fix is to mirror the bounds into state behind a ResizeObserver,
-   * which costs a render per resize frame and touches the window manager that
-   * `e2e/window-scroll.spec.ts` guards. That is its own change, not a rider on
-   * a lint migration. In practice a resize is always accompanied by the resize
-   * handlers below setting state anyway.
-   */
-  // eslint-disable-next-line react-hooks/refs
-  const ws = getWorkspaceSize();
+  const ws = workspaceSize;
   const mobileOrMaximized = isMobile || isMaximized;
 
+  /**
+   * Both setters return the previous value when nothing changed. That is not
+   * only a micro-optimisation: `ws` is state now, so an effect that reads it
+   * and sets state unconditionally would be exactly the cascading render
+   * `react-hooks/set-state-in-effect` exists to catch.
+   */
   useEffect(() => {
     if (!isMobile) return;
-    setPosition({ x: 0, y: 0 });
-    setCurrentSize({ width: ws.width, height: ws.height });
+    setPosition((prev) => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }));
+    setCurrentSize((prev) =>
+      prev.width === ws.width && prev.height === ws.height
+        ? prev
+        : { width: ws.width, height: ws.height },
+    );
   }, [isMobile, ws.width, ws.height]);
 
   const layoutSyncKey =
@@ -245,12 +287,13 @@ export function useAdaptiveShellDragResize({
 
   useEffect(() => {
     if (!layoutSyncKey || !initialOffset || !size || isDragging || isResizing || isMobile || isMaximized) return;
-    const wsInner = getWorkspaceSize();
-    const nextSize = { width: Math.min(size.width, wsInner.width), height: Math.min(size.height, wsInner.height) };
+    const nextSize = { width: Math.min(size.width, workspaceSize.width), height: Math.min(size.height, workspaceSize.height) };
+    // Same bail-out as above: both setters return `prev` when the layout is
+    // already where the props say it should be.
     setCurrentSize((prev) => prev.width === nextSize.width && prev.height === nextSize.height ? prev : nextSize);
     const pos = clampToWorkspace(initialOffset, nextSize);
     setPosition((prev) => prev.x === pos.x && prev.y === pos.y ? prev : pos);
-  }, [layoutSyncKey, isDragging, isResizing, isMobile, isMaximized, clampToWorkspace, getWorkspaceSize, initialOffset, size]);
+  }, [layoutSyncKey, isDragging, isResizing, isMobile, isMaximized, clampToWorkspace, workspaceSize, initialOffset, size]);
 
   useEffect(() => {
     if (!mobileOrMaximized) return;
@@ -274,8 +317,6 @@ export function useAdaptiveShellDragResize({
     return () => root.removeEventListener("keydown", trap);
   }, [mobileOrMaximized]);
 
-  // Reads the measured bounds during render; see the note above.
-  // eslint-disable-next-line react-hooks/refs
   const clamped = clampToWorkspace(position, currentSize);
   const clampedLeft = mobileOrMaximized ? 0 : clamped.x;
   const clampedTop = mobileOrMaximized ? 0 : clamped.y;

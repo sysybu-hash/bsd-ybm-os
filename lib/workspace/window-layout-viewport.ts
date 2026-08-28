@@ -40,12 +40,31 @@ export function matchesCoarsePointer(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
 }
 
+/**
+ * Short edge alone cannot separate a phone held sideways (844x390) from an
+ * ordinary laptop (1280x720): both fall under the 768 breakpoint. Keying on it
+ * put the full-screen mobile shell on every 720p desktop — including
+ * Playwright's Desktop Chrome, which is why the desktop E2E suite had been
+ * exercising the mobile layout without anyone noticing.
+ *
+ * Three questions, in order, each answerable on its own terms:
+ */
 export function isMobileViewport(viewport = getViewportSize()): boolean {
   const shortEdge = getViewportShortEdge(viewport);
-  if (shortEdge < MOBILE_BREAKPOINT_PX) return true;
+
+  // 1. Too narrow for the desktop layout to go anywhere, whatever the device.
+  if (viewport.width < MOBILE_BREAKPOINT_PX) return true;
+
+  // 2. Wide but short *and* touch-driven: a phone or tablet in landscape.
+  //    The pointer is what distinguishes it from the laptop above.
   if (typeof window !== "undefined" && matchesCoarsePointer() && shortEdge < MOBILE_BREAKPOINT_PX + 96) {
     return true;
   }
+
+  // 3. Too short for the desktop shell to lay a window out at all. Tying this
+  //    to the shell's own minimum keeps the two from drifting apart.
+  if (viewport.height < DESKTOP_MIN_WINDOW_HEIGHT) return true;
+
   return false;
 }
 
