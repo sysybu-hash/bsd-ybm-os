@@ -112,8 +112,9 @@ async function detectAndNotifyPriceSpikes(params: {
     const bodyLead = `${top.description}: +${top.changePercent.toFixed(1)}% (₪${top.previousPrice.toFixed(2)} → ₪${top.latestPrice.toFixed(2)})`;
     const body = moreCount > 0 ? `${bodyLead} ועוד ${moreCount} פריטים` : bodyLead;
 
-    await notifyUser(userId, title, body);
-    void documentId;
+    // `void documentId` sat here: the id was in scope with nowhere to put it, so
+    // the notification opened the ERP board with no idea which document it meant.
+    await notifyUser(userId, title, body, { linkType: "erp", targetId: documentId });
 
     return relevant;
   } catch {

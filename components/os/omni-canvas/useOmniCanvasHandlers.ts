@@ -7,6 +7,7 @@ import type { OSNotification, OSNotificationAction } from "@/components/os/Notif
 import type { SearchResult } from "./types";
 import { createLogger } from "@/lib/logger";
 import { fetchWorkspaceSearch } from "@/lib/workspace-search-client";
+import { inferNotificationLinkType } from "@/lib/notifications/infer-link-type";
 
 const log = createLogger("omni-canvas-handlers");
 
@@ -154,10 +155,16 @@ export function useOmniCanvasHandlers({
   };
 
   const handleNotificationNavigate = async (notification: OSNotification) => {
-    const linkType = notification.linkType ?? "general";
     const targetId = notification.targetId;
+    // Only guess for rows that predate `linkType` *and* have somewhere to go.
+    // An admin broadcast has free text and no target; routing it by keyword
+    // would open a widget the message never referred to.
+    const linkType =
+      notification.linkType ?? (targetId ? inferNotificationLinkType(notification) : "general");
     switch (linkType) {
       case "project":
+        openWidget("project", targetId ? { projectId: targetId } : null);
+        break;
       case "projectBoard":
         openWidget(
           "projectsHub",
@@ -167,6 +174,8 @@ export function useOmniCanvasHandlers({
         );
         break;
       case "erp":
+      case "erpArchive":
+      case "document":
         openWidget(
           "documentsHub",
           targetId ? { tab: "archive", documentId: targetId } : { tab: "archive" },
@@ -180,6 +189,7 @@ export function useOmniCanvasHandlers({
         );
         break;
       case "docCreator":
+      case "issuedDocument":
         openWidget(
           "documentsHub",
           targetId ? { tab: "create", issuedDocumentId: targetId } : { tab: "create" },
@@ -187,6 +197,9 @@ export function useOmniCanvasHandlers({
         break;
       case "fieldCopilot":
         openWidget("fieldCopilot", targetId ? { sessionId: targetId } : null);
+        break;
+      case "meckanoReports":
+        openWidget("meckanoReports");
         break;
       case "expense":
         openWidget("documentsHub", { tab: "scan" });
