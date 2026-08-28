@@ -244,6 +244,8 @@ export async function saveScannedDocumentAction(
             userId,
             title: "חריגת מחיר זוהתה!",
             body: `המוצר "${desc}" של "${supplier}" התייקר ב-${Math.round((price / hist.unitPrice - 1) * 100)}% לעומת קנייה קודמת.`,
+            linkType: "erp",
+            targetId: doc.id,
           },
         });
       }

@@ -140,6 +140,7 @@ export async function persistDocumentLineItemsFromAiData(
       notifyUserId,
       "השלמת מחיר נדרשת (ERP)",
       `${priceAlertLineCount} שורות ב«${fileLabel}» זוהו ללא מחיר — הזינו מחיר ידנית בלוח ERP.`,
+      { linkType: "erp", targetId: documentId },
     );
   }
 }
