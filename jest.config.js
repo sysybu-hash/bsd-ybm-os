@@ -8,6 +8,14 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/e2e/', '<rootDir>/.claude/'],
+  /**
+   * testPathIgnorePatterns keeps jest from *running* tests under .claude/, but
+   * jest-haste-map still crawls it for manual mocks. A git worktree checked out
+   * there therefore contributes a second __mocks__/@hebcal/core.js, and jest
+   * warns on every run that two files share a mock name. Excluding the path
+   * from the module map is what actually stops it.
+   */
+  modulePathIgnorePatterns: ['<rootDir>/.claude/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
