@@ -19,7 +19,7 @@ export function quickGridUsesCoordinates(slots: LauncherSlot[]): boolean {
   return slots.some((s) => s.widgetId !== null && slotHasGridPosition(s));
 }
 
-/** ׳׳׳™׳¨ ׳¨׳©׳™׳׳” ׳™׳©׳ ׳” (׳׳׳ row/col) ׳׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳× ׳׳₪׳™ ׳©׳•׳¨׳•׳× ׳׳׳•׳–׳ ׳•׳× */
+/** ממיר רשימה ישנה (ללא row/col) לקואורדינטות לפי שורות מאוזנות */
 export function ensureQuickGridPositions(slots: LauncherSlot[]): LauncherSlot[] {
   const filled = slots.filter((s) => s.widgetId !== null);
   if (filled.length === 0) return slots;
@@ -44,7 +44,7 @@ export function ensureQuickGridPositions(slots: LauncherSlot[]): LauncherSlot[] 
   return positioned;
 }
 
-/** ׳×׳¦׳•׳’׳” ׳¨׳’׳™׳׳” (׳׳ ׳¢׳¨׳™׳›׳”) ג€” ׳¨׳§ ׳×׳׳™׳ ׳×׳₪׳•׳¡׳™׳, ׳׳׳ ׳׳™׳ ׳™׳׳•׳ 7 ׳¢׳׳•׳“׳•׳× */
+/** תצוגה רגילה (לא עריכה) — רק תאים תפוסים, ללא מינימום 7 עמודות */
 export function getQuickGridViewExtents(slots: LauncherSlot[]): {
   rows: number;
   cols: number;
@@ -106,7 +106,7 @@ export function getQuickGridExtents(
   };
 }
 
-/** ׳׳™׳§׳•׳׳™׳ ׳׳×׳¦׳•׳’׳” ג€” ׳©׳•׳׳¨ ׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳× ׳©׳׳•׳¨׳•׳×; ׳׳׳™׳¨ legacy ׳₪׳¢׳ ׳׳—׳× */
+/** מיקומים לתצוגה — שומר קואורדינטות שמורות; ממיר legacy פעם אחת */
 export function quickGridSlotsForView(slots: LauncherSlot[]): LauncherSlot[] {
   const filled = slots.filter((s) => s.widgetId !== null);
   if (filled.length === 0) return [];

@@ -11,7 +11,7 @@ export {
 } from "@/lib/ai-kill-switch";
 
 /**
- * ׳¡׳₪׳§׳™ AI ׳ ׳×׳׳›׳™׳ ׳׳₪׳™ ׳׳₪׳×׳—׳•׳× ׳‘-.env / Vercel.
+ * ספקי AI נתמכים לפי מפתחות ב-.env / Vercel.
  */
 
 export type AiProviderId = "gemini" | "openai" | "anthropic" | "groq" | "mistral" | "docai";
@@ -64,42 +64,42 @@ export function getAiProvidersPublic(): AiProviderPublic[] {
     {
       id: "gemini",
       label: "Google Gemini",
-      description: "׳¡׳¨׳™׳§׳× ׳׳¡׳׳›׳™׳ ׳¨׳‘-׳׳׳“׳™׳×, ׳ ׳™׳×׳•׳— ׳ ׳×׳•׳ ׳™׳ ׳׳©׳•׳׳‘ ׳•-vision",
+      description: "סריקת מסמכים רב-ממדית, ניתוח נתונים משולב ו-vision",
       configured: isGeminiConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "openai",
       label: "OpenAI GPT",
-      description: "׳׳ ׳•׳¢ ׳©׳™׳—׳” ׳•׳ ׳™׳×׳•׳— ׳›׳׳׳™ ׳¢׳ ׳×׳׳™׳›׳” ׳‘׳׳¡׳׳›׳™׳ ׳׳×׳§׳“׳׳™׳",
+      description: "מנוע שיחה וניתוח כללי עם תמיכה במסמכים מתקדמים",
       configured: isOpenAiConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "anthropic",
       label: "Anthropic Claude",
-      description: "׳׳ ׳•׳¢ ׳ ׳™׳×׳•׳— ׳•׳›׳×׳™׳‘׳” ׳׳¨׳’׳•׳ ׳™׳× ׳׳¢׳•׳׳§",
+      description: "מנוע ניתוח וכתיבה ארגונית לעומק",
       configured: isAnthropicConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "mistral",
       label: "Mistral",
-      description: "Mistral Medium 3.5 ג€” multimodal ׳׳¡׳¨׳™׳§׳”, ׳¢׳‘׳¨׳™׳×, ׳•-fallback",
+      description: "Mistral Medium 3.5 — multimodal לסריקה, עברית, ו-fallback",
       configured: isMistralConfigured(),
       supportsDocumentScan: true,
     },
     {
       id: "groq",
       label: "Groq",
-      description: "׳׳ ׳•׳¢ ׳׳”׳™׳¨ ׳׳˜׳§׳¡׳˜ ׳•׳-fallback ׳‘׳–׳׳ ׳¢׳•׳׳¡ (GPT-OSS)",
+      description: "מנוע מהיר לטקסט ול-fallback בזמן עומס (GPT-OSS)",
       configured: isGroqConfigured(),
       supportsDocumentScan: false,
     },
     {
       id: "docai",
       label: "Google Document AI",
-      description: "OCR ׳׳•׳¡׳“׳™ ׳‘׳¨׳׳× ׳“׳™׳•׳§ ׳’׳‘׳•׳”׳” ׳׳׳¡׳׳›׳™׳ ׳׳•׳¨׳›׳‘׳™׳",
+      description: "OCR מוסדי ברמת דיוק גבוהה למסמכים מורכבים",
       configured: isDocAiConfigured(),
       supportsDocumentScan: true,
     },
@@ -122,7 +122,7 @@ export function normalizeAiProviderId(raw: string | null | undefined): AiProvide
   return "gemini";
 }
 
-/** ׳׳₪׳—׳•׳× ׳׳ ׳•׳¢ ׳¦'׳׳˜ ׳׳—׳“ ג€” Gemini / OpenAI / Anthropic / Groq */
+/** לפחות מנוע צ'אט אחד — Gemini / OpenAI / Anthropic / Groq */
 export function isAnyAiChatProviderConfigured(): boolean {
   return (
     isGeminiConfigured() ||
@@ -136,21 +136,21 @@ export function isAnyAiChatProviderConfigured(): boolean {
 export function assertProviderConfigured(id: AiProviderId): string | null {
   switch (id) {
     case "gemini":
-      return isGeminiConfigured() ? null : "׳—׳¡׳¨ GOOGLE_GENERATIVE_AI_API_KEY ׳׳• GEMINI_API_KEY";
+      return isGeminiConfigured() ? null : "חסר GOOGLE_GENERATIVE_AI_API_KEY או GEMINI_API_KEY";
     case "openai":
-      return isOpenAiConfigured() ? null : "׳—׳¡׳¨ OPENAI_API_KEY";
+      return isOpenAiConfigured() ? null : "חסר OPENAI_API_KEY";
     case "anthropic":
-      return isAnthropicConfigured() ? null : "׳—׳¡׳¨ ANTHROPIC_API_KEY";
+      return isAnthropicConfigured() ? null : "חסר ANTHROPIC_API_KEY";
     case "groq":
-      return isGroqConfigured() ? null : "׳—׳¡׳¨ GROQ_API_KEY";
+      return isGroqConfigured() ? null : "חסר GROQ_API_KEY";
     case "mistral":
-      return isMistralConfigured() ? null : "׳—׳¡׳¨ MISTRAL_API_KEY";
+      return isMistralConfigured() ? null : "חסר MISTRAL_API_KEY";
     case "docai":
       return isDocAiConfigured()
         ? null
-        : "׳—׳¡׳¨ GOOGLE_DOCUMENT_AI_PROCESSOR_ID ׳•ײ¾׳׳—׳“ ׳: GOOGLE_DOCUMENT_AI_CREDENTIALS ׳׳• GOOGLE_APPLICATION_CREDENTIALS_JSON";
+        : "חסר GOOGLE_DOCUMENT_AI_PROCESSOR_ID ו־אחד מ: GOOGLE_DOCUMENT_AI_CREDENTIALS או GOOGLE_APPLICATION_CREDENTIALS_JSON";
     default:
-      return "׳¡׳₪׳§ ׳׳ ׳™׳“׳•׳¢";
+      return "ספק לא ידוע";
   }
 }
 

@@ -77,7 +77,7 @@ export function getOpenAiVisionModel(): string {
   return resolveOpenAiModelId(env.OPENAI_VISION_MODEL?.trim() || OPENAI_FLAGSHIP_MODEL);
 }
 
-/** ׳¡׳“׳¨ ׳ ׳™׳¡׳™׳•׳ ׳•׳× ׳ײ¾Chat Completions (׳×׳׳•׳ ׳” / ׳§׳•׳‘׳¥ ׳©׳׳™׳ ׳• PDF ׳‘׳ ׳×׳™׳‘ ׳”׳™׳©׳) */
+/** סדר ניסיונות ל־Chat Completions (תמונה / קובץ שאינו PDF בנתיב הישן) */
 export function getOpenAiChatVisionModelCandidates(uiOverride?: string): string[] {
   return dedupeStrings([
     uiOverride,
@@ -87,7 +87,7 @@ export function getOpenAiChatVisionModelCandidates(uiOverride?: string): string[
   ]);
 }
 
-/** ׳¡׳“׳¨ ׳ ׳™׳¡׳™׳•׳ ׳•׳× ׳ײ¾Responses API (PDF) */
+/** סדר ניסיונות ל־Responses API (PDF) */
 export function getOpenAiResponsesModelCandidates(uiOverride?: string): string[] {
   return dedupeStrings([
     uiOverride,
@@ -125,7 +125,7 @@ export function isOpenAiModelNotFound(status: number, body: string): boolean {
   );
 }
 
-/** 404 / ׳“׳’׳ ׳׳ ׳§׳™׳™׳ / ׳׳’׳‘׳׳× ׳§׳¦׳‘ ג€” ׳׳¢׳‘׳¨ ׳׳׳•׳“׳ ׳”׳‘׳ */
+/** 404 / דגם לא קיים / מגבלת קצב — מעבר למודל הבא */
 export function isOpenAiEligibleForModelFallback(status: number, body: string): boolean {
   if (isProviderOutOfCredit(body)) return false;
   if (isOpenAiModelNotFound(status, body)) return true;
@@ -134,7 +134,7 @@ export function isOpenAiEligibleForModelFallback(status: number, body: string): 
   return b.includes("rate_limit") || b.includes("too many requests");
 }
 
-/** ׳¦'׳׳˜ ׳˜׳§׳¡׳˜ ׳‘׳׳‘׳“ (׳׳׳ vision) ג€” fallback ׳“׳•׳׳” ׳׳¡׳¨׳™׳§׳” */
+/** צ'אט טקסט בלבד (ללא vision) — fallback דומה לסריקה */
 export function getOpenAiChatTextModelCandidates(): string[] {
   return dedupeStrings([
     env.OPENAI_CHAT_MODEL?.trim(),
@@ -181,7 +181,7 @@ export function getGroqModel(): string {
   return resolveGroqModelId(env.GROQ_MODEL?.trim() || GROQ_FLAGSHIP_MODEL);
 }
 
-/** Mistral Medium 3.5 ג€” ׳׳—׳׳™׳£ ׳׳× Pixtral Large (retired) */
+/** Mistral Medium 3.5 — מחליף את Pixtral Large (retired) */
 export const MISTRAL_VISION_FLAGSHIP = "mistral-medium-3-5";
 export const MISTRAL_TEXT_FLAGSHIP = "mistral-small-latest";
 
@@ -193,12 +193,12 @@ const MISTRAL_MODEL_ALIASES: Record<string, string> = {
   "mistral-medium-latest": MISTRAL_VISION_FLAGSHIP,
 };
 
-/** ׳׳•׳“׳ ׳-vision / ׳¡׳¨׳™׳§׳× ׳׳¡׳׳›׳™׳ */
+/** מודל ל-vision / סריקת מסמכים */
 export function getMistralVisionModel(): string {
   return resolveMistralModelId(env.MISTRAL_VISION_MODEL?.trim() || MISTRAL_VISION_FLAGSHIP);
 }
 
-/** ׳׳•׳“׳ ׳׳¦'׳׳˜ ׳˜׳§׳¡׳˜ */
+/** מודל לצ'אט טקסט */
 export function getMistralModel(): string {
   return resolveMistralModelId(env.MISTRAL_MODEL?.trim() || MISTRAL_TEXT_FLAGSHIP);
 }

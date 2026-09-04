@@ -30,7 +30,7 @@ import {
 
 export const TRI_ENGINE_RATE_PER_HOUR = 40;
 export const TRI_ENGINE_RATE_PER_HOUR_ADMIN = 120;
-/** ׳×׳™׳¢׳•׳“ ׳‘׳׳‘׳“ ג€” ׳‘׳ ׳×׳™׳‘׳™ App Router ׳—׳™׳™׳‘׳™׳ `export const maxDuration = 300` ׳›׳׳™׳˜׳¨׳ (׳׳ ׳™׳™׳‘׳•׳). */
+/** תיעוד בלבד — בנתיבי App Router חייבים `export const maxDuration = 300` כליטרל (לא ייבוא). */
 export const TRI_ENGINE_MAX_DURATION_SEC = 300;
 
 export type TriEngineGateOk = {
@@ -39,8 +39,8 @@ export type TriEngineGateOk = {
   organizationId: string;
   usageWarnings?: ScanUsageWarningId[];
   /**
-   * true ׳›׳©׳‘׳™׳§׳©׳ ׳• ׳—׳™׳•׳‘ ׳₪׳¨׳׳™׳•׳ ׳׳ ׳׳›׳¡׳× ׳”׳₪׳¨׳™׳׳™׳•׳ ׳׳–׳׳”, ׳•׳™׳¨׳“׳ ׳• ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳™׳•׳‘ ׳–׳•׳.
-   * ׳”׳§׳•׳¨׳ ׳׳©׳×׳׳© ׳‘׳–׳” ׳›׳“׳™ ׳׳“׳׳’ ׳¢׳ ׳׳ ׳•׳¢׳™ ׳₪׳¨׳׳™׳•׳ (Anthropic) ׳•׳׳”׳¡׳×׳₪׳§ ׳‘׳׳¡׳׳•׳ ׳”׳–׳•׳.
+   * true כשביקשנו חיוב פרמיום אך מכסת הפרימיום אזלה, וירדנו אוטומטית לחיוב זול.
+   * הקורא משתמש בזה כדי לדלג על מנועי פרמיום (Anthropic) ולהסתפק במסלול הזול.
    */
   downgraded?: boolean;
 };
@@ -52,7 +52,7 @@ export type TriEngineGateResult =
 export async function triEngineAuthorizeAndCharge(
   session: Session | null,
   scanCreditKind: ScanCreditKind,
-  /** ׳›׳©׳”׳—׳™׳•׳‘ ׳”׳׳‘׳•׳§׳© ׳”׳•׳ ׳₪׳¨׳׳™׳•׳ ׳•׳”׳׳›׳¡׳” ׳׳–׳׳” ג€” ׳׳¨׳“׳× ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳—׳™׳•׳‘ ׳–׳•׳ ׳‘׳׳§׳•׳ ׳׳—׳¡׳•׳. */
+  /** כשהחיוב המבוקש הוא פרמיום והמכסה אזלה — לרדת אוטומטית לחיוב זול במקום לחסום. */
   allowPremiumDowngrade = true,
 ): Promise<TriEngineGateResult> {
   if (!session?.user?.id) {
@@ -61,7 +61,7 @@ export async function triEngineAuthorizeAndCharge(
 
   const orgId = session.user.organizationId ?? "";
   if (!orgId) {
-    return { ok: false, status: 400, error: "׳׳ ׳ ׳׳¦׳ ׳׳¨׳’׳•׳" };
+    return { ok: false, status: 400, error: "לא נמצא ארגון" };
   }
 
   const dev = isAdmin(session.user.email);
@@ -74,14 +74,14 @@ export async function triEngineAuthorizeAndCharge(
     return {
       ok: false,
       status: 429,
-      error: "׳—׳¨׳’׳× ׳׳׳›׳¡׳× ׳¡׳¨׳™׳§׳•׳× Tri-Engine ׳׳©׳¢׳”",
+      error: "חרגת ממכסת סריקות Tri-Engine לשעה",
       resetAt: rl.resetAt,
     };
   }
 
   const resolvedOrg = await resolveOrganizationForUser(orgId, session.user.id);
   if (!resolvedOrg) {
-    return { ok: false, status: 400, error: "׳׳¨׳’׳•׳ ׳׳ ׳×׳§׳™׳" };
+    return { ok: false, status: 400, error: "ארגון לא תקין" };
   }
 
   let quota = await checkAndDeductScanCredit(resolvedOrg.id, session.user.id, scanCreditKind);
@@ -134,7 +134,7 @@ export type TriEngineExtractionInput = {
   engineRunMode: TriEngineRunMode;
   customEngines?: string[];
   userInstruction?: string | null;
-  /** false ׳›׳©׳™׳¨׳“׳ ׳• ׳׳—׳™׳•׳‘ ׳–׳•׳ ג€” ׳׳“׳׳’׳™׳ ׳¢׳ ׳׳ ׳•׳¢׳™ ׳₪׳¨׳׳™׳•׳ (Anthropic) ׳‘-AUTO. */
+  /** false כשירדנו לחיוב זול — מדלגים על מנועי פרמיום (Anthropic) ב-AUTO. */
   allowPremiumEngines?: boolean;
 };
 

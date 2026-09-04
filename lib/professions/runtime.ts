@@ -44,7 +44,7 @@ export type IndustryProfile = IndustryProfileBase & {
     label: string;
     description: string;
   }>;
-  /** ׳׳–׳”׳” ׳”׳×׳׳—׳•׳× ׳‘׳¢׳ ׳£ ׳”׳‘׳ ׳™׳™׳” ג€” ׳›׳©׳׳ ׳¨׳׳•׳•׳ ׳˜׳™ undefined */
+  /** מזהה התמחות בענף הבנייה — כשלא רלוונטי undefined */
   constructionTradeId?: ConstructionTradeId;
   constructionTradeLabel?: string;
   businessLineId?: BusinessLineId;

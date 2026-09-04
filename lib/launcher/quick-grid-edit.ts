@@ -10,8 +10,8 @@ import {
   type QuickGridCell,
 } from "@/lib/launcher/quick-grid-slots";
 /**
- * ׳’׳•׳“׳ ׳¨׳©׳× ׳¢׳¨׳™׳›׳” ג€” ׳×׳™׳‘׳× ׳×׳•׳›׳ ׳¦׳׳•׳“׳” ׳׳׳¨׳™׳—׳™׳ + ׳©׳•׳¨׳”/׳¢׳׳•׳“׳” ׳¨׳™׳§׳” ׳׳—׳× ׳׳›׳ ׳”׳™׳•׳×׳¨.
- * ׳׳ ׳׳׳׳ ׳׳× ׳”׳׳¡׳ ׳•׳׳ ׳›׳•׳₪׳” ׳׳™׳ ׳™׳׳•׳ 6ֳ—7 (׳©׳’׳¨׳ ׳׳©׳•׳¨׳•׳× ׳¨׳™׳§׳•׳× ׳¨׳‘׳•׳×).
+ * גודל רשת עריכה — תיבת תוכן צמודה לאריחים + שורה/עמודה ריקה אחת לכל היותר.
+ * לא ממלא את המסך ולא כופה מינימום 6ֳ—7 (שגרם לשורות ריקות רבות).
  */
 export function getQuickGridEditExtents(
   slots: LauncherSlot[],
@@ -44,11 +44,11 @@ export function getQuickGridEditExtents(
   };
 }
 
-/** ׳׳˜׳¨׳™׳¦׳” ׳׳¢׳¨׳™׳›׳” ג€” ׳›׳•׳׳ ׳×׳׳™׳ ׳¨׳™׳§׳™׳ ׳‘׳×׳•׳ ׳×׳™׳‘׳× ׳”׳×׳•׳›׳ ׳‘׳׳‘׳“ */
+/** מטריצה לעריכה — כולל תאים ריקים בתוך תיבת התוכן בלבד */
 export function buildQuickGridEditMatrix(
   slots: LauncherSlot[],
   extraEmptyRow = true,
-  /** @deprecated ignored ג€” retained for call-site compatibility */
+  /** @deprecated ignored — retained for call-site compatibility */
   _canvas?: { cols: number; rows: number },
 ): QuickGridCell[][] {
   const positioned = ensureQuickGridPositions(slots);
@@ -95,7 +95,7 @@ export function parseQuickGridDragId(id: string): GridCellCoord | null {
   return { row: Number(m[1]), col: Number(m[2]) };
 }
 
-/** ׳׳¢׳‘׳™׳¨/׳׳—׳׳™׳£ ׳׳¨׳™׳— ׳‘׳™׳ ׳×׳׳™ ׳¨׳©׳× */
+/** מעביר/מחליף אריח בין תאי רשת */
 export function moveQuickGridSlot(
   slots: LauncherSlot[],
   from: GridCellCoord,
