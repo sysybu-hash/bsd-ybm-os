@@ -16,12 +16,18 @@ let initialized = false;
  * before then queues here instead of forcing the load early.
  */
 const pendingPageviews: string[] = [];
+let lastCapturedUrl: string | null = null;
+
+function emitPageview(url: string): void {
+  if (lastCapturedUrl === url) return;
+  lastCapturedUrl = url;
+  posthog.capture("$pageview", { $current_url: url }, { skip_client_rate_limiting: true });
+}
 
 function flushPendingPageviews(): void {
-  while (pendingPageviews.length > 0) {
-    const url = pendingPageviews.shift();
-    if (url) posthog.capture("$pageview", { $current_url: url });
-  }
+  const url = pendingPageviews.pop();
+  pendingPageviews.length = 0;
+  if (url) emitPageview(url);
 }
 
 function isPostHogLoaded(): boolean {
@@ -38,13 +44,11 @@ function isPostHogLoaded(): boolean {
 export function capturePageview(url: string): void {
   if (!getPostHogProjectKey()) return;
   if (!isPostHogLoaded()) {
-    // Keep only the most recent few — a long pre-init session should not grow
-    // this without bound.
-    if (pendingPageviews.length >= 10) pendingPageviews.shift();
+    pendingPageviews.length = 0;
     pendingPageviews.push(url);
     return;
   }
-  posthog.capture("$pageview", { $current_url: url });
+  emitPageview(url);
 }
 
 export function initPostHog(options?: { skipConsentCheck?: boolean }): void {
@@ -62,6 +66,8 @@ export function initPostHog(options?: { skipConsentCheck?: boolean }): void {
     person_profiles: "identified_only",
     capture_pageview: false,
     capture_pageleave: true,
+    autocapture: false,
+    rate_limiting: { events_per_second: 10, events_burst_limit: 250 },
   });
   initialized = true;
   flushPendingPageviews();

@@ -15,10 +15,10 @@ const PostHogProvider = dynamic(
 function PostHogPageView({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const query = searchParams?.toString() ?? "";
 
   useEffect(() => {
     if (!enabled || !pathname || !getPostHogProjectKey()) return;
-    const query = searchParams?.toString();
     const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
     // Deliberately does NOT initialise. This effect runs on mount, so calling
     // initPostHog() here loaded PostHog immediately and made the idle deferral
@@ -26,7 +26,7 @@ function PostHogPageView({ enabled }: { enabled: boolean }) {
     // arriving 845ms into a workspace load, against an LCP of ~6s. The pageview
     // is queued and flushed once initialisation actually happens.
     capturePageview(url);
-  }, [pathname, searchParams, enabled]);
+  }, [pathname, query, enabled]);
 
   return null;
 }

@@ -14,10 +14,10 @@ const PostHogProvider = dynamic(
 function PostHogPageView({ client }: { client: typeof posthogJs }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const query = searchParams?.toString() ?? "";
 
   useEffect(() => {
     if (!pathname || !getPostHogProjectKey()) return;
-    const query = searchParams?.toString();
     const url = `${window.location.origin}${pathname}${query ? `?${query}` : ""}`;
     // Queued rather than initialising: see the note in posthog-client.ts. This
     // effect runs on mount, so initialising here would pull the recorder and
@@ -25,7 +25,7 @@ function PostHogPageView({ client }: { client: typeof posthogJs }) {
     void import("@/lib/analytics/posthog-client").then(({ capturePageview }) => {
       capturePageview(url);
     });
-  }, [pathname, searchParams, client]);
+  }, [pathname, query, client]);
 
   return null;
 }
