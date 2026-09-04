@@ -1,13 +1,16 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import {
-  X, Loader2, AlertTriangle, FileSpreadsheet, FileText, Printer, Table2,
+  X, Loader2, AlertTriangle, FileSpreadsheet, FileText, Printer, Table2, Box,
 } from "lucide-react";
 import type { BlueprintAnalysis } from "@/lib/projects/blueprint-analysis-schema";
 import { useBlueprintPreviewState } from "./blueprint-preview/useBlueprintPreviewState";
 import { TasksSection, MilestonesSection, BoqSection } from "./blueprint-preview/BlueprintSections";
+import { useIsMounted } from "@/hooks/use-is-mounted";
+import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
 
 type Props = {
   data: BlueprintAnalysis;
@@ -15,9 +18,15 @@ type Props = {
   projectName?: string;
   onConfirm: (selected: BlueprintAnalysis) => Promise<void>;
   onClose: () => void;
+  onGenerateViz?: () => void;
+  vizBusy?: boolean;
+  canGenerateViz?: boolean;
 };
 
-export default function BlueprintPreviewModal({ data, enginesUsed, projectName, onConfirm, onClose }: Props) {
+export default function BlueprintPreviewModal({
+  data, enginesUsed, projectName, onConfirm, onClose, onGenerateViz, vizBusy, canGenerateViz,
+}: Props) {
+  const mounted = useIsMounted();
   const { t, locale } = useI18n();
 
   const s = useBlueprintPreviewState({
@@ -47,14 +56,47 @@ export default function BlueprintPreviewModal({ data, enginesUsed, projectName, 
     },
   });
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm" dir="rtl">
-      <div className="flex h-full max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl">
+  const vizDisabled = s.saving || vizBusy || canGenerateViz === false;
+  const vizTitle = canGenerateViz === false ? t("projectDashboard.vizNoFile") : t("projectDashboard.vizGenerate");
+
+  const vizButton = (variant: "header" | "footer") => {
+    if (!onGenerateViz) return null;
+    const header = variant === "header";
+    return (
+      <button
+        type="button"
+        onClick={onGenerateViz}
+        disabled={vizDisabled}
+        title={vizTitle}
+        className={
+          header
+            ? "flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50"
+            : "flex items-center gap-1 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-700 disabled:opacity-50 dark:text-violet-200"
+        }
+      >
+        {vizBusy ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Box size={13} aria-hidden />}
+        {t("projectDashboard.vizGenerate")}
+      </button>
+    );
+  };
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/60 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm"
+      style={{ zIndex: OS_MODAL_PANEL_Z }}
+      dir="rtl"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="blueprint-preview-title"
+    >
+      <div className="flex h-full max-h-[min(92vh,calc(100dvh-2rem))] w-full max-w-4xl flex-col rounded-2xl border border-[color:var(--border-main)] bg-[color:var(--background-main)] shadow-2xl">
 
         {/* Header */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-[color:var(--border-main)] px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-bold text-[color:var(--foreground)]">{t("projectDashboard.bpTitle")}</h2>
+            <h2 id="blueprint-preview-title" className="text-sm font-bold text-[color:var(--foreground)]">{t("projectDashboard.bpTitle")}</h2>
             <p className="text-[10px] text-[color:var(--foreground-muted)]">{t("projectDashboard.bpSubtitle")}</p>
           </div>
 
@@ -68,6 +110,8 @@ export default function BlueprintPreviewModal({ data, enginesUsed, projectName, 
               <AlertTriangle size={10} aria-hidden />{t("projectDashboard.bpNeedsReview")}
             </span>
           ) : null}
+
+          {vizButton("header")}
 
           {/* Export toolbar */}
           <div className="flex items-center gap-1">
@@ -124,11 +168,12 @@ export default function BlueprintPreviewModal({ data, enginesUsed, projectName, 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-2 border-t border-[color:var(--border-main)] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--border-main)] px-4 py-3">
           <span className="flex-1 text-[10px] text-[color:var(--foreground-muted)]">
             {t("projectDashboard.bpSelectedCount", { count: String(s.totalSelected) })}
             {s.boqTotal > 0 ? ` · BOQ: ₪${s.boqTotal.toLocaleString("he-IL")}` : ""}
           </span>
+          {vizButton("footer")}
           <button type="button" onClick={onClose} disabled={s.saving}
             className="rounded-lg border border-[color:var(--border-main)] px-3 py-1.5 text-xs">
             {t("projectDashboard.cancel")}
@@ -141,6 +186,7 @@ export default function BlueprintPreviewModal({ data, enginesUsed, projectName, 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

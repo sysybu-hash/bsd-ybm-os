@@ -110,6 +110,7 @@ model Organization {
   purchaseOrders           PurchaseOrder[]
   whatsappLinks            WhatsappLink[]
   loginEvents              LoginEvent[]
+  floorplanVizRuns         FloorplanVizRun[]
 }
 
 /// טיוטה אוטומטית של DocumentCreatorWidget — יחידה למשתמש/ארגון/סוג מסמך
@@ -267,6 +268,7 @@ model Project {
   assets           Asset[]
   purchaseRequests PurchaseRequest[]
   purchaseOrders   PurchaseOrder[]
+  floorplanVizRuns FloorplanVizRun[]
 
   @@index([organizationId])
   @@index([organizationId, isActive])
@@ -580,6 +582,7 @@ model User {
   assignedAssets         Asset[]                 @relation("AssetAssignedUser")
   contextComments        ContextComment[]
   loginEvents            LoginEvent[]
+  floorplanVizRuns       FloorplanVizRun[]
   organization       Organization?       @relation(fields: [organizationId], references: [id])
 
   @@index([lastLoginAt])
@@ -1455,6 +1458,59 @@ model FieldCopilotAsset {
 
   @@index([sessionId])
   @@index([organizationId])
+}
+
+/// הדמיית תוכנית שנשמרה למנוי — תוכנית מקור + סל סגנון + תמונות
+model FloorplanVizRun {
+  id             String             @id @default(cuid())
+  organizationId String
+  userId         String
+  projectId      String?
+  title          String
+  sourceFileName String?
+  planMimeType   String
+  planBase64     String             @db.Text
+  layoutJson     Json
+  styleKitJson   Json
+  styleLabelHe   String?
+  scope          String             @default("overview")
+  photo          Boolean            @default(false)
+  extractFingerprint String?
+  inputFingerprint   String?
+  enginesJson    Json
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  stills         FloorplanVizStill[]
+
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, extractFingerprint])
+  @@index([organizationId, inputFingerprint])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model FloorplanVizStill {
+  id             String          @id @default(cuid())
+  runId          String
+  organizationId String
+  viewId         String
+  viewKey        String
+  labelHe        String
+  roomName       String?
+  mimeType       String
+  dataBase64     String          @db.Text
+  editPrompt     String?         @db.Text
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  run            FloorplanVizRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, viewKey])
+  @@index([organizationId])
+  @@index([runId])
 }
 
 /// סכמת UI שנוצרה ע"י AI App Builder — מבנה טופס/טבלה בלבד (לא נתוני משתמש)

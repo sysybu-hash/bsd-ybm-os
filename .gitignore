@@ -83,6 +83,7 @@ mobile-shot-*.png
 
 # local capture / architecture scratch (not product source)
 .tmp-boot-capture/
+.tmp-floorplan-compare/
 e2e/_*-capture.spec.ts
 e2e/_boot-capture.spec.ts
 e2e/_dash-capture.spec.ts

@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Users,
   Warehouse,
+  Box,
 } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 
@@ -163,6 +164,12 @@ export const LAUNCHER_NAV_META: Partial<Record<WidgetType, LauncherNavMeta>> = {
     icon: HardHat,
     chip: true,
   },
+  floorplanViz: {
+    type: "floorplanViz",
+    labelKey: "workspaceWidgets.titles.floorplanViz",
+    icon: Box,
+    chip: true,
+  },
   appBuilder: {
     type: "appBuilder",
     labelKey: "workspaceWidgets.sidebar.appBuilder",
@@ -250,6 +257,7 @@ export const LAUNCHER_QUICK_ACTION_LABEL_KEYS: Partial<Record<WidgetType, string
   settings: "workspaceWidgets.quickActions.settings.title",
   helpCenter: "workspaceWidgets.quickActions.helpCenter.title",
   fieldCopilot: "workspaceWidgets.quickActions.fieldCopilot.title",
+  floorplanViz: "workspaceWidgets.quickActions.floorplanViz.title",
   financeHub: "workspaceWidgets.quickActions.financeHub.title",
   projectsHub: "workspaceWidgets.quickActions.projectsHub.title",
   documentsHub: "workspaceWidgets.quickActions.documentsHub.title",

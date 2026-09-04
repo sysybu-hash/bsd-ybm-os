@@ -19,6 +19,7 @@ const GUIDE_WIDGETS: readonly WidgetType[] = [
   "aiHub",
   "crmTable",
   "fieldCopilot",
+  "floorplanViz",
   "googleDrive",
   "googleCalendar",
   "meckanoReports",

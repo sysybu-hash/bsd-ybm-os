@@ -50,6 +50,11 @@ async function launchBrowser() {
 export type RenderHtmlPdfOptions = {
   /** A4 orientation */
   orientation?: "portrait" | "landscape";
+  margin?: { top: string; right: string; bottom: string; left: string };
+  waitForImages?: boolean;
+  timeoutMs?: number;
+  /** טקסט קטן בתחתית כל עמוד (עברית נתמכת ב-Arial/Segoe) */
+  footer?: string;
 };
 
 /**
@@ -66,17 +71,37 @@ export async function renderHtmlPdfChromium(
     const isLandscape = options.orientation === "landscape";
     const width = isLandscape ? 1123 : 794;
     const height = isLandscape ? 794 : 1123;
+    const timeout = options.timeoutMs ?? 45_000;
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.emulateMediaType("print");
-    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
+    await page.setContent(html, { waitUntil: "load", timeout });
     await page.evaluate(() => document.fonts.ready);
+    if (options.waitForImages) {
+      await page.evaluate(async () => {
+        await Promise.all(
+          Array.from(document.images).map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener("load", () => resolve(), { once: true });
+                  img.addEventListener("error", () => resolve(), { once: true });
+                }),
+          ),
+        );
+      });
+    }
 
+    const footer = options.footer?.trim();
     const pdf = await page.pdf({
       format: "A4",
       landscape: isLandscape,
       printBackground: true,
-      margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
-      displayHeaderFooter: false,
+      margin: options.margin ?? { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
+      displayHeaderFooter: Boolean(footer),
+      headerTemplate: footer ? "<div></div>" : undefined,
+      footerTemplate: footer
+        ? `<div dir="rtl" style="box-sizing:border-box;font-size:8px;width:100%;max-width:100%;padding:0 22mm;text-align:center;color:#78716c;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden;white-space:nowrap;">${footer.replace(/</g, "")} · <span class="pageNumber"></span>/<span class="totalPages"></span></div>`
+        : undefined,
     });
 
     return new Uint8Array(pdf);

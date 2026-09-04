@@ -3,6 +3,15 @@
   "functions": {
     "app/api/documents/issued/[id]/export/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/projects/visualize-floorplan/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/projects/visualize-floorplan/[id]/stills/[stillId]/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/projects/visualize-floorplan/export-pdf/route.ts": {
+      "maxDuration": 90
     }
   },
   "crons": [

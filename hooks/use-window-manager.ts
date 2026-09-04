@@ -56,7 +56,8 @@ export type WidgetType =
   | 'logisticsHub'
   | 'procurementHub'
   | 'executiveHub'
-  | 'universalCommand';
+  | 'universalCommand'
+  | 'floorplanViz';
 
 export interface ActiveWidget {
   id: string;
@@ -192,6 +193,7 @@ const DEFAULT_WIDGET_SIZES: Record<WidgetType, { width: number; height: number }
   procurementHub: { width: 1040, height: 780 },
   executiveHub: { width: 1080, height: 800 },
   universalCommand: { width: 920, height: 640 },
+  floorplanViz: { width: 1040, height: 780 },
 };
 
 // True after the first successful server-sync in this browser session.

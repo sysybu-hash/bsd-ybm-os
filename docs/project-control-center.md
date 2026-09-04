@@ -16,13 +16,20 @@
 | `POST /api/projects/[id]/sync-meckano` | נוכחות → יומן עבודות |
 | `PATCH/DELETE .../work-diaries/[diaryId]` | עריכה/מחיקת יומן |
 | `POST/DELETE /api/push/subscribe` | Web Push (VAPID) |
+| `GET/POST /api/projects/visualize-floorplan` | רשימת הדמיות / יצירה מתוכנית (rate limit, מקסימום 4MB) |
+| `GET/PATCH/DELETE /api/projects/visualize-floorplan/[id]` | קריאה, שינוי שם ומחיקה של הדמיה |
+| `PATCH/DELETE .../[id]/stills/[stillId]` | עריכת תמונה בודדת בפרומפט חופשי / מחיקתה |
+| `GET .../[id]/stills/[stillId]/file` | הגשת בייטים של תמונה (ETag + 304) |
+| `POST /api/projects/visualize-floorplan/style-kit` | בניית סל עיצוב מתשובות המשתמש |
+| `POST /api/projects/visualize-floorplan/export-pdf` | ייצוא ההדמיות ל-PDF |
 
 ## משתני ENV (Gemini)
 
 - `GOOGLE_GENERATIVE_AI_API_KEY` — חובה
-- `GEMINI_MODEL` / `GOOGLE_GENERATIVE_AI_MODEL` — `gemini-3.5-flash`
+- `GEMINI_MODEL` / `GOOGLE_GENERATIVE_AI_MODEL` — `gemini-3.7-flash`
 - `GEMINI_BLUEPRINT_MODEL`, `BLUEPRINT_USE_FLASH_ONLY`, `GEMINI_THINKING_LEVEL`
 - `GEMINI_ADMIN_ASSISTANT_MODEL` — עוזר ניהול
+- `GEMINI_IMAGE_MODEL` — הדמיות מתוכנית; ברירת מחדל `gemini-3-pro-image` ואז Flash Image
 
 ## עוזר ניהול (שלב ב')
 

@@ -38,6 +38,7 @@ describe("user-launcher-config", () => {
     expect(cfg.quickGrid.find((s) => s.widgetId === "fieldCopilot")).toMatchObject({ row: 1, col: 0 });
     expect(cfg.quickGrid.find((s) => s.widgetId === "helpCenter")).toMatchObject({ row: 1, col: 3 });
     expect(cfg.sidebar.some((s) => s.widgetId === "logisticsHub")).toBe(true);
+    expect(cfg.sidebar.some((s) => s.widgetId === "floorplanViz")).toBe(true);
   });
 
   it("maps default quick grid to 4x2 hub layout for general industry", () => {

@@ -38,6 +38,7 @@ const ACCENT: Partial<Record<WidgetType, string>> = {
   // סריקה / שטח — טורקיז
   aiScanner: "#14b8a6",
   fieldCopilot: "#0ea5a3",
+  floorplanViz: "#7c3aed",
   // לוחות שנה — ורוד
   googleCalendar: "#d4537e",
   jewishCalendar: "#d4537e",
