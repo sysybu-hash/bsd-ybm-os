@@ -1,10 +1,9 @@
 ﻿import { env } from "@/lib/env";
-/** ׳׳•׳’׳•׳¡׳˜ 2026 ג€” GPT-5.6 Sol (alias gpt-5.6) */
+/** אוגוסט 2026 — GPT-5.6 Sol (alias gpt-5.6). אומת 03/09/2026. */
 export const OPENAI_FLAGSHIP_MODEL = "gpt-5.6-sol";
 
 export const OPENAI_VISION_FALLBACK_CHAIN: readonly string[] = [
   "gpt-5.6-sol",
-  "gpt-5.6",
   "gpt-5.6-terra",
   "gpt-5.6-luna",
   "gpt-5.5",
@@ -99,6 +98,22 @@ export function getOpenAiResponsesModelCandidates(uiOverride?: string): string[]
   ]);
 }
 
+/**
+ * An exhausted balance is an account fact, not a model fact: every entry in a
+ * fallback chain bills the same account, so walking the chain just spends five
+ * round-trips to be told the same thing. Abort instead.
+ */
+export function isProviderOutOfCredit(body: string): boolean {
+  const b = body.toLowerCase();
+  return (
+    b.includes("no credits remaining") ||
+    b.includes("credit balance is too low") ||
+    b.includes("insufficient_quota") ||
+    b.includes("billing_hard_limit_reached") ||
+    b.includes("exceeded your current quota")
+  );
+}
+
 export function isOpenAiModelNotFound(status: number, body: string): boolean {
   if (status === 404) return true;
   const b = body.toLowerCase();
@@ -112,6 +127,7 @@ export function isOpenAiModelNotFound(status: number, body: string): boolean {
 
 /** 404 / ׳“׳’׳ ׳׳ ׳§׳™׳™׳ / ׳׳’׳‘׳׳× ׳§׳¦׳‘ ג€” ׳׳¢׳‘׳¨ ׳׳׳•׳“׳ ׳”׳‘׳ */
 export function isOpenAiEligibleForModelFallback(status: number, body: string): boolean {
+  if (isProviderOutOfCredit(body)) return false;
   if (isOpenAiModelNotFound(status, body)) return true;
   if (status === 429) return true;
   const b = body.toLowerCase();
@@ -154,6 +170,7 @@ export function isAnthropicModelNotFound(status: number, body: string): boolean 
 }
 
 export function isAnthropicEligibleForModelFallback(status: number, body: string): boolean {
+  if (isProviderOutOfCredit(body)) return false;
   if (isAnthropicModelNotFound(status, body)) return true;
   if (status === 429) return true;
   const b = body.toLowerCase();
@@ -211,6 +228,7 @@ export function isMistralModelNotFound(status: number, body: string): boolean {
 }
 
 export function isMistralEligibleForModelFallback(status: number, body: string): boolean {
+  if (isProviderOutOfCredit(body)) return false;
   if (isMistralModelNotFound(status, body)) return true;
   if (status === 429) return true;
   const b = body.toLowerCase();

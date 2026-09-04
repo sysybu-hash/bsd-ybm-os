@@ -5,6 +5,7 @@ import {
   GEMINI_LITE_MODEL,
   GEMINI_PREVIOUS_FLASH_MODEL,
   GEMINI_STABLE_TEXT_MODEL,
+  deterministicGenerationConfig,
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 
@@ -41,7 +42,7 @@ export async function geminiMultimodal(
             ],
           },
         ],
-        generationConfig: { temperature: 0, responseMimeType: "application/json" },
+        generationConfig: deterministicGenerationConfig({ responseMimeType: "application/json" }),
       });
       return parseModelJsonText(result.response.text());
     } catch (err: unknown) {

@@ -1,7 +1,7 @@
 import { geminiMultimodal } from "@/lib/tri-engine-gemini";
 import { extractDocumentWithOpenAI } from "@/lib/ai-extract-openai";
 import { assertProviderConfigured, isAnthropicConfigured, isMistralConfigured, normalizeAiProviderId } from "@/lib/ai-providers";
-import { getBlueprintAnalysisModelChain, getModelChainForScanMode } from "@/lib/gemini-model";
+import { getBlueprintAnalysisModelChain, getModelChainForScanMode, GEMINI_STABLE_TEXT_MODEL } from "@/lib/gemini-model";
 import { coerceLegacyAiToV5, type ScanExtractionV5, type ScanModeV5 } from "@/lib/scan-schema-v5";
 import { packTriEngineResult } from "@/lib/tri-engine-extract-result";
 import { runSequentialInvoiceScan } from "@/lib/tri-engine-extract-invoice-sequential";
@@ -74,7 +74,7 @@ export async function runSequentialScanMode(params: {
     }
 
     const a = coerceLegacyAiToV5(geminiRaw, fileName, scanMode);
-    a.enginesUsed = ["gemini-3.6-flash"];
+    a.enginesUsed = [GEMINI_STABLE_TEXT_MODEL];
     await emitPartial(a, "gemini");
 
     const tP = Date.now();

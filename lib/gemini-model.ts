@@ -162,11 +162,20 @@ export function getFloorplanVizModelChain(): string[] {
   ]);
 }
 
-/** פענוח תוכנית דירה — Pro קודם, Flash לגיבוי */
+/**
+ * פענוח תוכנית דירה — Flash קודם, Pro לגיבוי.
+ *
+ * Measured 04/09/2026 on sales-28-1 and plan-1 (calibration run): Flash and Pro
+ * agreed on every graded trap — floor label vs elevation, printed gross area,
+ * no invented duplex, מעלית excluded, one ממ"ד — at 10s vs 42-52s. Gemini is one
+ * of four consensus votes in extractFloorplanLayout, so Pro's extra depth landed
+ * on a single vote while setting the latency floor for the whole extraction.
+ * Override with GEMINI_BLUEPRINT_MODEL to put Pro back in front.
+ */
 export function getFloorplanLayoutModelChain(): string[] {
   return chainWithOptionalEnv(env.GEMINI_BLUEPRINT_MODEL?.trim(), [
-    GEMINI_PREMIUM_TEXT_MODEL,
     GEMINI_STABLE_TEXT_MODEL,
+    GEMINI_PREMIUM_TEXT_MODEL,
     ...GEMINI_MODEL_FALLBACK_TIER,
   ]);
 }

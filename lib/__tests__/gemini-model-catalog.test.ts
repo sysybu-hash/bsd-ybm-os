@@ -42,10 +42,15 @@ describe("gemini-model-catalog", () => {
     expect(chain.some((m) => m.includes("gemini-2.5"))).toBe(false);
   });
 
-  it("floorplan layout extract prefers Pro then current Flash", () => {
+  // Calibrated 04/09/2026: Flash matched Pro on every graded trap at a quarter of
+  // the latency, and Gemini is only one of four consensus votes in the extractor.
+  it("floorplan layout extract prefers current Flash, keeping Pro as fallback", () => {
     const chain = getFloorplanLayoutModelChain();
-    expect(chain[0]).toBe(GEMINI_PREMIUM_TEXT_MODEL);
-    expect(chain).toContain(GEMINI_STABLE_TEXT_MODEL);
+    expect(chain[0]).toBe(GEMINI_STABLE_TEXT_MODEL);
+    expect(chain).toContain(GEMINI_PREMIUM_TEXT_MODEL);
+    expect(chain.indexOf(GEMINI_STABLE_TEXT_MODEL)).toBeLessThan(
+      chain.indexOf(GEMINI_PREMIUM_TEXT_MODEL),
+    );
   });
 
   it("floorplan image chain uses Nano Banana Pro then GA Flash Image", () => {
