@@ -21,6 +21,7 @@ import {
   type FloorplanVizViewId,
 } from "@/lib/projects/floorplan-layout";
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
+import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
 import { buildInkWallJpeg, buildRoomMassingJpeg, cropFloorplanRasterToUnit } from "@/lib/projects/floorplan-photo-prep";
 import {
   KITCHEN_SINK_LOCK,
@@ -48,12 +49,42 @@ const log = createLogger("floorplan-viz-generate");
 
 const IMAGE_CONCURRENCY = 2;
 
-async function aspectRatioForPlan(base64: string): Promise<string | undefined> {
+/**
+ * The aspect ratio has to come from the sheet, not from the model's default.
+ *
+ * sharp cannot decode a PDF, so this used to return undefined for every PDF
+ * upload and Gemini fell back to its own framing — landscape. A portrait sales
+ * sheet then came back squeezed into a landscape frame with the flat rotated,
+ * which is exactly the ORIENTATION_LOCK the prompt spends a paragraph on.
+ * pdf-lib reads the page box without rendering anything.
+ */
+async function aspectRatioForPlan(base64: string, mimeType?: string): Promise<string | undefined> {
+  const bytes = Buffer.from(base64, "base64");
+  if (mimeType === "application/pdf" || bytes.subarray(0, 5).toString("latin1") === "%PDF-") {
+    try {
+      const { PDFDocument } = await import("pdf-lib");
+      const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+      const page = doc.getPage(0);
+      if (page) {
+        const { width, height } = page.getSize();
+        // /Rotate is applied at display time and getSize() reports the unrotated
+        // box. Nine of ten sheets in a real batch carried /Rotate 270, so
+        // ignoring it called every portrait plan landscape.
+        const quarterTurned = Math.abs(page.getRotation().angle % 180) === 90;
+        const w = quarterTurned ? height : width;
+        const h = quarterTurned ? width : height;
+        if (w > 0 && h > 0) return nearestGeminiImageAspect(w, h);
+      }
+    } catch {
+      /* Encrypted or malformed — fall through and let Gemini frame it. */
+    }
+    return undefined;
+  }
   try {
-    const meta = await sharp(Buffer.from(base64, "base64")).metadata();
+    const meta = await sharp(bytes).metadata();
     if (meta.width && meta.height) return nearestGeminiImageAspect(meta.width, meta.height);
   } catch {
-    /* PDF bytes or a decode miss — Gemini picks from the attached raster */
+    /* Not a raster sharp can decode — Gemini picks from the attached sheet. */
   }
   return undefined;
 }
@@ -97,9 +128,14 @@ function inventoryBlock(layout: FloorplanLayout, haredi = false): string {
   const nBed = countKind(rooms, "bedroom");
   const nStudy = rooms.filter(isStudyRoom).length;
   const nStorage = rooms.filter(isStorageOrServiceRoom).length;
+  // Per-room counts alone did not hold: דירה 14 has four drawn beds and came
+  // back with six. A single total is something the model can check its own
+  // output against before it finishes the frame.
+  const totalBeds = rooms.reduce((sum, room) => sum + (room.bedCount ?? 0), 0);
   return [
     "EXACT INVENTORY — copy these enclosed spaces from the drawing, nothing else:",
     `living ${countKind(rooms, "living")}, kitchen ${nKitchen} (exactly ${nKitchen} — do not add another), bedroom ${nBed} (exactly ${nBed}), mmd ${countKind(rooms, "mmd")}, bathroom ${countKind(rooms, "bathroom")}, balcony ${countKind(rooms, "balcony")}, office/study ${nStudy}, storage ${nStorage}`,
+    `TOTAL BEDS IN THE WHOLE APARTMENT: exactly ${totalBeds}. Count every bed you have drawn before finishing: the sum across all rooms must be ${totalBeds}, not ${totalBeds + 1} and not ${totalBeds + 2}. A room listed with 1 twin bed gets one bed and no second one.`,
     stairs
       ? "Internal stair YES — real treads in the plan location. Do NOT add extra bedrooms. Elevator is outside the unit."
       : "Internal stair NO. Omit any stair, elevator, or grey shaft outside the dwelling outline. Do not extrude hatched 35 cm walls into a stairwell. Do not invent treads.",
@@ -478,7 +514,7 @@ export async function editFloorplanStill(params: {
       { styleKit: params.styleKit },
     ),
     attachments,
-    { aspectRatio: await aspectRatioForPlan(params.plan.base64) },
+    { aspectRatio: await aspectRatioForPlan(params.plan.base64, params.plan.mimeType) },
   );
 }
 
@@ -532,6 +568,66 @@ async function attachmentsForJob(
   return planAtt;
 }
 
+
+/** How many times a failed audit is worth re-rolling before shipping the least bad frame. */
+const MAX_AUDITED_ATTEMPTS = 3;
+
+/**
+ * Generate, count what came back, and re-roll when the counts disagree.
+ *
+ * Only the whole-plan views are audited. An interior close-up shows one room, so
+ * apartment-wide counts say nothing about it, and auditing it would spend a
+ * vision call to learn nothing.
+ */
+async function generateAuditedImage(
+  job: VizJob,
+  attachments: Array<{ mimeType: string; base64: string }>,
+  aspectRatio: string | undefined,
+  ctx: {
+    layout: FloorplanLayout;
+    plan: { base64: string; mimeType: string };
+    haredi: boolean;
+  },
+): Promise<{ mimeType: string; base64: string }> {
+  const auditable = job.viewId === "overview" || job.viewId === "isometric";
+  let best: { img: { mimeType: string; base64: string }; score: number; failures: string[] } | null = null;
+  let lastFailures: string[] = [];
+
+  for (let attempt = 1; attempt <= (auditable ? MAX_AUDITED_ATTEMPTS : 1); attempt++) {
+    // A blind re-roll just samples the same distribution again. Telling the model
+    // what the previous frame got wrong turns the retry into a correction.
+    const prompt = lastFailures.length
+      ? `${job.prompt}
+
+PREVIOUS ATTEMPT REJECTED — an audit compared your last frame against the plan and found:
+${lastFailures
+          .map((f) => `- ${f}`)
+          .join("\n")}
+Fix exactly these. Trace the apartment's outer boundary from the plan first and stay inside it: do not extend a wing, a room, or a bathroom into space the plan leaves outside the flat. Keep everything the audit did not complain about.`
+      : job.prompt;
+    const img = await generateOneImage(prompt, attachments, { aspectRatio });
+    if (!auditable) return img;
+
+    const audit = await auditFloorplanStill(img, ctx.plan);
+    if (!audit) return img; // No auditor available — ship what we have rather than stall.
+
+    const { failures, score } = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+    if (failures.length === 0) {
+      log.info("still passed audit", { view: job.labelHe, attempt });
+      return img;
+    }
+    log.warn("still failed audit", { view: job.labelHe, attempt, failures });
+    lastFailures = failures;
+    if (!best || score < best.score) best = { img, score, failures };
+  }
+
+  if (best) {
+    log.warn("shipping least-bad still", { view: job.labelHe, failures: best.failures });
+    return best.img;
+  }
+  throw new Error("יצירת ההדמיה נכשלה");
+}
+
 export async function generateFloorplanVisuals(
   layout: FloorplanLayout,
   base64: string,
@@ -550,7 +646,7 @@ export async function generateFloorplanVisuals(
   }
   const ink = options?.photo ? null : await buildInkWallJpeg(base64);
   const massing = null;
-  const aspectRatio = await aspectRatioForPlan(base64);
+  const aspectRatio = await aspectRatioForPlan(base64, mimeType);
   const overviewOpts = {
     ...options,
     inkWall: Boolean(ink),
@@ -577,7 +673,11 @@ export async function generateFloorplanVisuals(
         vizLayout,
         overviewStill,
       );
-      const img = await generateOneImage(job.prompt, attachments, { aspectRatio });
+      const img = await generateAuditedImage(job, attachments, aspectRatio, {
+        layout: vizLayout,
+        plan: { base64, mimeType },
+        haredi: options?.styleKit?.audience === "haredi",
+      });
       return {
         viewId: job.viewId,
         labelHe: job.labelHe,

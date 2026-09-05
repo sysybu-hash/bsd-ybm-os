@@ -41,7 +41,8 @@ MODESTY (global — every view, every room):
 
 export const HAREDI_BED_PROMPT = `
 BEDS (haredi — modest AND plan-faithful, non-negotiable):
-- NEVER a double / queen / king. NEVER two twins pushed together as one bed or one shared headboard.
+- THIS SECTION OVERRIDES the "same size" clause of the pixel lock for beds only. An Israeli sales plan draws the master bedroom as one wide double rectangle; that rectangle is a SLEEPING ZONE, not a furniture spec. Render it as a single twin along the long wall. Every other rule — room, position, count, and every non-bed object — still follows the drawing exactly.
+- NEVER a double / queen / king, no matter how wide the drawn rectangle is. NEVER two twins pushed together as one bed or one shared headboard.
 - Copy the NUMBER and POSITION of bed rectangles from the plan. One drawn bed → one twin. Two drawn twins → two twins with the printed gap in those drawn positions.
 - Do NOT add a second bed to a room that has only one rectangle. Do NOT fill an empty ממ"ד with beds. Do NOT turn every bedroom into a twin dormitory.
 - Two twins side-by-side only if the plan draws them that way. A bedroom whose printed width fits one rectangle gets ONE twin along the long wall, with walkable floor.
@@ -119,13 +120,24 @@ const GENERAL_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
 export const LIVED_IN_STAGING = `
 LIVED-IN HOME (every view — not a vacant show unit):
 - Photograph a family apartment that is already lived in. Forbidden: sterile CAD dollhouse, empty contractor white-box, furniture catalog with bare counters, empty tiled bathrooms, closets without doors.
-- Soft even Israeli brochure daylight — not harsh raking sun that hides the floor plate, not a nightclub.
-- Recessed lights plus a few lamps or pendants that are on.
+- Lighting and warmth are specified in their own section below; follow it.
 - Layered textiles in the rooms they belong: area rug under living seating, pillows and a throw on sofas and beds, bath towels on a rail, curtains only on windows that exist in the plan.
 - Small life props: fruit bowl, kettle and cutting board on kitchen counters; place setting or candles on the dining table; bedside lamp and folded blanket in bedrooms; one potted plant by a real window or on a drawn terrace.
 - Props and textiles only on furniture that exists on the sales sheet. Do not add a sofa, dining table, TV, media wall, extra vanity, walk-in shower, double sink, or extra desk that is not drawn.
 - Visible wood grain and fabric weave — photoreal, not plastic CGI. Do not clutter every surface.
 - Do not add people. Do not hide walls, doors, or windows. Do not add extra rooms or openings.
+`.trim();
+
+export const WARM_INVITING_LIGHT = `
+LIGHT AND WARMTH (every view — a brochure hero shot, not a survey drawing):
+- Golden-hour interior light, warm white balance near 3000K. Honey highlights on wood, plaster that reads warm cream rather than grey, soft amber pooling across the floor.
+- Lamps are staging, not architecture: a pendant over the dining table, under-cabinet strips in the kitchen, bedside lamps, a floor lamp beside the living seating, warm cove light along millwork. Add them and switch them ON — they are expected in a brochure still and they do not change the plan.
+- Each lit fixture must read as lit: a visible warm halo on the wall or ceiling behind it and a soft pool of amber spilling onto the floor or counter below. Light that leaves no pool has not been rendered.
+- The floor must not be one flat even sheet of beige. Break it with warm pools under the fixtures, daylight falling from the drawn windows, and soft shadow between them.
+- Daylight arrives through the drawn windows and terraces as warm, diffused light with gentle directional shadows. No blown highlights, no cold overcast flatness, no harsh raking sun that washes out the floor plate.
+- Materials read warm and tactile: honey and caramel oak, warm cream stone, brushed brass or warm nickel, textiles with visible weave and soft drape.
+- The result should feel like a home someone wants to walk into: rich, layered, glowing. Avoid grey-blue shadow, cold white LED, flat grey ambient occlusion, uniform brightness edge to edge, and the over-bright empty look of a showroom.
+- Warmth is finish and lighting ONLY. It never changes walls, openings, fixtures, furniture counts, or positions.
 `.trim();
 
 const NO_LAYOUT_CHANGE =
@@ -200,6 +212,8 @@ export function stylePromptForView(
   parts.push(PRESENTATION_LOCK);
   if (kit.id !== "developer_white") {
     parts.push(LIVED_IN_STAGING);
+    // developer_white is deliberately a bare contractor handover, so it stays cold.
+    parts.push(WARM_INVITING_LIGHT);
   }
   if (kit.audience === "haredi") {
     if (!kit.promptBlock.includes("MODESTY (global")) parts.push(HAREDI_MODESTY_PROMPT);
@@ -311,9 +325,9 @@ export const FLOORPLAN_VIZ_PRESETS: Record<FloorplanVizPresetId, FloorplanVizSty
     promptBlock: [
       "STYLE KIT — innovative contemporary haredi family apartment (warm oak, NOT antique):",
       "2020s Israeli architecture. Clean millwork, warm contemporary oak — not carved baroque, not Victorian, not shtetl.",
-      "Large-format tile or pale parquet, recessed lighting, slim profiles.",
+      "Large-format warm-toned tile or honey parquet, warm recessed lighting, slim profiles.",
       "Built-in flush sefarim cabinet in living (modest, not a full-wall library). Simple modern Shabbat table — not a museum piece, not gold-ornate.",
-      "Warm family home: rug, pillows, fruit bowl in the kitchen, lamps on. NOT a vacant 3D model.",
+      "Warm family home at golden hour: rug, pillows, fruit bowl in the kitchen, every lamp glowing. NOT a vacant 3D model.",
       "NO antique furniture, NO heavy velvet drapes, NO carved period wood.",
       NO_LAYOUT_CHANGE,
     ].join(" "),
