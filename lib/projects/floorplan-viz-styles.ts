@@ -63,6 +63,7 @@ PLAN TRACE (every style, every view — non-negotiable):
 - An office/study is desks. A storage room is shelves. Neither is a kitchen or a bedroom. Do not duplicate either.
 - A 90 cm mark is a door width. Hatched rectangles are closets with CLOSED cabinet doors. An oval basin is a sink. A toilet pan is a toilet. If it is not drawn, do not add it.
 - A brick or paving hatch outside the wall line — usually labelled מרפסת with its own area figure — is a TERRACE, not a room. Open floor, a railing, at most one planter. It never becomes a bathroom, a bedroom or a store, and it never gets a bath, toilet, basin, bed or wardrobe. Render exactly as many terraces as the plan draws, in the places it draws them.
+- A terrace is exactly the size the sheet gives it. The printed area figure is the size: 4 מ"ר is a narrow strip about as deep as a doorway, not a courtyard. Never widen a terrace to fill a corner of the frame, and never let it come out larger than a bedroom when the sheet says it is smaller.
 - Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
 `.trim();
 
