@@ -243,7 +243,9 @@ export function pageSideOfDoor(
     x: Math.min(width - 1, Math.max(0, Math.round(outside.x))),
     y: Math.min(height - 1, Math.max(0, Math.round(outside.y))),
   };
-  if (isBackgroundPatch(data, width, height, clamped.x, clamped.y, radius)) return clamped;
+  if (isBackgroundPatch(data, width, height, clamped.x, clamped.y, radius)) {
+    return closeUpToDoor(data, width, height, clamped, door, size);
+  }
 
   const dx = clamped.x - door.x;
   const dy = clamped.y - door.y;
@@ -255,13 +257,56 @@ export function pageSideOfDoor(
     const x = Math.round(clamped.x + ux * travelled);
     const y = Math.round(clamped.y + uy * travelled);
     if (x < 0 || y < 0 || x >= width || y >= height) break;
-    if (isBackgroundPatch(data, width, height, x, y, radius)) return { x, y };
+    if (isBackgroundPatch(data, width, height, x, y, radius)) {
+      return closeUpToDoor(data, width, height, { x, y }, door, size);
+    }
   }
 
   // Nothing reads as page along that line. Fall back to the nearest page in
   // any direction, and failing that leave the point where the model put it.
   const page = nearestPage(data, width, height, door, size);
-  return page ? { x: page.x, y: page.y } : clamped;
+  return page ? closeUpToDoor(data, width, height, page, door, size) : clamped;
+}
+
+/**
+ * Slides the marker up against the outline, just outside the door.
+ *
+ * "Outside the front door" is a point a door's width away when the model gives
+ * it, which reads as floating off on its own. Walking back toward the door
+ * until the page runs out, then standing off by a triangle's width, puts it
+ * hard against the outline where a reader looks for it.
+ */
+export function closeUpToDoor(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  from: { x: number; y: number },
+  door: { x: number; y: number },
+  size: number,
+): { x: number; y: number } {
+  const radius = Math.max(2, Math.round(size * 0.45));
+  const dx = door.x - from.x;
+  const dy = door.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 1) return from;
+  const ux = dx / length;
+  const uy = dy / length;
+  const step = Math.max(1, Math.round(size * 0.15));
+
+  let closest = from;
+  for (let travelled = step; travelled < length; travelled += step) {
+    const x = Math.round(from.x + ux * travelled);
+    const y = Math.round(from.y + uy * travelled);
+    if (!isBackgroundPatch(data, width, height, x, y, radius)) break;
+    closest = { x, y };
+  }
+  // Back off so the whole triangle stays on the page rather than biting into
+  // the outline.
+  const standOff = size * 0.8;
+  return {
+    x: Math.round(closest.x - ux * standOff),
+    y: Math.round(closest.y - uy * standOff),
+  };
 }
 
 /** The triangle's three corners, pointing the way someone walks in. */

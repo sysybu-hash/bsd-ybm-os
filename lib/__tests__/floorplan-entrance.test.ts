@@ -1,6 +1,7 @@
 import sharp from "sharp";
 
 import {
+  closeUpToDoor,
   entranceTrianglePoints,
   facingFromOutward,
   markApartmentEntrance,
@@ -178,7 +179,9 @@ describe("where the marker ends up", () => {
     });
     const ink = await inkCentre(out);
     expect(ink.dark).toBeGreaterThan(0);
-    expect(ink.x).toBeGreaterThan(340);
+    // On the page, and hard up against the outline rather than floating off.
+    expect(ink.x).toBeGreaterThan(300);
+    expect(ink.x).toBeLessThan(360);
     expect(ink.y).toBeCloseTo(300, -1);
   });
 
@@ -292,5 +295,42 @@ describe("which way someone walks in", () => {
     expect(facingFromOutward(0, -1)).toBe("down");
     expect(facingFromOutward(0.9, 0.4)).toBe("left");
     expect(facingFromOutward(0.3, 0.95)).toBe("up");
+  });
+});
+
+describe("standing the marker up against the outline", () => {
+  /** Flat on the left of x=300, page to its right. */
+  function halfPage(width = 600, height = 400) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = x < 300 ? 130 : 252;
+      }
+    }
+    return { data, width, height };
+  }
+
+  it("walks a distant point back up to the edge", () => {
+    const { data, width, height } = halfPage();
+    const size = 20;
+    // The model put it a long way out; the door is at the wall.
+    const at = closeUpToDoor(data, width, height, { x: 520, y: 200 }, { x: 296, y: 200 }, size);
+    expect(at.x).toBeLessThan(400);
+    expect(at.x).toBeGreaterThan(300);
+    expect(at.y).toBe(200);
+  });
+
+  it("leaves room for the whole triangle rather than biting the outline", () => {
+    const { data, width, height } = halfPage();
+    const size = 20;
+    const at = closeUpToDoor(data, width, height, { x: 520, y: 200 }, { x: 296, y: 200 }, size);
+    // Its leading corner stops short of the wall.
+    expect(at.x - size / 2).toBeGreaterThan(300);
+  });
+
+  it("does nothing when it is already at the door", () => {
+    const { data, width, height } = halfPage();
+    const point = { x: 310, y: 200 };
+    expect(closeUpToDoor(data, width, height, point, { x: 310, y: 200 }, 20)).toEqual(point);
   });
 });
