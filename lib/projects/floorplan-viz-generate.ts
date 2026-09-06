@@ -22,7 +22,12 @@ import {
 } from "@/lib/projects/floorplan-layout";
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
 import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
-import { buildInkWallJpeg, buildRoomMassingJpeg, cropFloorplanRasterToUnit } from "@/lib/projects/floorplan-photo-prep";
+import { buildVectorWallJpeg } from "@/lib/projects/floorplan-vector";
+import {
+  buildInkWallJpeg,
+  buildRoomMassingJpeg,
+  cropFloorplanRasterToUnit,
+} from "@/lib/projects/floorplan-photo-prep";
 import {
   KITCHEN_SINK_LOCK,
   PLAN_TRACE_LOCK,
@@ -497,7 +502,7 @@ export async function editFloorplanStill(params: {
 }): Promise<{ mimeType: string; base64: string }> {
   const instruction = sanitizeFloorplanVizEditInstruction(params.instruction);
   if (!instruction) throw new Error("חסרה בקשת עריכה");
-  const ink = params.photo ? null : await buildInkWallJpeg(params.plan.base64);
+  const ink = await buildWallHint(params.plan.base64, params.plan.mimeType, params.photo === true);
   const massingRooms = roomsForVisualization(params.layout).filter((r) => !isBuildingCoreRoom(r));
   const massing = await buildRoomMassingJpeg(params.plan.base64, massingRooms);
   const attachments: Array<{ mimeType: string; base64: string }> = [
@@ -579,6 +584,24 @@ const MAX_AUDITED_ATTEMPTS = 3;
  * apartment-wide counts say nothing about it, and auditing it would spend a
  * vision call to learn nothing.
  */
+/**
+ * The wall hint the model traces. A PDF carries its walls as vectors, so they can
+ * be handed over exactly; a scan only has ink to threshold, which keeps the
+ * furniture and dimension chains along with the walls.
+ */
+async function buildWallHint(
+  base64: string,
+  mimeType: string,
+  photo: boolean,
+): Promise<string | null> {
+  if (photo) return null;
+  if (mimeType === "application/pdf") {
+    const vector = await buildVectorWallJpeg(Buffer.from(base64, "base64"));
+    if (vector) return vector;
+  }
+  return buildInkWallJpeg(base64);
+}
+
 async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -644,7 +667,7 @@ export async function generateFloorplanVisuals(
   if (specs.length === 0) {
     throw new Error("אין הדמיות נוספות לייצר");
   }
-  const ink = options?.photo ? null : await buildInkWallJpeg(base64);
+  const ink = await buildWallHint(base64, mimeType, options?.photo === true);
   const massing = null;
   const aspectRatio = await aspectRatioForPlan(base64, mimeType);
   const overviewOpts = {

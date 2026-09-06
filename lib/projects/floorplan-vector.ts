@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("floorplan-vector");
@@ -247,6 +249,63 @@ export async function extractFloorplanVectorGeometry(
     return { pageWidth: viewport.width, pageHeight: viewport.height, segments, walls };
   } catch (err: unknown) {
     log.warn("vector extraction failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/**
+ * A clean walls-only diagram for the image model to trace.
+ *
+ * The model has been reading the raw sales sheet, where the wall graph competes
+ * with dimension chains, hatch, furniture, a title block and Hebrew labels — and
+ * it showed: footprints came back as plain rectangles, and one run grew a whole
+ * extra wing. The vector pass already knows exactly where the walls are, so this
+ * hands over that and nothing else, to be attached alongside the original sheet.
+ *
+ * This is the part of the vector work that pays off even though room detection
+ * did not: guiding the model needs clean walls, not closed rooms.
+ */
+export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry): string {
+  const { pageWidth: w, pageHeight: h, walls } = geometry;
+  const lines = walls
+    .map(
+      (s) =>
+        `<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}"/>`,
+    )
+    .join("");
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(0)} ${h.toFixed(0)}" ` +
+    `width="${w.toFixed(0)}" height="${h.toFixed(0)}">` +
+    `<rect width="100%" height="100%" fill="#ffffff"/>` +
+    `<g stroke="#000000" stroke-width="2.5" stroke-linecap="square">${lines}</g></svg>`
+  );
+}
+
+/**
+ * The wall diagram as a JPEG, ready to attach next to the original sheet.
+ *
+ * Falls back to null when the sheet is a scan, or when so few walls came back
+ * that a nearly blank page would mislead the model more than the noisy raster
+ * hint it replaces.
+ */
+export async function buildVectorWallJpeg(
+  pdf: Buffer | Uint8Array,
+  width = 1400,
+): Promise<string | null> {
+  try {
+    const geometry = await extractFloorplanVectorGeometry(pdf);
+    if (!geometry || geometry.walls.length < 25) return null;
+    const svg = renderWallDiagramSvg(geometry);
+    const out = await sharp(Buffer.from(svg), { density: 200 })
+      .resize({ width, withoutEnlargement: false })
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 92, mozjpeg: true })
+      .toBuffer();
+    return out.toString("base64");
+  } catch (err: unknown) {
+    log.warn("wall diagram failed", {
       error: err instanceof Error ? err.message : String(err),
     });
     return null;
