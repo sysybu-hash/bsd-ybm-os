@@ -58,6 +58,14 @@ export function buildFloorplanVizPdfHtml(
      * drawing without leaving the document.
      */
     planImage?: { mimeType: string; base64: string } | null;
+    /**
+     * Three pages and nothing else: the still, the sheet, the two side by side.
+     * The cover and its room table are useful when the booklet is the whole
+     * deliverable, and in the way when it is the comparison a client is being
+     * walked through. Needs planImage — without a sheet there is nothing to
+     * compare against, so the flag is ignored.
+     */
+    comparisonOnly?: boolean;
   },
 ): string {
   const fonts = fontFaceCss();
@@ -118,7 +126,8 @@ export function buildFloorplanVizPdfHtml(
   // When the source sheet is included the booklet opens with the still, the
   // drawing and the two side by side, so the hero still is not printed again
   // as its own plate — the same frame twice reads as a mistake.
-  const plates = plan && ordered.length > 0 ? ordered.slice(1) : ordered;
+  const comparisonOnly = Boolean(extras?.comparisonOnly && plan);
+  const plates = comparisonOnly ? [] : plan && ordered.length > 0 ? ordered.slice(1) : ordered;
   const plateOffset = plates.length === ordered.length ? 0 : 1;
   const platesHtml = plates
     .map((img, i) => {
@@ -328,6 +337,12 @@ th:nth-child(5), td:nth-child(5) { width: 18%; }
   max-width: 100%;
   padding-inline-start: 4mm;
 }
+/* Without a cover the first plate is the first page; a forced break there can
+   cost a blank leading sheet. */
+body > .plate:first-child {
+  break-before: auto;
+  page-break-before: auto;
+}
 .plate-head { flex: 0 0 auto; margin-bottom: 6px; min-width: 0; }
 /* Two panels on one page, each scaled to fit its half rather than cropped, so
    the render and the drawing can be held against each other at a glance. */
@@ -421,7 +436,7 @@ th:nth-child(5), td:nth-child(5) { width: 18%; }
 </style>
 </head>
 <body>
-  <section class="cover">
+  ${comparisonOnly ? "" : `<section class="cover">
     <div class="hero">
       <div class="hero-top">
         ${brandMark}
@@ -454,7 +469,7 @@ th:nth-child(5), td:nth-child(5) { width: 18%; }
       מסמך זה הופק על ידי מערכת BSD-YBM.
     </div>
     <p class="brand-line">הופק על ידי מערכת BSD-YBM · ${escapeHtml(dateHe)}</p>
-  </section>
+  </section>`}
   ${comparisonHtml}
   ${platesHtml}
 </body>

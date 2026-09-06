@@ -190,3 +190,53 @@ describe("the booklet opening when the source sheet is supplied", () => {
     expect(html).not.toContain("HEROLOCATOR");
   });
 });
+
+describe("the three-page comparison booklet", () => {
+  const images = [
+    { viewId: "overview" as const, labelHe: "כל התוכנית — מבט על", mimeType: "image/jpeg", base64: "HERO" },
+    { viewId: "interior" as const, labelHe: "פנים — מטבח", roomName: "מטבח", mimeType: "image/jpeg", base64: "KITCHEN" },
+  ];
+  const plan = { mimeType: "image/jpeg", base64: "PLANSHEET" };
+
+  it("is exactly the still, the sheet and the two side by side", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan, comparisonOnly: true });
+    expect(html).toContain("1/3 · הדמיה");
+    expect(html).toContain("2/3 · מקור");
+    expect(html).toContain("3/3 · השוואה");
+    expect(html.split('class="plate"').length - 1).toBe(3);
+  });
+
+  it("drops the cover and its room table", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan, comparisonOnly: true });
+    expect(html).not.toContain("הסבר ראשי על התוכנית");
+    expect(html).not.toContain("חללים שזוהו");
+    expect(html).not.toContain('class="cover"');
+  });
+
+  it("leaves out the other stills, so a batch does not become a brochure", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan, comparisonOnly: true });
+    expect(html).not.toContain("base64,KITCHEN");
+  });
+
+  it("does not open on a blank page, and every plate still fills its page", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan, comparisonOnly: true });
+    expect(html).toContain("body > .plate:first-child");
+    // The height belongs to .plate itself. Moving it onto the first-child
+    // override once left every later page's panels collapsed to content height.
+    const plateRule = html.slice(html.indexOf(".plate {"), html.indexOf("body > .plate:first-child"));
+    expect(plateRule).toContain("height: 250mm");
+    expect(plateRule).toContain("display: flex");
+  });
+
+  it("is ignored without a sheet to compare against", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { comparisonOnly: true });
+    expect(html).toContain("הסבר ראשי על התוכנית");
+    expect(html).toContain("base64,KITCHEN");
+  });
+
+  it("still builds the full booklet when the flag is off", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan });
+    expect(html).toContain("הסבר ראשי על התוכנית");
+    expect(html).toContain("base64,KITCHEN");
+  });
+});

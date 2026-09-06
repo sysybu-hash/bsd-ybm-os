@@ -101,6 +101,11 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       }
     }
 
+    // Three pages only — the still, the sheet, the two side by side — for when
+    // the comparison is the deliverable rather than a whole brochure.
+    const comparisonOnly = ["1", "true", "yes"].includes(
+      String(form.get("comparisonOnly") ?? "").trim().toLowerCase(),
+    );
     const styleLabelHe = String(form.get("styleLabelHe") ?? "").trim() || undefined;
     const styleSummaryHe = String(form.get("styleSummaryHe") ?? "").trim() || undefined;
 
@@ -110,6 +115,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       styleLabelHe,
       styleSummaryHe,
       planImage,
+      comparisonOnly,
     });
     const buffer = await renderHtmlPdfChromium(html, {
       margin: { top: "12mm", right: "22mm", bottom: "18mm", left: "16mm" },
