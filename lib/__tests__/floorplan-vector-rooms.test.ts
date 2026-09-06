@@ -7,7 +7,13 @@ import {
   nameRoomRects,
   type WallRun,
 } from "@/lib/projects/floorplan-rooms";
-import { isAxisAligned, isWallCandidate, segmentLength } from "@/lib/projects/floorplan-vector";
+import {
+  WALL_MIN_LINE_WIDTH,
+  hasParallelFace,
+  isAxisAligned,
+  isWallCandidate,
+  segmentLength,
+} from "@/lib/projects/floorplan-vector";
 
 const page = { width: 200, height: 200 };
 
@@ -24,29 +30,29 @@ function twoRoomRuns(): WallRun[] {
 
 describe("wall segment classification", () => {
   it("measures and recognises axis-aligned runs", () => {
-    expect(segmentLength({ x1: 0, y1: 0, x2: 3, y2: 4 })).toBe(5);
-    expect(isAxisAligned({ x1: 0, y1: 5, x2: 40, y2: 5 })).toBe(true);
-    expect(isAxisAligned({ x1: 0, y1: 0, x2: 40, y2: 30 })).toBe(false);
+    expect(segmentLength({ x1: 0, y1: 0, x2: 3, y2: 4, lineWidth: 14 })).toBe(5);
+    expect(isAxisAligned({ x1: 0, y1: 5, x2: 40, y2: 5, lineWidth: 14 })).toBe(true);
+    expect(isAxisAligned({ x1: 0, y1: 0, x2: 40, y2: 30, lineWidth: 14 })).toBe(false);
   });
 
   it("keeps long on-axis runs inside the page and drops the rest", () => {
-    const wall = { x1: 10, y1: 50, x2: 90, y2: 50 };
+    const wall = { x1: 10, y1: 50, x2: 90, y2: 50, lineWidth: 14 };
     expect(isWallCandidate(wall, page)).toBe(true);
     // Furniture edge: on axis but far too short.
-    expect(isWallCandidate({ x1: 10, y1: 50, x2: 18, y2: 50 }, page)).toBe(false);
+    expect(isWallCandidate({ x1: 10, y1: 50, x2: 18, y2: 50, lineWidth: 14 }, page)).toBe(false);
     // Dimension leader running off the sheet.
-    expect(isWallCandidate({ x1: -80, y1: 50, x2: 90, y2: 50 }, page)).toBe(false);
+    expect(isWallCandidate({ x1: -80, y1: 50, x2: 90, y2: 50, lineWidth: 14 }, page)).toBe(false);
     // Diagonal hatch stroke.
-    expect(isWallCandidate({ x1: 10, y1: 10, x2: 90, y2: 80 }, page)).toBe(false);
+    expect(isWallCandidate({ x1: 10, y1: 10, x2: 90, y2: 80, lineWidth: 14 }, page)).toBe(false);
   });
 });
 
 describe("wall runs", () => {
   it("joins the many short strokes CAD splits one wall into", () => {
     const runs = buildWallRuns([
-      { x1: 10, y1: 40, x2: 50, y2: 40 },
-      { x1: 50, y1: 40, x2: 90, y2: 40 },
-      { x1: 88, y1: 40.4, x2: 130, y2: 40.4 },
+      { x1: 10, y1: 40, x2: 50, y2: 40, lineWidth: 14 },
+      { x1: 50, y1: 40, x2: 90, y2: 40, lineWidth: 14 },
+      { x1: 88, y1: 40.4, x2: 130, y2: 40.4, lineWidth: 14 },
     ]);
     expect(runs).toHaveLength(1);
     expect(runs[0]!.orientation).toBe("h");
@@ -56,8 +62,8 @@ describe("wall runs", () => {
 
   it("keeps a real gap between two separate walls on one line", () => {
     const runs = buildWallRuns([
-      { x1: 10, y1: 40, x2: 50, y2: 40 },
-      { x1: 120, y1: 40, x2: 160, y2: 40 },
+      { x1: 10, y1: 40, x2: 50, y2: 40, lineWidth: 14 },
+      { x1: 120, y1: 40, x2: 160, y2: 40, lineWidth: 14 },
     ]);
     expect(runs).toHaveLength(2);
   });
@@ -185,5 +191,40 @@ describe("scale from the printed gross area", () => {
     const measured = measureRooms(rooms, scale.unitsPerMetre);
     const total = measured.reduce((sum, r) => sum + (r.areaM2 ?? 0), 0);
     expect(total).toBeCloseTo(62.5, 1);
+  });
+});
+
+describe("line width as the wall/furniture divider", () => {
+  const page = { width: 200, height: 200 };
+
+  // isWallCandidate answers the geometric question only — long, on axis, on the
+  // sheet. The pen test is applied by the extractor, because a sheet that draws
+  // everything at one width has to fall back to the thickness test instead.
+  it("accepts any long on-axis run regardless of pen", () => {
+    expect(isWallCandidate({ x1: 10, y1: 50, x2: 120, y2: 50, lineWidth: 14 }, page)).toBe(true);
+    expect(isWallCandidate({ x1: 10, y1: 80, x2: 120, y2: 80, lineWidth: 2 }, page)).toBe(true);
+  });
+
+  it("puts the wall pen above the furniture pen these sheets use", () => {
+    // דירה 16: width 2 for 6,056 furniture and annotation paths, 4 to 17 for walls.
+    expect(WALL_MIN_LINE_WIDTH).toBeGreaterThan(2);
+    expect(WALL_MIN_LINE_WIDTH).toBeLessThanOrEqual(4);
+  });
+
+  it("recognises a wall by its opposite face when the pen cannot be trusted", () => {
+    const face = { x1: 20, y1: 50, x2: 160, y2: 50, lineWidth: 2 };
+    const otherFace = { x1: 20, y1: 58, x2: 160, y2: 58, lineWidth: 2 };
+    // A bed is far wider than a wall, so its two long sides are not a wall pair.
+    const bedNear = { x1: 20, y1: 120, x2: 160, y2: 120, lineWidth: 2 };
+    const bedFar = { x1: 20, y1: 170, x2: 160, y2: 170, lineWidth: 2 };
+    const all = [face, otherFace, bedNear, bedFar];
+    expect(hasParallelFace(face, all)).toBe(true);
+    expect(hasParallelFace(bedNear, all)).toBe(false);
+  });
+
+  it("wants the faces to run alongside each other, not merely share a line", () => {
+    const face = { x1: 20, y1: 50, x2: 160, y2: 50, lineWidth: 2 };
+    const barelyOverlapping = { x1: 150, y1: 58, x2: 190, y2: 58, lineWidth: 2 };
+    expect(hasParallelFace(face, [face, barelyOverlapping])).toBe(false);
   });
 });

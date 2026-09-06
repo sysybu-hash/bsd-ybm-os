@@ -23,6 +23,8 @@ export type VectorSegment = {
   y1: number;
   x2: number;
   y2: number;
+  /** Stroke width in effect when the path was drawn — the layer signal. */
+  lineWidth: number;
 };
 
 export type FloorplanVectorGeometry = {
@@ -58,6 +60,53 @@ export function segmentLength(s: VectorSegment): number {
 /** Within half a unit of horizontal or vertical. CAD walls are drawn on axis. */
 export function isAxisAligned(s: VectorSegment, tolerance = 0.7): boolean {
   return Math.abs(s.x2 - s.x1) < tolerance || Math.abs(s.y2 - s.y1) < tolerance;
+}
+
+/**
+ * Structural walls carry a heavier pen than the furniture drawn inside them.
+ *
+ * On דירה 16 the sheet uses width 2 for 6,056 paths — beds, wardrobes, counters,
+ * dimension lines — and widths 4 to 17 for the walls. Filtering on length alone
+ * let the furniture through, and the flood fill then treated a bed as a room
+ * divider and carved the bedroom into pieces around it.
+ */
+export const WALL_MIN_LINE_WIDTH = 3;
+
+/**
+ * A wall is drawn as two parallel faces a wall's thickness apart.
+ *
+ * The heavy-pen test alone finds the partitions but loses the exterior, which
+ * this CAD draws as hatched bodies outlined with the same thin pen as the
+ * furniture. Thickness separates them instead: an Israeli wall is 10-35 cm, so
+ * at the 33-44 units per metre these sheets use its faces sit 3-16 units apart,
+ * while a bed's long sides are 30-90 units apart and a counter's 20-30.
+ */
+export function hasParallelFace(
+  s: VectorSegment,
+  others: VectorSegment[],
+  gap: { min: number; max: number } = { min: 2.5, max: 18 },
+): boolean {
+  const horizontal = Math.abs(s.y2 - s.y1) < Math.abs(s.x2 - s.x1);
+  const at = horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2;
+  const a = horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+  const b = horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+  const span = b - a;
+  if (span <= 0) return false;
+
+  for (const other of others) {
+    if (other === s) continue;
+    const otherHorizontal = Math.abs(other.y2 - other.y1) < Math.abs(other.x2 - other.x1);
+    if (otherHorizontal !== horizontal) continue;
+    const otherAt = otherHorizontal ? (other.y1 + other.y2) / 2 : (other.x1 + other.x2) / 2;
+    const distance = Math.abs(otherAt - at);
+    if (distance < gap.min || distance > gap.max) continue;
+    // The faces have to run alongside each other, not merely share a line.
+    const oa = otherHorizontal ? Math.min(other.x1, other.x2) : Math.min(other.y1, other.y2);
+    const ob = otherHorizontal ? Math.max(other.x1, other.x2) : Math.max(other.y1, other.y2);
+    const shared = Math.min(b, ob) - Math.max(a, oa);
+    if (shared > span * 0.5) return true;
+  }
+  return false;
 }
 
 export function isWallCandidate(
@@ -106,28 +155,36 @@ export async function extractFloorplanVectorGeometry(
 
     const segments: VectorSegment[] = [];
     let ctm = viewport.transform.slice() as Matrix;
-    const stack: Matrix[] = [];
+    let lineWidth = 1;
+    const stack: Array<{ ctm: Matrix; lineWidth: number }> = [];
 
     const push = (ax: number, ay: number, bx: number, by: number) => {
       const [x1, y1] = apply(ctm, ax, ay);
       const [x2, y2] = apply(ctm, bx, by);
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
       if (x1 === x2 && y1 === y2) return;
-      segments.push({ x1, y1, x2, y2 });
+      segments.push({ x1, y1, x2, y2, lineWidth });
     };
 
     for (let i = 0; i < ops.fnArray.length; i++) {
       const fn = ops.fnArray[i];
       if (fn === OPS.save) {
-        stack.push(ctm.slice() as Matrix);
+        stack.push({ ctm: ctm.slice() as Matrix, lineWidth });
         continue;
       }
       if (fn === OPS.restore) {
-        ctm = (stack.pop() ?? viewport.transform.slice()) as Matrix;
+        const prev = stack.pop();
+        ctm = prev?.ctm ?? (viewport.transform.slice() as Matrix);
+        lineWidth = prev?.lineWidth ?? 1;
         continue;
       }
       if (fn === OPS.transform) {
         ctm = multiply(ctm, ops.argsArray[i] as Matrix);
+        continue;
+      }
+      if (fn === OPS.setLineWidth) {
+        const w = Number((ops.argsArray[i] as number[])[0]);
+        if (Number.isFinite(w)) lineWidth = w;
         continue;
       }
       if (fn !== OPS.constructPath) continue;
@@ -176,9 +233,17 @@ export async function extractFloorplanVectorGeometry(
     }
 
     const page2 = { width: viewport.width, height: viewport.height };
-    const walls = segments.filter((s) =>
-      isWallCandidate(s, page2, options?.minWallLength ?? 12),
-    );
+    // Two ways to be a wall, because this CAD draws them two ways: partitions
+    // get a heavy pen, exterior bodies get a thin outline round a hatch fill.
+    // Requiring both tests at once loses the exterior and rooms merge; requiring
+    // neither lets every bed through and rooms fragment around the furniture.
+    const geometric = segments.filter((s) => isWallCandidate(s, page2, options?.minWallLength ?? 12));
+    const heavy = geometric.filter((s) => s.lineWidth >= WALL_MIN_LINE_WIDTH);
+    // The heavy pen is the better signal where the export uses one. A sheet that
+    // draws everything at one width would come back with almost nothing, so fall
+    // back to the thickness test rather than return an empty plan.
+    const walls =
+      heavy.length >= 40 ? heavy : geometric.filter((s) => hasParallelFace(s, geometric));
     return { pageWidth: viewport.width, pageHeight: viewport.height, segments, walls };
   } catch (err: unknown) {
     log.warn("vector extraction failed", {
