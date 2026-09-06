@@ -124,39 +124,83 @@ describe("marking a still", () => {
   });
 });
 
-describe("the marker sits clear of the outline", () => {
-  it("puts the whole triangle on the page, not straddling the wall", async () => {
-    // A flat filling the left half, page to the right of x=300.
-    const source = await sharp({
+describe("where the marker ends up", () => {
+  /** A flat filling the left of the frame, page from x=300 rightwards. */
+  async function halfFrame() {
+    const buf = await sharp({
       create: { width: 600, height: 600, channels: 3, background: "#ffffff" },
     })
       .composite([
         {
-          input: {
-            create: { width: 300, height: 600, channels: 3, background: "#8a7a5a" },
-          },
+          input: { create: { width: 300, height: 600, channels: 3, background: "#8a7a5a" } },
           left: 0,
           top: 0,
         },
       ])
       .jpeg()
       .toBuffer();
-    const out = await markApartmentEntrance(
-      { base64: source.toString("base64"), mimeType: "image/jpeg" },
-      { x: 0.48, y: 0.5, facing: "left" },
-    );
+    return { base64: buf.toString("base64"), mimeType: "image/jpeg" };
+  }
+
+  async function inkCentre(img: { base64: string }) {
+    const { data, info } = await sharp(Buffer.from(img.base64, "base64"))
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let dark = 0;
+    let sumX = 0;
+    let sumY = 0;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          dark += 1;
+          sumX += x;
+          sumY += y;
+        }
+      }
+    }
+    return { dark, x: sumX / dark, y: sumY / dark, width: info.width };
+  }
+
+  it("sits on the point it is given, not beside it", async () => {
+    const out = await markApartmentEntrance(await halfFrame(), {
+      x: 0.5,
+      y: 0.5,
+      facing: "left",
+    });
+    const ink = await inkCentre(out);
+    expect(ink.dark).toBeGreaterThan(0);
+    expect(ink.x).toBeCloseTo(300, -1);
+    expect(ink.y).toBeCloseTo(300, -1);
+  });
+
+  it("points away from the page, whatever the model said", async () => {
+    // Page is on the right, so the way in is to the left: the apex leads left.
+    const out = await markApartmentEntrance(await halfFrame(), {
+      x: 0.5,
+      y: 0.5,
+      facing: "right",
+    });
     const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    let leftmostDark = info.width;
-    for (let y = 0; y < info.height; y++) {
+    const rowDark = (y: number) => {
+      let min = info.width;
+      let max = -1;
       for (let x = 0; x < info.width; x++) {
-        if ((data[y * info.width + x] ?? 255) < 90 && x < leftmostDark) leftmostDark = x;
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          if (x < min) min = x;
+          if (x > max) max = x;
+        }
       }
-    }
-    // Every dark pixel of the marker is past the wall, out on the page.
-    expect(leftmostDark).toBeGreaterThan(300);
+      return { min, max };
+    };
+    // A triangle pointing left is widest at its right edge and narrows leftward.
+    const middle = rowDark(300);
+    expect(middle.min).toBeLessThan(300);
+    const above = rowDark(288);
+    expect(above.min).toBeGreaterThan(middle.min);
   });
 });
 
@@ -189,8 +233,7 @@ describe("finding the page nearest the door", () => {
         data[y * width + x] = x < 320 && y < 260 ? 130 : 252;
       }
     }
-    // Sitting in a notch: eight pixels above the bottom edge, eighty from the
-    // right one. An axis walk that assumed a side wall used to go the wrong way.
+    // In a notch: eight pixels above the bottom edge, eighty from the right.
     const page = nearestPage(data, width, height, { x: 240, y: 252 }, 16)!;
     expect(page.dy).toBeGreaterThan(0.5);
   });
@@ -225,7 +268,6 @@ describe("which way someone walks in", () => {
     expect(facingFromOutward(-1, 0)).toBe("right");
     expect(facingFromOutward(0, 1)).toBe("up");
     expect(facingFromOutward(0, -1)).toBe("down");
-    // A diagonal takes whichever axis dominates.
     expect(facingFromOutward(0.9, 0.4)).toBe("left");
     expect(facingFromOutward(0.3, 0.95)).toBe("up");
   });

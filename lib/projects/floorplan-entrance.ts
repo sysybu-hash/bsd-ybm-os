@@ -118,14 +118,6 @@ export async function locateApartmentEntrance(
   return null;
 }
 
-/** Which way is OUT of the apartment, given the way someone walks in. */
-const OUTWARD: Record<EntrancePoint["facing"], [number, number]> = {
-  right: [-1, 0],
-  left: [1, 0],
-  down: [0, -1],
-  up: [0, 1],
-};
-
 /**
  * True where the frame is empty page rather than apartment.
  *
@@ -277,18 +269,17 @@ export async function markApartmentEntrance(
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const door = { x: point.x * width, y: point.y * height };
-    const page = nearestPage(data, info.width, info.height, door, size);
-    // No page anywhere near — a frame that fills its canvas. Fall back to the
-    // model's own reading and nudge clear of the wall.
+    // Sits ON the opening, at its middle, the way the sheet marks a front door.
+    // Earlier versions pushed it out onto the page beside the doorway, which
+    // read as a notch in the outline rather than a door.
+    const centre = {
+      x: Math.round(point.x * width),
+      y: Math.round(point.y * height),
+    };
+    // The way in is away from the page. Measured, not taken from the model,
+    // which answered this differently on consecutive runs of the same sheet.
+    const page = nearestPage(data, info.width, info.height, centre, size);
     const facing = page ? facingFromOutward(page.dx, page.dy) : point.facing;
-    const clearance = size * 1.1;
-    const centre = page
-      ? { x: Math.round(page.x + page.dx * clearance), y: Math.round(page.y + page.dy * clearance) }
-      : {
-          x: Math.round(door.x + OUTWARD[point.facing][0] * clearance),
-          y: Math.round(door.y + OUTWARD[point.facing][1] * clearance),
-        };
     const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
 
     const overlay = Buffer.from(
