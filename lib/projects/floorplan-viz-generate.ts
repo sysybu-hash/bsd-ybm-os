@@ -623,8 +623,25 @@ function remedyFor(failure: string): string {
   return "Correct this against the plan.";
 }
 
-/** How many times a failed audit is worth re-rolling before shipping the least bad frame. */
-const MAX_AUDITED_ATTEMPTS = 3;
+/**
+ * How many times a failed audit is worth re-rolling before shipping the least
+ * bad frame.
+ *
+ * Run-to-run spread on the same sheet is wider than the spread inside one run.
+ * Two consecutive runs of דירה 14 on identical code and prompts gave a frame
+ * with the plan's stepped outline and four bedrooms, and then a plain rectangle
+ * with two — so a best-of-three can simply be handed three bad draws. Five buys
+ * a materially better chance of a clean frame, and the early exit below means
+ * the extra calls are only spent on the runs that are going badly.
+ */
+const MAX_AUDITED_ATTEMPTS = 5;
+
+/**
+ * Good enough to stop paying for re-rolls: nothing disqualifying, and at most a
+ * couple of count mismatches. A perfect audit effectively never happens on these
+ * sheets, so waiting for one would always burn the full budget.
+ */
+const GOOD_ENOUGH_SCORE = 2;
 
 /**
  * Generate, count what came back, and re-roll when the counts disagree.
@@ -713,6 +730,10 @@ Fix exactly these and keep everything the audit did not complain about.`
     log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
     if (!best || score < best.score) best = { img, score, failures };
+    if (score <= GOOD_ENOUGH_SCORE) {
+      log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
+      return img;
+    }
   }
 
   if (best) {
