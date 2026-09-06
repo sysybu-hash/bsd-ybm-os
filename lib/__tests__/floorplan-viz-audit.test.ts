@@ -36,7 +36,11 @@ const clean: FloorplanVizAudit = {
 
 describe("floorplan still audit", () => {
   it("passes a still whose counts match the plan", () => {
-    expect(gradeFloorplanStill(clean, layout, { haredi: true })).toEqual({ failures: [], score: 0 });
+    expect(gradeFloorplanStill(clean, layout, { haredi: true })).toEqual({
+      failures: [],
+      hardFailures: [],
+      score: 0,
+    });
   });
 
   it("catches the six-beds-for-four case that shipped before", () => {
@@ -58,7 +62,9 @@ describe("floorplan still audit", () => {
       { ...clean, hasBurnedText: true, hasCadMarks: true },
       layout,
     );
-    expect(verdict.score).toBe(2);
+    expect(verdict.failures).toHaveLength(2);
+    // Burned text is disqualifying; a stray CAD mark is not.
+    expect(verdict.hardFailures).toEqual(["letters or digits rendered into the image"]);
   });
 
   it("catches the two-dining-tables and unfurnished-room failures", () => {
@@ -88,7 +94,11 @@ describe("floorplan still audit", () => {
       bedTotal: 0, bedroomCount: 0, islandStoolCount: 0,
       planBedTotal: 0, planBedroomCount: 0, planIslandStoolCount: 0,
     };
-    expect(gradeFloorplanStill(nothingToCount, bare)).toEqual({ failures: [], score: 0 });
+    expect(gradeFloorplanStill(nothingToCount, bare)).toEqual({
+      failures: [],
+      hardFailures: [],
+      score: 0,
+    });
   });
 
   it("believes the plan over the extraction when the two disagree", () => {
@@ -117,6 +127,7 @@ describe("floorplan still audit", () => {
       { haredi: true },
     );
     expect(verdict.score).toBe(2);
+    expect(verdict.hardFailures).toEqual([]);
     expect(verdict.failures[0]).toMatch(/3 room\(s\) invented outside the plan outline/);
     expect(verdict.failures[1]).toMatch(/footprint does not match/);
   });
@@ -147,5 +158,36 @@ describe("modesty and fixtures the counts were missing", () => {
   it("says nothing about sinks when the auditor could not read them off the plan", () => {
     const blind = { ...clean, kitchenSinkBasins: 1, planKitchenSinkBasins: 0 };
     expect(gradeFloorplanStill(blind, layout).failures).toEqual([]);
+  });
+});
+
+describe("what the least-bad frame is allowed to be", () => {
+  it("prefers many count mismatches over one double bed", () => {
+    // The still that went out had a double bed in three of four bedrooms,
+    // because one modesty failure scored lower than three count mismatches.
+    const modest = gradeFloorplanStill(
+      { ...clean, bedTotal: 6, bedroomCount: 5, islandStoolCount: 1 },
+      layout,
+      { haredi: true },
+    );
+    const immodest = gradeFloorplanStill({ ...clean, hasDoubleBed: true }, layout, {
+      haredi: true,
+    });
+    expect(modest.failures.length).toBeGreaterThan(immodest.failures.length);
+    expect(modest.score).toBeLessThan(immodest.score);
+  });
+
+  it("prefers one screen over two", () => {
+    const one = gradeFloorplanStill({ ...clean, screenCount: 1 }, layout, { haredi: true });
+    const two = gradeFloorplanStill({ ...clean, screenCount: 1, hasDoubleBed: true }, layout, {
+      haredi: true,
+    });
+    expect(one.score).toBeLessThan(two.score);
+  });
+
+  it("keeps counting soft failures so the best of a bad batch still wins", () => {
+    const fewer = gradeFloorplanStill({ ...clean, bedTotal: 5 }, layout);
+    const more = gradeFloorplanStill({ ...clean, bedTotal: 5, diningTableCount: 3 }, layout);
+    expect(fewer.score).toBeLessThan(more.score);
   });
 });

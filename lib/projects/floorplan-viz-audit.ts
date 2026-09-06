@@ -158,7 +158,23 @@ export async function auditFloorplanStill(
   return null;
 }
 
-export type AuditVerdict = { failures: string[]; score: number };
+export type AuditVerdict = {
+  failures: string[];
+  score: number;
+  /** Failures that disqualify a frame outright, whatever else is right about it. */
+  hardFailures: string[];
+};
+
+/**
+ * Some failures are not one item on a list.
+ *
+ * Scoring by failure count shipped a still with a double bed in three of its
+ * four bedrooms, because one modesty failure counted less than three count
+ * mismatches. For a haredi client a double bed, a screen or Hebrew text burned
+ * into the frame makes the still unusable no matter how well everything else
+ * lines up, so they are weighted to dominate any number of soft failures.
+ */
+const HARD_FAILURE_WEIGHT = 100;
 
 /**
  * Grades an audit against the layout the still was generated from.
@@ -188,6 +204,11 @@ export function gradeFloorplanStill(
     audit.planBedroomCount > 0 ? audit.planBedroomCount : extractedBedrooms;
 
   const failures: string[] = [];
+  const hardFailures: string[] = [];
+  const hard = (message: string) => {
+    failures.push(message);
+    hardFailures.push(message);
+  };
   // Geometry first. דירה 14 came back with an entire invented right-hand wing —
   // a bathroom, a bedroom and a laundry in space the plan leaves outside the
   // flat — and every count still matched, so counting alone passed it.
@@ -195,14 +216,14 @@ export function gradeFloorplanStill(
     failures.push(`${audit.roomsOutsidePlanOutline} room(s) invented outside the plan outline`);
   }
   if (!audit.footprintMatchesPlan) failures.push("footprint does not match the plan outline");
-  if (audit.hasBurnedText) failures.push("letters or digits rendered into the image");
+  if (audit.hasBurnedText) hard("letters or digits rendered into the image");
   if (audit.hasCadMarks) failures.push("2D CAD annotation copied into the render");
-  if (options?.haredi && audit.hasDoubleBed) failures.push("a double bed in a haredi still");
+  if (options?.haredi && audit.hasDoubleBed) hard("a double bed in a haredi still");
   // Screens were passing unnoticed: the modesty prompt forbids them outright,
   // but nothing counted them, and a still with a TV in every bedroom went out
   // having passed every other check.
   if (options?.haredi && audit.screenCount > 0) {
-    failures.push(`${audit.screenCount} screen(s) in a haredi still`);
+    hard(`${audit.screenCount} screen(s) in a haredi still`);
   }
   if (audit.planKitchenSinkBasins > 0 && audit.kitchenSinkBasins !== audit.planKitchenSinkBasins) {
     failures.push(
@@ -226,5 +247,6 @@ export function gradeFloorplanStill(
   if (audit.emptyUnfurnishedRooms > 0) {
     failures.push(`${audit.emptyUnfurnishedRooms} room(s) left unfurnished`);
   }
-  return { failures, score: failures.length };
+  const soft = failures.length - hardFailures.length;
+  return { failures, hardFailures, score: hardFailures.length * HARD_FAILURE_WEIGHT + soft };
 }

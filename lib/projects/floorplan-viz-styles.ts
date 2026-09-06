@@ -35,6 +35,7 @@ MODESTY (global — every view, every room):
 - NO SCREENS anywhere: no televisions, no computer monitors, no laptops, no tablets, no phones, no glowing displays, no soundbar.
 - From bird's-eye a screen reads as a dark rectangular panel. Two places it keeps appearing, both forbidden: a thin black bar lying on a desk or cabinet, and a dark panel mounted flat on a bedroom or living-room wall. A bedroom wall carries a picture, a mirror, a shelf or nothing — never a dark panel. A desk holds unmarked books, a lamp, or a clock, never a monitor.
 - If a wall looks bare, leave it bare. A blank wall is correct; a screen to fill it is not.
+- Do NOT draw the furniture a screen sits on. No media console, no TV unit, no low cabinet placed facing the sofa, no floating shelf under a living-room wall. The wall the sofa faces holds a framed landscape or nothing at all. Every time a console is drawn there, a screen ends up on it.
 - Wall art: landscape or geometric only. No figurative paintings, sculptures, or photographs of people.
 - Mezuzah cases on doorposts when a doorway is visible — small physical cases only, no letters.
 - The image must contain no readable Hebrew or Latin text (including book spines, covers, mezuzah letters, and wall verses).
@@ -44,6 +45,9 @@ export const HAREDI_BED_PROMPT = `
 BEDS (haredi — modest AND plan-faithful, non-negotiable):
 - THIS SECTION OVERRIDES the "same size" clause of the pixel lock for beds only. An Israeli sales plan draws the master bedroom as one wide double rectangle; that rectangle is a SLEEPING ZONE, not a furniture spec. Render it as a single twin along the long wall. Every other rule — room, position, count, and every non-bed object — still follows the drawing exactly.
 - NEVER a double / queen / king, no matter how wide the drawn rectangle is. NEVER two twins pushed together as one bed or one shared headboard.
+- Every mattress in the frame is 90 cm wide and 200 cm long. Seen from above it is a long narrow rectangle, more than twice as long as it is wide. A mattress that reads as square-ish, or as wide as the nightstands on either side of it, is a double and is wrong.
+- One pillow on each mattress, one headboard per mattress, and no headboard spanning more than one mattress. Two pillows side by side under one headboard is the double bed this rule exists to prevent.
+- The master bedroom is NOT an exception. There is no double bed anywhere in this apartment, in any room, in any view.
 - Copy the NUMBER and POSITION of bed rectangles from the plan. One drawn bed → one twin. Two drawn twins → two twins with the printed gap in those drawn positions.
 - Do NOT add a second bed to a room that has only one rectangle. Do NOT fill an empty ממ"ד with beds. Do NOT turn every bedroom into a twin dormitory.
 - Two twins side-by-side only if the plan draws them that way. A bedroom whose printed width fits one rectangle gets ONE twin along the long wall, with walkable floor.

@@ -594,7 +594,7 @@ async function attachmentsForJob(
  */
 function remedyFor(failure: string): string {
   if (/screen/i.test(failure)) {
-    return "Remove every screen. Take the dark panel off the wall and leave that wall bare, or hang a framed landscape. No TV, monitor, laptop or tablet anywhere, and nothing dark and rectangular standing on a media unit.";
+    return "Remove every screen AND the console it sits on. Take the dark panel off the wall and off the cabinet, delete the media unit facing the sofa entirely, and leave that wall bare or hang a framed landscape. No TV, monitor, laptop or tablet anywhere.";
   }
   if (/kitchen sink basins/i.test(failure)) {
     return "Redraw the kitchen sink with exactly the basin count the plan draws — a double-bowl sink is two basins side by side in one counter cut-out, not one large basin.";
@@ -603,7 +603,7 @@ function remedyFor(failure: string): string {
     return "Put exactly the drawn number of stools at the island, evenly spaced along its long side.";
   }
   if (/double bed/i.test(failure)) {
-    return "Replace every wide mattress with a single twin along the long wall. A drawn double rectangle is a sleeping zone, not a furniture spec.";
+    return "Replace every wide mattress with a single 90x200 twin along the long wall — a long narrow rectangle, more than twice as long as it is wide, with one pillow and its own headboard. A drawn double rectangle is a sleeping zone, not a furniture spec, and the master bedroom is not an exception.";
   }
   if (/invented outside|footprint/i.test(failure)) {
     return "Trace the apartment's outer boundary from the plan before furnishing anything, and stay inside it. Do not extend a wing, room or bathroom into space the plan leaves outside the flat.";
@@ -693,17 +693,21 @@ Fix exactly these and keep everything the audit did not complain about.`
     const audit = await auditFloorplanStill(img, ctx.plan);
     if (!audit) return img; // No auditor available — ship what we have rather than stall.
 
-    const { failures, score } = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+    const { failures, hardFailures, score } = gradeFloorplanStill(audit, ctx.layout, {
+      haredi: ctx.haredi,
+    });
     if (failures.length === 0) {
       log.info("still passed audit", { view: job.labelHe, attempt });
       return img;
     }
-    log.warn("still failed audit", { view: job.labelHe, attempt, failures });
+    log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
     if (!best || score < best.score) best = { img, score, failures };
   }
 
   if (best) {
+    // The score weights a modesty or text failure far above any count mismatch,
+    // so this only ships one when every attempt had one.
     log.warn("shipping least-bad still", { view: job.labelHe, failures: best.failures });
     return best.img;
   }

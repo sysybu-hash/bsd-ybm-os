@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 /** Bump when extract prompts or merge rules change — invalidates layout replay. */
 export const FLOORPLAN_EXTRACT_LOCK_VERSION = "extract-pixel-v4";
 /** Bump when viz prompts or style locks change — invalidates still replay. */
-export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v17";
+export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v20";
 
 const GEMINI_IMAGE_ASPECTS: ReadonlyArray<readonly [number, number]> = [
   [1, 1],
