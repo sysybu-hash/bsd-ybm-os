@@ -88,6 +88,19 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       locators.push({ mimeType: loc.type || "image/jpeg", base64: buf.toString("base64") });
     }
 
+    // The source sheet, so the booklet can open with the still, the drawing and
+    // the two side by side. A PDF sheet is rasterised by the caller; anything
+    // that is not an image is ignored rather than embedded as a broken figure.
+    let planImage: { mimeType: string; base64: string } | null = null;
+    const planFile = form.get("planImage");
+    if (planFile instanceof File && planFile.size > 0 && planFile.size <= MAX_IMAGE_BYTES) {
+      const buf = Buffer.from(await planFile.arrayBuffer());
+      const mimeType = planFile.type || "image/jpeg";
+      if (mimeType.startsWith("image/")) {
+        planImage = { mimeType, base64: buf.toString("base64") };
+      }
+    }
+
     const styleLabelHe = String(form.get("styleLabelHe") ?? "").trim() || undefined;
     const styleSummaryHe = String(form.get("styleSummaryHe") ?? "").trim() || undefined;
 
@@ -96,6 +109,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       locators,
       styleLabelHe,
       styleSummaryHe,
+      planImage,
     });
     const buffer = await renderHtmlPdfChromium(html, {
       margin: { top: "12mm", right: "22mm", bottom: "18mm", left: "16mm" },

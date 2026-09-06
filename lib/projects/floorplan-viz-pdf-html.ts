@@ -51,6 +51,13 @@ export function buildFloorplanVizPdfHtml(
     locators?: Array<{ mimeType: string; base64: string } | null>;
     styleLabelHe?: string;
     styleSummaryHe?: string;
+    /**
+     * The sheet the still was generated from. When given, the booklet opens with
+     * the still, the sheet, and the two side by side — the spread a buyer is
+     * actually shown, and the one that lets anyone check the render against the
+     * drawing without leaving the document.
+     */
+    planImage?: { mimeType: string; base64: string } | null;
   },
 ): string {
   const fonts = fontFaceCss();
@@ -139,6 +146,46 @@ export function buildFloorplanVizPdfHtml(
 </section>`;
     })
     .join("\n");
+
+  const plan = extras?.planImage;
+  const heroStill = ordered[0];
+  const comparisonHtml =
+    plan && heroStill
+      ? `<section class="plate">
+  <header class="plate-head">
+    <span class="plate-kicker">1/3 · הדמיה</span>
+    <h2>${escapeHtml(heroStill.labelHe)}</h2>
+  </header>
+  <div class="frame">
+    <img src="data:${heroStill.mimeType || "image/jpeg"};base64,${heroStill.base64}" alt="${escapeHtml(heroStill.labelHe)}" />
+  </div>
+</section>
+<section class="plate">
+  <header class="plate-head">
+    <span class="plate-kicker">2/3 · מקור</span>
+    <h2>התוכנית המקורית</h2>
+  </header>
+  <div class="frame">
+    <img src="data:${plan.mimeType || "image/jpeg"};base64,${plan.base64}" alt="התוכנית המקורית" />
+  </div>
+</section>
+<section class="plate">
+  <header class="plate-head">
+    <span class="plate-kicker">3/3 · השוואה</span>
+    <h2>הדמיה מול התוכנית</h2>
+  </header>
+  <div class="compare">
+    <figure>
+      <img src="data:${heroStill.mimeType || "image/jpeg"};base64,${heroStill.base64}" alt="הדמיה" />
+      <figcaption>הדמיה</figcaption>
+    </figure>
+    <figure>
+      <img src="data:${plan.mimeType || "image/jpeg"};base64,${plan.base64}" alt="התוכנית המקורית" />
+      <figcaption>התוכנית המקורית</figcaption>
+    </figure>
+  </div>
+</section>`
+      : "";
 
   const brandMark = logo
     ? `<img class="logo" src="${logo}" alt="BSD-YBM" />`
@@ -277,6 +324,38 @@ th:nth-child(5), td:nth-child(5) { width: 18%; }
   padding-inline-start: 4mm;
 }
 .plate-head { flex: 0 0 auto; margin-bottom: 6px; min-width: 0; }
+/* Two panels on one page, each scaled to fit its half rather than cropped, so
+   the render and the drawing can be held against each other at a glance. */
+.compare {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 6mm;
+  min-height: 0;
+  align-items: stretch;
+}
+.compare figure {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.compare img {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+  border: 1px solid #e7e5e4;
+  border-radius: 3px;
+  background: #fff;
+}
+.compare figcaption {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  font-size: 9px;
+  color: #57534e;
+  text-align: center;
+}
 .plate-kicker {
   display: block;
   font-size: 9px;
@@ -371,6 +450,7 @@ th:nth-child(5), td:nth-child(5) { width: 18%; }
     </div>
     <p class="brand-line">הופק על ידי מערכת BSD-YBM · ${escapeHtml(dateHe)}</p>
   </section>
+  ${comparisonHtml}
   ${platesHtml}
 </body>
 </html>`;
