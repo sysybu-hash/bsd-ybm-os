@@ -138,7 +138,17 @@ const nextConfig = {
     return LEGACY_REDIRECTS;
   },
   transpilePackages: ["react-signature-canvas", "signature_pad", "@hebcal/core"],
-  serverExternalPackages: ["pdf-parse", "@sparticuz/chromium", "puppeteer-core", "archiver"],
+  serverExternalPackages: [
+    "pdf-parse",
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "archiver",
+    // Bundling it breaks the fake worker: pdfjs dynamically imports
+    // pdf.worker.mjs at runtime and the bundler does not emit it into the
+    // server chunks, so every getDocument call failed with "Setting up fake
+    // worker failed". Left external, Node resolves it from node_modules.
+    "pdfjs-dist",
+  ],
   outputFileTracingIncludes: {
     "/api/documents/issued/[id]/export": [
       "./lib/pdf/font-data.generated.ts",
