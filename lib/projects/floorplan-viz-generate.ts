@@ -25,6 +25,7 @@ import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorpl
 import { buildVectorWallJpeg } from "@/lib/projects/floorplan-vector";
 import { stampFieldsFromLayout, stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import {
+  buildFootprintSilhouetteJpeg,
   buildInkWallJpeg,
   buildRoomMassingJpeg,
   cropFloorplanRasterToUnit,
@@ -303,7 +304,14 @@ function interiorGeometryRules(kind: FloorplanRoomKind, haredi = false): string 
 export function buildVizPrompt(
   layout: FloorplanLayout,
   view: { kind: FloorplanVizViewId; roomName?: string },
-  options?: { photo?: boolean; styleKit?: FloorplanVizStyleKit; inkWall?: boolean; massingMap?: boolean },
+  options?: {
+    photo?: boolean;
+    styleKit?: FloorplanVizStyleKit;
+    inkWall?: boolean;
+    massingMap?: boolean;
+    /** What the second attachment actually is, so the prompt describes it truthfully. */
+    hintKind?: WallHintKind;
+  },
 ): string {
   layout = canonicalizeFloorplanLayout(layout);
   const rooms = roomsForVisualization(layout);
@@ -503,7 +511,8 @@ export async function editFloorplanStill(params: {
 }): Promise<{ mimeType: string; base64: string }> {
   const instruction = sanitizeFloorplanVizEditInstruction(params.instruction);
   if (!instruction) throw new Error("חסרה בקשת עריכה");
-  const ink = await buildWallHint(params.plan.base64, params.plan.mimeType, params.photo === true);
+  const hint = await buildWallHint(params.plan.base64, params.plan.mimeType, params.photo === true);
+  const ink = hint?.image ?? null;
   const massingRooms = roomsForVisualization(params.layout).filter((r) => !isBuildingCoreRoom(r));
   const massing = await buildRoomMassingJpeg(params.plan.base64, massingRooms);
   const attachments: Array<{ mimeType: string; base64: string }> = [
@@ -629,17 +638,26 @@ const MAX_AUDITED_ATTEMPTS = 3;
  * be handed over exactly; a scan only has ink to threshold, which keeps the
  * furniture and dimension chains along with the walls.
  */
+export type WallHintKind = "vector-walls" | "footprint" | "ink";
+
 async function buildWallHint(
   base64: string,
   mimeType: string,
   photo: boolean,
-): Promise<string | null> {
+): Promise<{ image: string; kind: WallHintKind } | null> {
   if (photo) return null;
   if (mimeType === "application/pdf") {
     const vector = await buildVectorWallJpeg(Buffer.from(base64, "base64"));
-    if (vector) return vector;
+    if (vector) return { image: vector, kind: "vector-walls" };
   }
-  return buildInkWallJpeg(base64);
+  // No vectors to trace — a scan. Pulling individual walls out of a raster was
+  // tried twice and made the result worse both times, so hand over the one thing
+  // a raster does give up reliably: the outline. The footprint is also what the
+  // audit complains about most on these sheets.
+  const silhouette = await buildFootprintSilhouetteJpeg(base64);
+  if (silhouette) return { image: silhouette, kind: "footprint" };
+  const ink = await buildInkWallJpeg(base64);
+  return ink ? { image: ink, kind: "ink" } : null;
 }
 
 async function generateAuditedImage(
@@ -708,13 +726,15 @@ export async function generateFloorplanVisuals(
   if (specs.length === 0) {
     throw new Error("אין הדמיות נוספות לייצר");
   }
-  const ink = await buildWallHint(base64, mimeType, options?.photo === true);
+  const hint = await buildWallHint(base64, mimeType, options?.photo === true);
+  const ink = hint?.image ?? null;
   const massing = null;
   const aspectRatio = await aspectRatioForPlan(base64, mimeType);
   const overviewOpts = {
     ...options,
     inkWall: Boolean(ink),
     massingMap: Boolean(massing),
+    hintKind: hint?.kind,
   };
   const jobs: VizJob[] = specs.map((spec) => ({
     ...spec,
