@@ -45,7 +45,8 @@ Return JSON only:
 - x and y locate the front door in the STILL, as fractions of its width and
   height: x 0 is the left edge, 1 the right edge; y 0 is the top, 1 the bottom.
   Put the point ON the doorway in the outer wall, not in the middle of the hall
-  behind it.
+  behind it. The marker itself is placed outside the wall afterwards, so give
+  the opening, not the space in front of it.
 - facing is the direction a person moves as they step through the door into the
   apartment: "right" if they walk to the right, "left", "up" or "down".
 - confidence 0 to 1. Return "found": false if the still does not show the
@@ -110,6 +111,91 @@ export async function locateApartmentEntrance(
   return null;
 }
 
+/** Which way is OUT of the apartment, given the way someone walks in. */
+const OUTWARD: Record<EntrancePoint["facing"], [number, number]> = {
+  right: [-1, 0],
+  left: [1, 0],
+  down: [0, -1],
+  up: [0, 1],
+};
+
+/**
+ * True where the frame is empty page rather than apartment.
+ *
+ * The still is a cutaway on a plain near-white ground, so "outside the flat" is
+ * a patch that is both very light and flat. Luminance alone would call a pale
+ * tiled terrace background; the variance check keeps grout lines and furniture
+ * out of it.
+ */
+export function isBackgroundPatch(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+  radius: number,
+): boolean {
+  let n = 0;
+  let sum = 0;
+  let sumSq = 0;
+  for (let y = Math.max(0, cy - radius); y <= Math.min(height - 1, cy + radius); y++) {
+    for (let x = Math.max(0, cx - radius); x <= Math.min(width - 1, cx + radius); x++) {
+      const v = data[y * width + x] ?? 255;
+      n += 1;
+      sum += v;
+      sumSq += v * v;
+    }
+  }
+  if (n === 0) return false;
+  const mean = sum / n;
+  const variance = sumSq / n - mean * mean;
+  return mean > 232 && variance < 90;
+}
+
+/**
+ * Walks outward from the doorway until the frame turns to empty page.
+ *
+ * The sheet draws its entrance triangle OUTSIDE the outline, on the paper in
+ * front of the door, and that is where a reader looks for it. The vision pass
+ * returns the doorway itself, which sits in the wall — put the triangle there
+ * and it lands on the wall or just inside the hall. Stepping out along the
+ * facing direction until the pixels stop being apartment puts it where the
+ * sheet puts it, whatever the wall's thickness happens to be in that frame.
+ */
+export function findMarkerCentre(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  door: { x: number; y: number },
+  facing: EntrancePoint["facing"],
+  size: number,
+): { x: number; y: number } {
+  const [dx, dy] = OUTWARD[facing];
+  const step = Math.max(2, Math.round(size * 0.3));
+  const radius = Math.max(2, Math.round(size * 0.45));
+  const clearance = Math.round(size * 0.75);
+  const limit = Math.round(size * 5);
+
+  for (let travelled = 0; travelled <= limit; travelled += step) {
+    const x = Math.round(door.x + dx * travelled);
+    const y = Math.round(door.y + dy * travelled);
+    if (x < 0 || y < 0 || x >= width || y >= height) break;
+    if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
+    // Clear of the wall by the triangle's own half-width, so it reads as
+    // sitting in front of the opening rather than touching it.
+    return {
+      x: Math.round(x + dx * clearance),
+      y: Math.round(y + dy * clearance),
+    };
+  }
+  // Nothing that reads as page — a frame that fills its canvas. Nudge it just
+  // clear of the wall and accept that.
+  return {
+    x: Math.round(door.x + dx * size * 1.2),
+    y: Math.round(door.y + dy * size * 1.2),
+  };
+}
+
 /** The triangle's three corners, pointing the way someone walks in. */
 export function entranceTrianglePoints(
   cx: number,
@@ -164,9 +250,19 @@ export async function markApartmentEntrance(
     // Scaled off the frame so it reads the same on a 768px still and a 1400px
     // one, and small enough to sit in a doorway rather than cover it.
     const size = Math.max(12, Math.round(Math.min(width, height) * 0.026));
-    const cx = point.x * width;
-    const cy = point.y * height;
-    const points = entranceTrianglePoints(cx, cy, size, point.facing);
+    const { data, info } = await sharp(input)
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const centre = findMarkerCentre(
+      data,
+      info.width,
+      info.height,
+      { x: point.x * width, y: point.y * height },
+      point.facing,
+      size,
+    );
+    const points = entranceTrianglePoints(centre.x, centre.y, size, point.facing);
 
     const overlay = Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +

@@ -2,6 +2,8 @@ import sharp from "sharp";
 
 import {
   entranceTrianglePoints,
+  findMarkerCentre,
+  isBackgroundPatch,
   markApartmentEntrance,
   type EntrancePoint,
 } from "@/lib/projects/floorplan-entrance";
@@ -67,21 +69,30 @@ describe("marking a still", () => {
     expect(meta.height).toBe(1000);
   });
 
-  it("puts ink where the point says and nowhere else", async () => {
+  it("puts ink near the point and nowhere else", async () => {
     const source = await still(800, 1000);
     const out = await markApartmentEntrance(source, point);
     const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const darkAt = (fx: number, fy: number) => {
-      const x = Math.round(fx * info.width);
-      const y = Math.round(fy * info.height);
-      return (data[y * info.width + x] ?? 255) < 90;
-    };
-    expect(darkAt(0.8, 0.55)).toBe(true);
-    // The opposite corner of the flat is untouched.
-    expect(darkAt(0.2, 0.2)).toBe(false);
+    let dark = 0;
+    let sumX = 0;
+    let sumY = 0;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          dark += 1;
+          sumX += x;
+          sumY += y;
+        }
+      }
+    }
+    expect(dark).toBeGreaterThan(0);
+    // A uniform frame has no page to step out onto, so the marker sits just
+    // clear of the doorway rather than drifting across the still.
+    expect(sumX / dark / info.width).toBeCloseTo(0.8, 1);
+    expect(sumY / dark / info.height).toBeCloseTo(0.55, 1);
   });
 
   it("hands back a paid-for still rather than losing it to a bad point", async () => {
@@ -110,5 +121,59 @@ describe("marking a still", () => {
     const b = await inkFraction(large);
     expect(a).toBeGreaterThan(0);
     expect(Math.abs(a - b)).toBeLessThan(a * 0.5);
+  });
+});
+
+describe("finding the page in front of the door", () => {
+  /** A flat that fills the left half of the frame, plain page to its right. */
+  function frame(width = 400, height = 400, edge = 240) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // Apartment: mid-tone floor with visible grain. Page: flat near-white.
+        data[y * width + x] = x < edge ? 120 + ((x * 7 + y * 5) % 40) : 252;
+      }
+    }
+    return { data, width, height, edge };
+  }
+
+  it("tells apartment from empty page", () => {
+    const { data, width, height, edge } = frame();
+    expect(isBackgroundPatch(data, width, height, edge + 40, 200, 6)).toBe(true);
+    expect(isBackgroundPatch(data, width, height, edge - 40, 200, 6)).toBe(false);
+  });
+
+  it("steps out through the wall onto the page", () => {
+    const { data, width, height, edge } = frame();
+    // Someone walking in at the right-hand wall walks left, so out is right.
+    const centre = findMarkerCentre(data, width, height, { x: edge - 6, y: 200 }, "left", 20);
+    expect(centre.x).toBeGreaterThan(edge);
+    expect(centre.y).toBe(200);
+  });
+
+  it("clears the wall rather than touching it", () => {
+    const { data, width, height, edge } = frame();
+    const size = 20;
+    const centre = findMarkerCentre(data, width, height, { x: edge - 6, y: 200 }, "left", size);
+    // The triangle's own half-width fits between the wall and its near face.
+    expect(centre.x - size / 2).toBeGreaterThan(edge);
+  });
+
+  it("goes the right way for each facing", () => {
+    const { data, width, height } = frame(400, 400, 240);
+    expect(findMarkerCentre(data, width, height, { x: 234, y: 200 }, "left", 20).x).toBeGreaterThan(240);
+    // Walking right means the page is to the left — none there, so it falls back
+    // to a nudge rather than wandering off.
+    const back = findMarkerCentre(data, width, height, { x: 234, y: 200 }, "right", 20);
+    expect(back.x).toBeLessThan(234);
+  });
+
+  it("does not wander off when the frame has no page at all", () => {
+    const width = 200;
+    const height = 200;
+    const data = new Uint8Array(width * height).fill(120);
+    const centre = findMarkerCentre(data, width, height, { x: 100, y: 100 }, "up", 20);
+    expect(Math.abs(centre.x - 100)).toBeLessThan(30);
+    expect(Math.abs(centre.y - 100)).toBeLessThan(30);
   });
 });
