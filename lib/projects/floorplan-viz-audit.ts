@@ -103,8 +103,8 @@ Definitions, applied strictly:
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
 - openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
-- builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a sideboard, a wardrobe, a media unit, display shelving. The entrance and the circulation strips are where these keep appearing. Count each one. Small props on existing furniture are not counted.
-- seatingGroupCount: sofa-and-armchair groups in the STILL — a sofa or a pair of armchairs gathered around a rug or a coffee table is one group. An entrance hall with a sofa and a rug in it counts as a group of its own.
+- builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a wardrobe, a media unit, a shelving wall. The entrance and the circulation strips are where these keep appearing. Count each one. NOT counted: a slim hall console, a mirror, a coat hook, or small props sitting on furniture that is drawn — those are allowed staging.
+- seatingGroupCount: LOUNGE groups in the STILL — a sofa, or a pair of armchairs, gathered around a rug or a coffee table. One such gathering is one group, and an entrance hall with a sofa and a rug in it counts as a group of its own. NOT a seating group: a dining table with chairs around it, a desk with a chair, stools at a kitchen island, or chairs on a terrace.
 - planSeatingGroupCount: the same count on the PLAN, from the drawn sofa and armchair symbols. Usually 1, in the living room.
 
 Then compare the two OUTLINES, which is the check that matters most:
