@@ -150,3 +150,43 @@ describe("floorplan viz PDF booklet", () => {
     expect(html).not.toContain("plate-foot");
   });
 });
+
+describe("the booklet opening when the source sheet is supplied", () => {
+  const images = [
+    { viewId: "overview" as const, labelHe: "כל התוכנית — מבט על", mimeType: "image/jpeg", base64: "HERO" },
+    { viewId: "interior" as const, labelHe: "פנים — מטבח", roomName: "מטבח", mimeType: "image/jpeg", base64: "KITCHEN" },
+  ];
+  const plan = { mimeType: "image/jpeg", base64: "PLANSHEET" };
+
+  it("opens with the still, the drawing and the two side by side", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan });
+    expect(html).toContain("1/3 · הדמיה");
+    expect(html).toContain("2/3 · מקור");
+    expect(html).toContain("3/3 · השוואה");
+    expect(html).toContain("PLANSHEET");
+  });
+
+  it("does not print the hero still a second time as its own plate", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, { planImage: plan });
+    // Twice on the comparison pages (plate 1/3 and the side-by-side), no more.
+    expect(html.split("base64,HERO").length - 1).toBe(2);
+    expect(html).toContain("פנים — מטבח");
+    expect(html).toContain("1/1 · מטבח");
+  });
+
+  it("keeps every still when there is no source sheet to compare against", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, {});
+    expect(html.split("base64,HERO").length - 1).toBe(1);
+    expect(html).toContain("1/2 · מבט על");
+    expect(html).toContain("2/2 · מטבח");
+  });
+
+  it("keeps a locator with its own plate after the hero is dropped", () => {
+    const html = buildFloorplanVizPdfHtml(layout, images, {
+      planImage: plan,
+      locators: [{ mimeType: "image/jpeg", base64: "HEROLOCATOR" }, { mimeType: "image/jpeg", base64: "KITCHENLOCATOR" }],
+    });
+    expect(html).toContain("KITCHENLOCATOR");
+    expect(html).not.toContain("HEROLOCATOR");
+  });
+});

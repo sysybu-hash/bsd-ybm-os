@@ -114,7 +114,13 @@ export function buildFloorplanVizPdfHtml(
           })
           .join("");
 
-  const platesHtml = ordered
+  const plan = extras?.planImage;
+  // When the source sheet is included the booklet opens with the still, the
+  // drawing and the two side by side, so the hero still is not printed again
+  // as its own plate — the same frame twice reads as a mistake.
+  const plates = plan && ordered.length > 0 ? ordered.slice(1) : ordered;
+  const plateOffset = plates.length === ordered.length ? 0 : 1;
+  const platesHtml = plates
     .map((img, i) => {
       const src = `data:${img.mimeType || "image/jpeg"};base64,${img.base64}`;
       const caption = buildViewCaption(img, layout);
@@ -124,7 +130,7 @@ export function buildFloorplanVizPdfHtml(
           : img.viewId === "overview"
             ? "מבט על"
             : "איזומטריה";
-      const locator = extras?.locators?.[i];
+      const locator = extras?.locators?.[i + plateOffset];
       const locatorHtml = locator
         ? `<figure class="locator">
   <figcaption>האזור בתוכנית המקורית · מפת התמצאות</figcaption>
@@ -133,7 +139,7 @@ export function buildFloorplanVizPdfHtml(
         : "";
       return `<section class="plate">
   <header class="plate-head">
-    <span class="plate-kicker">${i + 1}/${ordered.length} · ${escapeHtml(kindLabel)}</span>
+    <span class="plate-kicker">${i + 1}/${plates.length} · ${escapeHtml(kindLabel)}</span>
     <h2>${escapeHtml(img.labelHe)}</h2>
   </header>
   <div class="frame">
@@ -147,7 +153,6 @@ export function buildFloorplanVizPdfHtml(
     })
     .join("\n");
 
-  const plan = extras?.planImage;
   const heroStill = ordered[0];
   const comparisonHtml =
     plan && heroStill
