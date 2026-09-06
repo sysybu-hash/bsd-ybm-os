@@ -155,7 +155,7 @@ LIGHT AND WARMTH (every view — a brochure hero shot, not a survey drawing):
 - Daylight arrives through the drawn windows and terraces as warm, diffused light with gentle directional shadows. No blown highlights, no cold overcast flatness, no harsh raking sun that washes out the floor plate.
 - Materials read warm and tactile: honey and caramel oak, warm cream stone, brushed brass or warm nickel, textiles with visible weave and soft drape.
 - The result should feel like a home someone wants to walk into: rich, layered, glowing. Avoid grey-blue shadow, cold white LED, flat grey ambient occlusion, uniform brightness edge to edge, and the over-bright empty look of a showroom.
-- Brighter and warmer than feels safe. Every room carries visible warm light — a lit fixture with its pool, or daylight falling across the floor. A corner with neither is too dark. Push the whole frame toward honey and cream; grey is the failure mode, not overexposure.
+- Warmer, not brighter: raise the colour temperature, never the exposure. Asked for brightness this came back pale and flat, which is worse. The floor reads honey and caramel with amber pools under the fixtures and real shadow between them; every room carries a lit fixture or daylight falling across its floor. A uniformly pale beige frame with no shadow is the failure — the answer is more amber and more contrast, not more light.
 - Warmth is finish and lighting ONLY. It never changes walls, openings, fixtures, furniture counts, or positions.
 `.trim();
 

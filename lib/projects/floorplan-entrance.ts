@@ -25,7 +25,7 @@ const log = createLogger("floorplan-entrance");
  */
 
 export type EntrancePoint = {
-  /** Normalised to the still: 0 is the left/top edge, 1 the right/bottom. */
+  /** The middle of the door opening, normalised: 0 is the left/top edge, 1 the right/bottom. */
   x: number;
   y: number;
   /** Which way someone walks when they come through the door. */
@@ -40,13 +40,16 @@ The plan marks the apartment's front door with a small solid black triangle on
 an outer wall. Find where that same front door is IN THE STILL.
 
 Return JSON only:
-{ "found": true, "x": 0.0, "y": 0.0, "facing": "left", "confidence": 0.0 }
+{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "facing": "left", "confidence": 0.0 }
 
-- x and y locate the front door in the STILL, as fractions of its width and
-  height: x 0 is the left edge, 1 the right edge; y 0 is the top, 1 the bottom.
-  Put the point ON the doorway in the outer wall, not in the middle of the hall
-  behind it. The marker itself is placed outside the wall afterwards, so give
-  the opening, not the space in front of it.
+- The front door is a GAP in the outer wall: the wall stops, the opening runs,
+  the wall starts again. Give the two ENDS of that gap — where the wall stops
+  and where it starts again — as (x1,y1) and (x2,y2), fractions of the still's
+  width and height: x 0 is the left edge, 1 the right edge; y 0 is the top, 1
+  the bottom. Both points sit on the wall line, not inside the hall behind it.
+- Be precise about the ends. A marker is drawn at the midpoint of what you
+  return, and a point taken from the edge of the gap puts it against the wall
+  instead of in front of the opening.
 - facing is the direction a person moves as they step through the door into the
   apartment: "right" if they walk to the right, "left", "up" or "down".
 - confidence 0 to 1. Return "found": false if the still does not show the
@@ -89,12 +92,16 @@ export async function locateApartmentEntrance(
       });
       const raw = parseModelJsonText(result.response.text());
       if (raw.found !== true) return null;
-      const x = clamp01(raw.x);
-      const y = clamp01(raw.y);
+      const x1 = clamp01(raw.x1);
+      const y1 = clamp01(raw.y1);
+      const x2 = clamp01(raw.x2);
+      const y2 = clamp01(raw.y2);
       const confidence = clamp01(raw.confidence) ?? 0;
       // A marker in the wrong place is worse than no marker: it tells a buyer
       // the door is somewhere it is not.
-      if (x == null || y == null || confidence < 0.5) return null;
+      if (x1 == null || y1 == null || x2 == null || y2 == null || confidence < 0.5) return null;
+      const x = (x1 + x2) / 2;
+      const y = (y1 + y2) / 2;
       const facing = raw.facing;
       if (facing !== "left" && facing !== "right" && facing !== "up" && facing !== "down") {
         return null;
@@ -153,57 +160,6 @@ export function isBackgroundPatch(
 }
 
 /**
- * Slides the marker sideways onto the middle of the door opening.
- *
- * The vision pass gives a point on the doorway, but a little off along the
- * wall, and the marker inherited that: on דירה 15 it sat on the wall stub at
- * the edge of the gap instead of in front of the gap. The opening is readable
- * from the pixels — an outer wall renders as a pale cream band, and where the
- * doorway breaks it the darker floor runs right up to the boundary. Scanning
- * across the wall a little inside the edge finds that darker run, and its
- * midpoint is the opening's midpoint.
- *
- * Returns the original coordinate when no such run is found, or when the scan
- * is all floor and there is no wall to find a gap in.
- */
-export function openingCentre(
-  data: Uint8Array | Buffer,
-  width: number,
-  height: number,
-  probe: { x: number; y: number },
-  facing: EntrancePoint["facing"],
-  size: number,
-): { x: number; y: number } {
-  const alongX = facing === "up" || facing === "down";
-  // A front door is around 90 cm on a flat some ten metres across, which lands
-  // near four times the marker's own size. The scan has to clear the whole
-  // opening or it centres on a clipped half of it.
-  const span = Math.round(size * 4);
-  const at = alongX ? probe.x : probe.y;
-  const limit = alongX ? width : height;
-  const sample = (i: number): number => {
-    const x = alongX ? i : probe.x;
-    const y = alongX ? probe.y : i;
-    if (x < 0 || y < 0 || x >= width || y >= height) return 255;
-    return data[Math.round(y) * width + Math.round(x)] ?? 255;
-  };
-
-  // Wall renders pale; floor is mid-tone. Anything darker than this is not wall.
-  const FLOOR_MAX = 210;
-  if (sample(at) > FLOOR_MAX) return probe;
-
-  let lo = at;
-  let hi = at;
-  while (lo - 1 >= Math.max(0, at - span) && sample(lo - 1) <= FLOOR_MAX) lo -= 1;
-  while (hi + 1 <= Math.min(limit - 1, at + span) && sample(hi + 1) <= FLOOR_MAX) hi += 1;
-
-  // A run that fills the whole scan is open floor, not a gap between two walls.
-  if (hi - lo >= span * 2) return probe;
-  const centre = Math.round((lo + hi) / 2);
-  return alongX ? { x: centre, y: probe.y } : { x: probe.x, y: centre };
-}
-
-/**
  * Walks outward from the doorway until the frame turns to empty page.
  *
  * The sheet draws its entrance triangle OUTSIDE the outline, on the paper in
@@ -232,20 +188,9 @@ export function findMarkerCentre(
     const y = Math.round(door.y + dy * travelled);
     if (x < 0 || y < 0 || x >= width || y >= height) break;
     if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
-    // Line it up with the middle of the opening before stepping clear, so the
-    // triangle sits in front of the doorway rather than beside it.
-    const inside = openingCentre(
-      data,
-      width,
-      height,
-      { x: Math.round(x - dx * step * 2), y: Math.round(y - dy * step * 2) },
-      facing,
-      size,
-    );
-    const alongX = facing === "up" || facing === "down";
     return {
-      x: Math.round((alongX ? inside.x : x) + dx * clearance),
-      y: Math.round((alongX ? y : inside.y) + dy * clearance),
+      x: Math.round(x + dx * clearance),
+      y: Math.round(y + dy * clearance),
     };
   }
   // Nothing that reads as page — a frame that fills its canvas. Nudge it just
