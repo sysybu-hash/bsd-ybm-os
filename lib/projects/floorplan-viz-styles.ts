@@ -69,9 +69,11 @@ PLAN TRACE (every style, every view — non-negotiable):
 - A terrace is exactly the size the sheet gives it. The printed area figure is the size: 4 מ"ר is a narrow strip about as deep as a doorway, not a courtyard. Never widen a terrace to fill a corner of the frame, and never let it come out larger than a bedroom when the sheet says it is smaller.
 - Each terrace is a SEPARATE space in the place the sheet draws it, with its own area figure. Never merge two of them, and never merge a terrace with a service balcony, into one continuous deck running down a whole side of the apartment. Two terraces drawn apart stay apart, with the wall between them.
 - Sanity check before finishing: add the printed terrace areas together. On a 110 מ"ר flat they come to well under a fifth of it. If the outdoor paving in your frame covers more of the floor plate than the living room does, it is far too big — shrink it back to the drawn outline.
-- Terrace paving is PALE: light sand, off-white or pale grey stone, clearly lighter than the indoor floor and never dark tile. It catches the same golden-hour daylight as the rooms — warm, bright, inviting, never a grey slab.
+- Terrace paving is PALE AND WARM: light sand or warm cream stone, clearly lighter than the indoor floor, and never cold grey. It catches the same golden-hour daylight as the rooms — if the terrace reads greyer or flatter than the rooms behind it, it is wrong.
 - A terrace is never bare paving. Furnish it for its size: a small bistro table with two chairs where one fits, otherwise two or three planters with real greenery along the railing, and a folded throw or a lantern if there is room. Small terraces get planters; larger ones get seating.
 - מרפסת שירות / שטח שרות is a SERVICE balcony, not a leisure one: washing machine, dryer, a drying rack, shelves, a utility sink if drawn. It never gets lounge chairs, a bistro table or decorative planters, and it is never merged into the terrace beside it.
+- A cupboard, boiler housing or air-conditioning unit on a terrace is FINISHED: flush millwork in the apartment's own warm timber, or a cleanly rendered panel with a slim shadow gap, sitting tight against the wall. Never a bare grey slab, never an unpainted box, never a raw appliance standing in the open. If the plan draws no such cupboard, do not add one.
+- Fill the terrace properly: greenery in at least two places, and seating wherever the drawn area takes it. A terrace with one plant in a corner and bare paving everywhere else is unfinished — it should read as a place the family actually sits.
 - Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
 `.trim();
 
@@ -153,6 +155,7 @@ LIGHT AND WARMTH (every view — a brochure hero shot, not a survey drawing):
 - Daylight arrives through the drawn windows and terraces as warm, diffused light with gentle directional shadows. No blown highlights, no cold overcast flatness, no harsh raking sun that washes out the floor plate.
 - Materials read warm and tactile: honey and caramel oak, warm cream stone, brushed brass or warm nickel, textiles with visible weave and soft drape.
 - The result should feel like a home someone wants to walk into: rich, layered, glowing. Avoid grey-blue shadow, cold white LED, flat grey ambient occlusion, uniform brightness edge to edge, and the over-bright empty look of a showroom.
+- Brighter and warmer than feels safe. Every room carries visible warm light — a lit fixture with its pool, or daylight falling across the floor. A corner with neither is too dark. Push the whole frame toward honey and cream; grey is the failure mode, not overexposure.
 - Warmth is finish and lighting ONLY. It never changes walls, openings, fixtures, furniture counts, or positions.
 `.trim();
 

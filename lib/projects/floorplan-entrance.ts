@@ -153,6 +153,57 @@ export function isBackgroundPatch(
 }
 
 /**
+ * Slides the marker sideways onto the middle of the door opening.
+ *
+ * The vision pass gives a point on the doorway, but a little off along the
+ * wall, and the marker inherited that: on דירה 15 it sat on the wall stub at
+ * the edge of the gap instead of in front of the gap. The opening is readable
+ * from the pixels — an outer wall renders as a pale cream band, and where the
+ * doorway breaks it the darker floor runs right up to the boundary. Scanning
+ * across the wall a little inside the edge finds that darker run, and its
+ * midpoint is the opening's midpoint.
+ *
+ * Returns the original coordinate when no such run is found, or when the scan
+ * is all floor and there is no wall to find a gap in.
+ */
+export function openingCentre(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  probe: { x: number; y: number },
+  facing: EntrancePoint["facing"],
+  size: number,
+): { x: number; y: number } {
+  const alongX = facing === "up" || facing === "down";
+  // A front door is around 90 cm on a flat some ten metres across, which lands
+  // near four times the marker's own size. The scan has to clear the whole
+  // opening or it centres on a clipped half of it.
+  const span = Math.round(size * 4);
+  const at = alongX ? probe.x : probe.y;
+  const limit = alongX ? width : height;
+  const sample = (i: number): number => {
+    const x = alongX ? i : probe.x;
+    const y = alongX ? probe.y : i;
+    if (x < 0 || y < 0 || x >= width || y >= height) return 255;
+    return data[Math.round(y) * width + Math.round(x)] ?? 255;
+  };
+
+  // Wall renders pale; floor is mid-tone. Anything darker than this is not wall.
+  const FLOOR_MAX = 210;
+  if (sample(at) > FLOOR_MAX) return probe;
+
+  let lo = at;
+  let hi = at;
+  while (lo - 1 >= Math.max(0, at - span) && sample(lo - 1) <= FLOOR_MAX) lo -= 1;
+  while (hi + 1 <= Math.min(limit - 1, at + span) && sample(hi + 1) <= FLOOR_MAX) hi += 1;
+
+  // A run that fills the whole scan is open floor, not a gap between two walls.
+  if (hi - lo >= span * 2) return probe;
+  const centre = Math.round((lo + hi) / 2);
+  return alongX ? { x: centre, y: probe.y } : { x: probe.x, y: centre };
+}
+
+/**
  * Walks outward from the doorway until the frame turns to empty page.
  *
  * The sheet draws its entrance triangle OUTSIDE the outline, on the paper in
@@ -173,7 +224,7 @@ export function findMarkerCentre(
   const [dx, dy] = OUTWARD[facing];
   const step = Math.max(2, Math.round(size * 0.3));
   const radius = Math.max(2, Math.round(size * 0.45));
-  const clearance = Math.round(size * 0.75);
+  const clearance = Math.round(size * 0.5);
   const limit = Math.round(size * 5);
 
   for (let travelled = 0; travelled <= limit; travelled += step) {
@@ -181,11 +232,20 @@ export function findMarkerCentre(
     const y = Math.round(door.y + dy * travelled);
     if (x < 0 || y < 0 || x >= width || y >= height) break;
     if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
-    // Clear of the wall by the triangle's own half-width, so it reads as
-    // sitting in front of the opening rather than touching it.
+    // Line it up with the middle of the opening before stepping clear, so the
+    // triangle sits in front of the doorway rather than beside it.
+    const inside = openingCentre(
+      data,
+      width,
+      height,
+      { x: Math.round(x - dx * step * 2), y: Math.round(y - dy * step * 2) },
+      facing,
+      size,
+    );
+    const alongX = facing === "up" || facing === "down";
     return {
-      x: Math.round(x + dx * clearance),
-      y: Math.round(y + dy * clearance),
+      x: Math.round((alongX ? inside.x : x) + dx * clearance),
+      y: Math.round((alongX ? y : inside.y) + dy * clearance),
     };
   }
   // Nothing that reads as page — a frame that fills its canvas. Nudge it just

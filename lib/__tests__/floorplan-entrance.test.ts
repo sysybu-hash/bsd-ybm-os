@@ -5,6 +5,7 @@ import {
   findMarkerCentre,
   isBackgroundPatch,
   markApartmentEntrance,
+  openingCentre,
   type EntrancePoint,
 } from "@/lib/projects/floorplan-entrance";
 
@@ -175,5 +176,64 @@ describe("finding the page in front of the door", () => {
     const centre = findMarkerCentre(data, width, height, { x: 100, y: 100 }, "up", 20);
     expect(Math.abs(centre.x - 100)).toBeLessThan(30);
     expect(Math.abs(centre.y - 100)).toBeLessThan(30);
+  });
+});
+
+describe("lining the marker up with the doorway", () => {
+  /**
+   * A right-hand outer wall with a gap in it. Page to the right of x=240, a
+   * pale cream wall band at x 210..240, floor to the left — except between
+   * y=180 and y=260, where the doorway lets the floor run to the edge.
+   */
+  function wallWithGap(width = 400, height = 400) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let v: number;
+        if (x >= 240) v = 252;
+        else if (x >= 210) v = y >= 180 && y <= 260 ? 150 : 238;
+        else v = 150;
+        data[y * width + x] = v;
+      }
+    }
+    return { data, width, height };
+  }
+
+  it("finds the middle of the gap from a point inside it", () => {
+    const { data, width, height } = wallWithGap();
+    const centre = openingCentre(data, width, height, { x: 225, y: 200 }, "left", 20);
+    expect(centre.y).toBe(220);
+    expect(centre.x).toBe(225);
+  });
+
+  it("leaves the point alone when it is sitting on solid wall", () => {
+    const { data, width, height } = wallWithGap();
+    const probe = { x: 225, y: 100 };
+    expect(openingCentre(data, width, height, probe, "left", 20)).toEqual(probe);
+  });
+
+  it("leaves the point alone on open floor with no wall to break", () => {
+    const width = 300;
+    const height = 300;
+    const data = new Uint8Array(width * height).fill(150);
+    const probe = { x: 150, y: 150 };
+    expect(openingCentre(data, width, height, probe, "left", 10)).toEqual(probe);
+  });
+
+  it("scans across the wall, not along the way in", () => {
+    const { data, width, height } = wallWithGap();
+    // Walking up means the wall runs left-to-right, so the scan is on x.
+    const centre = openingCentre(data, width, height, { x: 225, y: 200 }, "up", 20);
+    expect(centre.y).toBe(200);
+  });
+
+  it("puts the whole marker in front of the gap, not beside it", () => {
+    const { data, width, height } = wallWithGap();
+    // The vision pass points at the top edge of the doorway rather than its
+    // middle — the placement should still centre on the gap.
+    const centre = findMarkerCentre(data, width, height, { x: 232, y: 185 }, "left", 20);
+    expect(centre.x).toBeGreaterThan(240);
+    expect(centre.y).toBeGreaterThan(205);
+    expect(centre.y).toBeLessThan(235);
   });
 });
