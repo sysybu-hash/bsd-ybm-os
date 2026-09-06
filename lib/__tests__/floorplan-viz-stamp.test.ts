@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
   buildStampCaption,
+  creditRunLayout,
   stampFieldsFromLayout,
   stampFloorplanStill,
 } from "@/lib/projects/floorplan-viz-stamp";
@@ -73,5 +74,35 @@ describe("stamping a still", () => {
   it("leaves a thumbnail alone — a caption bar would swamp it", async () => {
     const tiny = await still(120, 120);
     await expect(stampFloorplanStill(tiny, { unitLabel: "9" })).resolves.toEqual(tiny);
+  });
+});
+
+describe("the system credit", () => {
+  it("puts the Hebrew phrase to the right of the Latin mark", () => {
+    const { hebrew, mark } = creditRunLayout(400, 20);
+    expect(hebrew.text).toBe("הופק על ידי מערכת");
+    expect(mark.text).toBe("BSD-YBM");
+    // Reading order is right to left, so the mark sits further left on the bar.
+    expect(mark.x).toBeLessThan(hebrew.x);
+  });
+
+  it("keeps the two runs apart rather than overlapping", () => {
+    const size = 20;
+    const { hebrew, mark } = creditRunLayout(400, size);
+    // hebrew is anchored at its right edge, mark at its left edge.
+    const heLeftEdge = hebrew.x - "הופק על ידי מערכת".length * size * 0.5;
+    const markRightEdge = mark.x + "BSD-YBM".length * size * 0.6;
+    expect(heLeftEdge).toBeGreaterThan(markRightEdge - 1);
+  });
+
+  it("centres the pair on the point it is given", () => {
+    const { hebrew, mark } = creditRunLayout(300, 16);
+    expect((hebrew.x + mark.x) / 2).toBeCloseTo(300, 0);
+  });
+
+  it("scales with the font so a small still is not crowded", () => {
+    const small = creditRunLayout(400, 10);
+    const large = creditRunLayout(400, 30);
+    expect(large.hebrew.x - large.mark.x).toBeGreaterThan(small.hebrew.x - small.mark.x);
   });
 });

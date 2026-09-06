@@ -50,7 +50,36 @@ export function buildStampCaption(fields: FloorplanStampFields): string {
   return parts.join("  ·  ");
 }
 
-const CREDIT = "הופק על ידי מערכת BSD-YBM";
+const CREDIT_HE = "הופק על ידי מערכת";
+const CREDIT_MARK = "BSD-YBM";
+
+/**
+ * The credit is drawn as two separate runs, not one mixed-script string.
+ *
+ * "הופק על ידי מערכת BSD-YBM" in a single text element came out with the
+ * Hebrew words in reverse reading order and the Latin mark on the wrong side —
+ * the renderer reorders script runs but not the words inside the Hebrew one.
+ * Splitting the runs and placing them by hand removes anything for bidi to get
+ * wrong: Hebrew on the right, the mark to its left, which is the reading order.
+ *
+ * Widths are estimated rather than measured. Only the gap between the two runs
+ * depends on the estimate, so being a few percent out moves the mark slightly,
+ * never past the Hebrew.
+ */
+const HE_CHAR_EM = 0.5;
+const LATIN_CHAR_EM = 0.6;
+
+/** Right-to-left: the Hebrew phrase, then the Latin mark to its left. */
+export function creditRunLayout(centreX: number, fontSize: number) {
+  const heWidth = CREDIT_HE.length * fontSize * HE_CHAR_EM;
+  const markWidth = CREDIT_MARK.length * fontSize * LATIN_CHAR_EM;
+  const gap = fontSize * 0.45;
+  const total = heWidth + gap + markWidth;
+  return {
+    hebrew: { text: CREDIT_HE, x: Math.round(centreX + total / 2), anchor: "end" as const },
+    mark: { text: CREDIT_MARK, x: Math.round(centreX - total / 2), anchor: "start" as const },
+  };
+}
 
 /**
  * Composites the caption bar onto the bottom of a still.
@@ -82,6 +111,9 @@ export async function stampFloorplanStill(
     const baseline = Math.round(barHeight * 0.5 + mainSize * 0.36);
     const creditBaseline = Math.round(barHeight * 0.5 + creditSize * 0.36);
 
+    const credit = creditRunLayout(Math.round(width * (caption ? 0.28 : 0.5)), creditSize);
+    const creditRuns = [credit.hebrew, credit.mark];
+
     const overlay = Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${barHeight}">` +
         `<rect width="100%" height="100%" fill="#1c1917"/>` +
@@ -90,9 +122,14 @@ export async function stampFloorplanStill(
             `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${mainSize}" ` +
             `font-weight="600" fill="#faf7f2" text-anchor="middle">${escapeXml(caption)}</text>`
           : "") +
-        `<text x="${Math.round(width * (caption ? 0.28 : 0.5))}" y="${creditBaseline}" ` +
-        `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${creditSize}" ` +
-        `fill="#c8c2b8" text-anchor="middle">${escapeXml(CREDIT)}</text>` +
+        creditRuns
+          .map(
+            (run) =>
+              `<text x="${run.x}" y="${creditBaseline}" ` +
+              `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${creditSize}" ` +
+              `fill="#c8c2b8" text-anchor="${run.anchor}">${escapeXml(run.text)}</text>`,
+          )
+          .join("") +
         `</svg>`,
     );
 
