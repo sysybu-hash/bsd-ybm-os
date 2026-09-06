@@ -34,8 +34,10 @@ export type FloorplanVizAudit = {
   screenCount: number;
   kitchenSinkBasins: number;
   planKitchenSinkBasins: number;
-  /** Openings cut into an outer wall the plan draws as unbroken hatch. */
-  windowsNotInPlan: number;
+  /** Openings cut into any wall — outer or internal — the plan draws as unbroken hatch. */
+  openingsNotInPlan: number;
+  /** Large fitted pieces standing where the sheet draws empty floor. */
+  builtInsNotInPlan: number;
   /** Sofa/armchair groups in the still, and the number the plan draws. */
   seatingGroupCount: number;
   planSeatingGroupCount: number;
@@ -73,7 +75,8 @@ Return JSON only:
   "screenCount": 0,
   "kitchenSinkBasins": 0,
   "planKitchenSinkBasins": 0,
-  "windowsNotInPlan": 0,
+  "openingsNotInPlan": 0,
+  "builtInsNotInPlan": 0,
   "seatingGroupCount": 0,
   "planSeatingGroupCount": 0,
   "hasBurnedText": false,
@@ -99,7 +102,8 @@ Definitions, applied strictly:
 - planBedTotal: bed rectangles drawn on the PLAN. A wide double rectangle counts as 1.
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
-- windowsNotInPlan: walk the outer walls. Count windows in the STILL that sit where the plan draws unbroken wall hatch with no opening. A window the plan does draw is not counted, however it is styled. 0 if every window matches an opening on the sheet.
+- openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
+- builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a sideboard, a wardrobe, a media unit, display shelving. The entrance and the circulation strips are where these keep appearing. Count each one. Small props on existing furniture are not counted.
 - seatingGroupCount: sofa-and-armchair groups in the STILL — a sofa or a pair of armchairs gathered around a rug or a coffee table is one group. An entrance hall with a sofa and a rug in it counts as a group of its own.
 - planSeatingGroupCount: the same count on the PLAN, from the drawn sofa and armchair symbols. Usually 1, in the living room.
 
@@ -153,7 +157,8 @@ export async function auditFloorplanStill(
         screenCount: asInt(raw.screenCount, 20),
         kitchenSinkBasins: asInt(raw.kitchenSinkBasins, 8),
         planKitchenSinkBasins: asInt(raw.planKitchenSinkBasins, 8),
-        windowsNotInPlan: asInt(raw.windowsNotInPlan, 30),
+        openingsNotInPlan: asInt(raw.openingsNotInPlan, 30),
+        builtInsNotInPlan: asInt(raw.builtInsNotInPlan, 30),
         seatingGroupCount: asInt(raw.seatingGroupCount, 10),
         planSeatingGroupCount: asInt(raw.planSeatingGroupCount, 10),
         hasBurnedText: raw.hasBurnedText === true,
@@ -265,8 +270,11 @@ export function gradeFloorplanStill(
   if (expectedStools > 0 && audit.islandStoolCount !== expectedStools) {
     failures.push(`island stools ${audit.islandStoolCount}, plan has ${expectedStools}`);
   }
-  if (audit.windowsNotInPlan > 0) {
-    failures.push(`${audit.windowsNotInPlan} window(s) cut into a wall the plan draws solid`);
+  if (audit.openingsNotInPlan > 0) {
+    failures.push(`${audit.openingsNotInPlan} opening(s) cut into a wall the plan draws solid`);
+  }
+  if (audit.builtInsNotInPlan > 0) {
+    failures.push(`${audit.builtInsNotInPlan} fitted unit(s) the plan does not draw`);
   }
   if (audit.planSeatingGroupCount > 0 && audit.seatingGroupCount > audit.planSeatingGroupCount) {
     failures.push(

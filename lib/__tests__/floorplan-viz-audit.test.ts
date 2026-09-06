@@ -26,7 +26,8 @@ const clean: FloorplanVizAudit = {
   screenCount: 0,
   kitchenSinkBasins: 2,
   planKitchenSinkBasins: 2,
-  windowsNotInPlan: 0,
+  openingsNotInPlan: 0,
+  builtInsNotInPlan: 0,
   seatingGroupCount: 1,
   planSeatingGroupCount: 1,
   hasBurnedText: false,
@@ -226,12 +227,19 @@ describe("an invented wing against everything else", () => {
 });
 
 describe("what the still added that the sheet never drew", () => {
-  it("counts a window cut into a wall the plan draws solid", () => {
-    const verdict = gradeFloorplanStill({ ...clean, windowsNotInPlan: 1 }, layout);
+  it("counts an opening cut into a wall the plan draws solid", () => {
+    // A bathroom opened onto the service balcony, with a solid wall on the sheet.
+    const verdict = gradeFloorplanStill({ ...clean, openingsNotInPlan: 1 }, layout);
     expect(verdict.failures).toEqual([
-      "1 window(s) cut into a wall the plan draws solid",
+      "1 opening(s) cut into a wall the plan draws solid",
     ]);
     // A drafting error, not a frame the client cannot use.
+    expect(verdict.hardFailures).toEqual([]);
+  });
+
+  it("counts a fitted unit standing where the sheet draws empty floor", () => {
+    const verdict = gradeFloorplanStill({ ...clean, builtInsNotInPlan: 1 }, layout);
+    expect(verdict.failures).toEqual(["1 fitted unit(s) the plan does not draw"]);
     expect(verdict.hardFailures).toEqual([]);
   });
 

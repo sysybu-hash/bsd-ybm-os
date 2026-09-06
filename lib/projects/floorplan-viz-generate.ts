@@ -649,8 +649,11 @@ function remedyFor(failure: string): string {
   if (/beds \d|bedrooms \d/i.test(failure)) {
     return "Count the beds you have drawn before finishing and match the plan exactly — no extra bed to fill a room, no room left without the bed the plan draws in it.";
   }
-  if (/window\(s\) cut into/i.test(failure)) {
-    return "Close every window the plan does not draw. Walk the outer walls on the sheet: where the hatch runs unbroken the wall is solid, so render solid wall there — no glazed slot, no light strip, no matter how dark the room looks.";
+  if (/opening\(s\) cut into/i.test(failure)) {
+    return "Close every opening the plan does not draw. Walk every wall on the sheet, internal ones too: where the hatch runs unbroken the wall is solid, so render solid wall there — no window, no doorway, no pass-through, no matter how dark or closed-in the room looks.";
+  }
+  if (/fitted unit/i.test(failure)) {
+    return "Remove the fitted units the plan does not draw. A bookcase, sefarim cabinet, sideboard, wardrobe or shelving wall belongs only where the sheet draws a symbol for it; everywhere else, and at the entrance in particular, the floor stays clear.";
   }
   if (/seating group/i.test(failure)) {
     return "Keep one seating group, in the room the plan draws sofas in. Clear the others: the entrance is circulation, so take out the sofa, the rug and the coffee table and leave bare floor with at most a console.";
