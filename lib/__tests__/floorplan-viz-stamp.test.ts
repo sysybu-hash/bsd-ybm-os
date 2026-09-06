@@ -106,3 +106,19 @@ describe("the system credit", () => {
     expect(large.hebrew.x - large.mark.x).toBeGreaterThan(small.hebrew.x - small.mark.x);
   });
 });
+
+describe("the caption when the sheet prints no unit label", () => {
+  it("falls back to the run's own name rather than dropping the unit", () => {
+    const layout = parseFloorplanLayout({ grossAreaM2: 114.11, rooms: [{ name: "סלון" }] });
+    // דירה 15 came back captioned with the area alone and a gap where the unit
+    // should have been, because the extractor read no label that run.
+    expect(buildStampCaption(stampFieldsFromLayout(layout, "דירה 15"))).toBe(
+      'דירה 15  ·  114.11 מ"ר',
+    );
+  });
+
+  it("prefers what the sheet printed over the file name", () => {
+    const layout = parseFloorplanLayout({ unitLabel: "22", rooms: [{ name: "סלון" }] });
+    expect(stampFieldsFromLayout(layout, "דירה 15").unitLabel).toBe("22");
+  });
+});

@@ -1,5 +1,6 @@
 import { extractFloorplanLayout } from "@/lib/projects/floorplan-layout-extract";
 import { generateFloorplanVisuals } from "@/lib/projects/floorplan-viz-generate";
+import { titleFromFloorplanLayout } from "@/lib/projects/floorplan-viz-ids";
 import { cropFloorplanRasterToUnit, isPortraitFloorplanRaster, prepareFloorplanSource } from "@/lib/projects/floorplan-photo-prep";
 import { remapLayoutToCrop, unitCropFromLayout } from "@/lib/projects/floorplan-locator";
 import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
@@ -49,6 +50,8 @@ export async function visualizeFloorplanFromDrawing(
     scope?: FloorplanVizScope;
     existingLayout?: unknown;
     existingImages?: Array<{ viewId: string; roomName?: string }>;
+    /** The uploaded sheet's name, used for the caption when OCR reads no unit. */
+    sourceName?: string;
   },
 ): Promise<FloorplanVizRunResult> {
   const styleKit = resolveFloorplanVizStyle(options?.styleId, options?.customKit);
@@ -90,6 +93,7 @@ export async function visualizeFloorplanFromDrawing(
     styleKit,
     scope,
     existingImages: options?.existingImages,
+    unitTitle: titleFromFloorplanLayout(vizLayout, options?.sourceName ?? ""),
   });
   return {
     layout: capLayoutMmdRooms(extracted.layout),

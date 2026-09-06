@@ -106,6 +106,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
         scope,
         existingLayout: existing.layout,
         existingImages: existing.images,
+        sourceName: existing.title,
       });
       const saved = await appendFloorplanVizStills(
         orgId,
@@ -216,6 +217,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       scope,
       existingLayout: scope === "rooms" ? existingLayout : existingLayout ?? cachedLayout ?? undefined,
       existingImages: scope === "rooms" ? existingImages : undefined,
+      sourceName: file.name.replace(/\.[^.]+$/u, ""),
     });
 
     try {

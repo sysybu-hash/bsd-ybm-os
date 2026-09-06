@@ -882,6 +882,8 @@ export async function generateFloorplanVisuals(
     styleKit?: FloorplanVizStyleKit;
     scope?: FloorplanVizScope;
     existingImages?: Array<{ viewId: string; roomName?: string }>;
+    /** What the run is called, for the caption when the sheet prints no unit. */
+    unitTitle?: string;
   },
 ): Promise<FloorplanVizImage[]> {
   const vizLayout = layoutForVisualization(layout);
@@ -934,7 +936,10 @@ export async function generateFloorplanVisuals(
         job.viewId === "overview" || job.viewId === "isometric"
           ? await addEntranceMarker(img, { base64, mimeType })
           : img;
-      const stamped = await stampFloorplanStill(marked, stampFieldsFromLayout(layout));
+      const stamped = await stampFloorplanStill(
+        marked,
+        stampFieldsFromLayout(layout, options?.unitTitle),
+      );
       return {
         viewId: job.viewId,
         labelHe: job.labelHe,
