@@ -26,6 +26,9 @@ const clean: FloorplanVizAudit = {
   screenCount: 0,
   kitchenSinkBasins: 2,
   planKitchenSinkBasins: 2,
+  windowsNotInPlan: 0,
+  seatingGroupCount: 1,
+  planSeatingGroupCount: 1,
   hasBurnedText: false,
   hasCadMarks: false,
   emptyUnfurnishedRooms: 0,
@@ -219,5 +222,34 @@ describe("an invented wing against everything else", () => {
       haredi: true,
     });
     expect(immodest.score).toBeLessThan(invented.score);
+  });
+});
+
+describe("what the still added that the sheet never drew", () => {
+  it("counts a window cut into a wall the plan draws solid", () => {
+    const verdict = gradeFloorplanStill({ ...clean, windowsNotInPlan: 1 }, layout);
+    expect(verdict.failures).toEqual([
+      "1 window(s) cut into a wall the plan draws solid",
+    ]);
+    // A drafting error, not a frame the client cannot use.
+    expect(verdict.hardFailures).toEqual([]);
+  });
+
+  it("counts a second lounge at the entrance", () => {
+    const verdict = gradeFloorplanStill({ ...clean, seatingGroupCount: 2 }, layout);
+    expect(verdict.failures).toEqual(["2 seating group(s), plan draws 1"]);
+  });
+
+  it("does not complain when the still has fewer seating groups than drawn", () => {
+    // Under-furnishing is caught by the unfurnished-room check, not here.
+    expect(gradeFloorplanStill({ ...clean, seatingGroupCount: 0 }, layout).failures).toEqual([]);
+  });
+
+  it("says nothing about seating when the plan drew none to compare against", () => {
+    const verdict = gradeFloorplanStill(
+      { ...clean, seatingGroupCount: 3, planSeatingGroupCount: 0 },
+      layout,
+    );
+    expect(verdict.failures).toEqual([]);
   });
 });

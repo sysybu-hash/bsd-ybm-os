@@ -649,6 +649,12 @@ function remedyFor(failure: string): string {
   if (/beds \d|bedrooms \d/i.test(failure)) {
     return "Count the beds you have drawn before finishing and match the plan exactly — no extra bed to fill a room, no room left without the bed the plan draws in it.";
   }
+  if (/window\(s\) cut into/i.test(failure)) {
+    return "Close every window the plan does not draw. Walk the outer walls on the sheet: where the hatch runs unbroken the wall is solid, so render solid wall there — no glazed slot, no light strip, no matter how dark the room looks.";
+  }
+  if (/seating group/i.test(failure)) {
+    return "Keep one seating group, in the room the plan draws sofas in. Clear the others: the entrance is circulation, so take out the sofa, the rug and the coffee table and leave bare floor with at most a console.";
+  }
   if (/unfurnished/i.test(failure)) {
     return "Furnish every enclosed room. An empty floor with bare walls is not acceptable unless the plan draws the room empty.";
   }

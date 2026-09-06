@@ -34,6 +34,11 @@ export type FloorplanVizAudit = {
   screenCount: number;
   kitchenSinkBasins: number;
   planKitchenSinkBasins: number;
+  /** Openings cut into an outer wall the plan draws as unbroken hatch. */
+  windowsNotInPlan: number;
+  /** Sofa/armchair groups in the still, and the number the plan draws. */
+  seatingGroupCount: number;
+  planSeatingGroupCount: number;
   hasBurnedText: boolean;
   hasCadMarks: boolean;
   emptyUnfurnishedRooms: number;
@@ -68,6 +73,9 @@ Return JSON only:
   "screenCount": 0,
   "kitchenSinkBasins": 0,
   "planKitchenSinkBasins": 0,
+  "windowsNotInPlan": 0,
+  "seatingGroupCount": 0,
+  "planSeatingGroupCount": 0,
   "hasBurnedText": false,
   "hasCadMarks": false,
   "emptyUnfurnishedRooms": 0,
@@ -91,6 +99,9 @@ Definitions, applied strictly:
 - planBedTotal: bed rectangles drawn on the PLAN. A wide double rectangle counts as 1.
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
+- windowsNotInPlan: walk the outer walls. Count windows in the STILL that sit where the plan draws unbroken wall hatch with no opening. A window the plan does draw is not counted, however it is styled. 0 if every window matches an opening on the sheet.
+- seatingGroupCount: sofa-and-armchair groups in the STILL — a sofa or a pair of armchairs gathered around a rug or a coffee table is one group. An entrance hall with a sofa and a rug in it counts as a group of its own.
+- planSeatingGroupCount: the same count on the PLAN, from the drawn sofa and armchair symbols. Usually 1, in the living room.
 
 Then compare the two OUTLINES, which is the check that matters most:
 - Trace the apartment's outer boundary on the plan. Note every step, notch and protrusion, and note where the boundary cuts IN so that an area is outside the flat.
@@ -142,6 +153,9 @@ export async function auditFloorplanStill(
         screenCount: asInt(raw.screenCount, 20),
         kitchenSinkBasins: asInt(raw.kitchenSinkBasins, 8),
         planKitchenSinkBasins: asInt(raw.planKitchenSinkBasins, 8),
+        windowsNotInPlan: asInt(raw.windowsNotInPlan, 30),
+        seatingGroupCount: asInt(raw.seatingGroupCount, 10),
+        planSeatingGroupCount: asInt(raw.planSeatingGroupCount, 10),
         hasBurnedText: raw.hasBurnedText === true,
         hasCadMarks: raw.hasCadMarks === true,
         emptyUnfurnishedRooms: asInt(raw.emptyUnfurnishedRooms, 30),
@@ -250,6 +264,14 @@ export function gradeFloorplanStill(
     audit.planIslandStoolCount > 0 ? audit.planIslandStoolCount : layout.islandStoolCount ?? 0;
   if (expectedStools > 0 && audit.islandStoolCount !== expectedStools) {
     failures.push(`island stools ${audit.islandStoolCount}, plan has ${expectedStools}`);
+  }
+  if (audit.windowsNotInPlan > 0) {
+    failures.push(`${audit.windowsNotInPlan} window(s) cut into a wall the plan draws solid`);
+  }
+  if (audit.planSeatingGroupCount > 0 && audit.seatingGroupCount > audit.planSeatingGroupCount) {
+    failures.push(
+      `${audit.seatingGroupCount} seating group(s), plan draws ${audit.planSeatingGroupCount}`,
+    );
   }
   if (audit.emptyUnfurnishedRooms > 0) {
     failures.push(`${audit.emptyUnfurnishedRooms} room(s) left unfurnished`);
