@@ -160,97 +160,63 @@ export function isBackgroundPatch(
 }
 
 /**
- * Works out which way is out by looking, instead of taking the model's word.
+ * The nearest empty page to the door, in whatever direction that turns out to be.
  *
- * The vision pass answers this one inconsistently — the same doorway on the
- * same flat came back "up" one run and "right" the next, and the marker moved
- * with it. Which side of the apartment a door sits on is not a judgement call:
- * from a point on the wall, one of the four directions reaches empty page
- * before the others, and that is out. Position still comes from the model,
- * which is what it is good at.
+ * Three earlier attempts assumed the door sits on a straight wall and walked
+ * one of four axes outward from it. דירה 15's entrance is a stepped notch: the
+ * page is below the opening while the flat continues to the left, so an axis
+ * walk landed the marker at the corner of the step instead of in front of the
+ * doorway. Searching outward in every direction and taking the closest page
+ * handles a straight wall and a notch the same way, with no assumption about
+ * which is which.
  *
- * Returns null when no direction finds page within reach — a frame that fills
- * its canvas — and the caller keeps whatever the model said.
+ * The page has to keep going two marker widths past the point that found it,
+ * so a pale cream wall does not pass for it.
  */
-export function inferFacing(
+export function nearestPage(
   data: Uint8Array | Buffer,
   width: number,
   height: number,
   door: { x: number; y: number },
   size: number,
-): EntrancePoint["facing"] | null {
+): { x: number; y: number; dx: number; dy: number } | null {
   const radius = Math.max(2, Math.round(size * 0.45));
-  const limit = Math.round(size * 6);
-  const step = Math.max(2, Math.round(size * 0.3));
-  let best: { facing: EntrancePoint["facing"]; distance: number } | null = null;
+  const step = Math.max(2, Math.round(size * 0.25));
+  const maxReach = Math.round(size * 12);
 
-  for (const [facing, [dx, dy]] of Object.entries(OUTWARD) as Array<
-    [EntrancePoint["facing"], [number, number]]
-  >) {
-    for (let travelled = step; travelled <= limit; travelled += step) {
-      const x = Math.round(door.x + dx * travelled);
-      const y = Math.round(door.y + dy * travelled);
-      if (x < 0 || y < 0 || x >= width || y >= height) break;
+  for (let reach = step; reach <= maxReach; reach += step) {
+    for (let degrees = 0; degrees < 360; degrees += 6) {
+      const radians = (degrees * Math.PI) / 180;
+      const dx = Math.cos(radians);
+      const dy = Math.sin(radians);
+      const x = Math.round(door.x + dx * reach);
+      const y = Math.round(door.y + dy * reach);
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
       if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
-      if (!best || travelled < best.distance) best = { facing, distance: travelled };
-      break;
+      // Page keeps going; a wall band does not. Two probes, because a single
+      // one at a shallow angle can still land inside a band running the same
+      // way as the search direction.
+      const keepsGoing = [2, 4].every((multiple) =>
+        isBackgroundPatch(
+          data,
+          width,
+          height,
+          Math.round(x + dx * size * multiple),
+          Math.round(y + dy * size * multiple),
+          radius,
+        ),
+      );
+      if (!keepsGoing) continue;
+      return { x, y, dx, dy };
     }
   }
-  return best?.facing ?? null;
+  return null;
 }
 
-/**
- * Walks outward from the doorway until the frame turns to empty page.
- *
- * The sheet draws its entrance triangle OUTSIDE the outline, on the paper in
- * front of the door, and that is where a reader looks for it. The vision pass
- * returns the doorway itself, which sits in the wall — put the triangle there
- * and it lands on the wall or just inside the hall. Stepping out along the
- * facing direction until the pixels stop being apartment puts it where the
- * sheet puts it, whatever the wall's thickness happens to be in that frame.
- */
-export function findMarkerCentre(
-  data: Uint8Array | Buffer,
-  width: number,
-  height: number,
-  door: { x: number; y: number },
-  facing: EntrancePoint["facing"],
-  size: number,
-): { x: number; y: number } {
-  const [dx, dy] = OUTWARD[facing];
-  const step = Math.max(2, Math.round(size * 0.3));
-  const radius = Math.max(2, Math.round(size * 0.45));
-  // The whole triangle sits on the page with a little air behind it, the way
-  // the sheet draws it. Half a width out left it straddling the wall corner,
-  // where it read as a notch in the outline rather than a marker.
-  const clearance = Math.round(size * 1.1);
-  // Far enough to cross a wall band and the floor behind it before giving up.
-  // Five was too short once the page had to prove it kept going.
-  const limit = Math.round(size * 12);
-
-  for (let travelled = 0; travelled <= limit; travelled += step) {
-    const x = Math.round(door.x + dx * travelled);
-    const y = Math.round(door.y + dy * travelled);
-    if (x < 0 || y < 0 || x >= width || y >= height) break;
-    if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
-    // A pale cream wall passes the patch test on its own, and the marker was
-    // stopping on the wall instead of reaching the page behind it. Real page
-    // keeps going: check it still reads as empty a couple of marker widths
-    // further out before believing it.
-    if (!isBackgroundPatch(data, width, height, x + dx * size * 2, y + dy * size * 2, radius)) {
-      continue;
-    }
-    return {
-      x: Math.round(x + dx * clearance),
-      y: Math.round(y + dy * clearance),
-    };
-  }
-  // Nothing that reads as page — a frame that fills its canvas. Nudge it just
-  // clear of the wall and accept that.
-  return {
-    x: Math.round(door.x + dx * size * 1.2),
-    y: Math.round(door.y + dy * size * 1.2),
-  };
+/** The way someone walks in, given the direction that leads out. */
+export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing"] {
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "left" : "right";
+  return dy > 0 ? "up" : "down";
 }
 
 /** The triangle's three corners, pointing the way someone walks in. */
@@ -312,8 +278,17 @@ export async function markApartmentEntrance(
       .raw()
       .toBuffer({ resolveWithObject: true });
     const door = { x: point.x * width, y: point.y * height };
-    const facing = inferFacing(data, info.width, info.height, door, size) ?? point.facing;
-    const centre = findMarkerCentre(data, info.width, info.height, door, facing, size);
+    const page = nearestPage(data, info.width, info.height, door, size);
+    // No page anywhere near — a frame that fills its canvas. Fall back to the
+    // model's own reading and nudge clear of the wall.
+    const facing = page ? facingFromOutward(page.dx, page.dy) : point.facing;
+    const clearance = size * 1.1;
+    const centre = page
+      ? { x: Math.round(page.x + page.dx * clearance), y: Math.round(page.y + page.dy * clearance) }
+      : {
+          x: Math.round(door.x + OUTWARD[point.facing][0] * clearance),
+          y: Math.round(door.y + OUTWARD[point.facing][1] * clearance),
+        };
     const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
 
     const overlay = Buffer.from(
