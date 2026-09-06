@@ -59,7 +59,13 @@ describe("the entrance triangle", () => {
 });
 
 describe("marking a still", () => {
-  const point: EntrancePoint = { x: 0.8, y: 0.55, facing: "left" };
+  const point: EntrancePoint = {
+    x: 0.8,
+    y: 0.55,
+    outsideX: 0.8,
+    outsideY: 0.55,
+    facing: "left",
+  };
 
   it("draws on the frame without resizing it", async () => {
     const source = await still(800, 1000);
@@ -159,33 +165,36 @@ describe("where the marker ends up", () => {
         }
       }
     }
-    return { dark, x: sumX / dark, y: sumY / dark, width: info.width };
+    return { dark, x: sumX / dark, y: sumY / dark };
   }
 
-  it("sits on the point it is given, not beside it", async () => {
+  it("sits outside the door, on the page", async () => {
     const out = await markApartmentEntrance(await halfFrame(), {
       x: 0.5,
       y: 0.5,
+      outsideX: 0.62,
+      outsideY: 0.5,
       facing: "left",
     });
     const ink = await inkCentre(out);
     expect(ink.dark).toBeGreaterThan(0);
-    expect(ink.x).toBeCloseTo(300, -1);
+    expect(ink.x).toBeGreaterThan(340);
     expect(ink.y).toBeCloseTo(300, -1);
   });
 
-  it("points away from the page, whatever the model said", async () => {
-    // Page is on the right, so the way in is to the left: the apex leads left.
+  it("points back at the door", async () => {
     const out = await markApartmentEntrance(await halfFrame(), {
       x: 0.5,
       y: 0.5,
+      outsideX: 0.62,
+      outsideY: 0.5,
       facing: "right",
     });
     const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const rowDark = (y: number) => {
+    const rowSpan = (y: number) => {
       let min = info.width;
       let max = -1;
       for (let x = 0; x < info.width; x++) {
@@ -196,11 +205,24 @@ describe("where the marker ends up", () => {
       }
       return { min, max };
     };
-    // A triangle pointing left is widest at its right edge and narrows leftward.
-    const middle = rowDark(300);
-    expect(middle.min).toBeLessThan(300);
-    const above = rowDark(288);
-    expect(above.min).toBeGreaterThan(middle.min);
+    // The door is to the left, so the apex leads left: the widest row is the
+    // middle and the ink narrows toward the apex.
+    const middle = rowSpan(300);
+    const above = rowSpan(288);
+    expect(middle.min).toBeLessThan(above.min);
+  });
+
+  it("walks off the floor onto the page when the model's point misses", async () => {
+    const out = await markApartmentEntrance(await halfFrame(), {
+      x: 0.5,
+      y: 0.5,
+      // Inside the flat, which is not where a marker belongs.
+      outsideX: 0.4,
+      outsideY: 0.5,
+      facing: "left",
+    });
+    const ink = await inkCentre(out);
+    expect(ink.x).toBeGreaterThan(300);
   });
 });
 

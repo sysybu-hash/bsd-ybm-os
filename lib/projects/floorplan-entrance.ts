@@ -28,6 +28,9 @@ export type EntrancePoint = {
   /** The middle of the door opening, normalised: 0 is the left/top edge, 1 the right/bottom. */
   x: number;
   y: number;
+  /** A point on the empty page just outside that door, where the marker goes. */
+  outsideX: number;
+  outsideY: number;
   /** Which way someone walks when they come through the door. */
   facing: "left" | "right" | "up" | "down";
 };
@@ -40,16 +43,21 @@ The plan marks the apartment's front door with a small solid black triangle on
 an outer wall. Find where that same front door is IN THE STILL.
 
 Return JSON only:
-{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "facing": "left", "confidence": 0.0 }
+{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "outsideX": 0.0, "outsideY": 0.0, "facing": "left", "confidence": 0.0 }
 
 - The front door is a GAP in the outer wall: the wall stops, the opening runs,
   the wall starts again. Give the two ENDS of that gap — where the wall stops
   and where it starts again — as (x1,y1) and (x2,y2), fractions of the still's
   width and height: x 0 is the left edge, 1 the right edge; y 0 is the top, 1
   the bottom. Both points sit on the wall line, not inside the hall behind it.
-- Be precise about the ends. A marker is drawn at the midpoint of what you
-  return, and a point taken from the edge of the gap puts it against the wall
-  instead of in front of the opening.
+- Be precise about the ends. The door's position is taken as the midpoint of
+  the two, and a point from the edge of the gap puts it against the wall.
+- outsideX and outsideY: a point on the EMPTY BACKGROUND just outside that
+  door — off the apartment altogether, on the plain page the cutaway floats on,
+  roughly one door's width clear of the opening and lined up with its middle.
+  This is where a triangle will be drawn pointing back at the door, the way the
+  sales sheet marks an entrance. It must be background, not floor, not wall,
+  not terrace paving.
 - facing is the direction a person moves as they step through the door into the
   apartment: "right" if they walk to the right, "left", "up" or "down".
 - confidence 0 to 1. Return "found": false if the still does not show the
@@ -96,17 +104,20 @@ export async function locateApartmentEntrance(
       const y1 = clamp01(raw.y1);
       const x2 = clamp01(raw.x2);
       const y2 = clamp01(raw.y2);
+      const outsideX = clamp01(raw.outsideX);
+      const outsideY = clamp01(raw.outsideY);
       const confidence = clamp01(raw.confidence) ?? 0;
       // A marker in the wrong place is worse than no marker: it tells a buyer
       // the door is somewhere it is not.
       if (x1 == null || y1 == null || x2 == null || y2 == null || confidence < 0.5) return null;
+      if (outsideX == null || outsideY == null) return null;
       const x = (x1 + x2) / 2;
       const y = (y1 + y2) / 2;
       const facing = raw.facing;
       if (facing !== "left" && facing !== "right" && facing !== "up" && facing !== "down") {
         return null;
       }
-      return { x, y, facing };
+      return { x, y, outsideX, outsideY, facing };
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
       log.warn("entrance lookup failed", {
@@ -211,6 +222,48 @@ export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing
   return dy > 0 ? "up" : "down";
 }
 
+/**
+ * Keeps the marker on the page, on the far side of the door from the flat.
+ *
+ * The vision pass is asked for a point outside the front door and mostly gives
+ * one, but it lands on the floor or on the wall often enough to matter. When
+ * that happens, back away from the door along the line between them until the
+ * frame turns to page.
+ */
+export function pageSideOfDoor(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  outside: { x: number; y: number },
+  door: { x: number; y: number },
+  size: number,
+): { x: number; y: number } {
+  const radius = Math.max(2, Math.round(size * 0.45));
+  const clamped = {
+    x: Math.min(width - 1, Math.max(0, Math.round(outside.x))),
+    y: Math.min(height - 1, Math.max(0, Math.round(outside.y))),
+  };
+  if (isBackgroundPatch(data, width, height, clamped.x, clamped.y, radius)) return clamped;
+
+  const dx = clamped.x - door.x;
+  const dy = clamped.y - door.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+  const step = Math.max(2, Math.round(size * 0.25));
+  for (let travelled = step; travelled <= size * 12; travelled += step) {
+    const x = Math.round(clamped.x + ux * travelled);
+    const y = Math.round(clamped.y + uy * travelled);
+    if (x < 0 || y < 0 || x >= width || y >= height) break;
+    if (isBackgroundPatch(data, width, height, x, y, radius)) return { x, y };
+  }
+
+  // Nothing reads as page along that line. Fall back to the nearest page in
+  // any direction, and failing that leave the point where the model put it.
+  const page = nearestPage(data, width, height, door, size);
+  return page ? { x: page.x, y: page.y } : clamped;
+}
+
 /** The triangle's three corners, pointing the way someone walks in. */
 export function entranceTrianglePoints(
   cx: number,
@@ -269,17 +322,19 @@ export async function markApartmentEntrance(
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    // Sits ON the opening, at its middle, the way the sheet marks a front door.
-    // Earlier versions pushed it out onto the page beside the doorway, which
-    // read as a notch in the outline rather than a door.
-    const centre = {
-      x: Math.round(point.x * width),
-      y: Math.round(point.y * height),
-    };
-    // The way in is away from the page. Measured, not taken from the model,
-    // which answered this differently on consecutive runs of the same sheet.
-    const page = nearestPage(data, info.width, info.height, centre, size);
-    const facing = page ? facingFromOutward(page.dx, page.dy) : point.facing;
+    // Outside the door on the plain page, pointing back at it — the way the
+    // sheet marks an entrance. The door itself gives the direction: whichever
+    // axis the marker has to travel along to reach it.
+    const door = { x: point.x * width, y: point.y * height };
+    const centre = pageSideOfDoor(
+      data,
+      info.width,
+      info.height,
+      { x: point.outsideX * width, y: point.outsideY * height },
+      door,
+      size,
+    );
+    const facing = facingFromOutward(centre.x - door.x, centre.y - door.y);
     const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
 
     const overlay = Buffer.from(
