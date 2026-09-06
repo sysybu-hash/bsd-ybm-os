@@ -22,7 +22,7 @@ import {
 } from "@/lib/projects/floorplan-layout";
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
 import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
-import { buildVectorWallJpeg } from "@/lib/projects/floorplan-vector";
+import { buildVectorWallJpeg, extractPdfPageRaster } from "@/lib/projects/floorplan-vector";
 import { stampFieldsFromLayout, stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import {
   buildFootprintSilhouetteJpeg,
@@ -594,7 +594,7 @@ async function attachmentsForJob(
  */
 function remedyFor(failure: string): string {
   if (/screen/i.test(failure)) {
-    return "Remove every screen AND the console it sits on. Take the dark panel off the wall and off the cabinet, delete the media unit facing the sofa entirely, and leave that wall bare or hang a framed landscape. No TV, monitor, laptop or tablet anywhere.";
+    return "Remove every screen AND whatever it rests on. Take the dark panel off the wall, delete the media unit facing the sofa, and clear every desk, shelf and bedside table of anything dark and rectangular — a closed laptop counts. A desk keeps only closed books, a lamp and a pen cup; the wall stays bare or takes a framed landscape.";
   }
   if (/kitchen sink basins/i.test(failure)) {
     return "Redraw the kitchen sink with exactly the basin count the plan draws — a double-bowl sink is two basins side by side in one counter cut-out, not one large basin.";
@@ -606,7 +606,7 @@ function remedyFor(failure: string): string {
     return "Replace every wide mattress with a single 90x200 twin along the long wall — a long narrow rectangle, more than twice as long as it is wide, with one pillow and its own headboard. A drawn double rectangle is a sleeping zone, not a furniture spec, and the master bedroom is not an exception.";
   }
   if (/invented outside|footprint/i.test(failure)) {
-    return "Trace the apartment's outer boundary from the plan before furnishing anything, and stay inside it. Do not extend a wing, room or bathroom into space the plan leaves outside the flat.";
+    return "Trace the apartment's outer boundary from the plan before furnishing anything, and stay inside it. Do not extend a wing, room or bathroom into space the plan leaves outside the flat, and do not turn a hatched terrace into a room — a paved area with its own area figure stays an open terrace with a railing.";
   }
   if (/beds \d|bedrooms \d/i.test(failure)) {
     return "Count the beds you have drawn before finishing and match the plan exactly — no extra bed to fill a room, no room left without the bed the plan draws in it.";
@@ -646,17 +646,27 @@ async function buildWallHint(
   photo: boolean,
 ): Promise<{ image: string; kind: WallHintKind } | null> {
   if (photo) return null;
+  let raster = base64;
   if (mimeType === "application/pdf") {
     const vector = await buildVectorWallJpeg(Buffer.from(base64, "base64"));
     if (vector) return { image: vector, kind: "vector-walls" };
+    // Not every PDF is a CAD export. דירה 14 is a scan wrapped in a PDF — one
+    // image operator, no paths — and sharp cannot decode a PDF, so the raster
+    // fallbacks below were being handed bytes they could do nothing with and
+    // every one returned null. The sheet then reached the image model with no
+    // wall hint at all, and the still grew an entire invented wing of rooms
+    // down its right side. Pull the embedded scan out first.
+    const embedded = await extractPdfPageRaster(Buffer.from(base64, "base64"));
+    if (!embedded) return null;
+    raster = embedded;
   }
   // No vectors to trace — a scan. Pulling individual walls out of a raster was
   // tried twice and made the result worse both times, so hand over the one thing
   // a raster does give up reliably: the outline. The footprint is also what the
   // audit complains about most on these sheets.
-  const silhouette = await buildFootprintSilhouetteJpeg(base64);
+  const silhouette = await buildFootprintSilhouetteJpeg(raster);
   if (silhouette) return { image: silhouette, kind: "footprint" };
-  const ink = await buildInkWallJpeg(base64);
+  const ink = await buildInkWallJpeg(raster);
   return ink ? { image: ink, kind: "ink" } : null;
 }
 

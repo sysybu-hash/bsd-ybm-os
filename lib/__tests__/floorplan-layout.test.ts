@@ -303,7 +303,11 @@ describe("floorplan layout grounding", () => {
     expect(interior).toMatch(/CROP of this one room/i);
     expect(interior).toMatch(/island\/peninsula/i);
     expect(interior).not.toMatch(/EXACT INVENTORY/);
-    expect(interior).not.toContain("מרפסת");
+    // The balcony must not be the subject of a kitchen interior. Checked on the
+    // subject line rather than the whole prompt, because the global plan-trace
+    // rules name מרפסת when they explain that a terrace is not a room.
+    expect(interior).toMatch(/inside "מטבח"/);
+    expect(interior).not.toMatch(/inside "מרפסת"/);
   });
 
   it("keeps unlabeled kitchen/living/bath from fixtures when OCR only saw bedrooms", () => {

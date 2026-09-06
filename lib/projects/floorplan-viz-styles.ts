@@ -36,6 +36,7 @@ MODESTY (global — every view, every room):
 - From bird's-eye a screen reads as a dark rectangular panel. Two places it keeps appearing, both forbidden: a thin black bar lying on a desk or cabinet, and a dark panel mounted flat on a bedroom or living-room wall. A bedroom wall carries a picture, a mirror, a shelf or nothing — never a dark panel. A desk holds unmarked books, a lamp, or a clock, never a monitor.
 - If a wall looks bare, leave it bare. A blank wall is correct; a screen to fill it is not.
 - Do NOT draw the furniture a screen sits on. No media console, no TV unit, no low cabinet placed facing the sofa, no floating shelf under a living-room wall. The wall the sofa faces holds a framed landscape or nothing at all. Every time a console is drawn there, a screen ends up on it.
+- A desk holds exactly this: closed books, a lamp, a pen cup, a notebook. Nothing else goes on a desk. There is no laptop open or closed, no tablet, no keyboard, no dark slab of any size resting on a desk, a shelf, a console, a counter or a bedside table anywhere in this apartment.
 - Wall art: landscape or geometric only. No figurative paintings, sculptures, or photographs of people.
 - Mezuzah cases on doorposts when a doorway is visible — small physical cases only, no letters.
 - The image must contain no readable Hebrew or Latin text (including book spines, covers, mezuzah letters, and wall verses).
@@ -61,6 +62,7 @@ PLAN TRACE (every style, every view — non-negotiable):
 - Furniture count and placement follow the drawing symbols. Do not invent a second kitchen, a second cooktop, a second office, an island sink, an entrance basin, a guest WC, a wraparound deck, an extra bedroom, or a stairwell.
 - An office/study is desks. A storage room is shelves. Neither is a kitchen or a bedroom. Do not duplicate either.
 - A 90 cm mark is a door width. Hatched rectangles are closets with CLOSED cabinet doors. An oval basin is a sink. A toilet pan is a toilet. If it is not drawn, do not add it.
+- A brick or paving hatch outside the wall line — usually labelled מרפסת with its own area figure — is a TERRACE, not a room. Open floor, a railing, at most one planter. It never becomes a bathroom, a bedroom or a store, and it never gets a bath, toilet, basin, bed or wardrobe. Render exactly as many terraces as the plan draws, in the places it draws them.
 - Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
 `.trim();
 

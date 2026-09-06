@@ -445,6 +445,30 @@ export async function buildFootprintSilhouetteJpeg(base64: string): Promise<stri
       if (y < H - 1) stack.push(i + W);
     }
 
+    // The fill is only a footprint if the outline actually closed. Where a
+    // window or a terrace opening leaves a gap the dilation cannot bridge, the
+    // outside flood walks straight into the flat and what survives is the
+    // dilated ink skeleton — a Rorschach blot that tells the image model less
+    // than nothing. Measure the fill against its own bounding box and refuse it
+    // when it is plainly not a solid shape.
+    let filled = 0;
+    let minX = W;
+    let maxX = -1;
+    let minY = H;
+    let maxY = -1;
+    for (let i = 0; i < W * H; i++) {
+      if (outside[i]) continue;
+      filled += 1;
+      const x = i % W;
+      const y = (i - x) / W;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const boxArea = Math.max(1, (maxX - minX + 1) * (maxY - minY + 1));
+    if (filled / boxArea < 0.45) return null;
+
     const rgb = new Uint8Array(W * H * 3).fill(255);
     for (let i = 0; i < W * H; i++) {
       if (outside[i]) continue;

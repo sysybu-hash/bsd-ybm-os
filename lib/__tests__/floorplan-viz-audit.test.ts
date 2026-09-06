@@ -126,10 +126,11 @@ describe("floorplan still audit", () => {
       layout,
       { haredi: true },
     );
-    expect(verdict.score).toBe(2);
-    expect(verdict.hardFailures).toEqual([]);
-    expect(verdict.failures[0]).toMatch(/3 room\(s\) invented outside the plan outline/);
+    // Inventing rooms outside the outline disqualifies the frame; the holistic
+    // silhouette judgement beside it does not.
+    expect(verdict.hardFailures).toEqual(["3 room(s) invented outside the plan outline"]);
     expect(verdict.failures[1]).toMatch(/footprint does not match/);
+    expect(verdict.score).toBe(101);
   });
 
   it("rejects a rectangle drawn for a stepped plan even when nothing was added", () => {
@@ -189,5 +190,34 @@ describe("what the least-bad frame is allowed to be", () => {
     const fewer = gradeFloorplanStill({ ...clean, bedTotal: 5 }, layout);
     const more = gradeFloorplanStill({ ...clean, bedTotal: 5, diningTableCount: 3 }, layout);
     expect(fewer.score).toBeLessThan(more.score);
+  });
+});
+
+describe("an invented wing against everything else", () => {
+  it("loses to a frame that stays inside the outline but miscounts", () => {
+    const invented = gradeFloorplanStill(
+      { ...clean, roomsOutsidePlanOutline: 1, footprintMatchesPlan: false },
+      layout,
+      { haredi: true },
+    );
+    const miscounted = gradeFloorplanStill(
+      { ...clean, bedTotal: 7, bedroomCount: 6, islandStoolCount: 0, diningTableCount: 3 },
+      layout,
+      { haredi: true },
+    );
+    expect(miscounted.failures.length).toBeGreaterThan(invented.failures.length);
+    expect(miscounted.score).toBeLessThan(invented.score);
+  });
+
+  it("ranks below a frame that invents nothing and is merely immodest", () => {
+    const invented = gradeFloorplanStill(
+      { ...clean, roomsOutsidePlanOutline: 2, hasDoubleBed: true },
+      layout,
+      { haredi: true },
+    );
+    const immodest = gradeFloorplanStill({ ...clean, hasDoubleBed: true }, layout, {
+      haredi: true,
+    });
+    expect(immodest.score).toBeLessThan(invented.score);
   });
 });

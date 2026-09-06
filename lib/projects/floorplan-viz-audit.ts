@@ -172,7 +172,9 @@ export type AuditVerdict = {
  * four bedrooms, because one modesty failure counted less than three count
  * mismatches. For a haredi client a double bed, a screen or Hebrew text burned
  * into the frame makes the still unusable no matter how well everything else
- * lines up, so they are weighted to dominate any number of soft failures.
+ * lines up, and so does a room standing in space the plan leaves outside the
+ * flat — a still that invents a wing is not a still of this apartment. They are
+ * weighted to dominate any number of soft failures.
  */
 const HARD_FAILURE_WEIGHT = 100;
 
@@ -213,8 +215,13 @@ export function gradeFloorplanStill(
   // a bathroom, a bedroom and a laundry in space the plan leaves outside the
   // flat — and every count still matched, so counting alone passed it.
   if (audit.roomsOutsidePlanOutline > 0) {
-    failures.push(`${audit.roomsOutsidePlanOutline} room(s) invented outside the plan outline`);
+    hard(`${audit.roomsOutsidePlanOutline} room(s) invented outside the plan outline`);
   }
+  // Deliberately soft, unlike the invented rooms above. This one is a holistic
+  // judgement about a silhouette and it comes back false on nearly every frame,
+  // so promoting it would flatten the ranking and leave nothing to choose by.
+  // A counted room standing in space the plan leaves outside the flat is the
+  // specific, checkable version of the same complaint.
   if (!audit.footprintMatchesPlan) failures.push("footprint does not match the plan outline");
   if (audit.hasBurnedText) hard("letters or digits rendered into the image");
   if (audit.hasCadMarks) failures.push("2D CAD annotation copied into the render");

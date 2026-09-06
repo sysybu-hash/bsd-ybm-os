@@ -130,24 +130,35 @@ export function isWallCandidate(
  * out in viewport space. Returns null when the page carries no vector geometry —
  * a scanned sheet, where the caller has to fall back to the generative pipeline.
  */
-export async function extractFloorplanVectorGeometry(
-  pdf: Buffer | Uint8Array,
-  options?: { minWallLength?: number },
-): Promise<FloorplanVectorGeometry | null> {
-  let pdfjs: typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type Pdfjs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+
+async function loadPdfjs(): Promise<Pdfjs | null> {
   try {
-    pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    return await import("pdfjs-dist/legacy/build/pdf.mjs");
   } catch (err: unknown) {
     log.warn("pdfjs unavailable", { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
+}
+
+/** A plain view, because pdfjs rejects a Node Buffer by name. */
+function asPdfBytes(pdf: Buffer | Uint8Array): Uint8Array {
+  return new Uint8Array(pdf.buffer, pdf.byteOffset, pdf.byteLength);
+}
+
+export async function extractFloorplanVectorGeometry(
+  pdf: Buffer | Uint8Array,
+  options?: { minWallLength?: number },
+): Promise<FloorplanVectorGeometry | null> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return null;
 
   try {
-    // A Node Buffer is a Uint8Array subclass, and pdfjs rejects it by name, so
-    // always hand over a plain view rather than testing instanceof.
-    const data = new Uint8Array(pdf.buffer, pdf.byteOffset, pdf.byteLength);
-    const doc = await pdfjs.getDocument({ data, isEvalSupported: false, useSystemFonts: false })
-      .promise;
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
     const page = await doc.getPage(1);
     // scale 1 with the page's own rotation applied, so a /Rotate 270 sheet — nine
     // of the ten in that batch — comes back the way it is meant to be read.
@@ -310,4 +321,109 @@ export async function buildVectorWallJpeg(
     });
     return null;
   }
+}
+
+/**
+ * The scan embedded in a PDF that is a photograph of a drawing, not a CAD export.
+ *
+ * A real batch is not all vectors. דירה 14 is one paintImageXObject and zero
+ * paths, and every raster tool downstream — the footprint silhouette, the ink
+ * trace, every sharp call — needs pixels, which sharp cannot get out of a PDF.
+ * Without this the sheet reaches the image model with no wall hint at all, and
+ * a still came back with an entire invented wing of rooms down its right side.
+ *
+ * Returns null for a genuine vector sheet, where `extractFloorplanVectorGeometry`
+ * is the better source, and for a page whose largest image is too small to be
+ * the drawing.
+ */
+export async function extractPdfPageRaster(
+  pdf: Buffer | Uint8Array,
+): Promise<string | null> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return null;
+
+  try {
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
+    const page = await doc.getPage(1);
+    // Resolving an image object requires the operator list to have run first —
+    // that is what puts it in page.objs.
+    const ops = await page.getOperatorList();
+
+    let best: { width: number; height: number; kind: number; data: Uint8Array } | null = null;
+    for (let i = 0; i < ops.fnArray.length; i++) {
+      if (ops.fnArray[i] !== pdfjs.OPS.paintImageXObject) continue;
+      const args = ops.argsArray[i] as [string, number, number] | undefined;
+      const id = args?.[0];
+      if (!id || !page.objs.has(id)) continue;
+      const obj = page.objs.get(id) as {
+        width?: number;
+        height?: number;
+        kind?: number;
+        data?: Uint8Array;
+      } | null;
+      if (!obj?.data || !obj.width || !obj.height || !obj.kind) continue;
+      // The drawing is the big one; a logo in the title block is not.
+      if (best && obj.width * obj.height <= best.width * best.height) continue;
+      best = { width: obj.width, height: obj.height, kind: obj.kind, data: obj.data };
+    }
+    if (!best || best.width < 400 || best.height < 400) return null;
+
+    const raw = toRgbBytes(best);
+    if (!raw) return null;
+    const out = await sharp(Buffer.from(raw), {
+      raw: { width: best.width, height: best.height, channels: 3 },
+    })
+      .jpeg({ quality: 92, mozjpeg: true })
+      .toBuffer();
+    return out.toString("base64");
+  } catch (err: unknown) {
+    log.warn("page raster extraction failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/** pdfjs ImageKind: 1 GRAYSCALE_1BPP (packed bits), 2 RGB_24BPP, 3 RGBA_32BPP. */
+function toRgbBytes(img: {
+  width: number;
+  height: number;
+  kind: number;
+  data: Uint8Array;
+}): Uint8Array | null {
+  const { width, height, kind, data } = img;
+  const pixels = width * height;
+  if (kind === 2) return data.length >= pixels * 3 ? data : null;
+  if (kind === 3) {
+    if (data.length < pixels * 4) return null;
+    const out = new Uint8Array(pixels * 3);
+    for (let i = 0, j = 0; i < pixels; i++, j += 4) {
+      out[i * 3] = data[j]!;
+      out[i * 3 + 1] = data[j + 1]!;
+      out[i * 3 + 2] = data[j + 2]!;
+    }
+    return out;
+  }
+  if (kind === 1) {
+    // One bit per pixel, rows padded to whole bytes. A set bit is white.
+    const rowBytes = (width + 7) >> 3;
+    if (data.length < rowBytes * height) return null;
+    const out = new Uint8Array(pixels * 3);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const byte = data[y * rowBytes + (x >> 3)] ?? 0;
+        const value = byte & (0x80 >> (x & 7)) ? 255 : 0;
+        const o = (y * width + x) * 3;
+        out[o] = value;
+        out[o + 1] = value;
+        out[o + 2] = value;
+      }
+    }
+    return out;
+  }
+  return null;
 }
