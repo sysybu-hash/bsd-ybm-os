@@ -278,6 +278,35 @@ export async function extractFloorplanVectorGeometry(
  * This is the part of the vector work that pays off even though room detection
  * did not: guiding the model needs clean walls, not closed rooms.
  */
+/**
+ * The rectangle the walls actually occupy, which is not the page.
+ *
+ * A sheet is a page with a drawing on it, a title block, dimension chains and
+ * a lot of white. דירה 15 is a portrait page carrying an apartment laid out
+ * horizontally — asking the image model for a portrait frame there made it turn
+ * the whole floor plate on its side to fill the canvas, and the audit came back
+ * "completely rearranged". The frame should follow the flat, not the paper.
+ */
+export function wallBoundingBox(
+  geometry: FloorplanVectorGeometry,
+): { x: number; y: number; width: number; height: number } | null {
+  if (geometry.walls.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const w of geometry.walls) {
+    minX = Math.min(minX, w.x1, w.x2);
+    maxX = Math.max(maxX, w.x1, w.x2);
+    minY = Math.min(minY, w.y1, w.y2);
+    maxY = Math.max(maxY, w.y1, w.y2);
+  }
+  const width = maxX - minX;
+  const height = maxY - minY;
+  if (!(width > 0) || !(height > 0)) return null;
+  return { x: minX, y: minY, width, height };
+}
+
 export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry): string {
   const { pageWidth: w, pageHeight: h, walls } = geometry;
   const lines = walls

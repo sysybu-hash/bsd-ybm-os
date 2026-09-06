@@ -13,6 +13,7 @@ import {
   isAxisAligned,
   isWallCandidate,
   segmentLength,
+  wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
 
 const page = { width: 200, height: 200 };
@@ -226,5 +227,41 @@ describe("line width as the wall/furniture divider", () => {
     const face = { x1: 20, y1: 50, x2: 160, y2: 50, lineWidth: 2 };
     const barelyOverlapping = { x1: 150, y1: 58, x2: 190, y2: 58, lineWidth: 2 };
     expect(hasParallelFace(face, [face, barelyOverlapping])).toBe(false);
+  });
+});
+
+describe("the rectangle the flat occupies", () => {
+  const geometry = (walls: Array<{ x1: number; y1: number; x2: number; y2: number }>) => ({
+    pageWidth: 600,
+    pageHeight: 1000,
+    rotate: 0,
+    walls: walls.map((w) => ({ ...w, lineWidth: 14 })),
+    segments: [],
+    dimensionStrings: [],
+  });
+
+  it("is the walls' bounds, not the page's", () => {
+    // A flat lyingacross a portrait sheet: wide, and nowhere near the paper.
+    const box = wallBoundingBox(
+      geometry([
+        { x1: 60, y1: 300, x2: 540, y2: 300 },
+        { x1: 60, y1: 620, x2: 540, y2: 620 },
+        { x1: 60, y1: 300, x2: 60, y2: 620 },
+        { x1: 540, y1: 300, x2: 540, y2: 620 },
+      ]),
+    )!;
+    expect(box).toEqual({ x: 60, y: 300, width: 480, height: 320 });
+    // Landscape, though the page it sits on is portrait.
+    expect(box.width).toBeGreaterThan(box.height);
+  });
+
+  it("says nothing when there are no walls to bound", () => {
+    expect(wallBoundingBox(geometry([]))).toBeNull();
+  });
+
+  it("refuses a degenerate box rather than returning a zero aspect", () => {
+    expect(
+      wallBoundingBox(geometry([{ x1: 100, y1: 200, x2: 400, y2: 200 }])),
+    ).toBeNull();
   });
 });

@@ -22,7 +22,12 @@ import {
 } from "@/lib/projects/floorplan-layout";
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
 import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
-import { buildVectorWallJpeg, extractPdfPageRaster } from "@/lib/projects/floorplan-vector";
+import {
+  buildVectorWallJpeg,
+  extractFloorplanVectorGeometry,
+  extractPdfPageRaster,
+  wallBoundingBox,
+} from "@/lib/projects/floorplan-vector";
 import {
   locateApartmentEntrance,
   markApartmentEntrance,
@@ -72,6 +77,12 @@ const IMAGE_CONCURRENCY = 2;
 async function aspectRatioForPlan(base64: string, mimeType?: string): Promise<string | undefined> {
   const bytes = Buffer.from(base64, "base64");
   if (mimeType === "application/pdf" || bytes.subarray(0, 5).toString("latin1") === "%PDF-") {
+    // The drawing's own bounds beat the page's whenever they can be read. A
+    // portrait sheet carrying a flat laid out horizontally used to buy a
+    // portrait frame, and the model turned the floor plate on its side to fill
+    // it — the audit called that "completely rearranged".
+    const fromWalls = await wallBoundsAspect(bytes);
+    if (fromWalls) return fromWalls;
     try {
       const { PDFDocument } = await import("pdf-lib");
       const doc = await PDFDocument.load(bytes, { updateMetadata: false });
@@ -98,6 +109,28 @@ async function aspectRatioForPlan(base64: string, mimeType?: string): Promise<st
     /* Not a raster sharp can decode — Gemini picks from the attached sheet. */
   }
   return undefined;
+}
+
+/**
+ * The aspect of the apartment itself, read off the vector walls.
+ *
+ * Returns null for a scan, for a sheet with too few walls to trust, and for a
+ * box so small against the page that it is more likely a stray run of segments
+ * than the flat.
+ */
+async function wallBoundsAspect(pdf: Buffer): Promise<string | undefined> {
+  try {
+    const geometry = await extractFloorplanVectorGeometry(pdf);
+    if (!geometry || geometry.walls.length < 25) return undefined;
+    const box = wallBoundingBox(geometry);
+    if (!box) return undefined;
+    const pageArea = geometry.pageWidth * geometry.pageHeight;
+    if (pageArea <= 0) return undefined;
+    if ((box.width * box.height) / pageArea < 0.12) return undefined;
+    return nearestGeminiImageAspect(box.width, box.height);
+  } catch {
+    return undefined;
+  }
 }
 
 function roomRole(room: FloorplanRoom): string {
