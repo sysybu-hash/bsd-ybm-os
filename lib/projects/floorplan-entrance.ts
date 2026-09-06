@@ -160,6 +160,46 @@ export function isBackgroundPatch(
 }
 
 /**
+ * Works out which way is out by looking, instead of taking the model's word.
+ *
+ * The vision pass answers this one inconsistently — the same doorway on the
+ * same flat came back "up" one run and "right" the next, and the marker moved
+ * with it. Which side of the apartment a door sits on is not a judgement call:
+ * from a point on the wall, one of the four directions reaches empty page
+ * before the others, and that is out. Position still comes from the model,
+ * which is what it is good at.
+ *
+ * Returns null when no direction finds page within reach — a frame that fills
+ * its canvas — and the caller keeps whatever the model said.
+ */
+export function inferFacing(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+  door: { x: number; y: number },
+  size: number,
+): EntrancePoint["facing"] | null {
+  const radius = Math.max(2, Math.round(size * 0.45));
+  const limit = Math.round(size * 6);
+  const step = Math.max(2, Math.round(size * 0.3));
+  let best: { facing: EntrancePoint["facing"]; distance: number } | null = null;
+
+  for (const [facing, [dx, dy]] of Object.entries(OUTWARD) as Array<
+    [EntrancePoint["facing"], [number, number]]
+  >) {
+    for (let travelled = step; travelled <= limit; travelled += step) {
+      const x = Math.round(door.x + dx * travelled);
+      const y = Math.round(door.y + dy * travelled);
+      if (x < 0 || y < 0 || x >= width || y >= height) break;
+      if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
+      if (!best || travelled < best.distance) best = { facing, distance: travelled };
+      break;
+    }
+  }
+  return best?.facing ?? null;
+}
+
+/**
  * Walks outward from the doorway until the frame turns to empty page.
  *
  * The sheet draws its entrance triangle OUTSIDE the outline, on the paper in
@@ -259,15 +299,10 @@ export async function markApartmentEntrance(
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const centre = findMarkerCentre(
-      data,
-      info.width,
-      info.height,
-      { x: point.x * width, y: point.y * height },
-      point.facing,
-      size,
-    );
-    const points = entranceTrianglePoints(centre.x, centre.y, size, point.facing);
+    const door = { x: point.x * width, y: point.y * height };
+    const facing = inferFacing(data, info.width, info.height, door, size) ?? point.facing;
+    const centre = findMarkerCentre(data, info.width, info.height, door, facing, size);
+    const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
 
     const overlay = Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +

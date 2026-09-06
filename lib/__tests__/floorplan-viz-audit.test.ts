@@ -28,6 +28,7 @@ const clean: FloorplanVizAudit = {
   planKitchenSinkBasins: 2,
   openingsNotInPlan: 0,
   builtInsNotInPlan: 0,
+  entranceFurnitureCount: 0,
   seatingGroupCount: 1,
   planSeatingGroupCount: 1,
   hasBurnedText: false,
@@ -235,6 +236,13 @@ describe("what the still added that the sheet never drew", () => {
     ]);
     // A drafting error, not a frame the client cannot use.
     expect(verdict.hardFailures).toEqual([]);
+  });
+
+  it("counts what is standing on the entrance floor", () => {
+    // A table opposite the door and a shelving unit beside it, on a strip the
+    // sheet draws empty.
+    const verdict = gradeFloorplanStill({ ...clean, entranceFurnitureCount: 2 }, layout);
+    expect(verdict.failures).toEqual(["2 piece(s) of furniture in the entrance"]);
   });
 
   it("counts a fitted unit standing where the sheet draws empty floor", () => {

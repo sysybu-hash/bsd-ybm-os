@@ -3,6 +3,7 @@ import sharp from "sharp";
 import {
   entranceTrianglePoints,
   findMarkerCentre,
+  inferFacing,
   isBackgroundPatch,
   markApartmentEntrance,
   type EntrancePoint,
@@ -175,5 +176,93 @@ describe("finding the page in front of the door", () => {
     const centre = findMarkerCentre(data, width, height, { x: 100, y: 100 }, "up", 20);
     expect(Math.abs(centre.x - 100)).toBeLessThan(30);
     expect(Math.abs(centre.y - 100)).toBeLessThan(30);
+  });
+});
+
+describe("working out which way is out", () => {
+  /** A flat filling the left of the frame, empty page from `edge` rightwards. */
+  function flat(width = 400, height = 400, edge = 240) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = x < edge ? 120 + ((x * 7 + y * 5) % 40) : 252;
+      }
+    }
+    return { data, width, height, edge };
+  }
+
+  it("reads the door on a right-hand wall as walking left", () => {
+    const { data, width, height, edge } = flat();
+    expect(inferFacing(data, width, height, { x: edge - 6, y: 200 }, 20)).toBe("left");
+  });
+
+  it("reads the door on a bottom wall as walking up", () => {
+    const width = 400;
+    const height = 400;
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = y < 300 ? 130 : 252;
+      }
+    }
+    expect(inferFacing(data, width, height, { x: 200, y: 294 }, 20)).toBe("up");
+  });
+
+  it("takes the nearest edge when a corner offers two", () => {
+    const width = 400;
+    const height = 400;
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = x < 300 && y < 260 ? 130 : 252;
+      }
+    }
+    // Ten pixels from the bottom edge, ninety from the right one.
+    expect(inferFacing(data, width, height, { x: 210, y: 250 }, 20)).toBe("up");
+  });
+
+  it("says nothing when the frame fills its canvas", () => {
+    const width = 200;
+    const height = 200;
+    const data = new Uint8Array(width * height).fill(120);
+    expect(inferFacing(data, width, height, { x: 100, y: 100 }, 20)).toBeNull();
+  });
+
+  it("overrides a facing the model got wrong", async () => {
+    const source = await sharp({
+      create: { width: 600, height: 600, channels: 3, background: "#ffffff" },
+    })
+      .composite([
+        {
+          input: {
+            create: { width: 300, height: 600, channels: 3, background: "#8a7a5a" },
+          },
+          left: 0,
+          top: 0,
+        },
+      ])
+      .jpeg()
+      .toBuffer();
+    const still = { base64: source.toString("base64"), mimeType: "image/jpeg" };
+    // The flat is on the left, so out is right and the walk in is "left".
+    // The model is told the opposite; the picture should win.
+    const out = await markApartmentEntrance(still, { x: 0.48, y: 0.5, facing: "right" });
+    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let sumX = 0;
+    let dark = 0;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          dark += 1;
+          sumX += x;
+        }
+      }
+    }
+    expect(dark).toBeGreaterThan(0);
+    // Placed out on the page to the right, not back inside the flat.
+    expect(sumX / dark).toBeGreaterThan(300);
   });
 });

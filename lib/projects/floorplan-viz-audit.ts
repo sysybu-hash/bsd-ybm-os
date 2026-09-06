@@ -38,6 +38,8 @@ export type FloorplanVizAudit = {
   openingsNotInPlan: number;
   /** Large fitted pieces standing where the sheet draws empty floor. */
   builtInsNotInPlan: number;
+  /** Anything standing on the floor of the entrance or a circulation strip. */
+  entranceFurnitureCount: number;
   /** Sofa/armchair groups in the still, and the number the plan draws. */
   seatingGroupCount: number;
   planSeatingGroupCount: number;
@@ -77,6 +79,7 @@ Return JSON only:
   "planKitchenSinkBasins": 0,
   "openingsNotInPlan": 0,
   "builtInsNotInPlan": 0,
+  "entranceFurnitureCount": 0,
   "seatingGroupCount": 0,
   "planSeatingGroupCount": 0,
   "hasBurnedText": false,
@@ -103,6 +106,7 @@ Definitions, applied strictly:
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
 - openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
+- entranceFurnitureCount: pieces standing ON THE FLOOR of the entrance hall or a circulation strip that the plan draws as empty — a table, a desk, a chair, a console, a sideboard, a shelving unit, a bookcase, a sofa, a plant stand. Find the front door first, then look at the space just inside it. A mirror or coat hooks mounted on the wall are NOT counted. 0 if that floor is clear.
 - builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a wardrobe, a media unit, a shelving wall. The entrance and the circulation strips are where these keep appearing. Count each one. NOT counted: a slim hall console, a mirror, a coat hook, or small props sitting on furniture that is drawn — those are allowed staging.
 - seatingGroupCount: LOUNGE groups in the STILL — a sofa, or a pair of armchairs, gathered around a rug or a coffee table. One such gathering is one group, and an entrance hall with a sofa and a rug in it counts as a group of its own. NOT a seating group: a dining table with chairs around it, a desk with a chair, stools at a kitchen island, or chairs on a terrace.
 - planSeatingGroupCount: the same count on the PLAN, from the drawn sofa and armchair symbols. Usually 1, in the living room.
@@ -159,6 +163,7 @@ export async function auditFloorplanStill(
         planKitchenSinkBasins: asInt(raw.planKitchenSinkBasins, 8),
         openingsNotInPlan: asInt(raw.openingsNotInPlan, 30),
         builtInsNotInPlan: asInt(raw.builtInsNotInPlan, 30),
+        entranceFurnitureCount: asInt(raw.entranceFurnitureCount, 20),
         seatingGroupCount: asInt(raw.seatingGroupCount, 10),
         planSeatingGroupCount: asInt(raw.planSeatingGroupCount, 10),
         hasBurnedText: raw.hasBurnedText === true,
@@ -275,6 +280,9 @@ export function gradeFloorplanStill(
   }
   if (audit.builtInsNotInPlan > 0) {
     failures.push(`${audit.builtInsNotInPlan} fitted unit(s) the plan does not draw`);
+  }
+  if (audit.entranceFurnitureCount > 0) {
+    failures.push(`${audit.entranceFurnitureCount} piece(s) of furniture in the entrance`);
   }
   if (audit.planSeatingGroupCount > 0 && audit.seatingGroupCount > audit.planSeatingGroupCount) {
     failures.push(
