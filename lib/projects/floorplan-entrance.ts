@@ -284,7 +284,9 @@ export function closeUpToDoor(
   door: { x: number; y: number },
   size: number,
 ): { x: number; y: number } {
-  const radius = Math.max(2, Math.round(size * 0.45));
+  // A tighter probe than the search uses: this walk is trying to get as near
+  // the outline as it can, and a wide patch stops it short of the wall.
+  const radius = Math.max(2, Math.round(size * 0.22));
   const dx = door.x - from.x;
   const dy = door.y - from.y;
   const length = Math.hypot(dx, dy);
@@ -300,9 +302,9 @@ export function closeUpToDoor(
     if (!isBackgroundPatch(data, width, height, x, y, radius)) break;
     closest = { x, y };
   }
-  // Back off so the whole triangle stays on the page rather than biting into
-  // the outline.
-  const standOff = size * 0.8;
+  // Back off just enough that the whole triangle stays on the page rather than
+  // biting into the outline.
+  const standOff = size * 0.6;
   return {
     x: Math.round(closest.x - ux * standOff),
     y: Math.round(closest.y - uy * standOff),
