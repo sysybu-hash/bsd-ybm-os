@@ -220,7 +220,10 @@ export function findMarkerCentre(
   const [dx, dy] = OUTWARD[facing];
   const step = Math.max(2, Math.round(size * 0.3));
   const radius = Math.max(2, Math.round(size * 0.45));
-  const clearance = Math.round(size * 0.5);
+  // The whole triangle sits on the page with a little air behind it, the way
+  // the sheet draws it. Half a width out left it straddling the wall corner,
+  // where it read as a notch in the outline rather than a marker.
+  const clearance = Math.round(size * 1.1);
   // Far enough to cross a wall band and the floor behind it before giving up.
   // Five was too short once the page had to prove it kept going.
   const limit = Math.round(size * 12);
@@ -303,7 +306,7 @@ export async function markApartmentEntrance(
 
     // Scaled off the frame so it reads the same on a 768px still and a 1400px
     // one, and small enough to sit in a doorway rather than cover it.
-    const size = Math.max(12, Math.round(Math.min(width, height) * 0.026));
+    const size = Math.max(14, Math.round(Math.min(width, height) * 0.032));
     const { data, info } = await sharp(input)
       .greyscale()
       .raw()

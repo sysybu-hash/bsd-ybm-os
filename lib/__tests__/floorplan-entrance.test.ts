@@ -291,3 +291,39 @@ describe("telling a pale wall from the page behind it", () => {
     expect(centre.x).toBeGreaterThan(300);
   });
 });
+
+describe("the marker sits clear of the outline", () => {
+  it("puts the whole triangle on the page, not straddling the wall", async () => {
+    // A flat filling the left half, page to the right of x=300.
+    const source = await sharp({
+      create: { width: 600, height: 600, channels: 3, background: "#ffffff" },
+    })
+      .composite([
+        {
+          input: {
+            create: { width: 300, height: 600, channels: 3, background: "#8a7a5a" },
+          },
+          left: 0,
+          top: 0,
+        },
+      ])
+      .jpeg()
+      .toBuffer();
+    const out = await markApartmentEntrance(
+      { base64: source.toString("base64"), mimeType: "image/jpeg" },
+      { x: 0.48, y: 0.5, facing: "left" },
+    );
+    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let leftmostDark = info.width;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90 && x < leftmostDark) leftmostDark = x;
+      }
+    }
+    // Every dark pixel of the marker is past the wall, out on the page.
+    expect(leftmostDark).toBeGreaterThan(300);
+  });
+});
