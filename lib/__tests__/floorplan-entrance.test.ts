@@ -266,3 +266,28 @@ describe("working out which way is out", () => {
     expect(sumX / dark).toBeGreaterThan(300);
   });
 });
+
+describe("telling a pale wall from the page behind it", () => {
+  /**
+   * Floor, then a pale cream wall band, then floor again, then the page. The
+   * wall is light enough to pass the patch test on its own.
+   */
+  function paleWall(width = 400, height = 200) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let v = 140;
+        if (x >= 200 && x < 216) v = 245; // the wall band
+        else if (x >= 300) v = 252; // the page
+        data[y * width + x] = v;
+      }
+    }
+    return { data, width, height };
+  }
+
+  it("walks past the wall band and out onto the page", () => {
+    const { data, width, height } = paleWall();
+    const centre = findMarkerCentre(data, width, height, { x: 190, y: 100 }, "left", 12);
+    expect(centre.x).toBeGreaterThan(300);
+  });
+});

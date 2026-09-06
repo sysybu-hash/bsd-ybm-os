@@ -221,13 +221,22 @@ export function findMarkerCentre(
   const step = Math.max(2, Math.round(size * 0.3));
   const radius = Math.max(2, Math.round(size * 0.45));
   const clearance = Math.round(size * 0.5);
-  const limit = Math.round(size * 5);
+  // Far enough to cross a wall band and the floor behind it before giving up.
+  // Five was too short once the page had to prove it kept going.
+  const limit = Math.round(size * 12);
 
   for (let travelled = 0; travelled <= limit; travelled += step) {
     const x = Math.round(door.x + dx * travelled);
     const y = Math.round(door.y + dy * travelled);
     if (x < 0 || y < 0 || x >= width || y >= height) break;
     if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
+    // A pale cream wall passes the patch test on its own, and the marker was
+    // stopping on the wall instead of reaching the page behind it. Real page
+    // keeps going: check it still reads as empty a couple of marker widths
+    // further out before believing it.
+    if (!isBackgroundPatch(data, width, height, x + dx * size * 2, y + dy * size * 2, radius)) {
+      continue;
+    }
     return {
       x: Math.round(x + dx * clearance),
       y: Math.round(y + dy * clearance),
