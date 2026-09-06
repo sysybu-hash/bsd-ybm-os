@@ -23,6 +23,9 @@ const clean: FloorplanVizAudit = {
   planBedroomCount: 3,
   planIslandStoolCount: 4,
   hasDoubleBed: false,
+  screenCount: 0,
+  kitchenSinkBasins: 2,
+  planKitchenSinkBasins: 2,
   hasBurnedText: false,
   hasCadMarks: false,
   emptyUnfurnishedRooms: 0,
@@ -121,5 +124,28 @@ describe("floorplan still audit", () => {
   it("rejects a rectangle drawn for a stepped plan even when nothing was added", () => {
     const verdict = gradeFloorplanStill({ ...clean, footprintMatchesPlan: false }, layout);
     expect(verdict.failures).toEqual(["footprint does not match the plan outline"]);
+  });
+});
+
+describe("modesty and fixtures the counts were missing", () => {
+  it("fails a haredi still that has any screen at all", () => {
+    // דירה 16 shipped with a dark panel on a wall in every bedroom, and passed:
+    // the modesty prompt forbids screens but nothing was counting them.
+    const verdict = gradeFloorplanStill({ ...clean, screenCount: 4 }, layout, { haredi: true });
+    expect(verdict.failures).toEqual(["4 screen(s) in a haredi still"]);
+  });
+
+  it("leaves screens alone for a general-audience still", () => {
+    expect(gradeFloorplanStill({ ...clean, screenCount: 2 }, layout).failures).toEqual([]);
+  });
+
+  it("fails a single-bowl kitchen where the plan draws a double", () => {
+    const verdict = gradeFloorplanStill({ ...clean, kitchenSinkBasins: 1 }, layout);
+    expect(verdict.failures[0]).toMatch(/kitchen sink basins 1, plan draws 2/);
+  });
+
+  it("says nothing about sinks when the auditor could not read them off the plan", () => {
+    const blind = { ...clean, kitchenSinkBasins: 1, planKitchenSinkBasins: 0 };
+    expect(gradeFloorplanStill(blind, layout).failures).toEqual([]);
   });
 });

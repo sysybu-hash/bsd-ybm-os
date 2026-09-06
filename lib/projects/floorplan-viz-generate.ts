@@ -575,6 +575,45 @@ async function attachmentsForJob(
 }
 
 
+/**
+ * Turns an audit failure into an instruction.
+ *
+ * Echoing "1 screen(s) in a haredi still" back at the model told it something
+ * was wrong and nothing about what to do instead, and it drew a screen again on
+ * all three attempts. Naming the fix — take the panel off the wall, leave the
+ * wall bare — is what the retry actually needs.
+ */
+function remedyFor(failure: string): string {
+  if (/screen/i.test(failure)) {
+    return "Remove every screen. Take the dark panel off the wall and leave that wall bare, or hang a framed landscape. No TV, monitor, laptop or tablet anywhere, and nothing dark and rectangular standing on a media unit.";
+  }
+  if (/kitchen sink basins/i.test(failure)) {
+    return "Redraw the kitchen sink with exactly the basin count the plan draws — a double-bowl sink is two basins side by side in one counter cut-out, not one large basin.";
+  }
+  if (/island stools/i.test(failure)) {
+    return "Put exactly the drawn number of stools at the island, evenly spaced along its long side.";
+  }
+  if (/double bed/i.test(failure)) {
+    return "Replace every wide mattress with a single twin along the long wall. A drawn double rectangle is a sleeping zone, not a furniture spec.";
+  }
+  if (/invented outside|footprint/i.test(failure)) {
+    return "Trace the apartment's outer boundary from the plan before furnishing anything, and stay inside it. Do not extend a wing, room or bathroom into space the plan leaves outside the flat.";
+  }
+  if (/beds \d|bedrooms \d/i.test(failure)) {
+    return "Count the beds you have drawn before finishing and match the plan exactly — no extra bed to fill a room, no room left without the bed the plan draws in it.";
+  }
+  if (/unfurnished/i.test(failure)) {
+    return "Furnish every enclosed room. An empty floor with bare walls is not acceptable unless the plan draws the room empty.";
+  }
+  if (/CAD annotation/i.test(failure)) {
+    return "Drop every 2D drawing mark: no black entrance triangle, no north arrow, no dimension ticks, no flat hatch on a floor.";
+  }
+  if (/letters or digits/i.test(failure)) {
+    return "Remove all text. No room names, no dimensions, no labels anywhere in the frame.";
+  }
+  return "Correct this against the plan.";
+}
+
 /** How many times a failed audit is worth re-rolling before shipping the least bad frame. */
 const MAX_AUDITED_ATTEMPTS = 3;
 
@@ -623,11 +662,12 @@ async function generateAuditedImage(
     const prompt = lastFailures.length
       ? `${job.prompt}
 
-PREVIOUS ATTEMPT REJECTED — an audit compared your last frame against the plan and found:
+PREVIOUS ATTEMPT REJECTED — an audit compared your last frame against the plan.
+Each line is what was wrong, then what to do about it:
 ${lastFailures
-          .map((f) => `- ${f}`)
+          .map((f) => `- ${f}\n  -> ${remedyFor(f)}`)
           .join("\n")}
-Fix exactly these. Trace the apartment's outer boundary from the plan first and stay inside it: do not extend a wing, a room, or a bathroom into space the plan leaves outside the flat. Keep everything the audit did not complain about.`
+Fix exactly these and keep everything the audit did not complain about.`
       : job.prompt;
     const img = await generateOneImage(prompt, attachments, { aspectRatio });
     if (!auditable) return img;

@@ -33,7 +33,8 @@ export const HAREDI_MODESTY_PROMPT = `
 MODESTY (global — every view, every room):
 - No people, no mannequins, no human silhouettes.
 - NO SCREENS anywhere: no televisions, no computer monitors, no laptops, no tablets, no phones, no glowing displays, no soundbar.
-- From bird's-eye a screen looks like a thin black bar on a desk or cabinet — do not draw that. A desk holds unmarked books, a lamp, or a clock, never a monitor.
+- From bird's-eye a screen reads as a dark rectangular panel. Two places it keeps appearing, both forbidden: a thin black bar lying on a desk or cabinet, and a dark panel mounted flat on a bedroom or living-room wall. A bedroom wall carries a picture, a mirror, a shelf or nothing — never a dark panel. A desk holds unmarked books, a lamp, or a clock, never a monitor.
+- If a wall looks bare, leave it bare. A blank wall is correct; a screen to fill it is not.
 - Wall art: landscape or geometric only. No figurative paintings, sculptures, or photographs of people.
 - Mezuzah cases on doorposts when a doorway is visible — small physical cases only, no letters.
 - The image must contain no readable Hebrew or Latin text (including book spines, covers, mezuzah letters, and wall verses).

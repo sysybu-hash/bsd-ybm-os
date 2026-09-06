@@ -30,6 +30,10 @@ export type FloorplanVizAudit = {
   planBedroomCount: number;
   planIslandStoolCount: number;
   hasDoubleBed: boolean;
+  /** Any TV, monitor, laptop or tablet on show — forbidden outright for a haredi client. */
+  screenCount: number;
+  kitchenSinkBasins: number;
+  planKitchenSinkBasins: number;
   hasBurnedText: boolean;
   hasCadMarks: boolean;
   emptyUnfurnishedRooms: number;
@@ -61,6 +65,9 @@ Return JSON only:
   "planBedroomCount": 0,
   "planIslandStoolCount": 0,
   "hasDoubleBed": false,
+  "screenCount": 0,
+  "kitchenSinkBasins": 0,
+  "planKitchenSinkBasins": 0,
   "hasBurnedText": false,
   "hasCadMarks": false,
   "emptyUnfurnishedRooms": 0,
@@ -75,6 +82,9 @@ Definitions, applied strictly:
 - diningTableCount: dining tables with chairs around them. A kitchen island with stools is NOT a dining table.
 - islandStoolCount: stools tucked at the kitchen island. 0 if there is no island.
 - hasDoubleBed: true if ANY bed is a double/queen/king — one wide mattress meant for two, or two mattresses pushed together under one headboard.
+- screenCount: how many screens appear anywhere in the still — a wall-mounted TV, a monitor, a laptop, a tablet. Count a dark rectangular panel mounted on a wall or standing on a media unit as a screen. 0 if there are none.
+- kitchenSinkBasins: basins in the kitchen sink run of the STILL. A double-bowl sink is 2 basins in one fixture. Count basins, not fixtures.
+- planKitchenSinkBasins: the same count read off the PLAN — the drawn sink basins on the kitchen counter. A double-bowl is 2.
 - hasBurnedText: true if ANY letters or digits are rendered inside the image (room names, dimensions, labels, a title block).
 - hasCadMarks: true if any 2D drawing annotation survived into the render — a solid black entrance triangle, a north arrow, dimension ticks, or hatch drawn flat on a floor.
 - emptyUnfurnishedRooms: enclosed rooms with floor and walls but no furniture at all.
@@ -129,6 +139,9 @@ export async function auditFloorplanStill(
         planBedroomCount: asInt(raw.planBedroomCount),
         planIslandStoolCount: asInt(raw.planIslandStoolCount, 20),
         hasDoubleBed: raw.hasDoubleBed === true,
+        screenCount: asInt(raw.screenCount, 20),
+        kitchenSinkBasins: asInt(raw.kitchenSinkBasins, 8),
+        planKitchenSinkBasins: asInt(raw.planKitchenSinkBasins, 8),
         hasBurnedText: raw.hasBurnedText === true,
         hasCadMarks: raw.hasCadMarks === true,
         emptyUnfurnishedRooms: asInt(raw.emptyUnfurnishedRooms, 30),
@@ -185,6 +198,17 @@ export function gradeFloorplanStill(
   if (audit.hasBurnedText) failures.push("letters or digits rendered into the image");
   if (audit.hasCadMarks) failures.push("2D CAD annotation copied into the render");
   if (options?.haredi && audit.hasDoubleBed) failures.push("a double bed in a haredi still");
+  // Screens were passing unnoticed: the modesty prompt forbids them outright,
+  // but nothing counted them, and a still with a TV in every bedroom went out
+  // having passed every other check.
+  if (options?.haredi && audit.screenCount > 0) {
+    failures.push(`${audit.screenCount} screen(s) in a haredi still`);
+  }
+  if (audit.planKitchenSinkBasins > 0 && audit.kitchenSinkBasins !== audit.planKitchenSinkBasins) {
+    failures.push(
+      `kitchen sink basins ${audit.kitchenSinkBasins}, plan draws ${audit.planKitchenSinkBasins}`,
+    );
+  }
   if (expectedBeds > 0 && audit.bedTotal !== expectedBeds) {
     failures.push(`beds ${audit.bedTotal}, plan has ${expectedBeds}`);
   }
