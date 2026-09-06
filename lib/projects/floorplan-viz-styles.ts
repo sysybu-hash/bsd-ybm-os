@@ -37,6 +37,7 @@ MODESTY (global — every view, every room):
 - If a wall looks bare, leave it bare. A blank wall is correct; a screen to fill it is not.
 - Do NOT draw the furniture a screen sits on. No media console, no TV unit, no low cabinet placed facing the sofa, no floating shelf under a living-room wall. The wall the sofa faces holds a framed landscape or nothing at all. Every time a console is drawn there, a screen ends up on it.
 - A desk holds exactly this: closed books, a lamp, a pen cup, a notebook. Nothing else goes on a desk. There is no laptop open or closed, no tablet, no keyboard, no dark slab of any size resting on a desk, a shelf, a console, a counter or a bedside table anywhere in this apartment.
+- Wall art hangs ON a wall. Never lay a picture, canvas or framed panel flat on the floor — seen from above the only rectangle lying on a floor is an area rug.
 - Wall art: landscape or geometric only. No figurative paintings, sculptures, or photographs of people.
 - Mezuzah cases on doorposts when a doorway is visible — small physical cases only, no letters.
 - The image must contain no readable Hebrew or Latin text (including book spines, covers, mezuzah letters, and wall verses).

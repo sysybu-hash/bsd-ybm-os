@@ -481,6 +481,7 @@ export function buildStillEditPrompt(
   return `Revise ONE photoreal still of an Israeli apartment. Do not start from scratch.
 
 First attached image: the CURRENT still. Keep the same camera, framing, walls, and time of day unless the user explicitly asks to change the view.
+Keep its light exactly: the same golden-hour warmth, the same lit lamps with their amber pools, the same warm white balance. A revision that comes back cooler, greyer or flatter than the image you were given is a failed revision, however well it satisfies the request.
 Next attached image(s): the original sales plan (authoritative). Walls, doors, fixtures, room count, and openings come from the plan, not from memory.
 
 ${GEOMETRY_LOCK}
@@ -594,7 +595,7 @@ async function attachmentsForJob(
  */
 function remedyFor(failure: string): string {
   if (/screen/i.test(failure)) {
-    return "Remove every screen AND whatever it rests on. Take the dark panel off the wall, delete the media unit facing the sofa, and clear every desk, shelf and bedside table of anything dark and rectangular — a closed laptop counts. A desk keeps only closed books, a lamp and a pen cup; the wall stays bare or takes a framed landscape.";
+    return "Remove every screen AND whatever it rests on. Take the dark panel off the wall, delete the media unit facing the sofa, and clear every desk, shelf and bedside table of anything dark and rectangular — a closed laptop counts. A desk keeps only closed books, a lamp and a pen cup. Put NOTHING in the screen's place: that wall stays bare and the floor in front of it stays clear. Never lay a picture, a canvas or a panel flat on the floor — the only rectangle on a floor is an area rug.";
   }
   if (/kitchen sink basins/i.test(failure)) {
     return "Redraw the kitchen sink with exactly the basin count the plan draws — a double-bowl sink is two basins side by side in one counter cut-out, not one large basin.";
@@ -785,7 +786,9 @@ async function repairRemovableFailures(
 
 REPAIR PASS — the FIRST attached image is a frame of this apartment that is
 correct in every other respect. Reproduce it exactly: same walls, same outline,
-same rooms, same furniture, same materials, same lighting, same camera.
+same rooms, same furniture, same materials, same camera. Keep its light exactly:
+the same golden-hour warmth, the same lit lamps and amber pools, the same warm
+white balance — a cooler, greyer or flatter frame is a failed repair.
 Change only this:
 ${screenFailures.map((f) => `- ${f}\n  -> ${remedyFor(f)}`).join("\n")}
 Nothing else in the picture may move, appear or disappear.`;
