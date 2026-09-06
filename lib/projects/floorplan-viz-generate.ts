@@ -23,6 +23,7 @@ import {
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
 import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
 import { buildVectorWallJpeg } from "@/lib/projects/floorplan-vector";
+import { stampFieldsFromLayout, stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import {
   buildInkWallJpeg,
   buildRoomMassingJpeg,
@@ -701,12 +702,15 @@ export async function generateFloorplanVisuals(
         plan: { base64, mimeType },
         haredi: options?.styleKit?.audience === "haredi",
       });
+      // Stamped after the audit, never before: the auditor fails a still that
+      // has letters in it, and this caption is letters on purpose.
+      const stamped = await stampFloorplanStill(img, stampFieldsFromLayout(layout));
       return {
         viewId: job.viewId,
         labelHe: job.labelHe,
         roomName: job.roomName,
-        mimeType: img.mimeType,
-        base64: img.base64,
+        mimeType: stamped.mimeType,
+        base64: stamped.base64,
       } satisfies FloorplanVizImage;
     } catch (err: unknown) {
       log.warn("view generation skipped", {
