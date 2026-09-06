@@ -698,7 +698,12 @@ async function generateAuditedImage(
   },
 ): Promise<{ mimeType: string; base64: string }> {
   const auditable = job.viewId === "overview" || job.viewId === "isometric";
-  let best: { img: { mimeType: string; base64: string }; score: number; failures: string[] } | null = null;
+  let best: {
+    img: { mimeType: string; base64: string };
+    score: number;
+    failures: string[];
+    hardFailures: string[];
+  } | null = null;
   let lastFailures: string[] = [];
 
   for (let attempt = 1; attempt <= (auditable ? MAX_AUDITED_ATTEMPTS : 1); attempt++) {
@@ -729,7 +734,7 @@ Fix exactly these and keep everything the audit did not complain about.`
     }
     log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
-    if (!best || score < best.score) best = { img, score, failures };
+    if (!best || score < best.score) best = { img, score, failures, hardFailures };
     if (score <= GOOD_ENOUGH_SCORE) {
       log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
       return img;
@@ -737,12 +742,82 @@ Fix exactly these and keep everything the audit did not complain about.`
   }
 
   if (best) {
-    // The score weights a modesty or text failure far above any count mismatch,
-    // so this only ships one when every attempt had one.
+    const repaired = await repairRemovableFailures(best, job, attachments, aspectRatio, ctx);
+    if (repaired) return repaired;
+    // The score weights a modesty or outline failure far above any count
+    // mismatch, so this only ships one when every attempt had one.
     log.warn("shipping least-bad still", { view: job.labelHe, failures: best.failures });
     return best.img;
   }
   throw new Error("יצירת ההדמיה נכשלה");
+}
+
+/**
+ * One targeted removal pass on the best frame, instead of another blind re-roll.
+ *
+ * A screen is the one failure that does not need the frame redrawn. דירה 14
+ * finally came back with the plan's outline, no invented rooms and every count
+ * but one matching — and a TV on a console and two laptops on desks. Re-rolling
+ * that frame throws away an outline it took five attempts to get; asking for
+ * the panels to be taken out of this exact picture keeps it.
+ *
+ * Deliberately narrow: only when every disqualifying failure is a screen, and
+ * only kept when the audit says the result is actually better.
+ */
+async function repairRemovableFailures(
+  best: {
+    img: { mimeType: string; base64: string };
+    score: number;
+    failures: string[];
+    hardFailures: string[];
+  },
+  job: VizJob,
+  attachments: Array<{ mimeType: string; base64: string }>,
+  aspectRatio: string | undefined,
+  ctx: { layout: FloorplanLayout; plan: { base64: string; mimeType: string }; haredi: boolean },
+): Promise<{ mimeType: string; base64: string } | null> {
+  const screenFailures = best.hardFailures.filter((f) => /screen/i.test(f));
+  if (screenFailures.length === 0 || screenFailures.length !== best.hardFailures.length) {
+    return null;
+  }
+
+  const prompt = `${job.prompt}
+
+REPAIR PASS — the FIRST attached image is a frame of this apartment that is
+correct in every other respect. Reproduce it exactly: same walls, same outline,
+same rooms, same furniture, same materials, same lighting, same camera.
+Change only this:
+${screenFailures.map((f) => `- ${f}\n  -> ${remedyFor(f)}`).join("\n")}
+Nothing else in the picture may move, appear or disappear.`;
+
+  try {
+    const img = await generateOneImage(prompt, [best.img, ...attachments], { aspectRatio });
+    const audit = await auditFloorplanStill(img, ctx.plan);
+    if (!audit) return null;
+    const verdict = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+    if (verdict.score >= best.score) {
+      log.warn("repair pass did not improve the frame", {
+        view: job.labelHe,
+        before: best.score,
+        after: verdict.score,
+        failures: verdict.failures,
+      });
+      return null;
+    }
+    log.info("repair pass improved the frame", {
+      view: job.labelHe,
+      before: best.score,
+      after: verdict.score,
+      failures: verdict.failures,
+    });
+    return img;
+  } catch (err: unknown) {
+    log.warn("repair pass failed", {
+      view: job.labelHe,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
 }
 
 export async function generateFloorplanVisuals(
