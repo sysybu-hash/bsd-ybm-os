@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 /** Bump when extract prompts or merge rules change — invalidates layout replay. */
 export const FLOORPLAN_EXTRACT_LOCK_VERSION = "extract-pixel-v4";
 /** Bump when viz prompts or style locks change — invalidates still replay. */
-export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v37";
+export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v38";
 
 const GEMINI_IMAGE_ASPECTS: ReadonlyArray<readonly [number, number]> = [
   [1, 1],
@@ -45,6 +45,7 @@ PIXEL LOCK (extract — non-negotiable):
 
 export const ORIENTATION_LOCK = `
 ORIENTATION LOCK — a mirrored or rotated floor plate is a failed output:
+- Fix the orientation BEFORE you draw anything, from one landmark: find the entrance door on the sheet, say which edge of the flat it sits on — left, right, top or bottom — and put it on that same edge of your frame. Then lay every other space out around it in the plan's order. "Do not mirror" alone has not held; naming the side the door is on does.
 - Top of the photograph = top of attachment 1. Do not rotate 90° or 180°. Do not mirror left/right.
 - The large open living/dining stays on the SAME side of the frame as on the sheet.
 - Kitchen stays where the cooktop is drawn. Bedrooms stay where the bed rectangles are drawn. Office stays where the desks are drawn.

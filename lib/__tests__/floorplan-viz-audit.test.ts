@@ -30,6 +30,7 @@ const clean: FloorplanVizAudit = {
   builtInsNotInPlan: 0,
   entranceFurnitureCount: 0,
   wetFixturesInDryRooms: 0,
+  apartmentStairsNotInPlan: 0,
   seatingGroupCount: 1,
   planSeatingGroupCount: 1,
   hasBurnedText: false,
@@ -37,6 +38,7 @@ const clean: FloorplanVizAudit = {
   emptyUnfurnishedRooms: 0,
   roomsOutsidePlanOutline: 0,
   footprintMatchesPlan: true,
+  mirroredVsPlan: false,
   notes: "",
 };
 
@@ -142,6 +144,19 @@ describe("floorplan still audit", () => {
   it("rejects a rectangle drawn for a stepped plan even when nothing was added", () => {
     const verdict = gradeFloorplanStill({ ...clean, footprintMatchesPlan: false }, layout);
     expect(verdict.failures).toEqual(["footprint does not match the plan outline"]);
+  });
+
+  it("fails a mirrored still hard, though every count it has is right", () => {
+    // How a flipped דירה 14 shipped as "every count matched": a mirror keeps the
+    // bedrooms, beds, sinks and stools exactly right and moves them all to the
+    // wrong side, so no counting check can see it.
+    const verdict = gradeFloorplanStill({ ...clean, mirroredVsPlan: true }, layout);
+    expect(verdict.hardFailures).toEqual(["the still is the plan mirrored left-to-right"]);
+    expect(verdict.score).toBeGreaterThanOrEqual(100);
+  });
+
+  it("does not call a correctly oriented still mirrored", () => {
+    expect(gradeFloorplanStill(clean, layout).failures).toEqual([]);
   });
 });
 
@@ -291,5 +306,24 @@ describe("a wet fixture in a dry room", () => {
     );
     expect(miscounted.failures.length).toBeGreaterThan(wet.failures.length);
     expect(miscounted.score).toBeLessThan(wet.score);
+  });
+});
+
+describe("the building's stairwell pulled inside the flat", () => {
+  it("disqualifies the frame", () => {
+    const verdict = gradeFloorplanStill({ ...clean, apartmentStairsNotInPlan: 1 }, layout);
+    expect(verdict.failures).toEqual([
+      "1 stair flight(s) inside a flat the plan draws on one level",
+    ]);
+    expect(verdict.hardFailures).toHaveLength(1);
+  });
+
+  it("outranks a frame that merely miscounts", () => {
+    const stairs = gradeFloorplanStill({ ...clean, apartmentStairsNotInPlan: 1 }, layout);
+    const miscounted = gradeFloorplanStill(
+      { ...clean, bedTotal: 8, bedroomCount: 6, islandStoolCount: 0 },
+      layout,
+    );
+    expect(miscounted.score).toBeLessThan(stairs.score);
   });
 });

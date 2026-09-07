@@ -639,6 +639,9 @@ function remedyFor(failure: string): string {
   if (/double bed/i.test(failure)) {
     return "Replace every wide mattress with a single 90x200 twin along the long wall — a long narrow rectangle, more than twice as long as it is wide, with one pillow and its own headboard. A drawn double rectangle is a sleeping zone, not a furniture spec, and the master bedroom is not an exception.";
   }
+  if (/mirrored/i.test(failure)) {
+    return "The whole flat is flipped. Rebuild it the way round the plan draws it: find the entrance door on the sheet, note which side of the flat it is on, and put it on that same side of the frame — then lay the kitchen, the terrace and the bedrooms out around it in the plan's order, left to right. Do not flip, mirror or reflect the plan for any reason.";
+  }
   if (/invented outside|footprint/i.test(failure)) {
     return "Trace the apartment's outer boundary from the plan before furnishing anything, and stay inside it. Do not extend a wing, room or bathroom into space the plan leaves outside the flat, and do not turn a hatched terrace into a room — a paved area with its own area figure stays an open terrace with a railing.";
   }
@@ -647,6 +650,9 @@ function remedyFor(failure: string): string {
   }
   if (/opening\(s\) cut into/i.test(failure)) {
     return "Close every opening the plan does not draw. Walk every wall on the sheet, internal ones too: where the hatch runs unbroken the wall is solid, so render solid wall there — no window, no doorway, no pass-through, no matter how dark or closed-in the room looks.";
+  }
+  if (/stair flight/i.test(failure)) {
+    return "Take the staircase out of the apartment. The stairwell drawn beside the flat is the building's core, outside its walls — render that space as a plain grey block with no treads, no handrail and no landing, and put ordinary floor back where the stairs were standing inside the flat.";
   }
   if (/wet fixture/i.test(failure)) {
     return "Take every toilet, basin, bath and shower out of the rooms the plan draws dry. A bedroom has a bed, a wardrobe and a bedside table and nothing else — no pan, no basin, no tiled wet floor. Wet fixtures belong only in the rooms the sheet draws pans or basins in.";

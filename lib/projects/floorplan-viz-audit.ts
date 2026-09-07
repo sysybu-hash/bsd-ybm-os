@@ -42,6 +42,8 @@ export type FloorplanVizAudit = {
   entranceFurnitureCount: number;
   /** Toilets, basins, baths or showers standing in a room that is not a wet room. */
   wetFixturesInDryRooms: number;
+  /** Stair flights drawn inside the flat where the sheet puts them in the core. */
+  apartmentStairsNotInPlan: number;
   /** Sofa/armchair groups in the still, and the number the plan draws. */
   seatingGroupCount: number;
   planSeatingGroupCount: number;
@@ -51,6 +53,8 @@ export type FloorplanVizAudit = {
   /** Whole wings invented outside the drawn outline — counts alone never catch these. */
   roomsOutsidePlanOutline: number;
   footprintMatchesPlan: boolean;
+  /** The still is the plan flipped — a defect no amount of re-rolling notices. */
+  mirroredVsPlan: boolean;
   notes: string;
 };
 
@@ -83,6 +87,7 @@ Return JSON only:
   "builtInsNotInPlan": 0,
   "entranceFurnitureCount": 0,
   "wetFixturesInDryRooms": 0,
+  "apartmentStairsNotInPlan": 0,
   "seatingGroupCount": 0,
   "planSeatingGroupCount": 0,
   "hasBurnedText": false,
@@ -90,6 +95,7 @@ Return JSON only:
   "emptyUnfurnishedRooms": 0,
   "roomsOutsidePlanOutline": 0,
   "footprintMatchesPlan": false,
+  "mirroredVsPlan": false,
   "notes": "one short sentence naming the biggest difference from the plan"
 }
 
@@ -109,6 +115,7 @@ Definitions, applied strictly:
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
 - openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
+- apartmentStairsNotInPlan: flights of stairs with visible treads rendered INSIDE the apartment. The sheet draws the building's stairwell and lift beside the flat, outside its walls — that is the core of the building, not a room of this apartment, and it must not appear as steps on the apartment's floor. Count each flight. 0 if the plan itself draws stairs inside the unit, or if there are none.
 - wetFixturesInDryRooms: toilets, basins, bathtubs and showers standing in a room that is NOT a bathroom on the plan — a toilet beside a bed, a basin on a bedroom wall, a bath in a living room. Count each fixture. Judge the room by what the plan draws there, not by how the still tiled the floor: a bedroom whose floor came out tiled is still a bedroom. 0 if every wet fixture is inside a room the sheet draws pans or basins in.
 - entranceFurnitureCount: pieces standing ON THE FLOOR of the entrance hall or a circulation strip that the plan draws as empty — a table, a desk, a chair, a console, a sideboard, a shelving unit, a bookcase, a sofa, a plant stand. Find the front door first, then look at the space just inside it. A mirror or coat hooks mounted on the wall are NOT counted. 0 if that floor is clear.
 - builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a wardrobe, a media unit, a shelving wall. The entrance and the circulation strips are where these keep appearing. Count each one. NOT counted: a slim hall console, a mirror, a coat hook, or small props sitting on furniture that is drawn — those are allowed staging.
@@ -118,6 +125,7 @@ Definitions, applied strictly:
 Then compare the two OUTLINES, which is the check that matters most:
 - Trace the apartment's outer boundary on the plan. Note every step, notch and protrusion, and note where the boundary cuts IN so that an area is outside the flat.
 - roomsOutsidePlanOutline: how many enclosed rooms in the STILL sit in space the plan leaves OUTSIDE the apartment. A whole wing of rooms added along one side is the failure this is for. Count each invented room. 0 if the still stays inside the drawn boundary.
+- mirroredVsPlan: true if the still is the plan flipped left-to-right (or right-to-left). Check a feature you can place with certainty — which side the entrance door is on, which side the kitchen is on — and compare it to the plan. A mirrored still has all the right rooms in all the wrong places, so it survives every count-based check; say so here.
 - footprintMatchesPlan: true only if the still's silhouette is the plan's silhouette — same steps, same notches, same side that the boundary cuts into. A still that fills out a plain rectangle where the plan is stepped is false. A still that grows an extra wing is false.
 - Judge the outline by shape alone. Rotation of the whole frame is not what this field is about, and furnishing differences are not either.
 `.trim();
@@ -169,6 +177,7 @@ export async function auditFloorplanStill(
         builtInsNotInPlan: asInt(raw.builtInsNotInPlan, 30),
         entranceFurnitureCount: asInt(raw.entranceFurnitureCount, 20),
         wetFixturesInDryRooms: asInt(raw.wetFixturesInDryRooms, 20),
+        apartmentStairsNotInPlan: asInt(raw.apartmentStairsNotInPlan, 10),
         seatingGroupCount: asInt(raw.seatingGroupCount, 10),
         planSeatingGroupCount: asInt(raw.planSeatingGroupCount, 10),
         hasBurnedText: raw.hasBurnedText === true,
@@ -176,6 +185,7 @@ export async function auditFloorplanStill(
         emptyUnfurnishedRooms: asInt(raw.emptyUnfurnishedRooms, 30),
         roomsOutsidePlanOutline: asInt(raw.roomsOutsidePlanOutline, 30),
         footprintMatchesPlan: raw.footprintMatchesPlan === true,
+        mirroredVsPlan: raw.mirroredVsPlan === true,
         notes: typeof raw.notes === "string" ? raw.notes.slice(0, 300) : "",
       };
     } catch (err: unknown) {
@@ -252,6 +262,12 @@ export function gradeFloorplanStill(
   // A counted room standing in space the plan leaves outside the flat is the
   // specific, checkable version of the same complaint.
   if (!audit.footprintMatchesPlan) failures.push("footprint does not match the plan outline");
+  // Hard, unlike footprintMatchesPlan next to it. That one is a holistic judgement
+  // that comes back false on nearly every frame, so promoting it would flatten the
+  // ranking. A mirror is a specific, checkable fact, and it is the one defect that
+  // passes every count we have — right rooms, right beds, right sinks, all on the
+  // wrong side — which is exactly how a flipped plan shipped as "every count matched".
+  if (audit.mirroredVsPlan) hard("the still is the plan mirrored left-to-right");
   if (audit.hasBurnedText) hard("letters or digits rendered into the image");
   if (audit.hasCadMarks) failures.push("2D CAD annotation copied into the render");
   if (options?.haredi && audit.hasDoubleBed) hard("a double bed in a haredi still");
@@ -285,6 +301,9 @@ export function gradeFloorplanStill(
   }
   if (audit.builtInsNotInPlan > 0) {
     failures.push(`${audit.builtInsNotInPlan} fitted unit(s) the plan does not draw`);
+  }
+  if (audit.apartmentStairsNotInPlan > 0) {
+    hard(`${audit.apartmentStairsNotInPlan} stair flight(s) inside a flat the plan draws on one level`);
   }
   if (audit.wetFixturesInDryRooms > 0) {
     hard(`${audit.wetFixturesInDryRooms} wet fixture(s) in a room the plan draws dry`);
