@@ -9,6 +9,7 @@ import {
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
+import { findEntranceTriangle } from "@/lib/projects/floorplan-vector";
 
 const log = createLogger("floorplan-entrance");
 
@@ -77,6 +78,14 @@ function clamp01(value: unknown): number | null {
 export async function locateApartmentEntrance(
   plan: { base64: string; mimeType: string },
 ): Promise<EntrancePoint | null> {
+
+  // A CAD sheet draws the entrance mark as a filled triangle, so it can be
+  // found exactly. Reading it by eye is the fallback, for scans and for sheets
+  // where more than one mark fits the description.
+  if (plan.mimeType === "application/pdf") {
+    const fromVectors = await findEntranceTriangle(Buffer.from(plan.base64, "base64"));
+    if (fromVectors) return fromVectors;
+  }
 
   const readings: EntrancePoint[] = [];
   for (let attempt = 0; attempt < 3; attempt++) {

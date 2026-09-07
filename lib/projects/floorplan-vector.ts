@@ -307,6 +307,165 @@ export function wallBoundingBox(
   return { x: minX, y: minY, width, height };
 }
 
+/** A filled triangle on the sheet, in viewport coordinates. */
+export type SheetTriangle = { x: number; y: number; area: number };
+
+/**
+ * The sheet's own entrance mark, read off the vector paths.
+ *
+ * Asking a vision model where the triangle is gave a different answer every
+ * run — 0.10, 0.22 and 0.12 for one sheet, which on a five-hundred pixel flat
+ * is the difference between the outer wall and the wrong side of a notch. A
+ * CAD export draws that mark as a small filled triangle, so it can be found
+ * exactly instead of estimated.
+ *
+ * Three things separate it from the six thousand other triangles on a sheet:
+ * it is FILLED rather than stroked, it is a certain size relative to the flat,
+ * and it stands ALONE — hatch comes in dense repeating runs, an entrance mark
+ * does not. Where more than one survives all three, or none does, this returns
+ * null and the caller falls back to reading the sheet by eye.
+ */
+export async function findEntranceTriangle(
+  pdf: Buffer | Uint8Array,
+): Promise<{ x: number; y: number } | null> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return null;
+
+  try {
+    const geometry = await extractFloorplanVectorGeometry(pdf);
+    const box = geometry ? wallBoundingBox(geometry) : null;
+    if (!box) return null;
+
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const ops = await page.getOperatorList();
+    const OPS = pdfjs.OPS;
+
+    let ctm = viewport.transform.slice() as Matrix;
+    const stack: Matrix[] = [];
+    const triangles: SheetTriangle[] = [];
+
+    for (let i = 0; i < ops.fnArray.length; i++) {
+      const fn = ops.fnArray[i];
+      if (fn === OPS.save) {
+        stack.push(ctm.slice() as Matrix);
+        continue;
+      }
+      if (fn === OPS.restore) {
+        ctm = stack.pop() ?? (viewport.transform.slice() as Matrix);
+        continue;
+      }
+      if (fn === OPS.transform) {
+        ctm = multiply(ctm, ops.argsArray[i] as Matrix);
+        continue;
+      }
+      if (fn !== OPS.constructPath) continue;
+
+      const paint = ops.fnArray[i + 1];
+      const filled =
+        paint === OPS.fill ||
+        paint === OPS.eoFill ||
+        paint === OPS.fillStroke ||
+        paint === OPS.eoFillStroke ||
+        paint === OPS.closeFillStroke ||
+        paint === OPS.closeEOFillStroke;
+      if (!filled) continue;
+
+      const [cmds, coords] = ops.argsArray[i] as [number[], number[]];
+      let k = 0;
+      let subpath: Array<[number, number]> = [];
+      const finish = () => {
+        const triangle = asTriangle(subpath);
+        if (triangle) triangles.push(triangle);
+        subpath = [];
+      };
+      for (const cmd of cmds) {
+        if (cmd === OPS.moveTo) {
+          finish();
+          subpath.push(apply(ctm, coords[k] ?? 0, coords[k + 1] ?? 0));
+          k += 2;
+        } else if (cmd === OPS.lineTo) {
+          subpath.push(apply(ctm, coords[k] ?? 0, coords[k + 1] ?? 0));
+          k += 2;
+        } else if (cmd === OPS.curveTo) {
+          k += 6;
+          subpath.push([NaN, NaN]);
+        } else if (cmd === OPS.rectangle) {
+          k += 4;
+          finish();
+        }
+      }
+      finish();
+    }
+
+    return pickEntranceTriangle(triangles, box);
+  } catch (err: unknown) {
+    log.warn("entrance triangle lookup failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+/** A closed three-cornered subpath, as its centroid and area. */
+export function asTriangle(points: Array<[number, number]>): SheetTriangle | null {
+  const corners: Array<[number, number]> = [];
+  for (const [x, y] of points) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const last = corners[corners.length - 1];
+    if (last && Math.abs(last[0] - x) < 0.01 && Math.abs(last[1] - y) < 0.01) continue;
+    corners.push([x, y]);
+  }
+  // Four corners with the first repeated is a triangle shut explicitly.
+  if (corners.length === 4) {
+    const first = corners[0]!;
+    const last = corners[3]!;
+    if (Math.abs(first[0] - last[0]) < 0.5 && Math.abs(first[1] - last[1]) < 0.5) corners.pop();
+  }
+  if (corners.length !== 3) return null;
+  const [a, b, c] = corners as [[number, number], [number, number], [number, number]];
+  const area = Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) / 2;
+  if (!(area > 0)) return null;
+  return { x: (a[0] + b[0] + c[0]) / 3, y: (a[1] + b[1] + c[1]) / 3, area };
+}
+
+/** The one triangle that is the right size, on the flat, and standing alone. */
+export function pickEntranceTriangle(
+  triangles: SheetTriangle[],
+  box: { x: number; y: number; width: number; height: number },
+): { x: number; y: number } | null {
+  const span = Math.min(box.width, box.height);
+  const sized = triangles.filter(
+    (t) => t.area >= (span * 0.008) ** 2 && t.area <= (span * 0.05) ** 2,
+  );
+  const onPlan = sized.filter((t) => {
+    const relX = (t.x - box.x) / box.width;
+    const relY = (t.y - box.y) / box.height;
+    return relX > -0.08 && relX < 1.08 && relY > -0.08 && relY < 1.08;
+  });
+
+  // Hatch comes in dense runs of near-identical triangles; an entrance mark
+  // has nothing of its own size anywhere near it.
+  const alone = onPlan.filter((t) => {
+    const reach = Math.sqrt(t.area) * 6;
+    return !onPlan.some(
+      (other) =>
+        other !== t &&
+        Math.hypot(other.x - t.x, other.y - t.y) < reach &&
+        other.area > t.area * 0.4 &&
+        other.area < t.area * 2.5,
+    );
+  });
+  if (alone.length !== 1) return null;
+  const found = alone[0]!;
+  return { x: (found.x - box.x) / box.width, y: (found.y - box.y) / box.height };
+}
+
 export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry): string {
   const { pageWidth: w, pageHeight: h, walls } = geometry;
   const lines = walls
