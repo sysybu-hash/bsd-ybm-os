@@ -231,18 +231,41 @@ export function gradeFloorplanStill(
   options?: { haredi?: boolean },
 ): AuditVerdict {
   const rooms = layout.rooms ?? [];
-  // The plan is the reference, not the extraction. On דירה 14 the extractor read
-  // three island stools where the sheet draws four, and grading against it
-  // rejected a still that had actually got the stools right. Where the auditor
-  // could read a count straight off the plan, that count wins; the extraction is
-  // only the fallback for anything it could not see.
   const extractedBeds = rooms.reduce((sum, room) => sum + (room.bedCount ?? 0), 0);
   const extractedBedrooms = rooms.filter(
     (room) => (room.kind === "bedroom" || room.kind === "mmd") && (room.bedCount ?? 0) > 0,
   ).length;
-  const expectedBeds = audit.planBedTotal > 0 ? audit.planBedTotal : extractedBeds;
-  const expectedBedrooms =
-    audit.planBedroomCount > 0 ? audit.planBedroomCount : extractedBedrooms;
+
+  // Which reading of the plan to grade against.
+  //
+  // This used to be "the auditor's read wins wherever it has one", after the
+  // extractor miscounted island stools on דירה 14. That was the wrong lesson.
+  // On the CAD sheet for the same flat the auditor reads the plan as three
+  // bedrooms and three beds; the sheet labels four rooms חד.שינה and draws six
+  // beds. So the grader was comparing every still against a target that was
+  // itself wrong, which is worse than not checking: it passed stills that had
+  // dropped the ממ"ד and would have failed one that got all four rooms right.
+  //
+  // Split it by what each source is actually doing. A bedroom count comes off
+  // printed room labels, which the extractor reads from the CAD text — that is
+  // authoritative, and it is exactly the count vision keeps getting wrong,
+  // because the ממ"ד does not look like a bedroom. Beds and stools are both
+  // sources counting drawn symbols, and both are fallible; when they disagree
+  // the honest answer is that we do not know the target, so skip that check
+  // rather than invent one. The plan is a fixed object — two readings that
+  // disagree mean neither has earned the right to fail a still.
+  const expectedBedrooms = extractedBedrooms > 0 ? extractedBedrooms : audit.planBedroomCount;
+  // Exact agreement or nothing. Splitting the difference would just be a third
+  // guess: on stools the extraction is the one that was wrong (3 where the sheet
+  // draws 4), on beds the auditor is (3 where it draws 6), so neither side can be
+  // preferred on principle. One of them missing entirely is different — then
+  // there is only one reading and no contradiction to resolve.
+  const agreed = (extracted: number, seen: number): number | null => {
+    if (extracted <= 0) return seen > 0 ? seen : null;
+    if (seen <= 0) return extracted;
+    return extracted === seen ? extracted : null;
+  };
+  const expectedBeds = agreed(extractedBeds, audit.planBedTotal);
 
   const failures: string[] = [];
   const hardFailures: string[] = [];
@@ -282,7 +305,7 @@ export function gradeFloorplanStill(
       `kitchen sink basins ${audit.kitchenSinkBasins}, plan draws ${audit.planKitchenSinkBasins}`,
     );
   }
-  if (expectedBeds > 0 && audit.bedTotal !== expectedBeds) {
+  if (expectedBeds !== null && expectedBeds > 0 && audit.bedTotal !== expectedBeds) {
     failures.push(`beds ${audit.bedTotal}, plan has ${expectedBeds}`);
   }
   if (expectedBedrooms > 0 && audit.bedroomCount !== expectedBedrooms) {
@@ -291,9 +314,8 @@ export function gradeFloorplanStill(
   if (audit.diningTableCount > 1) {
     failures.push(`${audit.diningTableCount} dining tables, a flat has one`);
   }
-  const expectedStools =
-    audit.planIslandStoolCount > 0 ? audit.planIslandStoolCount : layout.islandStoolCount ?? 0;
-  if (expectedStools > 0 && audit.islandStoolCount !== expectedStools) {
+  const expectedStools = agreed(layout.islandStoolCount ?? 0, audit.planIslandStoolCount);
+  if (expectedStools !== null && expectedStools > 0 && audit.islandStoolCount !== expectedStools) {
     failures.push(`island stools ${audit.islandStoolCount}, plan has ${expectedStools}`);
   }
   if (audit.openingsNotInPlan > 0) {

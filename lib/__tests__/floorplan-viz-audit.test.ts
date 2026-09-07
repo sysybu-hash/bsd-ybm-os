@@ -109,7 +109,7 @@ describe("floorplan still audit", () => {
     });
   });
 
-  it("believes the plan over the extraction when the two disagree", () => {
+  it("grades no count at all when the two readings of the plan disagree", () => {
     // דירה 14: the sheet draws four island stools, the extractor read three.
     // A still showing four is correct and must not be failed for it.
     const thinLayout = parseFloorplanLayout({
@@ -118,6 +118,21 @@ describe("floorplan still audit", () => {
     });
     const verdict = gradeFloorplanStill({ ...clean, islandStoolCount: 4 }, thinLayout);
     expect(verdict.failures).toEqual([]);
+  });
+
+it("counts bedrooms off the extraction, which reads the printed room labels", () => {
+    // The CAD sheet for דירה 14 labels four rooms חד.שינה — one of them the ממ"ד,
+    // which does not look like a bedroom, so vision reads three and always has.
+    // Preferring that reading made the grader pass stills that had dropped a
+    // bedroom and would have failed one that got all four right.
+    // The fixture has three sleeping rooms, one of them the ממ"ד; vision sees two.
+    const verdict = gradeFloorplanStill({ ...clean, bedroomCount: 2, planBedroomCount: 2 }, layout);
+    expect(verdict.failures).toContain("bedrooms 2, plan has 3");
+  });
+
+  it("does not fail a bed count the two readings cannot agree on", () => {
+    const verdict = gradeFloorplanStill({ ...clean, bedTotal: 6, planBedTotal: 3 }, layout);
+    expect(verdict.failures.join(" ")).not.toMatch(/beds /);
   });
 
   it("falls back to the extraction when the auditor could not read the plan", () => {
