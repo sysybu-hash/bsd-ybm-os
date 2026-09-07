@@ -25,39 +25,48 @@ const log = createLogger("floorplan-entrance");
  */
 
 export type EntrancePoint = {
-  /** The middle of the door opening, normalised: 0 is the left/top edge, 1 the right/bottom. */
+  /**
+   * Where the sheet's own triangle sits, as a fraction of the APARTMENT's
+   * bounding box on the sheet — not of the sheet. 0 is its left/top edge, 1 its
+   * right/bottom. Slightly outside that range is normal and expected: the
+   * triangle is drawn beyond the outline.
+   */
   x: number;
   y: number;
-  /** Which way someone walks when they come through the door. */
-  facing: "left" | "right" | "up" | "down";
 };
 
 const LOCATE_INSTRUCTION = `
-You are looking at a 3D top-down still of an Israeli apartment and the sales
-plan it was generated from.
+You are looking at an Israeli apartment sales plan.
 
-The plan marks the apartment's front door with a small solid black triangle on
-an outer wall. Find where that same front door is IN THE STILL.
+Somewhere on it, on the paper just outside the apartment's outline, is a small
+SOLID BLACK TRIANGLE marking the front door and pointing at it. Find it.
+
+Ignore the still if one is attached. This question is only about the plan.
 
 Return JSON only:
-{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "facing": "left", "confidence": 0.0 }
+{ "found": true, "x": 0.0, "y": 0.0, "confidence": 0.0 }
 
-- The front door is a GAP in the outer wall: the wall stops, the opening runs,
-  the wall starts again. Give the two ENDS of that gap — where the wall stops
-  and where it starts again — as (x1,y1) and (x2,y2), fractions of the still's
-  width and height: x 0 is the left edge, 1 the right edge; y 0 is the top, 1
-  the bottom. Both points sit on the wall line, not inside the hall behind it.
-- Be precise about the ends. The door's position is taken as the midpoint of
-  the two, and a point from the edge of the gap puts it against the wall.
-- facing is the direction a person moves as they step through the door into the
-  apartment: "right" if they walk to the right, "left", "up" or "down".
-- confidence 0 to 1. Return "found": false if the still does not show the
-  entrance, if the apartment outline is too different from the plan to match
-  them up, or if you would be guessing.
-- Judge from the geometry: the entrance is on an outer wall, opens into a hall
-  or the living space, and matches the side of the plan the black triangle is
-  drawn on.
+- First find the APARTMENT'S BOUNDING BOX on the sheet: the smallest rectangle
+  containing the flat itself. Not the page, not the dimension chains, not the
+  title block — the walls of the apartment and nothing else.
+- x and y then locate the triangle INSIDE THAT BOX, as fractions of its width
+  and height. x 0 is the box's left edge, 1 its right edge; y 0 is its top, 1
+  its bottom. The middle of the box is 0.5, 0.5.
+- The triangle sits outside the outline, so a value a little below 0 or above 1
+  is right and expected — e.g. a door on the left wall two thirds of the way
+  down is about x -0.03, y 0.66. Do not clamp to the box.
+- confidence 0 to 1. Return "found": false if there is no such triangle on the
+  sheet, or if you would be guessing which mark it is. A north arrow, a section
+  arrow or a dimension tick is not it: the entrance triangle is small, solid
+  black, and sits against the outline of the flat.
 `.trim();
+
+/** A fraction of the apartment's box, which a mark outside it can overshoot. */
+function asRelative(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < -0.5 || n > 1.5) return null;
+  return n;
+}
 
 function clamp01(value: unknown): number | null {
   const n = typeof value === "number" ? value : Number(value);
@@ -66,7 +75,6 @@ function clamp01(value: unknown): number | null {
 }
 
 export async function locateApartmentEntrance(
-  still: { base64: string; mimeType: string },
   plan: { base64: string; mimeType: string },
 ): Promise<EntrancePoint | null> {
   const apiKey = getGeminiApiKey();
@@ -82,7 +90,6 @@ export async function locateApartmentEntrance(
             role: "user",
             parts: [
               { text: LOCATE_INSTRUCTION },
-              { inlineData: { data: still.base64, mimeType: still.mimeType } },
               { inlineData: { data: plan.base64, mimeType: plan.mimeType } },
             ],
           },
@@ -91,21 +98,15 @@ export async function locateApartmentEntrance(
       });
       const raw = parseModelJsonText(result.response.text());
       if (raw.found !== true) return null;
-      const x1 = clamp01(raw.x1);
-      const y1 = clamp01(raw.y1);
-      const x2 = clamp01(raw.x2);
-      const y2 = clamp01(raw.y2);
+      // Outside the box is the normal answer, so this range is generous — it is
+      // only here to reject a garbled number.
+      const x = asRelative(raw.x);
+      const y = asRelative(raw.y);
       const confidence = clamp01(raw.confidence) ?? 0;
       // A marker in the wrong place is worse than no marker: it tells a buyer
       // the door is somewhere it is not.
-      if (x1 == null || y1 == null || x2 == null || y2 == null || confidence < 0.5) return null;
-      const x = (x1 + x2) / 2;
-      const y = (y1 + y2) / 2;
-      const facing = raw.facing;
-      if (facing !== "left" && facing !== "right" && facing !== "up" && facing !== "down") {
-        return null;
-      }
-      return { x, y, facing };
+      if (x == null || y == null || confidence < 0.5) return null;
+      return { x, y };
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
       log.warn("entrance lookup failed", {
@@ -117,8 +118,11 @@ export async function locateApartmentEntrance(
   return null;
 }
 
+/** Which way the triangle points. */
+export type EntranceFacing = "left" | "right" | "up" | "down";
+
 /** The way someone walks in, given the direction that leads out. */
-export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing"] {
+export function facingFromOutward(dx: number, dy: number): EntranceFacing {
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "left" : "right";
   return dy > 0 ? "up" : "down";
 }
@@ -246,15 +250,88 @@ export function nearestOutside(
   return null;
 }
 
+/** The rectangle the apartment occupies: everything the page flood did not reach. */
+export function apartmentBounds(
+  page: Uint8Array,
+  width: number,
+  height: number,
+): { x: number; y: number; width: number; height: number } | null {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (page[y * width + x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0 || maxY < 0) return null;
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/**
+ * Slides a point off the apartment onto the page beside it.
+ *
+ * Sheets differ a little from renders, so the mapped position can land just
+ * inside the flat. The marker belongs outside, so walk to the nearest page.
+ */
+export function nudgeOntoPage(
+  page: Uint8Array,
+  width: number,
+  height: number,
+  at: { x: number; y: number },
+  size: number,
+): { x: number; y: number } {
+  const inside = (x: number, y: number) =>
+    x >= 0 && y >= 0 && x < width && y < height && page[y * width + x] === 1;
+  if (inside(at.x, at.y)) return at;
+  for (let reach = 1; reach <= size * 6; reach += 1) {
+    for (let degrees = 0; degrees < 360; degrees += 6) {
+      const radians = (degrees * Math.PI) / 180;
+      const x = Math.round(at.x + Math.cos(radians) * reach);
+      const y = Math.round(at.y + Math.sin(radians) * reach);
+      if (inside(x, y)) return { x, y };
+    }
+  }
+  return at;
+}
+
+/** The direction from a point on the page to the nearest bit of apartment. */
+export function towardApartment(
+  page: Uint8Array,
+  width: number,
+  height: number,
+  at: { x: number; y: number },
+  size: number,
+): { dx: number; dy: number } | null {
+  for (let reach = 1; reach <= size * 8; reach += 1) {
+    for (let degrees = 0; degrees < 360; degrees += 4) {
+      const radians = (degrees * Math.PI) / 180;
+      const dx = Math.cos(radians);
+      const dy = Math.sin(radians);
+      const x = Math.round(at.x + dx * reach);
+      const y = Math.round(at.y + dy * reach);
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      if (page[y * width + x]) continue;
+      return { dx, dy };
+    }
+  }
+  return null;
+}
+
 /** The triangle's three corners, pointing the way someone walks in. */
 export function entranceTrianglePoints(
   cx: number,
   cy: number,
   size: number,
-  facing: EntrancePoint["facing"],
+  facing: EntranceFacing,
 ): string {
   const h = size / 2;
-  const pts: Record<EntrancePoint["facing"], Array<[number, number]>> = {
+  const pts: Record<EntranceFacing, Array<[number, number]>> = {
     right: [
       [cx + h, cy],
       [cx - h, cy - h],
@@ -304,20 +381,21 @@ export async function markApartmentEntrance(
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    // Directly opposite the opening, on the page, pointing back at it.
-    const door = { x: point.x * width, y: point.y * height };
-    const outside = nearestOutside(data, info.width, info.height, door, size);
-    const facing = outside ? facingFromOutward(outside.dx, outside.dy) : point.facing;
-    // The triangle is a marker width across, so a little over one width out
-    // puts the whole of it on the page with its leading corner nearly touching
-    // the outline: at the door, not in it and not away from it.
-    const standOff = size * 0.95;
-    const centre = outside
-      ? {
-          x: Math.round(outside.x + outside.dx * standOff),
-          y: Math.round(outside.y + outside.dy * standOff),
-        }
-      : { x: Math.round(door.x), y: Math.round(door.y) };
+    const page = pageMaskFromBorder(data, info.width, info.height);
+    const flat = apartmentBounds(page, info.width, info.height);
+    if (!flat) return image;
+
+    // The sheet's own triangle, put back in the same place on the render: the
+    // same fraction across and down the apartment's bounding box. Asking where
+    // a door is in a 3D frame never worked; where a triangle is on a drawing is
+    // a question with one answer.
+    const wanted = {
+      x: Math.round(flat.x + point.x * flat.width),
+      y: Math.round(flat.y + point.y * flat.height),
+    };
+    const centre = nudgeOntoPage(page, info.width, info.height, wanted, size);
+    const inward = towardApartment(page, info.width, info.height, centre, size);
+    const facing = inward ? facingFromOutward(-inward.dx, -inward.dy) : "right";
     // A door near the edge of the sheet puts the marker half off the frame.
     // Keep the whole triangle inside it.
     const margin = Math.ceil(size * 0.5) + 2;

@@ -1,23 +1,14 @@
 import sharp from "sharp";
 
 import {
+  apartmentBounds,
   entranceTrianglePoints,
   facingFromOutward,
   markApartmentEntrance,
-  nearestOutside,
-  openPage,
+  nudgeOntoPage,
   pageMaskFromBorder,
-  type EntrancePoint,
+  towardApartment,
 } from "@/lib/projects/floorplan-entrance";
-
-async function still(width = 800, height = 1000): Promise<{ base64: string; mimeType: string }> {
-  const buf = await sharp({
-    create: { width, height, channels: 3, background: "#c9b79a" },
-  })
-    .jpeg()
-    .toBuffer();
-  return { base64: buf.toString("base64"), mimeType: "image/jpeg" };
-}
 
 function corners(points: string): Array<[number, number]> {
   return points.split(" ").map((pair) => {
@@ -61,68 +52,157 @@ describe("the entrance triangle", () => {
 });
 
 describe("marking a still", () => {
-  const point: EntrancePoint = { x: 0.8, y: 0.55, facing: "left" };
+  /** A flat floating on the page: a block inset from every edge. */
+  async function floatingFlat(width = 600, height = 600) {
+    const buf = await sharp({
+      create: { width, height, channels: 3, background: "#ffffff" },
+    })
+      .composite([
+        {
+          input: {
+            create: { width: 300, height: 400, channels: 3, background: "#8a7a5a" },
+          },
+          left: 150,
+          top: 100,
+        },
+      ])
+      .jpeg()
+      .toBuffer();
+    return { base64: buf.toString("base64"), mimeType: "image/jpeg" };
+  }
 
-  it("draws on the frame without resizing it", async () => {
-    const source = await still(800, 1000);
-    const out = await markApartmentEntrance(source, point);
-    const meta = await sharp(Buffer.from(out.base64, "base64")).metadata();
-    expect(meta.width).toBe(800);
-    expect(meta.height).toBe(1000);
-  });
-
-  it("puts ink near the point and nowhere else", async () => {
-    const source = await still(800, 1000);
-    const out = await markApartmentEntrance(source, point);
-    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
+  async function ink(img: { base64: string }) {
+    const { data, info } = await sharp(Buffer.from(img.base64, "base64"))
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
     let dark = 0;
     let sumX = 0;
     let sumY = 0;
+    let minX = info.width;
     for (let y = 0; y < info.height; y++) {
       for (let x = 0; x < info.width; x++) {
         if ((data[y * info.width + x] ?? 255) < 90) {
           dark += 1;
           sumX += x;
           sumY += y;
+          if (x < minX) minX = x;
         }
       }
     }
-    expect(dark).toBeGreaterThan(0);
-    // A uniform frame has no page to step out onto, so the marker sits just
-    // clear of the doorway rather than drifting across the still.
-    expect(sumX / dark / info.width).toBeCloseTo(0.8, 1);
-    expect(sumY / dark / info.height).toBeCloseTo(0.55, 1);
+    return { dark, x: sumX / dark, y: sumY / dark, minX };
+  }
+
+  it("puts the marker where the sheet puts it, relative to the flat", async () => {
+    // The sheet's triangle sits just off the left wall, two thirds down.
+    const out = await markApartmentEntrance(await floatingFlat(), { x: -0.04, y: 0.66 });
+    const at = await ink(out);
+    expect(at.dark).toBeGreaterThan(0);
+    // The flat runs x 150..449, y 100..499, so that is near x=138, y=364.
+    expect(at.x).toBeGreaterThan(110);
+    expect(at.x).toBeLessThan(165);
+    expect(at.y).toBeGreaterThan(330);
+    expect(at.y).toBeLessThan(400);
+  });
+
+  it("points at the flat, whichever side the sheet marks", async () => {
+    const out = await markApartmentEntrance(await floatingFlat(), { x: -0.04, y: 0.5 });
+    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const span = (y: number) => {
+      let min = info.width;
+      let max = -1;
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          if (x < min) min = x;
+          if (x > max) max = x;
+        }
+      }
+      return { min, max };
+    };
+    // A triangle pointing right at the flat is widest away from it.
+    const middle = span(300);
+    const above = span(288);
+    expect(middle.max).toBeGreaterThan(above.max);
+  });
+
+  it("slides onto the page when the sheet's spot lands inside the flat", async () => {
+    const out = await markApartmentEntrance(await floatingFlat(), { x: 0.1, y: 0.5 });
+    const at = await ink(out);
+    // x 0.1 of the flat is x=180, inside it; the marker belongs outside.
+    expect(at.x).toBeLessThan(155);
   });
 
   it("hands back a paid-for still rather than losing it to a bad point", async () => {
     const broken = { base64: "bm90LWFuLWltYWdl", mimeType: "image/jpeg" };
-    await expect(markApartmentEntrance(broken, point)).resolves.toEqual(broken);
+    await expect(markApartmentEntrance(broken, { x: 0.5, y: 0.5 })).resolves.toEqual(broken);
   });
 
   it("leaves a thumbnail alone — the marker would swamp it", async () => {
-    const tiny = await still(120, 120);
-    await expect(markApartmentEntrance(tiny, point)).resolves.toEqual(tiny);
+    const tiny = await sharp({
+      create: { width: 120, height: 120, channels: 3, background: "#c9b79a" },
+    })
+      .jpeg()
+      .toBuffer();
+    const img = { base64: tiny.toString("base64"), mimeType: "image/jpeg" };
+    await expect(markApartmentEntrance(img, { x: 0.5, y: 0.5 })).resolves.toEqual(img);
   });
 
-  it("scales the marker with the frame, not with the pixel count", async () => {
-    const small = await markApartmentEntrance(await still(400, 500), point);
-    const large = await markApartmentEntrance(await still(1600, 2000), point);
-    const inkFraction = async (img: { base64: string }) => {
-      const { data, info } = await sharp(Buffer.from(img.base64, "base64"))
-        .greyscale()
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-      let dark = 0;
-      for (let i = 0; i < data.length; i++) if ((data[i] ?? 255) < 90) dark += 1;
-      return dark / (info.width * info.height);
-    };
-    const a = await inkFraction(small);
-    const b = await inkFraction(large);
-    expect(a).toBeGreaterThan(0);
-    expect(Math.abs(a - b)).toBeLessThan(a * 0.5);
+  it("keeps the whole marker inside the frame", async () => {
+    const out = await markApartmentEntrance(await floatingFlat(), { x: -0.6, y: 0.5 });
+    const at = await ink(out);
+    expect(at.minX).toBeGreaterThan(0);
+  });
+});
+
+describe("reading the flat out of the frame", () => {
+  function framed(width = 400, height = 300) {
+    const data = new Uint8Array(width * height).fill(252);
+    for (let y = 50; y < 250; y++) {
+      for (let x = 80; x < 320; x++) data[y * width + x] = 130;
+    }
+    return { data, width, height };
+  }
+
+  it("bounds the flat, not the page", () => {
+    const { data, width, height } = framed();
+    const page = pageMaskFromBorder(data, width, height);
+    expect(apartmentBounds(page, width, height)).toEqual({
+      x: 80,
+      y: 50,
+      width: 240,
+      height: 200,
+    });
+  });
+
+  it("says nothing when there is no flat in the frame", () => {
+    const width = 100;
+    const height = 100;
+    const page = new Uint8Array(width * height).fill(1);
+    expect(apartmentBounds(page, width, height)).toBeNull();
+  });
+
+  it("moves a point off the flat and onto the page", () => {
+    const { data, width, height } = framed();
+    const page = pageMaskFromBorder(data, width, height);
+    const at = nudgeOntoPage(page, width, height, { x: 200, y: 150 }, 20);
+    expect(page[at.y * width + at.x]).toBe(1);
+  });
+
+  it("leaves a point that is already on the page", () => {
+    const { data, width, height } = framed();
+    const page = pageMaskFromBorder(data, width, height);
+    const at = { x: 20, y: 150 };
+    expect(nudgeOntoPage(page, width, height, at, 20)).toEqual(at);
+  });
+
+  it("finds the way to the flat from outside it", () => {
+    const { data, width, height } = framed();
+    const page = pageMaskFromBorder(data, width, height);
+    const dir = towardApartment(page, width, height, { x: 40, y: 150 }, 30)!;
+    expect(dir.dx).toBeGreaterThan(0.8);
   });
 });
 
@@ -134,155 +214,5 @@ describe("which way someone walks in", () => {
     expect(facingFromOutward(0, -1)).toBe("down");
     expect(facingFromOutward(0.9, 0.4)).toBe("left");
     expect(facingFromOutward(0.3, 0.95)).toBe("up");
-  });
-});
-
-describe("telling outside from a pale wall", () => {
-  /**
-   * A flat floating on the page — inset from every edge, the way a cutaway
-   * sits on a sheet — with a pale cream wall band inside it. The band and the
-   * page are equally light; only the page reaches the frame's border.
-   */
-  function flatWithPaleWall(width = 600, height = 400) {
-    const data = new Uint8Array(width * height).fill(252);
-    for (let y = 40; y < height - 40; y++) {
-      for (let x = 40; x < 300; x++) {
-        data[y * width + x] = x >= 180 && x < 200 ? 246 : 130;
-      }
-    }
-    return { data, width, height };
-  }
-
-  it("counts only what reaches the border as page", () => {
-    const { data, width, height } = flatWithPaleWall();
-    const mask = pageMaskFromBorder(data, width, height);
-    expect(mask[200 * width + 400]).toBe(1);
-    expect(mask[10 * width + 100]).toBe(1);
-    // The floor is not page, however the flood runs.
-    expect(mask[200 * width + 100]).toBe(0);
-    // A pale wall on the building's edge IS reached by the flood — it touches
-    // the page — so the mask alone cannot separate them. openPage does.
-    expect(openPage(mask, width, height, 190, 200, 10)).toBe(false);
-    expect(openPage(mask, width, height, 400, 200, 10)).toBe(true);
-  });
-
-  it("sends the marker past the pale band to the real edge", () => {
-    const { data, width, height } = flatWithPaleWall();
-    const at = nearestOutside(data, width, height, { x: 210, y: 200 }, 24)!;
-    expect(at).not.toBeNull();
-    expect(at.x).toBeGreaterThanOrEqual(300);
-    expect(at.dx).toBeGreaterThan(0.8);
-  });
-
-  it("lands on the near edge of the page, not deep inside it", () => {
-    const { data, width, height } = flatWithPaleWall();
-    const size = 30;
-    const at = nearestOutside(data, width, height, { x: 296, y: 200 }, size)!;
-    expect(at.x).toBeLessThan(300 + size * 0.3);
-    expect(at.y).toBeCloseTo(200, -1);
-  });
-
-  it("goes out of the notch at a stepped entrance", () => {
-    const width = 600;
-    const height = 600;
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        data[y * width + x] = x < 500 && y < 300 ? 130 : 252;
-      }
-    }
-    const at = nearestOutside(data, width, height, { x: 250, y: 288 }, 30)!;
-    expect(at.dy).toBeGreaterThan(0.8);
-  });
-
-  it("says nothing when the frame fills its canvas", () => {
-    const width = 200;
-    const height = 200;
-    const data = new Uint8Array(width * height).fill(130);
-    expect(nearestOutside(data, width, height, { x: 100, y: 100 }, 16)).toBeNull();
-  });
-});
-
-describe("where the marker lands", () => {
-  async function halfFrame() {
-    const buf = await sharp({
-      create: { width: 600, height: 400, channels: 3, background: "#ffffff" },
-    })
-      .composite([
-        {
-          input: { create: { width: 300, height: 400, channels: 3, background: "#8a7a5a" } },
-          left: 0,
-          top: 0,
-        },
-      ])
-      .jpeg()
-      .toBuffer();
-    return { base64: buf.toString("base64"), mimeType: "image/jpeg" };
-  }
-
-  it("stands just outside the door, opposite the opening", async () => {
-    const out = await markApartmentEntrance(await halfFrame(), {
-      x: 0.49,
-      y: 0.5,
-      facing: "left",
-    });
-    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
-      .greyscale()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    let dark = 0;
-    let sumX = 0;
-    let sumY = 0;
-    for (let y = 0; y < info.height; y++) {
-      for (let x = 0; x < info.width; x++) {
-        if ((data[y * info.width + x] ?? 255) < 90) {
-          dark += 1;
-          sumX += x;
-          sumY += y;
-        }
-      }
-    }
-    expect(dark).toBeGreaterThan(0);
-    expect(sumX / dark).toBeGreaterThan(300);
-    expect(sumX / dark).toBeLessThan(345);
-    expect(sumY / dark).toBeCloseTo(200, -1);
-  });
-});
-
-describe("a door near the edge of the sheet", () => {
-  it("keeps the whole marker inside the frame", async () => {
-    // The flat runs to the left edge; the page is only to its right.
-    const buf = await sharp({
-      create: { width: 400, height: 300, channels: 3, background: "#ffffff" },
-    })
-      .composite([
-        {
-          input: { create: { width: 30, height: 300, channels: 3, background: "#8a7a5a" } },
-          left: 0,
-          top: 0,
-        },
-      ])
-      .jpeg()
-      .toBuffer();
-    const out = await markApartmentEntrance(
-      { base64: buf.toString("base64"), mimeType: "image/jpeg" },
-      { x: 0.02, y: 0.5, facing: "right" },
-    );
-    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
-      .greyscale()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    let minX = info.width;
-    let dark = 0;
-    for (let y = 0; y < info.height; y++) {
-      for (let x = 0; x < info.width; x++) {
-        if ((data[y * info.width + x] ?? 255) < 90) {
-          dark += 1;
-          if (x < minX) minX = x;
-        }
-      }
-    }
-    expect(dark).toBeGreaterThan(0);
-    expect(minX).toBeGreaterThan(0);
   });
 });

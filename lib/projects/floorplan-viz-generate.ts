@@ -807,7 +807,7 @@ async function addEntranceMarker(
   img: { mimeType: string; base64: string },
   plan: { base64: string; mimeType: string },
 ): Promise<{ mimeType: string; base64: string }> {
-  const point = await locateApartmentEntrance(img, plan);
+  const point = await locateApartmentEntrance(plan);
   if (!point) {
     log.info("no entrance located, shipping the still without a marker");
     return img;
