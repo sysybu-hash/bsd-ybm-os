@@ -77,6 +77,29 @@ function clamp01(value: unknown): number | null {
 export async function locateApartmentEntrance(
   plan: { base64: string; mimeType: string },
 ): Promise<EntrancePoint | null> {
+
+  const readings: EntrancePoint[] = [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const reading = await readEntranceOnce(plan);
+    if (reading) readings.push(reading);
+  }
+  if (readings.length === 0) return null;
+  // The same sheet read twice gave x 0.10 and x 0.22 — the difference between
+  // the outer wall and the wrong side of a notch. A median of three throws out
+  // the odd reading without needing to know which one it is.
+  const median = (values: number[]) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)]!;
+  };
+  return {
+    x: median(readings.map((r) => r.x)),
+    y: median(readings.map((r) => r.y)),
+  };
+}
+
+async function readEntranceOnce(
+  plan: { base64: string; mimeType: string },
+): Promise<EntrancePoint | null> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
   const genAI = new GoogleGenerativeAI(apiKey);
