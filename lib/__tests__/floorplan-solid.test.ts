@@ -1,4 +1,12 @@
-import { buildWallBodies, bodyRect, wallBodiesFromSegments } from "@/lib/projects/floorplan-solid";
+import {
+  bodyRect,
+  bridgeOpenings,
+  buildWallBodies,
+  closeCorners,
+  endGapPatches,
+  interiorSpans,
+  wallBodiesFromSegments,
+} from "@/lib/projects/floorplan-solid";
 import type { WallRun } from "@/lib/projects/floorplan-rooms";
 
 const run = (orientation: "h" | "v", at: number, from: number, to: number): WallRun => ({
@@ -138,5 +146,85 @@ describe("the rectangle a body covers", () => {
       w: 10,
       h: 50,
     });
+  });
+});
+
+describe("closing the shell so inside can be told from outside", () => {
+  const body = (
+    orientation: "h" | "v",
+    centre: number,
+    from: number,
+    to: number,
+    thickness = 10,
+  ) => ({ orientation, centre, from, to, thickness });
+
+  it("bridges a doorway so the wall line is continuous", () => {
+    const sealed = bridgeOpenings([body("h", 100, 0, 200), body("h", 100, 290, 500)], 120);
+    expect(sealed).toHaveLength(1);
+    expect(sealed[0]!.from).toBe(0);
+    expect(sealed[0]!.to).toBe(500);
+  });
+
+  it("leaves a gap too wide to be an opening alone", () => {
+    expect(bridgeOpenings([body("h", 100, 0, 200), body("h", 100, 900, 1100)], 120)).toHaveLength(2);
+  });
+
+  it("does not bridge across two different walls that share no line", () => {
+    expect(bridgeOpenings([body("h", 100, 0, 200), body("h", 400, 210, 500)], 120)).toHaveLength(2);
+  });
+
+  it("extends a wall that stops short of the one it crosses", () => {
+    // The east wall ends 8 units shy of the north wall; the flood escapes there.
+    const [north, east] = bridgeOpenings(
+      closeCorners([body("h", 0, 0, 500), body("v", 300, 8, 400)], 30),
+      120,
+    ).sort((a, b) => (a.orientation === "h" ? -1 : 1));
+    expect(north!.orientation).toBe("h");
+    expect(east!.from).toBeLessThanOrEqual(0);
+  });
+
+  it("patches the notch where an outline steps and neither end is extended", () => {
+    // Neither endpoint lies on the other's line, so closeCorners cannot see it.
+    const patches = endGapPatches([body("h", 100, 0, 300), body("v", 340, 130, 600)], 60);
+    expect(patches.length).toBeGreaterThan(0);
+    const p = patches[0]!;
+    expect(p.w).toBeCloseTo(40);
+    expect(p.h).toBeCloseTo(30);
+  });
+
+  it("does not patch two ends that are nowhere near each other", () => {
+    expect(endGapPatches([body("h", 100, 0, 300), body("v", 900, 700, 1200)], 60)).toEqual([]);
+  });
+});
+
+describe("the floor the walls enclose", () => {
+  it("returns the inside of a sealed box and nothing outside it", () => {
+    const box = [
+      { orientation: "h" as const, centre: 0, from: 0, to: 400, thickness: 10 },
+      { orientation: "h" as const, centre: 400, from: 0, to: 400, thickness: 10 },
+      { orientation: "v" as const, centre: 0, from: 0, to: 400, thickness: 10 },
+      { orientation: "v" as const, centre: 400, from: 0, to: 400, thickness: 10 },
+    ];
+    const rows = interiorSpans(box, { x: -20, y: -20, width: 440, height: 440 }, { resolution: 4 });
+    expect(rows.length).toBeGreaterThan(0);
+    const area = rows.reduce((sum, r) => sum + r.spans.reduce((t, [a, b]) => t + (b - a), 0), 0) * 4;
+    // The 400x400 box, give or take the raster step.
+    expect(area).toBeGreaterThan(150_000);
+    expect(area).toBeLessThan(200_000);
+  });
+
+  it("finds no floor at all when the shell is open", () => {
+    // One wall missing: the flood reaches everywhere and nothing is enclosed.
+    const open = [
+      { orientation: "h" as const, centre: 0, from: 0, to: 400, thickness: 10 },
+      { orientation: "v" as const, centre: 0, from: 0, to: 400, thickness: 10 },
+    ];
+    const rows = interiorSpans(open, { x: -20, y: -20, width: 440, height: 440 }, {
+      resolution: 4,
+      maxOpeningUnits: 1,
+      cornerReachUnits: 1,
+    });
+    const area = rows.reduce((sum, r) => sum + r.spans.reduce((t, [a, b]) => t + (b - a), 0), 0);
+    expect(area).toBeLessThan(30_000);
   });
 });

@@ -1,4 +1,4 @@
-import { bodyRect, type WallBody } from "@/lib/projects/floorplan-solid";
+import { bodyRect, type SpanRow, type WallBody } from "@/lib/projects/floorplan-solid";
 
 /**
  * Draws the flat from its geometry, instead of asking a model to imagine it.
@@ -27,8 +27,8 @@ export type Render3dOptions = {
   wallHeightM?: number;
   width?: number;
   padding?: number;
-  /** Enclosed regions from the flood fill, painted as floor under the walls. */
-  floors?: Array<{ x: number; y: number; w: number; h: number }>;
+  /** The enclosed interior as row spans, painted as the floor slab. */
+  floor?: SpanRow[];
 };
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -69,15 +69,23 @@ export function renderFlatSvg(
     `<rect x="${minX.toFixed(1)}" y="${minY.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#ffffff"/>`,
   ];
 
-  // Floor. The enclosed regions when the flood fill found them, because the
-  // bounding box paints floor outside the flat wherever the outline steps in —
-  // and a stepped outline is exactly what this whole exercise is about.
-  const floors = options.floors?.length
-    ? options.floors
-    : [{ x: bounds.x, y: bounds.y, w: bounds.width, h: bounds.height }];
-  for (const f of floors) {
+  // Floor, as the rows the interior actually occupies. The bounding box would
+  // paint floor outside the flat wherever the outline steps in, and a stepped
+  // outline is the whole point of this exercise.
+  if (options.floor?.length) {
+    const rowHeight = options.floor.length > 1 ? options.floor[1]!.y - options.floor[0]!.y : 2;
+    const runs = options.floor
+      .flatMap((row) =>
+        row.spans.map(
+          ([a, b]) =>
+            `<rect x="${a.toFixed(1)}" y="${row.y.toFixed(1)}" width="${(b - a).toFixed(1)}" height="${(rowHeight + 0.4).toFixed(1)}"/>`,
+        ),
+      )
+      .join("");
+    parts.push(`<g fill="${FLOOR}" shape-rendering="crispEdges">${runs}</g>`);
+  } else {
     parts.push(
-      `<rect x="${f.x.toFixed(1)}" y="${f.y.toFixed(1)}" width="${f.w.toFixed(1)}" height="${f.h.toFixed(1)}" fill="${FLOOR}"/>`,
+      `<rect x="${bounds.x.toFixed(1)}" y="${bounds.y.toFixed(1)}" width="${bounds.width.toFixed(1)}" height="${bounds.height.toFixed(1)}" fill="${FLOOR}"/>`,
     );
   }
 

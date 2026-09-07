@@ -273,3 +273,247 @@ export function bodyRect(b: WallBody): { x: number; y: number; w: number; h: num
     ? { x: b.from, y: b.centre - half, w: b.to - b.from, h: b.thickness }
     : { x: b.centre - half, y: b.from, w: b.thickness, h: b.to - b.from };
 }
+
+/**
+ * Bridges the openings along each wall line, for masking only.
+ *
+ * A door or a window is a gap in the drawn wall, but the wall line carries on
+ * through it — there is a lintel over every opening. Growing walls outward to
+ * close those gaps was the first attempt and it failed both ways at once: a
+ * 1 m seal was too small for a 2.4 m terrace slider, so the outside flooded
+ * into the living room and it rendered with no floor, and the same growth
+ * pushed floor out past the walls elsewhere.
+ *
+ * Joining bodies along their own line closes each opening exactly, without
+ * moving any wall. The bridges are never drawn — they exist only so the flood
+ * fill can tell inside from outside.
+ */
+export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody[] {
+  const out: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const line = bodies
+      .filter((b) => b.orientation === orientation)
+      .sort((a, b) => a.centre - b.centre || a.from - b.from);
+    let group: WallBody[] = [];
+    const flush = () => {
+      if (group.length === 0) return;
+      group.sort((a, b) => a.from - b.from);
+      let cur = { ...group[0]! };
+      for (let i = 1; i < group.length; i++) {
+        const next = group[i]!;
+        if (next.from - cur.to <= maxOpening) {
+          cur.to = Math.max(cur.to, next.to);
+          cur.thickness = Math.max(cur.thickness, next.thickness);
+        } else {
+          out.push(cur);
+          cur = { ...next };
+        }
+      }
+      out.push(cur);
+      group = [];
+    };
+    for (const b of line) {
+      const prev = group[group.length - 1];
+      // Same line, within a wall's own thickness.
+      if (prev && Math.abs(b.centre - prev.centre) > Math.max(prev.thickness, 4)) flush();
+      group.push(b);
+    }
+    flush();
+  }
+  return out;
+}
+
+/**
+ * Extends walls to the walls they nearly meet, so corners actually close.
+ *
+ * CAD draws a corner as two lines that stop at the joint, at the inner face, or
+ * a little short of each other — it does not matter on paper, and it is fatal to
+ * a flood fill. On דירה 14 the east wall and the north wall passed within a
+ * wall's thickness without touching, and the outside poured through that corner
+ * into the living room, which then rendered with no floor.
+ *
+ * Only ends that are already close to a crossing wall are moved, and only as far
+ * as that wall. Like the bridges, this is for masking; it never changes what is
+ * drawn.
+ */
+export function closeCorners(bodies: WallBody[], reach: number): WallBody[] {
+  return bodies.map((b) => {
+    const crossing = bodies.filter((o) => {
+      if (o.orientation === b.orientation) return false;
+      // The crossing wall has to actually span this wall's line.
+      const half = o.thickness / 2 + b.thickness;
+      return b.centre >= o.from - half && b.centre <= o.to + half;
+    });
+    let { from, to } = b;
+    for (const o of crossing) {
+      const near = o.centre + o.thickness / 2;
+      const far = o.centre - o.thickness / 2;
+      if (Math.abs(from - near) <= reach && near < from) from = far;
+      else if (Math.abs(from - far) <= reach && far < from) from = far;
+      if (Math.abs(to - far) <= reach && far > to) to = near;
+      else if (Math.abs(to - near) <= reach && near > to) to = near;
+    }
+    return { ...b, from, to };
+  });
+}
+
+/**
+ * The rectangles that plug the gaps where two wall ends stop near each other.
+ *
+ * closeCorners handles an end that runs past a crossing wall's line. It cannot
+ * handle a step in the outline, where the north wall ends at one x and the east
+ * wall starts at another, both short of the corner and offset in both
+ * directions: neither end lies on the other's line, so neither is extended, and
+ * the outside pours through the notch between them. On דירה 14 that single
+ * 70-unit notch is why the living room came back with no floor under it.
+ *
+ * Endpoints that stop within reach of each other were meant to be one corner, so
+ * the box spanning them is filled. Mask only — nothing here is drawn.
+ */
+export function endGapPatches(
+  bodies: WallBody[],
+  reach: number,
+): Array<{ x: number; y: number; w: number; h: number }> {
+  const ends = bodies.flatMap((b) =>
+    [b.from, b.to].map((at) =>
+      b.orientation === "h" ? { x: at, y: b.centre } : { x: b.centre, y: at },
+    ),
+  );
+  const patches: Array<{ x: number; y: number; w: number; h: number }> = [];
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      const a = ends[i]!;
+      const b = ends[j]!;
+      const dx = Math.abs(a.x - b.x);
+      const dy = Math.abs(a.y - b.y);
+      if (dx > reach || dy > reach) continue;
+      if (dx < 1 && dy < 1) continue;
+      patches.push({
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        w: Math.max(dx, 1),
+        h: Math.max(dy, 1),
+      });
+    }
+  }
+  return patches;
+}
+
+export type SpanRow = { y: number; spans: Array<[number, number]> };
+
+/**
+ * The floor of the flat: everything the walls enclose, as horizontal runs.
+ *
+ * Room rectangles cannot describe this. The flood fill returns bounding boxes,
+ * an L-shaped room is not its bounding box, and eighteen of them still left the
+ * lower half of דירה 14 rendering with no floor under it at all. The inside of
+ * the flat is one region with a stepped edge, so it is measured as one region.
+ *
+ * Walls are painted a little thicker than they are before the outside is
+ * flooded, because a doorway is a real gap in the CAD geometry and the flood
+ * would pour through it and swallow the whole page. `seal` is how wide an
+ * opening can be and still be closed off; a door is ~90 cm.
+ *
+ * Returned as row spans rather than a polygon: exact, trivial to draw, and it
+ * does not need contour tracing to be correct.
+ */
+export function interiorSpans(
+  bodies: WallBody[],
+  bounds: { x: number; y: number; width: number; height: number },
+  options?: {
+    resolution?: number;
+    maxOpeningUnits?: number;
+    cornerReachUnits?: number;
+    /**
+     * Raw CAD segments painted into the mask as well, to close the envelope.
+     *
+     * Reconstructed bodies are clean enough to draw but not guaranteed to be
+     * watertight: on דירה 14 the boundary steps out at the top right and the
+     * short wall across that step was never rebuilt, so the outside poured in
+     * through a 70-unit hole and the living room rendered with no floor. The
+     * original ink has no such holes — it is what the draughtsman drew — so it
+     * is used to decide inside from outside, while the bodies remain what gets
+     * drawn.
+     */
+    sealingSegments?: VectorSegment[];
+  },
+): SpanRow[] {
+  const step = options?.resolution ?? 2;
+  // A terrace slider is the widest opening on these sheets at about 2.4 m.
+  const maxOpening = options?.maxOpeningUnits ?? 120;
+  const reach = options?.cornerReachUnits ?? maxOpening / 4;
+  const sealed = bridgeOpenings(closeCorners(bodies, reach), maxOpening);
+  const w = Math.ceil(bounds.width / step) + 2;
+  const h = Math.ceil(bounds.height / step) + 2;
+  if (w <= 2 || h <= 2) return [];
+
+  const WALL = 1;
+  const OUTSIDE = 2;
+  const grid = new Uint8Array(w * h);
+
+  const paint = (rx: number, ry: number, rw: number, rh: number) => {
+    const x0 = Math.max(0, Math.floor((rx - bounds.x) / step) + 1);
+    const x1 = Math.min(w - 1, Math.ceil((rx + rw - bounds.x) / step) + 1);
+    const y0 = Math.max(0, Math.floor((ry - bounds.y) / step) + 1);
+    const y1 = Math.min(h - 1, Math.ceil((ry + rh - bounds.y) / step) + 1);
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) grid[y * w + x] = WALL;
+    }
+  };
+
+  for (const seg of options?.sealingSegments ?? []) {
+    const x = Math.min(seg.x1, seg.x2);
+    const y = Math.min(seg.y1, seg.y2);
+    paint(x, y, Math.abs(seg.x2 - seg.x1) || step, Math.abs(seg.y2 - seg.y1) || step);
+  }
+
+  for (const b of sealed) {
+    const r = bodyRect(b);
+    paint(r.x, r.y, r.w, r.h);
+  }
+  for (const p of endGapPatches(sealed, reach)) paint(p.x, p.y, p.w, p.h);
+
+  // Flood the border inward. What it cannot reach is enclosed — the flat.
+  const queue: number[] = [];
+  const visit = (i: number) => {
+    if (grid[i] === 0) {
+      grid[i] = OUTSIDE;
+      queue.push(i);
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    visit(x);
+    visit((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    visit(y * w);
+    visit(y * w + w - 1);
+  }
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % w;
+    const y = (i - x) / w;
+    if (x > 0) visit(i - 1);
+    if (x < w - 1) visit(i + 1);
+    if (y > 0) visit(i - w);
+    if (y < h - 1) visit(i + w);
+  }
+
+  const rows: SpanRow[] = [];
+  for (let y = 1; y < h - 1; y++) {
+    const spans: Array<[number, number]> = [];
+    let start = -1;
+    for (let x = 1; x < w; x++) {
+      // Wall cells count as floor too: a wall stands on the slab, and leaving
+      // them out draws a hairline of background along every wall.
+      const inside = x < w - 1 && grid[y * w + x] !== OUTSIDE;
+      if (inside && start < 0) start = x;
+      else if (!inside && start >= 0) {
+        spans.push([bounds.x + (start - 1) * step, bounds.x + (x - 1) * step]);
+        start = -1;
+      }
+    }
+    if (spans.length > 0) rows.push({ y: bounds.y + (y - 1) * step, spans });
+  }
+  return rows;
+}
