@@ -26,9 +26,24 @@ export type WallBody = {
   to: number;
 };
 
-/** Israeli walls are 10-35 cm; at 33-44 units/m that is 3-16 units, with slack. */
+/**
+ * How thick a pair of faces may be and still be one wall.
+ *
+ * These were fixed page units, and 18 of them was too mean. The north wall of
+ * דירה 14 is drawn with its faces 19.8 units apart — 45 cm at that sheet's
+ * scale, which is an ordinary exterior or ממ"ד wall — so the pair was rejected,
+ * no body was built, and the flood fill escaped through the hole into the living
+ * room. A ממ"ד wall elsewhere on the same sheet measured 17.6 and only just
+ * survived.
+ *
+ * Judged in metres now, wherever the scale is known: an Israeli partition is
+ * 8 cm and a protected-room wall can be half a metre.
+ */
+const MIN_THICKNESS_M = 0.06;
+const MAX_THICKNESS_M = 0.55;
+/** Fallbacks in page units, for callers with no scale to hand. */
 const MIN_THICKNESS = 2.5;
-const MAX_THICKNESS = 18;
+const MAX_THICKNESS = 26;
 /** Below this a "wall" is a furniture edge or a stray tick, not a partition. */
 const MIN_WALL_LENGTH = 10;
 /** What a single-line partition is drawn at when the sheet gives it no second face. */
@@ -48,7 +63,13 @@ const MAX_UNPAIRED_SHARE = 0.85;
  * at a nominal thickness rather than dropped, which is what left holes in the
  * envelope when this was tried by pairing alone.
  */
-export function buildWallBodies(runs: WallRun[]): WallBody[] {
+export function buildWallBodies(
+  runs: WallRun[],
+  options?: { unitsPerMetre?: number },
+): WallBody[] {
+  const upm = options?.unitsPerMetre;
+  const minThickness = upm && upm > 0 ? MIN_THICKNESS_M * upm : MIN_THICKNESS;
+  const maxThickness = upm && upm > 0 ? MAX_THICKNESS_M * upm : MAX_THICKNESS;
   const bodies: WallBody[] = [];
   const unpaired: WallBody[] = [];
   const used = new Set<number>();
@@ -68,8 +89,8 @@ export function buildWallBodies(runs: WallRun[]): WallBody[] {
         const b = faces[j]!;
         if (used.has(b.index)) continue;
         const gap = b.run.at - a.run.at;
-        if (gap < MIN_THICKNESS) continue;
-        if (gap > MAX_THICKNESS) break; // sorted: nothing further is closer
+        if (gap < minThickness) continue;
+        if (gap > maxThickness) break; // sorted: nothing further is closer
         const overlap =
           Math.min(a.run.to, b.run.to) - Math.max(a.run.from, b.run.from);
         if (overlap <= 0) continue;
@@ -119,7 +140,7 @@ export function buildWallBodies(runs: WallRun[]): WallBody[] {
     if (limit > 0 && b.to - b.from > limit * MAX_UNPAIRED_SHARE) continue;
     bodies.push(b);
   }
-  return dropCombs(dedupe(dropGridLines(bodies)));
+  return dropCombs(dedupe(dropGridLines(bodies)), 3, 26, maxThickness * 0.45);
 }
 
 /**
@@ -159,11 +180,20 @@ function dropGridLines(bodies: WallBody[], slack = 12): WallBody[] {
  * repetition: a hatch is a comb of parallel lines at an even pitch, and a flat
  * does not have four parallel partitions ten units apart.
  */
-function dropCombs(bodies: WallBody[], minTeeth = 3, maxPitch = 26): WallBody[] {
+function dropCombs(
+  bodies: WallBody[],
+  minTeeth = 3,
+  maxPitch = 26,
+  maxToothThickness = Infinity,
+): WallBody[] {
   const drop = new Set<WallBody>();
   for (const orientation of ["h", "v"] as const) {
+    // Only thin bodies can be teeth. A wall drawn with hatch inside it produces
+    // parallel bodies at an even pitch exactly like paving does, and judging on
+    // spacing alone deleted the 45 cm north wall of דירה 14 along with the hatch
+    // that fills it — which is the hole the flood fill kept escaping through.
     const line = bodies
-      .filter((b) => b.orientation === orientation)
+      .filter((b) => b.orientation === orientation && b.thickness <= maxToothThickness)
       .sort((a, b) => a.centre - b.centre);
     let run: WallBody[] = [];
     const flush = () => {
@@ -230,8 +260,8 @@ export function wallBodiesFromSegments(
   walls: VectorSegment[],
   options?: { unitsPerMetre?: number; minLengthM?: number },
 ): WallBody[] {
-  const bodies = buildWallBodies(buildWallRuns(walls));
   const upm = options?.unitsPerMetre;
+  const bodies = buildWallBodies(buildWallRuns(walls), { unitsPerMetre: upm });
   if (!upm || !(upm > 0)) return bodies;
   return keepStructural(bodies, upm, options?.minLengthM ?? 0.8);
 }

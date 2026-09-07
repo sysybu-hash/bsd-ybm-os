@@ -228,3 +228,39 @@ describe("the floor the walls enclose", () => {
     expect(area).toBeLessThan(30_000);
   });
 });
+
+describe("walls the thickness rules used to throw away", () => {
+  const run = (orientation: "h" | "v", at: number, from: number, to: number) => ({
+    orientation,
+    at,
+    from,
+    to,
+  });
+
+  it("accepts a 45 cm wall when the scale says that is 45 cm", () => {
+    // דירה 14's north wall: faces 19.8 units apart at 43.67 units/m. A fixed
+    // 18-unit ceiling rejected it, no body was built, and the flood fill escaped
+    // through the hole into the living room.
+    const bodies = buildWallBodies([run("h", 509.6, 420, 674), run("h", 529.4, 420, 673)], {
+      unitsPerMetre: 43.67,
+    });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.thickness).toBeCloseTo(19.8, 1);
+  });
+
+  it("still refuses a gap too wide to be any wall", () => {
+    // 1.4 m apart is a corridor, not a wall.
+    const bodies = buildWallBodies([run("h", 100, 0, 400), run("h", 161, 0, 400)], {
+      unitsPerMetre: 43.67,
+    });
+    expect(bodies).toHaveLength(2);
+  });
+
+  it("keeps a thick wall that has hatch drawn inside it", () => {
+    // The hatch lines pair up into parallel bodies at an even pitch, exactly
+    // like terrace paving, and judging on spacing alone deleted the wall too.
+    const hatch = [509.6, 516.4, 523.7, 529.4].map((at) => run("h", at, 420, 674));
+    const bodies = buildWallBodies(hatch, { unitsPerMetre: 43.67 });
+    expect(bodies.length).toBeGreaterThan(0);
+  });
+});

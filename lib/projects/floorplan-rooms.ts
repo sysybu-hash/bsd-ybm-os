@@ -77,7 +77,13 @@ export function buildWallRuns(walls: VectorSegment[], tolerance = 1.2): WallRun[
       line = [];
     };
     for (const item of items) {
-      if (line.length > 0 && item.at - line[line.length - 1]!.at > tolerance) flush();
+      // Measured against the line's first member, not its previous one. Chaining
+      // off the previous member let 508, 509, 510, 511 join hand to hand into a
+      // single group spanning far more than the tolerance, and the averaged `at`
+      // then landed on no real wall: the exterior wall at y=510 on דירה 14
+      // disappeared into such a chain, which is the notch the flood fill was
+      // escaping through and why the living room rendered with no floor.
+      if (line.length > 0 && item.at - line[0]!.at > tolerance) flush();
       line.push(item);
     }
     flush();
