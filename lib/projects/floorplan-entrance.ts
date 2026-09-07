@@ -34,6 +34,12 @@ export type EntrancePoint = {
    */
   x: number;
   y: number;
+  /**
+   * True when the mark was read off the sheet's vector paths rather than
+   * estimated by eye. An exact reading is drawn where it says; an estimate is
+   * corrected onto the page first.
+   */
+  exact: boolean;
 };
 
 const LOCATE_INSTRUCTION = `
@@ -84,7 +90,7 @@ export async function locateApartmentEntrance(
   // where more than one mark fits the description.
   if (plan.mimeType === "application/pdf") {
     const fromVectors = await findEntranceTriangle(Buffer.from(plan.base64, "base64"));
-    if (fromVectors) return fromVectors;
+    if (fromVectors) return { ...fromVectors, exact: true };
   }
 
   const readings: EntrancePoint[] = [];
@@ -103,6 +109,7 @@ export async function locateApartmentEntrance(
   return {
     x: median(readings.map((r) => r.x)),
     y: median(readings.map((r) => r.y)),
+    exact: false,
   };
 }
 
@@ -138,7 +145,7 @@ async function readEntranceOnce(
       // A marker in the wrong place is worse than no marker: it tells a buyer
       // the door is somewhere it is not.
       if (x == null || y == null || confidence < 0.5) return null;
-      return { x, y };
+      return { x, y, exact: false };
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
       log.warn("entrance lookup failed", {
@@ -375,6 +382,29 @@ export function nudgeOntoPage(
   return at;
 }
 
+/** The direction from a point to the nearest bit of empty page. */
+export function nearestPageDirection(
+  page: Uint8Array,
+  width: number,
+  height: number,
+  at: { x: number; y: number },
+  size: number,
+): { dx: number; dy: number } | null {
+  for (let reach = 1; reach <= size * 8; reach += 1) {
+    for (let degrees = 0; degrees < 360; degrees += 4) {
+      const radians = (degrees * Math.PI) / 180;
+      const dx = Math.cos(radians);
+      const dy = Math.sin(radians);
+      const x = Math.round(at.x + dx * reach);
+      const y = Math.round(at.y + dy * reach);
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      if (!page[y * width + x]) continue;
+      return { dx, dy };
+    }
+  }
+  return null;
+}
+
 /** The direction from a point on the page to the nearest bit of apartment. */
 export function towardApartment(
   page: Uint8Array,
@@ -468,16 +498,14 @@ export async function markApartmentEntrance(
       x: Math.round(flat.x + point.x * flat.width),
       y: Math.round(flat.y + point.y * flat.height),
     };
-    const centre = nudgeOntoPage(
-      page,
-      info.width,
-      info.height,
-      wanted,
-      size,
-      wallSideOf(point.x, point.y),
-    );
-    const inward = towardApartment(page, info.width, info.height, centre, size);
-    const facing = inward ? facingFromOutward(-inward.dx, -inward.dy) : "right";
+    // An exact reading is drawn where the sheet puts it — which is IN the
+    // doorway, not out on the paper beside it. Only an estimate is corrected.
+    const centre = point.exact
+      ? wanted
+      : nudgeOntoPage(page, info.width, info.height, wanted, size, wallSideOf(point.x, point.y));
+    // The mark points into the flat, so it faces away from the nearest page.
+    const outward = nearestPageDirection(page, info.width, info.height, centre, size);
+    const facing = outward ? facingFromOutward(outward.dx, outward.dy) : "right";
     // A door near the edge of the sheet puts the marker half off the frame.
     // Keep the whole triangle inside it.
     const margin = Math.ceil(size * 0.5) + 2;
