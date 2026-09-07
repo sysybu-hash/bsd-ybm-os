@@ -15,7 +15,6 @@ import {
   segmentLength,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
-import { asTriangle, pickEntranceTriangle } from "@/lib/projects/floorplan-vector";
 
 const page = { width: 200, height: 200 };
 
@@ -264,60 +263,5 @@ describe("the rectangle the flat occupies", () => {
     expect(
       wallBoundingBox(geometry([{ x1: 100, y1: 200, x2: 400, y2: 200 }])),
     ).toBeNull();
-  });
-});
-
-describe("the sheet's entrance mark", () => {
-  const box = { x: 0, y: 0, width: 1000, height: 1000 };
-  const at = (x: number, y: number, side: number) => ({ x, y, area: (side * side) / 2 });
-
-  it("reads a three-cornered subpath", () => {
-    expect(asTriangle([
-      [0, 0],
-      [10, 0],
-      [5, 8],
-    ])).toEqual({ x: 5, y: 8 / 3, area: 40 });
-  });
-
-  it("accepts a triangle shut by repeating its first corner", () => {
-    const closed = asTriangle([
-      [0, 0],
-      [10, 0],
-      [5, 8],
-      [0, 0],
-    ]);
-    expect(closed?.area).toBe(40);
-  });
-
-  it("rejects anything that is not a triangle", () => {
-    expect(asTriangle([[0, 0], [10, 0]])).toBeNull();
-    expect(asTriangle([[0, 0], [10, 0], [20, 0]])).toBeNull(); // collinear
-    expect(asTriangle([[0, 0], [10, 0], [10, 10], [0, 10]])).toBeNull();
-    expect(asTriangle([[0, 0], [NaN, 0], [5, 8]])).toBeNull();
-  });
-
-  it("finds the lone mark among a run of hatch", () => {
-    const hatch = [];
-    for (let i = 0; i < 30; i++) hatch.push(at(300 + i * 12, 400, 20));
-    const found = pickEntranceTriangle([...hatch, at(120, 700, 22)], box)!;
-    expect(found.x).toBeCloseTo(0.12, 2);
-    expect(found.y).toBeCloseTo(0.7, 2);
-  });
-
-  it("ignores marks too small or too large to be an entrance", () => {
-    expect(pickEntranceTriangle([at(120, 700, 2)], box)).toBeNull();
-    expect(pickEntranceTriangle([at(120, 700, 300)], box)).toBeNull();
-  });
-
-  it("ignores a mark off in the title block", () => {
-    expect(pickEntranceTriangle([at(1400, 700, 22)], box)).toBeNull();
-  });
-
-  it("says nothing when two marks both qualify", () => {
-    expect(pickEntranceTriangle([at(120, 700, 22), at(880, 200, 22)], box)).toBeNull();
-  });
-
-  it("says nothing when there is no mark at all", () => {
-    expect(pickEntranceTriangle([], box)).toBeNull();
   });
 });

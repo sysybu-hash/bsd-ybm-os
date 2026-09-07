@@ -28,10 +28,6 @@ import {
   extractPdfPageRaster,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
-import {
-  locateApartmentEntrance,
-  markApartmentEntrance,
-} from "@/lib/projects/floorplan-entrance";
 import { stampFieldsFromLayout, stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import {
   buildFootprintSilhouetteJpeg,
@@ -802,19 +798,6 @@ Fix exactly these and keep everything the audit did not complain about.`
   throw new Error("יצירת ההדמיה נכשלה");
 }
 
-/** The plan's entrance triangle, put back on the finished frame. */
-async function addEntranceMarker(
-  img: { mimeType: string; base64: string },
-  plan: { base64: string; mimeType: string },
-): Promise<{ mimeType: string; base64: string }> {
-  const point = await locateApartmentEntrance(plan);
-  if (!point) {
-    log.info("no entrance located, shipping the still without a marker");
-    return img;
-  }
-  return markApartmentEntrance(img, point);
-}
-
 /**
  * One targeted removal pass on the best frame, instead of another blind re-roll.
  *
@@ -939,17 +922,10 @@ export async function generateFloorplanVisuals(
         plan: { base64, mimeType },
         haredi: options?.styleKit?.audience === "haredi",
       });
-      // Both marks go on after the audit, never before: the auditor fails a
-      // still that carries letters or CAD annotation, and the caption is
-      // letters on purpose while the entrance triangle is CAD annotation on
-      // purpose. Asking the model for either brings the north arrows and the
-      // dimension ticks along with it.
-      const marked =
-        job.viewId === "overview" || job.viewId === "isometric"
-          ? await addEntranceMarker(img, { base64, mimeType })
-          : img;
+      // Stamped after the audit, never before: the auditor fails a still that
+      // has letters in it, and this caption is letters on purpose.
       const stamped = await stampFloorplanStill(
-        marked,
+        img,
         stampFieldsFromLayout(layout, options?.unitTitle),
       );
       return {
