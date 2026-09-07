@@ -289,11 +289,20 @@ export function nudgeOntoPage(
   const inside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height && page[y * width + x] === 1;
   if (inside(at.x, at.y)) return at;
-  for (let reach = 1; reach <= size * 6; reach += 1) {
-    for (let degrees = 0; degrees < 360; degrees += 6) {
-      const radians = (degrees * Math.PI) / 180;
-      const x = Math.round(at.x + Math.cos(radians) * reach);
-      const y = Math.round(at.y + Math.sin(radians) * reach);
+  // Straight out along a row or a column, never diagonally. A radial search
+  // moves both coordinates, and the one the sheet got right is then lost —
+  // דירה 16's door came back at the right height and the wrong side, and the
+  // slide carried it up as well as across.
+  const directions: Array<[number, number]> = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+  for (let reach = 1; reach <= size * 8; reach += 1) {
+    for (const [dx, dy] of directions) {
+      const x = at.x + dx * reach;
+      const y = at.y + dy * reach;
       if (inside(x, y)) return { x, y };
     }
   }

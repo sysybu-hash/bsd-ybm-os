@@ -191,6 +191,15 @@ describe("reading the flat out of the frame", () => {
     expect(page[at.y * width + at.x]).toBe(1);
   });
 
+  it("keeps the height it was given and only moves sideways", () => {
+    const { data, width, height } = framed();
+    const page = pageMaskFromBorder(data, width, height);
+    // The flat runs x 80..319; this point is inside it, two thirds down.
+    const at = nudgeOntoPage(page, width, height, { x: 100, y: 200 }, 40);
+    expect(at.y).toBe(200);
+    expect(at.x).toBeLessThan(80);
+  });
+
   it("leaves a point that is already on the page", () => {
     const { data, width, height } = framed();
     const page = pageMaskFromBorder(data, width, height);
