@@ -648,6 +648,9 @@ function remedyFor(failure: string): string {
   if (/opening\(s\) cut into/i.test(failure)) {
     return "Close every opening the plan does not draw. Walk every wall on the sheet, internal ones too: where the hatch runs unbroken the wall is solid, so render solid wall there — no window, no doorway, no pass-through, no matter how dark or closed-in the room looks.";
   }
+  if (/wet fixture/i.test(failure)) {
+    return "Take every toilet, basin, bath and shower out of the rooms the plan draws dry. A bedroom has a bed, a wardrobe and a bedside table and nothing else — no pan, no basin, no tiled wet floor. Wet fixtures belong only in the rooms the sheet draws pans or basins in.";
+  }
   if (/furniture in the entrance/i.test(failure)) {
     return "Clear the entrance completely. Take out the table, the desk, the chairs, the console, the shelving and anything else standing on that floor, and leave bare floor. A mirror or coat hooks on the wall may stay; nothing stands.";
   }

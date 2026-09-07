@@ -40,6 +40,8 @@ export type FloorplanVizAudit = {
   builtInsNotInPlan: number;
   /** Anything standing on the floor of the entrance or a circulation strip. */
   entranceFurnitureCount: number;
+  /** Toilets, basins, baths or showers standing in a room that is not a wet room. */
+  wetFixturesInDryRooms: number;
   /** Sofa/armchair groups in the still, and the number the plan draws. */
   seatingGroupCount: number;
   planSeatingGroupCount: number;
@@ -80,6 +82,7 @@ Return JSON only:
   "openingsNotInPlan": 0,
   "builtInsNotInPlan": 0,
   "entranceFurnitureCount": 0,
+  "wetFixturesInDryRooms": 0,
   "seatingGroupCount": 0,
   "planSeatingGroupCount": 0,
   "hasBurnedText": false,
@@ -106,6 +109,7 @@ Definitions, applied strictly:
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
 - openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
+- wetFixturesInDryRooms: toilets, basins, bathtubs and showers standing in a room that is NOT a bathroom on the plan — a toilet beside a bed, a basin on a bedroom wall, a bath in a living room. Count each fixture. Judge the room by what the plan draws there, not by how the still tiled the floor: a bedroom whose floor came out tiled is still a bedroom. 0 if every wet fixture is inside a room the sheet draws pans or basins in.
 - entranceFurnitureCount: pieces standing ON THE FLOOR of the entrance hall or a circulation strip that the plan draws as empty — a table, a desk, a chair, a console, a sideboard, a shelving unit, a bookcase, a sofa, a plant stand. Find the front door first, then look at the space just inside it. A mirror or coat hooks mounted on the wall are NOT counted. 0 if that floor is clear.
 - builtInsNotInPlan: large fitted pieces in the STILL standing where the sheet draws empty floor — a bookcase, a sefarim cabinet, a wardrobe, a media unit, a shelving wall. The entrance and the circulation strips are where these keep appearing. Count each one. NOT counted: a slim hall console, a mirror, a coat hook, or small props sitting on furniture that is drawn — those are allowed staging.
 - seatingGroupCount: LOUNGE groups in the STILL — a sofa, or a pair of armchairs, gathered around a rug or a coffee table. One such gathering is one group, and an entrance hall with a sofa and a rug in it counts as a group of its own. NOT a seating group: a dining table with chairs around it, a desk with a chair, stools at a kitchen island, or chairs on a terrace.
@@ -164,6 +168,7 @@ export async function auditFloorplanStill(
         openingsNotInPlan: asInt(raw.openingsNotInPlan, 30),
         builtInsNotInPlan: asInt(raw.builtInsNotInPlan, 30),
         entranceFurnitureCount: asInt(raw.entranceFurnitureCount, 20),
+        wetFixturesInDryRooms: asInt(raw.wetFixturesInDryRooms, 20),
         seatingGroupCount: asInt(raw.seatingGroupCount, 10),
         planSeatingGroupCount: asInt(raw.planSeatingGroupCount, 10),
         hasBurnedText: raw.hasBurnedText === true,
@@ -197,7 +202,7 @@ export type AuditVerdict = {
  * mismatches. For a haredi client a double bed, a screen or Hebrew text burned
  * into the frame makes the still unusable no matter how well everything else
  * lines up, and so does a room standing in space the plan leaves outside the
- * flat — a still that invents a wing is not a still of this apartment. They are
+ * flat, and so does a toilet beside a bed — a still that invents a wing is not a still of this apartment. They are
  * weighted to dominate any number of soft failures.
  */
 const HARD_FAILURE_WEIGHT = 100;
@@ -280,6 +285,9 @@ export function gradeFloorplanStill(
   }
   if (audit.builtInsNotInPlan > 0) {
     failures.push(`${audit.builtInsNotInPlan} fitted unit(s) the plan does not draw`);
+  }
+  if (audit.wetFixturesInDryRooms > 0) {
+    hard(`${audit.wetFixturesInDryRooms} wet fixture(s) in a room the plan draws dry`);
   }
   if (audit.entranceFurnitureCount > 0) {
     failures.push(`${audit.entranceFurnitureCount} piece(s) of furniture in the entrance`);

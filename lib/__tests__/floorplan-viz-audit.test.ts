@@ -29,6 +29,7 @@ const clean: FloorplanVizAudit = {
   openingsNotInPlan: 0,
   builtInsNotInPlan: 0,
   entranceFurnitureCount: 0,
+  wetFixturesInDryRooms: 0,
   seatingGroupCount: 1,
   planSeatingGroupCount: 1,
   hasBurnedText: false,
@@ -267,5 +268,28 @@ describe("what the still added that the sheet never drew", () => {
       layout,
     );
     expect(verdict.failures).toEqual([]);
+  });
+});
+
+describe("a wet fixture in a dry room", () => {
+  it("disqualifies the frame outright", () => {
+    // A toilet beside a bed is not one item on a list of counts.
+    const verdict = gradeFloorplanStill({ ...clean, wetFixturesInDryRooms: 2 }, layout);
+    expect(verdict.failures).toEqual([
+      "2 wet fixture(s) in a room the plan draws dry",
+    ]);
+    expect(verdict.hardFailures).toEqual([
+      "2 wet fixture(s) in a room the plan draws dry",
+    ]);
+  });
+
+  it("outranks any number of count mismatches", () => {
+    const wet = gradeFloorplanStill({ ...clean, wetFixturesInDryRooms: 1 }, layout);
+    const miscounted = gradeFloorplanStill(
+      { ...clean, bedTotal: 9, bedroomCount: 7, islandStoolCount: 0, diningTableCount: 4 },
+      layout,
+    );
+    expect(miscounted.failures.length).toBeGreaterThan(wet.failures.length);
+    expect(miscounted.score).toBeLessThan(wet.score);
   });
 });
