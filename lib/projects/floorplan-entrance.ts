@@ -117,43 +117,56 @@ export async function locateApartmentEntrance(
   return null;
 }
 
-/**
- * True where the frame is empty page rather than apartment.
- *
- * The still is a cutaway on a plain near-white ground, so "outside the flat" is
- * a patch that is both very light and flat. Luminance alone would call a pale
- * tiled terrace background; the variance check keeps grout lines and furniture
- * out of it.
- */
-export function isBackgroundPatch(
-  data: Uint8Array | Buffer,
-  width: number,
-  height: number,
-  cx: number,
-  cy: number,
-  radius: number,
-): boolean {
-  let n = 0;
-  let sum = 0;
-  let sumSq = 0;
-  for (let y = Math.max(0, cy - radius); y <= Math.min(height - 1, cy + radius); y++) {
-    for (let x = Math.max(0, cx - radius); x <= Math.min(width - 1, cx + radius); x++) {
-      const v = data[y * width + x] ?? 255;
-      n += 1;
-      sum += v;
-      sumSq += v * v;
-    }
-  }
-  if (n === 0) return false;
-  const mean = sum / n;
-  const variance = sumSq / n - mean * mean;
-  return mean > 232 && variance < 90;
-}
-
 /** The way someone walks in, given the direction that leads out. */
 export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing"] {
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "left" : "right";
   return dy > 0 ? "up" : "down";
+}
+
+/**
+ * The page, found by flooding in from the frame's border.
+ *
+ * Every earlier version asked "is this patch light and flat?", and a pale
+ * cream wall or a bright threshold answers yes. Outside is not a colour, it is
+ * a place: the region joined to the edge of the frame without crossing the
+ * apartment. Flooding from the border settles it, and no wall inside the flat
+ * can be mistaken for it however pale it renders.
+ */
+export function pageMaskFromBorder(
+  data: Uint8Array | Buffer,
+  width: number,
+  height: number,
+): Uint8Array {
+  const PAGE_MIN = 224;
+  const mask = new Uint8Array(width * height);
+  const queue: number[] = [];
+  const push = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const i = y * width + x;
+    if (mask[i]) return;
+    if ((data[i] ?? 0) < PAGE_MIN) return;
+    mask[i] = 1;
+    queue.push(i);
+  };
+
+  for (let x = 0; x < width; x++) {
+    push(x, 0);
+    push(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    push(0, y);
+    push(width - 1, y);
+  }
+  while (queue.length > 0) {
+    const i = queue.pop()!;
+    const x = i % width;
+    const y = (i - x) / width;
+    push(x - 1, y);
+    push(x + 1, y);
+    push(x, y - 1);
+    push(x, y + 1);
+  }
+  return mask;
 }
 
 /**
@@ -170,18 +183,43 @@ export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing
  * or a strip of terrace cannot pass — but the point returned is the near one,
  * not the far one.
  */
+/** True where the page is open all round, not a thin strip joined to it. */
+export function openPage(
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+  radius: number,
+): boolean {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy > radius * radius) continue;
+      const x = cx + dx;
+      const y = cy + dy;
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      if (!mask[y * width + x]) return false;
+    }
+  }
+  return true;
+}
+
 export function nearestOutside(
   data: Uint8Array | Buffer,
   width: number,
   height: number,
   door: { x: number; y: number },
   size: number,
+  page?: Uint8Array,
 ): { x: number; y: number; dx: number; dy: number } | null {
-  const nearRadius = Math.max(1, Math.round(size * 0.15));
-  const farRadius = Math.max(2, Math.round(size * 0.4));
+  const mask = page ?? pageMaskFromBorder(data, width, height);
   const step = Math.max(1, Math.round(size * 0.08));
+  // An outer wall touches the page along its whole length, so the flood runs
+  // straight into anything pale on the building's edge. Open page has room
+  // around it; a wall band does not.
+  const clearance = Math.max(2, Math.round(size * 0.45));
 
-  for (let reach = step; reach <= size * 10; reach += step) {
+  for (let reach = step; reach <= size * 12; reach += step) {
     for (let degrees = 0; degrees < 360; degrees += 3) {
       const radians = (degrees * Math.PI) / 180;
       const dx = Math.cos(radians);
@@ -189,12 +227,20 @@ export function nearestOutside(
       const x = Math.round(door.x + dx * reach);
       const y = Math.round(door.y + dy * reach);
       if (x < 0 || y < 0 || x >= width || y >= height) continue;
-      if (!isBackgroundPatch(data, width, height, x, y, nearRadius)) continue;
-      const fx = Math.round(x + dx * size * 3);
-      const fy = Math.round(y + dy * size * 3);
-      if (fx < 0 || fy < 0 || fx >= width || fy >= height) continue;
-      if (!isBackgroundPatch(data, width, height, fx, fy, farRadius)) continue;
-      return { x, y, dx, dy };
+      if (!openPage(mask, width, height, x, y, clearance)) continue;
+      // Open page starts a clearance inside the page, so walk back toward the
+      // door for the edge itself — that is what the marker stands against.
+      let edgeX = x;
+      let edgeY = y;
+      for (let back = 1; back <= clearance * 2; back += 1) {
+        const bx = Math.round(x - dx * back);
+        const by = Math.round(y - dy * back);
+        if (bx < 0 || by < 0 || bx >= width || by >= height) break;
+        if (!mask[by * width + bx]) break;
+        edgeX = bx;
+        edgeY = by;
+      }
+      return { x: edgeX, y: edgeY, dx, dy };
     }
   }
   return null;
@@ -262,9 +308,10 @@ export async function markApartmentEntrance(
     const door = { x: point.x * width, y: point.y * height };
     const outside = nearestOutside(data, info.width, info.height, door, size);
     const facing = outside ? facingFromOutward(outside.dx, outside.dy) : point.facing;
-    // Half a triangle clear of the edge, so it reads as standing at the door
-    // rather than biting into the outline.
-    const standOff = size * 0.55;
+    // The triangle is a marker width across, so a little over one width out
+    // puts the whole of it on the page with its leading corner nearly touching
+    // the outline: at the door, not in it and not away from it.
+    const standOff = size * 0.95;
     const centre = outside
       ? {
           x: Math.round(outside.x + outside.dx * standOff),

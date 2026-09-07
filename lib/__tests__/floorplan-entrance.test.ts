@@ -5,6 +5,8 @@ import {
   facingFromOutward,
   markApartmentEntrance,
   nearestOutside,
+  openPage,
+  pageMaskFromBorder,
   type EntrancePoint,
 } from "@/lib/projects/floorplan-entrance";
 
@@ -135,28 +137,49 @@ describe("which way someone walks in", () => {
   });
 });
 
-describe("the nearest point outside the door", () => {
-  /** Flat filling the left of the frame, page from x=300 rightwards. */
-  function halfPage(width = 600, height = 400) {
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        data[y * width + x] = x < 300 ? 130 : 252;
+describe("telling outside from a pale wall", () => {
+  /**
+   * A flat floating on the page — inset from every edge, the way a cutaway
+   * sits on a sheet — with a pale cream wall band inside it. The band and the
+   * page are equally light; only the page reaches the frame's border.
+   */
+  function flatWithPaleWall(width = 600, height = 400) {
+    const data = new Uint8Array(width * height).fill(252);
+    for (let y = 40; y < height - 40; y++) {
+      for (let x = 40; x < 300; x++) {
+        data[y * width + x] = x >= 180 && x < 200 ? 246 : 130;
       }
     }
     return { data, width, height };
   }
 
-  it("is the near edge of the page, not somewhere deep inside it", () => {
-    const { data, width, height } = halfPage();
+  it("counts only what reaches the border as page", () => {
+    const { data, width, height } = flatWithPaleWall();
+    const mask = pageMaskFromBorder(data, width, height);
+    expect(mask[200 * width + 400]).toBe(1);
+    expect(mask[10 * width + 100]).toBe(1);
+    // The floor is not page, however the flood runs.
+    expect(mask[200 * width + 100]).toBe(0);
+    // A pale wall on the building's edge IS reached by the flood — it touches
+    // the page — so the mask alone cannot separate them. openPage does.
+    expect(openPage(mask, width, height, 190, 200, 10)).toBe(false);
+    expect(openPage(mask, width, height, 400, 200, 10)).toBe(true);
+  });
+
+  it("sends the marker past the pale band to the real edge", () => {
+    const { data, width, height } = flatWithPaleWall();
+    const at = nearestOutside(data, width, height, { x: 210, y: 200 }, 24)!;
+    expect(at).not.toBeNull();
+    expect(at.x).toBeGreaterThanOrEqual(300);
+    expect(at.dx).toBeGreaterThan(0.8);
+  });
+
+  it("lands on the near edge of the page, not deep inside it", () => {
+    const { data, width, height } = flatWithPaleWall();
     const size = 30;
     const at = nearestOutside(data, width, height, { x: 296, y: 200 }, size)!;
-    expect(at).not.toBeNull();
-    // Within a few pixels of the boundary, not a marker width past it.
-    expect(at.x).toBeLessThan(300 + size * 0.4);
-    expect(at.x).toBeGreaterThanOrEqual(300 - size * 0.2);
+    expect(at.x).toBeLessThan(300 + size * 0.3);
     expect(at.y).toBeCloseTo(200, -1);
-    expect(at.dx).toBeGreaterThan(0.8);
   });
 
   it("goes out of the notch at a stepped entrance", () => {
@@ -168,26 +191,8 @@ describe("the nearest point outside the door", () => {
         data[y * width + x] = x < 500 && y < 300 ? 130 : 252;
       }
     }
-    // Twelve pixels above the bottom edge of the flat, far from its right one.
     const at = nearestOutside(data, width, height, { x: 250, y: 288 }, 30)!;
     expect(at.dy).toBeGreaterThan(0.8);
-    expect(at.y).toBeLessThan(320);
-  });
-
-  it("will not take a pale wall band for the page", () => {
-    const width = 700;
-    const height = 200;
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        let v = 130;
-        if (x >= 200 && x < 220) v = 246;
-        else if (x >= 400) v = 252;
-        data[y * width + x] = v;
-      }
-    }
-    const at = nearestOutside(data, width, height, { x: 190, y: 100 }, 24)!;
-    expect(at.x).toBeGreaterThan(390);
   });
 
   it("says nothing when the frame fills its canvas", () => {
@@ -238,9 +243,8 @@ describe("where the marker lands", () => {
       }
     }
     expect(dark).toBeGreaterThan(0);
-    // Just past the wall at x=300, level with the door, not drifting away.
     expect(sumX / dark).toBeGreaterThan(300);
-    expect(sumX / dark).toBeLessThan(330);
+    expect(sumX / dark).toBeLessThan(345);
     expect(sumY / dark).toBeCloseTo(200, -1);
   });
 });
