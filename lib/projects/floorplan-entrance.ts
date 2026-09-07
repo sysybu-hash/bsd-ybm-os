@@ -173,14 +173,26 @@ export function pageMaskFromBorder(
   width: number,
   height: number,
 ): Uint8Array {
-  const PAGE_MIN = 224;
+  // The ground is whatever colour the frame's border is, not necessarily white:
+  // one דירה 16 render came back on mid-grey, and a fixed "light" threshold
+  // found no page at all on it. Take the border's own tone as the reference.
+  const border: number[] = [];
+  for (let x = 0; x < width; x += Math.max(1, Math.floor(width / 64))) {
+    border.push(data[x] ?? 0, data[(height - 1) * width + x] ?? 0);
+  }
+  for (let y = 0; y < height; y += Math.max(1, Math.floor(height / 64))) {
+    border.push(data[y * width] ?? 0, data[y * width + width - 1] ?? 0);
+  }
+  border.sort((a, b) => a - b);
+  const ground = border[Math.floor(border.length / 2)] ?? 255;
+  const tolerance = 14;
   const mask = new Uint8Array(width * height);
   const queue: number[] = [];
   const push = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= width || y >= height) return;
     const i = y * width + x;
     if (mask[i]) return;
-    if ((data[i] ?? 0) < PAGE_MIN) return;
+    if (Math.abs((data[i] ?? 0) - ground) > tolerance) return;
     mask[i] = 1;
     queue.push(i);
   };

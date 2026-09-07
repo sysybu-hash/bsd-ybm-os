@@ -255,3 +255,24 @@ describe("which wall the sheet marks", () => {
     expect(at.y).toBe(240);
   });
 });
+
+describe("a render on a ground that is not white", () => {
+  it("takes the border's own tone as the page", () => {
+    const width = 200;
+    const height = 200;
+    // Mid-grey ground with a darker flat floating on it.
+    const data = new Uint8Array(width * height).fill(150);
+    for (let y = 60; y < 140; y++) {
+      for (let x = 60; x < 140; x++) data[y * width + x] = 90;
+    }
+    const mask = pageMaskFromBorder(data, width, height);
+    expect(mask[10 * width + 10]).toBe(1);
+    expect(mask[100 * width + 100]).toBe(0);
+    expect(apartmentBounds(mask, width, height)).toEqual({
+      x: 60,
+      y: 60,
+      width: 80,
+      height: 80,
+    });
+  });
+});
