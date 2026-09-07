@@ -44,3 +44,56 @@ export function buildMaterialsPrompt(extraDirection?: string): string {
 Additional direction for the materials only — it does not license any change to the geometry above:
 ${extra}`;
 }
+
+/**
+ * What each colour in the deterministic render stands for.
+ *
+ * Rendered in one neutral tone the model read five bed blocks and drew two
+ * beds, and turned a block standing on the service terrace into a bathroom. The
+ * kind is known from the geometry, so it is stated rather than left to be
+ * inferred from proportions.
+ */
+export const FURNITURE_KEY_PROMPT = `The raised coloured blocks standing on the floor are furniture, already positioned exactly as the architect drew them. The colour states what each block is:
+- BLUE block = a SINGLE bed. One mattress, one pillow, its own headboard against the nearest wall. Never a double bed. Exactly as many beds as blue blocks.
+- YELLOW/SAND block = a fitted wardrobe or a kitchen run, doors closed.
+- PURPLE block = a kitchen counter or island.
+- GREEN block = a sanitary fixture: a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in.
+- GREY-BEIGE block = a small side piece, such as a bedside table.
+
+Render every block, without exception. Do not add furniture where there is no block. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame.`;
+
+/**
+ * The second pass, which takes the key back out.
+ *
+ * Asking for the colours to "disappear into the real material" in the placement
+ * pass does not work — the model treats the key as a palette and returns blue
+ * bedding and a purple counter. Asked to place, it places well; asked separately
+ * to restate those objects in real materials and change nothing else, it does
+ * that well too. Two narrow passes beat one that has to do both.
+ */
+export const RECOLOUR_PROMPT = `This is a finished top-down render of one apartment. Every wall, room, opening and piece of furniture is already exactly right and must not be changed in any way.
+
+One thing is wrong: some objects are still in the flat coding colours used to build the image. Restate those objects in their real materials, and change NOTHING else — same walls, same outline, same orientation, same furniture, same positions, same sizes, same camera.
+- Anything blue is a bed: white linen bedding, pale oak frame and headboard. A single bed, never a double.
+- Anything yellow or sand-coloured is a wardrobe or kitchen unit: warm pale oak, doors closed.
+- Anything purple is a kitchen counter: white stone worktop over oak base units.
+- Anything mint-green is a sanitary fixture: white glazed ceramic.
+- Any coloured floor becomes its proper surface: warm oak boards in the rooms, pale stone tiles in the wet rooms and on the terraces.
+
+When you are done, no blue, purple or mint-green object may remain anywhere in the frame. Keep the warm golden-hour daylight. No text, no labels, no screens, no televisions.`;
+
+/** The placement pass: materials rules plus the furniture key. */
+export function buildPlacementPrompt(extraDirection?: string): string {
+  // The blanket "No furniture" belongs to the empty-shell pass and would
+  // contradict the key.
+  const base = MATERIALS_ONLY_PROMPT.replace("- No furniture. ", "- ");
+  const parts = [base, FURNITURE_KEY_PROMPT];
+  const extra = extraDirection?.trim();
+  if (extra) {
+    parts.push(
+      `Additional direction for the materials only — it does not license any change to the geometry above:
+${extra}`,
+    );
+  }
+  return parts.join("\n\n");
+}

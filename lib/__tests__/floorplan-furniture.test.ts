@@ -1,0 +1,89 @@
+import {
+  classifyPiece,
+  dedupeRectangles,
+  dropNested,
+  findRectangles,
+} from "@/lib/projects/floorplan-furniture";
+
+const UPM = 54.7;
+const box = (x: number, y: number, w: number, h: number) => [
+  { x1: x, y1: y, x2: x + w, y2: y, lineWidth: 2 },
+  { x1: x, y1: y + h, x2: x + w, y2: y + h, lineWidth: 2 },
+  { x1: x, y1: y, x2: x, y2: y + h, lineWidth: 2 },
+  { x1: x + w, y1: y, x2: x + w, y2: y + h, lineWidth: 2 },
+];
+
+describe("reading furniture off the sheet", () => {
+  it("finds a closed rectangle", () => {
+    const rects = findRectangles(box(100, 100, 51, 119), { unitsPerMetre: UPM });
+    expect(rects).toHaveLength(1);
+    expect(rects[0]!.w).toBeCloseTo(51);
+  });
+
+  it("ignores three sides — a hatch line is not a wardrobe", () => {
+    const open = box(100, 100, 51, 119).slice(0, 3);
+    expect(findRectangles(open, { unitsPerMetre: UPM })).toEqual([]);
+  });
+
+  it("ignores two edges that merely line up in different places", () => {
+    const apart = [
+      { x1: 0, y1: 100, x2: 50, y2: 100, lineWidth: 2 },
+      { x1: 400, y1: 160, x2: 450, y2: 160, lineWidth: 2 },
+    ];
+    expect(findRectangles(apart, { unitsPerMetre: UPM })).toEqual([]);
+  });
+});
+
+describe("naming a piece by its size", () => {
+  it("calls 93 by 218 cm a single bed, either way round", () => {
+    expect(classifyPiece(93, 218)).toBe("bed");
+    expect(classifyPiece(218, 93)).toBe("bed");
+  });
+
+  it("calls a shallow long run storage — a wardrobe or a kitchen line", () => {
+    expect(classifyPiece(220, 37)).toBe("storage");
+    expect(classifyPiece(104, 36)).toBe("storage");
+  });
+
+  it("calls 73 by 156 cm a fixture, which is a bath", () => {
+    expect(classifyPiece(73, 156)).toBe("fixture");
+    expect(classifyPiece(62, 62)).toBe("fixture");
+  });
+
+  it("leaves a size it does not recognise unknown rather than guessing", () => {
+    // A bed invented in the wrong place is the failure this pipeline is built
+    // to stop; an unnamed block in the right place is honest.
+    expect(classifyPiece(31, 21)).toBe("unknown");
+    expect(classifyPiece(300, 300)).toBe("unknown");
+  });
+
+  it("does not call a double bed a single one", () => {
+    expect(classifyPiece(140, 200)).not.toBe("bed");
+  });
+});
+
+describe("what is drawn like furniture but is not", () => {
+  it("drops a stair, which is a stack of rectangles on one spot", () => {
+    // דירה 14's building stair: eleven treads, 93 wide, heights stepping down.
+    const stair = [247, 226, 205, 184, 163].map((h, i) => ({ x: 296, y: 1196 + i * 12, w: 51, h }));
+    const bed = { x: 146, y: 639, w: 51, h: 119 };
+    expect(dropNested([...stair, bed])).toEqual([bed]);
+  });
+
+  it("keeps two wardrobes that merely share a wall line", () => {
+    const two = [
+      { x: 100, y: 100, w: 51, h: 20 },
+      { x: 100, y: 400, w: 51, h: 20 },
+    ];
+    expect(dropNested(two)).toHaveLength(2);
+  });
+
+  it("keeps the largest rectangle where several describe one object", () => {
+    const nested = [
+      { x: 100, y: 100, w: 51, h: 119 },
+      { x: 101, y: 101, w: 48, h: 116 },
+    ];
+    expect(dedupeRectangles(nested)).toHaveLength(1);
+    expect(dedupeRectangles(nested)[0]!.w).toBe(51);
+  });
+});

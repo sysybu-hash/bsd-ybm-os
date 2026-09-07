@@ -1,3 +1,4 @@
+import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { bodyRect, type SpanRow, type WallBody } from "@/lib/projects/floorplan-solid";
 
 /**
@@ -29,6 +30,8 @@ export type Render3dOptions = {
   padding?: number;
   /** The enclosed interior as row spans, painted as the floor slab. */
   floor?: SpanRow[];
+  /** Pieces read out of the CAD, extruded at the height their kind stands. */
+  furniture?: FurniturePiece[];
 };
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -37,6 +40,21 @@ const FLOOR = "#d9cdbd";
 const WALL_TOP = "#f2ece4";
 const WALL_FACE = "#cdc2b4";
 const WALL_EDGE = "#b3a595";
+/**
+ * Furniture blocks are colour-coded, and the prompt names the code.
+ *
+ * Rendered in one neutral tone the model read five bed blocks and produced two
+ * beds, and turned a block standing on the service terrace into a bathroom. The
+ * blocks carry their kind in the geometry; there is no reason to make the model
+ * infer it from proportions.
+ */
+export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
+  bed: { top: "#8fb8e0", face: "#6f97bd" },
+  storage: { top: "#d8c08a", face: "#b39c68" },
+  counter: { top: "#c7a3d8", face: "#a382b5" },
+  fixture: { top: "#8fd8c4", face: "#6bb3a0" },
+  unknown: { top: "#cbb79c", face: "#a8917a" },
+};
 
 function quad(points: Array<[number, number]>, fill: string, stroke: string): string {
   const d = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
@@ -119,6 +137,47 @@ export function renderFlatSvg(
           [x, near - rise],
         ],
         WALL_TOP,
+        WALL_EDGE,
+      ),
+    );
+  }
+
+  // Furniture, after the walls so a piece standing against a wall reads in front
+  // of it, and painted back to front among themselves for the same reason.
+  const heights: Record<string, number> = {
+    bed: 0.5,
+    storage: 2.0,
+    counter: 0.9,
+    fixture: 0.55,
+    unknown: 0.5,
+  };
+  for (const piece of [...(options.furniture ?? [])].sort(
+    (a, b) => a.y + a.h - (b.y + b.h),
+  )) {
+    const lift = (heights[piece.kind] ?? 0.5) * options.unitsPerMetre * RISE;
+    const colour = PIECE_COLOURS[piece.kind] ?? PIECE_COLOURS.unknown!;
+    const near = piece.y + piece.h;
+    parts.push(
+      quad(
+        [
+          [piece.x, near],
+          [piece.x + piece.w, near],
+          [piece.x + piece.w, near - lift],
+          [piece.x, near - lift],
+        ],
+        colour.face,
+        WALL_EDGE,
+      ),
+    );
+    parts.push(
+      quad(
+        [
+          [piece.x, piece.y - lift],
+          [piece.x + piece.w, piece.y - lift],
+          [piece.x + piece.w, near - lift],
+          [piece.x, near - lift],
+        ],
+        colour.top,
         WALL_EDGE,
       ),
     );
