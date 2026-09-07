@@ -252,11 +252,17 @@ export async function extractFloorplanVectorGeometry(
     // neither lets every bed through and rooms fragment around the furniture.
     const geometric = segments.filter((s) => isWallCandidate(s, page2, options?.minWallLength ?? 12));
     const heavy = geometric.filter((s) => s.lineWidth >= WALL_MIN_LINE_WIDTH);
-    // The heavy pen is the better signal where the export uses one. A sheet that
-    // draws everything at one width would come back with almost nothing, so fall
-    // back to the thickness test rather than return an empty plan.
-    const walls =
-      heavy.length >= 40 ? heavy : geometric.filter((s) => hasParallelFace(s, geometric));
+    const faced = geometric.filter((s) => hasParallelFace(s, geometric));
+    // Take BOTH, not whichever looks healthier. This used to read
+    // `heavy.length >= 40 ? heavy : faced`, and on דירה 14 heavy won with 172
+    // segments — every one of them an internal partition, because this sheet
+    // draws its exterior as a thin-outlined hatch body that the heavy pen never
+    // sees. The model was handed a plan with no envelope at all and did the only
+    // thing it could: invent one. That is the whole family of complaints on this
+    // batch — wrong footprint, whole invented spaces down one side. The union is
+    // 860 segments and closes the outline.
+    const union = new Set<VectorSegment>([...heavy, ...faced]);
+    const walls = largestWallCluster([...union]);
     return { pageWidth: viewport.width, pageHeight: viewport.height, segments, walls };
   } catch (err: unknown) {
     log.warn("vector extraction failed", {
@@ -264,6 +270,100 @@ export async function extractFloorplanVectorGeometry(
     });
     return null;
   }
+}
+
+/**
+ * The connected run of walls that is the apartment, dropping everything else.
+ *
+ * Taking heavy ∪ parallel-face closes the envelope but also lets the title block
+ * in: a revision table is fifteen horizontal rules a few units apart, which is
+ * exactly what `hasParallelFace` is looking for. Those rules sit off on their own
+ * at the right of the sheet, so proximity separates them — the flat is one dense
+ * connected component and the tables are their own small ones. Keeping the
+ * cluster that encloses the most area took דירה 14 from 860 segments spanning
+ * the full sheet width to 358 spanning the flat.
+ */
+export function largestWallCluster(walls: VectorSegment[], cell = 24): VectorSegment[] {
+  if (walls.length === 0) return walls;
+
+  const parent = new Map<string, string>();
+  const find = (a: string): string => {
+    let node = a;
+    while (parent.get(node) !== node) {
+      const grand = parent.get(parent.get(node)!)!;
+      parent.set(node, grand);
+      node = grand;
+    }
+    return node;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  // Walk each segment, not just its endpoints: a 900-unit exterior run passes
+  // through cells that touch nothing at either end.
+  const cellsFor = (s: VectorSegment): string[] => {
+    const steps = Math.max(2, Math.ceil(segmentLength(s) / cell) * 2);
+    const out = new Set<string>();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const cx = Math.floor((s.x1 + (s.x2 - s.x1) * t) / cell);
+      const cy = Math.floor((s.y1 + (s.y2 - s.y1) * t) / cell);
+      out.add(`${cx},${cy}`);
+    }
+    return [...out];
+  };
+
+  const perSegment = walls.map(cellsFor);
+  for (const cells of perSegment) {
+    for (const c of cells) if (!parent.has(c)) parent.set(c, c);
+  }
+  for (const cells of perSegment) {
+    for (let i = 1; i < cells.length; i++) union(cells[0]!, cells[i]!);
+  }
+  // Diagonal neighbours too, so a wall corner meeting at a cell diagonal joins.
+  for (const k of [...parent.keys()]) {
+    const [x, y] = k.split(",").map(Number) as [number, number];
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ] as const) {
+      const n = `${x + dx},${y + dy}`;
+      if (parent.has(n)) union(k, n);
+    }
+  }
+
+  // Rank by the area the cluster encloses, not by how much line is in it. A
+  // revision table is a lot of line in a thin band — twelve 250-unit rules beat
+  // a four-wall flat on total length — but it encloses almost no area, while the
+  // drawing is extended in both directions by definition.
+  type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+  const boundsByRoot = new Map<string, Bounds>();
+  const rootOf = walls.map((s, i) => {
+    const root = find(perSegment[i]![0]!);
+    const b = boundsByRoot.get(root) ?? {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity,
+    };
+    b.minX = Math.min(b.minX, s.x1, s.x2);
+    b.maxX = Math.max(b.maxX, s.x1, s.x2);
+    b.minY = Math.min(b.minY, s.y1, s.y2);
+    b.maxY = Math.max(b.maxY, s.y1, s.y2);
+    boundsByRoot.set(root, b);
+    return root;
+  });
+  const area = (b: Bounds) => Math.max(0, b.maxX - b.minX) * Math.max(0, b.maxY - b.minY);
+  let best: string | null = null;
+  for (const [root, b] of boundsByRoot) {
+    if (best === null || area(b) > area(boundsByRoot.get(best)!)) best = root;
+  }
+  return walls.filter((_, i) => rootOf[i] === best);
 }
 
 /**
@@ -307,8 +407,22 @@ export function wallBoundingBox(
  * This is the part of the vector work that pays off even though room detection
  * did not: guiding the model needs clean walls, not closed rooms.
  */
-export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry): string {
-  const { pageWidth: w, pageHeight: h, walls } = geometry;
+export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry, pad = 18): string {
+  const { walls } = geometry;
+  // Crop to the flat. Drawing on the full page put the apartment in a third of a
+  // mostly-empty portrait canvas, so the model was reading the walls at a third
+  // of the resolution it could have had — and the frame it was being shown did
+  // not match the aspect ratio it was being asked for.
+  const box = wallBoundingBox(geometry) ?? {
+    x: 0,
+    y: 0,
+    width: geometry.pageWidth,
+    height: geometry.pageHeight,
+  };
+  const x = box.x - pad;
+  const y = box.y - pad;
+  const w = box.width + pad * 2;
+  const h = box.height + pad * 2;
   const lines = walls
     .map(
       (s) =>
@@ -316,9 +430,10 @@ export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry): string 
     )
     .join("");
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(0)} ${h.toFixed(0)}" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" ` +
+    `viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" ` +
     `width="${w.toFixed(0)}" height="${h.toFixed(0)}">` +
-    `<rect width="100%" height="100%" fill="#ffffff"/>` +
+    `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#ffffff"/>` +
     `<g stroke="#000000" stroke-width="2.5" stroke-linecap="square">${lines}</g></svg>`
   );
 }

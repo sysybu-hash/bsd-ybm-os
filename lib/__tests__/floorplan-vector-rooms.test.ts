@@ -10,6 +10,8 @@ import {
 import {
   WALL_MIN_LINE_WIDTH,
   hasParallelFace,
+  largestWallCluster,
+  renderWallDiagramSvg,
   isAxisAligned,
   isWallCandidate,
   segmentLength,
@@ -227,6 +229,74 @@ describe("line width as the wall/furniture divider", () => {
     const face = { x1: 20, y1: 50, x2: 160, y2: 50, lineWidth: 2 };
     const barelyOverlapping = { x1: 150, y1: 58, x2: 190, y2: 58, lineWidth: 2 };
     expect(hasParallelFace(face, [face, barelyOverlapping])).toBe(false);
+  });
+});
+
+describe("keeping the flat and dropping the title block", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({
+    x1,
+    y1,
+    x2,
+    y2,
+    lineWidth: 14,
+  });
+
+  it("drops a revision table that sits away from the drawing", () => {
+    // The flat: a closed box at the left of the sheet.
+    const flat = [
+      seg(100, 100, 500, 100),
+      seg(100, 600, 500, 600),
+      seg(100, 100, 100, 600),
+      seg(500, 100, 500, 600),
+    ];
+    // A title block at the right: parallel rules 6 units apart, which is exactly
+    // what hasParallelFace lets through, and why it reached the diagram at all.
+    const table = Array.from({ length: 12 }, (_, i) => seg(900, 100 + i * 6, 1150, 100 + i * 6));
+    const kept = largestWallCluster([...flat, ...table]);
+    expect(kept).toHaveLength(flat.length);
+    expect(kept.every((w) => w.x1 <= 500)).toBe(true);
+  });
+
+  it("keeps a long exterior run whose middle touches nothing", () => {
+    // Walking only the endpoints would split this wall off from the flat.
+    const kept = largestWallCluster([
+      seg(100, 100, 500, 100),
+      seg(100, 100, 100, 600),
+      seg(500, 100, 500, 600),
+      seg(100, 600, 500, 600),
+      seg(100, 600, 100, 1400),
+      seg(100, 1400, 500, 1400),
+    ]);
+    expect(kept).toHaveLength(6);
+  });
+
+  it("returns the walls untouched when there is only one cluster", () => {
+    const walls = [seg(0, 0, 100, 0), seg(100, 0, 100, 100)];
+    expect(largestWallCluster(walls)).toHaveLength(2);
+  });
+
+  it("says nothing about an empty plan", () => {
+    expect(largestWallCluster([])).toEqual([]);
+  });
+});
+
+describe("the wall diagram handed to the image model", () => {
+  it("crops to the flat instead of drawing the whole sheet", () => {
+    const svg = renderWallDiagramSvg({
+      pageWidth: 1200,
+      pageHeight: 1700,
+      segments: [],
+      walls: [
+        { x1: 400, y1: 900, x2: 700, y2: 900, lineWidth: 14 },
+        { x1: 400, y1: 900, x2: 400, y2: 1100, lineWidth: 14 },
+        { x1: 700, y1: 900, x2: 700, y2: 1100, lineWidth: 14 },
+        { x1: 400, y1: 1100, x2: 700, y2: 1100, lineWidth: 14 },
+      ],
+    });
+    // The flat is 300x200 at (400,900); with 18 units of padding the viewBox is
+    // that box, not "0 0 1200 1700".
+    expect(svg).toContain('viewBox="382.0 882.0 336.0 236.0"');
+    expect(svg).not.toContain('viewBox="0 0');
   });
 });
 
