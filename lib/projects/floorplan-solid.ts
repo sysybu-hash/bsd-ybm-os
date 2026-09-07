@@ -347,9 +347,14 @@ export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody
       group = [];
     };
     for (const b of line) {
-      const prev = group[group.length - 1];
-      // Same line, within a wall's own thickness.
-      if (prev && Math.abs(b.centre - prev.centre) > Math.max(prev.thickness, 4)) flush();
+      const anchor = group[0];
+      // Same line, within a wall's own thickness — measured against the group's
+      // first member, not the previous one. Chaining off the previous member let
+      // bodies at 1140, 1150, 1160, 1172 join hand to hand into a single group
+      // far wider than any wall, and the merged body took the first member's
+      // centre, so a real 2.17 m bathroom partition disappeared into a wall
+      // 30 cm away from it. Same mistake as buildWallRuns made, one level up.
+      if (anchor && Math.abs(b.centre - anchor.centre) > Math.max(anchor.thickness, 4)) flush();
       group.push(b);
     }
     flush();
@@ -708,7 +713,10 @@ export function wallBodiesFromHatch(
   },
 ): WallBody[] {
   const upm = options.unitsPerMetre;
-  const minDensity = options.minDensity ?? 0.7;
+  // Swept against hatch coverage on דירה 14: 0.2 gives 78.6%, 0.4 gives 82.8%,
+  // 0.7 gives 82.3%, 1.2 gives 80.8%. Flat enough that the walls still missing
+  // are not being lost at the margin.
+  const minDensity = options.minDensity ?? 0.4;
   const minLength = (options.minLengthM ?? 0.2) * upm;
   const field = new HatchField(extractHatchStrokes(segments));
   if (field.size === 0) return [];

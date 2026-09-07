@@ -421,3 +421,34 @@ describe("how the hatch is measured", () => {
     expect(field.perLength(band)).toBeCloseTo(2, 1);
   });
 });
+
+describe("bridging groups walls by their own line, not by a chain", () => {
+  const body = (centre: number, from: number, to: number, thickness = 6) => ({
+    orientation: "h" as const,
+    centre,
+    thickness,
+    from,
+    to,
+  });
+
+  it("does not chain across a run of nearby lines", () => {
+    // Bodies at 1140, 1150, 1160, 1172 joined hand to hand into one group far
+    // wider than any wall, and the merged body took the first member's centre —
+    // so a real 2.17 m bathroom partition disappeared into a wall 30 cm away.
+    const merged = bridgeOpenings(
+      [body(1140, 0, 100), body(1150, 0, 100), body(1160, 0, 100), body(1172, 366, 502)],
+      120,
+    );
+    expect(merged.some((b) => Math.abs(b.centre - 1172) < 4)).toBe(true);
+  });
+
+  it("still joins two pieces of one wall on the same line", () => {
+    const merged = bridgeOpenings([body(100, 0, 200), body(101, 250, 500)], 120);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]!.to).toBe(500);
+  });
+
+  it("keeps two walls a room apart separate", () => {
+    expect(bridgeOpenings([body(100, 0, 200), body(400, 0, 200)], 120)).toHaveLength(2);
+  });
+});
