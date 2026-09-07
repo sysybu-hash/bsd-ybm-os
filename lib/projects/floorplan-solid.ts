@@ -1,5 +1,9 @@
 import { buildWallRuns, type WallRun } from "@/lib/projects/floorplan-rooms";
-import type { VectorSegment } from "@/lib/projects/floorplan-vector";
+import {
+  isAxisAligned,
+  segmentLength,
+  type VectorSegment,
+} from "@/lib/projects/floorplan-vector";
 
 /**
  * Turning the CAD's wall lines into solid walls, so a still can be rendered
@@ -581,4 +585,195 @@ export function calibrateFromInterior(
   const unitsPerMetre = Math.sqrt(interiorUnitArea / knownAreaM2);
   if (!(unitsPerMetre > 8) || unitsPerMetre > 400) return null;
   return unitsPerMetre;
+}
+
+/**
+ * The hatch that fills a wall, which is what a wall actually is on this sheet.
+ *
+ * Everything before this looked for walls in their outlines — heavy pens,
+ * parallel faces, plausible thicknesses, minimum lengths — and every one of
+ * those describes a kitchen counter and a terrace edge just as well. Overlaying
+ * the reconstruction on the drawing showed the result plainly: the counter run
+ * came back as a wall, the terrace paving came back as walls, and the bathroom
+ * walls came back as nothing at all.
+ *
+ * The sheet is not ambiguous about it. A wall is a band filled with 45° hatch;
+ * a bath, a toilet, a washing machine and a worktop have no hatch inside them.
+ * דירה 14 carries 5,108 short strokes at a median angle of exactly 45.0°, and
+ * the very first filter in this pipeline — isAxisAligned — was throwing every
+ * one of them away.
+ */
+export type HatchPoint = { x: number; y: number };
+
+export function extractHatchStrokes(
+  segments: VectorSegment[],
+  options?: { maxStrokeLength?: number },
+): HatchPoint[] {
+  const maxLength = options?.maxStrokeLength ?? 40;
+  const out: HatchPoint[] = [];
+  for (const s of segments) {
+    const dx = s.x2 - s.x1;
+    const dy = s.y2 - s.y1;
+    const length = Math.hypot(dx, dy);
+    if (length < 1 || length > maxLength) continue;
+    const degrees = Math.abs((Math.atan2(dy, dx) * 180) / Math.PI) % 180;
+    const angle = degrees > 90 ? 180 - degrees : degrees;
+    // Wide enough to take a hatch drawn at 30° or 60°, narrow enough to exclude
+    // a door swing arc's chords and the odd sloped fitting.
+    if (angle <= 25 || angle >= 65) continue;
+    out.push({ x: (s.x1 + s.x2) / 2, y: (s.y1 + s.y2) / 2 });
+  }
+  return out;
+}
+
+/** Grid lookup over hatch points, so a density test is not a linear scan. */
+export class HatchField {
+  private readonly cells = new Map<string, number>();
+
+  constructor(
+    points: HatchPoint[],
+    private readonly cell = 6,
+  ) {
+    for (const p of points) {
+      const key = `${Math.floor(p.x / cell)},${Math.floor(p.y / cell)}`;
+      this.cells.set(key, (this.cells.get(key) ?? 0) + 1);
+    }
+  }
+
+  /** Strokes per 100 square units inside a rectangle. */
+  density(rect: { x: number; y: number; w: number; h: number }): number {
+    const area = rect.w * rect.h;
+    if (!(area > 0)) return 0;
+    let count = 0;
+    const x0 = Math.floor(rect.x / this.cell);
+    const x1 = Math.floor((rect.x + rect.w) / this.cell);
+    const y0 = Math.floor(rect.y / this.cell);
+    const y1 = Math.floor((rect.y + rect.h) / this.cell);
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cy = y0; cy <= y1; cy++) count += this.cells.get(`${cx},${cy}`) ?? 0;
+    }
+    return (count / area) * 100;
+  }
+
+  get size(): number {
+    return this.cells.size;
+  }
+}
+
+/**
+ * Walls, found by asking which bands are filled with hatch.
+ *
+ * This replaces the stack of proxies — heavy pen, minimum length, parallel face,
+ * comb rejection, nested rejection — that between them let a kitchen counter and
+ * a terrace's paving through while losing the bathroom walls entirely. Each of
+ * those rules was a guess at what a wall looks like from outside. The hatch says
+ * what a wall is.
+ *
+ * Because the test is positive, the candidate net can be cast much wider: every
+ * axis-aligned segment is a possible wall face, at any length, and the hatch
+ * decides. That is what recovers the walls the old filters never built.
+ */
+export function wallBodiesFromHatch(
+  segments: VectorSegment[],
+  options: {
+    unitsPerMetre: number;
+    minDensity?: number;
+    minLengthM?: number;
+    /** How far apart two pieces of one wall may be and still be joined. */
+    mergeGapM?: number;
+  },
+): WallBody[] {
+  const upm = options.unitsPerMetre;
+  const minDensity = options.minDensity ?? 0.7;
+  const minLength = (options.minLengthM ?? 0.2) * upm;
+  const field = new HatchField(extractHatchStrokes(segments));
+  if (field.size === 0) return [];
+
+  const runs = buildWallRuns(
+    segments.filter((s) => isAxisAligned(s) && segmentLength(s) >= 3),
+  );
+  const minThickness = MIN_THICKNESS_M * upm;
+  const maxThickness = MAX_THICKNESS_M * upm;
+
+  const bodies: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const faces = runs
+      .filter((r) => r.orientation === orientation && r.to - r.from >= minLength)
+      .sort((a, b) => a.at - b.at);
+
+    for (let i = 0; i < faces.length; i++) {
+      for (let j = i + 1; j < faces.length; j++) {
+        const a = faces[i]!;
+        const b = faces[j]!;
+        const gap = b.at - a.at;
+        if (gap < minThickness) continue;
+        if (gap > maxThickness) break;
+        const from = Math.max(a.from, b.from);
+        const to = Math.min(a.to, b.to);
+        if (to - from < minLength) continue;
+
+        const body: WallBody = {
+          orientation,
+          centre: (a.at + b.at) / 2,
+          thickness: gap,
+          from,
+          to,
+        };
+        // Sampled a little inside the faces, so a band that merely runs beside
+        // a hatched wall cannot borrow its strokes.
+        const rect = bodyRect(body);
+        const inset = Math.min(gap * 0.2, 2);
+        if (
+          field.density({
+            x: rect.x + (orientation === "v" ? inset : 0),
+            y: rect.y + (orientation === "h" ? inset : 0),
+            w: rect.w - (orientation === "v" ? inset * 2 : 0),
+            h: rect.h - (orientation === "h" ? inset * 2 : 0),
+          }) < minDensity
+        ) {
+          continue;
+        }
+        bodies.push(body);
+      }
+    }
+  }
+  // A hatched band is found once per pair of faces that brackets it, so a wall
+  // drawn with a reveal line comes back two or three times over.
+  //
+  // Then close the gaps. A body can only span where both its faces span, so a
+  // door reveal or a corner where one face stops short cuts the wall in two and
+  // the reconstruction comes back dashed. Taking the bands straight off the
+  // hatch instead was tried and is worse — the strokes are diagonal, so each
+  // row's run sits shifted from the one above and almost nothing stacks.
+  const merged = bridgeOpenings(dedupe(bodies), (options.mergeGapM ?? 1.2) * upm);
+  return merged.filter((b) => b.to - b.from >= minLength);
+}
+
+/**
+ * Drops wall bodies that lie outside the drawing.
+ *
+ * The hatch test is positive, so it also finds hatch outside the apartment: a
+ * filled cell in the title block came back as a wall, and that one stray at the
+ * far corner of the sheet stretched the bounding box enough to throw the scale
+ * off by a third and shrink the floor to 64 m².
+ *
+ * Clustering the bodies by contact was tried first and is wrong here — walls
+ * legitimately stop either side of every doorway, so the flat is not one
+ * connected body of them and the largest cluster came back as eight walls. The
+ * vector pass already knows where the drawing is; bound the bodies by that.
+ */
+export function clipBodiesToBounds(
+  bodies: WallBody[],
+  bounds: { x: number; y: number; width: number; height: number },
+  margin = 8,
+): WallBody[] {
+  return bodies.filter((b) => {
+    const r = bodyRect(b);
+    return (
+      r.x >= bounds.x - margin &&
+      r.y >= bounds.y - margin &&
+      r.x + r.w <= bounds.x + bounds.width + margin &&
+      r.y + r.h <= bounds.y + bounds.height + margin
+    );
+  });
 }

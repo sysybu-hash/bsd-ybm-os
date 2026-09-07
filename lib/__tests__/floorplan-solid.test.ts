@@ -5,8 +5,12 @@ import {
   closeCorners,
   endGapPatches,
   calibrateFromInterior,
+  clipBodiesToBounds,
+  extractHatchStrokes,
+  HatchField,
   interiorSpans,
   spanArea,
+  wallBodiesFromHatch,
   wallBodiesFromSegments,
 } from "@/lib/projects/floorplan-solid";
 import type { WallRun } from "@/lib/projects/floorplan-rooms";
@@ -297,5 +301,106 @@ describe("solving the scale from the shell", () => {
     expect(calibrateFromInterior(43, 395_864, 1)).toBeNull();
     // A mask this small against that area would mean 3 units per metre.
     expect(calibrateFromInterior(43, 900, 132)).toBeNull();
+  });
+});
+
+describe("finding walls by the hatch that fills them", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({
+    x1,
+    y1,
+    x2,
+    y2,
+    lineWidth: 2,
+  });
+  /** A hatched band: two faces with 45-degree strokes between them. */
+  const hatchedWall = (x: number, y: number, length: number, thickness: number) => {
+    const out = [seg(x, y, x + length, y), seg(x, y + thickness, x + length, y + thickness)];
+    for (let i = 0; i < length; i += 4) {
+      out.push(seg(x + i, y + thickness, x + i + thickness, y));
+    }
+    return out;
+  };
+
+  it("takes the 45-degree strokes and leaves the drawing's straight lines", () => {
+    const strokes = extractHatchStrokes([
+      seg(0, 0, 8, 8),
+      seg(0, 0, 100, 0),
+      seg(0, 0, 0, 100),
+      // A door swing chord is long, not a hatch stroke.
+      seg(0, 0, 300, 300),
+    ]);
+    expect(strokes).toHaveLength(1);
+  });
+
+  it("measures how much hatch sits inside a rectangle", () => {
+    const field = new HatchField([
+      { x: 10, y: 10 },
+      { x: 12, y: 12 },
+      { x: 500, y: 500 },
+    ]);
+    expect(field.density({ x: 0, y: 0, w: 30, h: 30 })).toBeGreaterThan(0);
+    expect(field.density({ x: 200, y: 200, w: 30, h: 30 })).toBe(0);
+  });
+
+  it("finds a hatched band as a wall", () => {
+    const bodies = wallBodiesFromHatch(hatchedWall(0, 100, 300, 12), { unitsPerMetre: 55 });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.orientation).toBe("h");
+    expect(bodies[0]!.thickness).toBeCloseTo(12, 0);
+  });
+
+  it("refuses a counter, which is the same band with no hatch in it", () => {
+    // Every length, thickness and parallel-face rule this replaced said yes to
+    // this, and the counter run came back as a wall.
+    const counter = [seg(0, 100, 300, 100), seg(0, 112, 300, 112)];
+    expect(wallBodiesFromHatch(counter, { unitsPerMetre: 55 })).toEqual([]);
+  });
+
+  it("refuses terrace paving, which is parallel lines without hatch", () => {
+    const paving = [];
+    for (let i = 0; i < 8; i++) paving.push(seg(0, 100 + i * 12, 300, 100 + i * 12));
+    expect(wallBodiesFromHatch(paving, { unitsPerMetre: 55 })).toEqual([]);
+  });
+
+  it("joins the two pieces a doorway leaves in one wall", () => {
+    // Both faces stop at the reveal, so the pair spans only where both span and
+    // the reconstruction came back dashed.
+    const left = hatchedWall(0, 100, 200, 12);
+    const right = hatchedWall(250, 100, 200, 12);
+    const bodies = wallBodiesFromHatch([...left, ...right], { unitsPerMetre: 55 });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.to - bodies[0]!.from).toBeGreaterThan(400);
+  });
+
+  it("says nothing at all about a sheet with no hatch to read", () => {
+    expect(wallBodiesFromHatch([seg(0, 0, 100, 0)], { unitsPerMetre: 55 })).toEqual([]);
+  });
+});
+
+describe("keeping the bodies that are inside the drawing", () => {
+  const body = (x: number, y: number) => ({
+    orientation: "h" as const,
+    centre: y,
+    thickness: 10,
+    from: x,
+    to: x + 100,
+  });
+
+  it("drops a stray found in the title block", () => {
+    // One stray at the far corner stretched the bounding box enough to throw the
+    // scale off by a third and shrink the floor to 64 m².
+    const kept = clipBodiesToBounds([body(100, 200), body(2000, 3000)], {
+      x: 0,
+      y: 0,
+      width: 700,
+      height: 1400,
+    });
+    expect(kept).toHaveLength(1);
+    expect(kept[0]!.from).toBe(100);
+  });
+
+  it("keeps a wall that sits just on the boundary", () => {
+    const kept = clipBodiesToBounds([body(0, 5)], { x: 2, y: 2, width: 200, height: 200 });
+    expect(kept).toHaveLength(1);
   });
 });
