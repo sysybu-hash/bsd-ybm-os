@@ -1,11 +1,10 @@
 import sharp from "sharp";
 
 import {
-  closeUpToDoor,
   entranceTrianglePoints,
   facingFromOutward,
   markApartmentEntrance,
-  nearestPage,
+  nearestOutside,
   type EntrancePoint,
 } from "@/lib/projects/floorplan-entrance";
 
@@ -60,13 +59,7 @@ describe("the entrance triangle", () => {
 });
 
 describe("marking a still", () => {
-  const point: EntrancePoint = {
-    x: 0.8,
-    y: 0.55,
-    outsideX: 0.8,
-    outsideY: 0.55,
-    facing: "left",
-  };
+  const point: EntrancePoint = { x: 0.8, y: 0.55, facing: "left" };
 
   it("draws on the frame without resizing it", async () => {
     const source = await still(800, 1000);
@@ -131,15 +124,88 @@ describe("marking a still", () => {
   });
 });
 
-describe("where the marker ends up", () => {
-  /** A flat filling the left of the frame, page from x=300 rightwards. */
+describe("which way someone walks in", () => {
+  it("is the opposite of the way out, snapped to an axis", () => {
+    expect(facingFromOutward(1, 0)).toBe("left");
+    expect(facingFromOutward(-1, 0)).toBe("right");
+    expect(facingFromOutward(0, 1)).toBe("up");
+    expect(facingFromOutward(0, -1)).toBe("down");
+    expect(facingFromOutward(0.9, 0.4)).toBe("left");
+    expect(facingFromOutward(0.3, 0.95)).toBe("up");
+  });
+});
+
+describe("the nearest point outside the door", () => {
+  /** Flat filling the left of the frame, page from x=300 rightwards. */
+  function halfPage(width = 600, height = 400) {
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = x < 300 ? 130 : 252;
+      }
+    }
+    return { data, width, height };
+  }
+
+  it("is the near edge of the page, not somewhere deep inside it", () => {
+    const { data, width, height } = halfPage();
+    const size = 30;
+    const at = nearestOutside(data, width, height, { x: 296, y: 200 }, size)!;
+    expect(at).not.toBeNull();
+    // Within a few pixels of the boundary, not a marker width past it.
+    expect(at.x).toBeLessThan(300 + size * 0.4);
+    expect(at.x).toBeGreaterThanOrEqual(300 - size * 0.2);
+    expect(at.y).toBeCloseTo(200, -1);
+    expect(at.dx).toBeGreaterThan(0.8);
+  });
+
+  it("goes out of the notch at a stepped entrance", () => {
+    const width = 600;
+    const height = 600;
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        data[y * width + x] = x < 500 && y < 300 ? 130 : 252;
+      }
+    }
+    // Twelve pixels above the bottom edge of the flat, far from its right one.
+    const at = nearestOutside(data, width, height, { x: 250, y: 288 }, 30)!;
+    expect(at.dy).toBeGreaterThan(0.8);
+    expect(at.y).toBeLessThan(320);
+  });
+
+  it("will not take a pale wall band for the page", () => {
+    const width = 700;
+    const height = 200;
+    const data = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let v = 130;
+        if (x >= 200 && x < 220) v = 246;
+        else if (x >= 400) v = 252;
+        data[y * width + x] = v;
+      }
+    }
+    const at = nearestOutside(data, width, height, { x: 190, y: 100 }, 24)!;
+    expect(at.x).toBeGreaterThan(390);
+  });
+
+  it("says nothing when the frame fills its canvas", () => {
+    const width = 200;
+    const height = 200;
+    const data = new Uint8Array(width * height).fill(130);
+    expect(nearestOutside(data, width, height, { x: 100, y: 100 }, 16)).toBeNull();
+  });
+});
+
+describe("where the marker lands", () => {
   async function halfFrame() {
     const buf = await sharp({
-      create: { width: 600, height: 600, channels: 3, background: "#ffffff" },
+      create: { width: 600, height: 400, channels: 3, background: "#ffffff" },
     })
       .composite([
         {
-          input: { create: { width: 300, height: 600, channels: 3, background: "#8a7a5a" } },
+          input: { create: { width: 300, height: 400, channels: 3, background: "#8a7a5a" } },
           left: 0,
           top: 0,
         },
@@ -149,8 +215,13 @@ describe("where the marker ends up", () => {
     return { base64: buf.toString("base64"), mimeType: "image/jpeg" };
   }
 
-  async function inkCentre(img: { base64: string }) {
-    const { data, info } = await sharp(Buffer.from(img.base64, "base64"))
+  it("stands just outside the door, opposite the opening", async () => {
+    const out = await markApartmentEntrance(await halfFrame(), {
+      x: 0.49,
+      y: 0.5,
+      facing: "left",
+    });
+    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -166,171 +237,10 @@ describe("where the marker ends up", () => {
         }
       }
     }
-    return { dark, x: sumX / dark, y: sumY / dark };
-  }
-
-  it("sits outside the door, on the page", async () => {
-    const out = await markApartmentEntrance(await halfFrame(), {
-      x: 0.5,
-      y: 0.5,
-      outsideX: 0.62,
-      outsideY: 0.5,
-      facing: "left",
-    });
-    const ink = await inkCentre(out);
-    expect(ink.dark).toBeGreaterThan(0);
-    // On the page, and hard up against the outline rather than floating off.
-    expect(ink.x).toBeGreaterThan(300);
-    expect(ink.x).toBeLessThan(360);
-    expect(ink.y).toBeCloseTo(300, -1);
-  });
-
-  it("points back at the door", async () => {
-    const out = await markApartmentEntrance(await halfFrame(), {
-      x: 0.5,
-      y: 0.5,
-      outsideX: 0.62,
-      outsideY: 0.5,
-      facing: "right",
-    });
-    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
-      .greyscale()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    const rowSpan = (y: number) => {
-      let min = info.width;
-      let max = -1;
-      for (let x = 0; x < info.width; x++) {
-        if ((data[y * info.width + x] ?? 255) < 90) {
-          if (x < min) min = x;
-          if (x > max) max = x;
-        }
-      }
-      return { min, max };
-    };
-    // The door is to the left, so the apex leads left: the widest row is the
-    // middle and the ink narrows toward the apex.
-    const middle = rowSpan(300);
-    const above = rowSpan(288);
-    expect(middle.min).toBeLessThan(above.min);
-  });
-
-  it("walks off the floor onto the page when the model's point misses", async () => {
-    const out = await markApartmentEntrance(await halfFrame(), {
-      x: 0.5,
-      y: 0.5,
-      // Inside the flat, which is not where a marker belongs.
-      outsideX: 0.4,
-      outsideY: 0.5,
-      facing: "left",
-    });
-    const ink = await inkCentre(out);
-    expect(ink.x).toBeGreaterThan(300);
-  });
-});
-
-describe("finding the page nearest the door", () => {
-  /** A flat filling the left of the frame, page from `edge` rightwards. */
-  function flat(width = 400, height = 400, edge = 240) {
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        data[y * width + x] = x < edge ? 120 + ((x * 7 + y * 5) % 40) : 252;
-      }
-    }
-    return { data, width, height, edge };
-  }
-
-  it("finds the page out to the right of a right-hand wall", () => {
-    const { data, width, height, edge } = flat();
-    const page = nearestPage(data, width, height, { x: edge - 10, y: 200 }, 16)!;
-    expect(page).not.toBeNull();
-    expect(page.x).toBeGreaterThanOrEqual(edge);
-    expect(page.dx).toBeGreaterThan(0.5);
-  });
-
-  it("takes the closer edge at a stepped corner", () => {
-    const width = 400;
-    const height = 400;
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        data[y * width + x] = x < 320 && y < 260 ? 130 : 252;
-      }
-    }
-    // In a notch: eight pixels above the bottom edge, eighty from the right.
-    const page = nearestPage(data, width, height, { x: 240, y: 252 }, 16)!;
-    expect(page.dy).toBeGreaterThan(0.5);
-  });
-
-  it("says nothing when the frame fills its canvas", () => {
-    const width = 200;
-    const height = 200;
-    const data = new Uint8Array(width * height).fill(120);
-    expect(nearestPage(data, width, height, { x: 100, y: 100 }, 16)).toBeNull();
-  });
-
-  it("walks past a pale wall band to the page behind it", () => {
-    const width = 500;
-    const height = 200;
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        let v = 140;
-        if (x >= 200 && x < 216) v = 245;
-        else if (x >= 300) v = 252;
-        data[y * width + x] = v;
-      }
-    }
-    const page = nearestPage(data, width, height, { x: 190, y: 100 }, 12)!;
-    expect(page.x).toBeGreaterThan(295);
-  });
-});
-
-describe("which way someone walks in", () => {
-  it("is the opposite of the way out, snapped to an axis", () => {
-    expect(facingFromOutward(1, 0)).toBe("left");
-    expect(facingFromOutward(-1, 0)).toBe("right");
-    expect(facingFromOutward(0, 1)).toBe("up");
-    expect(facingFromOutward(0, -1)).toBe("down");
-    expect(facingFromOutward(0.9, 0.4)).toBe("left");
-    expect(facingFromOutward(0.3, 0.95)).toBe("up");
-  });
-});
-
-describe("standing the marker up against the outline", () => {
-  /** Flat on the left of x=300, page to its right. */
-  function halfPage(width = 600, height = 400) {
-    const data = new Uint8Array(width * height);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        data[y * width + x] = x < 300 ? 130 : 252;
-      }
-    }
-    return { data, width, height };
-  }
-
-  it("walks a distant point back up to the edge", () => {
-    const { data, width, height } = halfPage();
-    const size = 20;
-    // The model put it a long way out; the door is at the wall.
-    const at = closeUpToDoor(data, width, height, { x: 520, y: 200 }, { x: 296, y: 200 }, size);
-    expect(at.x).toBeLessThan(400);
-    expect(at.x).toBeGreaterThan(300);
-    expect(at.y).toBe(200);
-  });
-
-  it("leaves room for the whole triangle rather than biting the outline", () => {
-    const { data, width, height } = halfPage();
-    const size = 20;
-    const at = closeUpToDoor(data, width, height, { x: 520, y: 200 }, { x: 296, y: 200 }, size);
-    // Its leading corner stops short of the wall.
-    expect(at.x - size / 2).toBeGreaterThan(300);
-  });
-
-  it("does nothing when it is already at the door", () => {
-    const { data, width, height } = halfPage();
-    const point = { x: 310, y: 200 };
-    expect(closeUpToDoor(data, width, height, point, { x: 310, y: 200 }, 20)).toEqual(point);
+    expect(dark).toBeGreaterThan(0);
+    // Just past the wall at x=300, level with the door, not drifting away.
+    expect(sumX / dark).toBeGreaterThan(300);
+    expect(sumX / dark).toBeLessThan(330);
+    expect(sumY / dark).toBeCloseTo(200, -1);
   });
 });

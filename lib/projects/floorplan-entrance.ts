@@ -28,9 +28,6 @@ export type EntrancePoint = {
   /** The middle of the door opening, normalised: 0 is the left/top edge, 1 the right/bottom. */
   x: number;
   y: number;
-  /** A point on the empty page just outside that door, where the marker goes. */
-  outsideX: number;
-  outsideY: number;
   /** Which way someone walks when they come through the door. */
   facing: "left" | "right" | "up" | "down";
 };
@@ -43,7 +40,7 @@ The plan marks the apartment's front door with a small solid black triangle on
 an outer wall. Find where that same front door is IN THE STILL.
 
 Return JSON only:
-{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "outsideX": 0.0, "outsideY": 0.0, "facing": "left", "confidence": 0.0 }
+{ "found": true, "x1": 0.0, "y1": 0.0, "x2": 0.0, "y2": 0.0, "facing": "left", "confidence": 0.0 }
 
 - The front door is a GAP in the outer wall: the wall stops, the opening runs,
   the wall starts again. Give the two ENDS of that gap — where the wall stops
@@ -52,12 +49,6 @@ Return JSON only:
   the bottom. Both points sit on the wall line, not inside the hall behind it.
 - Be precise about the ends. The door's position is taken as the midpoint of
   the two, and a point from the edge of the gap puts it against the wall.
-- outsideX and outsideY: a point on the EMPTY BACKGROUND just outside that
-  door — off the apartment altogether, on the plain page the cutaway floats on,
-  roughly one door's width clear of the opening and lined up with its middle.
-  This is where a triangle will be drawn pointing back at the door, the way the
-  sales sheet marks an entrance. It must be background, not floor, not wall,
-  not terrace paving.
 - facing is the direction a person moves as they step through the door into the
   apartment: "right" if they walk to the right, "left", "up" or "down".
 - confidence 0 to 1. Return "found": false if the still does not show the
@@ -104,20 +95,17 @@ export async function locateApartmentEntrance(
       const y1 = clamp01(raw.y1);
       const x2 = clamp01(raw.x2);
       const y2 = clamp01(raw.y2);
-      const outsideX = clamp01(raw.outsideX);
-      const outsideY = clamp01(raw.outsideY);
       const confidence = clamp01(raw.confidence) ?? 0;
       // A marker in the wrong place is worse than no marker: it tells a buyer
       // the door is somewhere it is not.
       if (x1 == null || y1 == null || x2 == null || y2 == null || confidence < 0.5) return null;
-      if (outsideX == null || outsideY == null) return null;
       const x = (x1 + x2) / 2;
       const y = (y1 + y2) / 2;
       const facing = raw.facing;
       if (facing !== "left" && facing !== "right" && facing !== "up" && facing !== "down") {
         return null;
       }
-      return { x, y, outsideX, outsideY, facing };
+      return { x, y, facing };
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
       log.warn("entrance lookup failed", {
@@ -162,60 +150,6 @@ export function isBackgroundPatch(
   return mean > 232 && variance < 90;
 }
 
-/**
- * The nearest empty page to the door, in whatever direction that turns out to be.
- *
- * Three earlier attempts assumed the door sits on a straight wall and walked
- * one of four axes outward from it. דירה 15's entrance is a stepped notch: the
- * page is below the opening while the flat continues to the left, so an axis
- * walk landed the marker at the corner of the step instead of in front of the
- * doorway. Searching outward in every direction and taking the closest page
- * handles a straight wall and a notch the same way, with no assumption about
- * which is which.
- *
- * The page has to keep going two marker widths past the point that found it,
- * so a pale cream wall does not pass for it.
- */
-export function nearestPage(
-  data: Uint8Array | Buffer,
-  width: number,
-  height: number,
-  door: { x: number; y: number },
-  size: number,
-): { x: number; y: number; dx: number; dy: number } | null {
-  const radius = Math.max(2, Math.round(size * 0.45));
-  const step = Math.max(2, Math.round(size * 0.25));
-  const maxReach = Math.round(size * 12);
-
-  for (let reach = step; reach <= maxReach; reach += step) {
-    for (let degrees = 0; degrees < 360; degrees += 6) {
-      const radians = (degrees * Math.PI) / 180;
-      const dx = Math.cos(radians);
-      const dy = Math.sin(radians);
-      const x = Math.round(door.x + dx * reach);
-      const y = Math.round(door.y + dy * reach);
-      if (x < 0 || y < 0 || x >= width || y >= height) continue;
-      if (!isBackgroundPatch(data, width, height, x, y, radius)) continue;
-      // Page keeps going; a wall band does not. Two probes, because a single
-      // one at a shallow angle can still land inside a band running the same
-      // way as the search direction.
-      const keepsGoing = [2, 4].every((multiple) =>
-        isBackgroundPatch(
-          data,
-          width,
-          height,
-          Math.round(x + dx * size * multiple),
-          Math.round(y + dy * size * multiple),
-          radius,
-        ),
-      );
-      if (!keepsGoing) continue;
-      return { x, y, dx, dy };
-    }
-  }
-  return null;
-}
-
 /** The way someone walks in, given the direction that leads out. */
 export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing"] {
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "left" : "right";
@@ -223,92 +157,47 @@ export function facingFromOutward(dx: number, dy: number): EntrancePoint["facing
 }
 
 /**
- * Keeps the marker on the page, on the far side of the door from the flat.
+ * The nearest point outside the flat to the front door.
  *
- * The vision pass is asked for a point outside the front door and mostly gives
- * one, but it lands on the floor or on the wall often enough to matter. When
- * that happens, back away from the door along the line between them until the
- * frame turns to page.
+ * Six attempts at this marker went wrong the same way: something other than
+ * "the closest bit of empty page to the door" decided where it went — the
+ * model's own guess at an outside point, or a search that only accepted page
+ * deep enough to prove itself, which by construction is not the nearest.
+ *
+ * This returns the first background pixel found sweeping outward from the door,
+ * so the marker lands directly opposite the opening. The direction it was found
+ * in is confirmed against page three marker widths further out, so a pale wall
+ * or a strip of terrace cannot pass — but the point returned is the near one,
+ * not the far one.
  */
-export function pageSideOfDoor(
+export function nearestOutside(
   data: Uint8Array | Buffer,
   width: number,
   height: number,
-  outside: { x: number; y: number },
   door: { x: number; y: number },
   size: number,
-): { x: number; y: number } {
-  const radius = Math.max(2, Math.round(size * 0.45));
-  const clamped = {
-    x: Math.min(width - 1, Math.max(0, Math.round(outside.x))),
-    y: Math.min(height - 1, Math.max(0, Math.round(outside.y))),
-  };
-  if (isBackgroundPatch(data, width, height, clamped.x, clamped.y, radius)) {
-    return closeUpToDoor(data, width, height, clamped, door, size);
-  }
+): { x: number; y: number; dx: number; dy: number } | null {
+  const nearRadius = Math.max(1, Math.round(size * 0.15));
+  const farRadius = Math.max(2, Math.round(size * 0.4));
+  const step = Math.max(1, Math.round(size * 0.08));
 
-  const dx = clamped.x - door.x;
-  const dy = clamped.y - door.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length;
-  const uy = dy / length;
-  const step = Math.max(2, Math.round(size * 0.25));
-  for (let travelled = step; travelled <= size * 12; travelled += step) {
-    const x = Math.round(clamped.x + ux * travelled);
-    const y = Math.round(clamped.y + uy * travelled);
-    if (x < 0 || y < 0 || x >= width || y >= height) break;
-    if (isBackgroundPatch(data, width, height, x, y, radius)) {
-      return closeUpToDoor(data, width, height, { x, y }, door, size);
+  for (let reach = step; reach <= size * 10; reach += step) {
+    for (let degrees = 0; degrees < 360; degrees += 3) {
+      const radians = (degrees * Math.PI) / 180;
+      const dx = Math.cos(radians);
+      const dy = Math.sin(radians);
+      const x = Math.round(door.x + dx * reach);
+      const y = Math.round(door.y + dy * reach);
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      if (!isBackgroundPatch(data, width, height, x, y, nearRadius)) continue;
+      const fx = Math.round(x + dx * size * 3);
+      const fy = Math.round(y + dy * size * 3);
+      if (fx < 0 || fy < 0 || fx >= width || fy >= height) continue;
+      if (!isBackgroundPatch(data, width, height, fx, fy, farRadius)) continue;
+      return { x, y, dx, dy };
     }
   }
-
-  // Nothing reads as page along that line. Fall back to the nearest page in
-  // any direction, and failing that leave the point where the model put it.
-  const page = nearestPage(data, width, height, door, size);
-  return page ? closeUpToDoor(data, width, height, page, door, size) : clamped;
-}
-
-/**
- * Slides the marker up against the outline, just outside the door.
- *
- * "Outside the front door" is a point a door's width away when the model gives
- * it, which reads as floating off on its own. Walking back toward the door
- * until the page runs out, then standing off by a triangle's width, puts it
- * hard against the outline where a reader looks for it.
- */
-export function closeUpToDoor(
-  data: Uint8Array | Buffer,
-  width: number,
-  height: number,
-  from: { x: number; y: number },
-  door: { x: number; y: number },
-  size: number,
-): { x: number; y: number } {
-  // A tighter probe than the search uses: this walk is trying to get as near
-  // the outline as it can, and a wide patch stops it short of the wall.
-  const radius = Math.max(2, Math.round(size * 0.22));
-  const dx = door.x - from.x;
-  const dy = door.y - from.y;
-  const length = Math.hypot(dx, dy);
-  if (length < 1) return from;
-  const ux = dx / length;
-  const uy = dy / length;
-  const step = Math.max(1, Math.round(size * 0.15));
-
-  let closest = from;
-  for (let travelled = step; travelled < length; travelled += step) {
-    const x = Math.round(from.x + ux * travelled);
-    const y = Math.round(from.y + uy * travelled);
-    if (!isBackgroundPatch(data, width, height, x, y, radius)) break;
-    closest = { x, y };
-  }
-  // Back off just enough that the whole triangle stays on the page rather than
-  // biting into the outline.
-  const standOff = size * 0.6;
-  return {
-    x: Math.round(closest.x - ux * standOff),
-    y: Math.round(closest.y - uy * standOff),
-  };
+  return null;
 }
 
 /** The triangle's three corners, pointing the way someone walks in. */
@@ -369,19 +258,19 @@ export async function markApartmentEntrance(
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    // Outside the door on the plain page, pointing back at it — the way the
-    // sheet marks an entrance. The door itself gives the direction: whichever
-    // axis the marker has to travel along to reach it.
+    // Directly opposite the opening, on the page, pointing back at it.
     const door = { x: point.x * width, y: point.y * height };
-    const centre = pageSideOfDoor(
-      data,
-      info.width,
-      info.height,
-      { x: point.outsideX * width, y: point.outsideY * height },
-      door,
-      size,
-    );
-    const facing = facingFromOutward(centre.x - door.x, centre.y - door.y);
+    const outside = nearestOutside(data, info.width, info.height, door, size);
+    const facing = outside ? facingFromOutward(outside.dx, outside.dy) : point.facing;
+    // Half a triangle clear of the edge, so it reads as standing at the door
+    // rather than biting into the outline.
+    const standOff = size * 0.55;
+    const centre = outside
+      ? {
+          x: Math.round(outside.x + outside.dx * standOff),
+          y: Math.round(outside.y + outside.dy * standOff),
+        }
+      : { x: Math.round(door.x), y: Math.round(door.y) };
     const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
 
     const overlay = Buffer.from(
