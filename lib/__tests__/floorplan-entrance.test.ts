@@ -248,3 +248,41 @@ describe("where the marker lands", () => {
     expect(sumY / dark).toBeCloseTo(200, -1);
   });
 });
+
+describe("a door near the edge of the sheet", () => {
+  it("keeps the whole marker inside the frame", async () => {
+    // The flat runs to the left edge; the page is only to its right.
+    const buf = await sharp({
+      create: { width: 400, height: 300, channels: 3, background: "#ffffff" },
+    })
+      .composite([
+        {
+          input: { create: { width: 30, height: 300, channels: 3, background: "#8a7a5a" } },
+          left: 0,
+          top: 0,
+        },
+      ])
+      .jpeg()
+      .toBuffer();
+    const out = await markApartmentEntrance(
+      { base64: buf.toString("base64"), mimeType: "image/jpeg" },
+      { x: 0.02, y: 0.5, facing: "right" },
+    );
+    const { data, info } = await sharp(Buffer.from(out.base64, "base64"))
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let minX = info.width;
+    let dark = 0;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        if ((data[y * info.width + x] ?? 255) < 90) {
+          dark += 1;
+          if (x < minX) minX = x;
+        }
+      }
+    }
+    expect(dark).toBeGreaterThan(0);
+    expect(minX).toBeGreaterThan(0);
+  });
+});

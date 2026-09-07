@@ -318,7 +318,14 @@ export async function markApartmentEntrance(
           y: Math.round(outside.y + outside.dy * standOff),
         }
       : { x: Math.round(door.x), y: Math.round(door.y) };
-    const points = entranceTrianglePoints(centre.x, centre.y, size, facing);
+    // A door near the edge of the sheet puts the marker half off the frame.
+    // Keep the whole triangle inside it.
+    const margin = Math.ceil(size * 0.5) + 2;
+    const placed = {
+      x: Math.min(width - margin, Math.max(margin, centre.x)),
+      y: Math.min(height - margin, Math.max(margin, centre.y)),
+    };
+    const points = entranceTrianglePoints(placed.x, placed.y, size, facing);
 
     const overlay = Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
