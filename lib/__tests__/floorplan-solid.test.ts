@@ -1,0 +1,142 @@
+import { buildWallBodies, bodyRect, wallBodiesFromSegments } from "@/lib/projects/floorplan-solid";
+import type { WallRun } from "@/lib/projects/floorplan-rooms";
+
+const run = (orientation: "h" | "v", at: number, from: number, to: number): WallRun => ({
+  orientation,
+  at,
+  from,
+  to,
+});
+
+describe("pairing wall faces into bodies", () => {
+  it("pairs two parallel faces into one wall with the gap as its thickness", () => {
+    const bodies = buildWallBodies([run("h", 100, 0, 400), run("h", 112, 0, 400)]);
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.centre).toBe(106);
+    expect(bodies[0]!.thickness).toBe(12);
+  });
+
+  it("spans the union of the two faces, which stop at different places", () => {
+    // A door reveal cuts one face short; the wall itself runs the full length.
+    const bodies = buildWallBodies([run("v", 50, 0, 300), run("v", 58, 40, 340)]);
+    expect(bodies[0]!.from).toBe(0);
+    expect(bodies[0]!.to).toBe(340);
+  });
+
+  it("does not pair faces too far apart to be one wall", () => {
+    // 60 units apart is a room, not a wall thickness.
+    const bodies = buildWallBodies([run("h", 100, 0, 400), run("h", 160, 0, 400)]);
+    expect(bodies).toHaveLength(2);
+  });
+
+  it("does not pair faces that never run alongside each other", () => {
+    const bodies = buildWallBodies([run("h", 100, 0, 200), run("h", 108, 600, 800)]);
+    expect(bodies).toHaveLength(2);
+  });
+
+  it("keeps a single-faced partition rather than losing it", () => {
+    // Dropping unpaired faces left holes in the envelope.
+    const bodies = buildWallBodies([run("v", 20, 0, 200)]);
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]!.thickness).toBeGreaterThan(0);
+  });
+});
+
+describe("rejecting what is drawn like a wall but is not one", () => {
+  it("drops a grid line that runs past the building at both ends", () => {
+    // דירה 14 has two of these a few units apart. Paired, they drew a solid bar
+    // down the middle of the flat.
+    const walls = [
+      run("h", 100, 0, 400),
+      run("h", 112, 0, 400),
+      run("h", 500, 0, 400),
+      run("h", 512, 0, 400),
+      run("v", 200, -300, 900),
+      run("v", 212, -300, 900),
+    ];
+    const bodies = buildWallBodies(walls);
+    expect(bodies.every((b) => b.orientation === "h")).toBe(true);
+  });
+
+  it("keeps a long exterior wall that ends where the other walls do", () => {
+    const bodies = buildWallBodies([
+      run("h", 100, 0, 400),
+      run("h", 112, 0, 400),
+      run("h", 500, 0, 400),
+      run("h", 512, 0, 400),
+      run("v", 0, 100, 512),
+      run("v", 12, 100, 512),
+    ]);
+    expect(bodies.some((b) => b.orientation === "v")).toBe(true);
+  });
+
+  it("drops a comb of evenly spaced parallel lines — paving, not partitions", () => {
+    // The terrace hatch came back as a set of thin walls slicing it into strips.
+    const teeth: WallRun[] = [];
+    for (let i = 0; i < 10; i++) teeth.push(run("v", 100 + i * 10, 0, 300));
+    const bodies = buildWallBodies([...teeth, run("h", 0, 0, 400), run("h", 12, 0, 400)]);
+    expect(bodies.every((b) => b.orientation === "h")).toBe(true);
+  });
+});
+
+describe("choosing bodies fit to build from", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({
+    x1,
+    y1,
+    x2,
+    y2,
+    lineWidth: 14,
+  });
+  const upm = 44;
+
+  it("drops a short edge sitting on its own line — a counter, not a wall", () => {
+    const bodies = wallBodiesFromSegments(
+      [
+        seg(0, 0, 400, 0),
+        seg(0, 12, 400, 12),
+        // A 20-unit edge (under half a metre) far from any wall line.
+        seg(200, 300, 220, 300),
+        seg(200, 308, 220, 308),
+      ],
+      { unitsPerMetre: upm },
+    );
+    expect(bodies.every((b) => b.to - b.from > upm * 0.5)).toBe(true);
+  });
+
+  it("keeps a short jamb that continues a real wall's line", () => {
+    // Cutting on length alone deleted these and the rooms fell open.
+    const bodies = wallBodiesFromSegments(
+      [
+        seg(0, 0, 300, 0),
+        seg(0, 12, 300, 12),
+        // Same line, resuming after a door: short, but structural.
+        seg(340, 0, 370, 0),
+        seg(340, 12, 370, 12),
+      ],
+      { unitsPerMetre: upm },
+    );
+    expect(bodies.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("returns every body when no scale is known to judge length by", () => {
+    const bodies = wallBodiesFromSegments([seg(0, 0, 30, 0), seg(0, 8, 30, 8)]);
+    expect(bodies).toHaveLength(1);
+  });
+});
+
+describe("the rectangle a body covers", () => {
+  it("straddles the centre line by half the thickness", () => {
+    expect(bodyRect({ orientation: "h", centre: 100, thickness: 10, from: 0, to: 50 })).toEqual({
+      x: 0,
+      y: 95,
+      w: 50,
+      h: 10,
+    });
+    expect(bodyRect({ orientation: "v", centre: 100, thickness: 10, from: 0, to: 50 })).toEqual({
+      x: 95,
+      y: 0,
+      w: 10,
+      h: 50,
+    });
+  });
+});
