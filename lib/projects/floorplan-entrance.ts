@@ -250,6 +250,19 @@ export function nearestOutside(
   return null;
 }
 
+/**
+ * Which wall the sheet's reading sits against.
+ *
+ * A fraction of the apartment's box near 0 or 1 on one axis is a door on that
+ * side; whichever of the two is nearer an edge wins.
+ */
+export function wallSideOf(x: number, y: number): [number, number] {
+  const toX = Math.min(Math.abs(x), Math.abs(1 - x));
+  const toY = Math.min(Math.abs(y), Math.abs(1 - y));
+  if (toX <= toY) return x <= 0.5 ? [-1, 0] : [1, 0];
+  return y <= 0.5 ? [0, -1] : [0, 1];
+}
+
 /** The rectangle the apartment occupies: everything the page flood did not reach. */
 export function apartmentBounds(
   page: Uint8Array,
@@ -285,6 +298,7 @@ export function nudgeOntoPage(
   height: number,
   at: { x: number; y: number },
   size: number,
+  preferred?: [number, number],
 ): { x: number; y: number } {
   const inside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height && page[y * width + x] === 1;
@@ -293,14 +307,22 @@ export function nudgeOntoPage(
   // moves both coordinates, and the one the sheet got right is then lost —
   // דירה 16's door came back at the right height and the wrong side, and the
   // slide carried it up as well as across.
-  const directions: Array<[number, number]> = [
+  const rest: Array<[number, number]> = [
     [-1, 0],
     [1, 0],
     [0, -1],
     [0, 1],
-  ];
-  for (let reach = 1; reach <= size * 8; reach += 1) {
-    for (const [dx, dy] of directions) {
+  ].filter(
+    ([dx, dy]) => !preferred || dx !== preferred[0] || dy !== preferred[1],
+  ) as Array<[number, number]>;
+  // The wall the sheet marks is the one its own reading is nearest to, so try
+  // that way first. Otherwise a door on the left wall two thirds down slides
+  // out through the bottom instead, because the bottom happens to be closer.
+  const directions = preferred ? [preferred, ...rest] : rest;
+  // Each direction is followed to the end before the next is tried, so the
+  // marked wall wins even when another edge happens to be nearer.
+  for (const [dx, dy] of directions) {
+    for (let reach = 1; reach <= size * 8; reach += 1) {
       const x = at.x + dx * reach;
       const y = at.y + dy * reach;
       if (inside(x, y)) return { x, y };
@@ -402,7 +424,14 @@ export async function markApartmentEntrance(
       x: Math.round(flat.x + point.x * flat.width),
       y: Math.round(flat.y + point.y * flat.height),
     };
-    const centre = nudgeOntoPage(page, info.width, info.height, wanted, size);
+    const centre = nudgeOntoPage(
+      page,
+      info.width,
+      info.height,
+      wanted,
+      size,
+      wallSideOf(point.x, point.y),
+    );
     const inward = towardApartment(page, info.width, info.height, centre, size);
     const facing = inward ? facingFromOutward(-inward.dx, -inward.dy) : "right";
     // A door near the edge of the sheet puts the marker half off the frame.

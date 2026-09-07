@@ -8,6 +8,7 @@ import {
   nudgeOntoPage,
   pageMaskFromBorder,
   towardApartment,
+  wallSideOf,
 } from "@/lib/projects/floorplan-entrance";
 
 function corners(points: string): Array<[number, number]> {
@@ -223,5 +224,34 @@ describe("which way someone walks in", () => {
     expect(facingFromOutward(0, -1)).toBe("down");
     expect(facingFromOutward(0.9, 0.4)).toBe("left");
     expect(facingFromOutward(0.3, 0.95)).toBe("up");
+  });
+});
+
+describe("which wall the sheet marks", () => {
+  it("takes whichever reading is nearest an edge of the box", () => {
+    // Left wall, two thirds down: x is 0.1 from its edge, y is 0.27 from its.
+    expect(wallSideOf(0.1, 0.73)).toEqual([-1, 0]);
+    expect(wallSideOf(0.95, 0.4)).toEqual([1, 0]);
+    expect(wallSideOf(0.5, 0.03)).toEqual([0, -1]);
+    expect(wallSideOf(0.45, 0.98)).toEqual([0, 1]);
+  });
+
+  it("handles a mark drawn outside the box", () => {
+    expect(wallSideOf(-0.04, 0.66)).toEqual([-1, 0]);
+    expect(wallSideOf(0.5, 1.05)).toEqual([0, 1]);
+  });
+
+  it("slides out through the marked wall, not the nearest one", () => {
+    const width = 400;
+    const height = 400;
+    const data = new Uint8Array(width * height).fill(252);
+    // A flat with plenty of page below it and a thin margin on the left.
+    for (let y = 20; y < 260; y++) {
+      for (let x = 60; x < 340; x++) data[y * width + x] = 130;
+    }
+    const page = pageMaskFromBorder(data, width, height);
+    const at = nudgeOntoPage(page, width, height, { x: 90, y: 240 }, 20, [-1, 0]);
+    expect(at.x).toBeLessThan(60);
+    expect(at.y).toBe(240);
   });
 });
