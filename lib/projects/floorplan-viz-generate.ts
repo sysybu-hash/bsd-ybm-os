@@ -742,6 +742,40 @@ async function buildWallHint(
   return ink ? { image: ink, kind: "ink" } : null;
 }
 
+/**
+ * Undo a mirrored frame instead of re-rolling it.
+ *
+ * A mirror is the one defect with an exact inverse: flipping the frame puts
+ * every room back on the side the plan draws it, and nothing else about the
+ * still changes. Re-rolling does not have that property — three consecutive runs
+ * of דירה 14 came back mirrored, rotated and mirrored again, so the retry was
+ * spending the whole budget resampling an orientation the model will not hold.
+ * Verified on the third of those runs: flopping it took mirroredVsPlan from true
+ * to false and the score from 302 to 101.
+ *
+ * Nothing here reads as text — the caption bar is stamped after the audit — so
+ * there is no lettering to come back reversed.
+ *
+ * Returns the original when the flip does not actually clear the verdict, so a
+ * misfired mirror call cannot make a frame worse.
+ */
+async function unmirrorIfFlipped(
+  img: { mimeType: string; base64: string },
+  ctx: { layout: FloorplanLayout; plan: { base64: string; mimeType: string }; haredi: boolean },
+  before: { score: number },
+  view: string,
+): Promise<{ img: { mimeType: string; base64: string }; score: number } | null> {
+  const flippedBuf = await sharp(Buffer.from(img.base64, "base64")).flop().jpeg({ quality: 94 }).toBuffer();
+  const flipped = { mimeType: "image/jpeg", base64: flippedBuf.toString("base64") };
+
+  const audit = await auditFloorplanStill(flipped, ctx.plan);
+  if (!audit || audit.mirroredVsPlan) return null;
+  const graded = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+  if (graded.score >= before.score) return null;
+  log.info("un-mirrored a flipped still", { view, from: before.score, to: graded.score });
+  return { img: flipped, score: graded.score };
+}
+
 async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -793,6 +827,19 @@ Fix exactly these and keep everything the audit did not complain about.`
     if (score <= GOOD_ENOUGH_SCORE) {
       log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
       return img;
+    }
+  }
+
+  if (best?.hardFailures.some((f) => /mirrored/i.test(f))) {
+    const fixed = await unmirrorIfFlipped(best.img, ctx, best, job.labelHe);
+    if (fixed) {
+      best = {
+        ...best,
+        img: fixed.img,
+        score: fixed.score,
+        hardFailures: best.hardFailures.filter((f) => !/mirrored/i.test(f)),
+        failures: best.failures.filter((f) => !/mirrored/i.test(f)),
+      };
     }
   }
 
