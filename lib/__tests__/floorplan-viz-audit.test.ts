@@ -39,6 +39,7 @@ const clean: FloorplanVizAudit = {
   roomsOutsidePlanOutline: 0,
   footprintMatchesPlan: true,
   mirroredVsPlan: false,
+  rotationVsPlanDegrees: 0,
   notes: "",
 };
 
@@ -168,6 +169,21 @@ it("counts bedrooms off the extraction, which reads the printed room labels", ()
     const verdict = gradeFloorplanStill({ ...clean, mirroredVsPlan: true }, layout);
     expect(verdict.hardFailures).toEqual(["the still is the plan mirrored left-to-right"]);
     expect(verdict.score).toBeGreaterThanOrEqual(100);
+  });
+
+it("fails a still turned 180 degrees, which the silhouette check cannot see", () => {
+    // Four runs of דירה 14 came back turned, and the auditor said so in its notes
+    // every time while footprintMatchesPlan stayed true — a silhouette rotated
+    // through 180 degrees still matches itself.
+    const verdict = gradeFloorplanStill(
+      { ...clean, rotationVsPlanDegrees: 180, footprintMatchesPlan: true },
+      layout,
+    );
+    expect(verdict.hardFailures).toEqual(["the still is turned 180 degrees from the plan"]);
+  });
+
+  it("does not call a correctly turned still rotated", () => {
+    expect(gradeFloorplanStill({ ...clean, rotationVsPlanDegrees: 0 }, layout).failures).toEqual([]);
   });
 
   it("does not call a correctly oriented still mirrored", () => {

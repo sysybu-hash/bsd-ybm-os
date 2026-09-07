@@ -55,6 +55,8 @@ export type FloorplanVizAudit = {
   footprintMatchesPlan: boolean;
   /** The still is the plan flipped — a defect no amount of re-rolling notices. */
   mirroredVsPlan: boolean;
+  /** How far the still is turned from the plan: 0, 90, 180 or 270 degrees. */
+  rotationVsPlanDegrees: number;
   notes: string;
 };
 
@@ -96,6 +98,7 @@ Return JSON only:
   "roomsOutsidePlanOutline": 0,
   "footprintMatchesPlan": false,
   "mirroredVsPlan": false,
+  "rotationVsPlanDegrees": 0,
   "notes": "one short sentence naming the biggest difference from the plan"
 }
 
@@ -126,6 +129,7 @@ Then compare the two OUTLINES, which is the check that matters most:
 - Trace the apartment's outer boundary on the plan. Note every step, notch and protrusion, and note where the boundary cuts IN so that an area is outside the flat.
 - roomsOutsidePlanOutline: how many enclosed rooms in the STILL sit in space the plan leaves OUTSIDE the apartment. A whole wing of rooms added along one side is the failure this is for. Count each invented room. 0 if the still stays inside the drawn boundary.
 - mirroredVsPlan: true if the still is the plan flipped left-to-right (or right-to-left). Check a feature you can place with certainty — which side the entrance door is on, which side the kitchen is on — and compare it to the plan. A mirrored still has all the right rooms in all the wrong places, so it survives every count-based check; say so here.
+- rotationVsPlanDegrees: how far the still is turned from the plan — 0, 90, 180 or 270, counter-clockwise. Use the same landmarks: if the plan puts the bathrooms at the bottom and the kitchen upper-right and the still puts the bathrooms at the top and the kitchen on the left, that is 180. Report this separately from mirroredVsPlan; a still can be turned without being flipped, and a silhouette can still match while turned.
 - footprintMatchesPlan: true only if the still's silhouette is the plan's silhouette — same steps, same notches, same side that the boundary cuts into. A still that fills out a plain rectangle where the plan is stepped is false. A still that grows an extra wing is false.
 - Judge the outline by shape alone. Rotation of the whole frame is not what this field is about, and furnishing differences are not either.
 `.trim();
@@ -186,6 +190,9 @@ export async function auditFloorplanStill(
         roomsOutsidePlanOutline: asInt(raw.roomsOutsidePlanOutline, 30),
         footprintMatchesPlan: raw.footprintMatchesPlan === true,
         mirroredVsPlan: raw.mirroredVsPlan === true,
+        rotationVsPlanDegrees: [90, 180, 270].includes(Number(raw.rotationVsPlanDegrees))
+          ? Number(raw.rotationVsPlanDegrees)
+          : 0,
         notes: typeof raw.notes === "string" ? raw.notes.slice(0, 300) : "",
       };
     } catch (err: unknown) {
@@ -291,6 +298,14 @@ export function gradeFloorplanStill(
   // passes every count we have — right rooms, right beds, right sinks, all on the
   // wrong side — which is exactly how a flipped plan shipped as "every count matched".
   if (audit.mirroredVsPlan) hard("the still is the plan mirrored left-to-right");
+  // Hard for the same reason as the mirror, and added for the same reason too
+  // late: the auditor had been writing "the render is rotated 180 degrees" into
+  // its free-text notes on run after run of דירה 14 while every field said the
+  // frame was fine — footprintMatchesPlan included, because a silhouette turned
+  // through 180 still matches itself.
+  if (audit.rotationVsPlanDegrees !== 0) {
+    hard(`the still is turned ${audit.rotationVsPlanDegrees} degrees from the plan`);
+  }
   if (audit.hasBurnedText) hard("letters or digits rendered into the image");
   if (audit.hasCadMarks) failures.push("2D CAD annotation copied into the render");
   if (options?.haredi && audit.hasDoubleBed) hard("a double bed in a haredi still");

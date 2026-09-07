@@ -21,7 +21,11 @@ import {
   type FloorplanVizViewId,
 } from "@/lib/projects/floorplan-layout";
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
-import { auditFloorplanStill, gradeFloorplanStill } from "@/lib/projects/floorplan-viz-audit";
+import {
+  auditFloorplanStill,
+  gradeFloorplanStill,
+  type FloorplanVizAudit,
+} from "@/lib/projects/floorplan-viz-audit";
 import {
   buildVectorWallJpeg,
   extractFloorplanVectorGeometry,
@@ -639,6 +643,9 @@ function remedyFor(failure: string): string {
   if (/double bed/i.test(failure)) {
     return "Replace every wide mattress with a single 90x200 twin along the long wall — a long narrow rectangle, more than twice as long as it is wide, with one pillow and its own headboard. A drawn double rectangle is a sleeping zone, not a furniture spec, and the master bedroom is not an exception.";
   }
+  if (/turned \d+ degrees/i.test(failure)) {
+    return "The whole flat is turned the wrong way round. Rebuild it in the plan's orientation: read off the sheet which edge the bathrooms sit against and which edge the kitchen sits against, and put them against those same edges of the frame. Do not rotate the plan by any amount for a better fit to the canvas.";
+  }
   if (/mirrored/i.test(failure)) {
     return "The whole flat is flipped. Rebuild it the way round the plan draws it: find the entrance door on the sheet, note which side of the flat it is on, and put it on that same side of the frame — then lay the kitchen, the terrace and the bedrooms out around it in the plan's order, left to right. Do not flip, mirror or reflect the plan for any reason.";
   }
@@ -743,37 +750,55 @@ async function buildWallHint(
 }
 
 /**
- * Undo a mirrored frame instead of re-rolling it.
+ * Put a flipped or turned frame back the way the plan draws it.
  *
- * A mirror is the one defect with an exact inverse: flipping the frame puts
- * every room back on the side the plan draws it, and nothing else about the
- * still changes. Re-rolling does not have that property — three consecutive runs
- * of דירה 14 came back mirrored, rotated and mirrored again, so the retry was
- * spending the whole budget resampling an orientation the model will not hold.
- * Verified on the third of those runs: flopping it took mirroredVsPlan from true
- * to false and the score from 302 to 101.
+ * Orientation is the one family of defects with an exact inverse: flop a mirror,
+ * rotate a turn, and every room lands back on the side the plan puts it, with
+ * nothing else about the still touched. Re-rolling does not have that property —
+ * four consecutive runs of דירה 14 came back mirrored, turned, mirrored and
+ * turned again, so the retry budget was being spent resampling an orientation
+ * the model will not hold. Verified on run three: flopping it took
+ * mirroredVsPlan true -> false and the score 302 -> 101.
+ *
+ * Rotation was the more expensive half to find. The auditor had been writing
+ * "the render is rotated 180 degrees" into its notes while every graded field
+ * said the frame was clean, footprintMatchesPlan included — a silhouette turned
+ * through 180 degrees still matches itself. It needed its own field before it
+ * could be corrected.
  *
  * Nothing here reads as text — the caption bar is stamped after the audit — so
  * there is no lettering to come back reversed.
  *
- * Returns the original when the flip does not actually clear the verdict, so a
- * misfired mirror call cannot make a frame worse.
+ * Returns null unless the fix actually clears the verdict and improves the
+ * score, so a misfired call cannot make a frame worse.
  */
-async function unmirrorIfFlipped(
+async function reorientToPlan(
   img: { mimeType: string; base64: string },
+  audit: { mirroredVsPlan: boolean; rotationVsPlanDegrees: number },
   ctx: { layout: FloorplanLayout; plan: { base64: string; mimeType: string }; haredi: boolean },
   before: { score: number },
   view: string,
 ): Promise<{ img: { mimeType: string; base64: string }; score: number } | null> {
-  const flippedBuf = await sharp(Buffer.from(img.base64, "base64")).flop().jpeg({ quality: 94 }).toBuffer();
-  const flipped = { mimeType: "image/jpeg", base64: flippedBuf.toString("base64") };
+  let pipeline = sharp(Buffer.from(img.base64, "base64"));
+  if (audit.mirroredVsPlan) pipeline = pipeline.flop();
+  // The audit reports how far the still is turned from the plan, so turn it back.
+  if (audit.rotationVsPlanDegrees !== 0) pipeline = pipeline.rotate(audit.rotationVsPlanDegrees);
 
-  const audit = await auditFloorplanStill(flipped, ctx.plan);
-  if (!audit || audit.mirroredVsPlan) return null;
-  const graded = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+  const buf = await pipeline.jpeg({ quality: 94 }).toBuffer();
+  const fixed = { mimeType: "image/jpeg", base64: buf.toString("base64") };
+
+  const after = await auditFloorplanStill(fixed, ctx.plan);
+  if (!after || after.mirroredVsPlan || after.rotationVsPlanDegrees !== 0) return null;
+  const graded = gradeFloorplanStill(after, ctx.layout, { haredi: ctx.haredi });
   if (graded.score >= before.score) return null;
-  log.info("un-mirrored a flipped still", { view, from: before.score, to: graded.score });
-  return { img: flipped, score: graded.score };
+  log.info("reoriented a still to the plan", {
+    view,
+    flopped: audit.mirroredVsPlan,
+    turned: audit.rotationVsPlanDegrees,
+    from: before.score,
+    to: graded.score,
+  });
+  return { img: fixed, score: graded.score };
 }
 
 async function generateAuditedImage(
@@ -792,6 +817,7 @@ async function generateAuditedImage(
     score: number;
     failures: string[];
     hardFailures: string[];
+    audit: FloorplanVizAudit;
   } | null = null;
   let lastFailures: string[] = [];
 
@@ -823,22 +849,23 @@ Fix exactly these and keep everything the audit did not complain about.`
     }
     log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
-    if (!best || score < best.score) best = { img, score, failures, hardFailures };
+    if (!best || score < best.score) best = { img, score, failures, hardFailures, audit };
     if (score <= GOOD_ENOUGH_SCORE) {
       log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
       return img;
     }
   }
 
-  if (best?.hardFailures.some((f) => /mirrored/i.test(f))) {
-    const fixed = await unmirrorIfFlipped(best.img, ctx, best, job.labelHe);
+  const misoriented = /mirrored|turned \d+ degrees/i;
+  if (best?.audit && best.hardFailures.some((f) => misoriented.test(f))) {
+    const fixed = await reorientToPlan(best.img, best.audit, ctx, best, job.labelHe);
     if (fixed) {
       best = {
         ...best,
         img: fixed.img,
         score: fixed.score,
-        hardFailures: best.hardFailures.filter((f) => !/mirrored/i.test(f)),
-        failures: best.failures.filter((f) => !/mirrored/i.test(f)),
+        hardFailures: best.hardFailures.filter((f) => !misoriented.test(f)),
+        failures: best.failures.filter((f) => !misoriented.test(f)),
       };
     }
   }
