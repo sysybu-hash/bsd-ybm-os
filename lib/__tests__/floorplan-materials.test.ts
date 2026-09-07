@@ -32,16 +32,16 @@ describe("the materials-only instruction", () => {
   });
 });
 
-describe("the two passes that place furniture and then de-code it", () => {
-  it("names a kind for every colour the renderer emits", () => {
-    for (const colour of ["BLUE", "YELLOW/SAND", "PURPLE", "GREEN", "GREY-BEIGE"]) {
-      expect(FURNITURE_KEY_PROMPT).toContain(colour);
+describe("the key that tells the model what each block is", () => {
+  it("names a kind for every tint the renderer emits", () => {
+    for (const tint of ["OFF-WHITE", "TAN OAK", "PALE STONE", "WHITE block", "DARK OAK", "GREY-BEIGE"]) {
+      expect(FURNITURE_KEY_PROMPT).toContain(tint);
     }
   });
 
-  it("ties the bed count to the block count and forbids a double", () => {
+  it("ties the bed count to the block count", () => {
     // Five bed blocks came back as two beds before the key existed.
-    expect(FURNITURE_KEY_PROMPT).toMatch(/as many beds as blue blocks/i);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/as many beds as blocks of this kind/i);
     expect(FURNITURE_KEY_PROMPT).toMatch(/[Nn]ever a double bed/);
   });
 
@@ -50,19 +50,46 @@ describe("the two passes that place furniture and then de-code it", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/terrace/i);
   });
 
+  it("tints blocks as the material they become, so no decoding pass is needed", () => {
+    // A saturated key placed furniture well and then would not come out: green
+    // chairs and orange tables survived the pass meant to restate them.
+    expect(FURNITURE_KEY_PROMPT).toMatch(/not to recolour it/);
+    expect(FURNITURE_KEY_PROMPT).not.toMatch(/BLUE/);
+  });
+
   it("drops the empty-shell rule that would contradict the key", () => {
     expect(buildPlacementPrompt()).not.toMatch(/No furniture\./);
-    expect(buildPlacementPrompt()).toContain("BLUE block");
+    expect(buildPlacementPrompt()).toContain("OFF-WHITE block");
     expect(buildPlacementPrompt()).toMatch(/Do not rotate, mirror or reflect/);
   });
 
   it("still puts caller direction last, after the geometry rules and the key", () => {
     const prompt = buildPlacementPrompt("warmer palette");
-    expect(prompt.indexOf("warmer palette")).toBeGreaterThan(prompt.indexOf("BLUE block"));
+    expect(prompt.indexOf("warmer palette")).toBeGreaterThan(prompt.indexOf("OFF-WHITE block"));
   });
 
-  it("asks the recolour pass to change nothing but the coding colours", () => {
+  it("keeps the recolour pass available for a frame that still carries a tint", () => {
     expect(RECOLOUR_PROMPT).toMatch(/change NOTHING else/);
-    expect(RECOLOUR_PROMPT).toMatch(/no blue, purple or mint-green object may remain/i);
+  });
+});
+
+describe("rules added because a still broke them", () => {
+  it("ties wet rooms to white blocks, after a ממ\"ד bedroom came back a bathroom", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/ONLY where a white fixture block stands/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/Wardrobes are not fixtures/);
+  });
+
+  it("holds a bed to its drawn proportion, after the audit read one as a double", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/twice as long as it is wide/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/never merged with the block beside it/);
+  });
+
+  it("expects the dining chairs the render cannot carry, and only there", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/Chairs go around the table and nowhere else/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/one dining table per flat/);
+  });
+
+  it("forbids a saturated finish, since the blocks are tinted to guide it", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/no object may come out in a saturated colour/);
   });
 });

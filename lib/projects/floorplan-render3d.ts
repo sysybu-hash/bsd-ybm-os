@@ -49,13 +49,19 @@ const WALL_EDGE = "#b3a595";
  * infer it from proportions.
  */
 export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
-  bed: { top: "#8fb8e0", face: "#6f97bd" },
-  storage: { top: "#d8c08a", face: "#b39c68" },
-  counter: { top: "#c7a3d8", face: "#a382b5" },
-  fixture: { top: "#8fd8c4", face: "#6bb3a0" },
+  // Distinct enough to tell apart, and already the material each will become.
+  // Saturated key colours worked for placement and then would not come out: a
+  // second pass asked to restate them in real materials left green chairs and
+  // orange tables standing in the finished frame. A palette that is its own
+  // answer needs no decoding.
+  bed: { top: "#f2efe9", face: "#d8d2c8" },
+  storage: { top: "#c9a678", face: "#a8875b" },
+  counter: { top: "#eae6df", face: "#b9b2a6" },
+  fixture: { top: "#fbfbfa", face: "#dfe3e4" },
+  table: { top: "#a9764a", face: "#8b5e39" },
+  seat: { top: "#cfc6b6", face: "#aca392" },
   unknown: { top: "#cbb79c", face: "#a8917a" },
 };
-
 function quad(points: Array<[number, number]>, fill: string, stroke: string): string {
   const d = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   return `<polygon points="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.6" stroke-linejoin="round"/>`;
@@ -149,6 +155,8 @@ export function renderFlatSvg(
     storage: 2.0,
     counter: 0.9,
     fixture: 0.55,
+    table: 0.75,
+    seat: 0.85,
     unknown: 0.5,
   };
   for (const piece of [...(options.furniture ?? [])].sort(

@@ -12,7 +12,14 @@ import { isAxisAligned, segmentLength, type VectorSegment } from "@/lib/projects
  * at 36-52 cm deep, and a bath — from geometry, with no model involved.
  */
 
-export type FurnitureKind = "bed" | "storage" | "counter" | "fixture" | "unknown";
+export type FurnitureKind =
+  | "bed"
+  | "storage"
+  | "counter"
+  | "fixture"
+  | "table"
+  | "seat"
+  | "unknown";
 
 export type FurniturePiece = {
   x: number;
@@ -132,8 +139,54 @@ export function classifyPiece(widthCm: number, depthCm: number): FurnitureKind {
   if (short >= 60 && short <= 80 && long >= 140 && long <= 180) return "fixture";
   if (short >= 30 && short <= 62 && long >= 90 && long <= 320) return "storage";
   if (short >= 55 && short <= 75 && long >= 55 && long <= 75) return "fixture";
+  // The dining table. It was being detected all along at 140x88 and named
+  // "unknown", so the render put a nameless block in the dining area and the
+  // model made nothing of it — the audit's "living and dining furniture omitted"
+  // was a naming gap, not a detection one.
+  if (short >= 75 && short <= 115 && long >= 120 && long <= 200) return "table";
+  // A dining chair or an armchair: small and roughly square.
+  if (short >= 38 && short <= 72 && long >= 38 && long <= 72) return "seat";
   if (short >= 80 && short <= 140 && long >= 140 && long <= 260) return "counter";
   return "unknown";
+}
+
+/**
+ * A small square is only a toilet if it is standing in a wet room.
+ *
+ * classifyPiece reads size alone, so a 62 by 62 block came back "fixture"
+ * wherever it stood — and the model dutifully turned a bedside table in a
+ * bedroom into a toilet, three of them, in a still whose every other check
+ * passed. The bath gives the wet rooms away: it is unmistakable at about 70 by
+ * 160, and the pans and basins are the small squares near it.
+ *
+ * A small square with no bath nearby is demoted to a side piece rather than
+ * dropped. It is something, and the plan drew it there.
+ */
+export function settleFixtures(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  const baths = pieces.filter(
+    (p) => p.kind === "fixture" && Math.max(p.widthCm, p.depthCm) >= 120,
+  );
+  const reach = unitsPerMetre * 3;
+  return pieces.map((p) => {
+    if (p.kind !== "fixture" || Math.max(p.widthCm, p.depthCm) >= 120) return p;
+    const near = baths.some(
+      (b) =>
+        Math.abs(b.x + b.w / 2 - (p.x + p.w / 2)) <= reach &&
+        Math.abs(b.y + b.h / 2 - (p.y + p.h / 2)) <= reach,
+    );
+    return near ? p : { ...p, kind: "unknown" as const };
+  });
+}
+
+/**
+ * A flat has one dining table. Extra ones are something else the size matched.
+ */
+export function settleTables(pieces: FurniturePiece[]): FurniturePiece[] {
+  const tables = pieces
+    .filter((p) => p.kind === "table")
+    .sort((a, b) => b.w * b.h - a.w * a.h);
+  const keep = tables[0];
+  return pieces.map((p) => (p.kind === "table" && p !== keep ? { ...p, kind: "unknown" as const } : p));
 }
 
 export function findFurniture(
@@ -141,9 +194,10 @@ export function findFurniture(
   unitsPerMetre: number,
 ): FurniturePiece[] {
   const rects = dedupeRectangles(dropNested(findRectangles(segments, { unitsPerMetre })));
-  return rects.map((r) => {
+  const pieces = rects.map((r) => {
     const widthCm = (r.w / unitsPerMetre) * 100;
     const depthCm = (r.h / unitsPerMetre) * 100;
     return { ...r, widthCm, depthCm, kind: classifyPiece(widthCm, depthCm) };
   });
+  return settleTables(settleFixtures(pieces, unitsPerMetre));
 }

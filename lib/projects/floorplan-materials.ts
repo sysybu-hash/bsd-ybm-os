@@ -53,14 +53,17 @@ ${extra}`;
  * kind is known from the geometry, so it is stated rather than left to be
  * inferred from proportions.
  */
-export const FURNITURE_KEY_PROMPT = `The raised coloured blocks standing on the floor are furniture, already positioned exactly as the architect drew them. The colour states what each block is:
-- BLUE block = a SINGLE bed. One mattress, one pillow, its own headboard against the nearest wall. Never a double bed. Exactly as many beds as blue blocks.
-- YELLOW/SAND block = a fitted wardrobe or a kitchen run, doors closed.
-- PURPLE block = a kitchen counter or island.
-- GREEN block = a sanitary fixture: a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in.
-- GREY-BEIGE block = a small side piece, such as a bedside table.
+export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are furniture, already positioned exactly as the architect drew them. Each block is already tinted roughly the material it is meant to become — your job is to make it look like the real object at exactly that footprint, not to recolour it:
+- OFF-WHITE block, long and narrow = a SINGLE bed. White linen, one pillow, pale oak frame, headboard against the nearest wall. It stays more than twice as long as it is wide. Never a double bed, never widened, never merged with the block beside it. Exactly as many beds as blocks of this kind.
+- TAN OAK block, 35-60 cm deep against a wall = a fitted wardrobe or a kitchen run, doors closed.
+- PALE STONE block, wide = a kitchen counter or island: stone worktop over oak base units.
+- WHITE block in a tiled room = a sanitary fixture: a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in.
+- DARK OAK block = a dining table. Set chairs around it, tucked to its edges, as many as its length takes — the sheet draws the chairs as curved symbols this render does not carry, so they are expected here. Chairs go around the table and nowhere else. There is one dining table per flat.
+- GREY-BEIGE block = a small side piece: a bedside table beside a bed, an armchair in a living space.
 
-Render every block, without exception. Do not add furniture where there is no block. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame.`;
+A bath, a toilet, a shower or a washbasin appears ONLY where a white fixture block stands. A room containing no white block is not a bathroom, whatever its shape: render it with the furniture its own blocks carry and an ordinary floor. Wardrobes are not fixtures — a room whose blocks are tan oak is a bedroom or a store, never a wet room. There are exactly as many wet rooms as there are groups of white blocks.
+
+Render every block, without exception. Do not add furniture where there is no block, apart from the chairs around the dining table. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
 
 /**
  * The second pass, which takes the key back out.
@@ -74,10 +77,12 @@ Render every block, without exception. Do not add furniture where there is no bl
 export const RECOLOUR_PROMPT = `This is a finished top-down render of one apartment. Every wall, room, opening and piece of furniture is already exactly right and must not be changed in any way.
 
 One thing is wrong: some objects are still in the flat coding colours used to build the image. Restate those objects in their real materials, and change NOTHING else — same walls, same outline, same orientation, same furniture, same positions, same sizes, same camera.
-- Anything blue is a bed: white linen bedding, pale oak frame and headboard. A single bed, never a double.
+- Anything blue is a bed: white linen bedding, pale oak frame and headboard. A SINGLE bed — its length must stay more than twice its width, exactly as the block is drawn. Never widen a bed, and never merge a bed with the block beside it.
 - Anything yellow or sand-coloured is a wardrobe or kitchen unit: warm pale oak, doors closed.
 - Anything purple is a kitchen counter: white stone worktop over oak base units.
 - Anything mint-green is a sanitary fixture: white glazed ceramic.
+- Anything orange is a dining table: solid oak top on oak legs.
+- Anything light-green is a chair: pale upholstery on an oak frame.
 - Any coloured floor becomes its proper surface: warm oak boards in the rooms, pale stone tiles in the wet rooms and on the terraces.
 
 When you are done, no blue, purple or mint-green object may remain anywhere in the frame. Keep the warm golden-hour daylight. No text, no labels, no screens, no televisions.`;

@@ -3,6 +3,8 @@ import {
   dedupeRectangles,
   dropNested,
   findRectangles,
+  settleFixtures,
+  settleTables,
 } from "@/lib/projects/floorplan-furniture";
 
 const UPM = 54.7;
@@ -85,5 +87,47 @@ describe("what is drawn like furniture but is not", () => {
     ];
     expect(dedupeRectangles(nested)).toHaveLength(1);
     expect(dedupeRectangles(nested)[0]!.w).toBe(51);
+  });
+});
+
+describe("a fixture needs a wet room to stand in", () => {
+  const piece = (x: number, y: number, wCm: number, dCm: number, kind: string) => ({
+    x,
+    y,
+    w: (wCm / 100) * UPM,
+    h: (dCm / 100) * UPM,
+    widthCm: wCm,
+    depthCm: dCm,
+    kind: kind as never,
+  });
+
+  it("keeps a small fixture standing next to a bath", () => {
+    const bath = piece(400, 1200, 73, 156, "fixture");
+    const pan = piece(430, 1300, 62, 62, "fixture");
+    const settled = settleFixtures([bath, pan], UPM);
+    expect(settled.every((p) => p.kind === "fixture")).toBe(true);
+  });
+
+  it("demotes a small square standing alone in a bedroom", () => {
+    // Three of these became toilets in bedrooms, in a still whose every other
+    // check passed. Size alone cannot tell a bedside table from a pan.
+    const bath = piece(400, 1200, 73, 156, "fixture");
+    const lonely = piece(150, 300, 62, 62, "fixture");
+    const settled = settleFixtures([bath, lonely], UPM);
+    expect(settled.find((p) => p.x === 150)!.kind).toBe("unknown");
+    expect(settled.find((p) => p.x === 400)!.kind).toBe("fixture");
+  });
+
+  it("never demotes the bath itself, which is what marks the wet room", () => {
+    const bath = piece(400, 1200, 73, 156, "fixture");
+    expect(settleFixtures([bath], UPM)[0]!.kind).toBe("fixture");
+  });
+
+  it("keeps one dining table and demotes the rest", () => {
+    const big = piece(500, 900, 160, 90, "table");
+    const small = piece(100, 100, 130, 80, "table");
+    const settled = settleTables([small, big]);
+    expect(settled.filter((p) => p.kind === "table")).toHaveLength(1);
+    expect(settled.find((p) => p.x === 500)!.kind).toBe("table");
   });
 });
