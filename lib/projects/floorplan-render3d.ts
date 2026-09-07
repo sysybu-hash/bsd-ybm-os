@@ -20,7 +20,7 @@ import { bodyRect, type SpanRow, type WallBody } from "@/lib/projects/floorplan-
  * above. A sales still is close to top-down: enough lean to see the inside face
  * of a wall and read the room as a room, not enough to hide the floor behind it.
  */
-const RISE = 0.22;
+const RISE = 0.30;
 
 export type Render3dOptions = {
   /** Page units per metre, so wall height is a real 2.6 m rather than a guess. */
@@ -36,10 +36,10 @@ export type Render3dOptions = {
 
 type Box = { x: number; y: number; width: number; height: number };
 
-const FLOOR = "#d9cdbd";
-const WALL_TOP = "#f2ece4";
-const WALL_FACE = "#cdc2b4";
-const WALL_EDGE = "#b3a595";
+const FLOOR = "#cbbda8";
+const WALL_TOP = "#ffffff";
+const WALL_FACE = "#9c9184";
+const WALL_EDGE = "#6f665c";
 /**
  * Furniture blocks are colour-coded, and the prompt names the code.
  *

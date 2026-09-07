@@ -404,3 +404,20 @@ describe("keeping the bodies that are inside the drawing", () => {
     expect(kept).toHaveLength(1);
   });
 });
+
+describe("how the hatch is measured", () => {
+  it("counts strokes on a fine grid, so a band cannot borrow its neighbour's", () => {
+    // At a coarse cell an empty patch of floor beside a wall measured as much
+    // hatch as a real thin partition.
+    const field = new HatchField([{ x: 100, y: 100 }, { x: 101, y: 101 }]);
+    expect(field.count({ x: 96, y: 96, w: 10, h: 10 })).toBe(2);
+    expect(field.count({ x: 140, y: 140, w: 10, h: 10 })).toBe(0);
+  });
+
+  it("offers hatch per unit length as well as per unit area", () => {
+    const field = new HatchField([{ x: 10, y: 10 }, { x: 12, y: 10 }]);
+    const band = { x: 0, y: 8, w: 100, h: 6 };
+    expect(field.density(band)).toBeGreaterThan(0);
+    expect(field.perLength(band)).toBeCloseTo(2, 1);
+  });
+});

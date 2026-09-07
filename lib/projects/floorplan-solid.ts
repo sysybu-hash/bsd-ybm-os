@@ -632,7 +632,10 @@ export class HatchField {
 
   constructor(
     points: HatchPoint[],
-    private readonly cell = 6,
+    // Fine enough that a band cannot borrow a neighbouring wall's strokes: at
+    // cell 6 an empty patch of living-room floor beside a wall measured 23
+    // strokes per 100 units, as much as a real thin partition.
+    private readonly cell = 2,
   ) {
     for (const p of points) {
       const key = `${Math.floor(p.x / cell)},${Math.floor(p.y / cell)}`;
@@ -640,10 +643,8 @@ export class HatchField {
     }
   }
 
-  /** Strokes per 100 square units inside a rectangle. */
-  density(rect: { x: number; y: number; w: number; h: number }): number {
-    const area = rect.w * rect.h;
-    if (!(area > 0)) return 0;
+  /** Strokes counted inside a rectangle. */
+  count(rect: { x: number; y: number; w: number; h: number }): number {
     let count = 0;
     const x0 = Math.floor(rect.x / this.cell);
     const x1 = Math.floor((rect.x + rect.w) / this.cell);
@@ -652,7 +653,30 @@ export class HatchField {
     for (let cx = x0; cx <= x1; cx++) {
       for (let cy = y0; cy <= y1; cy++) count += this.cells.get(`${cx},${cy}`) ?? 0;
     }
-    return (count / area) * 100;
+    return count;
+  }
+
+  /** Strokes per 100 square units inside a rectangle. */
+  density(rect: { x: number; y: number; w: number; h: number }): number {
+    const area = rect.w * rect.h;
+    if (!(area > 0)) return 0;
+    return (this.count(rect) / area) * 100;
+  }
+
+  /**
+   * Strokes per 100 units along a band's length.
+   *
+   * The reasoning is sound — a 10 cm partition carries the same hatch pitch
+   * along its length as a 45 cm exterior wall but has a quarter of the area to
+   * spread those strokes over — and it measured worse end to end: swapping the
+   * accept test to this took דירה 14 from 42 walls to 31 and moved the floor
+   * further from the area the sheet prints. Kept because the measure is useful
+   * and the next sheet may want it; not used to accept a band.
+   */
+  perLength(rect: { x: number; y: number; w: number; h: number }): number {
+    const along = Math.max(rect.w, rect.h);
+    if (!(along > 0)) return 0;
+    return (this.count(rect) / along) * 100;
   }
 
   get size(): number {
@@ -722,7 +746,8 @@ export function wallBodiesFromHatch(
         // Sampled a little inside the faces, so a band that merely runs beside
         // a hatched wall cannot borrow its strokes.
         const rect = bodyRect(body);
-        const inset = Math.min(gap * 0.2, 2);
+        // Only a token inset: a thin partition has little width to give away.
+        const inset = Math.min(gap * 0.15, 1);
         if (
           field.density({
             x: rect.x + (orientation === "v" ? inset : 0),
