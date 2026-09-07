@@ -475,6 +475,32 @@ export function interiorSpans(
      * drawn.
      */
     sealingSegments?: VectorSegment[];
+    /**
+     * Leave the wall cells out of the result.
+     *
+     * Wall cells normally count as floor — a wall stands on the slab, and
+     * leaving them out draws a hairline of background along every wall. For
+     * telling one flat from its neighbour it has to be the other way round: with
+     * the walls counted in, every region touches every other through them, and a
+     * sheet carrying two apartments and a stair core came back as one enclosed
+     * region of 153 m².
+     */
+    excludeWalls?: boolean;
+    /**
+     * Treat walls at least this thick as barriers, thinner ones as floor.
+     *
+     * Neither of the two settings above separates one flat from its neighbour.
+     * Count the walls as floor and every region joins through them — the uncut
+     * דירה 14 sheet came back as a single 153 m² region covering the flat, its
+     * neighbour and the stair core. Leave them out and the flat itself falls
+     * apart into 37 rooms, since a room is exactly what a wall encloses.
+     *
+     * The distinction that does hold is architectural: rooms inside a flat are
+     * divided by thin partitions, and flats are divided from each other by thick
+     * party and exterior walls. So thin walls join what they separate, and thick
+     * ones do not.
+     */
+    barrierThicknessUnits?: number;
   },
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
@@ -506,7 +532,9 @@ export function interiorSpans(
     paint(x, y, Math.abs(seg.x2 - seg.x1) || step, Math.abs(seg.y2 - seg.y1) || step);
   }
 
+  const barrier = options?.barrierThicknessUnits;
   for (const b of sealed) {
+    if (barrier !== undefined && b.thickness < barrier) continue;
     const r = bodyRect(b);
     paint(r.x, r.y, r.w, r.h);
   }
@@ -543,9 +571,13 @@ export function interiorSpans(
     const spans: Array<[number, number]> = [];
     let start = -1;
     for (let x = 1; x < w; x++) {
-      // Wall cells count as floor too: a wall stands on the slab, and leaving
-      // them out draws a hairline of background along every wall.
-      const inside = x < w - 1 && grid[y * w + x] !== OUTSIDE;
+      const cell = grid[y * w + x];
+      // In barrier mode a painted cell is a party or exterior wall, and it must
+      // not count as floor: counting it joined the two flats through the very
+      // wall that divides them, which is how a sheet carrying two apartments
+      // came back as one region.
+      const wallsAreFloor = !options?.excludeWalls && barrier === undefined;
+      const inside = x < w - 1 && (wallsAreFloor ? cell !== OUTSIDE : cell === 0);
       if (inside && start < 0) start = x;
       else if (!inside && start >= 0) {
         spans.push([bounds.x + (start - 1) * step, bounds.x + (x - 1) * step]);
@@ -751,25 +783,22 @@ export function wallBodiesFromHatch(
           from,
           to,
         };
-        // Sampled a little inside the faces, so a band that merely runs beside
-        // a hatched wall cannot borrow its strokes.
-        const rect = bodyRect(body);
-        // Only a token inset: a thin partition has little width to give away.
-        const inset = Math.min(gap * 0.15, 1);
-        if (
-          field.density({
-            x: rect.x + (orientation === "v" ? inset : 0),
-            y: rect.y + (orientation === "h" ? inset : 0),
-            w: rect.w - (orientation === "v" ? inset * 2 : 0),
-            h: rect.h - (orientation === "h" ? inset * 2 : 0),
-          }) < minDensity
-        ) {
-          continue;
-        }
+        // Hatch all the way across, not on average. Averaging accepted a pair
+        // made of one wall's far face and the next wall's near face: hatch at
+        // both ends, bare room in the middle, mean density fine. Thirty of
+        // דירה 14's walls came out 40 to 55 cm thick that way, and no Israeli
+        // partition is 50 cm. Slicing across the band catches the hollow middle,
+        // which pairing each face with its nearest partner instead did not —
+        // that halved coverage, because a wall drawn with a reveal line pairs to
+        // the reveal rather than to its own far face.
+        // Hatch in the middle, not on average across the band.
+        if (field.density(bodyRect(body)) < minDensity) continue;
+        if (!hatchFillsMiddle(field, body, minDensity)) continue;
         bodies.push(body);
       }
     }
   }
+
   // A hatched band is found once per pair of faces that brackets it, so a wall
   // drawn with a reveal line comes back two or three times over.
   //
@@ -780,6 +809,32 @@ export function wallBodiesFromHatch(
   // row's run sits shifted from the one above and almost nothing stacks.
   const merged = bridgeOpenings(dedupe(bodies), (options.mergeGapM ?? 1.2) * upm);
   return merged.filter((b) => b.to - b.from >= minLength);
+}
+
+/**
+ * Whether hatch fills the middle of a band, not merely its edges.
+ *
+ * Strokes are indexed by their midpoint, so a stroke that spans a wall face to
+ * face registers only in the middle of that wall — which makes the middle the
+ * one place that separates a real wall from a pair made of two walls with room
+ * between them. That pair has hatch at both ends and a hollow centre, and an
+ * average over the whole band could not see it: thirty of דירה 14's walls came
+ * out 40 to 55 cm thick, and no Israeli partition is 50 cm.
+ *
+ * Requiring every slice to carry hatch was tried and is wrong for the same
+ * indexing reason — it rejects thin walls whose strokes all land centrally.
+ */
+function hatchFillsMiddle(field: HatchField, body: WallBody, minDensity: number): boolean {
+  const rect = bodyRect(body);
+  const across = body.orientation === "h" ? rect.h : rect.w;
+  if (across < 6) return true; // Too thin to have a middle distinct from its edges.
+  const from = across / 3;
+  const size = across / 3;
+  const middle =
+    body.orientation === "h"
+      ? { x: rect.x, y: rect.y + from, w: rect.w, h: size }
+      : { x: rect.x + from, y: rect.y, w: size, h: rect.h };
+  return field.density(middle) >= minDensity;
 }
 
 /**
@@ -809,4 +864,111 @@ export function clipBodiesToBounds(
       r.y + r.h <= bounds.y + bounds.height + margin
     );
   });
+}
+
+/**
+ * The enclosed regions of a sheet, separated, so one flat can be picked out.
+ *
+ * A sales sheet is not always one apartment. The uncut דירה 14 carries its
+ * neighbour and the building's stair core as well, and the client had been
+ * cropping the PDF by hand to keep them out of the render — which severed wall
+ * faces mid-run and cost the reconstruction four points of hatch coverage.
+ *
+ * Better to take the whole sheet and separate the flats afterwards. Each is its
+ * own enclosed region once the walls are sealed, and the sheet prints the area
+ * of the one we want.
+ */
+export function interiorComponents(
+  bodies: WallBody[],
+  bounds: { x: number; y: number; width: number; height: number },
+  options?: Parameters<typeof interiorSpans>[2],
+): SpanRow[][] {
+  const rows = interiorSpans(bodies, bounds, options);
+  if (rows.length === 0) return [];
+  const pitch = rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1;
+
+  type Node = { row: number; span: [number, number]; parent: number };
+  const nodes: Node[] = [];
+  const index = new Map<number, number[]>();
+  rows.forEach((row, r) => {
+    const ids: number[] = [];
+    for (const span of row.spans) {
+      ids.push(nodes.length);
+      nodes.push({ row: r, span, parent: nodes.length });
+    }
+    index.set(r, ids);
+  });
+  const find = (a: number): number => {
+    let n = a;
+    while (nodes[n]!.parent !== n) {
+      nodes[n]!.parent = nodes[nodes[n]!.parent]!.parent;
+      n = nodes[n]!.parent;
+    }
+    return n;
+  };
+  const union = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) nodes[ra]!.parent = rb;
+  };
+
+  // Spans that overlap on consecutive rows are the same region.
+  for (let r = 1; r < rows.length; r++) {
+    for (const a of index.get(r - 1) ?? []) {
+      for (const b of index.get(r) ?? []) {
+        const [a0, a1] = nodes[a]!.span;
+        const [b0, b1] = nodes[b]!.span;
+        if (Math.min(a1, b1) - Math.max(a0, b0) > 0) union(a, b);
+      }
+    }
+  }
+
+  const byRoot = new Map<number, Map<number, Array<[number, number]>>>();
+  nodes.forEach((node, i) => {
+    const root = find(i);
+    const rowsOf = byRoot.get(root) ?? new Map<number, Array<[number, number]>>();
+    const spans = rowsOf.get(node.row) ?? [];
+    spans.push(node.span);
+    rowsOf.set(node.row, spans);
+    byRoot.set(root, rowsOf);
+  });
+
+  return [...byRoot.values()]
+    .map((rowsOf) =>
+      [...rowsOf.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([r, spans]) => ({ y: rows[r]!.y, spans })),
+    )
+    .sort((a, b) => spanArea(b) - spanArea(a))
+    .map((component) => {
+      // spanArea reads the pitch off the first two rows; a component whose rows
+      // are not consecutive would otherwise measure wrong.
+      void pitch;
+      return component;
+    });
+}
+
+/**
+ * The region whose area is closest to the area the sheet prints for the flat.
+ *
+ * Size is what separates the apartment from its neighbour and from the stair
+ * core, and the sheet states it — so there is nothing to infer.
+ */
+export function pickComponentByArea(
+  components: SpanRow[][],
+  unitsPerMetre: number,
+  targetM2: number,
+): SpanRow[] | null {
+  if (components.length === 0) return null;
+  let best: SpanRow[] | null = null;
+  let bestError = Infinity;
+  for (const component of components) {
+    const m2 = spanArea(component) / (unitsPerMetre * unitsPerMetre);
+    const error = Math.abs(m2 - targetM2);
+    if (error < bestError) {
+      bestError = error;
+      best = component;
+    }
+  }
+  return best;
 }

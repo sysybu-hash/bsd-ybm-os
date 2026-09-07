@@ -8,7 +8,9 @@ import {
   clipBodiesToBounds,
   extractHatchStrokes,
   HatchField,
+  interiorComponents,
   interiorSpans,
+  pickComponentByArea,
   spanArea,
   wallBodiesFromHatch,
   wallBodiesFromSegments,
@@ -450,5 +452,94 @@ describe("bridging groups walls by their own line, not by a chain", () => {
 
   it("keeps two walls a room apart separate", () => {
     expect(bridgeOpenings([body(100, 0, 200), body(400, 0, 200)], 120)).toHaveLength(2);
+  });
+});
+
+describe("telling one flat from what is drawn beside it", () => {
+  const wall = (
+    orientation: "h" | "v",
+    centre: number,
+    from: number,
+    to: number,
+    thickness: number,
+  ) => ({ orientation, centre, from, to, thickness });
+
+  /** Two boxes side by side, divided by a thick party wall. */
+  const twoFlats = [
+    wall("h", 0, 0, 800, 20),
+    wall("h", 400, 0, 800, 20),
+    wall("v", 0, 0, 400, 20),
+    wall("v", 800, 0, 400, 20),
+    wall("v", 400, 0, 400, 20),
+  ];
+
+  it("finds the enclosed regions of a sheet separately", () => {
+    const components = interiorComponents(
+      twoFlats,
+      { x: -40, y: -40, width: 880, height: 480 },
+      { resolution: 4, barrierThicknessUnits: 15 },
+    );
+    expect(components.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("picks the region whose area matches what the sheet prints", () => {
+    const components = interiorComponents(
+      twoFlats,
+      { x: -40, y: -40, width: 880, height: 480 },
+      { resolution: 4, barrierThicknessUnits: 15 },
+    );
+    // Each half is about 380x380 units; at 40 units/m that is roughly 90 m².
+    const picked = pickComponentByArea(components, 40, 90);
+    expect(picked).not.toBeNull();
+    expect(spanArea(picked!) / 1600).toBeGreaterThan(50);
+  });
+
+  it("has nothing to pick from an empty sheet", () => {
+    expect(pickComponentByArea([], 40, 90)).toBeNull();
+  });
+
+  it("counts thin partitions as floor so a flat does not fall into rooms", () => {
+    // Leaving every wall out fragmented the flat into 37 rooms, since a room is
+    // exactly what a wall encloses.
+    const withPartition = [...twoFlats, wall("h", 200, 20, 380, 6)];
+    const components = interiorComponents(
+      withPartition,
+      { x: -40, y: -40, width: 880, height: 480 },
+      { resolution: 4, barrierThicknessUnits: 15 },
+    );
+    const left = components.filter((c) => c[0]!.spans[0]![0] < 400);
+    expect(left.length).toBe(1);
+  });
+});
+
+describe("hatch has to run all the way across a wall", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const face = (y: number, from: number, to: number) => seg(from, y, to, y);
+  const hatchBetween = (y0: number, y1: number, from: number, to: number) => {
+    const out = [];
+    for (let x = from; x < to; x += 4) out.push(seg(x, y1, x + (y1 - y0), y0));
+    return out;
+  };
+
+  it("accepts a band whose hatch fills it face to face", () => {
+    const wall = [face(100, 0, 300), face(112, 0, 300), ...hatchBetween(100, 112, 0, 300)];
+    expect(wall.length).toBeGreaterThan(2);
+    expect(wallBodiesFromHatch(wall, { unitsPerMetre: 55 })).toHaveLength(1);
+  });
+
+  it("refuses a pair made of two different walls with room between them", () => {
+    // Hatch at both ends, bare floor in the middle: the mean looked fine and
+    // thirty of דירה 14's walls came out 40 to 55 cm thick.
+    const twoWalls = [
+      face(100, 0, 300),
+      face(110, 0, 300),
+      ...hatchBetween(100, 110, 0, 300),
+      face(140, 0, 300),
+      face(150, 0, 300),
+      ...hatchBetween(140, 150, 0, 300),
+    ];
+    const bodies = wallBodiesFromHatch(twoWalls, { unitsPerMetre: 55 });
+    // Two walls, not one 50 cm slab spanning both.
+    expect(bodies.every((b) => b.thickness < 20)).toBe(true);
   });
 });
