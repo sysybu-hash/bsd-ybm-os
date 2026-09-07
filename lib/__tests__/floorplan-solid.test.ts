@@ -4,7 +4,9 @@ import {
   buildWallBodies,
   closeCorners,
   endGapPatches,
+  calibrateFromInterior,
   interiorSpans,
+  spanArea,
   wallBodiesFromSegments,
 } from "@/lib/projects/floorplan-solid";
 import type { WallRun } from "@/lib/projects/floorplan-rooms";
@@ -262,5 +264,38 @@ describe("walls the thickness rules used to throw away", () => {
     const hatch = [509.6, 516.4, 523.7, 529.4].map((at) => run("h", at, 420, 674));
     const bodies = buildWallBodies(hatch, { unitsPerMetre: 43.67 });
     expect(bodies.length).toBeGreaterThan(0);
+  });
+});
+
+describe("solving the scale from the shell", () => {
+  it("measures a mask's area from its row spans", () => {
+    const rows = [
+      { y: 0, spans: [[0, 100] as [number, number]] },
+      { y: 10, spans: [[0, 100] as [number, number]] },
+      { y: 20, spans: [[0, 50] as [number, number], [60, 100] as [number, number]] },
+    ];
+    // Row pitch is 10, so 100 + 100 + 90 wide over three rows.
+    expect(spanArea(rows)).toBe(2900);
+  });
+
+  it("has no area to report for an empty mask", () => {
+    expect(spanArea([])).toBe(0);
+  });
+
+  it("solves the scale that makes the mask the area the sheet prints", () => {
+    // דירה 14: the seed put the flat at 207 m² against 132 of flat plus terrace.
+    const upm = calibrateFromInterior(43.67, 395_864, 132.19)!;
+    expect(upm).toBeGreaterThan(54);
+    expect(upm).toBeLessThan(56);
+    // And the mask then measures what it was solved against.
+    expect(395_864 / (upm * upm)).toBeCloseTo(132.19, 1);
+  });
+
+  it("refuses an answer it cannot stand behind", () => {
+    expect(calibrateFromInterior(0, 395_864, 132)).toBeNull();
+    expect(calibrateFromInterior(43, 0, 132)).toBeNull();
+    expect(calibrateFromInterior(43, 395_864, 1)).toBeNull();
+    // A mask this small against that area would mean 3 units per metre.
+    expect(calibrateFromInterior(43, 900, 132)).toBeNull();
   });
 });

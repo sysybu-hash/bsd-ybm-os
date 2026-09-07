@@ -468,6 +468,52 @@ export async function buildVectorWallJpeg(
 }
 
 /**
+ * The dimension numbers the sheet prints, read as text rather than guessed.
+ *
+ * Scale was being derived from the flood fill's room boxes against the sheet's
+ * gross area, and bounding boxes overstate an L-shaped room and understate what
+ * they miss entirely, so דירה 14 calibrated at 43.67 units/m and its floor came
+ * out 207 m² where the flat plus its terraces is about 132. A CAD export carries
+ * its dimension chain as real text — 254, 272, 364, 406 — so there is nothing to
+ * infer: calibrateScale matches each number against a wall run of that length.
+ *
+ * Only plain integers in the range a room dimension occupies are returned;
+ * levels (+9.64), areas (111.29) and the title block's text are left out.
+ */
+export async function extractPdfDimensionStrings(
+  pdf: Buffer | Uint8Array,
+): Promise<string[]> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return [];
+  try {
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
+    const page = await doc.getPage(1);
+    const content = await page.getTextContent();
+    const out: string[] = [];
+    for (const item of content.items) {
+      const str = (item as { str?: string }).str;
+      if (!str) continue;
+      for (const token of str.split(/[^\d.]+/)) {
+        if (!/^\d{2,4}$/.test(token)) continue;
+        const n = Number(token);
+        // 60 cm to 15 m: the span a printed room dimension covers.
+        if (n >= 60 && n <= 1500) out.push(token);
+      }
+    }
+    return out;
+  } catch (err: unknown) {
+    log.warn("dimension text unavailable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
+/**
  * The scan embedded in a PDF that is a photograph of a drawing, not a CAD export.
  *
  * A real batch is not all vectors. דירה 14 is one paintImageXObject and zero

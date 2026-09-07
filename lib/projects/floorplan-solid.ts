@@ -547,3 +547,38 @@ export function interiorSpans(
   }
   return rows;
 }
+
+/** The area of an interior mask, in page units squared. */
+export function spanArea(rows: SpanRow[]): number {
+  if (rows.length === 0) return 0;
+  const rowHeight = rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1;
+  return (
+    rows.reduce((sum, r) => sum + r.spans.reduce((t, [a, b]) => t + (b - a), 0), 0) * rowHeight
+  );
+}
+
+/**
+ * Page units per metre, solved from the shell the walls enclose.
+ *
+ * The seed comes from the flood fill's room boxes against the sheet's gross
+ * area, and boxes overstate an L-shaped room while missing others entirely: on
+ * דירה 14 that gave 43.67 units/m, which made the flat 207 m² when the sheet
+ * says 111 plus about 21 of terrace. Reading the printed dimension chain instead
+ * would settle it, but this CAD draws its numbers as vector outlines — the page
+ * carries eleven text items in total — so there is nothing to read.
+ *
+ * The mask itself is the better ruler. Its outline is faithful, so the scale is
+ * whatever makes its area equal the area the sheet prints. Two passes: seed,
+ * measure, solve, rebuild. An independent check agrees — at the scale this
+ * returns for 14 the median wall comes out 12 cm.
+ */
+export function calibrateFromInterior(
+  seedScale: number,
+  interiorUnitArea: number,
+  knownAreaM2: number,
+): number | null {
+  if (!(seedScale > 0) || !(interiorUnitArea > 0) || !(knownAreaM2 > 10)) return null;
+  const unitsPerMetre = Math.sqrt(interiorUnitArea / knownAreaM2);
+  if (!(unitsPerMetre > 8) || unitsPerMetre > 400) return null;
+  return unitsPerMetre;
+}
