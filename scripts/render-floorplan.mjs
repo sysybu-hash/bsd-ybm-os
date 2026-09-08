@@ -40,9 +40,13 @@ const terraces = Number(args.get("terraces") ?? 0);
 const uncutPath = args.get("uncut") ?? pdfPath;
 const outDir = args.get("out") ?? path.dirname(pdfPath ?? ".");
 const attempts = Number(args.get("attempts") ?? 3);
+// The score at which the search stops early. The default trades a few agorot
+// against a frame that is good rather than best; a delivery run wants 0, which
+// spends every attempt and keeps the highest-scoring of them.
+const goodEnough = args.has("good-enough") ? Number(args.get("good-enough")) : undefined;
 
 if (!pdfPath || !Number.isFinite(grossArea)) {
-  console.error("usage: --pdf <sheet.pdf> --area <m2> [--terraces <m2>] [--uncut <sheet.pdf>] [--out <dir>] [--attempts 3]");
+  console.error("usage: --pdf <sheet.pdf> --area <m2> [--terraces <m2>] [--uncut <sheet.pdf>] [--out <dir>] [--attempts 3] [--good-enough 0]");
   process.exit(2);
 }
 
@@ -52,6 +56,7 @@ const { buildFlatFromPdf } = await import("../lib/projects/floorplan-build.ts");
 const { buildPlacementPrompt, RECOLOUR_PROMPT } = await import("../lib/projects/floorplan-materials.ts");
 const { auditFloorplanStill, gradeFloorplanStill } = await import("../lib/projects/floorplan-viz-audit.ts");
 const { pickBestFinish } = await import("../lib/projects/floorplan-finish.ts");
+const { coolTintFraction, TINT_LIMIT } = await import("../lib/projects/floorplan-tint.ts");
 const { parseFloorplanLayout } = await import("../lib/projects/floorplan-layout.ts");
 const { stampFloorplanStill } = await import("../lib/projects/floorplan-viz-stamp.ts");
 const { getGeminiApiKey } = await import("../lib/gemini-api-key.ts");
@@ -143,11 +148,21 @@ const grade = async (image) => {
     haredi: true,
     drawn: { beds: flat.furniture.filter((p) => p.kind === "bed").length },
   });
-  console.log(`   attempt: score ${verdict.score}${verdict.failures.length ? " — " + verdict.failures.join("; ") : ""}`);
-  return { score: verdict.score, failures: verdict.failures };
+  // Measured, not asked. The auditor counts objects and a mint bathroom has the
+  // right number of everything — one frame scored 0 with both bathrooms bright
+  // green, which is unusable and would have shipped.
+  const tint = await coolTintFraction(image);
+  const failures = [...verdict.failures];
+  let score = verdict.score;
+  if (tint > TINT_LIMIT) {
+    failures.push(`coding tint left in ${(tint * 100).toFixed(0)}% of the frame`);
+    score += 100;
+  }
+  console.log(`   attempt: score ${score}${failures.length ? " — " + failures.join("; ") : ""}`);
+  return { score, failures };
 };
 
-const best = await pickBestFinish(attempts, render, grade, { label: name });
+const best = await pickBestFinish(attempts, render, grade, { label: name, goodEnough });
 if (!best) {
   console.error(`${name}: no finish came back`);
   process.exit(1);
