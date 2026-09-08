@@ -155,9 +155,13 @@ async function loadPdfjs(): Promise<Pdfjs | null> {
   }
 }
 
-/** A plain view, because pdfjs rejects a Node Buffer by name. */
+/**
+ * A plain copy, because pdfjs rejects a Node Buffer by name and detaches what it
+ * is given. A view would leave the caller's buffer unusable, and this pipeline
+ * reads the same sheet more than once — geometry first, then the printed areas.
+ */
 function asPdfBytes(pdf: Buffer | Uint8Array): Uint8Array {
-  return new Uint8Array(pdf.buffer, pdf.byteOffset, pdf.byteLength);
+  return Uint8Array.from(pdf);
 }
 
 export async function extractFloorplanVectorGeometry(
@@ -505,6 +509,62 @@ export async function buildVectorWallJpeg(
  * Only plain integers in the range a room dimension occupies are returned;
  * levels (+9.64), areas (111.29) and the title block's text are left out.
  */
+/** A number the sheet prints, with where it prints it. */
+export type PlacedNumber = { x: number; y: number; value: number };
+
+/**
+ * The printed areas, in the geometry's own coordinates.
+ *
+ * Almost every figure on this CAD is drawn as vector outlines — a page carries
+ * about a dozen real text items and none of the room dimensions is among them.
+ * The terrace areas are the exception: דירה 14 prints "4.10" and "3.16" as text,
+ * each sitting inside the terrace it measures. That makes each one both a seed
+ * inside a region this pipeline otherwise cannot isolate, and the check on
+ * whatever region is grown from it.
+ *
+ * Returned in viewport coordinates so they line up with segments; a decimal is
+ * required, since the integers on this sheet are centimetre dimensions.
+ */
+export async function extractPrintedAreas(
+  pdf: Buffer | Uint8Array,
+  options?: { minM2?: number; maxM2?: number },
+): Promise<PlacedNumber[]> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return [];
+  const min = options?.minM2 ?? 1;
+  const max = options?.maxM2 ?? 60;
+  try {
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1, rotation: page.rotate ?? 0 });
+    const content = await page.getTextContent();
+    const out: PlacedNumber[] = [];
+    for (const item of content.items) {
+      const raw = (item as { str?: string }).str?.trim();
+      const transform = (item as { transform?: number[] }).transform;
+      if (!raw || !transform) continue;
+      if (!/^\d{1,2}\.\d{1,2}$/.test(raw)) continue;
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value < min || value > max) continue;
+      const [x, y] = viewport.convertToViewportPoint(
+        transform[4] ?? 0,
+        transform[5] ?? 0,
+      );
+      out.push({ x, y, value });
+    }
+    return out;
+  } catch (err: unknown) {
+    log.warn("printed areas unavailable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
 export async function extractPdfDimensionStrings(
   pdf: Buffer | Uint8Array,
 ): Promise<string[]> {

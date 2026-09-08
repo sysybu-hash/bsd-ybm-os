@@ -6,6 +6,7 @@ import {
   clipBodiesToBounds,
   closeCorners,
   dropUnhatchedBodies,
+  findTerraces,
   trimToHatchAlong,
   findOpenings,
   wallBodiesFromHatch,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/projects/floorplan-solid";
 import {
   extractFloorplanVectorGeometry,
+  extractPrintedAreas,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
 
@@ -33,6 +35,8 @@ export type BuiltFlat = {
   floor: SpanRow[];
   furniture: FurniturePiece[];
   openings: Opening[];
+  /** Paved outdoor areas, each verified against the area the sheet prints in it. */
+  terraces: SpanRow[][];
   bounds: { x: number; y: number; width: number; height: number };
   floorM2: number;
   areaError: number;
@@ -149,12 +153,29 @@ export async function buildFlatFromPdf(
   ).filter(touchesFlat);
   const openings = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
 
+  // Terraces are read from the sheet the label sits on, and only kept where the
+  // region grown from the label measures what the label says. A terrace that
+  // leaks is dropped rather than guessed at.
+  // Clipped to this flat. An uncut sheet carries the neighbour's labels too, and
+  // its terraces are not this apartment's to draw.
+  const printed = (await extractPrintedAreas(pdf)).filter(
+    (area) =>
+      area.x >= flatExtent.x &&
+      area.x <= flatExtent.x + flatExtent.width &&
+      area.y >= flatExtent.y &&
+      area.y <= flatExtent.y + flatExtent.height,
+  );
+  const terraces = findTerraces(geometry.segments, printed, unitsPerMetre).map(
+    (terrace) => terrace.rows,
+  );
+
   return {
     unitsPerMetre,
     bodies,
     floor,
     furniture,
     openings,
+    terraces,
     bounds,
     floorM2: lock.floorM2,
     areaError: lock.areaError,
@@ -163,6 +184,7 @@ export async function buildFlatFromPdf(
       floor,
       furniture,
       openings,
+      terraces,
       width: options?.width,
     }),
   };

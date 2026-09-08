@@ -67,6 +67,8 @@ export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are
 
 A bath, a toilet, a shower or a washbasin appears ONLY where a pale aqua fixture block stands. A room containing no aqua block is not a bathroom, whatever its shape: render it with the furniture its own blocks carry and an ordinary floor. Wardrobes are not fixtures — a room whose blocks are tan oak is a bedroom or a store, never a wet room. There are exactly as many wet rooms as there are groups of aqua blocks.
 
+- A PALE STONE-GREY area enclosed by a thin grey outline, cooler than the oak floor around it, is a TERRACE: an open outdoor area, paved in stone, with a railing or parapet along the outline and open sky above. Never roof it, never floor it in oak, and never wall it in — it is outside the apartment, and it is one of the things the flat is being sold on.
+
 Render every block, without exception. Do not add furniture where there is no block, apart from the chairs around the dining table. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
 
 /**

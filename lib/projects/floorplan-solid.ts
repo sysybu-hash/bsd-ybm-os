@@ -1431,6 +1431,183 @@ export function dropUnhatchedBodies(
   });
 }
 
+/** A terrace: the region a printed area label sits in, and the area it claims. */
+export type Terrace = {
+  rows: SpanRow[];
+  bounds: { x: number; y: number; width: number; height: number };
+  /** What the sheet prints, in m². */
+  printedM2: number;
+  /** What the region actually measures, in m². */
+  floodedM2: number;
+};
+
+/**
+ * The terraces, grown from the areas the sheet prints inside them.
+ *
+ * Six general detectors were tried against דירה 14 and none of them closed both
+ * terraces. Long 45° strokes are not paving — the biggest cluster of them is the
+ * ממ"ד's concrete hatch. Paving combs find two regions and one is off the sheet.
+ * Flooding over every drawn line traps in a single paving brick, because the
+ * brick pattern partitions the terrace into closed cells. Adding the wall bodies
+ * as barriers makes it worse, since they overlap the terrace. Asking which floor
+ * cells are enclosed on all four sides classifies nearly everything as inside,
+ * because the neighbour's walls close the terraces too.
+ *
+ * What is certain is what the sheet prints. Most figures on this CAD are drawn
+ * as outlines, but the terrace areas are real text, and each sits inside the
+ * terrace it measures. So the label seeds a flood over the heavy line work only
+ * — paving is drawn light, parapets and walls heavy — and the printed area is
+ * the acceptance test rather than a result to be trusted.
+ *
+ * A region within tolerance of its label is a terrace. Anything else is dropped,
+ * so a leak omits a terrace and can never invent one. On דירה 14 that accepts
+ * the 4.10 (it floods to 3.59 m², the shortfall being the barrier's own width)
+ * and rejects the 3.16, which leaks across the sheet to 253 m².
+ */
+export function findTerraces(
+  segments: VectorSegment[],
+  areas: Array<{ x: number; y: number; value: number }>,
+  unitsPerMetre: number,
+  options?: { minLineWidth?: number; tolerance?: number },
+): Terrace[] {
+  if (areas.length === 0) return [];
+  const minLineWidth = options?.minLineWidth ?? 4;
+  const tolerance = options?.tolerance ?? 0.25;
+  const heavy = segments.filter((s) => s.lineWidth >= minLineWidth);
+  if (heavy.length === 0) return [];
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of heavy) {
+    minX = Math.min(minX, s.x1, s.x2);
+    maxX = Math.max(maxX, s.x1, s.x2);
+    minY = Math.min(minY, s.y1, s.y2);
+    maxY = Math.max(maxY, s.y1, s.y2);
+  }
+  const scale = 2;
+  const pad = 4;
+  const originX = minX - pad;
+  const originY = minY - pad;
+  const w = Math.ceil((maxX - minX + pad * 2) * scale);
+  const h = Math.ceil((maxY - minY + pad * 2) * scale);
+  if (w <= 0 || h <= 0 || w * h > 40_000_000) return [];
+
+  const blocked = new Uint8Array(w * h);
+  const gx = (x: number) => Math.round((x - originX) * scale);
+  const gy = (y: number) => Math.round((y - originY) * scale);
+  for (const s of heavy) {
+    const steps = Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) * scale) + 1;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const x = gx(s.x1 + (s.x2 - s.x1) * t);
+      const y = gy(s.y1 + (s.y2 - s.y1) * t);
+      if (x >= 0 && y >= 0 && x < w && y < h) blocked[y * w + x] = 1;
+    }
+  }
+
+  const perCell = 1 / (scale * scale * unitsPerMetre * unitsPerMetre);
+  const out: Terrace[] = [];
+  for (const area of areas) {
+    // The label's own glyphs are drawn, so step off them to open ground.
+    let seed = -1;
+    const sx = gx(area.x);
+    const sy = gy(area.y);
+    for (let r = 0; r < 60 && seed < 0; r++) {
+      for (let a = -r; a <= r && seed < 0; a++) {
+        for (let b = -r; b <= r && seed < 0; b++) {
+          const x = sx + a;
+          const y = sy + b;
+          if (x >= 0 && y >= 0 && x < w && y < h && !blocked[y * w + x]) {
+            seed = y * w + x;
+          }
+        }
+      }
+    }
+    if (seed < 0) continue;
+
+    // Budgeted, so a leak stops early instead of walking the sheet.
+    const budget = Math.ceil((area.value * (1 + tolerance) * 1.5) / perCell);
+    const seen = new Uint8Array(w * h);
+    const stack = [seed];
+    seen[seed] = 1;
+    let filled = 0;
+    let leaked = false;
+    const cells: number[] = [];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      filled++;
+      if (filled > budget) {
+        leaked = true;
+        break;
+      }
+      cells.push(cur);
+      const cx = cur % w;
+      const cy = (cur - cx) / w;
+      const neighbours = [
+        cx + 1 < w ? cur + 1 : -1,
+        cx - 1 >= 0 ? cur - 1 : -1,
+        cy + 1 < h ? cur + w : -1,
+        cy - 1 >= 0 ? cur - w : -1,
+      ];
+      for (const n of neighbours) {
+        if (n < 0 || seen[n] || blocked[n]) continue;
+        seen[n] = 1;
+        stack.push(n);
+      }
+    }
+    if (leaked) continue;
+    const floodedM2 = filled * perCell;
+    if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+
+    const byRow = new Map<number, number[]>();
+    let bx0 = Infinity;
+    let bx1 = -Infinity;
+    let by0 = Infinity;
+    let by1 = -Infinity;
+    for (const c of cells) {
+      const cx = c % w;
+      const cy = (c - cx) / w;
+      if (!byRow.has(cy)) byRow.set(cy, []);
+      byRow.get(cy)!.push(cx);
+      bx0 = Math.min(bx0, cx);
+      bx1 = Math.max(bx1, cx);
+      by0 = Math.min(by0, cy);
+      by1 = Math.max(by1, cy);
+    }
+    const rows: SpanRow[] = [];
+    for (const [cy, xs] of [...byRow].sort((a, b) => a[0] - b[0])) {
+      xs.sort((a, b) => a - b);
+      const spans: Array<[number, number]> = [];
+      let runStart = xs[0]!;
+      let prev = xs[0]!;
+      for (let i = 1; i < xs.length; i++) {
+        const x = xs[i]!;
+        if (x !== prev + 1) {
+          spans.push([runStart / scale + originX, prev / scale + originX]);
+          runStart = x;
+        }
+        prev = x;
+      }
+      spans.push([runStart / scale + originX, prev / scale + originX]);
+      rows.push({ y: cy / scale + originY, spans });
+    }
+    out.push({
+      rows,
+      bounds: {
+        x: bx0 / scale + originX,
+        y: by0 / scale + originY,
+        width: (bx1 - bx0) / scale,
+        height: (by1 - by0) / scale,
+      },
+      printedM2: area.value,
+      floodedM2,
+    });
+  }
+  return out;
+}
+
 /**
  * The rectangle the flat's walls occupy, as opposed to the rectangle its sheet
  * occupies.

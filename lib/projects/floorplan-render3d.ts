@@ -40,11 +40,21 @@ export type Render3dOptions = {
   furniture?: FurniturePiece[];
   /** The doorways, drawn so the model has no reason to cut its own. */
   openings?: Opening[];
+  /**
+   * Paved outdoor areas, grown from the areas the sheet prints inside them.
+   * Painted in stone and railed, so a terrace is not left reading as a room
+   * with a missing wall — or, where it falls outside the wall bodies, as a slab
+   * floating beside the flat.
+   */
+  terraces?: SpanRow[][];
 };
 
 type Box = { x: number; y: number; width: number; height: number };
 
 const FLOOR = "#c3b49d";
+/** Pale stone, cool against the floor's warm oak, so a terrace reads as outside. */
+const TERRACE = "#cfcbc2";
+const RAILING = "#9a958c";
 /**
  * Grey, not white. Wall tops were pure white and a bed's linen is off-white, so
  * the two were within a shade of each other and the model could not tell a bed
@@ -144,6 +154,40 @@ export function renderFlatSvg(
   } else {
     parts.push(
       `<rect x="${bounds.x.toFixed(1)}" y="${bounds.y.toFixed(1)}" width="${bounds.width.toFixed(1)}" height="${bounds.height.toFixed(1)}" fill="${FLOOR}"/>`,
+    );
+  }
+
+  // Terraces over the floor slab, then a railing around each. The rail is drawn
+  // as a low upstand rather than a wall so the model does not read it as one and
+  // roof the terrace over.
+  for (const rows of options.terraces ?? []) {
+    if (!rows.length) continue;
+    const rowHeight = rows.length > 1 ? rows[1]!.y - rows[0]!.y : 2;
+    const paving = rows
+      .flatMap((row) =>
+        row.spans.map(
+          ([a, b]) =>
+            `<rect x="${a.toFixed(1)}" y="${row.y.toFixed(1)}" width="${(b - a).toFixed(1)}" height="${(rowHeight + 0.4).toFixed(1)}"/>`,
+        ),
+      )
+      .join("");
+    parts.push(`<g fill="${TERRACE}" shape-rendering="crispEdges">${paving}</g>`);
+
+    let tx0 = Infinity;
+    let tx1 = -Infinity;
+    let ty0 = Infinity;
+    let ty1 = -Infinity;
+    for (const row of rows) {
+      ty0 = Math.min(ty0, row.y);
+      ty1 = Math.max(ty1, row.y + rowHeight);
+      for (const [a, b] of row.spans) {
+        tx0 = Math.min(tx0, a);
+        tx1 = Math.max(tx1, b);
+      }
+    }
+    const rail = Math.max(1.5, options.unitsPerMetre * 0.04);
+    parts.push(
+      `<rect x="${tx0.toFixed(1)}" y="${ty0.toFixed(1)}" width="${(tx1 - tx0).toFixed(1)}" height="${(ty1 - ty0).toFixed(1)}" fill="none" stroke="${RAILING}" stroke-width="${rail.toFixed(1)}"/>`,
     );
   }
 
