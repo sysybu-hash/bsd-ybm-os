@@ -59,6 +59,8 @@ export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are
 - TAN OAK block, 35-60 cm deep against a wall = a fitted wardrobe or a kitchen run, doors closed.
 - PALE STONE block, wide = a kitchen counter or island: stone worktop over oak base units.
 - WHITE block in a tiled room = a sanitary fixture: a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in.
+- DARK STEEL block, a 60 cm square = the HOB. Render a four-burner cooktop set into the worktop. It is a cooktop, never a toilet or a basin, and the room it stands in is the kitchen.
+- GREY STEEL block, half as wide as it is deep = a kitchen sink BASIN. There are two of them side by side and they make one double-bowl sink in a single counter cut-out — two basins, not one.
 - DARK OAK block = a dining table. Set chairs around it, tucked to its edges, as many as its length takes — the sheet draws the chairs as curved symbols this render does not carry, so they are expected here. Chairs go around the table and nowhere else. There is one dining table per flat.
 - GREY-BEIGE block = a small side piece: a bedside table beside a bed, an armchair in a living space.
 

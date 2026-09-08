@@ -14,6 +14,8 @@ import { isAxisAligned, segmentLength, type VectorSegment } from "@/lib/projects
 
 export type FurnitureKind =
   | "bed"
+  | "hob"
+  | "sink"
   | "storage"
   | "counter"
   | "fixture"
@@ -206,7 +208,7 @@ export function settleTables(pieces: FurniturePiece[]): FurniturePiece[] {
 export function findCurveFixtures(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { cell?: number; minChords?: number },
+  options?: { cell?: number; minChords?: number; minCm?: number; maxCm?: number },
 ): FurniturePiece[] {
   const cell = options?.cell ?? 8;
   const minChords = options?.minChords ?? 4;
@@ -278,10 +280,86 @@ export function findCurveFixtures(
     const depthCm = (h / unitsPerMetre) * 100;
     const short = Math.min(widthCm, depthCm);
     const long = Math.max(widthCm, depthCm);
-    // A pan, a basin or a sink. Below 30 cm it is a tap or a door swing's
-    // flattened arc; above 150 cm it is not a fixture.
-    if (short < 28 || short > 100 || long < 28 || long > 150) continue;
+    // A pan, a basin or a sink by default. The bounds are a parameter because a
+    // hob's burners are the same shape an eighth of the size — 15 cm circles —
+    // and the default floor of 28 cm rejected every one of them, so no hob was
+    // ever found.
+    const minCm = options?.minCm ?? 28;
+    const maxCm = options?.maxCm ?? 150;
+    if (short < minCm || short > Math.min(maxCm, 100) || long < minCm || long > maxCm) continue;
     out.push({ x: minX, y: minY, w, h, widthCm, depthCm, kind: "fixture" });
+  }
+  return out;
+}
+
+/**
+ * The hob and the sink, which are what make a kitchen a kitchen.
+ *
+ * Both were being read as something else. The hob is four burners drawn as
+ * circles inside a 64 by 64 cm square, and the square alone looked exactly like
+ * a toilet or a basin, so it was classified as a sanitary fixture — a cooktop
+ * marked as plumbing, in the one room that most needs telling apart. The sink is
+ * two 32 by 64 cm basins side by side, which is precisely the "two basins" the
+ * audit keeps asking for, and both were "unknown".
+ *
+ * A hob is the square with burners in it: four knots of curve inside a square of
+ * the right size. Nothing else on a sales sheet looks like that.
+ */
+export function findKitchenFittings(
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+): FurniturePiece[] {
+  const rects = dedupeRectangles(dropNested(findRectangles([...segments, ...curves], {
+    unitsPerMetre,
+    minSideM: 0.25,
+    maxSideM: 1.2,
+  })));
+  const burners = findCurveFixtures(curves, unitsPerMetre, {
+    cell: 4,
+    minChords: 3,
+    minCm: 6,
+    maxCm: 30,
+  });
+
+  const out: FurniturePiece[] = [];
+  const basins: FurniturePiece[] = [];
+  for (const r of rects) {
+    const widthCm = (r.w / unitsPerMetre) * 100;
+    const depthCm = (r.h / unitsPerMetre) * 100;
+    const short = Math.min(widthCm, depthCm);
+    const long = Math.max(widthCm, depthCm);
+
+    if (short >= 50 && short <= 80 && long >= 50 && long <= 80) {
+      const inside = burners.filter(
+        (b) =>
+          b.x + b.w / 2 >= r.x &&
+          b.x + b.w / 2 <= r.x + r.w &&
+          b.y + b.h / 2 >= r.y &&
+          b.y + b.h / 2 <= r.y + r.h,
+      ).length;
+      if (inside >= 3) {
+        out.push({ ...r, widthCm, depthCm, kind: "hob" });
+        continue;
+      }
+    }
+    // A basin: half as wide as it is deep, at worktop depth.
+    if (short >= 26 && short <= 42 && long >= 52 && long <= 78) {
+      basins.push({ ...r, widthCm, depthCm, kind: "sink" });
+    }
+  }
+
+  // A kitchen sink is a pair of basins side by side. On its own, a rectangle of
+  // that size is a bedside table, and two of דירה 14's bedside tables were
+  // coming back as sinks.
+  for (const basin of basins) {
+    const paired = basins.some(
+      (other) =>
+        other !== basin &&
+        Math.abs(other.x - basin.x) < Math.max(basin.w, basin.h) * 1.4 &&
+        Math.abs(other.y - basin.y) < Math.max(basin.w, basin.h) * 1.4,
+    );
+    if (paired) out.push(basin);
   }
   return out;
 }
@@ -299,8 +377,12 @@ export function findFurniture(
   });
   // Curve-drawn fixtures are added before settling, so a bath found as a
   // rectangle can vouch for the pans and basins clustered around it.
+  const kitchen = findKitchenFittings(segments, options?.curves ?? [], unitsPerMetre);
   const withCurves = [
-    ...pieces,
+    ...kitchen,
+    ...pieces.filter(
+      (p) => !kitchen.some((k) => Math.abs(k.x - p.x) < 4 && Math.abs(k.y - p.y) < 4),
+    ),
     ...findCurveFixtures(options?.curves ?? [], unitsPerMetre).filter(
       (c) => !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h),
     ),

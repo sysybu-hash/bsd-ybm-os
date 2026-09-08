@@ -3,6 +3,7 @@ import {
   dedupeRectangles,
   dropNested,
   findCurveFixtures,
+  findKitchenFittings,
   findRectangles,
   scaleFromBeds,
   settleFixtures,
@@ -201,5 +202,53 @@ describe("fixtures a CAD draws with curves", () => {
 
   it("has nothing to find on a sheet with no curves", () => {
     expect(findCurveFixtures([], UPM)).toEqual([]);
+  });
+});
+
+describe("the hob and the sink, which make a kitchen a kitchen", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const box = (x: number, y: number, w: number, h: number) => [
+    seg(x, y, x + w, y),
+    seg(x, y + h, x + w, y + h),
+    seg(x, y, x, y + h),
+    seg(x + w, y, x + w, y + h),
+  ];
+  const ring = (cx: number, cy: number, r: number, n = 10) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const b = ((i + 1) / n) * Math.PI * 2;
+      out.push(seg(cx + Math.cos(a) * r, cy + Math.sin(a) * r, cx + Math.cos(b) * r, cy + Math.sin(b) * r));
+    }
+    return out;
+  };
+
+  it("finds a hob by the burners inside it", () => {
+    // A 64 cm square on its own looks exactly like a toilet, and was read as one.
+    const side = 0.64 * UPM;
+    const burners = [
+      ...ring(100 + side * 0.3, 100 + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.7, 100 + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.3, 100 + side * 0.7, 0.07 * UPM),
+      ...ring(100 + side * 0.7, 100 + side * 0.7, 0.07 * UPM),
+    ];
+    const found = findKitchenFittings(box(100, 100, side, side), burners, UPM);
+    expect(found.filter((p) => p.kind === "hob")).toHaveLength(1);
+  });
+
+  it("does not call a plain square of that size a hob", () => {
+    const side = 0.64 * UPM;
+    expect(findKitchenFittings(box(100, 100, side, side), [], UPM).filter((p) => p.kind === "hob")).toEqual([]);
+  });
+
+  it("takes two basins side by side as the kitchen sink", () => {
+    const rects = [...box(600, 600, 0.32 * UPM, 0.64 * UPM), ...box(600, 640, 0.32 * UPM, 0.64 * UPM)];
+    expect(findKitchenFittings(rects, [], UPM).filter((p) => p.kind === "sink")).toHaveLength(2);
+  });
+
+  it("leaves a lone rectangle of that size alone — it is a bedside table", () => {
+    // Two of דירה 14's bedside tables were coming back as sinks.
+    const lone = box(200, 300, 0.54 * UPM, 0.32 * UPM);
+    expect(findKitchenFittings(lone, [], UPM).filter((p) => p.kind === "sink")).toEqual([]);
   });
 });

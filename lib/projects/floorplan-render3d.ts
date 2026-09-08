@@ -77,6 +77,11 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   counter: { top: "#eae6df", face: "#b9b2a6" },
   fixture: { top: "#fbfbfa", face: "#dfe3e4" },
   table: { top: "#a9764a", face: "#8b5e39" },
+  // Dark steel, so a cooktop and its basins read as the kitchen rather than as
+  // plumbing — the hob is four burners in a 64 cm square and was being taken
+  // for a toilet.
+  hob: { top: "#5a5f66", face: "#43474d" },
+  sink: { top: "#8e959c", face: "#6e747a" },
   seat: { top: "#cfc6b6", face: "#aca392" },
   unknown: { top: "#cbb79c", face: "#a8917a" },
 };
@@ -173,6 +178,8 @@ export function renderFlatSvg(
     storage: 2.0,
     counter: 0.9,
     fixture: 0.55,
+    hob: 0.92,
+    sink: 0.9,
     table: 0.75,
     seat: 0.85,
     unknown: 0.5,
