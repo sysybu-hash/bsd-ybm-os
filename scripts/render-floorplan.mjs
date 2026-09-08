@@ -137,7 +137,12 @@ const render = async () => {
 const grade = async (image) => {
   const audit = await auditFloorplanStill(image, plan);
   if (!audit) return null;
-  const verdict = gradeFloorplanStill(audit, layout, { haredi: true });
+  // The geometry's own bed count, not a reading of the sheet. The still is made
+  // from that render, so it is a fact about the input image.
+  const verdict = gradeFloorplanStill(audit, layout, {
+    haredi: true,
+    drawn: { beds: flat.furniture.filter((p) => p.kind === "bed").length },
+  });
   console.log(`   attempt: score ${verdict.score}${verdict.failures.length ? " — " + verdict.failures.join("; ") : ""}`);
   return { score: verdict.score, failures: verdict.failures };
 };

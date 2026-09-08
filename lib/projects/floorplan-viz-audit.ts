@@ -235,7 +235,20 @@ const HARD_FAILURE_WEIGHT = 100;
 export function gradeFloorplanStill(
   audit: FloorplanVizAudit,
   layout: FloorplanLayout,
-  options?: { haredi?: boolean },
+  options?: {
+    haredi?: boolean;
+    /**
+     * What the geometry render actually contains, when the still was made from
+     * one. This outranks both readings of the plan, and not as a third opinion:
+     * the model was handed an image with exactly this many bed blocks in it and
+     * asked to change nothing but the materials, so the count is a fact about
+     * the input rather than an interpretation of the sheet. Both plan readings
+     * are interpretations, and on דירה 14 they disagree — the auditor sees three
+     * beds where the extractor sees six — which leaves the grader with no target
+     * at all and every frame passing the bed check.
+     */
+    drawn?: { beds?: number };
+  },
 ): AuditVerdict {
   const rooms = layout.rooms ?? [];
   const extractedBeds = rooms.reduce((sum, room) => sum + (room.bedCount ?? 0), 0);
@@ -272,7 +285,9 @@ export function gradeFloorplanStill(
     if (seen <= 0) return extracted;
     return extracted === seen ? extracted : null;
   };
-  const expectedBeds = agreed(extractedBeds, audit.planBedTotal);
+  const drawnBeds = options?.drawn?.beds ?? 0;
+  const expectedBeds =
+    drawnBeds > 0 ? drawnBeds : agreed(extractedBeds, audit.planBedTotal);
 
   const failures: string[] = [];
   const hardFailures: string[] = [];
@@ -321,7 +336,11 @@ export function gradeFloorplanStill(
     );
   }
   if (expectedBeds !== null && expectedBeds > 0 && audit.bedTotal !== expectedBeds) {
-    failures.push(`beds ${audit.bedTotal}, plan has ${expectedBeds}`);
+    failures.push(
+      drawnBeds > 0
+        ? `beds ${audit.bedTotal}, the geometry draws ${expectedBeds}`
+        : `beds ${audit.bedTotal}, plan has ${expectedBeds}`,
+    );
   }
   if (expectedBedrooms > 0 && audit.bedroomCount !== expectedBedrooms) {
     failures.push(`bedrooms ${audit.bedroomCount}, plan has ${expectedBedrooms}`);

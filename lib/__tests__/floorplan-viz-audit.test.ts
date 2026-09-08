@@ -358,3 +358,51 @@ describe("the building's stairwell pulled inside the flat", () => {
     expect(miscounted.score).toBeLessThan(stairs.score);
   });
 });
+
+describe("grading against the geometry that produced the still", () => {
+  const audit = (over: Record<string, unknown>) =>
+    ({
+      roomsOutsidePlanOutline: 0,
+      footprintMatchesPlan: true,
+      mirroredVsPlan: false,
+      rotationVsPlanDegrees: 0,
+      hasBurnedText: false,
+      hasCadMarks: false,
+      hasDoubleBed: false,
+      screenCount: 0,
+      kitchenSinkBasins: 0,
+      planKitchenSinkBasins: 0,
+      bedTotal: 4,
+      planBedTotal: 3,
+      bedroomCount: 4,
+      planBedroomCount: 4,
+      diningTableCount: 1,
+      islandStoolCount: 0,
+      planIslandStoolCount: 0,
+      openingsNotInPlan: 0,
+      builtInsNotInPlan: 0,
+      ...over,
+    }) as never;
+  const layout = { rooms: [], islandStoolCount: 0 } as never;
+
+  it("takes the block count as the target, over a contradicted plan read", () => {
+    // Four bed blocks went into the render, so a still showing four is right,
+    // whatever the auditor believes the sheet says.
+    const verdict = gradeFloorplanStill(audit({}), layout, { drawn: { beds: 4 } });
+    expect(verdict.failures.join(" ")).not.toMatch(/beds/);
+  });
+
+  it("fails a still that dropped a bed the geometry drew", () => {
+    const verdict = gradeFloorplanStill(audit({ bedTotal: 3 }), layout, {
+      drawn: { beds: 4 },
+    });
+    expect(verdict.failures.join(" ")).toMatch(/beds 3, the geometry draws 4/);
+  });
+
+  it("falls back to the plan readings when no geometry count is given", () => {
+    // Without it the two readings disagree — 4 against 3 — and the check is
+    // skipped, which is how every frame was passing the bed count.
+    const verdict = gradeFloorplanStill(audit({ bedTotal: 99 }), layout, {});
+    expect(verdict.failures.join(" ")).toMatch(/beds 99/);
+  });
+});
