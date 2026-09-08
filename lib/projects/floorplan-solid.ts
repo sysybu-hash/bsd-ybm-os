@@ -1098,3 +1098,91 @@ export function openingRect(o: Opening): { x: number; y: number; w: number; h: n
     ? { x: o.from, y: o.centre - half, w: o.to - o.from, h: o.thickness }
     : { x: o.centre - half, y: o.from, w: o.thickness, h: o.to - o.from };
 }
+
+/**
+ * The flat's footprint, taken from where its walls are rather than by flooding.
+ *
+ * Flood filling cannot do this and the reason is structural: every room has a
+ * door, a door is a gap in the hatch, so the walls never close around anything —
+ * rasterising the strokes as barriers encloses 0.0 m². Bridging the doors closes
+ * the flat and simultaneously joins it to the neighbour through the shared
+ * landing, and the "isolated flat" came out the size of the whole drawing.
+ *
+ * A scanline cannot leak. On each row the flat runs from its leftmost wall to
+ * its rightmost, on each column from topmost to bottommost, and a cell inside
+ * both is inside the flat. Taking both axes is what keeps a stepped outline:
+ * rows alone square off a notch, columns alone square off a different one, and
+ * the intersection keeps the step.
+ *
+ * On דירה 14 rows give 134.5 m², columns 132.8 and the intersection 126.0,
+ * against the 132.19 the sheet prints.
+ */
+export function footprintByScanFill(
+  bodies: WallBody[],
+  bounds: { x: number; y: number; width: number; height: number },
+  options?: { resolution?: number },
+): SpanRow[] {
+  const step = options?.resolution ?? 2;
+  const pad = 8;
+  const w = Math.ceil((bounds.width + pad * 2) / step);
+  const h = Math.ceil((bounds.height + pad * 2) / step);
+  if (w <= 0 || h <= 0) return [];
+  const originX = bounds.x - pad;
+  const originY = bounds.y - pad;
+  const gx = (x: number) => Math.floor((x - originX) / step);
+  const gy = (y: number) => Math.floor((y - originY) / step);
+
+  const wall = new Uint8Array(w * h);
+  for (const body of bodies) {
+    const r = bodyRect(body);
+    const x0 = Math.max(0, gx(r.x));
+    const x1 = Math.min(w - 1, gx(r.x + r.w));
+    const y0 = Math.max(0, gy(r.y));
+    const y1 = Math.min(h - 1, gy(r.y + r.h));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) wall[y * w + x] = 1;
+    }
+  }
+
+  const rowIn = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let first = -1;
+    let last = -1;
+    for (let x = 0; x < w; x++) {
+      if (wall[y * w + x]) {
+        if (first < 0) first = x;
+        last = x;
+      }
+    }
+    if (first >= 0) for (let x = first; x <= last; x++) rowIn[y * w + x] = 1;
+  }
+
+  const colIn = new Uint8Array(w * h);
+  for (let x = 0; x < w; x++) {
+    let first = -1;
+    let last = -1;
+    for (let y = 0; y < h; y++) {
+      if (wall[y * w + x]) {
+        if (first < 0) first = y;
+        last = y;
+      }
+    }
+    if (first >= 0) for (let y = first; y <= last; y++) colIn[y * w + x] = 1;
+  }
+
+  const rows: SpanRow[] = [];
+  for (let y = 0; y < h; y++) {
+    const spans: Array<[number, number]> = [];
+    let start = -1;
+    for (let x = 0; x <= w; x++) {
+      const inside = x < w && rowIn[y * w + x] === 1 && colIn[y * w + x] === 1;
+      if (inside && start < 0) start = x;
+      else if (!inside && start >= 0) {
+        spans.push([originX + start * step, originX + x * step]);
+        start = -1;
+      }
+    }
+    if (spans.length > 0) rows.push({ y: originY + y * step, spans });
+  }
+  return rows;
+}

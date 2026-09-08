@@ -1,7 +1,7 @@
 import { findFurniture } from "@/lib/projects/floorplan-furniture";
 import {
   clipBodiesToBounds,
-  interiorComponents,
+  footprintByScanFill,
   spanArea,
   wallBodiesFromHatch,
   type SpanRow,
@@ -63,21 +63,9 @@ export function lockScale(
       8,
       { truncate: true },
     );
-    // Flood inside a frame larger than the flat, so the border is genuinely
-    // outside. Flooding within the extent itself makes the extent a wall: every
-    // cell between the flat's east wall and the boundary is then enclosed, and
-    // the mask spills into the neighbour and the stair core.
-    const frame = {
-      x: bounds.x - unitsPerMetre,
-      y: bounds.y - unitsPerMetre,
-      width: bounds.width + unitsPerMetre * 2,
-      height: bounds.height + unitsPerMetre * 2,
-    };
-    const components = interiorComponents(bodies, frame, {
-      maxOpeningUnits: unitsPerMetre * 2.0,
-      cornerReachUnits: unitsPerMetre * 1.2,
-    });
-    const floor = components[0] ?? [];
+    // Scanline, not flood. See footprintByScanFill: a flood cannot isolate a
+    // flat on a sheet that carries two, and a scanline cannot leak.
+    const floor = footprintByScanFill(bodies, bounds);
     if (floor.length === 0) continue;
 
     const floorM2 = spanArea(floor) / (unitsPerMetre * unitsPerMetre);

@@ -8,6 +8,7 @@ import {
   clipBodiesToBounds,
   extractHatchStrokes,
   findOpenings,
+  footprintByScanFill,
   HatchField,
   interiorComponents,
   interiorSpans,
@@ -621,5 +622,69 @@ describe("the doorways, taken from the gaps between wall pieces", () => {
     const openings = findOpenings([piece(100, 0, 200, 14), piece(100, 290, 500, 14)], 200, 40);
     expect(openings[0]!.thickness).toBe(14);
     expect(openingRect(openings[0]!)).toEqual({ x: 200, y: 93, w: 90, h: 14 });
+  });
+});
+
+describe("the footprint, taken from the walls rather than by flooding", () => {
+  const wall = (
+    orientation: "h" | "v",
+    centre: number,
+    from: number,
+    to: number,
+    thickness = 10,
+  ) => ({ orientation, centre, from, to, thickness });
+
+  it("fills a closed box", () => {
+    const box = [
+      wall("h", 0, 0, 400),
+      wall("h", 400, 0, 400),
+      wall("v", 0, 0, 400),
+      wall("v", 400, 0, 400),
+    ];
+    const rows = footprintByScanFill(box, { x: -20, y: -20, width: 440, height: 440 }, {
+      resolution: 4,
+    });
+    const area = spanArea(rows);
+    expect(area).toBeGreaterThan(140_000);
+    expect(area).toBeLessThan(200_000);
+  });
+
+  it("fills a box with a door in it, which a flood cannot", () => {
+    // Every room has a door and a door is a gap, so the hatch never closes
+    // around anything: rasterised as barriers it encloses 0.0 m².
+    const withDoor = [
+      wall("h", 0, 0, 400),
+      wall("h", 400, 0, 150),
+      wall("h", 400, 250, 400),
+      wall("v", 0, 0, 400),
+      wall("v", 400, 0, 400),
+    ];
+    expect(spanArea(footprintByScanFill(withDoor, { x: -20, y: -20, width: 440, height: 440 }, {
+      resolution: 4,
+    }))).toBeGreaterThan(140_000);
+  });
+
+  it("keeps a step in the outline, which one axis alone squares off", () => {
+    // An L: rows alone square off the notch, columns alone square off the other
+    // one, and the intersection keeps the step.
+    const ell = [
+      wall("h", 0, 0, 400),
+      wall("v", 0, 0, 400),
+      wall("h", 400, 0, 200),
+      wall("v", 200, 200, 400),
+      wall("h", 200, 200, 400),
+      wall("v", 400, 0, 200),
+    ];
+    const rows = footprintByScanFill(ell, { x: -20, y: -20, width: 440, height: 440 }, {
+      resolution: 4,
+    });
+    const full = 400 * 400;
+    // An L is about three quarters of its bounding box, not all of it.
+    expect(spanArea(rows)).toBeLessThan(full * 0.95);
+    expect(spanArea(rows)).toBeGreaterThan(full * 0.5);
+  });
+
+  it("has no footprint without walls", () => {
+    expect(footprintByScanFill([], { x: 0, y: 0, width: 100, height: 100 })).toEqual([]);
   });
 });
