@@ -16,6 +16,7 @@ import {
   openingRect,
   pickComponentByArea,
   shrinkToHatch,
+  smoothFootprint,
   splitAcrossGaps,
   trimToHatchAlong,
   spanArea,
@@ -814,5 +815,44 @@ describe("the flat's extent, as against the sheet's", () => {
   it("says nothing when the sheet carries no hatched wall", () => {
     const noWalls = [seg(0, 0, 500, 0), seg(0, 10, 500, 10)];
     expect(hatchedWallExtent(noWalls, { x: 0, y: 0, width: 800, height: 800 }, 55)).toBeNull();
+  });
+});
+
+describe("closing the notches a scanline leaves", () => {
+  const rowsOf = (spans: Array<Array<[number, number]>>, pitch = 2) =>
+    spans.map((s, i) => ({ y: i * pitch, spans: s }));
+
+  it("fills a notch narrower than the radius", () => {
+    // A row bounded by its own outermost walls steps in and out by a few units
+    // wherever walls are sparse, and the flat comes out with a staircase edge
+    // all the way round — which is what the render was showing.
+    const notched = rowsOf([
+      [[0, 100]],
+      [[0, 100]],
+      [[0, 94]],
+      [[0, 100]],
+      [[0, 100]],
+    ]);
+    const smoothed = smoothFootprint(notched, 6);
+    const third = smoothed.find((r) => Math.abs(r.y - 4) < 3)!;
+    expect(third.spans[0]![1]).toBeGreaterThan(96);
+  });
+
+  it("leaves a real step in the outline alone", () => {
+    // Steps in an apartment's outline are metres across, notches centimetres.
+    const stepped = rowsOf([
+      [[0, 200]],
+      [[0, 200]],
+      [[0, 100]],
+      [[0, 100]],
+      [[0, 100]],
+    ]);
+    const smoothed = smoothFootprint(stepped, 6);
+    const low = smoothed.find((r) => Math.abs(r.y - 8) < 3)!;
+    expect(low.spans[0]![1]).toBeLessThan(140);
+  });
+
+  it("has nothing to smooth on an empty footprint", () => {
+    expect(smoothFootprint([], 6)).toEqual([]);
   });
 });

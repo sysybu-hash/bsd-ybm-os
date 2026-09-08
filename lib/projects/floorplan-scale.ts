@@ -3,6 +3,7 @@ import {
   clipBodiesToBounds,
   findOpenings,
   footprintByScanFill,
+  smoothFootprint,
   spanArea,
   wallBodiesFromHatch,
   type SpanRow,
@@ -66,7 +67,9 @@ export function lockScale(
     );
     // Scanline, not flood. See footprintByScanFill: a flood cannot isolate a
     // flat on a sheet that carries two, and a scanline cannot leak.
-    const floor = footprintByScanFill(bodies, bounds);
+    // Closed to about a third of a metre, which fills the scanline's notches
+    // and leaves every real step in the outline — those are metres across.
+    const floor = smoothFootprint(footprintByScanFill(bodies, bounds), unitsPerMetre * 0.33);
     if (floor.length === 0) continue;
 
     const floorM2 = spanArea(floor) / (unitsPerMetre * unitsPerMetre);

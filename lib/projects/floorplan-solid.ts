@@ -1411,3 +1411,102 @@ export function hatchedWallExtent(
   if (!(width > 0) || !(height > 0)) return null;
   return { x: minX, y: minY, width, height };
 }
+
+/**
+ * Closes the notches a scanline fill leaves in the flat's outline.
+ *
+ * footprintByScanFill is exact and cannot leak, and it pays for that with its
+ * edges: a row is bounded by its own outermost walls, so wherever walls are
+ * sparse the outline steps in and out by a few units at a time and the flat
+ * comes out with a staircase edge all the way round. Rendered, that reads as a
+ * ragged, broken shape rather than an apartment, and the model draws faithfully
+ * what it is shown.
+ *
+ * A closing — grow, then shrink by the same amount — fills any notch narrower
+ * than the radius and leaves everything wider untouched. Real steps in an
+ * apartment's outline are metres across; the notches are centimetres.
+ */
+export function smoothFootprint(
+  rows: SpanRow[],
+  radiusUnits: number,
+  options?: { resolution?: number },
+): SpanRow[] {
+  if (rows.length === 0) return rows;
+  const step = options?.resolution ?? (rows.length > 1 ? rows[1]!.y - rows[0]!.y : 2);
+  const radius = Math.max(1, Math.round(radiusUnits / step));
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const row of rows) {
+    for (const [a, b] of row.spans) {
+      minX = Math.min(minX, a);
+      maxX = Math.max(maxX, b);
+    }
+  }
+  const pad = radius + 2;
+  const originX = minX - pad * step;
+  const originY = rows[0]!.y - pad * step;
+  const w = Math.ceil((maxX - minX) / step) + pad * 2 + 2;
+  const h = rows.length + pad * 2 + 2;
+
+  const grid = new Uint8Array(w * h);
+  rows.forEach((row, r) => {
+    const y = r + pad;
+    for (const [a, b] of row.spans) {
+      const x0 = Math.max(0, Math.round((a - originX) / step));
+      const x1 = Math.min(w - 1, Math.round((b - originX) / step));
+      for (let x = x0; x <= x1; x++) grid[y * w + x] = 1;
+    }
+  });
+
+  const grow = (src: Uint8Array) => {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!src[y * w + x]) continue;
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) out[ny * w + nx] = 1;
+          }
+        }
+      }
+    }
+    return out;
+  };
+  const shrink = (src: Uint8Array) => {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let keep = 1;
+        for (let dy = -radius; dy <= radius && keep; dy++) {
+          for (let dx = -radius; dx <= radius && keep; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= w || ny < 0 || ny >= h || !src[ny * w + nx]) keep = 0;
+          }
+        }
+        out[y * w + x] = keep;
+      }
+    }
+    return out;
+  };
+
+  const closed = shrink(grow(grid));
+  const out: SpanRow[] = [];
+  for (let y = 0; y < h; y++) {
+    const spans: Array<[number, number]> = [];
+    let start = -1;
+    for (let x = 0; x <= w; x++) {
+      const on = x < w && closed[y * w + x] === 1;
+      if (on && start < 0) start = x;
+      else if (!on && start >= 0) {
+        spans.push([originX + start * step, originX + x * step]);
+        start = -1;
+      }
+    }
+    if (spans.length > 0) out.push({ y: originY + y * step, spans });
+  }
+  return out;
+}
