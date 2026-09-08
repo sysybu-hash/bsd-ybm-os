@@ -53,10 +53,27 @@ export function lockScale(
   const step = search?.step ?? 1;
   const tolerance = search?.tolerance ?? 0.08;
 
-  let best: ScaleLock | null = null;
+  const candidates: ScaleLock[] = [];
   for (let unitsPerMetre = from; unitsPerMetre <= to; unitsPerMetre += step) {
-    const bodies = clipBodiesToBounds(wallBodiesFromHatch(segments, { unitsPerMetre }), bounds);
-    const components = interiorComponents(bodies, bounds, {
+    // Truncated at the boundary, not dropped: the party wall straddles it and
+    // is still this flat's east wall.
+    const bodies = clipBodiesToBounds(
+      wallBodiesFromHatch(segments, { unitsPerMetre }),
+      bounds,
+      8,
+      { truncate: true },
+    );
+    // Flood inside a frame larger than the flat, so the border is genuinely
+    // outside. Flooding within the extent itself makes the extent a wall: every
+    // cell between the flat's east wall and the boundary is then enclosed, and
+    // the mask spills into the neighbour and the stair core.
+    const frame = {
+      x: bounds.x - unitsPerMetre,
+      y: bounds.y - unitsPerMetre,
+      width: bounds.width + unitsPerMetre * 2,
+      height: bounds.height + unitsPerMetre * 2,
+    };
+    const components = interiorComponents(bodies, frame, {
       maxOpeningUnits: unitsPerMetre * 2.0,
       cornerReachUnits: unitsPerMetre * 1.2,
     });
@@ -77,9 +94,24 @@ export function lockScale(
     if (beds === 0) continue;
 
     const areaError = floorM2 / printedAreaM2 - 1;
-    if (!best || Math.abs(areaError) < Math.abs(best.areaError)) {
-      best = { unitsPerMetre, beds, floorM2, areaError, floor, bodies };
-    }
+    candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });
+  }
+
+  // Bed count first, area second. Area alone is the measure that can be
+  // satisfied by the wrong answer — it settled on 41 units/m at 0.1% error with
+  // a single bed, where 56 finds four. Beds are the scale-free signal, so the
+  // area only chooses among the scales that read the furniture properly.
+  const mostBeds = candidates.reduce((most, c) => Math.max(most, c.beds), 0);
+  if (mostBeds === 0) return null;
+  // Within one of the best. The count is not exact — a bed drawn against a
+  // wardrobe can merge, or a bedside table can read as a bed — so demanding the
+  // maximum picks a scale on a one-bed accident. On דירה 14 the maximum is five
+  // at 61 units/m, where the area is 13% out; four is found across 52 to 60, and
+  // the area crosses zero inside that range.
+  const contenders = candidates.filter((c) => c.beds >= mostBeds - 1);
+  let best: ScaleLock | null = null;
+  for (const c of contenders) {
+    if (!best || Math.abs(c.areaError) < Math.abs(best.areaError)) best = c;
   }
 
   // Refuse rather than return a scale the area does not support: every measure

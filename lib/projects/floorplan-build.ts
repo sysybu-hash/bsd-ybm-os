@@ -39,14 +39,34 @@ export type BuiltFlat = {
 export async function buildFlatFromPdf(
   pdf: Buffer | Uint8Array,
   printedAreaM2: number,
-  options?: { search?: ScaleSearch; width?: number },
+  options?: {
+    search?: ScaleSearch;
+    width?: number;
+    /**
+     * The flat's extent on the sheet, when the sheet carries more than one.
+     *
+     * Walls alone cannot say which apartment is which: every room has a door
+     * and a door is a gap, so the hatch never closes around anything, and
+     * bridging the doors to close the flat also joins it to its neighbour
+     * through the shared landing. On the uncut דירה 14 the "isolated flat"
+     * came out 639 x 1040 units against a sheet of 638 x 1036 — the whole
+     * drawing.
+     *
+     * The client's own crop answers it. Given here as an extent rather than
+     * applied to the PDF, so the walls are still read from the uncut sheet and
+     * nothing is severed: bodies are truncated at the boundary, not dropped,
+     * which keeps the party wall as this flat's east wall.
+     */
+    extent?: { x: number; y: number; width: number; height: number };
+  },
 ): Promise<BuiltFlat | null> {
   const geometry = await extractFloorplanVectorGeometry(pdf);
   if (!geometry) return null;
   const sheet = wallBoundingBox(geometry);
   if (!sheet) return null;
 
-  const lock = lockScale(geometry.segments, sheet, printedAreaM2, options?.search);
+  const flatExtent = options?.extent ?? sheet;
+  const lock = lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search);
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
 
@@ -96,7 +116,9 @@ export async function buildFlatFromPdf(
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(
     wallBodiesFromHatch(geometry.segments, { unitsPerMetre, keepOpenings: true }),
-    sheet,
+    flatExtent,
+    8,
+    { truncate: true },
   ).filter(touchesFlat);
   const openings = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
 

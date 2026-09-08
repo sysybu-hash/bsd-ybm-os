@@ -886,16 +886,39 @@ export function clipBodiesToBounds(
   bodies: WallBody[],
   bounds: { x: number; y: number; width: number; height: number },
   margin = 8,
+  options?: { truncate?: boolean },
 ): WallBody[] {
-  return bodies.filter((b) => {
-    const r = bodyRect(b);
-    return (
-      r.x >= bounds.x - margin &&
-      r.y >= bounds.y - margin &&
-      r.x + r.w <= bounds.x + bounds.width + margin &&
-      r.y + r.h <= bounds.y + bounds.height + margin
-    );
-  });
+  const lowX = bounds.x - margin;
+  const highX = bounds.x + bounds.width + margin;
+  const lowY = bounds.y - margin;
+  const highY = bounds.y + bounds.height + margin;
+
+  if (!options?.truncate) {
+    return bodies.filter((b) => {
+      const r = bodyRect(b);
+      return r.x >= lowX && r.y >= lowY && r.x + r.w <= highX && r.y + r.h <= highY;
+    });
+  }
+
+  // Cut walls at the boundary rather than dropping them.
+  //
+  // Dropping loses every wall that straddles the line, and the party wall
+  // between two flats always does — which is why isolating by a box cost four
+  // points of wall coverage while the uncut sheet was gaining them. A truncated
+  // party wall is still this flat's east wall.
+  const out: WallBody[] = [];
+  for (const b of bodies) {
+    const alongLow = b.orientation === "h" ? lowX : lowY;
+    const alongHigh = b.orientation === "h" ? highX : highY;
+    const acrossLow = b.orientation === "h" ? lowY : lowX;
+    const acrossHigh = b.orientation === "h" ? highY : highX;
+    if (b.centre < acrossLow || b.centre > acrossHigh) continue;
+    const from = Math.max(b.from, alongLow);
+    const to = Math.min(b.to, alongHigh);
+    if (to - from <= 0) continue;
+    out.push({ ...b, from, to });
+  }
+  return out;
 }
 
 /**
