@@ -364,6 +364,45 @@ export function findKitchenFittings(
   return out;
 }
 
+/**
+ * The chairs round a dining table, which a CAD draws with rounded corners.
+ *
+ * A chair is a knot of curve about 45 to 55 cm across — the same shape and size
+ * as a washbasin, so it cannot be told apart on its own and calling every such
+ * knot a fixture would put basins all over the living room. What tells them
+ * apart is what they are next to: chairs stand round the table.
+ *
+ * The audit reads them as "island stools" and counts four to six; the pipeline
+ * was finding two.
+ */
+export function findSeatsAroundTable(
+  curves: VectorSegment[],
+  table: FurniturePiece | undefined,
+  unitsPerMetre: number,
+  options?: { reachM?: number },
+): FurniturePiece[] {
+  if (!table) return [];
+  const reach = (options?.reachM ?? 1.2) * unitsPerMetre;
+  const knots = findCurveFixtures(curves, unitsPerMetre, {
+    cell: 5,
+    minChords: 3,
+    minCm: 32,
+    maxCm: 70,
+  });
+  return knots
+    .filter((k) => {
+      const cx = k.x + k.w / 2;
+      const cy = k.y + k.h / 2;
+      return (
+        cx >= table.x - reach &&
+        cx <= table.x + table.w + reach &&
+        cy >= table.y - reach &&
+        cy <= table.y + table.h + reach
+      );
+    })
+    .map((k) => ({ ...k, kind: "seat" as const }));
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
@@ -378,13 +417,22 @@ export function findFurniture(
   // Curve-drawn fixtures are added before settling, so a bath found as a
   // rectangle can vouch for the pans and basins clustered around it.
   const kitchen = findKitchenFittings(segments, options?.curves ?? [], unitsPerMetre);
+  const table = pieces.find((p) => p.kind === "table");
+  const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
   const withCurves = [
     ...kitchen,
+    ...seats.filter(
+      (s) => !kitchen.some((k) => Math.abs(k.x - s.x) < 4 && Math.abs(k.y - s.y) < 4),
+    ),
     ...pieces.filter(
       (p) => !kitchen.some((k) => Math.abs(k.x - p.x) < 4 && Math.abs(k.y - p.y) < 4),
     ),
     ...findCurveFixtures(options?.curves ?? [], unitsPerMetre).filter(
-      (c) => !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h),
+      (c) =>
+        !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h) &&
+        // A chair is the same shape and size as a basin; the ones round the
+        // table have already been claimed as seats.
+        !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
     ),
   ];
   return settleTables(settleFixtures(withCurves, unitsPerMetre));

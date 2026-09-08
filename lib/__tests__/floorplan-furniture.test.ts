@@ -5,6 +5,7 @@ import {
   findCurveFixtures,
   findKitchenFittings,
   findRectangles,
+  findSeatsAroundTable,
   scaleFromBeds,
   settleFixtures,
   settleTables,
@@ -250,5 +251,47 @@ describe("the hob and the sink, which make a kitchen a kitchen", () => {
     // Two of דירה 14's bedside tables were coming back as sinks.
     const lone = box(200, 300, 0.54 * UPM, 0.32 * UPM);
     expect(findKitchenFittings(lone, [], UPM).filter((p) => p.kind === "sink")).toEqual([]);
+  });
+});
+
+describe("chairs, which are told from basins by what they stand next to", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const knot = (cx: number, cy: number, r: number, n = 10) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const b = ((i + 1) / n) * Math.PI * 2;
+      out.push(seg(cx + Math.cos(a) * r, cy + Math.sin(a) * r, cx + Math.cos(b) * r, cy + Math.sin(b) * r));
+    }
+    return out;
+  };
+  const table = {
+    x: 400,
+    y: 600,
+    w: 1.6 * UPM,
+    h: 0.9 * UPM,
+    widthCm: 160,
+    depthCm: 90,
+    kind: "table" as const,
+  };
+
+  it("claims the knots standing round the table", () => {
+    const chairs = [
+      ...knot(table.x + 30, table.y - 20, 0.22 * UPM),
+      ...knot(table.x + 90, table.y - 20, 0.22 * UPM),
+      ...knot(table.x + 30, table.y + table.h + 20, 0.22 * UPM),
+    ];
+    expect(findSeatsAroundTable(chairs, table, UPM)).toHaveLength(3);
+  });
+
+  it("leaves a basin across the flat alone", () => {
+    // A chair is the same shape and size as a washbasin; calling every such
+    // knot a chair would put seating in the bathrooms.
+    const farAway = knot(2000, 2000, 0.22 * UPM);
+    expect(findSeatsAroundTable(farAway, table, UPM)).toEqual([]);
+  });
+
+  it("finds no chairs when no table was found", () => {
+    expect(findSeatsAroundTable(knot(430, 590, 0.22 * UPM), undefined, UPM)).toEqual([]);
   });
 });
