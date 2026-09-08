@@ -9,6 +9,7 @@ import {
   extractHatchStrokes,
   findOpenings,
   footprintByScanFill,
+  hatchedWallExtent,
   HatchField,
   interiorComponents,
   interiorSpans,
@@ -777,5 +778,41 @@ describe("trimming a wall to where its hatch runs", () => {
   it("leaves a wall alone when it has no hatch to trim against", () => {
     const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 600 };
     expect(trimToHatchAlong([body], [])[0]!.to).toBe(600);
+  });
+});
+
+describe("the flat's extent, as against the sheet's", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const hatchedWall = (y0: number, y1: number, from: number, to: number) => {
+    const out = [seg(from, y0, to, y0), seg(from, y1, to, y1)];
+    const t = y1 - y0;
+    for (let x = from; x < to; x += 3) {
+      for (let k = 0; k < 3; k++) {
+        const y = y0 + (t / 3) * k;
+        out.push(seg(x, y + t / 3, x + t / 3, y));
+      }
+    }
+    return out;
+  };
+
+  it("ignores the dimension chains that run past the apartment", () => {
+    // wallBoundingBox returns y 218 to 1463 on דירה 14 where the walls stop at
+    // 331 and 1346, and that strip is where the building's stair core is drawn.
+    const drawing = [
+      ...hatchedWall(300, 320, 100, 600),
+      ...hatchedWall(900, 920, 100, 600),
+      // A dimension chain far below the flat: long, straight, no hatch.
+      seg(100, 1300, 600, 1300),
+      seg(100, 1310, 600, 1310),
+    ];
+    const sheet = { x: 0, y: 0, width: 800, height: 1500 };
+    const extent = hatchedWallExtent(drawing, sheet, 55)!;
+    expect(extent.y).toBeGreaterThan(250);
+    expect(extent.y + extent.height).toBeLessThan(1000);
+  });
+
+  it("says nothing when the sheet carries no hatched wall", () => {
+    const noWalls = [seg(0, 0, 500, 0), seg(0, 10, 500, 10)];
+    expect(hatchedWallExtent(noWalls, { x: 0, y: 0, width: 800, height: 800 }, 55)).toBeNull();
   });
 });

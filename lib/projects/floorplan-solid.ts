@@ -1358,3 +1358,47 @@ export function trimToHatchAlong(
     };
   });
 }
+
+/**
+ * The rectangle the flat's walls occupy, as opposed to the rectangle its sheet
+ * occupies.
+ *
+ * wallBoundingBox measures every segment that survived the wall filters, and
+ * those include dimension chains running well past the apartment: on דירה 14 it
+ * returns y 218 to 1463 where the walls themselves stop at 331 and 1346. Used as
+ * the flat's extent, that hands the scanline fill a 230-unit strip of sheet
+ * above and below the flat — which is where the dimension chains and the
+ * building's stair core are drawn, and how the stair came to be rendered as part
+ * of the apartment.
+ *
+ * Hatched walls have no such tails, and the box they give is stable: 550 by 1015
+ * units at 50, 53 and 56 units per metre alike.
+ */
+export function hatchedWallExtent(
+  segments: VectorSegment[],
+  sheet: { x: number; y: number; width: number; height: number },
+  unitsPerMetre: number,
+): { x: number; y: number; width: number; height: number } | null {
+  const bodies = clipBodiesToBounds(
+    wallBodiesFromHatch(segments, { unitsPerMetre }),
+    sheet,
+    8,
+    { truncate: true },
+  );
+  if (bodies.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const body of bodies) {
+    const r = bodyRect(body);
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.w);
+    maxY = Math.max(maxY, r.y + r.h);
+  }
+  const width = maxX - minX;
+  const height = maxY - minY;
+  if (!(width > 0) || !(height > 0)) return null;
+  return { x: minX, y: minY, width, height };
+}
