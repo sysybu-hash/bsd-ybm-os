@@ -42,7 +42,9 @@ describe("the key that tells the model what each block is", () => {
   it("ties the bed count to the block count", () => {
     // Five bed blocks came back as two beds before the key existed.
     expect(FURNITURE_KEY_PROMPT).toMatch(/as many beds as blocks of this kind/i);
-    expect(FURNITURE_KEY_PROMPT).toMatch(/[Nn]ever a double bed/);
+    // Stated as measurements, not as a proportion: "more than twice as long as
+    // it is wide" lost four runs in a row to a bed widened to suit its room.
+    expect(FURNITURE_KEY_PROMPT).toMatch(/90 cm wide and 200 cm long/);
   });
 
   it("keeps a terrace a terrace whatever stands on it", () => {
@@ -79,9 +81,15 @@ describe("rules added because a still broke them", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/Wardrobes are not fixtures/);
   });
 
-  it("holds a bed to its drawn proportion, after the audit read one as a double", () => {
-    expect(FURNITURE_KEY_PROMPT).toMatch(/twice as long as it is wide/);
-    expect(FURNITURE_KEY_PROMPT).toMatch(/never merged with the block beside it/);
+  it("holds a bed to its measurements, after four runs came back with a double", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/exactly as wide as its block/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/[Nn]ever merge a bed with the block beside it/);
+  });
+
+  it("says why, because the reason is what the rule keeps losing to", () => {
+    // The bed that came back double was always the one alone in the largest
+    // bedroom — the model was widening it to suit the room.
+    expect(FURNITURE_KEY_PROMPT).toMatch(/single bed in a large bedroom is correct/);
   });
 
   it("expects the dining chairs the render cannot carry, and only there", () => {
