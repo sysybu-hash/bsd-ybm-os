@@ -120,3 +120,12 @@ describe("two beds in one room", () => {
     );
   });
 });
+
+describe("the finished palette", () => {
+  it("rules out green upholstery, after chairs came back pale green", () => {
+    // 0.37% of the frame — under the coding-tint limit, correctly, since it was
+    // upholstery rather than a mint bathroom, and still off-brief for the book.
+    expect(RECOLOUR_PROMPT).toMatch(/no blue, purple or green object of any shade/);
+    expect(RECOLOUR_PROMPT).toMatch(/cream, oatmeal or pale grey/);
+  });
+});

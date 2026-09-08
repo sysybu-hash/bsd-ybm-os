@@ -92,7 +92,7 @@ One thing is wrong: some objects are still in the flat coding colours used to bu
 - Anything light-green is a chair: pale upholstery on an oak frame.
 - Any coloured floor becomes its proper surface: warm oak boards in the rooms, pale stone tiles in the wet rooms and on the terraces.
 
-When you are done, no blue, purple or mint-green object may remain anywhere in the frame. Keep the warm golden-hour daylight. No text, no labels, no screens, no televisions.`;
+When you are done, no blue, purple or green object of any shade may remain anywhere in the frame — pale green included, and upholstery least of all. Seat and chair fabric is cream, oatmeal or pale grey over oak; a green chair is as wrong here as a green wall. Keep the warm golden-hour daylight. No text, no labels, no screens, no televisions.`;
 
 /** The placement pass: materials rules plus the furniture key. */
 export function buildPlacementPrompt(extraDirection?: string): string {
