@@ -2,6 +2,7 @@ import {
   classifyPiece,
   dedupeRectangles,
   dropNested,
+  findCurveFixtures,
   findRectangles,
   scaleFromBeds,
   settleFixtures,
@@ -158,5 +159,47 @@ describe("reading the scale off the beds", () => {
     // Better than an answer nothing supports: area and wall thickness both
     // produce a confident wrong number here.
     expect(scaleFromBeds([{ x1: 0, y1: 0, x2: 100, y2: 0, lineWidth: 2 }])).toBeNull();
+  });
+});
+
+describe("fixtures a CAD draws with curves", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  /** A knot of short chords, the way a flattened pan or basin arrives. */
+  const knot = (cx: number, cy: number, r: number, n = 12) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const b = ((i + 1) / n) * Math.PI * 2;
+      out.push(seg(cx + Math.cos(a) * r, cy + Math.sin(a) * r, cx + Math.cos(b) * r, cy + Math.sin(b) * r));
+    }
+    return out;
+  };
+
+  it("finds a pan drawn as curves, which the rectangle pass cannot see", () => {
+    // דירה 14 draws one bath as a rectangle and every other fixture as curves,
+    // so the furniture pass saw a single fixture in a flat with two bathrooms.
+    const found = findCurveFixtures(knot(400, 1200, 0.3 * UPM), UPM);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.kind).toBe("fixture");
+    expect(found[0]!.widthCm).toBeGreaterThan(50);
+    expect(found[0]!.widthCm).toBeLessThan(75);
+  });
+
+  it("keeps two fixtures apart when they are drawn apart", () => {
+    const found = findCurveFixtures([...knot(400, 1200, 0.3 * UPM), ...knot(700, 1200, 0.3 * UPM)], UPM);
+    expect(found).toHaveLength(2);
+  });
+
+  it("ignores a knot too small to be a fixture", () => {
+    // A tap, or a door swing's flattened arc.
+    expect(findCurveFixtures(knot(400, 1200, 0.05 * UPM), UPM)).toEqual([]);
+  });
+
+  it("ignores a sprawl too large to be a fixture", () => {
+    expect(findCurveFixtures(knot(400, 1200, 1.6 * UPM), UPM)).toEqual([]);
+  });
+
+  it("has nothing to find on a sheet with no curves", () => {
+    expect(findCurveFixtures([], UPM)).toEqual([]);
   });
 });

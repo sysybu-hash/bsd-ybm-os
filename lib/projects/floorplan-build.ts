@@ -123,7 +123,9 @@ export async function buildFlatFromPdf(
   }
   const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
-  const furniture = findFurniture(geometry.segments, unitsPerMetre).filter((piece) =>
+  const furniture = findFurniture(geometry.segments, unitsPerMetre, {
+    curves: geometry.curves,
+  }).filter((piece) =>
     inside(piece.x + piece.w / 2, piece.y + piece.h / 2),
   );
 

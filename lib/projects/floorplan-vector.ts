@@ -36,6 +36,20 @@ export type FloorplanVectorGeometry = {
   segments: VectorSegment[];
   /** Long axis-aligned runs — the wall candidates. */
   walls: VectorSegment[];
+  /**
+   * Curves, as the straight chord from each one's start to its end.
+   *
+   * Curves were skipped outright — a curve only had to leave the pen in the
+   * right place, since walls are straight. But sanitary ware is not: this sheet
+   * draws one bath as a closed rectangle and every other pan, basin and tub as
+   * curves, so the furniture pass could see a single fixture in a flat with two
+   * bathrooms, and the model was left to guess where the wet rooms are. It
+   * guessed bedrooms and terraces.
+   *
+   * Kept apart from `segments` so they cannot reach the wall detector, which has
+   * no use for them and would have to filter them out again.
+   */
+  curves: VectorSegment[];
 };
 
 type Matrix = [number, number, number, number, number, number];
@@ -167,6 +181,7 @@ export async function extractFloorplanVectorGeometry(
     const OPS = pdfjs.OPS;
 
     const segments: VectorSegment[] = [];
+    const curves: VectorSegment[] = [];
     let ctm = viewport.transform.slice() as Matrix;
     let lineWidth = 1;
     const stack: Array<{ ctm: Matrix; lineWidth: number }> = [];
@@ -177,6 +192,14 @@ export async function extractFloorplanVectorGeometry(
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
       if (x1 === x2 && y1 === y2) return;
       segments.push({ x1, y1, x2, y2, lineWidth });
+    };
+
+    const pushCurve = (ax: number, ay: number, bx: number, by: number) => {
+      const [x1, y1] = apply(ctm, ax, ay);
+      const [x2, y2] = apply(ctm, bx, by);
+      if (![x1, y1, x2, y2].every(Number.isFinite)) return;
+      if (x1 === x2 && y1 === y2) return;
+      curves.push({ x1, y1, x2, y2, lineWidth });
     };
 
     for (let i = 0; i < ops.fnArray.length; i++) {
@@ -220,10 +243,12 @@ export async function extractFloorplanVectorGeometry(
           cx = nx;
           cy = ny;
         } else if (cmd === OPS.curveTo) {
-          // Walls are straight; a curve only has to leave the pen in the right place.
           k += 6;
-          cx = coords[k - 2] ?? cx;
-          cy = coords[k - 1] ?? cy;
+          const nx = coords[k - 2] ?? cx;
+          const ny = coords[k - 1] ?? cy;
+          pushCurve(cx, cy, nx, ny);
+          cx = nx;
+          cy = ny;
         } else if (cmd === OPS.rectangle) {
           const x = coords[k] ?? 0;
           const y = coords[k + 1] ?? 0;
@@ -263,7 +288,7 @@ export async function extractFloorplanVectorGeometry(
     // 860 segments and closes the outline.
     const union = new Set<VectorSegment>([...heavy, ...faced]);
     const walls = largestWallCluster([...union]);
-    return { pageWidth: viewport.width, pageHeight: viewport.height, segments, walls };
+    return { pageWidth: viewport.width, pageHeight: viewport.height, segments, curves, walls };
   } catch (err: unknown) {
     log.warn("vector extraction failed", {
       error: err instanceof Error ? err.message : String(err),

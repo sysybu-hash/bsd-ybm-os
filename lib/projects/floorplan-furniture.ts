@@ -189,9 +189,107 @@ export function settleTables(pieces: FurniturePiece[]): FurniturePiece[] {
   return pieces.map((p) => (p.kind === "table" && p !== keep ? { ...p, kind: "unknown" as const } : p));
 }
 
+/**
+ * Sanitary ware and sinks, which a CAD draws with curves rather than rectangles.
+ *
+ * findRectangles needs four straight sides, and a pan, a basin or a kitchen sink
+ * has none: דירה 14 draws exactly one bath as a closed rectangle and every other
+ * fixture as curves. The furniture pass therefore saw a single fixture in a flat
+ * with two bathrooms and a kitchen, and the model was left to decide for itself
+ * where the wet rooms are — it chose a bedroom and a terrace.
+ *
+ * A fixture is a compact knot of curves, so cluster the chords by proximity and
+ * take each knot's bounding box. On this sheet that finds the pans and basins in
+ * both bathrooms and the sink in the kitchen, all at the coordinates they are
+ * drawn at.
+ */
+export function findCurveFixtures(
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { cell?: number; minChords?: number },
+): FurniturePiece[] {
+  const cell = options?.cell ?? 8;
+  const minChords = options?.minChords ?? 4;
+  if (curves.length === 0) return [];
+
+  const parent = new Map<string, string>();
+  const key = (x: number, y: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
+  const find = (a: string): string => {
+    let n = a;
+    while (parent.get(n) !== n) {
+      parent.set(n, parent.get(parent.get(n)!)!);
+      n = parent.get(n)!;
+    }
+    return n;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+  const cellsFor = (s: VectorSegment) => {
+    const steps = Math.max(2, Math.ceil(segmentLength(s) / cell) * 2);
+    const out = new Set<string>();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      out.add(key(s.x1 + (s.x2 - s.x1) * t, s.y1 + (s.y2 - s.y1) * t));
+    }
+    return [...out];
+  };
+
+  const perChord = curves.map(cellsFor);
+  for (const cells of perChord) for (const c of cells) if (!parent.has(c)) parent.set(c, c);
+  for (const cells of perChord) for (let i = 1; i < cells.length; i++) union(cells[0]!, cells[i]!);
+  for (const k of [...parent.keys()]) {
+    const [x, y] = k.split(",").map(Number) as [number, number];
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [1, -1],
+    ] as const) {
+      const n = `${x + dx},${y + dy}`;
+      if (parent.has(n)) union(k, n);
+    }
+  }
+
+  const groups = new Map<string, VectorSegment[]>();
+  curves.forEach((s, i) => {
+    const root = find(perChord[i]![0]!);
+    groups.set(root, [...(groups.get(root) ?? []), s]);
+  });
+
+  const out: FurniturePiece[] = [];
+  for (const list of groups.values()) {
+    if (list.length < minChords) continue;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const s of list) {
+      minX = Math.min(minX, s.x1, s.x2);
+      maxX = Math.max(maxX, s.x1, s.x2);
+      minY = Math.min(minY, s.y1, s.y2);
+      maxY = Math.max(maxY, s.y1, s.y2);
+    }
+    const w = maxX - minX;
+    const h = maxY - minY;
+    const widthCm = (w / unitsPerMetre) * 100;
+    const depthCm = (h / unitsPerMetre) * 100;
+    const short = Math.min(widthCm, depthCm);
+    const long = Math.max(widthCm, depthCm);
+    // A pan, a basin or a sink. Below 30 cm it is a tap or a door swing's
+    // flattened arc; above 150 cm it is not a fixture.
+    if (short < 28 || short > 100 || long < 28 || long > 150) continue;
+    out.push({ x: minX, y: minY, w, h, widthCm, depthCm, kind: "fixture" });
+  }
+  return out;
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
+  options?: { curves?: VectorSegment[] },
 ): FurniturePiece[] {
   const rects = dedupeRectangles(dropNested(findRectangles(segments, { unitsPerMetre })));
   const pieces = rects.map((r) => {
@@ -199,7 +297,15 @@ export function findFurniture(
     const depthCm = (r.h / unitsPerMetre) * 100;
     return { ...r, widthCm, depthCm, kind: classifyPiece(widthCm, depthCm) };
   });
-  return settleTables(settleFixtures(pieces, unitsPerMetre));
+  // Curve-drawn fixtures are added before settling, so a bath found as a
+  // rectangle can vouch for the pans and basins clustered around it.
+  const withCurves = [
+    ...pieces,
+    ...findCurveFixtures(options?.curves ?? [], unitsPerMetre).filter(
+      (c) => !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h),
+    ),
+  ];
+  return settleTables(settleFixtures(withCurves, unitsPerMetre));
 }
 
 /**

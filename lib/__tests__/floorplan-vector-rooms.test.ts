@@ -286,6 +286,7 @@ describe("the wall diagram handed to the image model", () => {
       pageWidth: 1200,
       pageHeight: 1700,
       segments: [],
+      curves: [],
       walls: [
         { x1: 400, y1: 900, x2: 700, y2: 900, lineWidth: 14 },
         { x1: 400, y1: 900, x2: 400, y2: 1100, lineWidth: 14 },
@@ -307,6 +308,7 @@ describe("the rectangle the flat occupies", () => {
     rotate: 0,
     walls: walls.map((w) => ({ ...w, lineWidth: 14 })),
     segments: [],
+    curves: [],
     dimensionStrings: [],
   });
 
