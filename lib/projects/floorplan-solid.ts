@@ -1225,18 +1225,27 @@ export function shrinkToHatch(
   if (points.length === 0) return bodies;
   const minThickness = options?.minThicknessUnits ?? 3;
 
+  // The extent over the wall's whole length, not slice by slice.
+  //
+  // Slicing is the better idea on paper and measured worse. A thin partition
+  // that meets a thick wall at one end inherits the thick wall's hatch here and
+  // comes back too fat — 45 cm on a 10 cm wall, which is real and visible. But
+  // strokes are indexed by their midpoints, so a slice always reads narrower
+  // than the band it sits in, and fitting per slice starved every other wall:
+  // IoU against the sheet fell from 51.8% to between 43% and 45% at every
+  // percentile from the median to the maximum. The few fat walls cost less than
+  // the many thin ones.
   return bodies.map((body) => {
-    const r = bodyRect(body);
+    const from = body.orientation === "h" ? body.from : body.from;
+    const to = body.orientation === "h" ? body.to : body.to;
+    const lowEdge = body.centre - body.thickness / 2;
+    const highEdge = body.centre + body.thickness / 2;
     let low = Infinity;
     let high = -Infinity;
     for (const p of points) {
       const along = body.orientation === "h" ? p.x : p.y;
       const across = body.orientation === "h" ? p.y : p.x;
-      const from = body.orientation === "h" ? r.x : r.y;
-      const to = body.orientation === "h" ? r.x + r.w : r.y + r.h;
       if (along < from || along > to) continue;
-      const lowEdge = body.centre - body.thickness / 2;
-      const highEdge = body.centre + body.thickness / 2;
       if (across < lowEdge || across > highEdge) continue;
       low = Math.min(low, across);
       high = Math.max(high, across);
