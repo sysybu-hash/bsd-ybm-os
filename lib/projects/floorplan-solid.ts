@@ -1192,6 +1192,155 @@ export function findOpenings(
   return openings;
 }
 
+/**
+ * The angle a set of directions covers, in degrees, ignoring where it starts.
+ *
+ * The widest gap between neighbouring angles is the part that is NOT covered, so
+ * the sweep is what is left of the circle once that gap is taken out. This works
+ * across the -180/180 seam, which a plain max-minus-min does not.
+ */
+function angularSweep(angles: number[]): number {
+  if (angles.length < 2) return 0;
+  const sorted = [...angles].sort((a, b) => a - b);
+  let widest = sorted[0]! + 360 - sorted[sorted.length - 1]!;
+  for (let i = 1; i < sorted.length; i++) {
+    widest = Math.max(widest, sorted[i]! - sorted[i - 1]!);
+  }
+  return 360 - widest;
+}
+
+/**
+ * The doors, from the way a CAD draws one: a leaf and the arc it sweeps.
+ *
+ * findOpenings takes a doorway to be a gap between two pieces of the same wall,
+ * which is true and not sufficient. A gap is also what a window is, and what the
+ * end of a wall at a corner is, so on דירה 14 that rule returned six openings of
+ * which the widest was 208 cm and most sat on windows — while the front door and
+ * the doors onto the terrace, which the sheet marks plainly, were not among them.
+ *
+ * A door is drawn as its leaf, a straight line the width of the door standing
+ * open, hinged on the wall; and as the quarter circle the leaf sweeps, dashed.
+ * Neither on its own is safe — a 90 cm line touching a wall is also a piece of
+ * furniture, and the dashed arc breaks into chords too far apart to cluster — so
+ * both are required: a leaf of door width with exactly one end on a wall, and
+ * curve chords lying at the leaf's own radius around that end.
+ *
+ * The two together are specific. On דירה 14 they return seven doors at 74, 77,
+ * 84, 94, 94, 94 and 105 cm, which is the range an Israeli internal door is made
+ * in, and each one sits where the sheet draws a swing.
+ */
+export function findDoorSwings(
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  bodies: WallBody[],
+  unitsPerMetre: number,
+  options?: {
+    minArcChords?: number;
+    minWidthM?: number;
+    maxWidthM?: number;
+    /** The flat, so the landing's and the neighbour's doors are not taken. */
+    extent?: { x: number; y: number; width: number; height: number };
+  },
+): Opening[] {
+  if (bodies.length === 0) return [];
+  const extent = options?.extent;
+  const minArc = options?.minArcChords ?? 6;
+  const minWidth = (options?.minWidthM ?? 0.68) * unitsPerMetre;
+  const maxWidth = (options?.maxWidthM ?? 1.15) * unitsPerMetre;
+  const rects = bodies.map((b) => ({ body: b, rect: bodyRect(b) }));
+  const onWall = (x: number, y: number) =>
+    rects.find(
+      ({ rect }) =>
+        x >= rect.x - 3 &&
+        x <= rect.x + rect.w + 3 &&
+        y >= rect.y - 3 &&
+        y <= rect.y + rect.h + 3,
+    );
+
+  type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody };
+  const swings: Swing[] = [];
+  for (const s of segments) {
+    const width = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    if (width < minWidth || width > maxWidth) continue;
+    const a = onWall(s.x1, s.y1);
+    const b = onWall(s.x2, s.y2);
+    // Exactly one end hinged: a line with both ends on walls is a wall, and one
+    // with neither is furniture standing in the room.
+    if ((a && b) || (!a && !b)) continue;
+    const hinge = a ? { x: s.x1, y: s.y1 } : { x: s.x2, y: s.y2 };
+    const body = (a ?? b)!.body;
+    const angles: number[] = [];
+    for (const c of curves) {
+      const mx = (c.x1 + c.x2) / 2;
+      const my = (c.y1 + c.y2) / 2;
+      const d = Math.hypot(mx - hinge.x, my - hinge.y);
+      if (Math.abs(d - width) > width * 0.18) continue;
+      angles.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+    }
+    const arcs = angles.length;
+    if (arcs < minArc) continue;
+    // A door sweeps a quarter circle. Distance alone let a bath through: its rim
+    // puts plenty of chords at 80 cm from a point on the wall beside it, and six
+    // of those looked exactly like a swing. A rim closes all the way round and a
+    // swing does not, so the angle they cover tells them apart.
+    const sweep = angularSweep(angles);
+    if (sweep < 55 || sweep > 140) continue;
+    if (
+      extent &&
+      (hinge.x < extent.x ||
+        hinge.x > extent.x + extent.width ||
+        hinge.y < extent.y ||
+        hinge.y > extent.y + extent.height)
+    ) {
+      continue;
+    }
+    swings.push({ ...hinge, width, arcs, body });
+  }
+
+  // One door is drawn with several strokes — the leaf, its frame, its stop — so
+  // the same door comes back many times over, hinged a few centimetres apart
+  // each time. Merged by the hole they describe rather than by how far apart
+  // the hinges are: two doorways that overlap along the same wall are one, and
+  // a plain distance cannot say that, because a bathroom and a WC door really
+  // do stand a metre apart.
+  swings.sort((p, q) => q.arcs - p.arcs);
+  const along = (s: Swing) => (s.body.orientation === "h" ? s.x : s.y);
+  const kept: Swing[] = [];
+  for (const swing of swings) {
+    const overlaps = kept.some((k) => {
+      if (k.body.orientation !== swing.body.orientation) return false;
+      if (Math.abs(k.body.centre - swing.body.centre) > swing.body.thickness) {
+        return false;
+      }
+      return (
+        Math.abs(along(k) - along(swing)) < Math.max(k.width, swing.width) * 0.9
+      );
+    });
+    if (!overlaps) kept.push(swing);
+  }
+
+  return kept.flatMap((swing) => {
+    const at = along(swing);
+    // The leaf hinges at one edge of the doorway and the door fills its width,
+    // but which side is not known from the leaf alone. Centring on the hinge
+    // keeps the error to half a door either way and never lands off the wall.
+    const from = Math.max(swing.body.from, at - swing.width / 2);
+    const to = Math.min(swing.body.to, at + swing.width / 2);
+    // Clipped to nothing where the swing sits at the very end of its wall, which
+    // is a door into the next room drawn against this one's corner.
+    if (to - from < minWidth * 0.7) return [];
+    return [
+      {
+        orientation: swing.body.orientation,
+        centre: swing.body.centre,
+        thickness: swing.body.thickness,
+        from,
+        to,
+      },
+    ];
+  });
+}
+
 /** The rectangle an opening occupies, matching bodyRect's convention. */
 export function openingRect(o: Opening): { x: number; y: number; w: number; h: number } {
   const half = o.thickness / 2;

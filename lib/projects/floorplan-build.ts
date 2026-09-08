@@ -6,6 +6,7 @@ import {
   clipBodiesToBounds,
   closeCorners,
   dropUnhatchedBodies,
+  findDoorSwings,
   findTerraces,
   trimToHatchAlong,
   findOpenings,
@@ -151,7 +152,32 @@ export async function buildFlatFromPdf(
     8,
     { truncate: true },
   ).filter(touchesFlat);
-  const openings = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
+  // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
+  // rule alone returned six openings on דירה 14, most of them windows, and had
+  // neither the front door nor the ones onto the terrace; the swings have all
+  // seven at true door widths. Both are kept — a gap is a real opening even
+  // where no swing is drawn, as at a cased opening — with the swing winning
+  // wherever the two describe the same hole.
+  const swings = findDoorSwings(
+    geometry.segments,
+    geometry.curves,
+    bodies,
+    unitsPerMetre,
+    { extent: flatExtent },
+  );
+  const gaps = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
+  const openings = [
+    ...swings,
+    ...gaps.filter(
+      (gap) =>
+        !swings.some(
+          (swing) =>
+            swing.orientation === gap.orientation &&
+            Math.abs(swing.centre - gap.centre) <= gap.thickness &&
+            Math.min(swing.to, gap.to) - Math.max(swing.from, gap.from) > 0,
+        ),
+    ),
+  ];
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that
