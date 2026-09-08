@@ -1,4 +1,9 @@
-import { findFurniture, type FurniturePiece } from "@/lib/projects/floorplan-furniture";
+import {
+  findFurniture,
+  seatsAroundTable,
+  stoolsAlongRun,
+  type FurniturePiece,
+} from "@/lib/projects/floorplan-furniture";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 import { lockScale, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
@@ -43,6 +48,17 @@ export type BuiltFlat = {
   areaError: number;
   svg: string;
 };
+
+/** Whether a piece overlaps a wall, so seating is never placed inside one. */
+function rectHitsBody(piece: FurniturePiece, body: WallBody): boolean {
+  const r = bodyRect(body);
+  return (
+    piece.x < r.x + r.w &&
+    piece.x + piece.w > r.x &&
+    piece.y < r.y + r.h &&
+    piece.y + piece.h > r.y
+  );
+}
 
 export async function buildFlatFromPdf(
   pdf: Buffer | Uint8Array,
@@ -139,11 +155,93 @@ export async function buildFlatFromPdf(
   }
   const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
-  const furniture = findFurniture(geometry.segments, unitsPerMetre, {
+  const found = findFurniture(geometry.segments, unitsPerMetre, {
     curves: geometry.curves,
   }).filter((piece) =>
     inside(piece.x + piece.w / 2, piece.y + piece.h / 2),
   );
+
+  // Seating, placed on the anchors rather than hunted for. A chair and a stool
+  // are drawn as rounded shapes whose corner arcs are the only part that reaches
+  // the curve list, and every attempt to detect them either missed the lot or
+  // swept in the sanitary ware with them. The table and the island are found
+  // reliably, and the plan puts chairs round one and stools along the other, so
+  // there is nothing left to infer. It matters because the middle of the living
+  // room was coming out as bare floor, and bare floor is what the model fills in
+  // for itself — that is where the invented armchairs in the entrance came from.
+  const clear = (piece: FurniturePiece) => {
+    const cx = piece.x + piece.w / 2;
+    const cy = piece.y + piece.h / 2;
+    if (!inside(cx, cy)) return false;
+    // Not standing in a wall, and not on top of something already there.
+    if (bodies.some((body) => rectHitsBody(piece, body))) return false;
+    return !found.some(
+      (other) =>
+        cx > other.x &&
+        cx < other.x + other.w &&
+        cy > other.y &&
+        cy < other.y + other.h,
+    );
+  };
+
+  const table = found.find((piece) => piece.kind === "table");
+  const chairs = table
+    ? seatsAroundTable(table, unitsPerMetre).filter(clear)
+    : [];
+
+  // A free-standing run: deep enough to be a counter, long enough to seat at,
+  // and with floor on both of its long sides — a run against a wall is a
+  // worktop and has no stools.
+  const island = found.find((piece) => {
+    if (piece.kind !== "storage" && piece.kind !== "counter") return false;
+    const depthCm = Math.min(piece.widthCm, piece.depthCm);
+    const lengthCm = Math.max(piece.widthCm, piece.depthCm);
+    if (depthCm < 40 || depthCm > 75 || lengthCm < 140 || lengthCm > 320) {
+      return false;
+    }
+    const vertical = piece.h >= piece.w;
+    const step = unitsPerMetre * 0.55;
+    const lowSide = vertical
+      ? inside(piece.x - step, piece.y + piece.h / 2)
+      : inside(piece.x + piece.w / 2, piece.y - step);
+    const highSide = vertical
+      ? inside(piece.x + piece.w + step, piece.y + piece.h / 2)
+      : inside(piece.x + piece.w / 2, piece.y + piece.h + step);
+    return lowSide && highSide;
+  });
+  let stools: FurniturePiece[] = [];
+  if (island) {
+    // Stools face the room, not the cook. Both sides of an island are floor, so
+    // counting what fits does not choose between them — it put דירה 14's stools
+    // between the island and the sink run. The working side is the one with the
+    // kitchen's own units on it, so the stools go on whichever side is further
+    // from the nearest hob, sink or worktop.
+    const fittings = found.filter(
+      (piece) =>
+        piece.kind === "hob" ||
+        piece.kind === "sink" ||
+        piece.kind === "counter" ||
+        (piece.kind === "storage" && piece !== island),
+    );
+    const vertical = island.h >= island.w;
+    const reach = (px: number, py: number) =>
+      fittings.reduce((best, piece) => {
+        const dx = Math.max(piece.x - px, px - (piece.x + piece.w), 0);
+        const dy = Math.max(piece.y - py, py - (piece.y + piece.h), 0);
+        return Math.min(best, Math.hypot(dx, dy));
+      }, Infinity);
+    const step = unitsPerMetre * 0.5;
+    const lowRoom = vertical
+      ? reach(island.x - step, island.y + island.h / 2)
+      : reach(island.x + island.w / 2, island.y - step);
+    const highRoom = vertical
+      ? reach(island.x + island.w + step, island.y + island.h / 2)
+      : reach(island.x + island.w / 2, island.y + island.h + step);
+    const side = lowRoom >= highRoom ? "low" : "high";
+    stools = stoolsAlongRun(island, unitsPerMetre, side).filter(clear);
+  }
+
+  const furniture = [...found, ...chairs, ...stools];
 
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(

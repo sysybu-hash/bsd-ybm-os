@@ -565,6 +565,215 @@ export function findSeatsAroundTable(
     .map((k) => ({ ...k, kind: "seat" as const }));
 }
 
+/**
+ * The rounded furniture, assembled from its corners.
+ *
+ * This is the piece of the drawing the pipeline had been blind to, and it is
+ * most of what a living room contains. A CAD draws a chair, an armchair, a sofa
+ * and a bar stool with rounded corners, and only the corner arcs reach the curve
+ * list — the straight sides between them are ordinary segments. So a chair never
+ * appears as a chair-shaped cluster of curve, and searching for one finds
+ * nothing: דירה 14's living room came back with no seating at all, its dining
+ * chairs missing, and none of the four stools at the island.
+ *
+ * What that left was a flat whose middle was bare floor, and bare floor is what
+ * the model fills in for itself — the invented armchairs standing in the
+ * entrance, and the "rooms full of nothing" the plan does not have. Detecting
+ * the furniture is the fix for the invention, not a further instruction not to
+ * invent.
+ *
+ * Corners are clustered instead of shapes. Four arcs within half a metre of each
+ * other are one piece of furniture and its bounding box is the piece. The link
+ * has to be shorter than the gap between neighbouring chairs — on this sheet
+ * they stand 1.0 m apart and a chair is 0.5 m across — so 0.55 m separates them
+ * and still holds each chair together.
+ */
+export function findRoundedFurniture(
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { linkM?: number },
+): FurniturePiece[] {
+  const link = (options?.linkM ?? 0.55) * unitsPerMetre;
+  const knots = findCurveFixtures(curves, unitsPerMetre, {
+    cell: 4,
+    minChords: 2,
+    minCm: 4,
+    maxCm: 40,
+    maxShortCm: 40,
+  });
+  if (knots.length === 0) return [];
+
+  const centres = knots.map((k) => ({ x: k.x + k.w / 2, y: k.y + k.h / 2 }));
+  const seen = new Array<boolean>(knots.length).fill(false);
+  const out: FurniturePiece[] = [];
+  for (let i = 0; i < knots.length; i++) {
+    if (seen[i]) continue;
+    const stack = [i];
+    const group: number[] = [];
+    seen[i] = true;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      group.push(cur);
+      for (let j = 0; j < knots.length; j++) {
+        if (seen[j]) continue;
+        const dx = centres[cur]!.x - centres[j]!.x;
+        const dy = centres[cur]!.y - centres[j]!.y;
+        if (Math.hypot(dx, dy) > link) continue;
+        seen[j] = true;
+        stack.push(j);
+      }
+    }
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const g of group) {
+      const k = knots[g]!;
+      x0 = Math.min(x0, k.x);
+      y0 = Math.min(y0, k.y);
+      x1 = Math.max(x1, k.x + k.w);
+      y1 = Math.max(y1, k.y + k.h);
+    }
+    const w = x1 - x0;
+    const h = y1 - y0;
+    const widthCm = (w / unitsPerMetre) * 100;
+    const depthCm = (h / unitsPerMetre) * 100;
+    const short = Math.min(widthCm, depthCm);
+    const long = Math.max(widthCm, depthCm);
+    // A bar stool is drawn as a half disc about 30 by 60 cm, a chair and an
+    // armchair as a square 40 to 90, a sofa as 90 to 250 long and up to 110
+    // deep. Anything outside that is not seating.
+    const stool = short >= 20 && short <= 45 && long >= 40 && long <= 80;
+    const chair = short >= 38 && short <= 95 && long >= 38 && long <= 100;
+    const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260;
+    if (!stool && !chair && !sofa) continue;
+    out.push({ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" });
+  }
+  return out;
+}
+
+/**
+ * The chairs round a dining table, placed rather than found.
+ *
+ * Detecting each chair on this sheet does not work and the reason is structural:
+ * a chair is a rounded rectangle whose four corner arcs are all that reach the
+ * curve list, only two of them come through as separate knots, and the sliver
+ * they bound is 15 by 35 cm — smaller than any chair. Growing the cluster onto
+ * the straight sides recovers the chair and also merges neighbouring chairs into
+ * columns and claims the bath and both basins.
+ *
+ * There is nothing to infer, though. The plan draws chairs round the table, the
+ * table has been found, and where the chairs go follows from it: one at each
+ * short end and a pair along each long side, which is the six דירה 14 draws.
+ * Placing them is what fills the middle of the living room, and an empty middle
+ * is what the model was inventing into.
+ */
+export function seatsAroundTable(
+  table: FurniturePiece,
+  unitsPerMetre: number,
+  options?: { seatM?: number; gapM?: number; perSide?: number },
+): FurniturePiece[] {
+  const seat = (options?.seatM ?? 0.5) * unitsPerMetre;
+  const gap = (options?.gapM ?? 0.06) * unitsPerMetre;
+  const perSide = options?.perSide ?? 2;
+  const vertical = table.h >= table.w;
+  const longRun = vertical ? table.h : table.w;
+  if (longRun < seat * perSide) return [];
+
+  const make = (x: number, y: number, w: number, h: number): FurniturePiece => ({
+    x,
+    y,
+    w,
+    h,
+    widthCm: (w / unitsPerMetre) * 100,
+    depthCm: (h / unitsPerMetre) * 100,
+    kind: "seat",
+  });
+  const out: FurniturePiece[] = [];
+  for (let i = 0; i < perSide; i++) {
+    // Spread evenly along the long side, centred on the run.
+    const t = (i + 0.5) / perSide;
+    if (vertical) {
+      const cy = table.y + table.h * t - seat / 2;
+      out.push(make(table.x - gap - seat, cy, seat, seat));
+      out.push(make(table.x + table.w + gap, cy, seat, seat));
+    } else {
+      const cx = table.x + table.w * t - seat / 2;
+      out.push(make(cx, table.y - gap - seat, seat, seat));
+      out.push(make(cx, table.y + table.h + gap, seat, seat));
+    }
+  }
+  // One at each end.
+  if (vertical) {
+    const cx = table.x + table.w / 2 - seat / 2;
+    out.push(make(cx, table.y - gap - seat, seat, seat));
+    out.push(make(cx, table.y + table.h + gap, seat, seat));
+  } else {
+    const cy = table.y + table.h / 2 - seat / 2;
+    out.push(make(table.x - gap - seat, cy, seat, seat));
+    out.push(make(table.x + table.w + gap, cy, seat, seat));
+  }
+  return out;
+}
+
+/**
+ * The stools along a kitchen island, placed the same way and for the reason.
+ *
+ * The audit had been failing every finish on "island stools 0, plan has 3" and
+ * it was right: nothing was looking for them. A stool on this sheet is a half
+ * disc about 30 by 60 cm, which the rounded-furniture search rejects for being
+ * under 35 cm deep, and widening that gate lets the sanitary ware in.
+ *
+ * The island is found reliably — a free-standing run 40 to 70 cm deep and 1.5 to
+ * 3 m long — and the stools stand along whichever of its long sides faces the
+ * room, which the caller knows and this does not.
+ */
+export function stoolsAlongRun(
+  run: FurniturePiece,
+  unitsPerMetre: number,
+  side: "low" | "high",
+  options?: { stoolM?: number; depthM?: number; gapM?: number },
+): FurniturePiece[] {
+  const stool = (options?.stoolM ?? 0.58) * unitsPerMetre;
+  const depth = (options?.depthM ?? 0.3) * unitsPerMetre;
+  const gap = (options?.gapM ?? 0.04) * unitsPerMetre;
+  const vertical = run.h >= run.w;
+  const longRun = vertical ? run.h : run.w;
+  // Stools stand almost shoulder to shoulder: דירה 14 seats four along 228 cm,
+  // which is 57 cm each. Spacing them at 1.35 times their width gave two.
+  const count = Math.max(1, Math.round(longRun / (stool * 1.1)));
+  const out: FurniturePiece[] = [];
+  for (let i = 0; i < count; i++) {
+    const t = (i + 0.5) / count;
+    if (vertical) {
+      const y = run.y + run.h * t - stool / 2;
+      const x = side === "low" ? run.x - gap - depth : run.x + run.w + gap;
+      out.push({
+        x,
+        y,
+        w: depth,
+        h: stool,
+        widthCm: (depth / unitsPerMetre) * 100,
+        depthCm: (stool / unitsPerMetre) * 100,
+        kind: "seat",
+      });
+    } else {
+      const x = run.x + run.w * t - stool / 2;
+      const y = side === "low" ? run.y - gap - depth : run.y + run.h + gap;
+      out.push({
+        x,
+        y,
+        w: stool,
+        h: depth,
+        widthCm: (stool / unitsPerMetre) * 100,
+        depthCm: (depth / unitsPerMetre) * 100,
+        kind: "seat",
+      });
+    }
+  }
+  return out;
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
