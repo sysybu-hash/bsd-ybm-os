@@ -24,6 +24,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import dotenv from "dotenv";
+
+// Run straight from a shell, so nothing has loaded the workspace env yet and
+// lib/env.ts refuses to hand over the Gemini key without it.
+dotenv.config({ path: ".env.local" });
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) {
@@ -44,7 +49,7 @@ if (!pdfPath || !Number.isFinite(grossArea)) {
 const { extractFloorplanVectorGeometry, wallBoundingBox } = await import("../lib/projects/floorplan-vector.ts");
 const { hatchedWallExtent } = await import("../lib/projects/floorplan-solid.ts");
 const { buildFlatFromPdf } = await import("../lib/projects/floorplan-build.ts");
-const { buildPlacementPrompt } = await import("../lib/projects/floorplan-materials.ts");
+const { buildPlacementPrompt, RECOLOUR_PROMPT } = await import("../lib/projects/floorplan-materials.ts");
 const { auditFloorplanStill, gradeFloorplanStill } = await import("../lib/projects/floorplan-viz-audit.ts");
 const { pickBestFinish } = await import("../lib/projects/floorplan-finish.ts");
 const { parseFloorplanLayout } = await import("../lib/projects/floorplan-layout.ts");
@@ -89,7 +94,8 @@ const plan = { base64: uncutBytes.toString("base64"), mimeType: "application/pdf
 const layout = parseFloorplanLayout({ rooms: [], islandStoolCount: 0 });
 const prompt = buildPlacementPrompt();
 
-const render = async () => {
+/** One image call against the model chain, given a prompt and a source frame. */
+const pass = async (text, image) => {
   for (const model of getFloorplanVizModelChain()) {
     try {
       const res = await client.models.generateContent({
@@ -97,7 +103,7 @@ const render = async () => {
         contents: [
           {
             role: "user",
-            parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: geometry.toString("base64") } }],
+            parts: [{ text }, { inlineData: { mimeType: image.mimeType, data: image.base64 } }],
           },
         ],
         config: { responseModalities: ["IMAGE"] },
@@ -109,6 +115,23 @@ const render = async () => {
     }
   }
   return null;
+};
+
+// Placement, then recolour. The geometry render tints each block roughly the
+// material it becomes so the model can tell a bed from a bath without decoding
+// a legend, and the sanitary blocks have to be a cool aqua to be separable from
+// bed linen at all — at two parts in 255 apart the beds came back as bathtubs.
+// That tint then survives into the finish and the bath and basins come out
+// mint, so the second pass takes it back out. Asked to do both at once the
+// model does neither reliably; asked only to restate the coded objects in real
+// materials and change nothing else, it does that well.
+const render = async () => {
+  const placed = await pass(prompt, {
+    mimeType: "image/jpeg",
+    base64: geometry.toString("base64"),
+  });
+  if (!placed) return null;
+  return (await pass(RECOLOUR_PROMPT, placed)) ?? placed;
 };
 
 const grade = async (image) => {

@@ -76,9 +76,18 @@ describe("the key that tells the model what each block is", () => {
 });
 
 describe("rules added because a still broke them", () => {
-  it("ties wet rooms to white blocks, after a ממ\"ד bedroom came back a bathroom", () => {
-    expect(FURNITURE_KEY_PROMPT).toMatch(/ONLY where a white fixture block stands/);
+  it("ties wet rooms to aqua blocks, after a ממ\"ד bedroom came back a bathroom", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(
+      /ONLY where a pale aqua fixture block stands/,
+    );
     expect(FURNITURE_KEY_PROMPT).toMatch(/Wardrobes are not fixtures/);
+  });
+
+  it("says a long off-white block is a bed, after beds came back as baths", () => {
+    // The two blocks were within two parts in 255 of each other and the key had
+    // to separate them on wording alone. It could not: דירה 14's bedroom wing
+    // came back with a bathtub lying where a bed stands.
+    expect(FURNITURE_KEY_PROMPT).toMatch(/An off-white block is never one of them/);
   });
 
   it("holds a bed to its measurements, after four runs came back with a double", () => {

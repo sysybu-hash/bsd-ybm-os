@@ -75,7 +75,18 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   bed: { top: "#fdfdfc", face: "#e6e2da" },
   storage: { top: "#c9a678", face: "#a8875b" },
   counter: { top: "#eae6df", face: "#b9b2a6" },
-  fixture: { top: "#fbfbfa", face: "#dfe3e4" },
+  // Pale aqua, not white. At #fbfbfa a fixture was two parts in 255 away from
+  // the bed's #fdfdfc, and the key had to separate them on wording alone — an
+  // off-white block that is long is a bed, a white block that is long is a
+  // bath. The model read the beds in דירה 14's bedroom wing as a bathtub and
+  // set a toilet and a basin beside them out of the bedside tables, which is
+  // the "bathrooms where the bedrooms are" this plan keeps coming back with.
+  // Glazed ceramic carries a cool cast in daylight, so this still needs no
+  // decoding into a material; it is simply far enough from warm bed linen to
+  // be a different thing. Kept as pale as the separation allows: at #dfeef1 the
+  // tint survived the render and the bath and basins came out mint, which is
+  // the failure the recolour pass exists to undo.
+  fixture: { top: "#e8f4f6", face: "#c3dde1" },
   table: { top: "#a9764a", face: "#8b5e39" },
   // Dark steel, so a cooktop and its basins read as the kitchen rather than as
   // plumbing — the hob is four burners in a 64 cm square and was being taken
