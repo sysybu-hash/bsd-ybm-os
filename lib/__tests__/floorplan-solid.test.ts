@@ -14,6 +14,8 @@ import {
   interiorSpans,
   openingRect,
   pickComponentByArea,
+  shrinkToHatch,
+  splitAcrossGaps,
   spanArea,
   wallBodiesFromHatch,
   wallBodiesFromSegments,
@@ -687,5 +689,56 @@ describe("the footprint, taken from the walls rather than by flooding", () => {
 
   it("has no footprint without walls", () => {
     expect(footprintByScanFill([], { x: 0, y: 0, width: 100, height: 100 })).toEqual([]);
+  });
+});
+
+describe("fitting a wall to the hatch it contains", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  /** Hatch strokes filling y0..y1 across x from..to. */
+  const hatch = (y0: number, y1: number, from: number, to: number) => {
+    const out = [];
+    const t = y1 - y0;
+    for (let x = from; x < to; x += 3) {
+      for (let k = 0; k < 3; k++) {
+        const y = y0 + (t / 3) * k;
+        out.push(seg(x, y + t / 3, x + t / 3, y));
+      }
+    }
+    return out;
+  };
+
+  it("pulls a band in to where the strokes actually stop", () => {
+    // The pair bracketed the wall and a slice of the room beside it.
+    const body = { orientation: "h" as const, centre: 130, thickness: 60, from: 0, to: 300 };
+    const fitted = shrinkToHatch([body], hatch(100, 120, 0, 300))[0]!;
+    expect(fitted.thickness).toBeLessThan(30);
+    expect(fitted.centre).toBeGreaterThan(100);
+    expect(fitted.centre).toBeLessThan(125);
+  });
+
+  it("leaves a band that already fits its hatch alone", () => {
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 300 };
+    // Strokes are indexed by midpoint, so a fitted band measures a little
+    // narrower than the drawn one — close, not identical.
+    const fitted = shrinkToHatch([body], hatch(100, 120, 0, 300))[0]!;
+    expect(Math.abs(fitted.thickness - 20)).toBeLessThan(9);
+  });
+
+  it("does not shrink a wall away when there is no hatch to fit to", () => {
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 300 };
+    expect(shrinkToHatch([body], [])[0]!.thickness).toBe(20);
+  });
+
+  it("splits a band whose hatch comes in two, with a room between", () => {
+    const body = { orientation: "h" as const, centre: 132, thickness: 104, from: 0, to: 300 };
+    const two = [...hatch(90, 110, 0, 300), ...hatch(155, 175, 0, 300)];
+    const split = splitAcrossGaps([body], two, { minGapUnits: 24 });
+    expect(split.length).toBe(2);
+    expect(split.every((b) => b.thickness < 40)).toBe(true);
+  });
+
+  it("leaves a wall whose hatch runs right across it in one piece", () => {
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 300 };
+    expect(splitAcrossGaps([body], hatch(100, 120, 0, 300))).toHaveLength(1);
   });
 });
