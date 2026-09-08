@@ -110,3 +110,13 @@ describe("rules added because a still broke them", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/no object may come out in a saturated colour/);
   });
 });
+
+describe("two beds in one room", () => {
+  it("says both are drawn, after a room with two singles came back with one", () => {
+    // דירה 14 draws three bed blocks across two rooms; six finishes in a row
+    // rendered four beds where the geometry carries five.
+    expect(FURNITURE_KEY_PROMPT).toMatch(
+      /Two bed blocks standing in ONE room are two separate single beds/,
+    );
+  });
+});
