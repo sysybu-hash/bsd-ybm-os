@@ -670,11 +670,23 @@ export function calibrateFromInterior(
  */
 export type HatchPoint = { x: number; y: number };
 
+/**
+ * The cap is scale-relative because a stroke inside a wall is bounded by the
+ * wall: hatch at 45° crossing a band of thickness t is t·√2 long, so 0.45 m of
+ * stroke already implies a 32 cm wall. Longer strokes are drawn across open
+ * ground, and on דירה 14 that is the terrace paving — the west terrace's
+ * diagonals run to a median of 24 units where the wall hatch in the flat's core
+ * runs to 8. Capping there drops 61% of the paving and 0% of the core hatch,
+ * which is what stopped the terrace being fitted into a pair of 35 and 49 cm
+ * "walls" and dragging every scanline row out of the flat with it.
+ */
 export function extractHatchStrokes(
   segments: VectorSegment[],
-  options?: { maxStrokeLength?: number },
+  options?: { maxStrokeLength?: number; unitsPerMetre?: number },
 ): HatchPoint[] {
-  const maxLength = options?.maxStrokeLength ?? 40;
+  const maxLength =
+    options?.maxStrokeLength ??
+    (options?.unitsPerMetre ? options.unitsPerMetre * 0.45 : 40);
   const out: HatchPoint[] = [];
   for (const s of segments) {
     const dx = s.x2 - s.x1;
@@ -786,7 +798,7 @@ export function wallBodiesFromHatch(
   // are not being lost at the margin.
   const minDensity = options.minDensity ?? 0.4;
   const minLength = (options.minLengthM ?? 0.2) * upm;
-  const field = new HatchField(extractHatchStrokes(segments));
+  const field = new HatchField(extractHatchStrokes(segments, { unitsPerMetre: upm }));
   if (field.size === 0) return [];
 
   const runs = buildWallRuns(
@@ -1340,9 +1352,11 @@ export function splitAcrossGaps(
 export function trimToHatchAlong(
   bodies: WallBody[],
   segments: VectorSegment[],
-  options?: { marginUnits?: number },
+  options?: { marginUnits?: number; unitsPerMetre?: number },
 ): WallBody[] {
-  const points = extractHatchStrokes(segments);
+  const points = extractHatchStrokes(segments, {
+    unitsPerMetre: options?.unitsPerMetre,
+  });
   if (points.length === 0) return bodies;
 
   return bodies.map((body) => {
@@ -1365,6 +1379,55 @@ export function trimToHatchAlong(
       from: Math.max(body.from, first - margin),
       to: Math.min(body.to, last + margin),
     };
+  });
+}
+
+/**
+ * Drops bodies that have hatch at their ends and none along their run.
+ *
+ * hatchFillsMiddle asks whether a band's middle carries hatch, which a
+ * dimension chain crossing two walls passes: it inherits a cluster at each end
+ * and one more wherever it cuts a partition, and those are enough to look
+ * filled at three sample points. Measured along the whole run instead, the sheet
+ * separates cleanly — on דירה 14 every real wall carries 11 to 94 hatch strokes
+ * per 100 cm and the seven survivors carry 3.3 to 6.6, a gap of nearly two to
+ * one with nothing inside it. They are the thin verticals running the height of
+ * the drawing in the geometry pass, and the flat's own dimension chains are
+ * exactly where they lie.
+ *
+ * Density is measured per unit length rather than per unit area on purpose.
+ * Hatch fills a wall's full width, so a thick wall does hold more of it, but the
+ * discrimination here does not come from thickness: the densest thin body on the
+ * sheet is a 10 cm partition at 32 strokes per 100 cm, well clear of a 28 cm
+ * dimension chain at 6.6.
+ */
+export function dropUnhatchedBodies(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minPer100cm?: number },
+): WallBody[] {
+  const points = extractHatchStrokes(segments, { unitsPerMetre });
+  if (points.length === 0) return bodies;
+  const minimum = options?.minPer100cm ?? 10;
+  const cm = unitsPerMetre / 100;
+
+  return bodies.filter((body) => {
+    const rect = bodyRect(body);
+    let n = 0;
+    for (const p of points) {
+      if (
+        p.x >= rect.x - 1 &&
+        p.x <= rect.x + rect.w + 1 &&
+        p.y >= rect.y - 1 &&
+        p.y <= rect.y + rect.h + 1
+      ) {
+        n++;
+      }
+    }
+    const lengthCm = Math.max(rect.w, rect.h) / cm;
+    if (lengthCm < 1) return true;
+    return (n / lengthCm) * 100 >= minimum;
   });
 }
 

@@ -5,6 +5,7 @@ import {
   bodyRect,
   clipBodiesToBounds,
   closeCorners,
+  dropUnhatchedBodies,
   trimToHatchAlong,
   findOpenings,
   wallBodiesFromHatch,
@@ -104,9 +105,19 @@ export async function buildFlatFromPdf(
   // those extensions are drawn wall with no hatch under them, running out into
   // the living room — and the trim keeps everything between the first and last
   // stroke, cutting only the tails.
-  const bodies = trimToHatchAlong(
-    closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9),
+  // Trimmed to the hatch along each run, then dropped outright where there is
+  // no hatch along the run to trim to. The two are not the same test: the trim
+  // cuts a real wall's overshot tails, and the drop removes a body that was
+  // never a wall — a dimension chain reads as one because it picks up a hatch
+  // cluster wherever it crosses a partition.
+  const bodies = dropUnhatchedBodies(
+    trimToHatchAlong(
+      closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9),
+      geometry.segments,
+      { unitsPerMetre },
+    ),
     geometry.segments,
+    unitsPerMetre,
   );
   if (bodies.length === 0) return null;
 
