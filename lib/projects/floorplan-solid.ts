@@ -764,6 +764,14 @@ export function wallBodiesFromHatch(
     minLengthM?: number;
     /** How far apart two pieces of one wall may be and still be joined. */
     mergeGapM?: number;
+    /**
+     * Return the pieces without joining them across doorways.
+     *
+     * The gaps between pieces of one wall are the doorways, and joining is what
+     * loses them: asked for the openings after the merge, דירה 14 reports one,
+     * 11 cm wide. The caller that wants to draw the doors needs the pieces.
+     */
+    keepOpenings?: boolean;
   },
 ): WallBody[] {
   const upm = options.unitsPerMetre;
@@ -829,7 +837,9 @@ export function wallBodiesFromHatch(
   // the reconstruction comes back dashed. Taking the bands straight off the
   // hatch instead was tried and is worse — the strokes are diagonal, so each
   // row's run sits shifted from the one above and almost nothing stacks.
-  const merged = bridgeOpenings(dedupe(bodies), (options.mergeGapM ?? 1.2) * upm);
+  const deduped = dedupe(bodies);
+  if (options.keepOpenings) return deduped.filter((b) => b.to - b.from >= minLength);
+  const merged = bridgeOpenings(deduped, (options.mergeGapM ?? 1.2) * upm);
   return merged.filter((b) => b.to - b.from >= minLength);
 }
 
@@ -993,4 +1003,75 @@ export function pickComponentByArea(
     }
   }
   return best;
+}
+
+export type Opening = {
+  orientation: "h" | "v";
+  /** Centre of the wall the opening sits in. */
+  centre: number;
+  thickness: number;
+  from: number;
+  to: number;
+};
+
+/**
+ * The doorways, taken from the gaps bridging already has to find.
+ *
+ * bridgeOpenings closes these so the flood fill can tell inside from outside,
+ * and then throws them away. Drawn instead, they stop the model inventing its
+ * own: given a shell whose walls simply stop, it cut two openings דירה 14 does
+ * not have, because nothing in the picture said which breaks were the doors.
+ */
+export function findOpenings(
+  bodies: WallBody[],
+  maxOpening: number,
+  minOpening = 0,
+): Opening[] {
+  const openings: Opening[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const line = bodies
+      .filter((b) => b.orientation === orientation)
+      .sort((a, b) => a.centre - b.centre || a.from - b.from);
+    let group: WallBody[] = [];
+    const flush = () => {
+      if (group.length < 2) {
+        group = [];
+        return;
+      }
+      group.sort((a, b) => a.from - b.from);
+      for (let i = 1; i < group.length; i++) {
+        const prev = group[i - 1]!;
+        const next = group[i]!;
+        const gap = next.from - prev.to;
+        // A doorway is at least a door wide. Under that the gap is two pieces
+        // of one wall meeting at a joint, and דירה 14 has nineteen of those —
+        // 5 to 40 cm — against five real openings.
+        if (gap < Math.max(1, minOpening) || gap > maxOpening) continue;
+        openings.push({
+          orientation,
+          centre: (prev.centre + next.centre) / 2,
+          thickness: Math.max(prev.thickness, next.thickness),
+          from: prev.to,
+          to: next.from,
+        });
+      }
+      group = [];
+    };
+    for (const b of line) {
+      const anchor = group[0];
+      const sameLine = Math.max(3, anchor ? anchor.thickness * 0.3 : 3);
+      if (anchor && Math.abs(b.centre - anchor.centre) > sameLine) flush();
+      group.push(b);
+    }
+    flush();
+  }
+  return openings;
+}
+
+/** The rectangle an opening occupies, matching bodyRect's convention. */
+export function openingRect(o: Opening): { x: number; y: number; w: number; h: number } {
+  const half = o.thickness / 2;
+  return o.orientation === "h"
+    ? { x: o.from, y: o.centre - half, w: o.to - o.from, h: o.thickness }
+    : { x: o.centre - half, y: o.from, w: o.thickness, h: o.to - o.from };
 }

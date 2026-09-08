@@ -1,7 +1,15 @@
 import { findFurniture, type FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 import { lockScale, type ScaleSearch } from "@/lib/projects/floorplan-scale";
-import { bodyRect, type SpanRow, type WallBody } from "@/lib/projects/floorplan-solid";
+import {
+  bodyRect,
+  clipBodiesToBounds,
+  findOpenings,
+  wallBodiesFromHatch,
+  type Opening,
+  type SpanRow,
+  type WallBody,
+} from "@/lib/projects/floorplan-solid";
 import {
   extractFloorplanVectorGeometry,
   wallBoundingBox,
@@ -21,6 +29,7 @@ export type BuiltFlat = {
   bodies: WallBody[];
   floor: SpanRow[];
   furniture: FurniturePiece[];
+  openings: Opening[];
   bounds: { x: number; y: number; width: number; height: number };
   floorM2: number;
   areaError: number;
@@ -84,11 +93,19 @@ export async function buildFlatFromPdf(
     inside(piece.x + piece.w / 2, piece.y + piece.h / 2),
   );
 
+  // The doorways, from the wall pieces before they are joined across them.
+  const pieces = clipBodiesToBounds(
+    wallBodiesFromHatch(geometry.segments, { unitsPerMetre, keepOpenings: true }),
+    sheet,
+  ).filter(touchesFlat);
+  const openings = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
+
   return {
     unitsPerMetre,
     bodies,
     floor,
     furniture,
+    openings,
     bounds,
     floorM2: lock.floorM2,
     areaError: lock.areaError,
@@ -96,6 +113,7 @@ export async function buildFlatFromPdf(
       unitsPerMetre,
       floor,
       furniture,
+      openings,
       width: options?.width,
     }),
   };

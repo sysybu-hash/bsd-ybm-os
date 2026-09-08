@@ -1,5 +1,11 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
-import { bodyRect, type SpanRow, type WallBody } from "@/lib/projects/floorplan-solid";
+import {
+  bodyRect,
+  openingRect,
+  type Opening,
+  type SpanRow,
+  type WallBody,
+} from "@/lib/projects/floorplan-solid";
 
 /**
  * Draws the flat from its geometry, instead of asking a model to imagine it.
@@ -32,6 +38,8 @@ export type Render3dOptions = {
   floor?: SpanRow[];
   /** Pieces read out of the CAD, extruded at the height their kind stands. */
   furniture?: FurniturePiece[];
+  /** The doorways, drawn so the model has no reason to cut its own. */
+  openings?: Opening[];
 };
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -40,6 +48,10 @@ const FLOOR = "#cbbda8";
 const WALL_TOP = "#ffffff";
 const WALL_FACE = "#9c9184";
 const WALL_EDGE = "#6f665c";
+/** A doorway threshold: reads as floor, not as wall, and not as furniture. */
+const THRESHOLD = "#b9ad9b";
+/** The head end of a bed, so its width cannot be mistaken. */
+const PILLOW = "#ffffff";
 /**
  * Furniture blocks are colour-coded, and the prompt names the code.
  *
@@ -188,6 +200,40 @@ export function renderFlatSvg(
         colour.top,
         WALL_EDGE,
       ),
+    );
+
+    // A pillow at the head of a bed. The block alone is a rectangle, and the
+    // model widened it into a double — which for this client is a hard failure.
+    // A pillow says which end is the head and, by its width, how wide the bed is.
+    if (piece.kind === "bed") {
+      const alongY = piece.h > piece.w;
+      const band = (alongY ? piece.h : piece.w) * 0.16;
+      const pillow = alongY
+        ? { x: piece.x, y: piece.y, w: piece.w, h: band }
+        : { x: piece.x, y: piece.y, w: band, h: piece.h };
+      parts.push(
+        quad(
+          [
+            [pillow.x, pillow.y - lift],
+            [pillow.x + pillow.w, pillow.y - lift],
+            [pillow.x + pillow.w, pillow.y + pillow.h - lift],
+            [pillow.x, pillow.y + pillow.h - lift],
+          ],
+          PILLOW,
+          WALL_EDGE,
+        ),
+      );
+    }
+  }
+
+  // Doorways, drawn as a threshold on the floor between the two pieces of wall.
+  // A shell whose walls simply stop says nothing about which breaks are doors,
+  // and the model cut two openings דירה 14 does not have.
+  for (const opening of options.openings ?? []) {
+    const r = openingRect(opening);
+    parts.push(
+      `<rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.w.toFixed(1)}" height="${r.h.toFixed(1)}" ` +
+        `fill="${THRESHOLD}" stroke="${WALL_EDGE}" stroke-width="0.5"/>`,
     );
   }
 

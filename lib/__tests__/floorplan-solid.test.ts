@@ -7,9 +7,11 @@ import {
   calibrateFromInterior,
   clipBodiesToBounds,
   extractHatchStrokes,
+  findOpenings,
   HatchField,
   interiorComponents,
   interiorSpans,
+  openingRect,
   pickComponentByArea,
   spanArea,
   wallBodiesFromHatch,
@@ -583,5 +585,41 @@ describe("two walls stacked one above the other are two walls", () => {
     const bodies = wallBodiesFromHatch(wall, { unitsPerMetre: 56 });
     const onSameCentre = bodies.filter((b) => Math.abs(b.centre - 512) < 8);
     expect(onSameCentre.length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("the doorways, taken from the gaps between wall pieces", () => {
+  const piece = (centre: number, from: number, to: number, thickness = 10) => ({
+    orientation: "h" as const,
+    centre,
+    thickness,
+    from,
+    to,
+  });
+
+  it("finds the gap between two pieces of one wall", () => {
+    const openings = findOpenings([piece(100, 0, 200), piece(100, 290, 500)], 200, 40);
+    expect(openings).toHaveLength(1);
+    expect(openings[0]!.from).toBe(200);
+    expect(openings[0]!.to).toBe(290);
+  });
+
+  it("ignores a joint too narrow to be a door", () => {
+    // דירה 14 has nineteen of these, 5 to 40 cm, against five real openings.
+    expect(findOpenings([piece(100, 0, 200), piece(100, 210, 500)], 200, 40)).toEqual([]);
+  });
+
+  it("ignores a gap too wide to be an opening", () => {
+    expect(findOpenings([piece(100, 0, 200), piece(100, 900, 1100)], 200, 40)).toEqual([]);
+  });
+
+  it("does not read a gap between two different walls as a door", () => {
+    expect(findOpenings([piece(100, 0, 200), piece(400, 290, 500)], 200, 40)).toEqual([]);
+  });
+
+  it("gives the opening the thickness of the wall it sits in", () => {
+    const openings = findOpenings([piece(100, 0, 200, 14), piece(100, 290, 500, 14)], 200, 40);
+    expect(openings[0]!.thickness).toBe(14);
+    expect(openingRect(openings[0]!)).toEqual({ x: 200, y: 93, w: 90, h: 14 });
   });
 });

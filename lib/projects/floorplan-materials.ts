@@ -54,7 +54,8 @@ ${extra}`;
  * inferred from proportions.
  */
 export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are furniture, already positioned exactly as the architect drew them. Each block is already tinted roughly the material it is meant to become — your job is to make it look like the real object at exactly that footprint, not to recolour it:
-- OFF-WHITE block, long and narrow = a SINGLE bed. White linen, one pillow, pale oak frame, headboard against the nearest wall. It stays more than twice as long as it is wide. Never a double bed, never widened, never merged with the block beside it. Exactly as many beds as blocks of this kind.
+- A flat GREY-BROWN strip lying in a break in a wall is a DOORWAY, drawn where the architect drew it. Render an opening there — a door or a cased opening. Every doorway in this flat is already marked this way, so cut no others: where a wall runs unbroken it is solid, however closed-in the room looks.
+- OFF-WHITE block, long and narrow, with a WHITE BAND across one end = a SINGLE bed. The band is the pillow and marks the head; the bed is exactly as wide as that band. White linen, one pillow, pale oak frame, headboard against the nearest wall. It stays more than twice as long as it is wide. Never a double bed, never widened, never merged with the block beside it. Exactly as many beds as blocks of this kind.
 - TAN OAK block, 35-60 cm deep against a wall = a fitted wardrobe or a kitchen run, doors closed.
 - PALE STONE block, wide = a kitchen counter or island: stone worktop over oak base units.
 - WHITE block in a tiled room = a sanitary fixture: a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in.
