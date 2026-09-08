@@ -295,3 +295,34 @@ describe("chairs, which are told from basins by what they stand next to", () => 
     expect(findSeatsAroundTable(knot(430, 590, 0.22 * UPM), undefined, UPM)).toEqual([]);
   });
 });
+
+describe("the short side is capped on its own", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const blob = (x: number, y: number, w: number, h: number) => {
+    const out = [];
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const b = ((i + 1) / 24) * Math.PI * 2;
+      out.push(
+        seg(x + w / 2 + (Math.cos(a) * w) / 2, y + h / 2 + (Math.sin(a) * h) / 2,
+            x + w / 2 + (Math.cos(b) * w) / 2, y + h / 2 + (Math.sin(b) * h) / 2),
+      );
+    }
+    return out;
+  };
+
+  it("finds a wide cluster once the short side is allowed to be wide", () => {
+    // A dining set is 208 by 147 cm on this sheet. The cap was folded into
+    // maxCm at a flat 100 cm, so raising maxCm alone could never find it.
+    const set = blob(300, 560, 2.4 * UPM, 2.0 * UPM);
+    expect(findCurveFixtures(set, UPM, { cell: 14, minChords: 8, minCm: 100, maxCm: 400 })).toEqual([]);
+    expect(
+      findCurveFixtures(set, UPM, { cell: 14, minChords: 8, minCm: 100, maxCm: 400, maxShortCm: 260 }),
+    ).toHaveLength(1);
+  });
+
+  it("still keeps a fixture narrow by default", () => {
+    const wide = blob(300, 560, 1.8 * UPM, 1.5 * UPM);
+    expect(findCurveFixtures(wide, UPM)).toEqual([]);
+  });
+});

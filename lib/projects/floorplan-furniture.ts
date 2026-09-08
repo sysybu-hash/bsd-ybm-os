@@ -208,7 +208,13 @@ export function settleTables(pieces: FurniturePiece[]): FurniturePiece[] {
 export function findCurveFixtures(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { cell?: number; minChords?: number; minCm?: number; maxCm?: number },
+  options?: {
+    cell?: number;
+    minChords?: number;
+    minCm?: number;
+    maxCm?: number;
+    maxShortCm?: number;
+  },
 ): FurniturePiece[] {
   const cell = options?.cell ?? 8;
   const minChords = options?.minChords ?? 4;
@@ -286,7 +292,12 @@ export function findCurveFixtures(
     // ever found.
     const minCm = options?.minCm ?? 28;
     const maxCm = options?.maxCm ?? 150;
-    if (short < minCm || short > Math.min(maxCm, 100) || long < minCm || long > maxCm) continue;
+    // The short side is capped separately, because a fixture is narrow and a
+    // dining set is not. Folding the cap into maxCm at a flat 100 cm meant a
+    // table with its chairs — 208 by 147 cm on this sheet — could never be
+    // found, whatever maxCm was raised to.
+    const maxShortCm = options?.maxShortCm ?? Math.min(maxCm, 100);
+    if (short < minCm || short > maxShortCm || long < minCm || long > maxCm) continue;
     out.push({ x: minX, y: minY, w, h, widthCm, depthCm, kind: "fixture" });
   }
   return out;
