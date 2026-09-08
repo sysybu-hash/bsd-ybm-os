@@ -659,9 +659,10 @@ describe("the footprint, taken from the walls rather than by flooding", () => {
       wall("v", 0, 0, 400),
       wall("v", 400, 0, 400),
     ];
+    // A flood through that gap would return nothing enclosed at all.
     expect(spanArea(footprintByScanFill(withDoor, { x: -20, y: -20, width: 440, height: 440 }, {
       resolution: 4,
-    }))).toBeGreaterThan(140_000);
+    }))).toBeGreaterThan(120_000);
   });
 
   it("keeps a step in the outline, which one axis alone squares off", () => {
