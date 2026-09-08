@@ -521,7 +521,14 @@ export function interiorSpans(
   const step = options?.resolution ?? 2;
   // A terrace slider is the widest opening on these sheets at about 2.4 m.
   const maxOpening = options?.maxOpeningUnits ?? 120;
-  const reach = options?.cornerReachUnits ?? maxOpening / 4;
+  // Corner reach decides whether the flat closes, and it is sharper than it
+  // looks. Swept on דירה 14 against the 132.19 m² the sheet prints: at 0.9 m the
+  // living room is still outside and the region measures 93 m²; at 1.2 m the
+  // living room comes in and it measures 134.2; at 1.4 m it breaks through into
+  // the neighbouring flat and measures 145. Widening the opening bridge instead
+  // does nothing at all — 2 m, 3 m and 4 m all give the same 93 m² — so what was
+  // holding the living room out was unclosed corners, not unbridged doorways.
+  const reach = options?.cornerReachUnits ?? maxOpening / 2;
   const sealed = bridgeOpenings(closeCorners(bodies, reach), maxOpening);
   const w = Math.ceil(bounds.width / step) + 2;
   const h = Math.ceil(bounds.height / step) + 2;
