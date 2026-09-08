@@ -1,6 +1,7 @@
 import { findFurniture } from "@/lib/projects/floorplan-furniture";
 import {
   clipBodiesToBounds,
+  findOpenings,
   footprintByScanFill,
   spanArea,
   wallBodiesFromHatch,
@@ -80,6 +81,23 @@ export function lockScale(
       (p) => p.kind === "bed" && inside(p.x + p.w / 2, p.y + p.h / 2),
     ).length;
     if (beds === 0) continue;
+
+    // A third signal, independent of both: an internal door is 75 to 110 cm.
+    // At 55 units/m this sheet's openings measure 82, 86 and 102 cm — textbook
+    // Israeli doors. At the competing 90 units/m they would be 50, 53 and 62,
+    // which no door is. Rectangles of a bed's proportion cluster at several
+    // sizes and beds alone cannot say which cluster is the beds; doors can.
+    const pieces = clipBodiesToBounds(
+      wallBodiesFromHatch(segments, { unitsPerMetre, keepOpenings: true }),
+      bounds,
+      8,
+      { truncate: true },
+    );
+    const doorLike = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6).filter((o) => {
+      const cm = ((o.to - o.from) / unitsPerMetre) * 100;
+      return cm >= 75 && cm <= 110;
+    }).length;
+    if (doorLike === 0) continue;
 
     const areaError = floorM2 / printedAreaM2 - 1;
     candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });

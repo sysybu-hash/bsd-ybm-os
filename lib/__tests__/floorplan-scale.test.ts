@@ -41,7 +41,10 @@ const bed = (upm: number, x: number, y: number) => {
 const UPM = 50;
 const room = [
   ...hatchedWall("h", 0, 0, 10 * UPM, 12),
-  ...hatchedWall("h", 8 * UPM, 0, 10 * UPM, 12),
+  // The bottom wall in two pieces with a 90 cm doorway between them: a flat
+  // with no door at all is not a flat, and the scale lock checks door width.
+  ...hatchedWall("h", 8 * UPM, 0, 4 * UPM, 12),
+  ...hatchedWall("h", 8 * UPM, 4.9 * UPM, 10 * UPM, 12),
   ...hatchedWall("v", 0, 0, 8 * UPM, 12),
   ...hatchedWall("v", 10 * UPM, 0, 8 * UPM, 12),
   ...bed(UPM, 100, 100),
@@ -72,7 +75,8 @@ describe("locking the sheet's scale", () => {
   it("refuses a sheet with no beds to read", () => {
     const noBeds = [
       ...hatchedWall("h", 0, 0, 10 * UPM, 12),
-      ...hatchedWall("h", 8 * UPM, 0, 10 * UPM, 12),
+      ...hatchedWall("h", 8 * UPM, 0, 4 * UPM, 12),
+      ...hatchedWall("h", 8 * UPM, 4.9 * UPM, 10 * UPM, 12),
       ...hatchedWall("v", 0, 0, 8 * UPM, 12),
       ...hatchedWall("v", 10 * UPM, 0, 8 * UPM, 12),
     ];
@@ -85,5 +89,17 @@ describe("locking the sheet's scale", () => {
     const lock = lockScale(withNeighbour, bounds, 82, { from: 40, to: 62 });
     expect(lock).not.toBeNull();
     expect(lock!.beds).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("the door-width check", () => {
+  it("refuses a scale at which the openings are not door-sized", () => {
+    // Rectangles of a bed's proportion cluster at several sizes on a real
+    // sheet — 23, 51, 84 and 100 units — and beds alone cannot say which
+    // cluster is the beds. At 55 units/m דירה 14's openings are 82, 86 and
+    // 102 cm; at the competing 90 they would be 50, 53 and 62, which no
+    // internal door is.
+    const tooSmall = lockScale(room, bounds, 82, { from: 200, to: 240 });
+    expect(tooSmall).toBeNull();
   });
 });
