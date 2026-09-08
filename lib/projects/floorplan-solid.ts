@@ -1313,3 +1313,48 @@ export function splitAcrossGaps(
   }
   return out;
 }
+
+/**
+ * Trims a wall back to where its hatch runs along it.
+ *
+ * shrinkToHatch fits a band across its thickness; nothing fitted it along its
+ * length, and two steps stretch it there. bridgeOpenings joins pieces across a
+ * doorway, which is right, and across anything else within the same gap, which
+ * is not; closeCorners extends an end to the wall it crosses. Overlaid on the
+ * sheet, those extensions are the pink: long stretches of drawn wall with no
+ * hatch beneath them at all, running out into the living room.
+ *
+ * A doorway is a real gap in a real wall, so the trim keeps whatever lies
+ * between the first and last stroke and only cuts the tails beyond them. The
+ * margin allows the half-thickness a corner needs to close.
+ */
+export function trimToHatchAlong(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  options?: { marginUnits?: number },
+): WallBody[] {
+  const points = extractHatchStrokes(segments);
+  if (points.length === 0) return bodies;
+
+  return bodies.map((body) => {
+    const margin = options?.marginUnits ?? body.thickness;
+    const lowEdge = body.centre - body.thickness / 2 - 1;
+    const highEdge = body.centre + body.thickness / 2 + 1;
+    let first = Infinity;
+    let last = -Infinity;
+    for (const p of points) {
+      const along = body.orientation === "h" ? p.x : p.y;
+      const across = body.orientation === "h" ? p.y : p.x;
+      if (across < lowEdge || across > highEdge) continue;
+      if (along < body.from || along > body.to) continue;
+      first = Math.min(first, along);
+      last = Math.max(last, along);
+    }
+    if (!Number.isFinite(first)) return body;
+    return {
+      ...body,
+      from: Math.max(body.from, first - margin),
+      to: Math.min(body.to, last + margin),
+    };
+  });
+}

@@ -5,6 +5,7 @@ import {
   bodyRect,
   clipBodiesToBounds,
   closeCorners,
+  trimToHatchAlong,
   findOpenings,
   wallBodiesFromHatch,
   type Opening,
@@ -98,7 +99,15 @@ export async function buildFlatFromPdf(
   // joint or a little short of it, which is invisible on paper and leaves every
   // room in the render open at its corners — and an open room is one the model
   // fills in for itself. Worth four points of hatch coverage on its own.
-  const bodies = closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9);
+  // Corners closed, then trimmed back to where each wall's hatch runs. Closing
+  // and bridging both stretch a wall along its length — overlaid on the sheet
+  // those extensions are drawn wall with no hatch under them, running out into
+  // the living room — and the trim keeps everything between the first and last
+  // stroke, cutting only the tails.
+  const bodies = trimToHatchAlong(
+    closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9),
+    geometry.segments,
+  );
   if (bodies.length === 0) return null;
 
   let minX = Infinity;

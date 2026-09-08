@@ -16,6 +16,7 @@ import {
   pickComponentByArea,
   shrinkToHatch,
   splitAcrossGaps,
+  trimToHatchAlong,
   spanArea,
   wallBodiesFromHatch,
   wallBodiesFromSegments,
@@ -740,5 +741,41 @@ describe("fitting a wall to the hatch it contains", () => {
   it("leaves a wall whose hatch runs right across it in one piece", () => {
     const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 300 };
     expect(splitAcrossGaps([body], hatch(100, 120, 0, 300))).toHaveLength(1);
+  });
+});
+
+describe("trimming a wall to where its hatch runs", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const hatch = (y0: number, y1: number, from: number, to: number) => {
+    const out = [];
+    const t = y1 - y0;
+    for (let x = from; x < to; x += 3) {
+      for (let k = 0; k < 3; k++) {
+        const y = y0 + (t / 3) * k;
+        out.push(seg(x, y + t / 3, x + t / 3, y));
+      }
+    }
+    return out;
+  };
+
+  it("cuts a tail that runs out past the last stroke", () => {
+    // closeCorners and bridgeOpenings both stretch a wall along its length, and
+    // the stretch has no hatch under it.
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 600 };
+    const trimmed = trimToHatchAlong([body], hatch(100, 120, 0, 300))[0]!;
+    expect(trimmed.to).toBeLessThan(360);
+    expect(trimmed.from).toBeLessThan(30);
+  });
+
+  it("keeps a doorway, which is a real gap in a real wall", () => {
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 400 };
+    const withDoor = [...hatch(100, 120, 0, 150), ...hatch(100, 120, 250, 400)];
+    const trimmed = trimToHatchAlong([body], withDoor)[0]!;
+    expect(trimmed.to - trimmed.from).toBeGreaterThan(380);
+  });
+
+  it("leaves a wall alone when it has no hatch to trim against", () => {
+    const body = { orientation: "h" as const, centre: 110, thickness: 20, from: 0, to: 600 };
+    expect(trimToHatchAlong([body], [])[0]!.to).toBe(600);
   });
 });
