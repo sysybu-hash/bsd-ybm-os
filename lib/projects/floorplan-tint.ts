@@ -57,7 +57,12 @@ export async function coolTintFraction(
 /**
  * Above this, a coding colour survived into the finish.
  *
- * Set well clear of both sides of the sweep — a bad frame measures 31% and a
- * good one 0% — so this rejects residue without touching a warm, correct still.
+ * Was 2%, set well clear of both sides of the sweep — a bad frame measured 31%
+ * and a good one 0%. Too generous in the middle: a frame with a turquoise
+ * bathroom floor and a magenta panel down one wall measures 1.61% and passed,
+ * scoring 0 overall, because the residue is confined to a couple of surfaces
+ * rather than washed over everything. In a booklet a client is paying for, any
+ * visible coding colour is a reject, and 0.5% still clears a correct frame by an
+ * order of magnitude.
  */
-export const TINT_LIMIT = 0.02;
+export const TINT_LIMIT = 0.005;

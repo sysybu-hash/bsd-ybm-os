@@ -45,3 +45,17 @@ describe("coolTintFraction", () => {
     ).toBeLessThan(TINT_LIMIT);
   });
 });
+
+describe("the limit", () => {
+  it("is tight enough to catch residue on a couple of surfaces", () => {
+    // A frame with a turquoise bathroom floor and a magenta panel down one wall
+    // measures 1.61% and scored 0 overall, because the auditor counts objects
+    // and a turquoise bathroom has the right number of everything.
+    expect(TINT_LIMIT).toBeLessThan(0.0161);
+  });
+
+  it("still clears a correct frame by an order of magnitude", () => {
+    // Warm, correct finishes on דירה 14 measure 0.00% to 0.04%.
+    expect(TINT_LIMIT).toBeGreaterThan(0.0004 * 10);
+  });
+});

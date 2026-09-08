@@ -155,8 +155,13 @@ const grade = async (image) => {
   const failures = [...verdict.failures];
   let score = verdict.score;
   if (tint > TINT_LIMIT) {
-    failures.push(`coding tint left in ${(tint * 100).toFixed(0)}% of the frame`);
+    failures.push(`coding tint left in ${(tint * 100).toFixed(1)}% of the frame`);
     score += 100;
+  } else {
+    // Below the limit it still breaks ties. Two frames with the same failures
+    // are not equally good if one of them has a faintly green chair in it, and
+    // ranking them the same let the tinted one win on arrival order.
+    score += tint * 10;
   }
   console.log(`   attempt: score ${score}${failures.length ? " — " + failures.join("; ") : ""}`);
   return { score, failures };
