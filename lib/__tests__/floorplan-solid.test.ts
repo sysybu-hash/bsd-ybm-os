@@ -546,9 +546,21 @@ describe("hatch has to run all the way across a wall", () => {
 
 describe("two walls stacked one above the other are two walls", () => {
   const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  /**
+   * A hatched band. Strokes are short and staggered across the thickness, the
+   * way CAD draws them — a stroke spanning a thick wall corner to corner is
+   * longer than a hatch stroke ever is, and extractHatchStrokes rejects it.
+   */
   const hatched = (y0: number, y1: number, from: number, to: number) => {
     const out = [seg(from, y0, to, y0), seg(from, y1, to, y1)];
-    for (let x = from; x < to; x += 3) out.push(seg(x, y1, x + (y1 - y0), y0));
+    const thickness = y1 - y0;
+    const step = 3;
+    for (let x = from; x < to; x += step) {
+      for (let k = 0; k < 3; k++) {
+        const y = y0 + (thickness / 3) * k;
+        out.push(seg(x, y + thickness / 3, x + thickness / 3, y));
+      }
+    }
     return out;
   };
 

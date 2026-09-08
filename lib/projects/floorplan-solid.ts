@@ -363,7 +363,13 @@ export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody
       // far wider than any wall, and the merged body took the first member's
       // centre, so a real 2.17 m bathroom partition disappeared into a wall
       // 30 cm away from it. Same mistake as buildWallRuns made, one level up.
-      if (anchor && Math.abs(b.centre - anchor.centre) > Math.max(anchor.thickness, 4)) flush();
+      // Tight. "Within a wall's thickness" was the tolerance, and two stacked
+      // walls sit about that far apart by construction — 24 units, on walls 20
+      // and 28 thick — so bridging merged them straight back together after
+      // dedupe had correctly kept them apart. Two pieces of one wall share a
+      // centre to within a unit or two; nothing else is the same line.
+      const sameLine = Math.max(3, anchor ? anchor.thickness * 0.3 : 3);
+      if (anchor && Math.abs(b.centre - anchor.centre) > sameLine) flush();
       group.push(b);
     }
     flush();
