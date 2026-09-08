@@ -3,6 +3,7 @@ import {
   dedupeRectangles,
   dropNested,
   findRectangles,
+  scaleFromBeds,
   settleFixtures,
   settleTables,
 } from "@/lib/projects/floorplan-furniture";
@@ -129,5 +130,33 @@ describe("a fixture needs a wet room to stand in", () => {
     const settled = settleTables([small, big]);
     expect(settled.filter((p) => p.kind === "table")).toHaveLength(1);
     expect(settled.find((p) => p.x === 500)!.kind).toBe("table");
+  });
+});
+
+describe("reading the scale off the beds", () => {
+  /** A closed 90x200 cm rectangle at a given scale. */
+  const bedAt = (upm: number, x: number, y: number) => {
+    const w = 0.93 * upm;
+    const h = 2.18 * upm;
+    return [
+      { x1: x, y1: y, x2: x + w, y2: y, lineWidth: 2 },
+      { x1: x, y1: y + h, x2: x + w, y2: y + h, lineWidth: 2 },
+      { x1: x, y1: y, x2: x, y2: y + h, lineWidth: 2 },
+      { x1: x + w, y1: y, x2: x + w, y2: y + h, lineWidth: 2 },
+    ];
+  };
+
+  it("finds the scale the drawing was made at", () => {
+    const drawn = [...bedAt(56, 100, 100), ...bedAt(56, 400, 100), ...bedAt(56, 700, 100)];
+    const found = scaleFromBeds(drawn);
+    expect(found).not.toBeNull();
+    expect(Math.abs(found!.unitsPerMetre - 56)).toBeLessThanOrEqual(4);
+    expect(found!.beds).toBeGreaterThanOrEqual(3);
+  });
+
+  it("says nothing when the sheet draws no beds to read", () => {
+    // Better than an answer nothing supports: area and wall thickness both
+    // produce a confident wrong number here.
+    expect(scaleFromBeds([{ x1: 0, y1: 0, x2: 100, y2: 0, lineWidth: 2 }])).toBeNull();
   });
 });

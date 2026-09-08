@@ -201,3 +201,34 @@ export function findFurniture(
   });
   return settleTables(settleFixtures(pieces, unitsPerMetre));
 }
+
+/**
+ * The sheet's scale, read off the beds.
+ *
+ * Every other anchor tried here feeds back into itself. Solving the scale from
+ * the enclosed floor area has two fixed points and settles on the wrong one,
+ * because the wall detector's thresholds are in metres, so the scale decides
+ * which walls are found, which decides the area: 43.2 units/m is exactly as
+ * self-consistent as 56. Wall thickness is no better — swept across 36 to 72
+ * units/m the median wall comes out 32 to 38 cm at every one of them, for the
+ * same reason.
+ *
+ * A bed is not a property of the drawing. 90 by 200 cm is a fact about the
+ * world, so the scale at which a sheet's rectangles read as beds is the sheet's
+ * scale, and nothing about the detector can move it. On דירה 14 it is sharp:
+ * no beds at all below 48 units/m or above 60, three to four across 52 to 60.
+ */
+export function scaleFromBeds(
+  segments: VectorSegment[],
+  options?: { from?: number; to?: number; step?: number },
+): { unitsPerMetre: number; beds: number } | null {
+  const from = options?.from ?? 36;
+  const to = options?.to ?? 72;
+  const step = options?.step ?? 2;
+  let best: { unitsPerMetre: number; beds: number } | null = null;
+  for (let upm = from; upm <= to; upm += step) {
+    const beds = findFurniture(segments, upm).filter((p) => p.kind === "bed").length;
+    if (beds > 0 && (!best || beds > best.beds)) best = { unitsPerMetre: upm, beds };
+  }
+  return best;
+}
