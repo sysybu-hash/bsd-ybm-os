@@ -245,12 +245,7 @@ function dedupe(bodies: WallBody[]): WallBody[] {
       // construction — the top-right wall of דירה 14 sits 24 units from the one
       // above it, each about 20 to 28 thick, so the thicker one deleted it and
       // 190 hatch strokes went uncovered where the outline steps.
-      const aLow = o.centre - o.thickness / 2;
-      const aHigh = o.centre + o.thickness / 2;
-      const bLow = b.centre - b.thickness / 2;
-      const bHigh = b.centre + b.thickness / 2;
-      const across = Math.min(aHigh, bHigh) - Math.max(aLow, bLow);
-      if (across < b.thickness * 0.6) return false;
+      if (!overlapAcross(o, b, 0.6)) return false;
       return Math.min(o.to, b.to) - Math.max(o.from, b.from) > (b.to - b.from) * 0.6;
     });
     if (!covered) out.push(b);
@@ -331,6 +326,16 @@ export function bodyRect(b: WallBody): { x: number; y: number; w: number; h: num
  * moving any wall. The bridges are never drawn — they exist only so the flood
  * fill can tell inside from outside.
  */
+/** Whether two bodies overlap across their thickness by at least `share`. */
+function overlapAcross(a: WallBody, b: WallBody, share: number): boolean {
+  const aLow = a.centre - a.thickness / 2;
+  const aHigh = a.centre + a.thickness / 2;
+  const bLow = b.centre - b.thickness / 2;
+  const bHigh = b.centre + b.thickness / 2;
+  const across = Math.min(aHigh, bHigh) - Math.max(aLow, bLow);
+  return across >= Math.min(a.thickness, b.thickness) * share;
+}
+
 export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody[] {
   const out: WallBody[] = [];
   for (const orientation of ["h", "v"] as const) {
@@ -363,13 +368,14 @@ export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody
       // far wider than any wall, and the merged body took the first member's
       // centre, so a real 2.17 m bathroom partition disappeared into a wall
       // 30 cm away from it. Same mistake as buildWallRuns made, one level up.
-      // Tight. "Within a wall's thickness" was the tolerance, and two stacked
-      // walls sit about that far apart by construction — 24 units, on walls 20
-      // and 28 thick — so bridging merged them straight back together after
-      // dedupe had correctly kept them apart. Two pieces of one wall share a
-      // centre to within a unit or two; nothing else is the same line.
-      const sameLine = Math.max(3, anchor ? anchor.thickness * 0.3 : 3);
-      if (anchor && Math.abs(b.centre - anchor.centre) > sameLine) flush();
+      // Same line means the two bodies overlap across their thickness, not that
+      // their centres are close. Centre distance was the test and it fails both
+      // ways: loose, it merged a wall with the one stacked above it; tight, it
+      // left one wall in pieces, because different stretches of it pair with
+      // different faces where a reveal line runs out, so their centres differ by
+      // more than the tolerance. Overlap is the same criterion dedupe uses, and
+      // it is the one that means "these are the same wall".
+      if (anchor && !overlapAcross(anchor, b, 0.5)) flush();
       group.push(b);
     }
     flush();
