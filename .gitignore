@@ -105,3 +105,7 @@ tmp/
 # between .next/dev/types and .next/types, so committing it means permanent
 # churn. Verified: tsc --noEmit passes without it, even with no .next present.
 next-env.d.ts
+
+# scratch diagnostics, hardcoded to one plan
+scripts/_*.mjs
+e2e/_*.spec.ts
