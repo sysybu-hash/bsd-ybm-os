@@ -181,14 +181,165 @@ export function settleFixtures(pieces: FurniturePiece[], unitsPerMetre: number):
 }
 
 /**
- * A flat has one dining table. Extra ones are something else the size matched.
+ * A flat has one dining table, and it is the one with chairs round it.
+ *
+ * Keeping the largest rectangle of table size picked the drawing's own legend —
+ * the 136 by 86 cm box holding "111.29 מ"ר ברוטו" — on every run of דירה 14, and
+ * the still came back with the dining table pushed against the kitchen where the
+ * legend sits instead of in the middle of the living room where it is drawn.
+ *
+ * Chairs are the thing that tells a table from a box on the sheet, and they were
+ * already being counted, just afterwards: the seats were looked for around
+ * whichever candidate had already won on area. Asked first, they settle it — the
+ * legend has none. If nothing has a chair beside it there is no dining table
+ * here, which is a better answer than the legend.
  */
-export function settleTables(pieces: FurniturePiece[]): FurniturePiece[] {
-  const tables = pieces
-    .filter((p) => p.kind === "table")
-    .sort((a, b) => b.w * b.h - a.w * a.h);
-  const keep = tables[0];
-  return pieces.map((p) => (p.kind === "table" && p !== keep ? { ...p, kind: "unknown" as const } : p));
+export function settleTables(
+  pieces: FurniturePiece[],
+  curves: VectorSegment[] = [],
+  unitsPerMetre = 54,
+  preferred?: FurniturePiece | null,
+): FurniturePiece[] {
+  const tables = pieces.filter((p) => p.kind === "table");
+  if (tables.length === 0) return pieces;
+  // A table built from the ring of chairs round it needs no seat test — the
+  // ring is the seats. It would fail one anyway: this CAD draws a chair as four
+  // corner arcs about 13 cm across, and the seat search looks for whole chairs
+  // of 32 to 70 cm, so it finds none anywhere near the real dining table.
+  let keep = preferred && tables.includes(preferred) ? preferred : undefined;
+  if (!keep) {
+    const scored = tables
+      .map((table) => ({
+        table,
+        seats: findSeatsAroundTable(curves, table, unitsPerMetre).length,
+      }))
+      .sort(
+        (a, b) => b.seats - a.seats || b.table.w * b.table.h - a.table.w * a.table.h,
+      );
+    const best = scored[0]!;
+    // Rejecting on no seats only counts as evidence when there were chairs to
+    // find. A sheet that carries no curve data at all says nothing either way,
+    // and there the largest candidate is still the best guess available.
+    keep = best.seats > 0 || curves.length === 0 ? best.table : undefined;
+  }
+  return pieces.map((p) =>
+    p.kind === "table" && p !== keep ? { ...p, kind: "unknown" as const } : p,
+  );
+}
+
+/**
+ * The dining table, from the ring of chairs drawn round it.
+ *
+ * This CAD draws a chair as a rounded rectangle, and only its four corner arcs
+ * reach the curve list — the straight sides are ordinary segments. So a chair
+ * never clusters into one shape: דירה 14's dining chairs come through as ten
+ * separate 11 by 15 cm knots, and no search for a chair-sized or table-sized
+ * curve shape can find anything at all in the living room. The table itself is
+ * drawn the same way and is equally invisible.
+ *
+ * The arrangement survives even though the objects do not. Corner knots sitting
+ * in a ring, a couple of metres across, are chairs round a table — nothing else
+ * on a flat's plan is laid out that way — and the table is the hole in the
+ * middle, inset from the ring by the depth of a chair.
+ */
+export function findDiningTable(
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { chairDepthM?: number },
+): FurniturePiece | null {
+  const chairDepth = (options?.chairDepthM ?? 0.42) * unitsPerMetre;
+  const knots = findCurveFixtures(curves, unitsPerMetre, {
+    cell: 5,
+    minChords: 3,
+    minCm: 6,
+    maxCm: 36,
+    maxShortCm: 36,
+  });
+  if (knots.length < 6) return null;
+  const centres = knots.map((k) => ({ x: k.x + k.w / 2, y: k.y + k.h / 2 }));
+
+  // Swept rather than fixed, because no single link distance separates the two
+  // groups: דירה 14's dining chairs sit 1.00 m apart round the table and the
+  // nearest armchair of the living-room suite is 1.09 m beyond the last of them.
+  // Nine per cent is not a margin to hard-code, so the sweep asks each distance
+  // in turn and keeps the largest group that is shaped like a dining set. Too
+  // tight and the ring falls into pairs that fail the size gate; too loose and
+  // it swallows the suite and fails it the other way. Only the distances that
+  // isolate the ring produce anything at all.
+  let best: FurniturePiece | null = null;
+  let bestKnots = 0;
+  for (let linkM = 0.55; linkM <= 1.45; linkM += 0.05) {
+    const link = linkM * unitsPerMetre;
+    const found = ringAt(knots, centres, link, chairDepth, unitsPerMetre);
+    if (found && found.knots > bestKnots) {
+      best = found.piece;
+      bestKnots = found.knots;
+    }
+  }
+  return best;
+}
+
+/** The dining ring at one link distance, or nothing if none is shaped like one. */
+function ringAt(
+  knots: FurniturePiece[],
+  centres: Array<{ x: number; y: number }>,
+  link: number,
+  chairDepth: number,
+  unitsPerMetre: number,
+): { piece: FurniturePiece; knots: number } | null {
+  const seen = new Array<boolean>(centres.length).fill(false);
+  let best: { piece: FurniturePiece; knots: number } | null = null;
+  for (let i = 0; i < centres.length; i++) {
+    if (seen[i]) continue;
+    const stack = [i];
+    const group: number[] = [];
+    seen[i] = true;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      group.push(cur);
+      for (let j = 0; j < centres.length; j++) {
+        if (seen[j]) continue;
+        const dx = centres[cur]!.x - centres[j]!.x;
+        const dy = centres[cur]!.y - centres[j]!.y;
+        if (Math.hypot(dx, dy) > link) continue;
+        seen[j] = true;
+        stack.push(j);
+      }
+    }
+    if (group.length < 6) continue;
+
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const g of group) {
+      const k = knots[g]!;
+      x0 = Math.min(x0, k.x);
+      y0 = Math.min(y0, k.y);
+      x1 = Math.max(x1, k.x + k.w);
+      y1 = Math.max(y1, k.y + k.h);
+    }
+    const longCm = (Math.max(x1 - x0, y1 - y0) / unitsPerMetre) * 100;
+    const shortCm = (Math.min(x1 - x0, y1 - y0) / unitsPerMetre) * 100;
+    if (longCm < 120 || longCm > 360 || shortCm < 80 || shortCm > 260) continue;
+
+    const x = x0 + chairDepth;
+    const y = y0 + chairDepth;
+    const w = x1 - x0 - chairDepth * 2;
+    const h = y1 - y0 - chairDepth * 2;
+    if (w < unitsPerMetre * 0.6 || h < unitsPerMetre * 0.6) continue;
+    const piece: FurniturePiece = {
+      x,
+      y,
+      w,
+      h,
+      widthCm: (w / unitsPerMetre) * 100,
+      depthCm: (h / unitsPerMetre) * 100,
+      kind: "table",
+    };
+    if (!best || group.length > best.knots) best = { piece, knots: group.length };
+  }
+  return best;
 }
 
 /**
@@ -428,9 +579,15 @@ export function findFurniture(
   // Curve-drawn fixtures are added before settling, so a bath found as a
   // rectangle can vouch for the pans and basins clustered around it.
   const kitchen = findKitchenFittings(segments, options?.curves ?? [], unitsPerMetre);
-  const table = pieces.find((p) => p.kind === "table");
+  // The drawn table before the rectangles' idea of one. A dining table on this
+  // CAD is rounded, so it reaches neither the rectangle list nor the curve list
+  // as a shape — it has to be inferred from the ring of chairs round it — while
+  // the rectangle that does look like a table is the drawing's legend box.
+  const ring = findDiningTable(options?.curves ?? [], unitsPerMetre);
+  const table = ring ?? pieces.find((p) => p.kind === "table");
   const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
   const withCurves = [
+    ...(ring ? [ring] : []),
     ...kitchen,
     ...seats.filter(
       (s) => !kitchen.some((k) => Math.abs(k.x - s.x) < 4 && Math.abs(k.y - s.y) < 4),
@@ -446,7 +603,12 @@ export function findFurniture(
         !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
     ),
   ];
-  return settleTables(settleFixtures(withCurves, unitsPerMetre));
+  return settleTables(
+    settleFixtures(withCurves, unitsPerMetre),
+    options?.curves ?? [],
+    unitsPerMetre,
+    ring,
+  );
 }
 
 /**

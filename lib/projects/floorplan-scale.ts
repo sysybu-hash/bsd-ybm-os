@@ -3,6 +3,7 @@ import {
   clipBodiesToBounds,
   findOpenings,
   footprintByScanFill,
+  lintelBands,
   smoothFootprint,
   spanArea,
   wallBodiesFromHatch,
@@ -69,7 +70,18 @@ export function lockScale(
     // flat on a sheet that carries two, and a scanline cannot leak.
     // Closed to about a third of a metre, which fills the scanline's notches
     // and leaves every real step in the outline — those are metres across.
-    const floor = smoothFootprint(footprintByScanFill(bodies, bounds), unitsPerMetre * 0.33);
+    // Lintels count as enclosure, walls alone do not. The ממ"ד's north side is
+    // one window nearly the width of the room, so no wall body is built there,
+    // and without the lintel the scanline left a hole the size of the room —
+    // which then dropped the bed drawn inside it for being outside the flat.
+    const enclosure = [
+      ...bodies,
+      ...lintelBands(segments, bodies, unitsPerMetre),
+    ];
+    const floor = smoothFootprint(
+      footprintByScanFill(enclosure, bounds),
+      unitsPerMetre * 0.33,
+    );
     if (floor.length === 0) continue;
 
     const floorM2 = spanArea(floor) / (unitsPerMetre * unitsPerMetre);

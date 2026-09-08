@@ -459,6 +459,82 @@ export function endGapPatches(
   return patches;
 }
 
+/**
+ * The lintels over the windows, which close a room the hatch leaves open.
+ *
+ * A wall is a band of hatch, and that rule found every wall on דירה 14. It also
+ * means a window is nothing: the sheet draws a window as the wall's two faces
+ * carrying straight on with the frame between them and no fill, because there
+ * is nothing solid there to fill. Correct, and it cost the flat a room.
+ *
+ * The ממ"ד's north side is one window nearly the full width of the room — the
+ * sheet labels it חלון ממ"ד הזזה. Measured, that span holds 9.3 hatch strokes
+ * per 1000 square units where the three walls around it hold 48, 55 and 68, so
+ * no body is built there and the scanline finds no wall above those columns.
+ * The footprint came back with a 68-unit hole exactly the size of the room, the
+ * bed drawn inside it was dropped for being outside the flat, and the render put
+ * three beds in the stack below and none in the ממ"ד.
+ *
+ * A window is still enclosure. There is a lintel over it and the wall line runs
+ * through. So a band bracketed by two parallel faces at a wall's thickness is
+ * taken as enclosure when it continues a wall that is really there — same line,
+ * comparable thickness, and close enough along to be the same wall. That last
+ * condition is what keeps this narrow: dropping the hatch test on its own admits
+ * every pair of furniture edges on the sheet.
+ *
+ * Mask only. Nothing here is drawn — the opening belongs to findOpenings, and a
+ * lintel rendered as wall would brick up the window.
+ */
+export function lintelBands(
+  segments: VectorSegment[],
+  bodies: WallBody[],
+  unitsPerMetre: number,
+  options?: { reachM?: number; minLengthM?: number },
+): WallBody[] {
+  const minThickness = MIN_THICKNESS_M * unitsPerMetre;
+  const maxThickness = MAX_THICKNESS_M * unitsPerMetre;
+  const minLength = (options?.minLengthM ?? 0.2) * unitsPerMetre;
+  const reach = (options?.reachM ?? 1.2) * unitsPerMetre;
+
+  const runs = buildWallRuns(
+    segments.filter((s) => isAxisAligned(s) && segmentLength(s) >= 3),
+  );
+  const out: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const faces = runs
+      .filter((r) => r.orientation === orientation && r.to - r.from >= minLength)
+      .sort((a, b) => a.at - b.at);
+    const walls = bodies.filter((b) => b.orientation === orientation);
+
+    for (let i = 0; i < faces.length; i++) {
+      for (let j = i + 1; j < faces.length; j++) {
+        const a = faces[i]!;
+        const b = faces[j]!;
+        const gap = b.at - a.at;
+        if (gap < minThickness) continue;
+        if (gap > maxThickness) break;
+        const from = Math.max(a.from, b.from);
+        const to = Math.min(a.to, b.to);
+        if (to - from < minLength) continue;
+        const centre = (a.at + b.at) / 2;
+
+        const continues = walls.some((w) => {
+          if (Math.abs(w.centre - centre) > Math.min(w.thickness, gap) / 2) {
+            return false;
+          }
+          const thicker = Math.max(w.thickness, gap);
+          if (Math.abs(w.thickness - gap) > thicker * 0.5) return false;
+          // Overlapping, or stopping within reach along the same line.
+          return from - w.to <= reach && w.from - to <= reach;
+        });
+        if (!continues) continue;
+        out.push({ orientation, centre, thickness: gap, from, to });
+      }
+    }
+  }
+  return dedupe(out);
+}
+
 export type SpanRow = { y: number; spans: Array<[number, number]> };
 
 /**
