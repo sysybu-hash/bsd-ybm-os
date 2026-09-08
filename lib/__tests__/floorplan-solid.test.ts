@@ -543,3 +543,33 @@ describe("hatch has to run all the way across a wall", () => {
     expect(bodies.every((b) => b.thickness < 20)).toBe(true);
   });
 });
+
+describe("two walls stacked one above the other are two walls", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const hatched = (y0: number, y1: number, from: number, to: number) => {
+    const out = [seg(from, y0, to, y0), seg(from, y1, to, y1)];
+    for (let x = from; x < to; x += 3) out.push(seg(x, y1, x + (y1 - y0), y0));
+    return out;
+  };
+
+  it("keeps both when one sits directly above the other", () => {
+    // דירה 14's top-right wall sits 24 units from the one above it, each about
+    // 20 to 28 thick. The old duplicate test — centres within the sum of half
+    // thicknesses — is satisfied by any two stacked walls, so the thicker one
+    // deleted the thinner and 190 hatch strokes went uncovered at the step in
+    // the outline.
+    const stacked = [...hatched(480, 508, 420, 762), ...hatched(510, 530, 420, 762)];
+    const bodies = wallBodiesFromHatch(stacked, { unitsPerMetre: 56 });
+    expect(bodies.length).toBeGreaterThanOrEqual(2);
+    expect(bodies.some((b) => Math.abs(b.centre - 520) < 6)).toBe(true);
+  });
+
+  it("still collapses one wall found twice", () => {
+    // A reveal line inside a wall yields a second, tighter band on the same
+    // centre; that is a duplicate and only one should survive.
+    const wall = hatched(500, 524, 100, 500);
+    const bodies = wallBodiesFromHatch(wall, { unitsPerMetre: 56 });
+    const onSameCentre = bodies.filter((b) => Math.abs(b.centre - 512) < 8);
+    expect(onSameCentre.length).toBeLessThanOrEqual(1);
+  });
+});

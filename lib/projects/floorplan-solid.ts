@@ -238,12 +238,21 @@ function dropCombs(
 function dedupe(bodies: WallBody[]): WallBody[] {
   const out: WallBody[] = [];
   for (const b of bodies.slice().sort((p, q) => q.thickness - p.thickness)) {
-    const covered = out.some(
-      (o) =>
-        o.orientation === b.orientation &&
-        Math.abs(o.centre - b.centre) <= (o.thickness + b.thickness) / 2 &&
-        Math.min(o.to, b.to) - Math.max(o.from, b.from) > (b.to - b.from) * 0.6,
-    );
+    const covered = out.some((o) => {
+      if (o.orientation !== b.orientation) return false;
+      // Overlapping across the thickness, not merely near in centre. The centre
+      // test was `|dc| <= (ta + tb) / 2`, which two stacked walls satisfy by
+      // construction — the top-right wall of דירה 14 sits 24 units from the one
+      // above it, each about 20 to 28 thick, so the thicker one deleted it and
+      // 190 hatch strokes went uncovered where the outline steps.
+      const aLow = o.centre - o.thickness / 2;
+      const aHigh = o.centre + o.thickness / 2;
+      const bLow = b.centre - b.thickness / 2;
+      const bHigh = b.centre + b.thickness / 2;
+      const across = Math.min(aHigh, bHigh) - Math.max(aLow, bLow);
+      if (across < b.thickness * 0.6) return false;
+      return Math.min(o.to, b.to) - Math.max(o.from, b.from) > (b.to - b.from) * 0.6;
+    });
     if (!covered) out.push(b);
   }
   return out;
