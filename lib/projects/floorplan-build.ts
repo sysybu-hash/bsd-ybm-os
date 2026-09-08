@@ -4,6 +4,7 @@ import { lockScale, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
   clipBodiesToBounds,
+  closeCorners,
   findOpenings,
   wallBodiesFromHatch,
   type Opening,
@@ -93,7 +94,11 @@ export async function buildFlatFromPdf(
     }
     return false;
   };
-  const bodies = lock.bodies.filter(touchesFlat);
+  // Extended to their intersections before drawing. CAD stops two lines at a
+  // joint or a little short of it, which is invisible on paper and leaves every
+  // room in the render open at its corners — and an open room is one the model
+  // fills in for itself. Worth four points of hatch coverage on its own.
+  const bodies = closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9);
   if (bodies.length === 0) return null;
 
   let minX = Infinity;

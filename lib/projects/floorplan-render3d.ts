@@ -44,9 +44,15 @@ export type Render3dOptions = {
 
 type Box = { x: number; y: number; width: number; height: number };
 
-const FLOOR = "#cbbda8";
-const WALL_TOP = "#ffffff";
-const WALL_FACE = "#9c9184";
+const FLOOR = "#c3b49d";
+/**
+ * Grey, not white. Wall tops were pure white and a bed's linen is off-white, so
+ * the two were within a shade of each other and the model could not tell a bed
+ * from a wall: given four bed blocks it drew three, and two bedrooms where the
+ * plan has four. Furniture has to read as furniture at a glance.
+ */
+const WALL_TOP = "#d7d2ca";
+const WALL_FACE = "#8d8377";
 const WALL_EDGE = "#6f665c";
 /** A doorway threshold: reads as floor, not as wall, and not as furniture. */
 const THRESHOLD = "#b9ad9b";
@@ -66,7 +72,7 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   // second pass asked to restate them in real materials left green chairs and
   // orange tables standing in the finished frame. A palette that is its own
   // answer needs no decoding.
-  bed: { top: "#f2efe9", face: "#d8d2c8" },
+  bed: { top: "#fdfdfc", face: "#e6e2da" },
   storage: { top: "#c9a678", face: "#a8875b" },
   counter: { top: "#eae6df", face: "#b9b2a6" },
   fixture: { top: "#fbfbfa", face: "#dfe3e4" },
