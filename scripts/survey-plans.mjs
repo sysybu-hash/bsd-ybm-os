@@ -28,7 +28,9 @@ const { extractFloorplanVectorGeometry, extractPrintedAreas, wallBoundingBox } =
 const { hatchedWallExtent } = await import("../lib/projects/floorplan-solid.ts");
 const { buildFlatFromPdf } = await import("../lib/projects/floorplan-build.ts");
 
-const only = process.argv[2];
+const args = process.argv.slice(2);
+const grossOnly = args.includes("--gross-only");
+const only = args.find((a) => !a.startsWith("--"));
 const rows = [];
 
 for (const plan of truth.plans) {
@@ -61,8 +63,9 @@ for (const plan of truth.plans) {
     (t) => Math.abs(t.levelM - plan.levelM) < 0.01,
   );
   const roof = plan.terraces.length - sameLevel.length;
-  const target =
-    plan.grossM2 + sameLevel.reduce((sum, t) => sum + t.m2, 0);
+  const target = grossOnly
+    ? plan.grossM2
+    : plan.grossM2 + sameLevel.reduce((sum, t) => sum + t.m2, 0);
 
   const sheet = wallBoundingBox(cut);
   const extent = sheet ? hatchedWallExtent(cut.segments, sheet, 54) : null;
@@ -85,6 +88,15 @@ for (const plan of truth.plans) {
     kinds[piece.kind] = (kinds[piece.kind] ?? 0) + 1;
   }
   const printed = (await extractPrintedAreas(cutBytes)).map((a) => a.value);
+  // A single bed is 200 cm long. It checks the scale without going through the
+  // printed area, which is the only other thing the lock has to go on.
+  const bedLengths = built.furniture
+    .filter((p) => p.kind === "bed")
+    .map((p) => Math.max(p.widthCm, p.depthCm))
+    .sort((a, b) => a - b);
+  const bedCm = bedLengths.length
+    ? Math.round(bedLengths[bedLengths.length >> 1])
+    : null;
 
   rows.push({
     name,
@@ -96,6 +108,7 @@ for (const plan of truth.plans) {
     beds: kinds.bed ?? 0,
     seats: kinds.seat ?? 0,
     tables: kinds.table ?? 0,
+    bedCm,
     terrFound: built.terraces.length,
     terrSame: sameLevel.length,
     terrRoof: roof,
@@ -113,6 +126,7 @@ const cols = [
   ["beds", (r) => r.beds ?? "-"],
   ["seats", (r) => r.seats ?? "-"],
   ["tbl", (r) => r.tables ?? "-"],
+  ["bedCm", (r) => r.bedCm ?? "-"],
   ["terr", (r) => (r.terrFound == null ? "-" : `${r.terrFound}/${r.terrSame}`)],
   ["roof", (r) => r.terrRoof ?? "-"],
   ["printed", (r) => r.printed ?? "-"],
