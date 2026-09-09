@@ -57,6 +57,7 @@ const { buildPlacementPrompt, RECOLOUR_PROMPT } = await import("../lib/projects/
 const { auditFloorplanStill, gradeFloorplanStill } = await import("../lib/projects/floorplan-viz-audit.ts");
 const { pickBestFinish } = await import("../lib/projects/floorplan-finish.ts");
 const { coolTintFraction, TINT_LIMIT } = await import("../lib/projects/floorplan-tint.ts");
+const { measureBlockFidelity, fidelityFailures } = await import("../lib/projects/floorplan-fidelity.ts");
 const { parseFloorplanLayout } = await import("../lib/projects/floorplan-layout.ts");
 const { stampFloorplanStill } = await import("../lib/projects/floorplan-viz-stamp.ts");
 const { getGeminiApiKey } = await import("../lib/gemini-api-key.ts");
@@ -152,8 +153,17 @@ const grade = async (image) => {
   // right number of everything — one frame scored 0 with both bathrooms bright
   // green, which is unusable and would have shipped.
   const tint = await coolTintFraction(image);
-  const failures = [...verdict.failures];
-  let score = verdict.score;
+  // Measured against the render it was made from, block by block. The auditor
+  // counts objects, and a frame that turned the living-room suite into a length
+  // of wall has the right number of everything — one such scored 0.
+  const fidelity = await measureBlockFidelity({
+    geometry,
+    still: Buffer.from(image.base64, "base64"),
+    furniture: flat.furniture,
+    bounds: flat.bounds,
+  });
+  const failures = [...verdict.failures, ...fidelityFailures(fidelity)];
+  let score = verdict.score + (fidelity.total - fidelity.present);
   if (tint > TINT_LIMIT) {
     failures.push(`coding tint left in ${(tint * 100).toFixed(1)}% of the frame`);
     score += 100;
