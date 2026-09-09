@@ -58,6 +58,8 @@ const { auditFloorplanStill, gradeFloorplanStill } = await import("../lib/projec
 const { pickBestFinish } = await import("../lib/projects/floorplan-finish.ts");
 const { coolTintFraction, TINT_LIMIT } = await import("../lib/projects/floorplan-tint.ts");
 const { measureBlockFidelity, fidelityFailures } = await import("../lib/projects/floorplan-fidelity.ts");
+const { segmentRooms, roomsForLayout } = await import("../lib/projects/floorplan-segment.ts");
+const { assessFloorplanRun, describeConfidence } = await import("../lib/projects/floorplan-confidence.ts");
 const { parseFloorplanLayout } = await import("../lib/projects/floorplan-layout.ts");
 const { stampFloorplanStill } = await import("../lib/projects/floorplan-viz-stamp.ts");
 const { getGeminiApiKey } = await import("../lib/gemini-api-key.ts");
@@ -191,3 +193,52 @@ console.log(`${name}: score ${best.score} after ${best.attempts} finish(es)${bes
 if (best.failures.length) console.log(`   remaining: ${best.failures.join("; ")}`);
 console.log(`   geometry -> ${geometryPath}`);
 console.log(`   still    -> ${stillPath}`);
+
+// Whether this run is fit to sell. The booklet reads the verdict rather than
+// trusting that a still on disk means the flat was read correctly.
+const rooms = segmentRooms({
+  bodies: flat.bodies,
+  openings: flat.openings,
+  floor: flat.floor,
+  furniture: flat.furniture,
+  terraces: flat.terraces,
+  bounds: flat.bounds,
+  unitsPerMetre: flat.unitsPerMetre,
+  segments: cut.segments,
+});
+const finalFidelity = await measureBlockFidelity({
+  geometry,
+  still: Buffer.from(stamped.base64, "base64"),
+  furniture: flat.furniture,
+  bounds: flat.bounds,
+});
+const confidence = assessFloorplanRun({
+  areaError: flat.areaError,
+  unitsPerMetre: flat.unitsPerMetre,
+  wallCount: flat.bodies.length,
+  furniture: flat.furniture,
+  rooms,
+  fidelity: finalFidelity,
+  coolTint: await coolTintFraction({ base64: stamped.base64 }),
+  foundTerraces: flat.terraces.length,
+});
+const reportPath = path.join(outDir, `${name} — בדיקה.json`);
+fs.writeFileSync(
+  reportPath,
+  JSON.stringify(
+    {
+      unitLabel: name,
+      grossAreaM2: grossArea,
+      unitsPerMetre: flat.unitsPerMetre,
+      areaError: flat.areaError,
+      confidence,
+      rooms: roomsForLayout(rooms),
+      islandStoolCount: flat.furniture.filter((p) => p.kind === "seat").length,
+    },
+    null,
+    2,
+  ),
+);
+console.log(`   report   -> ${reportPath}`);
+console.log(describeConfidence(confidence));
+if (!confidence.ok) process.exitCode = 3;
