@@ -27,6 +27,11 @@ import {
 import { hatchedWallExtent } from "@/lib/projects/floorplan-solid";
 import { coolTintFraction, TINT_LIMIT } from "@/lib/projects/floorplan-tint";
 import {
+  applyHarediModesty,
+  stylePromptForView,
+  type FloorplanVizStyleKit,
+} from "@/lib/projects/floorplan-viz-styles";
+import {
   extractFloorplanVectorGeometry,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
@@ -79,7 +84,14 @@ export type RenderFlatOptions = {
   attempts?: number;
   goodEnough?: number;
   haredi?: boolean;
-  /** Appended to the materials prompt; it licenses no change to the geometry. */
+  /**
+   * The finish the buyer chose. Composed against `source: "geometry"`, so the
+   * locks that describe a sales sheet are swapped for the ones that describe
+   * this render — and the style's own materials block, which is the part that
+   * was always compatible, is carried through unchanged.
+   */
+  styleKit?: FloorplanVizStyleKit;
+  /** Extra direction for the materials; it licenses no change to the geometry. */
   styleDirection?: string;
   label?: string;
 };
@@ -165,7 +177,20 @@ export async function renderFlatFromPdf(
     .toBuffer();
 
   const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-  const prompt = buildPlacementPrompt(options.styleDirection);
+  const styleBlock = options.styleKit
+    ? stylePromptForView(
+        options.haredi
+          ? applyHarediModesty(options.styleKit)
+          : options.styleKit,
+        { kind: "overview" },
+        { source: "geometry" },
+      )
+    : undefined;
+  const prompt = buildPlacementPrompt(
+    [styleBlock, options.styleDirection]
+      .filter(Boolean)
+      .join("\n\n") || undefined,
+  );
   const plan = {
     base64: Buffer.from(pdf).toString("base64"),
     mimeType: "application/pdf",

@@ -222,30 +222,128 @@ FURNITURE LOCK (cutaway / isometric — non-negotiable):
 - Omit CAD entrance arrows. Show wet fixtures in every bathroom that has pans on the sheet.
 `.trim();
 
+/**
+ * The locks, restated for a render that already contains the flat.
+ *
+ * The originals were written for one job — hand the model a sales plan and ask
+ * it to draw an apartment — and they carry that job in every line. Composed
+ * over the geometric render they are not merely redundant, they are false in
+ * places, and a prompt that contradicts itself is resolved by the model rather
+ * than by us. That has cost this project twice already: a legend naming green
+ * as the colour of a chair while also forbidding green, and a key telling the
+ * model the render carried no chairs when it did.
+ *
+ * Three clauses were doing active harm here.
+ *
+ * PLAN_TRACE_LOCK opens "The attached sales plan is the only layout" — the
+ * attachment is the render. It also tells the model to furnish the terraces
+ * with a bistro table and planters, which is the opposite of the geometry key.
+ *
+ * CONTENTS_LOCK says "The wall-tracing attachment is WALLS ONLY and looks
+ * empty. Do not copy that emptiness into rooms that have furniture symbols."
+ * The geometric render is full of furniture; that instructs the model to
+ * ignore what it can see and invent from the sheet instead.
+ *
+ * HAREDI_BED_PROMPT overrides the size lock so a wide drawn double can be
+ * narrowed to a twin. Bed blocks are already single-bed sized before the model
+ * sees them, so all that clause can do now is license resizing a bed.
+ *
+ * What survives is what the geometry cannot enforce: prop discipline, modesty,
+ * no screens, no text in the image.
+ */
+export const GEOMETRY_TRACE_LOCK = `
+GEOMETRY TRACE (every style, every view — non-negotiable):
+- The attached render IS the apartment, drawn from the CAD file. Every wall, thickness, doorway and the outline are already correct. Do not add, remove, move, lengthen, shorten or straighten any of them.
+- Do not rotate, mirror or reflect. The result must overlay the input exactly.
+- Openings exist only where the render breaks a wall. A stretch of unbroken wall is solid, however closed-in the room looks — never cut a window or a pass-through into it.
+- Do not add a room, a wing, a stair or an open space that is not in the render. An Israeli flat on one level has no internal stairs; the building's stairwell and lift are outside it.
+- A paved area with a railing is a TERRACE: open floor and open sky, at exactly the size and in exactly the place the render draws it. Never roof it, never merge two of them, never widen one to fill a corner.
+- The entrance and the circulation strips carry nothing standing on the floor. Bare floor. A mirror or coat hooks on the wall are the only things allowed there.
+- Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
+`.trim();
+
+export const GEOMETRY_CONTENTS_LOCK = `
+CONTENTS (every view — non-negotiable):
+- The render already carries the furniture, positioned as the architect drew it. Your job is to make each block look like the real object at exactly that footprint — not to decide what belongs in the room.
+- Render every block. Add nothing where there is no block: no extra sofa, no second dining table, no hallway vanity, no walk-in shower, no media wall, no desk.
+- A room that looks sparse is sparse in the drawing. Do not fill it.
+- Wet fixtures appear only where the render puts them, and they must be visible: a bath stays a bath, a pan stays a toilet, a basin stays a basin. Never an empty tiled wet room, and never a fixture in a room that has none.
+`.trim();
+
+export const GEOMETRY_SCALE_LOCK = `
+SCALE / LIVABILITY (every view — non-negotiable):
+- Every object is exactly the size of its block and no larger. Do not oversize a dining table, an island or a wardrobe to fill the room round it.
+- Furniture must leave the walkable floor the render leaves. This is a family apartment, not a dormitory.
+- Do not add a bed, a stool or a chair to make a room look fuller, and do not merge two blocks into one larger object.
+- Closets are cabinets with CLOSED doors. Do not turn a wall into millwork or a closet into an open walk-in.
+`.trim();
+
+export const GEOMETRY_FURNITURE_LOCK = `
+FURNITURE LOCK (cutaway / isometric — non-negotiable):
+- A bed goes only where a bed block stands. Never in a living room, kitchen, hall, storage or bathroom.
+- A kitchen has the counters, island and appliances the render draws, and no second cooktop or sink anywhere else in the flat.
+- Storage / laundry / חדר שירות is a washer or shelves. Never a toilet, basin, bath or shower — Hebrew שירות here means service, not שירותים.
+- Every bathroom the render puts fixtures in shows them.
+`.trim();
+
+/**
+ * Where the style's staging stops and the geometry's furniture begins.
+ *
+ * LIVED_IN_STAGING is what makes a render read as a home rather than a survey
+ * drawing, and it earns its place in a booklet someone is paying for. But it
+ * also lists props by name — a fruit bowl, a kettle, candles on the table —
+ * and read beside "add no furniture where there is no block" it is a
+ * contradiction. The line between them is the one worth stating: soft things
+ * on drawn furniture, never a new piece of furniture.
+ */
+export const PROPS_BOUNDARY = `
+PROPS (the boundary — non-negotiable):
+- Props, textiles and greenery are yours: rugs, cushions, throws, towels, bowls, plants, a place setting. Put them ON the furniture the render draws, or on its floor.
+- Furniture is not yours. If a prop needs a table, a shelf or a console to stand on and the render draws none, leave the prop out. Never add the furniture to hold it.
+`.trim();
+
+export const HAREDI_BED_GEOMETRY = `
+BEDS (haredi — non-negotiable):
+- Every mattress is 90 cm wide and 200 cm long, exactly the size of its block. Seen from above it is more than twice as long as it is wide. A mattress that reads square-ish, or as wide as the nightstands beside it, is a double and is wrong.
+- NEVER a double, queen or king. NEVER two mattresses pushed together, and never one headboard spanning more than one mattress. One pillow per mattress.
+- The master bedroom is not an exception. There is no double bed anywhere in this apartment, in any room, in any view.
+- One block, one bed. Do not add a bed to a room, and do not leave one out.
+`.trim();
+
 /** גימורים לכל תמונה + בימוי רהוט רק לסוג החלל של המבט */
 export function stylePromptForView(
   kit: FloorplanVizStyleKit,
   view: { kind: "overview" | "isometric" | "interior"; roomKind?: FloorplanRoomKind },
+  options?: {
+    /**
+     * What the model is being handed. "plan" is the sales sheet and the model
+     * is drawing the flat from it; "geometry" is a render that already contains
+     * the flat, and the locks that describe the sheet are false against it.
+     */
+    source?: "plan" | "geometry";
+  },
 ): string {
+  const geometry = options?.source === "geometry";
   const parts = [kit.promptBlock.trim()];
-  parts.push(PLAN_TRACE_LOCK);
-  parts.push(KITCHEN_SINK_LOCK);
-  parts.push(SCALE_LOCK);
-  parts.push(CONTENTS_LOCK);
+  parts.push(geometry ? GEOMETRY_TRACE_LOCK : PLAN_TRACE_LOCK);
+  if (!geometry) parts.push(KITCHEN_SINK_LOCK);
+  parts.push(geometry ? GEOMETRY_SCALE_LOCK : SCALE_LOCK);
+  parts.push(geometry ? GEOMETRY_CONTENTS_LOCK : CONTENTS_LOCK);
   parts.push(PRESENTATION_LOCK);
   if (kit.id !== "developer_white") {
     parts.push(LIVED_IN_STAGING);
+    if (geometry) parts.push(PROPS_BOUNDARY);
     // developer_white is deliberately a bare contractor handover, so it stays cold.
     parts.push(WARM_INVITING_LIGHT);
   }
   if (kit.audience === "haredi") {
     if (!kit.promptBlock.includes("MODESTY (global")) parts.push(HAREDI_MODESTY_PROMPT);
     if (!kit.promptBlock.includes("AESTHETIC (haredi")) parts.push(HAREDI_INNOVATIVE_PROMPT);
-    parts.push(HAREDI_BED_PROMPT);
+    parts.push(geometry ? HAREDI_BED_GEOMETRY : HAREDI_BED_PROMPT);
   }
   if (view.kind === "overview" || view.kind === "isometric") {
     parts.push(kit.audience === "haredi" ? HAREDI_STAGING.overview : GENERAL_STAGING.overview);
-    parts.push(OVERVIEW_FURNITURE_LOCK);
+    parts.push(geometry ? GEOMETRY_FURNITURE_LOCK : OVERVIEW_FURNITURE_LOCK);
   } else {
     const kind = view.roomKind ?? "other";
     const staging = kit.audience === "haredi" ? HAREDI_STAGING : GENERAL_STAGING;
