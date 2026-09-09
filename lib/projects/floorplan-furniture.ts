@@ -591,9 +591,16 @@ export function findSeatsAroundTable(
 export function findRoundedFurniture(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { linkM?: number },
+  options?: { gapM?: number },
 ): FurniturePiece[] {
-  const link = (options?.linkM ?? 0.55) * unitsPerMetre;
+  // Measured between the arcs' edges, not their centres. Centre distance
+  // depends on how big the arcs happen to be drawn — a small corner puts the
+  // centres further apart on the same chair — so a fixed centre link held one
+  // sheet's armchairs together and pulled another's apart. Edge to edge, the
+  // number means the same thing everywhere: how much bare drawing lies between
+  // two arcs. Half a metre keeps a chair whole and still leaves neighbouring
+  // dining chairs, which stand a metre apart, separate.
+  const gap = (options?.gapM ?? 0.5) * unitsPerMetre;
   const knots = findCurveFixtures(curves, unitsPerMetre, {
     cell: 4,
     minChords: 2,
@@ -603,7 +610,6 @@ export function findRoundedFurniture(
   });
   if (knots.length === 0) return [];
 
-  const centres = knots.map((k) => ({ x: k.x + k.w / 2, y: k.y + k.h / 2 }));
   const seen = new Array<boolean>(knots.length).fill(false);
   const out: FurniturePiece[] = [];
   for (let i = 0; i < knots.length; i++) {
@@ -616,9 +622,11 @@ export function findRoundedFurniture(
       group.push(cur);
       for (let j = 0; j < knots.length; j++) {
         if (seen[j]) continue;
-        const dx = centres[cur]!.x - centres[j]!.x;
-        const dy = centres[cur]!.y - centres[j]!.y;
-        if (Math.hypot(dx, dy) > link) continue;
+        const a = knots[cur]!;
+        const b = knots[j]!;
+        const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
+        const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
+        if (Math.hypot(dx, dy) > gap) continue;
         seen[j] = true;
         stack.push(j);
       }

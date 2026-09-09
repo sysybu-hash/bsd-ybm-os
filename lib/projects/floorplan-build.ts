@@ -1,5 +1,6 @@
 import {
   findFurniture,
+  findRoundedFurniture,
   seatsAroundTable,
   stoolsAlongRun,
   type FurniturePiece,
@@ -49,15 +50,19 @@ export type BuiltFlat = {
   svg: string;
 };
 
-/** Whether a piece overlaps a wall, so seating is never placed inside one. */
-function rectHitsBody(piece: FurniturePiece, body: WallBody): boolean {
+/**
+ * Whether a piece stands in a wall rather than against one.
+ *
+ * Any overlap at all was too strict, and it threw away the living-room suite:
+ * an armchair drawn with its back to the wall touches it by construction, and
+ * so does every chair pushed in at a table beside one. The centre is the test —
+ * a piece whose middle is inside a wall is not furniture standing there.
+ */
+function centreInsideBody(piece: FurniturePiece, body: WallBody): boolean {
   const r = bodyRect(body);
-  return (
-    piece.x < r.x + r.w &&
-    piece.x + piece.w > r.x &&
-    piece.y < r.y + r.h &&
-    piece.y + piece.h > r.y
-  );
+  const cx = piece.x + piece.w / 2;
+  const cy = piece.y + piece.h / 2;
+  return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
 }
 
 export async function buildFlatFromPdf(
@@ -174,7 +179,7 @@ export async function buildFlatFromPdf(
     const cy = piece.y + piece.h / 2;
     if (!inside(cx, cy)) return false;
     // Not standing in a wall, and not on top of something already there.
-    if (bodies.some((body) => rectHitsBody(piece, body))) return false;
+    if (bodies.some((body) => centreInsideBody(piece, body))) return false;
     return !found.some(
       (other) =>
         cx > other.x &&
@@ -183,6 +188,14 @@ export async function buildFlatFromPdf(
         cy < other.y + other.h,
     );
   };
+
+  // The rounded furniture that does survive detection: the living room's own
+  // armchairs and sofa. Only the pieces whose corner arcs come through as
+  // separate knots make it, which on this sheet is the seating suite and a
+  // handful of the sanitary ware — and the sanitary ware is already found, so
+  // requiring clear ground drops it. What is left is the suite, and it is the
+  // last bare patch in the middle of the flat.
+  const rounded = findRoundedFurniture(geometry.curves, unitsPerMetre);
 
   const table = found.find((piece) => piece.kind === "table");
   const chairs = table
@@ -241,7 +254,8 @@ export async function buildFlatFromPdf(
     stools = stoolsAlongRun(island, unitsPerMetre, side).filter(clear);
   }
 
-  const furniture = [...found, ...chairs, ...stools];
+  const suite = rounded.filter(clear);
+  const furniture = [...found, ...suite, ...chairs, ...stools];
 
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(

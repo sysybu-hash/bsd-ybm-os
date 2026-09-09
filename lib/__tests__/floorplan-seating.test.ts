@@ -1,8 +1,10 @@
 import {
+  findRoundedFurniture,
   seatsAroundTable,
   stoolsAlongRun,
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
+import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
 const UPM = 56;
 
@@ -78,5 +80,57 @@ describe("stoolsAlongRun", () => {
     for (const stool of stoolsAlongRun(island, UPM, "low")) {
       expect(stool.widthCm).toBeLessThan(stool.depthCm);
     }
+  });
+});
+
+describe("findRoundedFurniture", () => {
+  /**
+   * The four corner arcs of one rounded piece, each a quarter circle in chords.
+   * On this sheet they come through about 11 by 15 cm, which is 6 to 8 units.
+   */
+  function corners(x: number, y: number, w: number, h: number) {
+    const out: VectorSegment[] = [];
+    const r = 7;
+    const quarter = (cx: number, cy: number, from: number) => {
+      for (let i = 0; i < 5; i++) {
+        const a = ((from + (90 * i) / 5) * Math.PI) / 180;
+        const b = ((from + (90 * (i + 1)) / 5) * Math.PI) / 180;
+        out.push({
+          x1: cx + r * Math.cos(a),
+          y1: cy + r * Math.sin(a),
+          x2: cx + r * Math.cos(b),
+          y2: cy + r * Math.sin(b),
+          lineWidth: 1,
+        });
+      }
+    };
+    quarter(x + r, y + r, 180);
+    quarter(x + w - r, y + r, 270);
+    quarter(x + r, y + h - r, 90);
+    quarter(x + w - r, y + h - r, 0);
+    return out;
+  }
+
+  it("assembles an armchair from its corners", () => {
+    const arm = 0.75 * UPM;
+    const found = findRoundedFurniture(corners(376, 789, arm, arm), UPM);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.kind).toBe("seat");
+    expect(found[0]!.widthCm).toBeGreaterThan(60);
+  });
+
+  it("keeps two armchairs a metre apart apart", () => {
+    const arm = 0.75 * UPM;
+    const found = findRoundedFurniture(
+      [...corners(376, 789, arm, arm), ...corners(376 + 1.6 * UPM, 789, arm, arm)],
+      UPM,
+    );
+    expect(found).toHaveLength(2);
+  });
+
+  it("ignores a shape too small to sit on", () => {
+    expect(findRoundedFurniture(corners(100, 100, 0.15 * UPM, 0.15 * UPM), UPM)).toEqual(
+      [],
+    );
   });
 });
