@@ -50,179 +50,75 @@ if (!pdfPath || !Number.isFinite(grossArea)) {
   process.exit(2);
 }
 
-const { extractFloorplanVectorGeometry, wallBoundingBox } = await import("../lib/projects/floorplan-vector.ts");
-const { hatchedWallExtent } = await import("../lib/projects/floorplan-solid.ts");
-const { buildFlatFromPdf } = await import("../lib/projects/floorplan-build.ts");
-const { buildPlacementPrompt, RECOLOUR_PROMPT } = await import("../lib/projects/floorplan-materials.ts");
-const { auditFloorplanStill, gradeFloorplanStill } = await import("../lib/projects/floorplan-viz-audit.ts");
-const { pickBestFinish } = await import("../lib/projects/floorplan-finish.ts");
-const { coolTintFraction, TINT_LIMIT } = await import("../lib/projects/floorplan-tint.ts");
-const { measureBlockFidelity, fidelityFailures } = await import("../lib/projects/floorplan-fidelity.ts");
-const { segmentRooms, roomsForLayout } = await import("../lib/projects/floorplan-segment.ts");
-const { assessFloorplanRun, describeConfidence } = await import("../lib/projects/floorplan-confidence.ts");
-const { parseFloorplanLayout } = await import("../lib/projects/floorplan-layout.ts");
-const { stampFloorplanStill } = await import("../lib/projects/floorplan-viz-stamp.ts");
-const { getGeminiApiKey } = await import("../lib/gemini-api-key.ts");
-const { getFloorplanVizModelChain } = await import("../lib/gemini-model.ts");
-const { GoogleGenAI } = await import("@google/genai");
+const { renderFlatFromPdf, flatExtentFromSheet } = await import(
+  "../lib/projects/floorplan-render-flat.ts"
+);
+const { roomsForLayout } = await import("../lib/projects/floorplan-segment.ts");
+const { describeConfidence } = await import(
+  "../lib/projects/floorplan-confidence.ts"
+);
+const { stampFloorplanStill } = await import(
+  "../lib/projects/floorplan-viz-stamp.ts"
+);
 
 const name = path.parse(pdfPath).name.trim();
 const cutBytes = fs.readFileSync(pdfPath);
 const uncutBytes = fs.readFileSync(uncutPath);
 
-const cut = await extractFloorplanVectorGeometry(Buffer.from(cutBytes));
-if (!cut) {
-  console.error(`${name}: no vector geometry — this sheet is a scan, not a CAD export`);
+const extent = await flatExtentFromSheet(Buffer.from(cutBytes));
+if (!extent) {
+  console.error(
+    `${name}: no vector geometry — this sheet is a scan, not a CAD export`,
+  );
   process.exit(1);
 }
-const sheet = wallBoundingBox(cut);
-const extent = hatchedWallExtent(cut.segments, sheet, 53) ?? sheet;
 
-const flat = await buildFlatFromPdf(Buffer.from(uncutBytes), grossArea + terraces, { extent });
-if (!flat) {
-  console.error(`${name}: refused — no scale reproduces ${(grossArea + terraces).toFixed(2)} m²`);
+const rendered = await renderFlatFromPdf(Buffer.from(cutBytes), {
+  targetAreaM2: grossArea + terraces,
+  extent,
+  wallSource: Buffer.from(uncutBytes),
+  attempts,
+  goodEnough,
+  haredi: !args.has("audience") || args.get("audience") === "haredi",
+  label: name,
+});
+if (!rendered) {
+  console.error(
+    `${name}: refused — no scale reproduces ${(grossArea + terraces).toFixed(2)} m², or no finish came back`,
+  );
   process.exit(1);
 }
-const counts = flat.furniture.reduce((m, p) => ((m[p.kind] = (m[p.kind] ?? 0) + 1), m), {});
+
+const { flat, rooms, geometry, still, confidence } = rendered;
+const counts = flat.furniture.reduce(
+  (m, p) => ((m[p.kind] = (m[p.kind] ?? 0) + 1), m),
+  {},
+);
 console.log(
   `${name}: ${flat.unitsPerMetre} units/m | ${flat.bodies.length} walls | ${flat.openings.length} openings | ` +
     `${flat.floorM2.toFixed(1)} m² (${(flat.areaError * 100).toFixed(1)}%) | ${JSON.stringify(counts)}`,
 );
 
-const geometry = await sharp(Buffer.from(flat.svg), { density: 200 })
-  .flatten({ background: "#fff" })
-  .jpeg({ quality: 94 })
-  .toBuffer();
 fs.mkdirSync(outDir, { recursive: true });
 const geometryPath = path.join(outDir, `${name} — גיאומטריה.jpg`);
 fs.writeFileSync(geometryPath, geometry);
 
-const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-const plan = { base64: uncutBytes.toString("base64"), mimeType: "application/pdf" };
-const layout = parseFloorplanLayout({ rooms: [], islandStoolCount: 0 });
-const prompt = buildPlacementPrompt();
-
-/** One image call against the model chain, given a prompt and a source frame. */
-const pass = async (text, image) => {
-  for (const model of getFloorplanVizModelChain()) {
-    try {
-      const res = await client.models.generateContent({
-        model,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text }, { inlineData: { mimeType: image.mimeType, data: image.base64 } }],
-          },
-        ],
-        config: { responseModalities: ["IMAGE"] },
-      });
-      const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-      if (part) return { mimeType: "image/jpeg", base64: part.inlineData.data };
-    } catch {
-      // Try the next model in the chain.
-    }
-  }
-  return null;
-};
-
-// Placement, then recolour. The geometry render tints each block roughly the
-// material it becomes so the model can tell a bed from a bath without decoding
-// a legend, and the sanitary blocks have to be a cool aqua to be separable from
-// bed linen at all — at two parts in 255 apart the beds came back as bathtubs.
-// That tint then survives into the finish and the bath and basins come out
-// mint, so the second pass takes it back out. Asked to do both at once the
-// model does neither reliably; asked only to restate the coded objects in real
-// materials and change nothing else, it does that well.
-const render = async () => {
-  const placed = await pass(prompt, {
-    mimeType: "image/jpeg",
-    base64: geometry.toString("base64"),
-  });
-  if (!placed) return null;
-  return (await pass(RECOLOUR_PROMPT, placed)) ?? placed;
-};
-
-const grade = async (image) => {
-  const audit = await auditFloorplanStill(image, plan);
-  if (!audit) return null;
-  // The geometry's own bed count, not a reading of the sheet. The still is made
-  // from that render, so it is a fact about the input image.
-  const verdict = gradeFloorplanStill(audit, layout, {
-    haredi: true,
-    drawn: { beds: flat.furniture.filter((p) => p.kind === "bed").length },
-  });
-  // Measured, not asked. The auditor counts objects and a mint bathroom has the
-  // right number of everything — one frame scored 0 with both bathrooms bright
-  // green, which is unusable and would have shipped.
-  const tint = await coolTintFraction(image);
-  // Measured against the render it was made from, block by block. The auditor
-  // counts objects, and a frame that turned the living-room suite into a length
-  // of wall has the right number of everything — one such scored 0.
-  const fidelity = await measureBlockFidelity({
-    geometry,
-    still: Buffer.from(image.base64, "base64"),
-    furniture: flat.furniture,
-    bounds: flat.bounds,
-  });
-  const failures = [...verdict.failures, ...fidelityFailures(fidelity)];
-  let score = verdict.score + (fidelity.total - fidelity.present);
-  if (tint > TINT_LIMIT) {
-    failures.push(`coding tint left in ${(tint * 100).toFixed(1)}% of the frame`);
-    score += 100;
-  } else {
-    // Below the limit it still breaks ties. Two frames with the same failures
-    // are not equally good if one of them has a faintly green chair in it, and
-    // ranking them the same let the tinted one win on arrival order.
-    score += tint * 10;
-  }
-  console.log(`   attempt: score ${score}${failures.length ? " — " + failures.join("; ") : ""}`);
-  return { score, failures, hardFailures: verdict.hardFailures };
-};
-
-const best = await pickBestFinish(attempts, render, grade, { label: name, goodEnough });
-if (!best) {
-  console.error(`${name}: no finish came back`);
-  process.exit(1);
-}
-
-const stamped = await stampFloorplanStill(best.image, { unitLabel: name.replace(/^דירה\s*/u, ""), areaM2: grossArea });
+const stamped = await stampFloorplanStill(still, {
+  unitLabel: name.replace(/^דירה\s*/u, ""),
+  areaM2: grossArea,
+});
 const stillPath = path.join(outDir, `${name} — הדמיה.jpg`);
 fs.writeFileSync(stillPath, Buffer.from(stamped.base64, "base64"));
 
-console.log(`${name}: score ${best.score} after ${best.attempts} finish(es)${best.stoppedEarly ? " (stopped early)" : ""}`);
-if (best.failures.length) console.log(`   remaining: ${best.failures.join("; ")}`);
+console.log(
+  `${name}: score ${rendered.score.toFixed(2)} after ${rendered.attempts} finish(es)`,
+);
+if (rendered.failures.length) {
+  console.log(`   remaining: ${rendered.failures.join("; ")}`);
+}
 console.log(`   geometry -> ${geometryPath}`);
 console.log(`   still    -> ${stillPath}`);
 
-// Whether this run is fit to sell. The booklet reads the verdict rather than
-// trusting that a still on disk means the flat was read correctly.
-const rooms = segmentRooms({
-  bodies: flat.bodies,
-  openings: flat.openings,
-  floor: flat.floor,
-  furniture: flat.furniture,
-  terraces: flat.terraces,
-  bounds: flat.bounds,
-  unitsPerMetre: flat.unitsPerMetre,
-  segments: cut.segments,
-});
-const finalFidelity = await measureBlockFidelity({
-  geometry,
-  still: Buffer.from(stamped.base64, "base64"),
-  furniture: flat.furniture,
-  bounds: flat.bounds,
-});
-const confidence = assessFloorplanRun({
-  areaError: flat.areaError,
-  unitsPerMetre: flat.unitsPerMetre,
-  wallCount: flat.bodies.length,
-  furniture: flat.furniture,
-  rooms,
-  fidelity: finalFidelity,
-  coolTint: await coolTintFraction({ base64: stamped.base64 }),
-  foundTerraces: flat.terraces.length,
-  auditHardFailures: best.hardFailures,
-});
 const reportPath = path.join(outDir, `${name} — בדיקה.json`);
 fs.writeFileSync(
   reportPath,
@@ -233,7 +129,7 @@ fs.writeFileSync(
       unitsPerMetre: flat.unitsPerMetre,
       areaError: flat.areaError,
       confidence,
-      rooms: roomsForLayout(rooms),
+      rooms: roomsForLayout(rooms, flat.unitsPerMetre),
       islandStoolCount: flat.furniture.filter((p) => p.kind === "seat").length,
     },
     null,

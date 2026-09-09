@@ -104,9 +104,15 @@ describe("segmentRooms", () => {
   });
 
   it("gives the booklet rooms it can print, marked as measured", () => {
-    const rooms = roomsForLayout(run([piece(UPM, UPM, "bed")]));
+    const rooms = roomsForLayout(run([piece(UPM, UPM, "bed")]), UPM);
     expect(rooms[0]).toMatchObject({ kind: "bedroom", source: "cad" });
     expect(rooms[0]!.areaM2).toBeGreaterThan(0);
+  });
+
+  it("gives the sides too, so the table does not print the area twice", () => {
+    const rooms = roomsForLayout(run([piece(UPM, UPM, "bed")]), UPM);
+    expect(rooms[0]!.widthM).toBeGreaterThan(0);
+    expect(rooms[0]!.lengthM).toBeGreaterThan(0);
   });
 
   it("returns nothing when there are no walls to enclose anything", () => {

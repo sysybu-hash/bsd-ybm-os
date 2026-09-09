@@ -36,6 +36,26 @@ function logoDataUrl(): string | null {
   return null;
 }
 
+/**
+ * Where the table's figures came from, said truthfully.
+ *
+ * The disclaimer used to state flatly that the measurements come from OCR and
+ * vision engines. That is no longer true when the rooms were cut out of the
+ * drawing's own walls, and a booklet a client pays for should not describe a
+ * measurement as a guess — nor a guess as a measurement.
+ */
+function measurementNoteHe(layout: FloorplanLayout): string {
+  const rooms = layout.rooms ?? [];
+  const measured = rooms.filter((room) => room.source === "cad").length;
+  if (rooms.length > 0 && measured === rooms.length) {
+    return "ההדמיות הן המחשה ויזואלית. המידות בטבלה נמדדו מגיאומטריית ה-CAD של התוכנית.";
+  }
+  if (measured > 0) {
+    return `ההדמיות הן המחשה ויזואלית. ${measured} מתוך ${rooms.length} החללים נמדדו מגיאומטריית ה-CAD; השאר מפענוח התוכנית.`;
+  }
+  return "ההדמיות הן המחשה ויזואלית. המידות בטבלה מגיעות מפענוח התוכנית (OCR ומנועי ראייה).";
+}
+
 function evidenceHe(source?: string): string {
   if (source === "cad") return "נמדד מה-CAD";
   if (source === "ocr_verified") return "אומת ב-OCR";
@@ -466,7 +486,7 @@ body > .plate:first-child {
       <tbody>${rowsHtml}</tbody>
     </table>
     <div class="note">
-      ההדמיות הן המחשה ויזואלית. המידות בטבלה מגיעות מפענוח התוכנית (OCR ומנועי ראייה) — אין למדוד מהתמונות.
+      ${escapeHtml(measurementNoteHe(layout))} אין למדוד מהתמונות.
       מסמך זה הופק על ידי מערכת BSD-YBM.
     </div>
     <p class="brand-line">הופק על ידי מערכת BSD-YBM · ${escapeHtml(dateHe)}</p>

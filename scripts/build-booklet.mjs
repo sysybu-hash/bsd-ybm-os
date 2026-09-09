@@ -86,7 +86,7 @@ if (embedded) {
     "../lib/projects/floorplan-vector.ts"
   );
   const drawn = await buildVectorWallJpeg(planBytes);
-  if (drawn) planJpeg = Buffer.from(drawn.base64, "base64");
+  if (drawn) planJpeg = Buffer.from(drawn, "base64");
 }
 
 const layout = parseFloorplanLayout({

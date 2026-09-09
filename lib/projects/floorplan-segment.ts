@@ -300,13 +300,28 @@ export function segmentRooms(input: {
   });
 }
 
-/** The rooms as the booklet's schema wants them. */
-export function roomsForLayout(rooms: SegmentedRoom[]): FloorplanRoom[] {
-  return rooms.map((room) => ({
-    name: room.name,
-    kind: room.kind,
-    areaM2: room.areaM2,
-    bedCount: room.bedCount > 0 ? room.bedCount : undefined,
-    source: "cad" as const,
-  }));
+/**
+ * The rooms as the booklet's schema wants them.
+ *
+ * The sides are given as well as the area. Without them the table printed the
+ * area twice — once under "מידות" and once under "שטח" — because
+ * formatRoomMeasure falls back to the area when it has no dimensions.
+ */
+export function roomsForLayout(
+  rooms: SegmentedRoom[],
+  unitsPerMetre: number,
+): FloorplanRoom[] {
+  return rooms.map((room) => {
+    const widthM = room.bounds.width / unitsPerMetre;
+    const lengthM = room.bounds.height / unitsPerMetre;
+    return {
+      name: room.name,
+      kind: room.kind,
+      areaM2: room.areaM2,
+      widthM: widthM > 0 ? Math.round(widthM * 100) / 100 : undefined,
+      lengthM: lengthM > 0 ? Math.round(lengthM * 100) / 100 : undefined,
+      bedCount: room.bedCount > 0 ? room.bedCount : undefined,
+      source: "cad" as const,
+    };
+  });
 }
