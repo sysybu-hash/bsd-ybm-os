@@ -1,6 +1,18 @@
 import { z } from "zod";
 
-export const floorplanEvidenceSchema = z.enum(["ocr_verified", "consensus", "inferred"]);
+/**
+ * Where a room's figures came from.
+ *
+ * "cad" is measured off the drawing's own vectors rather than read by a model,
+ * and it is the strongest of the four. It exists because labelling a geometric
+ * measurement "אומת ב-OCR" in the booklet would be untrue.
+ */
+export const floorplanEvidenceSchema = z.enum([
+  "cad",
+  "ocr_verified",
+  "consensus",
+  "inferred",
+]);
 export type FloorplanEvidence = z.infer<typeof floorplanEvidenceSchema>;
 
 export const floorplanRoomKindSchema = z.enum([

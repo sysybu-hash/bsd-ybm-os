@@ -37,6 +37,7 @@ function logoDataUrl(): string | null {
 }
 
 function evidenceHe(source?: string): string {
+  if (source === "cad") return "נמדד מה-CAD";
   if (source === "ocr_verified") return "אומת ב-OCR";
   if (source === "consensus") return "הסכמת מנועים";
   return "השערה";
