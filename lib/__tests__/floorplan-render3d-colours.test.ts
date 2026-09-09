@@ -31,3 +31,19 @@ describe("the coding palette the model has to read", () => {
     }
   });
 });
+
+describe("the separation the aqua is spent on", () => {
+  it("keeps a fixture well clear of bed linen", () => {
+    // Paled to #e8f4f6 while the tint was bleeding, this fell to 21 parts and
+    // beds came back as baths. The bleed had another cause; the separation is
+    // what stops a bathroom appearing in a bedroom.
+    const chan = (s: string) =>
+      [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
+    const [bed, fixture] = [
+      chan(PIECE_COLOURS.bed!.top),
+      chan(PIECE_COLOURS.fixture!.top),
+    ];
+    const apart = Math.max(...bed.map((v, i) => Math.abs(v - fixture[i]!)));
+    expect(apart).toBeGreaterThan(30);
+  });
+});

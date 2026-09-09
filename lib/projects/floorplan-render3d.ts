@@ -93,10 +93,16 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   // the "bathrooms where the bedrooms are" this plan keeps coming back with.
   // Glazed ceramic carries a cool cast in daylight, so this still needs no
   // decoding into a material; it is simply far enough from warm bed linen to
-  // be a different thing. Kept as pale as the separation allows: at #dfeef1 the
-  // tint survived the render and the bath and basins came out mint, which is
-  // the failure the recolour pass exists to undo.
-  fixture: { top: "#e8f4f6", face: "#c3dde1" },
+  // be a different thing.
+  //
+  // Paled to #e8f4f6 for a while, when the tint was surviving into the finish
+  // and the bath and basins came out mint. That put a fixture 21 parts from the
+  // bed's #fdfdfc and the beds started coming back as baths again — the very
+  // failure the aqua exists to prevent. The bleed had a different cause: the
+  // recolour pass was carrying a stale legend and undoing nothing. With that
+  // fixed the residue is 0.03% of the frame, so the separation can be spent on
+  // the job it is for. 37 parts now.
+  fixture: { top: "#d6ecf1", face: "#a9ccd4" },
   table: { top: "#a9764a", face: "#8b5e39" },
   // Dark steel, so a cooktop and its basins read as the kitchen rather than as
   // plumbing — the hob is four burners in a 64 cm square and was being taken
