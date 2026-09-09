@@ -73,26 +73,27 @@ A bath, a toilet, a shower or a washbasin appears ONLY where a pale aqua fixture
 Render every block, without exception. Do not add furniture where there is no block, apart from the chairs around the dining table. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
 
 /**
- * The second pass, which takes the key back out.
+ * The second pass, which takes the aqua back out.
  *
- * Asking for the colours to "disappear into the real material" in the placement
- * pass does not work — the model treats the key as a palette and returns blue
- * bedding and a purple counter. Asked to place, it places well; asked separately
- * to restate those objects in real materials and change nothing else, it does
- * that well too. Two narrow passes beat one that has to do both.
+ * It used to carry a legend — blue is a bed, purple a counter, light-green a
+ * chair — from when the placement pass built the image in saturated coding
+ * colours. That palette is long gone: every block is now tinted roughly the
+ * material it becomes, and the aqua on the sanitary ware is the only code left.
+ * The stale legend was doing harm rather than nothing. It names green as the
+ * colour of a chair, and once the flat was properly seated — fourteen chairs,
+ * stools and armchairs, the most numerous object in the frame — every one of
+ * six finishes came back over the tint limit, with green upholstery. Telling
+ * the model that green means chair, and then that no green may remain, is a
+ * contradiction, and it resolved it the wrong way.
  */
 export const RECOLOUR_PROMPT = `This is a finished top-down render of one apartment. Every wall, room, opening and piece of furniture is already exactly right and must not be changed in any way.
 
-One thing is wrong: some objects are still in the flat coding colours used to build the image. Restate those objects in their real materials, and change NOTHING else — same walls, same outline, same orientation, same furniture, same positions, same sizes, same camera.
-- Anything blue is a bed: white linen bedding, pale oak frame and headboard. A SINGLE bed — its length must stay more than twice its width, exactly as the block is drawn. Never widen a bed, and never merge a bed with the block beside it.
-- Anything yellow or sand-coloured is a wardrobe or kitchen unit: warm pale oak, doors closed.
-- Anything purple is a kitchen counter: white stone worktop over oak base units.
-- Anything mint-green is a sanitary fixture: white glazed ceramic.
-- Anything orange is a dining table: solid oak top on oak legs.
-- Anything light-green is a chair: pale upholstery on an oak frame.
-- Any coloured floor becomes its proper surface: warm oak boards in the rooms, pale stone tiles in the wet rooms and on the terraces.
+One thing may still be wrong: the sanitary fixtures were built in a pale aqua coding tint, and if any of that tint survived it has to come out. Restate those objects in their real material and change NOTHING else — same walls, same outline, same orientation, same furniture, same positions, same sizes, same camera.
+- Every bath, toilet, shower tray and washbasin is WHITE glazed ceramic. No aqua, no mint, no turquoise.
+- Wet-room and terrace floors are pale stone tile; room floors are warm oak boards. A floor is never coloured.
+- Seat and chair upholstery is cream, oatmeal or pale grey over oak.
 
-When you are done, no blue, purple or green object of any shade may remain anywhere in the frame — pale green included, and upholstery least of all. Seat and chair fabric is cream, oatmeal or pale grey over oak; a green chair is as wrong here as a green wall. Keep the warm golden-hour daylight. No text, no labels, no screens, no televisions.`;
+When you are done, no blue, green, turquoise, purple or magenta object of any shade may remain anywhere in the frame, however pale — not a chair, not a floor, not a panel. The whole apartment is oak, white plaster, white ceramic and pale stone under warm golden-hour daylight. No text, no labels, no screens, no televisions.`;
 
 /** The placement pass: materials rules plus the furniture key. */
 export function buildPlacementPrompt(extraDirection?: string): string {

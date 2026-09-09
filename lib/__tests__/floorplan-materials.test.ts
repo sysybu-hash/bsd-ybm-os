@@ -123,9 +123,20 @@ describe("two beds in one room", () => {
 
 describe("the finished palette", () => {
   it("rules out green upholstery, after chairs came back pale green", () => {
-    // 0.37% of the frame — under the coding-tint limit, correctly, since it was
-    // upholstery rather than a mint bathroom, and still off-brief for the book.
-    expect(RECOLOUR_PROMPT).toMatch(/no blue, purple or green object of any shade/);
+    expect(RECOLOUR_PROMPT).toMatch(
+      /no blue, green, turquoise, purple or magenta object of any shade/,
+    );
     expect(RECOLOUR_PROMPT).toMatch(/cream, oatmeal or pale grey/);
+  });
+
+  it("no longer names green as the colour of a chair", () => {
+    // The recolour pass carried a legend from when placement used saturated
+    // coding colours. Once the flat was properly seated — fourteen chairs,
+    // stools and armchairs — every one of six finishes came back over the tint
+    // limit with green upholstery. "Green means chair" and "no green may
+    // remain" is a contradiction, and it was resolved the wrong way.
+    expect(RECOLOUR_PROMPT).not.toMatch(/light-green is a chair/);
+    expect(RECOLOUR_PROMPT).not.toMatch(/Anything purple/);
+    expect(RECOLOUR_PROMPT).not.toMatch(/Anything blue/);
   });
 });
