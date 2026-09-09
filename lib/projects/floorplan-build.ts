@@ -95,7 +95,13 @@ export async function buildFlatFromPdf(
   if (!sheet) return null;
 
   const flatExtent = options?.extent ?? sheet;
-  const lock = lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search);
+  const lock = lockScale(
+    geometry.segments,
+    flatExtent,
+    printedAreaM2,
+    options?.search,
+    geometry.curves,
+  );
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
 

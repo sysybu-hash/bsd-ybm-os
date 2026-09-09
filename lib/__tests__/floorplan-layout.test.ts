@@ -869,3 +869,22 @@ describe("laundry / חדר שירות vs שירותים", () => {
     expect(prompt).toMatch(/חדר שירות is not שירותים/);
   });
 });
+
+describe("a printed area without a decimal point", () => {
+  it("reads a bare integer, after two sheets printed 57 מ\"ר", () => {
+    // דירה 19 and דירה 23 both print the gross area as a whole number, and
+    // requiring a decimal returned undefined for them — no area, no scale lock,
+    // no render.
+    expect(extractGrossAreaM2('שטח דירה 57 מ"ר')).toBe(57);
+  });
+
+  it("still prefers the largest plausible figure on the sheet", () => {
+    expect(extractGrossAreaM2('מרפסת 8 מ"ר שטח דירה 57 מ"ר')).toBe(57);
+  });
+
+  it("still refuses a figure outside a flat's range", () => {
+    // A bare integer must not let a terrace or a dimension through.
+    expect(extractGrossAreaM2('מרפסת 8 מ"ר')).toBeUndefined();
+    expect(extractGrossAreaM2('900 מ"ר')).toBeUndefined();
+  });
+});

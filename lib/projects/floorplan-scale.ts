@@ -2,6 +2,7 @@ import { findFurniture } from "@/lib/projects/floorplan-furniture";
 import {
   clipBodiesToBounds,
   findOpenings,
+  findDoorSwings,
   footprintByScanFill,
   lintelBands,
   smoothFootprint,
@@ -50,6 +51,7 @@ export function lockScale(
   bounds: { x: number; y: number; width: number; height: number },
   printedAreaM2: number,
   search?: ScaleSearch,
+  curves?: VectorSegment[],
 ): ScaleLock | null {
   const from = search?.from ?? 40;
   const to = search?.to ?? 72;
@@ -108,10 +110,31 @@ export function lockScale(
       8,
       { truncate: true },
     );
-    const doorLike = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6).filter((o) => {
+    const doorWidth = (o: { from: number; to: number }) => {
       const cm = ((o.to - o.from) / unitsPerMetre) * 100;
       return cm >= 75 && cm <= 110;
-    }).length;
+    };
+    // Gaps between wall pieces, and the doors the sheet marks with a swing.
+    // The gap rule alone is not enough to find a scale on every sheet: on
+    // דירה 23 the area lands within 1.7% at 58 units per metre with three beds
+    // inside the flat, and no gap in that range at all, so the whole plan came
+    // back with no scale and no render. The swings find its doors. Either
+    // signal satisfies the gate — what matters is that something on the sheet
+    // measures like a door at this scale.
+    //
+    // A swing is counted by existing, not re-measured. findDoorSwings already
+    // requires a leaf of 68 to 115 cm at this scale, which is the door-width
+    // test; the opening it returns is then clipped to the wall it sits in, so
+    // measuring that instead asks a narrower question and answers none. On
+    // דירה 23 it found both doors at 58 units per metre and both were clipped
+    // under 75 cm, so the gate rejected the only scale that works.
+    const doorLike =
+      findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6).filter(
+        doorWidth,
+      ).length +
+      findDoorSwings(segments, curves ?? [], bodies, unitsPerMetre, {
+        extent: bounds,
+      }).length;
     if (doorLike === 0) continue;
 
     const areaError = floorM2 / printedAreaM2 - 1;

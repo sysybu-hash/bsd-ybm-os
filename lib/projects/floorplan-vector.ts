@@ -547,7 +547,8 @@ export async function extractPrintedAreas(
       const raw = (item as { str?: string }).str?.trim();
       const transform = (item as { transform?: number[] }).transform;
       if (!raw || !transform) continue;
-      if (!/^\d{1,2}\.\d{1,2}$/.test(raw)) continue;
+      // The decimal is optional: דירה 18 prints a terrace as a bare "8".
+      if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(raw)) continue;
       const value = Number(raw);
       if (!Number.isFinite(value) || value < min || value > max) continue;
       const [x, y] = viewport.convertToViewportPoint(

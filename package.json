@@ -10,6 +10,7 @@
     "dev:turbo": "next dev --turbopack",
     "embed-pdf-fonts": "node scripts/embed-pdf-fonts.mjs",
     "floorplan:render": "npx tsx scripts/render-floorplan.mjs",
+    "floorplan:survey": "npx tsx scripts/survey-plans.mjs",
     "marketing:hero-video": "node scripts/generate-marketing-hero-video.mjs",
     "marketing:hero-slideshow": "node scripts/generate-marketing-hero-slideshow.mjs",
     "build": "node scripts/prebuild.mjs && next build",

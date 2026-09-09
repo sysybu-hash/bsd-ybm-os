@@ -93,3 +93,18 @@ describe("findDoorSwings", () => {
     expect(findDoorSwings([across], swing(200), [wall], UPM)).toEqual([]);
   });
 });
+
+describe("a swing as the scale's door-width signal", () => {
+  it("reports a door whose opening the wall clips short", () => {
+    // The opening is clipped to the wall it sits in, so a door against the end
+    // of a wall comes back narrower than the door is. lockScale had been
+    // re-measuring that clipped width and rejecting the door — on דירה 23 both
+    // doors were clipped under 75 cm at the one scale that works, so the plan
+    // locked no scale at all and rendered nothing. The leaf is the width, and
+    // findDoorSwings has already required it to be a door's.
+    const short: WallBody = { ...wall, from: 190, to: 190 + DOOR * 0.8 };
+    const found = findDoorSwings([leaf(200)], swing(200), [short], UPM);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.to - found[0]!.from).toBeLessThan(DOOR);
+  });
+});

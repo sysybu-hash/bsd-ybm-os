@@ -478,10 +478,18 @@ export function inferInternalStairsFromOcr(text: string): FloorplanInternalStair
   };
 }
 
-/** שטח דירה מודפס (111.29 מ"ר) — לא שטח מרפסת קטן */
+/**
+ * שטח דירה מודפס (111.29 מ"ר) — לא שטח מרפסת קטן
+ *
+ * The decimal part is optional. Six of the ten sheets in this batch print a
+ * decimal — 111.29, 114.11, 90.86 — but דירה 19 and דירה 23 both print a bare
+ * "57 מ"ר", and requiring a decimal point returned undefined for them. The
+ * 40-400 m² window is what keeps a bare integer from matching a terrace figure
+ * or a dimension.
+ */
 export function extractGrossAreaM2(text: string): number | undefined {
   if (!text.trim()) return undefined;
-  const re = /(\d{2,3}[.,]\d{1,2})\s*מ["״']?ר/g;
+  const re = /(\d{2,3}(?:[.,]\d{1,2})?)\s*מ["״']?ר/g;
   let best = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
