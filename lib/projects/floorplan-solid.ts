@@ -1656,12 +1656,56 @@ export function dropUnhatchedBodies(
   });
 }
 
+/**
+ * The mark an Israeli sheet draws across a terrace: one long diagonal.
+ *
+ * A terrace is anchored by the area printed inside it, and three of these ten
+ * sheets print no terrace area at all — דירה 19, 22 and 23 carry none in the
+ * text layer — so no seed exists and none of their terraces can be found. The
+ * diagonal is the other mark, and it is drawn on the heavy pen where the
+ * paving inside the terrace is drawn light.
+ *
+ * Two things had to be separated from it. The hatch that fills a wall is also
+ * diagonal, and is short — bounded by the wall's own thickness. And each sheet
+ * carries a section line running its whole height, 1400 units and more, on the
+ * thin pen. The terrace marks measure 69 to 261 units, which sits cleanly
+ * between them.
+ *
+ * It marks one terrace per sheet rather than every one, so it supplements the
+ * printed areas rather than replacing them.
+ */
+export function terraceDiagonalSeeds(
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minLineWidth?: number; minM?: number; maxM?: number },
+): Array<{ x: number; y: number }> {
+  const minLineWidth = options?.minLineWidth ?? 4;
+  const min = (options?.minM ?? 0.9) * unitsPerMetre;
+  const max = (options?.maxM ?? 6) * unitsPerMetre;
+  const out: Array<{ x: number; y: number }> = [];
+  for (const segment of segments) {
+    if (segment.lineWidth < minLineWidth) continue;
+    const dx = segment.x2 - segment.x1;
+    const dy = segment.y2 - segment.y1;
+    const length = Math.hypot(dx, dy);
+    if (length < min || length > max) continue;
+    const degrees = Math.abs((Math.atan2(dy, dx) * 180) / Math.PI) % 180;
+    const angle = degrees > 90 ? 180 - degrees : degrees;
+    if (angle < 12 || angle > 78) continue;
+    out.push({
+      x: (segment.x1 + segment.x2) / 2,
+      y: (segment.y1 + segment.y2) / 2,
+    });
+  }
+  return out;
+}
+
 /** A terrace: the region a printed area label sits in, and the area it claims. */
 export type Terrace = {
   rows: SpanRow[];
   bounds: { x: number; y: number; width: number; height: number };
-  /** What the sheet prints, in m². */
-  printedM2: number;
+  /** What the sheet prints, in m² — absent when the seed was a diagonal mark. */
+  printedM2?: number;
   /** What the region actually measures, in m². */
   floodedM2: number;
 };
@@ -1688,16 +1732,53 @@ export type Terrace = {
  * so a leak omits a terrace and can never invent one. On דירה 14 that accepts
  * the 4.10 (it floods to 3.59 m², the shortfall being the barrier's own width)
  * and rejects the 3.16, which leaks across the sheet to 253 m².
+ *
+ * KNOWN LIMIT, measured across all ten sheets: this finds four of the eleven
+ * terraces that sit on a flat's own level. The flood measures the open ground
+ * between the heavy lines, and against the printed figure that comes out
+ * anywhere from 17% to 71% short — not a constant to correct for, because on
+ * some sheets the paving inside the terrace is drawn on the heavy pen too and
+ * traps the seed in a single bay. Widening the tolerance far enough to admit
+ * the 71% cases would admit the leaks as well, and the leaks are what stop a
+ * terrace being invented.
+ *
+ * Three other anchors were measured and none did better. The long 45° strokes
+ * are the ממ"ד's concrete hatch, not paving. The paving's own brick courses
+ * cluster into fragments of 1.5 to 3 m² where a terrace is 4 to 13. And the
+ * single diagonal an Israeli sheet draws across a terrace does exist on the
+ * heavy pen at 69 to 261 units — cleanly between the wall hatch below it and
+ * the sheet-long section lines above — but it marks one terrace per sheet, and
+ * flooding from it leaks on every sheet that has no printed figure to check
+ * against. Raising the flood's resolution from 2 to 5 cells per unit gained
+ * 0.4 m² on one plan and made another leak.
+ *
+ * So the count is reported rather than quietly wrong: assessFloorplanRun is
+ * given the number of terraces the sheet prints a figure for, and says how
+ * many of them were found.
  */
 export function findTerraces(
   segments: VectorSegment[],
-  areas: Array<{ x: number; y: number; value: number }>,
+  areas: Array<{ x: number; y: number; value?: number }>,
   unitsPerMetre: number,
-  options?: { minLineWidth?: number; tolerance?: number },
+  options?: {
+    minLineWidth?: number;
+    tolerance?: number;
+    /**
+     * What an unlabelled seed's region may measure and still be a terrace.
+     *
+     * A seed from a printed area is checked against that area, which is what
+     * makes a leak impossible to mistake for a room. A diagonal carries no
+     * figure, so the window does that work instead: anything outside it is
+     * either a leak or something that is not a terrace, and is dropped. The
+     * eleven same-level terraces across these sheets run 3.16 to 13.2 m².
+     */
+    unlabelledM2?: { min: number; max: number };
+  },
 ): Terrace[] {
   if (areas.length === 0) return [];
   const minLineWidth = options?.minLineWidth ?? 4;
   const tolerance = options?.tolerance ?? 0.25;
+  const unlabelled = options?.unlabelledM2 ?? { min: 2.5, max: 16 };
   const heavy = segments.filter((s) => s.lineWidth >= minLineWidth);
   if (heavy.length === 0) return [];
 
@@ -1753,7 +1834,8 @@ export function findTerraces(
     if (seed < 0) continue;
 
     // Budgeted, so a leak stops early instead of walking the sheet.
-    const budget = Math.ceil((area.value * (1 + tolerance) * 1.5) / perCell);
+    const ceiling = area.value ?? unlabelled.max;
+    const budget = Math.ceil((ceiling * (1 + tolerance) * 1.5) / perCell);
     const seen = new Uint8Array(w * h);
     const stack = [seed];
     seen[seed] = 1;
@@ -1784,7 +1866,11 @@ export function findTerraces(
     }
     if (leaked) continue;
     const floodedM2 = filled * perCell;
-    if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+    if (area.value != null) {
+      if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+    } else if (floodedM2 < unlabelled.min || floodedM2 > unlabelled.max) {
+      continue;
+    }
 
     const byRow = new Map<number, number[]>();
     let bx0 = Infinity;
@@ -1826,7 +1912,7 @@ export function findTerraces(
         width: (bx1 - bx0) / scale,
         height: (by1 - by0) / scale,
       },
-      printedM2: area.value,
+      ...(area.value != null ? { printedM2: area.value } : {}),
       floodedM2,
     });
   }

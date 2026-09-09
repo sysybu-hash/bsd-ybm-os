@@ -1,4 +1,7 @@
-import { findTerraces } from "@/lib/projects/floorplan-solid";
+import {
+  findTerraces,
+  terraceDiagonalSeeds,
+} from "@/lib/projects/floorplan-solid";
 import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
 const UPM = 54;
@@ -79,5 +82,51 @@ describe("findTerraces", () => {
 
   it("returns nothing when the sheet prints no areas", () => {
     expect(findTerraces(box(100, 100, SIDE, SIDE), [], UPM)).toEqual([]);
+  });
+});
+
+describe("the diagonal an Israeli sheet draws across a terrace", () => {
+  it("finds it between the wall hatch below and the section lines above", () => {
+    // Measured on the ten sheets: the terrace marks run 69 to 261 units on the
+    // heavy pen, wall hatch is bounded by a wall's own thickness, and each
+    // sheet carries a section line of 1400 units and more on the thin pen.
+    const mark: VectorSegment = {
+      x1: 100,
+      y1: 100,
+      x2: 200,
+      y2: 200,
+      lineWidth: 5,
+    };
+    const wallHatch: VectorSegment = {
+      x1: 300,
+      y1: 300,
+      x2: 308,
+      y2: 308,
+      lineWidth: 5,
+    };
+    const sectionLine: VectorSegment = {
+      x1: 0,
+      y1: 0,
+      x2: 1000,
+      y2: 1200,
+      lineWidth: 2,
+    };
+    const seeds = terraceDiagonalSeeds(
+      [mark, wallHatch, sectionLine],
+      UPM,
+    );
+    expect(seeds).toHaveLength(1);
+    expect(seeds[0]!.x).toBeCloseTo(150, 0);
+  });
+
+  it("ignores an axis-aligned line, which is a wall or a course of paving", () => {
+    const wall: VectorSegment = {
+      x1: 100,
+      y1: 100,
+      x2: 300,
+      y2: 100,
+      lineWidth: 5,
+    };
+    expect(terraceDiagonalSeeds([wall], UPM)).toEqual([]);
   });
 });

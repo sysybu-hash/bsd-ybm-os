@@ -44,6 +44,13 @@ export type BuiltFlat = {
   openings: Opening[];
   /** Paved outdoor areas, each verified against the area the sheet prints in it. */
   terraces: SpanRow[][];
+  /**
+   * How many terrace figures the sheet prints inside this flat.
+   *
+   * Not the same as terraces.length: finding four of eleven is the measured
+   * state, and the difference is what the confidence report says out loud.
+   */
+  printedTerraceCount: number;
   bounds: { x: number; y: number; width: number; height: number };
   floorM2: number;
   areaError: number;
@@ -309,6 +316,7 @@ export async function buildFlatFromPdf(
       area.y >= flatExtent.y &&
       area.y <= flatExtent.y + flatExtent.height,
   );
+
   const terraces = findTerraces(geometry.segments, printed, unitsPerMetre).map(
     (terrace) => terrace.rows,
   );
@@ -320,6 +328,7 @@ export async function buildFlatFromPdf(
     furniture,
     openings,
     terraces,
+    printedTerraceCount: printed.length,
     bounds,
     floorM2: lock.floorM2,
     areaError: lock.areaError,

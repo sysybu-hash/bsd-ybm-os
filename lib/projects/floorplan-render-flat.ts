@@ -263,6 +263,7 @@ export async function renderFlatFromPdf(
     fidelity,
     coolTint,
     foundTerraces: flat.terraces.length,
+    printedTerraces: flat.printedTerraceCount,
     auditHardFailures: best.hardFailures,
   });
 
