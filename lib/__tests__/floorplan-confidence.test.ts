@@ -120,3 +120,16 @@ describe("assessFloorplanRun", () => {
     expect(report.soft.join(" ")).toMatch(/לא הופרדו/);
   });
 });
+
+describe("what the auditor disqualified the frame for", () => {
+  it("stops a booklet on a defect the grader already caught", () => {
+    // The gate was letting a frame through that the grader had scored 108 for
+    // carrying a screen, because it only looked at its own measurements.
+    const report = assessFloorplanRun({
+      ...good,
+      auditHardFailures: ["1 screen(s) in a haredi still"],
+    });
+    expect(report.ok).toBe(false);
+    expect(report.hard).toContain("1 screen(s) in a haredi still");
+  });
+});

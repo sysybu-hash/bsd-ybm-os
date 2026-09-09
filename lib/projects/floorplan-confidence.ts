@@ -45,6 +45,16 @@ export function assessFloorplanRun(input: {
   /** How many terraces the sheet prints an area for, when that is known. */
   printedTerraces?: number;
   foundTerraces?: number;
+  /**
+   * What the auditor disqualified the frame for, if anything.
+   *
+   * These are the defects that make a still unusable however good the geometry
+   * behind it — a screen or a double bed in a haredi still, a mirrored or
+   * turned plan. The gate was letting a frame through that the grader had
+   * already scored 108 for carrying a screen, because it was only looking at
+   * its own measurements.
+   */
+  auditHardFailures?: string[];
 }): ConfidenceReport {
   const hard: string[] = [];
   const soft: string[] = [];
@@ -99,6 +109,10 @@ export function assessFloorplanRun(input: {
     } else {
       soft.push(...fidelityFailures(input.fidelity));
     }
+  }
+
+  for (const failure of input.auditHardFailures ?? []) {
+    hard.push(failure);
   }
 
   if (input.coolTint != null && input.coolTint > TINT_LIMIT) {

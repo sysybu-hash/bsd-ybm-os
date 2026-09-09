@@ -176,7 +176,7 @@ const grade = async (image) => {
     score += tint * 10;
   }
   console.log(`   attempt: score ${score}${failures.length ? " — " + failures.join("; ") : ""}`);
-  return { score, failures };
+  return { score, failures, hardFailures: verdict.hardFailures };
 };
 
 const best = await pickBestFinish(attempts, render, grade, { label: name, goodEnough });
@@ -221,6 +221,7 @@ const confidence = assessFloorplanRun({
   fidelity: finalFidelity,
   coolTint: await coolTintFraction({ base64: stamped.base64 }),
   foundTerraces: flat.terraces.length,
+  auditHardFailures: best.hardFailures,
 });
 const reportPath = path.join(outDir, `${name} — בדיקה.json`);
 fs.writeFileSync(

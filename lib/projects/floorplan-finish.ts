@@ -21,12 +21,18 @@ const log = createLogger("floorplan-finish");
  * against a fixed geometry they separate a good finish from a careless one.
  */
 
-export type FinishGrade = { score: number; failures: string[] };
+export type FinishGrade = {
+  score: number;
+  failures: string[];
+  /** The subset that disqualifies the frame outright, carried to the caller. */
+  hardFailures?: string[];
+};
 
 export type FinishResult<T> = {
   image: T;
   score: number;
   failures: string[];
+  hardFailures: string[];
   /** How many finishes were rendered in all — what the run actually cost. */
   attempts: number;
   /** True when it stopped early because a finish was clean enough. */
@@ -59,12 +65,19 @@ export async function pickBestFinish<T>(
     // No auditor is not a reason to throw the frame away — it is a reason to
     // keep it and say the choice was unaudited.
     if (!graded) {
-      best ??= { image, score: Number.POSITIVE_INFINITY, failures: [], attempts: rendered, stoppedEarly: false };
+      best ??= { image, score: Number.POSITIVE_INFINITY, failures: [], hardFailures: [], attempts: rendered, stoppedEarly: false };
       continue;
     }
 
     if (!best || graded.score < best.score) {
-      best = { image, score: graded.score, failures: graded.failures, attempts: rendered, stoppedEarly: false };
+      best = {
+        image,
+        score: graded.score,
+        failures: graded.failures,
+        hardFailures: graded.hardFailures ?? [],
+        attempts: rendered,
+        stoppedEarly: false,
+      };
     }
     if (graded.score <= goodEnough) {
       log.info("finish good enough, stopping", {
@@ -72,7 +85,14 @@ export async function pickBestFinish<T>(
         attempt,
         score: graded.score,
       });
-      return { image, score: graded.score, failures: graded.failures, attempts: rendered, stoppedEarly: true };
+      return {
+        image,
+        score: graded.score,
+        failures: graded.failures,
+        hardFailures: graded.hardFailures ?? [],
+        attempts: rendered,
+        stoppedEarly: true,
+      };
     }
   }
 
