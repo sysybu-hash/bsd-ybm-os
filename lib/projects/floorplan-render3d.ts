@@ -103,7 +103,10 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   // for a toilet.
   hob: { top: "#5a5f66", face: "#43474d" },
   sink: { top: "#8e959c", face: "#6e747a" },
-  seat: { top: "#cfc6b6", face: "#aca392" },
+  // Light enough to sit clearly on the floor it stands on. At #cfc6b6 a seat was
+  // 25 parts from the floor's own #c3b49d, and a low block in a near-floor tone
+  // reads as floor.
+  seat: { top: "#e6dccb", face: "#c6b9a4" },
   unknown: { top: "#cbb79c", face: "#a8917a" },
 };
 function quad(points: Array<[number, number]>, fill: string, stroke: string): string {
@@ -236,7 +239,12 @@ export function renderFlatSvg(
     hob: 0.92,
     sink: 0.9,
     table: 0.75,
-    seat: 0.85,
+    // A seat, not a seat back. At 0.85 a chair stood as tall as a worktop at
+    // 0.9, and the model read the blocks as what they matched: the island's
+    // four stools came out as a length of counter and the living-room suite as
+    // a wall. Half a metre is what you sit on, and nothing else in the flat is
+    // that low.
+    seat: 0.45,
     unknown: 0.5,
   };
   for (const piece of [...(options.furniture ?? [])].sort(

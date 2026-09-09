@@ -101,9 +101,9 @@ describe("rules added because a still broke them", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/single bed in a large bedroom is correct/);
   });
 
-  it("expects the dining chairs the render cannot carry, and only there", () => {
-    expect(FURNITURE_KEY_PROMPT).toMatch(/Chairs go around the table and nowhere else/);
+  it("holds the flat to one dining table, whose chairs are now drawn", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/one dining table per flat/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/its chairs are drawn/);
   });
 
   it("forbids a saturated finish, since the blocks are tinted to guide it", () => {
@@ -138,5 +138,21 @@ describe("the finished palette", () => {
     expect(RECOLOUR_PROMPT).not.toMatch(/light-green is a chair/);
     expect(RECOLOUR_PROMPT).not.toMatch(/Anything purple/);
     expect(RECOLOUR_PROMPT).not.toMatch(/Anything blue/);
+  });
+});
+
+describe("seating, once the render started carrying it", () => {
+  it("no longer tells the model the render has no chairs", () => {
+    // The key said the sheet draws chairs "as curved symbols this render does
+    // not carry, so they are expected here". That stopped being true when the
+    // geometry started placing them, and the model went on reading the seat
+    // blocks as counters and walls: six chairs came back as four, four island
+    // stools as none, and the living-room suite as a length of wall.
+    expect(FURNITURE_KEY_PROMPT).not.toMatch(/this render does not carry/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/GREY-BEIGE block = SEATING/);
+  });
+
+  it("names what a seat block must not become", () => {
+    expect(FURNITURE_KEY_PROMPT).toMatch(/never part of a wall/);
   });
 });

@@ -63,14 +63,19 @@ export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are
 - PALE AQUA block = a sanitary fixture. The aqua is a coding tint and not the finished colour: render it as WHITE glazed ceramic, and let no aqua, mint or blue object remain anywhere in the finished frame. It is a bath if it is long, a toilet or washbasin if it is small. Only ever a fixture, and only inside the room it stands in. Aqua is the ONLY fixture colour: a bath, a toilet, a shower and a basin appear where an aqua block stands and nowhere else on this sheet. An off-white block is never one of them, however long it is and whatever room it stands in — a long off-white block with a pillow band across one end is a bed, and rendering it as a bath puts a bathroom in a bedroom.
 - DARK STEEL block, a 60 cm square = the HOB. Render a four-burner cooktop set into the worktop. It is a cooktop, never a toilet or a basin, and the room it stands in is the kitchen.
 - GREY STEEL block, half as wide as it is deep = a kitchen sink BASIN. There are two of them side by side and they make one double-bowl sink in a single counter cut-out — two basins, not one.
-- DARK OAK block = a dining table. Set chairs around it, tucked to its edges, as many as its length takes — the sheet draws the chairs as curved symbols this render does not carry, so they are expected here. Chairs go around the table and nowhere else. There is one dining table per flat.
-- GREY-BEIGE block = a small side piece: a bedside table beside a bed, an armchair in a living space.
+- DARK OAK block = a dining table. There is one dining table per flat, and its chairs are drawn — do not add more.
+- GREY-BEIGE block = SEATING, and it is drawn here. Render a real seat for every one of these blocks, at its own footprint:
+  - standing at the edge of the dining table, it is a dining chair — there are six and all six are drawn;
+  - standing in a row along the open side of a kitchen island, it is a bar stool — there are four;
+  - standing free in a living space, it is an armchair or a sofa, upholstered, facing into the room;
+  - standing beside a bed, it is a bedside table.
+  These are the blocks the render loses most often. A grey-beige block is never a step, never a cupboard, never a length of worktop, and never part of a wall — if you find yourself drawing a wall or a counter where one of these stands, you have lost a seat.
 
 A bath, a toilet, a shower or a washbasin appears ONLY where a pale aqua fixture block stands. A room containing no aqua block is not a bathroom, whatever its shape: render it with the furniture its own blocks carry and an ordinary floor. Wardrobes are not fixtures — a room whose blocks are tan oak is a bedroom or a store, never a wet room. There are exactly as many wet rooms as there are groups of aqua blocks.
 
 - A PALE STONE-GREY area enclosed by a thin grey outline, cooler than the oak floor around it, is a TERRACE: an open outdoor area, paved in stone, with a railing or parapet along the outline and open sky above. Never roof it, never floor it in oak, and never wall it in — it is outside the apartment, and it is one of the things the flat is being sold on.
 
-Render every block, without exception. Do not add furniture where there is no block, apart from the chairs around the dining table. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
+Render every block, without exception, and add no furniture where there is no block — the chairs are drawn now, so there is nothing left to supply. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
 
 /**
  * The second pass, which takes the aqua back out.
