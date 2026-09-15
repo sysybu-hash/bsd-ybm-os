@@ -1,5 +1,10 @@
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
-import { gradeFloorplanStill, type FloorplanVizAudit } from "@/lib/projects/floorplan-viz-audit";
+import {
+  gradeFloorplanStill,
+  harediModestyFailures,
+  surgicallyRemovableFailures,
+  type FloorplanVizAudit,
+} from "@/lib/projects/floorplan-viz-audit";
 
 /** דירה 14: four drawn beds across three sleeping rooms, an island with four stools. */
 const layout = parseFloorplanLayout({
@@ -26,6 +31,12 @@ const clean: FloorplanVizAudit = {
   screenCount: 0,
   kitchenSinkBasins: 2,
   planKitchenSinkBasins: 2,
+  washerCount: 0,
+  planWasherCount: 0,
+  washersOnLeisureTerrace: 0,
+  bathtubCount: 1,
+  planBathtubCount: 1,
+  kitchenFridgeMissing: false,
   openingsNotInPlan: 0,
   builtInsNotInPlan: 0,
   entranceFurnitureCount: 0,
@@ -36,10 +47,21 @@ const clean: FloorplanVizAudit = {
   hasBurnedText: false,
   hasCadMarks: false,
   emptyUnfurnishedRooms: 0,
+  emptyBedrooms: 0,
+  oversizedTerraces: 0,
   roomsOutsidePlanOutline: 0,
+  indoorRoomsTurnedOutdoor: 0,
+  terracesMergedIntoOneDeck: false,
+  outdoorPavingLargerThanLiving: false,
+  entranceTurnedIntoTerrace: false,
+  entranceDoorMissing: false,
+  terraceTurnedIntoIndoor: 0,
+  inventedOutdoorSpaces: 0,
+  omittedOutdoorSpaces: 0,
   footprintMatchesPlan: true,
   mirroredVsPlan: false,
   rotationVsPlanDegrees: 0,
+  looksLikeCadMassing: false,
   notes: "",
 };
 
@@ -71,9 +93,10 @@ describe("floorplan still audit", () => {
       { ...clean, hasBurnedText: true, hasCadMarks: true },
       layout,
     );
-    expect(verdict.failures).toHaveLength(2);
-    // Burned text is disqualifying; a stray CAD mark is not.
-    expect(verdict.hardFailures).toEqual(["letters or digits rendered into the image"]);
+    expect(verdict.hardFailures).toEqual([
+      "letters or digits rendered into the image",
+      "2D CAD annotation copied into the render",
+    ]);
   });
 
   it("catches the two-dining-tables and unfurnished-room failures", () => {
@@ -129,11 +152,15 @@ it("counts bedrooms off the extraction, which reads the printed room labels", ()
     // The fixture has three sleeping rooms, one of them the ממ"ד; vision sees two.
     const verdict = gradeFloorplanStill({ ...clean, bedroomCount: 2, planBedroomCount: 2 }, layout);
     expect(verdict.failures).toContain("bedrooms 2, plan has 3");
+    expect(verdict.hardFailures).toContain("bedrooms 2, plan has 3");
   });
 
-  it("does not fail a bed count the two readings cannot agree on", () => {
+  it("prefers layout bed symbols over a contradicted auditor plan read", () => {
+    // Layout fixture has 4 beds; auditor says plan has 3. Prefer layout — skipping
+    // used to ship wrong bed counts (דירה 23).
     const verdict = gradeFloorplanStill({ ...clean, bedTotal: 6, planBedTotal: 3 }, layout);
-    expect(verdict.failures.join(" ")).not.toMatch(/beds /);
+    expect(verdict.failures.join(" ")).toMatch(/beds 6, plan has 4/);
+    expect(verdict.hardFailures.join(" ")).not.toMatch(/beds /);
   });
 
   it("falls back to the extraction when the auditor could not read the plan", () => {
@@ -155,6 +182,39 @@ it("counts bedrooms off the extraction, which reads the printed room labels", ()
     expect(verdict.hardFailures).toEqual(["3 room(s) invented outside the plan outline"]);
     expect(verdict.failures[1]).toMatch(/footprint does not match/);
     expect(verdict.score).toBe(101);
+  });
+
+  it("rejects indoor living paved as a wraparound terrace", () => {
+    const verdict = gradeFloorplanStill(
+      {
+        ...clean,
+        indoorRoomsTurnedOutdoor: 1,
+        terracesMergedIntoOneDeck: true,
+        outdoorPavingLargerThanLiving: true,
+      },
+      layout,
+    );
+    expect(verdict.hardFailures).toEqual(
+      expect.arrayContaining([
+        "1 indoor room(s) rendered as outdoor paving",
+        "printed terraces merged into one deck",
+        "outdoor paving covers more of the plate than the living room",
+      ]),
+    );
+  });
+
+  it("rejects a hatched terrace furnished as an indoor sitting room", () => {
+    const verdict = gradeFloorplanStill({ ...clean, terraceTurnedIntoIndoor: 1 }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "1 hatched terrace(s) furnished as indoor rooms",
+    ]);
+  });
+
+  it("rejects a terrace glued onto a wall the plan does not hatch", () => {
+    const verdict = gradeFloorplanStill({ ...clean, inventedOutdoorSpaces: 1 }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "1 terrace(s) invented where the plan has no hatch",
+    ]);
   });
 
   it("rejects a rectangle drawn for a stepped plan even when nothing was added", () => {
@@ -186,6 +246,13 @@ it("fails a still turned 180 degrees, which the silhouette check cannot see", ()
     expect(gradeFloorplanStill({ ...clean, rotationVsPlanDegrees: 0 }, layout).failures).toEqual([]);
   });
 
+  it("rejects a CAD block massing plate as a brochure still", () => {
+    const verdict = gradeFloorplanStill({ ...clean, looksLikeCadMassing: true }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "CAD block massing shipped instead of a photoreal still",
+    ]);
+  });
+
   it("does not call a correctly oriented still mirrored", () => {
     expect(gradeFloorplanStill(clean, layout).failures).toEqual([]);
   });
@@ -211,6 +278,40 @@ describe("modesty and fixtures the counts were missing", () => {
   it("says nothing about sinks when the auditor could not read them off the plan", () => {
     const blind = { ...clean, kitchenSinkBasins: 1, planKitchenSinkBasins: 0 };
     expect(gradeFloorplanStill(blind, layout).failures).toEqual([]);
+  });
+});
+
+describe("harediModestyFailures", () => {
+  it("picks screens and double beds out of the hard list", () => {
+    expect(
+      harediModestyFailures([
+        "2 screen(s) in a haredi still",
+        "a double bed in a haredi still",
+        "the still is the plan mirrored left-to-right",
+        "letters or digits rendered into the image",
+      ]),
+    ).toEqual(["2 screen(s) in a haredi still", "a double bed in a haredi still"]);
+  });
+
+  it("is empty when the hard list has no modesty items", () => {
+    expect(harediModestyFailures(["rooms outside the plan outline"])).toEqual([]);
+  });
+});
+
+describe("surgicallyRemovableFailures", () => {
+  it("treats burned text as removable for every audience", () => {
+    expect(
+      surgicallyRemovableFailures(["letters or digits rendered into the image"], { haredi: false }),
+    ).toEqual(["letters or digits rendered into the image"]);
+  });
+
+  it("keeps screens removable only for haredi", () => {
+    expect(surgicallyRemovableFailures(["1 screen(s) in a haredi still"], { haredi: false })).toEqual(
+      [],
+    );
+    expect(surgicallyRemovableFailures(["1 screen(s) in a haredi still"], { haredi: true })).toEqual([
+      "1 screen(s) in a haredi still",
+    ]);
   });
 });
 
@@ -308,12 +409,13 @@ describe("what the still added that the sheet never drew", () => {
     expect(gradeFloorplanStill({ ...clean, seatingGroupCount: 0 }, layout).failures).toEqual([]);
   });
 
-  it("says nothing about seating when the plan drew none to compare against", () => {
+  it("rejects a sofa when the plan is dining-only", () => {
     const verdict = gradeFloorplanStill(
-      { ...clean, seatingGroupCount: 3, planSeatingGroupCount: 0 },
+      { ...clean, seatingGroupCount: 1, planSeatingGroupCount: 0 },
       layout,
     );
-    expect(verdict.failures).toEqual([]);
+    expect(verdict.failures).toEqual(["1 seating group(s), plan draws 0"]);
+    expect(verdict.hardFailures).toEqual([]);
   });
 });
 
@@ -343,10 +445,12 @@ describe("a wet fixture in a dry room", () => {
 describe("the building's stairwell pulled inside the flat", () => {
   it("disqualifies the frame", () => {
     const verdict = gradeFloorplanStill({ ...clean, apartmentStairsNotInPlan: 1 }, layout);
-    expect(verdict.failures).toEqual([
+    expect(verdict.hardFailures).toEqual([
       "1 stair flight(s) inside a flat the plan draws on one level",
     ]);
-    expect(verdict.hardFailures).toHaveLength(1);
+    expect(surgicallyRemovableFailures(verdict.hardFailures)).toEqual([
+      "1 stair flight(s) inside a flat the plan draws on one level",
+    ]);
   });
 
   it("outranks a frame that merely miscounts", () => {
@@ -397,12 +501,101 @@ describe("grading against the geometry that produced the still", () => {
       drawn: { beds: 4 },
     });
     expect(verdict.failures.join(" ")).toMatch(/beds 3, the geometry draws 4/);
+    expect(verdict.hardFailures.join(" ")).toMatch(/beds 3, the geometry draws 4/);
   });
 
   it("falls back to the plan readings when no geometry count is given", () => {
-    // Without it the two readings disagree — 4 against 3 — and the check is
-    // skipped, which is how every frame was passing the bed count.
+    // Empty layout → use auditor planBedTotal (3). Extra beds stay soft.
     const verdict = gradeFloorplanStill(audit({ bedTotal: 99 }), layout, {});
     expect(verdict.failures.join(" ")).toMatch(/beds 99/);
+    expect(verdict.hardFailures.join(" ")).not.toMatch(/beds 99/);
+  });
+});
+
+describe("empty bedrooms and oversized terraces", () => {
+  it("disqualifies a master left as empty floor", () => {
+    const verdict = gradeFloorplanStill({ ...clean, emptyBedrooms: 1, bedroomCount: 2 }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "1 bedroom(s) left without a bed",
+      "bedrooms 2, plan has 3",
+    ]);
+  });
+
+  it("disqualifies a doorway-deep terrace grown to bedroom size", () => {
+    const verdict = gradeFloorplanStill({ ...clean, oversizedTerraces: 1 }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "1 terrace(s) grown larger than the printed pocket",
+    ]);
+  });
+
+  it("disqualifies a sealed flat that dropped the printed balcony", () => {
+    const verdict = gradeFloorplanStill(
+      { ...clean, omittedOutdoorSpaces: 1, footprintMatchesPlan: false },
+      layout,
+    );
+    expect(verdict.hardFailures).toEqual(
+      expect.arrayContaining([
+        "1 printed terrace(s) missing from the still",
+        "footprint does not match the plan outline",
+      ]),
+    );
+  });
+
+  it("disqualifies a sealed flat with no front door leaf", () => {
+    const verdict = gradeFloorplanStill({ ...clean, entranceDoorMissing: true }, layout);
+    expect(verdict.hardFailures).toEqual([
+      "front door missing where the plan draws the entrance",
+    ]);
+    expect(
+      surgicallyRemovableFailures(verdict.hardFailures),
+    ).toEqual(["front door missing where the plan draws the entrance"]);
+  });
+
+  it("still treats a storage room left empty as a soft miss", () => {
+    const verdict = gradeFloorplanStill({ ...clean, emptyUnfurnishedRooms: 1 }, layout);
+    expect(verdict.failures).toEqual(["1 room(s) left unfurnished"]);
+    expect(verdict.hardFailures).toEqual([]);
+  });
+
+  it("disqualifies דירה-21 style: washers on leisure terraces, invented tub, missing fridge", () => {
+    const verdict = gradeFloorplanStill(
+      {
+        ...clean,
+        washerCount: 6,
+        planWasherCount: 1,
+        washersOnLeisureTerrace: 4,
+        bathtubCount: 1,
+        planBathtubCount: 0,
+        kitchenFridgeMissing: true,
+      },
+      layout,
+    );
+    expect(verdict.hardFailures).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/washer\(s\) on a leisure terrace/),
+        expect.stringMatching(/washers 6, plan draws 1/),
+        expect.stringMatching(/bathtubs 1, plan draws 0/),
+      ]),
+    );
+    expect(verdict.hardFailures.join(" ")).not.toMatch(/kitchen fridge/);
+    expect(verdict.failures.join(" ")).toMatch(/kitchen fridge/);
+    expect(
+      surgicallyRemovableFailures(verdict.hardFailures).join(" "),
+    ).toMatch(/washer|bathtub/);
+  });
+
+  it("expects a bed in every extracted bedroom even when bedCount is missing", () => {
+    const twoBeds = parseFloorplanLayout({
+      rooms: [
+        { name: "חדר שינה 1", kind: "bedroom" },
+        { name: "חדר שינה 2", kind: "bedroom" },
+        { name: "מגורים", kind: "living" },
+      ],
+    });
+    const verdict = gradeFloorplanStill(
+      { ...clean, bedTotal: 2, bedroomCount: 1, planBedTotal: 2, planBedroomCount: 0 },
+      twoBeds,
+    );
+    expect(verdict.hardFailures).toContain("bedrooms 1, plan has 2");
   });
 });

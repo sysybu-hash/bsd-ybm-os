@@ -155,6 +155,7 @@ export function resolveGeminiImageModelId(raw: string): string {
 }
 
 export function getFloorplanVizModelChain(): string[] {
+  // Pro first — photoreal sales stills need max fidelity; Flash/Lite are fallback only.
   const fromEnv = env.GEMINI_IMAGE_MODEL?.trim();
   return dedupeModels([
     ...(fromEnv ? [resolveGeminiImageModelId(fromEnv)] : []),

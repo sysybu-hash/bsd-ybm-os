@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 /** Bump when extract prompts or merge rules change — invalidates layout replay. */
 export const FLOORPLAN_EXTRACT_LOCK_VERSION = "extract-pixel-v4";
 /** Bump when viz prompts or style locks change — invalidates still replay. */
-export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v41";
+export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v49";
 
 const GEMINI_IMAGE_ASPECTS: ReadonlyArray<readonly [number, number]> = [
   [1, 1],
@@ -55,7 +55,9 @@ ORIENTATION LOCK — a mirrored or rotated floor plate is a failed output:
 export const PIXEL_LOCK = `
 PIXEL LOCK — the attached sales sheet is CAD ink, not a mood board:
 - Copy the dark wall graph 1:1. Every jog, thickness, and opening stays as printed. Do not straighten, offset, or invent walls.
+- Do not invent a generic rectangular apartment. If the printed outline is irregular, the photograph's outline is that same irregular shape — every notch, wing and terrace strip, in those pixels.
 - Furniture and fixtures sit on the printed symbols: same room, same integer count, same position and size. Do not restage, center, or "improve" the layout.
+- Lived-in props (lamps, fruit bowl, pillows, throws, towels) sit ON drawn furniture only. They never add a sofa, table, bed, sink, or terrace that is not printed.
 - Inventory integers are exact. 1 office = 1 desk-only room in the photograph. 1 twin = 1 twin. 0 beds = empty.
 - חדר שירות / ח.שרות is laundry (washer, shelves). It is not שירותים. Do not place a toilet, basin, or bathtub there.
 - If a symbol is not printed, it does not exist. Do not fill empty rooms from memory.
@@ -63,6 +65,27 @@ PIXEL LOCK — the attached sales sheet is CAD ink, not a mood board:
 - A toilet pan, oval basin, or bathtub on the sheet MUST appear in that wet room. Never an empty tiled bathroom.
 - Diagonal hatch on a rectangle is a closet with CLOSED doors, not open hanging rails.
 - Forbidden: typical apartments, approximate counts, similar furniture, "around" a measurement.
+`.trim();
+
+/**
+ * The CAD render already contains the flat. The sales-sheet presentation
+ * lock tells the model the attachment is empty wall-tracing and to copy
+ * fixtures from a sheet it is not holding — that licenses invention.
+ */
+export const GEOMETRY_PIXEL_LOCK = `
+PIXEL LOCK (absolute — this overrides every later sentence):
+- This image is a pixel-registered architectural plate. The output occupies the same pixel grid: same width, same height, same origin.
+- Every wall pixel stays a wall pixel. Every doorway gap stays a gap at the same pixels. Every furniture block stays at the same pixels and the same size.
+- Do not crop, pad, zoom, pan, rotate, mirror or restretch. If a pixel was floor it stays floor; if it was wall it stays wall.
+- You may change only the colour and texture of a pixel, never its role in the plan.
+- A result that would not overlay the input with walls lining up is a failed result. Return the painted version of THIS picture, not a new drawing of an apartment.
+- Do not invent a rectangular box apartment. The outline is already drawn.
+`.trim();
+
+export const GEOMETRY_PRESENTATION_LOCK = `
+PRESENTATION LOCK — finished Israeli sales-brochure still, not a CAD dollhouse:
+- Forbidden in the photograph: north arrows, black entrance triangles, dimension ticks, 2D hatch patterns, paper title blocks, letters or digits.
+- Lighting and materials: soft even brochure daylight, finished millwork, complete wet rooms. Not vacant contractor boxes, not a plastic CGI dollhouse.
 `.trim();
 
 export const PRESENTATION_LOCK = `

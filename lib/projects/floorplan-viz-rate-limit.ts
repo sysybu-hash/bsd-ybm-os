@@ -1,12 +1,13 @@
+import { env } from "@/lib/env";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const WINDOW_MS = 60 * 60 * 1000;
 
 /** בפיתוח אין מכסה. בפרודקשן 40 לשעה — כמו שאר נתיבי ה-AI, לא 8. */
-export const FLOORPLAN_VIZ_REQUESTS_PER_HOUR = process.env.NODE_ENV === "production" ? 40 : 500;
+export const FLOORPLAN_VIZ_REQUESTS_PER_HOUR = env.NODE_ENV === "production" ? 40 : 500;
 
 export function isFloorplanVizRateLimitOff(): boolean {
-  return process.env.NODE_ENV !== "production";
+  return env.NODE_ENV !== "production";
 }
 
 export async function enforceFloorplanVizRateLimit(

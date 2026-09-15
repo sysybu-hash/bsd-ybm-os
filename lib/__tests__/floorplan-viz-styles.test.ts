@@ -129,6 +129,19 @@ describe("floorplan viz style kits", () => {
     expect(kitchen).toMatch(/island sink/i);
   });
 
+  it("does not license a sofa or a laptop the plan does not draw", () => {
+    for (const id of FLOORPLAN_VIZ_PRESET_IDS) {
+      const kit = FLOORPLAN_VIZ_PRESETS[id];
+      const prompt = buildVizPrompt(sample, { kind: "overview" }, { styleKit: kit });
+      expect(prompt).toMatch(/do not add a sofa/i);
+      expect(prompt).toMatch(/laptop|NO SCREENS|TV only if the plan/i);
+      if (kit.audience === "haredi") {
+        expect(prompt).toMatch(/NO SCREENS/);
+        expect(prompt).toMatch(/ZERO screens|dark slab/i);
+      }
+    }
+  });
+
   it("locks beds out of living on overview for every kit", () => {
     const prompt = buildVizPrompt(sample, { kind: "overview" }, { styleKit: FLOORPLAN_VIZ_PRESETS.contemporary });
     expect(prompt).toMatch(/FURNITURE LOCK/);
@@ -209,6 +222,11 @@ describe("floorplan viz style kits", () => {
       ],
     });
     const prompt = buildVizPrompt(layout, { kind: "overview" }, { styleKit: FLOORPLAN_VIZ_PRESETS.haredi_classic });
+    const clientLockAt = prompt.indexOf("CLIENT LOCK");
+    expect(clientLockAt).toBeGreaterThan(-1);
+    expect(clientLockAt).toBeLessThan(prompt.indexOf("PIXEL LOCK"));
+    expect(prompt).toMatch(/NO SCREENS|no televisions/i);
+    expect(prompt).toMatch(/NEVER a double|no double bed/i);
     expect(prompt).toMatch(/1 twin bed/);
     expect(prompt).toMatch(/2 twin beds/);
     expect(prompt).toMatch(/no beds/);

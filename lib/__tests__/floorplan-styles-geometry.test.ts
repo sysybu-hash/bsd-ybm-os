@@ -54,6 +54,15 @@ describe("the locks, against a render that already contains the flat", () => {
     // which is the opposite of "add nothing where there is no block".
     for (const { id, kind, text } of geometryPrompts) {
       expect(`${id}/${kind}: ${text}`).not.toMatch(/bistro table/);
+      expect(`${id}/${kind}: ${text}`).not.toMatch(/outdoor seating if the drawn area allows/);
+    }
+  });
+
+  it("forbids inventing a new apartment over the CAD pixels", () => {
+    for (const { id, kind, text } of geometryPrompts) {
+      expect(`${id}/${kind}: ${text}`).toMatch(/same pixel grid/);
+      expect(`${id}/${kind}: ${text}`).not.toMatch(/wall-tracing looks empty/);
+      expect(`${id}/${kind}: ${text}`).not.toMatch(/copy wet fixtures from the sales sheet/);
     }
   });
 

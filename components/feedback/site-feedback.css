@@ -19,6 +19,12 @@ body:has(.marketing-cinematic) {
   bottom: var(--fab-stack-offset);
 }
 
+body.os-fullscreen-media .site-feedback-fab,
+body.os-fullscreen-media .accessibility-toolbar-fab {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .accessibility-toolbar-panel {
   bottom: calc(var(--fab-stack-offset) + 3.75rem);
 }

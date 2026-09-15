@@ -1,4 +1,4 @@
-import { inferRoomKind, isBuildingCoreRoom, isElevationFloorToken, layoutHasInternalStairs, type FloorplanLayout, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
+import { extractUnitLabel, inferRoomKind, isBuildingCoreRoom, isElevationFloorToken, layoutHasInternalStairs, type FloorplanLayout, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 
 export const KIND_LABEL_HE: Record<FloorplanRoomKind, string> = {
@@ -13,21 +13,17 @@ export const KIND_LABEL_HE: Record<FloorplanRoomKind, string> = {
   other: "חלל אחר",
 };
 
-const KIND_BRIEF_HE: Record<FloorplanRoomKind, string> = {
-  living: "חלל מגורים — ישיבה ואירוח. הריהוט לקנה־מידה בלבד.",
-  kitchen: "מטבח — משטח עבודה ואחסון לפי התוכנית.",
-  bedroom: "חדר שינה — חלל פרטי סגור, עם מיטה לקנה־מידה.",
-  mmd: 'ממ"ד — מרחב מוגן סגור ונפרד משאר הדירה.',
-  bathroom: "חדר רחצה — אזור רטוב לפי התוכנית, לא חלל מגורים.",
-  balcony: "מרפסת — חלל חיצוני רק אם סומן בתוכנית.",
-  circulation: "גרעין תנועה — מדרגות בניין או מעלית. מדרגות פנים של הדירה הן גרם לקומה אחרת של אותה יחידה.",
-  utility: "חלל שירות — מחסן, כביסה או חניה.",
-  other: "חלל שזוהה בתוכנית — חדר עבודה הוא משרד עם שולחנות, לא מטבח.",
-};
-
 export function formatRoomMeasure(room: FloorplanRoom): string {
   if (room.widthM && room.lengthM) return `${room.widthM}×${room.lengthM} מ'`;
-  if (room.areaM2) return `${room.areaM2} מ"ר`;
+  return "—";
+}
+
+/** Area cell for the booklet table — separate from width×length. */
+export function formatRoomArea(room: FloorplanRoom): string {
+  if (room.areaM2 != null) return `${room.areaM2} מ"ר`;
+  if (room.widthM && room.lengthM) {
+    return `${Math.round(room.widthM * room.lengthM * 100) / 100} מ"ר`;
+  }
   return "—";
 }
 
@@ -50,6 +46,24 @@ export function uniqueHeadingParts(parts: Array<string | undefined>): string {
     out.push(key);
   }
   return out.join(" · ");
+}
+
+/** The unit the booklet is about — never the sheet's project / street title. */
+export function bookletUnitHeading(layout: FloorplanLayout, fallback?: string): string {
+  const found = extractUnitLabel(
+    [layout.unitLabel, layout.title, fallback].filter((row): row is string => Boolean(row?.trim())).join(" "),
+  );
+  if (found) {
+    const digits = found.replace(/^דירה\s*/u, "").trim();
+    return digits ? `דירה ${digits}` : found;
+  }
+  const unit = layout.unitLabel?.trim();
+  if (unit) {
+    const digits = unit.replace(/^דירה\s*/u, "").trim();
+    return digits ? `דירה ${digits}` : unit;
+  }
+  const fall = fallback?.trim();
+  return fall || "דירה לפי תוכנית מכר";
 }
 
 function countByKind(rooms: FloorplanRoom[]): string {
@@ -75,43 +89,40 @@ function countByKind(rooms: FloorplanRoom[]): string {
     .join(" · ");
 }
 
-/** הסבר ראשי על כל התוכנית — עמוד הפתיחה של החוברת */
+/** טקסט פתיחה קצר לשער החוברת */
 export function buildPlanOverviewCopy(
   layout: FloorplanLayout,
   projectName?: string,
   style?: { labelHe?: string; summaryHe?: string },
 ): string[] {
   const rooms = layout.rooms.filter((r) => !isBuildingCoreRoom(r));
-  const unit =
-    uniqueHeadingParts([layout.title, layout.unitLabel, projectName]) || "דירה לפי תוכנית מכר";
-  const area = layout.grossAreaM2 ? `שטח ברוטו כ־${layout.grossAreaM2} מ"ר` : "שטח ברוטו לא אומת מהתוכנית";
+  const unit = bookletUnitHeading(layout, projectName);
+  const site =
+    layout.title?.trim() &&
+    !/^דירה\b/u.test(layout.title.trim()) &&
+    layout.title.trim() !== unit
+      ? layout.title.trim()
+      : projectName && projectName !== unit
+        ? projectName
+        : null;
+  const area = layout.grossAreaM2 ? `שטח ברוטו ${layout.grossAreaM2} מ"ר` : null;
   const floor = formatFloorLabel(layout.floor);
   const ceil = layout.ceilingHeightM ? `גובה תקרה ${layout.ceilingHeightM} מ'` : null;
   const north = layout.north ? `כיוון צפון: ${layout.north}` : null;
   const meta = [area, floor, ceil, north].filter(Boolean).join(" · ");
-  const mix = rooms.length > 0 ? countByKind(rooms) : "לא חולצו חללים מאומתים";
+  const mix = rooms.length > 0 ? countByKind(rooms) : null;
   const styleLine =
     style?.labelHe
-      ? `סגנון הדמיה: ${style.labelHe}${style.summaryHe ? ` — ${style.summaryHe}` : ""}.`
+      ? `סגנון: ${style.labelHe}${style.summaryHe ? ` — ${style.summaryHe}` : ""}.`
       : null;
-  const fromE = layout.internalStairs?.fromElevationM;
-  const toE = layout.internalStairs?.toElevationM;
-  const fmtE = (n: number) => (Math.abs(n) < 0.005 ? "±0.00" : `${n >= 0 ? "+" : ""}${n.toFixed(2)}`);
-  const stairLine = layoutHasInternalStairs(layout)
-    ? fromE != null && toE != null && toE - fromE >= 0.8
-      ? `זוהו מדרגות פנים לקומה אחרת של אותה דירה (${fmtE(fromE)} → ${fmtE(toE)}). אין לשטח את הדירה לקומה אחת.`
-      : "זוהו מדרגות פנים לקומה אחרת של אותה דירה. אין לשטח את הדירה לקומה אחת."
-    : null;
+  const stairLine = layoutHasInternalStairs(layout) ? "דירת דופלקס עם מדרגות פנים." : null;
 
   return [
-    `חוברת הדמיות תלת־ממד של ${unit}. ${meta}.`,
-    rooms.length > 0
-      ? `לפי הפענוח יש ${rooms.length} חללים: ${mix}.`
-      : "לא זוהו חללים ברורים — יש לאמת מול הגרמושקה המקורית.",
+    `${unit}${site ? ` · ${site}` : ""}${meta ? `. ${meta}` : ""}.`,
+    mix ? `חללי הדירה: ${mix}.` : null,
     stairLine,
     styleLine,
-    "כל עמוד מציג הדמיה אחת והאזור המתאים בתוכנית המקורית. הריהוט לקנה־מידה בלבד. אין למדוד מהתמונה.",
-    "הופק במערכת BSD-YBM. ההדמיות להמחשה בלבד — אינן תחליף לתוכנית אדריכלית חתומה או להיתר.",
+    "הדמיה תלת־ממד לפי תוכנית המכר. הריהוט להמחשה בלבד, ואינו תחליף לתוכנית אדריכלית חתומה.",
   ].filter((p): p is string => Boolean(p));
 }
 
@@ -122,21 +133,17 @@ export function buildViewCaption(
   const rooms = layout.rooms;
   if (image.viewId === "overview") {
     return layoutHasInternalStairs(layout)
-      ? "מבט על של הדירה לפי התוכנית, כולל מדרגות פנים לקומה אחרת. הקירות חתוכים. אין למדוד מהתמונה."
-      : "מבט על של הדירה כולה לפי התוכנית המצורפת. הקירות חתוכים כדי שכל חלל יישאר במקומו. אין למדוד מהתמונה.";
+      ? "מבט על לפי תוכנית המכר, כולל מדרגות פנים."
+      : "מבט על לפי תוכנית המכר.";
   }
   if (image.viewId === "isometric") {
-    return "מבט איזומטרי של אותה דירה, באותה אוריינטציה כמו בתוכנית. בלי אגפים או חללים שלא סומנו בגרמושקה.";
+    return "מבט איזומטרי לפי תוכנית המכר.";
   }
 
   const focus = image.roomName ?? image.labelHe.replace(/^פנים\s*[—–-]\s*/, "");
   const room = rooms.find((r) => r.name === focus);
   const kind = room?.kind ?? inferRoomKind(focus);
   const measure = room && room.widthM && room.lengthM ? formatRoomMeasure(room) : room?.areaM2 ? `${room.areaM2} מ"ר` : null;
-  const bits = [
-    `פנים בחלל ${focus} (${KIND_LABEL_HE[kind]}).`,
-    KIND_BRIEF_HE[kind],
-    measure ? `מידות: ${measure}.` : "",
-  ];
+  const bits = [`${focus} · ${KIND_LABEL_HE[kind]}.`, measure ? `מידות ${measure}.` : ""];
   return bits.filter(Boolean).join(" ");
 }

@@ -7,7 +7,7 @@ import {
   nearestGeminiImageAspect,
 } from "@/lib/projects/floorplan-viz-lock";
 import { FLOORPLAN_VIZ_PRESETS } from "@/lib/projects/floorplan-viz-styles";
-import { buildVizPrompt } from "@/lib/projects/floorplan-viz-generate";
+import { buildVizPrompt, CAD_MASSING_LOCK, ENTRANCE_LOCK, floorplanOverviewAttachments, GEOMETRY_LOCK, SALES_BROCHURE_BRIEF } from "@/lib/projects/floorplan-viz-generate";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 
 jest.mock("@google/genai", () => ({ GoogleGenAI: class {} }));
@@ -80,6 +80,8 @@ describe("floorplan viz lock", () => {
     );
     expect(prompt).toContain(PIXEL_LOCK);
     expect(prompt).toContain(PRESENTATION_LOCK);
+    expect(prompt.startsWith(SALES_BROCHURE_BRIEF)).toBe(true);
+    expect(prompt).toMatch(/Lived-in props/);
     expect(prompt).not.toMatch(/~30–50/);
   });
 
@@ -90,5 +92,73 @@ describe("floorplan viz lock", () => {
     expect(PRESENTATION_LOCK).toMatch(/empty tiled void/i);
     expect(PRESENTATION_LOCK).toMatch(/U-kitchen/);
     expect(PIXEL_LOCK).toMatch(/toilet pan/i);
+  });
+
+  it("locks CAD massing as the first attachment so walls come from geometry", () => {
+    const prompt = buildVizPrompt(
+      parseFloorplanLayout({ rooms: [{ name: "סלון", kind: "living", source: "ocr_verified" }] }),
+      { kind: "overview" },
+      { geometryLock: true },
+    );
+    expect(prompt).toContain(CAD_MASSING_LOCK);
+    expect(CAD_MASSING_LOCK).toMatch(/FIRST image is the apartment/);
+    expect(CAD_MASSING_LOCK).toMatch(/Do not invent a different unit/);
+    expect(CAD_MASSING_LOCK).toMatch(/מבואה/);
+    expect(CAD_MASSING_LOCK).toMatch(/sheet wins/);
+    expect(CAD_MASSING_LOCK).toMatch(/מרפסת stays outdoor/);
+    const attachments = floorplanOverviewAttachments({
+      plan: { mimeType: "application/pdf", base64: "plan" },
+      ink: "ink",
+      geometryLock: { mimeType: "image/jpeg", base64: "cad" },
+    });
+    expect(attachments.map((row) => row.base64)).toEqual(["cad", "plan", "ink"]);
+  });
+
+  it("names printed terrace pockets and forbids paving the living volume", () => {
+    const prompt = buildVizPrompt(
+      parseFloorplanLayout({
+        rooms: [
+          { name: "סלון", kind: "living", source: "ocr_verified" },
+          { name: "מרפסת 1", kind: "balcony", areaM2: 4.1, source: "ocr_verified" },
+          { name: "מרפסת 2", kind: "balcony", areaM2: 5.12, source: "ocr_verified" },
+        ],
+      }),
+      { kind: "overview" },
+    );
+    expect(prompt).toMatch(/4\.10/);
+    expect(prompt).toMatch(/5\.12/);
+    expect(prompt).toMatch(/Do not convert them to outdoor paving/);
+    expect(prompt).toMatch(/ANY façade/);
+    expect(prompt).toMatch(/Indoor living, kitchen, hall and entrance/);
+  });
+
+  it("forbids turning the front door into a terrace", () => {
+    const prompt = buildVizPrompt(
+      parseFloorplanLayout({ rooms: [{ name: "סלון", kind: "living", source: "ocr_verified" }] }),
+      { kind: "overview" },
+    );
+    expect(prompt).toContain(ENTRANCE_LOCK);
+    expect(ENTRANCE_LOCK).toMatch(/מבואה/);
+    expect(ENTRANCE_LOCK).toMatch(/It is NOT a terrace/);
+  });
+
+  it("does not tell the model the apartment has zero beds when bedrooms have no count", () => {
+    const prompt = buildVizPrompt(
+      parseFloorplanLayout({
+        rooms: [
+          { name: "חדר שינה", kind: "bedroom" },
+          { name: 'ממ"ד', kind: "mmd", bedCount: 0 },
+          { name: "מרפסת", kind: "balcony", areaM2: 4.6 },
+        ],
+      }),
+      { kind: "overview" },
+    );
+    expect(prompt).toMatch(/copy the drawn bed — never empty/);
+    expect(prompt).toMatch(/no beds/);
+    expect(prompt).not.toMatch(/TOTAL BEDS IN THE WHOLE APARTMENT: exactly 0/);
+    expect(prompt).toMatch(/none may be an empty floor/);
+    expect(prompt).toMatch(/as deep as a doorway/);
+    expect(prompt).toMatch(/do not add a sofa or armchair/);
+    expect(GEOMETRY_LOCK).toMatch(/If the sheet draws only a dining table, there is no sofa/);
   });
 });

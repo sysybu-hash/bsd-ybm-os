@@ -647,7 +647,8 @@ describe("floorplan layout grounding", () => {
       parseFloorplanLayout({ rooms: [{ name: "חדר רחצה", kind: "bathroom", source: "ocr_verified" }] }),
       { kind: "interior", roomName: "חדר רחצה" },
     );
-    expect(bath).toMatch(/bathtub stays a bathtub/i);
+    expect(bath).toMatch(/a bathtub outline stays a bathtub/i);
+    expect(bath).toMatch(/never replace a drawn washer with a bathtub/i);
     expect(bath).toMatch(/walk-in shower/i);
     const iso = buildVizPrompt(merged, { kind: "isometric" });
     expect(iso).toMatch(/approved cutaway/i);
