@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, FileText, FolderDown, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Download, FileText, FolderDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   inferRoomKind,
@@ -9,14 +9,23 @@ import {
   type FloorplanRoom,
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
-import { OsButton, OsIconButton } from "@/components/os/ui";
+import { OsButton } from "@/components/os/ui";
+import { createLogger } from "@/lib/logger";
 import FloorplanVizLightbox, { fileNameOf, srcOf } from "@/components/os/widgets/floorplan-viz/FloorplanVizLightbox";
-import PlanLocatorMap from "@/components/os/widgets/floorplan-viz/PlanLocatorMap";
-import { composeLocatorStripJpeg, rasterizePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
-import { locatorFocusForView } from "@/lib/projects/floorplan-locator";
+import FloorplanVizAttemptCard from "@/components/os/widgets/floorplan-viz/FloorplanVizAttemptCard";
+import { rasterizePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
+import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
+import {
+  bookletHeroImage,
+  groupFloorplanVizAttempts,
+  selectedFloorplanVizImages,
+  selectedFromAttemptGroup,
+} from "@/lib/projects/floorplan-viz-ids";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
+
+const log = createLogger("floorplan-viz-results");
 
 function sourceLabel(t: TFn, source?: string): string {
   if (source === "ocr_verified") return t("projectDashboard.vizOcrVerified");
@@ -73,7 +82,7 @@ function MeasuredPlanSvg({ rooms }: { rooms: FloorplanRoom[] }) {
 
 function Gallery({
   title,
-  images,
+  groups,
   offset,
   onOpen,
   t,
@@ -82,103 +91,49 @@ function Gallery({
   canManage,
   editingKey,
   onEdit,
+  onImprove,
+  onRescan,
   onDelete,
+  onSelect,
 }: {
   title: string;
-  images: FloorplanVizImage[];
+  groups: ReturnType<typeof groupFloorplanVizAttempts>;
   offset: number;
-  onOpen: (index: number) => void;
+  onOpen: (groupIndex: number, img: FloorplanVizImage) => void;
   t: TFn;
   layout: FloorplanLayout | null;
   planSrc: string | null;
   canManage?: boolean;
   editingKey?: string | null;
-  onEdit?: (img: FloorplanVizImage, instruction: string) => void;
+  onEdit?: (img: FloorplanVizImage, instruction: string, region?: FloorplanVizEditRegion) => void;
+  onImprove?: (img: FloorplanVizImage, failures: string[]) => void;
+  onRescan?: (img: FloorplanVizImage) => void;
   onDelete?: (img: FloorplanVizImage) => void;
+  onSelect?: (img: FloorplanVizImage) => void;
 }) {
-  if (images.length === 0) return null;
+  if (groups.length === 0) return null;
   return (
     <section>
       <h3 className="mb-2 text-xs font-bold">{title}</h3>
       <div className="grid gap-3 sm:grid-cols-2">
-        {images.map((img, i) => {
-          const src = srcOf(img);
-          const globalIndex = offset + i;
-          const focus = layout ? locatorFocusForView(layout, img.viewId, img.roomName) : null;
-          const key = img.id ?? `${img.viewId}:${img.roomName ?? i}`;
-          const busy = editingKey === key;
-          return (
-            <figure key={key} className="overflow-hidden rounded-xl border border-[color:var(--border-main)] bg-neutral-950">
-              <div className="relative">
-                <button
-                  type="button"
-                  className="block w-full cursor-zoom-in"
-                  onClick={() => onOpen(globalIndex)}
-                  aria-label={`${t("workspaceWidgets.floorplanViz.clickToZoom")}: ${img.labelHe}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={img.labelHe} className="h-72 w-full object-contain" />
-                </button>
-                {planSrc && focus ? (
-                  <div className="pointer-events-none absolute bottom-2 start-2">
-                    <PlanLocatorMap planSrc={planSrc} focus={focus} t={t} inset />
-                  </div>
-                ) : null}
-              </div>
-              {planSrc && focus ? <PlanLocatorMap planSrc={planSrc} focus={focus} t={t} /> : null}
-              <figcaption className="space-y-2 bg-[color:var(--background-main)] px-3 py-2 text-[11px] font-semibold">
-                <span className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate">{img.labelHe}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    <a
-                      href={src}
-                      download={fileNameOf(img, globalIndex)}
-                      className="inline-flex items-center gap-1 text-indigo-600 hover:underline dark:text-indigo-300"
-                    >
-                      <Download size={12} aria-hidden />
-                      {t("projectDashboard.vizDownload")}
-                    </a>
-                    {canManage && onDelete ? (
-                      <OsIconButton
-                        label={t("workspaceWidgets.floorplanViz.deleteImage")}
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => onDelete(img)}
-                      >
-                        <Trash2 size={12} />
-                      </OsIconButton>
-                    ) : null}
-                  </span>
-                </span>
-                {canManage && onEdit ? (
-                  <form
-                    className="flex gap-1"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget;
-                      const input = form.elements.namedItem("instruction") as HTMLInputElement | null;
-                      const instruction = input?.value.trim() ?? "";
-                      if (!instruction) return;
-                      onEdit(img, instruction);
-                      form.reset();
-                    }}
-                  >
-                    <input
-                      name="instruction"
-                      disabled={busy}
-                      className="min-w-0 flex-1 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-1 text-[10px] font-normal"
-                      placeholder={t("workspaceWidgets.floorplanViz.editImagePh")}
-                      aria-label={t("workspaceWidgets.floorplanViz.editImage")}
-                    />
-                    <OsButton type="submit" variant="secondary" size="sm" loading={busy} disabled={busy} icon={<Pencil size={12} aria-hidden />}>
-                      {t("workspaceWidgets.floorplanViz.applyEdit")}
-                    </OsButton>
-                  </form>
-                ) : null}
-              </figcaption>
-            </figure>
-          );
-        })}
+        {groups.map((group, i) => (
+            <FloorplanVizAttemptCard
+              key={group.key}
+              group={group}
+              globalIndex={offset + i}
+              onOpen={(img) => onOpen(offset + i, img)}
+              t={t}
+              layout={layout}
+              planSrc={planSrc}
+              canManage={canManage}
+              editing={group.attempts.some((row) => (row.id ?? group.key) === editingKey)}
+              onEdit={onEdit}
+              onImprove={onImprove}
+              onRescan={onRescan}
+              onDelete={onDelete}
+              onSelect={onSelect}
+            />
+        ))}
       </div>
     </section>
   );
@@ -189,6 +144,30 @@ function base64ToBlob(b64: string, mime: string): Blob {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
   return new Blob([bytes], { type: mime || "image/png" });
+}
+
+function compressUrlForPdf(url: string, fill = "#ffffff"): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const max = 1800;
+      const scale = Math.min(1, max / Math.max(image.width, image.height, 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("canvas 2d unavailable"));
+        return;
+      }
+      ctx.fillStyle = fill;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((out) => resolve(out ?? new Blob()), "image/jpeg", 0.82);
+    };
+    image.onerror = () => reject(new Error("image decode failed"));
+    image.src = url;
+  });
 }
 
 function compressForPdf(img: FloorplanVizImage): Promise<{ blob: Blob }> {
@@ -235,6 +214,7 @@ export default function FloorplanVizResults({
   visionEngines,
   projectId,
   projectName,
+  unitTitle,
   sourceFile,
   styleKit,
   pendingRooms = 0,
@@ -243,7 +223,10 @@ export default function FloorplanVizResults({
   runId,
   editingKey,
   onEditStill,
+  onImproveStill,
+  onRescanStill,
   onDeleteStill,
+  onSelectStill,
 }: {
   t: TFn;
   loading: boolean;
@@ -255,6 +238,7 @@ export default function FloorplanVizResults({
   visionEngines: string[];
   projectId?: string;
   projectName?: string;
+  unitTitle?: string;
   sourceFile?: File | null;
   styleKit?: FloorplanVizStyleKit | null;
   pendingRooms?: number;
@@ -262,17 +246,35 @@ export default function FloorplanVizResults({
   loadingLabel?: string;
   runId?: string | null;
   editingKey?: string | null;
-  onEditStill?: (img: FloorplanVizImage, instruction: string) => void;
+  onEditStill?: (img: FloorplanVizImage, instruction: string, region?: FloorplanVizEditRegion) => void;
+  onImproveStill?: (img: FloorplanVizImage, failures: string[]) => void;
+  onRescanStill?: (img: FloorplanVizImage) => void;
   onDeleteStill?: (img: FloorplanVizImage) => void;
+  onSelectStill?: (img: FloorplanVizImage) => void;
 }) {
   const rooms = useMemo(() => layout?.rooms ?? [], [layout?.rooms]);
-  const overview = useMemo(
-    () => images.filter((img) => img.viewId === "overview" || img.viewId === "isometric"),
+  const groups = useMemo(
+    () =>
+      groupFloorplanVizAttempts(images).filter(
+        (group) => !(group.viewId === "overview" && group.roomName === "גיאומטריה"),
+      ),
     [images],
   );
-  const interiors = useMemo(() => images.filter((img) => img.viewId === "interior"), [images]);
-  const gallery = useMemo(() => [...overview, ...interiors], [overview, interiors]);
-  const [preview, setPreview] = useState<number | null>(null);
+  const overviewGroups = useMemo(
+    () =>
+      groups.filter(
+        (group) =>
+          (group.viewId === "overview" || group.viewId === "isometric") &&
+          group.roomName !== "גיאומטריה",
+      ),
+    [groups],
+  );
+  const interiorGroups = useMemo(
+    () => groups.filter((group) => group.viewId === "interior"),
+    [groups],
+  );
+  const gallery = useMemo(() => selectedFloorplanVizImages(images), [images]);
+  const [preview, setPreview] = useState<{ frames: FloorplanVizImage[]; index: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [planSrc, setPlanSrc] = useState<string | null>(null);
@@ -352,36 +354,60 @@ export default function FloorplanVizResults({
 
   const exportPdf = useCallback(async () => {
     if (!layout || gallery.length === 0) return;
+    const hero = bookletHeroImage(gallery);
+    if (!hero) return;
     setExportingPdf(true);
     try {
       const fd = new FormData();
       fd.append("layout", JSON.stringify(layout));
       if (projectName) fd.append("projectName", projectName);
+      if (unitTitle) fd.append("unitTitle", unitTitle);
+      if (sourceFile?.name) fd.append("sourceFileName", sourceFile.name);
       if (styleKit?.labelHe) fd.append("styleLabelHe", styleKit.labelHe);
       if (styleKit?.summaryHe) fd.append("styleSummaryHe", styleKit.summaryHe);
       fd.append(
         "imageMeta",
-        JSON.stringify(
-          gallery.map((img) => ({
-            viewId: img.viewId,
-            labelHe: img.labelHe,
-            roomName: img.roomName,
-          })),
-        ),
+        JSON.stringify([
+          {
+            viewId: hero.viewId,
+            labelHe: hero.labelHe,
+            roomName: hero.roomName,
+          },
+        ]),
       );
-      for (const [i, img] of gallery.entries()) {
-        const packed = await compressForPdf(img);
-        fd.append("images", packed.blob, fileNameOf(img, i).replace(/\.\w+$/u, ".jpg"));
+      const packed = await compressForPdf(hero);
+      fd.append("images", packed.blob, fileNameOf(hero, 0).replace(/\.\w+$/u, ".jpg"));
+      if (runId) fd.append("runId", runId);
+      if (
+        sourceFile &&
+        (sourceFile.type === "application/pdf" || /\.pdf$/i.test(sourceFile.name)) &&
+        sourceFile.size > 0 &&
+        sourceFile.size <= 6 * 1024 * 1024
+      ) {
+        fd.append("sourcePdf", sourceFile);
       }
-      if (planSrc) {
-        for (const [i, img] of gallery.entries()) {
-          const focus = locatorFocusForView(layout, img.viewId, img.roomName);
-          try {
-            const strip = await composeLocatorStripJpeg(planSrc, focus);
-            fd.append(`locator-${i}`, strip, `locator-${i + 1}.jpg`);
-          } catch {
-            /* locator optional per view */
+      let sheet = planSrc;
+      if (!sheet && sourceFile) {
+        try {
+          sheet = await rasterizePlanFile(sourceFile);
+        } catch (err: unknown) {
+          log.warn("sheet raster failed; booklet goes without the sheet page", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+          sheet = null;
+        }
+      }
+      if (sheet) {
+        try {
+          const planBlob = await compressUrlForPdf(sheet);
+          if (planBlob.size > 0) {
+            fd.append("planImage", planBlob, "plan.jpg");
           }
+        } catch (err: unknown) {
+          // The sheet is optional — the booklet falls back to cover + still.
+          log.warn("sheet compression failed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
       const res = await fetch("/api/projects/visualize-floorplan/export-pdf", {
@@ -397,7 +423,7 @@ export default function FloorplanVizResults({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `BSD-YBM-viz-${(layout.unitLabel || layout.title || "plan").replace(/\s+/g, "-")}.pdf`;
+      a.download = `BSD-YBM-viz-${(unitTitle || layout.unitLabel || layout.title || "plan").replace(/\s+/g, "-")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("workspaceWidgets.floorplanViz.pdfReady"));
@@ -406,7 +432,7 @@ export default function FloorplanVizResults({
     } finally {
       setExportingPdf(false);
     }
-  }, [gallery, layout, planSrc, projectName, styleKit, t]);
+  }, [gallery, layout, planSrc, projectName, runId, sourceFile, styleKit, t, unitTitle]);
 
   return (
     <div className="space-y-4">
@@ -470,16 +496,24 @@ export default function FloorplanVizResults({
 
       <Gallery
         title={t("workspaceWidgets.floorplanViz.wholePlan")}
-        images={overview}
+        groups={overviewGroups}
         offset={0}
-        onOpen={setPreview}
+        onOpen={(groupIndex, img) => {
+          const frames = [...overviewGroups, ...interiorGroups].map((group, i) =>
+            i === groupIndex ? img : selectedFromAttemptGroup(group),
+          );
+          setPreview({ frames, index: groupIndex });
+        }}
         t={t}
         layout={layout}
         planSrc={planSrc}
         canManage={Boolean(runId)}
         editingKey={editingKey}
         onEdit={onEditStill}
+        onImprove={onImproveStill}
+        onRescan={onRescanStill}
         onDelete={onDeleteStill}
+        onSelect={onSelectStill}
       />
 
       {pendingRooms > 0 && onGenerateRooms ? (
@@ -510,25 +544,33 @@ export default function FloorplanVizResults({
 
       <Gallery
         title={t("workspaceWidgets.floorplanViz.perRoom")}
-        images={interiors}
-        offset={overview.length}
-        onOpen={setPreview}
+        groups={interiorGroups}
+        offset={overviewGroups.length}
+        onOpen={(groupIndex, img) => {
+          const frames = [...overviewGroups, ...interiorGroups].map((group, i) =>
+            i === groupIndex ? img : selectedFromAttemptGroup(group),
+          );
+          setPreview({ frames, index: groupIndex });
+        }}
         t={t}
         layout={layout}
         planSrc={planSrc}
         canManage={Boolean(runId)}
         editingKey={editingKey}
         onEdit={onEditStill}
+        onImprove={onImproveStill}
+        onRescan={onRescanStill}
         onDelete={onDeleteStill}
+        onSelect={onSelectStill}
       />
 
-      {preview != null && gallery[preview] ? (
+      {preview?.frames[preview.index] ? (
         <FloorplanVizLightbox
           t={t}
-          images={gallery}
-          index={preview}
+          images={preview.frames}
+          index={preview.index}
           onClose={() => setPreview(null)}
-          onIndex={setPreview}
+          onIndex={(index) => setPreview({ ...preview, index })}
         />
       ) : null}
 

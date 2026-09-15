@@ -9,9 +9,14 @@ import { parseFloorplanVizScope, type FloorplanVizScope } from "@/lib/projects/f
 import {
   floorplanVizStillFilePath,
   floorplanVizViewKey,
+  packFloorplanVizStillMeta,
+  parseFloorplanVizOrigin,
   parseFloorplanVizViewId,
+  stillSortOrder,
+  unpackFloorplanVizStillMeta,
   type FloorplanVizRunSummary,
 } from "@/lib/projects/floorplan-viz-ids";
+import { type ConfidenceReport, type ConfidenceTier } from "@/lib/projects/floorplan-confidence";
 
 export {
   floorplanVizStillFilePath,
@@ -20,21 +25,29 @@ export {
 };
 export type { FloorplanVizRunSummary };
 
-function stillSortOrder(viewId: string, index: number): number {
-  if (viewId === "overview") return 0;
-  if (viewId === "isometric") return 1;
-  return 10 + index;
-}
-
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((row): row is string => typeof row === "string");
+}
+
+function parseStoredConfidence(raw: unknown): ConfidenceReport | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const row = raw as Record<string, unknown>;
+  const tier = row.tier === "raster" || row.tier === "cad" ? (row.tier as ConfidenceTier) : null;
+  if (!tier) return undefined;
+  return {
+    tier,
+    hard: asStringArray(row.hard),
+    soft: asStringArray(row.soft),
+    ok: row.ok === true,
+  };
 }
 
 type EnginesJson = {
   enginesUsed?: string[];
   ocrEngines?: string[];
   visionEngines?: string[];
+  confidence?: ConfidenceReport;
 };
 
 export type FloorplanVizRunDetail = {
@@ -51,6 +64,7 @@ export type FloorplanVizRunDetail = {
   enginesUsed: string[];
   ocrEngines: string[];
   visionEngines: string[];
+  confidence?: ConfidenceReport;
   images: FloorplanVizImage[];
   createdAt: string;
   updatedAt: string;
@@ -63,7 +77,14 @@ function stillToImage(runId: string, still: {
   roomName: string | null;
   mimeType: string;
   dataBase64: string;
+  selected?: boolean;
+  parentStillId?: string | null;
+  origin?: string | null;
+  attemptIndex?: number;
+  createdAt?: Date;
+  editPrompt?: string | null;
 }): FloorplanVizImage {
+  const meta = unpackFloorplanVizStillMeta(still.editPrompt);
   return {
     id: still.id,
     viewId: parseFloorplanVizViewId(still.viewId),
@@ -72,7 +93,19 @@ function stillToImage(runId: string, still: {
     mimeType: still.mimeType,
     base64: still.dataBase64,
     src: floorplanVizStillFilePath(runId, still.id),
+    selected: still.selected !== false,
+    parentStillId: still.parentStillId ?? undefined,
+    origin: parseFloorplanVizOrigin(still.origin),
+    attemptIndex: still.attemptIndex,
+    createdAt: still.createdAt?.toISOString(),
+    editPrompt: meta.editPrompt,
+    auditIssues: meta.auditIssues,
   };
+}
+
+function stillOriginOf(img: FloorplanVizImage): string {
+  if (img.origin) return img.origin;
+  return img.roomName === "גיאומטריה" ? "cad" : "generate";
 }
 
 export async function listFloorplanVizRunsForOrg(
@@ -95,10 +128,9 @@ export async function listFloorplanVizRunsForOrg(
       createdAt: true,
       updatedAt: true,
       project: { select: { name: true } },
-      _count: { select: { stills: true } },
       stills: {
-        orderBy: { sortOrder: "asc" },
-        take: 1,
+        where: { selected: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
         select: { id: true },
       },
     },
@@ -110,7 +142,7 @@ export async function listFloorplanVizRunsForOrg(
     projectName: row.project?.name ?? null,
     styleLabelHe: row.styleLabelHe,
     scope: parseFloorplanVizScope(row.scope),
-    stillCount: row._count.stills,
+    stillCount: row.stills.length,
     thumbStillId: row.stills[0]?.id ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -149,6 +181,7 @@ export async function getFloorplanVizRunForOrg(
     enginesUsed: asStringArray(engines.enginesUsed),
     ocrEngines: asStringArray(engines.ocrEngines),
     visionEngines: asStringArray(engines.visionEngines),
+    confidence: parseStoredConfidence(engines.confidence),
     images: row.stills.map((still) => stillToImage(row.id, still)),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -202,6 +235,7 @@ export async function createFloorplanVizRun(input: {
   enginesUsed: string[];
   ocrEngines: string[];
   visionEngines: string[];
+  confidence?: ConfidenceReport;
   images: FloorplanVizImage[];
 }): Promise<FloorplanVizRunDetail> {
   const created = await prisma.floorplanVizRun.create({
@@ -224,21 +258,30 @@ export async function createFloorplanVizRun(input: {
         enginesUsed: input.enginesUsed,
         ocrEngines: input.ocrEngines,
         visionEngines: input.visionEngines,
-      },
-      stills: {
-        create: input.images.map((img, index) => ({
-          organizationId: input.orgId,
-          viewId: img.viewId,
-          viewKey: floorplanVizViewKey(img.viewId, img.roomName),
-          labelHe: img.labelHe,
-          roomName: img.roomName ?? null,
-          mimeType: img.mimeType,
-          dataBase64: img.base64,
-          sortOrder: stillSortOrder(img.viewId, index),
-        })),
+        ...(input.confidence ? { confidence: input.confidence } : {}),
       },
     },
   });
+  for (const [index, img] of input.images.entries()) {
+    await prisma.floorplanVizStill.create({
+      data: {
+        runId: created.id,
+        organizationId: input.orgId,
+        viewId: img.viewId,
+        viewKey: floorplanVizViewKey(img.viewId, img.roomName),
+        labelHe: img.labelHe,
+        roomName: img.roomName ?? null,
+        mimeType: img.mimeType,
+        dataBase64: img.base64,
+        selected: true,
+        parentStillId: img.parentStillId ?? null,
+        origin: stillOriginOf(img),
+        attemptIndex: img.attemptIndex ?? 1,
+        editPrompt: packFloorplanVizStillMeta(img),
+        sortOrder: stillSortOrder(img.viewId, img.roomName, index),
+      },
+    });
+  }
   const detail = await getFloorplanVizRunForOrg(input.orgId, created.id);
   if (!detail) throw new Error("שמירת ההדמיה נכשלה");
   return detail;
@@ -252,39 +295,47 @@ export async function appendFloorplanVizStills(
 ): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizRun.findFirst({
     where: { id: runId, organizationId: orgId },
-    select: { id: true, stills: { select: { sortOrder: true } } },
+    select: { id: true, stills: { select: { viewKey: true, attemptIndex: true } } },
   });
   if (!existing) return null;
-  const maxSort = existing.stills.reduce((acc, row) => Math.max(acc, row.sortOrder), 0);
-  await prisma.$transaction(
-    images.map((img, index) =>
-      prisma.floorplanVizStill.upsert({
-        where: { runId_viewKey: { runId, viewKey: floorplanVizViewKey(img.viewId, img.roomName) } },
-        create: {
-          runId,
-          organizationId: orgId,
-          viewId: img.viewId,
-          viewKey: floorplanVizViewKey(img.viewId, img.roomName),
-          labelHe: img.labelHe,
-          roomName: img.roomName ?? null,
-          mimeType: img.mimeType,
-          dataBase64: img.base64,
-          sortOrder: stillSortOrder(img.viewId, maxSort + 1 + index),
-        },
-        update: {
-          labelHe: img.labelHe,
-          mimeType: img.mimeType,
-          dataBase64: img.base64,
-        },
-      }),
-    ),
-  );
-  if (scope) {
-    await prisma.floorplanVizRun.update({
-      where: { id: runId },
-      data: { scope },
+  const nextIndex = new Map<string, number>();
+  for (const row of existing.stills) {
+    nextIndex.set(row.viewKey, Math.max(nextIndex.get(row.viewKey) ?? 0, row.attemptIndex));
+  }
+  for (const [index, img] of images.entries()) {
+    const viewKey = floorplanVizViewKey(img.viewId, img.roomName);
+    const attemptIndex = (nextIndex.get(viewKey) ?? 0) + 1;
+    nextIndex.set(viewKey, attemptIndex);
+    await prisma.floorplanVizStill.updateMany({
+      where: { runId, viewKey, selected: true },
+      data: { selected: false },
+    });
+    await prisma.floorplanVizStill.create({
+      data: {
+        runId,
+        organizationId: orgId,
+        viewId: img.viewId,
+        viewKey,
+        labelHe: img.labelHe,
+        roomName: img.roomName ?? null,
+        mimeType: img.mimeType,
+        dataBase64: img.base64,
+        selected: true,
+        parentStillId: img.parentStillId ?? null,
+        origin: stillOriginOf(img),
+        attemptIndex,
+        editPrompt: packFloorplanVizStillMeta(img),
+        sortOrder: stillSortOrder(img.viewId, img.roomName, index),
+      },
     });
   }
+  await prisma.floorplanVizRun.update({
+    where: { id: runId },
+    data: {
+      ...(scope ? { scope } : {}),
+      updatedAt: new Date(),
+    },
+  });
   return getFloorplanVizRunForOrg(orgId, runId);
 }
 
@@ -339,36 +390,96 @@ export async function getFloorplanVizStillBytesForOrg(
   });
 }
 
-export async function updateFloorplanVizStillImage(
+export async function appendFloorplanVizStillEdit(
   orgId: string,
   runId: string,
   stillId: string,
-  image: { mimeType: string; base64: string; editPrompt?: string },
-): Promise<FloorplanVizImage | null> {
+  image: { mimeType: string; base64: string; editPrompt?: string; auditIssues?: string[] },
+): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizStill.findFirst({
     where: { id: stillId, runId, organizationId: orgId },
-    select: { id: true },
   });
   if (!existing) return null;
-  const updated = await prisma.floorplanVizStill.update({
-    where: { id: stillId },
-    data: {
+  return appendFloorplanVizStills(orgId, runId, [
+    {
+      viewId: parseFloorplanVizViewId(existing.viewId),
+      labelHe: existing.labelHe,
+      roomName: existing.roomName ?? undefined,
       mimeType: image.mimeType,
-      dataBase64: image.base64,
-      editPrompt: image.editPrompt?.slice(0, 2000) ?? undefined,
+      base64: image.base64,
+      parentStillId: existing.id,
+      origin: "edit",
+      editPrompt: image.editPrompt,
+      auditIssues: image.auditIssues,
     },
+  ]);
+}
+
+/** Update packed auditIssues on an existing still without creating a new attempt. */
+export async function updateFloorplanVizStillAuditIssues(
+  orgId: string,
+  runId: string,
+  stillId: string,
+  auditIssues: string[],
+): Promise<FloorplanVizRunDetail | null> {
+  const existing = await prisma.floorplanVizStill.findFirst({
+    where: { id: stillId, runId, organizationId: orgId },
+  });
+  if (!existing) return null;
+  const meta = unpackFloorplanVizStillMeta(existing.editPrompt);
+  const packed = packFloorplanVizStillMeta({
+    editPrompt: meta.editPrompt,
+    auditIssues,
+  });
+  await prisma.floorplanVizStill.update({
+    where: { id: stillId },
+    data: { editPrompt: packed },
   });
   await prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } });
-  return stillToImage(runId, updated);
+  return getFloorplanVizRunForOrg(orgId, runId);
+}
+
+export async function selectFloorplanVizStill(
+  orgId: string,
+  runId: string,
+  stillId: string,
+): Promise<FloorplanVizRunDetail | null> {
+  const existing = await prisma.floorplanVizStill.findFirst({
+    where: { id: stillId, runId, organizationId: orgId },
+    select: { id: true, viewKey: true },
+  });
+  if (!existing) return null;
+  await prisma.$transaction([
+    prisma.floorplanVizStill.updateMany({
+      where: { runId, viewKey: existing.viewKey, selected: true },
+      data: { selected: false },
+    }),
+    prisma.floorplanVizStill.update({
+      where: { id: stillId },
+      data: { selected: true },
+    }),
+    prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } }),
+  ]);
+  return getFloorplanVizRunForOrg(orgId, runId);
 }
 
 export async function deleteFloorplanVizStill(orgId: string, runId: string, stillId: string): Promise<boolean> {
   const existing = await prisma.floorplanVizStill.findFirst({
     where: { id: stillId, runId, organizationId: orgId },
-    select: { id: true },
+    select: { id: true, viewKey: true, selected: true },
   });
   if (!existing) return false;
   await prisma.floorplanVizStill.delete({ where: { id: stillId } });
+  if (existing.selected) {
+    const latest = await prisma.floorplanVizStill.findFirst({
+      where: { runId, viewKey: existing.viewKey },
+      orderBy: [{ attemptIndex: "desc" }, { createdAt: "desc" }],
+      select: { id: true },
+    });
+    if (latest) {
+      await prisma.floorplanVizStill.update({ where: { id: latest.id }, data: { selected: true } });
+    }
+  }
   await prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } });
   return true;
 }

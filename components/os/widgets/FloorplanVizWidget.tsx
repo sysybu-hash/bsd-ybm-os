@@ -8,13 +8,13 @@ import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
 import FloorplanVizLibrary from "@/components/os/widgets/floorplan-viz/FloorplanVizLibrary";
 import FloorplanVizResults from "@/components/os/widgets/floorplan-viz/FloorplanVizResults";
 import FloorplanVizStylePicker from "@/components/os/widgets/floorplan-viz/FloorplanVizStylePicker";
-import { rasterizePlanFile, fileFromDataUrl } from "@/components/os/widgets/floorplan-viz/plan-source";
+import { fileFromDataUrl } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
+import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
 import { floorplanVizViewKey, type FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
 import {
   listFloorplanVizJobs,
-  mergeFloorplanVizImages,
   type FloorplanVizScope,
 } from "@/lib/projects/floorplan-viz-scope";
 import {
@@ -105,34 +105,28 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
 
   const generate = useCallback(
     async (nextScope: FloorplanVizScope) => {
-      const continuing = nextScope === "rooms" && result?.runId != null;
-      if (!continuing && !file) {
+      const appending = Boolean(result?.runId);
+      if (!appending && !file) {
         toast.error(t("workspaceWidgets.floorplanViz.needFile"));
         return;
       }
-      if (!continuing && styleId === "custom" && !customKit) {
+      if (!appending && styleId === "custom" && !customKit) {
         toast.error(t("workspaceWidgets.floorplanViz.styleKitFailed"));
         return;
       }
       setLoading(true);
       setError(null);
-      if (!continuing) setResult(null);
+      if (!appending) setResult(null);
       try {
         const fd = new FormData();
-        if (continuing && result?.runId) {
+        if (appending && result?.runId) {
           fd.append("runId", result.runId);
           fd.append("scope", nextScope);
         } else if (file) {
-          let upload = file;
           const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-          if (isPdf) {
-            try {
-              upload = fileFromDataUrl(await rasterizePlanFile(file), file.name);
-            } catch {
-              upload = file;
-            }
-          }
-          fd.append("file", upload);
+          // Keep the PDF bytes. Rasterizing here used to skip the CAD path
+          // and the model invented a different apartment.
+          fd.append("file", file);
           if (projectId) fd.append("projectId", projectId);
           fd.append("styleId", styleId);
           fd.append("planKind", isPdf ? "sales-sheet" : "auto");
@@ -152,26 +146,14 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
           return;
         }
         const incoming = json as unknown as FloorplanVizResult;
-        if (continuing && result) {
-          applyResult({
-            ...incoming,
-            layout: incoming.layout ?? result.layout,
-            images: mergeFloorplanVizImages(result.images, incoming.images),
-            ocrEngines: result.ocrEngines,
-            visionEngines: result.visionEngines,
-            grounding: result.grounding,
-            enginesUsed: [...new Set([...result.enginesUsed, ...incoming.enginesUsed])],
-            scope: "full",
-            runId: incoming.runId ?? result.runId,
-            title: incoming.title ?? result.title,
-            planBase64: incoming.planBase64 ?? result.planBase64,
-            planMimeType: incoming.planMimeType ?? result.planMimeType,
-            photo: incoming.photo ?? result.photo,
-          });
-        } else {
-          applyResult(incoming);
+        applyResult(incoming);
+        if (incoming.runId) {
+          toast.success(
+            appending
+              ? t("workspaceWidgets.floorplanViz.attemptSaved")
+              : t("workspaceWidgets.floorplanViz.savedToOrg"),
+          );
         }
-        if (incoming.runId) toast.success(t("workspaceWidgets.floorplanViz.savedToOrg"));
         void refreshRuns();
       } catch {
         const message = t("projectDashboard.errors.viz");
@@ -197,15 +179,24 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
           toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.loadFailed"));
           return;
         }
-        const incoming = json as unknown as FloorplanVizResult;
+        const incoming = json as unknown as FloorplanVizResult & { sourceFileName?: string };
         applyResult(incoming);
         if (incoming.planBase64 && incoming.planMimeType) {
-          setFile(
-            fileFromDataUrl(
+          const incomingPdf =
+            incoming.planMimeType === "application/pdf" || incoming.planBase64.startsWith("JVBERi");
+          setFile((prev) => {
+            if (
+              !incomingPdf &&
+              prev &&
+              (prev.type === "application/pdf" || /\.pdf$/i.test(prev.name))
+            ) {
+              return prev;
+            }
+            return fileFromDataUrl(
               `data:${incoming.planMimeType};base64,${incoming.planBase64}`,
-              incoming.title || "plan.jpg",
-            ),
-          );
+              incoming.sourceFileName || incoming.title || (incomingPdf ? "plan.pdf" : "plan.jpg"),
+            );
+          });
         }
       } catch {
         toast.error(t("workspaceWidgets.floorplanViz.loadFailed"));
@@ -256,7 +247,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
   }, [refreshRuns, result, t, titleDraft]);
 
   const editStill = useCallback(
-    async (img: FloorplanVizImage, instruction: string) => {
+    async (img: FloorplanVizImage, instruction: string, region?: FloorplanVizEditRegion) => {
       if (!result?.runId || !img.id) {
         toast.error(t("workspaceWidgets.floorplanViz.editNeedSave"));
         return;
@@ -270,17 +261,17 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             method: "PATCH",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ instruction }),
+            body: JSON.stringify({ instruction, ...(region ? { region } : {}) }),
           },
         );
-        const json = (await res.json()) as { image?: FloorplanVizImage; error?: string };
+        const json = (await res.json()) as { image?: FloorplanVizImage; images?: FloorplanVizImage[]; error?: string };
         if (!res.ok || !json.image) {
           toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.editFailed"));
           return;
         }
         setResult({
           ...result,
-          images: result.images.map((row) => (row.id === img.id ? json.image! : row)),
+          images: json.images ?? result.images.map((row) => (row.id === img.id ? json.image! : row)),
         });
         toast.success(t("workspaceWidgets.floorplanViz.edited"));
         void refreshRuns();
@@ -289,6 +280,118 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
       } finally {
         setEditingKey(null);
       }
+    },
+    [refreshRuns, result, t],
+  );
+
+  const improveStill = useCallback(
+    async (img: FloorplanVizImage, failures: string[] = []) => {
+      if (!result?.runId || !img.id) {
+        toast.error(t("workspaceWidgets.floorplanViz.editNeedSave"));
+        return;
+      }
+      const key = stillKey(img);
+      setEditingKey(key);
+      try {
+        const res = await fetch(
+          `/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}/stills/${encodeURIComponent(img.id)}`,
+          {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              improve: true,
+              ...(failures.length ? { failures } : {}),
+            }),
+          },
+        );
+        const json = (await res.json()) as { image?: FloorplanVizImage; images?: FloorplanVizImage[]; error?: string };
+        if (!res.ok || !json.image) {
+          toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.improveFailed"));
+          return;
+        }
+        setResult({
+          ...result,
+          images: json.images ?? result.images.map((row) => (row.id === img.id ? json.image! : row)),
+        });
+        toast.success(t("workspaceWidgets.floorplanViz.improved"));
+        void refreshRuns();
+      } catch {
+        toast.error(t("workspaceWidgets.floorplanViz.improveFailed"));
+      } finally {
+        setEditingKey(null);
+      }
+    },
+    [refreshRuns, result, t],
+  );
+
+  const rescanStill = useCallback(
+    async (img: FloorplanVizImage) => {
+      if (!result?.runId || !img.id) {
+        toast.error(t("workspaceWidgets.floorplanViz.editNeedSave"));
+        return;
+      }
+      const key = stillKey(img);
+      setEditingKey(key);
+      try {
+        const res = await fetch(
+          `/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}/stills/${encodeURIComponent(img.id)}`,
+          {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rescan: true }),
+          },
+        );
+        const json = (await res.json()) as {
+          image?: FloorplanVizImage;
+          images?: FloorplanVizImage[];
+          auditIssues?: string[];
+          error?: string;
+        };
+        if (!res.ok || !json.image) {
+          toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.rescanFailed"));
+          return;
+        }
+        setResult({
+          ...result,
+          images: json.images ?? result.images.map((row) => (row.id === img.id ? json.image! : row)),
+        });
+        const n = json.auditIssues?.length ?? json.image.auditIssues?.length ?? 0;
+        toast.success(
+          n > 0
+            ? t("workspaceWidgets.floorplanViz.rescannedWithIssues", { n: String(n) })
+            : t("workspaceWidgets.floorplanViz.rescannedClean"),
+        );
+      } catch {
+        toast.error(t("workspaceWidgets.floorplanViz.rescanFailed"));
+      } finally {
+        setEditingKey(null);
+      }
+    },
+    [result, t],
+  );
+
+  const selectStill = useCallback(
+    async (img: FloorplanVizImage) => {
+      if (!result?.runId || !img.id) return;
+      const res = await fetch(
+        `/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}/stills/${encodeURIComponent(img.id)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selected: true }),
+        },
+      );
+      const json = (await res.json()) as { images?: FloorplanVizImage[]; error?: string };
+      if (!res.ok) {
+        toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.editFailed"));
+        return;
+      }
+      if (json.images) setResult({ ...result, images: json.images });
+      toast.success(t("workspaceWidgets.floorplanViz.chosenAttempt"));
+      void refreshRuns();
     },
     [refreshRuns, result, t],
   );
@@ -404,7 +507,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             variant="primary"
             size="sm"
             loading={loading && pendingCount === 0}
-            disabled={!file || loading}
+            disabled={(!file && !result?.runId) || loading}
             onClick={() => void generate(scope)}
           >
             {scope === "full"
@@ -493,21 +596,23 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             visionEngines={result?.visionEngines ?? []}
             projectId={projectId || undefined}
             projectName={projects.find((p) => p.id === projectId)?.name}
+            unitTitle={result?.title}
             sourceFile={file}
             styleKit={result?.styleKit ?? customKit}
             pendingRooms={pendingCount}
             onGenerateRooms={pendingCount > 0 ? () => void generate("rooms") : undefined}
             loadingLabel={
-              pendingCount > 0 && result
-                ? t("workspaceWidgets.floorplanViz.generatingRooms")
-                : scope === "full"
-                  ? t("projectDashboard.vizGenerating")
-                  : t("workspaceWidgets.floorplanViz.generatingOverview")
+              scope === "full"
+                ? t("projectDashboard.vizGenerating")
+                : t("workspaceWidgets.floorplanViz.generatingOverview")
             }
             runId={result?.runId}
             editingKey={editingKey}
-            onEditStill={(img, instruction) => void editStill(img, instruction)}
+            onEditStill={(img, instruction, region) => void editStill(img, instruction, region)}
+            onImproveStill={(img, failures) => void improveStill(img, failures)}
+            onRescanStill={(img) => void rescanStill(img)}
             onDeleteStill={(img) => void deleteStill(img)}
+            onSelectStill={(img) => void selectStill(img)}
           />
         )}
       </div>

@@ -1503,12 +1503,16 @@ model FloorplanVizStill {
   mimeType       String
   dataBase64     String          @db.Text
   editPrompt     String?         @db.Text
+  selected       Boolean         @default(true)
+  parentStillId  String?
+  origin         String          @default("generate")
+  attemptIndex   Int             @default(1)
   sortOrder      Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   run            FloorplanVizRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
-  @@unique([runId, viewKey])
+  @@index([runId, viewKey, createdAt])
   @@index([organizationId])
   @@index([runId])
 }

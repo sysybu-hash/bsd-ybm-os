@@ -9,8 +9,17 @@ export function fileFromDataUrl(dataUrl: string, fileName: string): File {
   const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
   if (!match) throw new Error("invalid data url");
   const bytes = Uint8Array.from(atob(match[2]!), (c) => c.charCodeAt(0));
-  const base = fileName.replace(/\.[^.]+$/u, "");
-  return new File([bytes], `${base}.jpg`, { type: match[1] || "image/jpeg" });
+  const mime = match[1] || "image/jpeg";
+  const isPdf =
+    mime === "application/pdf" ||
+    (bytes.length >= 4 &&
+      bytes[0] === 0x25 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x44 &&
+      bytes[3] === 0x46);
+  const ext = isPdf ? "pdf" : mime.includes("png") ? "png" : "jpg";
+  const base = (fileName.trim() || `plan.${ext}`).replace(/\.[^.]+$/u, "") || "plan";
+  return new File([bytes], `${base}.${ext}`, { type: isPdf ? "application/pdf" : mime });
 }
 
 /** רינדור עמוד ראשון של PDF / תמונת תוכנית ל-data URL */

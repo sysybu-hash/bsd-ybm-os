@@ -23,6 +23,18 @@ export function floorplanVizJobKey(job: { viewId: string; roomName?: string }): 
   return `${job.viewId}:${job.roomName ?? ""}`;
 }
 
+/**
+ * What a retry may keep. Overview stays so Gemini cannot bill a second invented
+ * flat; interiors stay so rooms-scope can fill the gaps.
+ */
+export function existingImagesForAppend(
+  images: Array<{ viewId: string; roomName?: string }>,
+  scope: FloorplanVizScope,
+): Array<{ viewId: string; roomName?: string }> {
+  if (scope === "rooms") return images;
+  return images.filter((img) => img.viewId === "overview" || img.viewId === "interior");
+}
+
 const MAX_INTERIOR_ROOMS = 12;
 
 /** אילו מבטים לייצר לפי היקף, בלי לחזור על תמונות שכבר יש */
@@ -30,6 +42,7 @@ export function listFloorplanVizJobs(
   layout: FloorplanLayout,
   scope: FloorplanVizScope = "full",
   existing: Array<{ viewId: string; roomName?: string }> = [],
+  options?: { skipInteriors?: boolean },
 ): FloorplanVizJobSpec[] {
   const have = new Set(existing.map(floorplanVizJobKey));
   const interiors = roomsForInteriorViz(layoutForVisualization(layout)).slice(0, MAX_INTERIOR_ROOMS);
@@ -40,7 +53,7 @@ export function listFloorplanVizJobs(
   if (scope === "full") {
     all.push({ viewId: "isometric", labelHe: "כל התוכנית — איזומטריה" });
   }
-  if (scope === "full" || scope === "rooms") {
+  if (!options?.skipInteriors && (scope === "full" || scope === "rooms")) {
     for (const room of interiors) {
       all.push({ viewId: "interior", labelHe: `פנים — ${room.name}`, roomName: room.name });
     }

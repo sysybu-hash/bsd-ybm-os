@@ -4,11 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Minus, Plus, RotateCcw, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { useIsMounted } from "@/hooks/use-is-mounted";
-import { OS_MODAL_PANEL_Z } from "@/lib/os-modal-z-index";
+import { OS_FULLSCREEN_MEDIA_CLASS, OS_FULLSCREEN_MEDIA_Z } from "@/lib/os-modal-z-index";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { OsIconButton } from "@/components/os/ui";
 
-const Z = OS_MODAL_PANEL_Z + 80;
+const Z = OS_FULLSCREEN_MEDIA_Z;
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
@@ -56,6 +56,11 @@ export default function FloorplanVizLightbox({
     setScale(1);
     setPan({ x: 0, y: 0 });
   }
+
+  useEffect(() => {
+    document.body.classList.add(OS_FULLSCREEN_MEDIA_CLASS);
+    return () => document.body.classList.remove(OS_FULLSCREEN_MEDIA_CLASS);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -1,5 +1,6 @@
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
+  existingImagesForAppend,
   listFloorplanVizJobs,
   mergeFloorplanVizImages,
   parseFloorplanVizScope,
@@ -48,6 +49,38 @@ describe("floorplan viz scope", () => {
     ]);
     expect(jobs.map((j) => j.roomName).filter(Boolean)).not.toContain("מטבח");
     expect(jobs.filter((j) => j.viewId === "interior")).toHaveLength(2);
+  });
+
+  it("skips interiors when the booklet only wants living stills", () => {
+    const jobs = listFloorplanVizJobs(layout, "full", [], { skipInteriors: true });
+    expect(jobs.map((j) => j.viewId)).toEqual(["overview", "isometric"]);
+  });
+
+  it("does not invent a second overview when CAD already occupies the living slot", () => {
+    const jobs = listFloorplanVizJobs(
+      layout,
+      "full",
+      [
+        { viewId: "overview" },
+        { viewId: "overview", roomName: "גיאומטריה" },
+      ],
+      { skipInteriors: true },
+    );
+    expect(jobs.map((j) => j.viewId)).toEqual(["isometric"]);
+  });
+
+  it("keeps a locked overview on retry so Gemini cannot invent a second flat", () => {
+    const kept = existingImagesForAppend(
+      [
+        { viewId: "overview" },
+        { viewId: "overview", roomName: "גיאומטריה" },
+        { viewId: "isometric" },
+        { viewId: "interior", roomName: "מטבח" },
+      ],
+      "full",
+    );
+    expect(kept.map((row) => row.viewId).sort()).toEqual(["interior", "overview", "overview"]);
+    expect(kept.some((row) => row.viewId === "isometric")).toBe(false);
   });
 
   it("merges a later room batch onto the overview still", () => {

@@ -6,6 +6,7 @@ import { assertProviderConfigured } from "@/lib/ai-providers";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { visualizeFloorplanFromDrawing, parseFloorplanVizScope } from "@/lib/projects/floorplan-viz";
+import { existingImagesForAppend } from "@/lib/projects/floorplan-viz-scope";
 import { titleFromFloorplanLayout } from "@/lib/projects/floorplan-viz-ids";
 import { floorplanExtractFingerprint, floorplanVizInputFingerprint } from "@/lib/projects/floorplan-viz-lock";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
@@ -36,6 +37,27 @@ const MAX_BYTES = 4 * 1024 * 1024;
 const MULTIPART_OVERHEAD = 64 * 1024;
 const log = createLogger("visualize-floorplan");
 
+async function generateAndAppendToRun(input: {
+  orgId: string;
+  existing: FloorplanVizRunDetail;
+  scope: ReturnType<typeof parseFloorplanVizScope>;
+}) {
+  const result = await visualizeFloorplanFromDrawing(input.existing.planBase64, input.existing.planMimeType, {
+    customKit: input.existing.styleKit,
+    planKind: input.existing.photo ? "photo" : "sales-sheet",
+    scope: input.scope,
+    existingLayout: input.existing.layout,
+    existingImages: existingImagesForAppend(input.existing.images, input.scope),
+    sourceName: input.existing.title,
+  });
+  return appendFloorplanVizStills(
+    input.orgId,
+    input.existing.id,
+    result.images,
+    input.scope === "rooms" ? "full" : input.scope,
+  );
+}
+
 function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
   return {
     success: true as const,
@@ -46,6 +68,7 @@ function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
     enginesUsed: run.enginesUsed,
     ocrEngines: run.ocrEngines,
     visionEngines: run.visionEngines,
+    confidence: run.confidence,
     grounding: {
       dimensionStrings: run.layout.dimensionStrings,
       roomNameHits: run.layout.rooms.map((room) => room.name),
@@ -100,20 +123,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       const existing = await getFloorplanVizRunForOrg(orgId, runId);
       if (!existing) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       const scope = parseFloorplanVizScope(String(formData.get("scope") ?? "rooms"));
-      const result = await visualizeFloorplanFromDrawing(existing.planBase64, existing.planMimeType, {
-        customKit: existing.styleKit,
-        planKind: existing.photo ? "photo" : "sales-sheet",
-        scope,
-        existingLayout: existing.layout,
-        existingImages: existing.images,
-        sourceName: existing.title,
-      });
-      const saved = await appendFloorplanVizStills(
-        orgId,
-        existing.id,
-        result.images,
-        scope === "rooms" ? "full" : scope,
-      );
+      const saved = await generateAndAppendToRun({ orgId, existing, scope });
       if (!saved) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       return NextResponse.json(clientPayload(saved, false));
     }
@@ -238,6 +248,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
         enginesUsed: result.enginesUsed,
         ocrEngines: result.ocrEngines,
         visionEngines: result.visionEngines,
+        confidence: result.confidence,
         images: result.images,
       });
       return NextResponse.json(clientPayload(saved, false));
