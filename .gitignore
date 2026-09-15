@@ -96,6 +96,11 @@ docs/ov.png
 
 # local scratch (i18n patches, promo builds)
 tmp/
+# floorplan booklet runs and the CLI area cache
+tmp-*/
+tmp-*.pdf
+tmp-*.png
+.cache/
 
 # env backups — hold real secrets, must never be committed
 .env.local.bak-*
