@@ -8,7 +8,7 @@ import {
   sniffFloorplanMime,
   type PreparedFloorplanSource,
 } from "@/lib/projects/photo-prep/mime";
-import { detectPaperCropBox, paperPixelRatio } from "@/lib/projects/photo-prep/ink-crop";
+import { detectPaperCropBox, paperPixelRatio } from "@/lib/projects/photo-prep/paper-box";
 /**
  * מיישר EXIF, מגביר ניגודיות בצל, ומגדיל צילום טלפון קטן — כדי ש-OCR יקרא תוכנית מודפסת.
  */
