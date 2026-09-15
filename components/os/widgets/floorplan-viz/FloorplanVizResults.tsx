@@ -6,13 +6,11 @@ import { toast } from "sonner";
 import {
   inferRoomKind,
   type FloorplanLayout,
-  type FloorplanRoom,
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
 import { OsButton } from "@/components/os/ui";
 import { createLogger } from "@/lib/logger";
 import FloorplanVizLightbox, { fileNameOf, srcOf } from "@/components/os/widgets/floorplan-viz/FloorplanVizLightbox";
-import FloorplanVizAttemptCard from "@/components/os/widgets/floorplan-viz/FloorplanVizAttemptCard";
 import { rasterizePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
@@ -23,185 +21,21 @@ import {
   selectedFromAttemptGroup,
 } from "@/lib/projects/floorplan-viz-ids";
 
-type TFn = (key: string, vars?: Record<string, string>) => string;
+import {
+  Gallery,
+  MeasuredPlanSvg,
+  sourceLabel,
+  type TFn,
+} from "@/components/os/widgets/floorplan-viz/FloorplanVizGallery";
+import {
+  base64ToBlob,
+  compressForPdf,
+  compressUrlForPdf,
+} from "@/components/os/widgets/floorplan-viz/pdf-compress";
+
 
 const log = createLogger("floorplan-viz-results");
 
-function sourceLabel(t: TFn, source?: string): string {
-  if (source === "ocr_verified") return t("projectDashboard.vizOcrVerified");
-  if (source === "consensus") return t("projectDashboard.vizConsensus");
-  return t("projectDashboard.vizInferred");
-}
-
-function MeasuredPlanSvg({ rooms }: { rooms: FloorplanRoom[] }) {
-  const boxed = rooms.filter((r) => r.bbox);
-  if (boxed.length === 0) return null;
-  const KIND_FILL: Record<string, string> = {
-    living: "#fde68a",
-    kitchen: "#fdba74",
-    bedroom: "#93c5fd",
-    mmd: "#c4b5fd",
-    bathroom: "#67e8f9",
-    balcony: "#86efac",
-    circulation: "#cbd5e1",
-    utility: "#d6d3d1",
-    other: "#e2e8f0",
-  };
-  return (
-    <svg viewBox="0 0 100 70" className="mt-2 h-auto w-full max-h-48 rounded-lg bg-[color:var(--surface-soft)]" role="img">
-      {boxed.map((room) => {
-        const b = room.bbox!;
-        const kind = room.kind ?? inferRoomKind(room.name);
-        return (
-          <g key={`${room.name}-${room.instanceIndex ?? 0}`}>
-            <rect
-              x={b.x * 100}
-              y={b.y * 70}
-              width={Math.max(1, b.w * 100)}
-              height={Math.max(1, b.h * 70)}
-              fill={KIND_FILL[kind] ?? KIND_FILL.other}
-              stroke="#334155"
-              strokeWidth="0.4"
-            />
-            <text
-              x={b.x * 100 + (b.w * 100) / 2}
-              y={b.y * 70 + (b.h * 70) / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="2.4"
-              fill="#0f172a"
-            >
-              {room.name}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function Gallery({
-  title,
-  groups,
-  offset,
-  onOpen,
-  t,
-  layout,
-  planSrc,
-  canManage,
-  editingKey,
-  onEdit,
-  onImprove,
-  onRescan,
-  onDelete,
-  onSelect,
-}: {
-  title: string;
-  groups: ReturnType<typeof groupFloorplanVizAttempts>;
-  offset: number;
-  onOpen: (groupIndex: number, img: FloorplanVizImage) => void;
-  t: TFn;
-  layout: FloorplanLayout | null;
-  planSrc: string | null;
-  canManage?: boolean;
-  editingKey?: string | null;
-  onEdit?: (img: FloorplanVizImage, instruction: string, region?: FloorplanVizEditRegion) => void;
-  onImprove?: (img: FloorplanVizImage, failures: string[]) => void;
-  onRescan?: (img: FloorplanVizImage) => void;
-  onDelete?: (img: FloorplanVizImage) => void;
-  onSelect?: (img: FloorplanVizImage) => void;
-}) {
-  if (groups.length === 0) return null;
-  return (
-    <section>
-      <h3 className="mb-2 text-xs font-bold">{title}</h3>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {groups.map((group, i) => (
-            <FloorplanVizAttemptCard
-              key={group.key}
-              group={group}
-              globalIndex={offset + i}
-              onOpen={(img) => onOpen(offset + i, img)}
-              t={t}
-              layout={layout}
-              planSrc={planSrc}
-              canManage={canManage}
-              editing={group.attempts.some((row) => (row.id ?? group.key) === editingKey)}
-              onEdit={onEdit}
-              onImprove={onImprove}
-              onRescan={onRescan}
-              onDelete={onDelete}
-              onSelect={onSelect}
-            />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function base64ToBlob(b64: string, mime: string): Blob {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: mime || "image/png" });
-}
-
-function compressUrlForPdf(url: string, fill = "#ffffff"): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const max = 1800;
-      const scale = Math.min(1, max / Math.max(image.width, image.height, 1));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("canvas 2d unavailable"));
-        return;
-      }
-      ctx.fillStyle = fill;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((out) => resolve(out ?? new Blob()), "image/jpeg", 0.82);
-    };
-    image.onerror = () => reject(new Error("image decode failed"));
-    image.src = url;
-  });
-}
-
-function compressForPdf(img: FloorplanVizImage): Promise<{ blob: Blob }> {
-  const mime = img.mimeType || "image/jpeg";
-  if (!img.base64 && img.src) {
-    return fetch(img.src, { credentials: "include" }).then(async (res) => {
-      const blob = await res.blob();
-      return { blob };
-    });
-  }
-  const base64 = img.base64;
-  if (!base64) return Promise.resolve({ blob: new Blob() });
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => {
-      const max = 1600;
-      const scale = Math.min(1, max / Math.max(image.width, image.height, 1));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve({ blob: base64ToBlob(base64, mime) });
-        return;
-      }
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob((out) => resolve({ blob: out ?? base64ToBlob(base64, mime) }), "image/jpeg", 0.84);
-    };
-    image.onerror = () => resolve({ blob: base64ToBlob(base64, mime) });
-    image.src = `data:${mime};base64,${base64}`;
-  });
-}
 
 export default function FloorplanVizResults({
   t,
