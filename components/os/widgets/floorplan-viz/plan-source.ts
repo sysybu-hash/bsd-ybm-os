@@ -154,3 +154,29 @@ export async function composeLocatorStripJpeg(planSrc: string, focus: LocatorFoc
   if (!blob) throw new Error("locator jpeg failed");
   return blob;
 }
+
+/** Over this, a request body is refused by the platform before the route runs. */
+export const PLAN_DIRECT_UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024;
+
+/**
+ * Upload a plan straight to Blob and answer with its URL.
+ *
+ * Returns null for a file small enough to post in the request itself, and for
+ * any failure — the caller then falls back to multipart, which still works for
+ * anything under the platform's limit.
+ */
+export async function uploadPlanToBlob(file: File): Promise<string | null> {
+  if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) return null;
+  try {
+    const { upload } = await import("@vercel/blob/client");
+    const blob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/projects/visualize-floorplan/upload",
+      contentType: file.type || undefined,
+    });
+    return blob.url;
+  } catch {
+    // Blob may not be configured for this deployment; the caller decides.
+    return null;
+  }
+}

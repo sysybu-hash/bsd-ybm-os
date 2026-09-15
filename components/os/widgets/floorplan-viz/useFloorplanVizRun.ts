@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { fileFromDataUrl } from "@/components/os/widgets/floorplan-viz/plan-source";
+import { fileFromDataUrl, uploadPlanToBlob } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
 import { useFloorplanVizStills } from "@/components/os/widgets/floorplan-viz/useFloorplanVizStills";
@@ -125,7 +125,9 @@ export function useFloorplanVizRun({
           const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
           // Keep the PDF bytes. Rasterizing here used to skip the CAD path
           // and the model invented a different apartment.
-          fd.append("file", file);
+          const blobUrl = await uploadPlanToBlob(file);
+          if (blobUrl) fd.append("blobUrl", blobUrl);
+          else fd.append("file", file);
           if (projectId) fd.append("projectId", projectId);
           fd.append("styleId", styleId);
           fd.append("planKind", isPdf ? "sales-sheet" : "auto");

@@ -34,6 +34,7 @@ import {
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
+import { emptyFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
 import { extractPdfPageRaster, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
 
@@ -70,6 +71,8 @@ export type FloorplanVizResult = {
   styleKit: FloorplanVizStyleKit;
   scope: FloorplanVizScope;
   confidence?: ConfidenceReport;
+  /** Model calls this run paid for, so "how much is a booklet" stops being a guess. */
+  spend?: FloorplanSpend;
   /** Absent on the client payload — the API strips the plan bytes before responding. */
   planBase64?: string;
   planMimeType?: string;
@@ -112,6 +115,7 @@ export async function visualizeFloorplanFromDrawing(
     options?.existingLayout && typeof options.existingLayout === "object"
       ? parseFloorplanLayout(options.existingLayout as Record<string, unknown>)
       : null;
+  const spend = emptyFloorplanSpend();
   const extracted = reused
     ? {
         layout: reused,
@@ -128,6 +132,7 @@ export async function visualizeFloorplanFromDrawing(
     : await extractFloorplanLayout(prepared.base64, prepared.mimeType, {
         photo,
         lean: !photo && prepared.mimeType === "application/pdf",
+        spend,
       });
 
   const cadResult = await tryCadOverview({
@@ -202,6 +207,7 @@ export async function visualizeFloorplanFromDrawing(
       styleKit,
       scope,
       confidence: cadResult.confidence,
+      spend: cadResult.spend,
       planBase64: prepared.base64,
       planMimeType: prepared.mimeType,
       photo,
@@ -259,6 +265,7 @@ export async function visualizeFloorplanFromDrawing(
     styleKit,
     scope,
     confidence: rasterFallbackConfidence(),
+    spend,
     planBase64: prepared.mimeType === "application/pdf" ? prepared.base64 : vizBase64,
     planMimeType: prepared.mimeType === "application/pdf" ? prepared.mimeType : vizMime,
     photo,
@@ -273,6 +280,7 @@ type CadOverviewAttempt =
       confidence: ConfidenceReport;
       /** The program the sheet prints, when the extract and the text layer carry it. */
       truth?: PrintedUnitTruth;
+      spend: FloorplanSpend;
     }
   | { outcome: "skip" }
   | { outcome: "locked" };
@@ -339,6 +347,7 @@ async function tryCadOverview(input: {
       },
       confidence: { ...rendered.confidence, tier: "cad" },
       truth,
+      spend: rendered.spend,
     };
   } catch (err: unknown) {
     log.warn("cad render threw; not inventing a layout", {

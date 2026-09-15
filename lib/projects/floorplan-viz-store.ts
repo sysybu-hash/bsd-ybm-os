@@ -6,6 +6,7 @@ import {
 } from "@/lib/projects/floorplan-layout";
 import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { parseFloorplanVizScope, type FloorplanVizScope } from "@/lib/projects/floorplan-viz-scope";
+import type { FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import {
   floorplanVizStillFilePath,
   floorplanVizViewKey,
@@ -48,6 +49,8 @@ type EnginesJson = {
   ocrEngines?: string[];
   visionEngines?: string[];
   confidence?: ConfidenceReport;
+  /** What the run cost in model calls. Stored with the engines, not in a column. */
+  spend?: FloorplanSpend;
 };
 
 export type FloorplanVizRunDetail = {
@@ -65,6 +68,7 @@ export type FloorplanVizRunDetail = {
   ocrEngines: string[];
   visionEngines: string[];
   confidence?: ConfidenceReport;
+  spend?: FloorplanSpend;
   images: FloorplanVizImage[];
   createdAt: string;
   updatedAt: string;
@@ -182,6 +186,7 @@ export async function getFloorplanVizRunForOrg(
     ocrEngines: asStringArray(engines.ocrEngines),
     visionEngines: asStringArray(engines.visionEngines),
     confidence: parseStoredConfidence(engines.confidence),
+    spend: engines.spend,
     images: row.stills.map((still) => stillToImage(row.id, still)),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -236,6 +241,7 @@ export async function createFloorplanVizRun(input: {
   ocrEngines: string[];
   visionEngines: string[];
   confidence?: ConfidenceReport;
+  spend?: FloorplanSpend;
   images: FloorplanVizImage[];
 }): Promise<FloorplanVizRunDetail> {
   const created = await prisma.floorplanVizRun.create({
@@ -259,6 +265,7 @@ export async function createFloorplanVizRun(input: {
         ocrEngines: input.ocrEngines,
         visionEngines: input.visionEngines,
         ...(input.confidence ? { confidence: input.confidence } : {}),
+        ...(input.spend ? { spend: input.spend } : {}),
       },
     },
   });

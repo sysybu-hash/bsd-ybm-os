@@ -16,6 +16,7 @@ import { stampCadMeasuresOnLayout } from "@/lib/projects/floorplan-cad-measure";
 import { floorplanLayoutSchema, type FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { bufferIfPdf, pairRastersForCompare, trimRasterWhitespace } from "@/lib/projects/floorplan-photo-prep";
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
+import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
 import { extractPdfPageText, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
 import { bookletHeroImage } from "@/lib/projects/floorplan-viz-ids";
 import { stripMagentaLocatorFromJpeg } from "@/lib/projects/floorplan-viz-edit-region-overlay";
@@ -137,6 +138,13 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
     let sourcePdfBytes: Buffer | null = null;
     if (sourcePdfFile instanceof File && sourcePdfFile.size > 0 && sourcePdfFile.size <= MAX_PLAN_BYTES) {
       sourcePdfBytes = bufferIfPdf(Buffer.from(await sourcePdfFile.arrayBuffer()));
+    }
+    // A sheet too big for a request body came up through Blob instead.
+    const sourcePdfUrl = String(form.get("sourcePdfUrl") ?? "").trim();
+    if (!sourcePdfBytes && sourcePdfUrl) {
+      const fetched = await fetchFloorplanBlob(sourcePdfUrl);
+      if (fetched) sourcePdfBytes = bufferIfPdf(Buffer.from(fetched.base64, "base64"));
+      void deleteFloorplanBlob(sourcePdfUrl);
     }
     const runPdfBytes = run?.planBase64
       ? bufferIfPdf(Buffer.from(run.planBase64, "base64"))

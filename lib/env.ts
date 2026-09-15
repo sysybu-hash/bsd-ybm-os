@@ -120,6 +120,11 @@ const serverSchema = z.object({
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
 
+  // --- Blob storage ---
+  // A sales sheet and a booklet both run past Vercel's ~4.5MB request limit, so
+  // the browser uploads them straight to Blob and the route is handed a URL.
+  BLOB_READ_WRITE_TOKEN: optStr,
+
   // --- Analytics ---
   POSTHOG_API_KEY: optStr,
 

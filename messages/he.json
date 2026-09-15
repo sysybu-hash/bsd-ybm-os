@@ -1596,6 +1596,8 @@
   },
   "apiErrors": {
     "bad_request": "בקשה לא תקינה",
+    "blob_not_configured": "אחסון הקבצים אינו מוגדר — ניתן להעלות תוכנית עד 4MB בלבד",
+    "blob_unavailable": "קובץ התוכנית שהועלה אינו זמין",
     "bundle_not_found": "חבילה לא נמצאה או לא פעילה",
     "calendar_not_connected": "חברו Google Calendar תחילה",
     "consent_required": "הפעילו סנכרון דרך מסך האישור תחילה",

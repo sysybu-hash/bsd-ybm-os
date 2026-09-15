@@ -148,6 +148,9 @@ const nextConfig = {
     // server chunks, so every getDocument call failed with "Setting up fake
     // worker failed". Left external, Node resolves it from node_modules.
     "pdfjs-dist",
+    // Native Skia bindings. Bundling them breaks the .node resolution the
+    // booklet's caption bar and sheet page depend on.
+    "@napi-rs/canvas",
   ],
   outputFileTracingIncludes: {
     "/api/documents/issued/[id]/export": [
@@ -157,6 +160,21 @@ const nextConfig = {
       "./lib/pdf/render-invoice-pdf-chromium.ts",
       "./lib/pdf/load-pdf-font-buffers.ts",
       "./node_modules/@sparticuz/chromium/**",
+    ],
+    // The booklet is rendered by Chromium and captioned by @napi-rs/canvas,
+    // and both read files at runtime: the Hebrew fonts the stamp registers and
+    // the logo the cover prints. Tracing misses them because nothing imports
+    // them — they are opened by path.
+    "/api/projects/visualize-floorplan/export-pdf": [
+      "./lib/pdf/fonts/**",
+      "./lib/pdf/load-pdf-font-buffers.ts",
+      "./public/logos/**",
+      "./node_modules/@sparticuz/chromium/**",
+    ],
+    "/api/projects/visualize-floorplan": ["./lib/pdf/fonts/**", "./lib/pdf/load-pdf-font-buffers.ts"],
+    "/api/projects/visualize-floorplan/[id]/stills/[stillId]": [
+      "./lib/pdf/fonts/**",
+      "./lib/pdf/load-pdf-font-buffers.ts",
     ],
   },
   images: {

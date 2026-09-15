@@ -79,6 +79,12 @@ GEMINI_API_KEY="AIza..."           # from aistudio.google.com (free)
 
 # Cron (any string for local dev)
 CRON_SECRET="local-dev-secret"
+
+# Blob storage — needed to upload a sales sheet or a booklet over ~4MB.
+# Vercel dashboard → Storage → Blob → connect to the project, then `vercel env pull`.
+# Without it, uploads still work up to 4MB and larger files are refused with a
+# message rather than failing at the platform edge.
+# BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 ```
 
 Run the audit to see what else you might need:

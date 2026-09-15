@@ -18,6 +18,9 @@ test.describe("floorplan viz — auth boundary", () => {
   test("every route rejects an anonymous caller", async ({ request }) => {
     const calls = [
       request.get("/api/projects/visualize-floorplan"),
+      request.post("/api/projects/visualize-floorplan/upload", {
+        data: { type: "blob.generate-client-token", payload: { pathname: "plan.pdf" } },
+      }),
       request.post("/api/projects/visualize-floorplan/style-kit", {
         data: { freeText: "מודרני", audience: "general" },
       }),
@@ -62,8 +65,12 @@ test.describe("floorplan viz — authenticated route contract", () => {
         },
       },
     });
-    expect(res.status()).toBe(400);
-    expect((await res.json()).code).toBe("file_too_large");
+    // Vercel rejects a body over ~4.5MB at the edge, before the route runs, so
+    // in production this is a 413 with no JSON body of ours.
+    expect([400, 413]).toContain(res.status());
+    if (res.status() === 400) {
+      expect((await res.json()).code).toBe("file_too_large");
+    }
   });
 
   test("export rejects a layout that is not a floor plan", async ({ page }) => {

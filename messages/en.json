@@ -1596,6 +1596,8 @@
   },
   "apiErrors": {
     "bad_request": "Invalid request",
+    "blob_not_configured": "File storage is not configured — plans are limited to 4MB",
+    "blob_unavailable": "The uploaded plan file is unavailable",
     "bundle_not_found": "Bundle not found or inactive",
     "calendar_not_connected": "Connect Google Calendar first",
     "consent_required": "Enable sync from the consent screen first",

@@ -20,6 +20,7 @@ import {
   type FloorplanVizRunDetail,
 } from "@/lib/projects/floorplan-viz-store";
 import { inferMimeFromFileName } from "@/lib/scan-mime";
+import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
 import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-limit";
 import { createLogger } from "@/lib/logger";
 
@@ -69,6 +70,7 @@ function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
     ocrEngines: run.ocrEngines,
     visionEngines: run.visionEngines,
     confidence: run.confidence,
+    spend: run.spend,
     grounding: {
       dimensionStrings: run.layout.dimensionStrings,
       roomNameHits: run.layout.rooms.map((room) => room.name),
@@ -128,17 +130,33 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       return NextResponse.json(clientPayload(saved, false));
     }
 
+    // A sheet over the platform's body limit is uploaded straight to Blob by the
+    // browser, and only its URL reaches this route.
+    const blobUrl = String(formData.get("blobUrl") ?? "").trim();
     const file = formData.get("file");
-    if (!(file instanceof File)) {
-      return jsonBadRequest("חסר קובץ תוכנית", "missing_fields");
+    let base64: string;
+    let mimeType: string;
+    let fileName: string;
+    if (blobUrl) {
+      const fetched = await fetchFloorplanBlob(blobUrl);
+      if (!fetched) {
+        return jsonBadRequest("קובץ התוכנית שהועלה אינו זמין", "blob_unavailable");
+      }
+      base64 = fetched.base64;
+      fileName = fetched.fileName ?? "plan.pdf";
+      mimeType = inferMimeFromFileName(fileName, fetched.mimeType);
+    } else {
+      if (!(file instanceof File)) {
+        return jsonBadRequest("חסר קובץ תוכנית", "missing_fields");
+      }
+      if (file.size > MAX_BYTES) {
+        return jsonBadRequest("הקובץ גדול מדי (מקסימום 4MB)", "file_too_large");
+      }
+      base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+      fileName = file.name;
+      mimeType = inferMimeFromFileName(file.name, file.type);
     }
-    if (file.size > MAX_BYTES) {
-      return jsonBadRequest("הקובץ גדול מדי (מקסימום 4MB)", "file_too_large");
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-    const mimeType = inferMimeFromFileName(file.name, file.type);
+    const sourceName = fileName.replace(/\.[^.]+$/u, "");
 
     const styleId = String(formData.get("styleId") ?? "").trim();
     const planKindRaw = String(formData.get("planKind") ?? "auto").trim();
@@ -227,7 +245,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
       scope,
       existingLayout: scope === "rooms" ? existingLayout : existingLayout ?? cachedLayout ?? undefined,
       existingImages: scope === "rooms" ? existingImages : undefined,
-      sourceName: file.name.replace(/\.[^.]+$/u, ""),
+      sourceName,
     });
 
     try {
@@ -235,8 +253,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
         orgId,
         userId,
         projectId: projectId || null,
-        title: titleFromFloorplanLayout(result.layout, file.name.replace(/\.[^.]+$/u, "")),
-        sourceFileName: file.name,
+        title: titleFromFloorplanLayout(result.layout, sourceName),
+        sourceFileName: fileName,
         planMimeType: result.planMimeType,
         planBase64: result.planBase64,
         layout: result.layout,
@@ -249,8 +267,11 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
         ocrEngines: result.ocrEngines,
         visionEngines: result.visionEngines,
         confidence: result.confidence,
+        spend: result.spend,
         images: result.images,
       });
+      // The run holds its own copy of the plan now; the upload is rubbish.
+      if (blobUrl) void deleteFloorplanBlob(blobUrl);
       return NextResponse.json(clientPayload(saved, false));
     } catch (persistErr) {
       log.warn("persist viz run failed", {

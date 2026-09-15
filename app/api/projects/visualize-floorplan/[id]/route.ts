@@ -37,6 +37,7 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgI
       ocrEngines: run.ocrEngines,
       visionEngines: run.visionEngines,
       confidence: run.confidence,
+      spend: run.spend,
       grounding: {
         dimensionStrings: run.layout.dimensionStrings,
         roomNameHits: run.layout.rooms.map((room) => room.name),

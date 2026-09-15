@@ -11,7 +11,11 @@ import {
 import { OsButton } from "@/components/os/ui";
 import { createLogger } from "@/lib/logger";
 import FloorplanVizLightbox, { fileNameOf, srcOf } from "@/components/os/widgets/floorplan-viz/FloorplanVizLightbox";
-import { rasterizePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
+import {
+  PLAN_DIRECT_UPLOAD_MAX_BYTES,
+  rasterizePlanFile,
+  uploadPlanToBlob,
+} from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
 import {
@@ -212,13 +216,17 @@ export default function FloorplanVizResults({
       const packed = await compressForPdf(hero);
       fd.append("images", packed.blob, fileNameOf(hero, 0).replace(/\.\w+$/u, ".jpg"));
       if (runId) fd.append("runId", runId);
-      if (
+      const sheetIsPdf =
         sourceFile &&
         (sourceFile.type === "application/pdf" || /\.pdf$/i.test(sourceFile.name)) &&
-        sourceFile.size > 0 &&
-        sourceFile.size <= 6 * 1024 * 1024
-      ) {
-        fd.append("sourcePdf", sourceFile);
+        sourceFile.size > 0;
+      if (sheetIsPdf && sourceFile) {
+        // The booklet re-measures the rooms off the sheet's own vectors, so the
+        // PDF has to reach the route. Over the platform's body limit it goes up
+        // through Blob and only its URL rides in the request.
+        const uploaded = await uploadPlanToBlob(sourceFile);
+        if (uploaded) fd.append("sourcePdfUrl", uploaded);
+        else if (sourceFile.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("sourcePdf", sourceFile);
       }
       let sheet = planSrc;
       if (!sheet && sourceFile) {
