@@ -14,6 +14,7 @@ import {
   overviewImageFromCad,
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
+import { knownSheetTruth } from "@/e2e/fixtures/floorplan-truth";
 
 const extent = { x: 10, y: 20, width: 400, height: 300 };
 
@@ -247,9 +248,14 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
     expect(bed1?.source).toBe("cad");
   });
 
-  it("uses the known sheet area when the extract has no gross", () => {
+  it("uses the printed program's area when the extract has no gross", () => {
     const lean = parseFloorplanLayout({ unitLabel: "דירה 15", rooms: [] });
-    expect(cadTargetAreaM2(lean)).toBeCloseTo(114.11 + 4.1 + 6.44 + 3.16, 2);
+    expect(cadTargetAreaM2(lean, { truth: knownSheetTruth("דירה 15") })).toBeCloseTo(
+      114.11 + 4.1 + 6.44 + 3.16,
+      2,
+    );
+    // A unit number is not an area: without a program there is nothing to lock.
+    expect(cadTargetAreaM2(lean)).toBeUndefined();
   });
 
   it("reads terrace figures off the sheet when the extract has no balconies", () => {
@@ -276,7 +282,9 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
 
   it("does not lock scale to a roof terrace printed on the same sheet", () => {
     const lean = parseFloorplanLayout({ unitLabel: "דירה 18", rooms: [] });
-    expect(cadTargetAreaM2(lean, { printedTerraceM2: 5.2 })).toBeCloseTo(59.01 + 4.6 + 8, 2);
+    expect(
+      cadTargetAreaM2(lean, { printedTerraceM2: 5.2, truth: knownSheetTruth("דירה 18", 59.01) }),
+    ).toBeCloseTo(59.01 + 4.6 + 8, 2);
   });
 
   it("will not photograph CAD massing that dropped the bath or grew a roof stair as a terrace", () => {
@@ -291,7 +299,9 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
         { name: "מרפסת", kind: "balcony", areaM2: 5.2 },
       ],
     });
-    expect(cadMassingSafeToPhotograph(broken)).toBe(false);
+    const truth = knownSheetTruth("דירה 18", 59.01);
+    expect(cadMassingSafeToPhotograph(broken, truth)).toBe(false);
+    expect(cadMassingSafeToPhotograph(broken)).toBe(true);
     const matching = parseFloorplanLayout({
       unitLabel: "דירה 18",
       grossAreaM2: 59.01,
@@ -305,7 +315,7 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
         { name: "מרפסת 2", kind: "balcony", areaM2: 8 },
       ],
     });
-    expect(cadMassingSafeToPhotograph(matching)).toBe(true);
+    expect(cadMassingSafeToPhotograph(matching, truth)).toBe(true);
   });
 
   it("labels a raster fallback so a scan is not sold as CAD", () => {

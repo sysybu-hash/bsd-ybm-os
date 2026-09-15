@@ -693,6 +693,10 @@ function parseBbox(raw: unknown): FloorplanBbox | undefined {
 
 function parseKind(raw: unknown, name: string, finishNotes?: string): FloorplanRoomKind {
   if (finishNotes && /ממ"?ד/.test(finishNotes)) return "mmd";
+  // "מגורים ומטבח" is the open-plan row the booklet merges living and kitchen
+  // into. Read by its needles it is a kitchen, and the booklet lost its living
+  // room every time the layout was re-parsed.
+  if (/מגורים|סלון/u.test(name) && /מטבח/u.test(name)) return "living";
   const fromName = inferRoomKind(name);
   if (fromName === "mmd") return "mmd";
   if (fromName !== "other") return fromName;

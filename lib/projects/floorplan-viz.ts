@@ -33,6 +33,7 @@ import {
   printedTerraceM2,
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
+import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
 import { extractPdfPageRaster, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
 
@@ -144,7 +145,7 @@ export async function visualizeFloorplanFromDrawing(
     let images: FloorplanVizImage[] = [];
     const enginesUsed = [...extracted.enginesUsed, "geometry-cad"];
     if (!alreadyHasOverview) {
-      const lockCad = cadMassingSafeToPhotograph(cadResult.layout);
+      const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth);
       if (!lockCad) {
         log.info("cad massing omitted from photoreal; segmented program does not match the sheet");
       }
@@ -157,6 +158,7 @@ export async function visualizeFloorplanFromDrawing(
           unitTitle: titleFromFloorplanLayout(layout, options?.sourceName ?? ""),
           skipInteriors: true,
           geometryLock: lockCad ? cadResult.geometry : undefined,
+          truth: cadResult.truth,
         });
         images = mergeCadPhotorealImages({ photoreal, geometry: cadResult.geometry });
         const hasLivingOverview = images.some(
@@ -269,6 +271,8 @@ type CadOverviewAttempt =
       layout: FloorplanLayout;
       geometry: { mimeType: "image/jpeg"; base64: string };
       confidence: ConfidenceReport;
+      /** The program the sheet prints, when the extract and the text layer carry it. */
+      truth?: PrintedUnitTruth;
     }
   | { outcome: "skip" }
   | { outcome: "locked" };
@@ -294,13 +298,14 @@ async function tryCadOverview(input: {
     return { outcome: "skip" };
   }
   const printed = await extractPrintedAreas(pdfBytes);
+  const truth = printedTruthFromSheet(input.extractedLayout, { areas: printed });
   const route = decideFloorplanVizRoute({
     mimeType: input.prepared.mimeType,
     photo: input.photo,
     extent,
     grossAreaM2: cadTargetAreaM2(input.extractedLayout, {
       printedTerraceM2: printedTerraceM2(printed, input.extractedLayout.grossAreaM2),
-      unitHint: input.sourceName,
+      truth,
     }),
   });
   if (route.kind !== "cad" || !extent) {
@@ -333,6 +338,7 @@ async function tryCadOverview(input: {
         base64: rendered.geometry.toString("base64"),
       },
       confidence: { ...rendered.confidence, tier: "cad" },
+      truth,
     };
   } catch (err: unknown) {
     log.warn("cad render threw; not inventing a layout", {

@@ -8,13 +8,15 @@ import {
   cadMeasureCount,
   dropUnusableCadRooms,
   enrichLayoutForBooklet,
-  overlayKnownSheetProgram,
+  overlayPrintedProgram,
   floorPlateTerraces,
-  knownSheetTruth,
   layoutForHonestBooklet,
   pickRicherBookletLayout,
+  printedTruthFromSheet,
   roomsForBookletTable,
+  terraceFigures,
 } from "@/lib/projects/floorplan-booklet-rooms";
+import { knownSheetTruth } from "@/e2e/fixtures/floorplan-truth";
 
 describe("honest booklet rooms", () => {
   it("drops a merged kitchen blob and a corridor-thin bathroom", () => {
@@ -96,26 +98,94 @@ describe("honest booklet rooms", () => {
     expect(picked.grossAreaM2).toBe(111.29);
   });
 
-  it("fills unit, printed area and rooms from the known sheet when the payload is empty", () => {
+  it("fills unit, printed area and rooms from the sheet's program when the payload is empty", () => {
     const empty = parseFloorplanLayout({ rooms: [] });
     const booklet = enrichLayoutForBooklet(empty, {
       unitTitle: "דירה 14",
       sourceFileName: "דירה 14 .pdf",
+      truth: knownSheetTruth("דירה 14"),
     });
     expect(booklet.unitLabel).toMatch(/דירה 14/);
     expect(booklet.grossAreaM2).toBe(111.29);
     expect(booklet.rooms.filter((room) => room.kind === "bedroom")).toHaveLength(4);
-    expect(knownSheetTruth("דירה 14")?.grossM2).toBe(111.29);
   });
 
-  it("does not cross-wire flats that share a printed gross area", () => {
-    // דירה 19 and 23 are both 57 מ"ר; area-only used to pick the first hit.
-    expect(knownSheetTruth(undefined, 57)).toBeUndefined();
-    expect(knownSheetTruth(undefined, 59.01)).toBeUndefined();
-    expect(knownSheetTruth("דירה 19", 57)?.terraces).toEqual([{ m2: 4.7, levelM: 11.42 }]);
-    expect(knownSheetTruth("דירה 23", 57)?.terraces).toEqual([{ m2: 3.3, levelM: 14.36 }]);
-    expect(knownSheetTruth("דירה 18", 59.01)?.terraces?.[0]?.m2).toBe(4.6);
-    expect(knownSheetTruth("דירה 22", 59.01)?.terraces?.[0]?.m2).toBe(3.3);
+  it("invents no program for a sheet whose program it was not given", () => {
+    // The unit number alone used to pull דירה 14's rooms out of a table.
+    const booklet = enrichLayoutForBooklet(parseFloorplanLayout({ rooms: [] }), {
+      unitTitle: "דירה 14",
+      sourceFileName: "דירה 14 .pdf",
+    });
+    expect(booklet.unitLabel).toMatch(/דירה 14/);
+    expect(booklet.grossAreaM2).toBeUndefined();
+    expect(booklet.rooms.filter((room) => room.kind === "bedroom")).toHaveLength(0);
+  });
+
+  it("reads the program off the extract and the areas the sheet prints", () => {
+    const extract = parseFloorplanLayout({
+      grossAreaM2: 111.29,
+      rooms: [
+        { name: "מגורים", kind: "living" },
+        { name: "מטבח", kind: "kitchen" },
+        { name: "חדר שינה 1", kind: "bedroom" },
+        { name: "חדר שינה 2", kind: "bedroom" },
+        { name: "חדר שינה 3", kind: "bedroom" },
+        { name: 'ממ"ד', kind: "mmd" },
+        { name: "חדר רחצה 1", kind: "bathroom" },
+        { name: "חדר רחצה 2", kind: "bathroom" },
+        { name: "לובי", kind: "other" },
+      ],
+    });
+    // דירה 14 prints two of its three terraces as text, plus its gross.
+    const truth = printedTruthFromSheet(extract, {
+      areas: [
+        { x: 483, y: 478, value: 4.1 },
+        { x: 312, y: 1312, value: 3.16 },
+        { x: 900, y: 1300, value: 111.29 },
+      ],
+    });
+    expect(truth).toEqual({
+      grossM2: 111.29,
+      bedrooms: 3,
+      mmd: 1,
+      bathrooms: 2,
+      terraces: [{ m2: 4.1 }, { m2: 3.16 }],
+    });
+  });
+
+  it("prefers the terraces the extract measured over loose figures on the sheet", () => {
+    const extract = parseFloorplanLayout({
+      grossAreaM2: 59.01,
+      rooms: [
+        { name: "חדר שינה 1", kind: "bedroom" },
+        { name: "חדר רחצה", kind: "bathroom" },
+        { name: "מרפסת", kind: "balcony", areaM2: 4.6 },
+      ],
+    });
+    const truth = printedTruthFromSheet(extract, { areas: [{ x: 374, y: 81, value: 5.2 }] });
+    expect(truth?.terraces).toEqual([{ m2: 4.6 }]);
+  });
+
+  it("reads nothing when the sheet gives no gross or no rooms", () => {
+    const noGross = parseFloorplanLayout({ rooms: [{ name: "חדר שינה", kind: "bedroom" }] });
+    expect(printedTruthFromSheet(noGross, { areas: [] })).toBeUndefined();
+    const noRooms = parseFloorplanLayout({ grossAreaM2: 57, rooms: [] });
+    expect(printedTruthFromSheet(noRooms, { areas: [{ x: 0, y: 0, value: 4.7 }] })).toBeUndefined();
+  });
+
+  it("keeps only terrace-sized figures, and never the gross", () => {
+    expect(
+      terraceFigures([{ value: 1.2 }, { value: 4.1 }, { value: 16.5 }, { value: 13.2 }, { value: 57 }], 57).map(
+        (fig) => fig.value,
+      ),
+    ).toEqual([4.1, 13.2]);
+  });
+
+  it("keeps the open-plan row a living room when the layout is parsed again", () => {
+    const parsed = parseFloorplanLayout({
+      rooms: [{ name: "מגורים ומטבח", kind: "living", areaM2: 18 }],
+    });
+    expect(parsed.rooms[0]?.kind).toBe("living");
   });
 
   it("writes CAD width and length onto the printed room list", () => {
@@ -222,7 +292,7 @@ describe("honest booklet rooms", () => {
         { name: 'ממ"ד', kind: "mmd", widthM: 2.6, lengthM: 3.02, areaM2: 7.62, source: "cad" },
       ],
     });
-    const table = roomsForBookletTable(sparse);
+    const table = roomsForBookletTable(sparse, knownSheetTruth("דירה 18", 59.01));
     expect(table.filter((room) => room.kind === "bedroom")).toHaveLength(2);
     expect(table.some((room) => room.name === "מגורים ומטבח")).toBe(true);
     expect(table.filter((room) => room.kind === "balcony")).toHaveLength(2);
@@ -251,6 +321,7 @@ describe("honest booklet rooms", () => {
     const empty = enrichLayoutForBooklet(parseFloorplanLayout({ rooms: [] }), {
       unitTitle: "דירה 14",
       sourceFileName: "דירה 14 .pdf",
+      truth: knownSheetTruth("דירה 14"),
     });
     expect(bookletNeedsCadRemasure(empty)).toBe(true);
     const measured = parseFloorplanLayout({
@@ -295,7 +366,7 @@ describe("honest booklet rooms", () => {
   it("fills printed terraces and a missing bath when CAD dropped them", () => {
     const known = knownSheetTruth("דירה 18", 59.01);
     expect(known?.bedrooms).toBe(2);
-    const overlay = overlayKnownSheetProgram(
+    const overlay = overlayPrintedProgram(
       parseFloorplanLayout({
         unitLabel: "דירה 18",
         grossAreaM2: 59.01,
@@ -307,6 +378,7 @@ describe("honest booklet rooms", () => {
           { name: "מרפסת", kind: "balcony", areaM2: 5.2 },
         ],
       }),
+      known,
     );
     expect(overlay.rooms.filter((room) => room.kind === "bathroom")).toHaveLength(1);
     expect(overlay.rooms.filter((room) => room.kind === "balcony").map((room) => room.areaM2)).toEqual(
@@ -315,7 +387,7 @@ describe("honest booklet rooms", () => {
   });
 
   it("keeps sheet מרפסת on דירה 23 even when ⊕ differs from the flat", () => {
-    const overlay = overlayKnownSheetProgram(
+    const overlay = overlayPrintedProgram(
       parseFloorplanLayout({
         unitLabel: "דירה 23",
         grossAreaM2: 57,
@@ -327,6 +399,7 @@ describe("honest booklet rooms", () => {
           { name: "חדר רחצה", kind: "bathroom" },
         ],
       }),
+      knownSheetTruth("דירה 23", 57),
     );
     expect(overlay.rooms.filter((room) => room.kind === "balcony").map((room) => room.areaM2)).toEqual([
       3.3,

@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import {
   extractFloorLabel,
   extractGrossAreaM2,
@@ -10,6 +8,7 @@ import {
   type FloorplanLayout,
   type FloorplanRoom,
 } from "@/lib/projects/floorplan-layout";
+import type { PlacedNumber } from "@/lib/projects/floorplan-vector";
 
 export type PrintedTerrace = { m2: number; levelM?: number };
 
@@ -127,9 +126,12 @@ export function sheetProgramIncomplete(
 }
 
 /** Sales-sheet table: keep names, drop merged CAD numbers, fall back to printed counts. */
-export function roomsForBookletTable(layout: FloorplanLayout): FloorplanRoom[] {
+export function roomsForBookletTable(
+  layout: FloorplanLayout,
+  truth?: PrintedUnitTruth,
+): FloorplanRoom[] {
   const living = layout.rooms.filter((room) => !isBuildingCoreRoom(room));
-  const known = knownSheetTruth(layout.unitLabel || layout.title, layout.grossAreaM2);
+  const known = truth;
   // דירה 18: CAD remasure returned kitchen + bedroom + ממ"ד and wiped living,
   // bath and terraces. The printed program wins whenever the list is thinner.
   if (known && sheetProgramIncomplete(living, known)) {
@@ -163,11 +165,11 @@ export function roomsForBookletTable(layout: FloorplanLayout): FloorplanRoom[] {
     );
   }
 
-  const truth = printedTruthFromRooms(living, layout.grossAreaM2);
-  if (truth && truth.bedrooms + truth.bathrooms + truth.mmd >= 3) {
+  const counted = printedTruthFromRooms(living, layout.grossAreaM2);
+  if (counted && counted.bedrooms + counted.bathrooms + counted.mmd >= 3) {
     return mergeOpenPlanLivingKitchen(
       applyCadMeasuresToBookletRooms(
-        bookletRoomsFromPrintedTruth(truth),
+        bookletRoomsFromPrintedTruth(counted),
         living,
         layout.grossAreaM2,
       ),
@@ -415,61 +417,42 @@ export function applyBboxMeasuresToLayout(layout: FloorplanLayout): FloorplanLay
   });
 }
 
-type KnownSheet = {
-  file?: string;
-  grossM2?: number;
-  levelM?: number;
-  bedrooms?: number;
-  mmd?: number;
-  bathrooms?: number;
-  terraces?: Array<{ m2: number; levelM?: number }>;
-};
-
-function loadKnownSheets(): KnownSheet[] {
-  const full = path.join(process.cwd(), "scripts", "floorplan-truth.json");
-  if (!fs.existsSync(full)) return [];
-  try {
-    const raw = JSON.parse(fs.readFileSync(full, "utf8")) as { plans?: KnownSheet[] };
-    return Array.isArray(raw.plans) ? raw.plans : [];
-  } catch {
-    return [];
-  }
+/** Area figures a sheet prints that can be a terrace: not the gross, not a room-sized hall. */
+export function terraceFigures<T extends { value: number }>(figures: T[], grossM2?: number): T[] {
+  return figures.filter(
+    (fig) =>
+      fig.value >= 2.5 &&
+      fig.value <= 16 &&
+      !(grossM2 != null && Math.abs(fig.value - grossM2) < 0.05),
+  );
 }
 
-export function knownSheetTruth(unitLabel?: string, grossM2?: number): PrintedUnitTruth | undefined {
-  const digits = unitLabel?.match(/(?:דירה\s*)?(\d{1,4})\b/u)?.[1];
-  const unitRe = digits ? new RegExp(`דירה\\s*${digits}(?!\\d)`, "u") : null;
-  const plans = loadKnownSheets().filter(
-    (plan) => plan.grossM2 != null && plan.bedrooms != null && plan.bathrooms != null,
-  );
-
-  const toTruth = (plan: KnownSheet): PrintedUnitTruth => ({
-    grossM2: plan.grossM2!,
-    bedrooms: plan.bedrooms!,
-    mmd: plan.mmd ?? 0,
-    bathrooms: plan.bathrooms!,
-    ...(typeof plan.levelM === "number" ? { levelM: plan.levelM } : {}),
-    terraces: (plan.terraces ?? []).map((row) => ({
-      m2: row.m2,
-      ...(typeof row.levelM === "number" ? { levelM: row.levelM } : {}),
-    })),
-  });
-
-  // Unit label wins. Matching by area alone used to cross-wire flats that share
-  // a printed gross (דירה 19 and 23 are both 57 מ"ר; 18 and 22 are both 59.01)
-  // and the photoreal then drew the wrong terrace / program.
-  if (unitRe) {
-    for (const plan of plans) {
-      if (unitRe.test(plan.file ?? "")) return toTruth(plan);
-    }
-  }
-
-  if (grossM2 == null) return undefined;
-  const areaHits = plans.filter(
-    (plan) => plan.grossM2 != null && Math.abs(plan.grossM2 - grossM2) < 0.05,
-  );
-  if (areaHits.length !== 1) return undefined;
-  return toTruth(areaHits[0]!);
+/**
+ * The printed program, read off this sheet rather than looked up by unit number.
+ *
+ * Room counts come from the extract, which reads the names the sheet prints.
+ * Terraces come from the extract when it found them, else from the area figures
+ * the sheet prints as text.
+ *
+ * What this cannot know is a terrace's level. None of the ten survey sheets
+ * prints its ⊕ marks as text — they are vector outlines — so a roof terrace
+ * that the extract missed is counted on the floor plate. The survey reports
+ * the flats where that moves the scale target.
+ */
+export function printedTruthFromSheet(
+  layout: FloorplanLayout,
+  sheet: { areas: PlacedNumber[] },
+  grossM2: number | undefined = layout.grossAreaM2,
+): PrintedUnitTruth | undefined {
+  if (grossM2 == null || !(grossM2 > 0)) return undefined;
+  const living = layout.rooms.filter((room) => !isBuildingCoreRoom(room));
+  const counts = printedTruthFromRooms(living, grossM2);
+  if (!counts) return undefined;
+  const terraces: PrintedTerrace[] =
+    counts.terraces.length > 0
+      ? counts.terraces
+      : terraceFigures(sheet.areas, grossM2).map((fig) => ({ m2: fig.value }));
+  return { ...counts, grossM2, terraces };
 }
 
 export function enrichLayoutForBooklet(
@@ -478,6 +461,8 @@ export function enrichLayoutForBooklet(
     unitTitle?: string;
     sourceFileName?: string | null;
     sheetText?: string;
+    /** The program printed on the sheet, when the caller could read it. */
+    truth?: PrintedUnitTruth;
   },
 ): FloorplanLayout {
   const blob = [
@@ -494,14 +479,14 @@ export function enrichLayoutForBooklet(
   const unit = extractUnitLabel(blob) || layout.unitLabel;
   const gross = layout.grossAreaM2 ?? extractGrossAreaM2(blob);
   const floor = layout.floor ?? extractFloorLabel(blob);
-  const known = knownSheetTruth(unit, gross);
+  const known = extra?.truth;
   const grossM2 = known?.grossM2 ?? gross ?? layout.grossAreaM2;
   const measured = applyBboxMeasuresToLayout({
     ...layout,
     unitLabel: unit || layout.unitLabel,
     grossAreaM2: grossM2,
   });
-  const tableRooms = roomsForBookletTable(measured);
+  const tableRooms = roomsForBookletTable(measured, known);
   const rooms = known
     ? applyCadMeasuresToBookletRooms(
         bookletRoomsFromPrintedTruth(known),
@@ -633,8 +618,11 @@ export function bookletRoomsFromPrintedTruth(truth: PrintedUnitTruth): Floorplan
  * figures are outlines, not a text layer. Fill the printed program so the
  * photoreal prompt still names every terrace and bath the buyer can see.
  */
-export function overlayKnownSheetProgram(layout: FloorplanLayout): FloorplanLayout {
-  const known = knownSheetTruth(layout.unitLabel || layout.title, layout.grossAreaM2);
+export function overlayPrintedProgram(
+  layout: FloorplanLayout,
+  truth?: PrintedUnitTruth,
+): FloorplanLayout {
+  const known = truth;
   if (!known) return layout;
   const kindOf = (room: FloorplanRoom) => room.kind ?? inferRoomKind(room.name);
   // Sales stills follow the sheet hatch — not only same-⊕ floor-plate decks.

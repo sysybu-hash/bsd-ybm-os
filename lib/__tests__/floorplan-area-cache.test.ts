@@ -6,7 +6,7 @@ import {
   floorplanFileHash,
   readCachedGrossAreaM2,
   writeCachedGrossAreaM2,
-} from "@/lib/projects/floorplan-area-cache";
+} from "@/scripts/lib/floorplan-area-cache";
 
 describe("printed-area disk cache", () => {
   it("returns the same area for the same bytes and nothing for a different file", () => {

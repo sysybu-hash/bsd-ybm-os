@@ -20,7 +20,7 @@ import path from "node:path";
 
 const DIR = "תוכניות לביצוע הדמיות";
 const truth = JSON.parse(
-  fs.readFileSync(path.join("scripts", "floorplan-truth.json"), "utf8"),
+  fs.readFileSync(path.join("e2e", "fixtures", "floorplan-truth.json"), "utf8"),
 );
 
 const { extractFloorplanVectorGeometry, extractPrintedAreas, wallBoundingBox } =

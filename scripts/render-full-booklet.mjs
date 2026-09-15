@@ -65,7 +65,7 @@ const styleKit = resolveFloorplanVizStyle(styleId);
 fs.mkdirSync(outDir, { recursive: true });
 
 function truthForSheet(fileName) {
-  const truthPath = path.join(process.cwd(), "scripts", "floorplan-truth.json");
+  const truthPath = path.join(process.cwd(), "e2e", "fixtures", "floorplan-truth.json");
   if (!fs.existsSync(truthPath)) return undefined;
   const all = JSON.parse(fs.readFileSync(truthPath, "utf8"));
   const row = (all.plans ?? []).find((plan) => plan.file === fileName);

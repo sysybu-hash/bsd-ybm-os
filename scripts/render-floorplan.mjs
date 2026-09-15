@@ -52,7 +52,7 @@ const { resolveFloorplanVizStyle } = await import(
 const {
   readCachedGrossAreaM2,
   writeCachedGrossAreaM2,
-} = await import("../lib/projects/floorplan-area-cache.ts");
+} = await import("./lib/floorplan-area-cache.ts");
 const { extractFloorplanLayout } = await import(
   "../lib/projects/floorplan-layout-extract.ts"
 );

@@ -1,4 +1,10 @@
-import { applyCadMeasuresToBookletRooms, floorPlateTerraceM2, floorPlateTerraces, knownSheetTruth } from "@/lib/projects/floorplan-booklet-rooms";
+import {
+  applyCadMeasuresToBookletRooms,
+  floorPlateTerraceM2,
+  floorPlateTerraces,
+  terraceFigures,
+  type PrintedUnitTruth,
+} from "@/lib/projects/floorplan-booklet-rooms";
 import { type ConfidenceReport } from "@/lib/projects/floorplan-confidence";
 import {
   inferRoomKind,
@@ -46,23 +52,14 @@ export function printedTerraceM2(
   figures: Array<{ value: number }>,
   grossM2?: number,
 ): number {
-  let sum = 0;
-  for (const fig of figures) {
-    if (fig.value < 2.5 || fig.value > 16) continue;
-    if (grossM2 != null && Math.abs(fig.value - grossM2) < 0.05) continue;
-    sum += fig.value;
-  }
-  return sum;
+  return terraceFigures(figures, grossM2).reduce((sum, fig) => sum + fig.value, 0);
 }
 
 export function cadTargetAreaM2(
   layout: FloorplanLayout,
-  extra?: { printedTerraceM2?: number; unitHint?: string },
+  extra?: { printedTerraceM2?: number; truth?: PrintedUnitTruth },
 ): number | undefined {
-  const known = knownSheetTruth(
-    layout.unitLabel || layout.title || extra?.unitHint,
-    layout.grossAreaM2,
-  );
+  const known = extra?.truth;
   const gross = layout.grossAreaM2 ?? known?.grossM2;
   if (gross == null || !(gross > 0)) return undefined;
   if (known) {
@@ -85,8 +82,11 @@ export function cadTargetAreaM2(
  * terrace makes the still copy those mistakes. Only lock photoreal to CAD
  * when the segmented program matches the printed sheet.
  */
-export function cadMassingSafeToPhotograph(cad: FloorplanLayout): boolean {
-  const known = knownSheetTruth(cad.unitLabel || cad.title, cad.grossAreaM2);
+export function cadMassingSafeToPhotograph(
+  cad: FloorplanLayout,
+  truth?: PrintedUnitTruth,
+): boolean {
+  const known = truth;
   if (!known) return true;
   const kindOf = (room: FloorplanLayout["rooms"][number]) =>
     room.kind ?? inferRoomKind(room.name);

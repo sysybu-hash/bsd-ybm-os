@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { escapeHtml } from "@/lib/pdf/invoice-labels";
 import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
-import { roomsForBookletTable } from "@/lib/projects/floorplan-booklet-rooms";
+import { roomsForBookletTable, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { inferRoomKind, type FloorplanLayout, type FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { bookletHeroImage } from "@/lib/projects/floorplan-viz-ids";
 import {
@@ -89,6 +89,8 @@ export function buildFloorplanVizPdfHtml(
     includeAllPlates?: boolean;
     /** Run / file title when the layout has no unit label. */
     unitTitle?: string;
+    /** The program printed on the sheet, which wins over a thinner CAD room list. */
+    truth?: PrintedUnitTruth;
   },
 ): string {
   const fonts = fontFaceCss();
@@ -115,7 +117,7 @@ export function buildFloorplanVizPdfHtml(
   const ordered = [...overview, ...interiors];
 
   const floorLabel = formatFloorLabel(layout.floor);
-  const livingRooms = roomsForBookletTable(layout);
+  const livingRooms = roomsForBookletTable(layout, extras?.truth);
   const terraceM2 = livingRooms
     .filter((r) => (r.kind ?? inferRoomKind(r.name)) === "balcony")
     .reduce((sum, r) => sum + (r.areaM2 ?? 0), 0);

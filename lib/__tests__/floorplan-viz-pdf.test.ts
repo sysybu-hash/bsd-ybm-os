@@ -9,6 +9,7 @@ import {
   KIND_LABEL_HE,
 } from "@/lib/projects/floorplan-viz-explanations";
 import { enrichLayoutForBooklet } from "@/lib/projects/floorplan-booklet-rooms";
+import { knownSheetTruth } from "@/e2e/fixtures/floorplan-truth";
 import { buildFloorplanVizPdfHtml } from "@/lib/projects/floorplan-viz-pdf-html";
 
 const layout: FloorplanLayout = parseFloorplanLayout({
@@ -338,6 +339,7 @@ describe("the three-page comparison booklet", () => {
     const filled = enrichLayoutForBooklet(parseFloorplanLayout({ rooms: [] }), {
       unitTitle: "דירה 14",
       sourceFileName: "דירה 14 .pdf",
+      truth: knownSheetTruth("דירה 14"),
     });
     const html = buildFloorplanVizPdfHtml(filled, images, { planImage: plan, unitTitle: "דירה 14" });
     expect(html).toContain("דירה 14");

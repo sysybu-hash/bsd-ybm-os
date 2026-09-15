@@ -20,7 +20,7 @@ import {
   type FloorplanVizImage,
   type FloorplanVizViewId,
 } from "@/lib/projects/floorplan-layout";
-import { overlayKnownSheetProgram } from "@/lib/projects/floorplan-booklet-rooms";
+import { overlayPrintedProgram, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { hebrewFloorplanAuditIssue as idsHebrewFloorplanAuditIssue } from "@/lib/projects/floorplan-viz-ids";
 import {
   auditFloorplanStill,
@@ -1558,9 +1558,11 @@ export async function generateFloorplanVisuals(
     geometryLock?: { mimeType: string; base64: string };
     /** Sales booklet: overview + isometric only. Interiors invent rooms. */
     skipInteriors?: boolean;
+    /** The program printed on the sheet, so the prompt names every terrace and bath. */
+    truth?: PrintedUnitTruth;
   },
 ): Promise<FloorplanVizImage[]> {
-  const vizLayout = overlayKnownSheetProgram(layoutForVisualization(layout));
+  const vizLayout = overlayPrintedProgram(layoutForVisualization(layout), options?.truth);
   const specs = listFloorplanVizJobs(vizLayout, options?.scope ?? "full", options?.existingImages, {
     skipInteriors: options?.skipInteriors,
   });

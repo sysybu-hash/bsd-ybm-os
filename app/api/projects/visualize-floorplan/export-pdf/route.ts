@@ -9,12 +9,14 @@ import {
   bookletNeedsCadRemasure,
   enrichLayoutForBooklet,
   pickRicherBookletLayout,
+  printedTruthFromSheet,
 } from "@/lib/projects/floorplan-booklet-rooms";
+import { extractGrossAreaM2 } from "@/lib/projects/floorplan-layout";
 import { stampCadMeasuresOnLayout } from "@/lib/projects/floorplan-cad-measure";
 import { floorplanLayoutSchema, type FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { bufferIfPdf, pairRastersForCompare, trimRasterWhitespace } from "@/lib/projects/floorplan-photo-prep";
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
-import { extractPdfPageText } from "@/lib/projects/floorplan-vector";
+import { extractPdfPageText, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
 import { bookletHeroImage } from "@/lib/projects/floorplan-viz-ids";
 import { stripMagentaLocatorFromJpeg } from "@/lib/projects/floorplan-viz-edit-region-overlay";
 import { getFloorplanVizRunForOrg } from "@/lib/projects/floorplan-viz-store";
@@ -144,10 +146,18 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       sheetText = await extractPdfPageText(pdfBytes);
     }
     const picked = pickRicherBookletLayout(layoutParsed.data, run?.layout);
+    // The program comes off this sheet — its room names and the areas it prints
+    // as text — never from a table of flats the pipeline was tuned on.
+    const truth = printedTruthFromSheet(
+      picked,
+      { areas: pdfBytes ? await extractPrintedAreas(pdfBytes) : [] },
+      picked.grossAreaM2 ?? extractGrossAreaM2(sheetText),
+    );
     let layout = enrichLayoutForBooklet(picked, {
       unitTitle,
       sourceFileName,
       sheetText,
+      truth,
     });
     if (pdfBytes && bookletNeedsCadRemasure(layout)) {
       layout = await stampCadMeasuresOnLayout(layout, pdfBytes);
@@ -203,6 +213,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId }) => {
       comparePlanImage,
       compareHeroImage,
       comparisonOnly,
+      truth,
       includeAllPlates,
     });
     const buffer = await renderHtmlSectionsPdf(html, {
