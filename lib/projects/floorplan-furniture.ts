@@ -139,6 +139,12 @@ export function classifyPiece(widthCm: number, depthCm: number): FurnitureKind {
   const short = Math.min(widthCm, depthCm);
   if (short >= 80 && short <= 110 && long >= 185 && long <= 230) return "bed";
   if (short >= 60 && short <= 80 && long >= 140 && long <= 180) return "fixture";
+  // A shower tray is a compact square, larger than a basin and smaller than a
+  // room. 80 by 80 was falling through to "unknown", so a wet room with no
+  // bathtub had no fixture and was classified as circulation.
+  if (short >= 70 && short <= 100 && long >= 70 && long <= 120 && long / short <= 1.45) {
+    return "fixture";
+  }
   if (short >= 30 && short <= 62 && long >= 90 && long <= 320) return "storage";
   if (short >= 55 && short <= 75 && long >= 55 && long <= 75) return "fixture";
   // The dining table. It was being detected all along at 140x88 and named
@@ -168,16 +174,52 @@ export function settleFixtures(pieces: FurniturePiece[], unitsPerMetre: number):
   const baths = pieces.filter(
     (p) => p.kind === "fixture" && Math.max(p.widthCm, p.depthCm) >= 120,
   );
+  const small = pieces.filter(
+    (p) => p.kind === "fixture" && Math.max(p.widthCm, p.depthCm) < 120,
+  );
+  const beds = pieces.filter((p) => p.kind === "bed");
   const reach = unitsPerMetre * 3;
+  const cluster = unitsPerMetre * 1.8;
+  const bedReach = unitsPerMetre * 1.6;
   return pieces.map((p) => {
     if (p.kind !== "fixture" || Math.max(p.widthCm, p.depthCm) >= 120) return p;
-    const near = baths.some(
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    const nearBath = baths.some(
       (b) =>
-        Math.abs(b.x + b.w / 2 - (p.x + p.w / 2)) <= reach &&
-        Math.abs(b.y + b.h / 2 - (p.y + p.h / 2)) <= reach,
+        Math.abs(b.x + b.w / 2 - cx) <= reach &&
+        Math.abs(b.y + b.h / 2 - cy) <= reach,
     );
-    return near ? p : { ...p, kind: "unknown" as const };
+    if (nearBath) return p;
+    const tray = Math.min(p.widthCm, p.depthCm) >= 70;
+    const nearBed = beds.some(
+      (b) =>
+        Math.abs(b.x + b.w / 2 - cx) <= bedReach &&
+        Math.abs(b.y + b.h / 2 - cy) <= bedReach,
+    );
+    // A pair of nightstands is the same size as a tray and a pan. The bed is
+    // what tells them apart: wet pieces sit in a wet room, not beside a pillow.
+    if (nearBed && !tray) return { ...p, kind: "unknown" as const };
+    // A shower room has no bath. Two small wet pieces next to each other —
+    // a tray and a pan — are still a wet room, not two bedside tables.
+    const nearPeer = small.some(
+      (o) =>
+        o !== p &&
+        Math.abs(o.x + o.w / 2 - cx) <= cluster &&
+        Math.abs(o.y + o.h / 2 - cy) <= cluster,
+    );
+    return nearPeer ? p : { ...p, kind: "unknown" as const };
   });
+}
+
+/** A free-standing kitchen island: deep enough to work at, long enough to seat. */
+export function looksLikeKitchenIsland(piece: FurniturePiece): boolean {
+  if (piece.kind !== "storage" && piece.kind !== "counter" && piece.kind !== "unknown") {
+    return false;
+  }
+  const depthCm = Math.min(piece.widthCm, piece.depthCm);
+  const lengthCm = Math.max(piece.widthCm, piece.depthCm);
+  return depthCm >= 40 && depthCm <= 75 && lengthCm >= 140 && lengthCm <= 320;
 }
 
 /**

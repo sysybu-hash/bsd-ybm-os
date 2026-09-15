@@ -1244,7 +1244,10 @@ export function findDoorSwings(
 ): Opening[] {
   if (bodies.length === 0) return [];
   const extent = options?.extent;
-  const minArc = options?.minArcChords ?? 6;
+  // Four chords still describe a quarter-circle on these sheets; six was
+  // dropping real doors whose dashed swing is drawn with a short polyline.
+  // דירה 23 came back with two doors because its swings are sparse.
+  const minArc = options?.minArcChords ?? 4;
   const minWidth = (options?.minWidthM ?? 0.68) * unitsPerMetre;
   const maxWidth = (options?.maxWidthM ?? 1.15) * unitsPerMetre;
   const rects = bodies.map((b) => ({ body: b, rect: bodyRect(b) }));
@@ -1913,6 +1916,137 @@ export function findTerraces(
         height: (by1 - by0) / scale,
       },
       ...(area.value != null ? { printedM2: area.value } : {}),
+      floodedM2,
+    });
+  }
+  return out;
+}
+
+function pointHitsBody(x: number, y: number, bodies: WallBody[]): boolean {
+  for (const body of bodies) {
+    const r = bodyRect(body);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
+  }
+  return false;
+}
+
+export function spansContain(rows: SpanRow[], x: number, y: number): boolean {
+  if (rows.length === 0) return false;
+  const pitch = rows.length > 1 ? rows[1]!.y - rows[0]!.y : 2;
+  const row = rows.find((r) => y >= r.y && y < r.y + pitch);
+  return !!row && row.spans.some(([a, b]) => x >= a && x <= b);
+}
+
+/**
+ * A printed terrace figure whose ink flood was trapped in paving: walk the
+ * already-locked floor slab and stop at wall bodies. Paving is not a barrier
+ * here, so a label sitting in one brick can still grow the terrace the sheet
+ * measures. A leak into the rooms fails the printed-area check and is dropped.
+ */
+export function findTerracesOnFloor(
+  floor: SpanRow[],
+  bodies: WallBody[],
+  areas: Array<{ x: number; y: number; value?: number }>,
+  unitsPerMetre: number,
+  options?: { tolerance?: number },
+): Terrace[] {
+  if (floor.length === 0 || areas.length === 0 || !(unitsPerMetre > 0)) return [];
+  const tolerance = options?.tolerance ?? 0.25;
+  const pitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 2;
+  const step = Math.max(1, pitch);
+  const onFloor = (x: number, y: number) => spansContain(floor, x, y);
+  const out: Terrace[] = [];
+
+  for (const area of areas) {
+    if (area.value == null) continue;
+    let sx = area.x;
+    let sy = area.y;
+    if (!onFloor(sx, sy) || pointHitsBody(sx, sy, bodies)) {
+      let found = false;
+      for (let r = step; r <= unitsPerMetre * 3 && !found; r += step) {
+        for (let a = -r; a <= r && !found; a += step) {
+          for (let b = -r; b <= r && !found; b += step) {
+            const x = area.x + a;
+            const y = area.y + b;
+            if (!onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+            sx = x;
+            sy = y;
+            found = true;
+          }
+        }
+      }
+      if (!found) continue;
+    }
+
+    const seen = new Set<string>();
+    const stack = [{ x: sx, y: sy }];
+    seen.add(`${Math.round(sx / step)}:${Math.round(sy / step)}`);
+    const cells: Array<{ x: number; y: number }> = [];
+    const budget = Math.ceil(
+      (area.value * (1 + tolerance) * 1.5 * unitsPerMetre * unitsPerMetre) / (step * step),
+    );
+    let leaked = false;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      cells.push(cur);
+      if (cells.length > budget) {
+        leaked = true;
+        break;
+      }
+      for (const [dx, dy] of [
+        [step, 0],
+        [-step, 0],
+        [0, step],
+        [0, -step],
+      ] as const) {
+        const x = cur.x + dx;
+        const y = cur.y + dy;
+        const key = `${Math.round(x / step)}:${Math.round(y / step)}`;
+        if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+        seen.add(key);
+        stack.push({ x, y });
+      }
+    }
+    if (leaked) continue;
+    const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);
+    if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+
+    const byRow = new Map<number, number[]>();
+    let bx0 = Infinity;
+    let bx1 = -Infinity;
+    let by0 = Infinity;
+    let by1 = -Infinity;
+    for (const cell of cells) {
+      const yi = Math.round(cell.y / step);
+      const list = byRow.get(yi) ?? [];
+      list.push(cell.x);
+      byRow.set(yi, list);
+      bx0 = Math.min(bx0, cell.x);
+      bx1 = Math.max(bx1, cell.x);
+      by0 = Math.min(by0, cell.y);
+      by1 = Math.max(by1, cell.y);
+    }
+    const rows: SpanRow[] = [];
+    for (const [yi, xs] of [...byRow].sort((a, b) => a[0] - b[0])) {
+      xs.sort((a, b) => a - b);
+      const spans: Array<[number, number]> = [];
+      let runStart = xs[0]!;
+      let prev = xs[0]!;
+      for (let i = 1; i < xs.length; i++) {
+        const x = xs[i]!;
+        if (x - prev > step * 1.5) {
+          spans.push([runStart, prev + step]);
+          runStart = x;
+        }
+        prev = x;
+      }
+      spans.push([runStart, prev + step]);
+      rows.push({ y: yi * step, spans });
+    }
+    out.push({
+      rows,
+      bounds: { x: bx0, y: by0, width: bx1 - bx0, height: by1 - by0 },
+      printedM2: area.value,
       floodedM2,
     });
   }

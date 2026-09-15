@@ -27,6 +27,7 @@ const { extractFloorplanVectorGeometry, extractPrintedAreas, wallBoundingBox } =
   await import("../lib/projects/floorplan-vector.ts");
 const { hatchedWallExtent } = await import("../lib/projects/floorplan-solid.ts");
 const { buildFlatFromPdf } = await import("../lib/projects/floorplan-build.ts");
+const { segmentRooms } = await import("../lib/projects/floorplan-segment.ts");
 
 const args = process.argv.slice(2);
 const grossOnly = args.includes("--gross-only");
@@ -98,8 +99,34 @@ for (const plan of truth.plans) {
     ? Math.round(bedLengths[bedLengths.length >> 1])
     : null;
 
+  const rooms = segmentRooms({
+    bodies: built.bodies,
+    openings: built.openings,
+    floor: built.floor,
+    furniture: built.furniture,
+    terraces: built.terraces,
+    bounds: built.bounds,
+    unitsPerMetre: built.unitsPerMetre,
+    segments: cut.segments,
+  });
+  const roomKinds = {};
+  for (const room of rooms) {
+    roomKinds[room.kind] = (roomKinds[room.kind] ?? 0) + 1;
+  }
+  const bedrooms = (roomKinds.bedroom ?? 0) + (roomKinds.mmd ?? 0);
+  const bathrooms = roomKinds.bathroom ?? 0;
+  const wantBed = plan.bedrooms + plan.mmd;
+  const wantBath = plan.bathrooms;
+  const fail = [];
+  if (bedrooms !== wantBed) fail.push(`bedrooms ${bedrooms}≠${wantBed}`);
+  if (bathrooms !== wantBath) fail.push(`bathrooms ${bathrooms}≠${wantBath}`);
+  if (built.terraces.length !== sameLevel.length) {
+    fail.push(`terraces ${built.terraces.length}≠${sameLevel.length}`);
+  }
+
   rows.push({
     name,
+    file: plan.file,
     upm: built.unitsPerMetre,
     target: target.toFixed(2),
     areaErr: `${(built.areaError * 100).toFixed(1)}%`,
@@ -113,6 +140,13 @@ for (const plan of truth.plans) {
     terrSame: sameLevel.length,
     terrRoof: roof,
     printed: printed.join(",") || "-",
+    bedRm: `${bedrooms}/${wantBed}`,
+    bath: `${bathrooms}/${wantBath}`,
+    spend: 0,
+    fail: fail.join("; "),
+    bedrooms,
+    bathrooms,
+    terraces: built.terraces.length,
   });
 }
 
@@ -129,8 +163,11 @@ const cols = [
   ["bedCm", (r) => r.bedCm ?? "-"],
   ["terr", (r) => (r.terrFound == null ? "-" : `${r.terrFound}/${r.terrSame}`)],
   ["roof", (r) => r.terrRoof ?? "-"],
+  ["bedRm", (r) => r.bedRm ?? "-"],
+  ["bath", (r) => r.bath ?? "-"],
+  ["spend", (r) => r.spend ?? 0],
   ["printed", (r) => r.printed ?? "-"],
-  ["note", (r) => r.note ?? ""],
+  ["fail", (r) => r.fail ?? r.note ?? ""],
 ];
 
 const widths = cols.map(([head, get]) =>
@@ -147,3 +184,35 @@ console.log(
   `\n${rows.length - failed.length}/${rows.length} plans reached a scale lock` +
     (failed.length ? `; failed: ${failed.map((r) => r.name).join(", ")}` : ""),
 );
+
+const MIRRORS = [
+  ["14", "15"],
+  ["16", "17"],
+  ["20", "21"],
+  ["22", "23"],
+];
+const byNum = (n) =>
+  rows.find((r) => r.name.includes(n) && r.bedrooms != null);
+for (const [a, b] of MIRRORS) {
+  const left = byNum(a);
+  const right = byNum(b);
+  if (!left || !right) continue;
+  if (
+    left.bedrooms !== right.bedrooms ||
+    left.bathrooms !== right.bathrooms ||
+    left.terraces !== right.terraces
+  ) {
+    const msg = `mirror ${left.name}↔${right.name}: rooms/terraces differ`;
+    console.error(msg);
+    left.fail = [left.fail, msg].filter(Boolean).join("; ");
+    right.fail = [right.fail, msg].filter(Boolean).join("; ");
+  }
+}
+
+const mismatches = rows.filter((r) => r.fail);
+if (mismatches.length) {
+  console.error(
+    `\n${mismatches.length} plan(s) failed the truth table: ${mismatches.map((r) => r.name).join(", ")}`,
+  );
+  process.exit(1);
+}

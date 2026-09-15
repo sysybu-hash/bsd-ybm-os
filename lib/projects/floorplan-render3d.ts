@@ -26,7 +26,7 @@ import {
  * above. A sales still is close to top-down: enough lean to see the inside face
  * of a wall and read the room as a room, not enough to hide the floor behind it.
  */
-const RISE = 0.30;
+const RISE = 0.40;
 
 export type Render3dOptions = {
   /** Page units per metre, so wall height is a real 2.6 m rather than a guess. */
@@ -51,9 +51,7 @@ export type Render3dOptions = {
 
 type Box = { x: number; y: number; width: number; height: number };
 
-const FLOOR = "#c3b49d";
-/** Pale stone, cool against the floor's warm oak, so a terrace reads as outside. */
-const TERRACE = "#cfcbc2";
+const PAPER = "#f4efe6";
 const RAILING = "#9a958c";
 /**
  * Grey, not white. Wall tops were pure white and a bed's linen is off-white, so
@@ -115,9 +113,96 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   seat: { top: "#e6dccb", face: "#c6b9a4" },
   unknown: { top: "#cbb79c", face: "#a8917a" },
 };
-function quad(points: Array<[number, number]>, fill: string, stroke: string): string {
+function quad(
+  points: Array<[number, number]>,
+  fill: string,
+  stroke: string,
+  extra = "",
+): string {
   const d = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  return `<polygon points="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.6" stroke-linejoin="round"/>`;
+  return `<polygon points="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.6" stroke-linejoin="round"${extra}/>`;
+}
+
+function brochureDefs(upm: number): string {
+  const plank = Math.max(1.6, upm * 0.1);
+  const tile = Math.max(2.4, upm * 0.18);
+  return (
+    `<defs>` +
+    `<pattern id="fp-oak" patternUnits="userSpaceOnUse" width="${plank.toFixed(1)}" height="${(plank * 6).toFixed(1)}">` +
+    `<rect width="100%" height="100%" fill="#c4a574"/>` +
+    `<rect x="0" y="0" width="${(plank * 0.45).toFixed(1)}" height="100%" fill="#b89564" opacity="0.45"/>` +
+    `<rect x="0" y="0" width="100%" height="0.35" fill="#a88854" opacity="0.35"/>` +
+    `</pattern>` +
+    `<pattern id="fp-stone" patternUnits="userSpaceOnUse" width="${tile.toFixed(1)}" height="${tile.toFixed(1)}">` +
+    `<rect width="100%" height="100%" fill="#d8d2c6"/>` +
+    `<path d="M0 0H${tile.toFixed(1)}M0 0V${tile.toFixed(1)}" stroke="#c4beb2" stroke-width="0.35" fill="none"/>` +
+    `</pattern>` +
+    `<filter id="fp-shadow" x="-20%" y="-20%" width="140%" height="140%">` +
+    `<feDropShadow dx="0.3" dy="0.7" stdDeviation="0.55" flood-color="#2c2418" flood-opacity="0.22"/>` +
+    `</filter>` +
+    `<linearGradient id="fp-gold" x1="0" y1="0" x2="1" y2="1">` +
+    `<stop offset="0" stop-color="#f6c98a" stop-opacity="0.18"/>` +
+    `<stop offset="1" stop-color="#c47a3a" stop-opacity="0.08"/>` +
+    `</linearGradient>` +
+    `</defs>`
+  );
+}
+
+function pieceGlyph(piece: FurniturePiece, lift: number, colour: { top: string; face: string }): string {
+  const { x, y, w, h, kind } = piece;
+  const near = y + h;
+  const inset = Math.min(w, h) * 0.12;
+  const bits: string[] = [];
+  if (kind === "hob") {
+    const r = Math.min(w, h) * 0.14;
+    const cells: Array<[number, number]> = [
+      [x + w * 0.3, y + h * 0.3],
+      [x + w * 0.7, y + h * 0.3],
+      [x + w * 0.3, y + h * 0.7],
+      [x + w * 0.7, y + h * 0.7],
+    ];
+    for (const [cx, cy] of cells) {
+      bits.push(
+        `<circle cx="${cx.toFixed(1)}" cy="${(cy - lift).toFixed(1)}" r="${r.toFixed(1)}" fill="#3a3d42" stroke="#2a2c30" stroke-width="0.4"/>`,
+      );
+    }
+  } else if (kind === "sink") {
+    bits.push(
+      `<ellipse cx="${(x + w / 2).toFixed(1)}" cy="${(y + h / 2 - lift).toFixed(1)}" rx="${(w * 0.32).toFixed(1)}" ry="${(h * 0.28).toFixed(1)}" fill="#c5ccd2" stroke="#6e747a" stroke-width="0.5"/>`,
+    );
+  } else if (kind === "fixture") {
+    const long = Math.max(w, h);
+    const short = Math.min(w, h);
+    if (long > short * 1.6) {
+      bits.push(
+        `<rect x="${(x + inset).toFixed(1)}" y="${(y + inset - lift).toFixed(1)}" width="${(w - inset * 2).toFixed(1)}" height="${(h - inset * 2).toFixed(1)}" rx="${(short * 0.18).toFixed(1)}" fill="#f4f8f9" stroke="#a9ccd4" stroke-width="0.5"/>`,
+      );
+    } else {
+      bits.push(
+        `<ellipse cx="${(x + w / 2).toFixed(1)}" cy="${(y + h / 2 - lift).toFixed(1)}" rx="${(w * 0.34).toFixed(1)}" ry="${(h * 0.3).toFixed(1)}" fill="#f4f8f9" stroke="#a9ccd4" stroke-width="0.5"/>`,
+      );
+    }
+  } else if (kind === "storage") {
+    const split = w >= h;
+    if (split) {
+      bits.push(
+        `<line x1="${(x + w / 2).toFixed(1)}" y1="${(y - lift).toFixed(1)}" x2="${(x + w / 2).toFixed(1)}" y2="${(near - lift).toFixed(1)}" stroke="${colour.face}" stroke-width="0.7"/>`,
+      );
+    } else {
+      bits.push(
+        `<line x1="${x.toFixed(1)}" y1="${(y + h / 2 - lift).toFixed(1)}" x2="${(x + w).toFixed(1)}" y2="${(y + h / 2 - lift).toFixed(1)}" stroke="${colour.face}" stroke-width="0.7"/>`,
+      );
+    }
+  } else if (kind === "seat") {
+    bits.push(
+      `<rect x="${(x + inset).toFixed(1)}" y="${(y + inset - lift).toFixed(1)}" width="${(w - inset * 2).toFixed(1)}" height="${(h - inset * 2).toFixed(1)}" rx="${(Math.min(w, h) * 0.18).toFixed(1)}" fill="${colour.top}" stroke="${colour.face}" stroke-width="0.4"/>`,
+    );
+  } else if (kind === "table") {
+    bits.push(
+      `<rect x="${(x + inset * 0.6).toFixed(1)}" y="${(y + inset * 0.6 - lift).toFixed(1)}" width="${(w - inset * 1.2).toFixed(1)}" height="${(h - inset * 1.2).toFixed(1)}" fill="url(#fp-oak)" stroke="${colour.face}" stroke-width="0.5"/>`,
+    );
+  }
+  return bits.join("");
 }
 
 /**
@@ -143,7 +228,8 @@ export function renderFlatSvg(
   const h = bounds.height + rise + pad * 2;
 
   const parts: string[] = [
-    `<rect x="${minX.toFixed(1)}" y="${minY.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#ffffff"/>`,
+    brochureDefs(options.unitsPerMetre),
+    `<rect x="${minX.toFixed(1)}" y="${minY.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${PAPER}"/>`,
   ];
 
   // Floor, as the rows the interior actually occupies. The bounding box would
@@ -159,10 +245,10 @@ export function renderFlatSvg(
         ),
       )
       .join("");
-    parts.push(`<g fill="${FLOOR}" shape-rendering="crispEdges">${runs}</g>`);
+    parts.push(`<g fill="url(#fp-oak)" shape-rendering="crispEdges">${runs}</g>`);
   } else {
     parts.push(
-      `<rect x="${bounds.x.toFixed(1)}" y="${bounds.y.toFixed(1)}" width="${bounds.width.toFixed(1)}" height="${bounds.height.toFixed(1)}" fill="${FLOOR}"/>`,
+      `<rect x="${bounds.x.toFixed(1)}" y="${bounds.y.toFixed(1)}" width="${bounds.width.toFixed(1)}" height="${bounds.height.toFixed(1)}" fill="url(#fp-oak)"/>`,
     );
   }
 
@@ -180,7 +266,7 @@ export function renderFlatSvg(
         ),
       )
       .join("");
-    parts.push(`<g fill="${TERRACE}" shape-rendering="crispEdges">${paving}</g>`);
+    parts.push(`<g fill="url(#fp-stone)" shape-rendering="crispEdges">${paving}</g>`);
 
     let tx0 = Infinity;
     let tx1 = -Infinity;
@@ -197,6 +283,16 @@ export function renderFlatSvg(
     const rail = Math.max(1.5, options.unitsPerMetre * 0.04);
     parts.push(
       `<rect x="${tx0.toFixed(1)}" y="${ty0.toFixed(1)}" width="${(tx1 - tx0).toFixed(1)}" height="${(ty1 - ty0).toFixed(1)}" fill="none" stroke="${RAILING}" stroke-width="${rail.toFixed(1)}"/>`,
+    );
+  }
+
+  const wetPad = options.unitsPerMetre * 0.16;
+  for (const piece of options.furniture ?? []) {
+    if (piece.kind !== "fixture" && piece.kind !== "sink") continue;
+    parts.push(
+      `<rect x="${(piece.x - wetPad).toFixed(1)}" y="${(piece.y - wetPad).toFixed(1)}" ` +
+        `width="${(piece.w + wetPad * 2).toFixed(1)}" height="${(piece.h + wetPad * 2).toFixed(1)}" ` +
+        `fill="url(#fp-stone)"/>`,
     );
   }
 
@@ -281,8 +377,10 @@ export function renderFlatSvg(
         ],
         colour.top,
         WALL_EDGE,
+        ` filter="url(#fp-shadow)"`,
       ),
     );
+    parts.push(pieceGlyph(piece, lift, colour));
 
     // A pillow at the head of a bed. The block alone is a rectangle, and the
     // model widened it into a double — which for this client is a hard failure.
@@ -318,6 +416,10 @@ export function renderFlatSvg(
         `fill="${THRESHOLD}" stroke="${WALL_EDGE}" stroke-width="0.5"/>`,
     );
   }
+
+  parts.push(
+    `<rect x="${minX.toFixed(1)}" y="${minY.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="url(#fp-gold)" pointer-events="none"/>`,
+  );
 
   const width = options.width ?? 1400;
   return (

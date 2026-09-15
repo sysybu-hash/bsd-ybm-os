@@ -2,32 +2,16 @@
 /**
  * Render one apartment from its sales sheet.
  *
+ *   npm run floorplan:render -- --pdf "path/to/דירה 14.pdf"
  *   npm run floorplan:render -- --pdf "path/to/דירה 14.pdf" --area 111.29 --terraces 20.9
  *
- * Walls, openings, furniture and the outline come from the CAD and are drawn
- * here; the model is asked only for materials and light, and the best of a few
- * finishes is kept on the audit's verdict.
- *
- * --area is the gross area the sheet prints, and it is required. It cannot be
- * read off the sheet — this CAD draws its dimensions and its area as vector
- * outlines, so a page carries six to ten text items and none of them is the
- * area. Nor can the scale be pinned without it: beds and doors alone leave a
- * window of 40 to 63 units per metre and picked 60 on דירה 15 where the answer
- * is 54. The workspace's own layout extraction reads the figure with a vision
- * model, and that is where a batch run should get it.
- *
- * --uncut is optional and worth passing. A sheet cropped to one apartment has
- * its wall faces severed mid-run, which costs about 13 points of wall coverage;
- * given both, the walls are read from the uncut sheet and the flat's extent from
- * the cropped one.
+ * --area is an override. Without it the printed gross is read by a single-engine
+ * extract and remembered by the file hash, so a second run pays nothing.
  */
 import fs from "node:fs";
 import path from "node:path";
-import sharp from "sharp";
 import dotenv from "dotenv";
 
-// Run straight from a shell, so nothing has loaded the workspace env yet and
-// lib/env.ts refuses to hand over the Gemini key without it.
 dotenv.config({ path: ".env.local" });
 
 const args = new Map();
@@ -35,18 +19,17 @@ for (let i = 2; i < process.argv.length; i += 2) {
   args.set(process.argv[i]?.replace(/^--/, ""), process.argv[i + 1]);
 }
 const pdfPath = args.get("pdf");
-const grossArea = Number(args.get("area"));
 const terraces = Number(args.get("terraces") ?? 0);
 const uncutPath = args.get("uncut") ?? pdfPath;
 const outDir = args.get("out") ?? path.dirname(pdfPath ?? ".");
 const attempts = Number(args.get("attempts") ?? 3);
-// The score at which the search stops early. The default trades a few agorot
-// against a frame that is good rather than best; a delivery run wants 0, which
-// spends every attempt and keeps the highest-scoring of them.
 const goodEnough = args.has("good-enough") ? Number(args.get("good-enough")) : undefined;
+const maxViews = args.has("max-views") ? Number(args.get("max-views")) : 1;
 
-if (!pdfPath || !Number.isFinite(grossArea)) {
-  console.error("usage: --pdf <sheet.pdf> --area <m2> [--terraces <m2>] [--uncut <sheet.pdf>] [--out <dir>] [--attempts 3] [--good-enough 0]");
+if (!pdfPath) {
+  console.error(
+    "usage: --pdf <sheet.pdf> [--area <m2>] [--terraces <m2>] [--uncut <sheet.pdf>] [--out <dir>] [--attempts 3] [--max-views 1]",
+  );
   process.exit(2);
 }
 
@@ -60,10 +43,54 @@ const { describeConfidence } = await import(
 const { stampFloorplanStill } = await import(
   "../lib/projects/floorplan-viz-stamp.ts"
 );
+const { emptyFloorplanSpend, formatFloorplanSpend } = await import(
+  "../lib/projects/floorplan-spend.ts"
+);
+const { resolveFloorplanVizStyle } = await import(
+  "../lib/projects/floorplan-viz-styles.ts"
+);
+const {
+  readCachedGrossAreaM2,
+  writeCachedGrossAreaM2,
+} = await import("../lib/projects/floorplan-area-cache.ts");
+const { extractFloorplanLayout } = await import(
+  "../lib/projects/floorplan-layout-extract.ts"
+);
 
 const name = path.parse(pdfPath).name.trim();
 const cutBytes = fs.readFileSync(pdfPath);
 const uncutBytes = fs.readFileSync(uncutPath);
+const spend = emptyFloorplanSpend();
+const haredi = !args.has("audience") || args.get("audience") === "haredi";
+const styleId = args.get("style") ?? (haredi ? "haredi_classic" : undefined);
+const styleKit = styleId ? resolveFloorplanVizStyle(styleId) : undefined;
+
+let grossArea = Number(args.get("area"));
+if (!Number.isFinite(grossArea)) {
+  const cached = readCachedGrossAreaM2(cutBytes);
+  if (cached != null) {
+    grossArea = cached;
+    console.log(`${name}: area ${grossArea} m² from cache`);
+  } else {
+    const extracted = await extractFloorplanLayout(
+      cutBytes.toString("base64"),
+      "application/pdf",
+      { lean: true, spend },
+    );
+    grossArea = extracted.layout.grossAreaM2 ?? NaN;
+    if (Number.isFinite(grossArea)) {
+      writeCachedGrossAreaM2(cutBytes, grossArea);
+      console.log(`${name}: area ${grossArea} m² from lean extract`);
+    }
+  }
+}
+
+if (!Number.isFinite(grossArea)) {
+  console.error(
+    `${name}: no printed area — pass --area or check that a lean extract can read מ"ר`,
+  );
+  process.exit(2);
+}
 
 const extent = await flatExtentFromSheet(Buffer.from(cutBytes));
 if (!extent) {
@@ -79,8 +106,11 @@ const rendered = await renderFlatFromPdf(Buffer.from(cutBytes), {
   wallSource: Buffer.from(uncutBytes),
   attempts,
   goodEnough,
-  haredi: !args.has("audience") || args.get("audience") === "haredi",
+  haredi,
+  styleKit,
   label: name,
+  spend,
+  modelFinish: process.argv.includes("--model"),
 });
 if (!rendered) {
   console.error(
@@ -90,6 +120,13 @@ if (!rendered) {
 }
 
 const { flat, rooms, geometry, still, confidence } = rendered;
+if (Math.abs(flat.areaError) > 0.08) {
+  console.error(
+    `${name}: scale lock missed the printed area by ${(flat.areaError * 100).toFixed(1)}%`,
+  );
+  process.exit(1);
+}
+
 const counts = flat.furniture.reduce(
   (m, p) => ((m[p.kind] = (m[p.kind] ?? 0) + 1), m),
   {},
@@ -98,6 +135,10 @@ console.log(
   `${name}: ${flat.unitsPerMetre} units/m | ${flat.bodies.length} walls | ${flat.openings.length} openings | ` +
     `${flat.floorM2.toFixed(1)} m² (${(flat.areaError * 100).toFixed(1)}%) | ${JSON.stringify(counts)}`,
 );
+console.log(`   ${formatFloorplanSpend(rendered.spend)}`);
+if (maxViews > 1) {
+  console.log(`   max-views ${maxViews} (companion views are generated by the app path)`);
+}
 
 fs.mkdirSync(outDir, { recursive: true });
 const geometryPath = path.join(outDir, `${name} — גיאומטריה.jpg`);
@@ -129,6 +170,16 @@ fs.writeFileSync(
       unitsPerMetre: flat.unitsPerMetre,
       areaError: flat.areaError,
       confidence,
+      spend: rendered.spend,
+      styleId: styleKit?.id ?? null,
+      score: rendered.score,
+      attempts: rendered.attempts,
+      failures: rendered.failures,
+      fidelity: {
+        present: rendered.fidelity.present,
+        total: rendered.fidelity.total,
+        missing: rendered.fidelity.missing,
+      },
       rooms: roomsForLayout(rooms, flat.unitsPerMetre),
       islandStoolCount: flat.furniture.filter((p) => p.kind === "seat").length,
     },

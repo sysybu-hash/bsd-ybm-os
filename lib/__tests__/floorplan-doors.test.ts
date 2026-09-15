@@ -40,6 +40,13 @@ function swing(x: number, degrees = 90, n = 10): VectorSegment[] {
 }
 
 describe("findDoorSwings", () => {
+  it("finds a door whose swing is only four chords", () => {
+    // דירה 23 draws some swings with a short polyline. Six chords was
+    // dropping those doors and the flat came back with two openings.
+    const found = findDoorSwings([leaf(200)], swing(200, 90, 4), [wall], UPM);
+    expect(found).toHaveLength(1);
+  });
+
   it("finds a door from its leaf and the arc it sweeps", () => {
     const found = findDoorSwings([leaf(200)], swing(200), [wall], UPM);
     expect(found).toHaveLength(1);

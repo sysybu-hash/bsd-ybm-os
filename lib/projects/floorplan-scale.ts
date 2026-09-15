@@ -141,25 +141,30 @@ export function lockScale(
     candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });
   }
 
-  // Bed count first, area second. Area alone is the measure that can be
-  // satisfied by the wrong answer — it settled on 41 units/m at 0.1% error with
-  // a single bed, where 56 finds four. Beds are the scale-free signal, so the
-  // area only chooses among the scales that read the furniture properly.
-  const mostBeds = candidates.reduce((most, c) => Math.max(most, c.beds), 0);
+  return pickScaleLock(candidates, tolerance);
+}
+
+/**
+ * Choose among scales that already found beds and door-like openings.
+ *
+ * Area first, then beds. The other order vetoes a scale that matches the
+ * printed area whenever a higher units/m over-counts furniture (a bedside
+ * table reading as a bed) and then fails the area gate. Among scales the
+ * area accepts, beds still break the 41-vs-56 tie: one bed at 0.1% error
+ * must not beat four beds at 1.6%.
+ */
+export function pickScaleLock(
+  candidates: ScaleLock[],
+  tolerance: number,
+): ScaleLock | null {
+  const inTol = candidates.filter((c) => Math.abs(c.areaError) <= tolerance);
+  if (inTol.length === 0) return null;
+  const mostBeds = inTol.reduce((most, c) => Math.max(most, c.beds), 0);
   if (mostBeds === 0) return null;
-  // Within one of the best. The count is not exact — a bed drawn against a
-  // wardrobe can merge, or a bedside table can read as a bed — so demanding the
-  // maximum picks a scale on a one-bed accident. On דירה 14 the maximum is five
-  // at 61 units/m, where the area is 13% out; four is found across 52 to 60, and
-  // the area crosses zero inside that range.
-  const contenders = candidates.filter((c) => c.beds >= mostBeds - 1);
+  const contenders = inTol.filter((c) => c.beds >= mostBeds - 1);
   let best: ScaleLock | null = null;
   for (const c of contenders) {
     if (!best || Math.abs(c.areaError) < Math.abs(best.areaError)) best = c;
   }
-
-  // Refuse rather than return a scale the area does not support: every measure
-  // this replaces would hand back a confident wrong number.
-  if (!best || Math.abs(best.areaError) > tolerance) return null;
   return best;
 }

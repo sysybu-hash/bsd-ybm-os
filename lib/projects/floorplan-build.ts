@@ -1,6 +1,7 @@
 import {
   findFurniture,
   findRoundedFurniture,
+  looksLikeKitchenIsland,
   seatsAroundTable,
   stoolsAlongRun,
   type FurniturePiece,
@@ -14,6 +15,8 @@ import {
   dropUnhatchedBodies,
   findDoorSwings,
   findTerraces,
+  findTerracesOnFloor,
+  spansContain,
   trimToHatchAlong,
   findOpenings,
   wallBodiesFromHatch,
@@ -175,9 +178,10 @@ export async function buildFlatFromPdf(
 
   const found = findFurniture(geometry.segments, unitsPerMetre, {
     curves: geometry.curves,
-  }).filter((piece) =>
-    inside(piece.x + piece.w / 2, piece.y + piece.h / 2),
-  );
+  }).filter((piece) => {
+    if (!inside(piece.x + piece.w / 2, piece.y + piece.h / 2)) return false;
+    return !bodies.some((body) => centreInsideBody(piece, body));
+  });
 
   // Seating, placed on the anchors rather than hunted for. A chair and a stool
   // are drawn as rounded shapes whose corner arcs are the only part that reaches
@@ -219,12 +223,7 @@ export async function buildFlatFromPdf(
   // and with floor on both of its long sides — a run against a wall is a
   // worktop and has no stools.
   const island = found.find((piece) => {
-    if (piece.kind !== "storage" && piece.kind !== "counter") return false;
-    const depthCm = Math.min(piece.widthCm, piece.depthCm);
-    const lengthCm = Math.max(piece.widthCm, piece.depthCm);
-    if (depthCm < 40 || depthCm > 75 || lengthCm < 140 || lengthCm > 320) {
-      return false;
-    }
+    if (!looksLikeKitchenIsland(piece)) return false;
     const vertical = piece.h >= piece.w;
     const step = unitsPerMetre * 0.55;
     const lowSide = vertical
@@ -235,6 +234,7 @@ export async function buildFlatFromPdf(
       : inside(piece.x + piece.w / 2, piece.y + piece.h + step);
     return lowSide && highSide;
   });
+  if (island && island.kind !== "counter") island.kind = "counter";
   let stools: FurniturePiece[] = [];
   if (island) {
     // Stools face the room, not the cook. Both sides of an island are floor, so
@@ -317,15 +317,41 @@ export async function buildFlatFromPdf(
       area.y <= flatExtent.y + flatExtent.height,
   );
 
-  const terraces = findTerraces(geometry.segments, printed, unitsPerMetre).map(
-    (terrace) => terrace.rows,
+  const fromInk = findTerraces(geometry.segments, printed, unitsPerMetre);
+  const missing = printed.filter(
+    (area) =>
+      !fromInk.some((terrace) => {
+        if (
+          area.value != null &&
+          terrace.printedM2 != null &&
+          Math.abs(terrace.printedM2 - area.value) > 0.05
+        ) {
+          return false;
+        }
+        return (
+          area.x >= terrace.bounds.x &&
+          area.x <= terrace.bounds.x + terrace.bounds.width &&
+          area.y >= terrace.bounds.y &&
+          area.y <= terrace.bounds.y + terrace.bounds.height
+        );
+      }),
   );
+  const terraceHits =
+    missing.length > 0
+      ? [...fromInk, ...findTerracesOnFloor(floor, bodies, missing, unitsPerMetre)]
+      : fromInk;
+  const terraces = terraceHits.map((terrace) => terrace.rows);
+  const furnitureOffTerrace = furniture.filter((piece) => {
+    const cx = piece.x + piece.w / 2;
+    const cy = piece.y + piece.h / 2;
+    return !terraces.some((rows) => spansContain(rows, cx, cy));
+  });
 
   return {
     unitsPerMetre,
     bodies,
     floor,
-    furniture,
+    furniture: furnitureOffTerrace,
     openings,
     terraces,
     printedTerraceCount: printed.length,

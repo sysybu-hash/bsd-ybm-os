@@ -1332,6 +1332,8 @@ export function stripImplausibleRoomMeasure(room: FloorplanRoom, grossAreaM2?: n
 
 export type FloorplanVizViewId = "overview" | "isometric" | "interior";
 
+export type FloorplanVizStillOrigin = "generate" | "edit" | "cad";
+
 export type FloorplanVizImage = {
   id?: string;
   viewId: FloorplanVizViewId;
@@ -1340,4 +1342,12 @@ export type FloorplanVizImage = {
   mimeType: string;
   base64: string;
   src?: string;
+  selected?: boolean;
+  parentStillId?: string;
+  origin?: FloorplanVizStillOrigin;
+  attemptIndex?: number;
+  createdAt?: string;
+  editPrompt?: string;
+  /** English audit hard-failure strings — drive "שפר תמונה" repair. */
+  auditIssues?: string[];
 };

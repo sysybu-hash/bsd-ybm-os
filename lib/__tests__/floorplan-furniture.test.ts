@@ -5,6 +5,7 @@ import {
   findCurveFixtures,
   findKitchenFittings,
   findRectangles,
+  looksLikeKitchenIsland,
   findSeatsAroundTable,
   scaleFromBeds,
   settleFixtures,
@@ -54,6 +55,13 @@ describe("naming a piece by its size", () => {
   it("calls 73 by 156 cm a fixture, which is a bath", () => {
     expect(classifyPiece(73, 156)).toBe("fixture");
     expect(classifyPiece(62, 62)).toBe("fixture");
+  });
+
+  it("calls an 80 cm square a shower tray, not unknown", () => {
+    // Shower-only wet rooms were falling to circulation because the tray
+    // never became a fixture and settleFixtures then had nothing to keep.
+    expect(classifyPiece(80, 80)).toBe("fixture");
+    expect(classifyPiece(90, 90)).toBe("fixture");
   });
 
   it("leaves a size it does not recognise unknown rather than guessing", () => {
@@ -125,6 +133,49 @@ describe("a fixture needs a wet room to stand in", () => {
   it("never demotes the bath itself, which is what marks the wet room", () => {
     const bath = piece(400, 1200, 73, 156, "fixture");
     expect(settleFixtures([bath], UPM)[0]!.kind).toBe("fixture");
+  });
+
+  it("demotes two small squares beside a bed — those are nightstands", () => {
+    const bed = piece(100, 200, 93, 218, "bed");
+    const left = piece(80, 280, 50, 50, "fixture");
+    const right = piece(200, 280, 50, 50, "fixture");
+    const settled = settleFixtures([bed, left, right], UPM);
+    expect(settled.filter((p) => p.kind === "fixture")).toHaveLength(0);
+    expect(settled.filter((p) => p.kind === "unknown")).toHaveLength(2);
+  });
+
+  it("keeps two small fixtures clustered as a shower room, without a bath", () => {
+    // The 3/10 bathroom score: a wet room with a tray and a pan, no bathtub,
+    // had both pieces demoted and the room classified as circulation.
+    const tray = piece(200, 200, 80, 80, "fixture");
+    const pan = piece(240, 220, 40, 50, "fixture");
+    const settled = settleFixtures([tray, pan], UPM);
+    expect(settled.every((p) => p.kind === "fixture")).toBe(true);
+  });
+
+  it("recognises a free-standing island even when the rectangle was left unnamed", () => {
+    expect(
+      looksLikeKitchenIsland({
+        x: 0,
+        y: 0,
+        w: 60,
+        h: 220,
+        widthCm: 60,
+        depthCm: 220,
+        kind: "unknown",
+      }),
+    ).toBe(true);
+    expect(
+      looksLikeKitchenIsland({
+        x: 0,
+        y: 0,
+        w: 40,
+        h: 90,
+        widthCm: 40,
+        depthCm: 90,
+        kind: "storage",
+      }),
+    ).toBe(false);
   });
 
   it("keeps one dining table and demotes the rest", () => {

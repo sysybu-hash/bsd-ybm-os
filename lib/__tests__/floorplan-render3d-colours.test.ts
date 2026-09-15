@@ -1,4 +1,4 @@
-import { PIECE_COLOURS } from "@/lib/projects/floorplan-render3d";
+import { PIECE_COLOURS, renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 
 /** Channel distance between two "#rrggbb" values, worst channel. */
 function apart(a: string, b: string): number {
@@ -7,6 +7,18 @@ function apart(a: string, b: string): number {
   const [x, y] = [chan(a), chan(b)];
   return Math.max(...x.map((v, i) => Math.abs(v - y[i]!)));
 }
+
+describe("the brochure plate", () => {
+  it("paints oak and stone on the CAD floor, not a flat coding wash", () => {
+    const svg = renderFlatSvg([], { x: 0, y: 0, width: 80, height: 80 }, {
+      unitsPerMetre: 56,
+      floor: [{ y: 0, spans: [[0, 80]] }],
+    });
+    expect(svg).toContain('id="fp-oak"');
+    expect(svg).toContain("url(#fp-oak)");
+    expect(svg).toContain('id="fp-stone"');
+  });
+});
 
 describe("the coding palette the model has to read", () => {
   it("keeps a bed and a sanitary fixture far apart", () => {

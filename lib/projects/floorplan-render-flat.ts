@@ -16,10 +16,7 @@ import {
   type FidelityReport,
 } from "@/lib/projects/floorplan-fidelity";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
-import {
-  buildPlacementPrompt,
-  RECOLOUR_PROMPT,
-} from "@/lib/projects/floorplan-materials";
+import { FURNITURE_KEY_PROMPT, MATERIALS_ONLY_PROMPT } from "@/lib/projects/floorplan-materials";
 import {
   segmentRooms,
   type SegmentedRoom,
@@ -39,6 +36,15 @@ import {
   auditFloorplanStill,
   gradeFloorplanStill,
 } from "@/lib/projects/floorplan-viz-audit";
+import {
+  measureSilhouetteIou,
+  SILHOUETTE_IOU_MIN,
+} from "@/lib/projects/floorplan-composite";
+import {
+  emptyFloorplanSpend,
+  recordFloorplanSpend,
+  type FloorplanSpend,
+} from "@/lib/projects/floorplan-spend";
 
 const log = createLogger("floorplan-render-flat");
 
@@ -69,6 +75,9 @@ export type RenderedFlat = {
   fidelity: FidelityReport;
   coolTint: number;
   confidence: ConfidenceReport;
+  spend: FloorplanSpend;
+  /** The composite when it was built; the model still remains the fallback. */
+  composite?: Buffer;
 };
 
 export type RenderFlatOptions = {
@@ -94,6 +103,13 @@ export type RenderFlatOptions = {
   /** Extra direction for the materials; it licenses no change to the geometry. */
   styleDirection?: string;
   label?: string;
+  spend?: FloorplanSpend;
+  /**
+   * Ask the image model to recolour this CAD plate. Default off ships
+   * the geometry JPEG only. The brochure hero is generated from the sales
+   * sheet, not from a chroma overlay of that finish onto CAD.
+   */
+  modelFinish?: boolean;
 };
 
 /** One image call against the model chain, given a prompt and a source frame. */
@@ -101,7 +117,7 @@ async function imagePass(
   client: GoogleGenAI,
   text: string,
   image: { mimeType: string; base64: string },
-): Promise<{ mimeType: string; base64: string } | null> {
+): Promise<{ mimeType: string; base64: string; model: string } | null> {
   for (const model of getFloorplanVizModelChain()) {
     try {
       const res = await client.models.generateContent({
@@ -119,7 +135,7 @@ async function imagePass(
       });
       const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
       const data = part?.inlineData?.data;
-      if (data) return { mimeType: "image/jpeg", base64: data };
+      if (data) return { mimeType: "image/jpeg", base64: data, model };
     } catch {
       // Try the next model in the chain.
     }
@@ -147,6 +163,7 @@ export async function renderFlatFromPdf(
   pdf: Buffer | Uint8Array,
   options: RenderFlatOptions,
 ): Promise<RenderedFlat | null> {
+  const spend = options.spend ?? emptyFloorplanSpend();
   const wallSource = options.wallSource ?? pdf;
   const flat = await buildFlatFromPdf(wallSource, options.targetAreaM2, {
     extent: options.extent,
@@ -172,9 +189,42 @@ export async function renderFlatFromPdf(
   });
 
   const geometry = await sharp(Buffer.from(flat.svg), { density: 200 })
-    .flatten({ background: "#fff" })
+    .flatten({ background: "#f4efe6" })
     .jpeg({ quality: 94 })
     .toBuffer();
+
+  if (options.modelFinish !== true) {
+    const fidelity = await measureBlockFidelity({
+      geometry,
+      still: geometry,
+      furniture: flat.furniture,
+      bounds: flat.bounds,
+    });
+    return {
+      flat,
+      rooms,
+      geometry,
+      still: { mimeType: "image/jpeg", base64: geometry.toString("base64") },
+      score: 0,
+      failures: [],
+      attempts: 0,
+      fidelity,
+      coolTint: 0,
+      confidence: assessFloorplanRun({
+        areaError: flat.areaError,
+        unitsPerMetre: flat.unitsPerMetre,
+        wallCount: flat.bodies.length,
+        furniture: flat.furniture,
+        rooms,
+        fidelity,
+        coolTint: 0,
+        foundTerraces: flat.terraces.length,
+        printedTerraces: flat.printedTerraceCount,
+        auditHardFailures: [],
+      }),
+      spend,
+    };
+  }
 
   const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
   const styleBlock = options.styleKit
@@ -186,11 +236,17 @@ export async function renderFlatFromPdf(
         { source: "geometry" },
       )
     : undefined;
-  const prompt = buildPlacementPrompt(
-    [styleBlock, options.styleDirection]
-      .filter(Boolean)
-      .join("\n\n") || undefined,
-  );
+  const prompt = [
+    MATERIALS_ONLY_PROMPT.replace(
+      "- No furniture. ",
+      "- Keep every furniture block exactly where it is. Do not add, remove or move furniture. ",
+    ),
+    FURNITURE_KEY_PROMPT,
+    styleBlock,
+    options.styleDirection,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const plan = {
     base64: Buffer.from(pdf).toString("base64"),
     mimeType: "application/pdf",
@@ -198,20 +254,20 @@ export async function renderFlatFromPdf(
   const layout = parseFloorplanLayout({ rooms: [], islandStoolCount: 0 });
   const drawnBeds = flat.furniture.filter((p) => p.kind === "bed").length;
 
-  // Placement, then recolour. The sanitary blocks have to be a cool aqua to be
-  // separable from bed linen at all — two parts in 255 apart and the beds came
-  // back as bathtubs — and the second pass takes that tint out again. Asked to
-  // do both at once the model does neither reliably.
+  // Surfaces on this plate only. Asking for a "photograph of a furnished
+  // apartment" made the model draw a different flat (landscape, kitchen on
+  // the opposite side). IoU below the gate means that happened — keep CAD.
   const render = async () => {
-    const placed = await imagePass(client, prompt, {
+    const painted = await imagePass(client, prompt, {
       mimeType: "image/jpeg",
       base64: geometry.toString("base64"),
     });
-    if (!placed) return null;
-    return (await imagePass(client, RECOLOUR_PROMPT, placed)) ?? placed;
+    if (painted) recordFloorplanSpend(spend, "image", painted.model);
+    return painted;
   };
 
   const grade = async (image: { mimeType: string; base64: string }) => {
+    recordFloorplanSpend(spend, "audit", "auditor");
     const audit = await auditFloorplanStill(image, plan);
     if (!audit) return null;
     const verdict = gradeFloorplanStill(audit, layout, {
@@ -226,7 +282,15 @@ export async function renderFlatFromPdf(
       bounds: flat.bounds,
     });
     const failures = [...verdict.failures, ...fidelityFailures(fidelity)];
+    const hardFailures = [...(verdict.hardFailures ?? [])];
     let score = verdict.score + (fidelity.total - fidelity.present);
+    const iou = await measureSilhouetteIou(geometry, Buffer.from(image.base64, "base64"));
+    if (iou < SILHOUETTE_IOU_MIN) {
+      const msg = `silhouette IoU ${(iou * 100).toFixed(1)}% — still does not overlay the CAD`;
+      failures.push(msg);
+      hardFailures.push(msg);
+      score += 500;
+    }
     if (tint > TINT_LIMIT) {
       failures.push(`coding tint left in ${(tint * 100).toFixed(1)}% of the frame`);
       score += 100;
@@ -235,14 +299,39 @@ export async function renderFlatFromPdf(
       // are not equally good if one has a faintly green chair in it.
       score += tint * 10;
     }
-    return { score, failures, hardFailures: verdict.hardFailures };
+    return { score, failures, hardFailures };
   };
 
-  const best = await pickBestFinish(options.attempts ?? 4, render, grade, {
+  const best = await pickBestFinish(options.attempts ?? 1, render, grade, {
     goodEnough: options.goodEnough,
     label: options.label,
   });
-  if (!best) return null;
+  if (!best) {
+    return {
+      flat,
+      rooms,
+      geometry,
+      still: { mimeType: "image/jpeg", base64: geometry.toString("base64") },
+      score: Number.POSITIVE_INFINITY,
+      failures: ["no finish accepted — shipped CAD geometry"],
+      attempts: 0,
+      fidelity: { blocks: [], missing: {}, present: 0, total: 0 },
+      coolTint: 0,
+      confidence: assessFloorplanRun({
+        areaError: flat.areaError,
+        unitsPerMetre: flat.unitsPerMetre,
+        wallCount: flat.bodies.length,
+        furniture: flat.furniture,
+        rooms,
+        fidelity: { blocks: [], missing: {}, present: 0, total: 0 },
+        coolTint: 0,
+        foundTerraces: flat.terraces.length,
+        printedTerraces: flat.printedTerraceCount,
+        auditHardFailures: ["no finish accepted"],
+      }),
+      spend,
+    };
+  }
 
   // Measured again on the chosen frame: the running values belong to whichever
   // attempt was graded last, which is not necessarily the one that won.
@@ -253,7 +342,6 @@ export async function renderFlatFromPdf(
     bounds: flat.bounds,
   });
   const coolTint = await coolTintFraction(best.image);
-
   const confidence = assessFloorplanRun({
     areaError: flat.areaError,
     unitsPerMetre: flat.unitsPerMetre,
@@ -266,17 +354,26 @@ export async function renderFlatFromPdf(
     printedTerraces: flat.printedTerraceCount,
     auditHardFailures: best.hardFailures,
   });
+  const painted = Buffer.from(best.image.base64, "base64");
+  const iou = await measureSilhouetteIou(geometry, painted);
+  const matchesPlate = iou >= SILHOUETTE_IOU_MIN;
+  // A chroma overlay of the still onto CAD produced orange/cyan glitch
+  // plates with the right walls. If the silhouette matches, ship the
+  // painted JPEG; if it does not, keep the CAD plate.
+  const stillBytes = matchesPlate ? painted : geometry;
+  const still = { mimeType: "image/jpeg" as const, base64: stillBytes.toString("base64") };
 
   return {
     flat,
     rooms,
     geometry,
-    still: best.image,
+    still,
     score: best.score,
     failures: best.failures,
     attempts: best.attempts,
     fidelity,
     coolTint,
     confidence,
+    spend,
   };
 }

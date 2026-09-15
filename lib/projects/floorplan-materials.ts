@@ -16,7 +16,11 @@
  * openingsNotInPlan 0 — every geometric check that had never passed together.
  */
 
-export const MATERIALS_ONLY_PROMPT = `This image is an EXACT architectural render of one apartment, generated from CAD geometry. Every wall, every wall thickness, every doorway gap and the outline of the flat are already correct and must NOT be changed.
+import { GEOMETRY_PIXEL_LOCK } from "@/lib/projects/floorplan-viz-lock";
+
+export const MATERIALS_ONLY_PROMPT = `${GEOMETRY_PIXEL_LOCK}
+
+This image is an EXACT architectural render of one apartment, generated from CAD geometry. Every wall, every wall thickness, every doorway gap and the outline of the flat are already correct and must NOT be changed.
 
 Your only task is to apply realistic materials and lighting to this exact geometry, as a finished Israeli sales-brochure top-down still:
 - Keep every wall exactly where it is, at exactly its drawn thickness and length. Do not add, remove, move, lengthen, shorten, straighten or merge any wall.
@@ -28,6 +32,14 @@ Your only task is to apply realistic materials and lighting to this exact geomet
 - No furniture. No text, numbers or labels anywhere. No people.
 
 Return the same apartment, same shape, same position, same orientation — only rendered in real materials and light.`;
+
+export const LIVING_3D_PROMPT = `
+LIVING 3D (materials and light only — the plan does not move):
+- Photoreal bird's-eye 3D of THIS exact plate, as if photographed at golden hour. Real plaster on the wall faces, visible oak grain, soft 3000K sun from the drawn windows and terraces, long warm shadows from the walls.
+- The output must look like a real photograph of a furnished apartment seen from above — depth, soft occlusion, warm pools of light — not a colored 2D plan, not a vector illustration, not flat CAD blocks with a warm filter.
+- A family lives here tonight: lamps ON, fruit bowl, kettle, pillows, a throw, towels in the wet rooms. Not a vacant white model, not plastic CGI.
+- Paint this apartment until it looks photographed. Do not redraw it to make a prettier different flat.
+`.trim();
 
 /**
  * The instruction for one materials pass.
@@ -74,6 +86,7 @@ export const FURNITURE_KEY_PROMPT = `The raised blocks standing on the floor are
 A bath, a toilet, a shower or a washbasin appears ONLY where a pale aqua fixture block stands. A room containing no aqua block is not a bathroom, whatever its shape: render it with the furniture its own blocks carry and an ordinary floor. Wardrobes are not fixtures — a room whose blocks are tan oak is a bedroom or a store, never a wet room. There are exactly as many wet rooms as there are groups of aqua blocks.
 
 - A PALE STONE-GREY area enclosed by a thin grey outline, cooler than the oak floor around it, is a TERRACE: an open outdoor area, paved in stone, with a railing or parapet along the outline and open sky above. Never roof it, never floor it in oak, and never wall it in — it is outside the apartment, and it is one of the things the flat is being sold on.
+- A small empty circulation space just inside a door in the outer wall, with a clean floor and no furniture block, is the ENTRANCE HALL (מבואה). Render a door at that opening and leave the floor clear — do not place a console, bench or plant there. This is the deterministic counterpart of the auditor's entrance-furniture count.
 
 Render every block, without exception, and add no furniture where there is no block — the chairs are drawn now, so there is nothing left to supply. Do not move, resize, merge or remove a block. Do not turn a terrace into a room: a paved outdoor area stays an open terrace with a railing whatever stands on it. Every screen, television and dark rectangular panel is forbidden anywhere in the frame. The finished palette is warm and natural — oak, white plaster, white ceramic, pale stone — under golden-hour daylight, and no object may come out in a saturated colour.`;
 
@@ -91,7 +104,9 @@ Render every block, without exception, and add no furniture where there is no bl
  * the model that green means chair, and then that no green may remain, is a
  * contradiction, and it resolved it the wrong way.
  */
-export const RECOLOUR_PROMPT = `This is a finished top-down render of one apartment. Every wall, room, opening and piece of furniture is already exactly right and must not be changed in any way.
+export const RECOLOUR_PROMPT = `${GEOMETRY_PIXEL_LOCK}
+
+This is a finished top-down render of one apartment. Every wall, room, opening and piece of furniture is already exactly right and must not be changed in any way.
 
 One thing may still be wrong: the sanitary fixtures were built in a pale aqua coding tint, and if any of that tint survived it has to come out. Restate those objects in their real material and change NOTHING else — same walls, same outline, same orientation, same furniture, same positions, same sizes, same camera.
 - Every bath, toilet, shower tray and washbasin is WHITE glazed ceramic. No aqua, no mint, no turquoise.
@@ -105,7 +120,7 @@ export function buildPlacementPrompt(extraDirection?: string): string {
   // The blanket "No furniture" belongs to the empty-shell pass and would
   // contradict the key.
   const base = MATERIALS_ONLY_PROMPT.replace("- No furniture. ", "- ");
-  const parts = [base, FURNITURE_KEY_PROMPT];
+  const parts = [base, FURNITURE_KEY_PROMPT, LIVING_3D_PROMPT];
   const extra = extraDirection?.trim();
   if (extra) {
     parts.push(

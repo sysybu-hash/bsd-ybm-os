@@ -52,6 +52,13 @@ describe("the key that tells the model what each block is", () => {
     expect(FURNITURE_KEY_PROMPT).toMatch(/terrace/i);
   });
 
+  it("names the vestibule so the model does not invent entrance furniture", () => {
+    // The auditor failed real runs for "1 piece of furniture in the entrance".
+    expect(FURNITURE_KEY_PROMPT).toMatch(/ENTRANCE HALL/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/מבואה/);
+    expect(FURNITURE_KEY_PROMPT).toMatch(/leave the floor clear/i);
+  });
+
   it("tints blocks as the material they become, so no decoding pass is needed", () => {
     // A saturated key placed furniture well and then would not come out: green
     // chairs and orange tables survived the pass meant to restate them.
@@ -63,6 +70,12 @@ describe("the key that tells the model what each block is", () => {
     expect(buildPlacementPrompt()).not.toMatch(/No furniture\./);
     expect(buildPlacementPrompt()).toContain("OFF-WHITE block");
     expect(buildPlacementPrompt()).toMatch(/Do not rotate, mirror or reflect/);
+  });
+
+  it("asks the finish pass for a living golden-hour photograph of this plate", () => {
+    expect(buildPlacementPrompt()).toMatch(/Photoreal bird's-eye 3D/);
+    expect(buildPlacementPrompt()).toMatch(/golden hour/);
+    expect(buildPlacementPrompt()).toMatch(/Do not redraw it/);
   });
 
   it("still puts caller direction last, after the geometry rules and the key", () => {

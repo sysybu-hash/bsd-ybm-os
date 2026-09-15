@@ -599,6 +599,31 @@ export async function extractPdfDimensionStrings(
   }
 }
 
+/** Full text layer of page 1 — unit label, printed m², room names. */
+export async function extractPdfPageText(pdf: Buffer | Uint8Array): Promise<string> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return "";
+  try {
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: true,
+    }).promise;
+    const page = await doc.getPage(1);
+    const content = await page.getTextContent();
+    return content.items
+      .map((item) => (item as { str?: string }).str ?? "")
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch (err: unknown) {
+    log.warn("page text unavailable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return "";
+  }
+}
+
 /**
  * The scan embedded in a PDF that is a photograph of a drawing, not a CAD export.
  *

@@ -19,6 +19,7 @@ import { FLOORPLAN_PHOTO_LAYOUT_RULES } from "@/lib/projects/floorplan-photo-ins
 import {
   combineOcrGrounding,
   extractDimensionStrings,
+  extractGrossAreaM2,
   extractRoomNameHits,
   mergeFloorplanLayouts,
   parseFloorplanLayout,
@@ -27,6 +28,7 @@ import {
   type FloorplanLayout,
   type OcrGrounding,
 } from "@/lib/projects/floorplan-layout";
+import { recordFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import { EXTRACT_PIXEL_LOCK } from "@/lib/projects/floorplan-viz-lock";
 
 const log = createLogger("floorplan-layout-extract");
@@ -169,9 +171,12 @@ export type FloorplanLayoutExtractResult = {
 export async function extractFloorplanLayout(
   base64: string,
   mimeType: string,
-  options?: { photo?: boolean },
+  options?: { photo?: boolean; lean?: boolean; spend?: FloorplanSpend },
 ): Promise<FloorplanLayoutExtractResult> {
   const photo = options?.photo === true;
+  if (options?.lean) {
+    return extractFloorplanLayoutLean(base64, mimeType, photo, options.spend);
+  }
   const ocrJobs: Array<Promise<OcrGrounding>> = [];
   if (isDocAiConfigured()) ocrJobs.push(runDocAiOcr(base64, mimeType));
   if (isMistralConfigured()) {
@@ -183,6 +188,9 @@ export async function extractFloorplanLayout(
     ocrJobs.push(job.then((row) => groundingFromText(row.engine, row.text)));
   }
 
+  if (options?.spend) {
+    recordFloorplanSpend(options.spend, "extract", "layout-full");
+  }
   const ocrSettled = await Promise.allSettled(ocrJobs);
   const ocrParts: OcrGrounding[] = [];
   const ocrEngines: string[] = [];
@@ -257,5 +265,59 @@ export async function extractFloorplanLayout(
     enginesUsed: [...ocrEngines, ...visionEngines],
     ocrEngines,
     visionEngines,
+  };
+}
+
+/**
+ * One engine, for the printed area only.
+ *
+ * The full extract fans out up to seven models. A CLI render only needs the
+ * gross figure the sheet prints, and paying for a consensus on room names
+ * that the CAD will replace is waste.
+ */
+async function extractFloorplanLayoutLean(
+  base64: string,
+  mimeType: string,
+  photo: boolean,
+  spend?: FloorplanSpend,
+): Promise<FloorplanLayoutExtractResult> {
+  if (spend) recordFloorplanSpend(spend, "extract", "layout-lean");
+  let grounding: OcrGrounding = {
+    engine: "none",
+    text: "",
+    dimensionStrings: [],
+    roomNameHits: [],
+  };
+  try {
+    if (isMistralConfigured()) {
+      const text = await extractTextWithMistralOCR(base64, mimeType);
+      grounding = groundingFromText("mistral-ocr", text);
+    } else if (isDocAiConfigured()) {
+      grounding = await runDocAiOcr(base64, mimeType);
+    } else {
+      const jobs = floorplanLlmOcrJobs(base64, mimeType, photo);
+      if (jobs[0]) {
+        const row = await jobs[0];
+        grounding = groundingFromText(row.engine, row.text);
+      }
+    }
+  } catch (err: unknown) {
+    log.warn("lean extract failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+  const area = extractGrossAreaM2(grounding.text);
+  const layout = parseFloorplanLayout({
+    grossAreaM2: area,
+    rooms: grounding.roomNameHits.map((name) => ({ name: canonicalRoomName(name) })),
+    dimensionStrings: grounding.dimensionStrings,
+    notes: ["lean extract — area only"],
+  });
+  return {
+    layout,
+    grounding,
+    enginesUsed: grounding.engine === "none" ? [] : [grounding.engine],
+    ocrEngines: grounding.engine === "none" ? [] : [grounding.engine],
+    visionEngines: [],
   };
 }

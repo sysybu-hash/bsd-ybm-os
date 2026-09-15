@@ -1,4 +1,4 @@
-import { lockScale } from "@/lib/projects/floorplan-scale";
+import { lockScale, pickScaleLock, type ScaleLock } from "@/lib/projects/floorplan-scale";
 
 /** A hatched wall band, drawn the way CAD draws one. */
 const hatchedWall = (
@@ -101,5 +101,35 @@ describe("the door-width check", () => {
     // internal door is.
     const tooSmall = lockScale(room, bounds, 82, { from: 200, to: 240 });
     expect(tooSmall).toBeNull();
+  });
+});
+
+describe("picking among scale candidates", () => {
+  const row = (unitsPerMetre: number, beds: number, areaError: number): ScaleLock => ({
+    unitsPerMetre,
+    beds,
+    floorM2: 120,
+    areaError,
+    floor: [],
+    bodies: [],
+  });
+
+  it("keeps the scale that matches the printed area when a higher UPM over-counts beds", () => {
+    // 62 units/m found two extra "beds" and missed the area by 16%. The old
+    // picker took that majority and then refused the whole lock.
+    const lock = pickScaleLock(
+      [row(54, 5, -0.002), row(60, 6, -0.169), row(62, 7, -0.162)],
+      0.08,
+    );
+    expect(lock?.unitsPerMetre).toBe(54);
+  });
+
+  it("still prefers four beds at a small area miss over one bed at a tinier miss", () => {
+    const lock = pickScaleLock([row(41, 1, 0.001), row(56, 4, 0.016)], 0.08);
+    expect(lock?.unitsPerMetre).toBe(56);
+  });
+
+  it("refuses when every candidate misses the printed area", () => {
+    expect(pickScaleLock([row(62, 7, -0.162), row(60, 6, -0.169)], 0.08)).toBeNull();
   });
 });

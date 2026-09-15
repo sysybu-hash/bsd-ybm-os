@@ -1,6 +1,9 @@
 import {
   findTerraces,
+  findTerracesOnFloor,
   terraceDiagonalSeeds,
+  type SpanRow,
+  type WallBody,
 } from "@/lib/projects/floorplan-solid";
 import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
@@ -82,6 +85,50 @@ describe("findTerraces", () => {
 
   it("returns nothing when the sheet prints no areas", () => {
     expect(findTerraces(box(100, 100, SIDE, SIDE), [], UPM)).toEqual([]);
+  });
+});
+
+describe("findTerracesOnFloor", () => {
+  it("grows a paving-trapped label along the floor slab and stops at walls", () => {
+    const upm = 50;
+    const x0 = 200;
+    const y0 = 400;
+    const width = 2.2 * upm;
+    const height = 2.3 * upm;
+    const floor: SpanRow[] = [];
+    for (let y = y0; y < y0 + height; y += 2) {
+      floor.push({ y, spans: [[x0, x0 + width]] });
+    }
+    // A neighbouring living room on the same slab — a leak would swallow it.
+    for (let y = 0; y < 8 * upm; y += 2) {
+      floor.push({ y, spans: [[0, 6 * upm]] });
+    }
+    const bodies: WallBody[] = [
+      { orientation: "h", centre: y0, thickness: 8, from: x0, to: x0 + width },
+      { orientation: "h", centre: y0 + height, thickness: 8, from: x0, to: x0 + width },
+      { orientation: "v", centre: x0, thickness: 8, from: y0, to: y0 + height },
+      { orientation: "v", centre: x0 + width, thickness: 8, from: y0, to: y0 + height },
+    ];
+    const found = findTerracesOnFloor(
+      floor,
+      bodies,
+      [{ x: x0 + width / 2, y: y0 + height / 2, value: 5.12 }],
+      upm,
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0]!.floodedM2).toBeGreaterThan(4);
+    expect(found[0]!.floodedM2).toBeLessThan(6);
+  });
+
+  it("refuses a floor flood that is the living room, not the printed terrace", () => {
+    const upm = 50;
+    const floor: SpanRow[] = [];
+    for (let y = 0; y < 6 * upm; y += 2) {
+      floor.push({ y, spans: [[0, 6 * upm]] });
+    }
+    expect(
+      findTerracesOnFloor(floor, [], [{ x: 50, y: 50, value: 5.12 }], upm),
+    ).toEqual([]);
   });
 });
 
