@@ -1,6 +1,10 @@
+import { existsSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
+import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
 import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 
 const log = createLogger("floorplan-viz-stamp");
@@ -50,6 +54,60 @@ export function buildStampCaption(fields: FloorplanStampFields): string {
   return parts.join("  ·  ");
 }
 
+/**
+ * librsvg draws SVG text as LTR. A Hebrew run stored logically comes out
+ * backwards on the bar. Reverse only for the SVG overlay — the caption string
+ * itself stays readable in tests and in the HTML booklet.
+ */
+export function forSvgHebrew(text: string): string {
+  return Array.from(text).reverse().join("");
+}
+
+export type StampRun = {
+  text: string;
+  x: number;
+  anchor: "start";
+  hebrew?: boolean;
+};
+
+/** Reading order is right-to-left: the first run sits against the right edge. */
+export function placeRtlRuns(
+  runs: Array<{ text: string; hebrew?: boolean }>,
+  rightX: number,
+  fontSize: number,
+): StampRun[] {
+  let x = rightX;
+  const placed: StampRun[] = [];
+  for (const run of runs) {
+    if (!run.text) continue;
+    const em = run.hebrew ? HE_CHAR_EM : LATIN_CHAR_EM;
+    const width = run.text.length * fontSize * em;
+    x -= width;
+    placed.push({
+      text: run.text,
+      x: Math.round(x),
+      anchor: "start",
+      hebrew: run.hebrew,
+    });
+    x -= fontSize * 0.35;
+  }
+  return placed;
+}
+
+export function captionRuns(fields: FloorplanStampFields, rightX: number, fontSize: number): StampRun[] {
+  const runs: Array<{ text: string; hebrew?: boolean }> = [];
+  if (fields.unitLabel) {
+    runs.push({ text: "דירה", hebrew: true });
+    runs.push({ text: fields.unitLabel });
+  }
+  if (fields.areaM2 != null) {
+    if (runs.length) runs.push({ text: "·" });
+    runs.push({ text: fields.areaM2.toFixed(2) });
+    runs.push({ text: 'מ"ר', hebrew: true });
+  }
+  return placeRtlRuns(runs, rightX, fontSize);
+}
+
 const CREDIT_HE = "הופק על ידי מערכת";
 const CREDIT_MARK = "BSD-YBM";
 
@@ -81,6 +139,73 @@ export function creditRunLayout(centreX: number, fontSize: number) {
   };
 }
 
+function registerStampFonts(GlobalFonts: {
+  has: (name: string) => boolean;
+  register: (font: Buffer, name?: string) => unknown;
+  registerFromPath: (path: string, name?: string) => unknown;
+}): void {
+  const winBold = "C:\\Windows\\Fonts\\arialbd.ttf";
+  const winReg = "C:\\Windows\\Fonts\\arial.ttf";
+  if (existsSync(winBold) && !GlobalFonts.has("BookletStampBold")) {
+    GlobalFonts.registerFromPath(winBold, "BookletStampBold");
+  }
+  if (existsSync(winReg) && !GlobalFonts.has("BookletStamp")) {
+    GlobalFonts.registerFromPath(winReg, "BookletStamp");
+  }
+  if (GlobalFonts.has("BookletStamp") && GlobalFonts.has("BookletStampBold")) return;
+  const { regular, bold } = loadPdfFontBuffers();
+  const dir = tmpdir();
+  const boldPath = path.join(dir, "booklet-stamp-bold.ttf");
+  const regPath = path.join(dir, "booklet-stamp.ttf");
+  if (!existsSync(boldPath)) writeFileSync(boldPath, bold);
+  if (!existsSync(regPath)) writeFileSync(regPath, regular);
+  if (!GlobalFonts.has("BookletStampBold")) GlobalFonts.registerFromPath(boldPath, "BookletStampBold");
+  if (!GlobalFonts.has("BookletStamp")) GlobalFonts.registerFromPath(regPath, "BookletStamp");
+}
+
+/**
+ * librsvg draws SVG Hebrew backwards. Skia (canvas) shapes RTL correctly
+ * when the font actually contains Hebrew glyphs — Arial on Windows, Noto on Linux.
+ */
+async function paintStampBar(
+  width: number,
+  barHeight: number,
+  fields: FloorplanStampFields,
+): Promise<Buffer | null> {
+  try {
+    const { createCanvas, GlobalFonts } = await import("@napi-rs/canvas");
+    registerStampFonts(GlobalFonts);
+    const canvas = createCanvas(width, barHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#1c1917";
+    ctx.fillRect(0, 0, width, barHeight);
+    const pad = Math.round(width * 0.04);
+    const mainSize = Math.round(barHeight * 0.4);
+    const creditSize = Math.round(barHeight * 0.27);
+    const mid = barHeight / 2;
+    ctx.textBaseline = "middle";
+    const caption = buildStampCaption(fields);
+    if (caption) {
+      ctx.direction = "rtl";
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#faf7f2";
+      ctx.font = `bold ${mainSize}px BookletStampBold`;
+      ctx.fillText(caption, width - pad, mid);
+    }
+    ctx.direction = "rtl";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#c8c2b8";
+    ctx.font = `${creditSize}px BookletStamp`;
+    ctx.fillText(`${CREDIT_HE} ${CREDIT_MARK}`, pad, mid);
+    return Buffer.from(canvas.toBuffer("image/png"));
+  } catch (err: unknown) {
+    log.warn("canvas stamp unavailable, falling back to SVG", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
 /**
  * Composites the caption bar onto the bottom of a still.
  *
@@ -100,38 +225,47 @@ export async function stampFloorplanStill(
     const height = meta.height ?? 0;
     if (width < 200 || height < 200) return image;
 
-    // Scaled off the frame so the bar reads the same on a 768px still and a
-    // 1400px one.
     const barHeight = Math.round(height * 0.062);
-    const mainSize = Math.round(barHeight * 0.4);
-    const creditSize = Math.round(barHeight * 0.27);
-    // Centre-anchored on purpose. librsvg inverts what text-anchor start and end
-    // mean once direction is rtl, which pushed both captions off opposite edges
-    // of the bar; middle means the same thing in either direction.
-    const baseline = Math.round(barHeight * 0.5 + mainSize * 0.36);
-    const creditBaseline = Math.round(barHeight * 0.5 + creditSize * 0.36);
-
-    const credit = creditRunLayout(Math.round(width * (caption ? 0.28 : 0.5)), creditSize);
-    const creditRuns = [credit.hebrew, credit.mark];
-
-    const overlay = Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${barHeight}">` +
-        `<rect width="100%" height="100%" fill="#1c1917"/>` +
-        (caption
-          ? `<text x="${Math.round(width * 0.72)}" y="${baseline}" ` +
-            `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${mainSize}" ` +
-            `font-weight="600" fill="#faf7f2" text-anchor="middle">${escapeXml(caption)}</text>`
-          : "") +
-        creditRuns
-          .map(
-            (run) =>
-              `<text x="${run.x}" y="${creditBaseline}" ` +
-              `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${creditSize}" ` +
-              `fill="#c8c2b8" text-anchor="${run.anchor}">${escapeXml(run.text)}</text>`,
-          )
-          .join("") +
-        `</svg>`,
-    );
+    const painted = await paintStampBar(width, barHeight, fields);
+    const overlay =
+      painted ??
+      (() => {
+        const mainSize = Math.round(barHeight * 0.4);
+        const creditSize = Math.round(barHeight * 0.27);
+        const baseline = Math.round(barHeight * 0.5 + mainSize * 0.36);
+        const creditBaseline = Math.round(barHeight * 0.5 + creditSize * 0.36);
+        const pad = Math.round(width * 0.04);
+        const captionPlaced = captionRuns(fields, width - pad, mainSize);
+        const creditPlaced = placeRtlRuns(
+          [
+            { text: CREDIT_HE, hebrew: true },
+            { text: CREDIT_MARK },
+          ],
+          caption ? Math.round(width * 0.36) : width - pad,
+          creditSize,
+        );
+        return Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${barHeight}">` +
+            `<rect width="100%" height="100%" fill="#1c1917"/>` +
+            captionPlaced
+              .map(
+                (run) =>
+                  `<text x="${run.x}" y="${baseline}" ` +
+                  `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${mainSize}" ` +
+                  `font-weight="600" fill="#faf7f2" text-anchor="${run.anchor}">${escapeXml(run.text)}</text>`,
+              )
+              .join("") +
+            creditPlaced
+              .map(
+                (run) =>
+                  `<text x="${run.x}" y="${creditBaseline}" ` +
+                  `font-family="Arial, Segoe UI, DejaVu Sans, sans-serif" font-size="${creditSize}" ` +
+                  `fill="#c8c2b8" text-anchor="${run.anchor}">${escapeXml(run.text)}</text>`,
+              )
+              .join("") +
+            `</svg>`,
+        );
+      })();
 
     const out = await sharp({
       create: {
@@ -155,4 +289,29 @@ export async function stampFloorplanStill(
     });
     return image;
   }
+}
+
+/** Drop previous caption bars so a still can be stamped again. */
+export async function stripStampBar(jpeg: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info;
+  if (width < 200 || height < 200) return jpeg;
+  let cut = 0;
+  const step = 4;
+  for (let y = height - 1; y >= Math.floor(height * 0.72); y -= 1) {
+    let luma = 0;
+    let samples = 0;
+    for (let x = 0; x < width; x += step) {
+      const i = (y * width + x) * channels;
+      samples += 1;
+      luma += (data[i]! + data[i + 1]! + data[i + 2]!) / 3;
+    }
+    if (samples > 0 && luma / samples < 95) cut += 1;
+    else break;
+  }
+  if (cut < 8) return jpeg;
+  return sharp(jpeg)
+    .extract({ left: 0, top: 0, width, height: height - cut })
+    .jpeg({ quality: 92, mozjpeg: true })
+    .toBuffer();
 }

@@ -3,9 +3,12 @@ import sharp from "sharp";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
   buildStampCaption,
+  captionRuns,
   creditRunLayout,
+  forSvgHebrew,
   stampFieldsFromLayout,
   stampFloorplanStill,
+  stripStampBar,
 } from "@/lib/projects/floorplan-viz-stamp";
 
 async function still(width = 600, height = 800): Promise<{ base64: string; mimeType: string }> {
@@ -71,9 +74,32 @@ describe("stamping a still", () => {
     await expect(stampFloorplanStill(broken, { unitLabel: "9" })).resolves.toEqual(broken);
   });
 
+  it("strips stacked bars before a still is captioned again", async () => {
+    const source = await still(600, 800);
+    const once = await stampFloorplanStill(source, { unitLabel: "14", areaM2: 111.29 });
+    const twice = await stampFloorplanStill(once, { unitLabel: "14", areaM2: 111.29 });
+    const stripped = await stripStampBar(Buffer.from(twice.base64, "base64"));
+    const meta = await sharp(stripped).metadata();
+    expect(meta.height).toBeGreaterThanOrEqual(798);
+    expect(meta.height).toBeLessThanOrEqual(802);
+  });
+
   it("leaves a thumbnail alone — a caption bar would swamp it", async () => {
     const tiny = await still(120, 120);
     await expect(stampFloorplanStill(tiny, { unitLabel: "9" })).resolves.toEqual(tiny);
+  });
+});
+
+describe("SVG Hebrew on the caption bar", () => {
+  it("keeps Hebrew logical and digits in their own run", () => {
+    expect(forSvgHebrew("דירה")).toBe("הריד");
+    const runs = captionRuns({ unitLabel: "14", areaM2: 111.29 }, 400, 20);
+    expect(runs.some((run) => run.text === "14")).toBe(true);
+    expect(runs.some((run) => run.text === "דירה" && run.hebrew)).toBe(true);
+    expect(runs.some((run) => run.text === "111.29")).toBe(true);
+    expect(runs.filter((run) => run.hebrew).map((run) => forSvgHebrew(run.text))).toEqual(
+      expect.arrayContaining(["הריד", 'ר"מ']),
+    );
   });
 });
 
