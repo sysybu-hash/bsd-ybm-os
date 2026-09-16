@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import { getFloorplanVizModelChain } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
-import { buildFlatFromPdf, type BuiltFlat } from "@/lib/projects/floorplan-build";
+import { buildFlatFromGeometry, buildFlatFromPdf, type BuiltFlat } from "@/lib/projects/floorplan-build";
 import {
   assessFloorplanRun,
   type ConfidenceReport,
@@ -30,6 +30,8 @@ import {
 } from "@/lib/projects/floorplan-viz-styles";
 import {
   extractFloorplanVectorGeometry,
+  type FloorplanVectorGeometry,
+  type PlacedNumber,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
 import {
@@ -157,6 +159,76 @@ export async function flatExtentFromSheet(
   const box = wallBoundingBox(geometry);
   if (!box) return null;
   return hatchedWallExtent(geometry.segments, box, 53) ?? box;
+}
+
+/**
+ * The measured flat, from geometry that is already in hand.
+ *
+ * This is the path a DXF takes: it is the same render as a sales sheet's, minus
+ * the two steps that only a PDF has — pulling the vectors out of the page, and
+ * reading the area figures it prints. The model-finish pass stays on the PDF
+ * side, where the CLI uses it.
+ */
+export async function renderFlatFromGeometry(
+  geometry: FloorplanVectorGeometry,
+  options: RenderFlatOptions & { printedAreas?: PlacedNumber[] },
+): Promise<RenderedFlat | null> {
+  const spend = options.spend ?? emptyFloorplanSpend();
+  const flat = await buildFlatFromGeometry(geometry, options.targetAreaM2, {
+    extent: options.extent,
+    printedAreas: options.printedAreas,
+  });
+  if (!flat) {
+    log.warn("no scale reproduces the printed area", {
+      label: options.label,
+      targetAreaM2: options.targetAreaM2,
+    });
+    return null;
+  }
+  const rooms = segmentRooms({
+    bodies: flat.bodies,
+    openings: flat.openings,
+    floor: flat.floor,
+    furniture: flat.furniture,
+    terraces: flat.terraces,
+    bounds: flat.bounds,
+    unitsPerMetre: flat.unitsPerMetre,
+    segments: geometry.segments,
+  });
+  const plate = await sharp(Buffer.from(flat.svg), { density: 200 })
+    .flatten({ background: "#f4efe6" })
+    .jpeg({ quality: 94 })
+    .toBuffer();
+  const fidelity = await measureBlockFidelity({
+    geometry: plate,
+    still: plate,
+    furniture: flat.furniture,
+    bounds: flat.bounds,
+  });
+  return {
+    flat,
+    rooms,
+    geometry: plate,
+    still: { mimeType: "image/jpeg", base64: plate.toString("base64") },
+    score: 0,
+    failures: [],
+    attempts: 0,
+    fidelity,
+    coolTint: 0,
+    confidence: assessFloorplanRun({
+      areaError: flat.areaError,
+      unitsPerMetre: flat.unitsPerMetre,
+      wallCount: flat.bodies.length,
+      furniture: flat.furniture,
+      rooms,
+      fidelity,
+      coolTint: 0,
+      foundTerraces: flat.terraces.length,
+      printedTerraces: flat.printedTerraceCount,
+      auditHardFailures: [],
+    }),
+    spend,
+  };
 }
 
 export async function renderFlatFromPdf(

@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import type { FloorplanBbox } from "@/lib/projects/floorplan-layout";
 import {
+  isCadFloorplanMime,
   MAX_LONG_EDGE,
   MIN_SHORT_EDGE,
   TARGET_SHORT_EDGE,
@@ -18,6 +19,11 @@ export async function prepareFloorplanSource(
   options?: { forceDrawing?: boolean },
 ): Promise<PreparedFloorplanSource> {
   const mime = sniffFloorplanMime(base64, mimeType);
+  // A drawing is already vectors. Rasterising it would throw away the layers
+  // that say which lines are walls.
+  if (isCadFloorplanMime(mime)) {
+    return { base64, mimeType: mime, sourceKind: "cad" };
+  }
   if (mime === "application/pdf" || !isRasterFloorplanMime(mime)) {
     return { base64, mimeType: mime, sourceKind: "pdf" };
   }

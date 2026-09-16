@@ -120,6 +120,12 @@ const serverSchema = z.object({
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
 
+  // --- CAD conversion ---
+  // DWG is a closed format; the only open reader is GPL. A DWG upload is
+  // converted to DXF by this service instead, and without a key the user is
+  // told to save the file as DXF themselves.
+  CLOUDCONVERT_API_KEY: optStr,
+
   // --- Blob storage ---
   // A sales sheet and a booklet both run past Vercel's ~4.5MB request limit, so
   // the browser uploads them straight to Blob and the route is handed a URL.

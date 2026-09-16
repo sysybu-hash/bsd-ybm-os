@@ -17,6 +17,7 @@ import { createLogger } from "@/lib/logger";
 import { isAnthropicConfigured } from "@/lib/ai-providers";
 import {
   flatExtentFromSheet,
+  renderFlatFromGeometry,
   renderFlatFromPdf,
 } from "@/lib/projects/floorplan-render-flat";
 import {
@@ -36,6 +37,9 @@ import {
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { emptyFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
+import { geometryFromDxf } from "@/lib/projects/floorplan-dxf";
+import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
+import { DWG_MIME, isCadFloorplanMime } from "@/lib/projects/photo-prep/mime";
 import {
   companionImage,
   geometryViewPrompt,
@@ -367,13 +371,76 @@ type CadOverviewAttempt =
   | { outcome: "skip" }
   | { outcome: "locked" };
 
-async function tryCadOverview(input: {
+type CadOverviewInput = {
   prepared: { base64: string; mimeType: string };
   photo: boolean;
   extractedLayout: FloorplanLayout;
   styleKit: FloorplanVizStyleKit;
   sourceName?: string;
-}): Promise<CadOverviewAttempt> {
+};
+
+/**
+ * A drawing the client exported from CAD, rather than a sales sheet.
+ *
+ * There is no page to rasterise and no printed area figure to verify terraces
+ * against — the layers carry what a PDF forces the pipeline to infer. Scale
+ * still comes from the gross area the extract read, so a drawing with no area
+ * anywhere on it falls back to the raster path rather than inventing one.
+ */
+async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
+  const bytes = Buffer.from(input.prepared.base64, "base64");
+  let text: string | null = null;
+  if (input.prepared.mimeType === DWG_MIME) {
+    text = await dwgToDxf(bytes);
+  } else {
+    text = bytes.toString("utf8");
+  }
+  if (!text) return { outcome: "skip" };
+
+  const geometry = await geometryFromDxf(text);
+  if (!geometry) {
+    log.info("cad drawing carried no readable geometry");
+    return { outcome: "skip" };
+  }
+  const truth = printedTruthFromSheet(input.extractedLayout, { areas: [] });
+  const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
+  if (targetAreaM2 == null) {
+    log.info("cad drawing has no printed area to lock scale against");
+    return { outcome: "skip" };
+  }
+  try {
+    const rendered = await renderFlatFromGeometry(geometry, {
+      targetAreaM2,
+      styleKit: input.styleKit,
+      haredi: input.styleKit.audience === "haredi",
+      label: input.sourceName,
+    });
+    if (!rendered) return { outcome: "locked" };
+    return {
+      outcome: "ok",
+      layout: capLayoutMmdRooms(
+        layoutFromCadRooms(input.extractedLayout, rendered.rooms, rendered.flat.unitsPerMetre, {
+          sourceName: input.sourceName,
+        }),
+      ),
+      geometry: { mimeType: "image/jpeg", base64: rendered.geometry.toString("base64") },
+      confidence: { ...rendered.confidence, tier: "cad" },
+      truth,
+      spend: rendered.spend,
+      rooms: rendered.rooms,
+    };
+  } catch (err: unknown) {
+    log.warn("cad drawing render threw; not inventing a layout", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { outcome: "locked" };
+  }
+}
+
+async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
+  if (isCadFloorplanMime(input.prepared.mimeType)) {
+    return tryCadDrawingOverview(input);
+  }
   if (input.prepared.mimeType !== "application/pdf") {
     return { outcome: "skip" };
   }

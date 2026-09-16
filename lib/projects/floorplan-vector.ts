@@ -474,13 +474,18 @@ export function renderWallDiagramSvg(geometry: FloorplanVectorGeometry, pad = 18
  * that a nearly blank page would mislead the model more than the noisy raster
  * hint it replaces.
  */
-export async function buildVectorWallJpeg(
-  pdf: Buffer | Uint8Array,
+/**
+ * The wall diagram as a JPEG, from geometry already in hand.
+ *
+ * A DXF has no page to rasterise, so this is the picture the model and the
+ * booklet are shown of the drawing itself.
+ */
+export async function buildWallJpegFromGeometry(
+  geometry: FloorplanVectorGeometry,
   width = 1400,
 ): Promise<string | null> {
   try {
-    const geometry = await extractFloorplanVectorGeometry(pdf);
-    if (!geometry || geometry.walls.length < 25) return null;
+    if (geometry.walls.length < 25) return null;
     const svg = renderWallDiagramSvg(geometry);
     const out = await sharp(Buffer.from(svg), { density: 200 })
       .resize({ width, withoutEnlargement: false })
@@ -494,6 +499,15 @@ export async function buildVectorWallJpeg(
     });
     return null;
   }
+}
+
+export async function buildVectorWallJpeg(
+  pdf: Buffer | Uint8Array,
+  width = 1400,
+): Promise<string | null> {
+  const geometry = await extractFloorplanVectorGeometry(pdf);
+  if (!geometry) return null;
+  return buildWallJpegFromGeometry(geometry, width);
 }
 
 /**

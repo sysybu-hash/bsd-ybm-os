@@ -213,12 +213,4 @@ export async function geometryFromDxf(text: string): Promise<FloorplanVectorGeom
   }
 }
 
-/** DXF is text; DWG is not, and its first bytes name the release that wrote it. */
-export function looksLikeDxf(bytes: Buffer | Uint8Array): boolean {
-  const head = Buffer.from(bytes.subarray(0, 512)).toString("latin1");
-  return /(^|\n)\s*0\s*\r?\n\s*SECTION/i.test(head) || head.includes("AutoCAD Binary DXF");
-}
-
-export function looksLikeDwg(bytes: Buffer | Uint8Array): boolean {
-  return /^AC10\d{2}/.test(Buffer.from(bytes.subarray(0, 6)).toString("latin1"));
-}
+export { looksLikeDwg, looksLikeDxf } from "@/lib/projects/photo-prep/mime";
