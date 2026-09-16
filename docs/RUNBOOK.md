@@ -93,6 +93,27 @@ reached the database unnoticed.
 | Local build | **skipped**, with a message |
 | Local, on purpose | `npm run db:migrate`, or `PREBUILD_APPLY_SCHEMA=1 npm run build` |
 
+### Rolling back `20260910220000_floorplan_viz_still_attempts`
+
+That migration drops the unique index on `FloorplanVizStill(runId, viewKey)` so
+a run can keep every attempt of a view, and adds `selected`, `parentStillId`,
+`origin` and `attemptIndex`.
+
+Rolling the code back does not need a schema rollback: the old code writes one
+row per view and ignores the new columns. Only roll the schema back if you must,
+and only after deleting the extra attempts — the unique index cannot be restored
+while a run holds two stills for one view:
+
+```sql
+DELETE FROM "FloorplanVizStill" s
+ USING "FloorplanVizStill" newer
+ WHERE s."runId" = newer."runId"
+   AND s."viewKey" = newer."viewKey"
+   AND s."createdAt" < newer."createdAt";
+CREATE UNIQUE INDEX "FloorplanVizStill_runId_viewKey_key"
+    ON "FloorplanVizStill"("runId", "viewKey");
+```
+
 The check reads `VERCEL` / `GITHUB_ACTIONS` from the **real process environment,
 before the `.env` files are merged in**. This matters: `vercel env pull` writes
 Vercel's own system variables into the pulled file, so `.env.vercel.prod` and

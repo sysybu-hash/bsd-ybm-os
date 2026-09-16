@@ -48,13 +48,14 @@ const HelpCenterWidget = dynamic(() => import("@/components/os/widgets/HelpCente
 const ExecutiveHubWidget = dynamic(() => import("@/components/os/hubs/ExecutiveHubWidget"), { loading });
 const JewishCalendarWidget = dynamic(() => import("@/components/os/widgets/JewishCalendarWidget"), { loading });
 const UniversalCommandWidget = dynamic(() => import("@/components/os/widgets/UniversalCommandWidget"), { loading });
+const FloorplanVizWidget = dynamic(() => import("@/components/os/widgets/FloorplanVizWidget"), { loading });
 
 export const RENDERED_WIDGET_TYPES = new Set<WidgetType>([
   "project", "crm", "dashboard", "aiChat", "cashflow", "erp", "projectBoard", "crmTable",
   "erpArchive", "docCreator", "aiScanner", "fieldCopilot", "aiChatFull", "settings",
   "meckanoReports", "googleDrive", "googleCalendar", "jewishCalendar", "notebookLM", "accessibility",
   "platformAdmin", "helpCenter",   "financeHub", "projectsHub", "documentsHub", "aiHub", "appBuilder",
-  "logisticsHub", "procurementHub", "executiveHub", "universalCommand",
+  "logisticsHub", "procurementHub", "executiveHub", "universalCommand", "floorplanViz",
 ]);
 
 export function WidgetContent({
@@ -144,6 +145,9 @@ export function WidgetContent({
   if (type === "executiveHub") return <ExecutiveHubWidget liveData={liveData} />;
   if (type === "universalCommand") {
     return <UniversalCommandWidget liveData={liveData} openWorkspaceWidget={openWorkspaceWidget} />;
+  }
+  if (type === "floorplanViz") {
+    return <FloorplanVizWidget liveData={liveData} />;
   }
 
   return (

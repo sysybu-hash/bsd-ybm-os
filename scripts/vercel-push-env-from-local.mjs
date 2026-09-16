@@ -138,9 +138,9 @@ function resolveValueForOnlyKey(key, byKey) {
     key === "PREMIUM_GEMINI_MODEL"
   ) {
     const defaults = {
-      GEMINI_MODEL: "gemini-3.6-flash",
-      GEMINI_NOTEBOOKLM_MODEL: "gemini-3.6-flash",
-      CRM_ANALYSIS_GEMINI_MODEL: "gemini-3.6-flash",
+      GEMINI_MODEL: "gemini-3.7-flash",
+      GEMINI_NOTEBOOKLM_MODEL: "gemini-3.7-flash",
+      CRM_ANALYSIS_GEMINI_MODEL: "gemini-3.7-flash",
       PREMIUM_GEMINI_MODEL: "gemini-3.1-pro-preview",
     };
     return defaults[key];

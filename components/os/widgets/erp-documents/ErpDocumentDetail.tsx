@@ -5,7 +5,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import {
   AlertCircle, Calendar, ChevronRight, Edit3, Layers, Loader2, Save, TrendingUp,
 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { OsButton, OsIconButton } from "@/components/os/ui";
 import type { DocumentLineItem, ErpDocument, PriceComparison } from "./useErpDocuments";

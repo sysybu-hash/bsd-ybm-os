@@ -83,6 +83,9 @@ mobile-shot-*.png
 
 # local capture / architecture scratch (not product source)
 .tmp-boot-capture/
+.tmp-floorplan-compare/
+# working folder: source sales sheets fed through the viz pipeline
+תוכניות לביצוע הדמיות/
 e2e/_*-capture.spec.ts
 e2e/_boot-capture.spec.ts
 e2e/_dash-capture.spec.ts
@@ -93,6 +96,11 @@ docs/ov.png
 
 # local scratch (i18n patches, promo builds)
 tmp/
+# floorplan booklet runs and the CLI area cache
+tmp-*/
+tmp-*.pdf
+tmp-*.png
+.cache/
 
 # env backups — hold real secrets, must never be committed
 .env.local.bak-*
@@ -102,3 +110,7 @@ tmp/
 # between .next/dev/types and .next/types, so committing it means permanent
 # churn. Verified: tsc --noEmit passes without it, even with no .next present.
 next-env.d.ts
+
+# scratch diagnostics, hardcoded to one plan
+scripts/_*.mjs
+e2e/_*.spec.ts

@@ -9,6 +9,7 @@ import WidgetState from "@/components/os/WidgetState";
 import type { ProjectDashboardWidgetProps } from "./project-dashboard/types";
 import { buildGanttLabels } from "./project-dashboard/utils";
 import BlueprintPreviewModal from "./project-dashboard/BlueprintPreviewModal";
+import FloorplanVizModal from "./project-dashboard/FloorplanVizModal";
 import { FinancialTab } from "./project-dashboard/FinancialTab";
 import { DiaryTab } from "./project-dashboard/DiaryTab";
 import { SettingsTab } from "./project-dashboard/SettingsTab";
@@ -51,6 +52,8 @@ export default function ProjectDashboardWidget({
     blueprintInstruction, setBlueprintInstruction,
     blueprintCustomEngines, setBlueprintCustomEngines,
     blueprintUseOcr, setBlueprintUseOcr,
+    generateFloorplanViz, closeFloorplanViz,
+    vizOpen, vizLoading, vizError, vizResult, vizSourceFile, hasBlueprintFile,
   } = s;
 
   if (showProjectPicker) {
@@ -140,6 +143,26 @@ export default function ProjectDashboardWidget({
           projectName={data.name}
           onConfirm={confirmBlueprintImport}
           onClose={() => setBlueprintPreview(null)}
+          onGenerateViz={() => void generateFloorplanViz()}
+          vizBusy={vizLoading}
+          canGenerateViz={hasBlueprintFile}
+        />
+      ) : null}
+
+      {vizOpen ? (
+        <FloorplanVizModal
+          t={t}
+          loading={vizLoading}
+          error={vizError}
+          layout={vizResult?.layout ?? null}
+          images={vizResult?.images ?? []}
+          enginesUsed={vizResult?.enginesUsed ?? []}
+          ocrEngines={vizResult?.ocrEngines ?? []}
+          visionEngines={vizResult?.visionEngines ?? []}
+          projectId={resolvedId || undefined}
+          projectName={data?.name}
+          sourceFile={vizSourceFile}
+          onClose={closeFloorplanViz}
         />
       ) : null}
 

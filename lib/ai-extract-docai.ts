@@ -1,4 +1,4 @@
-import { v1 } from "@google-cloud/documentai";
+import { v1, type protos } from "@google-cloud/documentai";
 import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -21,12 +21,15 @@ import {
   resolveDocAiProcessorRaw,
   resolveDocAiProcessorResourceName,
   resolveDocAiLocation,
+  docAiLocationCandidates,
+  isRetryableDocAiProcessorError,
   discoverDocAiProcessorResourceName,
   simplifyDocAiProperties,
   simplifyDocAiFormFields,
   simplifyDocAiTables,
   docAiProcessorFallbackOrder,
   isDocAiProcessorConfigured,
+  resolveDocAiProjectId,
 } from "@/lib/docai-processor-config";
 
 const { DocumentProcessorServiceClient } = v1;
@@ -34,6 +37,23 @@ const { DocumentProcessorServiceClient } = v1;
 type ServiceAccountCredentials = {
   project_id?: string;
 };
+
+function locationVariants(
+  raw: string,
+  credentials: ServiceAccountCredentials,
+  currentName: string,
+): string[] {
+  if (!raw || raw.startsWith("projects/")) return [];
+  try {
+    const projectId = resolveDocAiProjectId(credentials);
+    const idOnly = raw.trim().replace(/^processors\//, "");
+    return docAiLocationCandidates()
+      .map((loc) => `projects/${projectId}/locations/${loc}/processors/${idOnly}`)
+      .filter((name) => name !== currentName);
+  } catch {
+    return [];
+  }
+}
 
 export async function processDocumentAiRaw(
   base64: string,
@@ -61,7 +81,8 @@ export async function processDocumentAiRaw(
 
   const dedicatedRaw = resolveDocAiProcessorRaw(processorKind);
   const legacyRaw = env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID?.trim() || "";
-  const discoveryLocation = resolveDocAiLocation();
+  const locations = docAiLocationCandidates();
+  const discoveryLocation = locations[0] ?? resolveDocAiLocation();
   const initialEndpoint = `${discoveryLocation}-documentai.googleapis.com`;
 
   let client = new DocumentProcessorServiceClient({
@@ -87,19 +108,52 @@ export async function processDocumentAiRaw(
     throw new Error(`Missing ${DOC_AI_PROCESSORS[processorKind].env} or discoverable ${DOC_AI_PROCESSORS[processorKind].label}`);
   }
 
-  const locationMatch = processorId.match(/locations\/([^/]+)/);
-  const apiEndpoint = locationMatch ? `${locationMatch[1]}-documentai.googleapis.com` : initialEndpoint;
-  if (apiEndpoint !== initialEndpoint) {
-    client = new DocumentProcessorServiceClient({ credentials, apiEndpoint });
+  const rawForRetry = dedicatedRaw || legacyRaw;
+  const namesToTry = processorId.startsWith("projects/") && processorId.includes("/processors/")
+    ? [processorId, ...locationVariants(rawForRetry, credentials, processorId)]
+    : [processorId];
+  const uniqueNames = [...new Set(namesToTry)];
+
+  let lastErr: unknown = null;
+  // processDocument is overloaded; ReturnType picks the callback overload (void),
+  // so name the response proto directly instead of deriving it.
+  let result: protos.google.cloud.documentai.v1.IProcessResponse | undefined;
+  let usedName = processorId;
+  for (const name of uniqueNames) {
+    const locationMatch = name.match(/locations\/([^/]+)/);
+    const apiEndpoint = locationMatch ? `${locationMatch[1]}-documentai.googleapis.com` : initialEndpoint;
+    const locClient =
+      apiEndpoint === initialEndpoint && name === uniqueNames[0]
+        ? client
+        : new DocumentProcessorServiceClient({ credentials, apiEndpoint });
+    try {
+      const [processed] = await locClient.processDocument({
+        name,
+        rawDocument: { content: base64, mimeType },
+        ...(processorKind === "OCR"
+          ? {
+              processOptions: {
+                ocrConfig: {
+                  hints: { languageHints: ["he", "en"] },
+                },
+              },
+            }
+          : {}),
+      });
+      result = processed;
+      usedName = name;
+      break;
+    } catch (error) {
+      lastErr = error;
+      if (!isRetryableDocAiProcessorError(error)) throw error;
+    }
+  }
+  if (!result?.document) {
+    const msg = lastErr instanceof Error ? lastErr.message : String(lastErr ?? "Document AI returned no document data");
+    throw new Error(msg);
   }
 
-  const [result] = await client.processDocument({
-    name: processorId,
-    rawDocument: { content: base64, mimeType },
-  });
-
   const doc = result.document;
-  if (!doc) throw new Error("Document AI returned no document data");
 
   const fullText = doc.text || "";
   const entities: DocAiRawEntity[] =
@@ -117,7 +171,7 @@ export async function processDocumentAiRaw(
     formFields: simplifyDocAiFormFields(doc.pages as unknown, fullText),
     tables: simplifyDocAiTables(doc.pages as unknown, fullText),
     processorKind,
-    processorResourceName: processorId,
+    processorResourceName: usedName,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   Scan,
   Sparkles,
   Upload,
+  Box,
 } from "lucide-react";
 import type { WidgetType } from "@/hooks/use-window-manager";
 import { OsButton, OsIconButton } from "@/components/os/ui";
@@ -136,6 +137,16 @@ export function DashboardHeader({
               >
                 {t("projectDashboard.uploadBlueprint")}
               </OsButton>
+              {openWorkspaceWidget ? (
+                <OsButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<Box size={12} aria-hidden />}
+                  onClick={() => openWorkspaceWidget("floorplanViz", { projectId: resolvedId })}
+                >
+                  {t("workspaceWidgets.titles.floorplanViz")}
+                </OsButton>
+              ) : null}
             </>
           ) : null}
         </div>

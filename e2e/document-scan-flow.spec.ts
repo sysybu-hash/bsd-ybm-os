@@ -101,6 +101,27 @@ test.describe("Blueprint (Garmoshka) Decode — auth + validation", () => {
     });
     expect([401, 403, 302]).toContain(res.status());
   });
+
+  test("visualize-floorplan requires auth", async ({ request }) => {
+    const res = await request.post("/api/projects/visualize-floorplan", {
+      multipart: {
+        file: {
+          name: "test.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("%PDF-1.4 fake"),
+        },
+        projectId: "proj_test_00000000000000000000",
+      },
+    });
+    expect([401, 403, 302]).toContain(res.status());
+  });
+
+  test("visualize-floorplan export-pdf requires auth", async ({ request }) => {
+    const res = await request.post("/api/projects/visualize-floorplan/export-pdf", {
+      multipart: { layout: "{}" },
+    });
+    expect([401, 403, 302]).toContain(res.status());
+  });
 });
 
 test.describe("Org Invite Preview — public endpoint validation", () => {

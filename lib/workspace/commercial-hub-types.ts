@@ -55,22 +55,22 @@ export type CommercialHubSnapshot = {
   contacts: CommercialClientSnapshot[];
   projects: CommercialProjectSnapshot[];
   recentIssued: CommercialIssuedDocumentSnapshot[];
-  /** ׳׳¡׳׳›׳™ ׳¡׳¨׳™׳§׳”/ERP ׳©׳¢׳“׳™׳™׳ ׳׳ ׳”׳•׳©׳׳׳• (׳׳¢׳•׳׳× ׳—׳©׳‘׳•׳ ׳™׳•׳× ׳©׳”׳•׳ ׳₪׳§׳•) */
+  /** מסמכי סריקה/ERP שעדיין לא הושלמו (לעומת חשבוניות שהונפקו) */
   documentDrafts: CommercialDocumentDraftSnapshot[];
-  /** ׳׳—׳•׳– ׳©׳™׳ ׳•׳™ ׳‘׳¡׳›׳•׳ ׳׳¡׳׳›׳™׳ ׳׳•׳ ׳₪׳§׳™׳ (׳׳₪׳™ ׳©׳“׳” date) ׳‘׳™׳ ׳”׳—׳•׳“׳© ׳”׳ ׳•׳›׳—׳™ ׳׳§׳•׳“׳ */
+  /** אחוז שינוי בסכום מסמכים מונפקים (לפי שדה date) בין החודש הנוכחי לקודם */
   issuedMonthOverMonthPct: number;
   totals: {
     clientsCount: number;
     activeProjects: number;
     pipelineValue: number;
     pendingCollection: number;
-    /** ׳›׳ ׳׳¡׳׳ ׳”׳•׳ ׳₪׳§ ׳‘-PENDING (׳›׳•׳׳ ׳§׳‘׳׳•׳×/׳–׳™׳›׳•׳™׳™׳) ג€” ׳©׳™׳׳•׳¨׳™ ׳×׳׳™׳׳•׳× */
+    /** כל מסמך הונפק ב-PENDING (כולל קבלות/זיכויים) — שימורי תאימות */
     pendingIssuedTotal: number;
     pendingIssuedCount: number;
-    /** ׳—׳©׳‘׳•׳ ׳™׳× ׳׳¡ / ׳׳¡-׳§׳‘׳׳” ׳‘׳׳‘׳“, PENDING ג€” ׳’׳‘׳™׳™׳” ׳׳׳™׳×׳™׳× */
+    /** חשבונית מס / מס-קבלה בלבד, PENDING — גבייה אמיתית */
     billingPendingTotal: number;
     billingPendingCount: number;
-    /** ׳׳¡׳׳›׳™ ׳¡׳¨׳™׳§׳”/ERP ׳©׳׳׳×׳™׳ ׳™׳ ׳׳˜׳™׳₪׳•׳ ׳׳₪׳ ׳™ ׳”׳₪׳§׳” ׳׳׳§׳•׳— */
+    /** מסמכי סריקה/ERP שממתינים לטיפול לפני הפקה ללקוח */
     documentDraftsCount: number;
     paidIssuedTotal: number;
     paidIssuedCount: number;

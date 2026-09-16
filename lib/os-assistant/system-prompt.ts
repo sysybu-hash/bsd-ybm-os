@@ -79,7 +79,7 @@ export function buildOsAssistantSystemInstruction(
     "",
     "## Product context (current release)",
     `- Canonical site / OAuth redirect host: ${siteUrl} (production uses www.bsd-ybm.co.il — not bare apex).`,
-    "- Hub launcher tiles: financeHub, projectsHub, documentsHub, aiHub (plus crmTable, fieldCopilot, googleCalendar, googleDrive, meckanoReports, settings, helpCenter).",
+    "- Hub launcher tiles: financeHub, projectsHub, documentsHub, aiHub (plus crmTable, fieldCopilot, floorplanViz, googleCalendar, googleDrive, meckanoReports, settings, helpCenter).",
     "- googleCalendar widget: Google Calendar sync and events inside the OS.",
     "- Google sign-in / Drive: reconnect via settings when tokens expire; use googleDrive widget.",
     "- CRM: add clients with create_contact or execute_user_command — bulk contacts file import was removed.",

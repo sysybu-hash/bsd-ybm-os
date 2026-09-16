@@ -114,7 +114,22 @@ function resolveDocAiProjectId(credentials: ServiceAccountCredentials): string {
 }
 
 function resolveDocAiLocation(): string {
-  return env.GOOGLE_DOCUMENT_AI_LOCATION?.trim() || env.GOOGLE_CLOUD_LOCATION?.trim() || "us";
+  return docAiLocationCandidates()[0] ?? "us";
+}
+
+function docAiLocationCandidates(): string[] {
+  const preferred = [
+    env.GOOGLE_DOCUMENT_AI_LOCATION?.trim(),
+    env.GOOGLE_CLOUD_LOCATION?.trim(),
+    "eu",
+    "us",
+  ].filter((v): v is string => Boolean(v));
+  return [...new Set(preferred)];
+}
+
+function isRetryableDocAiProcessorError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /403|404|NOT_FOUND|PERMISSION_DENIED|does not exist|billing|location/i.test(msg);
 }
 
 async function discoverDocAiProcessorResourceName(
@@ -123,20 +138,37 @@ async function discoverDocAiProcessorResourceName(
   kind: DocAiProcessorKind,
 ): Promise<string | null> {
   const projectId = resolveDocAiProjectId(credentials);
-  const location = resolveDocAiLocation();
-  const parent = `projects/${projectId}/locations/${location}`;
   const configuredName = process.env[DOC_AI_PROCESSORS[kind].nameEnv]?.trim();
   const desiredNames = [configuredName, ...DOC_AI_PROCESSORS[kind].defaultNames]
     .filter(Boolean)
     .map((name) => String(name).toLowerCase());
-  const [processors] = await client.listProcessors({ parent });
-  const exact = processors.find((processor) => {
-    const displayName = String(processor.displayName ?? "").toLowerCase();
-    const type = String(processor.type ?? "");
-    return desiredNames.includes(displayName) && (!type || type === DOC_AI_PROCESSORS[kind].consoleType);
-  });
-  const byType = processors.find((processor) => String(processor.type ?? "") === DOC_AI_PROCESSORS[kind].consoleType);
-  return exact?.name ?? byType?.name ?? null;
+  const preferred = resolveDocAiLocation();
+  for (const location of docAiLocationCandidates()) {
+    try {
+      const parent = `projects/${projectId}/locations/${location}`;
+      const locClient =
+        location === preferred
+          ? client
+          : new v1.DocumentProcessorServiceClient({
+              credentials,
+              apiEndpoint: `${location}-documentai.googleapis.com`,
+            });
+      const [processors] = await locClient.listProcessors({ parent });
+      const exact = processors.find((processor) => {
+        const displayName = String(processor.displayName ?? "").toLowerCase();
+        const type = String(processor.type ?? "");
+        return desiredNames.includes(displayName) && (!type || type === DOC_AI_PROCESSORS[kind].consoleType);
+      });
+      const byType = processors.find(
+        (processor) => String(processor.type ?? "") === DOC_AI_PROCESSORS[kind].consoleType,
+      );
+      const hit = exact?.name ?? byType?.name;
+      if (hit) return hit;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function simplifyDocAiProperties(props: unknown): Record<string, unknown> {
@@ -252,6 +284,8 @@ export {
   resolveDocAiProcessorRaw,
   resolveDocAiProcessorResourceName,
   resolveDocAiLocation,
+  docAiLocationCandidates,
+  isRetryableDocAiProcessorError,
   resolveDocAiProjectId,
   discoverDocAiProcessorResourceName,
   simplifyDocAiProperties,

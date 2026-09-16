@@ -111,6 +111,7 @@ FREE tier
 |--------|-----|
 | Tri-engine סריקה | `lib/ai/scan-post-actions.ts`, `app/api/scan/tri-engine/*` |
 | גרמושקה → BOQ | `app/api/projects/analyze-blueprint` → `ProjectBoqLine` |
+| גרמושקה → הדמיות | `app/api/projects/visualize-floorplan` + ווידג'ט `floorplanViz` — DocAI+OCR+vision ואז Gemini image; כל הפקה נשמרת למנוי עם עריכה/מחיקה |
 | סוכן BOQ (AI) | `app/api/projects/[id]/boq/agent`, `lib/boq/boq-agent.ts`, `BoqAgentPanel` |
 | CRM חיפוש embedding | `ContactSearchEmbedding`, `lib/crm/contact-embedding-index.ts`, cron `contact-embeddings` |
 | Knowledge Vault RAG | `KnowledgeVaultChunk`, `lib/knowledge-vault/chunk-index.ts`, `GET /api/knowledge-vault/search`, UI ב-`KnowledgeVaultPicker` |

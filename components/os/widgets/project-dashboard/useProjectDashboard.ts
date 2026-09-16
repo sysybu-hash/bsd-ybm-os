@@ -52,6 +52,11 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
   const [blueprintCustomEngines, setBlueprintCustomEngines] = useState<string[]>([]);
   const [blueprintUseOcr, setBlueprintUseOcr] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const lastBlueprintFileRef = useRef<File | null>(null);
+  const [vizOpen, setVizOpen] = useState(false);
+  const [vizLoading, setVizLoading] = useState(false);
+  const [vizError, setVizError] = useState<string | null>(null);
+  const [vizResult, setVizResult] = useState<import("@/lib/projects/floorplan-viz").FloorplanVizResult | null>(null);
   const [diaryInitialDesc, setDiaryInitialDesc] = useState<string | undefined>();
   const [diaryInitialTaskId, setDiaryInitialTaskId] = useState<string | null | undefined>();
 
@@ -147,6 +152,7 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
 
   const onBlueprintFile = async (file: File) => {
     if (!resolvedId) return;
+    lastBlueprintFileRef.current = file;
     setUploadingBlueprint(true);
     try {
       const fd = new FormData();
@@ -221,6 +227,56 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     await refresh();
   };
 
+  const generateFloorplanViz = async () => {
+    const file = lastBlueprintFileRef.current;
+    if (!resolvedId || !file) {
+      toast.error(t("projectDashboard.vizNoFile"));
+      return;
+    }
+    setVizOpen(true);
+    setVizLoading(true);
+    setVizError(null);
+    setVizResult(null);
+    try {
+      const fd = new FormData();
+      let upload = file;
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      if (isPdf) {
+        try {
+          const { rasterizePlanFile, fileFromDataUrl } = await import(
+            "@/components/os/widgets/floorplan-viz/plan-source"
+          );
+          upload = fileFromDataUrl(await rasterizePlanFile(file), file.name);
+        } catch {
+          upload = file;
+        }
+      }
+      fd.append("file", upload);
+      fd.append("projectId", resolvedId);
+      if (isPdf) fd.append("planKind", "sales-sheet");
+      const res = await fetch("/api/projects/visualize-floorplan", { method: "POST", credentials: "include", body: fd });
+      const json = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) {
+        const message = typeof json.error === "string" ? json.error : t("projectDashboard.errors.viz");
+        setVizError(message);
+        toast.error(message);
+        return;
+      }
+      setVizResult(json as unknown as import("@/lib/projects/floorplan-viz").FloorplanVizResult);
+    } catch {
+      const message = t("projectDashboard.errors.viz");
+      setVizError(message);
+      toast.error(message);
+    } finally {
+      setVizLoading(false);
+    }
+  };
+
+  const closeFloorplanViz = () => {
+    setVizOpen(false);
+    setVizError(null);
+  };
+
   const setActiveTab = useCallback(
     (id: TabId) => {
       setActiveTabState(id);
@@ -285,6 +341,10 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
     blueprintUseOcr, setBlueprintUseOcr,
     deleteProject,
     onBlueprintFile, confirmBlueprintImport, loadProjectsList,
+    generateFloorplanViz, closeFloorplanViz,
+    vizOpen, vizLoading, vizError, vizResult,
+    vizSourceFile: lastBlueprintFileRef.current,
+    hasBlueprintFile: Boolean(lastBlueprintFileRef.current),
     openWorkspaceWidget,
   };
 }

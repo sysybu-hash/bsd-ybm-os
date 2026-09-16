@@ -1,0 +1,598 @@
+import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
+import {
+  GEOMETRY_PIXEL_LOCK,
+  GEOMETRY_PRESENTATION_LOCK,
+  PRESENTATION_LOCK,
+} from "@/lib/projects/floorplan-viz-lock";
+
+export const FLOORPLAN_VIZ_PRESET_IDS = [
+  "contemporary",
+  "luxury",
+  "scandi",
+  "jerusalem_stone",
+  "developer_white",
+  "haredi_classic",
+  "haredi_modern",
+] as const;
+
+export type FloorplanVizPresetId = (typeof FLOORPLAN_VIZ_PRESET_IDS)[number];
+export type FloorplanVizStyleId = FloorplanVizPresetId | "custom";
+export type FloorplanVizAudience = "general" | "haredi";
+
+export type FloorplanVizStyleKit = {
+  id: FloorplanVizStyleId;
+  audience: FloorplanVizAudience;
+  labelHe: string;
+  labelEn: string;
+  labelRu: string;
+  summaryHe: string;
+  colors: string[];
+  materialsHe: string;
+  promptBlock: string;
+};
+
+export const DEFAULT_FLOORPLAN_VIZ_STYLE_ID: FloorplanVizPresetId = "contemporary";
+
+export const HAREDI_MODESTY_PROMPT = `
+MODESTY (global — every view, every room):
+- No people, no mannequins, no human silhouettes.
+- NO SCREENS anywhere: no televisions, no computer monitors, no laptops, no tablets, no phones, no glowing displays, no soundbar.
+- From bird's-eye a screen reads as a dark rectangular panel. Four places it keeps appearing, all forbidden: a thin black bar lying on a desk or cabinet, a dark rounded slab on a nightstand (a closed laptop), a dark panel mounted flat on a bedroom or living-room wall, and a freestanding TV on a pedestal or low stand facing a bed. A bedroom wall carries a picture, a mirror, a shelf or nothing — never a dark panel. A desk holds unmarked books, a lamp, or a clock, never a monitor. No TV stand, no pedestal screen, no media unit anywhere.
+- A closed laptop from above is dark grey or black and slightly rounded. A notebook is paper-colored. If it is dark, it is a screen — do not draw it.
+- If a wall looks bare, leave it bare. A blank wall is correct; a screen to fill it is not.
+- Do NOT draw the furniture a screen sits on. No media console, no TV unit, no low cabinet placed facing the sofa, no floating shelf under a living-room wall. The wall the sofa faces holds a framed landscape or nothing at all. Every time a console is drawn there, a screen ends up on it.
+- A desk holds exactly this: closed books, a lamp, a pen cup, a notebook. Nothing else goes on a desk. There is no laptop open or closed, no tablet, no keyboard, no dark slab of any size resting on a desk, a shelf, a console, a counter or a bedside table anywhere in this apartment.
+- Wall art hangs ON a wall. Never lay a picture, canvas or framed panel flat on the floor — seen from above the only rectangle lying on a floor is an area rug.
+- Wall art: landscape or geometric only. No figurative paintings, sculptures, or photographs of people.
+- Mezuzah cases on doorposts when a doorway is visible — small physical cases only, no letters.
+- The image must contain no readable Hebrew or Latin text (including book spines, covers, mezuzah letters, and wall verses).
+`.trim();
+
+export const HAREDI_BED_PROMPT = `
+BEDS (haredi — modest AND plan-faithful, non-negotiable):
+- THIS SECTION OVERRIDES the "same size" clause of the pixel lock for beds only. An Israeli sales plan draws the master bedroom as one wide double rectangle; that rectangle is a SLEEPING ZONE, not a furniture spec. Render it as a single twin along the long wall. Every other rule — room, position, count, and every non-bed object — still follows the drawing exactly.
+- NEVER a double / queen / king, no matter how wide the drawn rectangle is. NEVER two twins pushed together as one bed or one shared headboard.
+- Every mattress in the frame is 90 cm wide and 200 cm long. Seen from above it is a long narrow rectangle, more than twice as long as it is wide. A mattress that reads as square-ish, or as wide as the nightstands on either side of it, is a double and is wrong.
+- One pillow on each mattress, one headboard per mattress, and no headboard spanning more than one mattress. Two pillows side by side under one headboard is the double bed this rule exists to prevent.
+- Two nightstands flanking one mattress is a double. A twin has at most one nightstand.
+- The master bedroom is NOT an exception. There is no double bed anywhere in this apartment, in any room, in any view.
+- Copy the NUMBER and POSITION of bed rectangles from the plan. One drawn bed → one twin. Two drawn twins → two twins with the printed gap in those drawn positions.
+- Do NOT add a second bed to a room that has only one rectangle. Do NOT fill an empty ממ"ד with beds. Do NOT turn every bedroom into a twin dormitory.
+- Two twins side-by-side only if the plan draws them that way. A bedroom whose printed width fits one rectangle gets ONE twin along the long wall, with walkable floor.
+- ONLY inside rooms whose kind is bedroom or mmd. Never in an office/study, storage, kitchen, living, hall, or bathroom.
+`.trim();
+
+export const PLAN_TRACE_LOCK = `
+PLAN TRACE (every style, every view — non-negotiable):
+- The attached sales plan is the only layout. Copy walls, doors, windows, room shapes, kitchen run, island, closets, and fixtures 1:1.
+- Style changes finishes, lighting, and textiles ONLY. It must not add, remove, or move rooms, walls, doors, windows, sinks, toilets, bathtubs, stairs, or terraces.
+- Furniture count and placement follow the drawing symbols. Do not invent a second kitchen, a second cooktop, a second office, an island sink, an entrance basin, a guest WC, a wraparound deck, an extra bedroom, or a stairwell.
+- An office/study is desks. A storage room is shelves. Neither is a kitchen or a bedroom. Do not duplicate either.
+- A 90 cm mark is a door width. Hatched rectangles are closets with CLOSED cabinet doors. An oval basin is a sink. A toilet pan is a toilet. If it is not drawn, do not add it.
+- The building's stairwell and lift are OUTSIDE this apartment. A sheet draws חדר מדרגות and מעלית beside the flat because they belong to the building, not to the unit. Never render stair treads, a handrail or a landing inside the apartment: that space is a plain block outside its walls. An Israeli flat on one level has no internal stairs at all.
+- Wet fixtures stay in wet rooms. A toilet, basin, bath or shower appears ONLY inside a room the sheet draws pans or basins in. A bedroom gets a bed, a wardrobe and a bedside table — never a pan beside the bed, never a basin on its wall, never a tiled wet floor. Getting this wrong makes the still unusable, so check every bedroom before finishing.
+- Openings exist ONLY where the plan breaks the wall hatch for one, and this holds for INTERNAL walls as much as outer ones. A stretch drawn as unbroken hatch is a solid wall — never cut a window, a glazed slot, a doorway or a pass-through into it because a room would otherwise look dark or closed in. A bathroom does not open onto the service balcony beside it unless the sheet draws that opening. Walk every wall, count the openings drawn in it, and render exactly those, in those positions.
+- Lounge seating ONLY if the plan draws a sofa or armchair. Dining-only living (table and chairs, no sofa symbol) stays dining-only — do not add a sofa, armchair or coffee table. A fitted unit goes where the sheet draws a symbol for it and nowhere else.
+- The entrance and the circulation strips carry NOTHING standing on the floor. No table, no desk, no chair, no console, no sideboard, no shelving unit, no bookcase, no sofa, no armchair, no rug, no plant stand. Bare floor. A mirror or a row of coat hooks ON THE WALL is the only thing allowed there, and even those only if there is wall to spare.
+- The front door (swing / triangle in the outer wall next to חדר מדרגות / מעלית) opens into an indoor entrance hall (מבואה / כניסה). That space has a roof and a door leaf — never a terrace, courtyard, open deck, or sealed solid wall. A still with no entrance door where the plan draws one is unusable.
+- A brick or paving hatch outside the wall line — usually labelled מרפסת with its own area figure — is a TERRACE, not a room. Open floor, a railing, pale warm paving. It never becomes a bathroom, a bedroom or a store, and it never gets a bath, toilet, basin, bed or wardrobe. Render exactly as many terraces as the plan draws, in the places it draws them.
+- A terrace is exactly the size the sheet gives it. The printed area figure is the size: 4 מ"ר is a narrow strip about as deep as a doorway, not a courtyard. Never widen a terrace to fill a corner of the frame, and never let it come out larger than a bedroom when the sheet says it is smaller.
+- Each terrace is a SEPARATE space in the place the sheet draws it, with its own area figure. Never merge two of them, and never merge a terrace with a service balcony, into one continuous deck running down a whole side of the apartment. Two terraces drawn apart stay apart, with the wall between them.
+- Sanity check before finishing: add the printed terrace areas together. On a 110 מ"ר flat they come to well under a fifth of it. If the outdoor paving in your frame covers more of the floor plate than the living room does, it is far too big — shrink it back to the drawn outline.
+- Terrace paving is PALE AND WARM: light sand or warm cream stone, clearly lighter than the indoor floor, and never cold grey. It catches the same golden-hour daylight as the rooms — if the terrace reads greyer or flatter than the rooms behind it, it is wrong.
+- Small outdoor seating or planters may sit ON a drawn terrace only if they fit the printed area. Do not invent a terrace. Do not enlarge one to hold furniture.
+- מרפסת שירות / שטח שרות is a SERVICE balcony, not a leisure one: washing machine, dryer, a drying rack, shelves, a utility sink if drawn. It never gets lounge chairs or decorative planters, and it is never merged into the terrace beside it.
+- A leisure מרפסת (not labeled שירות) never gets a washing machine — laundry stays indoors or on the service balcony only.
+- A cupboard, boiler housing or air-conditioning unit on a terrace is FINISHED: flush millwork in the apartment's own warm timber, or a cleanly rendered panel with a slim shadow gap, sitting tight against the wall. Never a bare grey slab, never an unpainted box, never a raw appliance standing in the open. If the plan draws no such cupboard, do not add one.
+- Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
+`.trim();
+
+export const KITCHEN_SINK_LOCK = `
+KITCHEN / ENTRANCE FIXTURES (non-negotiable):
+- Kitchen sinks: copy the plan only. A double-bowl sink (כיור כפול) is ONE fixture — two basins side by side on that counter. Do not add a second or third sink location. Do not put a sink on the island unless the plan draws a basin on the island.
+- Entrance: do NOT add a sink, vanity, or נטילת ידיים basin unless the plan draws an oval/round basin fixture. A 90 cm mark is a door width. A wall niche or closet (hatched) is not a sink.
+`.trim();
+
+export const HAREDI_INNOVATIVE_PROMPT = `
+AESTHETIC (haredi — both kits, non-negotiable):
+- Contemporary 2020s Israeli architecture: innovative, clean, high-end modest.
+- NOT antique, NOT baroque, NOT carved period furniture, NOT Victorian library, NOT shtetl, NOT museum Judaica, NOT gold-ornate hotel-classic, NOT heavy velvet drapes.
+- Modern millwork, large-format tile or pale parquet, slim profiles, recessed lighting.
+- Built-in sefarim as ONE modest flush contemporary cabinet on a living-room wall that already has millwork — not a floor-to-ceiling library covering an entire façade, not a wall that splits kitchen from dining.
+- That cabinet lives in the living or dining room and nowhere else. Not in the entrance, not in a hall, not in a bedroom, and never a second one.
+- Simple modern Shabbat table in living only.
+- No screens in any room (TV, monitor, laptop).
+`.trim();
+
+const HAREDI_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
+  overview:
+    "STAGE BY ROOM KIND: Shabbat table and ONE modest sefarim cabinet ONLY in living/dining — not a full-wall library, and only if that living space exists. Kitchen = kosher family kitchen in use (fruit bowl, kettle) — copy the kitchen sink AND fridge / מקרר if drawn, copy island stool count, no extra sinks, no second kitchen. Bathroom = wet fixtures as drawn (washer stays washer; tub only if the sheet draws a tub). Bedrooms copy the drawn bed rectangles (one stays one twin; two stay two twins with a gap; empty ממ\"ד stays empty). Office = desks and chairs in THAT one room only — never clone a second office, never beds, never a cooktop. Storage / חדר שירות = washer or shelves only, never a toilet. Terrace / מרפסת = pale light paving at the printed size; planters only if they fit — never indoor furniture, never a washing machine on a leisure terrace, never spread past the drawn outline, never merged with the terrace or service balcony next to it. מרפסת שירות / שטח שרות = washer, drying rack and shelves only — no lounge furniture. No TV, no monitor, no laptop, no dark slab on any desk. Copy lounge seating from the plan — if living is dining-only, do not add a sofa. Do NOT put a dining table or bookshelves in a bathroom or kitchen.",
+  living:
+    "STAGING (living / dining only): one modest contemporary sefarim cabinet (flush millwork, unmarked spines) — not a floor-to-ceiling library wall that fills a façade or splits kitchen from dining; a simple modern Shabbat table with challah covers and candles — not antique, not carved, not museum Judaica. Copy lounge seating from the plan: if a sofa is drawn, style it with a throw and an area rug; if the living draws only a dining table, do not add a sofa, armchair or coffee table. Copy the dining table size and chair count from the plan. No TV, no monitor, no laptop. No heavy velvet drapes.",
+  kitchen:
+    "STAGING (kitchen only): kosher family kitchen that is in use — fruit bowl, kettle, dish towel. Copy the sink from the plan (double-bowl = one fixture). Copy island stool count from the half-circles. No extra sink, no island sink unless drawn. No mixed meat/dairy serving display. Do NOT place a Shabbat table, sefarim wall, sofa, or bed in the kitchen.",
+  bathroom:
+    "STAGING (bathroom only): sanitary wet room — toilet, basin, and tub/shower as on the plan MUST be visible. Never an empty tiled box. Modest tiles, folded towels. Do NOT place a Shabbat table, bookshelves, sofa, or kitchen cabinets in this room.",
+  bedroom:
+    "STAGING (bedroom only): copy drawn bed rectangles — one twin or two twins with a gap in the drawn positions. Leave walkable floor. Do not pack extra beds. Desk if drawn: books and a lamp only, never a computer, never a dark slab. No double bed. No TV, no dining table, no kitchen.",
+  mmd:
+    "STAGING (safe room / ממ\"ד only): copy the drawing. If empty, leave empty — no beds. If beds are drawn, twins with a gap, never a double. Heavy door if drawn. Desk if drawn: books and a lamp only, never a computer. No TV, no dining table.",
+  balcony:
+    "STAGING (balcony/terrace only): outdoor space matching the plan, one planter if the terrace is large enough. Keep it open to the sky if the drawing shows an open terrace (sukkah-capable). No living-room furniture, no kitchen, no bathroom fixtures.",
+  circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
+  utility:
+    "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
+  other: "STAGING: furniture that matches this enclosed room only. Office = desks, never a kitchen, never beds. Do not import another room's furniture.",
+};
+
+const GENERAL_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
+  overview:
+    "STAGE BY ROOM KIND from the plan: kitchen fixtures as drawn — sink, cooktop, and fridge / מקרר if drawn; exactly the printed kitchen count, no second kitchen in an office, L-run stays L; bathroom wet fixtures as drawn (washer≠bathtub; never empty tiled rooms); never dump washers onto a leisure terrace; bedrooms copy bed count from the plan; living keeps the open volume and copies seating from the sheet (no sofa unless drawn); closets have closed doors; the single office stays desks. Do not clone a second office. Do not invent a TV, laptop or media wall. חדר שירות is laundry, never a toilet. Do not put a dining table in a bathroom or kitchen.",
+  living:
+    "STAGING (living / dining only): copy the dining table and seating from the plan symbols. If the living draws only a dining table, do not add a sofa. Keep the living/kitchen opening if drawn. Do not add a partition wall. No bed. TV only if the plan draws a TV.",
+  kitchen:
+    "STAGING (kitchen only): copy the drawn run and island. Sink only where drawn (double-bowl = one fixture). No island sink unless drawn. No bed, no dining table from the living room.",
+  bathroom:
+    "STAGING (bathroom only): copy tub/toilet/sink from the plan — they MUST be visible. Never an empty tiled bathroom. Do not add a walk-in shower unless a tray is drawn. No dining table, sofa, or kitchen.",
+  bedroom:
+    "STAGING (bedroom only): copy bed count and placement from the plan — one drawn bed stays one bed; two twins stay two twins with the drawn gap. Do not replace twins with a double. Desk if drawn: books and a lamp, not a laptop unless a computer is drawn. No kitchen.",
+  mmd:
+    "STAGING (safe room / ממ\"ד only): copy the drawn bed if present. Small protected window, not a sliding terrace wall. No kitchen.",
+  balcony:
+    "STAGING (balcony/terrace only): outdoor space matching the plan. Keep it open to the sky if the drawing shows an open terrace. No kitchen, no bathroom fixtures.",
+  circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
+  utility:
+    "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
+  other: "STAGING: furniture that matches this enclosed room only. Office = desks, never a kitchen. Do not import another room's furniture.",
+};
+
+export const LIVED_IN_STAGING = `
+LIVED-IN HOME (every view — not a vacant show unit):
+- Photograph a family apartment that is already lived in. Forbidden: sterile CAD dollhouse, empty contractor white-box, furniture catalog with bare counters, empty tiled bathrooms, closets without doors.
+- Lighting and warmth are specified in their own section below; follow it.
+- Layered textiles in the rooms they belong: area rug under living seating, pillows and a throw on sofas and beds, bath towels on a rail, curtains only on windows that exist in the plan.
+- Small life props: fruit bowl, kettle and cutting board on kitchen counters; place setting or candles on the dining table; bedside lamp and folded blanket in bedrooms; one potted plant by a real window or on a drawn terrace.
+- Props and textiles only on furniture that exists on the sales sheet. Do not add a sofa, dining table, TV, media wall, extra vanity, walk-in shower, double sink, or extra desk that is not drawn.
+- Lived-in does not mean electronics. Never add a laptop, tablet, keyboard, phone, or dark rectangular slab on a desk, nightstand, cabinet or wall.
+- Visible wood grain and fabric weave — photoreal, not plastic CGI. Do not clutter every surface.
+- Do not add people. Do not hide walls, doors, or windows. Do not add extra rooms or openings.
+`.trim();
+
+export const WARM_INVITING_LIGHT = `
+LIGHT AND WARMTH (every view — a brochure hero shot, not a survey drawing):
+- Golden-hour interior light, warm white balance near 3000K. Honey highlights on wood, plaster that reads warm cream rather than grey, soft amber pooling across the floor.
+- Lamps are staging, not architecture: a pendant over the dining table, under-cabinet strips in the kitchen, bedside lamps, a floor lamp beside the living seating, warm cove light along millwork. Add them and switch them ON — they are expected in a brochure still and they do not change the plan.
+- Each lit fixture must read as lit: a visible warm halo on the wall or ceiling behind it and a soft pool of amber spilling onto the floor or counter below. Light that leaves no pool has not been rendered.
+- The floor must not be one flat even sheet of beige. Break it with warm pools under the fixtures, daylight falling from the drawn windows, and soft shadow between them.
+- Daylight arrives through the drawn windows and terraces as warm, diffused light with gentle directional shadows. No blown highlights, no cold overcast flatness, no harsh raking sun that washes out the floor plate.
+- Materials read warm and tactile: honey and caramel oak, warm cream stone, brushed brass or warm nickel, textiles with visible weave and soft drape.
+- The result should feel like a home someone wants to walk into: rich, layered, glowing. Avoid grey-blue shadow, cold white LED, flat grey ambient occlusion, uniform brightness edge to edge, and the over-bright empty look of a showroom.
+- Warmer, not brighter: raise the colour temperature, never the exposure. Asked for brightness this came back pale and flat, which is worse. The floor reads honey and caramel with amber pools under the fixtures and real shadow between them; every room carries a lit fixture or daylight falling across its floor. A uniformly pale beige frame with no shadow is the failure — the answer is more amber and more contrast, not more light.
+- Warmth is finish and lighting ONLY. It never changes walls, openings, fixtures, furniture counts, or positions.
+`.trim();
+
+const NO_LAYOUT_CHANGE =
+  "Finishes and furniture only. Do not change walls, doors, windows, or room proportions. Do not invent openings, arches, or extra rooms.";
+
+function kit(partial: FloorplanVizStyleKit): FloorplanVizStyleKit {
+  if (partial.audience !== "haredi") return partial;
+  return applyHarediModesty(partial);
+}
+
+export function applyHarediModesty(input: FloorplanVizStyleKit): FloorplanVizStyleKit {
+  if (input.audience !== "haredi") return input;
+  let promptBlock = input.promptBlock.trim();
+  if (!promptBlock.includes("MODESTY (global")) {
+    promptBlock = `${promptBlock}\n\n${HAREDI_MODESTY_PROMPT}`;
+  }
+  if (!promptBlock.includes("AESTHETIC (haredi")) {
+    promptBlock = `${promptBlock}\n\n${HAREDI_INNOVATIVE_PROMPT}`;
+  }
+  return {
+    ...input,
+    audience: "haredi",
+    promptBlock,
+  };
+}
+
+export const SCALE_LOCK = `
+SCALE / LIVABILITY (every view — non-negotiable):
+- Furniture must leave walkable floor. This is a family apartment, not a hostel or dormitory.
+- Copy bed rectangles from the plan. Do not add extra beds to make rooms look "full".
+- A bedroom whose printed width fits one bed symbol gets ONE twin. Two twins only where two rectangles are drawn.
+- An empty ממ"ד stays empty. An office is desks, never beds.
+- Island stools = the drawn half-circle count. Dining chairs = the chairs around the drawn table.
+- Do not invent a floor-to-ceiling library covering an entire wall. Do not oversize the dining table or island relative to the symbols.
+- Closets stay as the hatched blocks, rendered as cabinets with CLOSED doors. Do not turn every wall into millwork. Do not turn a closet into an open walk-in.
+`.trim();
+
+export const CONTENTS_LOCK = `
+CONTENTS (every view — non-negotiable):
+- Furniture and fixtures come from the original sales sheet, not from interior-design memory.
+- The wall-tracing attachment is WALLS ONLY and looks empty. Do not copy that emptiness into rooms that have furniture symbols on the sheet. ממ"ד that is drawn empty stays empty.
+- Copy each room's listed contents. Do not merge an office into a bedroom or a bedroom into a bathroom.
+- Desk-only rooms (no bed) must match the office count. A second room of desks without a bed is a failed clone — that room is a bedroom if a bed rectangle is drawn.
+- Do not add a TV, media wall, extra sofa, second dining table, hallway vanity, double sink, glass walk-in shower, or extra desk unless that symbol is drawn.
+- Bathroom fixtures follow the pans and MUST be visible: bathtub ONLY if the sheet draws a tub outline; a washer / כביסה symbol stays a washer — never invent a tub there. Toilet pan stays a toilet, oval basin stays a basin. Never an empty tiled wet room. No extra shower stall. Guest WC keeps its drawn basin.
+- Storage / laundry / חדר שירות / ח.שרות stay a washer or shelves. One washer unless two are drawn — no invented stacked dryer. NEVER a toilet, basin, bathtub, or shower. Hebrew שירות here means service/laundry, not שירותים. Do not restage them as bedrooms or as a WC.
+`.trim();
+
+export const OVERVIEW_FURNITURE_LOCK = `
+FURNITURE LOCK (cutaway / isometric — non-negotiable):
+- Place a bed ONLY inside rooms whose kind is bedroom or mmd. Never put a bed in living, kitchen, hall, office, storage, stair, or bathroom.
+- Living = dining table and any sofa the plan draws (rug and table styling allowed). If the sheet draws only a dining table, there is no sofa.
+- Kitchen = counters and island as drawn (small kitchen props allowed). No bed. No extra sink. Exactly the kitchen count from the inventory — never a second cooktop in another room.
+- Office / study = desks and chairs in the ONE listed office. No second office. No cooktop, no kitchen sink, no beds.
+- Storage / laundry / חדר שירות = washer or shelves only. No kitchen, no toilet, no basin, no bathtub, no shower, no beds. This is not שירותים.
+- Stair = treads and landing only. If inventory says no internal stair, do not model a stair at all.
+- Entrance / hall = no bed and no extra bedroom. No entrance sink unless the plan draws a basin.
+- Copy closet blocks as cabinets with closed doors. Copy island stools, dining-table size, and bed rectangles from the drawing symbols. Do not pack extra beds into a narrow room.
+- Omit CAD entrance arrows. Show wet fixtures in every bathroom that has pans on the sheet.
+`.trim();
+
+/**
+ * The locks, restated for a render that already contains the flat.
+ *
+ * The originals were written for one job — hand the model a sales plan and ask
+ * it to draw an apartment — and they carry that job in every line. Composed
+ * over the geometric render they are not merely redundant, they are false in
+ * places, and a prompt that contradicts itself is resolved by the model rather
+ * than by us. That has cost this project twice already: a legend naming green
+ * as the colour of a chair while also forbidding green, and a key telling the
+ * model the render carried no chairs when it did.
+ *
+ * Three clauses were doing active harm here.
+ *
+ * PLAN_TRACE_LOCK opens "The attached sales plan is the only layout" — the
+ * attachment is the render. It also tells the model to furnish the terraces
+ * with a bistro table and planters, which is the opposite of the geometry key.
+ *
+ * CONTENTS_LOCK says "The wall-tracing attachment is WALLS ONLY and looks
+ * empty. Do not copy that emptiness into rooms that have furniture symbols."
+ * The geometric render is full of furniture; that instructs the model to
+ * ignore what it can see and invent from the sheet instead.
+ *
+ * HAREDI_BED_PROMPT overrides the size lock so a wide drawn double can be
+ * narrowed to a twin. Bed blocks are already single-bed sized before the model
+ * sees them, so all that clause can do now is license resizing a bed.
+ *
+ * What survives is what the geometry cannot enforce: prop discipline, modesty,
+ * no screens, no text in the image.
+ */
+export const GEOMETRY_TRACE_LOCK = `
+${GEOMETRY_PIXEL_LOCK}
+
+GEOMETRY TRACE (every style, every view — non-negotiable):
+- The attached render IS the apartment, drawn from the CAD file. Every wall, thickness, doorway and the outline are already correct. Do not add, remove, move, lengthen, shorten or straighten any of them.
+- Do not rotate, mirror or reflect. The result must overlay the input exactly.
+- Openings exist only where the render breaks a wall. A stretch of unbroken wall is solid, however closed-in the room looks — never cut a window or a pass-through into it.
+- Do not add a room, a wing, a stair or an open space that is not in the render. An Israeli flat on one level has no internal stairs; the building's stairwell and lift are outside it.
+- A paved area with a railing is a TERRACE: open floor and open sky, at exactly the size and in exactly the place the render draws it. Never roof it, never merge two of them, never widen one to fill a corner.
+- The entrance and the circulation strips carry nothing standing on the floor. Bare floor. A mirror or coat hooks on the wall are the only things allowed there.
+- Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
+`.trim();
+
+export const GEOMETRY_CONTENTS_LOCK = `
+CONTENTS (every view — non-negotiable):
+- The render already carries the furniture, positioned as the architect drew it. Your job is to make each block look like the real object at exactly that footprint — not to decide what belongs in the room.
+- Render every block. Add nothing where there is no block: no extra sofa, no second dining table, no hallway vanity, no walk-in shower, no media wall, no desk.
+- A room that looks sparse is sparse in the drawing. Do not fill it.
+- Wet fixtures appear only where the render puts them, and they must be visible: a bath stays a bath, a pan stays a toilet, a basin stays a basin. Never an empty tiled wet room, and never a fixture in a room that has none.
+`.trim();
+
+export const GEOMETRY_SCALE_LOCK = `
+SCALE / LIVABILITY (every view — non-negotiable):
+- Every object is exactly the size of its block and no larger. Do not oversize a dining table, an island or a wardrobe to fill the room round it.
+- Furniture must leave the walkable floor the render leaves. This is a family apartment, not a dormitory.
+- Do not add a bed, a stool or a chair to make a room look fuller, and do not merge two blocks into one larger object.
+- Closets are cabinets with CLOSED doors. Do not turn a wall into millwork or a closet into an open walk-in.
+`.trim();
+
+export const GEOMETRY_FURNITURE_LOCK = `
+FURNITURE LOCK (cutaway / isometric — non-negotiable):
+- A bed goes only where a bed block stands. Never in a living room, kitchen, hall, storage or bathroom.
+- A kitchen has the counters, island and appliances the render draws, and no second cooktop or sink anywhere else in the flat.
+- Storage / laundry / חדר שירות is a washer or shelves. Never a toilet, basin, bath or shower — Hebrew שירות here means service, not שירותים.
+- Every bathroom the render puts fixtures in shows them.
+`.trim();
+
+/**
+ * Where the style's staging stops and the geometry's furniture begins.
+ *
+ * LIVED_IN_STAGING is what makes a render read as a home rather than a survey
+ * drawing, and it earns its place in a booklet someone is paying for. But it
+ * also lists props by name — a fruit bowl, a kettle, candles on the table —
+ * and read beside "add no furniture where there is no block" it is a
+ * contradiction. The line between them is the one worth stating: soft things
+ * on drawn furniture, never a new piece of furniture.
+ */
+export const PROPS_BOUNDARY = `
+PROPS (the boundary — non-negotiable):
+- Props, textiles and greenery are yours: rugs, cushions, throws, towels, bowls, plants, a place setting. Put them ON the furniture the render draws, or on its floor.
+- Furniture is not yours. If a prop needs a table, a shelf or a console to stand on and the render draws none, leave the prop out. Never add the furniture to hold it.
+`.trim();
+
+export const HAREDI_BED_GEOMETRY = `
+BEDS (haredi — non-negotiable):
+- Every mattress is 90 cm wide and 200 cm long, exactly the size of its block. Seen from above it is more than twice as long as it is wide. A mattress that reads square-ish, or as wide as the nightstands beside it, is a double and is wrong.
+- NEVER a double, queen or king. NEVER two mattresses pushed together, and never one headboard spanning more than one mattress. One pillow per mattress.
+- Two nightstands flanking one mattress is a double. A twin has at most one nightstand.
+- The master bedroom is not an exception. There is no double bed anywhere in this apartment, in any room, in any view.
+- One block, one bed. Do not add a bed to a room, and do not leave one out.
+`.trim();
+
+/** גימורים לכל תמונה + בימוי רהוט רק לסוג החלל של המבט */
+export function stylePromptForView(
+  kit: FloorplanVizStyleKit,
+  view: { kind: "overview" | "isometric" | "interior"; roomKind?: FloorplanRoomKind },
+  options?: {
+    /**
+     * What the model is being handed. "plan" is the sales sheet and the model
+     * is drawing the flat from it; "geometry" is a render that already contains
+     * the flat, and the locks that describe the sheet are false against it.
+     */
+    source?: "plan" | "geometry";
+  },
+): string {
+  const geometry = options?.source === "geometry";
+  const parts = [kit.promptBlock.trim()];
+  parts.push(geometry ? GEOMETRY_TRACE_LOCK : PLAN_TRACE_LOCK);
+  if (!geometry) parts.push(KITCHEN_SINK_LOCK);
+  parts.push(geometry ? GEOMETRY_SCALE_LOCK : SCALE_LOCK);
+  parts.push(geometry ? GEOMETRY_CONTENTS_LOCK : CONTENTS_LOCK);
+  parts.push(geometry ? GEOMETRY_PRESENTATION_LOCK : PRESENTATION_LOCK);
+  if (kit.id !== "developer_white") {
+    parts.push(LIVED_IN_STAGING);
+    if (geometry) parts.push(PROPS_BOUNDARY);
+    // developer_white is deliberately a bare contractor handover, so it stays cold.
+    parts.push(WARM_INVITING_LIGHT);
+  }
+  if (kit.audience === "haredi") {
+    if (!kit.promptBlock.includes("MODESTY (global")) parts.push(HAREDI_MODESTY_PROMPT);
+    if (!kit.promptBlock.includes("AESTHETIC (haredi")) parts.push(HAREDI_INNOVATIVE_PROMPT);
+    parts.push(geometry ? HAREDI_BED_GEOMETRY : HAREDI_BED_PROMPT);
+  }
+  if (view.kind === "overview" || view.kind === "isometric") {
+    if (!geometry) {
+      parts.push(kit.audience === "haredi" ? HAREDI_STAGING.overview : GENERAL_STAGING.overview);
+    }
+    parts.push(geometry ? GEOMETRY_FURNITURE_LOCK : OVERVIEW_FURNITURE_LOCK);
+  } else {
+    const kind = view.roomKind ?? "other";
+    const staging = kit.audience === "haredi" ? HAREDI_STAGING : GENERAL_STAGING;
+    parts.push(staging[kind] ?? staging.other);
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
+export const FLOORPLAN_VIZ_PRESETS: Record<FloorplanVizPresetId, FloorplanVizStyleKit> = {
+  contemporary: {
+    id: "contemporary",
+    audience: "general",
+    labelHe: "עכשווי ישראלי",
+    labelEn: "Contemporary Israeli",
+    labelRu: "Современный израильский",
+    summaryHe: "פרקט בהיר, אור חם, בית שגרים בו",
+    colors: ["#f5f0e8", "#d6c4a8", "#6b7c6a", "#2f3430"],
+    materialsHe: "פרקט אלון בהיר · קירות טיח לבן · שיש קרם במטבח",
+    promptBlock: [
+      "STYLE KIT — contemporary Israeli apartment:",
+      "Light oak parquet, white plaster walls, cream stone kitchen counters, matte nickel hardware.",
+      "Warm late-afternoon daylight. Style the furniture the plan draws: a throw on a drawn sofa, a lived-in dining table. If the sheet has no sofa, do not add one.",
+      "TV only if the plan draws a TV or media unit. Do not invent a media-wall partition or a laptop on a desk.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  },
+  luxury: {
+    id: "luxury",
+    audience: "general",
+    labelHe: "פרמיום / יוקרתי",
+    labelEn: "Luxury",
+    labelRu: "Премиум",
+    summaryHe: "שיש ואבן, מטבח גבוה, תאורת נסתרת",
+    colors: ["#ece8e1", "#b7a48a", "#5c5348", "#1f1c19"],
+    materialsHe: "שיש פורצלן · אבן טבעית · גופי תאורה שקועים · מטבח גבוה",
+    promptBlock: [
+      "STYLE KIT — luxury Israeli apartment:",
+      "Large-format porcelain or marble, fluted wood, full-height kitchen, recessed cove lighting, slim black or brass profiles.",
+      "High-end lived-in furniture as drawn: a rug under seating that exists, table styling, lamps on. Do not add a sofa or TV the plan does not draw. Soft evening-neutral daylight, not a nightclub.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  },
+  scandi: {
+    id: "scandi",
+    audience: "general",
+    labelHe: "סקנדינבי-מינימל",
+    labelEn: "Scandinavian minimal",
+    labelRu: "Скандинавский минимализм",
+    summaryHe: "לבן, עץ בהיר, קווים נקיים",
+    colors: ["#f7f7f4", "#e4ddd2", "#a3b5a2", "#2c2c2c"],
+    materialsHe: "עץ ליבנה · קירות לבנים · טקסטיל פשתן",
+    promptBlock: [
+      "STYLE KIT — Scandinavian minimal:",
+      "White walls, pale birch wood, linen textiles, a few plants and a wool rug — airy, not a vacant loft.",
+      "Soft north daylight, no gold bling, no heavy drapes. Style the furniture the plan draws; do not add a sofa or TV to fill the room.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  },
+  jerusalem_stone: {
+    id: "jerusalem_stone",
+    audience: "general",
+    labelHe: "אבן ירושלמי",
+    labelEn: "Jerusalem stone",
+    labelRu: "Иерусалимский камень",
+    summaryHe: "אבן טבעי חם, תריסים — בלי להמציא פתחים",
+    colors: ["#e8dcc8", "#c9b396", "#8a7358", "#4a4036"],
+    materialsHe: "אבן ירושלמית · עץ אלון · תריסי עץ רק אם יש חלון בתוכנית",
+    promptBlock: [
+      "STYLE KIT — Jerusalem stone / Eretz-Israel:",
+      "Warm limestone or Jerusalem-stone wall cladding, oak wood, terracotta or stone floors.",
+      "Wooden shutters ONLY on windows that exist in the attached plan. Do NOT add arches, extra windows, or decorative openings.",
+      "Style the furniture the plan draws. Do not add a sofa or TV the sheet does not draw.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  },
+  developer_white: {
+    id: "developer_white",
+    audience: "general",
+    labelHe: "דירת קבלן",
+    labelEn: "Developer white box",
+    labelRu: "Квартира от застройщика",
+    summaryHe: "קירות לבנים, ריהוט דליל לקנה־מידה, מראה מכירה",
+    colors: ["#f4f4f2", "#e0e0dc", "#b0b0aa", "#4d4d4d"],
+    materialsHe: "קירות גבס לבנים · ריצוף פורצלן אפור בהיר · מטבח סטנדרטי",
+    promptBlock: [
+      "STYLE KIT — Israeli developer / contractor finish (white box):",
+      "Plain white walls, light grey porcelain tile, basic white kitchen cabinets, almost empty rooms.",
+      "Only a few pieces of anonymous scale furniture. No luxury staging, no heavy décor.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  },
+  haredi_classic: kit({
+    id: "haredi_classic",
+    audience: "haredi",
+    labelHe: "חרדי חדשני",
+    labelEn: "Haredi innovative",
+    labelRu: "Инновационный хареди",
+    summaryHe: "עכשווי וחם, ארון ספרים מובנה, שולחן שבת מודרני — לא עתיק",
+    colors: ["#c4a574", "#f4efe6", "#5c6b5a", "#2c332c"],
+    materialsHe: "אלון חם עכשווי · ריצוף גדול · תאורה שקועה · ארון ספרים מובנה",
+    promptBlock: [
+      "STYLE KIT — innovative contemporary haredi family apartment (warm oak, NOT antique):",
+      "2020s Israeli architecture. Clean millwork, warm contemporary oak — not carved baroque, not Victorian, not shtetl.",
+      "Large-format warm-toned tile or honey parquet, warm recessed lighting, slim profiles.",
+      "Built-in flush sefarim cabinet in living (modest, not a full-wall library). Simple modern Shabbat table — not a museum piece, not gold-ornate.",
+      "Warm family home at golden hour: rug and pillows only on seating the plan draws, fruit bowl in the kitchen, every lamp glowing. NOT a vacant 3D model.",
+      "If the living draws only a dining table, do not add a sofa. ZERO screens anywhere — no TV, no laptop, no dark slab on a desk or wall.",
+      "NO antique furniture, NO heavy velvet drapes, NO carved period wood.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  }),
+  haredi_modern: kit({
+    id: "haredi_modern",
+    audience: "haredi",
+    labelHe: "חרדי מינימל חדשני",
+    labelEn: "Haredi innovative minimal",
+    labelRu: "Минимальный инновационный хареди",
+    summaryHe: "בהיר, קווים נקיים, צנוע וחדשני — לא עתיק",
+    colors: ["#f6f1e8", "#cbb892", "#6f7d6a", "#2f3a32"],
+    materialsHe: "אלון בהיר · טיח לבן · פרופילים דקים · ספרים מובנים",
+    promptBlock: [
+      "STYLE KIT — innovative minimal haredi apartment (NOT antique):",
+      "Pale oak, warm off-white walls, slim profiles, lots of daylight. 2020s Israeli modest-modern — not a secular design-magazine loft, not a period interior.",
+      "Lived-in: linen throw on drawn seating, a plant, lamps on. NOT an empty white model. If the living draws only a dining table, do not add a sofa.",
+      "ZERO screens anywhere — no TV, no laptop, no dark slab on a desk or wall.",
+      "NO heavy drapes, NO carved wood, NO baroque, NO museum Judaica.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  }),
+};
+
+export function isFloorplanVizPresetId(value: string): value is FloorplanVizPresetId {
+  return (FLOORPLAN_VIZ_PRESET_IDS as readonly string[]).includes(value);
+}
+
+export function listFloorplanVizPresets(): FloorplanVizStyleKit[] {
+  return FLOORPLAN_VIZ_PRESET_IDS.map((id) => FLOORPLAN_VIZ_PRESETS[id]);
+}
+
+export function floorplanVizStyleThumbSrc(id: FloorplanVizStyleId): string | null {
+  if (!isFloorplanVizPresetId(id)) return null;
+  return `/floorplan-viz/styles/${id}.jpg`;
+}
+
+const HEX = /^#?[0-9a-fA-F]{6}$/;
+
+function asColor(raw: unknown): string | null {
+  const s = String(raw ?? "").trim();
+  if (!HEX.test(s)) return null;
+  return s.startsWith("#") ? s.toLowerCase() : `#${s.toLowerCase()}`;
+}
+
+export function parseCustomStyleKit(raw: unknown): FloorplanVizStyleKit | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const promptBlock = String(r.promptBlock ?? "").trim();
+  if (!promptBlock) return null;
+  const audience: FloorplanVizAudience = r.audience === "haredi" ? "haredi" : "general";
+  const colors = Array.isArray(r.colors)
+    ? r.colors.map(asColor).filter((c): c is string => c != null).slice(0, 6)
+    : [];
+  const kitRow: FloorplanVizStyleKit = {
+    id: "custom",
+    audience,
+    labelHe: String(r.labelHe ?? "סגנון אישי").slice(0, 80) || "סגנון אישי",
+    labelEn: String(r.labelEn ?? "Custom style").slice(0, 80) || "Custom style",
+    labelRu: String(r.labelRu ?? "Свой стиль").slice(0, 80) || "Свой стиль",
+    summaryHe: String(r.summaryHe ?? "").slice(0, 200),
+    colors,
+    materialsHe: String(r.materialsHe ?? "").slice(0, 200),
+    promptBlock: promptBlock.slice(0, 4000),
+  };
+  return applyHarediModesty(kitRow);
+}
+
+export function resolveFloorplanVizStyle(
+  styleId?: string | null,
+  customKit?: unknown,
+): FloorplanVizStyleKit {
+  if (styleId === "custom" || customKit != null) {
+    const parsed = parseCustomStyleKit(customKit);
+    if (parsed) return parsed;
+  }
+  if (styleId && isFloorplanVizPresetId(styleId)) return FLOORPLAN_VIZ_PRESETS[styleId];
+  return FLOORPLAN_VIZ_PRESETS[DEFAULT_FLOORPLAN_VIZ_STYLE_ID];
+}
+
+export type CustomStyleAnswers = {
+  freeText?: string;
+  audience?: FloorplanVizAudience;
+  mood?: "light" | "dark" | "luxury" | "developer";
+  dominantColor?: string;
+  mustHave?: string;
+  mustNot?: string;
+};
+
+const MOOD_PROMPT: Record<NonNullable<CustomStyleAnswers["mood"]>, string> = {
+  light: "Light wood, airy off-white walls, soft daylight.",
+  dark: "Dark stained wood, warmer lamps, heavier textiles.",
+  luxury: "Premium stone, full-height millwork, recessed lighting.",
+  developer: "Plain contractor white-box finishes, sparse anonymous furniture.",
+};
+
+/** בניית סל בלי LLM — משמש גם כגיבוי לסייען */
+export function buildCustomStyleKitFromAnswers(answers: CustomStyleAnswers): FloorplanVizStyleKit {
+  const audience: FloorplanVizAudience = answers.audience === "haredi" ? "haredi" : "general";
+  const mood = answers.mood && MOOD_PROMPT[answers.mood] ? answers.mood : "light";
+  const color = asColor(answers.dominantColor);
+  const free = String(answers.freeText ?? "").trim().slice(0, 800);
+  const must = String(answers.mustHave ?? "").trim().slice(0, 400);
+  const mustNot = String(answers.mustNot ?? "").trim().slice(0, 400);
+  const parts = [
+    "STYLE KIT — custom user briefing:",
+    free || "Follow the mood and constraints below.",
+    audience === "haredi" && mood === "dark"
+      ? "Warm contemporary dark oak millwork — 2020s Israeli, not Victorian or carved antiques."
+      : MOOD_PROMPT[mood],
+    audience === "haredi"
+      ? "Contemporary 2020s Israeli modest interior — innovative, not antique. No carved period furniture, no heavy velvet, no museum Judaica."
+      : "",
+    color ? `Dominant accent colour hex ${color}.` : "",
+    must ? `Must include: ${must}.` : "",
+    mustNot ? `Must NOT include: ${mustNot}.` : "",
+    NO_LAYOUT_CHANGE,
+    "Furniture must not hide walls or openings. Copy fixture and furniture count from the plan. Stage a lived-in home — rugs, lamps, small props — only in the furniture that belongs in THIS view's room kind.",
+  ].filter(Boolean);
+  const summaryBits = [free, must].filter(Boolean);
+  return applyHarediModesty({
+    id: "custom",
+    audience,
+    labelHe: audience === "haredi" ? "סגנון אישי · חרדי" : "סגנון אישי",
+    labelEn: audience === "haredi" ? "Custom · haredi" : "Custom style",
+    labelRu: audience === "haredi" ? "Свой стиль · хареди" : "Свой стиль",
+    summaryHe: (summaryBits.join(" · ") || "סל לפי בחירת המשתמש").slice(0, 200),
+    colors: color ? [color] : ["#f5f0e8", "#6b7c6a", "#2f3430"],
+    materialsHe: [MOOD_PROMPT[mood], must].filter(Boolean).join(" · ").slice(0, 200),
+    promptBlock: parts.join(" "),
+  });
+}

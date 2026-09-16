@@ -4,7 +4,7 @@ import { useI18n } from "@/components/os/system/I18nProvider";
 import WidgetState from "@/components/os/WidgetState";
 import WindowBody from "@/components/os/layout/WindowBody";
 import React, { useMemo } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import {
   XAxis,
   YAxis,

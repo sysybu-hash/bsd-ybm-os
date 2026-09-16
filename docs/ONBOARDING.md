@@ -79,6 +79,17 @@ GEMINI_API_KEY="AIza..."           # from aistudio.google.com (free)
 
 # Cron (any string for local dev)
 CRON_SECRET="local-dev-secret"
+
+# Blob storage — needed to upload a sales sheet or a booklet over ~4MB.
+# Vercel dashboard → Storage → Blob → connect to the project, then `vercel env pull`.
+# Without it, uploads still work up to 4MB and larger files are refused with a
+# message rather than failing at the platform edge.
+# BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
+
+# CAD conversion — only needed to accept .dwg uploads. A .dxf is read directly.
+# Without it, a DWG upload is refused with a message telling the user to export
+# the drawing as DXF from their CAD program.
+# CLOUDCONVERT_API_KEY="..."
 ```
 
 Run the audit to see what else you might need:

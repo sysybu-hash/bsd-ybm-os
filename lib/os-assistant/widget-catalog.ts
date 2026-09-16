@@ -158,6 +158,13 @@ export const OS_ASSISTANT_WIDGETS: OsWidgetAction[] = [
     keywords: ["שטח", "field", "copilot", "הצעה מהירה", "אתר", "site", "קבלן"],
   },
   {
+    id: "floorplanViz",
+    labelHe: "הדמיות תוכנית",
+    labelEn: "Floor-plan visuals",
+    labelRu: "Визуализации плана",
+    keywords: ["הדמיה", "גרמושקה", "תוכנית", "floorplan", "viz", "3d", "דירה", "ממ\"ד"],
+  },
+  {
     id: "appBuilder",
     labelHe: "מחולל אפליקציות AI",
     labelEn: "AI App Builder",
@@ -237,6 +244,8 @@ const ALIASES: Record<string, WidgetType> = {
   quoteGen: "docCreator",
   scan: "aiScanner",
   field: "fieldCopilot",
+  floorplan: "floorplanViz",
+  viz: "floorplanViz",
   executive: "executiveHub",
 };
 

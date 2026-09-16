@@ -285,6 +285,8 @@
 | `GET` | `/api/projects/{id}/work-diaries` | workspace-session | — |
 | `POST` | `/api/projects/{id}/work-diaries` | workspace-session | — |
 | `POST` | `/api/projects/analyze-blueprint` | workspace-session | ✓ |
+| `POST` | `/api/projects/visualize-floorplan` | workspace-session | ✓ |
+| `POST` | `/api/projects/visualize-floorplan/export-pdf` | workspace-session | ✓ |
 | `GET` | `/api/projects/detail` | workspace-session | — |
 | `POST` | `/api/projects/export-blueprint-excel` | workspace-session | ✓ |
 | `POST` | `/api/projects/export-blueprint-pdf` | workspace-session | ✓ |

@@ -64,6 +64,8 @@ const serverSchema = z.object({
   GEMINI_ADMIN_ASSISTANT_MODEL: optStr,
   GEMINI_BLUEPRINT_MODEL: optStr,
   GEMINI_BLUEPRINT_PRIMARY_MODEL: optStr,
+  /** מודל יצירת תמונה להדמיות מתוכנית (ברירת מחדל: Nano Banana Pro → Flash Image) */
+  GEMINI_IMAGE_MODEL: optStr,
   GEMINI_OMNI_VOICE_MODEL: optStr,
   // Per-scan-type model overrides — allows env-based tuning without redeploy
   GEMINI_INVOICE_MODEL: optStr,
@@ -117,6 +119,17 @@ const serverSchema = z.object({
   MISTRAL_API_KEY: optStr,
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
+
+  // --- CAD conversion ---
+  // DWG is a closed format; the only open reader is GPL. A DWG upload is
+  // converted to DXF by this service instead, and without a key the user is
+  // told to save the file as DXF themselves.
+  CLOUDCONVERT_API_KEY: optStr,
+
+  // --- Blob storage ---
+  // A sales sheet and a booklet both run past Vercel's ~4.5MB request limit, so
+  // the browser uploads them straight to Blob and the route is handed a URL.
+  BLOB_READ_WRITE_TOKEN: optStr,
 
   // --- Analytics ---
   POSTHOG_API_KEY: optStr,

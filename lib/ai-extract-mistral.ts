@@ -33,7 +33,14 @@ export async function extractDocumentWithMistral(
   let lastErr: Error | null = null;
 
   for (const model of models) {
+    const isPdf = mimeType === "application/pdf";
     const dataUrl = `data:${mimeType};base64,${base64}`;
+    // image_url rejects a PDF outright ("Image content must be a URL ... Received:
+    // data:application/pdf"), which dropped Mistral from the consensus on every
+    // PDF upload. Documents go in their own part.
+    const sourcePart = isPdf
+      ? { type: "document_url" as const, document_url: dataUrl }
+      : { type: "image_url" as const, image_url: { url: dataUrl } };
 
     const res = await fetch(`${MISTRAL_API_BASE}/chat/completions`, {
       method: "POST",
@@ -49,10 +56,7 @@ export async function extractDocumentWithMistral(
           {
             role: "user",
             content: [
-              {
-                type: "image_url",
-                image_url: { url: dataUrl },
-              },
+              sourcePart,
               {
                 type: "text",
                 text: `${documentInstruction}\nFile: ${fileName}\nReturn a single JSON object only, no markdown.`,

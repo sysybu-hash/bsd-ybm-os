@@ -28,6 +28,7 @@ export function widgetIconChipClass(type: WidgetType): string {
     platformAdmin: "bg-amber-500/22 text-amber-700 group-hover:bg-amber-500/30 dark:bg-amber-500/28 dark:text-amber-300 dark:group-hover:bg-amber-500/38",
     helpCenter: "bg-sky-500/22 text-sky-700 group-hover:bg-sky-500/30 dark:bg-sky-500/28 dark:text-sky-200 dark:group-hover:bg-sky-500/38",
     fieldCopilot: "bg-emerald-500/22 text-emerald-700 group-hover:bg-emerald-500/30 dark:bg-emerald-500/28 dark:text-emerald-200 dark:group-hover:bg-emerald-500/38",
+    floorplanViz: "bg-violet-500/22 text-violet-700 group-hover:bg-violet-500/30 dark:bg-violet-500/28 dark:text-violet-200 dark:group-hover:bg-violet-500/38",
     financeHub: "bg-cyan-500/22 text-cyan-700 group-hover:bg-cyan-500/30 dark:bg-cyan-500/28 dark:text-cyan-200 dark:group-hover:bg-cyan-500/38",
     projectsHub: "bg-sky-500/22 text-sky-700 group-hover:bg-sky-500/30 dark:bg-sky-500/28 dark:text-sky-200 dark:group-hover:bg-sky-500/38",
     documentsHub: "bg-emerald-500/22 text-emerald-700 group-hover:bg-emerald-500/30 dark:bg-emerald-500/28 dark:text-emerald-200 dark:group-hover:bg-emerald-500/38",

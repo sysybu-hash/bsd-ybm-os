@@ -27,6 +27,7 @@ const INTEGRATION_TYPES = new Set<WidgetType>([
   "googleDrive",
   "meckanoReports",
   "fieldCopilot",
+  "floorplanViz",
 ]);
 
 const ADMIN_TYPES = new Set<WidgetType>([

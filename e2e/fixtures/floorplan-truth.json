@@ -1,0 +1,123 @@
+{
+  "_note": "Read off the ten sheets by eye. The regression harness checks the pipeline against these, and prints what the sheet's own text layer says so the two can be reconciled. levelM is the ⊕ elevation mark; a terrace whose level differs from the flat's is a roof terrace and is NOT part of the floor plate.",
+  "plans": [
+    {
+      "file": "דירה 14 .pdf",
+      "uncut": "דירה 14 מקור.pdf",
+      "grossM2": 111.29,
+      "levelM": 9.64,
+      "bedrooms": 4,
+      "mmd": 1,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 4.1, "levelM": 9.64 },
+        { "m2": 6.4, "levelM": 9.64 },
+        { "m2": 3.16, "levelM": 9.64 }
+      ]
+    },
+    {
+      "file": "דירה 15.pdf",
+      "grossM2": 114.11,
+      "levelM": 9.64,
+      "bedrooms": 4,
+      "mmd": 1,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 4.1, "levelM": 9.64 },
+        { "m2": 6.44, "levelM": 9.64 },
+        { "m2": 3.16, "levelM": 9.64 }
+      ]
+    },
+    {
+      "file": "דירה 16.pdf",
+      "grossM2": 112.36,
+      "levelM": 12.79,
+      "bedrooms": 4,
+      "mmd": 1,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 4.1, "levelM": 12.79 },
+        { "m2": 5.12, "levelM": 12.79 }
+      ]
+    },
+    {
+      "file": "דירה 17.pdf",
+      "grossM2": 109.64,
+      "levelM": 12.79,
+      "bedrooms": 4,
+      "mmd": 1,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 4.1, "levelM": 12.79 },
+        { "m2": 5.2, "levelM": 12.79 }
+      ]
+    },
+    {
+      "file": "דירה 18.pdf",
+      "grossM2": 59.01,
+      "levelM": 11.42,
+      "bedrooms": 2,
+      "mmd": 0,
+      "bathrooms": 1,
+      "terraces": [
+        { "m2": 4.6, "levelM": 11.42 },
+        { "m2": 8, "levelM": 11.42 },
+        { "m2": 5.2, "levelM": 12.79 }
+      ]
+    },
+    {
+      "file": "דירה 19.pdf",
+      "grossM2": 57,
+      "levelM": 11.42,
+      "bedrooms": 2,
+      "mmd": 0,
+      "bathrooms": 1,
+      "terraces": [{ "m2": 4.7, "levelM": 11.42 }]
+    },
+    {
+      "file": "דירה 20.pdf",
+      "grossM2": 90.86,
+      "levelM": 12.79,
+      "bedrooms": 3,
+      "mmd": 0,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 13.2, "levelM": 15.94 },
+        { "m2": 6.45, "levelM": 15.94 }
+      ]
+    },
+    {
+      "file": "דירה 21.pdf",
+      "grossM2": 91.84,
+      "levelM": 12.79,
+      "bedrooms": 3,
+      "mmd": 0,
+      "bathrooms": 2,
+      "terraces": [
+        { "m2": 13.2, "levelM": 15.94 },
+        { "m2": 6.45, "levelM": 15.94 }
+      ]
+    },
+    {
+      "file": "דירה 22.pdf",
+      "grossM2": 59.01,
+      "levelM": 11.42,
+      "bedrooms": 2,
+      "mmd": 0,
+      "bathrooms": 1,
+      "terraces": [
+        { "m2": 3.3, "levelM": 14.36 },
+        { "m2": 8, "levelM": 14.36 }
+      ]
+    },
+    {
+      "file": "דירה 23.pdf",
+      "grossM2": 57,
+      "levelM": 11.42,
+      "bedrooms": 2,
+      "mmd": 0,
+      "bathrooms": 1,
+      "terraces": [{ "m2": 3.3, "levelM": 14.36 }]
+    }
+  ]
+}

@@ -115,7 +115,7 @@ export function buildDefaultLauncherConfig(
       slot("crmTable"),
       slot("documentsHub"),
       ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
-      ...(company ? [] : [slot("fieldCopilot")]),
+      ...(company ? [] : [slot("fieldCopilot"), slot("floorplanViz")]),
       slot("aiHub"),
       slot("googleDrive"),
       slot("accessibility"),
@@ -126,7 +126,7 @@ export function buildDefaultLauncherConfig(
     mobileBarEnd: [slot("aiHub")],
     mobileMore: [
       slot("universalCommand"),
-      ...(company ? [] : [slot("fieldCopilot")]),
+      ...(company ? [] : [slot("fieldCopilot"), slot("floorplanViz")]),
       ...(logistics ? [slot("logisticsHub"), slot("procurementHub")] : []),
       slot("financeHub"),
       slot("projectsHub"),

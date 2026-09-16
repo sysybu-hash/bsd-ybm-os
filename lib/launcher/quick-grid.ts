@@ -9,7 +9,7 @@ import {
 export * from "@/lib/launcher/quick-grid-metrics";
 export * from "@/lib/launcher/quick-grid-slots";
 export * from "@/lib/launcher/quick-grid-edit";
-/** ׳¡׳“׳¨ ׳×׳¦׳•׳’׳” ׳׳©׳•׳¨׳•׳× ׳׳׳•׳–׳ ׳•׳× (׳׳™׳•׳ ׳׳₪׳™ row/col) */
+/** סדר תצוגה לשורות מאוזנות (מיון לפי row/col) */
 export function quickGridSlotsInDisplayOrder(slots: LauncherSlot[]): LauncherSlot[] {
   const positioned = ensureQuickGridPositions(slots);
   return [...positioned]
@@ -23,7 +23,7 @@ export function quickGridSlotsInDisplayOrder(slots: LauncherSlot[]): LauncherSlo
 }
 
 /**
- * ׳׳¡׳“׳¨ ׳׳¨׳™׳—׳™׳ ׳‘׳¨׳©׳× hub ג€” ׳©׳•׳¨׳•׳× ׳©׳ ׳¢׳“ `cols` ׳׳¨׳™׳—׳™׳, ׳©׳•׳¨׳” ׳׳—׳¨׳•׳ ׳” ׳׳׳•׳¨׳›׳–׳×.
+ * מסדר אריחים ברשת hub — שורות של עד `cols` אריחים, שורה אחרונה ממורכזת.
  */
 export function packQuickGridCentered(
   widgetIds: WidgetType[],
@@ -53,7 +53,7 @@ export function packQuickGridCentered(
   return result;
 }
 
-/** ׳׳™׳™׳©׳¨ ׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳× ׳׳¨׳©׳× ׳¦׳₪׳•׳₪׳” ׳׳׳•׳¨׳›׳–׳× (׳׳—׳¨׳™ ׳¢׳¨׳™׳›׳” ׳׳• ׳©׳׳™׳¨׳” ׳™׳©׳ ׳”) */
+/** מיישר קואורדינטות לרשת צפופה ממורכזת (אחרי עריכה או שמירה ישנה) */
 export function normalizeQuickGridCoordinates(slots: LauncherSlot[]): LauncherSlot[] {
   const filled = slots.filter((s) => s.widgetId !== null);
   if (filled.length === 0) return [];

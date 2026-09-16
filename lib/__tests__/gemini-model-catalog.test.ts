@@ -1,13 +1,18 @@
 import {
+  AI_ENGINE_CATALOG_UPDATED_AT,
   GEMINI_BLUEPRINT_PRIMARY_MODEL,
+  GEMINI_IMAGE_PRIMARY_MODEL,
   GEMINI_LITE_MODEL,
   GEMINI_LIVE_PRIMARY_MODEL,
   GEMINI_PREMIUM_TEXT_MODEL,
   GEMINI_STABLE_TEXT_MODEL,
   getBlueprintAnalysisModelChain,
+  getFloorplanLayoutModelChain,
+  getFloorplanVizModelChain,
   getGeminiModelFallbackChain,
   getGeminiModelId,
   isLikelyGeminiModelUnavailable,
+  resolveGeminiImageModelId,
   resolveGeminiModelId,
 } from "@/lib/gemini-model";
 import {
@@ -22,9 +27,10 @@ import {
 } from "@/lib/ai-providers";
 
 describe("gemini-model-catalog", () => {
-  it("uses gemini-3.6-flash as stable default", () => {
-    expect(GEMINI_STABLE_TEXT_MODEL).toBe("gemini-3.6-flash");
-    expect(GEMINI_BLUEPRINT_PRIMARY_MODEL).toBe("gemini-3.6-flash");
+  it("uses gemini-3.7-flash as stable default", () => {
+    expect(AI_ENGINE_CATALOG_UPDATED_AT).toBe("2026-09-03");
+    expect(GEMINI_STABLE_TEXT_MODEL).toBe("gemini-3.7-flash");
+    expect(GEMINI_BLUEPRINT_PRIMARY_MODEL).toBe("gemini-3.7-flash");
     expect(GEMINI_LITE_MODEL).toBe("gemini-3.5-flash-lite");
     expect(GEMINI_PREMIUM_TEXT_MODEL).toBe("gemini-3.1-pro-preview");
   });
@@ -36,15 +42,37 @@ describe("gemini-model-catalog", () => {
     expect(chain.some((m) => m.includes("gemini-2.5"))).toBe(false);
   });
 
+  // Calibrated 04/09/2026: Flash matched Pro on every graded trap at a quarter of
+  // the latency, and Gemini is only one of four consensus votes in the extractor.
+  it("floorplan layout extract prefers current Flash, keeping Pro as fallback", () => {
+    const chain = getFloorplanLayoutModelChain();
+    expect(chain[0]).toBe(GEMINI_STABLE_TEXT_MODEL);
+    expect(chain).toContain(GEMINI_PREMIUM_TEXT_MODEL);
+    expect(chain.indexOf(GEMINI_STABLE_TEXT_MODEL)).toBeLessThan(
+      chain.indexOf(GEMINI_PREMIUM_TEXT_MODEL),
+    );
+  });
+
+  it("floorplan image chain uses Nano Banana Pro then GA Flash Image", () => {
+    expect(GEMINI_IMAGE_PRIMARY_MODEL).toBe("gemini-3.1-flash-image");
+    const chain = getFloorplanVizModelChain();
+    expect(chain[0]).toBe("gemini-3-pro-image");
+    expect(chain).toContain("gemini-3.1-flash-image");
+    expect(chain).toContain("gemini-3.1-flash-lite-image");
+    expect(chain).not.toContain("gemini-3.1-flash-image-preview");
+    expect(chain).not.toContain("gemini-2.5-flash-image");
+  });
+
   it("blueprint chain prefers current Flash and skips preview alias", () => {
     const chain = getBlueprintAnalysisModelChain();
+    expect(chain).toContain("gemini-3.7-flash");
     expect(chain).toContain("gemini-3.6-flash");
     expect(chain.some((m) => m === "gemini-3-flash-preview")).toBe(false);
     expect(chain.some((m) => m.includes("gemini-2.5"))).toBe(false);
   });
 
   it("maps retired Gemini IDs onto current models", () => {
-    expect(resolveGeminiModelId("gemini-2.5-flash")).toBe("gemini-3.6-flash");
+    expect(resolveGeminiModelId("gemini-2.5-flash")).toBe("gemini-3.7-flash");
     expect(resolveGeminiModelId("gemini-2.5-flash-lite")).toBe("gemini-3.5-flash-lite");
     expect(resolveGeminiModelId("gemini-3.1-pro-stable")).toBe("gemini-3.1-pro-preview");
     expect(resolveGeminiModelId("gemini-3.1-flash-live-preview")).toBe(
@@ -53,6 +81,10 @@ describe("gemini-model-catalog", () => {
     expect(resolveGeminiModelId("gemini-2.5-flash-live-preview")).toBe(
       GEMINI_LIVE_PRIMARY_MODEL,
     );
+    expect(resolveGeminiImageModelId("gemini-3.1-flash-image-preview")).toBe(
+      "gemini-3.1-flash-image",
+    );
+    expect(resolveGeminiImageModelId("gemini-3-pro-image-preview")).toBe("gemini-3-pro-image");
   });
 
   it("defaults Live primary to 3.1 flash live preview", () => {

@@ -1,21 +1,26 @@
+import type { GenerationConfig } from "@google/generative-ai";
+
 import { env } from "@/lib/env";
 
 /**
- * קטלוג מודלי Gemini — עודכן 13/08/2026.
+ * קטלוג מודלי Gemini — עודכן 03/09/2026.
  * @see https://ai.google.dev/gemini-api/docs/models
  * @see https://ai.google.dev/gemini-api/docs/deprecations
  */
 
-export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-08-13";
+export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-09-03";
 
-/** GA — יולי 2026 */
-export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.6-flash";
+/** GA — אוגוסט 2026 */
+export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.7-flash";
 
 /** GA — יולי 2026; סיווג / throughput */
 export const GEMINI_LITE_MODEL = "gemini-3.5-flash-lite";
 
 /** Flash הקודם — עדיין GA, fallback */
-export const GEMINI_PREVIOUS_FLASH_MODEL = "gemini-3.5-flash";
+export const GEMINI_PREVIOUS_FLASH_MODEL = "gemini-3.6-flash";
+
+/** Flash ישן יותר — עדיין GA */
+export const GEMINI_OLDER_FLASH_MODEL = "gemini-3.5-flash";
 
 /** Pro ל-CRM פרימיום / ניתוח עמוק */
 export const GEMINI_PREMIUM_TEXT_MODEL = "gemini-3.1-pro-preview";
@@ -43,6 +48,7 @@ export const GEMINI_LIVE_MODEL_FALLBACK_CHAIN: readonly string[] = [
 export const GEMINI_MODEL_FALLBACK_TIER: readonly string[] = [
   GEMINI_STABLE_TEXT_MODEL,
   GEMINI_PREVIOUS_FLASH_MODEL,
+  GEMINI_OLDER_FLASH_MODEL,
   GEMINI_LITE_MODEL,
   "gemini-3.1-flash-lite",
 ] as const;
@@ -118,6 +124,60 @@ function chainWithOptionalEnv(fromEnv: string | undefined, extras: string[]): st
   return dedupeModels([
     ...(fromEnv ? [resolveGeminiModelId(fromEnv)] : []),
     ...extras,
+  ]);
+}
+
+/** Nano Banana Pro — איכות מקסימלית להדמיות תוכנית */
+export const GEMINI_IMAGE_PRO_MODEL = "gemini-3-pro-image";
+
+/** Nano Banana 2 — GA (מחליף את gemini-3.1-flash-image-preview שכובה ב־25/6/2026) */
+export const GEMINI_IMAGE_PRIMARY_MODEL = "gemini-3.1-flash-image";
+
+/** Nano Banana 2 Lite — גיבוי מהיר/זול */
+export const GEMINI_IMAGE_LITE_MODEL = "gemini-3.1-flash-lite-image";
+
+export const GEMINI_IMAGE_FALLBACK_CHAIN: readonly string[] = [
+  GEMINI_IMAGE_PRO_MODEL,
+  GEMINI_IMAGE_PRIMARY_MODEL,
+  GEMINI_IMAGE_LITE_MODEL,
+] as const;
+
+const GEMINI_IMAGE_ALIASES: Record<string, string> = {
+  "gemini-3.1-flash-image-preview": GEMINI_IMAGE_PRIMARY_MODEL,
+  "gemini-3-pro-image-preview": GEMINI_IMAGE_PRO_MODEL,
+  "gemini-2.5-flash-image": GEMINI_IMAGE_PRIMARY_MODEL,
+  "gemini-2.0-flash-preview-image-generation": GEMINI_IMAGE_PRIMARY_MODEL,
+};
+
+export function resolveGeminiImageModelId(raw: string): string {
+  const id = raw.trim();
+  return GEMINI_IMAGE_ALIASES[id] ?? id;
+}
+
+export function getFloorplanVizModelChain(): string[] {
+  // Pro first — photoreal sales stills need max fidelity; Flash/Lite are fallback only.
+  const fromEnv = env.GEMINI_IMAGE_MODEL?.trim();
+  return dedupeModels([
+    ...(fromEnv ? [resolveGeminiImageModelId(fromEnv)] : []),
+    ...GEMINI_IMAGE_FALLBACK_CHAIN,
+  ]);
+}
+
+/**
+ * פענוח תוכנית דירה — Flash קודם, Pro לגיבוי.
+ *
+ * Measured 04/09/2026 on sales-28-1 and plan-1 (calibration run): Flash and Pro
+ * agreed on every graded trap — floor label vs elevation, printed gross area,
+ * no invented duplex, מעלית excluded, one ממ"ד — at 10s vs 42-52s. Gemini is one
+ * of four consensus votes in extractFloorplanLayout, so Pro's extra depth landed
+ * on a single vote while setting the latency floor for the whole extraction.
+ * Override with GEMINI_BLUEPRINT_MODEL to put Pro back in front.
+ */
+export function getFloorplanLayoutModelChain(): string[] {
+  return chainWithOptionalEnv(env.GEMINI_BLUEPRINT_MODEL?.trim(), [
+    GEMINI_STABLE_TEXT_MODEL,
+    GEMINI_PREMIUM_TEXT_MODEL,
+    ...GEMINI_MODEL_FALLBACK_TIER,
   ]);
 }
 
@@ -220,4 +280,18 @@ export function isGeminiApiKeyError(err: unknown): boolean {
     blob.includes("invalid api key") ||
     blob.includes("please renew the api key")
   );
+}
+
+/**
+ * `seed` is accepted by the Gemini REST API but missing from GenerationConfig in
+ * @google/generative-ai 0.24.1. The SDK JSON.stringify's the request body, so the
+ * field is forwarded verbatim. Drop the intersection once the SDK types catch up.
+ */
+export type GenerationConfigWithSeed = GenerationConfig & { seed?: number };
+
+/** Greedy decoding + fixed seed — the same plan must yield the same reading twice. */
+export function deterministicGenerationConfig(
+  extra?: Partial<GenerationConfigWithSeed>,
+): GenerationConfigWithSeed {
+  return { temperature: 0, topK: 1, topP: 0, candidateCount: 1, seed: 0, ...extra };
 }
