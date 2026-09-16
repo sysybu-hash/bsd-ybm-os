@@ -10,6 +10,7 @@ type BlueprintForkDialogProps = {
   tr: (key: string, fallback: string) => string;
   onApproveAi: () => void;
   onTakeoff: () => void;
+  onVisualize: () => void;
   onDismiss: () => void;
 };
 
@@ -19,6 +20,7 @@ export function BlueprintForkDialog({
   tr,
   onApproveAi,
   onTakeoff,
+  onVisualize,
   onDismiss,
 }: BlueprintForkDialogProps) {
   const message = tr(
@@ -52,6 +54,13 @@ export function BlueprintForkDialog({
               className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2.5 text-sm font-bold text-indigo-700 dark:text-indigo-300"
             >
               {tr("workspaceWidgets.documentScan.blueprintTakeoff", "מדוד ב-Takeoff")}
+            </button>
+            <button
+              type="button"
+              onClick={onVisualize}
+              className="rounded-xl border border-violet-500/40 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-700 dark:text-violet-300"
+            >
+              {tr("workspaceWidgets.documentScan.blueprintVisualize", "צור הדמיה מהתוכנית")}
             </button>
             <button
               type="button"

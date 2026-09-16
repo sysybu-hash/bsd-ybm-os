@@ -1965,6 +1965,7 @@
       "blueprintForkMessage": "AI extracted a BOQ for {name}. Approve it or switch to manual Takeoff?",
       "blueprintApproveAi": "Approve AI BOQ",
       "blueprintTakeoff": "Measure in Takeoff",
+      "blueprintVisualize": "Visualise this plan",
       "blueprintDismiss": "Continue to review",
       "saveSuccess": "Saved successfully",
       "saveFailed": "Save failed"

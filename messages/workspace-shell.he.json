@@ -1965,6 +1965,7 @@
       "blueprintForkMessage": "המערכת חילצה כתב כמויות מ-AI עבור {name}. לאשר את התוצאה או לעבור למדידה ידנית?",
       "blueprintApproveAi": "אשר BOQ מ-AI",
       "blueprintTakeoff": "מדוד ב-Takeoff",
+      "blueprintVisualize": "צור הדמיה מהתוכנית",
       "blueprintDismiss": "המשך לסקירה",
       "saveSuccess": "נשמר בהצלחה",
       "saveFailed": "השמירה נכשלה"

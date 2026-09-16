@@ -198,6 +198,33 @@ export function useScanQueueNavigation(args: ScanQueueNavigationArgs) {
     });
   }, [boundProjectId, lastScanFileName, openWorkspaceWidget, setShowBlueprintFork, tr]);
 
+  /**
+   * Send the scanned sheet to the floor-plan visualiser.
+   *
+   * The file goes across as a data URL rather than being re-uploaded: the
+   * widget rebuilds a File from it, so the PDF bytes survive and the CAD path
+   * still reads the sheet's own vectors.
+   */
+  const openFloorplanVizForBlueprint = useCallback(() => {
+    setShowBlueprintFork(false);
+    const file =
+      queue.find((q) => q.file.name === lastScanFileName)?.file ?? queue[queue.length - 1]?.file;
+    if (!file) {
+      toast.error(tr("scanner.noScanYet", "אין סריקה לשמירה"));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      openWorkspaceWidget?.("floorplanViz", {
+        ...(boundProjectId ? { projectId: boundProjectId } : {}),
+        planDataUrl: String(reader.result ?? ""),
+        planFileName: file.name,
+      });
+    };
+    reader.onerror = () => toast.error(tr("scanner.blueprintVizFailed", "פתיחת ההדמיה נכשלה"));
+    reader.readAsDataURL(file);
+  }, [boundProjectId, lastScanFileName, openWorkspaceWidget, queue, setShowBlueprintFork, tr]);
+
   const addFiles = useCallback(
     (files: File[]) => {
       const valid: File[] = [];
@@ -264,6 +291,7 @@ export function useScanQueueNavigation(args: ScanQueueNavigationArgs) {
     rescanLastFile,
     dismissBlueprintFork,
     openTakeoffForBlueprint,
+    openFloorplanVizForBlueprint,
     addFiles,
     removePendingFile,
     clearPending,

@@ -35,6 +35,7 @@ export function DocumentScanShell({ state, compactMode = false, showIntakeContro
     showBlueprintFork,
     dismissBlueprintFork,
     openTakeoffForBlueprint,
+    openFloorplanVizForBlueprint,
     approveBlueprintBoq,
     lastScanFileName,
     goBackScanStep,
@@ -50,6 +51,7 @@ export function DocumentScanShell({ state, compactMode = false, showIntakeContro
         tr={tr}
         onApproveAi={() => void approveBlueprintBoq()}
         onTakeoff={openTakeoffForBlueprint}
+        onVisualize={openFloorplanVizForBlueprint}
         onDismiss={dismissBlueprintFork}
       />
       {sessionPhase === "review" && pendingAnalysis ? null : (

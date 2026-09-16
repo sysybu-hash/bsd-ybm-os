@@ -36,6 +36,13 @@ import {
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { emptyFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
+import {
+  companionImage,
+  geometryViewPrompt,
+  listGeometryCompanionViews,
+} from "@/lib/projects/floorplan-geometry-views";
+import { generateAuditedImage } from "@/lib/projects/viz-generate/attempts";
+import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import { extractPdfPageRaster, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
 
 export {
@@ -86,6 +93,53 @@ export type FloorplanVizRunResult = FloorplanVizResult & {
   planMimeType: string;
   photo: boolean;
 };
+
+/**
+ * Interior and isometric views built from the geometry, not from a vision pass.
+ *
+ * Each job's brief is the room the walls already cut — its measured area and
+ * the furniture blocks standing in it — so the model has nothing left to invent.
+ * Every view is a paid image call, which is why the count is capped by scope.
+ */
+async function generateGeometryCompanions(input: {
+  rooms: SegmentedRoom[];
+  styleKit: FloorplanVizStyleKit;
+  plan: { base64: string; mimeType: string };
+  geometry: { mimeType: string; base64: string };
+  layout: FloorplanLayout;
+  haredi: boolean;
+  maxViews: number;
+  existingImages?: Array<{ viewId: string; roomName?: string }>;
+}): Promise<FloorplanVizImage[]> {
+  const jobs = listGeometryCompanionViews(input.rooms, { maxViews: input.maxViews });
+  const have = new Set(
+    (input.existingImages ?? []).map((img) => `${img.viewId}::${img.roomName ?? ""}`),
+  );
+  const out: FloorplanVizImage[] = [];
+  for (const job of jobs) {
+    if (have.has(`${job.viewId}::${job.roomName ?? ""}`)) continue;
+    try {
+      const still = await generateAuditedImage(
+        {
+          viewId: job.viewId,
+          labelHe: job.labelHe,
+          roomName: job.roomName,
+          prompt: geometryViewPrompt(input.styleKit, job),
+        },
+        [input.plan, input.geometry],
+        undefined,
+        { layout: input.layout, plan: input.plan, haredi: input.haredi },
+      );
+      out.push(companionImage(job, still));
+    } catch (err: unknown) {
+      log.warn("companion view failed", {
+        view: job.labelHe,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return out;
+}
 
 export async function visualizeFloorplanFromDrawing(
   base64: string,
@@ -194,6 +248,32 @@ export async function visualizeFloorplanFromDrawing(
     } else {
       images = cadImagesForBooklet(cadResult.geometry);
     }
+
+    // Interiors, measured rather than invented: the brief for each one is the
+    // room the walls cut and the furniture already placed in it. A failure here
+    // never sinks the run — the overview is what the client is buying.
+    if (scope === "full" || scope === "rooms") {
+      try {
+        const companions = await generateGeometryCompanions({
+          rooms: cadResult.rooms,
+          styleKit,
+          plan: { base64: prepared.base64, mimeType: prepared.mimeType },
+          geometry: cadResult.geometry,
+          layout,
+          haredi: styleKit.audience === "haredi",
+          maxViews: scope === "rooms" ? 6 : 3,
+          existingImages: options?.existingImages,
+        });
+        if (companions.length > 0) {
+          images = [...images, ...companions];
+          if (!enginesUsed.includes("gemini-image")) enginesUsed.push("gemini-image");
+        }
+      } catch (err: unknown) {
+        log.warn("geometry companions failed; shipping the overview alone", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
     return {
       layout,
       images,
@@ -281,6 +361,8 @@ type CadOverviewAttempt =
       /** The program the sheet prints, when the extract and the text layer carry it. */
       truth?: PrintedUnitTruth;
       spend: FloorplanSpend;
+      /** Rooms measured off the CAD, for the interiors a companion view shows. */
+      rooms: SegmentedRoom[];
     }
   | { outcome: "skip" }
   | { outcome: "locked" };
@@ -348,6 +430,7 @@ async function tryCadOverview(input: {
       confidence: { ...rendered.confidence, tier: "cad" },
       truth,
       spend: rendered.spend,
+      rooms: rendered.rooms,
     };
   } catch (err: unknown) {
     log.warn("cad render threw; not inventing a layout", {

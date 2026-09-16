@@ -1965,6 +1965,7 @@
       "blueprintForkMessage": "ИИ извлёк BOQ для {name}. Подтвердить или перейти к ручному Takeoff?",
       "blueprintApproveAi": "Подтвердить BOQ от ИИ",
       "blueprintTakeoff": "Измерить в Takeoff",
+      "blueprintVisualize": "Создать визуализацию",
       "blueprintDismiss": "Продолжить проверку",
       "saveSuccess": "Успешно сохранено",
       "saveFailed": "Не удалось сохранить"

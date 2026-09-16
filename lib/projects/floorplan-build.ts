@@ -26,6 +26,8 @@ import {
 } from "@/lib/projects/floorplan-solid";
 import {
   extractFloorplanVectorGeometry,
+  type FloorplanVectorGeometry,
+  type PlacedNumber,
   extractPrintedAreas,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
@@ -75,12 +77,21 @@ function centreInsideBody(piece: FurniturePiece, body: WallBody): boolean {
   return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
 }
 
-export async function buildFlatFromPdf(
-  pdf: Buffer | Uint8Array,
+/**
+ * The flat, built from geometry that is already in hand.
+ *
+ * Split out of buildFlatFromPdf so a DXF can be built the same way: everything
+ * below reads segments and curves, and the only thing the PDF itself was still
+ * needed for is the printed terrace labels, which now arrive as data.
+ */
+export async function buildFlatFromGeometry(
+  geometry: FloorplanVectorGeometry,
   printedAreaM2: number,
   options?: {
     search?: ScaleSearch;
     width?: number;
+    /** Area figures the sheet prints, used to verify each terrace. */
+    printedAreas?: PlacedNumber[];
     /**
      * The flat's extent on the sheet, when the sheet carries more than one.
      *
@@ -99,8 +110,6 @@ export async function buildFlatFromPdf(
     extent?: { x: number; y: number; width: number; height: number };
   },
 ): Promise<BuiltFlat | null> {
-  const geometry = await extractFloorplanVectorGeometry(pdf);
-  if (!geometry) return null;
   const sheet = wallBoundingBox(geometry);
   if (!sheet) return null;
 
@@ -309,7 +318,7 @@ export async function buildFlatFromPdf(
   // leaks is dropped rather than guessed at.
   // Clipped to this flat. An uncut sheet carries the neighbour's labels too, and
   // its terraces are not this apartment's to draw.
-  const printed = (await extractPrintedAreas(pdf)).filter(
+  const printed = (options?.printedAreas ?? []).filter(
     (area) =>
       area.x >= flatExtent.x &&
       area.x <= flatExtent.x + flatExtent.width &&
@@ -367,4 +376,25 @@ export async function buildFlatFromPdf(
       width: options?.width,
     }),
   };
+}
+
+/**
+ * The flat, read out of a sales sheet: its vectors, and the area figures it
+ * prints as text. Every caller that has a PDF still goes through here.
+ */
+export async function buildFlatFromPdf(
+  pdf: Buffer | Uint8Array,
+  printedAreaM2: number,
+  options?: {
+    search?: ScaleSearch;
+    width?: number;
+    extent?: { x: number; y: number; width: number; height: number };
+  },
+): Promise<BuiltFlat | null> {
+  const geometry = await extractFloorplanVectorGeometry(pdf);
+  if (!geometry) return null;
+  return buildFlatFromGeometry(geometry, printedAreaM2, {
+    ...options,
+    printedAreas: await extractPrintedAreas(pdf),
+  });
 }

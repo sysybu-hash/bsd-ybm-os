@@ -56,6 +56,17 @@ export function useFloorplanVizRun({
     if (typeof liveData?.projectId === "string") setProjectId(liveData.projectId);
   }, [liveData?.projectId]);
 
+  // Opened from the scanner: the sheet arrives as a data URL, so the widget
+  // starts with the same bytes the scan read rather than asking for them again.
+  useEffect(() => {
+    const dataUrl = typeof liveData?.planDataUrl === "string" ? liveData.planDataUrl : "";
+    if (!dataUrl) return;
+    const name = typeof liveData?.planFileName === "string" ? liveData.planFileName : "plan.pdf";
+    setFile(fileFromDataUrl(dataUrl, name));
+    setResult(null);
+    setError(null);
+  }, [liveData?.planDataUrl, liveData?.planFileName]);
+
   const refreshRuns = useCallback(async () => {
     try {
       const res = await fetch("/api/projects/visualize-floorplan", { credentials: "include" });
