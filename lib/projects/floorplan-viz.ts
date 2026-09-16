@@ -37,6 +37,10 @@ import {
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { emptyFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
+import {
+  floorplanGeometryPayload,
+  type FloorplanGeometryPayload,
+} from "@/lib/projects/floorplan-geometry-payload";
 import { geometryFromDxf } from "@/lib/projects/floorplan-dxf";
 import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
 import { DWG_MIME, isCadFloorplanMime } from "@/lib/projects/photo-prep/mime";
@@ -84,6 +88,8 @@ export type FloorplanVizResult = {
   confidence?: ConfidenceReport;
   /** Model calls this run paid for, so "how much is a booklet" stops being a guess. */
   spend?: FloorplanSpend;
+  /** The measured flat, when the geometric path built one — what the 3D view draws. */
+  geometry?: FloorplanGeometryPayload;
   /** Absent on the client payload — the API strips the plan bytes before responding. */
   planBase64?: string;
   planMimeType?: string;
@@ -292,6 +298,7 @@ export async function visualizeFloorplanFromDrawing(
       scope,
       confidence: cadResult.confidence,
       spend: cadResult.spend,
+      geometry: cadResult.measured,
       planBase64: prepared.base64,
       planMimeType: prepared.mimeType,
       photo,
@@ -367,6 +374,8 @@ type CadOverviewAttempt =
       spend: FloorplanSpend;
       /** Rooms measured off the CAD, for the interiors a companion view shows. */
       rooms: SegmentedRoom[];
+      /** The same flat as a structure, for the viewer rather than for a picture. */
+      measured: FloorplanGeometryPayload;
     }
   | { outcome: "skip" }
   | { outcome: "locked" };
@@ -428,6 +437,7 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       truth,
       spend: rendered.spend,
       rooms: rendered.rooms,
+      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
     };
   } catch (err: unknown) {
     log.warn("cad drawing render threw; not inventing a layout", {
@@ -498,6 +508,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       truth,
       spend: rendered.spend,
       rooms: rendered.rooms,
+      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
     };
   } catch (err: unknown) {
     log.warn("cad render threw; not inventing a layout", {

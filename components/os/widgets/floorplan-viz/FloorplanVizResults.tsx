@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Download, FileText, FolderDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
+import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import {
   bookletHeroImage,
   groupFloorplanVizAttempts,
@@ -39,6 +41,13 @@ import {
 
 
 const log = createLogger("floorplan-viz-results");
+
+// three.js and a WebGL context are a big download for a gallery that may never
+// open the tab, and neither one exists on the server.
+const FloorplanViz3DViewer = dynamic(
+  () => import("@/components/os/widgets/floorplan-viz/FloorplanViz3DViewer"),
+  { ssr: false },
+);
 
 
 export default function FloorplanVizResults({
@@ -65,6 +74,7 @@ export default function FloorplanVizResults({
   onRescanStill,
   onDeleteStill,
   onSelectStill,
+  geometry,
 }: {
   t: TFn;
   loading: boolean;
@@ -89,6 +99,8 @@ export default function FloorplanVizResults({
   onRescanStill?: (img: FloorplanVizImage) => void;
   onDeleteStill?: (img: FloorplanVizImage) => void;
   onSelectStill?: (img: FloorplanVizImage) => void;
+  /** The measured flat, on runs that took the geometric path. */
+  geometry?: FloorplanGeometryPayload | null;
 }) {
   const rooms = useMemo(() => layout?.rooms ?? [], [layout?.rooms]);
   const groups = useMemo(
@@ -278,6 +290,16 @@ export default function FloorplanVizResults({
 
   return (
     <div className="space-y-4">
+      {geometry ? (
+        <details className="rounded-xl border border-[color:var(--border-main)] p-3">
+          <summary className="cursor-pointer text-xs font-bold">
+            {t("workspaceWidgets.floorplanViz.view3d")}
+          </summary>
+          <div className="mt-3">
+            <FloorplanViz3DViewer geometry={geometry} t={t} />
+          </div>
+        </details>
+      ) : null}
       {loading && gallery.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-[color:var(--foreground-muted)]">
           <Loader2 className="animate-spin text-amber-500" aria-hidden />

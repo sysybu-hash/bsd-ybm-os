@@ -238,6 +238,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
                 ? t("projectDashboard.vizGenerating")
                 : t("workspaceWidgets.floorplanViz.generatingOverview")
             }
+            geometry={result?.geometry}
             runId={result?.runId}
             editingKey={editingKey}
             onEditStill={(img, instruction, region) => void editStill(img, instruction, region)}

@@ -8,6 +8,10 @@ import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/proje
 import { parseFloorplanVizScope, type FloorplanVizScope } from "@/lib/projects/floorplan-viz-scope";
 import type { FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import {
+  parseFloorplanGeometry,
+  type FloorplanGeometryPayload,
+} from "@/lib/projects/floorplan-geometry-payload";
+import {
   floorplanVizStillFilePath,
   floorplanVizViewKey,
   packFloorplanVizStillMeta,
@@ -69,6 +73,8 @@ export type FloorplanVizRunDetail = {
   visionEngines: string[];
   confidence?: ConfidenceReport;
   spend?: FloorplanSpend;
+  /** The measured flat, on runs that took the geometric path. */
+  geometry?: FloorplanGeometryPayload;
   images: FloorplanVizImage[];
   createdAt: string;
   updatedAt: string;
@@ -187,6 +193,7 @@ export async function getFloorplanVizRunForOrg(
     visionEngines: asStringArray(engines.visionEngines),
     confidence: parseStoredConfidence(engines.confidence),
     spend: engines.spend,
+    geometry: parseFloorplanGeometry(row.geometryJson) ?? undefined,
     images: row.stills.map((still) => stillToImage(row.id, still)),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -242,6 +249,7 @@ export async function createFloorplanVizRun(input: {
   visionEngines: string[];
   confidence?: ConfidenceReport;
   spend?: FloorplanSpend;
+  geometry?: FloorplanGeometryPayload;
   images: FloorplanVizImage[];
 }): Promise<FloorplanVizRunDetail> {
   const created = await prisma.floorplanVizRun.create({
@@ -254,6 +262,7 @@ export async function createFloorplanVizRun(input: {
       planMimeType: input.planMimeType,
       planBase64: input.planBase64,
       layoutJson: input.layout as object,
+      ...(input.geometry ? { geometryJson: input.geometry as object } : {}),
       styleKitJson: input.styleKit as object,
       styleLabelHe: input.styleKit.labelHe,
       scope: input.scope,

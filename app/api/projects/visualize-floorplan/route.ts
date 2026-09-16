@@ -71,6 +71,7 @@ function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
     visionEngines: run.visionEngines,
     confidence: run.confidence,
     spend: run.spend,
+    geometry: run.geometry,
     grounding: {
       dimensionStrings: run.layout.dimensionStrings,
       roomNameHits: run.layout.rooms.map((room) => room.name),
@@ -268,6 +269,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
         visionEngines: result.visionEngines,
         confidence: result.confidence,
         spend: result.spend,
+        geometry: result.geometry,
         images: result.images,
       });
       // The run holds its own copy of the plan now; the upload is rubbish.

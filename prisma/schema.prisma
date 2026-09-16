@@ -1471,6 +1471,8 @@ model FloorplanVizRun {
   planMimeType   String
   planBase64     String             @db.Text
   layoutJson     Json
+  /** Walls, openings, furniture and rooms as measured — what the 3D viewer draws. */
+  geometryJson   Json?
   styleKitJson   Json
   styleLabelHe   String?
   scope          String             @default("overview")
