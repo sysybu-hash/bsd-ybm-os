@@ -1,8 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import { escapeHtml } from "@/lib/pdf/invoice-labels";
 import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
 import { BOOKLET_CSS } from "@/lib/projects/viz-pdf/booklet-css";
+import { BSD_YBM_LOGO_PNG_BASE64 } from "@/lib/pdf/font-data.generated";
 import { roomsForBookletTable, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import { inferRoomKind, type FloorplanLayout, type FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { bookletHeroImage } from "@/lib/projects/floorplan-viz-ids";
@@ -33,18 +32,16 @@ function fontFaceCss(): string {
   src: url(data:font/ttf;base64,${bold.toString("base64")}) format("truetype"); }`;
 }
 
+/**
+ * The cover logo, embedded at build time rather than read from disk.
+ *
+ * Reading it through process.cwd() made Next trace the entire project into
+ * this function, which is what put the export past Vercel's size limit.
+ */
 function logoDataUrl(): string | null {
-  const files = [
-    path.join(process.cwd(), "public", "logos", "logo-night-transparent.png"),
-    path.join(process.cwd(), "public", "logos", "logo-night.png"),
-    path.join(process.cwd(), "public", "logos", "logo-day-transparent.png"),
-    path.join(process.cwd(), "assets", "logo-bsd-ybm-center.png"),
-  ];
-  for (const full of files) {
-    if (!fs.existsSync(full)) continue;
-    return `data:image/png;base64,${fs.readFileSync(full).toString("base64")}`;
-  }
-  return null;
+  return BSD_YBM_LOGO_PNG_BASE64
+    ? `data:image/png;base64,${BSD_YBM_LOGO_PNG_BASE64}`
+    : null;
 }
 
 /** הסתייגות קצרה ללקוח — בלי שפת עיבוד פנימית. */

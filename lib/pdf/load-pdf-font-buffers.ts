@@ -1,52 +1,33 @@
-import fs from "node:fs";
-import path from "node:path";
 import {
   NOTO_HEBREW_BOLD_BASE64,
   NOTO_HEBREW_REGULAR_BASE64,
 } from "@/lib/pdf/font-data.generated";
-
-const REGULAR = "NotoSansHebrew-Regular.ttf";
-const BOLD = "NotoSansHebrew-Bold.ttf";
 
 export const PDF_FONT_VFS_KEYS = {
   regular: "pdf-fonts/NotoSansHebrew-Regular.ttf",
   bold: "pdf-fonts/NotoSansHebrew-Bold.ttf",
 } as const;
 
-function fontSearchDirs(): string[] {
-  const dirs = [
-    path.join(process.cwd(), "lib", "pdf", "fonts"),
-    path.join(process.cwd(), "public", "fonts"),
-  ];
-  if (typeof __dirname !== "undefined") {
-    dirs.push(path.join(__dirname, "fonts"));
-    dirs.push(path.join(__dirname, "..", "fonts"));
-  }
-  return dirs;
-}
-
-function readFontFile(fileName: string): Buffer {
-  for (const dir of fontSearchDirs()) {
-    const full = path.join(dir, fileName);
-    if (fs.existsSync(full)) {
-      return fs.readFileSync(full);
-    }
-  }
-  throw new Error(
-    `PDF fonts missing (${fileName}). Checked: ${fontSearchDirs().join(", ")}`,
-  );
-}
-
-/** פונטים מוטמעים בבאנדל — עובד ב-Vercel ללא קבצי .ttf על הדיסק */
+/**
+ * The Hebrew fonts every PDF here is set in, embedded in the bundle.
+ *
+ * This used to fall back to searching process.cwd() for the .ttf files. The
+ * fallback never ran — scripts/prebuild.mjs regenerates the embedded data
+ * before every build — but its presence was enough for Next to give up on
+ * tracing and pull the whole project into each PDF function, which is what
+ * pushed the floor-plan export past Vercel's 250MB limit.
+ *
+ * If this ever throws, the generated module is missing or empty: run
+ * `node scripts/embed-pdf-fonts.mjs`, which prebuild does on every build.
+ */
 export function loadPdfFontBuffers(): { regular: Buffer; bold: Buffer } {
-  if (NOTO_HEBREW_REGULAR_BASE64 && NOTO_HEBREW_BOLD_BASE64) {
-    return {
-      regular: Buffer.from(NOTO_HEBREW_REGULAR_BASE64, "base64"),
-      bold: Buffer.from(NOTO_HEBREW_BOLD_BASE64, "base64"),
-    };
+  if (!NOTO_HEBREW_REGULAR_BASE64 || !NOTO_HEBREW_BOLD_BASE64) {
+    throw new Error(
+      "PDF fonts are not embedded. Run `node scripts/embed-pdf-fonts.mjs` to regenerate lib/pdf/font-data.generated.ts.",
+    );
   }
   return {
-    regular: readFontFile(REGULAR),
-    bold: readFontFile(BOLD),
+    regular: Buffer.from(NOTO_HEBREW_REGULAR_BASE64, "base64"),
+    bold: Buffer.from(NOTO_HEBREW_BOLD_BASE64, "base64"),
   };
 }
