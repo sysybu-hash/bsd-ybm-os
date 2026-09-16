@@ -177,6 +177,28 @@ const nextConfig = {
       "./lib/pdf/load-pdf-font-buffers.ts",
     ],
   },
+  // Nothing a serverless function runs needs the promo videos, the product
+  // PDFs, a Playwright report or the local scratch folders — and a function
+  // that carries them can cross Vercel's 250MB uncompressed limit.
+  outputFileTracingExcludes: {
+    "**": [
+      "./public/marketing/**",
+      "./docs/**",
+      "./playwright-report/**",
+      "./test-results/**",
+      "./tmp/**",
+      // Both forms: the scratch folders and the loose booklets beside them.
+      "./tmp-*/**",
+      "./tmp-*",
+      "./.cache/**",
+      "./e2e/**",
+      "./assets/**",
+      "./public/screenshots/**",
+      "./reports/**",
+      "./playwright.config.ts",
+      "./תוכניות לביצוע הדמיות/**",
+    ],
+  },
   images: {
     remotePatterns: [
       {
