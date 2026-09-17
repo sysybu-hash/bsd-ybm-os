@@ -599,6 +599,20 @@ export function interiorSpans(
      * ones do not.
      */
     barrierThicknessUnits?: number;
+    /**
+     * The flat itself, when the caller already knows where it is.
+     *
+     * The border flood decides inside from outside by trying to reach in, and
+     * it only works on a sheet whose envelope is watertight ink. 28-8-23-2
+     * draws part of its outer wall in the same thin pen as its dimension
+     * chains, so the flood walked in through the kitchen and three quarters of
+     * the flat came back as outdoors. The footprint does not have that
+     * problem — it is built from the hatch and the lintels, and it closed this
+     * flat correctly — so where it is given, everything outside it is sealed
+     * before the flood starts and the only question left is which walls cut
+     * the inside into rooms.
+     */
+    floorMask?: SpanRow[];
   },
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
@@ -630,6 +644,22 @@ export function interiorSpans(
       for (let x = x0; x <= x1; x++) grid[y * w + x] = WALL;
     }
   };
+
+  const floorMask = options?.floorMask;
+  if (floorMask && floorMask.length > 1) {
+    const maskPitch = floorMask[1]!.y - floorMask[0]!.y;
+    const covered = (px: number, py: number) => {
+      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
+      return !!row && row.spans.some(([a, b]) => px >= a && px <= b);
+    };
+    for (let gy = 0; gy < h; gy++) {
+      const py = bounds.y + (gy - 1) * step;
+      for (let gx = 0; gx < w; gx++) {
+        const px = bounds.x + (gx - 1) * step;
+        if (!covered(px, py)) grid[gy * w + gx] = WALL;
+      }
+    }
+  }
 
   for (const seg of options?.sealingSegments ?? []) {
     const x = Math.min(seg.x1, seg.x2);

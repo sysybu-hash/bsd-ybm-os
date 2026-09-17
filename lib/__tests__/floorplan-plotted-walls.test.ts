@@ -1,4 +1,11 @@
-import { wallBodiesForSheet, wallInkThreshold } from "@/lib/projects/floorplan-solid";
+import {
+  interiorSpans,
+  spanArea,
+  wallBodiesForSheet,
+  wallInkThreshold,
+  type SpanRow,
+  type WallBody,
+} from "@/lib/projects/floorplan-solid";
 import { WALL_MIN_LINE_WIDTH, type VectorSegment } from "@/lib/projects/floorplan-vector";
 
 const seg = (
@@ -69,5 +76,28 @@ describe("walls on a plotted sheet", () => {
     expect(wall).toBeDefined();
     expect((wall!.thickness / upm) * 100).toBeCloseTo(10, 0);
     expect(bodies.some((b) => Math.abs(b.centre - (2000 + thickness / 2)) < 2)).toBe(false);
+  });
+});
+
+describe("the flat's own footprint as the boundary", () => {
+  it("keeps the flood out of a flat whose envelope has a thin-pen hole", () => {
+    // 28-8-23-2 draws part of its outer wall in the same pen as its dimension
+    // chains. The border flood walked in through that hole and three quarters
+    // of the flat came back as outdoors; the footprint has no such hole.
+    const upm = 28;
+    const room: WallBody[] = [
+      { orientation: "h", centre: 0, thickness: 6, from: 0, to: 200 },
+      // South wall missing on purpose — this is the hole.
+      { orientation: "v", centre: 0, thickness: 6, from: 0, to: 200 },
+      { orientation: "v", centre: 200, thickness: 6, from: 0, to: 200 },
+    ];
+    const bounds = { x: -20, y: -20, width: 260, height: 260 };
+    const floor: SpanRow[] = [];
+    for (let y = 4; y < 196; y += 4) floor.push({ y, spans: [[4, 196]] });
+
+    const leaking = interiorSpans(room, bounds, { excludeWalls: true });
+    const sealed = interiorSpans(room, bounds, { excludeWalls: true, floorMask: floor });
+    expect(spanArea(leaking) / (upm * upm)).toBeLessThan(1);
+    expect(spanArea(sealed) / (upm * upm)).toBeGreaterThan(30);
   });
 });
