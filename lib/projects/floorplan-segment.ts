@@ -8,10 +8,10 @@ import {
   type Opening,
   type SpanRow,
   type WallBody,
+  wallInkThreshold,
 } from "@/lib/projects/floorplan-solid";
 import {
   isAxisAligned,
-  WALL_MIN_LINE_WIDTH,
   type VectorSegment,
 } from "@/lib/projects/floorplan-vector";
 
@@ -185,8 +185,10 @@ export function segmentRooms(input: {
     ...bridgeOpenings(bodies, unitsPerMetre * 1.3),
     ...openings.map((o) => sealOpening(o, seal)),
   ];
+  // The pen the walls are drawn with, read off this sheet rather than assumed.
+  const inkCut = wallInkThreshold(input.segments ?? []);
   const ink = (input.segments ?? []).filter(
-    (segment) => segment.lineWidth >= WALL_MIN_LINE_WIDTH && isAxisAligned(segment),
+    (segment) => segment.lineWidth >= inkCut && isAxisAligned(segment),
   );
   const components = interiorComponents(barriers, bounds, {
     excludeWalls: true,
