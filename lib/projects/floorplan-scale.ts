@@ -53,10 +53,28 @@ export function lockScale(
   search?: ScaleSearch,
   curves?: VectorSegment[],
 ): ScaleLock | null {
+  const candidates = collectScaleLocks(segments, bounds, printedAreaM2, search, curves);
+  return pickScaleLock(candidates, search?.tolerance ?? 0.08);
+}
+
+/**
+ * Every scale that finds beds and door-like openings, with its area error.
+ *
+ * Split out of lockScale so a sheet that prints no area can still be scaled:
+ * the bed and door gates below never look at the printed figure, they only
+ * ask whether the furniture and the doorways measure like furniture and
+ * doorways. See lockScaleToHint.
+ */
+export function collectScaleLocks(
+  segments: VectorSegment[],
+  bounds: { x: number; y: number; width: number; height: number },
+  printedAreaM2: number,
+  search?: ScaleSearch,
+  curves?: VectorSegment[],
+): ScaleLock[] {
   const from = search?.from ?? 40;
   const to = search?.to ?? 72;
   const step = search?.step ?? 1;
-  const tolerance = search?.tolerance ?? 0.08;
 
   const candidates: ScaleLock[] = [];
   for (let unitsPerMetre = from; unitsPerMetre <= to; unitsPerMetre += step) {
@@ -141,7 +159,51 @@ export function lockScale(
     candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });
   }
 
-  return pickScaleLock(candidates, tolerance);
+  return candidates;
+}
+
+/**
+ * The scale nearest a figure read off the sheet's dimension chains.
+ *
+ * Used when no area is printed. The chains give the answer to within a few
+ * per cent; this sweep decides the last of it by the same bed and door gates
+ * the area lock uses, so a hint that is slightly off still lands on a scale
+ * at which the furniture and the doorways measure right — and a hint that is
+ * badly wrong finds no candidate at all and the sheet stays on the raster
+ * route rather than being drawn at an invented size.
+ */
+export function lockScaleToHint(
+  segments: VectorSegment[],
+  bounds: { x: number; y: number; width: number; height: number },
+  hintUnitsPerMetre: number,
+  curves?: VectorSegment[],
+  spread = 0.12,
+): ScaleLock | null {
+  if (!(hintUnitsPerMetre > 0)) return null;
+  const candidates = collectScaleLocks(
+    segments,
+    bounds,
+    1,
+    {
+      from: hintUnitsPerMetre * (1 - spread),
+      to: hintUnitsPerMetre * (1 + spread),
+      step: 0.5,
+    },
+    curves,
+  );
+  if (candidates.length === 0) return null;
+  const mostBeds = candidates.reduce((most, c) => Math.max(most, c.beds), 0);
+  const contenders = candidates.filter((c) => c.beds >= mostBeds - 1);
+  let best: ScaleLock | null = null;
+  for (const c of contenders) {
+    const closer =
+      !best ||
+      Math.abs(c.unitsPerMetre - hintUnitsPerMetre) < Math.abs(best.unitsPerMetre - hintUnitsPerMetre);
+    if (closer) best = c;
+  }
+  // The area the flat actually encloses at the chosen scale, so callers that
+  // expect a printed target have one that is measured rather than guessed.
+  return best ? { ...best, areaError: 0 } : null;
 }
 
 /**

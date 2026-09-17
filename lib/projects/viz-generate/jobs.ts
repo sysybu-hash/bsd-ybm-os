@@ -35,11 +35,18 @@ export function floorplanOverviewAttachments(input: {
   ink?: string | null;
   massing?: string | null;
   geometryLock?: { mimeType: string; base64: string } | null;
+  /** The sheet with every room named on it, when the extractor placed them. */
+  planGuide?: { mimeType: string; base64: string } | null;
 }): Array<{ mimeType: string; base64: string }> {
   const inkAtt = input.ink ? [{ mimeType: "image/jpeg" as const, base64: input.ink }] : [];
   const massingAtt = input.massing ? [{ mimeType: "image/jpeg" as const, base64: input.massing }] : [];
   if (input.geometryLock?.base64) {
     return [input.geometryLock, input.plan, ...inkAtt, ...massingAtt];
+  }
+  // The named map leads: it says where each room goes, and the clean sheet
+  // behind it says what is drawn inside them.
+  if (input.planGuide?.base64) {
+    return [input.planGuide, input.plan, ...inkAtt, ...massingAtt];
   }
   return [input.plan, ...inkAtt, ...massingAtt];
 }
@@ -52,6 +59,7 @@ export async function attachmentsForJob(
   layout: FloorplanLayout,
   overviewStill?: { mimeType: string; base64: string } | null,
   geometryLock?: { mimeType: string; base64: string } | null,
+  planGuide?: { mimeType: string; base64: string } | null,
 ): Promise<Array<{ mimeType: string; base64: string }>> {
   if (job.viewId === "interior") {
     const focus = locatorFocusForGeneration(layout, "interior", job.roomName);
@@ -71,6 +79,7 @@ export async function attachmentsForJob(
     ink,
     massing,
     geometryLock,
+    planGuide,
   });
   if (job.viewId === "isometric" && overviewStill?.base64) {
     planAtt.push(overviewStill);
