@@ -31,6 +31,7 @@ import {
   SALES_BROCHURE_BRIEF,
 } from "@/lib/projects/viz-generate/prompts";
 import { generateOneImage } from "@/lib/projects/viz-generate/gemini";
+import { ATTEMPT_MS, timeLeft } from "@/lib/projects/viz-generate/budget";
 import {
   GOOD_ENOUGH_SCORE,
   MAX_AUDITED_ATTEMPTS,
@@ -133,8 +134,15 @@ export async function warmLook(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
   aspectRatio: string | undefined,
-  ctx: { layout: FloorplanLayout; plan: { base64: string; mimeType: string }; haredi: boolean },
+  ctx: {
+    layout: FloorplanLayout;
+    plan: { base64: string; mimeType: string };
+    haredi: boolean;
+    deadlineMs?: number;
+  },
 ): Promise<{ mimeType: string; base64: string }> {
+  // A finish, not a fix: skip it rather than spend the last of the budget.
+  if (!timeLeft(ctx.deadlineMs, 60_000)) return img;
   const prompt = `${SALES_BROCHURE_BRIEF}
 
 WARMTH FINISH — the FIRST attached image is this apartment, already laid out correctly.
@@ -192,6 +200,7 @@ ${ONE_FRAME}`;
   }
 }
 
+
 export async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -200,6 +209,8 @@ export async function generateAuditedImage(
     layout: FloorplanLayout;
     plan: { base64: string; mimeType: string };
     haredi: boolean;
+    /** Epoch ms after which no further attempt may start. */
+    deadlineMs?: number;
   },
 ): Promise<{ mimeType: string; base64: string; auditIssues?: string[] }> {
   const auditable = job.viewId === "overview" || job.viewId === "isometric";
@@ -213,6 +224,13 @@ export async function generateAuditedImage(
   let lastFailures: string[] = [];
 
   for (let attempt = 1; attempt <= (auditable ? MAX_AUDITED_ATTEMPTS : 1); attempt++) {
+    if (attempt > 1 && !timeLeft(ctx.deadlineMs, ATTEMPT_MS)) {
+      log.warn("out of time for another attempt; keeping the best frame so far", {
+        view: job.labelHe,
+        attempt,
+      });
+      break;
+    }
     // A blind re-roll just samples the same distribution again. Telling the model
     // what the previous frame got wrong turns the retry into a correction.
     const prompt = lastFailures.length
@@ -250,7 +268,7 @@ Fix exactly these and keep everything the audit did not complain about.`
   }
 
   const misoriented = /mirrored|turned \d+ degrees/i;
-  if (best?.audit && best.hardFailures.some((f) => misoriented.test(f))) {
+  if (best?.audit && best.hardFailures.some((f) => misoriented.test(f)) && timeLeft(ctx.deadlineMs, 30_000)) {
     const fixed = await reorientToPlan(best.img, best.audit, ctx, best, job.labelHe);
     if (fixed) {
       best = {
@@ -266,6 +284,7 @@ Fix exactly these and keep everything the audit did not complain about.`
   if (best) {
     let candidate = best;
     for (let door = 1; door <= 2; door++) {
+      if (!timeLeft(ctx.deadlineMs, ATTEMPT_MS)) break;
       const repaired = await repairRemovableFailures(candidate, job, attachments, aspectRatio, ctx);
       if (repaired) {
         const scored = await gradeStillForShip(repaired, ctx);
