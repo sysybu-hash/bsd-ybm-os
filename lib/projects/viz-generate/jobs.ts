@@ -11,6 +11,34 @@ import { type FloorplanVizJobSpec } from "@/lib/projects/floorplan-viz-scope";
 
 import { locatorFocusForGeneration } from "@/lib/projects/floorplan-locator";
 
+import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
+
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("floorplan-viz-jobs");
+
+/**
+ * A picture for the image model, never the PDF itself.
+ *
+ * Gemini reads a PDF happily when it is answering questions about one. Asked
+ * to DRAW from a PDF attachment it treats the sheet as a description rather
+ * than a picture to copy, and returns a plausible apartment instead of this
+ * one — mirrored, with rooms moved. Every raster path already sends a JPEG;
+ * a PDF sheet never was one, which is why the vector plans drifted worst.
+ */
+export async function planImageForGeneration(plan: {
+  mimeType: string;
+  base64: string;
+}): Promise<{ mimeType: string; base64: string }> {
+  if (plan.mimeType !== "application/pdf") return plan;
+  const jpeg = await rasterizePdfPageJpeg(Buffer.from(plan.base64, "base64"));
+  if (!jpeg) {
+    log.warn("could not rasterise the sheet for the image model; sending the PDF");
+    return plan;
+  }
+  return { mimeType: "image/jpeg", base64: jpeg };
+}
+
 export const IMAGE_CONCURRENCY = 2;
 export type VizJob = FloorplanVizJobSpec & {
   prompt: string;
@@ -61,11 +89,12 @@ export async function attachmentsForJob(
   geometryLock?: { mimeType: string; base64: string } | null,
   planGuide?: { mimeType: string; base64: string } | null,
 ): Promise<Array<{ mimeType: string; base64: string }>> {
+  const planImage = await planImageForGeneration(plan);
   if (job.viewId === "interior") {
     const focus = locatorFocusForGeneration(layout, "interior", job.roomName);
-    const cropped = await cropFloorplanRasterToUnit(plan.base64, plan.mimeType, focus.crop);
-    const cropB64 = cropped?.base64 ?? plan.base64;
-    const cropMime = cropped?.mimeType ?? plan.mimeType;
+    const cropped = await cropFloorplanRasterToUnit(planImage.base64, planImage.mimeType, focus.crop);
+    const cropB64 = cropped?.base64 ?? planImage.base64;
+    const cropMime = cropped?.mimeType ?? planImage.mimeType;
     const roomInk = await buildInkWallJpeg(cropB64);
     return roomInk
       ? [
@@ -75,7 +104,7 @@ export async function attachmentsForJob(
       : [{ mimeType: cropMime, base64: cropB64 }];
   }
   const planAtt = floorplanOverviewAttachments({
-    plan,
+    plan: planImage,
     ink,
     massing,
     geometryLock,

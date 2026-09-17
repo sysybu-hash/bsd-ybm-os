@@ -16,6 +16,7 @@ import { collectShipIssues } from "@/lib/projects/viz-generate/audit-gate";
 import {
   IMAGE_CONCURRENCY,
   attachmentsForJob,
+  planImageForGeneration,
   runPool,
   type VizJob,
 } from "@/lib/projects/viz-generate/jobs";
@@ -84,6 +85,10 @@ export async function generateFloorplanVisuals(
     options?.geometryLock?.base64 || !layoutCanGuide(vizLayout)
       ? null
       : await buildLabelledPlanJpeg({ base64, mimeType }, vizLayout);
+  // Both the image model and the auditor get a picture of the sheet. The
+  // auditor is the one that reports "mirrored vs plan", and it was comparing
+  // a photograph against a PDF.
+  const planPicture = await planImageForGeneration({ base64, mimeType });
   const hint = await buildWallHint(base64, mimeType, options?.photo === true);
   const ink = hint?.image ?? null;
   const massing = null;
@@ -119,7 +124,7 @@ export async function generateFloorplanVisuals(
     try {
       const attachments = await attachmentsForJob(
         job,
-        { base64, mimeType },
+        planPicture,
         ink,
         massing,
         vizLayout,
@@ -129,13 +134,13 @@ export async function generateFloorplanVisuals(
       );
       const audited = await generateAuditedImage(job, attachments, aspectRatio, {
         layout: vizLayout,
-        plan: { base64, mimeType },
+        plan: planPicture,
         haredi: options?.styleKit?.audience === "haredi",
       });
       const haredi = options?.styleKit?.audience === "haredi";
       const auditCtx = {
         layout: vizLayout,
-        plan: { base64, mimeType },
+        plan: planPicture,
         haredi: haredi === true,
       };
       let img: { mimeType: string; base64: string; auditIssues?: string[] } = audited;
