@@ -1,5 +1,6 @@
 import {
   extractFloorplanLayout,
+  extractFloorplanRoomsWithVision,
   type FloorplanLayoutExtractResult,
 } from "@/lib/projects/floorplan-layout-extract";
 import { generateFloorplanVisuals } from "@/lib/projects/floorplan-viz-generate";
@@ -324,19 +325,24 @@ export async function visualizeFloorplanFromDrawing(
   // The lean extract reads printed text only, which is all the CAD route
   // needs. A sheet whose room names are drawn as outlines has no such text,
   // and the raster route then briefed the image model with no rooms at all —
-  // it invented the program. Pay for the full vision read before painting.
+  // it invented the program. One vision read of the drawn labels fixes that
+  // without spending the rest of the route's time budget.
   if (!reused && extracted.layout.rooms.length === 0) {
-    log.info("lean extract found no rooms; running the full layout read");
+    log.info("lean extract found no rooms; reading them with one vision engine");
     try {
-      const full = await extractFloorplanLayout(prepared.base64, prepared.mimeType, { photo, spend });
-      if (full.layout.rooms.length > 0) {
+      const seen = await extractFloorplanRoomsWithVision(prepared.base64, prepared.mimeType, {
+        photo,
+        spend,
+      });
+      if (seen) {
         extracted = {
-          ...full,
-          enginesUsed: [...new Set([...extracted.enginesUsed, ...full.enginesUsed])],
+          ...seen,
+          enginesUsed: [...new Set([...extracted.enginesUsed, ...seen.enginesUsed])],
+          ocrEngines: extracted.ocrEngines,
         };
       }
     } catch (err: unknown) {
-      log.warn("full layout read failed; painting from the lean extract", {
+      log.warn("vision room read failed; painting from the lean extract", {
         error: err instanceof Error ? err.message : String(err),
       });
     }

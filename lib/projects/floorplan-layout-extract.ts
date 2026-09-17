@@ -269,6 +269,42 @@ export async function extractFloorplanLayout(
 }
 
 /**
+ * Room names from one vision engine, for a sheet that prints no text.
+ *
+ * When the labels are drawn as outlines the lean read comes back empty, and
+ * painting from an empty program is how a still ends up with rooms the plan
+ * never had. The full extract would answer this, but its seven-model fan-out
+ * does not fit inside the route's 300s budget on top of the image work — so
+ * this is one engine, bounded, and it keeps whatever it gets.
+ */
+export async function extractFloorplanRoomsWithVision(
+  base64: string,
+  mimeType: string,
+  options?: { photo?: boolean; spend?: FloorplanSpend; timeoutMs?: number },
+): Promise<FloorplanLayoutExtractResult | null> {
+  if (!isGeminiConfigured()) return null;
+  if (options?.spend) recordFloorplanSpend(options.spend, "extract", "layout-vision");
+  const instruction = buildInstruction(undefined, options?.photo === true);
+  const layout = await Promise.race([
+    runVisionLayout("gemini", base64, mimeType, instruction),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), options?.timeoutMs ?? 90_000)),
+  ]);
+  if (!layout || layout.rooms.length === 0) return null;
+  return {
+    layout,
+    grounding: {
+      engine: "gemini-vision",
+      text: "",
+      dimensionStrings: layout.dimensionStrings,
+      roomNameHits: layout.rooms.map((room) => room.name),
+    },
+    enginesUsed: ["gemini-vision"],
+    ocrEngines: [],
+    visionEngines: ["gemini"],
+  };
+}
+
+/**
  * One engine, for the printed area only.
  *
  * The full extract fans out up to seven models. A CLI render only needs the
