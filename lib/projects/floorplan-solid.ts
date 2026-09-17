@@ -1,5 +1,6 @@
 import { buildWallRuns, type WallRun } from "@/lib/projects/floorplan-rooms";
 import {
+  WALL_MIN_LINE_WIDTH,
   isAxisAligned,
   segmentLength,
   type VectorSegment,
@@ -598,6 +599,20 @@ export function interiorSpans(
      * ones do not.
      */
     barrierThicknessUnits?: number;
+    /**
+     * The flat itself, when the caller already knows where it is.
+     *
+     * The border flood decides inside from outside by trying to reach in, and
+     * it only works on a sheet whose envelope is watertight ink. 28-8-23-2
+     * draws part of its outer wall in the same thin pen as its dimension
+     * chains, so the flood walked in through the kitchen and three quarters of
+     * the flat came back as outdoors. The footprint does not have that
+     * problem — it is built from the hatch and the lintels, and it closed this
+     * flat correctly — so where it is given, everything outside it is sealed
+     * before the flood starts and the only question left is which walls cut
+     * the inside into rooms.
+     */
+    floorMask?: SpanRow[];
   },
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
@@ -629,6 +644,22 @@ export function interiorSpans(
       for (let x = x0; x <= x1; x++) grid[y * w + x] = WALL;
     }
   };
+
+  const floorMask = options?.floorMask;
+  if (floorMask && floorMask.length > 1) {
+    const maskPitch = floorMask[1]!.y - floorMask[0]!.y;
+    const covered = (px: number, py: number) => {
+      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
+      return !!row && row.spans.some(([a, b]) => px >= a && px <= b);
+    };
+    for (let gy = 0; gy < h; gy++) {
+      const py = bounds.y + (gy - 1) * step;
+      for (let gx = 0; gx < w; gx++) {
+        const px = bounds.x + (gx - 1) * step;
+        if (!covered(px, py)) grid[gy * w + gx] = WALL;
+      }
+    }
+  }
 
   for (const seg of options?.sealingSegments ?? []) {
     const x = Math.min(seg.x1, seg.x2);
@@ -850,6 +881,143 @@ export class HatchField {
  * axis-aligned segment is a possible wall face, at any length, and the hatch
  * decides. That is what recovers the walls the old filters never built.
  */
+/**
+ * Wall bodies from a sheet, however that sheet draws its walls.
+ *
+ * wallBodiesFromHatch asks for hatch between two faces, because on a sales
+ * sheet a wall is a hatched band and a kitchen counter is not. A plotted CAD
+ * drawing hatches only what the office chose to — on 28-8-23-2 the envelope
+ * and the ממ"ד are hatched and every internal partition is a bare pair of
+ * lines 10 cm apart — so the hatch rule found the envelope, missed every
+ * partition, and the flat came back as one open floor with no shelter room.
+ *
+ * So both: the hatched bands, plus the pairs that a plotter drew as walls and
+ * that are not already one of those bands.
+ */
+export function wallBodiesForSheet(
+  segments: VectorSegment[],
+  options: { unitsPerMetre: number; keepOpenings?: boolean },
+): WallBody[] {
+  const hatched = wallBodiesFromHatch(segments, options);
+  const plotted = plottedWallBodies(segments, options.unitsPerMetre);
+  const extra = plotted.filter((body) => !hatched.some((seen) => sameWall(seen, body)));
+  return [...hatched, ...extra];
+}
+
+/** Two bodies that are the same wall, found once by each detector. */
+function sameWall(a: WallBody, b: WallBody): boolean {
+  if (a.orientation !== b.orientation) return false;
+  if (Math.abs(a.centre - b.centre) > Math.max(a.thickness, b.thickness) * 0.75) return false;
+  const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
+  return overlap > Math.min(a.to - a.from, b.to - b.from) * 0.4;
+}
+
+/**
+ * Walls as a plotter draws them: two heavy parallel lines a wall apart.
+ *
+ * The weight is the whole signal, and it is per sheet rather than absolute.
+ * On 28-8-23-2 the wall lines are plotted at pen weights 12 and 14 while the
+ * dimension chains, the furniture and the grid sit at 4 to 6 — so a pair of
+ * heavy lines 10 cm apart is a partition, and a pair of thin ones the same
+ * distance apart is a counter, a stair tread or a dimension chain. Without
+ * the weight test every one of those became a wall.
+ *
+ * Sheets that do not plot their walls heavier than everything else produce no
+ * heavy population at all, and this returns nothing rather than a guess: the
+ * hatch detector is the answer for those.
+ */
+function plottedWallBodies(segments: VectorSegment[], unitsPerMetre: number): WallBody[] {
+  if (!(unitsPerMetre > 0)) return [];
+  const axis = segments.filter(
+    (s) => isAxisAligned(s) && segmentLength(s) >= 0.25 * unitsPerMetre,
+  );
+  const cut = heavyLineCut(axis);
+  if (cut == null) return [];
+  const heavy = axis.filter((s) => (s.lineWidth ?? 0) >= cut);
+  if (heavy.length < 20) return [];
+
+  const runs = buildWallRuns(heavy);
+  const minThickness = MIN_THICKNESS_M * unitsPerMetre;
+  const maxThickness = MAX_THICKNESS_M * unitsPerMetre;
+  const minOverlap = Math.max(0.3 * unitsPerMetre, MIN_WALL_LENGTH);
+
+  const bodies: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const faces = runs
+      .filter((r) => r.orientation === orientation)
+      .sort((a, b) => a.at - b.at);
+    const used = new Set<number>();
+    for (let i = 0; i < faces.length; i++) {
+      if (used.has(i)) continue;
+      const a = faces[i]!;
+      for (let j = i + 1; j < faces.length; j++) {
+        if (used.has(j)) continue;
+        const b = faces[j]!;
+        const gap = b.at - a.at;
+        if (gap < minThickness) continue;
+        if (gap > maxThickness) break;
+        const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
+        if (overlap < minOverlap) continue;
+        if (overlap < Math.min(a.to - a.from, b.to - b.from) * 0.5) continue;
+        used.add(i);
+        used.add(j);
+        bodies.push({
+          orientation,
+          centre: (a.at + b.at) / 2,
+          thickness: gap,
+          from: Math.max(a.from, b.from),
+          to: Math.min(a.to, b.to),
+        });
+        break;
+      }
+    }
+  }
+  return bodies;
+}
+
+/**
+ * The pen weight at or above which this sheet's lines are structure.
+ *
+ * WALL_MIN_LINE_WIDTH is a floor, not an answer. A sales sheet draws its walls
+ * heavier than its furniture and 3 separates them; a plotted CAD sheet draws
+ * everything at 4 and up, walls at 12 and 14, and taking 3 there treats every
+ * dimension chain and wardrobe edge as a wall — which is how 28-8-23-2 came
+ * out of the segmenter as fifteen pockets of two square metres.
+ */
+export function wallInkThreshold(segments: VectorSegment[]): number {
+  const widths = segments
+    .filter((s) => isAxisAligned(s))
+    .map((s) => s.lineWidth ?? 0)
+    .filter((w) => w > 0);
+  if (widths.length < 40) return WALL_MIN_LINE_WIDTH;
+  // Measured over the ten reference sheets and this one: a sales sheet draws
+  // 28 to 34 per cent of its lines at wall weight or above, so the constant
+  // separates walls from furniture there and must be left alone. A plotted CAD
+  // sheet draws 100 per cent of them at 4 and up, where the constant separates
+  // nothing at all — that is the only case this replaces.
+  const heavyShare = widths.filter((w) => w >= WALL_MIN_LINE_WIDTH).length / widths.length;
+  if (heavyShare < 0.9) return WALL_MIN_LINE_WIDTH;
+  return heavyLineCut(segments.filter((s) => isAxisAligned(s))) ?? WALL_MIN_LINE_WIDTH;
+}
+
+/**
+ * The pen weight at which this sheet's lines stop being annotation.
+ *
+ * Null when the drawing has no heavy class — a scan, or a sheet plotted at one
+ * weight throughout, where this test would pass everything.
+ */
+function heavyLineCut(segments: VectorSegment[]): number | null {
+  const widths = segments
+    .map((s) => s.lineWidth ?? 0)
+    .filter((w) => w > 0)
+    .sort((a, b) => a - b);
+  if (widths.length < 40) return null;
+  const median = widths[Math.floor(widths.length / 2)]!;
+  const top = widths[widths.length - 1]!;
+  if (top < median * 1.8) return null;
+  return Math.max(median * 1.8, top * 0.7);
+}
+
 export function wallBodiesFromHatch(
   segments: VectorSegment[],
   options: {

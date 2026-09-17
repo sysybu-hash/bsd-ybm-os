@@ -7,7 +7,7 @@ import {
   lintelBands,
   smoothFootprint,
   spanArea,
-  wallBodiesFromHatch,
+  wallBodiesForSheet,
   type SpanRow,
   type WallBody,
 } from "@/lib/projects/floorplan-solid";
@@ -81,7 +81,7 @@ export function collectScaleLocks(
     // Truncated at the boundary, not dropped: the party wall straddles it and
     // is still this flat's east wall.
     const bodies = clipBodiesToBounds(
-      wallBodiesFromHatch(segments, { unitsPerMetre }),
+      wallBodiesForSheet(segments, { unitsPerMetre }),
       bounds,
       8,
       { truncate: true },
@@ -123,7 +123,7 @@ export function collectScaleLocks(
     // which no door is. Rectangles of a bed's proportion cluster at several
     // sizes and beds alone cannot say which cluster is the beds; doors can.
     const pieces = clipBodiesToBounds(
-      wallBodiesFromHatch(segments, { unitsPerMetre, keepOpenings: true }),
+      wallBodiesForSheet(segments, { unitsPerMetre, keepOpenings: true }),
       bounds,
       8,
       { truncate: true },

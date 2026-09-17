@@ -19,7 +19,7 @@ import {
   spansContain,
   trimToHatchAlong,
   findOpenings,
-  wallBodiesFromHatch,
+  wallBodiesForSheet,
   type Opening,
   type SpanRow,
   type WallBody,
@@ -287,7 +287,7 @@ export async function buildFlatFromGeometry(
 
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(
-    wallBodiesFromHatch(geometry.segments, { unitsPerMetre, keepOpenings: true }),
+    wallBodiesForSheet(geometry.segments, { unitsPerMetre, keepOpenings: true }),
     flatExtent,
     8,
     { truncate: true },

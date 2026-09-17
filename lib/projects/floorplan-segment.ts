@@ -8,10 +8,11 @@ import {
   type Opening,
   type SpanRow,
   type WallBody,
+  wallInkThreshold,
 } from "@/lib/projects/floorplan-solid";
 import {
-  isAxisAligned,
   WALL_MIN_LINE_WIDTH,
+  isAxisAligned,
   type VectorSegment,
 } from "@/lib/projects/floorplan-vector";
 
@@ -185,12 +186,23 @@ export function segmentRooms(input: {
     ...bridgeOpenings(bodies, unitsPerMetre * 1.3),
     ...openings.map((o) => sealOpening(o, seal)),
   ];
+  // The pen the walls are drawn with, read off this sheet rather than assumed.
+  const inkCut = wallInkThreshold(input.segments ?? []);
   const ink = (input.segments ?? []).filter(
-    (segment) => segment.lineWidth >= WALL_MIN_LINE_WIDTH && isAxisAligned(segment),
+    (segment) => segment.lineWidth >= inkCut && isAxisAligned(segment),
   );
+  // The border flood decides inside from outside by trying to reach in, and on
+  // a sheet whose envelope is drawn in one pen throughout that works. A plotted
+  // sheet draws part of its outer wall in the same thin pen as its dimension
+  // chains: the flood walked in through the kitchen of 28-8-23-2 and three
+  // quarters of the flat came back as outdoors. There the footprint — built
+  // from hatch and lintels, and correct on that sheet — is the better boundary.
+  // Only there: handing it to the sales sheets moved rooms on six of the ten.
+  const plottedSheet = inkCut > WALL_MIN_LINE_WIDTH;
   const components = interiorComponents(barriers, bounds, {
     excludeWalls: true,
     sealingSegments: ink.length > 0 ? ink : undefined,
+    floorMask: plottedSheet && floor.length > 1 ? floor : undefined,
   });
   if (components.length === 0) return [];
 
