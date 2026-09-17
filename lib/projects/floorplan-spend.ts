@@ -6,6 +6,8 @@
  * multiplies that. Extraction and the auditor are cheaper but not free.
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
 export type FloorplanSpendKind = "image" | "audit" | "extract";
 
 export type FloorplanSpend = {
@@ -40,4 +42,23 @@ export function formatFloorplanSpend(spend: FloorplanSpend): string {
 /** Two image calls per finish attempt — placement, then recolour. */
 export function imageCallsForAttempts(attempts: number): number {
   return Math.max(0, attempts) * 2;
+}
+
+const ambient = new AsyncLocalStorage<FloorplanSpend>();
+
+/**
+ * Counts every image and audit call made inside fn against spend.
+ *
+ * The photoreal generator reaches the image model and the auditors from a
+ * dozen places — attempts, repairs, warm passes, companions. Threading a
+ * counter through each of them is how raster runs came to report zero calls.
+ */
+export function runWithFloorplanSpend<T>(spend: FloorplanSpend, fn: () => Promise<T>): Promise<T> {
+  return ambient.run(spend, fn);
+}
+
+/** Records against the spend of the enclosing runWithFloorplanSpend, if any. */
+export function recordAmbientFloorplanSpend(kind: FloorplanSpendKind, model?: string): void {
+  const spend = ambient.getStore();
+  if (spend) recordFloorplanSpend(spend, kind, model);
 }

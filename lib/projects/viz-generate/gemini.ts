@@ -5,6 +5,7 @@ import {
   isLikelyGeminiModelUnavailable,
 } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
+import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
 
 const log = createLogger("floorplan-viz-generate");
 function collectInlineImages(response: unknown): Array<{ mimeType: string; base64: string }> {
@@ -38,6 +39,7 @@ export async function generateOneImage(
 
   for (const model of getFloorplanVizModelChain()) {
     try {
+      recordAmbientFloorplanSpend("image", model);
       const response = await client.models.generateContent({
         model,
         contents: [

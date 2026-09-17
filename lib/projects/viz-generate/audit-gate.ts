@@ -1,6 +1,7 @@
 
 
 import { createLogger } from "@/lib/logger";
+import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
 import {
   type FloorplanLayout,
   type FloorplanVizImage,
@@ -30,6 +31,7 @@ export async function auditStill(
   plan: { base64: string; mimeType: string },
   _haredi: boolean,
 ): Promise<FloorplanVizAudit | null> {
+  recordAmbientFloorplanSpend("audit", "gemini-audit");
   return auditFloorplanStill(still, plan);
 }
 
