@@ -75,6 +75,11 @@ export async function generateFloorplanVisuals(
      * timeout returns nothing at all — not even the frames already paid for.
      */
     deadlineMs?: number;
+    /**
+     * A schematic of this flat, drawn from where the extractor placed its
+     * rooms. Used when the measured CAD route cannot read the sheet's walls.
+     */
+    schematicPlate?: { mimeType: string; base64: string };
   },
 ): Promise<FloorplanVizImage[]> {
   const vizLayout = overlayPrintedProgram(layoutForVisualization(layout), options?.truth);
@@ -105,6 +110,7 @@ export async function generateFloorplanVisuals(
     geometryLock: Boolean(options?.geometryLock?.base64),
     hintKind: hint?.kind,
     planGuide: Boolean(guide),
+    schematicPlate: Boolean(options?.schematicPlate?.base64),
   };
   const jobs: VizJob[] = specs.map((spec) => ({
     ...spec,
@@ -136,6 +142,7 @@ export async function generateFloorplanVisuals(
         overviewStill,
         options?.geometryLock,
         guide,
+        options?.schematicPlate,
       );
       const audited = await generateAuditedImage(job, attachments, aspectRatio, {
         layout: vizLayout,

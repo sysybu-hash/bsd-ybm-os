@@ -1,3 +1,4 @@
+import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
 import {
   extractFloorplanLayout,
   extractFloorplanRoomsWithVision,
@@ -365,10 +366,15 @@ export async function visualizeFloorplanFromDrawing(
     cropped && (crop.w < 0.97 || crop.h < 0.97 || crop.x > 0.02 || crop.y > 0.02)
       ? remapLayoutToCrop(extracted.layout, crop)
       : extracted.layout;
+  // No measured geometry for this sheet, but the extractor did place every
+  // room: a schematic of that is still a picture of THIS flat, and the model
+  // copies a picture far better than it reads a plan.
+  const plate = await buildSchematicPlateJpeg(vizLayout);
   let images: FloorplanVizImage[] = [];
   try {
     images = await runWithFloorplanSpend(spend, () =>
       generateFloorplanVisuals(vizLayout, vizBase64, vizMime, {
+        schematicPlate: plate ?? undefined,
         photo,
         styleKit,
         scope,

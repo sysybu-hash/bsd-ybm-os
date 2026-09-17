@@ -394,6 +394,8 @@ export function buildVizPrompt(
     hintKind?: WallHintKind;
     /** The same sheet, with every room named on it, is attached first. */
     planGuide?: boolean;
+    /** A schematic plate of this flat — rooms where they were read — leads. */
+    schematicPlate?: boolean;
   },
 ): string {
   layout = canonicalizeFloorplanLayout(layout);
@@ -456,7 +458,9 @@ ${placedRooms.map((row) => `${row.index}. ${row.room.name} — ${row.where}`).jo
 None of the magenta boxes or their text may appear in the photograph; they are direction for you, not decoration.`
       : "";
   const mapBit = [
-    options?.planGuide
+    options?.schematicPlate
+      ? "Attachment order: (1) a SCHEMATIC PLATE of this apartment — every room as a block, at the position and size it occupies in the flat, with a bed where there is a bed; (2) the same sheet with every room named at its position; (3) the original sales sheet. Take the ARRANGEMENT from the plate: which room is where, what adjoins what, which side the living room is on. Take every detail from the sheet — the true wall jogs, the fixtures, the openings, the furniture. The plate is a diagram of this flat, not a drawing of a different one: do not photograph its blocks as literal boxes, and do not reorganise the flat away from it."
+      : options?.planGuide
       ? "Attachment order: (1) the same sheet with every room named at its position — the layout map; (2) the original sales sheet — walls AND furniture symbols."
       : options?.geometryLock
       ? CAD_MASSING_LOCK
