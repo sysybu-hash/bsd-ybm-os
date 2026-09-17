@@ -65,11 +65,20 @@ export function floorplanOverviewAttachments(input: {
   geometryLock?: { mimeType: string; base64: string } | null;
   /** The sheet with every room named on it, when the extractor placed them. */
   planGuide?: { mimeType: string; base64: string } | null;
+  /** A schematic of the flat built from where the rooms were read. */
+  schematicPlate?: { mimeType: string; base64: string } | null;
 }): Array<{ mimeType: string; base64: string }> {
   const inkAtt = input.ink ? [{ mimeType: "image/jpeg" as const, base64: input.ink }] : [];
   const massingAtt = input.massing ? [{ mimeType: "image/jpeg" as const, base64: input.massing }] : [];
   if (input.geometryLock?.base64) {
     return [input.geometryLock, input.plan, ...inkAtt, ...massingAtt];
+  }
+  // The plate leads where there is one: it is a picture of this flat rather
+  // than a drawing to interpret, and the model copies a picture far more
+  // faithfully than it reads a plan. The named map and the sheet follow.
+  if (input.schematicPlate?.base64) {
+    const guide = input.planGuide?.base64 ? [input.planGuide] : [];
+    return [input.schematicPlate, ...guide, input.plan, ...inkAtt, ...massingAtt];
   }
   // The named map leads: it says where each room goes, and the clean sheet
   // behind it says what is drawn inside them.
@@ -88,6 +97,7 @@ export async function attachmentsForJob(
   overviewStill?: { mimeType: string; base64: string } | null,
   geometryLock?: { mimeType: string; base64: string } | null,
   planGuide?: { mimeType: string; base64: string } | null,
+  schematicPlate?: { mimeType: string; base64: string } | null,
 ): Promise<Array<{ mimeType: string; base64: string }>> {
   const planImage = await planImageForGeneration(plan);
   if (job.viewId === "interior") {
@@ -109,6 +119,7 @@ export async function attachmentsForJob(
     massing,
     geometryLock,
     planGuide,
+    schematicPlate,
   });
   if (job.viewId === "isometric" && overviewStill?.base64) {
     planAtt.push(overviewStill);
