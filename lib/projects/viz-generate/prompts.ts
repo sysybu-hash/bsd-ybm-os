@@ -1,6 +1,7 @@
 
 import sharp from "sharp";
 
+import { placedRoomsExtent, planPositionLabel } from "@/lib/projects/floorplan-plan-guide";
 import {
   inferRoomKind,
   isApartmentStairRoom,
@@ -391,6 +392,8 @@ export function buildVizPrompt(
     geometryLock?: boolean;
     /** What the second attachment actually is, so the prompt describes it truthfully. */
     hintKind?: WallHintKind;
+    /** The same sheet, with every room named on it, is attached first. */
+    planGuide?: boolean;
   },
 ): string {
   layout = canonicalizeFloorplanLayout(layout);
@@ -440,8 +443,22 @@ ${ONE_FRAME} No captions. No title block.`;
   }
 
   const roomBlock = rooms.map((room, i) => roomLine(room, i + 1)).join("\n") || "- (copy rooms from the drawing)";
+  // The same map in words. The picture is the instruction; this is what the
+  // model can check itself against while it draws.
+  const roomsExtent = placedRoomsExtent(rooms);
+  const placedRooms = rooms
+    .map((room, i) => ({ room, index: i + 1, where: planPositionLabel(room, roomsExtent) }))
+    .filter((row): row is { room: FloorplanRoom; index: number; where: string } => row.where != null);
+  const roomMapBlock =
+    options?.planGuide && placedRooms.length > 0
+      ? `ROOM MAP — attachment 1 is the SAME sheet with every room named in magenta at its own position. Each room below must land in that part of your frame, on that side, with those neighbours. A room drawn on the opposite side is a failed still:
+${placedRooms.map((row) => `${row.index}. ${row.room.name} — ${row.where}`).join("\n")}
+None of the magenta boxes or their text may appear in the photograph; they are direction for you, not decoration.`
+      : "";
   const mapBit = [
-    options?.geometryLock
+    options?.planGuide
+      ? "Attachment order: (1) the same sheet with every room named at its position — the layout map; (2) the original sales sheet — walls AND furniture symbols."
+      : options?.geometryLock
       ? CAD_MASSING_LOCK
       : options?.massingMap
         ? "Attachment order: (1) original sales sheet — walls AND furniture symbols; (2) thickened wall tracing (WALLS ONLY, looks empty — do not copy that emptiness); (3) translucent color tints on the same sheet — identification hints only. Do not paint numbers onto the photograph."
@@ -483,6 +500,8 @@ ${mapBit}
 
 ${layout.unitLabel ?? "apartment"} · ${layout.floor ?? ""} · ${areaBit} · ceiling ${layout.ceilingHeightM ?? 2.7} m
 This is NOT a studio. Keep the living volume LARGE as drawn.
+
+${roomMapBlock}
 
 ${inventoryBlock(layout, kit.audience === "haredi")}
 

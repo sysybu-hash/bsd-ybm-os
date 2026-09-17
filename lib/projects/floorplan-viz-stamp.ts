@@ -1,14 +1,11 @@
-import { existsSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
 import {
-  NOTO_HEBREW_SCRIPT_BOLD_BASE64,
-  NOTO_HEBREW_SCRIPT_REGULAR_BASE64,
-} from "@/lib/pdf/font-data.generated";
-import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
+  CANVAS_FONT_BOLD,
+  CANVAS_FONT_REGULAR,
+  registerCanvasFonts,
+} from "@/lib/projects/floorplan-canvas-fonts";
 import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 
 const log = createLogger("floorplan-viz-stamp");
@@ -143,37 +140,6 @@ export function creditRunLayout(centreX: number, fontSize: number) {
   };
 }
 
-function registerStampFonts(GlobalFonts: {
-  has: (name: string) => boolean;
-  register: (font: Buffer, name?: string) => unknown;
-  registerFromPath: (path: string, name?: string) => unknown;
-}): void {
-  const winBold = "C:\\Windows\\Fonts\\arialbd.ttf";
-  const winReg = "C:\\Windows\\Fonts\\arial.ttf";
-  if (existsSync(winBold) && !GlobalFonts.has("BookletStampBold")) {
-    GlobalFonts.registerFromPath(winBold, "BookletStampBold");
-  }
-  if (existsSync(winReg) && !GlobalFonts.has("BookletStamp")) {
-    GlobalFonts.registerFromPath(winReg, "BookletStamp");
-  }
-  // Hebrew glyphs first, the Latin faces behind them for digits. Arial covers
-  // both on Windows; on Vercel's Linux nothing does unless we bring it.
-  if (!GlobalFonts.has("BookletStampHe") && NOTO_HEBREW_SCRIPT_REGULAR_BASE64) {
-    GlobalFonts.register(Buffer.from(NOTO_HEBREW_SCRIPT_REGULAR_BASE64, "base64"), "BookletStampHe");
-  }
-  if (!GlobalFonts.has("BookletStampHeBold") && NOTO_HEBREW_SCRIPT_BOLD_BASE64) {
-    GlobalFonts.register(Buffer.from(NOTO_HEBREW_SCRIPT_BOLD_BASE64, "base64"), "BookletStampHeBold");
-  }
-  if (GlobalFonts.has("BookletStamp") && GlobalFonts.has("BookletStampBold")) return;
-  const { regular, bold } = loadPdfFontBuffers();
-  const dir = tmpdir();
-  const boldPath = path.join(dir, "booklet-stamp-bold.ttf");
-  const regPath = path.join(dir, "booklet-stamp.ttf");
-  if (!existsSync(boldPath)) writeFileSync(boldPath, bold);
-  if (!existsSync(regPath)) writeFileSync(regPath, regular);
-  if (!GlobalFonts.has("BookletStampBold")) GlobalFonts.registerFromPath(boldPath, "BookletStampBold");
-  if (!GlobalFonts.has("BookletStamp")) GlobalFonts.registerFromPath(regPath, "BookletStamp");
-}
 
 /**
  * librsvg draws SVG Hebrew backwards. Skia (canvas) shapes RTL correctly
@@ -186,7 +152,7 @@ async function paintStampBar(
 ): Promise<Buffer | null> {
   try {
     const { createCanvas, GlobalFonts } = await import("@napi-rs/canvas");
-    registerStampFonts(GlobalFonts);
+    registerCanvasFonts(GlobalFonts);
     const canvas = createCanvas(width, barHeight);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#1c1917";
@@ -201,13 +167,13 @@ async function paintStampBar(
       ctx.direction = "rtl";
       ctx.textAlign = "right";
       ctx.fillStyle = "#faf7f2";
-      ctx.font = `bold ${mainSize}px BookletStampBold, BookletStampHeBold`;
+      ctx.font = `bold ${mainSize}px ${CANVAS_FONT_BOLD}`;
       ctx.fillText(caption, width - pad, mid);
     }
     ctx.direction = "rtl";
     ctx.textAlign = "left";
     ctx.fillStyle = "#c8c2b8";
-    ctx.font = `${creditSize}px BookletStamp, BookletStampHe`;
+    ctx.font = `${creditSize}px ${CANVAS_FONT_REGULAR}`;
     ctx.fillText(`${CREDIT_HE} ${CREDIT_MARK}`, pad, mid);
     return Buffer.from(canvas.toBuffer("image/png"));
   } catch (err: unknown) {

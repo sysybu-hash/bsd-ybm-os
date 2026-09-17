@@ -1,3 +1,4 @@
+import { buildLabelledPlanJpeg, layoutCanGuide } from "@/lib/projects/floorplan-plan-guide";
 import { createLogger } from "@/lib/logger";
 import {
   layoutForVisualization,
@@ -77,6 +78,12 @@ export async function generateFloorplanVisuals(
   if (specs.length === 0) {
     throw new Error("אין הדמיות נוספות לייצר");
   }
+  // A sheet whose room labels the extractor placed gets them written back
+  // onto it: the model is told where each room goes, in the picture itself.
+  const guide =
+    options?.geometryLock?.base64 || !layoutCanGuide(vizLayout)
+      ? null
+      : await buildLabelledPlanJpeg({ base64, mimeType }, vizLayout);
   const hint = await buildWallHint(base64, mimeType, options?.photo === true);
   const ink = hint?.image ?? null;
   const massing = null;
@@ -87,6 +94,7 @@ export async function generateFloorplanVisuals(
     massingMap: Boolean(massing),
     geometryLock: Boolean(options?.geometryLock?.base64),
     hintKind: hint?.kind,
+    planGuide: Boolean(guide),
   };
   const jobs: VizJob[] = specs.map((spec) => ({
     ...spec,
@@ -117,6 +125,7 @@ export async function generateFloorplanVisuals(
         vizLayout,
         overviewStill,
         options?.geometryLock,
+        guide,
       );
       const audited = await generateAuditedImage(job, attachments, aspectRatio, {
         layout: vizLayout,

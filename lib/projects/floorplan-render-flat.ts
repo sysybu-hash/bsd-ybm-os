@@ -85,6 +85,8 @@ export type RenderedFlat = {
 export type RenderFlatOptions = {
   /** Gross printed area, plus any terrace area on the flat's own level. */
   targetAreaM2: number;
+  /** Scale read off the dimension chains, when no area is printed. */
+  unitsPerMetreHint?: number;
   /** The flat's extent, when the sheet carries more than one apartment. */
   extent?: { x: number; y: number; width: number; height: number };
   /**
@@ -239,6 +241,7 @@ export async function renderFlatFromPdf(
   const wallSource = options.wallSource ?? pdf;
   const flat = await buildFlatFromPdf(wallSource, options.targetAreaM2, {
     extent: options.extent,
+    unitsPerMetreHint: options.unitsPerMetreHint,
   });
   if (!flat) {
     log.warn("no scale reproduces the printed area", {

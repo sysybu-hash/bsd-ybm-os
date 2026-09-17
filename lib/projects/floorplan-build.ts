@@ -7,7 +7,7 @@ import {
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
-import { lockScale, type ScaleSearch } from "@/lib/projects/floorplan-scale";
+import { lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
   clipBodiesToBounds,
@@ -108,19 +108,25 @@ export async function buildFlatFromGeometry(
      * which keeps the party wall as this flat's east wall.
      */
     extent?: { x: number; y: number; width: number; height: number };
+    /**
+     * Units per metre read off the sheet's dimension chains, for a sheet that
+     * prints no area. The area sweep is skipped in favour of a narrow sweep
+     * around this figure; see lockScaleToHint.
+     */
+    unitsPerMetreHint?: number;
   },
 ): Promise<BuiltFlat | null> {
   const sheet = wallBoundingBox(geometry);
   if (!sheet) return null;
 
   const flatExtent = options?.extent ?? sheet;
-  const lock = lockScale(
-    geometry.segments,
-    flatExtent,
-    printedAreaM2,
-    options?.search,
-    geometry.curves,
-  );
+  const hint = options?.unitsPerMetreHint;
+  const lock =
+    printedAreaM2 > 0
+      ? lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search, geometry.curves)
+      : hint
+        ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves)
+        : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
 
@@ -389,6 +395,7 @@ export async function buildFlatFromPdf(
     search?: ScaleSearch;
     width?: number;
     extent?: { x: number; y: number; width: number; height: number };
+    unitsPerMetreHint?: number;
   },
 ): Promise<BuiltFlat | null> {
   const geometry = await extractFloorplanVectorGeometry(pdf);
