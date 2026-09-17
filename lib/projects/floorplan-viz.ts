@@ -1,4 +1,7 @@
-import { extractFloorplanLayout } from "@/lib/projects/floorplan-layout-extract";
+import {
+  extractFloorplanLayout,
+  type FloorplanLayoutExtractResult,
+} from "@/lib/projects/floorplan-layout-extract";
 import { generateFloorplanVisuals } from "@/lib/projects/floorplan-viz-generate";
 import { titleFromFloorplanLayout } from "@/lib/projects/floorplan-viz-ids";
 import { cropFloorplanRasterToUnit, isPortraitFloorplanRaster, prepareFloorplanSource } from "@/lib/projects/floorplan-photo-prep";
@@ -35,7 +38,11 @@ import {
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
-import { emptyFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
+import {
+  emptyFloorplanSpend,
+  runWithFloorplanSpend,
+  type FloorplanSpend,
+} from "@/lib/projects/floorplan-spend";
 import { rasterNeedsOutlineConfirm, rasterToSegments } from "@/lib/projects/floorplan-raster";
 import {
   floorplanGeometryPayload,
@@ -180,7 +187,7 @@ export async function visualizeFloorplanFromDrawing(
       ? parseFloorplanLayout(options.existingLayout as Record<string, unknown>)
       : null;
   const spend = emptyFloorplanSpend();
-  const extracted = reused
+  let extracted: FloorplanLayoutExtractResult = reused
     ? {
         layout: reused,
         grounding: {
@@ -219,16 +226,18 @@ export async function visualizeFloorplanFromDrawing(
         log.info("cad massing omitted from photoreal; segmented program does not match the sheet");
       }
       try {
-        const photoreal = await generateFloorplanVisuals(layout, prepared.base64, prepared.mimeType, {
-          photo,
-          styleKit,
-          scope: "overview",
-          existingImages: options?.existingImages,
-          unitTitle: titleFromFloorplanLayout(layout, options?.sourceName ?? ""),
-          skipInteriors: true,
-          geometryLock: lockCad ? cadResult.geometry : undefined,
-          truth: cadResult.truth,
-        });
+        const photoreal = await runWithFloorplanSpend(cadResult.spend, () =>
+          generateFloorplanVisuals(layout, prepared.base64, prepared.mimeType, {
+            photo,
+            styleKit,
+            scope: "overview",
+            existingImages: options?.existingImages,
+            unitTitle: titleFromFloorplanLayout(layout, options?.sourceName ?? ""),
+            skipInteriors: true,
+            geometryLock: lockCad ? cadResult.geometry : undefined,
+            truth: cadResult.truth,
+          }),
+        );
         images = mergeCadPhotorealImages({ photoreal, geometry: cadResult.geometry });
         const hasLivingOverview = images.some(
           (img) => img.viewId === "overview" && !img.roomName && img.base64 !== cadResult.geometry.base64,
@@ -264,16 +273,18 @@ export async function visualizeFloorplanFromDrawing(
     // never sinks the run — the overview is what the client is buying.
     if (scope === "full" || scope === "rooms") {
       try {
-        const companions = await generateGeometryCompanions({
-          rooms: cadResult.rooms,
-          styleKit,
-          plan: { base64: prepared.base64, mimeType: prepared.mimeType },
-          geometry: cadResult.geometry,
-          layout,
-          haredi: styleKit.audience === "haredi",
-          maxViews: scope === "rooms" ? 6 : 3,
-          existingImages: options?.existingImages,
-        });
+        const companions = await runWithFloorplanSpend(cadResult.spend, () =>
+          generateGeometryCompanions({
+            rooms: cadResult.rooms,
+            styleKit,
+            plan: { base64: prepared.base64, mimeType: prepared.mimeType },
+            geometry: cadResult.geometry,
+            layout,
+            haredi: styleKit.audience === "haredi",
+            maxViews: scope === "rooms" ? 6 : 3,
+            existingImages: options?.existingImages,
+          }),
+        );
         if (companions.length > 0) {
           images = [...images, ...companions];
           if (!enginesUsed.includes("gemini-image")) enginesUsed.push("gemini-image");
@@ -310,6 +321,27 @@ export async function visualizeFloorplanFromDrawing(
     );
   }
 
+  // The lean extract reads printed text only, which is all the CAD route
+  // needs. A sheet whose room names are drawn as outlines has no such text,
+  // and the raster route then briefed the image model with no rooms at all —
+  // it invented the program. Pay for the full vision read before painting.
+  if (!reused && extracted.layout.rooms.length === 0) {
+    log.info("lean extract found no rooms; running the full layout read");
+    try {
+      const full = await extractFloorplanLayout(prepared.base64, prepared.mimeType, { photo, spend });
+      if (full.layout.rooms.length > 0) {
+        extracted = {
+          ...full,
+          enginesUsed: [...new Set([...extracted.enginesUsed, ...full.enginesUsed])],
+        };
+      }
+    } catch (err: unknown) {
+      log.warn("full layout read failed; painting from the lean extract", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   const portraitSheet = await isPortraitFloorplanRaster(prepared.base64, prepared.mimeType);
   const crop = unitCropFromLayout(extracted.layout, { portraitSheet });
   const cropped = await cropFloorplanRasterToUnit(prepared.base64, prepared.mimeType, crop);
@@ -321,14 +353,16 @@ export async function visualizeFloorplanFromDrawing(
       : extracted.layout;
   let images: FloorplanVizImage[] = [];
   try {
-    images = await generateFloorplanVisuals(vizLayout, vizBase64, vizMime, {
-      photo,
-      styleKit,
-      scope,
-      existingImages: options?.existingImages,
-      unitTitle: titleFromFloorplanLayout(vizLayout, options?.sourceName ?? ""),
-      skipInteriors: options?.skipInteriors,
-    });
+    images = await runWithFloorplanSpend(spend, () =>
+      generateFloorplanVisuals(vizLayout, vizBase64, vizMime, {
+        photo,
+        styleKit,
+        scope,
+        existingImages: options?.existingImages,
+        unitTitle: titleFromFloorplanLayout(vizLayout, options?.sourceName ?? ""),
+        skipInteriors: options?.skipInteriors,
+      }),
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (!message.includes("אין הדמיות נוספות")) throw err;

@@ -4,6 +4,10 @@ import path from "node:path";
 import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
+import {
+  NOTO_HEBREW_SCRIPT_BOLD_BASE64,
+  NOTO_HEBREW_SCRIPT_REGULAR_BASE64,
+} from "@/lib/pdf/font-data.generated";
 import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
 import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 
@@ -152,6 +156,14 @@ function registerStampFonts(GlobalFonts: {
   if (existsSync(winReg) && !GlobalFonts.has("BookletStamp")) {
     GlobalFonts.registerFromPath(winReg, "BookletStamp");
   }
+  // Hebrew glyphs first, the Latin faces behind them for digits. Arial covers
+  // both on Windows; on Vercel's Linux nothing does unless we bring it.
+  if (!GlobalFonts.has("BookletStampHe") && NOTO_HEBREW_SCRIPT_REGULAR_BASE64) {
+    GlobalFonts.register(Buffer.from(NOTO_HEBREW_SCRIPT_REGULAR_BASE64, "base64"), "BookletStampHe");
+  }
+  if (!GlobalFonts.has("BookletStampHeBold") && NOTO_HEBREW_SCRIPT_BOLD_BASE64) {
+    GlobalFonts.register(Buffer.from(NOTO_HEBREW_SCRIPT_BOLD_BASE64, "base64"), "BookletStampHeBold");
+  }
   if (GlobalFonts.has("BookletStamp") && GlobalFonts.has("BookletStampBold")) return;
   const { regular, bold } = loadPdfFontBuffers();
   const dir = tmpdir();
@@ -189,13 +201,13 @@ async function paintStampBar(
       ctx.direction = "rtl";
       ctx.textAlign = "right";
       ctx.fillStyle = "#faf7f2";
-      ctx.font = `bold ${mainSize}px BookletStampBold`;
+      ctx.font = `bold ${mainSize}px BookletStampBold, BookletStampHeBold`;
       ctx.fillText(caption, width - pad, mid);
     }
     ctx.direction = "rtl";
     ctx.textAlign = "left";
     ctx.fillStyle = "#c8c2b8";
-    ctx.font = `${creditSize}px BookletStamp`;
+    ctx.font = `${creditSize}px BookletStamp, BookletStampHe`;
     ctx.fillText(`${CREDIT_HE} ${CREDIT_MARK}`, pad, mid);
     return Buffer.from(canvas.toBuffer("image/png"));
   } catch (err: unknown) {

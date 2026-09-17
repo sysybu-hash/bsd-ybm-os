@@ -6,6 +6,7 @@ import {
 } from "@/lib/ai-providers";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
 import type { FloorplanVizAudit } from "@/lib/projects/floorplan-viz-audit";
 
 const log = createLogger("floorplan-viz-modesty-claude");
@@ -209,6 +210,7 @@ export async function auditStillWithClaude(
   plan: { base64: string; mimeType: string },
 ): Promise<ClaudeModestyAudit | null> {
   if (!isAnthropicConfigured()) return null;
+  recordAmbientFloorplanSpend("audit", "claude-audit");
   const key = env.ANTHROPIC_API_KEY!.trim();
   const models = getAnthropicModelCandidates();
   let lastErr: Error | null = null;
