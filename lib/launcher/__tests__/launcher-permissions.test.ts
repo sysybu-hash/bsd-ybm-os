@@ -19,6 +19,20 @@ describe("filterWidgetsForPicker", () => {
     }
   });
 
+  it("offers floor-plan visualisation to a company-management org only for a platform admin", () => {
+    const base = {
+      meckanoEnabled: true,
+      calendarGoogleEnabled: true,
+      organizationIndustry: "COMPANY_MGMT",
+    };
+    expect(filterWidgetsForPicker({ ...base, isPlatformAdmin: false }, new Set())).not.toContain(
+      "floorplanViz",
+    );
+    expect(filterWidgetsForPicker({ ...base, isPlatformAdmin: true }, new Set())).toContain(
+      "floorplanViz",
+    );
+  });
+
   it("hides advanced widgets for EMPLOYEE / CLIENT simple roles", () => {
     const options = filterWidgetsForPicker(
       {

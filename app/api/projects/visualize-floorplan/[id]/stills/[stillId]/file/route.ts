@@ -7,8 +7,8 @@ import { getFloorplanVizStillBytesForOrg } from "@/lib/projects/floorplan-viz-st
 export const dynamic = "force-dynamic";
 
 export const GET = withWorkspacesAuthDynamic<{ id: string; stillId: string }>(
-  async (req, { orgId }, segment) => {
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+  async (req, { orgId, role }, segment) => {
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
     const { id, stillId } = await segment.params;
     const still = await getFloorplanVizStillBytesForOrg(orgId, id, stillId);

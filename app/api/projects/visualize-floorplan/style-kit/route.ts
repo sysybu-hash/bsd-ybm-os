@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const MOODS = new Set(["light", "dark", "luxury", "developer"]);
 
-export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
   try {
     const rl = await checkRateLimit(`floorplan-style-kit:org:${orgId}:user:${userId}`, 30, 60 * 60 * 1000);
     if (!rl.success) {
@@ -27,7 +27,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     const geminiErr = assertProviderConfigured("gemini");
     if (geminiErr) return jsonBadRequest(geminiErr, "gemini_not_configured");
 
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

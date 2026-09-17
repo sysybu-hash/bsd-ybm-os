@@ -61,9 +61,9 @@ export const PATCH = withWorkspacesAuthDynamic<
   { id: string; stillId: string },
   typeof patchSchema
 >(
-  async (_req, { orgId, userId }, segment, body) => {
+  async (_req, { orgId, userId, role }, segment, body) => {
     try {
-      const industryBlock = await guardConstructionOnlyApi(orgId);
+      const industryBlock = await guardConstructionOnlyApi(orgId, role);
       if (industryBlock) return industryBlock;
 
       const { id, stillId } = await segment.params;
@@ -184,9 +184,9 @@ export const PATCH = withWorkspacesAuthDynamic<
 );
 
 export const DELETE = withWorkspacesAuthDynamic<{ id: string; stillId: string }>(
-  async (_req, { orgId }, segment) => {
+  async (_req, { orgId, role }, segment) => {
     try {
-      const industryBlock = await guardConstructionOnlyApi(orgId);
+      const industryBlock = await guardConstructionOnlyApi(orgId, role);
       if (industryBlock) return industryBlock;
       const { id, stillId } = await segment.params;
       const ok = await deleteFloorplanVizStill(orgId, id, stillId);

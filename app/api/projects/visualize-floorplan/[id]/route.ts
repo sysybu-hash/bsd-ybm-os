@@ -18,9 +18,9 @@ const patchSchema = z.object({
   projectId: z.string().nullable().optional(),
 });
 
-export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId, role }, segment) => {
   try {
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
     const { id } = await segment.params;
     const run = await getFloorplanVizRunForOrg(orgId, id);
@@ -54,9 +54,9 @@ export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgI
 });
 
 export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchema>(
-  async (_req, { orgId }, segment, body) => {
+  async (_req, { orgId, role }, segment, body) => {
     try {
-      const industryBlock = await guardConstructionOnlyApi(orgId);
+      const industryBlock = await guardConstructionOnlyApi(orgId, role);
       if (industryBlock) return industryBlock;
       const { id } = await segment.params;
       if (body.projectId) {
@@ -76,9 +76,9 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
   { schema: patchSchema },
 );
 
-export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId }, segment) => {
+export const DELETE = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId, role }, segment) => {
   try {
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
     const { id } = await segment.params;
     const ok = await deleteFloorplanVizRun(orgId, id);

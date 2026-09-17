@@ -165,6 +165,20 @@ export const nextAuthCallbacks: NonNullable<NextAuthOptions["callbacks"]> = {
         token.id = dev.id;
         token.role = dev.role;
         token.organizationId = dev.organizationId;
+        // This path returned before the industry was read, so the browser fell
+        // back to CONSTRUCTION while the API read the real one — the UI offered
+        // modules the server then refused. Read it here as the main path does.
+        const devOrg = dev.organizationId
+          ? await prisma.organization.findUnique({
+              where: { id: dev.organizationId },
+              select: { industry: true, constructionTrade: true },
+            })
+          : null;
+        const devIndustry = devOrg?.industry ?? "CONSTRUCTION";
+        token.organizationIndustry = devIndustry;
+        token.organizationConstructionTrade =
+          devOrg?.constructionTrade ??
+          (devIndustry === "COMPANY_MGMT" ? "GENERAL_BUSINESS" : "GENERAL_CONTRACTOR");
         return token;
       }
 
