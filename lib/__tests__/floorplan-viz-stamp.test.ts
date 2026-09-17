@@ -52,6 +52,10 @@ describe("still caption fields", () => {
 });
 
 describe("stamping a still", () => {
+  // Registering the embedded Hebrew and Latin faces with canvas happens once,
+  // on the first stamp, and takes longer than Jest's default 5s under load.
+  jest.setTimeout(30_000);
+
   it("adds a caption bar under the frame without touching the frame itself", async () => {
     const source = await still(600, 800);
     const out = await stampFloorplanStill(source, { unitLabel: "16", areaM2: 112.36 });

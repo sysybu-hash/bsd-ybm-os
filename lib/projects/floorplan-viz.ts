@@ -82,6 +82,9 @@ export { mergeFloorplanVizImages, parseFloorplanVizScope };
 
 const log = createLogger("floorplan-viz");
 
+/** Leaves the route about a minute to extract, persist and respond. */
+const FLOORPLAN_VIZ_BUDGET_MS = 225_000;
+
 export type FloorplanVizResult = {
   runId?: string;
   title?: string;
@@ -177,6 +180,10 @@ export async function visualizeFloorplanFromDrawing(
     skipInteriors?: boolean;
   },
 ): Promise<FloorplanVizRunResult> {
+  // The route is capped at 300 seconds and a timeout returns nothing — not
+  // even the frames already paid for. Everything downstream stops re-rolling
+  // once this passes and ships the best frame it has.
+  const deadlineMs = Date.now() + FLOORPLAN_VIZ_BUDGET_MS;
   const styleKit = resolveFloorplanVizStyle(options?.styleId, options?.customKit);
   const scope = options?.scope ?? "full";
   const forceDrawing = options?.planKind === "sales-sheet";
@@ -237,6 +244,7 @@ export async function visualizeFloorplanFromDrawing(
             skipInteriors: true,
             geometryLock: lockCad ? cadResult.geometry : undefined,
             truth: cadResult.truth,
+            deadlineMs,
           }),
         );
         images = mergeCadPhotorealImages({ photoreal, geometry: cadResult.geometry });
@@ -367,6 +375,7 @@ export async function visualizeFloorplanFromDrawing(
         existingImages: options?.existingImages,
         unitTitle: titleFromFloorplanLayout(vizLayout, options?.sourceName ?? ""),
         skipInteriors: options?.skipInteriors,
+        deadlineMs,
       }),
     );
   } catch (err: unknown) {

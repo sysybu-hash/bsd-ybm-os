@@ -70,6 +70,11 @@ export async function generateFloorplanVisuals(
     skipInteriors?: boolean;
     /** The program printed on the sheet, so the prompt names every terrace and bath. */
     truth?: PrintedUnitTruth;
+    /**
+     * Epoch ms the run must be finished by. The route has 300 seconds and a
+     * timeout returns nothing at all — not even the frames already paid for.
+     */
+    deadlineMs?: number;
   },
 ): Promise<FloorplanVizImage[]> {
   const vizLayout = overlayPrintedProgram(layoutForVisualization(layout), options?.truth);
@@ -136,12 +141,14 @@ export async function generateFloorplanVisuals(
         layout: vizLayout,
         plan: planPicture,
         haredi: options?.styleKit?.audience === "haredi",
+        deadlineMs: options?.deadlineMs,
       });
       const haredi = options?.styleKit?.audience === "haredi";
       const auditCtx = {
         layout: vizLayout,
         plan: planPicture,
         haredi: haredi === true,
+        deadlineMs: options?.deadlineMs,
       };
       let img: { mimeType: string; base64: string; auditIssues?: string[] } = audited;
       if (job.viewId === "overview" || job.viewId === "isometric") {
