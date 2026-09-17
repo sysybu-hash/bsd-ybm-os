@@ -19,9 +19,9 @@ const log = createLogger("visualize-floorplan-upload");
  * ~4.5MB, and a sales sheet is routinely larger. The token is scoped to the
  * file types this pipeline can read, and to a size the render can survive.
  */
-export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
   try {
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
 
     if (!env.BLOB_READ_WRITE_TOKEN) {

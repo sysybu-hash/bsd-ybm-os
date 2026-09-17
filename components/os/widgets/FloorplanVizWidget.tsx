@@ -4,6 +4,7 @@ import React from "react";
 import { Box, Layers, Plus, Upload, View } from "lucide-react";
 import { useI18n } from "@/components/os/system/I18nProvider";
 import { useTradeProfile } from "@/components/os/system/TradeProfileProvider";
+import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import FloorplanVizLibrary from "@/components/os/widgets/floorplan-viz/FloorplanVizLibrary";
 import FloorplanVizResults from "@/components/os/widgets/floorplan-viz/FloorplanVizResults";
 import FloorplanVizStylePicker from "@/components/os/widgets/floorplan-viz/FloorplanVizStylePicker";
@@ -17,6 +18,7 @@ export type FloorplanVizWidgetProps = {
 export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps) {
   const { t } = useI18n();
   const { isCompanyMgmt } = useTradeProfile();
+  const isPlatformAdmin = useIsPlatformAdmin();
   const {
     file,
     setFile,
@@ -53,7 +55,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
   } = useFloorplanVizRun({ liveData, t });
 
 
-  if (isCompanyMgmt) {
+  if (isCompanyMgmt && !isPlatformAdmin) {
     return (
       <p className="p-6 text-sm text-[color:var(--foreground-muted)]">
         {t("workspaceWidgets.floorplanViz.constructionOnly")}

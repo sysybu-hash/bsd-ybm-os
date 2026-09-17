@@ -37,12 +37,12 @@ type ImageMeta = {
   roomName?: string;
 };
 
-export const POST = withWorkspacesAuth(async (req, { orgId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
   try {
     const limited = await applyRateLimit(req, "floorplan-viz:export-pdf", 8, 60_000);
     if (limited) return limited;
 
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
 
     const form = await req.formData();

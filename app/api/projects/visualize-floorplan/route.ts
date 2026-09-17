@@ -83,8 +83,8 @@ function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
 }
 
 export const GET = withWorkspacesAuth(
-  async (req, { orgId }) => {
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+  async (req, { orgId, role }) => {
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
     const projectId = new URL(req.url).searchParams.get("projectId")?.trim() || undefined;
     const runs = await listFloorplanVizRunsForOrg(orgId, projectId);
@@ -93,7 +93,7 @@ export const GET = withWorkspacesAuth(
   { parseTarget: "query" },
 );
 
-export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
+export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
   try {
     const geminiErr = assertProviderConfigured("gemini");
     if (geminiErr) return jsonBadRequest(geminiErr, "gemini_not_configured");
@@ -110,7 +110,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId }) => {
     const runId = String(formData.get("runId") ?? "").trim();
     const projectId = String(formData.get("projectId") ?? "").trim();
 
-    const industryBlock = await guardConstructionOnlyApi(orgId);
+    const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
 
     if (projectId) {
