@@ -12,6 +12,7 @@ import {
   parseFloorplanLayout,
   roomsForInteriorViz,
   type FloorplanLayout,
+  type FloorplanRoom,
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
 import { roomsForLayout, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
@@ -132,12 +133,71 @@ export function layoutFromCadRooms(
     ceilingHeightM: extracted.ceilingHeightM,
     north: extracted.north,
     grossAreaM2: extracted.grossAreaM2,
-    rooms: roomsForLayout(rooms, unitsPerMetre),
+    rooms: nameCadRoomsFromSheet(roomsForLayout(rooms, unitsPerMetre), rooms, extracted),
     dimensionStrings: extracted.dimensionStrings,
     notes: extracted.notes,
     islandStoolCount: extracted.islandStoolCount,
     internalStairs: extracted.internalStairs,
     requiresReview: false,
+  });
+}
+
+/**
+ * The sheet's own names, on the rooms the CAD measured.
+ *
+ * A measured room is named after what it holds — "חדר מגורים 1", "חלל 2" —
+ * because that is all the geometry knows. The extractor read the sheet's own
+ * labels and where each one sits, so a measured room that contains one of
+ * those labels can take its name: on 28-8-23-2 that is the difference between
+ * a booklet listing "חלל 1" and one listing ממ"ד.
+ *
+ * Positional and one-to-one: a label is used once, for the measured room it
+ * falls inside, and a room with no label keeps the name the geometry gave it.
+ */
+function nameCadRoomsFromSheet(
+  measured: FloorplanRoom[],
+  rooms: SegmentedRoom[],
+  extracted: FloorplanLayout,
+): FloorplanRoom[] {
+  const labels = extracted.rooms.filter((room) => room.bbox != null);
+  if (labels.length === 0) return measured;
+  const box = (room: SegmentedRoom) => room.bounds;
+  const sheet = { x: 0, y: 0, w: 1, h: 1 };
+  // The bboxes are fractions of the page and the rooms are in page units, so
+  // the two are compared through the span the measured rooms cover.
+  const minX = Math.min(...rooms.map((r) => box(r).x));
+  const minY = Math.min(...rooms.map((r) => box(r).y));
+  const maxX = Math.max(...rooms.map((r) => box(r).x + box(r).width));
+  const maxY = Math.max(...rooms.map((r) => box(r).y + box(r).height));
+  const spanX = Math.max(1e-6, maxX - minX);
+  const spanY = Math.max(1e-6, maxY - minY);
+  const labelMinX = Math.min(...labels.map((r) => r.bbox!.x));
+  const labelMinY = Math.min(...labels.map((r) => r.bbox!.y));
+  const labelMaxX = Math.max(...labels.map((r) => r.bbox!.x + r.bbox!.w));
+  const labelMaxY = Math.max(...labels.map((r) => r.bbox!.y + r.bbox!.h));
+  const labelSpanX = Math.max(1e-6, labelMaxX - labelMinX);
+  const labelSpanY = Math.max(1e-6, labelMaxY - labelMinY);
+  void sheet;
+
+  const taken = new Set<number>();
+  return measured.map((room, index) => {
+    const bounds = box(rooms[index]!);
+    const cx = (bounds.x + bounds.width / 2 - minX) / spanX;
+    const cy = (bounds.y + bounds.height / 2 - minY) / spanY;
+    let best: { at: number; distance: number } | undefined;
+    labels.forEach((label, at) => {
+      if (taken.has(at)) return;
+      const lx = (label.bbox!.x + label.bbox!.w / 2 - labelMinX) / labelSpanX;
+      const ly = (label.bbox!.y + label.bbox!.h / 2 - labelMinY) / labelSpanY;
+      const distance = Math.hypot(lx - cx, ly - cy);
+      if (best === undefined || distance < best.distance) best = { at, distance };
+    });
+    // Near enough to be the same room, not merely the closest label on the
+    // sheet: a tenth of the flat across.
+    if (best === undefined || best.distance > 0.1) return room;
+    taken.add(best.at);
+    const label = labels[best.at]!;
+    return { ...room, name: label.name };
   });
 }
 
