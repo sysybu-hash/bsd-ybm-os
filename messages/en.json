@@ -1610,6 +1610,7 @@
     "empty_document": "The AI returned no document content",
     "empty_extract": "Could not extract text from the file",
     "file_too_large": "File is too large (4MB maximum).",
+    "not_pdf": "This check reads vector PDF files only.",
     "gemini_live_disabled": "Gemini Live is disabled in platform settings.",
     "gemini_not_configured": "Gemini is not configured",
     "generation_failed": "No interface was generated",

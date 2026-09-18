@@ -1610,6 +1610,7 @@
     "empty_document": "ИИ не вернул содержимое документа",
     "empty_extract": "Не удалось извлечь текст из файла",
     "file_too_large": "Файл слишком большой (максимум 4 МБ).",
+    "not_pdf": "Эта проверка читает только векторные PDF-файлы.",
     "gemini_live_disabled": "Gemini Live отключён в настройках платформы.",
     "gemini_not_configured": "Gemini не настроен",
     "generation_failed": "Интерфейс не создан",
