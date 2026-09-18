@@ -5,6 +5,8 @@ import { jsonBadRequest } from "@/lib/api-json";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
+import { lockScaleToHint } from "@/lib/projects/floorplan-scale";
+import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
 import { flatExtentFromSheet } from "@/lib/projects/floorplan-render-flat";
 import {
@@ -110,6 +112,36 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       report.colouredDoorways = doorways.length;
     } catch (err: unknown) {
       report.doorwayError = err instanceof Error ? err.message : String(err);
+    }
+
+    // One vision call, only when asked for: this is the figure the measured
+    // route locks its scale against, and reading it is the difference between
+    // tuning the lock and re-rendering the flat to find out what it chose.
+    if (String(form.get("scale") ?? "").trim() === "1") {
+      try {
+        const extent = report.extent as { width: number; height: number } | null;
+        if (extent) {
+          const reading = await readSheetScale(bytes.toString("base64"), "application/pdf", extent);
+          report.scaleReading = reading;
+          if (reading) {
+            const geometry = await extractFloorplanVectorGeometry(bytes);
+            const lock =
+              geometry && report.extent
+                ? lockScaleToHint(
+                    geometry.segments,
+                    report.extent as { x: number; y: number; width: number; height: number },
+                    reading.unitsPerMetre,
+                    geometry.curves,
+                  )
+                : null;
+            report.scaleLock = lock
+              ? { unitsPerMetre: lock.unitsPerMetre, beds: lock.beds, floorM2: Math.round(lock.floorM2) }
+              : null;
+          }
+        }
+      } catch (err: unknown) {
+        report.scaleError = err instanceof Error ? err.message : String(err);
+      }
     }
 
     return NextResponse.json({ success: true, report });
