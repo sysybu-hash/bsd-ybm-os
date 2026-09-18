@@ -221,6 +221,35 @@ export async function visualizeFloorplanFromDrawing(
         spend,
       });
 
+  // The lean extract reads printed text only. A sheet whose room names are
+  // drawn as outlines has no such text, and then neither route has anything to
+  // work with: the raster route briefs the image model with no rooms at all
+  // and invents the programme, and the measured route has no labels to put on
+  // the rooms it measures — which is why a measured run listed "חלל 1" for a
+  // flat whose sheet says ממ"ד. One vision read of the drawn labels, before
+  // the routes part, serves both.
+  if (!reused && extracted.layout.rooms.length === 0) {
+    log.info("lean extract found no rooms; reading them with one vision engine");
+    try {
+      const seen = await extractFloorplanRoomsWithVision(prepared.base64, prepared.mimeType, {
+        photo,
+        spend,
+      });
+      if (seen) {
+        extracted = {
+          ...seen,
+          enginesUsed: [...new Set([...extracted.enginesUsed, ...seen.enginesUsed])],
+          ocrEngines: extracted.ocrEngines,
+        };
+      }
+    } catch (err: unknown) {
+      log.warn("vision room read failed; painting from the lean extract", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+
   const cadResult = await tryCadOverview({
     prepared,
     photo,
@@ -336,32 +365,6 @@ export async function visualizeFloorplanFromDrawing(
     throw new Error(
       "לא ניתן לנעול את גיאומטריית התוכנית — לא הופקה הדמיה מומצאת",
     );
-  }
-
-  // The lean extract reads printed text only, which is all the CAD route
-  // needs. A sheet whose room names are drawn as outlines has no such text,
-  // and the raster route then briefed the image model with no rooms at all —
-  // it invented the program. One vision read of the drawn labels fixes that
-  // without spending the rest of the route's time budget.
-  if (!reused && extracted.layout.rooms.length === 0) {
-    log.info("lean extract found no rooms; reading them with one vision engine");
-    try {
-      const seen = await extractFloorplanRoomsWithVision(prepared.base64, prepared.mimeType, {
-        photo,
-        spend,
-      });
-      if (seen) {
-        extracted = {
-          ...seen,
-          enginesUsed: [...new Set([...extracted.enginesUsed, ...seen.enginesUsed])],
-          ocrEngines: extracted.ocrEngines,
-        };
-      }
-    } catch (err: unknown) {
-      log.warn("vision room read failed; painting from the lean extract", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
   }
 
   const portraitSheet = await isPortraitFloorplanRaster(prepared.base64, prepared.mimeType);
