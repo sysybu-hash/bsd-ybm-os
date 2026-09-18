@@ -163,6 +163,12 @@ export function segmentRooms(input: {
   segments?: VectorSegment[];
   /** Smallest region worth calling a room. Below this it is a niche or a jamb. */
   minRoomM2?: number;
+  /**
+   * Doorways the sheet marks in its own colour — see readColouredDoorways.
+   * Sealed like any other opening, and the reason a plotted sheet's bedrooms
+   * stop coming back joined to the corridor.
+   */
+  colouredDoorways?: WallBody[];
 }): SegmentedRoom[] {
   const { bodies, openings, floor, furniture, bounds, unitsPerMetre } = input;
   const minRoomM2 = input.minRoomM2 ?? 1.4;
@@ -185,6 +191,7 @@ export function segmentRooms(input: {
   const barriers = [
     ...bridgeOpenings(bodies, unitsPerMetre * 1.3),
     ...openings.map((o) => sealOpening(o, seal)),
+    ...(input.colouredDoorways ?? []),
   ];
   // The pen the walls are drawn with, read off this sheet rather than assumed.
   const inkCut = wallInkThreshold(input.segments ?? []);

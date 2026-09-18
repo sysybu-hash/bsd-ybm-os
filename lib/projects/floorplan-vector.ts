@@ -27,6 +27,20 @@ export type VectorSegment = {
   y2: number;
   /** Stroke width in effect when the path was drawn — the layer signal. */
   lineWidth: number;
+  /**
+   * Stroke colour, as 0xRRGGBB, when the path was drawn in one.
+   *
+   * CAD offices put meaning in the pen colour, and this one puts doors and
+   * windows in green: every door threshold on 28-8-23-2 is a short green line
+   * lying in the wall it opens, where the swing is a curve the reader cannot
+   * reconstruct. Undefined for the black ink the walls are drawn in.
+   */
+  stroke?: number;
+  /**
+   * Fill colour, as 0xRRGGBB, when the path was filled rather than stroked.
+   * The door thresholds on a plotted sheet are filled slivers, not strokes.
+   */
+  fill?: number;
 };
 
 export type FloorplanVectorGeometry = {
@@ -63,6 +77,13 @@ function multiply(m: Matrix, n: Matrix): Matrix {
     m[0] * n[4] + m[2] * n[5] + m[4],
     m[1] * n[4] + m[3] * n[5] + m[5],
   ];
+}
+
+/** pdfjs reports a stroke colour as "#rrggbb". */
+function parseCssColour(value: string): number | undefined {
+  const hex = value.trim().replace(/^#/, "");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return undefined;
+  return Number.parseInt(hex, 16);
 }
 
 function apply(m: Matrix, x: number, y: number): [number, number] {
@@ -188,14 +209,24 @@ export async function extractFloorplanVectorGeometry(
     const curves: VectorSegment[] = [];
     let ctm = viewport.transform.slice() as Matrix;
     let lineWidth = 1;
-    const stack: Array<{ ctm: Matrix; lineWidth: number }> = [];
+    let stroke: number | undefined;
+    let fill: number | undefined;
+    const stack: Array<{ ctm: Matrix; lineWidth: number; stroke?: number; fill?: number }> = [];
 
     const push = (ax: number, ay: number, bx: number, by: number) => {
       const [x1, y1] = apply(ctm, ax, ay);
       const [x2, y2] = apply(ctm, bx, by);
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
       if (x1 === x2 && y1 === y2) return;
-      segments.push({ x1, y1, x2, y2, lineWidth });
+      segments.push({
+        x1,
+        y1,
+        x2,
+        y2,
+        lineWidth,
+        ...(stroke != null ? { stroke } : {}),
+        ...(fill != null ? { fill } : {}),
+      });
     };
 
     const pushCurve = (ax: number, ay: number, bx: number, by: number) => {
@@ -203,19 +234,39 @@ export async function extractFloorplanVectorGeometry(
       const [x2, y2] = apply(ctm, bx, by);
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
       if (x1 === x2 && y1 === y2) return;
-      curves.push({ x1, y1, x2, y2, lineWidth });
+      curves.push({
+        x1,
+        y1,
+        x2,
+        y2,
+        lineWidth,
+        ...(stroke != null ? { stroke } : {}),
+        ...(fill != null ? { fill } : {}),
+      });
     };
 
     for (let i = 0; i < ops.fnArray.length; i++) {
       const fn = ops.fnArray[i];
       if (fn === OPS.save) {
-        stack.push({ ctm: ctm.slice() as Matrix, lineWidth });
+        stack.push({ ctm: ctm.slice() as Matrix, lineWidth, stroke, fill });
         continue;
       }
       if (fn === OPS.restore) {
         const prev = stack.pop();
         ctm = prev?.ctm ?? (viewport.transform.slice() as Matrix);
         lineWidth = prev?.lineWidth ?? 1;
+        stroke = prev?.stroke;
+        fill = prev?.fill;
+        continue;
+      }
+      if (fn === OPS.setFillRGBColor) {
+        const raw = (ops.argsArray[i] as unknown[])[0];
+        fill = typeof raw === "string" ? parseCssColour(raw) : typeof raw === "number" ? raw : undefined;
+        continue;
+      }
+      if (fn === OPS.setStrokeRGBColor) {
+        const raw = (ops.argsArray[i] as unknown[])[0];
+        stroke = typeof raw === "string" ? parseCssColour(raw) : typeof raw === "number" ? raw : undefined;
         continue;
       }
       if (fn === OPS.transform) {

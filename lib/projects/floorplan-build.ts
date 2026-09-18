@@ -1,3 +1,4 @@
+import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
 import {
   findFurniture,
   findRoundedFurniture,
@@ -60,6 +61,14 @@ export type BuiltFlat = {
   floorM2: number;
   areaError: number;
   svg: string;
+  /**
+   * Doorways the sheet marks in colour, when it marks them.
+   *
+   * Carried on the flat because only the builder has the PDF to render, and
+   * the segmenter is where they are needed. Empty on a sheet that marks
+   * nothing, which is every sales sheet in the reference set.
+   */
+  colouredDoorways?: WallBody[];
 };
 
 /**
@@ -400,8 +409,15 @@ export async function buildFlatFromPdf(
 ): Promise<BuiltFlat | null> {
   const geometry = await extractFloorplanVectorGeometry(pdf);
   if (!geometry) return null;
-  return buildFlatFromGeometry(geometry, printedAreaM2, {
+  const flat = await buildFlatFromGeometry(geometry, printedAreaM2, {
     ...options,
     printedAreas: await extractPrintedAreas(pdf),
   });
+  if (!flat) return null;
+  const colouredDoorways = await readColouredDoorways(
+    pdf,
+    { width: geometry.pageWidth },
+    flat.unitsPerMetre,
+  );
+  return colouredDoorways.length > 0 ? { ...flat, colouredDoorways } : flat;
 }

@@ -325,3 +325,38 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
     expect(report.soft.join(" ")).toMatch(/אינה CAD/);
   });
 });
+
+describe("a sheet that prints no area", () => {
+  const extent = { x: 0, y: 0, width: 338, height: 469 };
+
+  it("takes the measured route on a scale read from its dimension chains", () => {
+    // 28-8-23-2 prints no gross and has no text layer to read one from, and it
+    // is a clean vector drawing — exactly the sheet the measured route should
+    // have. The chains give 29 units per metre.
+    const route = decideFloorplanVizRoute({
+      mimeType: "application/pdf",
+      photo: false,
+      extent,
+      unitsPerMetreHint: 29.16,
+    });
+    expect(route.kind).toBe("cad");
+    expect(route.kind === "cad" ? route.unitsPerMetreHint : null).toBeCloseTo(29.16, 2);
+  });
+
+  it("stays on the raster route when the chains could not be read either", () => {
+    const route = decideFloorplanVizRoute({ mimeType: "application/pdf", photo: false, extent });
+    expect(route.kind).toBe("raster");
+  });
+
+  it("prefers the printed area when there is one", () => {
+    const route = decideFloorplanVizRoute({
+      mimeType: "application/pdf",
+      photo: false,
+      extent,
+      grossAreaM2: 111.29,
+      unitsPerMetreHint: 29.16,
+    });
+    expect(route.kind === "cad" ? route.targetAreaM2 : 0).toBe(111.29);
+    expect(route.kind === "cad" ? route.unitsPerMetreHint : "x").toBeUndefined();
+  });
+});
