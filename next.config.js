@@ -1,4 +1,19 @@
 const path = require("path");
+
+/**
+ * What reading a floor plan actually costs to carry.
+ *
+ * pdfjs parses the sheet; @napi-rs/canvas rasterises the page and draws the
+ * caption. Both are external packages behind a dynamic import, so nothing in
+ * the graph points at them and tracing leaves them out.
+ */
+const PDF_READER_FILES = [
+  "./node_modules/pdfjs-dist/legacy/build/**",
+  "./node_modules/pdfjs-dist/standard_fonts/**",
+  "./node_modules/pdfjs-dist/package.json",
+  "./node_modules/@napi-rs/canvas/**",
+  "./node_modules/@napi-rs/canvas-*/**",
+];
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
   openAnalyzer: false,
@@ -170,11 +185,25 @@ const nextConfig = {
       "./lib/pdf/load-pdf-font-buffers.ts",
       "./public/logos/**",
       "./node_modules/@sparticuz/chromium/**",
+      ...PDF_READER_FILES,
     ],
-    "/api/projects/visualize-floorplan": ["./lib/pdf/fonts/**", "./lib/pdf/load-pdf-font-buffers.ts"],
+    // pdfjs and the Skia bindings are serverExternalPackages, loaded through a
+    // dynamic import so Node resolves them from node_modules — and tracing
+    // therefore never sees them. On the platform every read of a sheet's
+    // vectors, its printed areas, its text layer and its raster came back
+    // empty, silently: 28-8-23-2 reported "no vector walls" for a drawing that
+    // reads as 5,326 segments on a laptop. Named here so the functions that
+    // read a plan actually carry what they read it with.
+    "/api/projects/visualize-floorplan": [
+      "./lib/pdf/fonts/**",
+      "./lib/pdf/load-pdf-font-buffers.ts",
+      ...PDF_READER_FILES,
+    ],
+    "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
     "/api/projects/visualize-floorplan/[id]/stills/[stillId]": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
+      ...PDF_READER_FILES,
     ],
   },
   // Nothing a serverless function runs needs the promo videos, the product

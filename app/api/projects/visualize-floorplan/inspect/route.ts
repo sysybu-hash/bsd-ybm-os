@@ -50,6 +50,22 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
 
     const report: Record<string, unknown> = { bytes: bytes.length };
 
+    // The two packages every read depends on. They are external and loaded
+    // through a dynamic import, which is exactly how they went missing from
+    // the deployed function without a single error reaching the result.
+    try {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      report.pdfjs = typeof pdfjs.getDocument === "function" ? "ok" : "loaded, no getDocument";
+    } catch (err: unknown) {
+      report.pdfjs = `missing: ${err instanceof Error ? err.message : String(err)}`;
+    }
+    try {
+      const canvas = await import("@napi-rs/canvas");
+      report.canvas = typeof canvas.createCanvas === "function" ? "ok" : "loaded, no createCanvas";
+    } catch (err: unknown) {
+      report.canvas = `missing: ${err instanceof Error ? err.message : String(err)}`;
+    }
+
     try {
       const geometry = await extractFloorplanVectorGeometry(bytes);
       report.geometry = geometry
