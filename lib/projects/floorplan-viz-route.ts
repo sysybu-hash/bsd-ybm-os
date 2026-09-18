@@ -246,11 +246,23 @@ export function mergeCadPhotorealImages(input: {
 }
 
 /** A scan / photo / failed scale lock: ship the old path, but say it is estimated. */
-export function rasterFallbackConfidence(): ConfidenceReport {
+/**
+ * Why a sheet was not measured, in the run's own report.
+ *
+ * "The plan is not vector CAD" was the only thing a raster run ever said, and
+ * it is a guess dressed as a finding: a fully vectorial sheet lands here too,
+ * when its walls cannot be read or its scale cannot be locked. Naming the step
+ * that gave up is the difference between reading the answer and running the
+ * pipeline again to find it.
+ */
+export function rasterFallbackConfidence(reason?: string): ConfidenceReport {
   return {
     tier: "raster",
     hard: [],
-    soft: ["התוכנית אינה CAD וקטורי — הגיאומטריה משוערת ואינה מדודה"],
+    soft: [
+      "התוכנית אינה CAD וקטורי — הגיאומטריה משוערת ואינה מדודה",
+      ...(reason ? [`מסלול מדוד לא נבחר: ${reason}`] : []),
+    ],
     ok: true,
   };
 }

@@ -360,3 +360,17 @@ describe("a sheet that prints no area", () => {
     expect(route.kind === "cad" ? route.unitsPerMetreHint : "x").toBeUndefined();
   });
 });
+
+describe("the raster fallback's own report", () => {
+  it("names the step that gave up, when there is one to name", () => {
+    // "The plan is not vector CAD" was all a raster run ever said, and a fully
+    // vectorial sheet lands here too. Reading the answer beats re-running the
+    // pipeline to find it.
+    const withReason = rasterFallbackConfidence("אין שטח מודפס, וגם קווי המידות לא נקראו");
+    expect(withReason.tier).toBe("raster");
+    expect(withReason.soft.some((line) => line.includes("קווי המידות"))).toBe(true);
+
+    const plain = rasterFallbackConfidence();
+    expect(plain.soft).toHaveLength(1);
+  });
+});

@@ -412,7 +412,7 @@ export async function visualizeFloorplanFromDrawing(
     },
     styleKit,
     scope,
-    confidence: rasterFallbackConfidence(),
+    confidence: rasterFallbackConfidence(cadResult.outcome === "skip" ? cadResult.reason : undefined),
     spend,
     planBase64: prepared.mimeType === "application/pdf" ? prepared.base64 : vizBase64,
     planMimeType: prepared.mimeType === "application/pdf" ? prepared.mimeType : vizMime,
@@ -434,7 +434,7 @@ type CadOverviewAttempt =
       /** The same flat as a structure, for the viewer rather than for a picture. */
       measured: FloorplanGeometryPayload;
     }
-  | { outcome: "skip" }
+  | { outcome: "skip"; reason?: string }
   | { outcome: "locked" };
 
 type CadOverviewInput = {
@@ -511,17 +511,16 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     return tryCadDrawingOverview(input);
   }
   if (input.prepared.mimeType !== "application/pdf") {
-    return { outcome: "skip" };
+    return { outcome: "skip", reason: `לא PDF (${input.prepared.mimeType})` };
   }
   const pdfBytes = Buffer.from(input.prepared.base64, "base64");
   let extent: { x: number; y: number; width: number; height: number } | null = null;
   try {
     extent = await flatExtentFromSheet(pdfBytes);
   } catch (err: unknown) {
-    log.warn("vector extent failed; falling back to raster", {
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return { outcome: "skip" };
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn("vector extent failed; falling back to raster", { error: message });
+    return { outcome: "skip", reason: `קריאת הקירות נכשלה (${message.slice(0, 80)})` };
   }
   const printed = await extractPrintedAreas(pdfBytes);
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: printed });
@@ -545,8 +544,22 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     unitsPerMetreHint: scaleHint?.unitsPerMetre,
   });
   if (route.kind !== "cad" || !extent) {
-    log.info("floorplan viz using raster path", { reason: route.kind === "raster" ? route.reason : "no-extent" });
-    return { outcome: "skip" };
+    const reason = route.kind === "raster" ? route.reason : "no-extent";
+    log.info("floorplan viz using raster path", {
+      reason,
+      extent: Boolean(extent),
+      grossAreaM2,
+      scaleHint: scaleHint?.unitsPerMetre,
+    });
+    return {
+      outcome: "skip",
+      reason:
+        reason === "no-extent"
+          ? "לא נמצאו קירות וקטוריים בגיליון"
+          : reason === "no-area"
+            ? "אין שטח מודפס, וגם קווי המידות לא נקראו"
+            : `ניתוב: ${reason}`,
+    };
   }
   try {
     const rendered = await renderFlatFromPdf(pdfBytes, {
@@ -565,7 +578,9 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       // it took this route on a scale read off its dimension chains, and if
       // that does not lock there is a raster path behind it. A sheet that did
       // print one is a different matter — refusing is the honest answer there.
-      return { outcome: route.unitsPerMetreHint ? "skip" : "locked" };
+      return route.unitsPerMetreHint
+        ? { outcome: "skip", reason: `קנה המידה (${route.unitsPerMetreHint.toFixed(1)} יח׳/מ׳) לא ננעל על הקירות` }
+        : { outcome: "locked" };
     }
     return {
       outcome: "ok",
@@ -585,9 +600,8 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
     };
   } catch (err: unknown) {
-    log.warn("cad render threw; not inventing a layout", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn("cad render threw; not inventing a layout", { error: message });
     return { outcome: "locked" };
   }
 }
