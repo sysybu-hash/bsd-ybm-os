@@ -475,6 +475,9 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
     log.info("cad drawing carried no readable geometry");
     return { outcome: "skip" };
   }
+  // The sheet's own coordinates, so a room can be given the label that sits
+  // inside it — the extractor reports a label as a fraction of the page.
+  const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: [] });
   const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
   if (targetAreaM2 == null) {
@@ -494,6 +497,7 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       layout: capLayoutMmdRooms(
         layoutFromCadRooms(input.extractedLayout, rendered.rooms, rendered.flat.unitsPerMetre, {
           sourceName: input.sourceName,
+          page: pageSize,
         }),
       ),
       geometry: { mimeType: "image/jpeg", base64: rendered.geometry.toString("base64") },
@@ -519,6 +523,10 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     return { outcome: "skip", reason: `לא PDF (${input.prepared.mimeType})` };
   }
   const pdfBytes = Buffer.from(input.prepared.base64, "base64");
+  const sheetGeometry = await extractFloorplanVectorGeometry(pdfBytes).catch(() => null);
+  const pageSize = sheetGeometry
+    ? { width: sheetGeometry.pageWidth, height: sheetGeometry.pageHeight }
+    : undefined;
   let extent: { x: number; y: number; width: number; height: number } | null = null;
   try {
     extent = await flatExtentFromSheet(pdfBytes);
@@ -547,11 +555,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
           spend: input.spend,
         })
       : null;
-  let geometryPage: { width: number } | null = null;
-  if (needScale) {
-    const geometry = await extractFloorplanVectorGeometry(pdfBytes);
-    geometryPage = geometry ? { width: geometry.pageWidth } : null;
-  }
+  const geometryPage = pageSize ? { width: pageSize.width } : null;
   const doorwayReading =
     needScale && geometryPage
       ? await scaleFromDoorways(
@@ -638,6 +642,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       layout: capLayoutMmdRooms(
         layoutFromCadRooms(input.extractedLayout, rendered.rooms, rendered.flat.unitsPerMetre, {
           sourceName: input.sourceName,
+          page: pageSize,
         }),
       ),
       geometry: {
