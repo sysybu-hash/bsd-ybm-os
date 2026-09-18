@@ -24,6 +24,16 @@ import {
 
 export type WallBody = {
   orientation: "h" | "v";
+  /**
+   * What found it.
+   *
+   * A hatched band is a wall because the draughtsman filled it in, and the
+   * hatch is there to be trimmed and tested against later. A plotted pair is a
+   * wall because it is two heavy lines a wall apart, and there is no hatch
+   * under it to find — testing one against hatch deletes every partition on
+   * the sheet, which is what the flat builder was doing.
+   */
+  source?: "hatch" | "plotted";
   /** Centre of the wall across its thickness: y for horizontal, x for vertical. */
   centre: number;
   thickness: number;
@@ -554,6 +564,11 @@ export type SpanRow = { y: number; spans: Array<[number, number]> };
  * Returned as row spans rather than a polygon: exact, trivial to draw, and it
  * does not need contour tracing to be correct.
  */
+/** A terrace slider, the widest opening these sheets draw. */
+const MAX_OPENING_M = 2.15;
+/** How far a corner may be left open and still count as closed. */
+const CORNER_REACH_M = 1.07;
+
 export function interiorSpans(
   bodies: WallBody[],
   bounds: { x: number; y: number; width: number; height: number },
@@ -613,11 +628,23 @@ export function interiorSpans(
      * the inside into rooms.
      */
     floorMask?: SpanRow[];
+    /**
+     * The sheet's scale, so the two constants below can be metres.
+     *
+     * maxOpeningUnits and cornerReachUnits were swept on sheets drawn at about
+     * 56 units per metre, where 120 and 60 units are 2.1 m and 1.1 m. On a
+     * sheet drawn at 28 they are 4.3 m and 2.1 m: the corner patches alone
+     * then cover a bedroom, and the rooms come back as slivers. Given a scale,
+     * both are taken in metres and mean the same thing on any sheet.
+     */
+    unitsPerMetre?: number;
   },
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
   // A terrace slider is the widest opening on these sheets at about 2.4 m.
-  const maxOpening = options?.maxOpeningUnits ?? 120;
+  const upm = options?.unitsPerMetre;
+  const maxOpening =
+    options?.maxOpeningUnits ?? (upm && upm > 0 ? MAX_OPENING_M * upm : 120);
   // Corner reach decides whether the flat closes, and it is sharper than it
   // looks. Swept on דירה 14 against the 132.19 m² the sheet prints: at 0.9 m the
   // living room is still outside and the region measures 93 m²; at 1.2 m the
@@ -625,7 +652,8 @@ export function interiorSpans(
   // the neighbouring flat and measures 145. Widening the opening bridge instead
   // does nothing at all — 2 m, 3 m and 4 m all give the same 93 m² — so what was
   // holding the living room out was unclosed corners, not unbridged doorways.
-  const reach = options?.cornerReachUnits ?? maxOpening / 2;
+  const reach =
+    options?.cornerReachUnits ?? (upm && upm > 0 ? CORNER_REACH_M * upm : maxOpening / 2);
   const sealed = bridgeOpenings(closeCorners(bodies, reach), maxOpening);
   const w = Math.ceil(bounds.width / step) + 2;
   const h = Math.ceil(bounds.height / step) + 2;
@@ -898,14 +926,26 @@ export function wallBodiesForSheet(
   segments: VectorSegment[],
   options: { unitsPerMetre: number; keepOpenings?: boolean },
 ): WallBody[] {
-  const hatched = wallBodiesFromHatch(segments, options);
+  const hatched = wallBodiesFromHatch(segments, options).map(
+    (body): WallBody => ({ ...body, source: "hatch" }),
+  );
+  // Only where the hatch rule is the one that cannot work. A sales sheet draws
+  // its walls as hatched bands and its annotation thinner, and the pen-weight
+  // reader adds nothing there but noise: on the reference batch it gained a
+  // kitchen on one sheet and cost a terrace on another. A plotted sheet draws
+  // everything at one weight and hatches almost nothing, which is the case
+  // this reader exists for. wallInkThreshold is that test.
+  if (wallInkThreshold(segments) <= WALL_MIN_LINE_WIDTH) return hatched;
+  // Duplicates and all: dropping a plotted pair because a hatched band covers
+  // the same wall looks tidy and loses the wall outright whenever that band
+  // later fails a hatch test. The caller knows which bands survived, so the
+  // caller dedupes. See sameWall.
   const plotted = plottedWallBodies(segments, options.unitsPerMetre);
-  const extra = plotted.filter((body) => !hatched.some((seen) => sameWall(seen, body)));
-  return [...hatched, ...extra];
+  return [...hatched, ...plotted];
 }
 
 /** Two bodies that are the same wall, found once by each detector. */
-function sameWall(a: WallBody, b: WallBody): boolean {
+export function sameWall(a: WallBody, b: WallBody): boolean {
   if (a.orientation !== b.orientation) return false;
   if (Math.abs(a.centre - b.centre) > Math.max(a.thickness, b.thickness) * 0.75) return false;
   const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
@@ -963,6 +1003,7 @@ function plottedWallBodies(segments: VectorSegment[], unitsPerMetre: number): Wa
         used.add(j);
         bodies.push({
           orientation,
+          source: "plotted",
           centre: (a.at + b.at) / 2,
           thickness: gap,
           from: Math.max(a.from, b.from),
