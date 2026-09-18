@@ -1,4 +1,5 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
+import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import {
   extractFloorplanLayout,
   extractFloorplanRoomsWithVision,
@@ -221,6 +222,7 @@ export async function visualizeFloorplanFromDrawing(
     extractedLayout: extracted.layout,
     styleKit,
     sourceName: options?.sourceName,
+    spend,
   });
   if (cadResult.outcome === "ok") {
     const layout = layoutForCadBooklet(extracted.layout, cadResult.layout);
@@ -441,6 +443,8 @@ type CadOverviewInput = {
   extractedLayout: FloorplanLayout;
   styleKit: FloorplanVizStyleKit;
   sourceName?: string;
+  /** Counts the one vision call that reads the sheet's dimension chains. */
+  spend?: FloorplanSpend;
 };
 
 /**
@@ -521,14 +525,24 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
   }
   const printed = await extractPrintedAreas(pdfBytes);
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: printed });
+  const grossAreaM2 = cadTargetAreaM2(input.extractedLayout, {
+    printedTerraceM2: printedTerraceM2(printed, input.extractedLayout.grossAreaM2),
+    truth,
+  });
+  // No printed area — a plotted sheet, or one whose text is drawn as outlines.
+  // The dimension chains carry the scale, and one vision call reads them.
+  const scaleHint =
+    extent && (grossAreaM2 == null || !(grossAreaM2 > 0))
+      ? await readSheetScale(input.prepared.base64, input.prepared.mimeType, extent, {
+          spend: input.spend,
+        })
+      : null;
   const route = decideFloorplanVizRoute({
     mimeType: input.prepared.mimeType,
     photo: input.photo,
     extent,
-    grossAreaM2: cadTargetAreaM2(input.extractedLayout, {
-      printedTerraceM2: printedTerraceM2(printed, input.extractedLayout.grossAreaM2),
-      truth,
-    }),
+    grossAreaM2,
+    unitsPerMetreHint: scaleHint?.unitsPerMetre,
   });
   if (route.kind !== "cad" || !extent) {
     log.info("floorplan viz using raster path", { reason: route.kind === "raster" ? route.reason : "no-extent" });
@@ -537,6 +551,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
   try {
     const rendered = await renderFlatFromPdf(pdfBytes, {
       targetAreaM2: route.targetAreaM2,
+      unitsPerMetreHint: route.unitsPerMetreHint,
       extent,
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
@@ -546,7 +561,11 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       log.warn("cad render refused scale lock; not inventing a layout", {
         targetAreaM2: route.targetAreaM2,
       });
-      return { outcome: "locked" };
+      // A sheet that never printed an area was not promised a measured render:
+      // it took this route on a scale read off its dimension chains, and if
+      // that does not lock there is a raster path behind it. A sheet that did
+      // print one is a different matter — refusing is the honest answer there.
+      return { outcome: route.unitsPerMetreHint ? "skip" : "locked" };
     }
     return {
       outcome: "ok",

@@ -261,6 +261,7 @@ export async function renderFlatFromPdf(
     bounds: flat.bounds,
     unitsPerMetre: flat.unitsPerMetre,
     segments: sheet?.segments,
+    colouredDoorways: flat.colouredDoorways,
   });
 
   const geometry = await sharp(Buffer.from(flat.svg), { density: 200 })

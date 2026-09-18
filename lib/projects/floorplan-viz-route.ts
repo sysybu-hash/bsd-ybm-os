@@ -17,7 +17,7 @@ import {
 import { roomsForLayout, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
 
 export type FloorplanVizRoute =
-  | { kind: "cad"; targetAreaM2: number }
+  | { kind: "cad"; targetAreaM2: number; unitsPerMetreHint?: number }
   | { kind: "raster"; reason: "not-pdf" | "photo" | "no-extent" | "no-area" };
 
 /**
@@ -30,13 +30,24 @@ export function decideFloorplanVizRoute(input: {
   photo: boolean;
   extent: { x: number; y: number; width: number; height: number } | null;
   grossAreaM2?: number;
+  /**
+   * Units per metre read off the sheet's dimension chains.
+   *
+   * The printed gross is how scale was always locked, and a sheet that prints
+   * none — or prints it as outlines, with no text layer to read — could not
+   * take the measured route at all, however cleanly it draws its walls. The
+   * chains say the same thing in another form.
+   */
+  unitsPerMetreHint?: number;
 }): FloorplanVizRoute {
   if (input.photo) return { kind: "raster", reason: "photo" };
   if (input.mimeType !== "application/pdf") return { kind: "raster", reason: "not-pdf" };
   if (!input.extent) return { kind: "raster", reason: "no-extent" };
   const area = input.grossAreaM2;
-  if (area == null || !(area > 0)) return { kind: "raster", reason: "no-area" };
-  return { kind: "cad", targetAreaM2: area };
+  if (area != null && area > 0) return { kind: "cad", targetAreaM2: area };
+  const hint = input.unitsPerMetreHint;
+  if (hint != null && hint > 0) return { kind: "cad", targetAreaM2: 0, unitsPerMetreHint: hint };
+  return { kind: "raster", reason: "no-area" };
 }
 
 /**

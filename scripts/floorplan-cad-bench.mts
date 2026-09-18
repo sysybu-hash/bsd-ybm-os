@@ -34,7 +34,7 @@ for (const plan of truth.plans) {
     const flat = await buildFlatFromPdf(pdf, plan.grossM2 + terraces, { extent: extent ?? undefined });
     if (!flat) { out[plan.file] = { flat: null }; continue; }
     const geo = await extractFloorplanVectorGeometry(pdf);
-    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments });
+    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways });
     out[plan.file] = {
       upm: Number(flat.unitsPerMetre.toFixed(2)),
       bodies: flat.bodies.length,
