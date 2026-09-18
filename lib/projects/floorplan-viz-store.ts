@@ -221,13 +221,24 @@ export async function findFloorplanLayoutByExtractFingerprint(
 ): Promise<FloorplanLayout | null> {
   const id = fingerprint.trim();
   if (!id) return null;
-  const row = await prisma.floorplanVizRun.findFirst({
+  // The newest runs first, but not any run: a measured run stores the layout
+  // the CAD produced, whose rooms are named after what they hold and carry no
+  // position on the sheet. Handing that back as "the extract" of the next run
+  // throws away the sheet's own labels — the second run of 28-8-23-2 listed
+  // חלל 1 and חדר מגורים 2 where the first had read ממ"ד and מטבח. What is
+  // cached here is the reading of the sheet, so only a reading counts.
+  const recent = await prisma.floorplanVizRun.findMany({
     where: { organizationId: orgId, extractFingerprint: id },
     orderBy: { createdAt: "desc" },
+    take: 5,
     select: { layoutJson: true },
   });
-  if (!row) return null;
-  return parseFloorplanLayout(row.layoutJson as Record<string, unknown>);
+  for (const row of recent) {
+    const layout = parseFloorplanLayout(row.layoutJson as Record<string, unknown>);
+    const read = layout.rooms.some((room) => room.source !== "cad" && room.bbox != null);
+    if (read) return layout;
+  }
+  return null;
 }
 
 export async function createFloorplanVizRun(input: {
