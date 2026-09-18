@@ -1,4 +1,5 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
+import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import {
   extractFloorplanLayout,
@@ -61,7 +62,11 @@ import {
 } from "@/lib/projects/floorplan-geometry-views";
 import { generateAuditedImage } from "@/lib/projects/viz-generate/attempts";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { extractPdfPageRaster, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
+import {
+  extractFloorplanVectorGeometry,
+  extractPdfPageRaster,
+  extractPrintedAreas,
+} from "@/lib/projects/floorplan-vector";
 
 export {
   cadHeroImages,
@@ -529,19 +534,47 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     truth,
   });
   // No printed area — a plotted sheet, or one whose text is drawn as outlines.
-  // The dimension chains carry the scale, and one vision call reads them.
-  const scaleHint =
-    extent && (grossAreaM2 == null || !(grossAreaM2 > 0))
+  // Two ways to the scale, and they answer to different weaknesses: the
+  // dimension chains have to be read by a model, which reads them a little
+  // differently each time (31.1 on one run, 24.5 on the next, against the
+  // sheet's own 29.2), while the doorways are measured — an internal door is
+  // 80 cm, and eleven of them make a ruler. The chains seed the search; the
+  // doorways settle it, because a measured figure beats a read one.
+  const needScale = Boolean(extent) && (grossAreaM2 == null || !(grossAreaM2 > 0));
+  const chainReading =
+    needScale && extent
       ? await readSheetScale(input.prepared.base64, input.prepared.mimeType, extent, {
           spend: input.spend,
         })
       : null;
+  let geometryPage: { width: number } | null = null;
+  if (needScale) {
+    const geometry = await extractFloorplanVectorGeometry(pdfBytes);
+    geometryPage = geometry ? { width: geometry.pageWidth } : null;
+  }
+  const doorwayReading =
+    needScale && geometryPage
+      ? await scaleFromDoorways(
+          pdfBytes,
+          geometryPage,
+          [chainReading?.unitsPerMetre, 28, 42, 56].filter((n): n is number => typeof n === "number"),
+        )
+      : null;
+  const unitsPerMetreHint = doorwayReading?.unitsPerMetre ?? chainReading?.unitsPerMetre;
+  if (needScale) {
+    log.info("scale for a sheet that prints no area", {
+      chains: chainReading?.unitsPerMetre,
+      doorways: doorwayReading?.unitsPerMetre,
+      doorwayCount: doorwayReading?.doorways,
+      chosen: unitsPerMetreHint,
+    });
+  }
   const route = decideFloorplanVizRoute({
     mimeType: input.prepared.mimeType,
     photo: input.photo,
     extent,
     grossAreaM2,
-    unitsPerMetreHint: scaleHint?.unitsPerMetre,
+    unitsPerMetreHint,
   });
   if (route.kind !== "cad" || !extent) {
     const reason = route.kind === "raster" ? route.reason : "no-extent";
@@ -549,7 +582,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       reason,
       extent: Boolean(extent),
       grossAreaM2,
-      scaleHint: scaleHint?.unitsPerMetre,
+      scaleHint: unitsPerMetreHint,
     });
     return {
       outcome: "skip",
@@ -581,6 +614,20 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       return route.unitsPerMetreHint
         ? { outcome: "skip", reason: `קנה המידה (${route.unitsPerMetreHint.toFixed(1)} יח׳/מ׳) לא ננעל על הקירות` }
         : { outcome: "locked" };
+    }
+    // A sheet that printed its area earned the measured route; one that took it
+    // on a scale nobody printed has to earn it twice. 28-8-23-2 came back
+    // measured and wrong — a plate with no bedroom anywhere in it — while the
+    // raster route, handed a schematic of the rooms the extractor placed, got
+    // the flat's own programme right. Measured has to mean measured well.
+    if (route.unitsPerMetreHint && rendered.confidence.ok === false) {
+      log.info("measured plate failed its own checks on an inferred scale; using the raster route", {
+        hard: rendered.confidence.hard,
+      });
+      return {
+        outcome: "skip",
+        reason: `הלוח המדוד לא עבר בדיקה עצמית (${rendered.confidence.hard.join(", ") || "ללא פירוט"})`,
+      };
     }
     return {
       outcome: "ok",
