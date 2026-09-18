@@ -1610,6 +1610,7 @@
     "empty_document": "לא התקבל תוכן מסמך מה-AI",
     "empty_extract": "לא ניתן לחלץ טקסט מהקובץ",
     "file_too_large": "הקובץ גדול מדי (מקסימום 4MB).",
+    "not_pdf": "הבדיקה הזו קוראת קובצי PDF וקטוריים בלבד.",
     "gemini_live_disabled": "Gemini Live מושבת בהגדרות הפלטפורמה.",
     "gemini_not_configured": "Gemini לא מוגדר",
     "generation_failed": "לא נוצר ממשק",
