@@ -210,6 +210,10 @@ export function segmentRooms(input: {
     excludeWalls: true,
     sealingSegments: ink.length > 0 ? ink : undefined,
     floorMask: plottedSheet && floor.length > 1 ? floor : undefined,
+    // Only where the page-unit constants are wrong: the sales sheets were swept
+    // at their own scale and reproduce it exactly, and a sheet at half that
+    // scale is the one they mean something different on.
+    unitsPerMetre: plottedSheet ? unitsPerMetre : undefined,
   });
   if (components.length === 0) return [];
 

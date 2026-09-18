@@ -11,6 +11,7 @@ import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 import { lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
+  sameWall,
   clipBodiesToBounds,
   closeCorners,
   dropUnhatchedBodies,
@@ -176,15 +177,30 @@ export async function buildFlatFromGeometry(
   // cuts a real wall's overshot tails, and the drop removes a body that was
   // never a wall — a dimension chain reads as one because it picks up a hatch
   // cluster wherever it crosses a partition.
-  const bodies = dropUnhatchedBodies(
+  // The hatch tests are evidence tests: they trim a wall to the hatch that
+  // proves it and drop a body with none, because on a sales sheet a dimension
+  // chain picks up a hatch cluster wherever it crosses a partition and reads
+  // as a wall. A plotted pair carries its own evidence — two heavy lines a
+  // wall apart — and has no hatch anywhere along it, so putting it through the
+  // same tests deleted every internal partition on 28-8-23-2 and left the flat
+  // as one open floor.
+  const kept = closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9);
+  const hatchKept = dropUnhatchedBodies(
     trimToHatchAlong(
-      closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9),
+      kept.filter((body) => body.source !== "plotted"),
       geometry.segments,
       { unitsPerMetre },
     ),
     geometry.segments,
     unitsPerMetre,
   );
+  // A plotted pair joins the set unless a hatched band that SURVIVED covers the
+  // same wall. Deduping before the hatch tests is what lost the partitions:
+  // the band was preferred, and then dropped for having no hatch under it.
+  const plotted = kept
+    .filter((body) => body.source === "plotted")
+    .filter((body) => !hatchKept.some((band) => sameWall(band, body)));
+  const bodies = [...hatchKept, ...plotted];
   if (bodies.length === 0) return null;
 
   let minX = Infinity;

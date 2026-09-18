@@ -137,7 +137,13 @@ export function dedupeRectangles(
 export function classifyPiece(widthCm: number, depthCm: number): FurnitureKind {
   const long = Math.max(widthCm, depthCm);
   const short = Math.min(widthCm, depthCm);
-  if (short >= 80 && short <= 110 && long >= 185 && long <= 230) return "bed";
+  // A bed is 200 long and the sheet decides how wide: 90 for a single and 120
+  // for the מיטה וחצי this plan draws in three of its bedrooms. The band
+  // stopped at 110, so those beds read as kitchen counters and their rooms
+  // came back as anything but bedrooms. It stops short of 140 on purpose: a
+  // double bed is what the modesty rules forbid, and naming one "bed" is how
+  // it reaches a still.
+  if (short >= 80 && short <= 132 && long >= 185 && long <= 230) return "bed";
   if (short >= 60 && short <= 80 && long >= 140 && long <= 180) return "fixture";
   // A shower tray is a compact square, larger than a basin and smaller than a
   // room. 80 by 80 was falling through to "unknown", so a wet room with no
