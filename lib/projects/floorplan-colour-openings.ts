@@ -123,3 +123,76 @@ export async function readColouredDoorways(
     return [];
   }
 }
+
+/**
+ * Scale from the doorways themselves.
+ *
+ * The dimension chains have to be read by a model, and it reads them a little
+ * differently each time: 31.1 units per metre on one run and 24.5 on the next,
+ * where the sheet says 29.2, and a flat drawn at 24.5 has rooms the size of
+ * cupboards. The doorways are measured rather than read — eleven of them on
+ * 28-8-23-2 — and an internal door in Israel is 80 cm, which makes their
+ * median a ruler: 23.4 units per door, 29.3 units per metre, within one per
+ * cent of the chains' own figure.
+ *
+ * Two passes, because finding the doorways needs a scale to sieve by width:
+ * a rough one first, then the same question again at the answer.
+ */
+const STANDARD_DOOR_M = 0.8;
+const MIN_DOORWAYS_FOR_SCALE = 5;
+
+type DoorwayScale = { unitsPerMetre: number; doorways: number; spread: number };
+
+/** One pass: what scale the doorways imply, when sieved at this one. */
+async function doorwayScaleAt(
+  pdf: Buffer | Uint8Array,
+  page: { width: number },
+  unitsPerMetre: number,
+): Promise<DoorwayScale | null> {
+  const found = await readColouredDoorways(pdf, page, unitsPerMetre);
+  if (found.length < MIN_DOORWAYS_FOR_SCALE) return null;
+  const widths = found.map((d) => d.to - d.from).sort((a, b) => a - b);
+  const median = widths[Math.floor(widths.length / 2)]!;
+  if (!(median > 0)) return null;
+  const low = widths[Math.floor(widths.length * 0.25)]!;
+  const high = widths[Math.floor(widths.length * 0.75)]!;
+  return {
+    unitsPerMetre: median / STANDARD_DOOR_M,
+    doorways: found.length,
+    // How tightly the doors agree with each other. Doors are all much of a
+    // size; a sieve at the wrong scale lets in window strips and wall stubs,
+    // and they do not agree at all.
+    spread: (high - low) / median,
+  };
+}
+
+export async function scaleFromDoorways(
+  pdf: Buffer | Uint8Array,
+  page: { width: number },
+  seeds: number[],
+): Promise<DoorwayScale | null> {
+  const settled: DoorwayScale[] = [];
+  for (const seed of seeds) {
+    if (!(seed > 0)) continue;
+    let scale = seed;
+    let last: DoorwayScale | null = null;
+    // A sieve needs a scale and the scale comes from the sieve, so this is a
+    // fixed point: iterate until the answer stops moving, and keep it only if
+    // it does. A seed far from the truth wanders and is dropped.
+    for (let pass = 0; pass < 5; pass += 1) {
+      const step = await doorwayScaleAt(pdf, page, scale);
+      if (!step) break;
+      const settledHere = Math.abs(step.unitsPerMetre - scale) / scale < 0.02;
+      scale = step.unitsPerMetre;
+      last = step;
+      if (settledHere) {
+        settled.push(step);
+        break;
+      }
+    }
+    void last;
+  }
+  if (settled.length === 0) return null;
+  // Among the fixed points, the one whose doors agree best with each other.
+  return settled.reduce((best, cur) => (cur.spread < best.spread ? cur : best));
+}
