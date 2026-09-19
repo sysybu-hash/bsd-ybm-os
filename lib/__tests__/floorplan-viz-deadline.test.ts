@@ -15,3 +15,39 @@ describe("floorplan viz time budget", () => {
     expect(timeLeft(undefined, 10 * 60_000)).toBe(true);
   });
 });
+
+describe("the measured route's clock", () => {
+  it("stops re-rolling a finish once the budget is spent", async () => {
+    // The measured path had no clock: a run that read the sheet, read its
+    // scale, measured the flat and then re-rolled its finish went past ten
+    // minutes, and the platform returned nothing for any of it.
+    const { pickBestFinish } = await import("@/lib/projects/floorplan-finish");
+    let rendered = 0;
+    const result = await pickBestFinish(
+      5,
+      async () => {
+        rendered += 1;
+        return { frame: rendered };
+      },
+      async () => ({ score: 99, failures: ["never good enough"], hardFailures: [] }),
+      { deadlineMs: Date.now() - 1 },
+    );
+    expect(rendered).toBe(1);
+    expect(result?.image).toEqual({ frame: 1 });
+  });
+
+  it("runs every attempt when there is time", async () => {
+    const { pickBestFinish } = await import("@/lib/projects/floorplan-finish");
+    let rendered = 0;
+    await pickBestFinish(
+      3,
+      async () => {
+        rendered += 1;
+        return { frame: rendered };
+      },
+      async () => ({ score: 99, failures: ["never good enough"], hardFailures: [] }),
+      { deadlineMs: Date.now() + 10 * 60_000 },
+    );
+    expect(rendered).toBe(3);
+  });
+});
