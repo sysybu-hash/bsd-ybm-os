@@ -96,6 +96,8 @@ export type RenderFlatOptions = {
   wallSource?: Buffer | Uint8Array;
   attempts?: number;
   goodEnough?: number;
+  /** Epoch ms the run must be finished by; see pickBestFinish. */
+  deadlineMs?: number;
   haredi?: boolean;
   /**
    * The finish the buyer chose. Composed against `source: "geometry"`, so the
@@ -379,6 +381,7 @@ export async function renderFlatFromPdf(
   };
 
   const best = await pickBestFinish(options.attempts ?? 1, render, grade, {
+    deadlineMs: options.deadlineMs,
     goodEnough: options.goodEnough,
     label: options.label,
   });

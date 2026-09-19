@@ -1,3 +1,4 @@
+import { ATTEMPT_MS, timeLeft } from "@/lib/projects/viz-generate/budget";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger("floorplan-finish");
@@ -50,13 +51,24 @@ export async function pickBestFinish<T>(
   attempts: number,
   render: (attempt: number) => Promise<T | null>,
   grade: (image: T) => Promise<FinishGrade | null>,
-  options?: { goodEnough?: number; label?: string },
+  options?: { goodEnough?: number; label?: string; deadlineMs?: number },
 ): Promise<FinishResult<T> | null> {
   const goodEnough = options?.goodEnough ?? FINISH_GOOD_ENOUGH;
   let best: FinishResult<T> | null = null;
   let rendered = 0;
 
   for (let attempt = 1; attempt <= Math.max(1, attempts); attempt++) {
+    // The route has 300 seconds and a timeout returns nothing at all — not
+    // even the frames already paid for. The measured path had no clock on it,
+    // and a run that read the sheet, read its scale, measured the flat and
+    // then re-rolled its finish went past ten minutes and was thrown away.
+    if (attempt > 1 && !timeLeft(options?.deadlineMs, ATTEMPT_MS)) {
+      log.warn("out of time for another finish; keeping the best so far", {
+        label: options?.label,
+        attempt,
+      });
+      break;
+    }
     const image = await render(attempt);
     if (!image) continue;
     rendered += 1;

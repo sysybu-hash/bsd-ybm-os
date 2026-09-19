@@ -257,6 +257,7 @@ export async function visualizeFloorplanFromDrawing(
     styleKit,
     sourceName: options?.sourceName,
     spend,
+    deadlineMs,
   });
   if (cadResult.outcome === "ok") {
     const layout = layoutForCadBooklet(extracted.layout, cadResult.layout);
@@ -453,6 +454,8 @@ type CadOverviewInput = {
   sourceName?: string;
   /** Counts the one vision call that reads the sheet's dimension chains. */
   spend?: FloorplanSpend;
+  /** Epoch ms the whole run must be finished by. */
+  deadlineMs?: number;
 };
 
 /**
@@ -609,6 +612,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
+      deadlineMs: input.deadlineMs,
       // One counter for the whole run. The measured branch used to report only
       // what the render cost, so a run that read the sheet, read its scale and
       // then measured it came back claiming no extraction calls at all.
