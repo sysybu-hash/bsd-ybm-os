@@ -57,3 +57,37 @@ export function deskFurnitureInOffices(
     return inStudy ? { ...piece, kind: "desk" as const } : piece;
   });
 }
+
+/**
+ * Nothing stands in a room the sheet draws empty.
+ *
+ * The shelter room on this plan is an empty box with thick walls, and the
+ * plate kept putting a bed in it — a rectangle inside the hatch reads as one,
+ * and once it is on the plate the image model photographs it, whatever the
+ * prompt says about ממ"ד staying empty. The sheet already says the room is
+ * empty; that is enough to clear it.
+ */
+export function clearFurnitureFromEmptyRooms(
+  furniture: FurniturePiece[],
+  layout: FloorplanLayout | undefined,
+  page: { width: number; height: number } | undefined,
+): FurniturePiece[] {
+  if (!layout || !page || !(page.width > 0) || !(page.height > 0)) return furniture;
+  const empties = layout.rooms.filter(
+    (room) =>
+      room.bbox != null &&
+      (room.bedCount ?? 0) === 0 &&
+      typeof room.contents === "string" &&
+      room.contents.trim().toLowerCase() === "empty",
+  );
+  if (empties.length === 0) return furniture;
+
+  return furniture.filter((piece) => {
+    const cx = (piece.x + piece.w / 2) / page.width;
+    const cy = (piece.y + piece.h / 2) / page.height;
+    return !empties.some((room) => {
+      const b = room.bbox!;
+      return cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h;
+    });
+  });
+}
