@@ -26,6 +26,10 @@ import {
   trimRasterWhitespace,
 } from "@/lib/projects/floorplan-photo-prep";
 
+// Real image work: sharp decodes, resizes and re-encodes on every case, which
+// runs past Jest's 5s default when the suite shares a machine with the others.
+jest.setTimeout(30_000);
+
 describe("floorplan photo prep", () => {
   it("infers jpeg from a Windows-style empty MIME using the file name", () => {
     expect(inferMimeFromFileName("דירה1.jpg", "")).toBe("image/jpeg");

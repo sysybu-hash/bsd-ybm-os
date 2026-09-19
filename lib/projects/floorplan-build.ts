@@ -1,5 +1,8 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
-import { deskFurnitureInOffices } from "@/lib/projects/floorplan-programme-furniture";
+import {
+  clearFurnitureFromEmptyRooms,
+  deskFurnitureInOffices,
+} from "@/lib/projects/floorplan-programme-furniture";
 import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
   findFurniture,
@@ -389,10 +392,12 @@ export async function buildFlatFromGeometry(
   // sideboard is the same rectangle. The sheet already said which room is the
   // work room, so the pieces standing in it are desks — and the plate draws a
   // desk, which is what stops the work room being furnished as a bedroom.
-  const furnishings = deskFurnitureInOffices(furniture, options?.programme, {
-    width: geometry.pageWidth,
-    height: geometry.pageHeight,
-  });
+  const page = { width: geometry.pageWidth, height: geometry.pageHeight };
+  const furnishings = clearFurnitureFromEmptyRooms(
+    deskFurnitureInOffices(furniture, options?.programme, page),
+    options?.programme,
+    page,
+  );
   const furnitureOffTerrace = furnishings.filter((piece) => {
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
