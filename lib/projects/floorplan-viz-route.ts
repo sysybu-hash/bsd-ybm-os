@@ -133,10 +133,9 @@ export function layoutFromCadRooms(
     ceilingHeightM: extracted.ceilingHeightM,
     north: extracted.north,
     grossAreaM2: extracted.grossAreaM2,
-    rooms: nameCadRoomsFromSheet(
-      roomsForLayout(rooms, unitsPerMetre),
+    rooms: withPageBbox(
+      nameCadRoomsFromSheet(roomsForLayout(rooms, unitsPerMetre), rooms, extracted, extra?.page),
       rooms,
-      extracted,
       extra?.page,
     ),
     dimensionStrings: extracted.dimensionStrings,
@@ -164,6 +163,35 @@ export function layoutFromCadRooms(
  * are the same coordinates, and the question is simply which room the label
  * sits in.
  */
+/**
+ * Where a measured room sits, as a fraction of the page.
+ *
+ * The same coordinates the extractor reports a label in, so everything
+ * downstream — names, and the measurements the booklet stamps onto the
+ * programme — can ask which room is which by position instead of by the order
+ * two lists happen to be in.
+ */
+function withPageBbox(
+  measured: FloorplanRoom[],
+  rooms: SegmentedRoom[],
+  page?: { width: number; height: number },
+): FloorplanRoom[] {
+  if (!page || !(page.width > 0) || !(page.height > 0)) return measured;
+  return measured.map((room, index) => {
+    const bounds = rooms[index]?.bounds;
+    if (!bounds) return room;
+    return {
+      ...room,
+      bbox: {
+        x: bounds.x / page.width,
+        y: bounds.y / page.height,
+        w: bounds.width / page.width,
+        h: bounds.height / page.height,
+      },
+    };
+  });
+}
+
 function nameCadRoomsFromSheet(
   measured: FloorplanRoom[],
   rooms: SegmentedRoom[],
@@ -222,10 +250,17 @@ export function layoutForCadBooklet(
   extracted: FloorplanLayout,
   cad: FloorplanLayout,
 ): FloorplanLayout {
+  // The programme comes off the sheet; the CAD supplies geometry and measures.
+  // The rule was "the sheet wins only if it read MORE habitable rooms", and a
+  // tie handed the whole programme to the geometry: on 28-8-23-2 the sheet read
+  // a work room with two desks, a store and a terrace, the CAD counted the same
+  // number of habitable spaces without knowing what any of them were, and the
+  // brief that reached the image model had no office in it at all. A room the
+  // draughtsman labelled beats a room the geometry merely enclosed.
   const extractedHabitable = roomsForInteriorViz(extracted);
   const cadHabitable = roomsForInteriorViz(cad);
   const program =
-    extractedHabitable.length > cadHabitable.length ? extracted.rooms : cad.rooms;
+    extractedHabitable.length >= cadHabitable.length ? extracted.rooms : cad.rooms;
   const rooms = applyCadMeasuresToBookletRooms(
     program,
     cad.rooms,

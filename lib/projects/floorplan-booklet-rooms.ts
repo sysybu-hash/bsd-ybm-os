@@ -46,7 +46,64 @@ export function floorPlateTerraceM2(truth: PrintedUnitTruth): number {
 }
 
 /** A CAD box that is a corridor-thin sliver or a merged multi-room blob. */
+/**
+ * What a room of each kind can measure and still be that room.
+ *
+ * A measured region is not always the whole room: where the segmenter closed
+ * only part of one, its box is a sliver of the real thing, and stamping that
+ * onto the programme told the image model to draw a living room 2.3 m wide and
+ * a work room 1.3 by 1.1. The brief is better off saying nothing about a size
+ * than saying something the sheet contradicts — a room with no measurement is
+ * still drawn, from its name and its contents.
+ */
+const PLAUSIBLE_M2: Partial<Record<string, { min: number; max: number }>> = {
+  living: { min: 9, max: 60 },
+  kitchen: { min: 3.5, max: 30 },
+  bedroom: { min: 4.5, max: 30 },
+  mmd: { min: 5, max: 16 },
+  bathroom: { min: 1.2, max: 9 },
+  utility: { min: 0.8, max: 12 },
+  office: { min: 4, max: 25 },
+};
+
+/**
+ * How narrow a room of each kind can be.
+ *
+ * Area alone lets a sliver through: 2.3 by 5.9 is thirteen square metres and
+ * reads as a living room until you notice it is the width of a corridor, and
+ * that is the figure the brief was handing the image model. A bed is two
+ * metres long and needs room to walk past.
+ */
+const MIN_SHORT_SIDE_M: Partial<Record<string, number>> = {
+  living: 2.8,
+  bedroom: 2.2,
+  mmd: 2.2,
+  kitchen: 1.6,
+  office: 1.8,
+  bathroom: 1.0,
+};
+
+function measuresContradictTheKind(room: FloorplanRoom): boolean {
+  const kind = room.kind ?? inferRoomKind(room.name);
+  const narrowest = MIN_SHORT_SIDE_M[kind];
+  if (
+    narrowest != null &&
+    room.widthM != null &&
+    room.lengthM != null &&
+    Math.min(room.widthM, room.lengthM) < narrowest
+  ) {
+    return true;
+  }
+  const band = PLAUSIBLE_M2[kind];
+  if (!band) return false;
+  const area =
+    room.areaM2 ?? (room.widthM && room.lengthM ? room.widthM * room.lengthM : undefined);
+  if (area == null) return false;
+  return area < band.min || area > band.max;
+}
+
 export function isUnusableCadRoom(room: FloorplanRoom, grossM2?: number): boolean {
+  if (measuresContradictTheKind(room)) return true;
   if (room.widthM && room.lengthM && Math.min(room.widthM, room.lengthM) > 0) {
     const ratio = Math.max(room.widthM, room.lengthM) / Math.min(room.widthM, room.lengthM);
     if (ratio > 4) return true;
@@ -324,7 +381,17 @@ export function applyCadMeasuresToBookletRooms(
     const kind = roomKindOf(room);
     const i = used.get(kind) ?? 0;
     used.set(kind, i + 1);
-    const cad = (pool.get(kind) ?? [])[i];
+    // Position first, where both sides know theirs. Pairing the i-th bedroom
+    // on the sheet with the i-th bedroom the CAD found is an arbitrary order
+    // dressed as a match: on 28-8-23-2 it gave the living room the width of a
+    // corridor and the work room the size of a cupboard, and those figures go
+    // straight into the brief the image model draws from.
+    const overlapping = matchByPosition(room, poolRooms, usedCad);
+    const cad = overlapping ?? (pool.get(kind) ?? [])[i];
+    if (cad && measuresContradictTheKind({ ...room, ...cad, kind: room.kind })) {
+      usedCad.add(cad);
+      return stripUnusableRoomMeasures(room, grossM2);
+    }
     if (!cad) return stripUnusableRoomMeasures(room, grossM2);
     usedCad.add(cad);
     const widthM = cad.widthM ?? room.widthM;
@@ -344,7 +411,43 @@ export function applyCadMeasuresToBookletRooms(
   });
   const unused = poolRooms.filter((room) => !usedCad.has(room));
   const filled = fillUnmatchedCadByArea(stamped, unused);
-  return mergeOpenPlanLivingKitchen(applyOpenPlanArea(filled, aligned, grossM2), grossM2);
+  const merged = mergeOpenPlanLivingKitchen(applyOpenPlanArea(filled, aligned, grossM2), grossM2);
+  // Last word on every path into this function, including the by-area fill:
+  // a figure that contradicts the room it is attached to does not travel.
+  return merged.map((room) => stripUnusableRoomMeasures(room, grossM2));
+}
+
+/**
+ * The measured room a programme room sits on, by area shared.
+ *
+ * Both carry a bbox in fractions of the page — the extractor reports where it
+ * read a label, and the measured rooms carry where the geometry put them — so
+ * this is the same question the eye asks: which of these is that one.
+ */
+function matchByPosition(
+  room: FloorplanRoom,
+  pool: FloorplanRoom[],
+  used: Set<FloorplanRoom>,
+): FloorplanRoom | undefined {
+  const a = room.bbox;
+  if (!a) return undefined;
+  let best: { room: FloorplanRoom; share: number } | undefined;
+  for (const candidate of pool) {
+    if (used.has(candidate)) continue;
+    const b = candidate.bbox;
+    if (!b) continue;
+    const overlapW = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const overlapH = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (overlapW <= 0 || overlapH <= 0) continue;
+    const smaller = Math.min(a.w * a.h, b.w * b.h);
+    if (smaller <= 0) continue;
+    const share = (overlapW * overlapH) / smaller;
+    // A third of the smaller box: enough to be the same room, and not enough
+    // for a corridor that clips a corner of one.
+    if (share < 0.34) continue;
+    if (best === undefined || share > best.share) best = { room: candidate, share };
+  }
+  return best?.room;
 }
 
 /** Open-plan living+kitchen is one CAD polygon — keep the area, drop the L-bbox. */
