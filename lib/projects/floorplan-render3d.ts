@@ -81,6 +81,9 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   // orange tables standing in the finished frame. A palette that is its own
   // answer needs no decoding.
   bed: { top: "#fdfdfc", face: "#e6e2da" },
+  // Warm timber with a light top: a desk reads as a desk beside a chair, and
+  // never as the bed the work room kept being furnished with.
+  desk: { top: "#e7d9bf", face: "#9c7a4d" },
   storage: { top: "#c9a678", face: "#a8875b" },
   counter: { top: "#eae6df", face: "#b9b2a6" },
   // Pale aqua, not white. At #fbfbfa a fixture was two parts in 255 away from
@@ -335,6 +338,7 @@ export function renderFlatSvg(
   // of it, and painted back to front among themselves for the same reason.
   const heights: Record<string, number> = {
     bed: 0.5,
+    desk: 0.74,
     storage: 2.0,
     counter: 0.9,
     fixture: 0.55,

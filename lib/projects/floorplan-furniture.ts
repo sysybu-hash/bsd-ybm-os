@@ -14,6 +14,16 @@ import { isAxisAligned, segmentLength, type VectorSegment } from "@/lib/projects
 
 export type FurnitureKind =
   | "bed"
+  /**
+   * A work surface you sit at, as opposed to one you stand at.
+   *
+   * There was no such kind, so the two desks 28-8-23-2 draws in its work room
+   * came through as storage — a waist-high cupboard on the plate — and the
+   * image model furnished the room as a bedroom, which is what the rest of the
+   * plate looked like. Size alone cannot tell a desk from a counter; the
+   * sheet's own label for the room can, and does: see deskFurnitureInOffices.
+   */
+  | "desk"
   | "hob"
   | "sink"
   | "storage"

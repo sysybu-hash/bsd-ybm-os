@@ -1,4 +1,6 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
+import { deskFurnitureInOffices } from "@/lib/projects/floorplan-programme-furniture";
+import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
   findFurniture,
   findRoundedFurniture,
@@ -118,6 +120,8 @@ export async function buildFlatFromGeometry(
      * which keeps the party wall as this flat's east wall.
      */
     extent?: { x: number; y: number; width: number; height: number };
+    /** The sheet's own programme, for what a shape cannot say — see desks. */
+    programme?: FloorplanLayout;
     /**
      * Units per metre read off the sheet's dimension chains, for a sheet that
      * prints no area. The area sweep is skipped in favour of a narrow sweep
@@ -381,7 +385,15 @@ export async function buildFlatFromGeometry(
       ? [...fromInk, ...findTerracesOnFloor(floor, bodies, missing, unitsPerMetre)]
       : fromInk;
   const terraces = terraceHits.map((terrace) => terrace.rows);
-  const furnitureOffTerrace = furniture.filter((piece) => {
+  // A desk is a rectangle the classifier has to call storage, because a
+  // sideboard is the same rectangle. The sheet already said which room is the
+  // work room, so the pieces standing in it are desks — and the plate draws a
+  // desk, which is what stops the work room being furnished as a bedroom.
+  const furnishings = deskFurnitureInOffices(furniture, options?.programme, {
+    width: geometry.pageWidth,
+    height: geometry.pageHeight,
+  });
+  const furnitureOffTerrace = furnishings.filter((piece) => {
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
     return !terraces.some((rows) => spansContain(rows, cx, cy));
@@ -401,7 +413,7 @@ export async function buildFlatFromGeometry(
     svg: renderFlatSvg(bodies, bounds, {
       unitsPerMetre,
       floor,
-      furniture,
+      furniture: furnishings,
       openings,
       terraces,
       width: options?.width,
@@ -421,6 +433,8 @@ export async function buildFlatFromPdf(
     width?: number;
     extent?: { x: number; y: number; width: number; height: number };
     unitsPerMetreHint?: number;
+    /** The sheet's own programme, for what the shapes cannot say. */
+    programme?: FloorplanLayout;
   },
 ): Promise<BuiltFlat | null> {
   const geometry = await extractFloorplanVectorGeometry(pdf);
