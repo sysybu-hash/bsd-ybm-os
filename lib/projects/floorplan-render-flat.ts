@@ -1,3 +1,4 @@
+import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 
@@ -87,6 +88,8 @@ export type RenderFlatOptions = {
   targetAreaM2: number;
   /** Scale read off the dimension chains, when no area is printed. */
   unitsPerMetreHint?: number;
+  /** The sheet's own programme, so the plate can draw a desk as a desk. */
+  programme?: FloorplanLayout;
   /** The flat's extent, when the sheet carries more than one apartment. */
   extent?: { x: number; y: number; width: number; height: number };
   /**
@@ -244,6 +247,7 @@ export async function renderFlatFromPdf(
   const flat = await buildFlatFromPdf(wallSource, options.targetAreaM2, {
     extent: options.extent,
     unitsPerMetreHint: options.unitsPerMetreHint,
+    programme: options.programme,
   });
   if (!flat) {
     log.warn("no scale reproduces the printed area", {

@@ -613,6 +613,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
       deadlineMs: input.deadlineMs,
+      programme: input.extractedLayout,
       // One counter for the whole run. The measured branch used to report only
       // what the render cost, so a run that read the sheet, read its scale and
       // then measured it came back claiming no extraction calls at all.
