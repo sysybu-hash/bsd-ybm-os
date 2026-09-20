@@ -373,3 +373,32 @@ export function rasterFallbackConfidence(reason?: string): ConfidenceReport {
     ok: true,
   };
 }
+
+/**
+ * Whether a measured plate actually shows the flat the sheet describes.
+ *
+ * "The plate passed its own checks" turned out to be a low bar: a plate can
+ * satisfy the audit and still be a different apartment, because the audit
+ * grades what is drawn rather than what is missing. The sheet says how many
+ * bedrooms this flat has, and that it has a kitchen and a living room. A
+ * measured plate that cannot show those is not a measurement of this flat, and
+ * the drawing itself is the better reference.
+ */
+export function measuredPlateMatchesSheet(
+  sheet: FloorplanLayout,
+  measured: SegmentedRoom[],
+): boolean {
+  const wanted = roomsForInteriorViz(sheet);
+  if (wanted.length === 0) return true;
+  const countKind = (rooms: Array<{ kind?: string; name?: string }>, kind: string) =>
+    rooms.filter((room) => (room.kind ?? (room.name ? inferRoomKind(room.name) : "other")) === kind)
+      .length;
+
+  const bedroomsOnSheet = countKind(wanted, "bedroom");
+  const bedroomsMeasured = countKind(measured, "bedroom");
+  if (bedroomsMeasured < bedroomsOnSheet) return false;
+  for (const kind of ["kitchen", "living"]) {
+    if (countKind(wanted, kind) > 0 && countKind(measured, kind) === 0) return false;
+  }
+  return true;
+}

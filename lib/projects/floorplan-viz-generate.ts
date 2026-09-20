@@ -80,6 +80,13 @@ export async function generateFloorplanVisuals(
      * rooms. Used when the measured CAD route cannot read the sheet's walls.
      */
     schematicPlate?: { mimeType: string; base64: string };
+    /**
+     * The sheet itself, cropped to the flat and washed by room.
+     *
+     * The reference a still is copied from, where we have it: the walls the
+     * architect drew rather than walls rebuilt from them.
+     */
+    tintedPlan?: { mimeType: string; base64: string };
   },
 ): Promise<FloorplanVizImage[]> {
   const vizLayout = overlayPrintedProgram(layoutForVisualization(layout), options?.truth);
@@ -111,6 +118,7 @@ export async function generateFloorplanVisuals(
     hintKind: hint?.kind,
     planGuide: Boolean(guide),
     schematicPlate: Boolean(options?.schematicPlate?.base64),
+    tintedPlan: Boolean(options?.tintedPlan?.base64),
   };
   const jobs: VizJob[] = specs.map((spec) => ({
     ...spec,
@@ -143,6 +151,7 @@ export async function generateFloorplanVisuals(
         options?.geometryLock,
         guide,
         options?.schematicPlate,
+        options?.tintedPlan,
       );
       const audited = await generateAuditedImage(job, attachments, aspectRatio, {
         layout: vizLayout,

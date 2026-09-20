@@ -396,6 +396,8 @@ export function buildVizPrompt(
     planGuide?: boolean;
     /** A schematic plate of this flat — rooms where they were read — leads. */
     schematicPlate?: boolean;
+    /** The sheet itself, cropped to the flat and washed by room, leads. */
+    tintedPlan?: boolean;
   },
 ): string {
   layout = canonicalizeFloorplanLayout(layout);
@@ -458,7 +460,9 @@ ${placedRooms.map((row) => `${row.index}. ${row.room.name} — ${row.where}`).jo
 None of the magenta boxes or their text may appear in the photograph; they are direction for you, not decoration.`
       : "";
   const mapBit = [
-    options?.schematicPlate
+    options?.tintedPlan
+      ? "Attachment 1 is THIS APARTMENT'S OWN PLAN — the architect's drawing, cropped to the flat, with a translucent wash over each room in a colour that says what the room is for and its name printed beside it. It is not a reference, a mood board or a similar flat: it is this flat, and the black ink on it is the truth. Repaint that exact drawing as the photoreal still: every wall, jog, door swing, window, sanitary fixture and piece of furniture stays in the position the ink puts it, at the size the ink draws it. The wash tells you what to furnish each room AS; the ink tells you WHERE everything goes. Neither the wash nor the printed names appear in your photograph — no colour overlays, no text, no numbers."
+      : options?.schematicPlate
       ? "Attachment order: (1) a SCHEMATIC PLATE of this apartment — every room as a block, at the position and size it occupies in the flat, with a bed where there is a bed; (2) the same sheet with every room named at its position; (3) the original sales sheet. Take the ARRANGEMENT from the plate: which room is where, what adjoins what, which side the living room is on. Take every detail from the sheet — the true wall jogs, the fixtures, the openings, the furniture. The plate is a diagram of this flat, not a drawing of a different one: do not photograph its blocks as literal boxes, and do not reorganise the flat away from it."
       : options?.planGuide
       ? "Attachment order: (1) the same sheet with every room named at its position — the layout map; (2) the original sales sheet — walls AND furniture symbols."

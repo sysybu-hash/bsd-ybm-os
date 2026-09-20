@@ -67,11 +67,18 @@ export function floorplanOverviewAttachments(input: {
   planGuide?: { mimeType: string; base64: string } | null;
   /** A schematic of the flat built from where the rooms were read. */
   schematicPlate?: { mimeType: string; base64: string } | null;
+  /** The sheet itself, cropped to the flat and washed by room. */
+  tintedPlan?: { mimeType: string; base64: string } | null;
 }): Array<{ mimeType: string; base64: string }> {
   const inkAtt = input.ink ? [{ mimeType: "image/jpeg" as const, base64: input.ink }] : [];
   const massingAtt = input.massing ? [{ mimeType: "image/jpeg" as const, base64: input.massing }] : [];
   if (input.geometryLock?.base64) {
     return [input.geometryLock, input.plan, ...inkAtt, ...massingAtt];
+  }
+  // The sheet's own drawing leads where we have it washed by room: it is this
+  // apartment exactly, which no reconstruction of it can be.
+  if (input.tintedPlan?.base64) {
+    return [input.tintedPlan, input.plan, ...inkAtt, ...massingAtt];
   }
   // The plate leads where there is one: it is a picture of this flat rather
   // than a drawing to interpret, and the model copies a picture far more
@@ -98,6 +105,7 @@ export async function attachmentsForJob(
   geometryLock?: { mimeType: string; base64: string } | null,
   planGuide?: { mimeType: string; base64: string } | null,
   schematicPlate?: { mimeType: string; base64: string } | null,
+  tintedPlan?: { mimeType: string; base64: string } | null,
 ): Promise<Array<{ mimeType: string; base64: string }>> {
   const planImage = await planImageForGeneration(plan);
   if (job.viewId === "interior") {
@@ -120,6 +128,7 @@ export async function attachmentsForJob(
     geometryLock,
     planGuide,
     schematicPlate,
+    tintedPlan,
   });
   if (job.viewId === "isometric" && overviewStill?.base64) {
     planAtt.push(overviewStill);
