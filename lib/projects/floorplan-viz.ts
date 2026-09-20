@@ -1,4 +1,5 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
+import { buildTintedPlanJpeg } from "@/lib/projects/floorplan-tinted-plan";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import {
@@ -39,6 +40,7 @@ import {
   mergeCadPhotorealImages,
   overviewImageFromCad,
   printedTerraceM2,
+  measuredPlateMatchesSheet,
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
@@ -377,14 +379,19 @@ export async function visualizeFloorplanFromDrawing(
     cropped && (crop.w < 0.97 || crop.h < 0.97 || crop.x > 0.02 || crop.y > 0.02)
       ? remapLayoutToCrop(extracted.layout, crop)
       : extracted.layout;
-  // No measured geometry for this sheet, but the extractor did place every
-  // room: a schematic of that is still a picture of THIS flat, and the model
-  // copies a picture far better than it reads a plan.
-  const plate = await buildSchematicPlateJpeg(vizLayout);
+  // No measured geometry for this sheet — so the reference is the sheet
+  // itself, cropped to the flat and washed room by room. A reconstruction of a
+  // drawing is an approximation of it; the drawing is not.
+  const tinted = await buildTintedPlanJpeg(
+    { base64: prepared.base64, mimeType: prepared.mimeType },
+    vizLayout,
+  );
+  const plate = tinted ? null : await buildSchematicPlateJpeg(vizLayout);
   let images: FloorplanVizImage[] = [];
   try {
     images = await runWithFloorplanSpend(spend, () =>
       generateFloorplanVisuals(vizLayout, vizBase64, vizMime, {
+        tintedPlan: tinted ?? undefined,
         schematicPlate: plate ?? undefined,
         photo,
         styleKit,
@@ -636,6 +643,19 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     // measured and wrong — a plate with no bedroom anywhere in it — while the
     // raster route, handed a schematic of the rooms the extractor placed, got
     // the flat's own programme right. Measured has to mean measured well.
+    // Measured has to mean measured well, and "it passed its own checks" is a
+    // low bar: the audit grades what is drawn, not what is missing. A plate
+    // that cannot show the bedrooms, the kitchen and the living room the sheet
+    // reads is not a measurement of this flat.
+    if (route.unitsPerMetreHint && !measuredPlateMatchesSheet(input.extractedLayout, rendered.rooms)) {
+      log.info("measured plate does not reproduce the sheet's programme; using the drawing itself", {
+        measured: rendered.rooms.map((room) => room.kind),
+      });
+      return {
+        outcome: "skip",
+        reason: "הלוח המדוד לא משחזר את תוכנית החללים שבגיליון",
+      };
+    }
     if (route.unitsPerMetreHint && rendered.confidence.ok === false) {
       log.info("measured plate failed its own checks on an inferred scale; using the raster route", {
         hard: rendered.confidence.hard,
