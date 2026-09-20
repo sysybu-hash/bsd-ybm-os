@@ -1693,6 +1693,7 @@
     "unsupported_action": "Unsupported action type",
     "use_notebook_endpoint": "Use /api/notebooklm/from-scan for notebooks",
     "rate_limited": "Rate limit reached. Try again later.",
+    "viz_edit_redrew_frame": "The edit redrew the frame instead of fixing it — the previous still was kept.",
     "viz_run_not_found": "The visualisation was not found.",
     "viz_still_not_found": "The image was not found.",
     "weak_password": "That password is too weak. Use a longer one with letters, digits and symbols.",

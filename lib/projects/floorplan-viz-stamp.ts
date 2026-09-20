@@ -270,10 +270,13 @@ export async function stampFloorplanStill(
 }
 
 /** Drop previous caption bars so a still can be stamped again. */
-export async function stripStampBar(jpeg: Buffer): Promise<Buffer> {
-  const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
+/** Rows of caption strip at the bottom of a frame, 0 when there is none. */
+export function countStampBarRows(
+  data: Buffer,
+  info: { width: number; height: number; channels: number },
+): number {
   const { width, height, channels } = info;
-  if (width < 200 || height < 200) return jpeg;
+  if (width < 200 || height < 200) return 0;
   let cut = 0;
   const step = 4;
   for (let y = height - 1; y >= Math.floor(height * 0.72); y -= 1) {
@@ -287,9 +290,114 @@ export async function stripStampBar(jpeg: Buffer): Promise<Buffer> {
     if (samples > 0 && luma / samples < 95) cut += 1;
     else break;
   }
-  if (cut < 8) return jpeg;
+  return cut < 8 ? 0 : cut;
+}
+
+export async function stripStampBar(jpeg: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
+  const cut = countStampBarRows(data, info);
+  if (cut === 0) return jpeg;
   return sharp(jpeg)
-    .extract({ left: 0, top: 0, width, height: height - cut })
+    .extract({ left: 0, top: 0, width: info.width, height: info.height - cut })
     .jpeg({ quality: 92, mozjpeg: true })
     .toBuffer();
+}
+
+/**
+ * The caption strip, taken off a still and put back afterwards.
+ *
+ * A finished still is the model's frame with a dark caption strip composited
+ * under it, so the stored image is ~6% taller than anything an image model
+ * will ever return. Feeding that back into an edit asked the model to
+ * reconcile two impossible things: the requested change, and a frame whose
+ * proportions it cannot draw — while the edit prompt also told it "no
+ * captions". It resolved that the only way it could, by re-framing the whole
+ * apartment. Two edits of a single door on 28-8-23-2 came back cropped and
+ * mangled.
+ *
+ * Cropping the strip first means the model sees exactly the frame it drew, at
+ * the aspect it drew it. The strip is pasted back byte for byte afterwards, so
+ * the caption is never redrawn and never re-derived.
+ */
+export type SplitStill = {
+  /** The model's frame, with no caption strip. */
+  drawing: { mimeType: "image/jpeg"; base64: string };
+  /** The strip that was under it, or null when the still carried none. */
+  bar: Buffer | null;
+  width: number;
+  /** Height of `drawing`, in pixels. */
+  drawingHeight: number;
+  /** Height of the stored still, strip included — what marks are measured against. */
+  stampedHeight: number;
+};
+
+export async function splitStampBar(still: {
+  mimeType: string;
+  base64: string;
+}): Promise<SplitStill | null> {
+  try {
+    const { data, info } = await sharp(Buffer.from(still.base64, "base64"))
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const cut = countStampBarRows(data, info);
+    if (cut === 0) return null;
+    const { width, height, channels } = info;
+    const drawingHeight = height - cut;
+    const raw = { raw: { width, height, channels } } as const;
+    const [drawing, bar] = await Promise.all([
+      sharp(data, raw)
+        .extract({ left: 0, top: 0, width, height: drawingHeight })
+        .jpeg({ quality: 95, mozjpeg: true })
+        .toBuffer(),
+      sharp(data, raw)
+        .extract({ left: 0, top: drawingHeight, width, height: cut })
+        .png()
+        .toBuffer(),
+    ]);
+    return {
+      drawing: { mimeType: "image/jpeg", base64: drawing.toString("base64") },
+      bar,
+      width,
+      drawingHeight,
+      stampedHeight: height,
+    };
+  } catch {
+    // A still that will not decode is edited as it stands, strip and all.
+    return null;
+  }
+}
+
+/**
+ * Put the frame back at its exact pixel size and paste the strip under it.
+ * Forcing the size here is the other half of the guarantee: an edit may change
+ * what is inside the frame, never the frame.
+ */
+export async function restoreStampBar(
+  drawing: { mimeType: string; base64: string },
+  split: SplitStill,
+): Promise<{ mimeType: "image/jpeg"; base64: string }> {
+  const resized = await sharp(Buffer.from(drawing.base64, "base64"))
+    .resize(split.width, split.drawingHeight, { fit: "fill" })
+    .removeAlpha()
+    .toBuffer();
+  if (!split.bar) {
+    const flat = await sharp(resized).jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+    return { mimeType: "image/jpeg", base64: flat.toString("base64") };
+  }
+  const out = await sharp({
+    create: {
+      width: split.width,
+      height: split.stampedHeight,
+      channels: 3,
+      background: "#1c1917",
+    },
+  })
+    .composite([
+      { input: resized, top: 0, left: 0 },
+      { input: split.bar, top: split.drawingHeight, left: 0 },
+    ])
+    .jpeg({ quality: 92, mozjpeg: true })
+    .toBuffer();
+  return { mimeType: "image/jpeg", base64: out.toString("base64") };
 }

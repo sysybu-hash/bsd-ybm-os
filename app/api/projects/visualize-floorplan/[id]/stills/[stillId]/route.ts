@@ -162,6 +162,12 @@ export const PATCH = withWorkspacesAuthDynamic<
         photo: still.run.photo,
         region,
       });
+      // The model redrew the flat instead of editing it. Saving that would
+      // replace a frame the user already approved with a different apartment,
+      // so nothing is written and the reason goes back as the toast.
+      if (edited.rejected) {
+        return jsonBadRequest(edited.rejected, "viz_edit_redrew_frame");
+      }
       const run = await appendFloorplanVizStillEdit(orgId, id, stillId, {
         mimeType: edited.mimeType,
         base64: edited.base64,

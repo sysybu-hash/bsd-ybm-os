@@ -42,8 +42,17 @@ import {
   aspectRatioForPlan,
 } from "@/lib/projects/viz-generate/prompts";
 import { generateOneImage } from "@/lib/projects/viz-generate/gemini";
-import { remedyFor } from "@/lib/projects/viz-generate/jobs";
 import { buildWallHint } from "@/lib/projects/viz-generate/attempts";
+import { planImageForGeneration, remedyFor } from "@/lib/projects/viz-generate/jobs";
+import {
+  restoreStampBar,
+  splitStampBar,
+  type SplitStill,
+} from "@/lib/projects/floorplan-viz-stamp";
+import {
+  editRedrewTheFrame,
+  measureEditChange,
+} from "@/lib/projects/floorplan-viz-edit-guard";
 
 const log = createLogger("floorplan-viz-generate");
 export const FLOORPLAN_VIZ_EDIT_INSTRUCTION_MAX = 8000;
@@ -69,11 +78,14 @@ export function buildStillEditPrompt(
       : "Next attached image is the original sales plan, for fixture identity only — do not rebuild the flat from it.";
   return `SURGICAL EDIT — the FIRST attached image is the finished still. It is already the apartment. Do not start from scratch. Do not restage.
 
+OUTPUT RULE: return the FIRST image again, with only the requested change applied. Same pixel dimensions, same crop, same zoom, same camera height, same rotation. Do not zoom in, do not re-centre, do not trim the edges, do not add or remove a border. If the change is small, almost every pixel of your output must be identical to the FIRST image.
+
 USER REQUEST (do this, nothing else):
 """
 ${instruction}
 """
 ${locator}
+OPENINGS: a request to change a door into a window, or a window into a door, changes ONLY that one opening, in the same wall, at the same position and the same width. A door becomes a window by walling up the threshold to sill height and glazing what is above it — the wall itself, the rooms on both sides, and their furniture do not move. Never relocate, widen or duplicate an opening you were not asked about.
 Keep the same camera, framing, walls, rooms, furniture, materials and golden-hour light except where the request changes them. A revision that comes back cooler, greyer, or with new furniture the first image did not have is a failed revision.
 ${planRole}
 Do not add a sofa, TV, laptop, extra bed, extra desk, or terrace the first image does not already have, unless the user asked for that OR the sales plan requires restoring a printed מרפסת / door the still got wrong.
@@ -89,6 +101,7 @@ async function stripHarediModestyFromStill(
   still: { mimeType: string; base64: string },
   plan: { mimeType: string; base64: string },
   layout: FloorplanLayout,
+  aspectRatio?: string,
 ): Promise<{ mimeType: string; base64: string }> {
   const before = await auditStill(still, plan, true);
   if (!before) return still;
@@ -103,7 +116,7 @@ ${HAREDI_BED_PROMPT}
 ${ONE_FRAME}`;
   try {
     const img = await generateOneImage(prompt, [still, plan], {
-      aspectRatio: await aspectRatioForPlan(plan.base64, plan.mimeType),
+      aspectRatio: aspectRatio ?? (await aspectRatioForPlan(still.base64, still.mimeType)),
     });
     const cleaned = await stripMagentaLocatorFromJpeg(img);
     const after = await auditStill(cleaned, plan, true);
@@ -118,6 +131,33 @@ ${ONE_FRAME}`;
   }
 }
 
+/**
+ * The operator marks a rectangle on the stored still, which is taller than the
+ * frame by its caption strip. With the strip off, the same mark covers a
+ * taller share of what is left, so the mark is restated in the frame's own
+ * coordinates before it is drawn or pasted back.
+ */
+export function rescaleRegionOffTheBar(
+  region: FloorplanVizEditRegion | null,
+  split: SplitStill | null,
+): FloorplanVizEditRegion | null {
+  if (!region) return null;
+  if (!split || !(split.drawingHeight > 0)) return region;
+  const factor = split.stampedHeight / split.drawingHeight;
+  const y = Math.min(1, Math.max(0, region.y * factor));
+  const h = Math.min(1 - y, Math.max(0, region.h * factor));
+  if (h <= 0) return null;
+  const round = (n: number) => Math.round(n * 10000) / 10000;
+  return { x: region.x, y: round(y), w: region.w, h: round(h) };
+}
+
+export type EditedStill = {
+  mimeType: string;
+  base64: string;
+  /** Set when the model redrew the frame instead of editing it; nothing saved. */
+  rejected?: string;
+};
+
 export async function editFloorplanStill(params: {
   layout: FloorplanLayout;
   still: FloorplanVizImage;
@@ -126,22 +166,43 @@ export async function editFloorplanStill(params: {
   styleKit?: FloorplanVizStyleKit;
   photo?: boolean;
   region?: FloorplanVizEditRegion | null;
-}): Promise<{ mimeType: string; base64: string }> {
+  /**
+   * Refuse an unmarked edit that came back as a different picture. On by
+   * default; "שפר תמונה" turns it off, because it carries its own two guards
+   * and its fixes are meant to move the outline.
+   */
+  guardWholeFrame?: boolean;
+}): Promise<EditedStill> {
   const instruction = sanitizeFloorplanVizEditInstruction(params.instruction);
   if (!instruction) throw new Error("חסרה בקשת עריכה");
-  const region = clampFloorplanVizEditRegion(params.region);
+  const stamped = clampFloorplanVizEditRegion(params.region);
+
+  // Edit the frame the model drew, not the frame plus its caption strip.
+  const split = await splitStampBar(params.still);
+  const frame = split
+    ? split.drawing
+    : { mimeType: params.still.mimeType, base64: params.still.base64 };
+  const region = rescaleRegionOffTheBar(stamped, split);
+
+  // The sheet goes in as a picture. A raw PDF part is not something the image
+  // model can look at, so every edit so far was reasoning about the plan from
+  // the prompt alone.
+  const planImage = await planImageForGeneration(params.plan);
   const hint = await buildWallHint(params.plan.base64, params.plan.mimeType, params.photo === true);
   const ink = hint?.image ?? null;
   const massingRooms = roomsForVisualization(params.layout).filter((r) => !isBuildingCoreRoom(r));
   const massing = await buildRoomMassingJpeg(params.plan.base64, massingRooms);
-  const marked = region ? await overlayFloorplanVizEditRegion(params.still, region) : null;
+  const marked = region ? await overlayFloorplanVizEditRegion(frame, region) : null;
   const attachments: Array<{ mimeType: string; base64: string }> = [
-    { mimeType: params.still.mimeType, base64: params.still.base64 },
+    frame,
     ...(marked ? [marked] : []),
-    { mimeType: params.plan.mimeType, base64: params.plan.base64 },
+    planImage,
     ...(ink ? [{ mimeType: "image/jpeg", base64: ink }] : []),
     ...(massing ? [{ mimeType: "image/jpeg", base64: massing }] : []),
   ];
+  // The frame's own proportions. Asking for the sheet's made the model re-crop
+  // the apartment to fit an aspect it was never drawn at.
+  const aspectRatio = await aspectRatioForPlan(frame.base64, frame.mimeType);
   const generated = await generateOneImage(
     buildStillEditPrompt(
       params.layout,
@@ -150,16 +211,35 @@ export async function editFloorplanStill(params: {
       { styleKit: params.styleKit, region },
     ),
     attachments,
-    { aspectRatio: await aspectRatioForPlan(params.plan.base64, params.plan.mimeType) },
+    { aspectRatio },
   );
   let result = await stripMagentaLocatorFromJpeg(generated);
   if (region) {
-    result = await compositeFloorplanVizEditRegion(params.still, result, region);
+    result = await compositeFloorplanVizEditRegion(frame, result, region);
   }
   if (params.styleKit?.audience === "haredi") {
-    result = await stripHarediModestyFromStill(result, params.plan, params.layout);
+    result = await stripHarediModestyFromStill(result, planImage, params.layout, aspectRatio);
   }
-  return result;
+
+  // A marked edit is already pasted back pixel by pixel. A whole-frame edit is
+  // the one that can come back as a different picture, so it is measured.
+  if (!region && params.guardWholeFrame !== false) {
+    const change = await measureEditChange(frame, result);
+    if (editRedrewTheFrame(change)) {
+      log.warn("edit redrew the frame; keeping the approved still", {
+        view: params.still.labelHe,
+        changed: change?.changed,
+      });
+      return {
+        mimeType: params.still.mimeType,
+        base64: params.still.base64,
+        rejected:
+          "העריכה צוירה מחדש במקום לתקן — ההדמיה הקודמת נשמרה. סמנו את האזור שרוצים לשנות ונסו שוב.",
+      };
+    }
+  }
+
+  return split ? await restoreStampBar(result, split) : result;
 }
 
 /** "שפר תמונה" — surgical fix of residual audit issues on the existing frame. */
@@ -318,7 +398,15 @@ export async function improveFloorplanStill(params: {
     instruction,
     styleKit: params.styleKit,
     photo: params.photo,
+    guardWholeFrame: false,
   });
+  if (edited.rejected) {
+    return {
+      mimeType: params.still.mimeType,
+      base64: params.still.base64,
+      auditIssues: failures.length ? failures : params.still.auditIssues,
+    };
+  }
   if (await looksLikeAbandonedFloorplanStill(params.still, edited)) {
     log.warn("improve abandoned the cutaway still; keeping prior frame", {
       view: params.still.labelHe,
@@ -344,7 +432,8 @@ export async function improveFloorplanStill(params: {
     };
   }
   return {
-    ...edited,
+    mimeType: edited.mimeType,
+    base64: edited.base64,
     auditIssues: residual.length ? residual : undefined,
   };
 }
