@@ -1,4 +1,5 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
+import { classifyOpenings, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
@@ -53,7 +54,7 @@ export type BuiltFlat = {
   bodies: WallBody[];
   floor: SpanRow[];
   furniture: FurniturePiece[];
-  openings: Opening[];
+  openings: Array<Opening & { kind: OpeningKind }>;
   /** Paved outdoor areas, each verified against the area the sheet prints in it. */
   terraces: SpanRow[][];
   /**
@@ -338,18 +339,10 @@ export async function buildFlatFromGeometry(
     { extent: flatExtent },
   );
   const gaps = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
-  const openings = [
-    ...swings,
-    ...gaps.filter(
-      (gap) =>
-        !swings.some(
-          (swing) =>
-            swing.orientation === gap.orientation &&
-            Math.abs(swing.centre - gap.centre) <= gap.thickness &&
-            Math.min(swing.to, gap.to) - Math.max(swing.from, gap.from) > 0,
-        ),
-    ),
-  ];
+  // Which of the two found a hole is the whole door/window distinction, and
+  // merging them used to throw it away. Kept now, so a still can be asked for
+  // glazing where the sheet draws glazing.
+  const openings = classifyOpenings(swings, gaps, flatExtent, unitsPerMetre);
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that

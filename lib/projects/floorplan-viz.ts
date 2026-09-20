@@ -1,5 +1,7 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
 import { buildTintedPlanJpeg } from "@/lib/projects/floorplan-tinted-plan";
+import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
+import type { PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import {
@@ -382,6 +384,22 @@ export async function visualizeFloorplanFromDrawing(
   // No measured geometry for this sheet — so the reference is the sheet
   // itself, cropped to the flat and washed room by room. A reconstruction of a
   // drawing is an approximation of it; the drawing is not.
+  // The openings the measured pass read before its plate was set aside. They
+  // are in page fractions of the whole sheet, which is what the tinted plate
+  // is cropped from, so they land on the drawing without being remapped.
+  // Only on an uncropped sheet: a crop moves the layout into its own
+  // coordinates and these are still the page's.
+  const markedOpenings =
+    cadResult.outcome === "skip" && vizLayout === extracted.layout
+      ? (cadResult.openings ?? [])
+      : [];
+  // The plate itself is left exactly as it is. Painting the openings onto it
+  // was tried and measured: the same sheet, the same prompt, one run with
+  // coloured bars over the thresholds and one without, and the run with the
+  // bars came back with "2D CAD annotation copied into the render" and four
+  // screens in a haredi still, while the control was clean. A mark on the
+  // reference is a mark the model paints. The openings are carried as words
+  // and as data instead, where nothing can copy them.
   const tinted = await buildTintedPlanJpeg(
     { base64: prepared.base64, mimeType: prepared.mimeType },
     vizLayout,
@@ -407,6 +425,17 @@ export async function visualizeFloorplanFromDrawing(
     if (!message.includes("אין הדמיות נוספות")) throw err;
   }
   const layout = capLayoutMmdRooms(extracted.layout);
+  // The measured openings, kept on the run. The extractors fill this array
+  // from what a model reads, with no place on the page; these have one, which
+  // is what lets a later edit be told where the sheet puts a window.
+  if (markedOpenings.length > 0) {
+    layout.openings = markedOpenings.map((opening) => ({
+      kind: opening.kind,
+      widthM: opening.widthM,
+      box: opening.box,
+      source: "cad" as const,
+    }));
+  }
   const rasterReview = await outlineConfirmIfNeeded(prepared.base64, prepared.mimeType);
   if (rasterReview) {
     layout.requiresReview = true;
@@ -449,8 +478,10 @@ type CadOverviewAttempt =
       rooms: SegmentedRoom[];
       /** The same flat as a structure, for the viewer rather than for a picture. */
       measured: FloorplanGeometryPayload;
+      /** Doors and windows the sheet marks, in page fractions. */
+      openings?: PlacedOpening[];
     }
-  | { outcome: "skip"; reason?: string }
+  | { outcome: "skip"; reason?: string; openings?: PlacedOpening[] }
   | { outcome: "locked" };
 
 type CadOverviewInput = {
@@ -611,6 +642,19 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
             : `ניתוב: ${reason}`,
     };
   }
+  // Read before the plate is judged, and carried out whichever way that goes:
+  // a plate too rough to photograph was still measured on a sheet whose doors
+  // and windows are marked, and the raster route has nothing else to tell it
+  // which openings are glazed.
+  const openings =
+    pageSize && unitsPerMetreHint
+      ? await readMarkedOpenings(pdfBytes, {
+          page: pageSize,
+          unitsPerMetre: unitsPerMetreHint,
+          extent,
+        })
+      : [];
+
   try {
     const rendered = await renderFlatFromPdf(pdfBytes, {
       targetAreaM2: route.targetAreaM2,
@@ -654,6 +698,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       return {
         outcome: "skip",
         reason: "הלוח המדוד לא משחזר את תוכנית החללים שבגיליון",
+        openings,
       };
     }
     if (route.unitsPerMetreHint && rendered.confidence.ok === false) {
@@ -663,6 +708,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       return {
         outcome: "skip",
         reason: `הלוח המדוד לא עבר בדיקה עצמית (${rendered.confidence.hard.join(", ") || "ללא פירוט"})`,
+        openings,
       };
     }
     return {
@@ -682,6 +728,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       spend: rendered.spend,
       rooms: rendered.rooms,
       measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
+      openings,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
