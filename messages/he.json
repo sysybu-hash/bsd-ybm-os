@@ -1693,6 +1693,7 @@
     "unsupported_action": "סוג פעולה לא נתמך",
     "use_notebook_endpoint": "השתמש ב-/api/notebooklm/from-scan למחברת",
     "rate_limited": "חרגת ממכסת הבקשות. נסה שוב מאוחר יותר.",
+    "viz_edit_redrew_frame": "העריכה צוירה מחדש במקום לתקן — ההדמיה הקודמת נשמרה.",
     "viz_run_not_found": "ההדמיה לא נמצאה.",
     "viz_still_not_found": "התמונה לא נמצאה.",
     "weak_password": "הסיסמה חלשה מדי. בחר סיסמה ארוכה יותר עם אותיות, ספרות ותווים מיוחדים.",
