@@ -56,6 +56,7 @@ async function generateAndAppendToRun(input: {
     input.existing.id,
     result.images,
     input.scope === "rooms" ? "full" : input.scope,
+    result.spend,
   );
 }
 

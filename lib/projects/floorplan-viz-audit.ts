@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import {
   deterministicGenerationConfig,
@@ -249,6 +250,7 @@ export async function auditFloorplanStill(
         ],
         generationConfig: deterministicGenerationConfig({ responseMimeType: "application/json" }),
       });
+      recordAiUsage(modelId, usageFromGemini(result));
       const raw = parseModelJsonText(result.response.text());
       return {
         bedTotal: asInt(raw.bedTotal),

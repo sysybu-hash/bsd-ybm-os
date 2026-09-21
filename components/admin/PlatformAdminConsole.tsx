@@ -48,6 +48,10 @@ const MailTab = dynamic(
   () => import("./platform-admin/MailTab").then((m) => ({ default: m.MailTab })),
   { loading: tabLoading },
 );
+const VizCostsTab = dynamic(
+  () => import("./platform-admin/VizCostsTab").then((m) => ({ default: m.VizCostsTab })),
+  { loading: tabLoading },
+);
 const LoginLogTab = dynamic(
   () => import("./platform-admin/LoginLogTab").then((m) => ({ default: m.LoginLogTab })),
   { loading: tabLoading },
@@ -262,6 +266,8 @@ export default function PlatformAdminConsole({ variant = "page" }: PlatformAdmin
         )}
 
         {p.tab === "logins" && <LoginLogTab />}
+
+        {p.tab === "vizCosts" && <VizCostsTab />}
 
         {p.tab === "health" && (
           <HealthTab

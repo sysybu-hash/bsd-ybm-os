@@ -7,6 +7,7 @@ import {
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
+import { recordAiUsage, usageFromAnthropic } from "@/lib/ai-usage";
 import type { FloorplanVizAudit } from "@/lib/projects/floorplan-viz-audit";
 
 const log = createLogger("floorplan-viz-modesty-claude");
@@ -250,8 +251,10 @@ export async function auditStillWithClaude(
       }
 
       const parsed = JSON.parse(body) as {
+        model?: string;
         content?: Array<{ type?: string; text?: string }>;
       };
+      recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
       const text = parsed.content?.find((c) => c.type === "text")?.text ?? body;
       const raw = parseModelJsonText(text);
       const rot = Number(raw.rotationVsPlanDegrees);

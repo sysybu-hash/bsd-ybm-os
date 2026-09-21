@@ -8,6 +8,8 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { mergeLedgers, runWithAiUsage, type AiUsageLedger } from "@/lib/ai-usage";
+
 export type FloorplanSpendKind = "image" | "audit" | "extract";
 
 export type FloorplanSpend = {
@@ -15,10 +17,21 @@ export type FloorplanSpend = {
   auditCalls: number;
   extractCalls: number;
   byModel: Record<string, number>;
+  /**
+   * Tokens and pictures per provider model id — what the bill is made of.
+   * Absent on runs stored before it was recorded.
+   */
+  usage?: AiUsageLedger;
+  /**
+   * The ledger covers the run from its first call. A run stored before tokens
+   * were recorded can still pick up an edit's usage later, and without this
+   * that edit alone would read as the cost of the whole run.
+   */
+  usageComplete?: boolean;
 };
 
 export function emptyFloorplanSpend(): FloorplanSpend {
-  return { imageCalls: 0, auditCalls: 0, extractCalls: 0, byModel: {} };
+  return { imageCalls: 0, auditCalls: 0, extractCalls: 0, byModel: {}, usage: {} };
 }
 
 export function recordFloorplanSpend(
@@ -30,6 +43,30 @@ export function recordFloorplanSpend(
   else if (kind === "audit") spend.auditCalls += 1;
   else spend.extractCalls += 1;
   spend.byModel[model] = (spend.byModel[model] ?? 0) + 1;
+}
+
+/**
+ * One run's bill plus another's: the first generation, then every view added
+ * later and every edit, each of which is paid for separately.
+ */
+export function mergeFloorplanSpend(
+  base: FloorplanSpend | undefined,
+  extra: FloorplanSpend | undefined,
+): FloorplanSpend {
+  const out = emptyFloorplanSpend();
+  // Complete only if the run's own bill was: a follow-up cannot backfill it.
+  out.usageComplete = base ? base.usageComplete === true : extra?.usageComplete === true;
+  for (const part of [base, extra]) {
+    if (!part) continue;
+    out.imageCalls += part.imageCalls ?? 0;
+    out.auditCalls += part.auditCalls ?? 0;
+    out.extractCalls += part.extractCalls ?? 0;
+    for (const [model, n] of Object.entries(part.byModel ?? {})) {
+      out.byModel[model] = (out.byModel[model] ?? 0) + n;
+    }
+    mergeLedgers(out.usage!, part.usage);
+  }
+  return out;
 }
 
 export function formatFloorplanSpend(spend: FloorplanSpend): string {
@@ -54,7 +91,9 @@ const ambient = new AsyncLocalStorage<FloorplanSpend>();
  * counter through each of them is how raster runs came to report zero calls.
  */
 export function runWithFloorplanSpend<T>(spend: FloorplanSpend, fn: () => Promise<T>): Promise<T> {
-  return ambient.run(spend, fn);
+  spend.usage ??= {};
+  const ledger = spend.usage;
+  return ambient.run(spend, () => runWithAiUsage(ledger, fn));
 }
 
 /** Records against the spend of the enclosing runWithFloorplanSpend, if any. */

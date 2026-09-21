@@ -1,4 +1,5 @@
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { recordAiUsage, usageFromAnthropic } from "@/lib/ai-usage";
 import { env } from "@/lib/env";
 import {
   getAnthropicModelCandidates,
@@ -79,8 +80,10 @@ export async function extractDocumentWithAnthropic(
     }
 
     const data = JSON.parse(errBody) as {
+      model?: string;
       content?: Array<{ type?: string; text?: string }>;
     };
+    recordAiUsage(data.model ?? model, usageFromAnthropic(data));
     const text = data.content?.find((b) => b.type === "text")?.text ?? "";
     if (!text) throw new Error("Claude לא החזיר טקסט");
     return parseModelJsonText(text);

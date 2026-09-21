@@ -173,23 +173,41 @@ async function generateGeometryCompanions(input: {
   return out;
 }
 
+type VisualizeFloorplanOptions = {
+  styleId?: string;
+  customKit?: unknown;
+  planKind?: "sales-sheet" | "photo" | "auto";
+  scope?: FloorplanVizScope;
+  existingLayout?: unknown;
+  existingImages?: Array<{ viewId: string; roomName?: string }>;
+  /** The uploaded sheet's name, used for the caption when OCR reads no unit. */
+  sourceName?: string;
+  /** Companion views besides the living overview. Each one multiplies cost. */
+  maxViews?: number;
+  /** Booklet / sales-sheet run: skip invented room interiors. */
+  skipInteriors?: boolean;
+};
+
+/**
+ * The whole run inside one spend scope, so the sheet reads, the scale reads
+ * and the audits record their tokens alongside the image calls. Only the
+ * image generation used to run inside it, and a run's bill came back missing
+ * every call made before the first picture.
+ */
 export async function visualizeFloorplanFromDrawing(
   base64: string,
   mimeType: string,
-  options?: {
-    styleId?: string;
-    customKit?: unknown;
-    planKind?: "sales-sheet" | "photo" | "auto";
-    scope?: FloorplanVizScope;
-    existingLayout?: unknown;
-    existingImages?: Array<{ viewId: string; roomName?: string }>;
-    /** The uploaded sheet's name, used for the caption when OCR reads no unit. */
-    sourceName?: string;
-    /** Companion views besides the living overview. Each one multiplies cost. */
-    maxViews?: number;
-    /** Booklet / sales-sheet run: skip invented room interiors. */
-    skipInteriors?: boolean;
-  },
+  options?: VisualizeFloorplanOptions,
+): Promise<FloorplanVizRunResult> {
+  const spend = { ...emptyFloorplanSpend(), usageComplete: true };
+  return runWithFloorplanSpend(spend, () => visualizeWithSpend(base64, mimeType, spend, options));
+}
+
+async function visualizeWithSpend(
+  base64: string,
+  mimeType: string,
+  spend: FloorplanSpend,
+  options?: VisualizeFloorplanOptions,
 ): Promise<FloorplanVizRunResult> {
   // The route is capped at 300 seconds and a timeout returns nothing — not
   // even the frames already paid for. Everything downstream stops re-rolling
@@ -205,7 +223,6 @@ export async function visualizeFloorplanFromDrawing(
     options?.existingLayout && typeof options.existingLayout === "object"
       ? parseFloorplanLayout(options.existingLayout as Record<string, unknown>)
       : null;
-  const spend = emptyFloorplanSpend();
   let extracted: FloorplanLayoutExtractResult = reused
     ? {
         layout: reused,
