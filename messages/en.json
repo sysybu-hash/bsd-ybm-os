@@ -1029,6 +1029,9 @@
   "platformAdmin": {
     "aiCosts": {
       "title": "AI costs",
+      "noMeasuredCustomerRuns": "No customer run measured from its start yet — the margin appears from the next one",
+      "internalRuns": "{count} runs by platform admins (our tests) cost {amount} — listed, not counted as revenue",
+      "internal": "Internal test",
       "month": "Month",
       "refresh": "Refresh",
       "currency": "Currency",
@@ -1048,7 +1051,7 @@
       "vizTitle": "Visualisations — production cost vs customer price",
       "cost": "Production cost",
       "revenue": "Customer price",
-      "revenueHint": "Tariff: ₪200 for a one-visual booklet, ₪300 for a full booklet",
+      "revenueHint": "Tariff on customer runs only: ₪200 for a one-visual booklet, ₪300 for a full booklet",
       "margin": "Gross margin",
       "marginPct": "{pct}% of revenue",
       "runs": "Runs",

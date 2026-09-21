@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { isAdmin } from "@/lib/is-admin";
 import {
   parseFloorplanLayout,
   type FloorplanLayout,
@@ -361,6 +362,8 @@ export async function listFloorplanVizRunCostRowsAllOrgs(range: { from: Date; to
     organizationId: string;
     organizationName: string;
     stillCount: number;
+    /** Made by a platform admin: a test of ours, not a booklet anyone paid for. */
+    internal: boolean;
   }>
 > {
   const rows = await prisma.floorplanVizRun.findMany({
@@ -373,6 +376,7 @@ export async function listFloorplanVizRunCostRowsAllOrgs(range: { from: Date; to
       scope: true,
       organizationId: true,
       organization: { select: { name: true } },
+      user: { select: { email: true } },
       _count: { select: { stills: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -387,6 +391,7 @@ export async function listFloorplanVizRunCostRowsAllOrgs(range: { from: Date; to
     organizationId: row.organizationId,
     organizationName: row.organization?.name ?? row.organizationId,
     stillCount: row._count.stills,
+    internal: isAdmin(row.user?.email),
   }));
 }
 

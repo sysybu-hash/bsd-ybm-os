@@ -120,6 +120,9 @@ export type AdminVizRunCost = FloorplanVizRunCost & {
   organizationName: string;
   scope: string;
   stillCount: number;
+  /** A platform admin's own run — listed and costed, never counted as a sale. */
+  internal: boolean;
+  /** Zero for an internal run. */
   revenueIls: number;
   costIls: number | null;
   marginIls: number | null;
@@ -130,11 +133,17 @@ export type AdminVizCostSummary = Omit<FloorplanVizCostSummary, "runs"> & {
   usdToIls: number | null;
   rateDate: string | null;
   costIls: number | null;
-  /** Tariff over every run in the range, measured or not. */
+  /** Tariff over every customer run in the range, measured or not. */
   revenueIls: number;
-  /** Revenue less cost, over measured runs only, so an unmeasured run is not "free". */
+  /**
+   * Revenue less cost, over measured customer runs only, so an unmeasured run
+   * is not "free". Null until there is at least one such run.
+   */
   marginIls: number | null;
   measuredRevenueIls: number;
+  /** Runs made by platform admins: what testing cost, apart from sales. */
+  internalRuns: number;
+  internalUsd: number;
   byOrganization: Array<{
     organizationId: string;
     organizationName: string;
@@ -154,6 +163,7 @@ export function summarizeAdminVizCosts(
     organizationId: string;
     organizationName: string;
     stillCount: number;
+    internal?: boolean;
   }>,
   range: { from: Date; to: Date },
   tariff: (scope: string) => number,
@@ -163,7 +173,8 @@ export function summarizeAdminVizCosts(
   const byId = new Map(rows.map((row) => [row.id, row]));
   const runs: AdminVizRunCost[] = base.runs.map((run) => {
     const row = byId.get(run.runId)!;
-    const revenueIls = tariff(row.scope);
+    const internal = row.internal === true;
+    const revenueIls = internal ? 0 : tariff(row.scope);
     const costIls = run.usd != null && rate ? run.usd * rate.usdToIls : null;
     return {
       ...run,
@@ -171,14 +182,17 @@ export function summarizeAdminVizCosts(
       organizationName: row.organizationName,
       scope: row.scope,
       stillCount: row.stillCount,
+      internal,
       revenueIls,
       costIls,
-      marginIls: costIls != null ? revenueIls - costIls : null,
+      marginIls: costIls != null && !internal ? revenueIls - costIls : null,
     };
   });
-  const measured = runs.filter((run) => run.usd != null);
-  const measuredRevenueIls = measured.reduce((sum, run) => sum + run.revenueIls, 0);
-  const costIls = rate ? base.usd * rate.usdToIls : null;
+  const sold = runs.filter((run) => !run.internal);
+  const measuredSold = sold.filter((run) => run.usd != null);
+  const measuredRevenueIls = measuredSold.reduce((sum, run) => sum + run.revenueIls, 0);
+  const soldUsd = measuredSold.reduce((sum, run) => sum + (run.usd ?? 0), 0);
+  const internal = runs.filter((run) => run.internal);
 
   const orgs = new Map<string, AdminVizCostSummary["byOrganization"][number]>();
   for (const run of runs) {
@@ -200,10 +214,14 @@ export function summarizeAdminVizCosts(
     runs,
     usdToIls: rate?.usdToIls ?? null,
     rateDate: rate?.date ?? null,
-    costIls,
-    revenueIls: runs.reduce((sum, run) => sum + run.revenueIls, 0),
-    marginIls: costIls != null ? measuredRevenueIls - costIls : null,
+    costIls: rate ? base.usd * rate.usdToIls : null,
+    revenueIls: sold.reduce((sum, run) => sum + run.revenueIls, 0),
+    // Customer runs only: an internal run costs money and sells nothing, and
+    // with no measured customer run yet there is no margin to show, not a zero.
+    marginIls: rate && measuredSold.length > 0 ? measuredRevenueIls - soldUsd * rate.usdToIls : null,
     measuredRevenueIls,
+    internalRuns: internal.length,
+    internalUsd: internal.reduce((sum, run) => sum + (run.usd ?? 0), 0),
     byOrganization: [...orgs.values()].sort((a, b) => b.usd - a.usd),
   };
 }

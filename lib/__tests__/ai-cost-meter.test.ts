@@ -245,3 +245,37 @@ describe("the Flash image price, read off the Standard tier", () => {
     expect(usd).toBeCloseTo(0.5 + 3 + 0.0672, 4);
   });
 });
+
+describe("our own test runs are not sales", () => {
+  const range = monthRange("2026-09");
+  const measured = { spend: { ...emptyFloorplanSpend(), usageComplete: true, usage: { "gemini-3-pro-image": usage({ imageTokens: 1120 }) } } };
+  const base = { title: "t", createdAt: new Date("2026-09-10T00:00:00Z"), organizationId: "o", organizationName: "O", stillCount: 1 };
+
+  it("costs an admin's run but counts no revenue for it", () => {
+    const summary = summarizeAdminVizCosts(
+      [
+        { ...base, id: "ours", scope: "full", enginesJson: measured, internal: true },
+        { ...base, id: "theirs", scope: "overview", enginesJson: measured, internal: false },
+      ],
+      range,
+      tariffForScope,
+      { usdToIls: 3, date: "2026-09-21" },
+    );
+    expect(summary.revenueIls).toBe(200);
+    expect(summary.internalRuns).toBe(1);
+    expect(summary.internalUsd).toBeCloseTo(0.1344, 4);
+    // The margin is on the customer's run alone.
+    expect(summary.marginIls).toBeCloseTo(200 - 0.1344 * 3, 4);
+    expect(summary.runs.find((r) => r.runId === "ours")!.marginIls).toBeNull();
+  });
+
+  it("shows no margin, not a zero one, before any customer run is measured", () => {
+    const summary = summarizeAdminVizCosts(
+      [{ ...base, id: "old", scope: "overview", enginesJson: { spend: { imageCalls: 4, auditCalls: 1, extractCalls: 1, byModel: {} } } }],
+      range,
+      tariffForScope,
+      { usdToIls: 3, date: "2026-09-21" },
+    );
+    expect(summary.marginIls).toBeNull();
+  });
+});
