@@ -43,7 +43,9 @@ export function AiCostsViz({
           hint={
             viz.marginIls != null && viz.measuredRevenueIls > 0
               ? tc("marginPct", { pct: String(Math.round((viz.marginIls / viz.measuredRevenueIls) * 100)) })
-              : tc("noRate")
+              : !rate
+                ? tc("noRate")
+                : tc("noMeasuredCustomerRuns")
           }
         />
         <Stat
@@ -52,6 +54,12 @@ export function AiCostsViz({
           hint={viz.averageUsdPerRun != null ? tc("average", { amount: money(viz.averageUsdPerRun) }) : undefined}
         />
       </div>
+
+      {viz.internalRuns > 0 ? (
+        <p className="text-xs text-[color:var(--foreground-muted)]">
+          {tc("internalRuns", { count: String(viz.internalRuns), amount: money(viz.internalUsd) })}
+        </p>
+      ) : null}
 
       {viz.unmeasuredRuns > 0 ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
@@ -86,7 +94,9 @@ export function AiCostsViz({
                   <td className="px-2 py-1.5">{new Date(run.createdAt).toLocaleDateString("he-IL")}</td>
                   <td className="px-2 py-1.5">{run.organizationName}</td>
                   <td className="px-2 py-1.5">{run.title}</td>
-                  <td className="px-2 py-1.5">{run.scope === "overview" ? tc("bookletOne") : tc("bookletFull")}</td>
+                  <td className="px-2 py-1.5">
+                    {run.internal ? tc("internal") : run.scope === "overview" ? tc("bookletOne") : tc("bookletFull")}
+                  </td>
                   <td className="px-2 py-1.5 text-end">
                     {tc("calls", {
                       images: String(run.imageCalls),
@@ -95,7 +105,7 @@ export function AiCostsViz({
                     })}
                   </td>
                   <td className="px-2 py-1.5 text-end">{run.usd != null ? money(run.usd) : tc("notMeasured")}</td>
-                  <td className="px-2 py-1.5 text-end">{ils(run.revenueIls)}</td>
+                  <td className="px-2 py-1.5 text-end">{run.internal ? "—" : ils(run.revenueIls)}</td>
                   <td className="px-2 py-1.5 text-end">{run.marginIls != null ? ils(run.marginIls) : "—"}</td>
                 </tr>
               ))
