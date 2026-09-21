@@ -234,3 +234,14 @@ describe("the admin's margin", () => {
     expect(summary.usd).toBeCloseTo(0.1344, 4);
   });
 });
+
+describe("the Flash image price, read off the Standard tier", () => {
+  it("is $60 per million image tokens — $0.067 for a 1K picture", () => {
+    const usd = priceModelUsage(
+      "gemini-3.1-flash-image",
+      usage({ inputTokens: 1_000_000, outputTokens: 1_000_000, imageTokens: 1120 }),
+      new Date("2026-09-22T00:00:00Z"),
+    );
+    expect(usd).toBeCloseTo(0.5 + 3 + 0.0672, 4);
+  });
+});

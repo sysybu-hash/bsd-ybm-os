@@ -48,7 +48,18 @@ const PRICES: Record<string, PriceEntry> = {
   },
   "gemini-3.1-flash-image": {
     provider: "google",
-    schedule: [{ from: "2000-01-01", rate: { input: 1, output: 6, perImage: 0.067 } }],
+    // $60 per million image tokens: 1,120 tokens = $0.067 for a 1K picture.
+    schedule: [{ from: "2000-01-01", rate: { input: 0.5, output: 3, imageOutputPerMTok: 60, perImage: 0.067 } }],
+  },
+  "gemini-3.1-flash-lite-image": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 0.25, output: 1.5, imageOutputPerMTok: 30, perImage: 0.0336 } }],
+  },
+  "gemini-2.5-flash-image": {
+    provider: "google",
+    // Deprecated by Google; shuts down on 2 October 2026. Kept so a fallback
+    // to it before then is still costed.
+    schedule: [{ from: "2000-01-01", rate: { input: 0.3, output: 2.5, imageOutputPerMTok: 30, perImage: 0.039 } }],
   },
   // --- Google: text / vision ---
   "gemini-3.8-flash": { provider: "google", schedule: flashSchedule },
