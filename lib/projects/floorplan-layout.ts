@@ -59,6 +59,15 @@ export const floorplanOpeningSchema = z.object({
   widthM: z.number().positive().optional(),
   heightM: z.number().positive().optional(),
   room: z.string().optional(),
+  /**
+   * Where the opening sits, as a fraction of the page.
+   *
+   * The extractors have always filled this array from what a model reads off
+   * the sheet, which gives a width and a room and no place — and an opening
+   * with no place cannot be drawn, checked or edited. Measured openings carry
+   * one.
+   */
+  box: floorplanBboxSchema.optional(),
   source: floorplanEvidenceSchema.optional(),
 });
 
@@ -797,9 +806,12 @@ export function parseFloorplanLayout(raw: Record<string, unknown>): FloorplanLay
           widthM: parseMeters(r.widthM ?? r.width),
           heightM: parseMeters(r.heightM ?? r.height),
           room: r.room != null ? String(r.room) : undefined,
+          box: parseBbox(r.box),
         };
       })
-      .filter((o) => o.widthM != null || o.room),
+      // A measured opening earns its place by having one: it may carry no room
+      // name at all, and it is the only kind that can be drawn or checked.
+      .filter((o) => o.widthM != null || o.room || o.box),
     dimensionStrings: dimsRaw.map((d) => String(d).trim()).filter(Boolean),
     notes: Array.isArray(raw.notes) ? raw.notes.map((n) => String(n)) : [],
     islandStoolCount: parseCount(raw.islandStoolCount ?? raw.stoolCount, 12),

@@ -43,6 +43,7 @@ import {
 } from "@/lib/projects/viz-generate/prompts";
 import { generateOneImage } from "@/lib/projects/viz-generate/gemini";
 import { buildWallHint } from "@/lib/projects/viz-generate/attempts";
+import { placedRoomsExtent } from "@/lib/projects/floorplan-plan-guide";
 import { planImageForGeneration, remedyFor } from "@/lib/projects/viz-generate/jobs";
 import {
   restoreStampBar,
@@ -61,13 +62,55 @@ export function sanitizeFloorplanVizEditInstruction(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, FLOORPLAN_VIZ_EDIT_INSTRUCTION_MAX);
 }
 
+/**
+ * Where the sheet puts its doors and its windows, in words.
+ *
+ * "Swap that door for a window like the plan shows" had nothing to appeal to:
+ * the plan went in as an attachment with no reading of it, so the model was
+ * asked to obey a drawing it had to interpret from scratch, mid-edit. The run
+ * now carries measured openings with a place on the page, and a place on the
+ * page is something that can be said out loud.
+ */
+export function openingBriefFor(layout: FloorplanLayout): string {
+  const placed = layout.openings.filter((opening) => opening.box != null);
+  if (placed.length === 0) return "";
+  // An opening is measured against the whole sheet; the still is cropped to
+  // the flat. Restating it against the rooms' own extent is what makes "upper
+  // left" mean upper left of the picture the model is holding.
+  const flat = placedRoomsExtent(layout.rooms.filter((room) => room.bbox != null));
+  const side = (box: { x: number; y: number; w: number; h: number }) => {
+    const rawX = box.x + box.w / 2;
+    const rawY = box.y + box.h / 2;
+    const cx = flat && flat.w > 0 ? (rawX - flat.x) / flat.w : rawX;
+    const cy = flat && flat.h > 0 ? (rawY - flat.y) / flat.h : rawY;
+    const updown = cy < 0.4 ? "upper" : cy > 0.6 ? "lower" : "middle";
+    const leftright = cx < 0.4 ? "left" : cx > 0.6 ? "right" : "centre";
+    return `${updown} ${leftright}`;
+  };
+  const say = (kind: "door" | "window") => {
+    const rows = placed.filter((opening) => opening.kind === kind);
+    if (rows.length === 0) return null;
+    const where = rows
+      .slice(0, 12)
+      .map((opening) => `${opening.widthM?.toFixed(2) ?? "?"} m at ${side(opening.box!)}`)
+      .join("; ");
+    return `${rows.length} ${kind}${rows.length === 1 ? "" : "s"} (${where})`;
+  };
+  const lines = [say("window"), say("door")].filter(Boolean);
+  if (lines.length === 0) return "";
+  return `
+WHAT THE SHEET MARKS, measured off the drawing and placed against the apartment in the frame: ${lines.join(", ")}. These are confirmed openings, not the complete count — glazing drawn elsewhere in the ink is still glazing. Use this to place the opening the request names; do not move, add or glaze any other opening because of it.
+`;
+}
+
 export function buildStillEditPrompt(
-  _layout: FloorplanLayout,
+  layout: FloorplanLayout,
   _view: { kind: FloorplanVizViewId; roomName?: string },
   instruction: string,
   options?: { styleKit?: FloorplanVizStyleKit; region?: FloorplanVizEditRegion | null },
 ): string {
   const kit = options?.styleKit ?? resolveFloorplanVizStyle();
+  const openings = openingBriefFor(layout);
   const locator = options?.region ? `\n${editRegionPromptBlock(options.region)}\n` : "";
   const haredi = kit.audience === "haredi";
   const improve = /SURGICAL IMPROVE/i.test(instruction);
@@ -84,7 +127,7 @@ USER REQUEST (do this, nothing else):
 """
 ${instruction}
 """
-${locator}
+${locator}${openings}
 OPENINGS: a request to change a door into a window, or a window into a door, changes ONLY that one opening, in the same wall, at the same position and the same width. A door becomes a window by walling up the threshold to sill height and glazing what is above it — the wall itself, the rooms on both sides, and their furniture do not move. Never relocate, widen or duplicate an opening you were not asked about.
 Keep the same camera, framing, walls, rooms, furniture, materials and golden-hour light except where the request changes them. A revision that comes back cooler, greyer, or with new furniture the first image did not have is a failed revision.
 ${planRole}
