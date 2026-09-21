@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 const log = createLogger("financial-insights");
 
 export async function generateAndStoreInsightForOrganization(
@@ -62,6 +63,7 @@ ${JSON.stringify(payload).slice(0, 120000)}
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
+      recordAiUsage(model.model, usageFromGemini(result));
       const text = result.response.text().trim();
       if (text) {
         content = text;

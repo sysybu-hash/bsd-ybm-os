@@ -11,6 +11,10 @@ import type { AiModelUsage, AiUsageLedger } from "@/lib/ai-usage";
  * Sources:
  *   https://ai.google.dev/gemini-api/docs/pricing
  *   https://platform.claude.com/docs/en/about-claude/pricing
+ *   https://developers.openai.com/api/docs/pricing  (Standard, short context)
+ *   https://console.groq.com/docs/models
+ * Mistral is not here: its price page would not yield a figure to cite, so
+ * its calls are counted and shown unpriced.
  */
 export const PRICES_CHECKED_AT = "2026-09-22";
 
@@ -26,7 +30,7 @@ type Rate = {
 };
 
 type PriceEntry = {
-  provider: "google" | "anthropic";
+  provider: "google" | "anthropic" | "openai" | "groq";
   /** Rates in force from each date (inclusive), oldest first. */
   schedule: Array<{ from: string; rate: Rate }>;
 };
@@ -78,6 +82,26 @@ const PRICES: Record<string, PriceEntry> = {
     // Prompts up to 200k tokens; nothing in this pipeline sends more.
     schedule: [{ from: "2000-01-01", rate: { input: 2, output: 12 } }],
   },
+  "gemini-embedding-2": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 0.2, output: 0 } }],
+  },
+  "gemini-3.1-flash-lite": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 0.25, output: 1.5 } }],
+  },
+  "gemini-3-flash-preview": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 0.5, output: 3 } }],
+  },
+  "gemini-2.5-flash": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 0.3, output: 2.5 } }],
+  },
+  "gemini-2.5-pro": {
+    provider: "google",
+    schedule: [{ from: "2000-01-01", rate: { input: 1.25, output: 10 } }],
+  },
   // --- Anthropic ---
   "claude-sonnet-5": {
     provider: "anthropic",
@@ -99,6 +123,14 @@ const PRICES: Record<string, PriceEntry> = {
     provider: "anthropic",
     schedule: [{ from: "2000-01-01", rate: { input: 1, output: 5 } }],
   },
+  // --- OpenAI ---
+  "gpt-6-astra": { provider: "openai", schedule: [{ from: "2000-01-01", rate: { input: 10, output: 50 } }] },
+  "gpt-5.6-sol": { provider: "openai", schedule: [{ from: "2000-01-01", rate: { input: 4, output: 20 } }] },
+  "gpt-5.6-terra": { provider: "openai", schedule: [{ from: "2000-01-01", rate: { input: 2, output: 12 } }] },
+  "gpt-5.6-luna": { provider: "openai", schedule: [{ from: "2000-01-01", rate: { input: 0.2, output: 1.2 } }] },
+  // --- Groq (recorded as "groq:<model>") ---
+  "groq:openai/gpt-oss-120b": { provider: "groq", schedule: [{ from: "2000-01-01", rate: { input: 0.15, output: 0.6 } }] },
+  "groq:openai/gpt-oss-20b": { provider: "groq", schedule: [{ from: "2000-01-01", rate: { input: 0.075, output: 0.3 } }] },
 };
 
 /** "gemini-3-pro-image-preview" and dated ids price as their family. */

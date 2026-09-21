@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { recordAiUsage } from "@/lib/ai-usage";
 
 const log = createLogger("gemini-embed");
 
@@ -35,6 +36,10 @@ export async function embedText(text: string): Promise<number[] | null> {
       return null;
     }
     const data = (await res.json()) as { embedding?: { values?: number[] } };
+    // embedContent returns no usage block. Four characters to a token is
+    // Google's own rule of thumb; at $0.20 a million the estimate cannot move
+    // the bill, and leaving the calls out would hide how many there are.
+    recordAiUsage(GEMINI_EMBEDDING_MODEL, { inputTokens: Math.ceil(trimmed.length / 4) });
     const values = data.embedding?.values;
     if (!values?.length) return null;
     return values;

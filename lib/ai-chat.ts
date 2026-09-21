@@ -19,6 +19,7 @@ import { runMistralTextChat } from "@/lib/ai-extract-mistral";
 import { getAiChatSystemPrefix } from "@/lib/i18n/ai-prompts";
 import { getUserFacingAiErrorMessageForLocale } from "@/lib/i18n/ai-locale";
 import { assertAiServicesAvailable } from "@/lib/ai-kill-switch";
+import { recordAiUsage, usageFromAnthropic, usageFromGemini, usageFromOpenAi } from "@/lib/ai-usage";
 
 const RETRYABLE_STATUS_CODES = [429, 500, 503, 504];
 /** אחרי Gemini (ברירת מחדל): OpenAI → Mistral → Anthropic → Groq */
@@ -115,8 +116,10 @@ async function runOpenAiPrompt(prompt: string) {
       throw lastErr;
     }
     const data = JSON.parse(raw) as {
+      model?: string;
       choices?: Array<{ message?: { content?: string } }>;
     };
+    recordAiUsage(data.model ?? model, usageFromOpenAi(data));
     return data.choices?.[0]?.message?.content ?? "";
   }
   throw lastErr ?? new Error("OpenAI chat: כל המודלים נכשלו");
@@ -148,8 +151,10 @@ async function runAnthropicPrompt(prompt: string) {
       throw lastErr;
     }
     const data = JSON.parse(raw) as {
+      model?: string;
       content?: Array<{ type?: string; text?: string }>;
     };
+    recordAiUsage(data.model ?? model, usageFromAnthropic(data));
     return data.content?.find((block) => block.type === "text")?.text ?? "";
   }
   throw lastErr ?? new Error("Anthropic chat: כל המודלים נכשלו");
@@ -178,8 +183,10 @@ async function runGroqPrompt(prompt: string) {
   });
   if (!res.ok) throw new Error((await res.text()).slice(0, 400));
   const data = (await res.json()) as {
+    model?: string;
     choices?: Array<{ message?: { content?: string } }>;
   };
+  recordAiUsage(`groq:${data.model ?? model}`, usageFromOpenAi(data));
   return data.choices?.[0]?.message?.content ?? "";
 }
 
@@ -193,6 +200,7 @@ async function runGeminiPrompt(prompt: string) {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
+      recordAiUsage(model.model, usageFromGemini(result));
       return result.response.text();
     } catch (e) {
       lastErr = e;
@@ -300,6 +308,8 @@ async function runGeminiPromptStreaming(prompt: string, onChunk: AiChatStreamChu
         const text = chunk.text();
         if (text) await onChunk(text);
       }
+      // A stream's usage is only known once it has ended.
+      recordAiUsage(model.model, usageFromGemini(await result.response.catch(() => null)));
       return;
     } catch (e) {
       lastErr = e;

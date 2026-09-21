@@ -17,6 +17,7 @@ import {
   syncContactEmbeddingsForOrg,
 } from "@/lib/crm/contact-embedding-index";
 import { isEmbeddingConfigured } from "@/lib/embeddings/gemini-embed";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 export const POST = withWorkspacesAuth(async (req, { orgId }) => {
   const limited = await applyRateLimit(req as NextRequest, "crm:semantic-search", 20, 60_000);
@@ -80,6 +81,7 @@ Example: ["id1", "id2"]
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent([systemPrompt, payload]);
+        recordAiUsage(model.model, usageFromGemini(result));
         const text = result.response.text().trim();
         matchedIds = JSON.parse(text.match(/\[[\s\S]*\]/)?.[0] || "[]") as string[];
         break;

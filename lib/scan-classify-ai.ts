@@ -15,6 +15,7 @@ import { clampScanModeForIndustry } from "@/lib/scan-modes-for-ui";
 import { createLogger } from "@/lib/logger";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
 import type { ScanClassification } from "@/lib/scan-classify";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 const log = createLogger("scan-classify-ai");
 
@@ -91,6 +92,7 @@ export async function classifyScanDocumentByContent(params: {
           CLASSIFY_PROMPT,
           { inlineData: { data: base64, mimeType } },
         ]);
+        recordAiUsage(model.model, usageFromGemini(result));
         raw = parseModelJsonText(result.response.text()) as Record<string, unknown>;
         break;
       } catch (err) {

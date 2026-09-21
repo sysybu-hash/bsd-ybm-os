@@ -7,6 +7,7 @@ import { jsonBadRequest, jsonForbidden, jsonTooManyRequests, jsonUnauthorized, j
 import { isAdmin } from "@/lib/is-admin";
 import { shouldBlockReadOnlyRole } from "@/lib/accountant-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { featureFromRequest, runWithAiRequest } from "@/lib/ai-usage";
 
 export type WorkspaceAuthContext = {
   orgId: string;
@@ -155,13 +156,18 @@ function isOSAdminContext(
   );
 }
 
+/** Every model call a workspace route makes is billed to that workspace. */
+function billTo(req: Request, gate: WorkspaceAuthContext) {
+  return { organizationId: gate.orgId, feature: featureFromRequest(req) };
+}
+
 export function withOSAdmin(
   handler: (req: Request, ctx: OSAdminContext) => Promise<ApiRouteResponse>,
 ): (req: Request) => Promise<ApiRouteResponse> {
   return async (req: Request) => {
     const gate = await requireOSAdmin();
     if (!isOSAdminContext(gate)) return gate;
-    return handler(req, gate);
+    return runWithAiRequest({ feature: featureFromRequest(req) }, () => handler(req, gate));
   };
 }
 
@@ -217,14 +223,18 @@ export function withWorkspacesAuth(
         return jsonValidationFailed(result.error.issues);
       }
 
-      return (handler as (req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<ApiRouteResponse>)(
-        req,
-        gate,
-        result.data,
+      return runWithAiRequest(billTo(req, gate), () =>
+        (handler as (req: Request, ctx: WorkspaceAuthContext, data: unknown) => Promise<ApiRouteResponse>)(
+          req,
+          gate,
+          result.data,
+        ),
       );
     }
 
-    return (handler as (req: Request, ctx: WorkspaceAuthContext) => Promise<ApiRouteResponse>)(req, gate);
+    return runWithAiRequest(billTo(req, gate), () =>
+      (handler as (req: Request, ctx: WorkspaceAuthContext) => Promise<ApiRouteResponse>)(req, gate),
+    );
   };
 }
 
@@ -285,22 +295,26 @@ export function withWorkspacesAuthDynamic<P extends Record<string, string>>(
         return jsonValidationFailed(result.error.issues);
       }
 
-      return (
+      return runWithAiRequest(billTo(req, gate), () =>
+        (
+          handler as (
+            req: Request,
+            ctx: WorkspaceAuthContext,
+            segment: { params: Promise<P> },
+            data: unknown,
+          ) => Promise<ApiRouteResponse>
+        )(req, gate, segment, result.data),
+      );
+    }
+
+    return runWithAiRequest(billTo(req, gate), () =>
+      (
         handler as (
           req: Request,
           ctx: WorkspaceAuthContext,
           segment: { params: Promise<P> },
-          data: unknown,
         ) => Promise<ApiRouteResponse>
-      )(req, gate, segment, result.data);
-    }
-
-    return (
-      handler as (
-        req: Request,
-        ctx: WorkspaceAuthContext,
-        segment: { params: Promise<P> },
-      ) => Promise<ApiRouteResponse>
-    )(req, gate, segment);
+      )(req, gate, segment),
+    );
   };
 }

@@ -1,5 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("ai-usage");
+
 /**
  * What each model call actually consumed, in the units the provider bills.
  *
@@ -51,9 +56,157 @@ export function addToLedger(
   ledger[model] = row;
 }
 
-export function recordAiUsage(model: string, usage: Omit<Partial<AiModelUsage>, "calls">): void {
+/**
+ * Who a call was made for, set once per request by the API wrappers.
+ *
+ * The per-run ledger above answers "what did this booklet cost". This answers
+ * the question the provider's bill actually poses: every call the site made,
+ * for which customer and from which screen — the chat, the CRM, the scans, the
+ * visualisations — so the admin page can add up to the same figure Google and
+ * Anthropic charge, instead of one feature's corner of it.
+ */
+export type AiRequestContext = {
+  organizationId?: string;
+  feature: string;
+};
+
+type PendingEvent = {
+  organizationId: string | null;
+  feature: string;
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  imageTokens: number;
+  outputImages: number;
+  environment: string;
+  createdAt: Date;
+};
+
+type RequestState = AiRequestContext & { events: PendingEvent[] };
+
+const request = new AsyncLocalStorage<RequestState>();
+
+function environmentName(): string {
+  return env.VERCEL_ENV ?? (env.NODE_ENV === "production" ? "production" : "development");
+}
+
+export function providerOf(model: string): string {
+  const id = model.toLowerCase();
+  // First: Groq serves other vendors' open models ("groq:openai/gpt-oss-120b").
+  if (id.startsWith("groq:")) return "groq";
+  if (id.startsWith("gemini") || id.startsWith("veo") || id.startsWith("imagen") || id.startsWith("lyria")) return "google";
+  if (id.startsWith("claude")) return "anthropic";
+  if (id.startsWith("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.startsWith("o4") || id.includes("openai")) return "openai";
+  if (id.includes("mistral") || id.startsWith("pixtral")) return "mistral";
+  if (id.includes("llama") || id.includes("groq") || id.includes("qwen") || id.includes("kimi")) return "groq";
+  return "other";
+}
+
+async function persistEvents(events: PendingEvent[]): Promise<void> {
+  if (events.length === 0 || env.NODE_ENV === "test") return;
+  try {
+    // Imported here, not at the top: this module is loaded by code paths
+    // (tests, scripts) that never open a database connection.
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.aiUsageEvent.createMany({ data: events });
+  } catch (err: unknown) {
+    // A lost usage row is an under-report; a failed model call because the
+    // ledger was down would be an outage. Never the second.
+    log.warn("ai usage not persisted", {
+      events: events.length,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/** Runs after the response has gone, streams included — or right now, if there is no response. */
+async function scheduleAfterResponse(job: () => Promise<void>): Promise<boolean> {
+  try {
+    const { after } = await import("next/server");
+    after(job);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Everything fn causes is recorded against this organisation and feature.
+ * Rows are written once the response has finished, so a streamed answer's
+ * tokens — known only at the end of the stream — are on the same bill.
+ */
+/** The route a request came in on, without its query — the "feature" a call is billed to. */
+export function featureFromRequest(req: Request): string {
+  try {
+    return new URL(req.url).pathname.replace(/\/[a-z0-9]{20,}(?=\/|$)/gi, "/:id");
+  } catch {
+    return "unknown";
+  }
+}
+
+export async function runWithAiRequest<T>(context: AiRequestContext, fn: () => Promise<T>): Promise<T> {
+  const state: RequestState = { ...context, events: [] };
+  return request.run(state, async () => {
+    const deferred = await scheduleAfterResponse(() => persistEvents(state.events.splice(0)));
+    try {
+      return await fn();
+    } finally {
+      if (!deferred) await persistEvents(state.events.splice(0));
+    }
+  });
+}
+
+/** The calls recorded so far in the current request — for tests and diagnostics. */
+export function pendingAiUsageEvents(): ReadonlyArray<Omit<PendingEvent, "createdAt">> {
+  return request.getStore()?.events ?? [];
+}
+
+export function recordAiUsage(
+  rawModel: string | null | undefined,
+  usage: Omit<Partial<AiModelUsage>, "calls">,
+): void {
+  // Recording is bookkeeping around a call that already succeeded. Nothing in
+  // here may ever turn that success into a failure — a mocked SDK with no model
+  // name on its response proved it could.
+  try {
+    recordAiUsageUnsafe(rawModel, usage);
+  } catch (err: unknown) {
+    log.warn("ai usage not recorded", { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+function recordAiUsageUnsafe(
+  rawModel: string | null | undefined,
+  usage: Omit<Partial<AiModelUsage>, "calls">,
+): void {
+  // The older Gemini SDK reports "models/gemini-3.7-flash"; the price list does not.
+  const model = String(rawModel || "unknown").replace(/^models\//, "");
   const ledger = scope.getStore();
   if (ledger) addToLedger(ledger, model, { ...usage, calls: 1 });
+
+  const event: PendingEvent = {
+    organizationId: request.getStore()?.organizationId ?? null,
+    feature: request.getStore()?.feature ?? "unscoped",
+    provider: providerOf(model),
+    model,
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    imageTokens: usage.imageTokens ?? 0,
+    outputImages: usage.outputImages ?? 0,
+    environment: environmentName(),
+    createdAt: new Date(),
+  };
+  const state = request.getStore();
+  if (state) {
+    state.events.push(event);
+    return;
+  }
+  // A call from outside any wrapped route — a server action, a cron, a
+  // script. Still on the bill, just without a customer against it.
+  void scheduleAfterResponse(() => persistEvents([event])).then((deferred) => {
+    if (!deferred) void persistEvents([event]);
+  });
 }
 
 export function mergeLedgers(into: AiUsageLedger, from: AiUsageLedger | undefined): AiUsageLedger {

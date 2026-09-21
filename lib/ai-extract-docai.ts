@@ -16,6 +16,7 @@ export {
   type DocAiRawResult,
 } from "@/lib/docai-processor-config";
 import type { DocAiProcessorKind, DocAiRawEntity, DocAiRawResult } from "@/lib/docai-processor-config";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import {
   DOC_AI_PROCESSORS,
   resolveDocAiProcessorRaw,
@@ -265,6 +266,7 @@ ${aiSummary}
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       const geminiResult = await model.generateContent(prompt);
+      recordAiUsage(model.model, usageFromGemini(geminiResult));
       const text = geminiResult.response.text();
       return parseModelJsonText(text);
     } catch (err: unknown) {

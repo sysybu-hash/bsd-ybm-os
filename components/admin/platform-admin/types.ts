@@ -11,7 +11,7 @@ export type TabId =
   | "settings"
   | "assistant"
   | "ideas"
-  | "vizCosts";
+  | "aiCosts";
 
 export type PlatformAdminConsoleProps = {
   variant?: "page" | "widget";
@@ -24,7 +24,7 @@ export const TABS: { id: TabId; labelKey: string; icon: typeof Shield }[] = [
   { id: "logins", labelKey: "platformAdmin.tabs.logins", icon: LogIn },
   { id: "broadcast", labelKey: "platformAdmin.tabs.broadcast", icon: Bell },
   { id: "health", labelKey: "platformAdmin.tabs.health", icon: Activity },
-  { id: "vizCosts", labelKey: "platformAdmin.tabs.vizCosts", icon: Coins },
+  { id: "aiCosts", labelKey: "platformAdmin.tabs.aiCosts", icon: Coins },
   { id: "mail", labelKey: "platformAdmin.mail.tab", icon: Mail },
   { id: "ideas", labelKey: "platformAdmin.tabs.ideas", icon: Lightbulb },
   { id: "assistant", labelKey: "platformAdmin.tabs.assistant", icon: Bot },

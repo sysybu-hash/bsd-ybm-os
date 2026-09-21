@@ -47,6 +47,7 @@ import {
 } from "@/lib/scan/unified-extract";
 import { unifiedSaveScan } from "@/lib/scan/unified-save";
 import { AI_SERVICE_UNAVAILABLE_CODE, checkAiServicesAvailable } from "@/lib/ai-kill-switch";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 const log = createLogger("process-document");
 
 function getGeminiKey(): string | undefined {
@@ -82,6 +83,7 @@ async function extractWithGemini(
         `${documentInstruction}`,
         { inlineData: { data: base64Data, mimeType } },
       ]);
+      recordAiUsage(model.model, usageFromGemini(result));
       const text = result.response.text();
       return parseModelJsonText(text);
     } catch (err: unknown) {
@@ -114,6 +116,7 @@ async function extractWithGeminiText(
     try {
       const model = genAI.getGenerativeModel({ model: modelId });
       const result = await model.generateContent([prompt]);
+      recordAiUsage(model.model, usageFromGemini(result));
       const text = result.response.text();
       return parseModelJsonText(text);
     } catch (err: unknown) {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/gemini-model";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import { FLOORPLAN_PHOTO_OCR_RULES } from "@/lib/projects/floorplan-photo-instructions";
+import { recordAiUsage, usageFromGemini, usageFromOpenAi } from "@/lib/ai-usage";
 
 export const FLOORPLAN_OCR_TEXT_INSTRUCTION = `
 Extract every printed character from this Israeli apartment floor plan (גרמושקה / תוכנית מכר).
@@ -68,6 +69,7 @@ async function extractPrintedTextWithGemini(base64: string, mimeType: string, in
         ],
         generationConfig: deterministicGenerationConfig(),
       });
+      recordAiUsage(model.model, usageFromGemini(result));
       const text = result.response.text().trim();
       if (text) return text;
       lastErr = new Error(`Gemini OCR (${modelId}) החזיר ריק`);
@@ -120,7 +122,9 @@ async function extractPrintedTextWithOpenAI(base64: string, mimeType: string, in
         if (isOpenAiEligibleForModelFallback(res.status, raw)) continue;
         throw lastErr;
       }
-      const text = extractTextFromOpenAiResponsesPayload(JSON.parse(raw) as unknown).trim();
+      const payload = JSON.parse(raw) as unknown;
+      recordAiUsage(model, usageFromOpenAi(payload));
+      const text = extractTextFromOpenAiResponsesPayload(payload).trim();
       if (text) return text;
       lastErr = new Error("OpenAI OCR החזיר ריק");
     }
@@ -158,6 +162,7 @@ async function extractPrintedTextWithOpenAI(base64: string, mimeType: string, in
       throw lastErr;
     }
     const data = JSON.parse(raw) as { choices?: Array<{ message?: { content?: string } }> };
+    recordAiUsage(model, usageFromOpenAi(data));
     const text = data.choices?.[0]?.message?.content?.trim() ?? "";
     if (text) return text;
     lastErr = new Error("OpenAI OCR החזיר ריק");

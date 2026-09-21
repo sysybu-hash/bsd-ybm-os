@@ -24,6 +24,7 @@ import {
 } from "@/lib/projects/floorplan-segment";
 import { hatchedWallExtent } from "@/lib/projects/floorplan-solid";
 import { coolTintFraction, TINT_LIMIT } from "@/lib/projects/floorplan-tint";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import {
   applyHarediModesty,
   stylePromptForView,
@@ -142,6 +143,7 @@ async function imagePass(
         ],
         config: { responseModalities: ["IMAGE"] },
       });
+      recordAiUsage(model, usageFromGemini(res));
       const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
       const data = part?.inlineData?.data;
       if (data) return { mimeType: "image/jpeg", base64: data, model };
