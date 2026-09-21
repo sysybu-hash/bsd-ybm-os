@@ -36,6 +36,10 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/bsd_ybm_load
+      # The schema declares directUrl = env("DIRECT_URL"); without it prisma
+      # refuses to load the schema at all (P1012) and this job has failed at
+      # "Prisma generate" every Monday since.
+      DIRECT_URL: postgresql://postgres:postgres@127.0.0.1:5432/bsd_ybm_load
       NEXTAUTH_SECRET: load-smoke-secret-load-smoke-secret
       NEXTAUTH_URL: http://127.0.0.1:3000
     steps:

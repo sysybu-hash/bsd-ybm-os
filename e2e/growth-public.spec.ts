@@ -36,7 +36,10 @@ test.describe("Growth — public blog & contact", () => {
   });
 
   test("contact form submits successfully", async ({ page }) => {
-    await page.goto("/contact", { waitUntil: "load" });
+    // Not "load": that waits for every image on the page, and the self-hosted
+    // image optimiser on the CI server never finished the two logo requests,
+    // so the test spent its whole 120s on a logo. The form is what is tested.
+    await page.goto("/contact", { waitUntil: "domcontentloaded" });
     await dismissCookieBannerIfVisible(page);
     await expect(page.getByLabel(/שם מלא/i)).toBeVisible({ timeout: 30_000 });
 
