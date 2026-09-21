@@ -8,6 +8,7 @@ import {
   type ScanExtractionV5,
 } from "@/lib/scan-schema-v5";
 import type { AppLocale } from "@/lib/i18n/config";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 const log = createLogger("marketing-demo-scan");
 
@@ -80,6 +81,7 @@ export async function analyzeMarketingDemoDocument(
     try {
       const model = genAI.getGenerativeModel({ model: modelId });
       const result = await model.generateContent(parts);
+      recordAiUsage(model.model, usageFromGemini(result));
       raw = parseModelJsonText(result.response.text());
       break;
     } catch (err: unknown) {

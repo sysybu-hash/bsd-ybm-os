@@ -12,6 +12,7 @@ import { env } from "@/lib/env";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "./logger";
+import { runWithAiRequest } from "@/lib/ai-usage";
 
 const log = createLogger("cron");
 
@@ -54,9 +55,11 @@ export async function withCronGuard(
   log.info("cron_start", { slug: monitorSlug });
 
   try {
+    // Crons make model calls for many organisations at once; they are billed
+    // to the job, so the admin page shows what each scheduled task costs.
     const result = await Sentry.withMonitor(
       monitorSlug,
-      handler,
+      () => runWithAiRequest({ feature: `cron:${monitorSlug}` }, handler),
       {
         schedule,
         checkinMargin: 5,      // 5 min grace for late check-in

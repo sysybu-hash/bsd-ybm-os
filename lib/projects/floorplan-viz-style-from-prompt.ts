@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import {
   deterministicGenerationConfig,
   getBlueprintAnalysisModelChain,
@@ -63,6 +64,7 @@ ${answersBrief(answers)}`;
         contents: [{ role: "user", parts: [{ text: instruction }] }],
         generationConfig: deterministicGenerationConfig(),
       });
+      recordAiUsage(model.model, usageFromGemini(result));
       const parsed = parseCustomStyleKit(parseModelJsonText(result.response.text()));
       if (!parsed) continue;
       const audience = answers.audience === "haredi" ? "haredi" : parsed.audience;

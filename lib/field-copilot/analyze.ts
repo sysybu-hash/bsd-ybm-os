@@ -12,6 +12,7 @@ import {
 } from "@/lib/scan-schema-v5";
 import { buildFieldCopilotInstruction } from "@/lib/field-copilot/instruction";
 import type { MessageTree } from "@/lib/i18n/keys";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 const log = createLogger("field-copilot-analyze");
 
@@ -83,6 +84,7 @@ export async function analyzeFieldCapture(
     try {
       const model = genAI.getGenerativeModel({ model: modelId });
       const result = await model.generateContent(parts);
+      recordAiUsage(model.model, usageFromGemini(result));
       raw = parseModelJsonText(result.response.text());
       break;
     } catch (err: unknown) {

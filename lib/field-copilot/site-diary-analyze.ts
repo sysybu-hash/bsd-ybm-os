@@ -3,6 +3,7 @@ import { parseModelJsonText } from "@/lib/ai-document-json";
 import { env } from "@/lib/env";
 import { GEMINI_MODEL_FALLBACK_TIER, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import {
   siteDiaryAnalysisSchema,
   type SiteDiaryAnalysis,
@@ -84,6 +85,7 @@ export async function analyzeSiteDiaryPhoto(
     try {
       const model = genAI.getGenerativeModel({ model: modelId });
       const result = await model.generateContent([...parts]);
+      recordAiUsage(model.model, usageFromGemini(result));
       const raw = parseModelJsonText(result.response.text());
       return parseSiteDiaryAnalysis(raw);
     } catch (err: unknown) {

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { parseModelJsonText } from "@/lib/ai-document-json";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import {
   GEMINI_LITE_MODEL,
   GEMINI_PREVIOUS_FLASH_MODEL,
@@ -44,6 +45,7 @@ export async function geminiMultimodal(
         ],
         generationConfig: deterministicGenerationConfig({ responseMimeType: "application/json" }),
       });
+      recordAiUsage(modelId, usageFromGemini(result));
       return parseModelJsonText(result.response.text());
     } catch (err: unknown) {
       lastErr = err;

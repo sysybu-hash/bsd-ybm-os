@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import type { AiProviderId } from "@/lib/ai-providers";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 /** ספקים שתומכים בסריקת מסמך (כולל Google Document AI כספק פרימיום) */
 const DOCUMENT_SCAN_PROVIDERS: AiProviderId[] = ["gemini", "openai", "anthropic", "docai"];
@@ -45,6 +46,7 @@ export async function generateAiResponse(prompt: string): Promise<string> {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(wrapped);
+        recordAiUsage(model.model, usageFromGemini(result));
         const text = result.response.text()?.trim();
         if (text && text.length > 0) return text;
       } catch (e) {

@@ -6,6 +6,7 @@ import {
 } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
 import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 const log = createLogger("floorplan-viz-generate");
 function collectInlineImages(response: unknown): Array<{ mimeType: string; base64: string }> {
@@ -55,6 +56,7 @@ export async function generateOneImage(
             : {}),
         },
       });
+      recordAiUsage(model, usageFromGemini(response));
       const images = collectInlineImages(response);
       const first = images[0];
       if (first) return first;

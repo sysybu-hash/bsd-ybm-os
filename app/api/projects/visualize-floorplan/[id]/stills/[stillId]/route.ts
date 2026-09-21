@@ -17,6 +17,11 @@ import {
   formatFloorplanVizEditPrompt,
 } from "@/lib/projects/floorplan-viz-edit-region";
 import {
+  emptyFloorplanSpend,
+  runWithFloorplanSpend,
+} from "@/lib/projects/floorplan-spend";
+import {
+  addFloorplanVizRunSpend,
   appendFloorplanVizStillEdit,
   deleteFloorplanVizStill,
   getFloorplanVizStillForOrg,
@@ -106,14 +111,19 @@ export const PATCH = withWorkspacesAuthDynamic<
         auditIssues: unpackFloorplanVizStillMeta(still.editPrompt).auditIssues,
       };
       const plan = { base64: still.run.planBase64, mimeType: still.run.planMimeType };
+      // Every paid follow-up — edit, improve, rescan — goes on the run's bill.
+      const spend = emptyFloorplanSpend();
 
       if (body.rescan === true) {
-        const auditIssues = await rescanFloorplanStillIssues({
-          layout,
-          still: stillImage,
-          plan,
-          haredi: styleKit.audience === "haredi",
-        });
+        const auditIssues = await runWithFloorplanSpend(spend, () =>
+          rescanFloorplanStillIssues({
+            layout,
+            still: stillImage,
+            plan,
+            haredi: styleKit.audience === "haredi",
+          }),
+        );
+        await addFloorplanVizRunSpend(orgId, id, spend);
         const run = await updateFloorplanVizStillAuditIssues(orgId, id, stillId, auditIssues);
         if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
         const image = run.images.find((row) => row.id === stillId);
@@ -123,15 +133,18 @@ export const PATCH = withWorkspacesAuthDynamic<
 
       if (body.improve === true) {
         const selected = (body.failures ?? []).map((f) => f.trim()).filter(Boolean);
-        const improved = await improveFloorplanStill({
-          layout,
-          still: stillImage,
-          plan,
-          styleKit,
-          photo: still.run.photo,
-          failures: selected.length ? selected : stillImage.auditIssues,
-          selectedOnly: selected.length > 0,
-        });
+        const improved = await runWithFloorplanSpend(spend, () =>
+          improveFloorplanStill({
+            layout,
+            still: stillImage,
+            plan,
+            styleKit,
+            photo: still.run.photo,
+            failures: selected.length ? selected : stillImage.auditIssues,
+            selectedOnly: selected.length > 0,
+          }),
+        );
+        await addFloorplanVizRunSpend(orgId, id, spend);
         const run = await appendFloorplanVizStillEdit(orgId, id, stillId, {
           mimeType: improved.mimeType,
           base64: improved.base64,
@@ -153,15 +166,19 @@ export const PATCH = withWorkspacesAuthDynamic<
       if (!instruction) return jsonBadRequest("חסרה בקשת עריכה", "missing_edit");
       const region = clampFloorplanVizEditRegion(body.region);
 
-      const edited = await editFloorplanStill({
-        layout,
-        still: stillImage,
-        plan,
-        instruction,
-        styleKit,
-        photo: still.run.photo,
-        region,
-      });
+      const edited = await runWithFloorplanSpend(spend, () =>
+        editFloorplanStill({
+          layout,
+          still: stillImage,
+          plan,
+          instruction,
+          styleKit,
+          photo: still.run.photo,
+          region,
+        }),
+      );
+      // Recorded before the result is judged: a refused edit was still paid for.
+      await addFloorplanVizRunSpend(orgId, id, spend);
       // The model redrew the flat instead of editing it. Saving that would
       // replace a frame the user already approved with a different apartment,
       // so nothing is written and the reason goes back as the toast.

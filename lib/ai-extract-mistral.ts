@@ -10,6 +10,7 @@ import {
   isMistralEligibleForModelFallback,
 } from "@/lib/ai-providers";
 import type { ScanModeV5 } from "@/lib/scan-schema-v5";
+import { recordAiUsage, usageFromOpenAi } from "@/lib/ai-usage";
 
 const MISTRAL_API_BASE = "https://api.mistral.ai/v1";
 
@@ -77,6 +78,7 @@ export async function extractDocumentWithMistral(
     const data = JSON.parse(raw) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
+    recordAiUsage(model, usageFromOpenAi(data));
     const text = data.choices?.[0]?.message?.content ?? "";
     if (!text) throw new Error("Mistral לא החזיר תוכן");
     return parseModelJsonText(text);
@@ -121,7 +123,10 @@ export async function extractTextWithMistralOCR(
   const data = (await res.json()) as {
     pages?: Array<{ index: number; markdown?: string }>;
     text?: string;
+    usage_info?: { pages_processed?: number };
   };
+  // Mistral OCR bills per page, not per token: counted, and left unpriced.
+  recordAiUsage("mistral-ocr", {});
 
   if (typeof data.text === "string" && data.text.trim()) return data.text;
 
@@ -161,5 +166,6 @@ export async function runMistralTextChat(prompt: string): Promise<string> {
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
   };
+  recordAiUsage(model, usageFromOpenAi(data));
   return data.choices?.[0]?.message?.content ?? "";
 }

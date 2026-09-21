@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "@/lib/env";
 import { getGeminiModelFallbackChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { isGeminiConfigured } from "@/lib/ai-providers";
+import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 
 export type ChatAttachment = {
   data: string;
@@ -28,6 +29,7 @@ export async function chatWithAttachment(
         prompt,
         { inlineData: { data: attachment.data, mimeType: attachment.mimeType } },
       ]);
+      recordAiUsage(model.model, usageFromGemini(result));
       return result.response.text();
     } catch (e) {
       lastErr = e;

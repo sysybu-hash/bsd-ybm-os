@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { Groq } from 'groq-sdk';
 import { getGeminiModelId, resolveGeminiModelId } from '@/lib/gemini-model';
+import { recordAiUsage, usageFromAnthropic, usageFromGemini, usageFromOpenAi } from "@/lib/ai-usage";
 import {
   ANTHROPIC_FLAGSHIP_MODEL,
   OPENAI_FLAGSHIP_MODEL,
@@ -47,6 +48,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
       const result = await model.generateContent(
         imageBase64 ? [prompt, { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } }] : [prompt],
       );
+      recordAiUsage(model.model, usageFromGemini(result));
       return result.response.text();
     }
 
@@ -55,6 +57,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
         model: getOpenAiChatTextModelCandidates()[0] ?? OPENAI_FLAGSHIP_MODEL,
         messages: [{ role: 'user', content: prompt }],
       });
+      recordAiUsage(oaiRes.model, usageFromOpenAi(oaiRes));
       return oaiRes.choices?.[0]?.message?.content ?? '';
     }
 
@@ -64,6 +67,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
       });
+      recordAiUsage(claudeRes.model, usageFromAnthropic(claudeRes));
       const block = claudeRes?.content?.[0];
       return block && 'text' in block ? block.text : '';
     }
@@ -73,6 +77,7 @@ export async function askAI(provider: 'gemini' | 'openai' | 'claude' | 'groq', p
         model: getGroqModel(),
         messages: [{ role: 'user', content: prompt }],
       });
+      recordAiUsage(`groq:${groqRes.model}`, usageFromOpenAi(groqRes));
       return groqRes.choices?.[0]?.message?.content ?? '';
     }
 

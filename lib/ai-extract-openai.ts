@@ -1,5 +1,6 @@
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { env } from "@/lib/env";
+import { recordAiUsage, usageFromOpenAi } from "@/lib/ai-usage";
 import {
   getOpenAiChatVisionModelCandidates,
   getOpenAiResponsesModelCandidates,
@@ -78,6 +79,7 @@ async function extractDocumentWithOpenAIPdf(
     }
 
     const data = JSON.parse(raw) as unknown;
+    recordAiUsage(model, usageFromOpenAi(data));
     const text = extractTextFromOpenAiResponsesPayload(data);
     if (!text) throw new Error("OpenAI לא החזיר טקסט (PDF)");
     return parseModelJsonText(text);
@@ -144,6 +146,7 @@ export async function extractDocumentWithOpenAI(
     const data = JSON.parse(raw) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
+    recordAiUsage(model, usageFromOpenAi(data));
     const text = data.choices?.[0]?.message?.content ?? "";
     if (!text) throw new Error("OpenAI לא החזיר תוכן");
     return parseModelJsonText(text);

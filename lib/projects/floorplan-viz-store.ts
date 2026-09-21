@@ -6,7 +6,7 @@ import {
 } from "@/lib/projects/floorplan-layout";
 import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { parseFloorplanVizScope, type FloorplanVizScope } from "@/lib/projects/floorplan-viz-scope";
-import type { FloorplanSpend } from "@/lib/projects/floorplan-spend";
+import { mergeFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
 import {
   parseFloorplanGeometry,
   type FloorplanGeometryPayload,
@@ -314,11 +314,88 @@ export async function createFloorplanVizRun(input: {
   return detail;
 }
 
+/**
+ * Adds what a follow-up call cost to the run it belongs to.
+ *
+ * A run's bill was written once, at creation. Every view added afterwards and
+ * every edit, improve and rescan was paid for and never recorded — two edits
+ * of one still on 28-8-23-2 left no trace in the run at all. A read, a merge
+ * and a write: two edits landing in the same instant could lose one of the
+ * two, which the per-user rate limit makes rare and which only ever
+ * under-reports.
+ */
+export async function addFloorplanVizRunSpend(
+  orgId: string,
+  runId: string,
+  extra: FloorplanSpend | undefined,
+): Promise<void> {
+  if (!extra) return;
+  const row = await prisma.floorplanVizRun.findFirst({
+    where: { id: runId, organizationId: orgId },
+    select: { enginesJson: true },
+  });
+  if (!row) return;
+  const engines =
+    row.enginesJson && typeof row.enginesJson === "object"
+      ? (row.enginesJson as Record<string, unknown>)
+      : {};
+  const merged = mergeFloorplanSpend(engines.spend as FloorplanSpend | undefined, extra);
+  await prisma.floorplanVizRun.update({
+    where: { id: runId },
+    data: { enginesJson: { ...engines, spend: merged } as object },
+  });
+}
+
+/**
+ * Every organisation's runs in a range, for the platform admin's cost page
+ * only — never an org-scoped route. Nothing heavier than the ledger is read:
+ * no plan, no stills.
+ */
+export async function listFloorplanVizRunCostRowsAllOrgs(range: { from: Date; to: Date }): Promise<
+  Array<{
+    id: string;
+    title: string;
+    createdAt: Date;
+    enginesJson: unknown;
+    scope: string;
+    organizationId: string;
+    organizationName: string;
+    stillCount: number;
+  }>
+> {
+  const rows = await prisma.floorplanVizRun.findMany({
+    where: { createdAt: { gte: range.from, lt: range.to } },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      enginesJson: true,
+      scope: true,
+      organizationId: true,
+      organization: { select: { name: true } },
+      _count: { select: { stills: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    createdAt: row.createdAt,
+    enginesJson: row.enginesJson,
+    scope: row.scope,
+    organizationId: row.organizationId,
+    organizationName: row.organization?.name ?? row.organizationId,
+    stillCount: row._count.stills,
+  }));
+}
+
 export async function appendFloorplanVizStills(
   orgId: string,
   runId: string,
   images: FloorplanVizImage[],
   scope?: FloorplanVizScope,
+  spend?: FloorplanSpend,
 ): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizRun.findFirst({
     where: { id: runId, organizationId: orgId },
@@ -363,6 +440,7 @@ export async function appendFloorplanVizStills(
       updatedAt: new Date(),
     },
   });
+  await addFloorplanVizRunSpend(orgId, runId, spend);
   return getFloorplanVizRunForOrg(orgId, runId);
 }
 

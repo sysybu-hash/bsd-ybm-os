@@ -1736,3 +1736,25 @@ model WhatsappLink {
   @@index([organizationId])
   @@index([userId])
 }
+
+/// One model call, as the provider billed it — the site-wide AI cost ledger.
+/// No foreign key to Organization: a call can have no org (cron, marketing
+/// demo), and usage history must outlive a deleted org for the books.
+model AiUsageEvent {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  organizationId String?
+  /// The API route or feature that made the call.
+  feature        String
+  provider       String
+  model          String
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  imageTokens    Int      @default(0)
+  outputImages   Int      @default(0)
+  /// production | preview | development — so test traffic can be told apart.
+  environment    String
+
+  @@index([createdAt])
+  @@index([organizationId, createdAt])
+}
