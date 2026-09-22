@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useMemo, useCallback, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { isRtlLocale } from "@/lib/i18n/config";
+import { isMarketingContentPath } from "@/lib/perf/marketing-paths";
 import { createTranslator } from "@/lib/i18n/translate";
 import type { MessageTree } from "@/lib/i18n/keys";
 import { useLatestRef } from "@/hooks/use-latest-ref";
@@ -77,6 +79,31 @@ export function I18nProvider({
     setMessages(messagesPropRef.current);
     return undefined;
   }, [pack, localeProp, locale, messagesPropRef]);
+
+  /**
+   * The layout picks the pack from the path it was first rendered on, and a
+   * layout is not rendered again on a soft navigation. So a visit that starts
+   * on a marketing page — /login, or / — and then moves into the app keeps the
+   * slim marketing pack, which has none of the workspace's strings: signing in
+   * with Google landed on /home showing "workspaceWidgets.empty.greetingNight"
+   * instead of a greeting. The effect above only helps when the layout does
+   * render again, which on this route it does not.
+   *
+   * Leaving the marketing pages is the signal: the full pack is fetched once,
+   * and until it arrives the marketing strings stay rather than a blank.
+   */
+  const pathname = usePathname();
+  const onMarketingPage = pathname == null || isMarketingContentPath(pathname);
+  useEffect(() => {
+    if (pack !== "marketing" || onMarketingPage) return undefined;
+    let cancelled = false;
+    void loadMessages(locale).then((next) => {
+      if (!cancelled) setMessages(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pack, onMarketingPage, locale]);
 
   // bfcache restore can revive a stuck marketing pack while the URL is already workspace.
   useEffect(() => {
