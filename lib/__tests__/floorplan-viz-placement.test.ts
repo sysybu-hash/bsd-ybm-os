@@ -47,7 +47,10 @@ describe("where each room is", () => {
     expect(moved).toHaveLength(1);
     const text = placementFailureText(moved[0]!);
     expect(text).toMatch(/^room moved: the middle \w+ of the flat should be a bedroom, the still shows kitchen/);
-    expect(isStructuralAuditFailure(text)).toBe(true);
+    // It steers the next frame, but it does not stop a booklet: measured over
+    // three runs of five sheets, the placement verdicts were wrong far more
+    // often than they were right. See floorplan-viz-structural.ts.
+    expect(isStructuralAuditFailure(text)).toBe(false);
     expect(hebrewFloorplanAuditIssue(text)).toMatch(/^חדר זז: .*אמור להיות חדר שינה, ובהדמיה מטבח$/);
   });
 
