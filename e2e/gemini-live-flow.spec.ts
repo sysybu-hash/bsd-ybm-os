@@ -98,7 +98,15 @@ test.describe("gemini live flow", () => {
     // only surfaced once the nightly could sign in at all.
     await waitForAuthenticatedWorkspace(page);
 
+    // On a phone the omnibar, and its live controls, live in a sheet that the
+    // bottom bar's mic button opens — by design. Open it the way a user does.
+    const mobileNav = page.getByTestId("mobile-bottom-nav");
+    if (await mobileNav.isVisible().catch(() => false)) {
+      await mobileNav.locator(".mobile-bottom-nav-mic").click();
+    }
+
     const liveButtons = page.getByRole("button", { name: /שיחה חיה|Live/i });
+    await expect(liveButtons.first()).toBeVisible({ timeout: 15_000 });
     const count = await liveButtons.count();
     expect(count).toBeGreaterThan(0);
     expect(count).toBeLessThan(10);
