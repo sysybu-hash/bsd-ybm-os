@@ -8,6 +8,9 @@ export function isMarketingPublicShellPath(pathname: string): boolean {
 export function isWorkspaceShellPath(pathname: string): boolean {
   const p = pathname.split("?")[0] ?? pathname;
   return (
+    // /home is the same canvas as /workspace under a friendlier name, and
+    // where / sends a signed-in user; it was never added here.
+    p === "/home" ||
     p === "/workspace" ||
     p.startsWith("/workspace/") ||
     p === "/dashboard" ||
