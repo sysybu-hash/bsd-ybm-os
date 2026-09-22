@@ -12,6 +12,17 @@
  * Orientation is left out on purpose. The auditor's "turned 180 degrees" has
  * been wrong on stills that were not turned — it said so of this same frame —
  * and a false structural verdict would fail runs that are right.
+ *
+ * "room moved" is left out for the same reason, and it was measured. Over
+ * three runs of five reference sheets, every placement verdict I put next to
+ * its own plan was wrong except the one it was built for: a still is a
+ * perspective cutaway whose walls have thickness, so a region's middle lands a
+ * few percent inside the neighbour, and on דירה 20 it convicted the same
+ * correct still three runs running. It still earns its keep inside the loop —
+ * a frame that draws a moved room is told so and redrawn — but it does not
+ * carry the verdict that stops a booklet, which belongs to the findings that
+ * are counted rather than located: a bedroom that is not there, a terrace the
+ * plan does not draw, a footprint that is not this flat's.
  */
 
 const STRUCTURAL: RegExp[] = [
@@ -27,7 +38,6 @@ const STRUCTURAL: RegExp[] = [
   /bedroom\(s\) left without a bed/i,
   /footprint does not match the plan outline/i,
   /CAD block massing shipped/i,
-  /^room moved: /i,
 ];
 
 export function isStructuralAuditFailure(issue: string): boolean {

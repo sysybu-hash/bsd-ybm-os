@@ -205,8 +205,15 @@ ${ONE_FRAME}`;
 /** A moved room weighs as a hard failure does; see gradeFloorplanStill. */
 const PLACEMENT_WEIGHT = 10;
 
-/** Frames drawn at once before any correction. See the note in the loop. */
-const FIRST_ROUND_FRAMES = 3;
+/**
+ * Frames drawn at once before any correction. See the note in the loop.
+ *
+ * Three was measured first and was better than one. Five was measured after
+ * it, on the same sheets: at roughly 40 cents a frame against a ₪200 booklet,
+ * and drawn in parallel so the wall clock is one frame's, the cost of two more
+ * frames is far below the cost of shipping a still whose rooms are wrong.
+ */
+const FIRST_ROUND_FRAMES = 5;
 
 export async function generateAuditedImage(
   job: VizJob,

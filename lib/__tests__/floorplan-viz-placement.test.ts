@@ -37,13 +37,20 @@ describe("where each room is", () => {
 
   it("flags the kitchen painted where the plan has a bedroom", () => {
     const answer = {
-      regions: rooms.map((r, i) => ({ id: r.id, found: i === 2 ? "kitchen" : r.expected === "wet" ? "bathroom" : "bedroom" })),
+      regions: rooms.map((r, i) => ({
+        id: r.id,
+        found: i === 2 ? "kitchen" : r.expected === "wet" ? "bathroom" : "bedroom",
+        has: i !== 2,
+      })),
     };
     const moved = gradePlacement(rooms, answer);
     expect(moved).toHaveLength(1);
     const text = placementFailureText(moved[0]!);
     expect(text).toMatch(/^room moved: the middle \w+ of the flat should be a bedroom, the still shows kitchen/);
-    expect(isStructuralAuditFailure(text)).toBe(true);
+    // It steers the next frame, but it does not stop a booklet: measured over
+    // three runs of five sheets, the placement verdicts were wrong far more
+    // often than they were right. See floorplan-viz-structural.ts.
+    expect(isStructuralAuditFailure(text)).toBe(false);
     expect(hebrewFloorplanAuditIssue(text)).toMatch(/^חדר זז: .*אמור להיות חדר שינה, ובהדמיה מטבח$/);
   });
 
@@ -55,17 +62,41 @@ describe("where each room is", () => {
       ],
     });
     const placed = expectedRoomPlacements(layout);
-    const answer = { regions: [{ id: placed[0]!.id, found: "living" }, { id: placed[1]!.id, found: "bedroom" }] };
+    const answer = {
+      regions: [
+        { id: placed[0]!.id, found: "living", has: true },
+        { id: placed[1]!.id, found: "bedroom", has: true },
+      ],
+    };
     expect(gradePlacement(placed, answer)).toEqual([]);
   });
 
+  it("says nothing when the bed is still inside the region, only off its middle", () => {
+    // דירה 20: the still's own walls shift each room by a few percent, so the
+    // midpoint of a bedroom's region landed in the living room beside it.
+    const answer = {
+      regions: rooms.map((r, i) => ({
+        id: r.id,
+        found: i === 2 ? "living" : r.expected === "wet" ? "bathroom" : "bedroom",
+        has: true,
+      })),
+    };
+    expect(gradePlacement(rooms, answer)).toEqual([]);
+  });
+
   it("does not take the auditor's uncertainty for a verdict", () => {
-    const answer = { regions: rooms.map((r) => ({ id: r.id, found: "unclear" })) };
+    const answer = { regions: rooms.map((r) => ({ id: r.id, found: "unclear", has: false })) };
     expect(gradePlacement(rooms, answer)).toEqual([]);
   });
 
   it("counts a laundry nook where a room should be — the lost entrance of דירה 14", () => {
-    const answer = { regions: rooms.map((r, i) => ({ id: r.id, found: i === 0 ? "laundry" : r.expected === "wet" ? "bathroom" : "bedroom" })) };
+    const answer = {
+      regions: rooms.map((r, i) => ({
+        id: r.id,
+        found: i === 0 ? "laundry" : r.expected === "wet" ? "bathroom" : "bedroom",
+        has: i !== 0,
+      })),
+    };
     expect(gradePlacement(rooms, answer)).toHaveLength(1);
   });
 });
