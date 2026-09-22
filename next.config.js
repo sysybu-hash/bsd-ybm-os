@@ -81,11 +81,15 @@ const nextConfig = {
           "camera=(self), microphone=(self), geolocation=(), interest-cohort=(), browsing-topics=()",
       },
     ];
-    if (isProd && servedOverHttps) {
-      security.push({
-        key: "Strict-Transport-Security",
-        value: "max-age=63072000; includeSubDomains; preload",
-      });
+    if (isProd) {
+      // Only the two directives that assume https depend on it; the rest of
+      // the policy is sent either way.
+      if (servedOverHttps) {
+        security.push({
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        });
+      }
       const cspStrict =
         process.env.CSP_STRICT === "true" || process.env.CSP_STRICT === "1";
       const scriptSrc = cspStrict

@@ -24,6 +24,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ""
+          # The scan itself decides the job: a finding exits non-zero and is
+          # printed, redacted, in the log. Uploading the SARIF report was the
+          # step failing — "no leaks found", then a 403 from the artifact
+          # service on FinalizeArtifact — turning a clean scan red.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
 
   npm-audit:
     name: Dependency vulnerabilities (npm audit)
