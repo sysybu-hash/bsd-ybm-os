@@ -73,6 +73,14 @@ export function floorplanOverviewAttachments(input: {
   const inkAtt = input.ink ? [{ mimeType: "image/jpeg" as const, base64: input.ink }] : [];
   const massingAtt = input.massing ? [{ mimeType: "image/jpeg" as const, base64: input.massing }] : [];
   if (input.geometryLock?.base64) {
+    // The measured route had the plate and never the washed drawing, and the
+    // plate alone is blocks: the model read it as a suggestion and moved
+    // דירה 21's kitchen into the living room. The drawing goes first — it is
+    // this flat's own ink — and the plate behind it fixes what the ink leaves
+    // ambiguous, which is what each enclosure is and how big it is.
+    if (input.tintedPlan?.base64) {
+      return [input.tintedPlan, input.geometryLock, input.plan, ...inkAtt, ...massingAtt];
+    }
     return [input.geometryLock, input.plan, ...inkAtt, ...massingAtt];
   }
   // The sheet's own drawing leads where we have it washed by room: it is this

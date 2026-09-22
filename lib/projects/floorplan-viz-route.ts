@@ -16,6 +16,7 @@ import {
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
 import { roomsForLayout, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import type { SpanRow } from "@/lib/projects/floorplan-solid";
 
 export type FloorplanVizRoute =
   | { kind: "cad"; targetAreaM2: number; unitsPerMetreHint?: number }
@@ -129,6 +130,43 @@ export function cadMassingSafeToPhotograph(
   const terraces = count("balcony") + (measured?.terraces ?? 0);
   if (terraces > floorPlateTerraces(known).length) return false;
   return true;
+}
+
+/**
+ * Measured terraces as boxes on the page.
+ *
+ * They are scan-line spans in drawing units, which is what the renderer wants
+ * and not what a wash over the sheet wants. Page units are drawing units on
+ * these sheets, so this is a bounding box and a division.
+ */
+export function terraceBoxesOnPage(
+  terraces: SpanRow[][],
+  page: { width: number; height: number },
+): Array<{ x: number; y: number; w: number; h: number }> {
+  if (!(page.width > 0) || !(page.height > 0)) return [];
+  const out: Array<{ x: number; y: number; w: number; h: number }> = [];
+  for (const rows of terraces) {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const row of rows) {
+      for (const [a, b] of row.spans) {
+        if (a < x0) x0 = a;
+        if (b > x1) x1 = b;
+      }
+      if (row.y < y0) y0 = row.y;
+      if (row.y > y1) y1 = row.y;
+    }
+    if (!Number.isFinite(x0) || !(x1 > x0) || !(y1 > y0)) continue;
+    out.push({
+      x: x0 / page.width,
+      y: y0 / page.height,
+      w: (x1 - x0) / page.width,
+      h: (y1 - y0) / page.height,
+    });
+  }
+  return out;
 }
 
 /** Rooms measured off the CAD, keeping the sheet's printed title and area. */

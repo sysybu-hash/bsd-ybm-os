@@ -55,14 +55,27 @@ function kindOf(room: FloorplanRoom): FloorplanRoomKind {
   return room.kind ?? inferRoomKind(room.name);
 }
 
+/**
+ * A terrace is not a room and never reaches layout.rooms, so the wash left
+ * the paved pockets blank and the crop could cut them off — and the model,
+ * given a drawing that says nothing about them, put a terrace along דירה 21's
+ * kitchen wall and lost the one in its corner. Measured, they wash like any
+ * other space.
+ */
+export type TerraceBox = { x: number; y: number; w: number; h: number };
+
 export async function buildTintedPlanJpeg(
   plan: { base64: string; mimeType: string },
   layout: FloorplanLayout,
-  options?: { width?: number },
+  options?: { width?: number; terraces?: TerraceBox[] },
 ): Promise<TintedPlan | null> {
   if (!layoutCanGuide(layout)) return null;
   const rooms = layout.rooms.filter((room) => room.bbox != null);
-  const extent = placedRoomsExtent(rooms);
+  const terraces = options?.terraces ?? [];
+  const extent = placedRoomsExtent([
+    ...rooms,
+    ...terraces.map((box) => ({ name: "מרפסת", bbox: box }) as FloorplanRoom),
+  ]);
   if (!extent) return null;
 
   try {
@@ -113,9 +126,18 @@ export async function buildTintedPlanJpeg(
       ctx.fillStyle = TINT[kindOf(room)] ?? TINT.other;
       ctx.fillRect(box.x, box.y, box.w, box.h);
     }
+    for (const terrace of terraces) {
+      const box = place({ name: "מרפסת", bbox: terrace } as FloorplanRoom);
+      ctx.fillStyle = TINT.balcony;
+      ctx.fillRect(box.x, box.y, box.w, box.h);
+    }
 
     const size = Math.max(15, Math.round(width * 0.016));
-    rooms.forEach((room, i) => {
+    const labelled: FloorplanRoom[] = [
+      ...rooms,
+      ...terraces.map((box) => ({ name: "מרפסת", bbox: box }) as FloorplanRoom),
+    ];
+    labelled.forEach((room, i) => {
       const box = place(room);
       ctx.font = `bold ${size}px ${CANVAS_FONT_BOLD}`;
       ctx.direction = "rtl";
