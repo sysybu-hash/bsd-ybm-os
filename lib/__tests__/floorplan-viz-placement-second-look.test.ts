@@ -30,7 +30,14 @@ const layout = () =>
   });
 
 const answer = (rows: Array<[string, string]>) => ({
-  response: { text: () => JSON.stringify({ regions: rows.map(([id, found]) => ({ id, found })) }) },
+  response: {
+    text: () =>
+      JSON.stringify({
+        // "has: false" is what makes a verdict; the found value says what is
+        // there instead. A region answered "bedroom" is where it should be.
+        regions: rows.map(([id, found]) => ({ id, found, has: found === "bedroom" || found === "bathroom" })),
+      }),
+  },
 });
 
 const still = { base64: "still", mimeType: "image/jpeg" };

@@ -106,31 +106,65 @@ function where(box: ExpectedRoom["box"]): string {
   return `${updown} ${leftright}`;
 }
 
+/** What the plan says should be inside a region, in the still's own terms. */
+const MARKER: Record<PlacementClass, string> = {
+  sleeping: "a bed",
+  day: "a sofa, a dining table or kitchen counters",
+  wet: "a toilet, a basin or a bath",
+  outdoor: "outdoor paving or a railing",
+};
+
 export function placementPrompt(rooms: ExpectedRoom[]): string {
   const rows = rooms
     .map(
       (room) =>
-        `- ${room.id}: the region from ${pct(room.box.x)}% to ${pct(room.box.x + room.box.w)}% across and ${pct(room.box.y)}% to ${pct(room.box.y + room.box.h)}% down`,
+        `- ${room.id}: the region from ${pct(room.box.x)}% to ${pct(room.box.x + room.box.w)}% across and ${pct(room.box.y)}% to ${pct(room.box.y + room.box.h)}% down. Is ${MARKER[room.expected]} visible anywhere inside it?`,
     )
     .join("\n");
   return `The image is a bird's-eye cutaway of one apartment. Consider only the apartment itself: its outer walls are the frame of reference — 0% is its left (or top) outer wall and 100% its right (or bottom) outer wall. Ignore any margin and any caption bar.
 
-For each region below, look at what occupies the MIDDLE of that region in the image, and say what kind of space it is furnished as. Judge by the furniture and fixtures you can see: beds mean bedroom; sofas or a dining table mean living or dining; counters with a hob or sink mean kitchen; a toilet, basin or bath mean bathroom; a washing machine alone means laundry; outdoor paving or a railing means balcony; an entry door with nothing else means entrance.
+For each region below, answer two questions.
+
+"found": what occupies the MIDDLE of that region, judged by the furniture and fixtures you can see: beds mean bedroom; sofas or a dining table mean living or dining; counters with a hob or sink mean kitchen; a toilet, basin or bath mean bathroom; a washing machine alone means laundry; outdoor paving or a railing means balcony; an entry door with nothing else means entrance.
+
+"has": true if the thing that region's own question names is visible ANYWHERE inside it — even partly, even at its edge — and false only if there is none of it in the region at all.
 
 ${rows}
 
-Return JSON only: {"regions":[{"id":"r1","found":"<one of: ${FOUND.join(", ")}>"}]}`;
+Return JSON only: {"regions":[{"id":"r1","found":"<one of: ${FOUND.join(", ")}>","has":true}]}`;
 }
 
 export type PlacementMismatch = { room: ExpectedRoom; found: Found };
 
+/**
+ * A room has moved when the middle of its region shows something else AND
+ * nothing of what belongs there is anywhere in that region.
+ *
+ * The middle alone is not enough. A still is a perspective cutaway with walls
+ * of its own thickness, so the flat's proportions are never exactly the plan's
+ * and a region's midpoint can land a few percent inside the neighbour. On
+ * דירה 20 that produced three confident verdicts — bedroom shows living,
+ * bedroom shows balcony, bath shows bedroom — against a still whose rooms were
+ * every one of them where the plan puts them; a second look repeated all
+ * three, because the error is geometric and not random. Asking as well whether
+ * the bed is anywhere in the region keeps the verdict that matters (דירה 14's
+ * kitchen painted over a bedroom, with no bed in that region at all) and drops
+ * the ones that come from a few percent of drift.
+ */
 export function gradePlacement(rooms: ExpectedRoom[], answer: unknown): PlacementMismatch[] {
-  const regions = ((answer as { regions?: unknown })?.regions ?? []) as Array<{ id?: unknown; found?: unknown }>;
-  const byId = new Map(regions.map((r) => [String(r.id ?? ""), String(r.found ?? "unclear").toLowerCase()]));
+  const regions = ((answer as { regions?: unknown })?.regions ?? []) as Array<{
+    id?: unknown;
+    found?: unknown;
+    has?: unknown;
+  }>;
+  const byId = new Map(regions.map((r) => [String(r.id ?? ""), r]));
   const out: PlacementMismatch[] = [];
   for (const room of rooms) {
-    const raw = byId.get(room.id);
-    if (!raw) continue;
+    const row = byId.get(room.id);
+    if (!row) continue;
+    // Anything but a clear "no" leaves the room where the plan puts it.
+    if (row.has !== false) continue;
+    const raw = String(row.found ?? "unclear").toLowerCase();
     const found = (FOUND as readonly string[]).includes(raw) ? (raw as Found) : "unclear";
     // Only a clear answer of a different kind counts. "Unclear", a corridor
     // or storage is the auditor not knowing, and not knowing is not a verdict.
