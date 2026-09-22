@@ -11,7 +11,7 @@
  * Set E2E_MOCK_GEMINI_LIVE=1 to force session API mock (useful when keys are missing in CI).
  */
 import { test, expect } from "@playwright/test";
-import { tryCredentialsSignIn } from "./helpers";
+import { tryCredentialsSignIn, waitForAuthenticatedWorkspace } from "./helpers";
 
 const MOCK_SESSION = {
   token: "e2e-mock-live-token",
@@ -92,9 +92,21 @@ test.describe("gemini live flow", () => {
     });
 
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    // Not "networkidle": a signed-in workspace holds the notifications stream
+    // and the presence heartbeat open for as long as it is on screen, so the
+    // network is never idle and the wait always ran out the test's 120s. It
+    // only surfaced once the nightly could sign in at all.
+    await waitForAuthenticatedWorkspace(page);
+
+    // On a phone the omnibar, and its live controls, live in a sheet that the
+    // bottom bar's mic button opens — by design. Open it the way a user does.
+    const mobileNav = page.getByTestId("mobile-bottom-nav");
+    if (await mobileNav.isVisible().catch(() => false)) {
+      await mobileNav.locator(".mobile-bottom-nav-mic").click();
+    }
 
     const liveButtons = page.getByRole("button", { name: /שיחה חיה|Live/i });
+    await expect(liveButtons.first()).toBeVisible({ timeout: 15_000 });
     const count = await liveButtons.count();
     expect(count).toBeGreaterThan(0);
     expect(count).toBeLessThan(10);

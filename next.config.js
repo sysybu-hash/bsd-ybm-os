@@ -63,6 +63,14 @@ const nextConfig = {
   allowedDevOrigins: buildAllowedDevOrigins(),
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
+    // A production build served over plain HTTP — the nightly E2E server on
+    // http://127.0.0.1:3001 — must not tell the browser to upgrade itself.
+    // With upgrade-insecure-requests, signing in redirected / to /home, the
+    // browser rewrote that to https://127.0.0.1:3001/home, and the page died on
+    // ERR_SSL_PROTOCOL_ERROR: every signed-in nightly test failed on it, every
+    // morning. The live site is https and keeps both headers.
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "";
+    const servedOverHttps = !siteUrl.startsWith("http://");
     const security = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -74,10 +82,14 @@ const nextConfig = {
       },
     ];
     if (isProd) {
-      security.push({
-        key: "Strict-Transport-Security",
-        value: "max-age=63072000; includeSubDomains; preload",
-      });
+      // Only the two directives that assume https depend on it; the rest of
+      // the policy is sent either way.
+      if (servedOverHttps) {
+        security.push({
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        });
+      }
       const cspStrict =
         process.env.CSP_STRICT === "true" || process.env.CSP_STRICT === "1";
       const scriptSrc = cspStrict
@@ -102,7 +114,7 @@ const nextConfig = {
         "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "manifest-src 'self'",
-        "upgrade-insecure-requests",
+        ...(servedOverHttps ? ["upgrade-insecure-requests"] : []),
       ].join("; ");
       security.push({ key: "Content-Security-Policy", value: csp });
     }

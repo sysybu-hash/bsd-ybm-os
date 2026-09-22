@@ -16,19 +16,28 @@
 type HeaderEntry = { key: string; value: string };
 type HeaderRule = { source: string; headers: HeaderEntry[] };
 
-async function headersFor(env: { NODE_ENV?: string; CSP_STRICT?: string }): Promise<HeaderRule[]> {
-  const prev = { NODE_ENV: process.env.NODE_ENV, CSP_STRICT: process.env.CSP_STRICT };
+async function headersFor(env: {
+  NODE_ENV?: string;
+  CSP_STRICT?: string;
+  NEXT_PUBLIC_SITE_URL?: string;
+}): Promise<HeaderRule[]> {
+  const keys = ["NODE_ENV", "CSP_STRICT", "NEXT_PUBLIC_SITE_URL"] as const;
+  const vars = process.env as Record<string, string | undefined>;
+  const prev = Object.fromEntries(keys.map((k) => [k, vars[k]]));
   // NODE_ENV is readonly in the Next types but writable at runtime.
-  (process.env as Record<string, string | undefined>).NODE_ENV = env.NODE_ENV;
-  (process.env as Record<string, string | undefined>).CSP_STRICT = env.CSP_STRICT;
+  for (const k of keys) vars[k] = env[k];
   try {
     jest.resetModules();
     const config = require("../../next.config.js") as { headers: () => Promise<HeaderRule[]> };
     return await config.headers();
   } finally {
-    (process.env as Record<string, string | undefined>).NODE_ENV = prev.NODE_ENV;
-    (process.env as Record<string, string | undefined>).CSP_STRICT = prev.CSP_STRICT;
+    for (const k of keys) vars[k] = prev[k];
   }
+}
+
+function headerValue(rules: HeaderRule[], source: string, key: string): string | undefined {
+  const rule = [...rules].reverse().find((r) => r.source === source);
+  return rule?.headers.find((h) => h.key === key)?.value;
 }
 
 function cspFor(rules: HeaderRule[], source: string): string {
@@ -83,5 +92,25 @@ describe("production CSP", () => {
     const previewRules = rules.filter((r) => r.source === PREVIEW_ROUTE);
     expect(previewRules).toHaveLength(1);
     expect(previewRules[0]!.source).toBe(PREVIEW_ROUTE);
+  });
+});
+
+describe("a production build served over plain HTTP", () => {
+  // The nightly E2E server: NODE_ENV=production on http://127.0.0.1:3001.
+  // upgrade-insecure-requests sent there rewrote the post-login redirect to
+  // https and every signed-in test died on ERR_SSL_PROTOCOL_ERROR.
+  it("keeps the policy but does not ask the browser to upgrade", async () => {
+    const rules = await headersFor({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3001" });
+    const site = cspFor(rules, "/:path*");
+    expect(site).toContain("default-src 'self'");
+    expect(site).toContain("frame-src 'self'");
+    expect(site).not.toContain("upgrade-insecure-requests");
+    expect(headerValue(rules, "/:path*", "Strict-Transport-Security")).toBeUndefined();
+  });
+
+  it("still upgrades and pins https on the live site", async () => {
+    const rules = await headersFor({ NODE_ENV: "production", NEXT_PUBLIC_SITE_URL: "https://www.bsd-ybm.co.il" });
+    expect(cspFor(rules, "/:path*")).toContain("upgrade-insecure-requests");
+    expect(headerValue(rules, "/:path*", "Strict-Transport-Security")).toContain("max-age=63072000");
   });
 });
