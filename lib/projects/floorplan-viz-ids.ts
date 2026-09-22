@@ -155,6 +155,11 @@ export function unpackFloorplanVizStillMeta(raw: string | null | undefined): {
 
 /** Hebrew one-liner for a residual audit hard-failure (UI summary). */
 export function hebrewFloorplanAuditIssue(failure: string): string {
+  // Numbers, not a paraphrase: "a bedroom is missing" is the whole verdict.
+  const bedrooms = /^bedrooms (\d+), plan has (\d+)/i.exec(failure.trim());
+  if (bedrooms) return `בהדמיה ${bedrooms[1]} חדרי שינה, בתוכנית ${bedrooms[2]}`;
+  const beds = /^beds (\d+), (?:plan has|the geometry draws) (\d+)/i.exec(failure.trim());
+  if (beds) return `בהדמיה ${beds[1]} מיטות, בתוכנית ${beds[2]}`;
   if (/beds \d|bedrooms \d|plan has \d/i.test(failure)) return "מספר המיטות לא תואם לתוכנית";
   if (/front door missing/i.test(failure)) return "חסר פתח הכניסה לדלת הכניסה שבתוכנית";
   if (/stair flight/i.test(failure)) return "מדרגות מומצאות — הדירה במפלס אחד בלי מדרגות פנים";

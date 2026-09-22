@@ -1,5 +1,6 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
 import { buildTintedPlanJpeg } from "@/lib/projects/floorplan-tinted-plan";
+import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
 import type { PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
@@ -375,7 +376,7 @@ async function visualizeWithSpend(
       },
       styleKit,
       scope,
-      confidence: cadResult.confidence,
+      confidence: withStructuralVerdict(cadResult.confidence, images),
       spend: cadResult.spend,
       geometry: cadResult.measured,
       planBase64: prepared.base64,
@@ -474,7 +475,10 @@ async function visualizeWithSpend(
     },
     styleKit,
     scope,
-    confidence: rasterFallbackConfidence(cadResult.outcome === "skip" ? cadResult.reason : undefined),
+    confidence: withStructuralVerdict(
+      rasterFallbackConfidence(cadResult.outcome === "skip" ? cadResult.reason : undefined),
+      images,
+    ),
     spend,
     planBase64: prepared.mimeType === "application/pdf" ? prepared.base64 : vizBase64,
     planMimeType: prepared.mimeType === "application/pdf" ? prepared.mimeType : vizMime,

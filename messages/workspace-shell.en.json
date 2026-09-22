@@ -831,6 +831,8 @@
       "editNeedSave": "Save the generation to the subscription before editing",
       "edited": "Edit saved as a new attempt",
       "auditIssuesTitle": "What needs fixing",
+      "structuralTitle": "This still does not match the plan",
+      "structuralBody": "The check found this image shows a different apartment. Do not deliver it to a client.",
       "auditIssuesPick": "Select what to fix — uncheck items the auditor got wrong",
       "auditIssuesEmpty": "No saved issues — you can rescan against the plan",
       "improveImage": "Improve image",

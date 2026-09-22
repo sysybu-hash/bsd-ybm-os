@@ -13,6 +13,7 @@ import { OsButton, OsIconButton } from "@/components/os/ui";
 import { fileNameOf, srcOf } from "@/components/os/widgets/floorplan-viz/FloorplanVizLightbox";
 import FloorplanVizEditMark from "@/components/os/widgets/floorplan-viz/FloorplanVizEditMark";
 import PlanLocatorMap from "@/components/os/widgets/floorplan-viz/PlanLocatorMap";
+import FloorplanVizStructuralBanner from "@/components/os/widgets/floorplan-viz/FloorplanVizStructuralBanner";
 import { locatorFocusForView } from "@/lib/projects/floorplan-locator";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
@@ -189,6 +190,7 @@ export default function FloorplanVizAttemptCard({
             </OsButton>
           ) : null}
         </span>
+        <FloorplanVizStructuralBanner issues={issues} t={t} />
         {issues.length > 0 ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-[10px] font-normal text-amber-950 dark:text-amber-100">
             <p className="mb-1 font-semibold">
