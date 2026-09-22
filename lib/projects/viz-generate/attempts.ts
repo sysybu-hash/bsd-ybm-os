@@ -205,6 +205,9 @@ ${ONE_FRAME}`;
 /** A moved room weighs as a hard failure does; see gradeFloorplanStill. */
 const PLACEMENT_WEIGHT = 10;
 
+/** Frames drawn at once before any correction. See the note in the loop. */
+const FIRST_ROUND_FRAMES = 3;
+
 export async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -218,14 +221,78 @@ export async function generateAuditedImage(
   },
 ): Promise<{ mimeType: string; base64: string; auditIssues?: string[] }> {
   const auditable = job.viewId === "overview" || job.viewId === "isometric";
-  let best: {
+  type Scored = {
     img: { mimeType: string; base64: string };
     score: number;
     failures: string[];
     hardFailures: string[];
     audit: FloorplanVizAudit;
-  } | null = null;
+  };
+  let best: Scored | null = null;
   let lastFailures: string[] = [];
+
+  /** One frame, graded: the counts, and where its rooms landed. */
+  const gradeOne = async (img: { mimeType: string; base64: string }): Promise<Scored | null> => {
+    const audit = await auditStill(img, ctx.plan, ctx.haredi);
+    if (!audit) return null;
+    const graded = gradeFloorplanStill(audit, ctx.layout, { haredi: ctx.haredi });
+    // A still can pass every count with its rooms in the wrong places; the
+    // overview is where that is judged, and a moved room is as bad as a lost
+    // one — so it is a hard failure, and the next attempt is told where.
+    const moved = job.viewId === "overview" ? ((await checkRoomPlacement(img, ctx.layout)) ?? []) : [];
+    return {
+      img,
+      audit,
+      failures: [...graded.failures, ...moved],
+      hardFailures: [...graded.hardFailures, ...moved],
+      score: graded.score + moved.length * PLACEMENT_WEIGHT,
+    };
+  };
+
+  /**
+   * The first round is several frames at once, not one.
+   *
+   * Measured over eleven reference sheets, a run came back structurally right
+   * about half the time — and which half changed from run to run: דירה 21
+   * passed, then failed, then passed, on the same sheet and the same code. One
+   * frame at a time meant the loop spent its 300 seconds on two or three
+   * sequential corrections of a frame that was wrong to begin with. Three
+   * frames drawn at once cost a few tens of cents against a ₪200 booklet, take
+   * one frame's wall clock, and the odds of all three being wrong are small.
+   * Corrections still follow, for whatever the best of them got wrong.
+   */
+  if (auditable && timeLeft(ctx.deadlineMs, ATTEMPT_MS)) {
+    const drafts = await Promise.all(
+      Array.from({ length: FIRST_ROUND_FRAMES }, () =>
+        generateOneImage(job.prompt, attachments, { aspectRatio }).catch(() => null),
+      ),
+    );
+    const scored = (await Promise.all(drafts.map((img) => (img ? gradeOne(img) : null)))).filter(
+      (row): row is Scored => row != null,
+    );
+    for (const row of scored) if (!best || row.score < best.score) best = row;
+    const clean = scored.find((row) => row.failures.length === 0);
+    if (clean) {
+      log.info("still passed audit", { view: job.labelHe, attempt: "first round", frames: scored.length });
+      const issues = await collectShipIssues(clean.img, ctx, job.labelHe);
+      return { ...clean.img, auditIssues: issues.length ? issues : undefined };
+    }
+    if (best) {
+      lastFailures = best.failures;
+      log.warn("first round failed audit", {
+        view: job.labelHe,
+        frames: scored.length,
+        best: best.score,
+        failures: best.failures,
+      });
+      if (best.score <= GOOD_ENOUGH_SCORE) {
+        const issues = await collectShipIssues(best.img, ctx, job.labelHe);
+        return { ...best.img, auditIssues: issues.length ? issues : undefined };
+      }
+    }
+    // A frame that came back empty from every draft is the model failing, not
+    // the audit: fall through to the sequential loop, which reports it.
+  }
 
   for (let attempt = 1; attempt <= (auditable ? MAX_AUDITED_ATTEMPTS : 1); attempt++) {
     if (attempt > 1 && !timeLeft(ctx.deadlineMs, ATTEMPT_MS)) {
@@ -250,19 +317,9 @@ Fix exactly these and keep everything the audit did not complain about.`
     const img = await generateOneImage(prompt, attachments, { aspectRatio });
     if (!auditable) return img;
 
-    const audit = await auditStill(img, ctx.plan, ctx.haredi);
-    if (!audit) return img; // No auditor available — ship what we have rather than stall.
-
-    const graded = gradeFloorplanStill(audit, ctx.layout, {
-      haredi: ctx.haredi,
-    });
-    // A still can pass every count with its rooms in the wrong places; the
-    // overview is where that is judged, and a moved room is as bad as a lost
-    // one — so it is a hard failure, and the next attempt is told where.
-    const moved = job.viewId === "overview" ? ((await checkRoomPlacement(img, ctx.layout)) ?? []) : [];
-    const failures = [...graded.failures, ...moved];
-    const hardFailures = [...graded.hardFailures, ...moved];
-    const score = graded.score + moved.length * PLACEMENT_WEIGHT;
+    const round = await gradeOne(img);
+    if (!round) return img; // No auditor available — ship what we have rather than stall.
+    const { failures, hardFailures, score } = round;
     if (failures.length === 0) {
       log.info("still passed audit", { view: job.labelHe, attempt });
       const issues = await collectShipIssues(img, ctx, job.labelHe);
@@ -270,7 +327,7 @@ Fix exactly these and keep everything the audit did not complain about.`
     }
     log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
-    if (!best || score < best.score) best = { img, score, failures, hardFailures, audit };
+    if (!best || score < best.score) best = round;
     if (score <= GOOD_ENOUGH_SCORE) {
       log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
       const issues = await collectShipIssues(img, ctx, job.labelHe);

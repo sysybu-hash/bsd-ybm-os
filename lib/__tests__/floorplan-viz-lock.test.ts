@@ -114,6 +114,18 @@ describe("floorplan viz lock", () => {
     expect(attachments.map((row) => row.base64)).toEqual(["cad", "plan", "ink"]);
   });
 
+  it("puts this flat's own washed drawing ahead of the measured plate", () => {
+    // The plate alone is blocks, and the model read it as a suggestion: on
+    // דירה 21 it moved the kitchen into the living room. The ink leads, the
+    // plate stands behind it for size and for what each enclosure is.
+    const attachments = floorplanOverviewAttachments({
+      plan: { mimeType: "application/pdf", base64: "plan" },
+      tintedPlan: { mimeType: "image/jpeg", base64: "washed" },
+      geometryLock: { mimeType: "image/jpeg", base64: "cad" },
+    });
+    expect(attachments.map((row) => row.base64)).toEqual(["washed", "cad", "plan"]);
+  });
+
   it("names printed terrace pockets and forbids paving the living volume", () => {
     const prompt = buildVizPrompt(
       parseFloorplanLayout({

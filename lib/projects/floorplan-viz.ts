@@ -1,5 +1,5 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
-import { buildTintedPlanJpeg } from "@/lib/projects/floorplan-tinted-plan";
+import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
 import type { PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
@@ -35,6 +35,7 @@ import {
   cadHeroImages,
   cadImagesForBooklet,
   cadMassingSafeToPhotograph,
+  terraceBoxesOnPage,
   cadTargetAreaM2,
   decideFloorplanVizRoute,
   geometryImageFromCad,
@@ -295,9 +296,18 @@ async function visualizeWithSpend(
       if (!lockCad) {
         log.info("cad massing omitted from photoreal; segmented program does not match the sheet");
       }
+      // The sheet washed by room, from the rooms the CAD measured rather than
+      // the ones a model read off the page: the reference that made the raster
+      // route faithful, which this route never had.
+      const tintedCad = await buildTintedPlanJpeg(
+        { base64: prepared.base64, mimeType: prepared.mimeType },
+        cadResult.layout,
+        { terraces: cadResult.terraceBoxes },
+      );
       try {
         const photoreal = await runWithFloorplanSpend(cadResult.spend, () =>
           generateFloorplanVisuals(layout, prepared.base64, prepared.mimeType, {
+            tintedPlan: tintedCad ?? undefined,
             photo,
             styleKit,
             scope: "overview",
@@ -503,6 +513,8 @@ type CadOverviewAttempt =
       measured: FloorplanGeometryPayload;
       /** Terraces the plate draws — kept apart from the rooms the segmenter names. */
       measuredTerraces?: number;
+      /** Those terraces as boxes on the page, for the washed drawing. */
+      terraceBoxes?: TerraceBox[];
       /** Doors and windows the sheet marks, in page fractions. */
       openings?: PlacedOpening[];
     }
@@ -754,6 +766,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       rooms: rendered.rooms,
       measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
       measuredTerraces: rendered.flat.terraces.length,
+      terraceBoxes: pageSize ? terraceBoxesOnPage(rendered.flat.terraces, pageSize) : undefined,
       openings,
     };
   } catch (err: unknown) {
