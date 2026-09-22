@@ -159,13 +159,11 @@ export function placementFailureText(mismatch: PlacementMismatch): string {
   return `room moved: the ${where(mismatch.room.box)} of the flat should be ${EXPECTED_WORD[mismatch.room.expected]}, the still shows ${mismatch.found}`;
 }
 
-/** One vision call. Null when there is nothing to check or no model answered. */
-export async function checkRoomPlacement(
+/** One look. Null when no model answered; otherwise the rooms it says moved. */
+async function askPlacement(
   still: { base64: string; mimeType: string },
-  layout: FloorplanLayout,
-): Promise<string[] | null> {
-  const rooms = expectedRoomPlacements(layout);
-  if (rooms.length < 2) return null;
+  rooms: ExpectedRoom[],
+): Promise<PlacementMismatch[] | null> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -184,8 +182,7 @@ export async function checkRoomPlacement(
         generationConfig: deterministicGenerationConfig({ responseMimeType: "application/json" }),
       });
       recordAiUsage(modelId, usageFromGemini(result));
-      const answer = parseModelJsonText(result.response.text());
-      return gradePlacement(rooms, answer).map(placementFailureText);
+      return gradePlacement(rooms, parseModelJsonText(result.response.text()));
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
       log.warn("placement audit failed; the still is graded without it", {
@@ -195,4 +192,43 @@ export async function checkRoomPlacement(
     }
   }
   return null;
+}
+
+/**
+ * Where each room landed, asked twice.
+ *
+ * A moved room is a hard failure: it blocks the still and sends the loop back
+ * for another frame. That makes a wrong verdict expensive, and a single look
+ * does produce them — a measured box that runs a little tall reaches into the
+ * living room, and the auditor, asked what is in the middle of it, answers
+ * honestly. The second look asks again about those regions alone, and only a
+ * room both looks call moved is reported. The extra call is a fraction of a
+ * cent against the image it would otherwise throw away.
+ *
+ * Null when there is nothing to check or no model answered.
+ */
+export async function checkRoomPlacement(
+  still: { base64: string; mimeType: string },
+  layout: FloorplanLayout,
+): Promise<string[] | null> {
+  const rooms = expectedRoomPlacements(layout);
+  if (rooms.length < 2) return null;
+  const first = await askPlacement(still, rooms);
+  if (first == null) return null;
+  if (first.length === 0) return [];
+
+  const again = await askPlacement(
+    still,
+    first.map((row) => row.room),
+  );
+  // No second answer is not a reason to drop a verdict we already have.
+  if (again == null) return first.map(placementFailureText);
+  const confirmed = new Set(again.map((row) => row.room.id));
+  const kept = first.filter((row) => confirmed.has(row.room.id));
+  if (kept.length < first.length) {
+    log.info("placement verdicts the second look did not repeat", {
+      dropped: first.filter((row) => !confirmed.has(row.room.id)).map(placementFailureText),
+    });
+  }
+  return kept.map(placementFailureText);
 }
