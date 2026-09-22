@@ -41,6 +41,7 @@ import {
 
 const log = createLogger("floorplan-viz-generate");
 import type { WallHintKind } from "@/lib/projects/viz-generate/prompts";
+import { checkRoomPlacement } from "@/lib/projects/floorplan-viz-placement";
 
 export async function buildWallHint(
   base64: string,
@@ -201,6 +202,9 @@ ${ONE_FRAME}`;
 }
 
 
+/** A moved room weighs as a hard failure does; see gradeFloorplanStill. */
+const PLACEMENT_WEIGHT = 10;
+
 export async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -249,9 +253,16 @@ Fix exactly these and keep everything the audit did not complain about.`
     const audit = await auditStill(img, ctx.plan, ctx.haredi);
     if (!audit) return img; // No auditor available — ship what we have rather than stall.
 
-    const { failures, hardFailures, score } = gradeFloorplanStill(audit, ctx.layout, {
+    const graded = gradeFloorplanStill(audit, ctx.layout, {
       haredi: ctx.haredi,
     });
+    // A still can pass every count with its rooms in the wrong places; the
+    // overview is where that is judged, and a moved room is as bad as a lost
+    // one — so it is a hard failure, and the next attempt is told where.
+    const moved = job.viewId === "overview" ? ((await checkRoomPlacement(img, ctx.layout)) ?? []) : [];
+    const failures = [...graded.failures, ...moved];
+    const hardFailures = [...graded.hardFailures, ...moved];
+    const score = graded.score + moved.length * PLACEMENT_WEIGHT;
     if (failures.length === 0) {
       log.info("still passed audit", { view: job.labelHe, attempt });
       const issues = await collectShipIssues(img, ctx, job.labelHe);

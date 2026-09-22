@@ -18,6 +18,7 @@ import {
   mergeClaudeModestyIntoAudit,
 } from "@/lib/projects/floorplan-viz-modesty-claude";
 import { isAnthropicConfigured } from "@/lib/ai-providers";
+import { checkRoomPlacement } from "@/lib/projects/floorplan-viz-placement";
 
 const log = createLogger("floorplan-viz-generate");
 
@@ -87,9 +88,13 @@ export async function collectShipIssues(
   ctx: { layout: FloorplanLayout; plan: { base64: string; mimeType: string }; haredi: boolean },
   view: string,
 ): Promise<string[]> {
-  const scored = await gradeStillForShip(still, ctx);
-  if (!scored) return [];
-  const hard = blockingHardFailures(scored.grade.hardFailures, scored.gemini);
+  const [scored, moved] = await Promise.all([
+    gradeStillForShip(still, ctx),
+    // Where each room is, which the counts above cannot see.
+    checkRoomPlacement(still, ctx.layout),
+  ]);
+  if (!scored) return moved ?? [];
+  const hard = [...blockingHardFailures(scored.grade.hardFailures, scored.gemini), ...(moved ?? [])];
   if (hard.length === 0) return [];
   log.warn("shipping photoreal with residual audit issues", { view, failures: hard });
   return hard;

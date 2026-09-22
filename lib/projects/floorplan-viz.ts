@@ -289,7 +289,9 @@ async function visualizeWithSpend(
     let images: FloorplanVizImage[] = [];
     const enginesUsed = [...extracted.enginesUsed, "geometry-cad"];
     if (!alreadyHasOverview) {
-      const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth);
+      const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth, {
+        terraces: cadResult.measuredTerraces,
+      });
       if (!lockCad) {
         log.info("cad massing omitted from photoreal; segmented program does not match the sheet");
       }
@@ -499,6 +501,8 @@ type CadOverviewAttempt =
       rooms: SegmentedRoom[];
       /** The same flat as a structure, for the viewer rather than for a picture. */
       measured: FloorplanGeometryPayload;
+      /** Terraces the plate draws — kept apart from the rooms the segmenter names. */
+      measuredTerraces?: number;
       /** Doors and windows the sheet marks, in page fractions. */
       openings?: PlacedOpening[];
     }
@@ -749,6 +753,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       spend: rendered.spend,
       rooms: rendered.rooms,
       measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
+      measuredTerraces: rendered.flat.terraces.length,
       openings,
     };
   } catch (err: unknown) {
