@@ -155,6 +155,23 @@ export function unpackFloorplanVizStillMeta(raw: string | null | undefined): {
 
 /** Hebrew one-liner for a residual audit hard-failure (UI summary). */
 export function hebrewFloorplanAuditIssue(failure: string): string {
+  const moved = /^room moved: the (\w+) (\w+) of the flat should be (.+), the still shows (\w+)/i.exec(failure.trim());
+  if (moved) {
+    const part: Record<string, string> = {
+      "upper left": "בצד העליון-שמאלי של", "upper centre": "בחלק העליון של", "upper right": "בצד העליון-ימני של",
+      "middle left": "בצד השמאלי של", "middle centre": "במרכז", "middle right": "בצד הימני של",
+      "lower left": "בצד התחתון-שמאלי של", "lower centre": "בחלק התחתון של", "lower right": "בצד התחתון-ימני של",
+    };
+    const want: Record<string, string> = {
+      "a bedroom": "חדר שינה", "the living/kitchen space": "מגורים/מטבח", "a bathroom": "חדר רחצה", "a balcony": "מרפסת",
+    };
+    const seen: Record<string, string> = {
+      bedroom: "חדר שינה", living: "סלון", kitchen: "מטבח", dining: "פינת אוכל", bathroom: "חדר רחצה",
+      balcony: "מרפסת", laundry: "חדר כביסה", entrance: "כניסה",
+    };
+    const at = part[`${moved[1]} ${moved[2]}`] ?? "באחד האזורים של";
+    return `חדר זז: ${at} הדירה אמור להיות ${want[moved[3]!] ?? moved[3]}, ובהדמיה ${seen[moved[4]!.toLowerCase()] ?? moved[4]}`;
+  }
   // Numbers, not a paraphrase: "a bedroom is missing" is the whole verdict.
   const bedrooms = /^bedrooms (\d+), plan has (\d+)/i.exec(failure.trim());
   if (bedrooms) return `בהדמיה ${bedrooms[1]} חדרי שינה, בתוכנית ${bedrooms[2]}`;

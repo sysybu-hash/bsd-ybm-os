@@ -27,6 +27,7 @@ const STRUCTURAL: RegExp[] = [
   /bedroom\(s\) left without a bed/i,
   /footprint does not match the plan outline/i,
   /CAD block massing shipped/i,
+  /^room moved: /i,
 ];
 
 export function isStructuralAuditFailure(issue: string): boolean {

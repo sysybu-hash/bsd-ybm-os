@@ -97,6 +97,7 @@ export function cadTargetAreaM2(
 export function cadMassingSafeToPhotograph(
   cad: FloorplanLayout,
   truth?: PrintedUnitTruth,
+  measured?: { terraces?: number },
 ): boolean {
   const known = truth;
   if (!known) return true;
@@ -105,9 +106,28 @@ export function cadMassingSafeToPhotograph(
   const rooms = cad.rooms.filter((room) => !isBuildingCoreRoom(room));
   const count = (kind: "bedroom" | "bathroom" | "balcony") =>
     rooms.filter((room) => kindOf(room) === kind).length;
-  if (count("bedroom") !== known.bedrooms) return false;
-  if (count("bathroom") !== known.bathrooms) return false;
-  if (count("balcony") !== floorPlateTerraces(known).length) return false;
+
+  // A shelter room with a bed in it is a bedroom, and the sheet counts it as
+  // one: דירה 14's fourth bedroom is its ממ"ד. Counting only "bedroom" made
+  // the plate read three of four and withheld it — and the image model,
+  // handed the bare sheet instead, moved the kitchen and lost a bedroom.
+  const sleeping =
+    count("bedroom") +
+    rooms.filter((room) => kindOf(room) === "mmd" && (room.bedCount ?? 0) > 0).length;
+  if (sleeping !== known.bedrooms) return false;
+
+  // What this guards against is a plate that dropped the bath altogether, or
+  // grew one. A small WC the segmenter folded into the corridor is not that:
+  // its fixtures are still drawn on the plate, and the model sees them.
+  const baths = count("bathroom");
+  if (known.bathrooms > 0 && baths === 0) return false;
+  if (baths > known.bathrooms) return false;
+
+  // The original case: a roof stair measured as a terrace. A plate with more
+  // terraces than the sheet prints copies that; one with fewer is caught
+  // downstream, as a structural finding on the still.
+  const terraces = count("balcony") + (measured?.terraces ?? 0);
+  if (terraces > floorPlateTerraces(known).length) return false;
   return true;
 }
 
