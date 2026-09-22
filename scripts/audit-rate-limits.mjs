@@ -41,6 +41,9 @@ const PUBLIC_ALLOWLIST = [
   // throttle: rate-limiting it would add a Redis round trip per request to serve
   // a cacheable static document.
   "app/api/app-builder/preview/route.ts",
+  // 3D render spike — temporary, and gated by CRON_SECRET: a caller without the
+  // secret never reaches the work, so there is nothing an IP throttle adds.
+  "app/api/projects/visualize-floorplan/render3d-spike/route.ts",
 ];
 
 /**
