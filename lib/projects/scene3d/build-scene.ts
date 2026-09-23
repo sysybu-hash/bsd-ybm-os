@@ -204,16 +204,47 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const terraceRects = input.terraceRects;
   const floorRects = input.floorRects;
 
-  // The extent covers everything the scene will draw: the measured bounds, the
-  // walls (which on a sheet that carries two flats can run past them), the
-  // floor and every terrace. A camera is framed from this, so a wall outside
-  // it would be a wall outside the photograph.
+  // The apartment's own ground: what it is measured to stand on.
+  const printed = { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height };
+  // The floor the segmenter walked, and the terraces — not the printed box.
+  // The box is the flat's bounding rectangle, and a neighbour's wall running
+  // along its edge sits inside it: on דירה 14 that is how a two-storey slab
+  // belonging to the flat next door stayed in the frame.
+  const walked = [...floorRects, ...terraceRects.flat()];
+  const ground = walked.length > 0 ? walked : [printed];
+
+  /**
+   * Walls that belong to this apartment.
+   *
+   * A sales sheet carries the neighbours too, and the measurement returns
+   * their walls along with ours. Drawn, they are a slab standing in the
+   * background of the still; worse, they stretch the extent the camera is
+   * framed on, and the flat comes out small in the middle of an empty frame —
+   * which is exactly what דירה 14 looked like. A wall that touches nothing we
+   * measured as floor is not ours.
+   */
+  const reach = 0.35 * upm;
+  const touchesGround = (rect: Rect, margin: number): boolean =>
+    ground.some(
+      (g) =>
+        rect.x - margin < g.x + g.w &&
+        rect.x + rect.w + margin > g.x &&
+        rect.y - margin < g.y + g.h &&
+        rect.y + rect.h + margin > g.y,
+    );
+  const bodies = input.bodies.filter((body) => touchesGround(bandToRect(body), reach));
+  // A piece of furniture standing on no floor we measured is the neighbour's
+  // too, and it stretched the frame the same way.
+  const furniture = input.furniture.filter((piece) =>
+    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, 0),
+  );
+
   const spanned = rectsBounds([
-    { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height },
-    ...input.bodies.map(bandToRect),
+    printed,
+    ...bodies.map(bandToRect),
     ...floorRects,
     ...terraceRects.flat(),
-  ]) ?? { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height };
+  ]) ?? printed;
   const p: Projection = { upm, cx: spanned.x + spanned.w / 2, cy: spanned.y + spanned.h / 2 };
 
   const meshes: SceneBox[] = [];
@@ -254,7 +285,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // --- walls, with their heads and sills, and a skirting where a wall meets
   // a room that is not a wet one. The skirting is the cheapest detail in the
   // engine and the one that does most for reading as a photograph.
-  flat.bodies.forEach((body, index) => {
+  bodies.forEach((body, index) => {
     for (const band of wallBands(body, holes, wallHeightM)) {
       const rect = bandRect(body, band);
       const source = band.openingId ? `${band.openingId}/${band.role}` : `wall:${index}`;
@@ -377,7 +408,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     for (const rect of rects) {
       meshes.push(boxFrom(p, rect, -TERRACE_DROP_M - FLOOR_T_M, -TERRACE_DROP_M, "terrace", "floorStone", id));
     }
-    const wallRects = flat.bodies.map(bandToRect);
+    const wallRects = bodies.map(bandToRect);
     for (const edge of outlineEdges(rects)) {
       const rect: Rect =
         edge.orientation === "h"
@@ -394,12 +425,12 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   // --- furniture: each measured block, built as the thing it was measured to
   // be, facing the way the measured geometry around it decides.
-  const wallRectsAll = input.bodies.map(bandToRect);
-  const anchorRects = input.furniture
+  const wallRectsAll = bodies.map(bandToRect);
+  const anchorRects = furniture
     .filter((piece) => piece.kind === "counter" || piece.kind === "table")
     .map((piece) => ({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }));
 
-  input.furniture.forEach((piece, index) => {
+  furniture.forEach((piece, index) => {
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
     const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     const host = roomAt(rectCentre(box), roomRects);
