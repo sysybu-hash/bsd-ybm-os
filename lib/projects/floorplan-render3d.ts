@@ -1,4 +1,5 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
+import { FURNITURE_HEIGHTS_M } from "@/lib/projects/floorplan-furniture-heights";
 import {
   bodyRect,
   openingRect,
@@ -115,30 +116,6 @@ export const PIECE_COLOURS: Record<string, { top: string; face: string }> = {
   // reads as floor.
   seat: { top: "#e6dccb", face: "#c6b9a4" },
   unknown: { top: "#cbb79c", face: "#a8917a" },
-};
-/**
- * How tall each kind of piece stands, in metres.
- *
- * Shared with the deterministic 3D engine (lib/projects/scene3d): the oblique
- * plate and the render must agree, or a plate that passes its fidelity check
- * describes a flat the render does not draw. One table, imported by both.
- */
-export const FURNITURE_HEIGHTS_M: Record<string, number> = {
-  bed: 0.5,
-  desk: 0.74,
-  storage: 2.0,
-  counter: 0.9,
-  fixture: 0.55,
-  hob: 0.92,
-  sink: 0.9,
-  table: 0.75,
-  // A seat, not a seat back. At 0.85 a chair stood as tall as a worktop at
-  // 0.9, and the model read the blocks as what they matched: the island's
-  // four stools came out as a length of counter and the living-room suite as
-  // a wall. Half a metre is what you sit on, and nothing else in the flat is
-  // that low.
-  seat: 0.45,
-  unknown: 0.5,
 };
 
 function quad(

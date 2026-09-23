@@ -1,4 +1,4 @@
-import { FURNITURE_HEIGHTS_M } from "@/lib/projects/floorplan-render3d";
+import { FURNITURE_HEIGHTS_M } from "@/lib/projects/floorplan-furniture-heights";
 
 /**
  * Every number in the 3D engine that the drawing does not state.
