@@ -851,6 +851,7 @@
       "originGenerate": "פענוח",
       "originEdit": "עריכה",
       "originCad": "גיאומטריה",
+      "originRender3d": "מדוד",
       "styles": {
         "contemporary": { "title": "עכשווי ישראלי", "blurb": "פרקט בהיר, אור טבעי" },
         "luxury": { "title": "פרמיום", "blurb": "שיש, מטבח גבוה, תאורת נסתרת" },
