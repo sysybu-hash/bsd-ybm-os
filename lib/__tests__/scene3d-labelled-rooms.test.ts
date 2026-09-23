@@ -85,3 +85,25 @@ describe("rooms the sheet names", () => {
     expect(area).toBe(partial.floorRects.reduce((sum, r) => sum + r.w * r.h, 0));
   });
 });
+
+describe("floor too narrow to walk on", () => {
+  it("drops an unclaimed strip a hand's width wide, and keeps real unclaimed floor", () => {
+    // דירה 14: the sheet's grid made a channel the floor flood ran down — 13 m
+    // long, a few tens of centimetres wide — standing off the flat as a plank.
+    const withStrip = input();
+    withStrip.rooms = [];
+    withStrip.labelledRooms = [];
+    withStrip.floorRects = [
+      { x: 10, y: 10, w: 280, h: 380 },
+      // 30 cm wide, 10 m long: a channel between two lines, not floor.
+      { x: 700, y: 0, w: 30, h: 1000 },
+      // 90 cm wide: a real piece of floor nobody claimed, which stays.
+      { x: 900, y: 0, w: 90, h: 300 },
+    ];
+    const scene = buildScene(withStrip);
+    const floors = scene.meshes.filter((m) => m.kind === "floor");
+    const widths = floors.map((m) => Math.min(m.size.x, m.size.z));
+    expect(widths.some((w) => w < 0.5)).toBe(false);
+    expect(widths.some((w) => Math.abs(w - 0.9) < 1e-6)).toBe(true);
+  });
+});
