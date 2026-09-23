@@ -45,7 +45,10 @@ describe("a stored run, as a scene", () => {
   it("keeps the rooms and the furniture it was given", () => {
     const scene = buildSceneFromPayload(payload());
     expect(scene.rooms.map((r) => r.kind)).toEqual(["bedroom", "living"]);
-    expect(scene.meshes.filter((m) => m.kind === "furniture")).toHaveLength(1);
+    // One measured block, built as a bed: base, mattress, headboard, pillow.
+    const parts = scene.meshes.filter((m) => m.kind === "furniture");
+    expect(parts.length).toBeGreaterThan(1);
+    expect(new Set(parts.map((m) => m.sourceId.split("/")[0]))).toEqual(new Set(["furniture:0"]));
   });
 });
 
@@ -65,8 +68,8 @@ describe("the cutaway", () => {
   it("cuts the building and leaves the furniture whole", () => {
     const scene = buildSceneFromPayload(payload());
     const cut = meshesForView(scene, CUTAWAY_OVERVIEW_M);
-    const wardrobeHigh = cut.filter((m) => m.kind === "furniture");
-    expect(wardrobeHigh).toHaveLength(1);
+    const whole = scene.meshes.filter((m) => m.kind === "furniture").length;
+    expect(cut.filter((m) => m.kind === "furniture")).toHaveLength(whole);
     expect(cut.filter((m) => m.kind === "wall").every((m) => m.centre.y + m.size.y / 2 <= CUTAWAY_OVERVIEW_M + 1e-9)).toBe(true);
     // Nothing is cut when no cutaway is asked for.
     expect(meshesForView(scene)).toHaveLength(scene.meshes.length);
