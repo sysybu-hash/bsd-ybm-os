@@ -3,6 +3,10 @@ import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import { mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
 import {
   DEFAULT_FURNITURE_HEIGHT_M,
+  FRAME_INSET_M,
+  FRAME_T_M,
+  SKIRTING_H_M,
+  SKIRTING_PROUD_M,
   FLOOR_T_M,
   FURNITURE_HEIGHT_M,
   GLASS_T_M,
@@ -247,7 +251,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     }
   });
 
-  // --- walls, with their heads and sills.
+  // --- walls, with their heads and sills, and a skirting where a wall meets
+  // a room that is not a wet one. The skirting is the cheapest detail in the
+  // engine and the one that does most for reading as a photograph.
   flat.bodies.forEach((body, index) => {
     for (const band of wallBands(body, holes, wallHeightM)) {
       const rect = bandRect(body, band);
@@ -263,6 +269,74 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
           source,
         ),
       );
+      if (band.role !== "wall") continue;
+
+      // Both faces of the band: whichever of them opens onto a dry room gets
+      // a skirting along it.
+      const proud = SKIRTING_PROUD_M * upm;
+      const reach = 0.06 * upm;
+      for (const side of [-1, 1] as const) {
+        const probe =
+          body.orientation === "h"
+            ? { x: (rect.x + rect.x + rect.w) / 2, y: body.centre + side * (body.thickness / 2 + reach) }
+            : { x: body.centre + side * (body.thickness / 2 + reach), y: (rect.y + rect.y + rect.h) / 2 };
+        const room = roomRects.find((entry) => pointInRects(probe, entry.rects));
+        const kind = (room?.room.kind ?? "") as SceneRoomKind;
+        if (!room || isWetRoom(kind) || kind === "balcony") continue;
+        const strip: Rect =
+          body.orientation === "h"
+            ? {
+                x: rect.x,
+                y: body.centre + side * (body.thickness / 2) - (side < 0 ? proud : 0),
+                w: rect.w,
+                h: proud,
+              }
+            : {
+                x: body.centre + side * (body.thickness / 2) - (side < 0 ? proud : 0),
+                y: rect.y,
+                w: proud,
+                h: rect.h,
+              };
+        meshes.push(
+          boxFrom(p, strip, 0, SKIRTING_H_M, "skirting", "skirting", `${source}/skirting`),
+        );
+      }
+    }
+  });
+
+  // --- the frame around each opening, set into the hole so an opening reads
+  // as a made thing rather than as a subtraction.
+  flat.openings.forEach((opening, index) => {
+    const id = `opening:${index}`;
+    const hole = holes.find((h) => h.id === id);
+    if (!hole) return;
+    const rect = bandToRect(opening);
+    const inset = FRAME_INSET_M * upm;
+    const jamb = FRAME_T_M * upm;
+    const along = opening.orientation === "h" ? rect.w : rect.h;
+    if (along <= jamb * 2.2) return;
+    const frames: Array<{ rect: Rect; y0: number; y1: number }> = [];
+    if (opening.orientation === "h") {
+      frames.push(
+        { rect: { x: rect.x, y: rect.y + inset, w: jamb, h: rect.h - inset * 2 }, y0: hole.sillM, y1: hole.headM },
+        {
+          rect: { x: rect.x + rect.w - jamb, y: rect.y + inset, w: jamb, h: rect.h - inset * 2 },
+          y0: hole.sillM,
+          y1: hole.headM,
+        },
+      );
+    } else {
+      frames.push(
+        { rect: { x: rect.x + inset, y: rect.y, w: rect.w - inset * 2, h: jamb }, y0: hole.sillM, y1: hole.headM },
+        {
+          rect: { x: rect.x + inset, y: rect.y + rect.h - jamb, w: rect.w - inset * 2, h: jamb },
+          y0: hole.sillM,
+          y1: hole.headM,
+        },
+      );
+    }
+    for (const frame of frames) {
+      meshes.push(boxFrom(p, frame.rect, frame.y0, frame.y1, "frame", "joinery", `${id}/frame`));
     }
   });
 
