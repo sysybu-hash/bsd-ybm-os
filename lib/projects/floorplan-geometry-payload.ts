@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import { mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
  * The measured flat, in the smallest shape a viewer needs.
@@ -28,11 +29,24 @@ const boundsSchema = z.object({
   height: z.number(),
 });
 
+/**
+ * A region, as rectangles: [x, y, w, h] each.
+ *
+ * The measurement holds every region as scan rows — a y and the runs of x it
+ * covers — which at a pitch of two units over a sheet a thousand units tall is
+ * hundreds of rows per room, and megabytes in Postgres. Merged into
+ * rectangles it is a few dozen numbers per room and exactly the same region.
+ */
+const rectsSchema = z.array(z.tuple([z.number(), z.number(), z.number(), z.number()])).max(4000);
+
 export const floorplanGeometrySchema = z.object({
   unitsPerMetre: z.number().positive(),
   bounds: boundsSchema,
   walls: z.array(bandSchema).max(4000),
-  openings: z.array(bandSchema).max(2000),
+  openings: z.array(bandSchema.extend({ kind: z.string().max(20).optional() })).max(2000),
+  /** v2: the walkable region, and each terrace. Absent on a run saved before. */
+  floor: rectsSchema.optional(),
+  terraces: z.array(rectsSchema).max(40).optional(),
   furniture: z
     .array(
       z.object({
@@ -53,12 +67,19 @@ export const floorplanGeometrySchema = z.object({
         kind: z.string().max(40),
         areaM2: z.number(),
         bounds: boundsSchema,
+        /** v2: the room's own region, and the beds the segmenter counted. */
+        rects: rectsSchema.optional(),
+        bedCount: z.number().optional(),
       }),
     )
     .max(200),
 });
 
 export type FloorplanGeometryPayload = z.infer<typeof floorplanGeometrySchema>;
+
+function toRects(rects: Rect[]): Array<[number, number, number, number]> {
+  return rects.map((r) => [r.x, r.y, r.w, r.h]);
+}
 
 export function floorplanGeometryPayload(
   flat: BuiltFlat,
@@ -80,6 +101,10 @@ export function floorplanGeometryPayload(
       thickness: opening.thickness,
       from: opening.from,
       to: opening.to,
+      // Measured: a drawn swing is a door, a gap in an outer wall a window.
+      // Dropping it made the viewer guess, and a guess is what this engine
+      // exists to be rid of.
+      kind: opening.kind,
     })),
     furniture: flat.furniture.map((piece) => ({
       x: piece.x,
@@ -90,11 +115,15 @@ export function floorplanGeometryPayload(
       widthCm: piece.widthCm,
       depthCm: piece.depthCm,
     })),
+    floor: toRects(mergeSpanRows(flat.floor)),
+    terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(rows))),
     rooms: rooms.map((room) => ({
       name: room.name,
       kind: room.kind,
       areaM2: room.areaM2,
       bounds: room.bounds,
+      rects: toRects(mergeSpanRows(room.rows)),
+      bedCount: room.bedCount,
     })),
   };
 }

@@ -1,6 +1,3 @@
-import type { BuiltFlat } from "@/lib/projects/floorplan-build";
-import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import type { SpanRow } from "@/lib/projects/floorplan-solid";
 import { buildFlatScene } from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
 import { mergeSpanRows, outlineEdges } from "@/lib/projects/scene3d/floors";
@@ -12,73 +9,15 @@ import {
   WINDOW_SILL_WET_M,
 } from "@/lib/projects/scene3d/standards";
 import type { SceneBox } from "@/lib/projects/scene3d/types";
-
-/**
- * A flat measured in centimetres: 6.00 by 4.00, split by a partition with a
- * door in it, one window in the top wall, one bed in the left room.
- *
- * Everything here stands in for a measurement. Nothing in the scene builder is
- * allowed to add to it, and these tests are how that is held to.
- */
-
-const UPM = 100;
-const PITCH = 10;
-
-function rows(x0: number, x1: number, y0: number, y1: number): SpanRow[] {
-  const out: SpanRow[] = [];
-  for (let y = y0; y < y1; y += PITCH) out.push({ y, spans: [[x0, x1]] });
-  return out;
-}
-
-const LEFT = rows(10, 296, 10, 390);
-const RIGHT = rows(304, 590, 10, 390);
-
-function room(name: string, kind: SegmentedRoom["kind"], span: SpanRow[], areaM2: number): SegmentedRoom {
-  const xs = span.flatMap((r) => r.spans.flat());
-  const ys = span.map((r) => r.y);
-  const x = Math.min(...xs);
-  const y = Math.min(...ys);
-  return {
-    rows: span,
-    bounds: { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) + PITCH - y },
-    areaM2,
-    kind,
-    name,
-    bedCount: kind === "bedroom" ? 1 : 0,
-    contents: [],
-  };
-}
-
-function flat(overrides?: Partial<BuiltFlat>): BuiltFlat {
-  return {
-    unitsPerMetre: UPM,
-    bodies: [
-      { orientation: "h", centre: 5, thickness: 10, from: 0, to: 600 },
-      { orientation: "h", centre: 395, thickness: 10, from: 0, to: 600 },
-      { orientation: "v", centre: 5, thickness: 10, from: 0, to: 400 },
-      { orientation: "v", centre: 595, thickness: 10, from: 0, to: 400 },
-      { orientation: "v", centre: 300, thickness: 8, from: 0, to: 400 },
-    ],
-    floor: [...LEFT, ...RIGHT],
-    furniture: [{ x: 40, y: 40, w: 90, h: 200, kind: "bed", widthCm: 90, depthCm: 200 }],
-    openings: [
-      { orientation: "v", centre: 300, thickness: 8, from: 150, to: 240, kind: "door" },
-      { orientation: "h", centre: 5, thickness: 10, from: 200, to: 380, kind: "window" },
-    ],
-    terraces: [],
-    printedTerraceCount: 0,
-    bounds: { x: 0, y: 0, width: 600, height: 400 },
-    floorM2: 22.9,
-    areaError: 0,
-    svg: "",
-    ...overrides,
-  } as BuiltFlat;
-}
-
-const ROOMS = [
-  room("ח.שינה", "bedroom", LEFT, 11.4),
-  room("ח.מגורים", "living", RIGHT, 11.4),
-];
+import {
+  FIXTURE_ROOMS as ROOMS,
+  FIXTURE_UPM as UPM,
+  LEFT_ROWS as LEFT,
+  RIGHT_ROWS as RIGHT,
+  fixtureFlat as flat,
+  fixtureRoom as room,
+  fixtureRows as rows,
+} from "@/lib/__fixtures__/scene3d-flat";
 
 function volume(mesh: SceneBox): number {
   return mesh.size.x * mesh.size.y * mesh.size.z;

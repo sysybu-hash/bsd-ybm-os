@@ -39,24 +39,39 @@ function looksExterior(
     : Math.abs(band.centre - bounds.x) <= reach || Math.abs(band.centre - (bounds.x + bounds.width)) <= reach;
 }
 
+function fromRects(rects: Array<[number, number, number, number]> | undefined): Rect[] | null {
+  if (!rects) return null;
+  return rects.map(([x, y, w, h]) => ({ x, y, w, h }));
+}
+
 export function sceneInputFromPayload(payload: FloorplanGeometryPayload): SceneInput {
   const rooms = payload.rooms.map((room) => ({
     name: room.name,
     kind: room.kind,
     areaM2: room.areaM2,
-    rects: [{ x: room.bounds.x, y: room.bounds.y, w: room.bounds.width, h: room.bounds.height }],
+    // The measured region where the run carries one; its bounding box where
+    // the run predates that, which is a square-cornered version of the same
+    // flat rather than a different one.
+    rects:
+      fromRects(room.rects) ??
+      [{ x: room.bounds.x, y: room.bounds.y, w: room.bounds.width, h: room.bounds.height }],
   }));
+  const floorRects = fromRects(payload.floor) ?? rooms.flatMap((room) => room.rects);
   return {
     unitsPerMetre: payload.unitsPerMetre,
     bounds: payload.bounds,
     bodies: payload.walls,
     openings: payload.openings.map((band) => ({
       ...band,
-      kind: looksExterior(band, payload.bounds, payload.unitsPerMetre) ? ("window" as const) : ("door" as const),
+      kind:
+        band.kind === "door" || band.kind === "window" || band.kind === "opening"
+          ? band.kind
+          : looksExterior(band, payload.bounds, payload.unitsPerMetre)
+            ? ("window" as const)
+            : ("door" as const),
     })),
-    // Without the walked region, the rooms themselves are the floor.
-    floorRects: rooms.flatMap((room) => room.rects),
-    terraceRects: [],
+    floorRects,
+    terraceRects: (payload.terraces ?? []).map((rects) => fromRects(rects) ?? []),
     furniture: payload.furniture,
     rooms,
   };
