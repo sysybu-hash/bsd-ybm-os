@@ -22,6 +22,8 @@ import type {
   SceneRoomKind,
 } from "@/lib/projects/scene3d/types";
 import { partsFor } from "@/lib/projects/scene3d/furniture";
+import { rulesFor, type AudienceRules } from "@/lib/projects/scene3d/rules";
+import { mezuzot, stageScene } from "@/lib/projects/scene3d/staging";
 import { openingHeights } from "@/lib/projects/scene3d/openings";
 import { facingFor, headFacing } from "@/lib/projects/scene3d/orientation";
 import { bandRect, wallBands, type Band, type WallHole } from "@/lib/projects/scene3d/walls";
@@ -134,6 +136,8 @@ export type BuildSceneOptions = {
    * not a liberty.
    */
   haredi?: boolean;
+  /** The full rule set, where the caller has the style kit in hand. */
+  rules?: AudienceRules;
 };
 
 /**
@@ -196,10 +200,14 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const terraceRects = input.terraceRects;
   const floorRects = input.floorRects;
 
-  // The extent covers the flat and anything it is measured to stand on: a
-  // terrace outside the wall line is part of the apartment being sold.
+  // The extent covers everything the scene will draw: the measured bounds, the
+  // walls (which on a sheet that carries two flats can run past them), the
+  // floor and every terrace. A camera is framed from this, so a wall outside
+  // it would be a wall outside the photograph.
   const spanned = rectsBounds([
     { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height },
+    ...input.bodies.map(bandToRect),
+    ...floorRects,
     ...terraceRects.flat(),
   ]) ?? { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height };
   const p: Projection = { upm, cx: spanned.x + spanned.w / 2, cy: spanned.y + spanned.h / 2 };
@@ -338,7 +346,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       dM: box.h / upm,
       hM: height,
       facing,
-      haredi: options?.haredi,
+      haredi: options?.rules?.singleBeds ?? options?.haredi,
     })) {
       meshes.push({
         kind: "furniture",
@@ -351,7 +359,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   const extentCorner = project(p, spanned.x, spanned.y);
-  return {
+  const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
     extent: {
@@ -363,7 +371,16 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     meshes,
     rooms: sceneRooms,
     openings,
+    lights: [],
   };
+
+  // --- staging: props and lamps, each one resting on something measured.
+  const rules = options?.rules ?? rulesFor(options?.haredi ? "haredi" : "general");
+  const staged = stageScene(scene, rules);
+  scene.meshes.push(...staged.props);
+  if (rules.mezuzah) scene.meshes.push(...mezuzot(scene));
+  scene.lights.push(...staged.lights);
+  return scene;
 }
 
 /** Glazing sits in the middle of the wall, not across its whole thickness. */

@@ -1,5 +1,8 @@
 import type * as ThreeNS from "three";
 
+import type { CameraRig } from "@/lib/projects/scene3d/cameras";
+import { sunDirection, type MaterialSpec, type SceneStyle } from "@/lib/projects/scene3d/style";
+import type { QualityProfile } from "@/lib/projects/scene3d/quality";
 import type { FlatScene, MaterialId, SceneBox, SceneMeshKind } from "@/lib/projects/scene3d/types";
 
 /**
@@ -17,8 +20,6 @@ import type { FlatScene, MaterialId, SceneBox, SceneMeshKind } from "@/lib/proje
  */
 
 type THREE = typeof ThreeNS;
-
-export type MaterialSpec = { color: number; roughness: number; metalness: number; opacity?: number };
 
 /**
  * Placeholder finishes, P1.
@@ -50,6 +51,7 @@ export const DEFAULT_MATERIALS: Record<MaterialId, MaterialSpec> = {
 const NO_SHADOW = new Set(["floor", "terrace", "glazing"]);
 
 export type ThreeSceneOptions = {
+  /** The style's own finishes. Without one, the neutral table below is used. */
   materials?: Partial<Record<MaterialId, MaterialSpec>>;
   shadows?: boolean;
   /** Metres above the floor to cut the walls at. Omit for full height. */
@@ -125,6 +127,79 @@ export function buildThreeScene(
     group.add(mesh);
   }
   return group;
+}
+
+/** Kelvin to an RGB colour, warm enough to read as lamplight and no warmer. */
+export function kelvinColour(kelvin: number): number {
+  // A two-point fit over the range a home is lit in, 2500K to 4000K, which is
+  // all this needs: below it looks like candlelight and above like an office.
+  const t = Math.min(1, Math.max(0, (kelvin - 2500) / 1500));
+  const r = 255;
+  const g = Math.round(180 + 45 * t);
+  const b = Math.round(120 + 105 * t);
+  return (r << 16) | (g << 8) | b;
+}
+
+/**
+ * The lights: a sun, a sky, and every lamp the staging anchored to a piece of
+ * measured furniture. Each lamp is switched on and each one pools, which is
+ * what the brief has always asked for and what a renderer can simply do.
+ */
+export function addSceneLights(
+  THREE: THREE,
+  target: ThreeNS.Object3D,
+  scene: FlatScene,
+  style: SceneStyle,
+  quality: QualityProfile,
+): void {
+  const span = Math.max(scene.extent.width, scene.extent.depth);
+  const dir = sunDirection(style.lighting);
+  const sun = new THREE.DirectionalLight(kelvinColour(style.lighting.kelvin), style.lighting.sunIntensity);
+  sun.position.set(dir.x * span * 1.6, dir.y * span * 1.6, dir.z * span * 1.6);
+  sun.castShadow = quality.shadows;
+  if (quality.shadows) {
+    sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+    const cam = sun.shadow.camera;
+    cam.left = -span;
+    cam.right = span;
+    cam.top = span;
+    cam.bottom = -span;
+    cam.near = 0.5;
+    cam.far = span * 4;
+    sun.shadow.normalBias = 0.02;
+    cam.updateProjectionMatrix();
+  }
+  target.add(sun);
+  target.add(
+    new THREE.HemisphereLight(style.lighting.skyColor, style.lighting.groundColor, style.lighting.skyIntensity),
+  );
+
+  for (const light of scene.lights) {
+    const colour = kelvinColour(light.kelvin);
+    const point = new THREE.PointLight(colour, light.intensity * 4, span * 0.9, 2);
+    point.position.set(light.position.x, light.position.y, light.position.z);
+    point.name = light.id;
+    target.add(point);
+  }
+}
+
+/** The camera a rig describes. */
+export function cameraFromRig(THREE: THREE, rig: CameraRig, aspect: number): ThreeNS.Camera {
+  const camera =
+    rig.kind === "orthographic"
+      ? new THREE.OrthographicCamera(
+          -(rig.halfWidth ?? 10),
+          rig.halfWidth ?? 10,
+          rig.halfHeight ?? 10,
+          -(rig.halfHeight ?? 10),
+          rig.near,
+          rig.far,
+        )
+      : new THREE.PerspectiveCamera(rig.fovDeg ?? 30, aspect, rig.near, rig.far);
+  camera.position.set(rig.position.x, rig.position.y, rig.position.z);
+  camera.up.set(rig.up.x, rig.up.y, rig.up.z);
+  camera.lookAt(rig.target.x, rig.target.y, rig.target.z);
+  return camera;
 }
 
 /**

@@ -296,7 +296,7 @@ export default function FloorplanVizResults({
             {t("workspaceWidgets.floorplanViz.view3d")}
           </summary>
           <div className="mt-3">
-            <FloorplanViz3DViewer geometry={geometry} t={t} />
+            <FloorplanViz3DViewer geometry={geometry} styleKit={styleKit ?? undefined} t={t} />
           </div>
         </details>
       ) : null}
