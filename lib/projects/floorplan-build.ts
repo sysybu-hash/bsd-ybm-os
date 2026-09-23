@@ -26,6 +26,7 @@ import {
   findTerracesOnFloor,
   spansContain,
   trimToHatchAlong,
+  findHatchGaps,
   findOpenings,
   wallBodiesForSheet,
   type Opening,
@@ -197,7 +198,7 @@ export async function buildFlatFromGeometry(
     trimToHatchAlong(
       kept.filter((body) => body.source !== "plotted"),
       geometry.segments,
-      { unitsPerMetre },
+      { unitsPerMetre, floor: lock.floor },
     ),
     geometry.segments,
     unitsPerMetre,
@@ -339,10 +340,66 @@ export async function buildFlatFromGeometry(
     { extent: flatExtent },
   );
   const gaps = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
+  /**
+   * Openings from the hatch the sheet stops drawing.
+   *
+   * A door or a window is drawn by stopping a wall's hatch and carrying its
+   * faces across the gap, so no gap appears between bodies and the rules above
+   * cannot see it: דירה 14 measured six openings and not one window.
+   *
+   * Which kind of opening it is, is read from the floor on either side of it —
+   * not from the flat's bounding box, which is right only for a rectangle, and
+   * found one of דירה 14's nine envelope openings. Floor on one side only: the
+   * wall is the envelope and the break is a window. Floor on both sides: it is
+   * a doorway between two rooms.
+   *
+   * Measured on the ten reference sheets with the pipeline's own segmenter:
+   * openings 71 → 165, windows 4 → 38, rooms 58 → 59 — no sheet lost a room,
+   * and דירה 14 gained one. Doorways are sealed as barriers, so a wrong one
+   * would shred a room; the width limit and the floor on both sides are what
+   * keep them honest, and the room count is what proved it.
+   */
+  const covered = (gap: Opening) =>
+    [...swings, ...gaps].some(
+      (other) =>
+        other.orientation === gap.orientation &&
+        Math.abs(other.centre - gap.centre) <= Math.max(other.thickness, gap.thickness) &&
+        other.to > gap.from &&
+        other.from < gap.to,
+    );
+  const rowPitch = lock.floor.length > 1 ? lock.floor[1]!.y - lock.floor[0]!.y : 1;
+  const floorAt = (x: number, y: number) =>
+    lock.floor.some(
+      (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
+    );
+  const floorSides = (gap: Opening): number => {
+    const mid = (gap.from + gap.to) / 2;
+    const off = gap.thickness / 2 + unitsPerMetre * 0.25;
+    const probes =
+      gap.orientation === "h"
+        ? [
+            [mid, gap.centre - off],
+            [mid, gap.centre + off],
+          ]
+        : [
+            [gap.centre - off, mid],
+            [gap.centre + off, mid],
+          ];
+    return probes.filter(([x, y]) => floorAt(x!, y!)).length;
+  };
+  const hatchGaps = findHatchGaps(bodies, geometry.segments, unitsPerMetre).filter((gap) => !covered(gap));
+  const hatchWindows = hatchGaps.filter((gap) => floorSides(gap) === 1);
+  const hatchDoorways = hatchGaps.filter(
+    (gap) => floorSides(gap) === 2 && gap.to - gap.from <= unitsPerMetre * 1.3,
+  );
   // Which of the two found a hole is the whole door/window distinction, and
   // merging them used to throw it away. Kept now, so a still can be asked for
   // glazing where the sheet draws glazing.
-  const openings = classifyOpenings(swings, gaps, flatExtent, unitsPerMetre);
+  const openings = [
+    ...classifyOpenings(swings, [...gaps, ...hatchDoorways], flatExtent, unitsPerMetre),
+    // A break in the envelope is a window, whatever the bounding box says.
+    ...hatchWindows.map((gap) => ({ ...gap, kind: "window" as const })),
+  ];
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that

@@ -1348,6 +1348,86 @@ export type Opening = {
 };
 
 /**
+ * Openings taken from the drawing's own hatch.
+ *
+ * A wall on these sheets is two faces with hatch strokes between them, and a
+ * door or a window is drawn by stopping the hatch and leaving the faces. The
+ * gap-between-bodies rule cannot see that: the builder pairs the faces and the
+ * body runs straight through. On דירה 14 it returned six openings for a flat
+ * with nine doors and eight windows, the flood ran through what it missed, and
+ * nine rooms came back as four.
+ *
+ * So the hatch is read directly. The strokes are the diagonal ink inside the
+ * wall — dimension chains and furniture are drawn on the axes, faces run the
+ * length of the wall — and a run of the wall with no stroke in it is an
+ * opening. Only walls that are hatched in the first place are asked.
+ */
+export function findHatchGaps(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minWidthM?: number; maxWidthM?: number },
+): Opening[] {
+  if (bodies.length === 0) return [];
+  const minWidth = (options?.minWidthM ?? 0.55) * unitsPerMetre;
+  const maxWidth = (options?.maxWidthM ?? 3.2) * unitsPerMetre;
+  const step = 0.08 * unitsPerMetre;
+
+  const strokes = segments.filter((s) => {
+    const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    if (!(length > 1 && length < unitsPerMetre * 0.9)) return false;
+    const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 180;
+    return (deg > 25 && deg < 65) || (deg > 115 && deg < 155);
+  });
+  if (strokes.length === 0) return [];
+
+  const out: Opening[] = [];
+  for (const body of bodies) {
+    const half = body.thickness / 2;
+    const steps = Math.max(1, Math.ceil((body.to - body.from) / step));
+    const hatched = new Array<boolean>(steps).fill(false);
+    for (const stroke of strokes) {
+      const mx = (stroke.x1 + stroke.x2) / 2;
+      const my = (stroke.y1 + stroke.y2) / 2;
+      const across = body.orientation === "h" ? my : mx;
+      const along = body.orientation === "h" ? mx : my;
+      if (across < body.centre - half || across > body.centre + half) continue;
+      if (along < body.from || along > body.to) continue;
+      hatched[Math.min(steps - 1, Math.max(0, Math.floor((along - body.from) / step)))] = true;
+    }
+    // A wall that is barely hatched is not hatched: its blank runs say nothing.
+    if (hatched.filter(Boolean).length < steps * 0.25) continue;
+
+    let run = 0;
+    for (let i = 0; i <= steps; i++) {
+      if (i < steps && !hatched[i]) {
+        run++;
+        continue;
+      }
+      if (run > 0) {
+        const width = run * step;
+        const to = body.from + i * step;
+        // A blank run at either end of the wall is where the wall stops, not a
+        // hole in it.
+        const atStart = to - width <= body.from + step;
+        const atEnd = to >= body.to - step;
+        if (width >= minWidth && width <= maxWidth && !atStart && !atEnd) {
+          out.push({
+            orientation: body.orientation,
+            centre: body.centre,
+            thickness: body.thickness,
+            from: to - width,
+            to,
+          });
+        }
+        run = 0;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * The doorways, taken from the gaps bridging already has to find.
  *
  * bridgeOpenings closes these so the flood fill can tell inside from outside,
@@ -1481,6 +1561,20 @@ export function findDoorSwings(
     if ((a && b) || (!a && !b)) continue;
     const hinge = a ? { x: s.x1, y: s.y1 } : { x: s.x2, y: s.y2 };
     const body = (a ?? b)!.body;
+    /**
+     * The arc is measured at the middle of each chord, and stays that way.
+     *
+     * The midpoint of a long chord sits inside the radius — at 0.707 of it for
+     * a quarter arc drawn as one segment — so a swing drawn that way is missed,
+     * and on דירה 14 the detector returns two doors where the sheet draws nine.
+     * Measuring the segment ENDS instead fixes that case and was tried on all
+     * ten reference sheets: it finds more doors and they are the wrong ones.
+     * Rooms fell from 8 to 6 on דירה 15, 10 to 6 on דירה 16, 5 to 2 on
+     * דירה 21 — thirteen rooms lost across the set, because every false door
+     * is sealed as a barrier and shreds a room into slivers that fall under the
+     * minimum and vanish. Precision here is worth more than recall, and the
+     * missing doors are better found from the hatch (findHatchGaps).
+     */
     const angles: number[] = [];
     for (const c of curves) {
       const mx = (c.x1 + c.x2) / 2;
@@ -1789,7 +1883,21 @@ export function splitAcrossGaps(
 export function trimToHatchAlong(
   bodies: WallBody[],
   segments: VectorSegment[],
-  options?: { marginUnits?: number; unitsPerMetre?: number },
+  options?: {
+    marginUnits?: number;
+    unitsPerMetre?: number;
+    /**
+     * The flat's floor. A blank tail is only cut where it borders none of it.
+     *
+     * The longest-run rule alone cut real partitions whose hatch thins out at
+     * one end: on דירה 19 and דירה 23 the last three metres of the wall
+     * between two bedrooms went, and the two bedrooms came back as one. A wall
+     * with floor on either side of it is a wall of this flat whatever its
+     * hatch looks like; the grid line that made דירה 14's slab runs where the
+     * flat has no floor at all.
+     */
+    floor?: SpanRow[];
+  },
 ): WallBody[] {
   const points = extractHatchStrokes(segments, {
     unitsPerMetre: options?.unitsPerMetre,
@@ -1811,11 +1919,86 @@ export function trimToHatchAlong(
       last = Math.max(last, along);
     }
     if (!Number.isFinite(first)) return body;
-    return {
-      ...body,
-      from: Math.max(body.from, first - margin),
-      to: Math.min(body.to, last + margin),
-    };
+    // First-to-last is not enough. A band that starts on a real hatched wall
+    // and runs on down the sheet only needs one stray diagonal near its far
+    // end to keep its whole length: on דירה 14 a 2.5 m wall at the top of the
+    // page became a 15.5 m slab 49 cm thick, standing in the render as a wall
+    // of the flat and stretching the frame until the apartment sat small in
+    // the middle of an empty picture. What the wall is, is its longest run of
+    // hatch — with doorway-sized breaks bridged, because a doorway is a hole
+    // in a wall and not the end of one.
+    const along = points
+      .filter((p) => {
+        const across = body.orientation === "h" ? p.y : p.x;
+        const at = body.orientation === "h" ? p.x : p.y;
+        return across >= lowEdge && across <= highEdge && at >= body.from && at <= body.to;
+      })
+      .map((p) => (body.orientation === "h" ? p.x : p.y))
+      .sort((a, b) => a - b);
+    // How long a blank stretch has to be before it means the wall has ended
+    // rather than that something is drawn through it.
+    //
+    // Measured on the ten reference sheets: at 1.4 m this cut real walls whose
+    // hatch is sparse or interrupted by a wide opening, the floor flowed round
+    // what was cut, and rooms merged — 58 rooms became 49, with דירה 16 losing
+    // four. At 3 m every opening is bridged and what is still blank is the
+    // sheet's grid: the 13 m of it that turned a 2.5 m wall into a 15.5 m slab.
+    const bridge = (options?.unitsPerMetre ?? 0) > 0 ? (options!.unitsPerMetre as number) * 3 : Infinity;
+    let runFrom = along[0]!;
+    let runTo = along[0]!;
+    let bestFrom = runFrom;
+    let bestTo = runTo;
+    for (let i = 1; i < along.length; i++) {
+      const at = along[i]!;
+      if (at - runTo <= bridge) {
+        runTo = at;
+      } else {
+        if (runTo - runFrom > bestTo - bestFrom) {
+          bestFrom = runFrom;
+          bestTo = runTo;
+        }
+        runFrom = at;
+        runTo = at;
+      }
+    }
+    if (runTo - runFrom > bestTo - bestFrom) {
+      bestFrom = runFrom;
+      bestTo = runTo;
+    }
+    let from = Math.max(body.from, bestFrom - margin);
+    let to = Math.min(body.to, bestTo + margin);
+    const floor = options?.floor;
+    const upm = options?.unitsPerMetre ?? 0;
+    if (floor && floor.length > 1 && upm > 0) {
+      const pitch = Math.abs(floor[1]!.y - floor[0]!.y) || 1;
+      const reach = body.thickness / 2 + upm * 0.3;
+      const floorBeside = (at: number) => {
+        const probes =
+          body.orientation === "h"
+            ? [
+                [at, body.centre - reach],
+                [at, body.centre + reach],
+              ]
+            : [
+                [body.centre - reach, at],
+                [body.centre + reach, at],
+              ];
+        return probes.some(([x, y]) =>
+          floor.some(
+            (row) => y! >= row.y - pitch && y! <= row.y + pitch && row.spans.some(([a, b]) => x! >= a && x! <= b),
+          ),
+        );
+      };
+      const bordersFloor = (a: number, b: number) => {
+        const step = upm * 0.25;
+        for (let at = a; at <= b; at += step) if (floorBeside(at)) return true;
+        return false;
+      };
+      // Keep a tail the flat's floor runs beside; cut only what borders none.
+      if (from > body.from && bordersFloor(body.from, from)) from = body.from;
+      if (to < body.to && bordersFloor(to, body.to)) to = body.to;
+    }
+    return { ...body, from, to };
   });
 }
 

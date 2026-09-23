@@ -261,7 +261,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     rects: room.rects,
   }));
   const terraceRects = input.terraceRects;
-  const floorRects = input.floorRects;
+  /**
+   * Floor no room claims, and too narrow to walk on, is not floor.
+   *
+   * The floor is flooded from the drawing's lines, and two parallel lines a
+   * hand's width apart make a channel the flood runs down: on דירה 14 the
+   * sheet's own grid left a strip 13 metres long and a few tens of centimetres
+   * wide down the side of the flat. Its wall had already gone; the strip stayed
+   * and drew as a plank of timber standing off the apartment, stretching the
+   * frame. A room is never that narrow, and a threshold is claimed by a room.
+   */
+  const roomRectsAll = roomsForScene(input).flatMap((room) => room.rects);
+  const minWalkable = 0.7 * upm;
+  const floorRects = input.floorRects.filter(
+    (rect) => Math.min(rect.w, rect.h) >= minWalkable || pointInRects(rectCentre(rect), roomRectsAll),
+  );
 
   // The apartment's own ground: what it is measured to stand on.
   const printed = { x: flat.bounds.x, y: flat.bounds.y, w: flat.bounds.width, h: flat.bounds.height };
