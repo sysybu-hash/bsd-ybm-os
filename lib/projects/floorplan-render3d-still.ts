@@ -3,7 +3,8 @@ import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
-import { buildSceneFromPayload } from "@/lib/projects/scene3d/from-payload";
+import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
+import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
 import { QUALITY } from "@/lib/projects/scene3d/quality";
 import { chromiumSceneRenderer } from "@/lib/projects/scene3d/renderer";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
@@ -38,6 +39,21 @@ export async function renderMeasuredStill(
 ): Promise<FloorplanVizImage | null> {
   try {
     const style = sceneStyleFor(options.styleKit);
+    // The renderer draws what was measured and nothing else. Where the
+    // measurement is short of the flat — walls never found, doorways never
+    // sealed — the still would be correct and useless, so none is offered and
+    // the run keeps the one it has.
+    const input = sceneInputFromPayload(options.geometry);
+    const coverage = measurementCoverage(input);
+    if (coverage.shortfall) {
+      log.info("measured still not offered; the measurement is short of the flat", {
+        shortfall: coverage.shortfall,
+        named: coverage.named,
+        labelled: coverage.labelled,
+        openings: coverage.openings,
+      });
+      return null;
+    }
     const scene = buildSceneFromPayload(options.geometry, { rules: style.rules });
     if (scene.meshes.length === 0) return null;
 

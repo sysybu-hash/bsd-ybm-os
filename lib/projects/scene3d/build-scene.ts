@@ -162,7 +162,66 @@ export type SceneInput = {
   terraceRects: Rect[][];
   furniture: Array<{ x: number; y: number; w: number; h: number; kind: string }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
+  /**
+   * The rooms as the sheet labels them, in page units.
+   *
+   * Where the segmenter missed a doorway its flood ran through it and two
+   * rooms came back as one — on דירה 14, four rooms with one of them 41 m²
+   * against nine names printed on the sheet. These are those names, and the
+   * floor is split by them: the region stays exactly what was measured, and
+   * only the question of which room each part of it belongs to is answered
+   * from the drawing's own text rather than from the flood.
+   */
+  labelledRooms?: Array<{ name: string; kind: string; box: Rect }>;
 };
+
+/**
+ * Which rooms the scene draws: the segmenter's, or the sheet's own labels.
+ *
+ * The labels win when the sheet names more rooms than the flood found, which
+ * is what happens whenever a doorway was missed. Each labelled room takes the
+ * measured floor rectangles whose centres fall inside the box its name was
+ * read at; a rectangle no label claims stays with the segmenter's answer, so
+ * nothing measured is ever dropped and nothing unmeasured is ever added.
+ */
+export function roomsForScene(input: SceneInput): SceneInput["rooms"] {
+  const labelled = input.labelledRooms ?? [];
+  if (labelled.length <= input.rooms.length) return input.rooms;
+
+  // Claimed by value, not by reference: the segmenter's rectangles and the
+  // floor's are equal numbers in different objects.
+  const keyOf = (rect: Rect) => `${rect.x}:${rect.y}:${rect.w}:${rect.h}`;
+  const claimed = new Set<string>();
+  const out: SceneInput["rooms"] = [];
+  for (const label of labelled) {
+    const mine = input.floorRects.filter((rect) => {
+      if (claimed.has(keyOf(rect))) return false;
+      const cx = rect.x + rect.w / 2;
+      const cy = rect.y + rect.h / 2;
+      return (
+        cx >= label.box.x &&
+        cx <= label.box.x + label.box.w &&
+        cy >= label.box.y &&
+        cy <= label.box.y + label.box.h
+      );
+    });
+    if (mine.length === 0) continue;
+    for (const rect of mine) claimed.add(keyOf(rect));
+    const areaUnits = mine.reduce((sum, r) => sum + r.w * r.h, 0);
+    out.push({
+      name: label.name,
+      kind: label.kind,
+      areaM2: areaUnits / (input.unitsPerMetre * input.unitsPerMetre),
+      rects: mine,
+    });
+  }
+  // Floor no label claimed keeps the room the flood gave it.
+  for (const room of input.rooms) {
+    const left = room.rects.filter((rect) => !claimed.has(keyOf(rect)));
+    if (left.length > 0) out.push({ ...room, rects: left });
+  }
+  return out.length > 0 ? out : input.rooms;
+}
 
 /** The measured flat, which carries every region as scan rows. */
 export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): SceneInput {
@@ -196,7 +255,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const upm = input.unitsPerMetre;
   const wallHeightM = options?.wallHeightM ?? WALL_HEIGHT_M;
 
-  const roomRects: MeasuredRoom[] = input.rooms.map((room, index) => ({
+  const roomRects: MeasuredRoom[] = roomsForScene(input).map((room, index) => ({
     room,
     index,
     rects: room.rects,

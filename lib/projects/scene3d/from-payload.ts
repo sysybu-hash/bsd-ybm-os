@@ -74,6 +74,11 @@ export function sceneInputFromPayload(payload: FloorplanGeometryPayload): SceneI
     terraceRects: (payload.terraces ?? []).map((rects) => fromRects(rects) ?? []),
     furniture: payload.furniture,
     rooms,
+    labelledRooms: (payload.labelledRooms ?? []).map((room) => ({
+      name: room.name,
+      kind: room.kind,
+      box: { x: room.box.x, y: room.box.y, w: room.box.width, h: room.box.height },
+    })),
   };
 }
 
