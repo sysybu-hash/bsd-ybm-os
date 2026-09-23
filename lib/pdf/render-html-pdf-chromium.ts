@@ -1,52 +1,6 @@
-import { existsSync } from "fs";
-import { env } from "@/lib/env";
 import { PDFArray, PDFName, PDFString, type PDFPage } from "pdf-lib";
 
-const isVercel = Boolean(env.VERCEL);
-
-const LAUNCH_ARGS = [
-  "--no-sandbox",
-  "--disable-setuid-sandbox",
-  "--disable-dev-shm-usage",
-  "--font-render-hinting=none",
-];
-
-function findLocalChromeExecutable(): string | null {
-  const candidates = [
-    env.PUPPETEER_EXECUTABLE_PATH,
-    env.CHROME_PATH,
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/chromium",
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  ].filter((p): p is string => Boolean(p));
-  for (const path of candidates) {
-    if (existsSync(path)) return path;
-  }
-  return null;
-}
-
-async function launchBrowser() {
-  const puppeteer = await import("puppeteer-core");
-  if (isVercel) {
-    const chromium = (await import("@sparticuz/chromium")).default;
-    return puppeteer.default.launch({
-      args: [...chromium.args, ...LAUNCH_ARGS],
-      defaultViewport: { width: 1280, height: 720 },
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
-  }
-  const executablePath = findLocalChromeExecutable();
-  if (!executablePath) {
-    throw new Error(
-      "לא נמצא Chrome לייצוא PDF. התקינו Google Chrome או הגדירו PUPPETEER_EXECUTABLE_PATH.",
-    );
-  }
-  return puppeteer.default.launch({ executablePath, headless: true, args: LAUNCH_ARGS });
-}
+import { launchChromium } from "@/lib/pdf/chromium-launch";
 
 function addUriLink(
   page: PDFPage,
@@ -90,7 +44,7 @@ export async function renderHtmlPdfChromium(
   html: string,
   options: RenderHtmlPdfOptions = {},
 ): Promise<Uint8Array> {
-  const browser = await launchBrowser();
+  const browser = await launchChromium();
   try {
     const page = await browser.newPage();
     const isLandscape = options.orientation === "landscape";
@@ -143,7 +97,7 @@ export async function renderHtmlSectionsPdf(
   html: string,
   options: RenderHtmlPdfOptions = {},
 ): Promise<Uint8Array> {
-  const browser = await launchBrowser();
+  const browser = await launchChromium();
   try {
     const page = await browser.newPage();
     const timeout = options.timeoutMs ?? 45_000;
