@@ -31,7 +31,8 @@ export type SceneMeshKind =
   | "frame"
   | "threshold"
   | "skirting"
-  | "furniture";
+  | "furniture"
+  | "prop";
 
 export type MaterialId =
   | "wall"
@@ -63,6 +64,14 @@ export type SceneBox = {
    * Staging anchors to it, and a test can ask what a mesh is doing there.
    */
   sourceId: string;
+  /**
+   * For a prop: the measured mesh it rests on.
+   *
+   * A test walks every prop and every light and asks for this. A bowl of fruit
+   * has to sit on a worktop the drawing draws; if nothing was measured there,
+   * there is no bowl. It is how "lived-in" stays honest.
+   */
+  anchorId?: string;
 };
 
 export type SceneRoomKind =
@@ -101,6 +110,25 @@ export type SceneOpening = {
   exterior: boolean;
 };
 
+/**
+ * A lamp that is switched on.
+ *
+ * Every one of these is anchored to something measured — a pendant over a
+ * dining table the drawing places, a strip under a kitchen run it draws — so
+ * lighting is staging, exactly as the brief has always said, and never
+ * architecture the renderer invented.
+ */
+export type SceneLight = {
+  id: string;
+  kind: "pendant" | "strip" | "lamp" | "sun" | "sky";
+  position: Vec3;
+  /** Kelvin, and how bright relative to the style's own exposure. */
+  kelvin: number;
+  intensity: number;
+  /** The measured mesh this light hangs over. Absent only for sun and sky. */
+  anchorId?: string;
+};
+
 export type FlatScene = {
   version: 1;
   /** Drawing units per metre, kept so a caller can go back to page space. */
@@ -110,4 +138,5 @@ export type FlatScene = {
   meshes: SceneBox[];
   rooms: SceneRoom[];
   openings: SceneOpening[];
+  lights: SceneLight[];
 };
