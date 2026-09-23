@@ -43,7 +43,7 @@ export type SceneStyle = {
 const BASE: Record<MaterialId, MaterialSpec> = {
   wall: { color: 0xf1e9dd, roughness: 0.95, metalness: 0 },
   wallCut: { color: 0xb9ae9d, roughness: 0.95, metalness: 0 },
-  floorWood: { color: 0xc09062, roughness: 0.55, metalness: 0 },
+  floorWood: { color: 0xc59d74, roughness: 0.55, metalness: 0 },
   floorTile: { color: 0xd9d3c7, roughness: 0.35, metalness: 0 },
   floorStone: { color: 0xe0d4be, roughness: 0.75, metalness: 0 },
   skirting: { color: 0xf8f4ec, roughness: 0.5, metalness: 0 },
@@ -66,8 +66,8 @@ const GOLDEN_HOUR: SceneLighting = {
   // light and the set reads as a series rather than as a pile of renders.
   sunAzimuthDeg: 135,
   sunElevationDeg: 52,
-  sunIntensity: 2.6,
-  skyIntensity: 0.85,
+  sunIntensity: 2.4,
+  skyIntensity: 1.05,
   skyColor: 0xfff1dc,
   groundColor: 0x8d8272,
 };

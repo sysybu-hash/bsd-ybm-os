@@ -134,10 +134,15 @@ export function buildThreeScene(
 export function kelvinColour(kelvin: number): number {
   // A two-point fit over the range a home is lit in, 2500K to 4000K, which is
   // all this needs: below it looks like candlelight and above like an office.
+  //
+  // The first fit went down to (255, 180, 120) at the warm end. Through ACES,
+  // over a timber floor, that came back orange — the contact sheet of ten
+  // reference plans read as ten sunsets. A lamp is warm white, not amber; the
+  // warmth belongs in the floor and the plaster, where the brief puts it.
   const t = Math.min(1, Math.max(0, (kelvin - 2500) / 1500));
   const r = 255;
-  const g = Math.round(180 + 45 * t);
-  const b = Math.round(120 + 105 * t);
+  const g = Math.round(206 + 34 * t);
+  const b = Math.round(168 + 58 * t);
   return (r << 16) | (g << 8) | b;
 }
 
