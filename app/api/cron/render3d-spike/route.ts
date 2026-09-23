@@ -45,17 +45,26 @@ export async function GET(req: NextRequest) {
       const report = (await page.evaluate("window.__spike")) as Record<string, unknown>;
       const renderedMs = Date.now() - pageStarted;
 
-      let pngBytes = 0;
+      // Reading the frame back is the whole cost at this size: a 12 Mpx PNG
+      // took 19 seconds in the function while the draw took 0.2. The renderer
+      // downsamples with sharp anyway, so the question is which encoder the
+      // browser should hand us.
+      const format = req.nextUrl.searchParams.get("fmt") === "png" ? "png" : "jpeg";
+      let imageBytes = 0;
       let shotMs = 0;
       if (report?.ok === true) {
         const shotStarted = Date.now();
         const canvas = await page.$("canvas");
-        const shot = canvas ? await canvas.screenshot({ type: "png" }) : null;
+        const shot = canvas
+          ? await canvas.screenshot(
+              format === "png" ? { type: "png" } : { type: "jpeg", quality: 92 },
+            )
+          : null;
         shotMs = Date.now() - shotStarted;
-        pngBytes = shot ? Buffer.from(shot).length : 0;
+        imageBytes = shot ? Buffer.from(shot).length : 0;
       }
 
-      const result = { width, height, boxes, shadows, launchedMs, renderedMs, shotMs, pngBytes, ...report };
+      const result = { width, height, boxes, shadows, format, launchedMs, renderedMs, shotMs, imageBytes, ...report };
       log.info("webgl spike", result);
       return result;
     } finally {

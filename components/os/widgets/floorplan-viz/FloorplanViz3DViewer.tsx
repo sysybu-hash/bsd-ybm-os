@@ -1,59 +1,27 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import type * as ThreeTypes from "three";
 import { createLogger } from "@/lib/logger";
 import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
+import { buildSceneFromPayload } from "@/lib/projects/scene3d/from-payload";
+import { buildThreeScene } from "@/lib/projects/scene3d/three-scene";
+import { wallPieces } from "@/lib/projects/scene3d/walls";
 
 const log = createLogger("floorplan-viz-3d");
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
-const WALL_HEIGHT_M = 2.7;
-const LINTEL_M = 0.35;
-
-const ROOM_COLOUR: Record<string, number> = {
-  living: 0xf6e0b0,
-  kitchen: 0xf3c99a,
-  bedroom: 0xbcd4f2,
-  mmd: 0xcfc3f2,
-  bathroom: 0xa8e4ef,
-  balcony: 0xb6e7bd,
-  circulation: 0xdcdfe4,
-  utility: 0xdcd8d4,
-  other: 0xe6e9ee,
-};
-
-type Band = FloorplanGeometryPayload["walls"][number];
-
 /**
- * A wall with its doorways taken out.
+ * The measured flat, drawn.
  *
- * The geometry lists walls and openings separately, each as a run along the
- * wall's own axis. Drawing the wall whole would brick up every door, so each
- * overlapping opening is cut out and a lintel is left above it.
+ * The geometry it builds is no longer this component's own: it comes from
+ * lib/projects/scene3d, the same scene model the deterministic renderer
+ * photographs for the booklet. What you turn around here is what will be
+ * delivered, and a bug fixed in one is fixed in both.
  */
-export function wallPieces(wall: Band, openings: Band[]): Array<{ from: number; to: number }> {
-  const holes = openings
-    .filter(
-      (hole) =>
-        hole.orientation === wall.orientation &&
-        Math.abs(hole.centre - wall.centre) <= Math.max(wall.thickness, hole.thickness) &&
-        hole.to > wall.from &&
-        hole.from < wall.to,
-    )
-    .map((hole) => ({ from: Math.max(hole.from, wall.from), to: Math.min(hole.to, wall.to) }))
-    .sort((a, b) => a.from - b.from);
 
-  const pieces: Array<{ from: number; to: number }> = [];
-  let cursor = wall.from;
-  for (const hole of holes) {
-    if (hole.from > cursor) pieces.push({ from: cursor, to: hole.from });
-    cursor = Math.max(cursor, hole.to);
-  }
-  if (cursor < wall.to) pieces.push({ from: cursor, to: wall.to });
-  return pieces;
-}
+/** Re-exported where it has always been, for the viewer's own test. */
+export { wallPieces };
 
 export default function FloorplanViz3DViewer({
   geometry,
@@ -79,14 +47,13 @@ export default function FloorplanViz3DViewer({
         const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
         if (disposed || !hostRef.current) return;
 
-        const m = (value: number) => value / geometry.unitsPerMetre;
-        const width = m(geometry.bounds.width);
-        const depth = m(geometry.bounds.height);
-        const originX = m(geometry.bounds.x) + width / 2;
-        const originZ = m(geometry.bounds.y) + depth / 2;
+        const flat = buildSceneFromPayload(geometry);
+        const width = flat.extent.width;
+        const depth = flat.extent.depth;
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x1c1917);
+
         const camera = new THREE.PerspectiveCamera(
           50,
           host.clientWidth / Math.max(1, host.clientHeight),
@@ -98,86 +65,35 @@ export default function FloorplanViz3DViewer({
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
         renderer.setSize(host.clientWidth, host.clientHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
         host.replaceChildren(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.target.set(0, 0, 0);
         controls.enableDamping = true;
 
-        scene.add(new THREE.AmbientLight(0xfff2e0, 1.6));
+        scene.add(new THREE.AmbientLight(0xfff2e0, 1.2));
         const sun = new THREE.DirectionalLight(0xffe9c9, 2.2);
         sun.position.set(width, Math.max(width, depth), depth);
         scene.add(sun);
 
-        const walls = new THREE.Group();
-        const furniture = new THREE.Group();
-        scene.add(walls, furniture);
-
-        const wallMat = new THREE.MeshLambertMaterial({ color: 0xf2ece2 });
-        const box = (w: number, h: number, d: number, x: number, y: number, z: number, mat: ThreeTypes.Material) => {
-          const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-          mesh.position.set(x - originX, y, z - originZ);
-          return mesh;
-        };
-
-        // Floors, one per room, so the plan reads from above as it does on paper.
-        for (const room of geometry.rooms) {
-          const colour = ROOM_COLOUR[room.kind] ?? ROOM_COLOUR.other!;
-          const plate = box(
-            m(room.bounds.width),
-            0.02,
-            m(room.bounds.height),
-            m(room.bounds.x) + m(room.bounds.width) / 2,
-            0,
-            m(room.bounds.y) + m(room.bounds.height) / 2,
-            new THREE.MeshLambertMaterial({ color: colour }),
-          );
-          scene.add(plate);
-        }
-
-        for (const wall of geometry.walls) {
-          const across = m(wall.thickness);
-          for (const piece of wallPieces(wall, geometry.openings)) {
-            const along = m(piece.to - piece.from);
-            if (along <= 0.01) continue;
-            const mid = m(piece.from) + along / 2;
-            const centre = m(wall.centre);
-            walls.add(
-              wall.orientation === "h"
-                ? box(along, WALL_HEIGHT_M, across, mid, WALL_HEIGHT_M / 2, centre, wallMat)
-                : box(across, WALL_HEIGHT_M, along, centre, WALL_HEIGHT_M / 2, mid, wallMat),
-            );
-          }
-          // The lintel over each doorway, so an opening reads as a door and not
-          // as a wall that simply stops.
-          for (const hole of geometry.openings) {
-            if (hole.orientation !== wall.orientation) continue;
-            if (Math.abs(hole.centre - wall.centre) > Math.max(wall.thickness, hole.thickness)) continue;
-            const along = m(Math.min(hole.to, wall.to) - Math.max(hole.from, wall.from));
-            if (along <= 0.01) continue;
-            const mid = m(Math.max(hole.from, wall.from)) + along / 2;
-            const centre = m(wall.centre);
-            const y = WALL_HEIGHT_M - LINTEL_M / 2;
-            walls.add(
-              wall.orientation === "h"
-                ? box(along, LINTEL_M, across, mid, y, centre, wallMat)
-                : box(across, LINTEL_M, along, centre, y, mid, wallMat),
-            );
-          }
-        }
-
-        const furnitureMat = new THREE.MeshLambertMaterial({ color: 0x9c6b4a });
-        for (const piece of geometry.furniture) {
-          const h = piece.kind === "bed" ? 0.5 : piece.kind === "table" ? 0.75 : 0.85;
-          furniture.add(
-            box(m(piece.w), h, m(piece.h), m(piece.x) + m(piece.w) / 2, h / 2, m(piece.y) + m(piece.h) / 2, furnitureMat),
-          );
-        }
+        // Two groups, so the layer toggles are a visibility flag rather than a
+        // rebuild of the whole scene.
+        const building = buildThreeScene(THREE, flat, {
+          shadows: false,
+          include: (kind) => kind !== "furniture",
+        });
+        const furniture = buildThreeScene(THREE, flat, {
+          shadows: false,
+          include: (kind) => kind === "furniture",
+        });
+        scene.add(building, furniture);
 
         let frame = 0;
         const tick = () => {
           frame = requestAnimationFrame(tick);
-          walls.visible = showWalls;
+          building.visible = showWalls;
           furniture.visible = showFurniture;
           controls.update();
           renderer.render(scene, camera);
