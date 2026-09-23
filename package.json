@@ -11,6 +11,7 @@
     "embed-pdf-fonts": "node scripts/embed-pdf-fonts.mjs",
     "floorplan:render": "npx tsx scripts/render-floorplan.mjs",
     "floorplan:bench": "npx tsx scripts/floorplan-cad-bench.mts",
+    "floorplan:render3d": "npx tsx scripts/render-floorplan-3d.mts",
     "floorplan:survey": "npx tsx scripts/survey-plans.mjs",
     "floorplan:booklet": "npx tsx scripts/build-booklet.mjs",
     "floorplan:booklet:full": "npx tsx scripts/render-full-booklet.mjs",
