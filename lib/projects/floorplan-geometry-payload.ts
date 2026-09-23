@@ -73,6 +73,27 @@ export const floorplanGeometrySchema = z.object({
       }),
     )
     .max(200),
+  /**
+   * v2: the rooms as the sheet itself labels them.
+   *
+   * The segmenter finds rooms by flooding the floor and sealing the doorways
+   * it detected. Where a doorway is missed the flood runs through it, and two
+   * rooms come back as one: on דירה 14 it returns four rooms, one of them
+   * 41 m², while the sheet prints nine room names that the extract reads and
+   * verifies. These are those names, with the box each one was read at, in
+   * page units — a measurement of the drawing's own text, not a guess about
+   * the flat.
+   */
+  labelledRooms: z
+    .array(
+      z.object({
+        name: z.string().max(80),
+        kind: z.string().max(40),
+        box: boundsSchema,
+      }),
+    )
+    .max(200)
+    .optional(),
 });
 
 export type FloorplanGeometryPayload = z.infer<typeof floorplanGeometrySchema>;
@@ -81,9 +102,16 @@ function toRects(rects: Rect[]): Array<[number, number, number, number]> {
   return rects.map((r) => [r.x, r.y, r.w, r.h]);
 }
 
+export type GeometryPayloadExtras = {
+  /** The sheet's own room labels, with the page they were read on. */
+  labelled?: Array<{ name: string; kind: string; bbox: { x: number; y: number; w: number; h: number } }>;
+  page?: { width: number; height: number };
+};
+
 export function floorplanGeometryPayload(
   flat: BuiltFlat,
   rooms: SegmentedRoom[],
+  extras?: GeometryPayloadExtras,
 ): FloorplanGeometryPayload {
   return {
     unitsPerMetre: flat.unitsPerMetre,
@@ -115,6 +143,20 @@ export function floorplanGeometryPayload(
       widthCm: piece.widthCm,
       depthCm: piece.depthCm,
     })),
+    // Page fractions become page units, which is what the geometry speaks.
+    labelledRooms:
+      extras?.page && extras.labelled
+        ? extras.labelled.map((room) => ({
+            name: room.name,
+            kind: room.kind,
+            box: {
+              x: room.bbox.x * extras.page!.width,
+              y: room.bbox.y * extras.page!.height,
+              width: room.bbox.w * extras.page!.width,
+              height: room.bbox.h * extras.page!.height,
+            },
+          }))
+        : undefined,
     floor: toRects(mergeSpanRows(flat.floor)),
     terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(rows))),
     rooms: rooms.map((room) => ({

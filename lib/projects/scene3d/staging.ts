@@ -84,6 +84,10 @@ function topOf(mesh: SceneBox): number {
   return mesh.centre.y + mesh.size.y / 2;
 }
 
+function clamp(value: number, low: number, high: number): number {
+  return high < low ? (low + high) / 2 : Math.min(high, Math.max(low, value));
+}
+
 export type StagingResult = { props: SceneBox[]; lights: SceneLight[] };
 
 /**
@@ -97,6 +101,7 @@ export type StagingResult = { props: SceneBox[]; lights: SceneLight[] };
 export function stageScene(scene: FlatScene, rules: AudienceRules): StagingResult {
   const props: SceneBox[] = [];
   const lights: SceneLight[] = [];
+  const ruggedRooms = new Set<string>();
   let sefarimPlaced = false;
 
   for (const { mesh, room, kind } of anchors(scene)) {
@@ -116,7 +121,12 @@ export function stageScene(scene: FlatScene, rules: AudienceRules): StagingResul
       });
     }
 
-    if (kind === "table" && room && (room.kind === "living" || room.kind === "kitchen")) {
+    // The room's kind steers the staging where the segmenter named one. Where
+    // it did not — and on a sheet like דירה 14 it names four rooms out of nine
+    // — the piece still gets what belongs to it. A dining table is a dining
+    // table whether or not the room around it was given a name, and a still
+    // whose lamps all failed a room test reads as an empty model.
+    if (kind === "table" && (!room || room.kind === "living" || room.kind === "kitchen" || room.kind === "other")) {
       // A Shabbat table for a haredi still: candles and a challah cover, both
       // plain objects with nothing written on them.
       if (rules.audience === "haredi") {
@@ -138,10 +148,27 @@ export function stageScene(scene: FlatScene, rules: AudienceRules): StagingResul
       });
     }
 
-    if (kind === "seat" && room && room.kind === "living") {
-      props.push(
-        prop("rug", mesh, "upholstery", { dz: 0.6, dy: 0.008, w: 2.2, h: 0.016, d: 1.6 }),
-      );
+    // One rug per room, sized to the room and kept inside it.
+    //
+    // It used to be one rug per seat, at a fixed 2.2 by 1.6: on a flat with
+    // twelve measured seats that is twelve rugs stacked on each other, and the
+    // ones near a wall pushed through it and out of the apartment.
+    if (kind === "seat" && room && (room.kind === "living" || room.kind === "other") && !ruggedRooms.has(room.id)) {
+      ruggedRooms.add(room.id);
+      const w = Math.min(2.6, room.bounds.w * 0.6);
+      const d = Math.min(2.0, room.bounds.d * 0.6);
+      if (w > 0.8 && d > 0.6) {
+        const cx = clamp(mesh.centre.x, room.bounds.x + w / 2, room.bounds.x + room.bounds.w - w / 2);
+        const cz = clamp(mesh.centre.z + 0.6, room.bounds.z + d / 2, room.bounds.z + room.bounds.d - d / 2);
+        props.push({
+          kind: "prop",
+          material: "upholstery",
+          centre: { x: cx, y: 0.008, z: cz },
+          size: { x: w, y: 0.016, z: d },
+          sourceId: "prop:rug",
+          anchorId: mesh.sourceId,
+        });
+      }
     }
 
     if (kind === "bed") {

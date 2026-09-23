@@ -18,6 +18,7 @@ import { remapLayoutToCrop, unitCropFromLayout } from "@/lib/projects/floorplan-
 import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import {
   capLayoutMmdRooms,
+  inferRoomKind,
   parseFloorplanLayout,
   type FloorplanLayout,
   type FloorplanVizImage,
@@ -573,6 +574,25 @@ type CadOverviewInput = {
  * still comes from the gross area the extract read, so a drawing with no area
  * anywhere on it falls back to the raster path rather than inventing one.
  */
+/**
+ * The rooms the sheet itself labels, for the scene to name its floors by.
+ *
+ * Only rooms the extract placed on the page: a name with no box cannot say
+ * which floor it belongs to, and a room the scene cannot place is a room the
+ * scene does not draw.
+ */
+function labelledRoomsOf(
+  layout: FloorplanLayout,
+): Array<{ name: string; kind: string; bbox: { x: number; y: number; w: number; h: number } }> {
+  return layout.rooms
+    .filter((room) => room.bbox != null)
+    .map((room) => ({
+      name: room.name,
+      kind: room.kind ?? inferRoomKind(room.name),
+      bbox: room.bbox!,
+    }));
+}
+
 async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
   const bytes = Buffer.from(input.prepared.base64, "base64");
   let text: string | null = null;
@@ -618,7 +638,10 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       truth,
       spend: rendered.spend,
       rooms: rendered.rooms,
-      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
+      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms, {
+        labelled: labelledRoomsOf(input.extractedLayout),
+        page: pageSize,
+      }),
     };
   } catch (err: unknown) {
     log.warn("cad drawing render threw; not inventing a layout", {
@@ -796,7 +819,10 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       truth,
       spend: rendered.spend,
       rooms: rendered.rooms,
-      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms),
+      measured: floorplanGeometryPayload(rendered.flat, rendered.rooms, {
+        labelled: labelledRoomsOf(input.extractedLayout),
+        page: pageSize,
+      }),
       measuredTerraces: rendered.flat.terraces.length,
       terraceBoxes: pageSize ? terraceBoxesOnPage(rendered.flat.terraces, pageSize) : undefined,
       openings,
