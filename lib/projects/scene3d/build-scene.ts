@@ -21,7 +21,9 @@ import type {
   SceneRoom,
   SceneRoomKind,
 } from "@/lib/projects/scene3d/types";
+import { partsFor } from "@/lib/projects/scene3d/furniture";
 import { openingHeights } from "@/lib/projects/scene3d/openings";
+import { facingFor, headFacing } from "@/lib/projects/scene3d/orientation";
 import { bandRect, wallBands, type Band, type WallHole } from "@/lib/projects/scene3d/walls";
 
 /**
@@ -43,19 +45,6 @@ const FLOOR_MATERIAL: Record<SceneRoomKind, MaterialId> = {
   bathroom: "floorTile",
   utility: "floorTile",
   balcony: "floorStone",
-};
-
-const FURNITURE_MATERIAL: Record<string, MaterialId> = {
-  bed: "linen",
-  seat: "upholstery",
-  desk: "timber",
-  table: "timber",
-  storage: "timber",
-  counter: "worktop",
-  hob: "steel",
-  sink: "steel",
-  fixture: "ceramic",
-  unknown: "neutral",
 };
 
 /** A room whose windows get the privacy sill rather than the habitable one. */
@@ -138,6 +127,13 @@ function roomAt(point: { x: number; y: number }, rooms: MeasuredRoom[]): Measure
 export type BuildSceneOptions = {
   /** Ceiling height. Only a caller with a measured one should pass it. */
   wallHeightM?: number;
+  /**
+   * The audience's rules. A haredi still renders a drawn double rectangle as
+   * one modest single along the long wall — the one place in the engine where
+   * what is built is not simply the box that was measured, and it is a rule,
+   * not a liberty.
+   */
+  haredi?: boolean;
 };
 
 /**
@@ -314,20 +310,44 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     }
   });
 
-  // --- furniture, exactly the boxes that were measured.
-  flat.furniture.forEach((piece, index) => {
+  // --- furniture: each measured block, built as the thing it was measured to
+  // be, facing the way the measured geometry around it decides.
+  const wallRectsAll = input.bodies.map(bandToRect);
+  const anchorRects = input.furniture
+    .filter((piece) => piece.kind === "counter" || piece.kind === "table")
+    .map((piece) => ({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }));
+
+  input.furniture.forEach((piece, index) => {
+    const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
     const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
-    meshes.push(
-      boxFrom(
-        p,
-        { x: piece.x, y: piece.y, w: piece.w, h: piece.h },
-        0,
-        height,
-        "furniture",
-        FURNITURE_MATERIAL[piece.kind] ?? "neutral",
-        `furniture:${index}`,
-      ),
-    );
+    const host = roomAt(rectCentre(box), roomRects);
+    const hostBounds = host ? rectsBounds(host.rects) : null;
+    const decided = facingFor({
+      piece: box,
+      walls: wallRectsAll,
+      anchors: anchorRects.filter((rect) => rect !== box),
+      roomCentre: hostBounds
+        ? { x: hostBounds.x + hostBounds.w / 2, y: hostBounds.y + hostBounds.h / 2 }
+        : rectCentre(box),
+      unitsPerMetre: upm,
+    });
+    const facing = piece.kind === "bed" ? headFacing(box, decided) : decided;
+    const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
+    for (const built of partsFor(piece.kind, {
+      wM: box.w / upm,
+      dM: box.h / upm,
+      hM: height,
+      facing,
+      haredi: options?.haredi,
+    })) {
+      meshes.push({
+        kind: "furniture",
+        material: built.material,
+        centre: { x: centre.x + built.x, y: built.y, z: centre.z + built.z },
+        size: { x: built.w, y: built.h, z: built.d },
+        sourceId: `furniture:${index}/${built.tag}`,
+      });
+    }
   });
 
   const extentCorner = project(p, spanned.x, spanned.y);

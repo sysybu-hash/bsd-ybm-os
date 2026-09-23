@@ -87,3 +87,17 @@ export function facingFor(input: FacingInput): Facing {
 export function runsDownThePage(piece: Rect): boolean {
   return piece.h > piece.w;
 }
+
+/**
+ * A bed's head goes at a short end, whatever the room would otherwise say.
+ *
+ * Nobody sleeps across a mattress, and the oblique plate already puts the
+ * pillow at the short end by the same rule — so the two renderers put the head
+ * of every bed at the same end of the same rectangle.
+ */
+export function headFacing(piece: Rect, facing: Facing): Facing {
+  const down = runsDownThePage(piece);
+  const alongLongAxis = down ? facing === "north" || facing === "south" : facing === "east" || facing === "west";
+  if (alongLongAxis) return facing;
+  return down ? "north" : "west";
+}

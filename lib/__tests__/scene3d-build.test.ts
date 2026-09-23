@@ -69,11 +69,37 @@ describe("the measured flat as a scene", () => {
     expect(wet.openings.find((o) => o.kind === "window")?.sillM).toBe(WINDOW_SILL_WET_M);
   });
 
-  it("keeps the bed exactly the box that was measured", () => {
-    const bed = scene.meshes.find((m) => m.kind === "furniture");
-    expect(bed?.size.x).toBeCloseTo(0.9, 9);
-    expect(bed?.size.z).toBeCloseTo(2.0, 9);
-    expect(bed?.material).toBe("linen");
+  it("builds the bed inside the box that was measured, head at a short end", () => {
+    const parts = scene.meshes.filter((m) => m.kind === "furniture");
+    expect(parts.map((m) => m.sourceId.split("/")[1])).toEqual(
+      expect.arrayContaining(["base", "mattress", "headboard", "pillow", "duvet"]),
+    );
+    const base = parts.find((m) => m.sourceId.endsWith("/base"))!;
+    expect(base.size.x).toBeCloseTo(0.9, 9);
+    expect(base.size.z).toBeCloseTo(2.0, 9);
+    // Nobody sleeps across a mattress: the headboard is as wide as the bed and
+    // as thin as a board, which is only true at the short end.
+    const head = parts.find((m) => m.sourceId.endsWith("/headboard"))!;
+    expect(head.size.x).toBeCloseTo(0.9, 9);
+    expect(head.size.z).toBeCloseTo(0.06, 9);
+    // One pillow on a 0.90 mattress.
+    expect(parts.filter((m) => m.sourceId.endsWith("/pillow"))).toHaveLength(1);
+  });
+
+  it("renders a drawn double as one modest single for a haredi still", () => {
+    // The measured rectangle is a sleeping zone, not a furniture spec. The
+    // image model was told this in three paragraphs and drew a double anyway;
+    // here there is no double to draw.
+    const wide = flat({
+      furniture: [{ x: 40, y: 40, w: 160, h: 200, kind: "bed", widthCm: 160, depthCm: 200 }],
+    });
+    const modest = buildFlatScene(wide, ROOMS, { haredi: true });
+    const mattress = modest.meshes.find((m) => m.sourceId.endsWith("/mattress"))!;
+    expect(mattress.size.x).toBeLessThanOrEqual(0.9);
+    expect(modest.meshes.filter((m) => m.sourceId.endsWith("/pillow"))).toHaveLength(1);
+
+    const asDrawn = buildFlatScene(wide, ROOMS);
+    expect(asDrawn.meshes.find((m) => m.sourceId.endsWith("/mattress"))!.size.x).toBeGreaterThan(1.5);
   });
 
   it("floors each room in the material its kind asks for", () => {
