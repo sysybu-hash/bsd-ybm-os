@@ -29,14 +29,6 @@ const ALLOWLIST_NO_WRAPPER = [
   "app/api/marketing/assistant/chat/route.ts",
   "app/api/marketing/assistant/gemini-live/session/route.ts",
   "app/api/marketing/demo-scan/route.ts",
-  /**
-   * 3D render spike — temporary, and guarded by CRON_SECRET rather than by a
-   * workspace session, because it has to be callable with curl from outside a
-   * browser. It reads nothing and writes nothing: it draws a frame in a
-   * headless browser and reports how long that took. Deleted once the number
-   * it exists to produce has been recorded.
-   */
-  "app/api/projects/visualize-floorplan/render3d-spike/route.ts",
   // Public lead capture + email unsubscribe (rate-limited, no workspace session)
   "app/api/leads/route.ts",
   "app/api/unsubscribe/route.ts",
