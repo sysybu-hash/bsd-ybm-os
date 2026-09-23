@@ -219,14 +219,6 @@ const nextConfig = {
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
-    // The 3D spike serves three.js to Chromium off disk: nothing imports those
-    // files, so tracing cannot see them, and the browser binary is loaded by a
-    // dynamic import like everywhere else.
-    "/api/cron/render3d-spike": [
-      "./node_modules/three/build/three.module.js",
-      "./node_modules/three/build/three.core.js",
-      "./node_modules/@sparticuz/chromium/**",
-    ],
     "/api/projects/visualize-floorplan/[id]/stills/[stillId]": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
