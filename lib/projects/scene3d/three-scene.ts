@@ -75,11 +75,12 @@ export function meshesForView(scene: FlatScene, cutawayM?: number): SceneBox[] {
   if (cutawayM == null) return scene.meshes;
   const out: SceneBox[] = [];
   for (const mesh of scene.meshes) {
-    // Only the building is cut. Furniture is below the line anyway, and a
-    // wardrobe sliced in half reads as a broken render rather than a section.
-    const cuttable =
-      mesh.kind === "wall" || mesh.kind === "wallHead" || mesh.kind === "wallSill" || mesh.kind === "glazing";
-    const kept = cuttable ? cutBox(mesh, cutawayM) : mesh;
+    // Everything is cut at the same plane, furniture included. Leaving it out
+    // was tried first and was worse: with the walls at 1.35 m, a wardrobe
+    // standing its full 2.00 m towered over the section as a slab, and read as
+    // an error. Cut at the same height it reads as what it is — a section
+    // through an apartment, which is what a doll's-house still is.
+    const kept = cutBox(mesh, cutawayM);
     if (kept) out.push(kept);
   }
   return out;
