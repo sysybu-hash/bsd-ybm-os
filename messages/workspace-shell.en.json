@@ -851,6 +851,7 @@
       "originGenerate": "Decode",
       "originEdit": "Edit",
       "originCad": "Geometry",
+      "originRender3d": "Measured",
       "styles": {
         "contemporary": { "title": "Contemporary Israeli", "blurb": "Light parquet, natural light" },
         "luxury": { "title": "Luxury", "blurb": "Stone, tall kitchen, cove lighting" },

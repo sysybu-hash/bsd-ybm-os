@@ -1348,7 +1348,13 @@ export function stripImplausibleRoomMeasure(room: FloorplanRoom, grossAreaM2?: n
 
 export type FloorplanVizViewId = "overview" | "isometric" | "interior";
 
-export type FloorplanVizStillOrigin = "generate" | "edit" | "cad";
+/**
+ * Where a still came from.
+ *
+ * "render3d" is the deterministic renderer: the measured flat photographed
+ * rather than imagined, which is why it carries no audit and costs nothing.
+ */
+export type FloorplanVizStillOrigin = "generate" | "edit" | "cad" | "render3d";
 
 export type FloorplanVizImage = {
   id?: string;

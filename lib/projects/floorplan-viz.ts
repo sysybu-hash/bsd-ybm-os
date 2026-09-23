@@ -1,4 +1,5 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
+import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
@@ -50,6 +51,7 @@ import {
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
 import {
   emptyFloorplanSpend,
+  recordFloorplanSpend,
   runWithFloorplanSpend,
   type FloorplanSpend,
 } from "@/lib/projects/floorplan-spend";
@@ -188,6 +190,15 @@ type VisualizeFloorplanOptions = {
   maxViews?: number;
   /** Booklet / sales-sheet run: skip invented room interiors. */
   skipInteriors?: boolean;
+  /**
+   * Which engine draws the overview.
+   *
+   * "ai" is the image model alone. "both" adds the deterministic render as a
+   * second attempt in the same group, so the two can be compared on the same
+   * flat at no cost — it is the default while the renderer earns its keep.
+   * "render3d" ships the measured render as the one the booklet uses.
+   */
+  renderMode?: "ai" | "render3d" | "both";
 };
 
 /**
@@ -374,6 +385,27 @@ async function visualizeWithSpend(
         log.warn("geometry companions failed; shipping the overview alone", {
           error: err instanceof Error ? err.message : String(err),
         });
+      }
+    }
+    // The measured flat, photographed. It costs a second of CPU, it cannot be
+    // wrong about the building, and it travels as an attempt in the same group
+    // as the model's still so the two can be held side by side.
+    const renderMode = options?.renderMode ?? "both";
+    if (renderMode !== "ai" && !alreadyHasOverview) {
+      const measuredStill = await renderMeasuredStill({
+        geometry: cadResult.measured,
+        styleKit,
+        unitTitle: titleFromFloorplanLayout(layout, options?.sourceName ?? ""),
+        areaM2: cadResult.truth?.grossM2,
+        deadlineMs,
+        selected: renderMode === "render3d",
+      });
+      if (measuredStill) {
+        recordFloorplanSpend(cadResult.spend, "image", "render3d");
+        images = renderMode === "render3d"
+          ? [measuredStill, ...images.map((img) => ({ ...img, selected: false }))]
+          : [...images, measuredStill];
+        enginesUsed.push("render3d");
       }
     }
     return {

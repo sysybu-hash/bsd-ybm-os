@@ -851,6 +851,7 @@
       "originGenerate": "Разбор",
       "originEdit": "Правка",
       "originCad": "Геометрия",
+      "originRender3d": "Измерено",
       "styles": {
         "contemporary": { "title": "Современный израильский", "blurb": "Светлый паркет, дневной свет" },
         "luxury": { "title": "Премиум", "blurb": "Камень, высокая кухня, скрытый свет" },

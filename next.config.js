@@ -209,6 +209,13 @@ const nextConfig = {
     "/api/projects/visualize-floorplan": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
+      // The deterministic renderer draws the measured flat in a headless
+      // Chromium and serves three.js to it off disk. Nothing imports those
+      // files — the page fetches them from an origin that exists only inside
+      // the browser — so tracing cannot see them.
+      "./node_modules/three/build/three.module.js",
+      "./node_modules/three/build/three.core.js",
+      "./node_modules/@sparticuz/chromium/**",
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
