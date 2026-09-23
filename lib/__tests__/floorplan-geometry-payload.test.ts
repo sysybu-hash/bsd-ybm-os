@@ -47,10 +47,12 @@ describe("floorplan geometry payload", () => {
       x: 40, y: 40, w: 80, h: 60, kind: "bed", widthCm: 200, depthCm: 150,
     });
     expect(payload.rooms[0]?.name).toBe("חדר שינה 1");
-    // The SVG the render drew, the per-scan-line floor and the terrace rows are
-    // the pipeline's business, not the viewer's.
+    // The SVG the render drew stays the pipeline's business. The floor and the
+    // terraces now travel, because the 3D engine draws the measured region and
+    // not a bounding box — but as merged rectangles, never as scan rows.
     expect(payload).not.toHaveProperty("svg");
-    expect(payload).not.toHaveProperty("floor");
+    expect(Array.isArray(payload.floor)).toBe(true);
+    for (const rect of payload.floor ?? []) expect(rect).toHaveLength(4);
   });
 
   it("round-trips through storage", () => {
