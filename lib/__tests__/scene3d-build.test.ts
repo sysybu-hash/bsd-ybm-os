@@ -1,4 +1,4 @@
-import { buildFlatScene } from "@/lib/projects/scene3d/build-scene";
+import { buildFlatScene, pieceBelongsIn, sceneOpeningKind } from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
 import { mergeSpanRows, outlineEdges } from "@/lib/projects/scene3d/floors";
 import {
@@ -143,5 +143,49 @@ describe("scanline regions", () => {
       { x: 10, y: 0, w: 10, h: 10 },
     ]);
     expect(edges.filter((e) => e.orientation === "v").map((e) => e.at)).toEqual([0, 20]);
+  });
+});
+
+describe("what an opening is, from the rooms either side of it", () => {
+  const gap = { kind: "opening", orientation: "h" as const, centre: 100, from: 0, to: 40, thickness: 10 };
+  // A room above the wall (y < 100); below it, a balcony's floor or nothing.
+  const at = (below: "balcony" | "outside", room = "living") => ({
+    onTerrace: false,
+    clearM: 0.8,
+    roomKindAt: (_x: number, y: number) => (y < 100 ? room : undefined),
+    onFloor: (_x: number, y: number) => y < 100 || below === "balcony",
+    stepUnits: 15,
+  });
+
+  it("makes a doorway onto a balcony its door", () => {
+    // דירה 14's doors onto its terraces were holes between rooms, with a mezuzah each.
+    expect(sceneOpeningKind(gap, at("balcony"))).toBe("door");
+  });
+
+  it("makes a doorway onto nothing a window", () => {
+    expect(sceneOpeningKind(gap, at("outside"))).toBe("window");
+  });
+
+  it("gives a bathroom a window onto the balcony, never a door", () => {
+    expect(sceneOpeningKind(gap, at("balcony", "bathroom"))).toBe("window");
+  });
+
+  it("leaves a doorway between two rooms a doorway", () => {
+    expect(sceneOpeningKind(gap, { ...at("balcony"), roomKindAt: () => "living" })).toBe("opening");
+  });
+});
+
+describe("where a piece may stand", () => {
+  it("puts a bed only in a bedroom or the ממ\"ד", () => {
+    expect(pieceBelongsIn("bed", "bedroom")).toBe(true);
+    expect(pieceBelongsIn("bed", "mmd")).toBe(true);
+    expect(pieceBelongsIn("bed", "balcony")).toBe(false);
+    expect(pieceBelongsIn("bed", undefined)).toBe(false);
+  });
+
+  it("keeps a pan out of the dry rooms", () => {
+    expect(pieceBelongsIn("fixture", "bathroom")).toBe(true);
+    expect(pieceBelongsIn("fixture", "living")).toBe(false);
+    expect(pieceBelongsIn("fixture", "bedroom")).toBe(false);
   });
 });

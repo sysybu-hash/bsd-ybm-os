@@ -266,5 +266,11 @@ export function mezuzot(scene: FlatScene): SceneBox[] {
 /** A door or a doorway, and not a bathroom's. The test asks the same question. */
 export function needsMezuzah(scene: FlatScene, opening: FlatScene["openings"][number]): boolean {
   if (opening.kind !== "door" && opening.kind !== "opening") return false;
+  // A gap nobody can walk through is not a doorway: under 55 cm it is a jamb,
+  // a niche or the end of a line the measurement broke.
+  if (Math.max(opening.size.x, opening.size.z) < MIN_DOORWAY_M) return false;
   return !opensOntoBathroom(scene, opening);
 }
+
+/** The narrowest gap a person walks through. */
+const MIN_DOORWAY_M = 0.55;
