@@ -1,5 +1,5 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
-import { classifyOpenings, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
+import { classifyOpenings, sameHole, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
@@ -38,6 +38,7 @@ import {
   type FloorplanVectorGeometry,
   type PlacedNumber,
   extractPrintedAreas,
+  extractShelterMarks,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
 
@@ -77,6 +78,8 @@ export type BuiltFlat = {
    * nothing, which is every sales sheet in the reference set.
    */
   colouredDoorways?: WallBody[];
+  /** Where the sheet prints the ממ"ד's raised threshold; see extractShelterMarks. */
+  shelterMarks?: Array<{ x: number; y: number }>;
 };
 
 /**
@@ -225,8 +228,12 @@ export async function buildFlatFromGeometry(
   }
   const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 
+  const standsOnFloor = (piece: FurniturePiece) =>
+    inside(piece.x + piece.w / 2, piece.y + piece.h / 2) &&
+    !bodies.some((body) => centreInsideBody(piece, body));
   const found = findFurniture(geometry.segments, unitsPerMetre, {
     curves: geometry.curves,
+    acceptTable: standsOnFloor,
   }).filter((piece) => {
     if (!inside(piece.x + piece.w / 2, piece.y + piece.h / 2)) return false;
     return !bodies.some((body) => centreInsideBody(piece, body));
@@ -246,13 +253,14 @@ export async function buildFlatFromGeometry(
     if (!inside(cx, cy)) return false;
     // Not standing in a wall, and not on top of something already there.
     if (bodies.some((body) => centreInsideBody(piece, body))) return false;
-    return !found.some(
-      (other) =>
-        cx > other.x &&
-        cx < other.x + other.w &&
-        cy > other.y &&
-        cy < other.y + other.h,
-    );
+    // Overlap, not the centre: a seat whose centre fell just outside a WC it
+    // half covered was kept, and דירה 16, 17 and 18 got a chair on the pan and
+    // one in the bath.
+    return !found.some((other) => {
+      const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
+      const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
+      return ox > 0 && oy > 0 && ox * oy > 0.3 * Math.min(piece.w * piece.h, other.w * other.h);
+    });
   };
 
   // The rounded furniture that does survive detection: the living room's own
@@ -319,88 +327,6 @@ export async function buildFlatFromGeometry(
   const suite = rounded.filter(clear);
   const furniture = [...found, ...suite, ...chairs, ...stools];
 
-  // The doorways, from the wall pieces before they are joined across them.
-  const pieces = clipBodiesToBounds(
-    wallBodiesForSheet(geometry.segments, { unitsPerMetre, keepOpenings: true }),
-    flatExtent,
-    8,
-    { truncate: true },
-  ).filter(touchesFlat);
-  // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
-  // rule alone returned six openings on דירה 14, most of them windows, and had
-  // neither the front door nor the ones onto the terrace; the swings have all
-  // seven at true door widths. Both are kept — a gap is a real opening even
-  // where no swing is drawn, as at a cased opening — with the swing winning
-  // wherever the two describe the same hole.
-  const swings = findDoorSwings(
-    geometry.segments,
-    geometry.curves,
-    bodies,
-    unitsPerMetre,
-    { extent: flatExtent },
-  );
-  const gaps = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
-  /**
-   * Openings from the hatch the sheet stops drawing.
-   *
-   * A door or a window is drawn by stopping a wall's hatch and carrying its
-   * faces across the gap, so no gap appears between bodies and the rules above
-   * cannot see it: דירה 14 measured six openings and not one window.
-   *
-   * Which kind of opening it is, is read from the floor on either side of it —
-   * not from the flat's bounding box, which is right only for a rectangle, and
-   * found one of דירה 14's nine envelope openings. Floor on one side only: the
-   * wall is the envelope and the break is a window. Floor on both sides: it is
-   * a doorway between two rooms.
-   *
-   * Measured on the ten reference sheets with the pipeline's own segmenter:
-   * openings 71 → 165, windows 4 → 38, rooms 58 → 59 — no sheet lost a room,
-   * and דירה 14 gained one. Doorways are sealed as barriers, so a wrong one
-   * would shred a room; the width limit and the floor on both sides are what
-   * keep them honest, and the room count is what proved it.
-   */
-  const covered = (gap: Opening) =>
-    [...swings, ...gaps].some(
-      (other) =>
-        other.orientation === gap.orientation &&
-        Math.abs(other.centre - gap.centre) <= Math.max(other.thickness, gap.thickness) &&
-        other.to > gap.from &&
-        other.from < gap.to,
-    );
-  const rowPitch = lock.floor.length > 1 ? lock.floor[1]!.y - lock.floor[0]!.y : 1;
-  const floorAt = (x: number, y: number) =>
-    lock.floor.some(
-      (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
-    );
-  const floorSides = (gap: Opening): number => {
-    const mid = (gap.from + gap.to) / 2;
-    const off = gap.thickness / 2 + unitsPerMetre * 0.25;
-    const probes =
-      gap.orientation === "h"
-        ? [
-            [mid, gap.centre - off],
-            [mid, gap.centre + off],
-          ]
-        : [
-            [gap.centre - off, mid],
-            [gap.centre + off, mid],
-          ];
-    return probes.filter(([x, y]) => floorAt(x!, y!)).length;
-  };
-  const hatchGaps = findHatchGaps(bodies, geometry.segments, unitsPerMetre).filter((gap) => !covered(gap));
-  const hatchWindows = hatchGaps.filter((gap) => floorSides(gap) === 1);
-  const hatchDoorways = hatchGaps.filter(
-    (gap) => floorSides(gap) === 2 && gap.to - gap.from <= unitsPerMetre * 1.3,
-  );
-  // Which of the two found a hole is the whole door/window distinction, and
-  // merging them used to throw it away. Kept now, so a still can be asked for
-  // glazing where the sheet draws glazing.
-  const openings = [
-    ...classifyOpenings(swings, [...gaps, ...hatchDoorways], flatExtent, unitsPerMetre),
-    // A break in the envelope is a window, whatever the bounding box says.
-    ...hatchWindows.map((gap) => ({ ...gap, kind: "window" as const })),
-  ];
-
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that
   // leaks is dropped rather than guessed at.
@@ -438,6 +364,138 @@ export async function buildFlatFromGeometry(
       ? [...fromInk, ...findTerracesOnFloor(floor, bodies, missing, unitsPerMetre)]
       : fromInk;
   const terraces = terraceHits.map((terrace) => terrace.rows);
+
+  // The doorways, from the wall pieces before they are joined across them.
+  const pieces = clipBodiesToBounds(
+    wallBodiesForSheet(geometry.segments, { unitsPerMetre, keepOpenings: true }),
+    flatExtent,
+    8,
+    { truncate: true },
+  ).filter(touchesFlat);
+  // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
+  // rule alone returned six openings on דירה 14, most of them windows, and had
+  // neither the front door nor the ones onto the terrace; the swings have all
+  // seven at true door widths. Both are kept — a gap is a real opening even
+  // where no swing is drawn, as at a cased opening — with the swing winning
+  // wherever the two describe the same hole.
+  const swings = findDoorSwings(
+    geometry.segments,
+    geometry.curves,
+    bodies,
+    unitsPerMetre,
+    { extent: flatExtent },
+  );
+  const gaps = findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6);
+  // A door needs somewhere to swing. An armchair's arcs beside a wall read as
+  // a swing, and דירה 14 got a door in the middle bedroom's wall with a sofa
+  // on one side of it and a bed on the other. A leaf sweeps a square its own
+  // width deep; on one side at least, that square is clear of furniture.
+  const solid = furniture.filter((piece) =>
+    ["bed", "seat", "table", "counter", "storage", "desk"].includes(piece.kind),
+  );
+  const sweepBlocked = (door: Opening, side: -1 | 1): boolean => {
+    const width = door.to - door.from;
+    const near = door.centre + side * door.thickness / 2;
+    const far = near + side * width;
+    const sq =
+      door.orientation === "h"
+        ? { x0: door.from, x1: door.to, y0: Math.min(near, far), y1: Math.max(near, far) }
+        : { x0: Math.min(near, far), x1: Math.max(near, far), y0: door.from, y1: door.to };
+    const area = (sq.x1 - sq.x0) * (sq.y1 - sq.y0);
+    const covered = solid.reduce((sum, piece) => {
+      const ox = Math.min(sq.x1, piece.x + piece.w) - Math.max(sq.x0, piece.x);
+      const oy = Math.min(sq.y1, piece.y + piece.h) - Math.max(sq.y0, piece.y);
+      return sum + (ox > 0 && oy > 0 ? ox * oy : 0);
+    }, 0);
+    return covered > area * 0.25;
+  };
+  const passable = (door: Opening) => !(sweepBlocked(door, -1) && sweepBlocked(door, 1));
+  const doors = swings.filter(passable);
+  /**
+   * Openings from the hatch the sheet stops drawing.
+   *
+   * A door or a window is drawn by stopping a wall's hatch and carrying its
+   * faces across the gap, so no gap appears between bodies and the rules above
+   * cannot see it: דירה 14 measured six openings and not one window.
+   *
+   * Which kind of opening it is, is read from the floor on either side of it —
+   * not from the flat's bounding box, which is right only for a rectangle, and
+   * found one of דירה 14's nine envelope openings. Floor on one side only: the
+   * wall is the envelope and the break is a window. Floor on both sides: it is
+   * a doorway between two rooms.
+   *
+   * Measured on the ten reference sheets with the pipeline's own segmenter:
+   * openings 71 → 165, windows 4 → 38, rooms 58 → 59 — no sheet lost a room,
+   * and דירה 14 gained one. Doorways are sealed as barriers, so a wrong one
+   * would shred a room; the width limit and the floor on both sides are what
+   * keep them honest, and the room count is what proved it.
+   */
+  const covered = (gap: Opening) =>
+    [...doors, ...gaps].some(
+      (other) =>
+        other.orientation === gap.orientation &&
+        Math.abs(other.centre - gap.centre) <= Math.max(other.thickness, gap.thickness) &&
+        other.to > gap.from &&
+        other.from < gap.to,
+    );
+  const rowPitch = lock.floor.length > 1 ? lock.floor[1]!.y - lock.floor[0]!.y : 1;
+  // A terrace is not the flat's floor. The lock's floor runs out over the
+  // balconies, so the door and the windows onto דירה 14's two terraces had
+  // "floor" on both sides and were taken for doorways between rooms — drawn
+  // as holes in the wall, each with a mezuzah.
+  const floorAt = (x: number, y: number) =>
+    lock.floor.some(
+      (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
+    ) && !terraces.some((rows) => spansContain(rows, x, y));
+  const floorSides = (gap: Opening): number => {
+    const mid = (gap.from + gap.to) / 2;
+    const off = gap.thickness / 2 + unitsPerMetre * 0.25;
+    const probes =
+      gap.orientation === "h"
+        ? [
+            [mid, gap.centre - off],
+            [mid, gap.centre + off],
+          ]
+        : [
+            [gap.centre - off, mid],
+            [gap.centre + off, mid],
+          ];
+    return probes.filter(([x, y]) => floorAt(x!, y!)).length;
+  };
+  const hatchGaps = findHatchGaps(bodies, geometry.segments, unitsPerMetre).filter((gap) => !covered(gap));
+  const hatchWindows = hatchGaps.filter((gap) => floorSides(gap) === 1);
+  const hatchDoorways = hatchGaps.filter(
+    (gap) => floorSides(gap) === 2 && gap.to - gap.from <= unitsPerMetre * 1.3,
+  );
+  // Which of the two found a hole is the whole door/window distinction, and
+  // merging them used to throw it away. Kept now, so a still can be asked for
+  // glazing where the sheet draws glazing.
+  // One test for inside and outside, the same for every gap: a window has the
+  // flat's floor on one side of it, a doorway on both. findOpenings' gaps were
+  // judged by the flat's bounding box instead, so a window in any outer wall
+  // not on the extreme edge became an interior doorway — rendered as a hole to
+  // the outside, with a mezuzah on it.
+  const classified = classifyOpenings(
+    doors,
+    // A way through between two rooms is walked through: not with furniture
+    // across it on both sides. A window's far side is outdoors, so it stays.
+    [...gaps, ...hatchDoorways].filter((gap) => floorSides(gap) < 2 || passable(gap)),
+    flatExtent,
+    unitsPerMetre,
+    (gap) => floorSides(gap) < 2,
+  );
+  // A break in the envelope is a window, whatever the bounding box says —
+  // and one hole is one opening, whichever detectors found it, in the order
+  // doors, doorways, windows.
+  const openings: typeof classified = [];
+  for (const candidate of [
+    ...classified,
+    ...hatchWindows.map((gap) => ({ ...gap, kind: "window" as const })),
+  ]) {
+    if (openings.some((kept) => sameHole(kept, candidate, unitsPerMetre * 0.3))) continue;
+    openings.push(candidate);
+  }
+
   // A desk is a rectangle the classifier has to call storage, because a
   // sideboard is the same rectangle. The sheet already said which room is the
   // work room, so the pieces standing in it are desks — and the plate draws a
@@ -504,5 +562,10 @@ export async function buildFlatFromPdf(
     { width: geometry.pageWidth },
     flat.unitsPerMetre,
   );
-  return colouredDoorways.length > 0 ? { ...flat, colouredDoorways } : flat;
+  const shelterMarks = await extractShelterMarks(pdf);
+  return {
+    ...flat,
+    ...(colouredDoorways.length > 0 ? { colouredDoorways } : {}),
+    ...(shelterMarks.length > 0 ? { shelterMarks } : {}),
+  };
 }

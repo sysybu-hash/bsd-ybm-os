@@ -104,6 +104,30 @@ describe("which room a piece stands in", () => {
 });
 
 describe("segmentRooms", () => {
+  describe("the ממ\"ד", () => {
+    const beds = [piece(UPM, UPM, "bed"), piece(4 * UPM, UPM, "bed")];
+
+    it("is the bedroom the sheet's +2 sill mark stands at", () => {
+      const rooms = segmentRooms({
+        bodies: [...shell, divider],
+        openings: [],
+        floor,
+        furniture: beds,
+        bounds,
+        unitsPerMetre: UPM,
+        shelterMarks: [{ x: W - 0.3 * UPM, y: H + 0.2 * UPM }],
+      });
+      const shelter = rooms.filter((room) => room.kind === "mmd");
+      expect(shelter).toHaveLength(1);
+      expect(shelter[0]!.bounds.x).toBeGreaterThan(W / 2 - 1);
+    });
+
+    it("is not guessed from the walls where the sheet marks none", () => {
+      // Wall thickness named a shelter on דירה 18 and 22, which have none.
+      expect(run(beds).filter((room) => room.kind === "mmd")).toHaveLength(0);
+    });
+  });
+
   describe("a WC in a cell of its own", () => {
     // A 1.5 by 0.8 m cell in the corner of the right-hand room.
     const cellWalls = [

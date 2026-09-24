@@ -38,10 +38,10 @@ export type PlacedOpening = {
 
 export type Bounds = { x: number; y: number; width: number; height: number };
 
-function sameHole(a: Opening, b: Opening): boolean {
+export function sameHole(a: Opening, b: Opening, slack = 0): boolean {
   return (
     a.orientation === b.orientation &&
-    Math.abs(a.centre - b.centre) <= Math.max(a.thickness, b.thickness) &&
+    Math.abs(a.centre - b.centre) <= Math.max(a.thickness, b.thickness, slack) &&
     Math.min(a.to, b.to) - Math.max(a.from, b.from) > 0
   );
 }
@@ -63,6 +63,12 @@ export function classifyOpenings(
   gaps: Opening[],
   bounds: Bounds,
   unitsPerMetre: number,
+  /**
+   * Whether a gap is in the envelope. The caller that has the floor passes the
+   * floor-sides test; the bounding box is only the fallback, and it misses
+   * every outer wall that is not on the flat's extreme edge.
+   */
+  isExterior?: (gap: Opening) => boolean,
 ): Array<Opening & { kind: OpeningKind }> {
   const tolerance = unitsPerMetre * 0.5;
   const out: Array<Opening & { kind: OpeningKind }> = swings.map((swing) => ({
@@ -70,13 +76,18 @@ export function classifyOpenings(
     kind: "door" as const,
   }));
   for (const gap of gaps) {
-    if (swings.some((swing) => sameHole(swing, gap))) continue;
+    // Against everything kept so far, not only the swings: two detectors
+    // finding the same gap made two openings in one hole.
+    // A gap read off each face of one wall sits a few centimetres from its
+    // twin, closer than any two real openings in parallel walls can be.
+    if (out.some((kept) => sameHole(kept, gap, unitsPerMetre * 0.3))) continue;
+    const exterior = isExterior ? isExterior(gap) : isOuterWall(gap, bounds, tolerance);
     out.push({
       ...gap,
       // A hole in an inside wall with no leaf drawn is a cased opening, not a
       // window: the living room and the kitchen on an open plan meet through
       // one, and glazing it would put a window inside the flat.
-      kind: isOuterWall(gap, bounds, tolerance) ? "window" : "opening",
+      kind: exterior ? "window" : "opening",
     });
   }
   return out;

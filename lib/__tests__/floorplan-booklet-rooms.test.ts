@@ -107,7 +107,9 @@ describe("honest booklet rooms", () => {
     });
     expect(booklet.unitLabel).toMatch(/דירה 14/);
     expect(booklet.grossAreaM2).toBe(111.29);
-    expect(booklet.rooms.filter((room) => room.kind === "bedroom")).toHaveLength(4);
+    // Four sleeping rooms on the sheet, one of them the ממ"ד — not five.
+    expect(booklet.rooms.filter((room) => room.kind === "bedroom")).toHaveLength(3);
+    expect(booklet.rooms.filter((room) => room.kind === "mmd")).toHaveLength(1);
   });
 
   it("invents no program for a sheet whose program it was not given", () => {

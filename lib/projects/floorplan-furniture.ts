@@ -306,7 +306,17 @@ export function settleTables(
 export function findDiningTable(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { chairDepthM?: number },
+  options?: {
+    chairDepthM?: number;
+    /**
+     * Whether a table may stand where a ring puts it. A bathroom's basin, pan
+     * and bath corners knot into a ring too, and on דירה 18 it held more knots
+     * than the chairs round the real table: the "table" stood in a wall at the
+     * foot of the flat and the dining table was never found. The builder knows
+     * the walls and the floor, and says no to such a ring.
+     */
+    accept?: (table: FurniturePiece) => boolean;
+  },
 ): FurniturePiece | null {
   const chairDepth = (options?.chairDepthM ?? 0.42) * unitsPerMetre;
   const knots = findCurveFixtures(curves, unitsPerMetre, {
@@ -331,7 +341,7 @@ export function findDiningTable(
   let bestKnots = 0;
   for (let linkM = 0.55; linkM <= 1.45; linkM += 0.05) {
     const link = linkM * unitsPerMetre;
-    const found = ringAt(knots, centres, link, chairDepth, unitsPerMetre);
+    const found = ringAt(knots, centres, link, chairDepth, unitsPerMetre, options?.accept);
     if (found && found.knots > bestKnots) {
       best = found.piece;
       bestKnots = found.knots;
@@ -347,6 +357,7 @@ function ringAt(
   link: number,
   chairDepth: number,
   unitsPerMetre: number,
+  accept?: (table: FurniturePiece) => boolean,
 ): { piece: FurniturePiece; knots: number } | null {
   const seen = new Array<boolean>(centres.length).fill(false);
   let best: { piece: FurniturePiece; knots: number } | null = null;
@@ -384,11 +395,40 @@ function ringAt(
     const shortCm = (Math.min(x1 - x0, y1 - y0) / unitsPerMetre) * 100;
     if (longCm < 120 || longCm > 360 || shortCm < 80 || shortCm > 260) continue;
 
-    const x = x0 + chairDepth;
-    const y = y0 + chairDepth;
-    const w = x1 - x0 - chairDepth * 2;
-    const h = y1 - y0 - chairDepth * 2;
+    let x = x0 + chairDepth;
+    let y = y0 + chairDepth;
+    let w = x1 - x0 - chairDepth * 2;
+    let h = y1 - y0 - chairDepth * 2;
+    // The table's own rounded corners are knots too, inside the ring of chairs.
+    // Where they are there, they are the table — the ring's box less a chair's
+    // depth is only a guess at it, and when the group takes in a knot beyond
+    // the chairs it grows with it: דירה 22's table came out 2.40 by 1.41.
+    const inner = group
+      .map((g) => knots[g]!)
+      .filter((k) => {
+        const cx = k.x + k.w / 2;
+        const cy = k.y + k.h / 2;
+        return cx > x && cx < x + w && cy > y && cy < y + h;
+      });
+    if (inner.length >= 3) {
+      const ix0 = Math.min(...inner.map((k) => k.x));
+      const iy0 = Math.min(...inner.map((k) => k.y));
+      const ix1 = Math.max(...inner.map((k) => k.x + k.w));
+      const iy1 = Math.max(...inner.map((k) => k.y + k.h));
+      // Its corners span the table, not one end of it: three knots at one end
+      // of דירה 18's table made a 61 by 76 table of a 2 m one.
+      if (ix1 - ix0 >= Math.max(unitsPerMetre * 0.6, w * 0.6) && iy1 - iy0 >= Math.max(unitsPerMetre * 0.6, h * 0.6)) {
+        x = ix0;
+        y = iy0;
+        w = ix1 - ix0;
+        h = iy1 - iy0;
+      }
+    }
     if (w < unitsPerMetre * 0.6 || h < unitsPerMetre * 0.6) continue;
+    // A dining table is a metre long at the least. A kitchen's hob, stools and
+    // sink knot into a group the size of a dining set, and on דירה 18 it
+    // outnumbered the real chairs and made a 61 by 76 "table" by the hob.
+    if (Math.max(w, h) < unitsPerMetre * 1.0) continue;
     const piece: FurniturePiece = {
       x,
       y,
@@ -398,6 +438,7 @@ function ringAt(
       depthCm: (h / unitsPerMetre) * 100,
       kind: "table",
     };
+    if (accept && !accept(piece)) continue;
     if (!best || group.length > best.knots) best = { piece, knots: group.length };
   }
   return best;
@@ -846,7 +887,11 @@ export function stoolsAlongRun(
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
-  options?: { curves?: VectorSegment[] },
+  options?: {
+    curves?: VectorSegment[];
+    /** Where a dining table may stand; see findDiningTable's accept. */
+    acceptTable?: (table: FurniturePiece) => boolean;
+  },
 ): FurniturePiece[] {
   const rects = dedupeRectangles(dropNested(findRectangles(segments, { unitsPerMetre })));
   const pieces = rects.map((r) => {
@@ -861,7 +906,24 @@ export function findFurniture(
   // CAD is rounded, so it reaches neither the rectangle list nor the curve list
   // as a shape — it has to be inferred from the ring of chairs round it — while
   // the rectangle that does look like a table is the drawing's legend box.
-  const ring = findDiningTable(options?.curves ?? [], unitsPerMetre);
+  const ringFound = findDiningTable(options?.curves ?? [], unitsPerMetre, { accept: options?.acceptTable });
+  // A drawn table inside the ring is the table: the ring only says where one
+  // stands, and cannot say how long it is when no chair sits at its ends.
+  // The largest one: the chairs' own lines cut the table's outline into a
+  // stack of shorter rectangles, all of them table-shaped.
+  const drawnInRing = ringFound
+    ? pieces
+        .filter(
+          (p) =>
+            p.kind === "table" &&
+            p.x + p.w / 2 > ringFound.x - ringFound.w * 0.25 &&
+            p.x + p.w / 2 < ringFound.x + ringFound.w * 1.25 &&
+            p.y + p.h / 2 > ringFound.y - ringFound.h * 0.25 &&
+            p.y + p.h / 2 < ringFound.y + ringFound.h * 1.25,
+        )
+        .sort((a, b) => b.w * b.h - a.w * a.h)[0]
+    : undefined;
+  const ring = drawnInRing ? null : ringFound;
   const table = ring ?? pieces.find((p) => p.kind === "table");
   const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
   const withCurves = [
@@ -881,12 +943,62 @@ export function findFurniture(
         !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
     ),
   ];
-  return settleTables(
-    settleFixtures(withCurves, unitsPerMetre),
-    options?.curves ?? [],
-    unitsPerMetre,
-    ring,
+  return panPartsAreNotSeats(
+    chairsAreNotPans(
+      settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, ring ?? drawnInRing),
+      unitsPerMetre,
+    ),
   );
+}
+
+/**
+ * A small curve knot beside a dining table is a chair, not a pan.
+ *
+ * A chair is the same size and the same kind of drawing as a WC or a basin,
+ * and next to its peers round the table it passes settleFixtures as a wet
+ * cluster. The living room then held "fixtures", was called a living room
+ * merged with a bathroom, and the rule that splits such rooms cut the open
+ * kitchen and living of דירה 15, 16, 17 and 23 in two along no wall at all.
+ * The two chairs at a table's end knot together into one piece a bath's
+ * length, so size does not decide it; nobody draws a WC or a bath within
+ * 45 cm of a dining table.
+ */
+export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  const tables = pieces.filter((piece) => piece.kind === "table");
+  if (tables.length === 0) return pieces;
+  const reach = unitsPerMetre * 0.45;
+  const nearTable = (piece: FurniturePiece) =>
+    tables.some((table) => {
+      const dx = Math.max(table.x - (piece.x + piece.w), piece.x - (table.x + table.w), 0);
+      const dy = Math.max(table.y - (piece.y + piece.h), piece.y - (table.y + table.h), 0);
+      return Math.hypot(dx, dy) <= reach;
+    });
+  return pieces.map((piece) =>
+    piece.kind === "fixture" && nearTable(piece)
+      ? { ...piece, kind: "seat" as const }
+      : piece,
+  );
+}
+
+/**
+ * A pan's cistern is not a chair.
+ *
+ * A WC is found twice: its bowl as a knot of curves, a fixture, and the
+ * rectangle of its cistern and seat, which is a chair's size and is named one.
+ * דירה 16 and 17 had a chair standing on the pan. The rectangle that lies
+ * mostly on a fixture is part of that fixture.
+ */
+export function panPartsAreNotSeats(pieces: FurniturePiece[]): FurniturePiece[] {
+  const wet = pieces.filter((piece) => piece.kind === "fixture" || piece.kind === "sink");
+  return pieces.filter((piece) => {
+    if (piece.kind !== "seat") return true;
+    const area = piece.w * piece.h;
+    return !wet.some((fixture) => {
+      const ox = Math.min(piece.x + piece.w, fixture.x + fixture.w) - Math.max(piece.x, fixture.x);
+      const oy = Math.min(piece.y + piece.h, fixture.y + fixture.h) - Math.max(piece.y, fixture.y);
+      return ox > 0 && oy > 0 && ox * oy > 0.5 * area;
+    });
+  });
 }
 
 /**

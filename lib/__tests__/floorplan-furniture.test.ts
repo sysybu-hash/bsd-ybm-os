@@ -1,11 +1,14 @@
 import {
+  chairsAreNotPans,
   classifyPiece,
   dedupeRectangles,
   dropNested,
   findCurveFixtures,
+  findDiningTable,
   findKitchenFittings,
   findRectangles,
   looksLikeKitchenIsland,
+  panPartsAreNotSeats,
   findSeatsAroundTable,
   scaleFromBeds,
   settleFixtures,
@@ -380,5 +383,61 @@ describe("the short side is capped on its own", () => {
   it("still keeps a fixture narrow by default", () => {
     const wide = blob(300, 560, 1.8 * UPM, 1.5 * UPM);
     expect(findCurveFixtures(wide, UPM)).toEqual([]);
+  });
+});
+
+describe("one drawn object, one kind", () => {
+  const piece = (x: number, y: number, wCm: number, hCm: number, kind: "fixture" | "seat" | "table") => ({
+    x,
+    y,
+    w: (wCm / 100) * UPM,
+    h: (hCm / 100) * UPM,
+    widthCm: wCm,
+    depthCm: hCm,
+    kind,
+  });
+
+  it("calls the knots round a dining table chairs, even two chairs knotted into one", () => {
+    // דירה 15, 16, 17 and 23: the chairs were pans, and the open plan was cut in two.
+    const table = piece(2 * UPM, 2 * UPM, 80, 200, "table");
+    const chair = piece(2 * UPM - 0.5 * UPM, 2.5 * UPM, 45, 30, "fixture");
+    const endPair = piece(2 * UPM, 2 * UPM + 2.2 * UPM, 126, 79, "fixture");
+    const pan = piece(8 * UPM, 8 * UPM, 40, 68, "fixture");
+    const out = chairsAreNotPans([table, chair, endPair, pan], UPM);
+    expect(out.map((p) => p.kind)).toEqual(["table", "seat", "seat", "fixture"]);
+  });
+
+  it("does not seat anyone on a pan", () => {
+    // The cistern's rectangle is a chair's size; on דירה 16 and 17 it was one.
+    const pan = piece(UPM, UPM, 57, 57, "fixture");
+    const cistern = piece(UPM, UPM + 0.1 * UPM, 57, 47, "seat");
+    const chair = piece(4 * UPM, UPM, 50, 50, "seat");
+    expect(panPartsAreNotSeats([pan, cistern, chair])).toEqual([pan, chair]);
+  });
+});
+
+describe("the dining table, from the ring of chairs round it", () => {
+  /** A chair's four corner arcs, each a short chord. */
+  const chairAt = (x: number, y: number) =>
+    [
+      [x, y],
+      [x + 0.4 * UPM, y],
+      [x, y + 0.4 * UPM],
+      [x + 0.4 * UPM, y + 0.4 * UPM],
+    ].flatMap(([cx, cy]) => [
+      { x1: cx!, y1: cy!, x2: cx! + 4, y2: cy! + 1, lineWidth: 1 },
+      { x1: cx! + 4, y1: cy! + 1, x2: cx! + 6, y2: cy! + 4, lineWidth: 1 },
+      { x1: cx! + 6, y1: cy! + 4, x2: cx! + 7, y2: cy! + 8, lineWidth: 1 },
+    ]);
+  // Three chairs above a 1.8 m table and three below, 1.4 m apart.
+  const ring = [0, 1, 2].flatMap((i) => [...chairAt(i * 0.65 * UPM, 0), ...chairAt(i * 0.65 * UPM, 1.4 * UPM)]);
+
+  it("is found from the chairs", () => {
+    expect(findDiningTable(ring, UPM)).not.toBeNull();
+  });
+
+  it("is not placed where the caller says no table can stand", () => {
+    // דירה 18's bathroom fixtures made a ring, and its "table" stood in a wall.
+    expect(findDiningTable(ring, UPM, { accept: () => false })).toBeNull();
   });
 });

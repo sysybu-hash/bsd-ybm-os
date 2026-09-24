@@ -308,8 +308,19 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const bodies = input.bodies.filter((body) => touchesGround(bandToRect(body), reach));
   // A piece of furniture standing on no floor we measured is the neighbour's
   // too, and it stretched the frame the same way.
-  const furniture = input.furniture.filter((piece) =>
+  const grounded = input.furniture.filter((piece) =>
     touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, 0),
+  );
+  // One drawn object is one piece. The detector can find a rectangle twice a
+  // few millimetres apart, and דירה 15 got two beds in one place.
+  const furniture = grounded.filter(
+    (piece, i) =>
+      !grounded.slice(0, i).some((other) => {
+        if (other.kind !== piece.kind) return false;
+        const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
+        const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
+        return ox > 0 && oy > 0 && ox * oy > 0.7 * Math.min(piece.w * piece.h, other.w * other.h);
+      }),
   );
 
   const spanned = rectsBounds([
@@ -331,10 +342,13 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     const host = roomAt(centre, roomRects);
     const clearM = Math.max(rect.w, rect.h) / upm;
     const onTerrace = terraceRects.some((rects) => distanceToRects(centre, rects) <= upm * 0.6);
-    const kind: SceneOpeningKind =
-      opening.kind === "window" && onTerrace && clearM >= SLIDER_MIN_CLEAR_M
-        ? "slider"
-        : (opening.kind as SceneOpeningKind);
+    const kind: SceneOpeningKind = sceneOpeningKind(opening, {
+      onTerrace,
+      clearM,
+      roomKindAt: (x, y) => roomRects.find((room) => pointInRects({ x, y }, room.rects))?.room.kind,
+      onFloor: (x, y) => pointInRects({ x, y }, floorRects),
+      stepUnits: upm * 0.3,
+    });
     const { sillM, headM } = openingHeights(kind, isWetRoom((host?.room.kind ?? "other") as SceneRoomKind));
     const id = `opening:${index}`;
     holes.push({ id, hole: opening, sillM, headM });
@@ -507,6 +521,10 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
     const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     const host = roomAt(rectCentre(box), roomRects);
+    // The written rules, kept here and not only asked of a model: a bed only
+    // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
+    // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
+    if (!pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
@@ -567,4 +585,62 @@ function glazingThickness(
   size: { x: number; y: number; z: number },
 ): { x: number } | { z: number } {
   return opening.orientation === "h" ? { z: Math.min(size.z, GLASS_T_M) } : { x: Math.min(size.x, GLASS_T_M) };
+}
+
+const SLEEPING = new Set(["bedroom", "mmd"]);
+const DRY = new Set(["bedroom", "mmd", "living", "kitchen"]);
+
+/** Whether a measured piece may stand in the room it was measured in. */
+export function pieceBelongsIn(pieceKind: string, roomKind: string | undefined): boolean {
+  if (pieceKind === "bed") return roomKind != null && SLEEPING.has(roomKind);
+  if (pieceKind === "fixture") return roomKind == null || !DRY.has(roomKind);
+  return true;
+}
+
+/**
+ * What an opening is, given the rooms on either side of it.
+ *
+ * A doorway with a room on one side only leads out of the flat. The
+ * measurement cannot always tell — a balcony's floor is part of the floor it
+ * locks, and only a terrace whose area the sheet prints as text is known as
+ * one — so דירה 14's door and windows onto its balconies came through as
+ * doorways between rooms: holes in the wall, each with a mezuzah. With the
+ * rooms known, the question answers itself. Measured floor on the far side is
+ * a balcony, so the opening is its door; nothing there is a window.
+ */
+export function sceneOpeningKind(
+  opening: { kind: string; orientation: "h" | "v"; centre: number; from: number; to: number; thickness: number },
+  at: {
+    onTerrace: boolean;
+    clearM: number;
+    roomKindAt: (x: number, y: number) => string | undefined;
+    onFloor: (x: number, y: number) => boolean;
+    stepUnits: number;
+  },
+): SceneOpeningKind {
+  if (opening.kind === "window") {
+    return at.onTerrace && at.clearM >= SLIDER_MIN_CLEAR_M ? "slider" : "window";
+  }
+  if (opening.kind !== "opening") return opening.kind as SceneOpeningKind;
+  const mid = (opening.from + opening.to) / 2;
+  const off = opening.thickness / 2 + at.stepUnits;
+  const sides: Array<[number, number]> =
+    opening.orientation === "h"
+      ? [
+          [mid, opening.centre - off],
+          [mid, opening.centre + off],
+        ]
+      : [
+          [opening.centre - off, mid],
+          [opening.centre + off, mid],
+        ];
+  const kinds = sides.map(([x, y]) => at.roomKindAt(x, y));
+  const inside = kinds.filter((kind) => kind != null);
+  if (inside.length !== 1) return "opening";
+  const outside = sides[kinds.findIndex((kind) => kind == null)]!;
+  if (!at.onFloor(outside[0], outside[1])) return "window";
+  // Nobody steps out onto the balcony from the bathroom: what a bathroom has
+  // onto one is a window.
+  if (inside[0] === "bathroom") return "window";
+  return at.clearM >= SLIDER_MIN_CLEAR_M ? "slider" : "door";
 }

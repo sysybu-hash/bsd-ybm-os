@@ -1,7 +1,6 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import type { FloorplanRoom, FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
-  bodyRect,
   bridgeOpenings,
   interiorComponents,
   spanArea,
@@ -117,6 +116,13 @@ function rowPitch(rows: SpanRow[]): number {
   return Number.isFinite(pitch) ? pitch : 1;
 }
 
+/** A bath is the smallest piece drawn as a closed outline the flood goes round. */
+const ISLAND_MIN_CM = 120;
+/** A WC pan drawn closed is an island too; a floor drain is half its length. */
+const PAN_MIN_CM = 60;
+/** The largest cell a lone pan makes a bathroom of: a WC, not a living room. */
+const PAN_CELL_MAX_M2 = 4;
+
 /**
  * Which region each piece of furniture stands in.
  *
@@ -128,13 +134,6 @@ function rowPitch(rows: SpanRow[]): number {
  * region round its outline: the one that covers most points of a ring drawn
  * just outside it.
  */
-/** A bath is the smallest piece drawn as a closed outline the flood goes round. */
-const ISLAND_MIN_CM = 120;
-/** A WC pan drawn closed is an island too; a floor drain is half its length. */
-const PAN_MIN_CM = 60;
-/** The largest cell a lone pan makes a bathroom of: a WC, not a living room. */
-const PAN_CELL_MAX_M2 = 4;
-
 export function assignFurniture(
   components: SpanRow[][],
   furniture: FurniturePiece[],
@@ -186,41 +185,6 @@ export function assignFurniture(
 }
 
 /**
- * How thick the walls around a region are, at its four sides.
- *
- * The ממ"ד is the one room told apart by its structure rather than its
- * contents: it holds a bed like any bedroom, and what makes it a shelter is
- * reinforced concrete on every side. On these sheets that is 25 cm and up where
- * an ordinary partition is 8 to 15.
- */
-function heavySides(
-  bodies: WallBody[],
-  box: { x: number; y: number; width: number; height: number },
-  unitsPerMetre: number,
-  internal?: (body: WallBody) => boolean,
-): number {
-  const heavy = unitsPerMetre * 0.25;
-  const reach = unitsPerMetre * 0.35;
-  const near = (test: (r: ReturnType<typeof bodyRect>) => boolean) =>
-    bodies.some(
-      (b) =>
-        b.thickness >= heavy &&
-        (!internal || internal(b)) &&
-        test(bodyRect(b)),
-    );
-  const midX = box.x + box.width / 2;
-  const midY = box.y + box.height / 2;
-  let count = 0;
-  // North and south: a horizontal wall spanning the middle of the room.
-  if (near((r) => r.y + r.h >= box.y - reach && r.y <= box.y && midX >= r.x && midX <= r.x + r.w)) count++;
-  if (near((r) => r.y <= box.y + box.height + reach && r.y + r.h >= box.y + box.height && midX >= r.x && midX <= r.x + r.w)) count++;
-  // West and east.
-  if (near((r) => r.x + r.w >= box.x - reach && r.x <= box.x && midY >= r.y && midY <= r.y + r.h)) count++;
-  if (near((r) => r.x <= box.x + box.width + reach && r.x + r.w >= box.x + box.width && midY >= r.y && midY <= r.y + r.h)) count++;
-  return count;
-}
-
-/**
  * A piece of floor holding measured furniture, too small to be a room by
  * itself, is the end of the room it was cut from.
  *
@@ -238,7 +202,6 @@ function restitchFurnishedFragments(
   minRoomM2: number,
 ): SpanRow[][] {
   if (components.length < 2) return components;
-  const pitchOf = (rows: SpanRow[]) => (rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1);
   const area = (rows: SpanRow[]) => spanArea(rows) / (unitsPerMetre * unitsPerMetre);
   const xRange = (rows: SpanRow[]) => {
     let lo = Infinity;
@@ -252,7 +215,7 @@ function restitchFurnishedFragments(
 
   out.forEach((rows, i) => {
     if (rows.length === 0 || area(rows) >= minRoomM2) return;
-    const pitch = pitchOf(rows);
+    const pitch = rowPitch(rows);
     const inside = furniture.filter((piece) =>
       covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
     );
@@ -294,6 +257,32 @@ function restitchFurnishedFragments(
 /** The smallest cell a WC or a shower is drawn in. */
 const WET_CELL_MIN_M2 = 0.6;
 
+/**
+ * The bedroom the sheet's "+2" stands at — the ממ"ד's door sill.
+ *
+ * The mark is printed in the doorway, on either side of it, so the bedroom
+ * nearest it within a metre is the one. Null where no mark stands at a bedroom.
+ */
+function markedShelter(
+  rooms: SegmentedRoom[],
+  marks: Array<{ x: number; y: number }>,
+  unitsPerMetre: number,
+): SegmentedRoom | null {
+  const reach = unitsPerMetre * 1;
+  let best: { room: SegmentedRoom; distance: number } | null = null;
+  for (const room of rooms) {
+    if (room.kind !== "bedroom") continue;
+    const box = room.bounds;
+    for (const mark of marks) {
+      const dx = Math.max(box.x - mark.x, 0, mark.x - (box.x + box.width));
+      const dy = Math.max(box.y - mark.y, 0, mark.y - (box.y + box.height));
+      const distance = Math.hypot(dx, dy);
+      if (distance <= reach && (!best || distance < best.distance)) best = { room, distance };
+    }
+  }
+  return best ? best.room : null;
+}
+
 export function segmentRooms(input: {
   bodies: WallBody[];
   openings: Opening[];
@@ -321,6 +310,11 @@ export function segmentRooms(input: {
    * stop coming back joined to the corridor.
    */
   colouredDoorways?: WallBody[];
+  /**
+   * Where the sheet prints the ממ"ד's raised threshold ("+2"). Where the sheet
+   * prints one, it decides which bedroom is the shelter; see markedShelter.
+   */
+  shelterMarks?: Array<{ x: number; y: number }>;
 }): SegmentedRoom[] {
   const { bodies, openings, floor, furniture, bounds, unitsPerMetre } = input;
   const minRoomM2 = input.minRoomM2 ?? 1.4;
@@ -431,37 +425,22 @@ export function segmentRooms(input: {
     ink,
     unitsPerMetre,
     floorPitch,
+    minRoomM2,
   });
 
-  // At most one shelter. Every bedroom on these sheets has a thick wall or two
-  // — an exterior wall counts — so the side test alone called three of דירה 14's
-  // four bedrooms a ממ"ד. A flat has exactly one, and it is the bedroom with the
-  // most concrete round it.
-  // Heavy INTERNAL walls, not heavy walls. An exterior wall is thick everywhere,
-  // so on a small flat every bedroom sits inside three of them and the side
-  // count alone gave דירה 18, 19, 22 and 23 a shelter none of them has. What
-  // makes a ממ"ד is concrete where the rest of the flat has partitions: a wall
-  // with the flat's own floor on both sides of it.
-  const isInternal = (body: WallBody) => {
-    const r = bodyRect(body);
-    const step = unitsPerMetre * 0.4;
-    return body.orientation === "h"
-      ? covers(floor, floorPitch, r.x + r.w / 2, r.y - step) &&
-          covers(floor, floorPitch, r.x + r.w / 2, r.y + r.h + step)
-      : covers(floor, floorPitch, r.x - step, r.y + r.h / 2) &&
-          covers(floor, floorPitch, r.x + r.w + step, r.y + r.h / 2);
-  };
-  const shelter = split
-    .filter((room) => room.kind === "bedroom")
-    .map((room) => ({
-      room,
-      sides: heavySides(bodies, room.bounds, unitsPerMetre, isInternal),
-    }))
-    .filter((entry) => entry.sides >= 2)
-    .sort((a, b) => b.sides - a.sides || a.room.areaM2 - b.room.areaM2)[0];
+  // The ממ"ד is the bedroom the sheet marks with its "+2" sill, and no other.
+  //
+  // It used to be the bedroom with the most concrete round it, and that could
+  // not be measured: an exterior wall comes out as thick as a shelter's, so on
+  // דירה 14 it named the wrong bedroom, and on the four reference sheets that
+  // print no "+2" it named one on every sheet — on דירה 18 and 22, which draw
+  // no shelter at all, and on דירה 21 a bedroom with a partition for a wall. A
+  // bedroom named ממ"ד in error is an invention; a shelter left a bedroom is
+  // still a bedroom.
+  const shelter = markedShelter(split, input.shelterMarks ?? [], unitsPerMetre);
   if (shelter) {
-    shelter.room.kind = "mmd";
-    shelter.room.name = KIND_NAME_HE.mmd;
+    shelter.kind = "mmd";
+    shelter.name = KIND_NAME_HE.mmd;
   }
 
   // Numbered where a flat has several of a kind, so the booklet's table can
@@ -624,19 +603,26 @@ function classifyRoomFromContents(input: {
   return { kind: input.areaM2 < 4 ? "circulation" : "other", bedCount };
 }
 
+/**
+ * One half of a split room, with the pieces that stand on its side of the cut.
+ *
+ * The same size rule as a region of its own: a WC cell below room size is
+ * still a bathroom. The halves used to re-test every piece's centre and to
+ * keep nothing under 1.4 m², so a split lost the bath the flood had gone round
+ * and dropped the WC half it was made to separate.
+ */
 function classifyCut(
   rows: SpanRow[],
-  furniture: FurniturePiece[],
+  contents: FurniturePiece[],
   unitsPerMetre: number,
+  minRoomM2: number,
 ): SegmentedRoom | null {
   if (rows.length < 2) return null;
-  const pitch = rows[1]!.y - rows[0]!.y;
+  const pitch = rowPitch(rows);
   const areaM2 = spanArea(rows) / (unitsPerMetre * unitsPerMetre);
-  if (areaM2 < 1.4) return null;
+  const wet = contents.some((piece) => piece.kind === "fixture" || piece.kind === "sink");
+  if (areaM2 < minRoomM2 && !(wet && areaM2 >= WET_CELL_MIN_M2)) return null;
   const box = boundsOf(rows, pitch);
-  const contents = furniture.filter((piece) =>
-    covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
-  );
   const classified = classifyRoomFromContents({ areaM2, contents });
   return {
     rows,
@@ -675,6 +661,7 @@ function splitMergedWetRooms(
     ink: VectorSegment[];
     unitsPerMetre: number;
     floorPitch: number;
+    minRoomM2: number;
   },
 ): SegmentedRoom[] {
   const out: SegmentedRoom[] = [];
@@ -694,8 +681,19 @@ function splitMergedWetRooms(
       continue;
     }
     const [a, b] = cutRowsAlong(room.rows, separator, input.unitsPerMetre);
-    const first = classifyCut(a, room.contents, input.unitsPerMetre);
-    const second = classifyCut(b, room.contents, input.unitsPerMetre);
+    // Each piece goes to the side of the cut its centre is on — it was in this
+    // room already, whether or not the flood covered its centre.
+    const low = (piece: FurniturePiece) =>
+      separator.orientation === "h"
+        ? piece.y + piece.h / 2 < separator.at
+        : piece.x + piece.w / 2 < separator.at;
+    const first = classifyCut(a, room.contents.filter(low), input.unitsPerMetre, input.minRoomM2);
+    const second = classifyCut(
+      b,
+      room.contents.filter((piece) => !low(piece)),
+      input.unitsPerMetre,
+      input.minRoomM2,
+    );
     if (!first || !second || first.mergedKinds || second.mergedKinds) {
       out.push(room);
       continue;
@@ -766,12 +764,10 @@ export function markEntranceHall(
   if (!door) return rooms;
   const inward = inwardPoint(door, floor, unitsPerMetre);
   if (!inward) return rooms;
-  const pitchOf = (room: SegmentedRoom) =>
-    room.rows.length > 1 ? room.rows[1]!.y - room.rows[0]!.y : 1;
   const hit = rooms.find(
     (room) =>
       (room.kind === "circulation" || room.kind === "other") &&
-      covers(room.rows, pitchOf(room), inward.x, inward.y),
+      covers(room.rows, rowPitch(room.rows), inward.x, inward.y),
   );
   if (!hit) return rooms;
   return rooms.map((room) => (room === hit ? { ...room, name: "מבואה" } : room));

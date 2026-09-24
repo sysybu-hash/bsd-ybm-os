@@ -211,8 +211,33 @@ export function stageScene(scene: FlatScene, rules: AudienceRules): StagingResul
   return { props, lights };
 }
 
+/** The room a point on the floor is in, if the measurement put one there. */
+function roomAt(scene: FlatScene, x: number, z: number): SceneRoom | undefined {
+  return scene.rooms.find((room) =>
+    room.rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d),
+  );
+}
+
 /**
- * A mezuzah case on the posts of the doors that were measured.
+ * A door into a bathroom or a WC carries no mezuzah.
+ *
+ * The rule put one on every measured door, and the wet rooms' doors with the
+ * rest — which is not where a mezuzah goes, and in a still for a haredi buyer
+ * it is the first thing that is wrong. The door's two sides are looked at, a
+ * short step out of the wall each way.
+ */
+function opensOntoBathroom(scene: FlatScene, opening: FlatScene["openings"][number]): boolean {
+  const alongX = opening.size.x >= opening.size.z;
+  const step = (alongX ? opening.size.z : opening.size.x) / 2 + 0.3;
+  const sides = alongX
+    ? [roomAt(scene, opening.centre.x, opening.centre.z - step), roomAt(scene, opening.centre.x, opening.centre.z + step)]
+    : [roomAt(scene, opening.centre.x - step, opening.centre.z), roomAt(scene, opening.centre.x + step, opening.centre.z)];
+  return sides.some((room) => room?.kind === "bathroom");
+}
+
+/**
+ * A mezuzah case on the posts of the doors that were measured — every door
+ * but a bathroom's.
  *
  * A case, not a word: the renderer draws no letters anywhere, which is one of
  * the rules the image model kept breaking.
@@ -220,7 +245,7 @@ export function stageScene(scene: FlatScene, rules: AudienceRules): StagingResul
 export function mezuzot(scene: FlatScene): SceneBox[] {
   const out: SceneBox[] = [];
   for (const opening of scene.openings) {
-    if (opening.kind !== "door" && opening.kind !== "opening") continue;
+    if (!needsMezuzah(scene, opening)) continue;
     const alongX = opening.size.x >= opening.size.z;
     out.push({
       kind: "prop",
@@ -237,3 +262,15 @@ export function mezuzot(scene: FlatScene): SceneBox[] {
   }
   return out;
 }
+
+/** A door or a doorway, and not a bathroom's. The test asks the same question. */
+export function needsMezuzah(scene: FlatScene, opening: FlatScene["openings"][number]): boolean {
+  if (opening.kind !== "door" && opening.kind !== "opening") return false;
+  // A gap nobody can walk through is not a doorway: under 55 cm it is a jamb,
+  // a niche or the end of a line the measurement broke.
+  if (Math.max(opening.size.x, opening.size.z) < MIN_DOORWAY_M) return false;
+  return !opensOntoBathroom(scene, opening);
+}
+
+/** The narrowest gap a person walks through. */
+const MIN_DOORWAY_M = 0.55;
