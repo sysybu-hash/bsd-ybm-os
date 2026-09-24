@@ -577,6 +577,39 @@ export async function buildVectorWallJpeg(
 /** A number the sheet prints, with where it prints it. */
 export type PlacedNumber = { x: number; y: number; value: number };
 
+/** The page's real text items, placed in the geometry's own coordinates. */
+async function readPlacedText(
+  pdf: Buffer | Uint8Array,
+  what: string,
+): Promise<Array<{ x: number; y: number; text: string }>> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return [];
+  try {
+    const doc = await pdfjs.getDocument({
+      data: asPdfBytes(pdf),
+      isEvalSupported: false,
+      useSystemFonts: false,
+    }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1, rotation: page.rotate ?? 0 });
+    const content = await page.getTextContent();
+    const out: Array<{ x: number; y: number; text: string }> = [];
+    for (const item of content.items) {
+      const text = (item as { str?: string }).str?.trim();
+      const transform = (item as { transform?: number[] }).transform;
+      if (!text || !transform) continue;
+      const [x, y] = viewport.convertToViewportPoint(transform[4] ?? 0, transform[5] ?? 0);
+      out.push({ x, y, text });
+    }
+    return out;
+  } catch (err: unknown) {
+    log.warn(`${what} unavailable`, {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
 /**
  * The printed areas, in the geometry's own coordinates.
  *
@@ -594,41 +627,35 @@ export async function extractPrintedAreas(
   pdf: Buffer | Uint8Array,
   options?: { minM2?: number; maxM2?: number },
 ): Promise<PlacedNumber[]> {
-  const pdfjs = await loadPdfjs();
-  if (!pdfjs) return [];
   const min = options?.minM2 ?? 1;
   const max = options?.maxM2 ?? 60;
-  try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: false,
-    }).promise;
-    const page = await doc.getPage(1);
-    const viewport = page.getViewport({ scale: 1, rotation: page.rotate ?? 0 });
-    const content = await page.getTextContent();
-    const out: PlacedNumber[] = [];
-    for (const item of content.items) {
-      const raw = (item as { str?: string }).str?.trim();
-      const transform = (item as { transform?: number[] }).transform;
-      if (!raw || !transform) continue;
-      // The decimal is optional: דירה 18 prints a terrace as a bare "8".
-      if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(raw)) continue;
-      const value = Number(raw);
-      if (!Number.isFinite(value) || value < min || value > max) continue;
-      const [x, y] = viewport.convertToViewportPoint(
-        transform[4] ?? 0,
-        transform[5] ?? 0,
-      );
-      out.push({ x, y, value });
-    }
-    return out;
-  } catch (err: unknown) {
-    log.warn("printed areas unavailable", {
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return [];
+  const out: PlacedNumber[] = [];
+  for (const { x, y, text } of await readPlacedText(pdf, "printed areas")) {
+    // The decimal is optional: דירה 18 prints a terrace as a bare "8".
+    if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(text)) continue;
+    const value = Number(text);
+    if (!Number.isFinite(value) || value < min || value > max) continue;
+    out.push({ x, y, value });
   }
+  return out;
+}
+
+/**
+ * Where the sheet marks a raised threshold, which is the ממ"ד's door.
+ *
+ * A shelter's steel door stands on a sill two centimetres above the floor, and
+ * this CAD prints that as "+2" in real text beside the door — on the four
+ * large flats of the reference set, and on דירה 19 and 23, whose left bedroom
+ * is drawn in concrete on every side with a steel frame at the door. Wall
+ * thickness could not find it: exterior walls measure as thick as a shelter's,
+ * and the thickness rule put the ממ"ד in the wrong bedroom of דירה 14.
+ */
+export async function extractShelterMarks(
+  pdf: Buffer | Uint8Array,
+): Promise<Array<{ x: number; y: number }>> {
+  return (await readPlacedText(pdf, "shelter marks"))
+    .filter(({ text }) => text === "+2")
+    .map(({ x, y }) => ({ x, y }));
 }
 
 export async function extractPdfDimensionStrings(

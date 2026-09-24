@@ -203,6 +203,7 @@ export async function renderFlatFromGeometry(
     bounds: flat.bounds,
     unitsPerMetre: flat.unitsPerMetre,
     segments: geometry.segments,
+    shelterMarks: flat.shelterMarks,
   });
   const plate = await sharp(Buffer.from(flat.svg), { density: 200 })
     .flatten({ background: "#f4efe6" })
@@ -270,6 +271,7 @@ export async function renderFlatFromPdf(
     unitsPerMetre: flat.unitsPerMetre,
     segments: sheet?.segments,
     colouredDoorways: flat.colouredDoorways,
+    shelterMarks: flat.shelterMarks,
   });
 
   const geometry = await sharp(Buffer.from(flat.svg), { density: 200 })

@@ -38,6 +38,7 @@ import {
   type FloorplanVectorGeometry,
   type PlacedNumber,
   extractPrintedAreas,
+  extractShelterMarks,
   wallBoundingBox,
 } from "@/lib/projects/floorplan-vector";
 
@@ -77,6 +78,8 @@ export type BuiltFlat = {
    * nothing, which is every sales sheet in the reference set.
    */
   colouredDoorways?: WallBody[];
+  /** Where the sheet prints the ממ"ד's raised threshold; see extractShelterMarks. */
+  shelterMarks?: Array<{ x: number; y: number }>;
 };
 
 /**
@@ -504,5 +507,10 @@ export async function buildFlatFromPdf(
     { width: geometry.pageWidth },
     flat.unitsPerMetre,
   );
-  return colouredDoorways.length > 0 ? { ...flat, colouredDoorways } : flat;
+  const shelterMarks = await extractShelterMarks(pdf);
+  return {
+    ...flat,
+    ...(colouredDoorways.length > 0 ? { colouredDoorways } : {}),
+    ...(shelterMarks.length > 0 ? { shelterMarks } : {}),
+  };
 }

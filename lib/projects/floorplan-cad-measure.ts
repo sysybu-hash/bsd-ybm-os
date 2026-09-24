@@ -33,6 +33,7 @@ export async function measureCadRoomsFromPdf(
       bounds: flat.bounds,
       unitsPerMetre: flat.unitsPerMetre,
       segments: sheet?.segments,
+      shelterMarks: flat.shelterMarks,
     });
     return roomsForLayout(rooms, flat.unitsPerMetre);
   } catch (err: unknown) {
