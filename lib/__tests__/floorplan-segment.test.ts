@@ -1,5 +1,6 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import {
+  assignFurniture,
   isEnvelopeOpening,
   markEntranceHall,
   roomsForLayout,
@@ -58,6 +59,49 @@ const run = (furniture: FurniturePiece[], bodies = [...shell, divider]) =>
     bounds,
     unitsPerMetre: UPM,
   });
+
+describe("which room a piece stands in", () => {
+  /** A region with a hole in it where the piece's own outline stopped the flood. */
+  const withHole = (x0: number, x1: number, y0: number, y1: number, hole: [number, number, number, number]) => {
+    const rows: SpanRow[] = [];
+    for (let y = y0; y < y1; y += 2) {
+      const [hx0, hx1, hy0, hy1] = hole;
+      rows.push({ y, spans: y >= hy0 && y < hy1 ? [[x0, hx0], [hx1, x1]] : [[x0, x1]] });
+    }
+    return rows;
+  };
+  const at = (x: number, y: number, wCm: number, hCm: number, kind: FurniturePiece["kind"]): FurniturePiece => ({
+    x,
+    y,
+    w: (wCm / 100) * UPM,
+    h: (hCm / 100) * UPM,
+    widthCm: wCm,
+    depthCm: hCm,
+    kind,
+  });
+
+  it("gives a bed drawn as a closed island to the room round it", () => {
+    // דירה 15's ממ"ד came back "other" because the bed's centre was in no region.
+    const bed = at(UPM, UPM, 90, 200, "bed");
+    const room = withHole(0, 4 * UPM, 0, 4 * UPM, [bed.x, bed.x + bed.w, bed.y, bed.y + bed.h]);
+    expect(assignFurniture([room], [bed], UPM).get(bed)).toBe(0);
+  });
+
+  it("leaves a small island where it is, like a balcony's drain", () => {
+    const drain = at(UPM, UPM, 37, 37, "fixture");
+    const cell = withHole(0, 2 * UPM, 0, 1.5 * UPM, [drain.x, drain.x + drain.w, drain.y, drain.y + drain.h]);
+    expect(assignFurniture([cell], [drain], UPM).has(drain)).toBe(false);
+  });
+
+  it("gives a pan to a WC cell but not to a living room", () => {
+    const pan = at(0.5 * UPM, 0.5 * UPM, 40, 68, "fixture");
+    const hole: [number, number, number, number] = [pan.x, pan.x + pan.w, pan.y, pan.y + pan.h];
+    const wc = withHole(0, 1.4 * UPM, 0, 1.8 * UPM, hole);
+    const living = withHole(0, 5 * UPM, 0, 4 * UPM, hole);
+    expect(assignFurniture([wc], [pan], UPM).get(pan)).toBe(0);
+    expect(assignFurniture([living], [pan], UPM).has(pan)).toBe(false);
+  });
+});
 
 describe("segmentRooms", () => {
   describe("a WC in a cell of its own", () => {

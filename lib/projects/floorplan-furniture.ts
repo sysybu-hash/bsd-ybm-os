@@ -154,7 +154,10 @@ export function classifyPiece(widthCm: number, depthCm: number): FurnitureKind {
   // double bed is what the modesty rules forbid, and naming one "bed" is how
   // it reaches a still.
   if (short >= 80 && short <= 132 && long >= 185 && long <= 230) return "bed";
-  if (short >= 60 && short <= 80 && long >= 140 && long <= 180) return "fixture";
+  // A bath is drawn at its inner rim as often as its outer one: דירה 14's is
+  // 64 by 137, and at 140 it fell through to "unknown" and the bathroom it
+  // stands in came back as a corridor.
+  if (short >= 60 && short <= 80 && long >= 130 && long <= 180) return "fixture";
   // A shower tray is a compact square, larger than a basin and smaller than a
   // room. 80 by 80 was falling through to "unknown", so a wet room with no
   // bathtub had no fixture and was classified as circulation.
