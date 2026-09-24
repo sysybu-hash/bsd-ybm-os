@@ -107,6 +107,84 @@ export function covers(rows: SpanRow[], pitch: number, x: number, y: number): bo
   return !!row && row.spans.some(([a, b]) => x >= a && x <= b);
 }
 
+/** The step between a region's rows: the smallest one, not the first. */
+function rowPitch(rows: SpanRow[]): number {
+  let pitch = Infinity;
+  for (let i = 1; i < rows.length; i++) {
+    const step = rows[i]!.y - rows[i - 1]!.y;
+    if (step > 0 && step < pitch) pitch = step;
+  }
+  return Number.isFinite(pitch) ? pitch : 1;
+}
+
+/**
+ * Which region each piece of furniture stands in.
+ *
+ * By its centre where a region covers it. But the flood runs on the drawing's
+ * ink, and a piece's outline is ink too: a bed or a bath drawn as a closed
+ * rectangle is an island the flood goes round, and its centre lies in no
+ * region at all. On דירה 15 that left the ממ"ד without its bed — named
+ * "other" — and the bathroom without its bath. Such a piece belongs to the
+ * region round its outline: the one that covers most points of a ring drawn
+ * just outside it.
+ */
+/** A bath is the smallest piece drawn as a closed outline the flood goes round. */
+const ISLAND_MIN_CM = 120;
+/** A WC pan drawn closed is an island too; a floor drain is half its length. */
+const PAN_MIN_CM = 60;
+/** The largest cell a lone pan makes a bathroom of: a WC, not a living room. */
+const PAN_CELL_MAX_M2 = 4;
+
+export function assignFurniture(
+  components: SpanRow[][],
+  furniture: FurniturePiece[],
+  unitsPerMetre: number,
+): Map<FurniturePiece, number> {
+  const pitches = components.map(rowPitch);
+  const out = new Map<FurniturePiece, number>();
+  const margin = unitsPerMetre * 0.06;
+  for (const piece of furniture) {
+    const cx = piece.x + piece.w / 2;
+    const cy = piece.y + piece.h / 2;
+    const direct = components.findIndex((rows, i) => covers(rows, pitches[i]!, cx, cy));
+    if (direct >= 0) {
+      out.set(piece, direct);
+      continue;
+    }
+    // Only a piece big enough to be drawn as a closed island. A drain or a
+    // pan left outside every region is left there: pulled into the room round
+    // it, a balcony's drain made the balcony a bathroom.
+    const long = Math.max(piece.widthCm, piece.depthCm);
+    const pan = long < ISLAND_MIN_CM;
+    if (pan && !(piece.kind === "fixture" && long >= PAN_MIN_CM)) continue;
+    const x0 = piece.x - margin;
+    const x1 = piece.x + piece.w + margin;
+    const y0 = piece.y - margin;
+    const y1 = piece.y + piece.h + margin;
+    const ring: Array<[number, number]> = [];
+    for (let k = 0; k <= 4; k++) {
+      const fx = x0 + ((x1 - x0) * k) / 4;
+      const fy = y0 + ((y1 - y0) * k) / 4;
+      ring.push([fx, y0], [fx, y1], [x0, fy], [x1, fy]);
+    }
+    let best = -1;
+    let bestCount = 1;
+    components.forEach((rows, i) => {
+      // A pan only into a cell a pan is drawn in. The chairs round a dining
+      // table measure the same as a pan and pass for one beside each other;
+      // pulled into the living room, they split it as a wet room.
+      if (pan && spanArea(rows) > PAN_CELL_MAX_M2 * unitsPerMetre * unitsPerMetre) return;
+      const count = ring.filter(([x, y]) => covers(rows, pitches[i]!, x, y)).length;
+      if (count > bestCount) {
+        best = i;
+        bestCount = count;
+      }
+    });
+    if (best >= 0) out.set(piece, best);
+  }
+  return out;
+}
+
 /**
  * How thick the walls around a region are, at its four sides.
  *
@@ -141,6 +219,80 @@ function heavySides(
   if (near((r) => r.x <= box.x + box.width + reach && r.x + r.w >= box.x + box.width && midY >= r.y && midY <= r.y + r.h)) count++;
   return count;
 }
+
+/**
+ * A piece of floor holding measured furniture, too small to be a room by
+ * itself, is the end of the room it was cut from.
+ *
+ * Rooms are no longer joined across a measured wall — but a heavy line of
+ * furniture ink can be measured as a wall too, and where it ran the width of a
+ * bedroom it cut the last forty centimetres off, with the bed in them: on
+ * דירה 21 the piece with the bed was dropped as too small and the rest of the
+ * room, with no bed left in it, came back as a corridor. Such a piece is put
+ * back into the room directly above or below it across the gap.
+ */
+function restitchFurnishedFragments(
+  components: SpanRow[][],
+  furniture: FurniturePiece[],
+  unitsPerMetre: number,
+  minRoomM2: number,
+): SpanRow[][] {
+  if (components.length < 2) return components;
+  const pitchOf = (rows: SpanRow[]) => (rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1);
+  const area = (rows: SpanRow[]) => spanArea(rows) / (unitsPerMetre * unitsPerMetre);
+  const xRange = (rows: SpanRow[]) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const row of rows) for (const [a, b] of row.spans) { lo = Math.min(lo, a); hi = Math.max(hi, b); }
+    return [lo, hi] as const;
+  };
+  const reach = unitsPerMetre * 0.6;
+  const out = components.map((rows) => [...rows]);
+  const absorbed = new Set<number>();
+
+  out.forEach((rows, i) => {
+    if (rows.length === 0 || area(rows) >= minRoomM2) return;
+    const pitch = pitchOf(rows);
+    const inside = furniture.filter((piece) =>
+      covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
+    );
+    if (inside.length === 0) return;
+    // A cell with a WC or a basin in it is a room of its own, not the end of
+    // the next one: put back, דירה 16's WC went into the bathroom beside it and
+    // the flat lost a bathroom.
+    if (
+      area(rows) >= WET_CELL_MIN_M2 &&
+      inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")
+    ) {
+      return;
+    }
+    const [lo, hi] = xRange(rows);
+    const top = rows[0]!.y;
+    const bottom = rows[rows.length - 1]!.y;
+    let bestJ = -1;
+    let bestGap = Infinity;
+    out.forEach((other, j) => {
+      if (j === i || absorbed.has(j) || other.length === 0 || area(other) < minRoomM2) return;
+      const [olo, ohi] = xRange(other);
+      if (Math.min(hi, ohi) - Math.max(lo, olo) <= 0) return;
+      const gapAbove = top - other[other.length - 1]!.y;
+      const gapBelow = other[0]!.y - bottom;
+      const gap = gapAbove > 0 && gapAbove <= reach ? gapAbove : gapBelow > 0 && gapBelow <= reach ? gapBelow : null;
+      if (gap == null) return;
+      if (gap < bestGap) { bestJ = j; bestGap = gap; }
+    });
+    if (bestJ < 0) return;
+    const target = out[bestJ]!;
+    target.push(...rows);
+    target.sort((a, b) => a.y - b.y);
+    absorbed.add(i);
+    out[i] = [];
+  });
+  return out.filter((rows) => rows.length > 0);
+}
+
+/** The smallest cell a WC or a shower is drawn in. */
+const WET_CELL_MIN_M2 = 0.6;
 
 export function segmentRooms(input: {
   bodies: WallBody[];
@@ -206,7 +358,7 @@ export function segmentRooms(input: {
   // from hatch and lintels, and correct on that sheet — is the better boundary.
   // Only there: handing it to the sales sheets moved rooms on six of the ten.
   const plottedSheet = inkCut > WALL_MIN_LINE_WIDTH;
-  const components = interiorComponents(barriers, bounds, {
+  const rawComponents = interiorComponents(barriers, bounds, {
     excludeWalls: true,
     sealingSegments: ink.length > 0 ? ink : undefined,
     floorMask: plottedSheet && floor.length > 1 ? floor : undefined,
@@ -214,17 +366,39 @@ export function segmentRooms(input: {
     // at their own scale and reproduce it exactly, and a sheet at half that
     // scale is the one they mean something different on.
     unitsPerMetre: plottedSheet ? unitsPerMetre : undefined,
+    // Rooms are not joined across a measured wall; see interiorComponents.
+    separateAcrossWalls: true,
+    walls: bodies,
   });
+  const components = restitchFurnishedFragments(rawComponents, furniture, unitsPerMetre, minRoomM2);
   if (components.length === 0) return [];
 
   const floorPitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
   const rooms: SegmentedRoom[] = [];
 
-  for (const rows of components) {
+  const placed = assignFurniture(components, furniture, unitsPerMetre);
+  for (const [componentIndex, rows] of components.entries()) {
     if (rows.length < 2) continue;
-    const pitch = rows[1]!.y - rows[0]!.y;
+    const pitch = rowPitch(rows);
+    const standing = furniture.filter((piece) => placed.get(piece) === componentIndex);
     const areaM2 = spanArea(rows) / (unitsPerMetre * unitsPerMetre);
-    if (areaM2 < minRoomM2) continue;
+    // A cell with a measured sanitary fixture in it is a room at any size a
+    // fixture fits in. A bathroom is often drawn as two cells — a WC and a
+    // shower either side of a thin partition — and each is below the size
+    // that makes an empty region a room. Dropped, the flat lost a bathroom:
+    // four reference sheets did, once rooms stopped being joined across walls.
+    if (areaM2 < minRoomM2) {
+      const hasFixture =
+        areaM2 >= WET_CELL_MIN_M2 &&
+        // Standing in it, not an island beside it: a balcony's drain symbol
+        // is drawn closed too, and pulled in it kept a balcony as a bathroom.
+        standing.some(
+          (piece) =>
+            (piece.kind === "fixture" || piece.kind === "sink") &&
+            covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
+        );
+      if (!hasFixture) continue;
+    }
     const box = boundsOf(rows, pitch);
 
     // Inside the flat, not the neighbour's room or the landing.
@@ -232,9 +406,7 @@ export function segmentRooms(input: {
     const cy = box.y + box.height / 2;
     if (!covers(floor, floorPitch, cx, cy)) continue;
 
-    const contents = furniture.filter((piece) =>
-      covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
-    );
+    const contents = standing;
     const onTerrace = (input.terraces ?? []).some((terrace) => {
       const tPitch = terrace.length > 1 ? terrace[1]!.y - terrace[0]!.y : 1;
       return covers(terrace, tPitch, cx, cy);

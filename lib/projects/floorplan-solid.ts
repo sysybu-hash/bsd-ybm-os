@@ -1246,11 +1246,31 @@ export function clipBodiesToBounds(
 export function interiorComponents(
   bodies: WallBody[],
   bounds: { x: number; y: number; width: number; height: number },
-  options?: Parameters<typeof interiorSpans>[2],
+  options?: Parameters<typeof interiorSpans>[2] & {
+    /**
+     * Do not join two rows across a measured wall that lies between them. Only
+     * the segmenter asks for it; without it rows are joined by their place in
+     * the list, as they always were.
+     */
+    separateAcrossWalls?: boolean;
+    /**
+     * The measured walls, for that test — not the sealed doorways among the
+     * barriers. A doorway's seal is padded past the opening, and where it
+     * reached into the band a bath leaves, it cut a bathroom in two.
+     */
+    walls?: WallBody[];
+  },
 ): SpanRow[][] {
   const rows = interiorSpans(bodies, bounds, options);
   if (rows.length === 0) return [];
-  const pitch = rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1;
+  // The true row pitch: the smallest step between rows. rows[1] - rows[0] is
+  // wrong whenever the first two rows straddle a wall.
+  let pitch = Infinity;
+  for (let r = 1; r < rows.length; r++) {
+    const step = rows[r]!.y - rows[r - 1]!.y;
+    if (step > 0 && step < pitch) pitch = step;
+  }
+  if (!Number.isFinite(pitch)) pitch = 1;
 
   type Node = { row: number; span: [number, number]; parent: number };
   const nodes: Node[] = [];
@@ -1277,13 +1297,40 @@ export function interiorComponents(
     if (ra !== rb) nodes[ra]!.parent = rb;
   };
 
-  // Spans that overlap on consecutive rows are the same region.
+  // Spans that overlap on consecutive rows are the same region — consecutive
+  // on the page, not in this array. A wall that runs the full width of a region
+  // leaves no interior row at all while it passes, so the row above it and the
+  // row below it sat next to each other here and were joined straight through
+  // the wall: on דירה 14 the top bedroom, the bedroom beside it and the living
+  // room below came back as one 41 m² "bedroom".
+  //
+  // But a gap in the rows is not always a wall. A bath drawn across the full
+  // width of a bathroom leaves a band with no interior in it exactly as a wall
+  // does, and splitting there cut דירה 16, 17 and 20's bathrooms into halves
+  // too small to keep. So the question is the one the drawing answers: is
+  // there a measured wall in the gap, across the part the two spans share? A
+  // wall separates two rooms; a bath does not.
+  const separateRooms = options?.separateAcrossWalls === true;
+  const horizontal = (options?.walls ?? bodies).filter((body) => body.orientation === "h");
+  const wallBetween = (yAbove: number, yBelow: number, lo: number, hi: number) =>
+    horizontal.some(
+      (body) =>
+        body.centre > yAbove &&
+        body.centre < yBelow &&
+        body.from < hi &&
+        body.to > lo,
+    );
   for (let r = 1; r < rows.length; r++) {
+    const gapped = separateRooms && rows[r]!.y - rows[r - 1]!.y > pitch * 1.5;
     for (const a of index.get(r - 1) ?? []) {
       for (const b of index.get(r) ?? []) {
         const [a0, a1] = nodes[a]!.span;
         const [b0, b1] = nodes[b]!.span;
-        if (Math.min(a1, b1) - Math.max(a0, b0) > 0) union(a, b);
+        const lo = Math.max(a0, b0);
+        const hi = Math.min(a1, b1);
+        if (hi - lo <= 0) continue;
+        if (gapped && wallBetween(rows[r - 1]!.y, rows[r]!.y + pitch, lo, hi)) continue;
+        union(a, b);
       }
     }
   }

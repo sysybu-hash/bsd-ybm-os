@@ -57,6 +57,11 @@ describe("naming a piece by its size", () => {
     expect(classifyPiece(62, 62)).toBe("fixture");
   });
 
+  it("calls a bath drawn at its inner rim a fixture", () => {
+    // דירה 14's bath measures 64 by 137; at a 140 floor its bathroom was a corridor.
+    expect(classifyPiece(64, 137)).toBe("fixture");
+  });
+
   it("calls an 80 cm square a shower tray, not unknown", () => {
     // Shower-only wet rooms were falling to circulation because the tray
     // never became a fixture and settleFixtures then had nothing to keep.
