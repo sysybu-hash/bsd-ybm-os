@@ -8,6 +8,7 @@ import {
 } from "@/lib/projects/floorplan-viz-styles";
 import { buildScene, type SceneInput } from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
+import { needsMezuzah } from "@/lib/projects/scene3d/staging";
 import { FORBIDDEN_FURNITURE_KINDS, rulesFor } from "@/lib/projects/scene3d/rules";
 import { TWIN_MATTRESS_W_M } from "@/lib/projects/scene3d/standards";
 import type { FlatScene } from "@/lib/projects/scene3d/types";
@@ -110,6 +111,22 @@ describe("the rules hold on every plan, in every style", () => {
             expect(mesh.centre.z + mesh.size.z / 2).toBeLessThanOrEqual(z + depth + 0.25);
           }
 
+          // 5a. A bed only in a bedroom or the ממ"ד. The room is the nearest
+          //     one: a bed drawn as a closed outline is a hole in its room's floor.
+          for (const mesh of scene.meshes.filter((m) => m.sourceId.endsWith("/mattress"))) {
+            const distance = (r: FlatScene["rooms"][number]) =>
+              Math.min(
+                ...r.rects.map((q) =>
+                  Math.hypot(
+                    Math.max(q.x - mesh.centre.x, 0, mesh.centre.x - (q.x + q.w)),
+                    Math.max(q.z - mesh.centre.z, 0, mesh.centre.z - (q.z + q.d)),
+                  ),
+                ),
+              );
+            const room = [...scene.rooms].sort((a, b) => distance(a) - distance(b))[0];
+            expect(["bedroom", "mmd"]).toContain(room?.kind);
+          }
+
           // 5. The same scene every time it is built.
           expect(hashScene(buildScene(input, { rules }))).toBe(hashScene(scene));
 
@@ -125,10 +142,18 @@ describe("the rules hold on every plan, in every style", () => {
               expect(scene.meshes.filter((m) => m.sourceId === `${bed}/pillow`)).toHaveLength(1);
               expect(scene.meshes.filter((m) => m.sourceId === `${bed}/headboard`)).toHaveLength(1);
             }
-            // 8. At most one cabinet of sefarim, and a mezuzah on the doors.
+            // 8. At most one cabinet of sefarim, and a mezuzah on the doors —
+            //    none on a bathroom's.
             expect(scene.meshes.filter((m) => m.sourceId === "prop:sefarim").length).toBeLessThanOrEqual(1);
-            const doors = scene.openings.filter((o) => o.kind === "door" || o.kind === "opening");
-            expect(scene.meshes.filter((m) => m.sourceId === "prop:mezuzah")).toHaveLength(doors.length);
+            const doors = scene.openings.filter((o) => needsMezuzah(scene, o));
+            const cases = scene.meshes.filter((m) => m.sourceId === "prop:mezuzah");
+            expect(cases).toHaveLength(doors.length);
+            const bathDoors = scene.openings.filter(
+              (o) => (o.kind === "door" || o.kind === "opening") && !needsMezuzah(scene, o),
+            );
+            for (const door of bathDoors) {
+              expect(cases.some((c) => c.anchorId === door.id)).toBe(false);
+            }
           } else {
             // A general still has no mezuzot and no sefarim cabinet.
             expect(scene.meshes.some((m) => m.sourceId === "prop:mezuzah")).toBe(false);

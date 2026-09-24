@@ -308,8 +308,19 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const bodies = input.bodies.filter((body) => touchesGround(bandToRect(body), reach));
   // A piece of furniture standing on no floor we measured is the neighbour's
   // too, and it stretched the frame the same way.
-  const furniture = input.furniture.filter((piece) =>
+  const grounded = input.furniture.filter((piece) =>
     touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, 0),
+  );
+  // One drawn object is one piece. The detector can find a rectangle twice a
+  // few millimetres apart, and דירה 15 got two beds in one place.
+  const furniture = grounded.filter(
+    (piece, i) =>
+      !grounded.slice(0, i).some((other) => {
+        if (other.kind !== piece.kind) return false;
+        const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
+        const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
+        return ox > 0 && oy > 0 && ox * oy > 0.7 * Math.min(piece.w * piece.h, other.w * other.h);
+      }),
   );
 
   const spanned = rectsBounds([
@@ -507,6 +518,10 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
     const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     const host = roomAt(rectCentre(box), roomRects);
+    // The written rules, kept here and not only asked of a model: a bed only
+    // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
+    // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
+    if (!pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
@@ -567,4 +582,14 @@ function glazingThickness(
   size: { x: number; y: number; z: number },
 ): { x: number } | { z: number } {
   return opening.orientation === "h" ? { z: Math.min(size.z, GLASS_T_M) } : { x: Math.min(size.x, GLASS_T_M) };
+}
+
+const SLEEPING = new Set(["bedroom", "mmd"]);
+const DRY = new Set(["bedroom", "mmd", "living", "kitchen"]);
+
+/** Whether a measured piece may stand in the room it was measured in. */
+export function pieceBelongsIn(pieceKind: string, roomKind: string | undefined): boolean {
+  if (pieceKind === "bed") return roomKind != null && SLEEPING.has(roomKind);
+  if (pieceKind === "fixture") return roomKind == null || !DRY.has(roomKind);
+  return true;
 }

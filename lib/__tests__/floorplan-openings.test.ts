@@ -41,6 +41,20 @@ describe("telling a door from a window", () => {
     expect(out).toHaveLength(1);
   });
 
+  it("takes the caller's test of the envelope over the bounding box", () => {
+    // Mid-flat by the box, but the floor is on one side only: a window.
+    const set = { orientation: "h" as const, centre: 400, thickness: 9, from: 150, to: 200 };
+    const out = classifyOpenings([], [set], bounds, upm, () => true);
+    expect(out[0]!.kind).toBe("window");
+  });
+
+  it("does not count a hole twice when two gaps describe it", () => {
+    // Each face of one wall, a few centimetres apart.
+    const face = { orientation: "v" as const, centre: 250, thickness: 1, from: 300, to: 330 };
+    const out = classifyOpenings([], [face, { ...face, centre: 252 }], bounds, upm);
+    expect(out).toHaveLength(1);
+  });
+
   it("knows which walls are the outside ones", () => {
     const north = { orientation: "h" as const, centre: 200, thickness: 9, from: 150, to: 200 };
     const middle = { orientation: "h" as const, centre: 380, thickness: 9, from: 150, to: 200 };

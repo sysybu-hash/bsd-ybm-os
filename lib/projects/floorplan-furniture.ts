@@ -881,12 +881,62 @@ export function findFurniture(
         !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
     ),
   ];
-  return settleTables(
-    settleFixtures(withCurves, unitsPerMetre),
-    options?.curves ?? [],
-    unitsPerMetre,
-    ring,
+  return panPartsAreNotSeats(
+    chairsAreNotPans(
+      settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, ring),
+      unitsPerMetre,
+    ),
   );
+}
+
+/**
+ * A small curve knot beside a dining table is a chair, not a pan.
+ *
+ * A chair is the same size and the same kind of drawing as a WC or a basin,
+ * and next to its peers round the table it passes settleFixtures as a wet
+ * cluster. The living room then held "fixtures", was called a living room
+ * merged with a bathroom, and the rule that splits such rooms cut the open
+ * kitchen and living of דירה 15, 16, 17 and 23 in two along no wall at all.
+ * The two chairs at a table's end knot together into one piece a bath's
+ * length, so size does not decide it; nobody draws a WC or a bath within
+ * 45 cm of a dining table.
+ */
+export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  const tables = pieces.filter((piece) => piece.kind === "table");
+  if (tables.length === 0) return pieces;
+  const reach = unitsPerMetre * 0.45;
+  const nearTable = (piece: FurniturePiece) =>
+    tables.some((table) => {
+      const dx = Math.max(table.x - (piece.x + piece.w), piece.x - (table.x + table.w), 0);
+      const dy = Math.max(table.y - (piece.y + piece.h), piece.y - (table.y + table.h), 0);
+      return Math.hypot(dx, dy) <= reach;
+    });
+  return pieces.map((piece) =>
+    piece.kind === "fixture" && nearTable(piece)
+      ? { ...piece, kind: "seat" as const }
+      : piece,
+  );
+}
+
+/**
+ * A pan's cistern is not a chair.
+ *
+ * A WC is found twice: its bowl as a knot of curves, a fixture, and the
+ * rectangle of its cistern and seat, which is a chair's size and is named one.
+ * דירה 16 and 17 had a chair standing on the pan. The rectangle that lies
+ * mostly on a fixture is part of that fixture.
+ */
+export function panPartsAreNotSeats(pieces: FurniturePiece[]): FurniturePiece[] {
+  const wet = pieces.filter((piece) => piece.kind === "fixture" || piece.kind === "sink");
+  return pieces.filter((piece) => {
+    if (piece.kind !== "seat") return true;
+    const area = piece.w * piece.h;
+    return !wet.some((fixture) => {
+      const ox = Math.min(piece.x + piece.w, fixture.x + fixture.w) - Math.max(piece.x, fixture.x);
+      const oy = Math.min(piece.y + piece.h, fixture.y + fixture.h) - Math.max(piece.y, fixture.y);
+      return ox > 0 && oy > 0 && ox * oy > 0.5 * area;
+    });
+  });
 }
 
 /**

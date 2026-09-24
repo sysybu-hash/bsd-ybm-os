@@ -202,7 +202,6 @@ function restitchFurnishedFragments(
   minRoomM2: number,
 ): SpanRow[][] {
   if (components.length < 2) return components;
-  const pitchOf = (rows: SpanRow[]) => (rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1);
   const area = (rows: SpanRow[]) => spanArea(rows) / (unitsPerMetre * unitsPerMetre);
   const xRange = (rows: SpanRow[]) => {
     let lo = Infinity;
@@ -216,7 +215,7 @@ function restitchFurnishedFragments(
 
   out.forEach((rows, i) => {
     if (rows.length === 0 || area(rows) >= minRoomM2) return;
-    const pitch = pitchOf(rows);
+    const pitch = rowPitch(rows);
     const inside = furniture.filter((piece) =>
       covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
     );
@@ -313,7 +312,7 @@ export function segmentRooms(input: {
   colouredDoorways?: WallBody[];
   /**
    * Where the sheet prints the ממ"ד's raised threshold ("+2"). Where the sheet
-   * prints one, it decides which bedroom is the shelter; see pickShelter.
+   * prints one, it decides which bedroom is the shelter; see markedShelter.
    */
   shelterMarks?: Array<{ x: number; y: number }>;
 }): SegmentedRoom[] {
@@ -426,6 +425,7 @@ export function segmentRooms(input: {
     ink,
     unitsPerMetre,
     floorPitch,
+    minRoomM2,
   });
 
   // The ממ"ד is the bedroom the sheet marks with its "+2" sill, and no other.
@@ -603,19 +603,26 @@ function classifyRoomFromContents(input: {
   return { kind: input.areaM2 < 4 ? "circulation" : "other", bedCount };
 }
 
+/**
+ * One half of a split room, with the pieces that stand on its side of the cut.
+ *
+ * The same size rule as a region of its own: a WC cell below room size is
+ * still a bathroom. The halves used to re-test every piece's centre and to
+ * keep nothing under 1.4 m², so a split lost the bath the flood had gone round
+ * and dropped the WC half it was made to separate.
+ */
 function classifyCut(
   rows: SpanRow[],
-  furniture: FurniturePiece[],
+  contents: FurniturePiece[],
   unitsPerMetre: number,
+  minRoomM2: number,
 ): SegmentedRoom | null {
   if (rows.length < 2) return null;
-  const pitch = rows[1]!.y - rows[0]!.y;
+  const pitch = rowPitch(rows);
   const areaM2 = spanArea(rows) / (unitsPerMetre * unitsPerMetre);
-  if (areaM2 < 1.4) return null;
+  const wet = contents.some((piece) => piece.kind === "fixture" || piece.kind === "sink");
+  if (areaM2 < minRoomM2 && !(wet && areaM2 >= WET_CELL_MIN_M2)) return null;
   const box = boundsOf(rows, pitch);
-  const contents = furniture.filter((piece) =>
-    covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
-  );
   const classified = classifyRoomFromContents({ areaM2, contents });
   return {
     rows,
@@ -654,6 +661,7 @@ function splitMergedWetRooms(
     ink: VectorSegment[];
     unitsPerMetre: number;
     floorPitch: number;
+    minRoomM2: number;
   },
 ): SegmentedRoom[] {
   const out: SegmentedRoom[] = [];
@@ -673,8 +681,19 @@ function splitMergedWetRooms(
       continue;
     }
     const [a, b] = cutRowsAlong(room.rows, separator, input.unitsPerMetre);
-    const first = classifyCut(a, room.contents, input.unitsPerMetre);
-    const second = classifyCut(b, room.contents, input.unitsPerMetre);
+    // Each piece goes to the side of the cut its centre is on — it was in this
+    // room already, whether or not the flood covered its centre.
+    const low = (piece: FurniturePiece) =>
+      separator.orientation === "h"
+        ? piece.y + piece.h / 2 < separator.at
+        : piece.x + piece.w / 2 < separator.at;
+    const first = classifyCut(a, room.contents.filter(low), input.unitsPerMetre, input.minRoomM2);
+    const second = classifyCut(
+      b,
+      room.contents.filter((piece) => !low(piece)),
+      input.unitsPerMetre,
+      input.minRoomM2,
+    );
     if (!first || !second || first.mergedKinds || second.mergedKinds) {
       out.push(room);
       continue;
@@ -745,12 +764,10 @@ export function markEntranceHall(
   if (!door) return rooms;
   const inward = inwardPoint(door, floor, unitsPerMetre);
   if (!inward) return rooms;
-  const pitchOf = (room: SegmentedRoom) =>
-    room.rows.length > 1 ? room.rows[1]!.y - room.rows[0]!.y : 1;
   const hit = rooms.find(
     (room) =>
       (room.kind === "circulation" || room.kind === "other") &&
-      covers(room.rows, pitchOf(room), inward.x, inward.y),
+      covers(room.rows, rowPitch(room.rows), inward.x, inward.y),
   );
   if (!hit) return rooms;
   return rooms.map((room) => (room === hit ? { ...room, name: "מבואה" } : room));

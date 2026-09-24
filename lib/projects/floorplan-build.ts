@@ -1,5 +1,5 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
-import { classifyOpenings, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
+import { classifyOpenings, sameHole, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
@@ -249,13 +249,14 @@ export async function buildFlatFromGeometry(
     if (!inside(cx, cy)) return false;
     // Not standing in a wall, and not on top of something already there.
     if (bodies.some((body) => centreInsideBody(piece, body))) return false;
-    return !found.some(
-      (other) =>
-        cx > other.x &&
-        cx < other.x + other.w &&
-        cy > other.y &&
-        cy < other.y + other.h,
-    );
+    // Overlap, not the centre: a seat whose centre fell just outside a WC it
+    // half covered was kept, and דירה 16, 17 and 18 got a chair on the pan and
+    // one in the bath.
+    return !found.some((other) => {
+      const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
+      const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
+      return ox > 0 && oy > 0 && ox * oy > 0.3 * Math.min(piece.w * piece.h, other.w * other.h);
+    });
   };
 
   // The rounded furniture that does survive detection: the living room's own
@@ -398,11 +399,29 @@ export async function buildFlatFromGeometry(
   // Which of the two found a hole is the whole door/window distinction, and
   // merging them used to throw it away. Kept now, so a still can be asked for
   // glazing where the sheet draws glazing.
-  const openings = [
-    ...classifyOpenings(swings, [...gaps, ...hatchDoorways], flatExtent, unitsPerMetre),
-    // A break in the envelope is a window, whatever the bounding box says.
+  // One test for inside and outside, the same for every gap: a window has the
+  // flat's floor on one side of it, a doorway on both. findOpenings' gaps were
+  // judged by the flat's bounding box instead, so a window in any outer wall
+  // not on the extreme edge became an interior doorway — rendered as a hole to
+  // the outside, with a mezuzah on it.
+  const classified = classifyOpenings(
+    swings,
+    [...gaps, ...hatchDoorways],
+    flatExtent,
+    unitsPerMetre,
+    (gap) => floorSides(gap) < 2,
+  );
+  // A break in the envelope is a window, whatever the bounding box says —
+  // and one hole is one opening, whichever detectors found it, in the order
+  // doors, doorways, windows.
+  const openings: typeof classified = [];
+  for (const candidate of [
+    ...classified,
     ...hatchWindows.map((gap) => ({ ...gap, kind: "window" as const })),
-  ];
+  ]) {
+    if (openings.some((kept) => sameHole(kept, candidate, unitsPerMetre * 0.3))) continue;
+    openings.push(candidate);
+  }
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that
