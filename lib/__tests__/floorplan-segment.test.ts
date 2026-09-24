@@ -60,6 +60,29 @@ const run = (furniture: FurniturePiece[], bodies = [...shell, divider]) =>
   });
 
 describe("segmentRooms", () => {
+  describe("a WC in a cell of its own", () => {
+    // A 1.5 by 0.8 m cell in the corner of the right-hand room.
+    const cellWalls = [
+      wall({ orientation: "h", centre: 0.8 * UPM, from: W / 2, to: W / 2 + 1.5 * UPM }),
+      wall({ orientation: "v", centre: W / 2 + 1.5 * UPM, from: 0, to: 0.8 * UPM }),
+    ];
+    const bodies = [...shell, divider, ...cellWalls];
+    const inCell = (kind: FurniturePiece["kind"]) =>
+      piece(W / 2 + 0.75 * UPM - 0.45 * UPM, 0.4 * UPM - 0.45 * UPM, kind);
+    const beds = [piece(UPM, UPM, "bed"), piece(4.5 * UPM, 2.5 * UPM, "bed")];
+
+    it("is a bathroom, though smaller than a room", () => {
+      const rooms = run([...beds, inCell("fixture")], bodies);
+      expect(rooms.filter((r) => r.kind === "bathroom")).toHaveLength(1);
+    });
+
+    it("is dropped when nothing sanitary is drawn in it", () => {
+      const rooms = run(beds, bodies);
+      expect(rooms.filter((r) => r.kind === "bathroom")).toHaveLength(0);
+      expect(rooms).toHaveLength(2);
+    });
+  });
+
   it("cuts a partitioned flat into one room per side", () => {
     const rooms = run([piece(UPM, UPM, "bed"), piece(4 * UPM, UPM, "bed")]);
     expect(rooms).toHaveLength(2);

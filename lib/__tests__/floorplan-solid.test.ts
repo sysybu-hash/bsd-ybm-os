@@ -856,3 +856,41 @@ describe("closing the notches a scanline leaves", () => {
     expect(smoothFootprint([], 6)).toEqual([]);
   });
 });
+
+describe("joining rows into rooms across a wall", () => {
+  const wall = (orientation: "h" | "v", centre: number, from: number, to: number, thickness = 20) => ({
+    orientation,
+    centre,
+    from,
+    to,
+    thickness,
+  });
+  const box = [
+    wall("h", 0, 0, 400),
+    wall("h", 400, 0, 400),
+    wall("v", 0, 0, 400),
+    wall("v", 400, 0, 400),
+  ];
+  const across = wall("h", 200, 0, 400);
+  const bounds = { x: -40, y: -40, width: 480, height: 480 };
+  const opts = { resolution: 4, barrierThicknessUnits: 15 };
+
+  it("keeps the rooms either side of a full-width wall apart", () => {
+    // דירה 14: two bedrooms and the living room came back as one 41 m² room.
+    const components = interiorComponents([...box, across], bounds, {
+      ...opts,
+      separateAcrossWalls: true,
+    });
+    expect(components).toHaveLength(2);
+  });
+
+  it("joins across a band that is not a wall, like a bath across a bathroom", () => {
+    // The band is a barrier to the flood, but it is not one of the measured walls.
+    const components = interiorComponents([...box, across], bounds, {
+      ...opts,
+      separateAcrossWalls: true,
+      walls: box,
+    });
+    expect(components).toHaveLength(1);
+  });
+});

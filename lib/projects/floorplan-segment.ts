@@ -142,6 +142,80 @@ function heavySides(
   return count;
 }
 
+/**
+ * A piece of floor holding measured furniture, too small to be a room by
+ * itself, is the end of the room it was cut from.
+ *
+ * Rooms are no longer joined across a measured wall — but a heavy line of
+ * furniture ink can be measured as a wall too, and where it ran the width of a
+ * bedroom it cut the last forty centimetres off, with the bed in them: on
+ * דירה 21 the piece with the bed was dropped as too small and the rest of the
+ * room, with no bed left in it, came back as a corridor. Such a piece is put
+ * back into the room directly above or below it across the gap.
+ */
+function restitchFurnishedFragments(
+  components: SpanRow[][],
+  furniture: FurniturePiece[],
+  unitsPerMetre: number,
+  minRoomM2: number,
+): SpanRow[][] {
+  if (components.length < 2) return components;
+  const pitchOf = (rows: SpanRow[]) => (rows.length > 1 ? rows[1]!.y - rows[0]!.y : 1);
+  const area = (rows: SpanRow[]) => spanArea(rows) / (unitsPerMetre * unitsPerMetre);
+  const xRange = (rows: SpanRow[]) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const row of rows) for (const [a, b] of row.spans) { lo = Math.min(lo, a); hi = Math.max(hi, b); }
+    return [lo, hi] as const;
+  };
+  const reach = unitsPerMetre * 0.6;
+  const out = components.map((rows) => [...rows]);
+  const absorbed = new Set<number>();
+
+  out.forEach((rows, i) => {
+    if (rows.length === 0 || area(rows) >= minRoomM2) return;
+    const pitch = pitchOf(rows);
+    const inside = furniture.filter((piece) =>
+      covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
+    );
+    if (inside.length === 0) return;
+    // A cell with a WC or a basin in it is a room of its own, not the end of
+    // the next one: put back, דירה 16's WC went into the bathroom beside it and
+    // the flat lost a bathroom.
+    if (
+      area(rows) >= WET_CELL_MIN_M2 &&
+      inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")
+    ) {
+      return;
+    }
+    const [lo, hi] = xRange(rows);
+    const top = rows[0]!.y;
+    const bottom = rows[rows.length - 1]!.y;
+    let bestJ = -1;
+    let bestGap = Infinity;
+    out.forEach((other, j) => {
+      if (j === i || absorbed.has(j) || other.length === 0 || area(other) < minRoomM2) return;
+      const [olo, ohi] = xRange(other);
+      if (Math.min(hi, ohi) - Math.max(lo, olo) <= 0) return;
+      const gapAbove = top - other[other.length - 1]!.y;
+      const gapBelow = other[0]!.y - bottom;
+      const gap = gapAbove > 0 && gapAbove <= reach ? gapAbove : gapBelow > 0 && gapBelow <= reach ? gapBelow : null;
+      if (gap == null) return;
+      if (gap < bestGap) { bestJ = j; bestGap = gap; }
+    });
+    if (bestJ < 0) return;
+    const target = out[bestJ]!;
+    target.push(...rows);
+    target.sort((a, b) => a.y - b.y);
+    absorbed.add(i);
+    out[i] = [];
+  });
+  return out.filter((rows) => rows.length > 0);
+}
+
+/** The smallest cell a WC or a shower is drawn in. */
+const WET_CELL_MIN_M2 = 0.6;
+
 export function segmentRooms(input: {
   bodies: WallBody[];
   openings: Opening[];
@@ -206,7 +280,7 @@ export function segmentRooms(input: {
   // from hatch and lintels, and correct on that sheet — is the better boundary.
   // Only there: handing it to the sales sheets moved rooms on six of the ten.
   const plottedSheet = inkCut > WALL_MIN_LINE_WIDTH;
-  const components = interiorComponents(barriers, bounds, {
+  const rawComponents = interiorComponents(barriers, bounds, {
     excludeWalls: true,
     sealingSegments: ink.length > 0 ? ink : undefined,
     floorMask: plottedSheet && floor.length > 1 ? floor : undefined,
@@ -214,7 +288,11 @@ export function segmentRooms(input: {
     // at their own scale and reproduce it exactly, and a sheet at half that
     // scale is the one they mean something different on.
     unitsPerMetre: plottedSheet ? unitsPerMetre : undefined,
+    // Rooms are not joined across a measured wall; see interiorComponents.
+    separateAcrossWalls: true,
+    walls: bodies,
   });
+  const components = restitchFurnishedFragments(rawComponents, furniture, unitsPerMetre, minRoomM2);
   if (components.length === 0) return [];
 
   const floorPitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
@@ -224,7 +302,21 @@ export function segmentRooms(input: {
     if (rows.length < 2) continue;
     const pitch = rows[1]!.y - rows[0]!.y;
     const areaM2 = spanArea(rows) / (unitsPerMetre * unitsPerMetre);
-    if (areaM2 < minRoomM2) continue;
+    // A cell with a measured sanitary fixture in it is a room at any size a
+    // fixture fits in. A bathroom is often drawn as two cells — a WC and a
+    // shower either side of a thin partition — and each is below the size
+    // that makes an empty region a room. Dropped, the flat lost a bathroom:
+    // four reference sheets did, once rooms stopped being joined across walls.
+    if (areaM2 < minRoomM2) {
+      const hasFixture =
+        areaM2 >= WET_CELL_MIN_M2 &&
+        furniture.some(
+          (piece) =>
+            (piece.kind === "fixture" || piece.kind === "sink") &&
+            covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
+        );
+      if (!hasFixture) continue;
+    }
     const box = boundsOf(rows, pitch);
 
     // Inside the flat, not the neighbour's room or the landing.
