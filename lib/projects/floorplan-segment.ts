@@ -1,5 +1,5 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
-import type { FloorplanRoom, FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
+import { inferRoomKind, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
   bridgeOpenings,
   interiorComponents,
@@ -28,10 +28,10 @@ import {
  * the rooms are too: seal the doorways, take the connected regions of what is
  * left, and each one is a room whose area is measured rather than guessed.
  *
- * The kind comes from what stands in it, which is also known — a bath makes a
- * wet room, a hob makes the kitchen, a bed makes a bedroom. Nothing here reads
- * the sheet's Hebrew labels; those are drawn as outlines, not text, and a vision
- * pass over them is the one thing a model can add here later.
+ * The kind comes first from what stands in the measured region — a bath makes a
+ * wet room, a hob makes the kitchen, a bed makes a bedroom. A trusted room label
+ * with a page position can correct the shelter classification, but only when
+ * its position lands inside exactly one measured bedroom.
  */
 export type SegmentedRoom = {
   rows: SpanRow[];
@@ -53,6 +53,42 @@ export type SegmentedRoom = {
    */
   mergedKinds?: FloorplanRoomKind[];
 };
+
+/** Apply a high-confidence MMD label to the measured bedroom under its bbox. */
+export function applyProgrammeMmdLabel(
+  rooms: SegmentedRoom[],
+  programme: FloorplanRoom[] | undefined,
+  page: { width: number; height: number } | undefined,
+): SegmentedRoom[] {
+  if (!page) return rooms;
+  const labels = (programme ?? []).filter((room) => {
+    const trusted =
+      room.source === "ocr_verified" ||
+      room.source === "consensus" ||
+      (room.confidence != null && room.confidence >= 0.85);
+    return (room.kind ?? inferRoomKind(room.name)) === "mmd" && room.bbox != null && trusted;
+  });
+  let result = rooms;
+  for (const label of labels) {
+    const point = {
+      x: (label.bbox!.x + label.bbox!.w / 2) * page.width,
+      y: (label.bbox!.y + label.bbox!.h / 2) * page.height,
+    };
+    const hits = result.filter(
+      (room) =>
+        (room.kind === "bedroom" || room.kind === "mmd") &&
+        covers(room.rows, rowPitch(room.rows), point.x, point.y),
+    );
+    // Ambiguous labels must not choose between adjacent rooms.
+    if (hits.length !== 1) continue;
+    result = result.map((room) => {
+      if (room === hits[0]) return { ...room, kind: "mmd", name: KIND_NAME_HE.mmd };
+      if (room.kind === "mmd") return { ...room, kind: "bedroom", name: KIND_NAME_HE.bedroom };
+      return room;
+    });
+  }
+  return result;
+}
 
 const KIND_NAME_HE: Record<FloorplanRoomKind, string> = {
   living: "ח.מגורים",
@@ -315,6 +351,9 @@ export function segmentRooms(input: {
    * prints one, it decides which bedroom is the shelter; see markedShelter.
    */
   shelterMarks?: Array<{ x: number; y: number }>;
+  /** OCR/programme hints are applied only to a matching measured room. */
+  programme?: FloorplanRoom[];
+  page?: { width: number; height: number };
 }): SegmentedRoom[] {
   const { bodies, openings, floor, furniture, bounds, unitsPerMetre } = input;
   const minRoomM2 = input.minRoomM2 ?? 1.4;
@@ -443,14 +482,16 @@ export function segmentRooms(input: {
     shelter.name = KIND_NAME_HE.mmd;
   }
 
+  const programmeMarked = applyProgrammeMmdLabel(split, input.programme, input.page);
+
   // Numbered where a flat has several of a kind, so the booklet's table can
   // list them separately instead of collapsing them into one row.
   const seen = new Map<FloorplanRoomKind, number>();
   const total = new Map<FloorplanRoomKind, number>();
-  for (const room of split) {
+  for (const room of programmeMarked) {
     total.set(room.kind, (total.get(room.kind) ?? 0) + 1);
   }
-  const named = split.map((room) => {
+  const named = programmeMarked.map((room) => {
     if ((total.get(room.kind) ?? 0) < 2) return room;
     const index = (seen.get(room.kind) ?? 0) + 1;
     seen.set(room.kind, index);

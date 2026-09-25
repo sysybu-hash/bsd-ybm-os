@@ -35,6 +35,12 @@ const good = {
   unitsPerMetre: 58,
   wallCount: 37,
   furniture: [bed],
+  fidelity: {
+    blocks: [{ kind: "bed" as const, present: true, contrast: 12 }],
+    missing: {},
+    present: 1,
+    total: 1,
+  },
   rooms: [room("bedroom"), room("bathroom"), room("living")],
 };
 
@@ -83,7 +89,7 @@ describe("assessFloorplanRun", () => {
     expect(report.hard.join(" ")).toMatch(/פריטי ריהוט חסרים/);
   });
 
-  it("ships a frame that lost one, and says so", () => {
+  it("blocks a frame that lost even one drawn furniture block", () => {
     const report = assessFloorplanRun({
       ...good,
       fidelity: {
@@ -93,8 +99,8 @@ describe("assessFloorplanRun", () => {
         total: 20,
       },
     });
-    expect(report.ok).toBe(true);
-    expect(report.soft.join(" ")).toMatch(/seat/);
+    expect(report.ok).toBe(false);
+    expect(report.hard.join(" ")).toMatch(/seat/);
   });
 
   it("stops a frame still wearing a coding colour", () => {
@@ -108,7 +114,7 @@ describe("assessFloorplanRun", () => {
     expect(describeConfidence(report)).toMatch(/משוער מרסטר/);
   });
 
-  it("notes rooms the flood could not separate", () => {
+  it("blocks rooms the flood could not separate", () => {
     const report = assessFloorplanRun({
       ...good,
       rooms: [
@@ -116,8 +122,29 @@ describe("assessFloorplanRun", () => {
         room("living"),
       ],
     });
-    expect(report.ok).toBe(true);
-    expect(report.soft.join(" ")).toMatch(/לא הופרדו/);
+    expect(report.ok).toBe(false);
+    expect(report.hard.join(" ")).toMatch(/לא הופרדו/);
+  });
+
+  it("requires tighter area agreement and complete printed terrace detection", () => {
+    expect(assessFloorplanRun({ ...good, areaError: 0.02 }).ok).toBe(false);
+    expect(assessFloorplanRun({ ...good, areaError: 0.02, tier: "raster" }).ok).toBe(true);
+    const terraceMismatch = assessFloorplanRun({ ...good, printedTerraces: 2, foundTerraces: 1 });
+    expect(terraceMismatch.ok).toBe(false);
+    expect(terraceMismatch.hard.join(" ")).toMatch(/מרפסות/);
+    expect(assessFloorplanRun({ ...good, printedTerraces: 1, foundTerraces: 2 }).ok).toBe(false);
+  });
+
+  it("refuses non-finite area and invalid scale values", () => {
+    expect(assessFloorplanRun({ ...good, areaError: Number.NaN }).ok).toBe(false);
+    expect(assessFloorplanRun({ ...good, unitsPerMetre: 0 }).ok).toBe(false);
+    expect(
+      assessFloorplanRun({
+        ...good,
+        fidelity: { blocks: [], missing: {}, present: Number.NaN, total: 20 },
+      }).ok,
+    ).toBe(false);
+    expect(assessFloorplanRun({ ...good, wallCount: Number.NaN }).ok).toBe(false);
   });
 });
 

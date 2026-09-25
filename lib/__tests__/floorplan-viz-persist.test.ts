@@ -40,14 +40,18 @@ describe("floorplan viz persistence helpers", () => {
 
   it("packs and unpacks audit issues in editPrompt", () => {
     const packed = packFloorplanVizStillMeta({
+      editPrompt: "ניסיון נשמר",
       auditIssues: ["1 screen(s) in a haredi still", "letters or digits burned into the image"],
+      auditStatus: "rejected",
     });
+    expect(packed).toContain("ניסיון נשמר");
     expect(packed).toContain("@@auditIssues@@");
     const meta = unpackFloorplanVizStillMeta(packed);
     expect(meta.auditIssues).toEqual([
       "1 screen(s) in a haredi still",
       "letters or digits burned into the image",
     ]);
+    expect(meta.auditStatus).toBe("rejected");
     expect(hebrewFloorplanAuditIssue("1 screen(s) in a haredi still")).toBe(
       "מסך/טלוויזיה בהדמיה חרדית",
     );

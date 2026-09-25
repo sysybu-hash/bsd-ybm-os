@@ -111,6 +111,7 @@ function stillToImage(runId: string, still: {
     createdAt: still.createdAt?.toISOString(),
     editPrompt: meta.editPrompt,
     auditIssues: meta.auditIssues,
+    auditStatus: meta.auditStatus,
   };
 }
 
@@ -415,10 +416,13 @@ export async function appendFloorplanVizStills(
     const viewKey = floorplanVizViewKey(img.viewId, img.roomName);
     const attemptIndex = (nextIndex.get(viewKey) ?? 0) + 1;
     nextIndex.set(viewKey, attemptIndex);
-    await prisma.floorplanVizStill.updateMany({
-      where: { runId, viewKey, selected: true },
-      data: { selected: false },
-    });
+    const selected = img.selected !== false;
+    if (selected) {
+      await prisma.floorplanVizStill.updateMany({
+        where: { runId, viewKey, selected: true },
+        data: { selected: false },
+      });
+    }
     await prisma.floorplanVizStill.create({
       data: {
         runId,
@@ -429,7 +433,7 @@ export async function appendFloorplanVizStills(
         roomName: img.roomName ?? null,
         mimeType: img.mimeType,
         dataBase64: img.base64,
-        selected: true,
+        selected,
         parentStillId: img.parentStillId ?? null,
         origin: stillOriginOf(img),
         attemptIndex,
@@ -504,7 +508,7 @@ export async function appendFloorplanVizStillEdit(
   orgId: string,
   runId: string,
   stillId: string,
-  image: { mimeType: string; base64: string; editPrompt?: string; auditIssues?: string[] },
+  image: { mimeType: string; base64: string; editPrompt?: string; auditIssues?: string[]; auditStatus?: FloorplanVizImage["auditStatus"]; selected?: boolean },
 ): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizStill.findFirst({
     where: { id: stillId, runId, organizationId: orgId },
@@ -521,6 +525,8 @@ export async function appendFloorplanVizStillEdit(
       origin: "edit",
       editPrompt: image.editPrompt,
       auditIssues: image.auditIssues,
+      auditStatus: image.auditStatus,
+      selected: image.selected,
     },
   ]);
 }
@@ -540,6 +546,7 @@ export async function updateFloorplanVizStillAuditIssues(
   const packed = packFloorplanVizStillMeta({
     editPrompt: meta.editPrompt,
     auditIssues,
+    auditStatus: auditIssues.length ? "needs_review" : "passed",
   });
   await prisma.floorplanVizStill.update({
     where: { id: stillId },

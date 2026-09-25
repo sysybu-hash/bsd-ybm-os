@@ -118,39 +118,60 @@ export function floorplanVizStillFilePath(runId: string, stillId: string): strin
 }
 
 const AUDIT_ISSUES_MARKER = "@@auditIssues@@";
+const AUDIT_STATUS_MARKER = "@@auditStatus@@";
 
 /** Persist audit hard-failures in editPrompt without a schema migration. */
-export function packFloorplanVizStillMeta(img: Pick<FloorplanVizImage, "editPrompt" | "auditIssues">): string | null {
+export function packFloorplanVizStillMeta(
+  img: Pick<FloorplanVizImage, "editPrompt" | "auditIssues" | "auditStatus">,
+): string | null {
   const prompt = (img.editPrompt ?? "").trim();
-  const cleanPrompt = prompt.includes(AUDIT_ISSUES_MARKER)
-    ? prompt.slice(0, prompt.indexOf(AUDIT_ISSUES_MARKER)).trim()
-    : prompt;
+  const markers = [AUDIT_ISSUES_MARKER, AUDIT_STATUS_MARKER]
+    .map((marker) => prompt.indexOf(marker))
+    .filter((index) => index >= 0);
+  const cleanPrompt = markers.length ? prompt.slice(0, Math.min(...markers)).trim() : prompt;
   const issues = img.auditIssues?.filter((row) => typeof row === "string" && row.trim()) ?? [];
-  if (issues.length === 0) return cleanPrompt || null;
-  const packed = `${AUDIT_ISSUES_MARKER}${JSON.stringify(issues)}`;
-  return cleanPrompt ? `${cleanPrompt}\n${packed}` : packed;
+  const meta = [
+    ...(issues.length ? [`${AUDIT_ISSUES_MARKER}${JSON.stringify(issues)}`] : []),
+    ...(img.auditStatus ? [`${AUDIT_STATUS_MARKER}${img.auditStatus}`] : []),
+  ].join("\n");
+  if (!meta) return cleanPrompt || null;
+  return cleanPrompt ? `${cleanPrompt}\n${meta}` : meta;
 }
 
 export function unpackFloorplanVizStillMeta(raw: string | null | undefined): {
   editPrompt?: string;
   auditIssues?: string[];
+  auditStatus?: FloorplanVizImage["auditStatus"];
 } {
   if (!raw) return {};
   const idx = raw.indexOf(AUDIT_ISSUES_MARKER);
-  if (idx < 0) return { editPrompt: raw };
-  const before = raw.slice(0, idx).trim();
-  try {
-    const parsed: unknown = JSON.parse(raw.slice(idx + AUDIT_ISSUES_MARKER.length));
-    if (Array.isArray(parsed) && parsed.every((row) => typeof row === "string")) {
-      return {
-        editPrompt: before || undefined,
-        auditIssues: parsed.filter((row) => row.trim()),
-      };
+  const statusIdx = raw.indexOf(AUDIT_STATUS_MARKER);
+  const markerIndexes = [idx, statusIdx].filter((index) => index >= 0);
+  if (markerIndexes.length === 0) return { editPrompt: raw };
+  const before = raw.slice(0, Math.min(...markerIndexes)).trim();
+  let auditIssues: string[] | undefined;
+  if (idx >= 0) {
+    const start = idx + AUDIT_ISSUES_MARKER.length;
+    const end = statusIdx > idx ? statusIdx : raw.length;
+    try {
+      const parsed: unknown = JSON.parse(raw.slice(start, end).trim());
+      if (Array.isArray(parsed) && parsed.every((row) => typeof row === "string")) {
+        auditIssues = parsed.filter((row) => row.trim());
+      }
+    } catch {
+      /* ignore corrupt pack */
     }
-  } catch {
-    /* ignore corrupt pack */
   }
-  return { editPrompt: before || raw };
+  const statusRaw = statusIdx >= 0 ? raw.slice(statusIdx + AUDIT_STATUS_MARKER.length).trim() : "";
+  const auditStatus =
+    statusRaw === "passed" || statusRaw === "needs_review" || statusRaw === "rejected"
+      ? statusRaw
+      : undefined;
+  return {
+    editPrompt: before || undefined,
+    ...(auditIssues ? { auditIssues } : {}),
+    ...(auditStatus ? { auditStatus } : {}),
+  };
 }
 
 /** Hebrew one-liner for a residual audit hard-failure (UI summary). */

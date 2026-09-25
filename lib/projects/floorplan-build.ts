@@ -5,7 +5,7 @@ import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
 } from "@/lib/projects/floorplan-programme-furniture";
-import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
+import { inferRoomKind, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
   findBaths,
   findFurniture,
@@ -83,6 +83,50 @@ export type BuiltFlat = {
   /** Where the sheet prints the ממ"ד's raised threshold; see extractShelterMarks. */
   shelterMarks?: Array<{ x: number; y: number }>;
 };
+
+/**
+ * Convert programme balcony boxes into candidate seeds for vector terrace
+ * measurement. The returned area is still only a claim: callers must verify
+ * it against the vector flood before accepting the region.
+ */
+export function programmeTerraceSeeds(
+  programme: Pick<FloorplanLayout, "rooms"> | undefined,
+  page: { width: number; height: number },
+  extent: { x: number; y: number; width: number; height: number },
+  printed: PlacedNumber[],
+  unitsPerMetre: number,
+): PlacedNumber[] {
+  return (programme?.rooms ?? [])
+    .filter((room) => {
+      const kind = room.kind ?? inferRoomKind(room.name);
+      return (
+        kind === "balcony" &&
+        room.bbox != null &&
+        room.areaM2 != null &&
+        room.areaM2 >= 1.5 &&
+        room.areaM2 <= 16
+      );
+    })
+    .map((room) => ({
+      x: (room.bbox!.x + room.bbox!.w / 2) * page.width,
+      y: (room.bbox!.y + room.bbox!.h / 2) * page.height,
+      value: room.areaM2!,
+    }))
+    .filter(
+      (area) =>
+        area.x >= extent.x &&
+        area.x <= extent.x + extent.width &&
+        area.y >= extent.y &&
+        area.y <= extent.y + extent.height,
+    )
+    .filter(
+      (area) =>
+        !printed.some(
+          (label) =>
+            Math.hypot(label.x - area.x, label.y - area.y) < unitsPerMetre * 0.5,
+        ),
+    );
+}
 
 /**
  * Whether a piece stands in a wall rather than against one.
@@ -353,7 +397,24 @@ export async function buildFlatFromGeometry(
       area.y <= flatExtent.y + flatExtent.height,
   );
 
-  const fromInk = findTerraces(geometry.segments, printed, unitsPerMetre);
+  // Some drawing sets outline the balcony area text, so PDF text extraction
+  // cannot seed the paving flood even though the layout reader has already
+  // identified the balcony and its position. Use that independent room read as
+  // a seed only; the vector flood must still reproduce its stated area before
+  // the region is accepted as a measured terrace.
+  const programmeTerraces = programmeTerraceSeeds(
+    options?.programme,
+    { width: geometry.pageWidth, height: geometry.pageHeight },
+    flatExtent,
+    printed,
+    unitsPerMetre,
+  );
+
+  const fromInk = findTerraces(
+    geometry.segments,
+    [...printed, ...programmeTerraces],
+    unitsPerMetre,
+  );
   const missing = printed.filter(
     (area) =>
       !fromInk.some((terrace) => {
@@ -372,9 +433,27 @@ export async function buildFlatFromGeometry(
         );
       }),
   );
+  const missingProgrammeTerraces = programmeTerraces.filter(
+    (area) =>
+      !fromInk.some(
+        (terrace) =>
+          area.x >= terrace.bounds.x &&
+          area.x <= terrace.bounds.x + terrace.bounds.width &&
+          area.y >= terrace.bounds.y &&
+          area.y <= terrace.bounds.y + terrace.bounds.height,
+      ),
+  );
   const terraceHits =
-    missing.length > 0
-      ? [...fromInk, ...findTerracesOnFloor(floor, bodies, missing, unitsPerMetre)]
+    missing.length > 0 || missingProgrammeTerraces.length > 0
+      ? [
+          ...fromInk,
+          ...findTerracesOnFloor(
+            floor,
+            bodies,
+            [...missing, ...missingProgrammeTerraces],
+            unitsPerMetre,
+          ),
+        ]
       : fromInk;
   const terraces = terraceHits.map((terrace) => terrace.rows);
 

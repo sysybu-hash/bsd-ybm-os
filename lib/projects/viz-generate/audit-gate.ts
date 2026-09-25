@@ -94,10 +94,16 @@ export async function collectShipIssues(
     checkRoomPlacement(still, ctx.layout),
   ]);
   if (!scored) return moved ?? [];
-  const hard = [...blockingHardFailures(scored.grade.hardFailures, scored.gemini), ...(moved ?? [])];
-  if (hard.length === 0) return [];
-  log.warn("shipping photoreal with residual audit issues", { view, failures: hard });
-  return hard;
+  const blocked = blockingHardFailures(scored.grade.hardFailures, scored.gemini);
+  const excluded = scored.grade.hardFailures.filter((failure) => !blocked.includes(failure));
+  const issues = [...new Set([
+    ...scored.grade.failures.filter((failure) => !excluded.includes(failure)),
+    ...blocked,
+    ...(moved ?? []),
+  ])];
+  if (issues.length === 0) return [];
+  log.warn("shipping photoreal with residual audit issues", { view, failures: issues });
+  return issues;
 }
 
 /** Re-audit a saved still against its plan — for the UI "סרוק מול תוכנית" button. */
@@ -121,4 +127,3 @@ export async function rescanFloorplanStillIssues(params: {
 export function hebrewFloorplanAuditIssue(failure: string): string {
   return idsHebrewFloorplanAuditIssue(failure);
 }
-

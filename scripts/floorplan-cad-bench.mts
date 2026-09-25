@@ -24,7 +24,8 @@ import { extractFloorplanVectorGeometry } from "@/lib/projects/floorplan-vector"
 const dir = process.env.FLOORPLAN_BENCH_DIR ?? "תוכניות לביצוע הדמיות";
 const truth = JSON.parse(fs.readFileSync("e2e/fixtures/floorplan-truth.json", "utf8"));
 const out: Record<string, unknown> = {};
-for (const plan of truth.plans) {
+const filter = process.env.FLOORPLAN_BENCH_FILTER;
+for (const plan of truth.plans.filter((row: any) => !filter || row.file.includes(filter))) {
   const file = path.join(dir, plan.file);
   if (!fs.existsSync(file)) { out[plan.file] = "missing"; continue; }
   const pdf = fs.readFileSync(file);
@@ -34,14 +35,37 @@ for (const plan of truth.plans) {
     const flat = await buildFlatFromPdf(pdf, plan.grossM2 + terraces, { extent: extent ?? undefined });
     if (!flat) { out[plan.file] = { flat: null }; continue; }
     const geo = await extractFloorplanVectorGeometry(pdf);
-    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways });
+    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways, shelterMarks: flat.shelterMarks });
+    const count = (kind: string) => rooms.filter((room) => room.kind === kind).length;
+    const expectedTerraces = (plan.terraces ?? []).filter((t: any) => t.levelM === plan.levelM).length;
+    const actual = {
+      bedrooms: count("bedroom"),
+      mmd: count("mmd"),
+      bathrooms: count("bathroom"),
+      balconies: count("balcony"),
+    };
+    const expected = {
+      bedrooms: plan.bedrooms,
+      mmd: plan.mmd,
+      bathrooms: plan.bathrooms,
+      balconies: expectedTerraces,
+    };
+    const mismatches = Object.keys(expected).filter(
+      (key) => actual[key as keyof typeof actual] !== expected[key as keyof typeof expected],
+    );
     out[plan.file] = {
       upm: Number(flat.unitsPerMetre.toFixed(2)),
       bodies: flat.bodies.length,
       furniture: flat.furniture.length,
+      printedTerraceCount: flat.printedTerraceCount,
+      terraceMaskCount: flat.terraces.length,
       openings: flat.openings.length,
       rooms: rooms.length,
       roomKinds: rooms.map((r: any) => r.kind).sort(),
+      actual,
+      expected,
+      mismatches,
+      roomAreas: rooms.map((room) => ({ kind: room.kind, areaM2: room.areaM2, bedCount: room.bedCount })),
     };
   } catch (err: unknown) {
     out[plan.file] = { error: err instanceof Error ? err.message : String(err) };

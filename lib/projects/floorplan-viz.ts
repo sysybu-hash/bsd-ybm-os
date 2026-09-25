@@ -46,7 +46,7 @@ import {
   mergeCadPhotorealImages,
   overviewImageFromCad,
   printedTerraceM2,
-  measuredPlateMatchesSheet,
+  measuredPlateQualityFailure,
   rasterFallbackConfidence,
 } from "@/lib/projects/floorplan-viz-route";
 import { printedTruthFromSheet, type PrintedUnitTruth } from "@/lib/projects/floorplan-booklet-rooms";
@@ -61,7 +61,7 @@ import {
   floorplanGeometryPayload,
   type FloorplanGeometryPayload,
 } from "@/lib/projects/floorplan-geometry-payload";
-import { geometryFromDxf } from "@/lib/projects/floorplan-dxf";
+import { geometryFromDxf, renderDxfPageJpeg } from "@/lib/projects/floorplan-dxf";
 import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
 import { DWG_MIME, isCadFloorplanMime } from "@/lib/projects/photo-prep/mime";
 import {
@@ -75,6 +75,7 @@ import {
   extractFloorplanVectorGeometry,
   extractPdfPageRaster,
   extractPrintedAreas,
+  type FloorplanVectorGeometry,
 } from "@/lib/projects/floorplan-vector";
 
 export {
@@ -217,6 +218,22 @@ export async function visualizeFloorplanFromDrawing(
   return runWithFloorplanSpend(spend, () => visualizeWithSpend(base64, mimeType, spend, options));
 }
 
+async function rasterizeNativeCadReference(
+  prepared: { base64: string; mimeType: string },
+): Promise<NativeCadReference> {
+  const bytes = Buffer.from(prepared.base64, "base64");
+  const dxfText = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : bytes.toString("utf8");
+  if (!dxfText) throw new Error("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
+  const geometry = await geometryFromDxf(dxfText);
+  if (!geometry) throw new Error("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
+  const raster = await renderDxfPageJpeg(geometry, dxfText);
+  if (!raster) throw new Error("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
+  return {
+    geometry,
+    raster: { mimeType: "image/jpeg", base64: raster.toString("base64") },
+  };
+}
+
 async function visualizeWithSpend(
   base64: string,
   mimeType: string,
@@ -232,6 +249,10 @@ async function visualizeWithSpend(
   const forceDrawing = options?.planKind === "sales-sheet";
   const prepared = await prepareFloorplanSource(base64, mimeType, { forceDrawing });
   const photo = options?.planKind === "photo" ? true : prepared.sourceKind === "photo";
+  const nativeCad = isCadFloorplanMime(prepared.mimeType)
+    ? await rasterizeNativeCadReference(prepared)
+    : null;
+  const extractionSource = nativeCad?.raster ?? prepared;
 
   const reused =
     options?.existingLayout && typeof options.existingLayout === "object"
@@ -250,9 +271,9 @@ async function visualizeWithSpend(
         ocrEngines: [] as string[],
         visionEngines: [] as string[],
       }
-    : await extractFloorplanLayout(prepared.base64, prepared.mimeType, {
+    : await extractFloorplanLayout(extractionSource.base64, extractionSource.mimeType, {
         photo,
-        lean: !photo && prepared.mimeType === "application/pdf",
+        lean: !photo && extractionSource.mimeType === "application/pdf",
         spend,
       });
 
@@ -266,7 +287,7 @@ async function visualizeWithSpend(
   if (!reused && extracted.layout.rooms.length === 0) {
     log.info("lean extract found no rooms; reading them with one vision engine");
     try {
-      const seen = await extractFloorplanRoomsWithVision(prepared.base64, prepared.mimeType, {
+      const seen = await extractFloorplanRoomsWithVision(extractionSource.base64, extractionSource.mimeType, {
         photo,
         spend,
       });
@@ -287,6 +308,7 @@ async function visualizeWithSpend(
 
   const cadResult = await tryCadOverview({
     prepared,
+    nativeCad,
     photo,
     extractedLayout: extracted.layout,
     styleKit,
@@ -296,6 +318,7 @@ async function visualizeWithSpend(
   });
   if (cadResult.outcome === "ok") {
     const layout = layoutForCadBooklet(extracted.layout, cadResult.layout);
+    const sourceRaster = cadResult.sourceRaster ?? prepared;
     const alreadyHasOverview = (options?.existingImages ?? []).some(
       (img) => img.viewId === "overview" && !img.roomName,
     );
@@ -312,13 +335,13 @@ async function visualizeWithSpend(
       // the ones a model read off the page: the reference that made the raster
       // route faithful, which this route never had.
       const tintedCad = await buildTintedPlanJpeg(
-        { base64: prepared.base64, mimeType: prepared.mimeType },
+        sourceRaster,
         cadResult.layout,
         { terraces: cadResult.terraceBoxes },
       );
       try {
         const photoreal = await runWithFloorplanSpend(cadResult.spend, () =>
-          generateFloorplanVisuals(layout, prepared.base64, prepared.mimeType, {
+          generateFloorplanVisuals(layout, sourceRaster.base64, sourceRaster.mimeType, {
             tintedPlan: tintedCad ?? undefined,
             photo,
             styleKit,
@@ -370,7 +393,7 @@ async function visualizeWithSpend(
           generateGeometryCompanions({
             rooms: cadResult.rooms,
             styleKit,
-            plan: { base64: prepared.base64, mimeType: prepared.mimeType },
+            plan: sourceRaster,
             geometry: cadResult.geometry,
             layout,
             haredi: styleKit.audience === "haredi",
@@ -424,8 +447,8 @@ async function visualizeWithSpend(
       confidence: withStructuralVerdict(cadResult.confidence, images),
       spend: cadResult.spend,
       geometry: cadResult.measured,
-      planBase64: prepared.base64,
-      planMimeType: prepared.mimeType,
+      planBase64: sourceRaster.base64,
+      planMimeType: sourceRaster.mimeType,
       photo,
     };
   }
@@ -435,11 +458,12 @@ async function visualizeWithSpend(
     );
   }
 
-  const portraitSheet = await isPortraitFloorplanRaster(prepared.base64, prepared.mimeType);
+  const fallbackSource = cadResult.outcome === "skip" ? cadResult.fallbackRaster ?? prepared : prepared;
+  const portraitSheet = await isPortraitFloorplanRaster(fallbackSource.base64, fallbackSource.mimeType);
   const crop = unitCropFromLayout(extracted.layout, { portraitSheet });
-  const cropped = await cropFloorplanRasterToUnit(prepared.base64, prepared.mimeType, crop);
-  const vizBase64 = cropped?.base64 ?? prepared.base64;
-  const vizMime = cropped?.mimeType ?? prepared.mimeType;
+  const cropped = await cropFloorplanRasterToUnit(fallbackSource.base64, fallbackSource.mimeType, crop);
+  const vizBase64 = cropped?.base64 ?? fallbackSource.base64;
+  const vizMime = cropped?.mimeType ?? fallbackSource.mimeType;
   const vizLayout =
     cropped && (crop.w < 0.97 || crop.h < 0.97 || crop.x > 0.02 || crop.y > 0.02)
       ? remapLayoutToCrop(extracted.layout, crop)
@@ -464,7 +488,7 @@ async function visualizeWithSpend(
   // reference is a mark the model paints. The openings are carried as words
   // and as data instead, where nothing can copy them.
   const tinted = await buildTintedPlanJpeg(
-    { base64: prepared.base64, mimeType: prepared.mimeType },
+    fallbackSource,
     vizLayout,
   );
   const plate = tinted ? null : await buildSchematicPlateJpeg(vizLayout);
@@ -499,7 +523,7 @@ async function visualizeWithSpend(
       source: "cad" as const,
     }));
   }
-  const rasterReview = await outlineConfirmIfNeeded(prepared.base64, prepared.mimeType);
+  const rasterReview = await outlineConfirmIfNeeded(fallbackSource.base64, fallbackSource.mimeType);
   if (rasterReview) {
     layout.requiresReview = true;
     layout.notes = [...layout.notes, rasterReview];
@@ -525,8 +549,8 @@ async function visualizeWithSpend(
       images,
     ),
     spend,
-    planBase64: prepared.mimeType === "application/pdf" ? prepared.base64 : vizBase64,
-    planMimeType: prepared.mimeType === "application/pdf" ? prepared.mimeType : vizMime,
+    planBase64: fallbackSource.mimeType === "application/pdf" ? fallbackSource.base64 : vizBase64,
+    planMimeType: fallbackSource.mimeType === "application/pdf" ? fallbackSource.mimeType : vizMime,
     photo,
   };
 }
@@ -546,16 +570,30 @@ type CadOverviewAttempt =
       measured: FloorplanGeometryPayload;
       /** Terraces the plate draws — kept apart from the rooms the segmenter names. */
       measuredTerraces?: number;
+      /** Raster reference used for extraction, AI input and the booklet source page. */
+      sourceRaster?: { mimeType: string; base64: string };
       /** Those terraces as boxes on the page, for the washed drawing. */
       terraceBoxes?: TerraceBox[];
       /** Doors and windows the sheet marks, in page fractions. */
       openings?: PlacedOpening[];
     }
-  | { outcome: "skip"; reason?: string; openings?: PlacedOpening[] }
+  | {
+      outcome: "skip";
+      reason?: string;
+      openings?: PlacedOpening[];
+      /** A rendered native CAD page, because DXF/DWG bytes are not images. */
+      fallbackRaster?: { mimeType: "image/jpeg"; base64: string };
+    }
   | { outcome: "locked" };
+
+type NativeCadReference = {
+  geometry: FloorplanVectorGeometry;
+  raster: { mimeType: "image/jpeg"; base64: string };
+};
 
 type CadOverviewInput = {
   prepared: { base64: string; mimeType: string };
+  nativeCad: NativeCadReference | null;
   photo: boolean;
   extractedLayout: FloorplanLayout;
   styleKit: FloorplanVizStyleKit;
@@ -594,20 +632,9 @@ function labelledRoomsOf(
 }
 
 async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
-  const bytes = Buffer.from(input.prepared.base64, "base64");
-  let text: string | null = null;
-  if (input.prepared.mimeType === DWG_MIME) {
-    text = await dwgToDxf(bytes);
-  } else {
-    text = bytes.toString("utf8");
-  }
-  if (!text) return { outcome: "skip" };
-
-  const geometry = await geometryFromDxf(text);
-  if (!geometry) {
-    log.info("cad drawing carried no readable geometry");
-    return { outcome: "skip" };
-  }
+  const nativeCad = input.nativeCad;
+  if (!nativeCad) return { outcome: "locked" };
+  const { geometry } = nativeCad;
   // The sheet's own coordinates, so a room can be given the label that sits
   // inside it — the extractor reports a label as a fraction of the page.
   const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
@@ -615,7 +642,7 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
   const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
   if (targetAreaM2 == null) {
     log.info("cad drawing has no printed area to lock scale against");
-    return { outcome: "skip" };
+    return { outcome: "skip", fallbackRaster: nativeCad.raster };
   }
   try {
     const rendered = await renderFlatFromGeometry(geometry, {
@@ -624,7 +651,20 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
     });
-    if (!rendered) return { outcome: "locked" };
+    if (!rendered) return { outcome: "skip", reason: "קנה המידה לא ננעל מול שטח הדירה", fallbackRaster: nativeCad.raster };
+    const qualityFailure = measuredPlateQualityFailure(
+      input.extractedLayout,
+      rendered.rooms,
+      rendered.confidence,
+      truth,
+    );
+    if (qualityFailure) {
+      log.info("native CAD plate failed measured quality checks; using the raster route", {
+        measured: rendered.rooms.map((room) => room.kind),
+        hard: rendered.confidence.hard,
+      });
+      return { outcome: "skip", reason: qualityFailure, fallbackRaster: nativeCad.raster };
+    }
     return {
       outcome: "ok",
       layout: capLayoutMmdRooms(
@@ -635,6 +675,7 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       ),
       geometry: { mimeType: "image/jpeg", base64: rendered.geometry.toString("base64") },
       confidence: { ...rendered.confidence, tier: "cad" },
+      sourceRaster: nativeCad.raster,
       truth,
       spend: rendered.spend,
       rooms: rendered.rooms,
@@ -647,7 +688,11 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
     log.warn("cad drawing render threw; not inventing a layout", {
       error: err instanceof Error ? err.message : String(err),
     });
-    return { outcome: "locked" };
+    return {
+      outcome: "skip",
+      reason: `קריאת CAD נכשלה (${err instanceof Error ? err.message.slice(0, 80) : "שגיאה לא ידועה"})`,
+      fallbackRaster: nativeCad.raster,
+    };
   }
 }
 
@@ -766,40 +811,36 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       log.warn("cad render refused scale lock; not inventing a layout", {
         targetAreaM2: route.targetAreaM2,
       });
-      // A sheet that never printed an area was not promised a measured render:
-      // it took this route on a scale read off its dimension chains, and if
-      // that does not lock there is a raster path behind it. A sheet that did
-      // print one is a different matter — refusing is the honest answer there.
-      return route.unitsPerMetreHint
-        ? { outcome: "skip", reason: `קנה המידה (${route.unitsPerMetreHint.toFixed(1)} יח׳/מ׳) לא ננעל על הקירות` }
-        : { outcome: "locked" };
-    }
-    // A sheet that printed its area earned the measured route; one that took it
-    // on a scale nobody printed has to earn it twice. 28-8-23-2 came back
-    // measured and wrong — a plate with no bedroom anywhere in it — while the
-    // raster route, handed a schematic of the rooms the extractor placed, got
-    // the flat's own programme right. Measured has to mean measured well.
-    // Measured has to mean measured well, and "it passed its own checks" is a
-    // low bar: the audit grades what is drawn, not what is missing. A plate
-    // that cannot show the bedrooms, the kitchen and the living room the sheet
-    // reads is not a measurement of this flat.
-    if (route.unitsPerMetreHint && !measuredPlateMatchesSheet(input.extractedLayout, rendered.rooms)) {
-      log.info("measured plate does not reproduce the sheet's programme; using the drawing itself", {
-        measured: rendered.rooms.map((room) => room.kind),
-      });
       return {
         outcome: "skip",
-        reason: "הלוח המדוד לא משחזר את תוכנית החללים שבגיליון",
+        reason: route.unitsPerMetreHint
+          ? `קנה המידה (${route.unitsPerMetreHint.toFixed(1)} יח׳/מ׳) לא ננעל על הקירות`
+          : "השטח המודפס לא ננעל מול גיאומטריית הקירות",
         openings,
       };
     }
-    if (route.unitsPerMetreHint && rendered.confidence.ok === false) {
-      log.info("measured plate failed its own checks on an inferred scale; using the raster route", {
+    // A printed area or a dimension-chain hint can both lock a false plate;
+    // measured output must pass the same room-programme and geometry checks.
+    const qualityFailure = measuredPlateQualityFailure(
+      input.extractedLayout,
+      rendered.rooms,
+      rendered.confidence,
+      truth,
+    );
+    if (qualityFailure && !rendered.confidence.ok) {
+      log.info("measured plate failed its own checks; using the raster route", {
         hard: rendered.confidence.hard,
+      });
+      return { outcome: "skip", reason: qualityFailure, openings };
+    }
+    if (qualityFailure) {
+      log.info("measured plate does not reproduce the sheet's programme; using the drawing itself", {
+        measured: rendered.rooms.map((room) => room.kind),
+        extracted: input.extractedLayout.rooms.map((room) => room.kind),
       });
       return {
         outcome: "skip",
-        reason: `הלוח המדוד לא עבר בדיקה עצמית (${rendered.confidence.hard.join(", ") || "ללא פירוט"})`,
+        reason: qualityFailure,
         openings,
       };
     }
@@ -830,7 +871,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     log.warn("cad render threw; not inventing a layout", { error: message });
-    return { outcome: "locked" };
+    return { outcome: "skip", reason: `קריאת CAD נכשלה (${message.slice(0, 80)})`, openings };
   }
 }
 

@@ -215,6 +215,7 @@ export default function FloorplanVizResults({
       if (sourceFile?.name) fd.append("sourceFileName", sourceFile.name);
       if (styleKit?.labelHe) fd.append("styleLabelHe", styleKit.labelHe);
       if (styleKit?.summaryHe) fd.append("styleSummaryHe", styleKit.summaryHe);
+      fd.append("audience", styleKit?.audience === "haredi" ? "haredi" : "general");
       fd.append(
         "imageMeta",
         JSON.stringify([

@@ -186,6 +186,7 @@ export async function renderFlatFromGeometry(
   const flat = await buildFlatFromGeometry(geometry, options.targetAreaM2, {
     extent: options.extent,
     printedAreas: options.printedAreas,
+    programme: options.programme,
   });
   if (!flat) {
     log.warn("no scale reproduces the printed area", {
@@ -204,6 +205,8 @@ export async function renderFlatFromGeometry(
     unitsPerMetre: flat.unitsPerMetre,
     segments: geometry.segments,
     shelterMarks: flat.shelterMarks,
+    programme: options.programme?.rooms,
+    page: { width: geometry.pageWidth, height: geometry.pageHeight },
   });
   const plate = await sharp(Buffer.from(flat.svg), { density: 200 })
     .flatten({ background: "#f4efe6" })
@@ -272,6 +275,8 @@ export async function renderFlatFromPdf(
     segments: sheet?.segments,
     colouredDoorways: flat.colouredDoorways,
     shelterMarks: flat.shelterMarks,
+    programme: options.programme?.rooms,
+    page: sheet ? { width: sheet.pageWidth, height: sheet.pageHeight } : undefined,
   });
 
   const geometry = await sharp(Buffer.from(flat.svg), { density: 200 })

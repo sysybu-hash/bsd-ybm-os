@@ -175,6 +175,15 @@ export default function FloorplanVizAttemptCard({
             })}
           </span>
           <span>· {t(originKey)}</span>
+          {current.auditStatus ? (
+            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${current.auditStatus === "rejected" ? "bg-rose-500/15 text-rose-700 dark:text-rose-200" : current.auditStatus === "passed" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "bg-amber-500/15 text-amber-800 dark:text-amber-100"}`}>
+              {label(
+                t(`workspaceWidgets.floorplanViz.auditStatus${current.auditStatus}`),
+                `workspaceWidgets.floorplanViz.auditStatus${current.auditStatus}`,
+                current.auditStatus === "rejected" ? "נדחה בבקרת איכות" : current.auditStatus === "passed" ? "עבר בקרת איכות" : "נדרשת בדיקה",
+              )}
+            </span>
+          ) : null}
           {isChosen ? (
             <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-200">
               {t("workspaceWidgets.floorplanViz.chosenAttempt")}
