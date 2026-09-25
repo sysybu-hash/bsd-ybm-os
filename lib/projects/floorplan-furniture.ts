@@ -1031,3 +1031,34 @@ export function scaleFromBeds(
   }
   return best;
 }
+
+/**
+ * The baths the sheet draws: a bath-sized rectangle with its rounded rim
+ * drawn inside it.
+ *
+ * The rim is two parallel lines a few centimetres apart, which is what a wall
+ * looks like, and on דירה 22 it was measured as one — a 23 cm wall 1.24 m long
+ * through the middle of the bath, which then took the bath out as furniture
+ * standing in a wall. The curves are what tell them apart: a bath has a dozen
+ * or more inside its outline, the rectangles a room's own wall faces make
+ * have none.
+ */
+export function findBaths(
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+): Array<{ x: number; y: number; w: number; h: number }> {
+  return findRectangles(segments, { unitsPerMetre }).filter((r) => {
+    const w = (r.w / unitsPerMetre) * 100;
+    const h = (r.h / unitsPerMetre) * 100;
+    if (classifyPiece(w, h) !== "fixture" || Math.max(w, h) < 130) return false;
+    const inside = curves.filter(
+      (c) =>
+        Math.min(c.x1, c.x2) > r.x &&
+        Math.max(c.x1, c.x2) < r.x + r.w &&
+        Math.min(c.y1, c.y2) > r.y &&
+        Math.max(c.y1, c.y2) < r.y + r.h,
+    ).length;
+    return inside >= 10;
+  });
+}

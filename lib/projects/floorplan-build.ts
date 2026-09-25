@@ -1,11 +1,13 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { classifyOpenings, sameHole, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
+import { findEntranceMarkers, placeEntranceDoor } from "@/lib/projects/floorplan-entrance";
 import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
 } from "@/lib/projects/floorplan-programme-furniture";
 import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import {
+  findBaths,
   findFurniture,
   findRoundedFurniture,
   looksLikeKitchenIsland,
@@ -212,7 +214,18 @@ export async function buildFlatFromGeometry(
   const plotted = kept
     .filter((body) => body.source === "plotted")
     .filter((body) => !hatchKept.some((band) => sameWall(band, body)));
-  const bodies = [...hatchKept, ...plotted];
+  // A wall that lies inside a drawn bath is the bath's rim; see findBaths.
+  const baths = findBaths(geometry.segments, geometry.curves, unitsPerMetre);
+  const bodies = [...hatchKept, ...plotted].filter((body) => {
+    const r = bodyRect(body);
+    // Mostly inside, not wholly: דירה 22's ran on past the bath's end into
+    // the outer wall. A real wall stands beside a bath, not across it.
+    return !baths.some((bath) => {
+      const ox = Math.min(r.x + r.w, bath.x + bath.w) - Math.max(r.x, bath.x);
+      const oy = Math.min(r.y + r.h, bath.y + bath.h) - Math.max(r.y, bath.y);
+      return ox > 0 && oy > 0 && ox * oy >= 0.3 * r.w * r.h;
+    });
+  });
   if (bodies.length === 0) return null;
 
   let minX = Infinity;
@@ -487,14 +500,21 @@ export async function buildFlatFromGeometry(
   // A break in the envelope is a window, whatever the bounding box says —
   // and one hole is one opening, whichever detectors found it, in the order
   // doors, doorways, windows.
-  const openings: typeof classified = [];
+  const detected: typeof classified = [];
   for (const candidate of [
     ...classified,
     ...hatchWindows.map((gap) => ({ ...gap, kind: "window" as const })),
   ]) {
-    if (openings.some((kept) => sameHole(kept, candidate, unitsPerMetre * 0.3))) continue;
-    openings.push(candidate);
+    if (detected.some((kept) => sameHole(kept, candidate, unitsPerMetre * 0.3))) continue;
+    detected.push(candidate);
   }
+  // The front door is the one the sheet's entrance arrow points through. By
+  // the floor test alone it is a window: the landing is not the flat's floor.
+  const openings = placeEntranceDoor(
+    detected,
+    findEntranceMarkers([...geometry.segments, ...geometry.curves]),
+    { floor: lock.floor, bodies, unitsPerMetre },
+  );
 
   // A desk is a rectangle the classifier has to call storage, because a
   // sideboard is the same rectangle. The sheet already said which room is the
