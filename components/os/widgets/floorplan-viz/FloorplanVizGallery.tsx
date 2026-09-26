@@ -81,6 +81,7 @@ export function Gallery({
   onRescan,
   onDelete,
   onSelect,
+  onDismiss,
 }: {
   title: string;
   groups: ReturnType<typeof groupFloorplanVizAttempts>;
@@ -96,6 +97,7 @@ export function Gallery({
   onRescan?: (img: FloorplanVizImage) => void;
   onDelete?: (img: FloorplanVizImage) => void;
   onSelect?: (img: FloorplanVizImage) => void;
+  onDismiss?: (img: FloorplanVizImage, issue: string, dismissed: boolean) => void;
 }) {
   if (groups.length === 0) return null;
   return (
@@ -118,6 +120,7 @@ export function Gallery({
               onRescan={onRescan}
               onDelete={onDelete}
               onSelect={onSelect}
+              onDismiss={onDismiss}
             />
         ))}
       </div>

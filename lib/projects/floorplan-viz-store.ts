@@ -4,6 +4,7 @@ import {
   parseFloorplanVizAuditMeta,
   type FloorplanVizAuditMeta,
 } from "@/lib/projects/floorplan-viz-audit-meta";
+import { parseFloorplanVizDismissals, setDismissal } from "@/lib/projects/floorplan-viz-review";
 import { isAdmin } from "@/lib/is-admin";
 import {
   parseFloorplanLayout,
@@ -100,6 +101,7 @@ function stillToImage(runId: string, still: {
   createdAt?: Date;
   editPrompt?: string | null;
   auditMeta?: Prisma.JsonValue | null;
+  auditDismissed?: Prisma.JsonValue | null;
 }): FloorplanVizImage {
   const meta = unpackFloorplanVizStillMeta(still.editPrompt);
   return {
@@ -119,6 +121,7 @@ function stillToImage(runId: string, still: {
     auditIssues: meta.auditIssues,
     auditStatus: meta.auditStatus,
     auditMeta: parseFloorplanVizAuditMeta(still.auditMeta),
+    auditDismissed: parseFloorplanVizDismissals(still.auditDismissed),
   };
 }
 
@@ -582,6 +585,37 @@ export async function updateFloorplanVizStillAuditIssues(
   await prisma.floorplanVizStill.update({
     where: { id: stillId },
     data: { editPrompt: packed, auditMeta: auditMetaColumn(auditMeta) },
+  });
+  await prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } });
+  return getFloorplanVizRunForOrg(orgId, runId);
+}
+
+/**
+ * Mark one of a still's findings wrong, or take the mark back.
+ *
+ * Only a finding the still actually carries can be marked, so a mark cannot
+ * be planted ahead of a scan.
+ */
+export async function setFloorplanVizStillDismissal(
+  orgId: string,
+  runId: string,
+  stillId: string,
+  issue: string,
+  dismissed: boolean,
+  by: string,
+): Promise<FloorplanVizRunDetail | null | "unknown_issue"> {
+  const existing = await prisma.floorplanVizStill.findFirst({
+    where: { id: stillId, runId, organizationId: orgId },
+    select: { editPrompt: true, auditDismissed: true },
+  });
+  if (!existing) return null;
+  const current = parseFloorplanVizDismissals(existing.auditDismissed);
+  const carried = unpackFloorplanVizStillMeta(existing.editPrompt).auditIssues ?? [];
+  if (dismissed && !carried.includes(issue)) return "unknown_issue";
+  const next = setDismissal(current, issue, dismissed, by, new Date().toISOString());
+  await prisma.floorplanVizStill.update({
+    where: { id: stillId },
+    data: { auditDismissed: next.length ? (next as Prisma.InputJsonValue) : Prisma.DbNull },
   });
   await prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } });
   return getFloorplanVizRunForOrg(orgId, runId);

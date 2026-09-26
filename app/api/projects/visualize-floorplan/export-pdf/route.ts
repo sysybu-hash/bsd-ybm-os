@@ -219,7 +219,10 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       }
       found = shipBlockingIssues(scored, placementIssues);
     }
-    const blocking = bookletBlockingIssues(found);
+    const blocking = bookletBlockingIssues(
+      found,
+      heroCheck.outcome === "audit" ? heroCheck.dismissed : [],
+    );
     if (blocking.length > 0) {
       return NextResponse.json(
         {

@@ -20,8 +20,11 @@ import {
   emptyFloorplanSpend,
   runWithFloorplanSpend,
 } from "@/lib/projects/floorplan-spend";
+import { prisma } from "@/lib/prisma";
+import { openAuditIssues, parseFloorplanVizDismissals } from "@/lib/projects/floorplan-viz-review";
 import {
   addFloorplanVizRunSpend,
+  setFloorplanVizStillDismissal,
   appendFloorplanVizStillEdit,
   deleteFloorplanVizStill,
   getFloorplanVizStillForOrg,
@@ -42,6 +45,10 @@ const patchSchema = z
     improve: z.literal(true).optional(),
     rescan: z.literal(true).optional(),
     selected: z.literal(true).optional(),
+    /** Mark one stored finding wrong (or take the mark back). */
+    dismiss: z
+      .object({ issue: z.string().min(1).max(400), dismissed: z.boolean() })
+      .optional(),
     /** English audit failure lines the user checked — improve only these. */
     failures: z.array(z.string().min(1).max(400)).max(20).optional(),
     region: z
@@ -58,7 +65,8 @@ const patchSchema = z
       Boolean(body.instruction) ||
       body.selected === true ||
       body.improve === true ||
-      body.rescan === true,
+      body.rescan === true ||
+      body.dismiss != null,
     { message: "חסרה בקשת עריכה" },
   );
 
@@ -75,6 +83,26 @@ export const PATCH = withWorkspacesAuthDynamic<
 
       if (body.selected === true && !body.instruction && body.improve !== true && body.rescan !== true) {
         const run = await selectFloorplanVizStill(orgId, id, stillId);
+        if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
+        const image = run.images.find((row) => row.id === stillId);
+        if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
+        return NextResponse.json({ success: true, image, images: run.images });
+      }
+
+      // A person's verdict on one finding: no model call, nothing to pay for.
+      if (body.dismiss && !body.instruction && body.improve !== true && body.rescan !== true) {
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+        const run = await setFloorplanVizStillDismissal(
+          orgId,
+          id,
+          stillId,
+          body.dismiss.issue,
+          body.dismiss.dismissed,
+          user?.name?.trim() || "משתמש",
+        );
+        if (run === "unknown_issue") {
+          return jsonBadRequest("הממצא אינו שייך לתמונה הזו", "viz_issue_not_on_still");
+        }
         if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
         const image = run.images.find((row) => row.id === stillId);
         if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
@@ -148,7 +176,10 @@ export const PATCH = withWorkspacesAuthDynamic<
             plan,
             styleKit,
             photo: still.run.photo,
-            failures: selected.length ? selected : stillImage.auditIssues,
+            failures: selected.length
+              ? selected
+              : openAuditIssues(stillImage.auditIssues, parseFloorplanVizDismissals(still.auditDismissed)),
+            dismissed: parseFloorplanVizDismissals(still.auditDismissed).map((row) => row.issue),
             selectedOnly: selected.length > 0,
           }),
         );
