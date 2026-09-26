@@ -97,6 +97,9 @@ for (const plan of truth.plans.filter((row) => !filter || row.file.includes(filt
       areaErrorPct: Number((flat.areaError * 100).toFixed(2)),
       fidelity: { present: fidelity.present, total: fidelity.total },
       confidenceOk: confidence.ok,
+      // What measuredPlateQualityFailure would decide with the sheet's true
+      // programme: the measured plate ships only if both hold.
+      route: confidence.ok && mismatches.length === 0 ? "measured" : "raster",
       hard: confidence.hard,
       soft: confidence.soft,
       upm: Number(flat.unitsPerMetre.toFixed(2)),

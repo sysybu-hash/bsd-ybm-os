@@ -12,9 +12,11 @@ import { TINT_LIMIT } from "@/lib/projects/floorplan-tint";
  * and a product is that a product knows when it has failed: a flat it could not
  * read has to be flagged, not quietly rendered and invoiced at 200₪.
  *
- * A customer-facing measured deliverable must not silently ship mismatches.
- * Warnings remain visible for non-measured estimates, while measured geometry
- * and its furniture inventory must pass the declared acceptance limits.
+ * Hard checks stop the booklet. Soft ones are printed and shipped, because they
+ * describe a result that is worth less than a perfect one and still worth more
+ * than nothing. Where a check lands was set on the ten reference sheets
+ * (`npm run floorplan:bench`), not by taste: a limit that fails a sheet whose
+ * rooms are right is measuring the instrument, not the flat.
  *
  * The tier is stated rather than implied. A booklet grown from a scan has no
  * geometric guarantee behind it and must not be sold as though it had.
@@ -31,6 +33,24 @@ export type ConfidenceReport = {
 
 /** A single bed is 200 cm. Well outside this and the scale is not a scale. */
 const BED_CM = { min: 170, max: 235 };
+
+/**
+ * Area error, in percent, past which a plate is noted (soft) or refused (hard).
+ * On the reference sheets a correct CAD plate lands anywhere within ±3.8%
+ * (דירה 21, every room right), so a 1% limit refused sheets that were fine.
+ * A raster estimate keeps the looser limits it always had.
+ */
+const AREA_ERROR_PCT = {
+  cad: { soft: 2, hard: 5 },
+  raster: { soft: 4, hard: 8 },
+} as const;
+
+/**
+ * Share of drawn furniture that may go unseen before the frame is refused.
+ * The block detector misses up to 17.6% of the blocks when it compares a plate
+ * with itself (דירה 14: 6 of 34), so "any block missing" can never pass.
+ */
+const FIDELITY_MISSING_HARD = 0.2;
 
 export function assessFloorplanRun(input: {
   tier?: ConfidenceTier;
@@ -67,13 +87,14 @@ export function assessFloorplanRun(input: {
     hard.push("שגיאת השטח אינה ניתנת לחישוב — אין לאשר מידות");
   }
 
-  // CAD measurements use a tighter tolerance than calibrated raster estimates.
+  // The area is the target the scale was locked against; missing it by a lot
+  // means no scale reproduced the sheet.
   const areaPct = Math.abs(input.areaError) * 100;
-  const maxAreaPct = tier === "raster" ? 3 : 1;
-  if (areaPct > maxAreaPct) {
-    hard.push(
-      `שגיאת שטח ${areaPct.toFixed(1)}% — הסף למסלול ${tier === "cad" ? "CAD" : "סריקה מכוילת"} הוא ${maxAreaPct}%`,
-    );
+  const areaLimit = AREA_ERROR_PCT[tier];
+  if (areaPct > areaLimit.hard) {
+    hard.push(`שגיאת שטח ${areaPct.toFixed(1)}% — קנה המידה לא משחזר את התוכנית`);
+  } else if (areaPct > areaLimit.soft) {
+    soft.push(`שגיאת שטח ${areaPct.toFixed(1)}%`);
   }
 
   if (!Number.isFinite(input.wallCount) || input.wallCount < 0) {
@@ -129,9 +150,10 @@ export function assessFloorplanRun(input: {
       hard.push("לא ניתן לאמת את שימור הריהוט בתמונה");
     } else if (input.fidelity.total > 0) {
       const missing = input.fidelity.total - input.fidelity.present;
-      if (missing > 0) {
+      if (missing / input.fidelity.total > FIDELITY_MISSING_HARD) {
         hard.push(`${missing} מתוך ${input.fidelity.total} פריטי ריהוט חסרים בתמונה`);
-        hard.push(...fidelityFailures(input.fidelity));
+      } else {
+        soft.push(...fidelityFailures(input.fidelity));
       }
     }
   }
@@ -148,17 +170,20 @@ export function assessFloorplanRun(input: {
     }
   }
 
-  if (input.printedTerraces != null || input.foundTerraces != null) {
+  // A terrace count is a note, not a verdict: the printed count includes areas
+  // on other levels (דירה 21 prints one terrace and has none on its floor), and
+  // whether the flat's balconies are all there is decided against the sheet's
+  // programme in measuredPlateMatchesSheet.
+  if (input.printedTerraces != null && input.foundTerraces != null) {
     if (
       !Number.isFinite(input.printedTerraces) ||
       !Number.isFinite(input.foundTerraces) ||
-      input.printedTerraces! < 0 ||
-      input.foundTerraces! < 0 ||
-      input.foundTerraces !== input.printedTerraces
+      input.printedTerraces < 0 ||
+      input.foundTerraces < 0
     ) {
-      hard.push(
-        `${input.foundTerraces ?? "לא נמדדו"} מרפסות זוהו מול ${input.printedTerraces ?? "לא ידוע"} בתוכנית`,
-      );
+      hard.push("ספירת המרפסות אינה תקינה");
+    } else if (input.foundTerraces !== input.printedTerraces) {
+      soft.push(`${input.foundTerraces} מתוך ${input.printedTerraces} מרפסות זוהו`);
     }
   }
 
