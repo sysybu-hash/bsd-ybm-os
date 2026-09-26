@@ -1751,6 +1751,8 @@
     "use_notebook_endpoint": "Use /api/notebooklm/from-scan for notebooks",
     "rate_limited": "Rate limit reached. Try again later.",
     "viz_edit_redrew_frame": "The edit redrew the frame instead of fixing it — the previous still was kept.",
+    "viz_still_not_in_run": "This still does not belong to this run.",
+    "viz_still_not_selected": "The still chosen for the booklet was rejected by the quality check or is not the selected version.",
     "viz_improve_not_better": "The improvement produced no new image — the previous still stays selected.",
     "viz_run_not_found": "The visualisation was not found.",
     "viz_still_not_found": "The image was not found.",
