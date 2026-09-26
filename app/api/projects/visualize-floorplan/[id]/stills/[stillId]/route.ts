@@ -111,11 +111,19 @@ export const PATCH = withWorkspacesAuthDynamic<
         auditIssues: unpackFloorplanVizStillMeta(still.editPrompt).auditIssues,
       };
       const plan = { base64: still.run.planBase64, mimeType: still.run.planMimeType };
-      // Every paid follow-up — edit, improve, rescan — goes on the run's bill.
+      // Every paid follow-up — edit, improve, rescan — goes on the run's bill,
+      // including one that throws after the model was already paid.
       const spend = emptyFloorplanSpend();
+      const paid = async <T,>(task: () => Promise<T>): Promise<T> => {
+        try {
+          return await runWithFloorplanSpend(spend, task);
+        } finally {
+          await addFloorplanVizRunSpend(orgId, id, spend);
+        }
+      };
 
       if (body.rescan === true) {
-        const auditIssues = await runWithFloorplanSpend(spend, () =>
+        const auditIssues = await paid(() =>
           rescanFloorplanStillIssues({
             layout,
             still: stillImage,
@@ -123,7 +131,6 @@ export const PATCH = withWorkspacesAuthDynamic<
             haredi: styleKit.audience === "haredi",
           }),
         );
-        await addFloorplanVizRunSpend(orgId, id, spend);
         const run = await updateFloorplanVizStillAuditIssues(orgId, id, stillId, auditIssues);
         if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
         const image = run.images.find((row) => row.id === stillId);
@@ -133,7 +140,7 @@ export const PATCH = withWorkspacesAuthDynamic<
 
       if (body.improve === true) {
         const selected = (body.failures ?? []).map((f) => f.trim()).filter(Boolean);
-        const improved = await runWithFloorplanSpend(spend, () =>
+        const improved = await paid(() =>
           improveFloorplanStill({
             layout,
             still: stillImage,
@@ -144,7 +151,6 @@ export const PATCH = withWorkspacesAuthDynamic<
             selectedOnly: selected.length > 0,
           }),
         );
-        await addFloorplanVizRunSpend(orgId, id, spend);
         if (improved.rejected && !improved.attemptProduced) {
           return jsonBadRequest(improved.rejected, "viz_improve_not_better");
         }
@@ -182,7 +188,7 @@ export const PATCH = withWorkspacesAuthDynamic<
       if (!instruction) return jsonBadRequest("חסרה בקשת עריכה", "missing_edit");
       const region = clampFloorplanVizEditRegion(body.region);
 
-      const edited = await runWithFloorplanSpend(spend, () =>
+      const edited = await paid(() =>
         editFloorplanStill({
           layout,
           still: stillImage,
@@ -193,28 +199,34 @@ export const PATCH = withWorkspacesAuthDynamic<
           region,
         }),
       );
-      // Recorded before the result is judged: a refused edit was still paid for.
-      await addFloorplanVizRunSpend(orgId, id, spend);
-      // The model redrew the flat instead of editing it. Saving that would
+      // The model redrew the flat instead of editing it. Selecting that would
       // replace a frame the user already approved with a different apartment,
-      // so nothing is written and the reason goes back as the toast.
-      if (edited.rejected) {
-        return jsonBadRequest(edited.rejected, "viz_edit_redrew_frame");
-      }
+      // so it is kept as an attempt that is not selected, and the reason goes
+      // back as the toast.
+      const rejected = Boolean(edited.rejected);
       const run = await appendFloorplanVizStillEdit(orgId, id, stillId, {
         mimeType: edited.mimeType,
         base64: edited.base64,
         editPrompt: formatFloorplanVizEditPrompt(instruction, region),
+        ...(rejected ? { auditStatus: "rejected" as const, selected: false } : {}),
       });
       if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
-      const image = run.images.find(
-        (row) =>
-          row.selected &&
-          row.viewId === parseFloorplanVizViewId(still.viewId) &&
-          (row.roomName ?? "") === (still.roomName ?? ""),
-      );
+      const image = run.images
+        .filter(
+          (row) =>
+            row.parentStillId === stillId &&
+            row.viewId === parseFloorplanVizViewId(still.viewId) &&
+            (row.roomName ?? "") === (still.roomName ?? ""),
+        )
+        .sort((a, b) => (b.attemptIndex ?? 0) - (a.attemptIndex ?? 0))[0];
       if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
-      return NextResponse.json({ success: true, image, images: run.images });
+      return NextResponse.json({
+        success: true,
+        image,
+        images: run.images,
+        accepted: !rejected,
+        message: edited.rejected,
+      });
     } catch (error) {
       return apiErrorResponse(error, "visualize-floorplan still PATCH");
     }

@@ -839,6 +839,7 @@
       "improveFailed": "Could not improve the image",
       "improved": "Improvement saved as a new attempt",
       "improveRejected": "The attempt was saved in history but not selected because it failed the quality check",
+      "editRejected": "The edit was saved in history but not selected: it redrew the flat instead of fixing it. Mark the area to change and try again.",
       "auditStatusrejected": "Rejected by quality check",
       "auditStatuspassed": "Passed quality check",
       "auditStatusneeds_review": "Review needed",
