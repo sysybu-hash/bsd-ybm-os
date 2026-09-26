@@ -38,6 +38,19 @@ describe("dxf geometry", () => {
     expect(jpeg?.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
   });
 
+  it("refuses to rasterise a page it cannot size", async () => {
+    const dxf = ["0", "SECTION", "2", "ENTITIES", "0", "ENDSEC", "0", "EOF"].join("\n");
+    const page = { segments: [], curves: [], pageWidth: 400, pageHeight: 300 };
+    const geometry = page as unknown as Parameters<typeof renderDxfPageJpeg>[0];
+    expect(await renderDxfPageJpeg({ ...geometry, pageWidth: 0 }, dxf, 400)).toBeNull();
+    expect(await renderDxfPageJpeg({ ...geometry, pageWidth: Number.NaN }, dxf, 400)).toBeNull();
+    expect(await renderDxfPageJpeg(geometry, dxf, 10)).toBeNull();
+    // A sheet this tall would not fit the raster budget.
+    expect(await renderDxfPageJpeg({ ...geometry, pageHeight: 30_000 }, dxf, 400)).toBeNull();
+    // Nothing drawn on it.
+    expect(await renderDxfPageJpeg(geometry, dxf, 400)).toBeNull();
+  });
+
   it("reads walls, fixtures and dimensions into the pipeline's own shape", () => {
     const geometry = geometryFromDxfDocument(room);
     expect(geometry).not.toBeNull();

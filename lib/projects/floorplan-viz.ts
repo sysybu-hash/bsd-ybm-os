@@ -61,7 +61,11 @@ import {
   floorplanGeometryPayload,
   type FloorplanGeometryPayload,
 } from "@/lib/projects/floorplan-geometry-payload";
-import { geometryFromDxf, renderDxfPageJpeg } from "@/lib/projects/floorplan-dxf";
+import {
+  FloorplanCadUnreadableError,
+  geometryFromDxf,
+  renderDxfPageJpeg,
+} from "@/lib/projects/floorplan-dxf";
 import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
 import { DWG_MIME, isCadFloorplanMime } from "@/lib/projects/photo-prep/mime";
 import {
@@ -223,11 +227,11 @@ async function rasterizeNativeCadReference(
 ): Promise<NativeCadReference> {
   const bytes = Buffer.from(prepared.base64, "base64");
   const dxfText = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : bytes.toString("utf8");
-  if (!dxfText) throw new Error("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
+  if (!dxfText) throw new FloorplanCadUnreadableError("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
   const geometry = await geometryFromDxf(dxfText);
-  if (!geometry) throw new Error("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
+  if (!geometry) throw new FloorplanCadUnreadableError("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
   const raster = await renderDxfPageJpeg(geometry, dxfText);
-  if (!raster) throw new Error("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
+  if (!raster) throw new FloorplanCadUnreadableError("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
   return {
     geometry,
     raster: { mimeType: "image/jpeg", base64: raster.toString("base64") },
