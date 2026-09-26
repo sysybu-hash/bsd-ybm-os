@@ -1,3 +1,4 @@
+import type { FloorplanVizAuditMeta } from "@/lib/projects/floorplan-viz-audit-meta";
 import { z } from "zod";
 
 /**
@@ -1375,4 +1376,6 @@ export type FloorplanVizImage = {
   auditIssues?: string[];
   /** How the latest saved candidate fared against the automated audit gate. */
   auditStatus?: FloorplanVizAuditStatus;
+  /** Who found each of those issues, and with which model and prompt. */
+  auditMeta?: FloorplanVizAuditMeta;
 };

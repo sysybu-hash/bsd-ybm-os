@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
@@ -106,6 +108,8 @@ export type FloorplanVizAudit = {
   /** True when the still is flat coloured CAD blocks, not a photoreal brochure photo. */
   looksLikeCadMassing: boolean;
   notes: string;
+  /** The model that answered, so a finding can be traced to who made it. */
+  model?: string;
 };
 
 const AUDIT_INSTRUCTION = `
@@ -220,6 +224,15 @@ Then compare the two OUTLINES, which is the check that matters most:
 - Judge the outline by shape alone. Rotation of the whole frame is not what this field is about, and furnishing differences are not either.
 `.trim();
 
+/**
+ * Which wording of the audit a finding came from. Derived from the text, so
+ * an edit to the instruction changes it without anyone remembering to.
+ */
+export const FLOORPLAN_AUDIT_PROMPT_VERSION = createHash("sha256")
+  .update(AUDIT_INSTRUCTION)
+  .digest("hex")
+  .slice(0, 10);
+
 function asInt(value: unknown, max = 60): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n < 0) return 0;
@@ -298,6 +311,7 @@ export async function auditFloorplanStill(
           : 0,
         looksLikeCadMassing: raw.looksLikeCadMassing === true,
         notes: typeof raw.notes === "string" ? raw.notes.slice(0, 300) : "",
+        model: modelId,
       };
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;

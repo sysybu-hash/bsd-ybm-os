@@ -15,7 +15,7 @@ const FIRST_ROUND_FRAMES = 5;
 const generateOneImage = jest.fn();
 const auditStill = jest.fn();
 const checkRoomPlacement = jest.fn();
-const collectShipIssues = jest.fn();
+const collectShipAudit = jest.fn();
 const gradeFloorplanStill = jest.fn();
 
 jest.mock("@/lib/projects/viz-generate/gemini", () => ({
@@ -23,7 +23,8 @@ jest.mock("@/lib/projects/viz-generate/gemini", () => ({
 }));
 jest.mock("@/lib/projects/viz-generate/audit-gate", () => ({
   auditStill: (...args: unknown[]) => auditStill(...args),
-  collectShipIssues: (...args: unknown[]) => collectShipIssues(...args),
+  collectShipAudit: (...args: unknown[]) => collectShipAudit(...args),
+  withShipAudit: jest.requireActual("@/lib/projects/viz-generate/audit-gate").withShipAudit,
   blockingHardFailures: () => [],
   gradeStillForShip: () => ({ failures: [], hardFailures: [] }),
 }));
@@ -49,7 +50,7 @@ beforeEach(() => {
   // The audit carries which frame it looked at, so a grade can be per frame.
   auditStill.mockImplementation(async (img: { base64: string }) => ({ frame: img.base64 }));
   checkRoomPlacement.mockResolvedValue([]);
-  collectShipIssues.mockResolvedValue([]);
+  collectShipAudit.mockResolvedValue({ issues: [], meta: { v: 1 } });
 });
 
 describe("the first round", () => {

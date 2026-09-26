@@ -9,7 +9,7 @@ import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-
 import {
   editFloorplanStill,
   improveFloorplanStill,
-  rescanFloorplanStillIssues,
+  rescanFloorplanStillAudit,
   sanitizeFloorplanVizEditInstruction,
 } from "@/lib/projects/floorplan-viz-generate";
 import {
@@ -123,15 +123,16 @@ export const PATCH = withWorkspacesAuthDynamic<
       };
 
       if (body.rescan === true) {
-        const auditIssues = await paid(() =>
-          rescanFloorplanStillIssues({
+        const scan = await paid(() =>
+          rescanFloorplanStillAudit({
             layout,
             still: stillImage,
             plan,
             haredi: styleKit.audience === "haredi",
           }),
         );
-        const run = await updateFloorplanVizStillAuditIssues(orgId, id, stillId, auditIssues);
+        const auditIssues = scan.issues;
+        const run = await updateFloorplanVizStillAuditIssues(orgId, id, stillId, auditIssues, scan.meta);
         if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
         const image = run.images.find((row) => row.id === stillId);
         if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
@@ -162,6 +163,7 @@ export const PATCH = withWorkspacesAuthDynamic<
             ? `ניסיון שיפור נשמר אך נדחה בבקרת איכות: ${improved.rejected}`
             : "שיפור תמונה — נוצר ניסיון חדש",
           auditIssues: improved.auditIssues,
+          auditMeta: improved.auditMeta,
           auditStatus: rejected ? "rejected" : improved.auditIssues?.length ? "needs_review" : "passed",
           selected: !rejected,
         });

@@ -35,8 +35,10 @@ import {
 
 import {
   auditStill,
+  collectShipAudit,
   collectShipIssues,
 } from "@/lib/projects/viz-generate/audit-gate";
+import type { FloorplanVizAuditMeta } from "@/lib/projects/floorplan-viz-audit-meta";
 import {
   ONE_FRAME,
   aspectRatioForPlan,
@@ -423,7 +425,15 @@ export async function improveFloorplanStill(params: {
   failures?: string[];
   /** When set, fix only these lines — no auto-injected stairs/terrace extras. */
   selectedOnly?: boolean;
-}): Promise<{ mimeType: string; base64: string; auditIssues?: string[]; rejected?: string; attemptProduced?: boolean }> {
+}): Promise<{
+  mimeType: string;
+  base64: string;
+  auditIssues?: string[];
+  /** Who found the new attempt's issues, when it was scanned. */
+  auditMeta?: FloorplanVizAuditMeta;
+  rejected?: string;
+  attemptProduced?: boolean;
+}> {
   const haredi = params.styleKit?.audience === "haredi";
   const ctx = {
     layout: params.layout,
@@ -469,7 +479,8 @@ export async function improveFloorplanStill(params: {
       attemptProduced: true,
     };
   }
-  const residual = await collectShipIssues(edited, ctx, params.still.labelHe);
+  const scanned = await collectShipAudit(edited, ctx, params.still.labelHe);
+  const residual = scanned.issues;
   // A lower total that trades a fixed issue for a new failure is not a fix.
   // Keep the prior frame unless the audit strictly improves and introduces
   // nothing new; the saved still must never regress merely because two models
@@ -484,6 +495,7 @@ export async function improveFloorplanStill(params: {
       mimeType: edited.mimeType,
       base64: edited.base64,
       auditIssues: residual,
+      auditMeta: scanned.meta,
       rejected: "השיפור נדחה: לא צמצם את הליקויים בלי להוסיף ליקוי חדש",
       attemptProduced: true,
     };
@@ -492,6 +504,7 @@ export async function improveFloorplanStill(params: {
     mimeType: edited.mimeType,
     base64: edited.base64,
     auditIssues: residual.length ? residual : undefined,
+    auditMeta: scanned.meta,
     attemptProduced: true,
   };
 }
