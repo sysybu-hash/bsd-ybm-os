@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import {
   getAnthropicModelCandidates,
@@ -109,6 +111,12 @@ Definitions:
   still kitchen has NO tall fridge cabinet. false if a tall fridge is visible, or
   if you are unsure.
 `.trim();
+
+/** Which wording of the second judge a finding came from; see FLOORPLAN_AUDIT_PROMPT_VERSION. */
+export const FLOORPLAN_SECOND_JUDGE_PROMPT_VERSION = createHash("sha256")
+  .update(SECOND_JUDGE_INSTRUCTION)
+  .digest("hex")
+  .slice(0, 10);
 
 function asInt(value: unknown, max = 20): number {
   const n = typeof value === "number" ? value : Number(value);

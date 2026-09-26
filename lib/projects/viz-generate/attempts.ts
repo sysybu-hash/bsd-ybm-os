@@ -23,9 +23,11 @@ import {
 import {
   auditStill,
   blockingHardFailures,
-  collectShipIssues,
+  collectShipAudit,
   gradeStillForShip,
+  withShipAudit,
 } from "@/lib/projects/viz-generate/audit-gate";
+import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import {
   ONE_FRAME,
   SALES_BROCHURE_BRIEF,
@@ -215,6 +217,12 @@ const PLACEMENT_WEIGHT = 10;
  */
 const FIRST_ROUND_FRAMES = 5;
 
+/** A generated frame and what its ship audit said about it, when it had one. */
+export type AuditedStill = { mimeType: string; base64: string } & Pick<
+  FloorplanVizImage,
+  "auditIssues" | "auditStatus" | "auditMeta"
+>;
+
 export async function generateAuditedImage(
   job: VizJob,
   attachments: Array<{ mimeType: string; base64: string }>,
@@ -226,7 +234,7 @@ export async function generateAuditedImage(
     /** Epoch ms after which no further attempt may start. */
     deadlineMs?: number;
   },
-): Promise<{ mimeType: string; base64: string; auditIssues?: string[] }> {
+): Promise<AuditedStill> {
   const auditable = job.viewId === "overview" || job.viewId === "isometric";
   type Scored = {
     img: { mimeType: string; base64: string };
@@ -281,8 +289,7 @@ export async function generateAuditedImage(
     const clean = scored.find((row) => row.failures.length === 0);
     if (clean) {
       log.info("still passed audit", { view: job.labelHe, attempt: "first round", frames: scored.length });
-      const issues = await collectShipIssues(clean.img, ctx, job.labelHe);
-      return { ...clean.img, auditIssues: issues.length ? issues : undefined };
+      return withShipAudit(clean.img, await collectShipAudit(clean.img, ctx, job.labelHe));
     }
     if (best) {
       lastFailures = best.failures;
@@ -293,8 +300,7 @@ export async function generateAuditedImage(
         failures: best.failures,
       });
       if (best.score <= GOOD_ENOUGH_SCORE) {
-        const issues = await collectShipIssues(best.img, ctx, job.labelHe);
-        return { ...best.img, auditIssues: issues.length ? issues : undefined };
+        return withShipAudit(best.img, await collectShipAudit(best.img, ctx, job.labelHe));
       }
     }
     // A frame that came back empty from every draft is the model failing, not
@@ -329,16 +335,14 @@ Fix exactly these and keep everything the audit did not complain about.`
     const { failures, hardFailures, score } = round;
     if (failures.length === 0) {
       log.info("still passed audit", { view: job.labelHe, attempt });
-      const issues = await collectShipIssues(img, ctx, job.labelHe);
-      return { ...img, auditIssues: issues.length ? issues : undefined };
+      return withShipAudit(img, await collectShipAudit(img, ctx, job.labelHe));
     }
     log.warn("still failed audit", { view: job.labelHe, attempt, failures, hardFailures });
     lastFailures = failures;
     if (!best || score < best.score) best = round;
     if (score <= GOOD_ENOUGH_SCORE) {
       log.info("still good enough, stopping re-rolls", { view: job.labelHe, attempt, failures });
-      const issues = await collectShipIssues(img, ctx, job.labelHe);
-      return { ...img, auditIssues: issues.length ? issues : undefined };
+      return withShipAudit(img, await collectShipAudit(img, ctx, job.labelHe));
     }
   }
 
@@ -381,16 +385,13 @@ Fix exactly these and keep everything the audit did not complain about.`
       }
       break;
     }
-    const issues = await collectShipIssues(candidate.img, ctx, job.labelHe);
+    const shipped = await collectShipAudit(candidate.img, ctx, job.labelHe);
     log.warn("shipping least-bad still", {
       view: job.labelHe,
       failures: candidate.failures,
-      residual: issues,
+      residual: shipped.issues,
     });
-    return {
-      ...candidate.img,
-      auditIssues: issues.length ? issues : undefined,
-    };
+    return withShipAudit(candidate.img, shipped);
   }
   throw new Error("יצירת ההדמיה נכשלה");
 }

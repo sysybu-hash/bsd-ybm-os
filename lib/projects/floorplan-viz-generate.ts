@@ -12,7 +12,8 @@ import {
   listFloorplanVizJobs,
   type FloorplanVizScope,
 } from "@/lib/projects/floorplan-viz-scope";
-import { collectShipIssues } from "@/lib/projects/viz-generate/audit-gate";
+import { collectShipAudit, withShipAudit } from "@/lib/projects/viz-generate/audit-gate";
+import type { AuditedStill } from "@/lib/projects/viz-generate/attempts";
 import {
   IMAGE_CONCURRENCY,
   attachmentsForJob,
@@ -30,7 +31,7 @@ import {
 export type { FloorplanVizScope };
 export { listFloorplanVizJobs, parseFloorplanVizScope } from "@/lib/projects/floorplan-viz-scope";
 
-export { hebrewFloorplanAuditIssue, rescanFloorplanStillIssues } from "@/lib/projects/viz-generate/audit-gate";
+export { hebrewFloorplanAuditIssue, rescanFloorplanStillAudit } from "@/lib/projects/viz-generate/audit-gate";
 export {
   CAD_MASSING_LOCK,
   ENTRANCE_LOCK,
@@ -166,14 +167,17 @@ export async function generateFloorplanVisuals(
         haredi: haredi === true,
         deadlineMs: options?.deadlineMs,
       };
-      let img: { mimeType: string; base64: string; auditIssues?: string[] } = audited;
+      let img: AuditedStill = audited;
       if (job.viewId === "overview" || job.viewId === "isometric") {
         const warmed = await warmLook(audited, job, attachments, aspectRatio, auditCtx);
+        // The warmed frame is the one that ships, so its own scan is the one
+        // kept — issues and attribution together, never one scan's issues
+        // under another scan's names.
         if (warmed.base64 !== audited.base64) {
-          const warmIssues = await collectShipIssues(warmed, auditCtx, job.labelHe);
-          img = { ...warmed, auditIssues: warmIssues.length ? warmIssues : audited.auditIssues };
-        } else {
-          img = { ...warmed, auditIssues: audited.auditIssues };
+          img = withShipAudit(
+            { mimeType: warmed.mimeType, base64: warmed.base64 },
+            await collectShipAudit(warmed, auditCtx, job.labelHe),
+          );
         }
       }
       // Stamped after the audit, never before: the auditor fails a still that
@@ -189,6 +193,8 @@ export async function generateFloorplanVisuals(
         mimeType: stamped.mimeType,
         base64: stamped.base64,
         auditIssues: img.auditIssues,
+        auditStatus: img.auditStatus,
+        auditMeta: img.auditMeta,
       } satisfies FloorplanVizImage;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

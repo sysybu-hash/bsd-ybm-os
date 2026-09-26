@@ -1,4 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  parseFloorplanVizAuditMeta,
+  type FloorplanVizAuditMeta,
+} from "@/lib/projects/floorplan-viz-audit-meta";
 import { isAdmin } from "@/lib/is-admin";
 import {
   parseFloorplanLayout,
@@ -94,6 +99,7 @@ function stillToImage(runId: string, still: {
   attemptIndex?: number;
   createdAt?: Date;
   editPrompt?: string | null;
+  auditMeta?: Prisma.JsonValue | null;
 }): FloorplanVizImage {
   const meta = unpackFloorplanVizStillMeta(still.editPrompt);
   return {
@@ -112,7 +118,13 @@ function stillToImage(runId: string, still: {
     editPrompt: meta.editPrompt,
     auditIssues: meta.auditIssues,
     auditStatus: meta.auditStatus,
+    auditMeta: parseFloorplanVizAuditMeta(still.auditMeta),
   };
+}
+
+/** A still's attribution as the column takes it; absent stays SQL NULL. */
+function auditMetaColumn(meta: FloorplanVizAuditMeta | undefined) {
+  return meta ? (meta as Prisma.InputJsonValue) : Prisma.DbNull;
 }
 
 function stillOriginOf(img: FloorplanVizImage): string {
@@ -307,6 +319,7 @@ export async function createFloorplanVizRun(input: {
         origin: stillOriginOf(img),
         attemptIndex: img.attemptIndex ?? 1,
         editPrompt: packFloorplanVizStillMeta(img),
+        auditMeta: auditMetaColumn(img.auditMeta),
         sortOrder: stillSortOrder(img.viewId, img.roomName, index),
       },
     });
@@ -438,6 +451,7 @@ export async function appendFloorplanVizStills(
         origin: stillOriginOf(img),
         attemptIndex,
         editPrompt: packFloorplanVizStillMeta(img),
+        auditMeta: auditMetaColumn(img.auditMeta),
         sortOrder: stillSortOrder(img.viewId, img.roomName, index),
       },
     });
@@ -508,7 +522,15 @@ export async function appendFloorplanVizStillEdit(
   orgId: string,
   runId: string,
   stillId: string,
-  image: { mimeType: string; base64: string; editPrompt?: string; auditIssues?: string[]; auditStatus?: FloorplanVizImage["auditStatus"]; selected?: boolean },
+  image: {
+    mimeType: string;
+    base64: string;
+    editPrompt?: string;
+    auditIssues?: string[];
+    auditStatus?: FloorplanVizImage["auditStatus"];
+    auditMeta?: FloorplanVizAuditMeta;
+    selected?: boolean;
+  },
 ): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizStill.findFirst({
     where: { id: stillId, runId, organizationId: orgId },
@@ -526,17 +548,25 @@ export async function appendFloorplanVizStillEdit(
       editPrompt: image.editPrompt,
       auditIssues: image.auditIssues,
       auditStatus: image.auditStatus,
+      auditMeta: image.auditMeta,
       selected: image.selected,
     },
   ]);
 }
 
-/** Update packed auditIssues on an existing still without creating a new attempt. */
+/**
+ * Replace a still's audit with a new scan, without creating a new attempt.
+ *
+ * The scan's findings and attribution replace the old ones whole. A rejected
+ * attempt stays rejected: that was the gate's decision about an improvement,
+ * and a rescan of the same frame does not reopen it.
+ */
 export async function updateFloorplanVizStillAuditIssues(
   orgId: string,
   runId: string,
   stillId: string,
   auditIssues: string[],
+  auditMeta?: FloorplanVizAuditMeta,
 ): Promise<FloorplanVizRunDetail | null> {
   const existing = await prisma.floorplanVizStill.findFirst({
     where: { id: stillId, runId, organizationId: orgId },
@@ -546,11 +576,12 @@ export async function updateFloorplanVizStillAuditIssues(
   const packed = packFloorplanVizStillMeta({
     editPrompt: meta.editPrompt,
     auditIssues,
-    auditStatus: auditIssues.length ? "needs_review" : "passed",
+    auditStatus:
+      meta.auditStatus === "rejected" ? "rejected" : auditIssues.length ? "needs_review" : "passed",
   });
   await prisma.floorplanVizStill.update({
     where: { id: stillId },
-    data: { editPrompt: packed },
+    data: { editPrompt: packed, auditMeta: auditMetaColumn(auditMeta) },
   });
   await prisma.floorplanVizRun.update({ where: { id: runId }, data: { updatedAt: new Date() } });
   return getFloorplanVizRunForOrg(orgId, runId);
