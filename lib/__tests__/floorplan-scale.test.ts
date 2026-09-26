@@ -1,4 +1,4 @@
-import { lockScale, pickScaleLock, type ScaleLock } from "@/lib/projects/floorplan-scale";
+import { lockScale, lockScaleToHint, pickScaleLock, type ScaleLock } from "@/lib/projects/floorplan-scale";
 
 /** A hatched wall band, drawn the way CAD draws one. */
 const hatchedWall = (
@@ -53,6 +53,21 @@ const room = [
 const bounds = { x: -50, y: -50, width: 10 * UPM + 100, height: 8 * UPM + 100 };
 
 describe("locking the sheet's scale", () => {
+  it("refuses invalid or unbounded scale searches", () => {
+    expect(lockScale(room, bounds, 0)).toBeNull();
+    expect(lockScale(room, bounds, Number.NaN)).toBeNull();
+    expect(lockScale(room, bounds, 82, { from: 40, to: 62, step: 0 })).toBeNull();
+    expect(lockScale(room, bounds, 82, { from: 62, to: 40 })).toBeNull();
+    expect(lockScale(room, bounds, 82, { from: 40, to: 50_000, step: 0.001 })).toBeNull();
+    expect(lockScale(room, { ...bounds, width: 0 }, 82)).toBeNull();
+  });
+
+  it("refuses invalid dimension-chain scale hints", () => {
+    expect(lockScaleToHint(room, bounds, Number.POSITIVE_INFINITY)).toBeNull();
+    expect(lockScaleToHint(room, bounds, UPM, undefined, -0.2)).toBeNull();
+    expect(lockScaleToHint(room, bounds, UPM, undefined, 1)).toBeNull();
+  });
+
   it("finds the scale the drawing was made at", () => {
     // The room is 10 x 8 m, so about 80 m² inside its walls.
     const lock = lockScale(room, bounds, 82, { from: 40, to: 62 });
@@ -131,5 +146,11 @@ describe("picking among scale candidates", () => {
 
   it("refuses when every candidate misses the printed area", () => {
     expect(pickScaleLock([row(62, 7, -0.162), row(60, 6, -0.169)], 0.08)).toBeNull();
+  });
+
+  it("refuses invalid tolerances and ignores invalid scale candidates", () => {
+    expect(pickScaleLock([row(54, 5, 0)], Number.NaN)).toBeNull();
+    expect(pickScaleLock([row(Number.POSITIVE_INFINITY, 5, 0)], 0.08)).toBeNull();
+    expect(pickScaleLock([row(54, 5, Number.NaN)], 0.08)).toBeNull();
   });
 });

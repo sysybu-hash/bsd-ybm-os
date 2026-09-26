@@ -11,6 +11,7 @@ import {
   isBuildingCoreRoom,
   parseFloorplanLayout,
   roomsForInteriorViz,
+  roomsForVisualization,
   type FloorplanLayout,
   type FloorplanRoom,
   type FloorplanVizImage,
@@ -445,18 +446,43 @@ export function rasterFallbackConfidence(reason?: string): ConfidenceReport {
 export function measuredPlateMatchesSheet(
   sheet: FloorplanLayout,
   measured: SegmentedRoom[],
+  truth?: PrintedUnitTruth,
 ): boolean {
-  const wanted = roomsForInteriorViz(sheet);
+  const wanted = roomsForVisualization(sheet);
   if (wanted.length === 0) return true;
   const countKind = (rooms: Array<{ kind?: string; name?: string }>, kind: string) =>
     rooms.filter((room) => (room.kind ?? (room.name ? inferRoomKind(room.name) : "other")) === kind)
       .length;
 
-  const bedroomsOnSheet = countKind(wanted, "bedroom");
-  const bedroomsMeasured = countKind(measured, "bedroom");
-  if (bedroomsMeasured < bedroomsOnSheet) return false;
-  for (const kind of ["kitchen", "living"]) {
-    if (countKind(wanted, kind) > 0 && countKind(measured, kind) === 0) return false;
+  // A measured drawing is only useful if segmentation recovers the printed
+  // programme. A missing kitchen/balcony or an extra bedroom changes the flat
+  // itself, so compare every room category the sheet actually supplied.
+  for (const kind of ["living", "kitchen", "bedroom", "mmd", "bathroom", "balcony"]) {
+    const expected =
+      kind === "balcony" && truth && truth.terraces.length > 0
+        ? floorPlateTerraces(truth).length
+        : countKind(wanted, kind);
+    if (expected > 0 && countKind(measured, kind) !== expected) return false;
   }
   return true;
+}
+
+/**
+ * A measured plate can ship only when it reproduces the sheet programme and
+ * its own geometric/furniture checks pass. Keep this shared by PDF and native
+ * CAD routes so neither format can quietly bypass a failed quality report.
+ */
+export function measuredPlateQualityFailure(
+  sheet: FloorplanLayout,
+  measured: SegmentedRoom[],
+  confidence: ConfidenceReport,
+  truth?: PrintedUnitTruth,
+): string | null {
+  if (!measuredPlateMatchesSheet(sheet, measured, truth)) {
+    return "הלוח המדוד לא משחזר את מספר וסוג החללים שבגיליון";
+  }
+  if (!confidence.ok) {
+    return `הלוח המדוד לא עבר את בקרת האיכות (${confidence.hard.join(", ") || "ללא פירוט"})`;
+  }
+  return null;
 }

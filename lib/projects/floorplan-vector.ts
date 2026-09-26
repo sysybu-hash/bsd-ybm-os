@@ -185,6 +185,14 @@ function asPdfBytes(pdf: Buffer | Uint8Array): Uint8Array {
   return Uint8Array.from(pdf);
 }
 
+function pdfjsData(pdfjs: Pdfjs, pdf: Buffer | Uint8Array, useSystemFonts: boolean) {
+  return pdfjs.getDocument({
+    data: asPdfBytes(pdf),
+    isEvalSupported: false,
+    useSystemFonts,
+  });
+}
+
 export async function extractFloorplanVectorGeometry(
   pdf: Buffer | Uint8Array,
   options?: { minWallLength?: number },
@@ -193,11 +201,7 @@ export async function extractFloorplanVectorGeometry(
   if (!pdfjs) return null;
 
   try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: false,
-    }).promise;
+    const doc = await pdfjsData(pdfjs, pdf, false).promise;
     const page = await doc.getPage(1);
     // scale 1 with the page's own rotation applied, so a /Rotate 270 sheet — nine
     // of the ten in that batch — comes back the way it is meant to be read.
@@ -585,11 +589,7 @@ async function readPlacedText(
   const pdfjs = await loadPdfjs();
   if (!pdfjs) return [];
   try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: false,
-    }).promise;
+    const doc = await pdfjsData(pdfjs, pdf, false).promise;
     const page = await doc.getPage(1);
     const viewport = page.getViewport({ scale: 1, rotation: page.rotate ?? 0 });
     const content = await page.getTextContent();
@@ -664,11 +664,7 @@ export async function extractPdfDimensionStrings(
   const pdfjs = await loadPdfjs();
   if (!pdfjs) return [];
   try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: false,
-    }).promise;
+    const doc = await pdfjsData(pdfjs, pdf, false).promise;
     const page = await doc.getPage(1);
     const content = await page.getTextContent();
     const out: string[] = [];
@@ -696,11 +692,7 @@ export async function extractPdfPageText(pdf: Buffer | Uint8Array): Promise<stri
   const pdfjs = await loadPdfjs();
   if (!pdfjs) return "";
   try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: true,
-    }).promise;
+    const doc = await pdfjsData(pdfjs, pdf, true).promise;
     const page = await doc.getPage(1);
     const content = await page.getTextContent();
     return content.items
@@ -736,11 +728,7 @@ export async function extractPdfPageRaster(
   if (!pdfjs) return null;
 
   try {
-    const doc = await pdfjs.getDocument({
-      data: asPdfBytes(pdf),
-      isEvalSupported: false,
-      useSystemFonts: false,
-    }).promise;
+    const doc = await pdfjsData(pdfjs, pdf, false).promise;
     const page = await doc.getPage(1);
     // Resolving an image object requires the operator list to have run first —
     // that is what puts it in page.objs.

@@ -145,21 +145,37 @@ export const PATCH = withWorkspacesAuthDynamic<
           }),
         );
         await addFloorplanVizRunSpend(orgId, id, spend);
+        if (improved.rejected && !improved.attemptProduced) {
+          return jsonBadRequest(improved.rejected, "viz_improve_not_better");
+        }
+        const rejected = Boolean(improved.rejected);
         const run = await appendFloorplanVizStillEdit(orgId, id, stillId, {
           mimeType: improved.mimeType,
           base64: improved.base64,
-          editPrompt: "שפר תמונה",
+          editPrompt: rejected
+            ? `ניסיון שיפור נשמר אך נדחה בבקרת איכות: ${improved.rejected}`
+            : "שיפור תמונה — נוצר ניסיון חדש",
           auditIssues: improved.auditIssues,
+          auditStatus: rejected ? "rejected" : improved.auditIssues?.length ? "needs_review" : "passed",
+          selected: !rejected,
         });
         if (!run) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
-        const image = run.images.find(
-          (row) =>
-            row.selected &&
-            row.viewId === parseFloorplanVizViewId(still.viewId) &&
-            (row.roomName ?? "") === (still.roomName ?? ""),
-        );
+        const image = run.images
+          .filter(
+            (row) =>
+              row.parentStillId === stillId &&
+              row.viewId === parseFloorplanVizViewId(still.viewId) &&
+              (row.roomName ?? "") === (still.roomName ?? ""),
+          )
+          .sort((a, b) => (b.attemptIndex ?? 0) - (a.attemptIndex ?? 0))[0];
         if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
-        return NextResponse.json({ success: true, image, images: run.images });
+        return NextResponse.json({
+          success: true,
+          image,
+          images: run.images,
+          accepted: !rejected,
+          message: improved.rejected,
+        });
       }
 
       const instruction = sanitizeFloorplanVizEditInstruction(body.instruction ?? "");

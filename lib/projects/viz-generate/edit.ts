@@ -54,6 +54,7 @@ import {
   editRedrewTheFrame,
   measureEditChange,
 } from "@/lib/projects/floorplan-viz-edit-guard";
+import { isNetImprovement } from "@/lib/projects/floorplan-improve-gate";
 
 const log = createLogger("floorplan-viz-generate");
 export const FLOORPLAN_VIZ_EDIT_INSTRUCTION_MAX = 8000;
@@ -352,7 +353,6 @@ export function buildFloorplanImproveInstruction(failures: string[]): string {
     ? failures.filter((f) => !/terrace\(s\) invented|terrace\(s\) grown|outdoor paving covers/i.test(f))
     : failures;
   const lines = focused
-    .slice(0, 4)
     .map((f) => `- ${f}\n  -> ${remedyFor(f)}`)
     .join("\n");
   const keepTerraces = fixingInventedRooms
@@ -417,7 +417,7 @@ export async function improveFloorplanStill(params: {
   failures?: string[];
   /** When set, fix only these lines — no auto-injected stairs/terrace extras. */
   selectedOnly?: boolean;
-}): Promise<{ mimeType: string; base64: string; auditIssues?: string[] }> {
+}): Promise<{ mimeType: string; base64: string; auditIssues?: string[]; rejected?: string; attemptProduced?: boolean }> {
   const haredi = params.styleKit?.audience === "haredi";
   const ctx = {
     layout: params.layout,
@@ -430,7 +430,6 @@ export async function improveFloorplanStill(params: {
     params.selectedOnly && selected.length > 0
       ? prioritizeImproveFailures(selected)
       : mergeImproveFailures(selected.length ? selected : (params.still.auditIssues ?? []), fresh, params.layout);
-  const beforeScore = fresh.length;
   const instruction = buildFloorplanImproveInstruction(failures);
   // Never use a free "walls may change / rebuild" path — that produced a
   // different house with an exterior+plan collage on דירה 21.
@@ -448,6 +447,8 @@ export async function improveFloorplanStill(params: {
       mimeType: params.still.mimeType,
       base64: params.still.base64,
       auditIssues: failures.length ? failures : params.still.auditIssues,
+      rejected: edited.rejected,
+      attemptProduced: false,
     };
   }
   if (await looksLikeAbandonedFloorplanStill(params.still, edited)) {
@@ -455,29 +456,36 @@ export async function improveFloorplanStill(params: {
       view: params.still.labelHe,
     });
     return {
-      mimeType: params.still.mimeType,
-      base64: params.still.base64,
+      mimeType: edited.mimeType,
+      base64: edited.base64,
       auditIssues: failures.length ? failures : params.still.auditIssues,
+      rejected: "השיפור נדחה: ההדמיה יצאה ממסגרת התוכנית",
+      attemptProduced: true,
     };
   }
   const residual = await collectShipIssues(edited, ctx, params.still.labelHe);
-  // If the "fix" is worse, keep the paid frame the user already had.
-  if (residual.length > beforeScore + 1) {
+  // A lower total that trades a fixed issue for a new failure is not a fix.
+  // Keep the prior frame unless the audit strictly improves and introduces
+  // nothing new; the saved still must never regress merely because two models
+  // described the same render differently.
+  if (!isNetImprovement(fresh, residual)) {
     log.warn("improve scored worse than before; keeping prior frame", {
       view: params.still.labelHe,
-      before: beforeScore,
-      after: residual.length,
+      before: fresh,
+      after: residual,
     });
     return {
-      mimeType: params.still.mimeType,
-      base64: params.still.base64,
-      auditIssues: failures.length ? failures : params.still.auditIssues,
+      mimeType: edited.mimeType,
+      base64: edited.base64,
+      auditIssues: residual,
+      rejected: "השיפור נדחה: לא צמצם את הליקויים בלי להוסיף ליקוי חדש",
+      attemptProduced: true,
     };
   }
   return {
     mimeType: edited.mimeType,
     base64: edited.base64,
     auditIssues: residual.length ? residual : undefined,
+    attemptProduced: true,
   };
 }
-

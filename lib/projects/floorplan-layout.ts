@@ -1355,6 +1355,7 @@ export type FloorplanVizViewId = "overview" | "isometric" | "interior";
  * rather than imagined, which is why it carries no audit and costs nothing.
  */
 export type FloorplanVizStillOrigin = "generate" | "edit" | "cad" | "render3d";
+export type FloorplanVizAuditStatus = "passed" | "needs_review" | "rejected";
 
 export type FloorplanVizImage = {
   id?: string;
@@ -1372,4 +1373,6 @@ export type FloorplanVizImage = {
   editPrompt?: string;
   /** English audit hard-failure strings — drive "שפר תמונה" repair. */
   auditIssues?: string[];
+  /** How the latest saved candidate fared against the automated audit gate. */
+  auditStatus?: FloorplanVizAuditStatus;
 };

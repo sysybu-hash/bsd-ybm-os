@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 import { createLogger } from "@/lib/logger";
 import {
   WALL_MIN_LINE_WIDTH,
@@ -209,6 +211,93 @@ export async function geometryFromDxf(text: string): Promise<FloorplanVectorGeom
     return geometryFromDxfDocument(doc);
   } catch (err: unknown) {
     log.warn("dxf parse failed", { error: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
+}
+
+/**
+ * Rasterise a DXF page without passing the non-image DXF bytes to image/OCR
+ * providers. Wall layers stay heavy, all other geometry stays legible, and
+ * source text entities are retained so the raster fallback can read labels.
+ */
+export async function renderDxfPageJpeg(
+  geometry: FloorplanVectorGeometry,
+  dxfText: string,
+  width = 2200,
+): Promise<Buffer | null> {
+  if (
+    !Number.isFinite(geometry.pageWidth) ||
+    !Number.isFinite(geometry.pageHeight) ||
+    geometry.pageWidth <= 0 ||
+    geometry.pageHeight <= 0 ||
+    !Number.isFinite(width) ||
+    width < 64
+  ) return null;
+
+  let doc: DxfDocument | null;
+  try {
+    const { default: DxfParser } = await import("dxf-parser");
+    doc = new DxfParser().parseSync(dxfText) as DxfDocument | null;
+  } catch (err: unknown) {
+    log.warn("dxf text raster parsing failed", { error: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
+  if (!doc) return null;
+  const raw = collect(doc.entities ?? []);
+  if (raw.length === 0) return null;
+  let minX = Infinity;
+  let maxY = -Infinity;
+  for (const item of raw) {
+    minX = Math.min(minX, item.a.x, item.b.x);
+    maxY = Math.max(maxY, item.a.y, item.b.y);
+  }
+  const height = Math.max(64, Math.round(width * geometry.pageHeight / geometry.pageWidth));
+  if (height > 8192) return null;
+  const scale = width / geometry.pageWidth;
+  const thin = Math.max(0.45, Math.min(1.1, Math.min(width, height) * 0.00055));
+  const thick = Math.max(1.1, Math.min(2.4, Math.min(width, height) * 0.0014));
+  const lines = [...geometry.segments, ...geometry.curves].map((segment) => {
+    const wall = segment.lineWidth >= WALL_MIN_LINE_WIDTH;
+    const color = wall ? "#20252b" : "#555d66";
+    const strokeWidth = wall ? thick : thin;
+    return `<line x1="${segment.x1}" y1="${segment.y1}" x2="${segment.x2}" y2="${segment.y2}" stroke="${color}" stroke-width="${strokeWidth / scale}" stroke-linecap="round"/>`;
+  }).join("");
+
+  const point = (value: unknown): Point | null => {
+    if (!value || typeof value !== "object") return null;
+    const row = value as { x?: unknown; y?: unknown };
+    return typeof row.x === "number" && typeof row.y === "number" ? { x: row.x, y: row.y } : null;
+  };
+  const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&apos;",
+  })[char]!);
+  const labels = (doc?.entities ?? []).flatMap((entity) => {
+    const type = (entity.type ?? "").toUpperCase();
+    if (type !== "TEXT" && type !== "MTEXT" && type !== "ATTRIB" && type !== "ATTDEF") return [];
+    const row = entity as DxfEntity & {
+      text?: string;
+      position?: unknown;
+      startPoint?: unknown;
+      height?: number;
+      textHeight?: number;
+      rotation?: number;
+    };
+    const at = point(row.position) ?? point(row.startPoint);
+    const text = row.text?.replace(/\\P/g, " ").replace(/\\[A-Za-z][^;]*;/g, "").trim();
+    if (!at || !text) return [];
+    const x = at.x - minX;
+    // geometryFromDxf flips Y around its maximum; reconstruct the same page point.
+    const y = maxY - at.y;
+    const size = Math.max(thin / scale, (row.height ?? row.textHeight ?? 2.5) * 0.72);
+    const rotation = Number.isFinite(row.rotation) ? -row.rotation! : 0;
+    return [`<text x="${x}" y="${y}" font-family="Arial,sans-serif" font-size="${size}" fill="#3d4650" direction="rtl" unicode-bidi="plaintext" transform="rotate(${rotation} ${x} ${y})">${escape(text)}</text>`];
+  }).join("");
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${geometry.pageWidth} ${geometry.pageHeight}"><rect width="100%" height="100%" fill="#fff"/>${lines}${labels}</svg>`;
+  try {
+    return await sharp(Buffer.from(svg)).jpeg({ quality: 94, mozjpeg: true }).toBuffer();
+  } catch (err: unknown) {
+    log.warn("dxf page rasterisation failed", { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }

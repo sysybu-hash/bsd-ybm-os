@@ -23,6 +23,8 @@ import { stripMagentaLocatorFromJpeg } from "@/lib/projects/floorplan-viz-edit-r
 import { getFloorplanVizRunForOrg } from "@/lib/projects/floorplan-viz-store";
 import { buildFloorplanVizPdfHtml } from "@/lib/projects/floorplan-viz-pdf-html";
 import { renderHtmlSectionsPdf } from "@/lib/pdf/render-html-pdf-chromium";
+import { gradeStillForShip } from "@/lib/projects/viz-generate/audit-gate";
+import { checkRoomPlacement } from "@/lib/projects/floorplan-viz-placement";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
@@ -171,6 +173,47 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       layout = await stampCadMeasuresOnLayout(layout, pdfBytes);
     }
     layout = applyBboxMeasuresToLayout(layout);
+
+    // A saved audit is only a snapshot from generation time. Recheck the
+    // exact hero that will be printed against the source plan at export time.
+    // If the source or the visual auditor is unavailable, do not label an
+    // unverified still as a finished booklet.
+    const heroForAudit = bookletHeroImage(images);
+    if (!planImage || !heroForAudit?.base64) {
+      return NextResponse.json(
+        { error: "לא ניתן לאמת את ההדמיה מול תוכנית המקור; יש לצרף תוכנית ברורה ולנסות שוב" },
+        { status: 409 },
+      );
+    }
+    const auditedHero = await stripMagentaLocatorFromJpeg({
+      mimeType: heroForAudit.mimeType || "image/jpeg",
+      base64: heroForAudit.base64,
+    });
+    const auditedImage = { mimeType: auditedHero.mimeType, base64: auditedHero.base64 };
+    const [audit, placementIssues] = await Promise.all([
+      gradeStillForShip(auditedImage, {
+        layout,
+        plan: planImage,
+        haredi: String(form.get("audience") ?? "") === "haredi",
+      }),
+      checkRoomPlacement(auditedImage, layout),
+    ]);
+    if (!audit) {
+      return NextResponse.json(
+        { error: "שירות בדיקת ההדמיה אינו זמין כרגע; החוברת לא הופקה" },
+        { status: 503 },
+      );
+    }
+    const auditIssues = [...new Set([
+      ...audit.grade.failures.filter((issue) => issue !== "footprint does not match the plan outline"),
+      ...(placementIssues ?? []),
+    ])];
+    if (auditIssues.length > 0) {
+      return NextResponse.json(
+        { error: `החוברת לא הופקה: נמצאו ${auditIssues.length} פערים בהדמיה`, auditIssues },
+        { status: 409 },
+      );
+    }
 
     for (const img of images) {
       const cleaned = await stripMagentaLocatorFromJpeg({

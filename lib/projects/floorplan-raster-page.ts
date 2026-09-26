@@ -53,6 +53,12 @@ export async function rasterizePdfPageJpeg(
       data: Uint8Array.from(pdf),
       isEvalSupported: false,
       useSystemFonts: true,
+      // With font faces off, PDF.js draws text as glyph paths that napi-canvas'
+      // Path rejects, and one label then aborts the whole sheet. No
+      // standardFontDataUrl: built from process.cwd() it makes Next trace the
+      // entire repository into the function, and these sheets render the same
+      // without it.
+      disableFontFace: false,
       CanvasFactory: NodeCanvasFactory,
     }).promise;
     const page = await doc.getPage(1);

@@ -46,6 +46,36 @@ export type ScaleSearch = {
   tolerance?: number;
 };
 
+const MAX_SCALE_CANDIDATES = 4096;
+
+function validBounds(bounds: { x: number; y: number; width: number; height: number }): boolean {
+  return (
+    Number.isFinite(bounds.x) &&
+    Number.isFinite(bounds.y) &&
+    Number.isFinite(bounds.width) &&
+    Number.isFinite(bounds.height) &&
+    bounds.width > 0 &&
+    bounds.height > 0
+  );
+}
+
+function validSearch(search?: ScaleSearch): boolean {
+  const from = search?.from ?? 40;
+  const to = search?.to ?? 72;
+  const step = search?.step ?? 1;
+  return (
+    Number.isFinite(from) &&
+    Number.isFinite(to) &&
+    Number.isFinite(step) &&
+    from > 0 &&
+    to >= from &&
+    step > 0 &&
+    Math.floor((to - from) / step) + 1 <= MAX_SCALE_CANDIDATES &&
+    (search?.tolerance == null ||
+      (Number.isFinite(search.tolerance) && search.tolerance >= 0))
+  );
+}
+
 export function lockScale(
   segments: VectorSegment[],
   bounds: { x: number; y: number; width: number; height: number },
@@ -53,6 +83,9 @@ export function lockScale(
   search?: ScaleSearch,
   curves?: VectorSegment[],
 ): ScaleLock | null {
+  if (!Number.isFinite(printedAreaM2) || printedAreaM2 <= 0 || !validBounds(bounds) || !validSearch(search)) {
+    return null;
+  }
   const candidates = collectScaleLocks(segments, bounds, printedAreaM2, search, curves);
   return pickScaleLock(candidates, search?.tolerance ?? 0.08);
 }
@@ -72,6 +105,14 @@ export function collectScaleLocks(
   search?: ScaleSearch,
   curves?: VectorSegment[],
 ): ScaleLock[] {
+  if (
+    !Number.isFinite(printedAreaM2) ||
+    printedAreaM2 <= 0 ||
+    !validBounds(bounds) ||
+    !validSearch(search)
+  ) {
+    return [];
+  }
   const from = search?.from ?? 40;
   const to = search?.to ?? 72;
   const step = search?.step ?? 1;
@@ -179,7 +220,16 @@ export function lockScaleToHint(
   curves?: VectorSegment[],
   spread = 0.12,
 ): ScaleLock | null {
-  if (!(hintUnitsPerMetre > 0)) return null;
+  if (
+    !Number.isFinite(hintUnitsPerMetre) ||
+    hintUnitsPerMetre <= 0 ||
+    !validBounds(bounds) ||
+    !Number.isFinite(spread) ||
+    spread < 0 ||
+    spread >= 1
+  ) {
+    return null;
+  }
   const candidates = collectScaleLocks(
     segments,
     bounds,
@@ -219,7 +269,16 @@ export function pickScaleLock(
   candidates: ScaleLock[],
   tolerance: number,
 ): ScaleLock | null {
-  const inTol = candidates.filter((c) => Math.abs(c.areaError) <= tolerance);
+  if (!Number.isFinite(tolerance) || tolerance < 0) return null;
+  const inTol = candidates.filter(
+    (c) =>
+      Number.isFinite(c.areaError) &&
+      Number.isFinite(c.unitsPerMetre) &&
+      c.unitsPerMetre > 0 &&
+      Number.isFinite(c.beds) &&
+      c.beds > 0 &&
+      Math.abs(c.areaError) <= tolerance,
+  );
   if (inTol.length === 0) return null;
   const mostBeds = inTol.reduce((most, c) => Math.max(most, c.beds), 0);
   if (mostBeds === 0) return null;

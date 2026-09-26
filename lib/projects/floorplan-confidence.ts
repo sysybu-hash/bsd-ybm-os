@@ -12,9 +12,9 @@ import { TINT_LIMIT } from "@/lib/projects/floorplan-tint";
  * and a product is that a product knows when it has failed: a flat it could not
  * read has to be flagged, not quietly rendered and invoiced at 200₪.
  *
- * Hard checks stop the booklet. Soft ones are printed and shipped, because they
- * describe a result that is worth less than a perfect one and still worth more
- * than nothing.
+ * A customer-facing measured deliverable must not silently ship mismatches.
+ * Warnings remain visible for non-measured estimates, while measured geometry
+ * and its furniture inventory must pass the declared acceptance limits.
  *
  * The tier is stated rather than implied. A booklet grown from a scan has no
  * geometric guarantee behind it and must not be sold as though it had.
@@ -60,13 +60,25 @@ export function assessFloorplanRun(input: {
   const soft: string[] = [];
   const tier = input.tier ?? "cad";
 
-  // The area is the target the scale was locked against; missing it by a lot
-  // means no scale reproduced the sheet.
-  const areaPct = Math.abs(input.areaError) * 100;
-  if (areaPct > 8) hard.push(`שגיאת שטח ${areaPct.toFixed(1)}% — קנה המידה לא משחזר את התוכנית`);
-  else if (areaPct > 4) soft.push(`שגיאת שטח ${areaPct.toFixed(1)}%`);
+  if (!Number.isFinite(input.unitsPerMetre) || input.unitsPerMetre <= 0) {
+    hard.push("קנה המידה אינו תקין — אי אפשר לאמת מידות");
+  }
+  if (!Number.isFinite(input.areaError)) {
+    hard.push("שגיאת השטח אינה ניתנת לחישוב — אין לאשר מידות");
+  }
 
-  if (input.wallCount < 8) {
+  // CAD measurements use a tighter tolerance than calibrated raster estimates.
+  const areaPct = Math.abs(input.areaError) * 100;
+  const maxAreaPct = tier === "raster" ? 3 : 1;
+  if (areaPct > maxAreaPct) {
+    hard.push(
+      `שגיאת שטח ${areaPct.toFixed(1)}% — הסף למסלול ${tier === "cad" ? "CAD" : "סריקה מכוילת"} הוא ${maxAreaPct}%`,
+    );
+  }
+
+  if (!Number.isFinite(input.wallCount) || input.wallCount < 0) {
+    hard.push("מספר הקירות שחושב אינו תקין");
+  } else if (input.wallCount < 8) {
     hard.push(`רק ${input.wallCount} קירות זוהו — לא מספיק לדירה`);
   }
 
@@ -74,11 +86,14 @@ export function assessFloorplanRun(input: {
   // the lock has to go on.
   const beds = input.furniture.filter((piece) => piece.kind === "bed");
   if (beds.length > 0) {
+    if (beds.some((bed) => !Number.isFinite(bed.widthCm) || !Number.isFinite(bed.depthCm))) {
+      hard.push("מידות מיטה לא תקינות — קנה המידה לא ניתן לאימות");
+    }
     const lengths = beds
       .map((bed) => Math.max(bed.widthCm, bed.depthCm))
       .sort((a, b) => a - b);
     const median = lengths[lengths.length >> 1]!;
-    if (median < BED_CM.min || median > BED_CM.max) {
+    if (Number.isFinite(median) && (median < BED_CM.min || median > BED_CM.max)) {
       hard.push(
         `מיטה יוצאת ${median.toFixed(0)} ס"מ — קנה המידה שגוי (מיטת יחיד היא 200)`,
       );
@@ -93,21 +108,31 @@ export function assessFloorplanRun(input: {
   if (input.rooms.length === 0) hard.push("לא זוהו חדרים כלל");
   else {
     if (bedrooms === 0) hard.push("לא זוהה אף חדר שינה");
-    if (bathrooms === 0 && merged === 0) soft.push("לא זוהה חדר רחצה");
+    if (bathrooms === 0 && merged === 0) hard.push("לא זוהה חדר רחצה");
     if (merged > 0) {
-      soft.push(`${merged} חדרים לא הופרדו זה מזה (מיטה וכלי סניטרי באותו חלל)`);
+      hard.push(`${merged} חדרים לא הופרדו זה מזה (מיטה וכלי סניטרי באותו חלל)`);
     }
   }
 
-  if (input.fidelity && input.fidelity.total > 0) {
-    const missing = input.fidelity.total - input.fidelity.present;
-    const share = missing / input.fidelity.total;
-    if (share > 0.2) {
-      hard.push(
-        `${missing} מתוך ${input.fidelity.total} פריטי ריהוט חסרים בתמונה`,
-      );
-    } else {
-      soft.push(...fidelityFailures(input.fidelity));
+  if (!input.fidelity && input.furniture.length > 0) {
+    hard.push("לא נמדדה נאמנות הריהוט בתמונה");
+  } else if (input.fidelity) {
+    if (
+      !Number.isFinite(input.fidelity.total) ||
+      !Number.isFinite(input.fidelity.present) ||
+      input.fidelity.total < 0 ||
+      input.fidelity.present < 0 ||
+      input.fidelity.present > input.fidelity.total
+    ) {
+      hard.push("מדידת נאמנות הריהוט אינה תקינה");
+    } else if (input.fidelity.total === 0 && input.furniture.length > 0) {
+      hard.push("לא ניתן לאמת את שימור הריהוט בתמונה");
+    } else if (input.fidelity.total > 0) {
+      const missing = input.fidelity.total - input.fidelity.present;
+      if (missing > 0) {
+        hard.push(`${missing} מתוך ${input.fidelity.total} פריטי ריהוט חסרים בתמונה`);
+        hard.push(...fidelityFailures(input.fidelity));
+      }
     }
   }
 
@@ -115,18 +140,26 @@ export function assessFloorplanRun(input: {
     hard.push(failure);
   }
 
-  if (input.coolTint != null && input.coolTint > TINT_LIMIT) {
-    hard.push(`צבע קידוד נשאר ב-${(input.coolTint * 100).toFixed(1)}% מהתמונה`);
+  if (input.coolTint != null) {
+    if (!Number.isFinite(input.coolTint) || input.coolTint < 0 || input.coolTint > 1) {
+      hard.push("מדידת צבע הקידוד אינה תקינה");
+    } else if (input.coolTint > TINT_LIMIT) {
+      hard.push(`צבע קידוד נשאר ב-${(input.coolTint * 100).toFixed(1)}% מהתמונה`);
+    }
   }
 
-  if (
-    input.printedTerraces != null &&
-    input.foundTerraces != null &&
-    input.foundTerraces < input.printedTerraces
-  ) {
-    soft.push(
-      `${input.foundTerraces} מתוך ${input.printedTerraces} מרפסות זוהו`,
-    );
+  if (input.printedTerraces != null || input.foundTerraces != null) {
+    if (
+      !Number.isFinite(input.printedTerraces) ||
+      !Number.isFinite(input.foundTerraces) ||
+      input.printedTerraces! < 0 ||
+      input.foundTerraces! < 0 ||
+      input.foundTerraces !== input.printedTerraces
+    ) {
+      hard.push(
+        `${input.foundTerraces ?? "לא נמדדו"} מרפסות זוהו מול ${input.printedTerraces ?? "לא ידוע"} בתוכנית`,
+      );
+    }
   }
 
   if (tier === "raster") {
