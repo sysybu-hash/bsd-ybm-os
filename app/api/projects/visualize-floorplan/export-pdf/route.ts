@@ -18,13 +18,14 @@ import { bufferIfPdf, pairRastersForCompare, trimRasterWhitespace } from "@/lib/
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
 import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
 import { extractPdfPageText, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
-import { bookletHeroImage } from "@/lib/projects/floorplan-viz-ids";
+import { bookletHeroImage, hebrewFloorplanAuditIssue } from "@/lib/projects/floorplan-viz-ids";
 import { stripMagentaLocatorFromJpeg } from "@/lib/projects/floorplan-viz-edit-region-overlay";
 import { getFloorplanVizRunForOrg } from "@/lib/projects/floorplan-viz-store";
 import { buildFloorplanVizPdfHtml } from "@/lib/projects/floorplan-viz-pdf-html";
 import { renderHtmlSectionsPdf } from "@/lib/pdf/render-html-pdf-chromium";
-import { gradeStillForShip } from "@/lib/projects/viz-generate/audit-gate";
+import { gradeStillForShip, shipBlockingIssues } from "@/lib/projects/viz-generate/audit-gate";
 import { checkRoomPlacement } from "@/lib/projects/floorplan-viz-placement";
+import { bookletBlockingIssues, checkBookletHero } from "@/lib/projects/floorplan-booklet-gate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
@@ -34,6 +35,8 @@ const MAX_IMAGE_BYTES = 2.5 * 1024 * 1024;
 const MAX_PLAN_BYTES = 6 * 1024 * 1024;
 
 type ImageMeta = {
+  /** The saved still this image is, when the run is stored. */
+  id?: string;
   viewId?: string;
   labelHe?: string;
   roomName?: string;
@@ -88,6 +91,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       const row = meta[i] ?? {};
       const viewId = row.viewId === "isometric" || row.viewId === "interior" ? row.viewId : "overview";
       images.push({
+        id: typeof row.id === "string" ? row.id.slice(0, 64) : undefined,
         viewId,
         labelHe: (row.labelHe ?? file.name ?? `הדמיה ${i + 1}`).slice(0, 120),
         roomName: row.roomName?.slice(0, 80),
@@ -174,43 +178,54 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
     }
     layout = applyBboxMeasuresToLayout(layout);
 
-    // A saved audit is only a snapshot from generation time. Recheck the
-    // exact hero that will be printed against the source plan at export time.
-    // If the source or the visual auditor is unavailable, do not label an
-    // unverified still as a finished booklet.
+    // The booklet goes out only for a still with no hard issue against the
+    // plan (see checkBookletHero). Soft findings never block.
     const heroForAudit = bookletHeroImage(images);
-    if (!planImage || !heroForAudit?.base64) {
-      return NextResponse.json(
-        { error: "לא ניתן לאמת את ההדמיה מול תוכנית המקור; יש לצרף תוכנית ברורה ולנסות שוב" },
-        { status: 409 },
-      );
+    if (!heroForAudit?.base64) {
+      return jsonBadRequest("אין הדמיה לייצוא", "missing_images");
     }
-    const auditedHero = await stripMagentaLocatorFromJpeg({
-      mimeType: heroForAudit.mimeType || "image/jpeg",
-      base64: heroForAudit.base64,
-    });
-    const auditedImage = { mimeType: auditedHero.mimeType, base64: auditedHero.base64 };
-    const [audit, placementIssues] = await Promise.all([
-      gradeStillForShip(auditedImage, {
-        layout,
-        plan: planImage,
-        haredi: String(form.get("audience") ?? "") === "haredi",
-      }),
-      checkRoomPlacement(auditedImage, layout),
-    ]);
-    if (!audit) {
-      return NextResponse.json(
-        { error: "שירות בדיקת ההדמיה אינו זמין כרגע; החוברת לא הופקה" },
-        { status: 503 },
-      );
+    const heroCheck = checkBookletHero(run, heroForAudit.id);
+    if (heroCheck.outcome === "refuse") {
+      return jsonBadRequest(heroCheck.message, heroCheck.code);
     }
-    const auditIssues = [...new Set([
-      ...audit.grade.failures.filter((issue) => issue !== "footprint does not match the plan outline"),
-      ...(placementIssues ?? []),
-    ])];
-    if (auditIssues.length > 0) {
+    let found: string[];
+    if (heroCheck.outcome === "stored") {
+      found = heroCheck.issues;
+    } else {
+      if (!planImage) {
+        return NextResponse.json(
+          { error: "לא ניתן לאמת את ההדמיה מול תוכנית המקור; יש לצרף תוכנית ברורה ולנסות שוב" },
+          { status: 409 },
+        );
+      }
+      const auditedHero = await stripMagentaLocatorFromJpeg({
+        mimeType: heroForAudit.mimeType || "image/jpeg",
+        base64: heroForAudit.base64,
+      });
+      const auditedImage = { mimeType: auditedHero.mimeType, base64: auditedHero.base64 };
+      const [scored, placementIssues] = await Promise.all([
+        gradeStillForShip(auditedImage, {
+          layout,
+          plan: planImage,
+          haredi: String(form.get("audience") ?? "") === "haredi",
+        }),
+        checkRoomPlacement(auditedImage, layout),
+      ]);
+      if (!scored) {
+        return NextResponse.json(
+          { error: "שירות בדיקת ההדמיה אינו זמין כרגע; החוברת לא הופקה" },
+          { status: 503 },
+        );
+      }
+      found = shipBlockingIssues(scored, placementIssues);
+    }
+    const blocking = bookletBlockingIssues(found);
+    if (blocking.length > 0) {
       return NextResponse.json(
-        { error: `החוברת לא הופקה: נמצאו ${auditIssues.length} פערים בהדמיה`, auditIssues },
+        {
+          error: `החוברת לא הופקה: נמצאו ${blocking.length} ליקויים בהדמיה`,
+          auditIssues: blocking.map(hebrewFloorplanAuditIssue),
+        },
         { status: 409 },
       );
     }
