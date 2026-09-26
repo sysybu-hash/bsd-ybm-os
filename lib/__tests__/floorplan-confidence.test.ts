@@ -89,7 +89,7 @@ describe("assessFloorplanRun", () => {
     expect(report.hard.join(" ")).toMatch(/פריטי ריהוט חסרים/);
   });
 
-  it("blocks a frame that lost even one drawn furniture block", () => {
+  it("ships a frame that lost one, and says so", () => {
     const report = assessFloorplanRun({
       ...good,
       fidelity: {
@@ -99,8 +99,8 @@ describe("assessFloorplanRun", () => {
         total: 20,
       },
     });
-    expect(report.ok).toBe(false);
-    expect(report.hard.join(" ")).toMatch(/seat/);
+    expect(report.ok).toBe(true);
+    expect(report.soft.join(" ")).toMatch(/seat/);
   });
 
   it("stops a frame still wearing a coding colour", () => {
@@ -126,13 +126,23 @@ describe("assessFloorplanRun", () => {
     expect(report.hard.join(" ")).toMatch(/לא הופרדו/);
   });
 
-  it("requires tighter area agreement and complete printed terrace detection", () => {
-    expect(assessFloorplanRun({ ...good, areaError: 0.02 }).ok).toBe(false);
-    expect(assessFloorplanRun({ ...good, areaError: 0.02, tier: "raster" }).ok).toBe(true);
-    const terraceMismatch = assessFloorplanRun({ ...good, printedTerraces: 2, foundTerraces: 1 });
-    expect(terraceMismatch.ok).toBe(false);
-    expect(terraceMismatch.hard.join(" ")).toMatch(/מרפסות/);
-    expect(assessFloorplanRun({ ...good, printedTerraces: 1, foundTerraces: 2 }).ok).toBe(false);
+  it("holds a CAD plate to the area limits the reference sheets set", () => {
+    // דירה 21 locks 3.8% off with every room right: noted, not refused.
+    const close = assessFloorplanRun({ ...good, areaError: 0.038 });
+    expect(close.ok).toBe(true);
+    expect(close.soft.join(" ")).toMatch(/שגיאת שטח 3.8%/);
+    expect(assessFloorplanRun({ ...good, areaError: 0.013 }).soft).toEqual([]);
+    expect(assessFloorplanRun({ ...good, areaError: 0.06 }).ok).toBe(false);
+    expect(assessFloorplanRun({ ...good, areaError: 0.06, tier: "raster" }).ok).toBe(true);
+    expect(assessFloorplanRun({ ...good, areaError: 0.09, tier: "raster" }).ok).toBe(false);
+  });
+
+  it("notes a terrace count that differs from the sheet's, without refusing", () => {
+    const fewer = assessFloorplanRun({ ...good, printedTerraces: 2, foundTerraces: 1 });
+    expect(fewer.ok).toBe(true);
+    expect(fewer.soft.join(" ")).toMatch(/1 מתוך 2 מרפסות/);
+    expect(assessFloorplanRun({ ...good, printedTerraces: 1, foundTerraces: 2 }).ok).toBe(true);
+    expect(assessFloorplanRun({ ...good, printedTerraces: Number.NaN, foundTerraces: 1 }).ok).toBe(false);
   });
 
   it("refuses non-finite area and invalid scale values", () => {
