@@ -1,4 +1,5 @@
 import type { FloorplanVizAuditMeta } from "@/lib/projects/floorplan-viz-audit-meta";
+import type { FloorplanVizDismissal } from "@/lib/projects/floorplan-viz-review";
 import { z } from "zod";
 
 /**
@@ -1378,4 +1379,6 @@ export type FloorplanVizImage = {
   auditStatus?: FloorplanVizAuditStatus;
   /** Who found each of those issues, and with which model and prompt. */
   auditMeta?: FloorplanVizAuditMeta;
+  /** Findings a person looked at and marked wrong; they no longer count. */
+  auditDismissed?: FloorplanVizDismissal[];
 };

@@ -258,7 +258,7 @@ export function useFloorplanVizRun({
     void refreshRuns();
   }, [refreshRuns, result, t, titleDraft]);
 
-  const { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill } =
+  const { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill, dismissIssue } =
     useFloorplanVizStills({ result, setResult, refreshRuns, t });
 
   const pendingJobs = result ? listFloorplanVizJobs(result.layout, "rooms", result.images) : [];
@@ -297,6 +297,7 @@ export function useFloorplanVizRun({
     rescanStill,
     selectStill,
     deleteStill,
+    dismissIssue,
     pendingCount,
   };
 }

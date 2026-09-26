@@ -222,5 +222,28 @@ export function useFloorplanVizStills({
     [refreshRuns, result, setResult, t],
   );
 
-  return { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill };
+  /** Mark one finding wrong, or take the mark back. No model call. */
+  const dismissIssue = useCallback(
+    async (img: FloorplanVizImage, issue: string, dismissed: boolean) => {
+      if (!result?.runId || !img.id) return;
+      const res = await fetch(
+        `/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}/stills/${encodeURIComponent(img.id)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dismiss: { issue, dismissed } }),
+        },
+      );
+      const json = (await res.json()) as { images?: FloorplanVizImage[]; error?: string };
+      if (!res.ok) {
+        toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.editFailed"));
+        return;
+      }
+      if (json.images) setResult({ ...result, images: json.images });
+    },
+    [result, setResult, t],
+  );
+
+  return { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill, dismissIssue };
 }

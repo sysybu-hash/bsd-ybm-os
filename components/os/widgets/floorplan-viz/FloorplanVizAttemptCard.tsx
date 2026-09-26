@@ -4,10 +4,11 @@ import React, { useEffect, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Download, Pencil, ScanSearch, Sparkles, Trash2 } from "lucide-react";
 import type { FloorplanLayout, FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import {
-  hebrewFloorplanAuditIssue,
   selectedFromAttemptGroup,
   type FloorplanVizAttemptGroup,
 } from "@/lib/projects/floorplan-viz-ids";
+import { openAuditIssues } from "@/lib/projects/floorplan-viz-review";
+import FloorplanVizAuditIssues from "@/components/os/widgets/floorplan-viz/FloorplanVizAuditIssues";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
 import { OsButton, OsIconButton } from "@/components/os/ui";
 import { fileNameOf, srcOf } from "@/components/os/widgets/floorplan-viz/FloorplanVizLightbox";
@@ -18,9 +19,6 @@ import { locatorFocusForView } from "@/lib/projects/floorplan-locator";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
-function label(resolved: string, key: string, fallback: string): string {
-  return resolved === key ? fallback : resolved;
-}
 
 export default function FloorplanVizAttemptCard({
   group,
@@ -36,6 +34,7 @@ export default function FloorplanVizAttemptCard({
   onRescan,
   onDelete,
   onSelect,
+  onDismiss,
 }: {
   group: FloorplanVizAttemptGroup;
   globalIndex: number;
@@ -50,6 +49,7 @@ export default function FloorplanVizAttemptCard({
   onRescan?: (img: FloorplanVizImage) => void;
   onDelete?: (img: FloorplanVizImage) => void;
   onSelect?: (img: FloorplanVizImage) => void;
+  onDismiss?: (img: FloorplanVizImage, issue: string, dismissed: boolean) => void;
 }) {
   const [editingOpen, setEditingOpen] = useState(false);
   const submittedEdit = React.useRef(false);
@@ -76,11 +76,14 @@ export default function FloorplanVizAttemptCard({
   const focus = layout ? locatorFocusForView(layout, current.viewId, current.roomName) : null;
   const isChosen = current.selected !== false && current.id === selected.id;
   const issues = current.auditIssues?.filter(Boolean) ?? [];
-  const [checked, setChecked] = useState<string[]>(issues);
-  const issueKey = issues.join("\n");
+  const dismissed = current.auditDismissed ?? [];
+  // Only findings nobody marked wrong are offered to "improve".
+  const open = openAuditIssues(issues, dismissed);
+  const [checked, setChecked] = useState<string[]>(open);
+  const issueKey = `${issues.join("\n")}|${dismissed.map((row) => row.issue).join("\n")}`;
 
   useEffect(() => {
-    setChecked(issues);
+    setChecked(open);
     // Reset selection when the still's issue list changes (rescan / new attempt).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- issueKey encodes issues
   }, [current.id, issueKey]);
@@ -175,13 +178,18 @@ export default function FloorplanVizAttemptCard({
             })}
           </span>
           <span>· {t(originKey)}</span>
+          {current.createdAt ? (
+            <time dateTime={current.createdAt}>
+              ·{" "}
+              {new Date(current.createdAt).toLocaleString(
+                typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined,
+                { dateStyle: "short", timeStyle: "short" },
+              )}
+            </time>
+          ) : null}
           {current.auditStatus ? (
             <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${current.auditStatus === "rejected" ? "bg-rose-500/15 text-rose-700 dark:text-rose-200" : current.auditStatus === "passed" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "bg-amber-500/15 text-amber-800 dark:text-amber-100"}`}>
-              {label(
-                t(`workspaceWidgets.floorplanViz.auditStatus${current.auditStatus}`),
-                `workspaceWidgets.floorplanViz.auditStatus${current.auditStatus}`,
-                current.auditStatus === "rejected" ? "נדחה בבקרת איכות" : current.auditStatus === "passed" ? "עבר בקרת איכות" : "נדרשת בדיקה",
-              )}
+              {t(`workspaceWidgets.floorplanViz.auditStatus${current.auditStatus}`)}
             </span>
           ) : null}
           {isChosen ? (
@@ -202,51 +210,28 @@ export default function FloorplanVizAttemptCard({
           ) : null}
         </span>
         <FloorplanVizStructuralBanner issues={issues} t={t} />
+        {current.auditStatus === "rejected" ? (
+          <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[10px] font-normal text-rose-900 dark:text-rose-100">
+            {t("workspaceWidgets.floorplanViz.rejectedKept")}
+            {current.editPrompt ? <span className="mt-0.5 block opacity-80">{current.editPrompt}</span> : null}
+          </p>
+        ) : null}
         {issues.length > 0 ? (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-[10px] font-normal text-amber-950 dark:text-amber-100">
-            <p className="mb-1 font-semibold">
-              {label(
-                t("workspaceWidgets.floorplanViz.auditIssuesTitle"),
-                "workspaceWidgets.floorplanViz.auditIssuesTitle",
-                "מה צריך לתקן",
-              )}
-            </p>
-            <p className="mb-1.5 text-[9px] text-amber-900/80 dark:text-amber-100/80">
-              {label(
-                t("workspaceWidgets.floorplanViz.auditIssuesPick"),
-                "workspaceWidgets.floorplanViz.auditIssuesPick",
-                "סמנו מה לתקן — אפשר לבטל פריטים שהביקורת טעתה בהם",
-              )}
-            </p>
-            <ul className="space-y-1">
-              {issues.map((issue) => {
-                const id = `issue-${current.id ?? "x"}-${issue.slice(0, 24)}`;
-                const on = checked.includes(issue);
-                return (
-                  <li key={issue} className="flex items-start gap-2">
-                    <input
-                      id={id}
-                      type="checkbox"
-                      className="mt-0.5"
-                      checked={on}
-                      disabled={editing}
-                      onChange={() => toggleIssue(issue)}
-                    />
-                    <label htmlFor={id} className="cursor-pointer leading-snug">
-                      {hebrewFloorplanAuditIssue(issue)}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <FloorplanVizAuditIssues
+            stillId={current.id ?? "x"}
+            issues={issues}
+            dismissed={dismissed}
+            checked={checked}
+            onToggle={toggleIssue}
+            onDismiss={
+              canManage && onDismiss && current.id ? (issue, on) => onDismiss(current, issue, on) : undefined
+            }
+            busy={editing}
+            t={t}
+          />
         ) : canManage && onRescan ? (
           <p className="text-[10px] font-normal text-[color:var(--foreground-muted)]">
-            {label(
-              t("workspaceWidgets.floorplanViz.auditIssuesEmpty"),
-              "workspaceWidgets.floorplanViz.auditIssuesEmpty",
-              "אין ליקויים שמורים — אפשר לסרוק מול התוכנית",
-            )}
+            {t("workspaceWidgets.floorplanViz.auditIssuesEmpty")}
           </p>
         ) : null}
         <span className="flex flex-wrap items-center gap-1.5">
@@ -260,11 +245,7 @@ export default function FloorplanVizAttemptCard({
               icon={<ScanSearch size={12} aria-hidden />}
               onClick={() => onRescan(current)}
             >
-              {label(
-                t("workspaceWidgets.floorplanViz.rescanImage"),
-                "workspaceWidgets.floorplanViz.rescanImage",
-                "סרוק מול תוכנית",
-              )}
+              {t("workspaceWidgets.floorplanViz.rescanImage")}
             </OsButton>
           ) : null}
           {canManage && onImprove ? (
@@ -273,15 +254,11 @@ export default function FloorplanVizAttemptCard({
               variant="secondary"
               size="sm"
               loading={editing}
-              disabled={editing || (issues.length > 0 && checked.length === 0)}
+              disabled={editing || (open.length > 0 && checked.length === 0)}
               icon={<Sparkles size={12} aria-hidden />}
-              onClick={() => onImprove(current, issues.length ? checked : [])}
+              onClick={() => onImprove(current, open.length ? checked : [])}
             >
-              {label(
-                t("workspaceWidgets.floorplanViz.improveImage"),
-                "workspaceWidgets.floorplanViz.improveImage",
-                "שפר תמונה",
-              )}
+              {t("workspaceWidgets.floorplanViz.improveImage")}
             </OsButton>
           ) : null}
           {canManage && onEdit ? (

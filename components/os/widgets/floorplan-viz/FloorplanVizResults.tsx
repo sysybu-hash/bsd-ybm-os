@@ -74,6 +74,7 @@ export default function FloorplanVizResults({
   onRescanStill,
   onDeleteStill,
   onSelectStill,
+  onDismissIssue,
   geometry,
 }: {
   t: TFn;
@@ -99,6 +100,7 @@ export default function FloorplanVizResults({
   onRescanStill?: (img: FloorplanVizImage) => void;
   onDeleteStill?: (img: FloorplanVizImage) => void;
   onSelectStill?: (img: FloorplanVizImage) => void;
+  onDismissIssue?: (img: FloorplanVizImage, issue: string, dismissed: boolean) => void;
   /** The measured flat, on runs that took the geometric path. */
   geometry?: FloorplanGeometryPayload | null;
 }) {
@@ -389,6 +391,7 @@ export default function FloorplanVizResults({
         onRescan={onRescanStill}
         onDelete={onDeleteStill}
         onSelect={onSelectStill}
+        onDismiss={onDismissIssue}
       />
 
       {pendingRooms > 0 && onGenerateRooms ? (
@@ -437,6 +440,7 @@ export default function FloorplanVizResults({
         onRescan={onRescanStill}
         onDelete={onDeleteStill}
         onSelect={onSelectStill}
+        onDismiss={onDismissIssue}
       />
 
       {preview?.frames[preview.index] ? (

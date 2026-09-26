@@ -1507,6 +1507,8 @@ model FloorplanVizStill {
   editPrompt     String?         @db.Text
   /// Who found what in the last audit of this still (FloorplanVizAuditMeta).
   auditMeta      Json?
+  /// Findings a person marked wrong: [{ issue, by, at }] (FloorplanVizDismissal).
+  auditDismissed Json?
   selected       Boolean         @default(true)
   parentStillId  String?
   origin         String          @default("generate")

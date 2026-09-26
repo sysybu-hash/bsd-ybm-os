@@ -425,6 +425,8 @@ export async function improveFloorplanStill(params: {
   failures?: string[];
   /** When set, fix only these lines — no auto-injected stairs/terrace extras. */
   selectedOnly?: boolean;
+  /** Findings a person marked wrong: never fixed, never counted either way. */
+  dismissed?: string[];
 }): Promise<{
   mimeType: string;
   base64: string;
@@ -440,7 +442,10 @@ export async function improveFloorplanStill(params: {
     plan: params.plan,
     haredi: haredi === true,
   };
-  const fresh = await collectShipIssues(params.still, ctx, params.still.labelHe);
+  const marked = new Set(params.dismissed ?? []);
+  const fresh = (await collectShipIssues(params.still, ctx, params.still.labelHe)).filter(
+    (issue) => !marked.has(issue),
+  );
   const selected = (params.failures ?? []).map((f) => f.trim()).filter(Boolean);
   const failures =
     params.selectedOnly && selected.length > 0
@@ -480,7 +485,7 @@ export async function improveFloorplanStill(params: {
     };
   }
   const scanned = await collectShipAudit(edited, ctx, params.still.labelHe);
-  const residual = scanned.issues;
+  const residual = scanned.issues.filter((issue) => !marked.has(issue));
   // A lower total that trades a fixed issue for a new failure is not a fix.
   // Keep the prior frame unless the audit strictly improves and introduces
   // nothing new; the saved still must never regress merely because two models
