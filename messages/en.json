@@ -1757,6 +1757,7 @@
     "viz_still_not_selected": "The still sent for the booklet is not the selected version.",
     "viz_issue_not_on_still": "That finding does not belong to this still.",
     "viz_improve_not_better": "The improvement produced no new image — the previous still stays selected.",
+    "viz_improve_needs_regenerate": "A turned or mirrored still cannot be fixed by improving it. If the orientation really is wrong, generate it again; if the checker is wrong, mark the finding wrong.",
     "viz_run_not_found": "The visualisation was not found.",
     "viz_still_not_found": "The image was not found.",
     "weak_password": "That password is too weak. Use a longer one with letters, digits and symbols.",

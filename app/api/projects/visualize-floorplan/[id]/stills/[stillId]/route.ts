@@ -184,7 +184,7 @@ export const PATCH = withWorkspacesAuthDynamic<
           }),
         );
         if (improved.rejected && !improved.attemptProduced) {
-          return jsonBadRequest(improved.rejected, "viz_improve_not_better");
+          return jsonBadRequest(improved.rejected, improved.rejectedCode ?? "viz_improve_not_better");
         }
         const rejected = Boolean(improved.rejected);
         const run = await appendFloorplanVizStillEdit(orgId, id, stillId, {

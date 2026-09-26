@@ -415,6 +415,26 @@ async function looksLikeAbandonedFloorplanStill(
   }
 }
 
+/**
+ * A turned or mirrored flat. "Improve" is a surgical edit told to keep every
+ * wall where it is, and asking it in the same breath to rebuild the flat the
+ * other way round is a contradiction the model answers by changing nothing
+ * (דירה 14, attempts 2 to 6). Those stills are regenerated, not improved.
+ */
+function isOrientationFailure(failure: string): boolean {
+  return /mirrored|turned \d+ degrees/i.test(failure);
+}
+
+const ORIENTATION_NEEDS_REGENERATE =
+  "הדמיה מסובבת או משוקפת לא מתקנים בשיפור — אם הכיוון באמת שגוי, צרו את ההדמיה מחדש. אם הבודק טעה, סמנו את הממצא כשגוי.";
+
+/**
+ * Below this share of the frame moving, an improve did nothing. Measured on
+ * דירה 14: the two empty improves moved 0.00%, the smallest real one (a
+ * screen taken out) 0.19%.
+ */
+const IMPROVE_NO_CHANGE = 0.001;
+
 /** "שפר תמונה" — surgical fix of residual audit issues on the existing still. */
 export async function improveFloorplanStill(params: {
   layout: FloorplanLayout;
@@ -434,8 +454,23 @@ export async function improveFloorplanStill(params: {
   /** Who found the new attempt's issues, when it was scanned. */
   auditMeta?: FloorplanVizAuditMeta;
   rejected?: string;
+  /** API error code for a refusal that produced no attempt. */
+  rejectedCode?: "viz_improve_not_better" | "viz_improve_needs_regenerate";
   attemptProduced?: boolean;
 }> {
+  const selected = (params.failures ?? []).map((f) => f.trim()).filter(Boolean);
+  // A turned or flipped flat cannot be repainted into place, so an improve
+  // asked only for that is refused before any model is paid.
+  if (params.selectedOnly && selected.length > 0 && selected.every(isOrientationFailure)) {
+    return {
+      mimeType: params.still.mimeType,
+      base64: params.still.base64,
+      auditIssues: params.still.auditIssues,
+      rejected: ORIENTATION_NEEDS_REGENERATE,
+      rejectedCode: "viz_improve_needs_regenerate",
+      attemptProduced: false,
+    };
+  }
   const haredi = params.styleKit?.audience === "haredi";
   const ctx = {
     layout: params.layout,
@@ -446,11 +481,21 @@ export async function improveFloorplanStill(params: {
   const fresh = (await collectShipIssues(params.still, ctx, params.still.labelHe)).filter(
     (issue) => !marked.has(issue),
   );
-  const selected = (params.failures ?? []).map((f) => f.trim()).filter(Boolean);
-  const failures =
+  const failures = (
     params.selectedOnly && selected.length > 0
       ? prioritizeImproveFailures(selected)
-      : mergeImproveFailures(selected.length ? selected : (params.still.auditIssues ?? []), fresh, params.layout);
+      : mergeImproveFailures(selected.length ? selected : (params.still.auditIssues ?? []), fresh, params.layout)
+  ).filter((failure) => !isOrientationFailure(failure));
+  if (failures.length === 0) {
+    return {
+      mimeType: params.still.mimeType,
+      base64: params.still.base64,
+      auditIssues: params.still.auditIssues,
+      rejected: ORIENTATION_NEEDS_REGENERATE,
+      rejectedCode: "viz_improve_needs_regenerate",
+      attemptProduced: false,
+    };
+  }
   const instruction = buildFloorplanImproveInstruction(failures);
   // Never use a free "walls may change / rebuild" path — that produced a
   // different house with an exterior+plan collage on דירה 21.
@@ -481,6 +526,23 @@ export async function improveFloorplanStill(params: {
       base64: edited.base64,
       auditIssues: failures.length ? failures : params.still.auditIssues,
       rejected: "השיפור נדחה: ההדמיה יצאה ממסגרת התוכנית",
+      attemptProduced: true,
+    };
+  }
+  // The model handed back the frame it was given. On דירה 14 two of five
+  // improves changed nothing measurable; scanning them again only paid for a
+  // second opinion on the same picture.
+  const change = await measureEditChange(params.still, edited);
+  if (change && change.changed < IMPROVE_NO_CHANGE) {
+    log.warn("improve returned the frame unchanged; skipping the audit", {
+      view: params.still.labelHe,
+      changed: change.changed,
+    });
+    return {
+      mimeType: edited.mimeType,
+      base64: edited.base64,
+      auditIssues: params.still.auditIssues,
+      rejected: "השיפור נדחה: המודל החזיר את אותה תמונה בלי שינוי",
       attemptProduced: true,
     };
   }
