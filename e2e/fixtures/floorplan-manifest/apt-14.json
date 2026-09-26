@@ -1,0 +1,44 @@
+{
+  "_note": "The objects on the sheet for דירה 14, read off the cut sales sheet by eye. A value overrides the audit's own reading of the plan only once its status is approved; a draft is shown and never applied. bbox is a fraction of the rendered sheet page (x, y from the top-left corner).",
+  "unit": "דירה 14",
+  "sheet": "דירה 14 .pdf",
+  "sourceSheet": "דירה 14 מקור.pdf",
+  "draftedAt": "2026-09-27",
+  "approvedBy": null,
+  "items": [
+    { "id": "rooms.living", "label": "ח.מגורים", "value": 1, "status": "draft", "bbox": { "x": 0.251, "y": 0.325, "w": 0.134, "h": 0.17 } },
+    { "id": "rooms.kitchen", "label": "מטבח", "value": 1, "status": "draft", "bbox": { "x": 0.382, "y": 0.31, "w": 0.177, "h": 0.135 } },
+    { "id": "rooms.bedroom", "label": "חדרי שינה (בלי ממ\"ד)", "value": 3, "status": "draft", "auditField": null, "note": "צפון (למעלה), אמצע עם שתי מיטות, דרום (ליד חדר הרחצה)" },
+    { "id": "rooms.mmd", "label": "ממ\"ד", "value": 1, "status": "draft", "bbox": { "x": 0.12, "y": 0.33, "w": 0.127, "h": 0.13 }, "note": "החדר המערבי: קירות בטון בארבעה צדדים, סימון +2 ליד הדלת, ו\"חלון ממ\"ד הזזה\" מצביע עליו" },
+    { "id": "rooms.sleeping", "label": "חדרים עם מיטה (כולל ממ\"ד)", "value": 4, "status": "draft", "auditField": "planBedroomCount" },
+    { "id": "rooms.bathroom", "label": "חדרי רחצה", "value": 2, "status": "draft", "note": "רחצה ראשי עם אמבטיה, ושירותים עם כיור קטן לידו" },
+    { "id": "rooms.balcony", "label": "מרפסות במפלס הדירה", "value": 3, "status": "draft", "note": "4.10, 6.4, 3.16 מ\"ר — כולן ב-+9.64; ה-3.16 מסומנת \"מרפסת גג\" אך באותו מפלס" },
+
+    { "id": "beds.total", "label": "מיטות", "value": 5, "status": "draft", "auditField": "planBedTotal", "note": "צפון 1, ממ\"ד 1, אמצע 2, דרום 1. הערה בקוד (gradeFloorplanStill) אומרת \"שש מיטות\" — לא מצאתי שישית" },
+    { "id": "beds.double", "label": "מיטות זוגיות", "value": 0, "status": "draft" },
+    { "id": "beds.bedroom-north", "label": "מיטות — חדר צפוני", "value": 1, "status": "draft", "bbox": { "x": 0.191, "y": 0.205, "w": 0.159, "h": 0.118 } },
+    { "id": "beds.mmd", "label": "מיטות — ממ\"ד", "value": 1, "status": "draft", "bbox": { "x": 0.12, "y": 0.33, "w": 0.127, "h": 0.13 } },
+    { "id": "beds.bedroom-middle", "label": "מיטות — חדר אמצעי", "value": 2, "status": "draft", "bbox": { "x": 0.251, "y": 0.495, "w": 0.184, "h": 0.1 } },
+    { "id": "beds.bedroom-south", "label": "מיטות — חדר דרומי", "value": 1, "status": "draft", "bbox": { "x": 0.251, "y": 0.595, "w": 0.173, "h": 0.085 } },
+
+    { "id": "kitchen.sinkBasins", "label": "כיורי מטבח", "value": 2, "status": "draft", "auditField": "planKitchenSinkBasins", "bbox": { "x": 0.53, "y": 0.35, "w": 0.025, "h": 0.048 }, "note": "שני כיורים נפרדים לאורך הקיר המזרחי" },
+    { "id": "kitchen.islandStools", "label": "כסאות בר באי", "value": 4, "status": "draft", "auditField": "planIslandStoolCount", "bbox": { "x": 0.435, "y": 0.372, "w": 0.018, "h": 0.068 } },
+    { "id": "kitchen.hob", "label": "כיריים", "value": 1, "status": "draft", "bbox": { "x": 0.477, "y": 0.314, "w": 0.028, "h": 0.02 } },
+    { "id": "kitchen.fridge", "label": "מקרר", "value": null, "status": "draft", "bbox": { "x": 0.431, "y": 0.315, "w": 0.039, "h": 0.03 }, "note": "יש גוש מלבני ליד הכיריים — מקרר או עמודת תנור? לא ברור מהגיליון" },
+
+    { "id": "dining.tables", "label": "שולחן אוכל", "value": 1, "status": "draft", "bbox": { "x": 0.307, "y": 0.34, "w": 0.047, "h": 0.085 } },
+    { "id": "dining.chairs", "label": "כסאות אוכל", "value": 8, "status": "draft", "note": "3 בכל צד ארוך, 1 בכל קצה" },
+    { "id": "seating.groups", "label": "פינות ישיבה", "value": 1, "status": "draft", "auditField": "planSeatingGroupCount", "bbox": { "x": 0.29, "y": 0.468, "w": 0.12, "h": 0.025 }, "note": "כורסה אחת וספה דו-מושבית זו לצד זו — ספרתי כקבוצה אחת" },
+    { "id": "seating.screens", "label": "מסכים / טלוויזיה", "value": 0, "status": "draft" },
+
+    { "id": "wet.bathtubs", "label": "אמבטיות", "value": 1, "status": "draft", "auditField": "planBathtubCount", "bbox": { "x": 0.311, "y": 0.735, "w": 0.032, "h": 0.045 } },
+    { "id": "wet.toilets", "label": "אסלות", "value": 2, "status": "draft" },
+    { "id": "wet.basins", "label": "כיורי רחצה", "value": 2, "status": "draft" },
+    { "id": "wet.showers", "label": "מקלחונים", "value": 0, "status": "draft" },
+    { "id": "laundry.washers", "label": "מכונות כביסה", "value": 1, "status": "draft", "auditField": "planWasherCount", "bbox": { "x": 0.392, "y": 0.758, "w": 0.028, "h": 0.02 }, "note": "בחדר הרחצה הראשי, ליד האסלה" },
+
+    { "id": "entrance.door", "label": "דלת כניסה", "value": 1, "status": "draft", "bbox": { "x": 0.481, "y": 0.593, "w": 0.042, "h": 0.037 }, "note": "המשולש בקיר המזרחי, מתחת לתווית הדירה" },
+    { "id": "stairs.inside", "label": "מדרגות בתוך הדירה", "value": 0, "status": "draft" },
+    { "id": "orientation.north", "label": "חץ צפון", "value": null, "status": "draft", "note": "אין חץ צפון בגיליון החתוך. \"צפון\" ו\"דרום\" ברשימה הזו הם למעלה ולמטה בדף, לא כיוון אמיתי" }
+  ]
+}
