@@ -12,6 +12,9 @@ import type { FloorplanVizAudit } from "@/lib/projects/floorplan-viz-audit";
  * approved. Where it has an approved value the audit's plan reading is
  * replaced by it, and the disagreement is kept as a dispute rather than acted
  * on. A draft value is only shown, never applied.
+ *
+ * Nothing in the live audit reads a manifest yet: a run does not know which
+ * reference unit it is, so wiring one in waits on where manifests are kept.
  */
 
 const bboxSchema = z.object({
@@ -51,6 +54,7 @@ export const floorplanManifestSchema = z.object({
   sourceSheet: z.string().optional(),
   draftedAt: z.string(),
   approvedBy: z.string().nullable(),
+  approvedAt: z.string().optional(),
   items: z.array(manifestItemSchema).min(1),
 });
 
