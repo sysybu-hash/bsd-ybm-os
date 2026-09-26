@@ -63,7 +63,6 @@ export function sanitizeFloorplanVizEditInstruction(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, FLOORPLAN_VIZ_EDIT_INSTRUCTION_MAX);
 }
 
-/** A revision is acceptable only when it removes failures without adding one. */
 /**
  * Where the sheet puts its doors and its windows, in words.
  *

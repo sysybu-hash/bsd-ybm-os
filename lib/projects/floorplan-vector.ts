@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import path from "node:path";
 
 import { createLogger } from "@/lib/logger";
 
@@ -191,7 +190,6 @@ function pdfjsData(pdfjs: Pdfjs, pdf: Buffer | Uint8Array, useSystemFonts: boole
     data: asPdfBytes(pdf),
     isEvalSupported: false,
     useSystemFonts,
-    standardFontDataUrl: `${path.join(process.cwd(), "node_modules", "pdfjs-dist", "standard_fonts")}${path.sep}`,
   });
 }
 

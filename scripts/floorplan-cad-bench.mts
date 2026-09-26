@@ -13,23 +13,40 @@
  *
  * The sheets are not in the repo. Point the script at them with
  * FLOORPLAN_BENCH_DIR, or keep them in "תוכניות לביצוע הדמיות".
+ *
+ * Each sheet also carries the confidence verdict the geometry-only plate would
+ * get, so a change to an acceptance threshold is answered per sheet too.
  */
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { buildFlatFromPdf } from "@/lib/projects/floorplan-build";
+import { assessFloorplanRun } from "@/lib/projects/floorplan-confidence";
+import { measureBlockFidelity } from "@/lib/projects/floorplan-fidelity";
 import { flatExtentFromSheet } from "@/lib/projects/floorplan-render-flat";
 import { segmentRooms } from "@/lib/projects/floorplan-segment";
 import { extractFloorplanVectorGeometry } from "@/lib/projects/floorplan-vector";
 
 const dir = process.env.FLOORPLAN_BENCH_DIR ?? "תוכניות לביצוע הדמיות";
-const truth = JSON.parse(fs.readFileSync("e2e/fixtures/floorplan-truth.json", "utf8"));
+type TruthTerrace = { levelM: number; m2: number };
+type TruthPlan = {
+  file: string;
+  grossM2: number;
+  levelM: number;
+  bedrooms: number;
+  mmd: number;
+  bathrooms: number;
+  terraces?: TruthTerrace[];
+};
+const truth = JSON.parse(fs.readFileSync("e2e/fixtures/floorplan-truth.json", "utf8")) as { plans: TruthPlan[] };
 const out: Record<string, unknown> = {};
 const filter = process.env.FLOORPLAN_BENCH_FILTER;
-for (const plan of truth.plans.filter((row: any) => !filter || row.file.includes(filter))) {
+for (const plan of truth.plans.filter((row) => !filter || row.file.includes(filter))) {
   const file = path.join(dir, plan.file);
   if (!fs.existsSync(file)) { out[plan.file] = "missing"; continue; }
   const pdf = fs.readFileSync(file);
-  const terraces = (plan.terraces ?? []).filter((t: any) => t.levelM === plan.levelM).reduce((s: number, t: any) => s + t.m2, 0);
+  const onLevel = (plan.terraces ?? []).filter((t) => t.levelM === plan.levelM);
+  const terraces = onLevel.reduce((sum, t) => sum + t.m2, 0);
   try {
     const extent = await flatExtentFromSheet(pdf);
     const flat = await buildFlatFromPdf(pdf, plan.grossM2 + terraces, { extent: extent ?? undefined });
@@ -37,7 +54,7 @@ for (const plan of truth.plans.filter((row: any) => !filter || row.file.includes
     const geo = await extractFloorplanVectorGeometry(pdf);
     const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways, shelterMarks: flat.shelterMarks });
     const count = (kind: string) => rooms.filter((room) => room.kind === kind).length;
-    const expectedTerraces = (plan.terraces ?? []).filter((t: any) => t.levelM === plan.levelM).length;
+    const expectedTerraces = onLevel.length;
     const actual = {
       bedrooms: count("bedroom"),
       mmd: count("mmd"),
@@ -53,7 +70,35 @@ for (const plan of truth.plans.filter((row: any) => !filter || row.file.includes
     const mismatches = Object.keys(expected).filter(
       (key) => actual[key as keyof typeof actual] !== expected[key as keyof typeof expected],
     );
+    // The geometry-only plate, graded the way renderFlatFromGeometry grades it.
+    const plate = await sharp(Buffer.from(flat.svg), { density: 200 })
+      .flatten({ background: "#f4efe6" })
+      .jpeg({ quality: 94 })
+      .toBuffer();
+    const fidelity = await measureBlockFidelity({
+      geometry: plate,
+      still: plate,
+      furniture: flat.furniture,
+      bounds: flat.bounds,
+    });
+    const confidence = assessFloorplanRun({
+      areaError: flat.areaError,
+      unitsPerMetre: flat.unitsPerMetre,
+      wallCount: flat.bodies.length,
+      furniture: flat.furniture,
+      rooms,
+      fidelity,
+      coolTint: 0,
+      foundTerraces: flat.terraces.length,
+      printedTerraces: flat.printedTerraceCount,
+      auditHardFailures: [],
+    });
     out[plan.file] = {
+      areaErrorPct: Number((flat.areaError * 100).toFixed(2)),
+      fidelity: { present: fidelity.present, total: fidelity.total },
+      confidenceOk: confidence.ok,
+      hard: confidence.hard,
+      soft: confidence.soft,
       upm: Number(flat.unitsPerMetre.toFixed(2)),
       bodies: flat.bodies.length,
       furniture: flat.furniture.length,
@@ -61,7 +106,7 @@ for (const plan of truth.plans.filter((row: any) => !filter || row.file.includes
       terraceMaskCount: flat.terraces.length,
       openings: flat.openings.length,
       rooms: rooms.length,
-      roomKinds: rooms.map((r: any) => r.kind).sort(),
+      roomKinds: rooms.map((r) => r.kind).sort(),
       actual,
       expected,
       mismatches,

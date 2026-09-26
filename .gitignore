@@ -84,6 +84,9 @@ mobile-shot-*.png
 # local capture / architecture scratch (not product source)
 .tmp-boot-capture/
 .tmp-floorplan-compare/
+.tmp-floorplan-qa/
+# local report exports
+/output/
 # working folder: source sales sheets fed through the viz pipeline
 תוכניות לביצוע הדמיות/
 e2e/_*-capture.spec.ts
