@@ -220,6 +220,7 @@ export default function FloorplanVizResults({
         "imageMeta",
         JSON.stringify([
           {
+            id: hero.id,
             viewId: hero.viewId,
             labelHe: hero.labelHe,
             roomName: hero.roomName,
@@ -271,8 +272,17 @@ export default function FloorplanVizResults({
         body: fd,
       });
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.pdfFailed"));
+        const json = (await res.json().catch(() => ({}))) as { error?: string; auditIssues?: unknown };
+        const message = typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.pdfFailed");
+        const issues = Array.isArray(json.auditIssues)
+          ? json.auditIssues.filter((row): row is string => typeof row === "string")
+          : [];
+        if (issues.length > 0) {
+          // What stopped the booklet, so the still can be fixed rather than guessed at.
+          toast.error(message, { description: issues.join(" · "), duration: 12_000 });
+          return;
+        }
+        throw new Error(message);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

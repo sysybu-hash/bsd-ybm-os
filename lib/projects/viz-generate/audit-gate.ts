@@ -80,6 +80,22 @@ export function blockingHardFailures(
 }
 
 /**
+ * The issues that count against a still: the hard failures Gemini stands
+ * behind, and rooms painted where the plan does not put them.
+ *
+ * Soft failures stay out. Two scans of the same frame disagree on them, and a
+ * list that moves on its own cannot gate an improvement ("nothing new was
+ * added") or a booklet.
+ */
+export function shipBlockingIssues(
+  scored: { gemini: FloorplanVizAudit; grade: { hardFailures: string[] } } | null,
+  moved: string[] | null | undefined,
+): string[] {
+  const blocked = scored ? blockingHardFailures(scored.grade.hardFailures, scored.gemini) : [];
+  return [...new Set([...blocked, ...(moved ?? [])])];
+}
+
+/**
  * Collect residual audit issues for the UI. Never throws — a paid frame ships
  * with a fix list instead of an empty error.
  */
@@ -93,14 +109,7 @@ export async function collectShipIssues(
     // Where each room is, which the counts above cannot see.
     checkRoomPlacement(still, ctx.layout),
   ]);
-  if (!scored) return moved ?? [];
-  const blocked = blockingHardFailures(scored.grade.hardFailures, scored.gemini);
-  const excluded = scored.grade.hardFailures.filter((failure) => !blocked.includes(failure));
-  const issues = [...new Set([
-    ...scored.grade.failures.filter((failure) => !excluded.includes(failure)),
-    ...blocked,
-    ...(moved ?? []),
-  ])];
+  const issues = shipBlockingIssues(scored, moved);
   if (issues.length === 0) return [];
   log.warn("shipping photoreal with residual audit issues", { view, failures: issues });
   return issues;
