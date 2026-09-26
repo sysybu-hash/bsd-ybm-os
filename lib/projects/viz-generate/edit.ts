@@ -198,7 +198,10 @@ export function rescaleRegionOffTheBar(
 export type EditedStill = {
   mimeType: string;
   base64: string;
-  /** Set when the model redrew the frame instead of editing it; nothing saved. */
+  /**
+   * Set when the model redrew the frame instead of editing it. The frame is
+   * the redrawn one, to be kept as an attempt that is not selected.
+   */
   rejected?: string;
 };
 
@@ -270,15 +273,18 @@ export async function editFloorplanStill(params: {
   if (!region && params.guardWholeFrame !== false) {
     const change = await measureEditChange(frame, result);
     if (editRedrewTheFrame(change)) {
-      log.warn("edit redrew the frame; keeping the approved still", {
+      log.warn("edit redrew the frame; keeping the approved still selected", {
         view: params.still.labelHe,
         changed: change?.changed,
       });
+      // The redrawn frame was paid for, so it goes back to be kept as an
+      // attempt the user can look at; the approved still stays selected.
+      const redrawn = split ? await restoreStampBar(result, split) : result;
       return {
-        mimeType: params.still.mimeType,
-        base64: params.still.base64,
+        mimeType: redrawn.mimeType,
+        base64: redrawn.base64,
         rejected:
-          "העריכה צוירה מחדש במקום לתקן — ההדמיה הקודמת נשמרה. סמנו את האזור שרוצים לשנות ונסו שוב.",
+          "העריכה צוירה מחדש במקום לתקן — ההדמיה הקודמת נשארה נבחרת. סמנו את האזור שרוצים לשנות ונסו שוב.",
       };
     }
   }

@@ -50,7 +50,12 @@ export function useFloorplanVizStills({
             body: JSON.stringify({ instruction, ...(region ? { region } : {}) }),
           },
         );
-        const json = (await res.json()) as { image?: FloorplanVizImage; images?: FloorplanVizImage[]; error?: string };
+        const json = (await res.json()) as {
+          image?: FloorplanVizImage;
+          images?: FloorplanVizImage[];
+          error?: string;
+          accepted?: boolean;
+        };
         if (!res.ok || !json.image) {
           toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.editFailed"));
           return;
@@ -59,7 +64,11 @@ export function useFloorplanVizStills({
           ...result,
           images: json.images ?? result.images.map((row) => (row.id === img.id ? json.image! : row)),
         });
-        toast.success(t("workspaceWidgets.floorplanViz.edited"));
+        if (json.accepted === false) {
+          toast.warning(t("workspaceWidgets.floorplanViz.editRejected"));
+        } else {
+          toast.success(t("workspaceWidgets.floorplanViz.edited"));
+        }
         void refreshRuns();
       } catch {
         toast.error(t("workspaceWidgets.floorplanViz.editFailed"));
