@@ -216,6 +216,17 @@ export async function geometryFromDxf(text: string): Promise<FloorplanVectorGeom
 }
 
 /**
+ * A CAD upload the pipeline cannot read. Its message is for the person who
+ * uploaded it: the file is at fault, not the service, so it answers 400.
+ */
+export class FloorplanCadUnreadableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FloorplanCadUnreadableError";
+  }
+}
+
+/**
  * Rasterise a DXF page without passing the non-image DXF bytes to image/OCR
  * providers. Wall layers stay heavy, all other geometry stays legible, and
  * source text entities are retained so the raster fallback can read labels.

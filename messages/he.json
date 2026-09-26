@@ -1751,6 +1751,8 @@
     "use_notebook_endpoint": "השתמש ב-/api/notebooklm/from-scan למחברת",
     "rate_limited": "חרגת ממכסת הבקשות. נסה שוב מאוחר יותר.",
     "viz_edit_redrew_frame": "העריכה צוירה מחדש במקום לתקן — ההדמיה הקודמת נשמרה.",
+    "cad_unreadable": "לא ניתן לקרוא את קובץ ה-CAD. שמרו את השרטוט מחדש כ-DXF או כ-PDF ונסו שוב.",
+    "dwg_conversion_unavailable": "המרת DWG אינה זמינה — שמרו את השרטוט כ-DXF והעלו אותו.",
     "viz_still_not_in_run": "ההדמיה אינה שייכת להרצה הזו.",
     "viz_still_not_selected": "ההדמיה שנבחרה לחוברת נדחתה בבקרת איכות או אינה הגרסה הנבחרת.",
     "viz_improve_not_better": "השיפור לא הפיק תמונה חדשה — ההדמיה הקודמת נשארה נבחרת.",

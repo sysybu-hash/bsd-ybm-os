@@ -6,6 +6,8 @@ import { assertProviderConfigured } from "@/lib/ai-providers";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { visualizeFloorplanFromDrawing, parseFloorplanVizScope } from "@/lib/projects/floorplan-viz";
+import { FloorplanCadUnreadableError } from "@/lib/projects/floorplan-dxf";
+import { DwgConversionUnavailableError } from "@/lib/projects/floorplan-dwg-convert";
 import { existingImagesForAppend } from "@/lib/projects/floorplan-viz-scope";
 import { titleFromFloorplanLayout } from "@/lib/projects/floorplan-viz-ids";
 import { floorplanExtractFingerprint, floorplanVizInputFingerprint } from "@/lib/projects/floorplan-viz-lock";
@@ -288,6 +290,14 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       });
     }
   } catch (error) {
+    // A drawing the pipeline cannot read is the upload's fault; say what to
+    // do about it rather than answer as though the service had failed.
+    if (error instanceof FloorplanCadUnreadableError) {
+      return jsonBadRequest(error.message, "cad_unreadable");
+    }
+    if (error instanceof DwgConversionUnavailableError) {
+      return jsonBadRequest(error.message, "dwg_conversion_unavailable");
+    }
     return apiErrorResponse(error, "visualize-floorplan");
   }
 });
