@@ -312,3 +312,42 @@ describe("segmentRooms", () => {
     expect(named[0]!.kind).toBe("circulation");
   });
 });
+
+describe("a measured terrace the rooms missed", () => {
+  // A 2 m by 1.5 m terrace north of the shell, off the flat's footprint — the
+  // way דירה 16's two terraces came back as no room at all.
+  const terrace: SpanRow[] = [];
+  for (let y = -1.5 * UPM - 20; y < -20; y += 2) terrace.push({ y, spans: [[UPM, 3 * UPM]] });
+  const withTerrace = () =>
+    segmentRooms({
+      bodies: [...shell, divider],
+      openings: [],
+      floor,
+      furniture: [],
+      terraces: [terrace],
+      bounds: { ...bounds, y: -2 * UPM - 40, height: H + 2 * UPM + 60 },
+      unitsPerMetre: UPM,
+    });
+
+  it("is still a balcony, measured off its own mask", () => {
+    const balconies = withTerrace().filter((room) => room.kind === "balcony");
+    expect(balconies).toHaveLength(1);
+    expect(balconies[0]!.areaM2).toBeGreaterThan(2.8);
+    expect(balconies[0]!.areaM2).toBeLessThan(3.2);
+  });
+
+  it("is not added twice when a room already stands on it as a balcony", () => {
+    const inside: SpanRow[] = [];
+    for (let y = 20; y < H - 20; y += 2) inside.push({ y, spans: [[20, W / 2 - 20]] });
+    const rooms = segmentRooms({
+      bodies: [...shell, divider],
+      openings: [],
+      floor,
+      furniture: [],
+      terraces: [inside],
+      bounds,
+      unitsPerMetre: UPM,
+    });
+    expect(rooms.filter((room) => room.kind === "balcony")).toHaveLength(1);
+  });
+});

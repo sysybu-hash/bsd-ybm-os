@@ -461,6 +461,33 @@ export function segmentRooms(input: {
     });
   }
 
+  // A measured terrace the rooms missed is still a terrace. Its mask was grown
+  // from the area the sheet prints and accepted only at that area, but a room
+  // is kept only where its centre is on the flat's footprint and the flood is
+  // not cut up by the paving — so on דירה 16 both measured terraces came back
+  // as no room at all, and on דירה 14 one of two did. The bits of it read as
+  // corridor are the terrace, not rooms of their own.
+  for (const terrace of input.terraces ?? []) {
+    if (terrace.length < 2) continue;
+    const tPitch = rowPitch(terrace);
+    const centreOn = (room: SegmentedRoom) =>
+      covers(terrace, tPitch, room.bounds.x + room.bounds.width / 2, room.bounds.y + room.bounds.height / 2);
+    if (rooms.some((room) => room.kind === "balcony" && centreOn(room))) continue;
+    for (let i = rooms.length - 1; i >= 0; i--) {
+      const room = rooms[i]!;
+      if ((room.kind === "circulation" || room.kind === "other") && centreOn(room)) rooms.splice(i, 1);
+    }
+    rooms.push({
+      rows: terrace,
+      bounds: boundsOf(terrace, tPitch),
+      areaM2: Math.round((spanArea(terrace) / (unitsPerMetre * unitsPerMetre)) * 100) / 100,
+      kind: "balcony",
+      name: KIND_NAME_HE.balcony,
+      bedCount: 0,
+      contents: [],
+    });
+  }
+
   const split = splitMergedWetRooms(rooms, {
     bodies,
     ink,
