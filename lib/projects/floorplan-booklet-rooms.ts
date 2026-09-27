@@ -398,14 +398,16 @@ export function applyCadMeasuresToBookletRooms(
     const lengthM = cad.lengthM ?? room.lengthM;
     // Printed terrace m² stay; indoor figures come from the CAD box, not a
     // vision guess that happened to sit on the same name.
-    const areaM2 =
-      kind === "balcony" && room.areaM2 != null ? room.areaM2 : (cad.areaM2 ?? room.areaM2);
+    const keepPrintedArea = kind === "balcony" && room.areaM2 != null;
+    const areaM2 = keepPrintedArea ? room.areaM2 : (cad.areaM2 ?? room.areaM2);
     if (widthM == null && lengthM == null && areaM2 == null) return room;
     return {
       ...room,
       widthM,
       lengthM,
       areaM2,
+      estimatedDims: cad.widthM != null || cad.lengthM != null ? cad.estimatedDims : room.estimatedDims,
+      estimatedArea: keepPrintedArea ? undefined : cad.areaM2 != null ? cad.estimatedArea : room.estimatedArea,
       source: cad.source === "cad" ? "cad" : room.source,
     };
   });
@@ -503,6 +505,7 @@ export function applyBboxMeasuresToLayout(layout: FloorplanLayout): FloorplanLay
       let widthM = room.widthM;
       let lengthM = room.lengthM;
       let areaM2 = room.areaM2;
+      let estimatedArea = room.estimatedArea;
       if (areaM2 && areaM2 > 0) {
         const aspect = bw / bh;
         widthM = widthM ?? Math.round(Math.sqrt(areaM2 * aspect) * 100) / 100;
@@ -512,10 +515,13 @@ export function applyBboxMeasuresToLayout(layout: FloorplanLayout): FloorplanLay
         lengthM = lengthM ?? Math.round(bh * scale * 100) / 100;
         if (areaM2 == null && widthM != null && lengthM != null) {
           areaM2 = Math.round(widthM * lengthM * 100) / 100;
+          estimatedArea = true;
         }
       }
       if (widthM == null && lengthM == null) return room;
-      return { ...room, widthM, lengthM, areaM2 };
+      // The box takes in the walls and whatever the read drew round the label:
+      // דירה 14's ממ"ד came out 12.84 m² this way, about 9 on the sheet. Say so.
+      return { ...room, widthM, lengthM, areaM2, estimatedDims: true, estimatedArea };
     }),
   });
 }

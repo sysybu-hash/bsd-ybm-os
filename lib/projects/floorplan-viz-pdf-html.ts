@@ -45,8 +45,9 @@ function logoDataUrl(): string | null {
 }
 
 /** הסתייגות קצרה ללקוח — בלי שפת עיבוד פנימית. */
-function measurementNoteHe(): string {
-  return "ההדמיה להמחשה בלבד. המידות לפי תוכנית המכר. אין למדוד מהתמונה.";
+function measurementNoteHe(anyEstimated = false): string {
+  const base = "ההדמיה להמחשה בלבד. המידות לפי תוכנית המכר. אין למדוד מהתמונה.";
+  return anyEstimated ? `${base} מידה המסומנת ≈ היא הערכה לפי מיקום החדר בתוכנית, ולא נמדדה.` : base;
 }
 
 export function buildFloorplanVizPdfHtml(
@@ -340,7 +341,7 @@ ${BOOKLET_CSS}
       </table>
     </div>
     <div class="note">
-      ${escapeHtml(measurementNoteHe())}
+      ${escapeHtml(measurementNoteHe(livingRooms.some((room) => room.estimatedDims || room.estimatedArea)))}
     </div>
     <div class="produced-bar">${brandLink(`הופק על ידי מערכת BSD-YBM · ${escapeHtml(dateHe)} ${escapeHtml(timeHe)}`)}</div>
   </section>`}
