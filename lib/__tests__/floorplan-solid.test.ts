@@ -1,5 +1,6 @@
 import {
   bodyRect,
+  bridgeGlazedGaps,
   bridgeOpenings,
   buildWallBodies,
   closeCorners,
@@ -460,6 +461,38 @@ describe("bridging groups walls by their own line, not by a chain", () => {
 
   it("keeps two walls a room apart separate", () => {
     expect(bridgeOpenings([body(100, 0, 200), body(400, 0, 200)], 120)).toHaveLength(2);
+  });
+});
+
+describe("closing a wall across a window drawn as glazing", () => {
+  // 50 units a metre; a north wall at y=100 with a 1.6 m gap, wider than any
+  // door bridgeOpenings would close, and the flat's floor south of it.
+  const upm = 50;
+  const wall = (from: number, to: number) => ({ orientation: "h" as const, centre: 100, thickness: 10, from, to });
+  const bodies = [wall(0, 100), wall(180, 300)];
+  const glass = (y: number) => ({ x1: 100, y1: y, x2: 180, y2: y });
+  const floorBelow = Array.from({ length: 40 }, (_, i) => ({ y: 106 + i * 5, spans: [[0, 300]] as Array<[number, number]> }));
+  const floorBoth = Array.from({ length: 60 }, (_, i) => ({ y: i * 5, spans: [[0, 300]] as Array<[number, number]> }));
+
+  it("closes the gap a window drawn as two glazing lines leaves in the envelope", () => {
+    // דירה 14's ממ"ד: the flood came in through its sliding window.
+    const bridges = bridgeGlazedGaps(bodies, [glass(98), glass(102)], upm, { floor: floorBelow });
+    expect(bridges).toHaveLength(1);
+    expect(bridges[0]!.from).toBeLessThanOrEqual(100);
+    expect(bridges[0]!.to).toBeGreaterThanOrEqual(180);
+  });
+
+  it("leaves a single line open — a railing or the edge of paving, not a window", () => {
+    // Closing one such line shut a bathroom off on דירה 15.
+    expect(bridgeGlazedGaps(bodies, [glass(100)], upm, { floor: floorBelow })).toHaveLength(0);
+  });
+
+  it("leaves a gap with nothing drawn across it open", () => {
+    expect(bridgeGlazedGaps(bodies, [], upm, { floor: floorBelow })).toHaveLength(0);
+  });
+
+  it("leaves an inside wall open, with floor on both sides of it", () => {
+    expect(bridgeGlazedGaps(bodies, [glass(98), glass(102)], upm, { floor: floorBoth })).toHaveLength(0);
   });
 });
 
