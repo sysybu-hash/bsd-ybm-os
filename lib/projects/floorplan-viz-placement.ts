@@ -125,7 +125,7 @@ export function placementPrompt(rooms: ExpectedRoom[]): string {
 
 For each region below, answer two questions.
 
-"found": what occupies the MIDDLE of that region, judged by the furniture and fixtures you can see: beds mean bedroom; sofas or a dining table mean living or dining; counters with a hob or sink mean kitchen; a toilet, basin or bath mean bathroom; a washing machine alone means laundry; outdoor paving or a railing means balcony; an entry door with nothing else means entrance.
+"found": what occupies the MIDDLE of that region, judged by the furniture and fixtures you can see: beds mean bedroom; sofas or a dining table mean living or dining; counters with a hob or sink mean kitchen; a toilet, basin or bath mean bathroom; a washing machine alone means laundry; outdoor paving or a railing means balcony, even with outdoor furniture or planters standing on it; an entry door with nothing else means entrance.
 
 "has": true if the thing that region's own question names is visible ANYWHERE inside it — even partly, even at its edge — and false only if there is none of it in the region at all.
 
