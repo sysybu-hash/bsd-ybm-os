@@ -55,10 +55,10 @@ describe("the דירה 14 manifest", () => {
     expect(value("rooms.balcony")).toBe(row.terraces.filter((t) => t.levelM === row.levelM).length);
   });
 
-  it("was approved by the owner, with six beds", () => {
+  it("was approved by the owner, with five beds", () => {
     const manifest = apt14();
     expect(manifest.approvedBy).toBeTruthy();
-    expect(manifest.items.find((item) => item.id === "beds.total")?.value).toBe(6);
+    expect(manifest.items.find((item) => item.id === "beds.total")?.value).toBe(5);
     // Settled with no value: the sheet does not say, and neither did the owner.
     expect(manifestProgress(manifest).unresolved.sort()).toEqual(["kitchen.fridge", "orientation.north"]);
   });
@@ -71,12 +71,12 @@ describe("the דירה 14 manifest", () => {
 
   it("grades against the approved counts, and keeps the scan's disagreement as a dispute", () => {
     const { audit, disputes } = applyPlanManifest(attempt2, apt14());
-    expect(audit.planBedTotal).toBe(6);
+    expect(audit.planBedTotal).toBe(5);
     expect(audit.planWasherCount).toBe(1);
     // The still side is the auditor's and stays as it read it.
     expect(audit.bedTotal).toBe(6);
     expect(disputes).toEqual([
-      { itemId: "beds.total", field: "planBedTotal", auditPlan: 4, manifest: 6 },
+      { itemId: "beds.total", field: "planBedTotal", auditPlan: 4, manifest: 5 },
       { itemId: "laundry.washers", field: "planWasherCount", auditPlan: 0, manifest: 1 },
     ]);
   });

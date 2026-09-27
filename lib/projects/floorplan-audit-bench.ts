@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { FloorplanVizAudit } from "@/lib/projects/floorplan-viz-audit";
+import type { ClaudeModestyAudit } from "@/lib/projects/floorplan-viz-modesty-claude";
 
 /**
  * How often each audit rule is right, measured on stills a person labelled.
@@ -115,6 +116,35 @@ export function answerFromAudit(audit: FloorplanVizAudit): AuditBenchAnswer {
   const counts: AuditBenchAnswer["counts"] = {};
   for (const count of countKeys) counts[count] = AUDIT_BENCH_COUNTS[count](audit);
   return { rules, counts };
+}
+
+/** The Claude second judge's own answer, for the rules and counts it reports. */
+export function answerFromClaude(audit: ClaudeModestyAudit): AuditBenchAnswer {
+  return {
+    rules: {
+      rotated: audit.rotationVsPlanDegrees !== 0,
+      mirrored: audit.mirroredVsPlan,
+      stairsInside: audit.apartmentStairsNotInPlan > 0,
+      terraceOmitted: audit.omittedOutdoorSpaces > 0,
+      terraceInvented: audit.inventedOutdoorSpaces > 0,
+      screens: audit.screenCount > 0,
+      doubleBed: audit.hasDoubleBed,
+      entranceMissing: audit.entranceDoorMissing,
+      outsideOutline: audit.roomsOutsidePlanOutline > 0,
+    },
+    counts: { washers: audit.washerCount, bathtubs: audit.bathtubCount },
+  };
+}
+
+/** What a rule would say if it fired only when both auditors fired. */
+export function answerWhenBothAgree(a: AuditBenchAnswer, b: AuditBenchAnswer): AuditBenchAnswer {
+  const rules: AuditBenchAnswer["rules"] = {};
+  for (const rule of ruleKeys) {
+    const x = a.rules[rule];
+    const y = b.rules[rule];
+    if (x != null && y != null) rules[rule] = x && y;
+  }
+  return { rules, counts: {} };
 }
 
 /**
