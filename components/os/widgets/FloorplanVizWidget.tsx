@@ -52,6 +52,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
     selectStill,
     deleteStill,
     dismissIssue,
+    saveRooms,
     pendingCount,
   } = useFloorplanVizRun({ liveData, t });
 
@@ -250,6 +251,10 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             onDeleteStill={(img) => void deleteStill(img)}
             onSelectStill={(img) => void selectStill(img)}
             onDismissIssue={(img, issue, dismissed) => void dismissIssue(img, issue, dismissed)}
+            onSaveRooms={saveRooms}
+            onAuditSaved={() => {
+              if (result?.runId) void openRun(result.runId);
+            }}
           />
         )}
       </div>

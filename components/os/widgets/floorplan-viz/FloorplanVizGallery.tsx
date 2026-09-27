@@ -16,6 +16,7 @@ export type TFn = (key: string, vars?: Record<string, string>) => string;
 export function sourceLabel(t: TFn, source?: string): string {
   if (source === "ocr_verified") return t("projectDashboard.vizOcrVerified");
   if (source === "consensus") return t("projectDashboard.vizConsensus");
+  if (source === "confirmed") return t("workspaceWidgets.floorplanViz.sourceConfirmed");
   return t("projectDashboard.vizInferred");
 }
 

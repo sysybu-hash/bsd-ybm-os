@@ -5,8 +5,8 @@ import dynamic from "next/dynamic";
 import { Download, FileText, FolderDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  inferRoomKind,
   type FloorplanLayout,
+  type FloorplanRoom,
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
 import { OsButton } from "@/components/os/ui";
@@ -27,12 +27,8 @@ import {
   selectedFromAttemptGroup,
 } from "@/lib/projects/floorplan-viz-ids";
 
-import {
-  Gallery,
-  MeasuredPlanSvg,
-  sourceLabel,
-  type TFn,
-} from "@/components/os/widgets/floorplan-viz/FloorplanVizGallery";
+import { Gallery, type TFn } from "@/components/os/widgets/floorplan-viz/FloorplanVizGallery";
+import FloorplanVizRoomsDetails from "@/components/os/widgets/floorplan-viz/FloorplanVizRoomsDetails";
 import {
   base64ToBlob,
   compressForPdf,
@@ -75,6 +71,8 @@ export default function FloorplanVizResults({
   onDeleteStill,
   onSelectStill,
   onDismissIssue,
+  onAuditSaved,
+  onSaveRooms,
   geometry,
 }: {
   t: TFn;
@@ -101,6 +99,10 @@ export default function FloorplanVizResults({
   onDeleteStill?: (img: FloorplanVizImage) => void;
   onSelectStill?: (img: FloorplanVizImage) => void;
   onDismissIssue?: (img: FloorplanVizImage, issue: string, dismissed: boolean) => void;
+  /** The booklet scanned the chosen still and saved what it found on it. */
+  onAuditSaved?: () => void;
+  /** Save the room list a person checked against the sheet. */
+  onSaveRooms?: (rooms: FloorplanRoom[]) => Promise<boolean>;
   /** The measured flat, on runs that took the geometric path. */
   geometry?: FloorplanGeometryPayload | null;
 }) {
@@ -281,7 +283,9 @@ export default function FloorplanVizResults({
           : [];
         if (issues.length > 0) {
           // What stopped the booklet, so the still can be fixed rather than guessed at.
+          // The scan was saved on the still, so reload it to mark findings wrong there.
           toast.error(message, { description: issues.join(" · "), duration: 12_000 });
+          onAuditSaved?.();
           return;
         }
         throw new Error(message);
@@ -299,7 +303,7 @@ export default function FloorplanVizResults({
     } finally {
       setExportingPdf(false);
     }
-  }, [gallery, layout, planSrc, projectName, runId, sourceFile, styleKit, t, unitTitle]);
+  }, [gallery, layout, onAuditSaved, planSrc, projectName, runId, sourceFile, styleKit, t, unitTitle]);
 
   return (
     <div className="space-y-4">
@@ -462,54 +466,13 @@ export default function FloorplanVizResults({
           <summary className="cursor-pointer px-3 py-2 text-[11px] font-bold">
             {t("workspaceWidgets.floorplanViz.roomsDetails")}
           </summary>
-          <div className="space-y-3 border-t border-[color:var(--border-main)] p-3">
-            <p className="text-[10px] text-[color:var(--foreground-muted)]">{t("projectDashboard.vizAccuracyNote")}</p>
-            {enginesUsed.length > 0 || ocrEngines.length > 0 || visionEngines.length > 0 ? (
-              <p className="text-[10px] text-[color:var(--foreground-muted)]">
-                {t("projectDashboard.vizGrounding")}: {(enginesUsed.length ? enginesUsed : [...ocrEngines, ...visionEngines]).join(" • ")}
-              </p>
-            ) : null}
-            <div className="overflow-x-auto">
-              <table className="w-full text-start text-[11px]">
-                <thead>
-                  <tr className="text-[color:var(--foreground-muted)]">
-                    <th className="px-1 py-1 font-semibold">{t("projectDashboard.colDescription")}</th>
-                    <th className="px-1 py-1 font-semibold">{t("workspaceWidgets.floorplanViz.kind")}</th>
-                    <th className="px-1 py-1 font-semibold">{t("projectDashboard.vizDims")}</th>
-                    <th className="px-1 py-1 font-semibold">{t("projectDashboard.colQuantity")}</th>
-                    <th className="px-1 py-1 font-semibold">{t("projectDashboard.vizEvidence")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rooms.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-1 py-4 text-center text-[color:var(--foreground-muted)]">
-                        {t("workspaceWidgets.floorplanViz.noRooms")}
-                      </td>
-                    </tr>
-                  ) : null}
-                  {rooms.map((room) => (
-                    <tr key={`${room.name}-${room.instanceIndex ?? 0}`} className="border-t border-[color:var(--border-main)]">
-                      <td className="px-1 py-1.5 font-semibold">{room.name}</td>
-                      <td className="px-1 py-1.5">{t(`workspaceWidgets.floorplanViz.kinds.${room.kind ?? inferRoomKind(room.name)}`)}</td>
-                      <td className="px-1 py-1.5">
-                        {room.widthM && room.lengthM ? `${room.widthM}×${room.lengthM} ${t("workspaceWidgets.floorplanViz.unitM")}` : "—"}
-                      </td>
-                      <td className="px-1 py-1.5">{room.areaM2 != null ? `${room.areaM2} ${t("workspaceWidgets.floorplanViz.unitM2")}` : "—"}</td>
-                      <td className="px-1 py-1.5">{sourceLabel(t, room.source)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {layout.dimensionStrings.length > 0 ? (
-              <p className="text-[10px] text-[color:var(--foreground-muted)]">
-                {t("projectDashboard.vizPrintedDims")}: {layout.dimensionStrings.slice(0, 24).join(" · ")}
-              </p>
-            ) : null}
-            <p className="text-[10px] font-bold">{t("workspaceWidgets.floorplanViz.layoutMap")}</p>
-            <MeasuredPlanSvg rooms={rooms} />
-          </div>
+          <FloorplanVizRoomsDetails
+            t={t}
+            layout={layout}
+            engines={enginesUsed.length ? enginesUsed : [...ocrEngines, ...visionEngines]}
+            canEdit={Boolean(runId)}
+            onSave={onSaveRooms}
+          />
         </details>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import { fileFromDataUrl, uploadPlanToBlob } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
+import type { FloorplanLayout, FloorplanRoom } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
 import { useFloorplanVizStills } from "@/components/os/widgets/floorplan-viz/useFloorplanVizStills";
 import {
@@ -258,6 +259,28 @@ export function useFloorplanVizRun({
     void refreshRuns();
   }, [refreshRuns, result, t, titleDraft]);
 
+  /** Save the room list a person checked against the sheet; the booklet builds from it. */
+  const saveRooms = useCallback(
+    async (rooms: FloorplanRoom[]): Promise<boolean> => {
+      if (!result?.runId) return false;
+      const res = await fetch(`/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rooms }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { layout?: FloorplanLayout; error?: string };
+      if (!res.ok || !json.layout) {
+        toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.roomsSaveFailed"));
+        return false;
+      }
+      setResult({ ...result, layout: json.layout });
+      toast.success(t("workspaceWidgets.floorplanViz.roomsSaved"));
+      return true;
+    },
+    [result, t],
+  );
+
   const { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill, dismissIssue } =
     useFloorplanVizStills({ result, setResult, refreshRuns, t });
 
@@ -298,6 +321,7 @@ export function useFloorplanVizRun({
     selectStill,
     deleteStill,
     dismissIssue,
+    saveRooms,
     pendingCount,
   };
 }

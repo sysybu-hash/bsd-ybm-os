@@ -9,13 +9,17 @@ import {
   deleteFloorplanVizRun,
   getFloorplanVizRunForOrg,
   updateFloorplanVizRunMeta,
+  updateFloorplanVizRunRooms,
 } from "@/lib/projects/floorplan-viz-store";
+import { floorplanRoomSchema } from "@/lib/projects/floorplan-layout";
 
 export const dynamic = "force-dynamic";
 
 const patchSchema = z.object({
   title: z.string().min(1).max(120).optional(),
   projectId: z.string().nullable().optional(),
+  /** The room list a person checked against the sheet; replaces the read. */
+  rooms: z.array(floorplanRoomSchema).min(1).max(40).optional(),
 });
 
 export const GET = withWorkspacesAuthDynamic<{ id: string }>(async (_req, { orgId, role }, segment) => {
@@ -63,12 +67,25 @@ export const PATCH = withWorkspacesAuthDynamic<{ id: string }, typeof patchSchem
         const gate = await requireProjectForOrg(body.projectId, orgId);
         if (!gate.ok) return gate.response;
       }
+      if (body.rooms) {
+        const updated = await updateFloorplanVizRunRooms(orgId, id, body.rooms);
+        if (!updated) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
+        if (body.title === undefined && body.projectId === undefined) {
+          return NextResponse.json({ success: true, runId: updated.id, layout: updated.layout });
+        }
+      }
       const run = await updateFloorplanVizRunMeta(orgId, id, {
         title: body.title,
         projectId: body.projectId,
       });
       if (!run) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
-      return NextResponse.json({ success: true, runId: run.id, title: run.title, projectId: run.projectId });
+      return NextResponse.json({
+        success: true,
+        runId: run.id,
+        title: run.title,
+        projectId: run.projectId,
+        layout: run.layout,
+      });
     } catch (error) {
       return apiErrorResponse(error, "visualize-floorplan PATCH");
     }

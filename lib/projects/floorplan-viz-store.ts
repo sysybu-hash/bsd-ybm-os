@@ -9,6 +9,7 @@ import { isAdmin } from "@/lib/is-admin";
 import {
   parseFloorplanLayout,
   type FloorplanLayout,
+  type FloorplanRoom,
   type FloorplanVizImage,
 } from "@/lib/projects/floorplan-layout";
 import { resolveFloorplanVizStyle, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
@@ -484,6 +485,37 @@ export async function updateFloorplanVizRunMeta(
   if (typeof patch.title === "string") data.title = patch.title.trim().slice(0, 120) || "הדמיית תוכנית";
   if (patch.projectId !== undefined) data.projectId = patch.projectId;
   await prisma.floorplanVizRun.update({ where: { id: runId }, data });
+  return getFloorplanVizRunForOrg(orgId, runId);
+}
+
+/**
+ * Replace a run's room list with the one a person checked against the sheet.
+ *
+ * The room read can miss what the sheet only draws: דירה 14 prints its 6.4 m²
+ * terrace as outlines, not text, so neither the text layer nor the vision read
+ * found it, and the booklet listed two terraces. What a person saves here is
+ * marked confirmed and is what the booklet builds its table from.
+ */
+export async function updateFloorplanVizRunRooms(
+  orgId: string,
+  runId: string,
+  rooms: FloorplanRoom[],
+): Promise<FloorplanVizRunDetail | null> {
+  const existing = await prisma.floorplanVizRun.findFirst({
+    where: { id: runId, organizationId: orgId },
+    select: { layoutJson: true },
+  });
+  if (!existing) return null;
+  const layout = parseFloorplanLayout(existing.layoutJson as Record<string, unknown>);
+  const next = parseFloorplanLayout({
+    ...layout,
+    rooms: rooms.map((room) => ({ ...room, source: "confirmed" as const })),
+    requiresReview: false,
+  });
+  await prisma.floorplanVizRun.update({
+    where: { id: runId },
+    data: { layoutJson: next as object },
+  });
   return getFloorplanVizRunForOrg(orgId, runId);
 }
 
