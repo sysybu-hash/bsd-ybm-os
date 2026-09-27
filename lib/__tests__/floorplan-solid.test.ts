@@ -19,6 +19,7 @@ import {
   shrinkToHatch,
   smoothFootprint,
   splitAcrossGaps,
+  stubsInsideCrossingWalls,
   trimToHatchAlong,
   spanArea,
   wallBodiesFromHatch,
@@ -493,6 +494,26 @@ describe("closing a wall across a window drawn as glazing", () => {
 
   it("leaves an inside wall open, with floor on both sides of it", () => {
     expect(bridgeGlazedGaps(bodies, [glass(98), glass(102)], upm, { floor: floorBoth })).toHaveLength(0);
+  });
+});
+
+describe("a stub hidden inside a crossing wall", () => {
+  // דירה 14: a shaft's crossed box inside the east wall paired into a 30-unit
+  // thick stub, and closing corners stretched it west over the guest WC's pan.
+  const eastWall = { orientation: "v" as const, centre: 565, thickness: 12, from: 1040, to: 1318 };
+  const shaftStub = { orientation: "h" as const, centre: 1300, thickness: 30, from: 559, to: 571 };
+  const partition = { orientation: "h" as const, centre: 1300, thickness: 10, from: 500, to: 571 };
+
+  it("is found when it is thicker than long and wholly inside the other wall", () => {
+    expect(stubsInsideCrossingWalls([eastWall, shaftStub])).toEqual([shaftStub]);
+  });
+
+  it("leaves a partition that runs into the wall alone", () => {
+    expect(stubsInsideCrossingWalls([eastWall, partition])).toEqual([]);
+  });
+
+  it("leaves a stub standing free in a room alone", () => {
+    expect(stubsInsideCrossingWalls([eastWall, { ...shaftStub, from: 520, to: 532 }])).toEqual([]);
   });
 });
 
