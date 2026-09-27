@@ -23,7 +23,9 @@ import fs from "node:fs";
 import { prisma } from "@/lib/prisma";
 import {
   answerFromAudit,
+  answerFromClaude,
   answerFromFindings,
+  answerWhenBothAgree,
   auditBenchLabelsSchema,
   formatAuditBench,
   scoreAuditBench,
@@ -99,7 +101,11 @@ if (mode === "list") {
 }
 
 const spend = emptyFloorplanSpend();
-const results: Array<{ label: AuditBenchCase; answers: AuditBenchAnswer[] }> = [];
+type Scored = Array<{ label: AuditBenchCase; answers: AuditBenchAnswer[] }>;
+const results: Scored = [];
+// Live scans are also scored per auditor, so a rule can be set on which of
+// them to believe: Gemini alone, the Claude second judge alone, or both.
+const byAuditor: Record<"gemini" | "claude" | "both", Scored> = { gemini: [], claude: [], both: [] };
 for (const label of labels.cases) {
   const { run, still } = await loadCase(label);
   if (mode === "saved") {
@@ -111,6 +117,9 @@ for (const label of labels.cases) {
   const layout = parseFloorplanLayout(run.layoutJson as Record<string, unknown>);
   const style = run.styleKitJson as { audience?: string } | null;
   const answers: AuditBenchAnswer[] = [];
+  const gemini: AuditBenchAnswer[] = [];
+  const claude: AuditBenchAnswer[] = [];
+  const both: AuditBenchAnswer[] = [];
   for (let i = 0; i < repeats; i += 1) {
     const scored = await runWithFloorplanSpend(spend, () =>
       gradeStillForShip(
@@ -118,16 +127,49 @@ for (const label of labels.cases) {
         { layout, plan, haredi: style?.audience === "haredi" },
       ),
     );
-    if (scored) answers.push(answerFromAudit(scored.audit));
+    if (!scored) continue;
+    answers.push(answerFromAudit(scored.audit));
+    const g = answerFromAudit(scored.gemini);
+    gemini.push(g);
+    if (scored.claude) {
+      const c = answerFromClaude(scored.claude);
+      claude.push(c);
+      both.push(answerWhenBothAgree(g, c));
+    }
   }
   results.push({ label, answers });
+  byAuditor.gemini.push({ label, answers: gemini });
+  byAuditor.claude.push({ label, answers: claude });
+  byAuditor.both.push({ label, answers: both });
   console.log(`${label.id}: ${answers.length}/${repeats} scans`);
 }
 
 const score = scoreAuditBench(results);
+const perAuditor =
+  mode === "live"
+    ? {
+        gemini: scoreAuditBench(byAuditor.gemini),
+        claude: scoreAuditBench(byAuditor.claude),
+        both: scoreAuditBench(byAuditor.both),
+      }
+    : undefined;
 const draft = labels.cases.filter((c) => c.status === "draft").length;
-fs.writeFileSync(target, JSON.stringify({ mode, repeats: mode === "live" ? repeats : 1, score, results }, null, 1));
+fs.writeFileSync(
+  target,
+  JSON.stringify({ mode, repeats: mode === "live" ? repeats : 1, score, perAuditor, results, byAuditor }, null, 1),
+);
+console.log("merged (what the gate sees):");
 console.log(formatAuditBench(score));
+if (perAuditor) {
+  for (const [name, s] of Object.entries(perAuditor)) {
+    console.log(`
+${name}:`);
+    console.log(formatAuditBench(s));
+  }
+}
 if (draft > 0) console.log(`\n${draft} of ${labels.cases.length} cases are still draft labels.`);
 if (mode === "live") console.log(formatFloorplanSpend(spend));
+// The AI cost ledger writes its rows after the calls return; give it a moment
+// before the connection closes, or the audits never reach the ledger.
+if (mode === "live") await new Promise((resolve) => setTimeout(resolve, 3000));
 await prisma.$disconnect();

@@ -75,8 +75,14 @@ export type ShipGrade = {
 
 /**
  * Hard fails that still block shipping after repair.
- * Claude-only double-bed / screen flags are dropped — they burned paid frames
- * when Gemini already cleared those props (דירה 19 loops).
+ *
+ * A finding only the Claude second judge makes is dropped when Gemini has
+ * cleared the same thing. Double bed and screen first (they burned paid
+ * frames in the דירה 19 loops); then orientation and stairs, on the audit
+ * bench: over 15 scans of five דירה 14 stills that all face the sheet's way,
+ * Claude called every one "turned 180 degrees" and Gemini none, and the
+ * "stairs" findings on those stills came from Claude too. Merged with "or",
+ * Claude's answer blocked every correct still.
  */
 export function blockingHardFailures(
   hardFailures: string[],
@@ -85,6 +91,9 @@ export function blockingHardFailures(
   return hardFailures.filter((f) => {
     if (/double bed/i.test(f) && !gemini.hasDoubleBed) return false;
     if (/screen/i.test(f) && gemini.screenCount === 0) return false;
+    if (/turned \d+ degrees/i.test(f) && gemini.rotationVsPlanDegrees === 0) return false;
+    if (/mirrored/i.test(f) && !gemini.mirroredVsPlan) return false;
+    if (/stair flight/i.test(f) && gemini.apartmentStairsNotInPlan === 0) return false;
     return true;
   });
 }

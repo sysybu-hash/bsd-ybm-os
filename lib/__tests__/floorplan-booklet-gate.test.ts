@@ -79,15 +79,21 @@ describe("which hero a booklet may carry", () => {
 });
 
 describe("the issues that count against a still", () => {
-  const gemini = { hasDoubleBed: false, screenCount: 0 } as unknown as FloorplanVizAudit;
+  const gemini = {
+    hasDoubleBed: false,
+    screenCount: 0,
+    rotationVsPlanDegrees: 0,
+    mirroredVsPlan: false,
+    apartmentStairsNotInPlan: 0,
+  } as unknown as FloorplanVizAudit;
 
   it("keeps hard failures and misplaced rooms, never the soft findings", () => {
     const scored = {
       gemini,
-      grade: { hardFailures: ["mirrored plan"], failures: ["mirrored plan", "sofa faces wall"] },
+      grade: { hardFailures: ["1 room(s) invented outside the plan outline"], failures: ["1 room(s) invented outside the plan outline", "sofa faces wall"] },
     };
     expect(shipBlockingIssues(scored, ["room moved: kitchen"])).toEqual([
-      "mirrored plan",
+      "1 room(s) invented outside the plan outline",
       "room moved: kitchen",
     ]);
   });
@@ -95,6 +101,25 @@ describe("the issues that count against a still", () => {
   it("drops a double bed or a screen only Claude saw", () => {
     const scored = { gemini, grade: { hardFailures: ["double bed in a bedroom", "screen visible"] } };
     expect(shipBlockingIssues(scored, null)).toEqual([]);
+  });
+
+  it("drops orientation and stairs only Claude reported, and keeps them when Gemini agrees", () => {
+    const claudeOnly = {
+      gemini,
+      grade: {
+        hardFailures: [
+          "the still is turned 180 degrees from the plan",
+          "the still is the plan mirrored left-to-right",
+          "1 stair flight(s) inside a flat the plan draws on one level",
+        ],
+      },
+    };
+    expect(shipBlockingIssues(claudeOnly, null)).toEqual([]);
+    const geminiSawIt = {
+      ...claudeOnly,
+      gemini: { ...gemini, rotationVsPlanDegrees: 180, mirroredVsPlan: true, apartmentStairsNotInPlan: 1 } as FloorplanVizAudit,
+    };
+    expect(shipBlockingIssues(geminiSawIt, null)).toHaveLength(3);
   });
 
   it("still reports misplaced rooms when the auditor is unavailable", () => {
