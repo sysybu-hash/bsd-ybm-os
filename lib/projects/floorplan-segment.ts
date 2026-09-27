@@ -155,8 +155,13 @@ function rowPitch(rows: SpanRow[]): number {
 
 /** A bath is the smallest piece drawn as a closed outline the flood goes round. */
 const ISLAND_MIN_CM = 120;
-/** A WC pan drawn closed is an island too; a floor drain is half its length. */
-const PAN_MIN_CM = 60;
+/**
+ * A WC pan drawn closed is an island too; a floor drain is half its length.
+ * Some sheets draw the bowl alone, without its cistern: דירה 15's guest WC pan
+ * measures 52 cm, sat just past the end of its cell, and at 60 cm it was left
+ * out and the WC came back a corridor.
+ */
+const PAN_MIN_CM = 45;
 /** The largest cell a lone pan makes a bathroom of: a WC, not a living room. */
 const PAN_CELL_MAX_M2 = 4;
 

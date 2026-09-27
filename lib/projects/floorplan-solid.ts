@@ -2550,7 +2550,7 @@ export function findLevelMarks(
   segments: VectorSegment[],
   unitsPerMetre: number,
   options?: { minRadiusM?: number; maxRadiusM?: number; minHatch?: number },
-): Array<{ x: number; y: number }> {
+): Array<{ x: number; y: number; r: number; strokes: VectorSegment[] }> {
   const minR = (options?.minRadiusM ?? 0.12) * unitsPerMetre;
   const maxR = (options?.maxRadiusM ?? 0.25) * unitsPerMetre;
   const minHatch = options?.minHatch ?? 6;
@@ -2572,7 +2572,7 @@ export function findLevelMarks(
       votes.set(key, vote);
     }
   }
-  const out: Array<{ x: number; y: number }> = [];
+  const out: Array<{ x: number; y: number; r: number; strokes: VectorSegment[] }> = [];
   for (const vote of votes.values()) {
     if (vote.n < 4) continue;
     const hatch = segments.filter((s) => {
@@ -2580,8 +2580,8 @@ export function findLevelMarks(
       const dy = Math.abs(s.y2 - s.y1);
       if (dx < 0.5 || Math.abs(dx - dy) > 0.3 * Math.max(dx, dy)) return false;
       return Math.hypot((s.x1 + s.x2) / 2 - vote.x, (s.y1 + s.y2) / 2 - vote.y) < vote.r;
-    }).length;
-    if (hatch >= minHatch) out.push({ x: vote.x, y: vote.y });
+    });
+    if (hatch.length >= minHatch) out.push({ x: vote.x, y: vote.y, r: vote.r, strokes: hatch });
   }
   return out;
 }
@@ -2673,6 +2673,27 @@ export function findTerracesOnFloor(
       }
     }
     if (leaked) continue;
+    // Given back the rim the "open" test held it off: the floor the flood
+    // passed by along each edge is the terrace's too, and without it a 3.16 m²
+    // roof terrace measured 2.19 and failed its own printed figure. Only where
+    // there is a figure to check it against: grown, an unlabelled region from a
+    // level mark reached the size window on דירה 22's roof below the flat, and
+    // made two terraces the flat does not have.
+    for (const cell of area.value != null ? [...cells] : []) {
+      for (const [dx, dy] of [
+        [step, 0],
+        [-step, 0],
+        [0, step],
+        [0, -step],
+      ] as const) {
+        const x = cell.x + dx;
+        const y = cell.y + dy;
+        const key = `${Math.round(x / step)}:${Math.round(y / step)}`;
+        if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+        seen.add(key);
+        cells.push({ x, y });
+      }
+    }
     const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);
     if (area.value != null) {
       if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
