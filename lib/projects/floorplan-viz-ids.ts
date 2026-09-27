@@ -200,6 +200,9 @@ export function hebrewFloorplanAuditIssue(failure: string): string {
   if (beds) return `בהדמיה ${beds[1]} מיטות, בתוכנית ${beds[2]}`;
   if (/beds \d|bedrooms \d|plan has \d/i.test(failure)) return "מספר המיטות לא תואם לתוכנית";
   if (/front door missing/i.test(failure)) return "חסר פתח הכניסה לדלת הכניסה שבתוכנית";
+  if (/door\(s\) the plan draws sealed/i.test(failure)) {
+    return "דלת או יציאה שמופיעה בתוכנית נסגרה בקיר או נחסמה ברהיט";
+  }
   if (/stair flight/i.test(failure)) return "מדרגות מומצאות — הדירה במפלס אחד בלי מדרגות פנים";
   if (/terrace\(s\) invented/i.test(failure)) return "מרפסת/דק מומצאים — אין מרפסת במפלס הדירה";
   if (/printed terrace\(s\) missing/i.test(failure)) return "מרפסת מהתוכנית חסרה בהדמיה";

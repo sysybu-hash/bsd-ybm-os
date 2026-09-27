@@ -29,7 +29,7 @@ const gemini: FloorplanVizAudit = {
   kitchenSinkBasins: 1, planKitchenSinkBasins: 1,
   washerCount: 0, planWasherCount: 0, washersOnLeisureTerrace: 0,
   bathtubCount: 0, planBathtubCount: 0, kitchenFridgeMissing: false,
-  openingsNotInPlan: 0, builtInsNotInPlan: 0, entranceFurnitureCount: 0,
+  openingsNotInPlan: 0, planDoorsSealed: 0, builtInsNotInPlan: 0, entranceFurnitureCount: 0,
   wetFixturesInDryRooms: 0, apartmentStairsNotInPlan: 0,
   seatingGroupCount: 1, planSeatingGroupCount: 1,
   hasBurnedText: false, hasCadMarks: false, emptyUnfurnishedRooms: 0, emptyBedrooms: 0,

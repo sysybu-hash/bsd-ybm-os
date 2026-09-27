@@ -20,7 +20,7 @@ const base: FloorplanVizAudit = {
   bathtubCount: 0,
   planBathtubCount: 0,
   kitchenFridgeMissing: false,
-  openingsNotInPlan: 0,
+  openingsNotInPlan: 0, planDoorsSealed: 0,
   builtInsNotInPlan: 0,
   entranceFurnitureCount: 0,
   wetFixturesInDryRooms: 0,

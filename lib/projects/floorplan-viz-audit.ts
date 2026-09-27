@@ -58,6 +58,12 @@ export type FloorplanVizAudit = {
   kitchenFridgeMissing: boolean;
   /** Openings cut into any wall — outer or internal — the plan draws as unbroken hatch. */
   openingsNotInPlan: number;
+  /**
+   * The opposite: doors and exits the PLAN draws — a room's door, a door or
+   * slider out to a terrace — that the still closes with wall or blocks with a
+   * piece of furniture. The front door has its own question (entranceDoorMissing).
+   */
+  planDoorsSealed: number;
   /** Large fitted pieces standing where the sheet draws empty floor. */
   builtInsNotInPlan: number;
   /** Anything standing on the floor of the entrance or a circulation strip. */
@@ -144,6 +150,7 @@ Return JSON only:
   "planBathtubCount": 0,
   "kitchenFridgeMissing": false,
   "openingsNotInPlan": 0,
+  "planDoorsSealed": 0,
   "builtInsNotInPlan": 0,
   "entranceFurnitureCount": 0,
   "wetFixturesInDryRooms": 0,
@@ -199,6 +206,7 @@ Definitions, applied strictly:
 - planBedroomCount: rooms on the PLAN containing at least one bed rectangle.
 - planIslandStoolCount: half-circle stools drawn at the kitchen island on the PLAN. 0 if none.
 - openingsNotInPlan: walk EVERY wall, outer and internal. Count openings in the STILL — windows, doorways, pass-throughs — that sit where the plan draws unbroken wall hatch. A bathroom opened onto the service balcony beside it, when the sheet draws a solid wall between them, is one. An opening the plan does draw is not counted, however it is styled.
+- planDoorsSealed: the reverse check. Walk EVERY door and exit the PLAN draws — each room's door swing, every door or sliding door out to a מרפסת — except the front door. Count those that the STILL closes with unbroken wall, or blocks with a piece of furniture (a dresser, wardrobe, desk, bed or sofa standing across it), so the room or terrace behind it cannot be reached that way. A bedroom whose plan door opens onto a terrace, drawn in the still as solid wall with a chest of drawers in front of it, is one. Count only doors you can see on the plan and whose place you can see in the still; a door hidden by the bird's-eye cut or out of frame is not counted.
 - apartmentStairsNotInPlan: count EVERY stair flight visible in the STILL — a concrete shaft, lift-core treads, OR open outdoor steps / stair run on a terrace or balcony. Invented roof stairs on paving are the usual miss and MUST be counted. 0 ONLY if there are no treads anywhere in the photograph. Do not exempt "outdoor terrace steps".
 - wetFixturesInDryRooms: toilets, basins, bathtubs and showers standing in a room that is NOT a bathroom on the plan — a toilet beside a bed, a basin on a bedroom wall, a bath in a living room. Count each fixture. Judge the room by what the plan draws there, not by how the still tiled the floor: a bedroom whose floor came out tiled is still a bedroom. 0 if every wet fixture is inside a room the sheet draws pans or basins in.
 - entranceFurnitureCount: pieces standing ON THE FLOOR of the entrance hall or a circulation strip that the plan draws as empty — a table, a desk, a chair, a console, a sideboard, a shelving unit, a bookcase, a sofa, a plant stand. Find the front door first, then look at the space just inside it. A mirror or coat hooks mounted on the wall are NOT counted. 0 if that floor is clear.
@@ -284,6 +292,7 @@ export async function auditFloorplanStill(
         planBathtubCount: asInt(raw.planBathtubCount, 10),
         kitchenFridgeMissing: raw.kitchenFridgeMissing === true,
         openingsNotInPlan: asInt(raw.openingsNotInPlan, 30),
+        planDoorsSealed: asInt(raw.planDoorsSealed, 30),
         builtInsNotInPlan: asInt(raw.builtInsNotInPlan, 30),
         entranceFurnitureCount: asInt(raw.entranceFurnitureCount, 20),
         wetFixturesInDryRooms: asInt(raw.wetFixturesInDryRooms, 20),
@@ -470,6 +479,9 @@ export function gradeFloorplanStill(
   }
   if (audit.entranceDoorMissing) {
     hard("front door missing where the plan draws the entrance");
+  }
+  if ((audit.planDoorsSealed ?? 0) > 0) {
+    hard(`${audit.planDoorsSealed} door(s) the plan draws sealed or blocked in the still`);
   }
   if ((audit.terraceTurnedIntoIndoor ?? 0) > 0) {
     hard(`${audit.terraceTurnedIntoIndoor} hatched terrace(s) furnished as indoor rooms`);

@@ -174,6 +174,9 @@ export function remedyFor(failure: string): string {
   if (/invented outside|roomsOutside|footprint/i.test(failure)) {
     return "Delete the INDOOR rooms/corridor that sit OUTSIDE the apartment outline on the sheet — usually a long utility strip or wing glued beside the entrance / stair core / elevator that the plan leaves as common space. Trace the printed flat boundary and keep ONLY what is inside it. Do NOT delete a מרפסת / balcony / outdoor paving to 'fix' this — outdoor decks are a different defect. Do not shrink living rooms or erase terraces as a substitute.";
   }
+  if (/door\(s\) the plan draws sealed/i.test(failure)) {
+    return "Find every door swing and every terrace slider the SALES PLAN draws. Where the still has solid wall or a piece of furniture (dresser, wardrobe, desk, bed) across one of them, move the furniture away and cut the wall open to a door the plan's width, opening the way the plan's swing shows. A door onto a מרפסת is a glazed door or slider. Change nothing else.";
+  }
   if (/front door missing|entrance door missing/i.test(failure)) {
     return "Find the entrance swing / door leaf on the SALES PLAN (usually on the outer wall next to חדר מדרגות / מעלית / the corridor — on דירה 22 it is on the living-room side opposite the small מרפסת). Cut ONLY that wall open and put a door leaf there. NEVER put the front door on a façade the plan hatches as מרפסת. NEVER turn a balcony pocket into a foyer / מבואה. A balcony slider is not the front door.";
   }

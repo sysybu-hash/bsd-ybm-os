@@ -88,6 +88,11 @@ export async function generateFloorplanVisuals(
      * architect drew rather than walls rebuilt from them.
      */
     tintedPlan?: { mimeType: string; base64: string };
+    /**
+     * The sheet's measured doors, doorways and windows in words
+     * (openingGenerationBrief), for the whole-flat views.
+     */
+    openingBrief?: string;
   },
 ): Promise<FloorplanVizImage[]> {
   const vizLayout = overlayPrintedProgram(layoutForVisualization(layout), options?.truth);
@@ -134,7 +139,7 @@ export async function generateFloorplanVisuals(
               geometryLock: Boolean(options?.geometryLock?.base64),
             },
           )
-        : buildVizPrompt(vizLayout, { kind: spec.viewId }, overviewOpts),
+        : `${buildVizPrompt(vizLayout, { kind: spec.viewId }, overviewOpts)}${options?.openingBrief ?? ""}`,
   }));
 
   const runJob = async (

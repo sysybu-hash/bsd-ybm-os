@@ -1,64 +1,144 @@
 {
-  "_note": "What each saved still really shows, labelled by eye for scoring the auditor (scripts/floorplan-audit-bench.mts). true = the defect is in the still, false = it is not, null = not decided yet (not counted). Counts are what the still shows. Draft until labelledBy is set; a draft case is scored but reported apart.",
+  "_note": "What each saved still really shows, labelled by eye for scoring the auditor (scripts/floorplan-audit-bench.mts). true = the defect is in the still, false = it is not, null = not decided yet (not counted). Counts are what the still shows. Draft until labelledBy is set; a draft case is scored but reported apart. doorsSealed: the middle bedroom's door out to the west terrace, which the owner pointed out (27.09) is closed off by a dresser in every attempt.",
   "labelledBy": null,
   "cases": [
     {
       "id": "apt14-overview-1",
-      "still": { "runId": "cmugw76nc000zrsq4yk0a9ztp", "runTitle": "דירה 14", "viewId": "overview", "attempt": 1 },
+      "still": {
+        "runId": "cmugw76nc000zrsq4yk0a9ztp",
+        "runTitle": "דירה 14",
+        "viewId": "overview",
+        "attempt": 1
+      },
       "status": "draft",
       "defects": {
-        "rotated": false, "mirrored": false, "stairsInside": false,
-        "terraceOmitted": false, "terraceInvented": false, "screens": null,
-        "doubleBed": false, "entranceMissing": false, "outsideOutline": false
+        "rotated": false,
+        "mirrored": false,
+        "stairsInside": false,
+        "terraceOmitted": false,
+        "terraceInvented": false,
+        "screens": null,
+        "doubleBed": false,
+        "entranceMissing": false,
+        "outsideOutline": false,
+        "doorsSealed": true
       },
-      "counts": { "beds": 6, "washers": 1, "bathtubs": 1 },
+      "counts": {
+        "beds": 6,
+        "washers": 1,
+        "bathtubs": 1
+      },
       "note": "Faces the sheet's way; all three terraces drawn; washer beside the toilet in the main bathroom."
     },
     {
       "id": "apt14-overview-2",
-      "still": { "runId": "cmugw76nc000zrsq4yk0a9ztp", "runTitle": "דירה 14", "viewId": "overview", "attempt": 2 },
+      "still": {
+        "runId": "cmugw76nc000zrsq4yk0a9ztp",
+        "runTitle": "דירה 14",
+        "viewId": "overview",
+        "attempt": 2
+      },
       "status": "draft",
       "defects": {
-        "rotated": false, "mirrored": false, "stairsInside": false,
-        "terraceOmitted": false, "terraceInvented": false, "screens": null,
-        "doubleBed": false, "entranceMissing": false, "outsideOutline": false
+        "rotated": false,
+        "mirrored": false,
+        "stairsInside": false,
+        "terraceOmitted": false,
+        "terraceInvented": false,
+        "screens": null,
+        "doubleBed": false,
+        "entranceMissing": false,
+        "outsideOutline": false,
+        "doorsSealed": true
       },
-      "counts": { "beds": 6, "washers": null, "bathtubs": 1 },
+      "counts": {
+        "beds": 6,
+        "washers": null,
+        "bathtubs": 1
+      },
       "note": "The auditor said two screens; not decided at this resolution."
     },
     {
       "id": "apt14-overview-3",
-      "still": { "runId": "cmugw76nc000zrsq4yk0a9ztp", "runTitle": "דירה 14", "viewId": "overview", "attempt": 3 },
+      "still": {
+        "runId": "cmugw76nc000zrsq4yk0a9ztp",
+        "runTitle": "דירה 14",
+        "viewId": "overview",
+        "attempt": 3
+      },
       "status": "draft",
       "defects": {
-        "rotated": false, "mirrored": false, "stairsInside": false,
-        "terraceOmitted": false, "terraceInvented": false, "screens": null,
-        "doubleBed": false, "entranceMissing": false, "outsideOutline": false
+        "rotated": false,
+        "mirrored": false,
+        "stairsInside": false,
+        "terraceOmitted": false,
+        "terraceInvented": false,
+        "screens": null,
+        "doubleBed": false,
+        "entranceMissing": false,
+        "outsideOutline": false,
+        "doorsSealed": true
       },
-      "counts": { "beds": 6, "washers": null, "bathtubs": 1 }
+      "counts": {
+        "beds": 6,
+        "washers": null,
+        "bathtubs": 1
+      }
     },
     {
       "id": "apt14-overview-4",
-      "still": { "runId": "cmugw76nc000zrsq4yk0a9ztp", "runTitle": "דירה 14", "viewId": "overview", "attempt": 4 },
+      "still": {
+        "runId": "cmugw76nc000zrsq4yk0a9ztp",
+        "runTitle": "דירה 14",
+        "viewId": "overview",
+        "attempt": 4
+      },
       "status": "draft",
       "defects": {
-        "rotated": false, "mirrored": false, "stairsInside": false,
-        "terraceOmitted": false, "terraceInvented": false, "screens": null,
-        "doubleBed": false, "entranceMissing": false, "outsideOutline": false
+        "rotated": false,
+        "mirrored": false,
+        "stairsInside": false,
+        "terraceOmitted": false,
+        "terraceInvented": false,
+        "screens": null,
+        "doubleBed": false,
+        "entranceMissing": false,
+        "outsideOutline": false,
+        "doorsSealed": true
       },
-      "counts": { "beds": 6, "washers": null, "bathtubs": 1 },
+      "counts": {
+        "beds": 6,
+        "washers": null,
+        "bathtubs": 1
+      },
       "note": "The chosen still. Flagged 'turned 180 degrees' and 'stairs'; neither is in it."
     },
     {
       "id": "apt14-overview-5",
-      "still": { "runId": "cmugw76nc000zrsq4yk0a9ztp", "runTitle": "דירה 14", "viewId": "overview", "attempt": 5 },
+      "still": {
+        "runId": "cmugw76nc000zrsq4yk0a9ztp",
+        "runTitle": "דירה 14",
+        "viewId": "overview",
+        "attempt": 5
+      },
       "status": "draft",
       "defects": {
-        "rotated": false, "mirrored": false, "stairsInside": false,
-        "terraceOmitted": true, "terraceInvented": false, "screens": null,
-        "doubleBed": false, "entranceMissing": false, "outsideOutline": false
+        "rotated": false,
+        "mirrored": false,
+        "stairsInside": false,
+        "terraceOmitted": true,
+        "terraceInvented": false,
+        "screens": null,
+        "doubleBed": false,
+        "entranceMissing": false,
+        "outsideOutline": false,
+        "doorsSealed": true
       },
-      "counts": { "beds": 6, "washers": null, "bathtubs": 1 },
+      "counts": {
+        "beds": 6,
+        "washers": null,
+        "bathtubs": 1
+      },
       "note": "The 4.10 m² terrace at the north-east corner is missing — the one true finding on this still."
     }
   ]
