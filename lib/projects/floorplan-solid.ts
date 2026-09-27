@@ -2533,6 +2533,60 @@ export function spansContain(rows: SpanRow[], x: number, y: number): boolean {
 }
 
 /**
+ * Where the sheet marks a terrace's level: a circle with two quarters hatched.
+ *
+ * Every terrace on these sheets carries one beside its "+9.64", and it is the
+ * one seed a terrace has when its area is drawn as outlines rather than text —
+ * דירה 14's 6.4 m² west terrace has no figure the text layer can read, so it
+ * was never looked for. The circle is drawn as four quarter arcs, each reaching
+ * the curve list as one chord; the hatch is short diagonal strokes inside it.
+ *
+ * The flat's own level mark, in the box with its number and gross area, is the
+ * same symbol drawn smaller — about 10 cm across the radius where a terrace's
+ * is 14 to 20 — and is left out by size.
+ */
+export function findLevelMarks(
+  curves: VectorSegment[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minRadiusM?: number; maxRadiusM?: number; minHatch?: number },
+): Array<{ x: number; y: number }> {
+  const minR = (options?.minRadiusM ?? 0.12) * unitsPerMetre;
+  const maxR = (options?.maxRadiusM ?? 0.25) * unitsPerMetre;
+  const minHatch = options?.minHatch ?? 6;
+  // A quarter chord runs from one cardinal point to the next, so its centre is
+  // the corner of its box on the far side of the arc: one of two candidates.
+  // A circle is where four chords vote for the same centre.
+  const votes = new Map<string, { x: number; y: number; r: number; n: number }>();
+  for (const c of curves) {
+    const dx = Math.abs(c.x2 - c.x1);
+    const dy = Math.abs(c.y2 - c.y1);
+    if (dx < minR || dx > maxR || Math.abs(dx - dy) > 0.6) continue;
+    for (const [x, y] of [
+      [c.x1, c.y2],
+      [c.x2, c.y1],
+    ] as const) {
+      const key = `${Math.round(x)}:${Math.round(y)}`;
+      const vote = votes.get(key) ?? { x, y, r: dx, n: 0 };
+      vote.n++;
+      votes.set(key, vote);
+    }
+  }
+  const out: Array<{ x: number; y: number }> = [];
+  for (const vote of votes.values()) {
+    if (vote.n < 4) continue;
+    const hatch = segments.filter((s) => {
+      const dx = Math.abs(s.x2 - s.x1);
+      const dy = Math.abs(s.y2 - s.y1);
+      if (dx < 0.5 || Math.abs(dx - dy) > 0.3 * Math.max(dx, dy)) return false;
+      return Math.hypot((s.x1 + s.x2) / 2 - vote.x, (s.y1 + s.y2) / 2 - vote.y) < vote.r;
+    }).length;
+    if (hatch >= minHatch) out.push({ x: vote.x, y: vote.y });
+  }
+  return out;
+}
+
+/**
  * A printed terrace figure whose ink flood was trapped in paving: walk the
  * already-locked floor slab and stop at wall bodies. Paving is not a barrier
  * here, so a label sitting in one brick can still grow the terrace the sheet
@@ -2543,10 +2597,15 @@ export function findTerracesOnFloor(
   bodies: WallBody[],
   areas: Array<{ x: number; y: number; value?: number }>,
   unitsPerMetre: number,
-  options?: { tolerance?: number },
+  options?: {
+    tolerance?: number;
+    /** What an unlabelled seed's region may measure; see findTerraces. */
+    unlabelledM2?: { min: number; max: number };
+  },
 ): Terrace[] {
   if (floor.length === 0 || areas.length === 0 || !(unitsPerMetre > 0)) return [];
   const tolerance = options?.tolerance ?? 0.25;
+  const unlabelled = options?.unlabelledM2 ?? { min: 2.5, max: 16 };
   const pitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 2;
   const step = Math.max(1, pitch);
   const onFloor = (x: number, y: number) => spansContain(floor, x, y);
@@ -2564,7 +2623,6 @@ export function findTerracesOnFloor(
   const out: Terrace[] = [];
 
   for (const area of areas) {
-    if (area.value == null) continue;
     let sx = area.x;
     let sy = area.y;
     if (!onFloor(sx, sy) || pointHitsBody(sx, sy, bodies)) {
@@ -2589,7 +2647,8 @@ export function findTerracesOnFloor(
     seen.add(`${Math.round(sx / step)}:${Math.round(sy / step)}`);
     const cells: Array<{ x: number; y: number }> = [];
     const budget = Math.ceil(
-      (area.value * (1 + tolerance) * 1.5 * unitsPerMetre * unitsPerMetre) / (step * step),
+      ((area.value ?? unlabelled.max) * (1 + tolerance) * 1.5 * unitsPerMetre * unitsPerMetre) /
+        (step * step),
     );
     let leaked = false;
     while (stack.length) {
@@ -2615,7 +2674,11 @@ export function findTerracesOnFloor(
     }
     if (leaked) continue;
     const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);
-    if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+    if (area.value != null) {
+      if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
+    } else if (floodedM2 < unlabelled.min || floodedM2 > unlabelled.max) {
+      continue;
+    }
 
     const byRow = new Map<number, number[]>();
     let bx0 = Infinity;
@@ -2652,7 +2715,7 @@ export function findTerracesOnFloor(
     out.push({
       rows,
       bounds: { x: bx0, y: by0, width: bx1 - bx0, height: by1 - by0 },
-      printedM2: area.value,
+      ...(area.value != null ? { printedM2: area.value } : {}),
       floodedM2,
     });
   }

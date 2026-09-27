@@ -1,5 +1,6 @@
 import {
   findTerraces,
+  findLevelMarks,
   findTerracesOnFloor,
   terraceDiagonalSeeds,
   type SpanRow,
@@ -192,5 +193,57 @@ describe("the diagonal an Israeli sheet draws across a terrace", () => {
       lineWidth: 5,
     };
     expect(terraceDiagonalSeeds([wall], UPM)).toEqual([]);
+  });
+});
+
+describe("the level mark a terrace carries", () => {
+  const upm = 56;
+  const seg = (x1: number, y1: number, x2: number, y2: number, lineWidth = 4): VectorSegment => ({ x1, y1, x2, y2, lineWidth });
+  /** Four quarter chords round (cx, cy), and hatch strokes in two quarters. */
+  const mark = (cx: number, cy: number, r: number, hatch = 8) => ({
+    curves: [
+      seg(cx + r, cy, cx, cy - r),
+      seg(cx, cy - r, cx - r, cy),
+      seg(cx - r, cy, cx, cy + r),
+      seg(cx, cy + r, cx + r, cy),
+    ],
+    segments: Array.from({ length: hatch }, (_, i) => {
+      const d = (i % 4) * 1.5 + 1;
+      return i < 4 ? seg(cx - d, cy - 1, cx - 1, cy - d) : seg(cx + 1, cy + d, cx + d, cy + 1);
+    }),
+  });
+
+  it("finds a terrace's mark — דירה 14's west terrace prints its area only as outlines", () => {
+    const m = mark(257, 913, 11.3);
+    expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([{ x: 257, y: 913 }]);
+  });
+
+  it("leaves out the flat's own, smaller mark in its number box", () => {
+    const m = mark(591, 981, 5.7);
+    expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([]);
+  });
+
+  it("leaves out a plain circle — a grid bubble has no hatch", () => {
+    const m = mark(100, 100, 9, 0);
+    expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([]);
+  });
+});
+
+describe("a terrace seeded without a printed area", () => {
+  const upm = 50;
+  const floorOf = (w: number, h: number) => {
+    const floor: SpanRow[] = [];
+    for (let y = 0; y < h; y += 2) floor.push({ y, spans: [[0, w]] });
+    return floor;
+  };
+
+  it("is accepted inside the window a terrace measures", () => {
+    const found = findTerracesOnFloor(floorOf(150, 150), [], [{ x: 75, y: 75 }], upm);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.printedM2).toBeUndefined();
+  });
+
+  it("is refused when it floods more than any terrace", () => {
+    expect(findTerracesOnFloor(floorOf(400, 400), [], [{ x: 75, y: 75 }], upm)).toEqual([]);
   });
 });
