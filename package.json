@@ -216,7 +216,8 @@
     "fast-xml-builder": ">=1.1.7",
     "nodemailer": "$nodemailer",
     "websocket-driver": ">=0.7.5",
-    "uuid": "$uuid"
+    "uuid": "$uuid",
+    "qs": "6.16.0"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
