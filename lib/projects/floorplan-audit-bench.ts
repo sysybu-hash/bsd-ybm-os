@@ -28,6 +28,7 @@ export const AUDIT_BENCH_RULES = {
   doubleBed: (a: FloorplanVizAudit) => a.hasDoubleBed,
   entranceMissing: (a: FloorplanVizAudit) => a.entranceDoorMissing,
   outsideOutline: (a: FloorplanVizAudit) => a.roomsOutsidePlanOutline > 0,
+  doorsSealed: (a: FloorplanVizAudit) => (a.planDoorsSealed ?? 0) > 0,
 } as const;
 
 /** Things the auditor counts in the still, compared with the label's count. */
@@ -179,6 +180,7 @@ export function answerFromFindings(findings: string[]): AuditBenchAnswer {
       doubleBed: has(/double bed/i),
       entranceMissing: has(/front door missing/i),
       outsideOutline: has(/invented outside the plan outline/i),
+      doorsSealed: has(/door\(s\) the plan draws sealed/i),
     },
     counts,
   };

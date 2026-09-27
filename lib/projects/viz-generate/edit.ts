@@ -45,7 +45,6 @@ import {
 } from "@/lib/projects/viz-generate/prompts";
 import { generateOneImage } from "@/lib/projects/viz-generate/gemini";
 import { buildWallHint } from "@/lib/projects/viz-generate/attempts";
-import { placedRoomsExtent } from "@/lib/projects/floorplan-plan-guide";
 import { planImageForGeneration, remedyFor } from "@/lib/projects/viz-generate/jobs";
 import {
   restoreStampBar,
@@ -57,6 +56,7 @@ import {
   measureEditChange,
 } from "@/lib/projects/floorplan-viz-edit-guard";
 import { isNetImprovement } from "@/lib/projects/floorplan-improve-gate";
+import { openingPlaces } from "@/lib/projects/viz-generate/openings-brief";
 
 const log = createLogger("floorplan-viz-generate");
 export const FLOORPLAN_VIZ_EDIT_INSTRUCTION_MAX = 8000;
@@ -75,31 +75,7 @@ export function sanitizeFloorplanVizEditInstruction(raw: string): string {
  * page is something that can be said out loud.
  */
 export function openingBriefFor(layout: FloorplanLayout): string {
-  const placed = layout.openings.filter((opening) => opening.box != null);
-  if (placed.length === 0) return "";
-  // An opening is measured against the whole sheet; the still is cropped to
-  // the flat. Restating it against the rooms' own extent is what makes "upper
-  // left" mean upper left of the picture the model is holding.
-  const flat = placedRoomsExtent(layout.rooms.filter((room) => room.bbox != null));
-  const side = (box: { x: number; y: number; w: number; h: number }) => {
-    const rawX = box.x + box.w / 2;
-    const rawY = box.y + box.h / 2;
-    const cx = flat && flat.w > 0 ? (rawX - flat.x) / flat.w : rawX;
-    const cy = flat && flat.h > 0 ? (rawY - flat.y) / flat.h : rawY;
-    const updown = cy < 0.4 ? "upper" : cy > 0.6 ? "lower" : "middle";
-    const leftright = cx < 0.4 ? "left" : cx > 0.6 ? "right" : "centre";
-    return `${updown} ${leftright}`;
-  };
-  const say = (kind: "door" | "window") => {
-    const rows = placed.filter((opening) => opening.kind === kind);
-    if (rows.length === 0) return null;
-    const where = rows
-      .slice(0, 12)
-      .map((opening) => `${opening.widthM?.toFixed(2) ?? "?"} m at ${side(opening.box!)}`)
-      .join("; ");
-    return `${rows.length} ${kind}${rows.length === 1 ? "" : "s"} (${where})`;
-  };
-  const lines = [say("window"), say("door")].filter(Boolean);
+  const lines = openingPlaces(layout);
   if (lines.length === 0) return "";
   return `
 WHAT THE SHEET MARKS, measured off the drawing and placed against the apartment in the frame: ${lines.join(", ")}. These are confirmed openings, not the complete count — glazing drawn elsewhere in the ink is still glazing. Use this to place the opening the request names; do not move, add or glaze any other opening because of it.
@@ -297,7 +273,7 @@ export async function editFloorplanStill(params: {
 /** "שפר תמונה" — surgical fix of residual audit issues on the existing frame. */
 /** Failures that mean walls/openings must change — not a paint-over. */
 function isStructuralFloorplanFailure(failure: string): boolean {
-  return /front door missing|stair flight|invented outside|terrace\(s\) invented|terrace\(s\) grown|outdoor paving|indoor room\(s\) rendered|turned into a terrace|entrance turned|roomsOutside|mirrored|turned \d+ degrees|CAD block massing|footprint/i.test(
+  return /front door missing|door\(s\) the plan draws sealed|stair flight|invented outside|terrace\(s\) invented|terrace\(s\) grown|outdoor paving|indoor room\(s\) rendered|turned into a terrace|entrance turned|roomsOutside|mirrored|turned \d+ degrees|CAD block massing|footprint/i.test(
     failure,
   );
 }

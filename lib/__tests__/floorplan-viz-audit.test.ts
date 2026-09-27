@@ -37,7 +37,7 @@ const clean: FloorplanVizAudit = {
   bathtubCount: 1,
   planBathtubCount: 1,
   kitchenFridgeMissing: false,
-  openingsNotInPlan: 0,
+  openingsNotInPlan: 0, planDoorsSealed: 0,
   builtInsNotInPlan: 0,
   entranceFurnitureCount: 0,
   wetFixturesInDryRooms: 0,
@@ -66,6 +66,12 @@ const clean: FloorplanVizAudit = {
 };
 
 describe("floorplan still audit", () => {
+  it("blocks a still that walls off or blocks a door the plan draws", () => {
+    // דירה 14: the middle bedroom's door to the west terrace, a dresser in its place.
+    const verdict = gradeFloorplanStill({ ...clean, planDoorsSealed: 1 }, layout);
+    expect(verdict.hardFailures).toContain("1 door(s) the plan draws sealed or blocked in the still");
+  });
+
   it("passes a still whose counts match the plan", () => {
     expect(gradeFloorplanStill(clean, layout, { haredi: true })).toEqual({
       failures: [],

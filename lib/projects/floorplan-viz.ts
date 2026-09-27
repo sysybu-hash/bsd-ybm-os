@@ -3,7 +3,8 @@ import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
-import type { PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
+import { openingGenerationBrief } from "@/lib/projects/viz-generate/openings-brief";
+import { placeOpeningsOnPage, type PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
 import {
@@ -356,6 +357,14 @@ async function visualizeWithSpend(
             geometryLock: lockCad ? cadResult.geometry : undefined,
             truth: cadResult.truth,
             deadlineMs,
+            openingBrief: openingGenerationBrief({
+              ...extracted.layout,
+              openings: (cadResult.openings ?? []).map((opening) => ({
+                kind: opening.kind,
+                widthM: opening.widthM,
+                box: opening.box,
+              })),
+            }),
           }),
         );
         images = mergeCadPhotorealImages({ photoreal, geometry: cadResult.geometry });
@@ -480,10 +489,13 @@ async function visualizeWithSpend(
   // is cropped from, so they land on the drawing without being remapped.
   // Only on an uncropped sheet: a crop moves the layout into its own
   // coordinates and these are still the page's.
-  const markedOpenings =
-    cadResult.outcome === "skip" && vizLayout === extracted.layout
-      ? (cadResult.openings ?? [])
-      : [];
+  // They are kept on the run in the page's coordinates — the frame the run's
+  // room boxes are in — whether or not the reference below is cropped.
+  const markedOpenings = cadResult.outcome === "skip" ? (cadResult.openings ?? []) : [];
+  const openingBrief = openingGenerationBrief({
+    ...extracted.layout,
+    openings: markedOpenings.map((opening) => ({ kind: opening.kind, widthM: opening.widthM, box: opening.box })),
+  });
   // The plate itself is left exactly as it is. Painting the openings onto it
   // was tried and measured: the same sheet, the same prompt, one run with
   // coloured bars over the thresholds and one without, and the run with the
@@ -509,6 +521,7 @@ async function visualizeWithSpend(
         unitTitle: titleFromFloorplanLayout(vizLayout, options?.sourceName ?? ""),
         skipInteriors: options?.skipInteriors,
         deadlineMs,
+        openingBrief,
       }),
     );
   } catch (err: unknown) {
@@ -823,6 +836,15 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
         openings,
       };
     }
+    // The sheet's colour marks are one reading of its openings; the walls the
+    // plate was measured from are the other. Without marks — דירה 14 has none,
+    // and a scale locked from the printed area never looks for them — the
+    // measured gaps are what the run keeps, including the doorway out to a
+    // terrace that the stills kept walling over.
+    const measuredOpenings =
+      openings.length > 0 || !pageSize
+        ? openings
+        : placeOpeningsOnPage(rendered.flat.openings, rendered.flat.unitsPerMetre, pageSize);
     // A printed area or a dimension-chain hint can both lock a false plate;
     // measured output must pass the same room-programme and geometry checks.
     const qualityFailure = measuredPlateQualityFailure(
@@ -835,7 +857,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       log.info("measured plate failed its own checks; using the raster route", {
         hard: rendered.confidence.hard,
       });
-      return { outcome: "skip", reason: qualityFailure, openings };
+      return { outcome: "skip", reason: qualityFailure, openings: measuredOpenings };
     }
     if (qualityFailure) {
       log.info("measured plate does not reproduce the sheet's programme; using the drawing itself", {
@@ -845,7 +867,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       return {
         outcome: "skip",
         reason: qualityFailure,
-        openings,
+        openings: measuredOpenings,
       };
     }
     return {
@@ -870,7 +892,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       }),
       measuredTerraces: rendered.flat.terraces.length,
       terraceBoxes: pageSize ? terraceBoxesOnPage(rendered.flat.terraces, pageSize) : undefined,
-      openings,
+      openings: measuredOpenings,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
