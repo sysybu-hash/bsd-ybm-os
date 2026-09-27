@@ -80,7 +80,12 @@ PLAN TRACE (every style, every view — non-negotiable):
 - Each terrace is a SEPARATE space in the place the sheet draws it, with its own area figure. Never merge two of them, and never merge a terrace with a service balcony, into one continuous deck running down a whole side of the apartment. Two terraces drawn apart stay apart, with the wall between them.
 - Sanity check before finishing: add the printed terrace areas together. On a 110 מ"ר flat they come to well under a fifth of it. If the outdoor paving in your frame covers more of the floor plate than the living room does, it is far too big — shrink it back to the drawn outline.
 - Terrace paving is PALE AND WARM: light sand or warm cream stone, clearly lighter than the indoor floor, and never cold grey. It catches the same golden-hour daylight as the rooms — if the terrace reads greyer or flatter than the rooms behind it, it is wrong.
-- Small outdoor seating or planters may sit ON a drawn terrace only if they fit the printed area. Do not invent a terrace. Do not enlarge one to hold furniture.
+- Every leisure terrace is furnished and planted to its printed area, so it reads as outdoor space that is used — always leaving a clear path from its door:
+  - under 3 מ"ר (a narrow strip): two or three planters along the railing, and one small folding chair only if the depth allows it;
+  - 3 to 6 מ"ר: a bistro table with two chairs, and three or four planters;
+  - 6 to 10 מ"ר: an outdoor dining table for four, or a pair of lounge chairs with a low table, plus planters and one tall potted tree;
+  - over 10 מ"ר: an outdoor lounge (a low sofa and a coffee table) and a dining table for four to six, with planters and potted trees along the railing.
+  Outdoor pieces only — weatherproof teak, rattan or powder-coated metal, never an indoor sofa or rug. The furniture fits inside the drawn outline: never enlarge a terrace to hold it, and never invent a terrace to put it on.
 - מרפסת שירות / שטח שרות is a SERVICE balcony, not a leisure one: washing machine, dryer, a drying rack, shelves, a utility sink if drawn. It never gets lounge chairs or decorative planters, and it is never merged into the terrace beside it.
 - A leisure מרפסת (not labeled שירות) never gets a washing machine — laundry stays indoors or on the service balcony only.
 - A cupboard, boiler housing or air-conditioning unit on a terrace is FINISHED: flush millwork in the apartment's own warm timber, or a cleanly rendered panel with a slim shadow gap, sitting tight against the wall. Never a bare grey slab, never an unpainted box, never a raw appliance standing in the open. If the plan draws no such cupboard, do not add one.
@@ -106,7 +111,7 @@ AESTHETIC (haredi — both kits, non-negotiable):
 
 const HAREDI_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
   overview:
-    "STAGE BY ROOM KIND: Shabbat table and ONE modest sefarim cabinet ONLY in living/dining — not a full-wall library, and only if that living space exists. Kitchen = kosher family kitchen in use (fruit bowl, kettle) — copy the kitchen sink AND fridge / מקרר if drawn, copy island stool count, no extra sinks, no second kitchen. Bathroom = wet fixtures as drawn (washer stays washer; tub only if the sheet draws a tub). Bedrooms copy the drawn bed rectangles (one stays one twin; two stay two twins with a gap; empty ממ\"ד stays empty). Office = desks and chairs in THAT one room only — never clone a second office, never beds, never a cooktop. Storage / חדר שירות = washer or shelves only, never a toilet. Terrace / מרפסת = pale light paving at the printed size; planters only if they fit — never indoor furniture, never a washing machine on a leisure terrace, never spread past the drawn outline, never merged with the terrace or service balcony next to it. מרפסת שירות / שטח שרות = washer, drying rack and shelves only — no lounge furniture. No TV, no monitor, no laptop, no dark slab on any desk. Copy lounge seating from the plan — if living is dining-only, do not add a sofa. Do NOT put a dining table or bookshelves in a bathroom or kitchen.",
+    "STAGE BY ROOM KIND: Shabbat table and ONE modest sefarim cabinet ONLY in living/dining — not a full-wall library, and only if that living space exists. Kitchen = kosher family kitchen in use (fruit bowl, kettle) — copy the kitchen sink AND fridge / מקרר if drawn, copy island stool count, no extra sinks, no second kitchen. Bathroom = wet fixtures as drawn (washer stays washer; tub only if the sheet draws a tub). Bedrooms copy the drawn bed rectangles (one stays one twin; two stay two twins with a gap; empty ממ\"ד stays empty). Office = desks and chairs in THAT one room only — never clone a second office, never beds, never a cooktop. Storage / חדר שירות = washer or shelves only, never a toilet. Terrace / מרפסת = pale light paving at the printed size, with outdoor furniture and planters sized to that area — never indoor furniture, never a washing machine on a leisure terrace, never spread past the drawn outline, never merged with the terrace or service balcony next to it. מרפסת שירות / שטח שרות = washer, drying rack and shelves only — no lounge furniture. No TV, no monitor, no laptop, no dark slab on any desk. Copy lounge seating from the plan — if living is dining-only, do not add a sofa. Do NOT put a dining table or bookshelves in a bathroom or kitchen.",
   living:
     "STAGING (living / dining only): one modest contemporary sefarim cabinet (flush millwork, unmarked spines) — not a floor-to-ceiling library wall that fills a façade or splits kitchen from dining; a simple modern Shabbat table with challah covers and candles — not antique, not carved, not museum Judaica. Copy lounge seating from the plan: if a sofa is drawn, style it with a throw and an area rug; if the living draws only a dining table, do not add a sofa, armchair or coffee table. Copy the dining table size and chair count from the plan. No TV, no monitor, no laptop. No heavy velvet drapes.",
   kitchen:
@@ -118,7 +123,7 @@ const HAREDI_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
   mmd:
     "STAGING (safe room / ממ\"ד only): copy the drawing. If empty, leave empty — no beds. If beds are drawn, twins with a gap, never a double. Heavy door if drawn. Desk if drawn: books and a lamp only, never a computer. No TV, no dining table.",
   balcony:
-    "STAGING (balcony/terrace only): outdoor space matching the plan, one planter if the terrace is large enough. Keep it open to the sky if the drawing shows an open terrace (sukkah-capable). No living-room furniture, no kitchen, no bathroom fixtures.",
+    "STAGING (balcony/terrace only): outdoor space matching the plan, with outdoor furniture and planters sized to its printed area — a strip gets planters, a mid-size terrace a bistro set, a large one a dining or lounge set. Keep it open to the sky if the drawing shows an open terrace (sukkah-capable). No living-room furniture, no kitchen, no bathroom fixtures.",
   circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
   utility:
     "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
@@ -139,7 +144,7 @@ const GENERAL_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
   mmd:
     "STAGING (safe room / ממ\"ד only): copy the drawn bed if present. Small protected window, not a sliding terrace wall. No kitchen.",
   balcony:
-    "STAGING (balcony/terrace only): outdoor space matching the plan. Keep it open to the sky if the drawing shows an open terrace. No kitchen, no bathroom fixtures.",
+    "STAGING (balcony/terrace only): outdoor space matching the plan, with outdoor furniture and planters sized to its printed area — a strip gets planters, a mid-size terrace a bistro set, a large one a dining or lounge set. Keep it open to the sky if the drawing shows an open terrace. No kitchen, no bathroom fixtures.",
   circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
   utility:
     "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
@@ -151,8 +156,8 @@ LIVED-IN HOME (every view — not a vacant show unit):
 - Photograph a family apartment that is already lived in. Forbidden: sterile CAD dollhouse, empty contractor white-box, furniture catalog with bare counters, empty tiled bathrooms, closets without doors.
 - Lighting and warmth are specified in their own section below; follow it.
 - Layered textiles in the rooms they belong: area rug under living seating, pillows and a throw on sofas and beds, bath towels on a rail, curtains only on windows that exist in the plan.
-- Small life props: fruit bowl, kettle and cutting board on kitchen counters; place setting or candles on the dining table; bedside lamp and folded blanket in bedrooms; one potted plant by a real window or on a drawn terrace.
-- Props and textiles only on furniture that exists on the sales sheet. Do not add a sofa, dining table, TV, media wall, extra vanity, walk-in shower, double sink, or extra desk that is not drawn.
+- Small life props: fruit bowl, kettle and cutting board on kitchen counters; place setting or candles on the dining table; bedside lamp and folded blanket in bedrooms; one potted plant by a real window. Terraces get their own planters, by size.
+- Props and textiles only on furniture that exists on the sales sheet. Do not add a sofa, dining table, TV, media wall, extra vanity, walk-in shower, double sink, or extra desk that is not drawn. The one exception is outdoor furniture on a leisure terrace, sized to its area as the terrace rule says.
 - Lived-in does not mean electronics. Never add a laptop, tablet, keyboard, phone, or dark rectangular slab on a desk, nightstand, cabinet or wall.
 - Visible wood grain and fabric weave — photoreal, not plastic CGI. Do not clutter every surface.
 - Do not add people. Do not hide walls, doors, or windows. Do not add extra rooms or openings.
