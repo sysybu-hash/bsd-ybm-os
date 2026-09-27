@@ -1278,6 +1278,38 @@ export function wallBodiesFromHatch(
 }
 
 /**
+ * The stubs that lie wholly inside a wall running the other way.
+ *
+ * A shaft or a column is drawn inside a wall as a crossed box, and its short
+ * faces pair into a stub of wall across the wall it sits in. Left where it is,
+ * the stub is hidden in that wall and harmless; but bridgeOpenings joins it to
+ * the wall on its line and takes its faces — on דירה 14 the thin wall under the
+ * guest WC grew 28 units up into the room, over the pan, and the WC lost the
+ * fixture that makes it a bathroom. So a stub is kept and not joined.
+ *
+ * Only a stub, thicker than it is long: a partition that meets a wall inside
+ * the wall's band is a wall. Dropping the stubs outright was tried and cost
+ * דירה 14 its kitchen partition and its north terrace.
+ */
+export function stubsInsideCrossingWalls(bodies: WallBody[], tolerance = 1): WallBody[] {
+  const rects = bodies.map(bodyRect);
+  return bodies.filter((body, index) => {
+    if (body.to - body.from >= body.thickness) return false;
+    const r = rects[index]!;
+    return bodies.some((other, j) => {
+      if (other.orientation === body.orientation) return false;
+      const o = rects[j]!;
+      return (
+        r.x >= o.x - tolerance &&
+        r.x + r.w <= o.x + o.w + tolerance &&
+        r.y >= o.y - tolerance &&
+        r.y + r.h <= o.y + o.h + tolerance
+      );
+    });
+  });
+}
+
+/**
  * Whether hatch fills the middle of a band, not merely its edges.
  *
  * Strokes are indexed by their midpoint, so a stroke that spans a wall face to
@@ -2518,6 +2550,17 @@ export function findTerracesOnFloor(
   const pitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 2;
   const step = Math.max(1, pitch);
   const onFloor = (x: number, y: number) => spansContain(floor, x, y);
+  // Open ground, with floor on every side of it. The footprint is closed by a
+  // third of a metre, which leaves a hairline of "floor" along the outside of
+  // a wall; on דירה 14 the 3.16 m² roof terrace walked up that line to the
+  // west terrace, measured 5.9 m² and was dropped.
+  const open = (x: number, y: number) =>
+    onFloor(x, y) &&
+    onFloor(x + step, y) &&
+    onFloor(x - step, y) &&
+    onFloor(x, y + step) &&
+    onFloor(x, y - step) &&
+    !pointHitsBody(x, y, bodies);
   const out: Terrace[] = [];
 
   for (const area of areas) {
@@ -2565,7 +2608,7 @@ export function findTerracesOnFloor(
         const x = cur.x + dx;
         const y = cur.y + dy;
         const key = `${Math.round(x / step)}:${Math.round(y / step)}`;
-        if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+        if (seen.has(key) || !open(x, y)) continue;
         seen.add(key);
         stack.push({ x, y });
       }

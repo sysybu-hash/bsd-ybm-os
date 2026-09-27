@@ -30,6 +30,7 @@ import {
   trimToHatchAlong,
   findHatchGaps,
   findOpenings,
+  stubsInsideCrossingWalls,
   wallBodiesForSheet,
   type Opening,
   type SpanRow,
@@ -242,7 +243,14 @@ export async function buildFlatFromGeometry(
   // wall apart — and has no hatch anywhere along it, so putting it through the
   // same tests deleted every internal partition on 28-8-23-2 and left the flat
   // as one open floor.
-  const kept = closeCorners(lock.bodies.filter(touchesFlat), unitsPerMetre * 0.9);
+  // A stub hidden inside a crossing wall is not closed to anything; see
+  // stubsInsideCrossingWalls.
+  const inFlat = lock.bodies.filter(touchesFlat);
+  const stubs = new Set(stubsInsideCrossingWalls(inFlat));
+  const kept = closeCorners(
+    inFlat.filter((body) => !stubs.has(body)),
+    unitsPerMetre * 0.9,
+  );
   const hatchKept = dropUnhatchedBodies(
     trimToHatchAlong(
       kept.filter((body) => body.source !== "plotted"),
