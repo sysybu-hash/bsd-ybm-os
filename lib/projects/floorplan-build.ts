@@ -24,6 +24,7 @@ import {
   closeCorners,
   dropUnhatchedBodies,
   findDoorSwings,
+  findLevelMarks,
   findTerraces,
   findTerracesOnFloor,
   spansContain,
@@ -463,7 +464,40 @@ export async function buildFlatFromGeometry(
           ),
         ]
       : fromInk;
-  const terraces = terraceHits.map((terrace) => terrace.rows);
+  // A terrace whose area is drawn as outlines has no figure to seed it from,
+  // but it still carries its level mark. Unlabelled, so the region is accepted
+  // only inside the window a terrace measures; see findLevelMarks.
+  const levelMarks = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre);
+  const levelSeeds = levelMarks.filter(
+    (mark) =>
+      mark.x >= flatExtent.x &&
+      mark.x <= flatExtent.x + flatExtent.width &&
+      mark.y >= flatExtent.y &&
+      mark.y <= flatExtent.y + flatExtent.height &&
+      !terraceHits.some((terrace) => spansContain(terrace.rows, mark.x, mark.y)),
+  );
+  // A level mark is also drawn inside a room — a wet room's lowered floor — and
+  // that room has a pan, a basin or a bed in it, where a terrace has none. Any
+  // other piece is not proof: a terrace's boxed label and its drain read as
+  // furniture, and would lose every terrace the mark finds. Nor is the mark
+  // itself, which is a circle a basin's size and reads as one.
+  const onMark = (piece: FurniturePiece) =>
+    levelMarks.some(
+      (mark) =>
+        Math.hypot(piece.x + piece.w / 2 - mark.x, piece.y + piece.h / 2 - mark.y) < unitsPerMetre * 0.3,
+    );
+  const markedHits = (
+    levelSeeds.length > 0 ? findTerracesOnFloor(floor, bodies, levelSeeds, unitsPerMetre) : []
+  ).filter(
+    (terrace) =>
+      !furniture.some(
+        (piece) =>
+          (piece.kind === "fixture" || piece.kind === "sink" || piece.kind === "bed") &&
+          !onMark(piece) &&
+          spansContain(terrace.rows, piece.x + piece.w / 2, piece.y + piece.h / 2),
+      ),
+  );
+  const terraces = [...terraceHits, ...markedHits].map((terrace) => terrace.rows);
 
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(
