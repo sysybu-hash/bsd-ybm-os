@@ -14,6 +14,8 @@ export const floorplanEvidenceSchema = z.enum([
   "ocr_verified",
   "consensus",
   "inferred",
+  /** A person checked the room against the sheet and saved it. */
+  "confirmed",
 ]);
 export type FloorplanEvidence = z.infer<typeof floorplanEvidenceSchema>;
 

@@ -6,6 +6,7 @@ import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import {
   applyBboxMeasuresToLayout,
+  applyShelterMarkToLayout,
   bookletNeedsCadRemasure,
   enrichLayoutForBooklet,
   pickRicherBookletLayout,
@@ -17,14 +18,20 @@ import { floorplanLayoutSchema, type FloorplanVizImage } from "@/lib/projects/fl
 import { bufferIfPdf, pairRastersForCompare, trimRasterWhitespace } from "@/lib/projects/floorplan-photo-prep";
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
 import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
-import { extractPdfPageText, extractPrintedAreas } from "@/lib/projects/floorplan-vector";
+import {
+  extractPdfPageText,
+  extractPrintedAreas,
+  extractShelterMarkFractions,
+} from "@/lib/projects/floorplan-vector";
 import { bookletHeroImage, hebrewFloorplanAuditIssue } from "@/lib/projects/floorplan-viz-ids";
 import { stripMagentaLocatorFromJpeg } from "@/lib/projects/floorplan-viz-edit-region-overlay";
-import { getFloorplanVizRunForOrg } from "@/lib/projects/floorplan-viz-store";
+import {
+  getFloorplanVizRunForOrg,
+  updateFloorplanVizStillAuditIssues,
+} from "@/lib/projects/floorplan-viz-store";
 import { buildFloorplanVizPdfHtml } from "@/lib/projects/floorplan-viz-pdf-html";
 import { renderHtmlSectionsPdf } from "@/lib/pdf/render-html-pdf-chromium";
-import { gradeStillForShip, shipBlockingIssues } from "@/lib/projects/viz-generate/audit-gate";
-import { checkRoomPlacement } from "@/lib/projects/floorplan-viz-placement";
+import { collectShipAudit } from "@/lib/projects/viz-generate/audit-gate";
 import { bookletBlockingIssues, checkBookletHero } from "@/lib/projects/floorplan-booklet-gate";
 
 export const dynamic = "force-dynamic";
@@ -159,7 +166,10 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
     if (!sheetText && pdfBytes) {
       sheetText = await extractPdfPageText(pdfBytes);
     }
-    const picked = pickRicherBookletLayout(layoutParsed.data, run?.layout);
+    const picked = applyShelterMarkToLayout(
+      pickRicherBookletLayout(layoutParsed.data, run?.layout),
+      pdfBytes ? await extractShelterMarkFractions(pdfBytes) : [],
+    );
     // The program comes off this sheet — its room names and the areas it prints
     // as text — never from a table of flats the pipeline was tuned on.
     const truth = printedTruthFromSheet(
@@ -203,21 +213,24 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
         base64: heroForAudit.base64,
       });
       const auditedImage = { mimeType: auditedHero.mimeType, base64: auditedHero.base64 };
-      const [scored, placementIssues] = await Promise.all([
-        gradeStillForShip(auditedImage, {
-          layout,
-          plan: planImage,
-          haredi: String(form.get("audience") ?? "") === "haredi",
-        }),
-        checkRoomPlacement(auditedImage, layout),
-      ]);
-      if (!scored) {
+      const scan = await collectShipAudit(
+        auditedImage,
+        { layout, plan: planImage, haredi: String(form.get("audience") ?? "") === "haredi" },
+        heroForAudit.labelHe,
+      );
+      if (!scan.meta.gemini) {
         return NextResponse.json(
           { error: "שירות בדיקת ההדמיה אינו זמין כרגע; החוברת לא הופקה" },
           { status: 503 },
         );
       }
-      found = shipBlockingIssues(scored, placementIssues);
+      found = scan.issues;
+      // The scan is of the chosen still, so it is kept there, attributed: the
+      // findings can then be looked at and marked wrong, and the next export
+      // uses them instead of paying for a scan that may answer differently.
+      if (run && heroForAudit.id) {
+        await updateFloorplanVizStillAuditIssues(orgId, run.id, heroForAudit.id, scan.issues, scan.meta);
+      }
     }
     const blocking = bookletBlockingIssues(
       found,

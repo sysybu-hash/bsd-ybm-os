@@ -658,6 +658,32 @@ export async function extractShelterMarks(
     .map(({ x, y }) => ({ x, y }));
 }
 
+/**
+ * The same "+2" sill marks, as fractions of the page — the frame a layout's
+ * room boxes are measured in — so a mark can be matched to the room it sits in.
+ */
+export async function extractShelterMarkFractions(
+  pdf: Buffer | Uint8Array,
+): Promise<Array<{ x: number; y: number }>> {
+  const pdfjs = await loadPdfjs();
+  if (!pdfjs) return [];
+  try {
+    const doc = await pdfjsData(pdfjs, pdf, false).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1, rotation: page.rotate ?? 0 });
+    if (!(viewport.width > 0) || !(viewport.height > 0)) return [];
+    return (await extractShelterMarks(pdf)).map(({ x, y }) => ({
+      x: x / viewport.width,
+      y: y / viewport.height,
+    }));
+  } catch (err: unknown) {
+    log.warn("shelter mark fractions unavailable", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+}
+
 export async function extractPdfDimensionStrings(
   pdf: Buffer | Uint8Array,
 ): Promise<string[]> {

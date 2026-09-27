@@ -558,6 +558,39 @@ export function printedTruthFromSheet(
   return { ...counts, grossM2, terraces };
 }
 
+/**
+ * Name the ממ"ד from the sheet's own mark when the room read did not.
+ *
+ * The shelter's steel door stands on a sill printed "+2" in real text beside
+ * it (see extractShelterMarks). A room read that calls every sleeping room a
+ * bedroom — דירה 14's did, and its booklet listed four bedrooms and no ממ"ד —
+ * is corrected when exactly one bedroom's box holds the mark. Two boxes
+ * holding it, or none, and the read is left alone: a guess between rooms is
+ * worse than the sheet's own count.
+ */
+export function applyShelterMarkToLayout(
+  layout: FloorplanLayout,
+  marks: Array<{ x: number; y: number }>,
+): FloorplanLayout {
+  const kindOf = (room: FloorplanRoom) => room.kind ?? inferRoomKind(room.name);
+  if (marks.length === 0 || layout.rooms.some((room) => kindOf(room) === "mmd")) return layout;
+  const holds = (room: FloorplanRoom) =>
+    room.bbox != null &&
+    marks.some(
+      (mark) =>
+        mark.x >= room.bbox!.x &&
+        mark.x <= room.bbox!.x + room.bbox!.w &&
+        mark.y >= room.bbox!.y &&
+        mark.y <= room.bbox!.y + room.bbox!.h,
+    );
+  const hits = layout.rooms.filter((room) => kindOf(room) === "bedroom" && holds(room));
+  if (hits.length !== 1) return layout;
+  return {
+    ...layout,
+    rooms: layout.rooms.map((room) => (room === hits[0] ? { ...room, name: 'ממ"ד', kind: "mmd" } : room)),
+  };
+}
+
 export function enrichLayoutForBooklet(
   layout: FloorplanLayout,
   extra?: {
