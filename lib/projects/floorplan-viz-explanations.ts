@@ -13,16 +13,19 @@ export const KIND_LABEL_HE: Record<FloorplanRoomKind, string> = {
   other: "חלל אחר",
 };
 
+/** "≈ " before a figure guessed from the room's box rather than measured. */
+const approx = (estimated?: boolean) => (estimated ? "≈ " : "");
+
 export function formatRoomMeasure(room: FloorplanRoom): string {
-  if (room.widthM && room.lengthM) return `${room.widthM}×${room.lengthM} מ'`;
+  if (room.widthM && room.lengthM) return `${approx(room.estimatedDims)}${room.widthM}×${room.lengthM} מ'`;
   return "—";
 }
 
 /** Area cell for the booklet table — separate from width×length. */
 export function formatRoomArea(room: FloorplanRoom): string {
-  if (room.areaM2 != null) return `${room.areaM2} מ"ר`;
+  if (room.areaM2 != null) return `${approx(room.estimatedArea)}${room.areaM2} מ"ר`;
   if (room.widthM && room.lengthM) {
-    return `${Math.round(room.widthM * room.lengthM * 100) / 100} מ"ר`;
+    return `${approx(room.estimatedDims)}${Math.round(room.widthM * room.lengthM * 100) / 100} מ"ר`;
   }
   return "—";
 }

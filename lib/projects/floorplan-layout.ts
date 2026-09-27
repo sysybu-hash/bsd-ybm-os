@@ -56,6 +56,10 @@ export const floorplanRoomSchema = z.object({
   source: floorplanEvidenceSchema.optional(),
   confidence: z.number().min(0).max(1).optional(),
   engineHits: z.number().int().min(0).optional(),
+  /** Width×length guessed from the box round the room's label, not measured. */
+  estimatedDims: z.boolean().optional(),
+  /** Area guessed the same way; a printed or entered area never carries this. */
+  estimatedArea: z.boolean().optional(),
 });
 
 export const floorplanOpeningSchema = z.object({
@@ -782,6 +786,8 @@ export function parseFloorplanLayout(raw: Record<string, unknown>): FloorplanLay
           bbox: parseBbox(r.bbox),
           source: parseEvidence(r.source),
           confidence: r.confidence != null ? Number(r.confidence) : undefined,
+          estimatedDims: r.estimatedDims === true ? true : undefined,
+          estimatedArea: r.estimatedArea === true ? true : undefined,
         };
       })
       .filter((r) => r.name.length > 0),
