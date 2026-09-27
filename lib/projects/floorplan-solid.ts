@@ -2550,6 +2550,17 @@ export function findTerracesOnFloor(
   const pitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 2;
   const step = Math.max(1, pitch);
   const onFloor = (x: number, y: number) => spansContain(floor, x, y);
+  // Open ground, with floor on every side of it. The footprint is closed by a
+  // third of a metre, which leaves a hairline of "floor" along the outside of
+  // a wall; on דירה 14 the 3.16 m² roof terrace walked up that line to the
+  // west terrace, measured 5.9 m² and was dropped.
+  const open = (x: number, y: number) =>
+    onFloor(x, y) &&
+    onFloor(x + step, y) &&
+    onFloor(x - step, y) &&
+    onFloor(x, y + step) &&
+    onFloor(x, y - step) &&
+    !pointHitsBody(x, y, bodies);
   const out: Terrace[] = [];
 
   for (const area of areas) {
@@ -2597,7 +2608,7 @@ export function findTerracesOnFloor(
         const x = cur.x + dx;
         const y = cur.y + dy;
         const key = `${Math.round(x / step)}:${Math.round(y / step)}`;
-        if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+        if (seen.has(key) || !open(x, y)) continue;
         seen.add(key);
         stack.push({ x, y });
       }

@@ -130,6 +130,23 @@ describe("findTerracesOnFloor", () => {
       findTerracesOnFloor(floor, [], [{ x: 50, y: 50, value: 5.12 }], upm),
     ).toEqual([]);
   });
+
+  it("does not walk a hairline of floor to the next terrace", () => {
+    // The footprint is closed by a third of a metre, which leaves a strip of
+    // "floor" one row wide along the outside of a wall. On דירה 14 the 3.16 m²
+    // roof terrace walked up it to the west terrace and was dropped.
+    const upm = 50;
+    const floor: SpanRow[] = [];
+    for (let y = 0; y < 400; y += 2) {
+      const spans: Array<[number, number]> =
+        y < 100 ? [[0, 100]] : y < 200 ? [[48, 50]] : [[0, 300]];
+      floor.push({ y, spans });
+    }
+    const found = findTerracesOnFloor(floor, [], [{ x: 50, y: 50, value: 4 }], upm);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.floodedM2).toBeGreaterThan(3);
+    expect(found[0]!.floodedM2).toBeLessThan(5);
+  });
 });
 
 describe("the diagonal an Israeli sheet draws across a terrace", () => {
