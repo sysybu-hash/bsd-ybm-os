@@ -395,6 +395,130 @@ export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody
 }
 
 /**
+ * Closes a wall across a window the sheet draws as glazing lines.
+ *
+ * A window is drawn as thin parallel lines inside the wall's band, not as
+ * hatch, so the hatched pieces either side of it stop short and the room
+ * behind it is open to the outside. bridgeOpenings closes gaps up to a door's
+ * width between pieces of one line; a wider window, or one that runs up to a
+ * perpendicular wall, stays open. דירה 14's ממ"ד has a 1.40 m sliding window
+ * between its west wall and the start of its north wall, the flood came in
+ * through it, and the whole room was read as outdoors — so the flat came
+ * back one bedroom short and the measured route was refused.
+ *
+ * A gap is closed only where thin lines run inside the wall's own band across
+ * most of it. An open-plan passage or a doorway has no such lines and stays
+ * open; furniture is not drawn inside a wall.
+ */
+export function bridgeGlazedGaps(
+  bodies: WallBody[],
+  segments: Array<{ x1: number; y1: number; x2: number; y2: number }>,
+  unitsPerMetre: number,
+  options?: {
+    maxGapM?: number;
+    minCover?: number;
+    /**
+     * The flat's floor. A window is in the envelope — floor on one side, none
+     * on the other — and only there is a glazed gap closed: an inside wall has
+     * floor on both sides, and closing thin lines there split bathrooms and
+     * bedrooms on four of the ten reference sheets.
+     */
+    floor?: SpanRow[];
+  },
+): WallBody[] {
+  const maxGap = unitsPerMetre * (options?.maxGapM ?? 3);
+  const floor = options?.floor ?? [];
+  const onFloor = (x: number, y: number): boolean => {
+    if (floor.length === 0) return false;
+    let row = floor[0]!;
+    for (const candidate of floor) if (Math.abs(candidate.y - y) < Math.abs(row.y - y)) row = candidate;
+    const pitch = floor.length > 1 ? Math.abs(floor[1]!.y - floor[0]!.y) : 1;
+    if (Math.abs(row.y - y) > pitch * 1.5) return false;
+    return row.spans.some(([a, b]) => x >= a && x <= b);
+  };
+  const inEnvelope = (body: WallBody, mid: number): boolean => {
+    if (floor.length === 0) return true;
+    const reach = body.thickness / 2 + unitsPerMetre * 0.3;
+    const [a, b] =
+      body.orientation === "h"
+        ? [onFloor(mid, body.centre - reach), onFloor(mid, body.centre + reach)]
+        : [onFloor(body.centre - reach, mid), onFloor(body.centre + reach, mid)];
+    return a !== b;
+  };
+  const minCover = options?.minCover ?? 0.7;
+  const tolerance = unitsPerMetre * 0.1;
+  const along = (seg: { x1: number; y1: number; x2: number; y2: number }, orientation: "h" | "v") => {
+    const flat = orientation === "h" ? Math.abs(seg.y2 - seg.y1) < 0.7 : Math.abs(seg.x2 - seg.x1) < 0.7;
+    if (!flat) return null;
+    return orientation === "h"
+      ? { at: (seg.y1 + seg.y2) / 2, from: Math.min(seg.x1, seg.x2), to: Math.max(seg.x1, seg.x2) }
+      : { at: (seg.x1 + seg.x2) / 2, from: Math.min(seg.y1, seg.y2), to: Math.max(seg.y1, seg.y2) };
+  };
+  const out: WallBody[] = [];
+  for (const body of bodies) {
+    const low = body.centre - body.thickness / 2 - tolerance;
+    const high = body.centre + body.thickness / 2 + tolerance;
+    for (const dir of [-1, 1] as const) {
+      const end = dir < 0 ? body.from : body.to;
+      // The next wall along this one's line: a piece of the same wall, or a
+      // wall across it whose band the line runs into.
+      let stop: number | null = null;
+      for (const other of bodies) {
+        if (other === body) continue;
+        let at: number | null = null;
+        if (other.orientation === body.orientation) {
+          if (!overlapAcross(body, other, 0.5)) continue;
+          at = dir > 0 ? other.from : other.to;
+        } else if (other.from - tolerance <= high && other.to + tolerance >= low) {
+          // A wall across this one's band, not only across its centre line: a
+          // corner is drawn with one wall stopping at the other's inner face.
+          at = other.centre - (dir * other.thickness) / 2;
+        }
+        if (at == null || (at - end) * dir <= 0) continue;
+        if (stop == null || (at - end) * dir < (stop - end) * dir) stop = at;
+      }
+      if (stop == null) continue;
+      const from = Math.min(end, stop);
+      const to = Math.max(end, stop);
+      const gap = to - from;
+      if (gap <= 0 || gap > maxGap) continue;
+      // Glazing: thin lines inside this wall's band, laid along it, over the gap
+      // — at least two of them, apart across the band, each covering most of
+      // it. A window is drawn as two or three such lines; a single line on the
+      // envelope is a railing or the edge of paving, and closing that shut a
+      // bathroom off on דירה 15.
+      const lines = segments
+        .map((seg) => along(seg, body.orientation))
+        .filter((line): line is NonNullable<typeof line> => line != null)
+        .filter((line) => line.at >= low && line.at <= high && line.to > from && line.from < to);
+      const coverAt = new Map<number, Array<readonly [number, number]>>();
+      for (const line of lines) {
+        const key = Math.round(line.at / (unitsPerMetre * 0.02));
+        const list = coverAt.get(key) ?? [];
+        list.push([Math.max(line.from, from), Math.min(line.to, to)] as const);
+        coverAt.set(key, list);
+      }
+      const coveredBy = (pieces: Array<readonly [number, number]>) => {
+        let covered = 0;
+        let reach = from;
+        for (const [a, b] of [...pieces].sort((p, q) => p[0] - q[0])) {
+          if (b <= reach) continue;
+          covered += b - Math.max(a, reach);
+          reach = b;
+        }
+        return covered;
+      };
+      const glazedLines = [...coverAt.values()].filter((pieces) => coveredBy(pieces) >= gap * minCover).length;
+      if (glazedLines < 2) continue;
+      if (!inEnvelope(body, (from + to) / 2)) continue;
+      if (out.some((kept) => kept.orientation === body.orientation && kept.centre === body.centre && kept.from === from && kept.to === to)) continue;
+      out.push({ orientation: body.orientation, centre: body.centre, thickness: body.thickness, from, to, source: body.source });
+    }
+  }
+  return out;
+}
+
+/**
  * Extends walls to the walls they nearly meet, so corners actually close.
  *
  * CAD draws a corner as two lines that stop at the joint, at the inner face, or

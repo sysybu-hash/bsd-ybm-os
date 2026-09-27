@@ -1,6 +1,7 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { inferRoomKind, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
+  bridgeGlazedGaps,
   bridgeOpenings,
   interiorComponents,
   spanArea,
@@ -375,6 +376,7 @@ export function segmentRooms(input: {
   const seal = unitsPerMetre * 0.25;
   const barriers = [
     ...bridgeOpenings(bodies, unitsPerMetre * 1.3),
+    ...bridgeGlazedGaps(bodies, input.segments ?? [], unitsPerMetre, { floor }),
     ...openings.map((o) => sealOpening(o, seal)),
     ...(input.colouredDoorways ?? []),
   ];
