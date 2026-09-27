@@ -6,6 +6,8 @@
  * no network call to Stripe, no real money movement. Only the DB-writing apply
  * functions are mocked, so this proves the route correctly verifies + routes events.
  */
+process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+process.env.NEXTAUTH_SECRET = "test-nextauth-secret";
 process.env.STRIPE_SECRET_KEY = "sk_test_fake_key_for_signature_verification_only";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_fake_secret_for_signing_only";
 
