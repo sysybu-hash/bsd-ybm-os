@@ -843,6 +843,8 @@
       "editRoomsHint": "Check each room against the sheet: name, type and area. What you save replaces the automatic read, and the booklet is built from it.",
       "roomName": "Room name",
       "roomArea": "Area in m²",
+      "roomBeds": "Beds in the room",
+      "roomBedsShort": "beds",
       "addRoom": "Add room",
       "removeRoom": "Remove room",
       "saveRooms": "Save rooms",

@@ -12,7 +12,15 @@ import {
 import { OsButton, OsIconButton } from "@/components/os/ui";
 import { MeasuredPlanSvg, sourceLabel, type TFn } from "@/components/os/widgets/floorplan-viz/FloorplanVizGallery";
 
-export type DraftRow = { key: string; base?: FloorplanRoom; name: string; kind: FloorplanRoomKind; area: string };
+export type DraftRow = {
+  key: string;
+  base?: FloorplanRoom;
+  name: string;
+  kind: FloorplanRoomKind;
+  area: string;
+  /** Beds the sheet draws in the room; the audit grades a still's bed count against the sum. */
+  beds?: string;
+};
 
 export function toDraft(rooms: FloorplanRoom[]): DraftRow[] {
   return rooms.map((room, i) => ({
@@ -21,6 +29,7 @@ export function toDraft(rooms: FloorplanRoom[]): DraftRow[] {
     name: room.name,
     kind: room.kind ?? inferRoomKind(room.name),
     area: room.areaM2 != null ? String(room.areaM2) : "",
+    beds: room.bedCount != null ? String(room.bedCount) : "",
   }));
 }
 
@@ -36,11 +45,15 @@ export function fromDraft(rows: DraftRow[]): FloorplanRoom[] | null {
     if (!name) return null;
     const area = row.area.trim() === "" ? undefined : Number(row.area);
     if (area !== undefined && !(area > 0 && area < 1000)) return null;
+    const bedsText = (row.beds ?? "").trim();
+    const beds = bedsText === "" ? undefined : Number(bedsText);
+    if (beds !== undefined && !(Number.isInteger(beds) && beds >= 0 && beds <= 8)) return null;
     rooms.push({
       ...(row.base ?? {}),
       name,
       kind: row.kind,
       areaM2: area,
+      bedCount: beds,
     });
   }
   return rooms;
@@ -141,6 +154,16 @@ export default function FloorplanVizRoomsDetails({
                   placeholder={t("workspaceWidgets.floorplanViz.unitM2")}
                   onChange={(e) => update(row.key, { area: e.target.value })}
                 />
+                {row.kind === "bedroom" || row.kind === "mmd" ? (
+                  <input
+                    aria-label={t("workspaceWidgets.floorplanViz.roomBeds")}
+                    inputMode="numeric"
+                    className="w-12 rounded border border-[color:var(--border-main)] bg-transparent px-1.5 py-1"
+                    value={row.beds ?? ""}
+                    placeholder={t("workspaceWidgets.floorplanViz.roomBedsShort")}
+                    onChange={(e) => update(row.key, { beds: e.target.value })}
+                  />
+                ) : null}
                 <OsIconButton
                   label={t("workspaceWidgets.floorplanViz.removeRoom")}
                   size="sm"

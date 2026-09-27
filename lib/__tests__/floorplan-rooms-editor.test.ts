@@ -22,4 +22,14 @@ describe("the room editor's save", () => {
     expect(fromDraft([{ key: "n", name: " ", kind: "balcony", area: "" }])).toBeNull();
     expect(fromDraft([{ key: "n", name: "מרפסת", kind: "balcony", area: "-2" }])).toBeNull();
   });
+
+  it("saves the beds a person counted, and refuses a count that is not a whole number", () => {
+    const rows = toDraft(read);
+    rows[0] = { ...rows[0]!, beds: "2" };
+    expect(fromDraft(rows)?.[0]?.bedCount).toBe(2);
+    rows[0] = { ...rows[0]!, beds: "" };
+    expect(fromDraft(rows)?.[0]?.bedCount).toBeUndefined();
+    rows[0] = { ...rows[0]!, beds: "1.5" };
+    expect(fromDraft(rows)).toBeNull();
+  });
 });
