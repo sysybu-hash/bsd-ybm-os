@@ -10,6 +10,12 @@ import { OsIconButton } from "@/components/os/ui";
 
 const Z = OS_FULLSCREEN_MEDIA_Z;
 
+/**
+ * The toolbar sits on the black backdrop, where the shared quiet-button's card
+ * surface came out as five blank white squares with white icons on them.
+ */
+const TOOL_BUTTON = "!border-white/25 !bg-white/10 !text-white hover:!bg-white/20";
+
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
 function srcOf(img: FloorplanVizImage): string {
@@ -97,24 +103,24 @@ export default function FloorplanVizLightbox({
         <span className="text-[11px] text-white/70">
           {index + 1} / {images.length}
         </span>
-        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomOut")} size="sm" onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}>
+        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomOut")} size="sm" className={TOOL_BUTTON} onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}>
           <Minus size={16} className="text-white" />
         </OsIconButton>
-        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomIn")} size="sm" onClick={() => setScale((s) => Math.min(5, s + 0.25))}>
+        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomIn")} size="sm" className={TOOL_BUTTON} onClick={() => setScale((s) => Math.min(5, s + 0.25))}>
           <Plus size={16} className="text-white" />
         </OsIconButton>
-        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomReset")} size="sm" onClick={resetView}>
+        <OsIconButton label={t("workspaceWidgets.floorplanViz.zoomReset")} size="sm" className={TOOL_BUTTON} onClick={resetView}>
           <RotateCcw size={16} className="text-white" />
         </OsIconButton>
         <a
           href={src}
           download={fileNameOf(img, index)}
-          className="quiet-button inline-flex h-8 w-8 items-center justify-center !min-h-0 !p-0 text-white"
+          className={`quiet-button inline-flex h-8 w-8 items-center justify-center !min-h-0 !p-0 ${TOOL_BUTTON}`}
           aria-label={t("projectDashboard.vizDownload")}
         >
           <Download size={16} />
         </a>
-        <OsIconButton label={t("workspaceWidgets.floorplanViz.closePreview")} size="sm" onClick={onClose}>
+        <OsIconButton label={t("workspaceWidgets.floorplanViz.closePreview")} size="sm" className={TOOL_BUTTON} onClick={onClose}>
           <X size={16} className="text-white" />
         </OsIconButton>
       </div>
