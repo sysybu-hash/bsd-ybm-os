@@ -643,6 +643,7 @@ export function enrichLayoutForBooklet(
     ceilingHeightM: layout.ceilingHeightM,
     north: layout.north,
     grossAreaM2: known?.grossM2 ?? gross ?? layout.grossAreaM2,
+    unitLevelM: layout.unitLevelM,
     rooms: rooms.length > 0 ? rooms : layout.rooms,
     dimensionStrings: layout.dimensionStrings,
     notes: layout.notes,
@@ -671,6 +672,7 @@ export function pickRicherBookletLayout(
     unitLabel: posted.unitLabel || stored.unitLabel,
     floor: posted.floor || stored.floor,
     grossAreaM2: posted.grossAreaM2 ?? stored.grossAreaM2,
+    unitLevelM: posted.unitLevelM ?? stored.unitLevelM,
     ceilingHeightM: posted.ceilingHeightM ?? stored.ceilingHeightM,
     rooms,
   };
@@ -824,6 +826,7 @@ export function layoutForHonestBooklet(
     ceilingHeightM: base.ceilingHeightM,
     north: base.north,
     grossAreaM2: truth?.grossM2 ?? base.grossAreaM2,
+    unitLevelM: base.unitLevelM,
     rooms,
     dimensionStrings: base.dimensionStrings,
     notes: [

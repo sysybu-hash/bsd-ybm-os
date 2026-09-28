@@ -25,6 +25,21 @@ describe("programmeTerraceSeeds", () => {
     ).toEqual([{ x: 250, y: 650, value: 6.4 }]);
   });
 
+  it("seeds no terrace the programme reads at another level than the flat", () => {
+    // דירה 22 draws two terraces at +14.36 beside a flat at +11.42.
+    const room = (levelM: number) => ({
+      name: "מרפסת",
+      kind: "balcony" as const,
+      areaM2: 8,
+      levelM,
+      bbox: { x: 0.2, y: 0.3, w: 0.1, h: 0.05 },
+    });
+    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(14.36)] }, page, extent, [], 50)).toEqual([]);
+    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(11.42)] }, page, extent, [], 50)).toEqual([
+      { x: 250, y: 650, value: 8 },
+    ]);
+  });
+
   it("does not duplicate a balcony already seeded by a printed area label", () => {
     expect(
       programmeTerraceSeeds(
@@ -114,5 +129,21 @@ describe("applyProgrammeMmdLabel", () => {
         height: 2000,
       }).map((entry) => entry.kind),
     ).toEqual(["bedroom", "bedroom"]);
+  });
+});
+
+describe("the levels the programme reads", () => {
+  it("keeps the flat's level and each terrace's, as printed", async () => {
+    const { parseFloorplanLayout } = await import("@/lib/projects/floorplan-layout");
+    const layout = parseFloorplanLayout({
+      unitLevelM: "+11.42",
+      rooms: [
+        { name: "מרפסת", kind: "balcony", levelM: "+14.36", bbox: { x: 0.2, y: 0.3, w: 0.1, h: 0.05 } },
+        { name: "סלון", kind: "living", levelM: null },
+      ],
+    });
+    expect(layout.unitLevelM).toBe(11.42);
+    expect(layout.rooms[0]!.levelM).toBe(14.36);
+    expect(layout.rooms[1]!.levelM).toBeUndefined();
   });
 });

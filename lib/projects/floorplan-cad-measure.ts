@@ -65,6 +65,7 @@ export async function stampCadMeasuresOnLayout(
     ceilingHeightM: layout.ceilingHeightM,
     north: layout.north,
     grossAreaM2: layout.grossAreaM2,
+    unitLevelM: layout.unitLevelM,
     rooms,
     dimensionStrings: layout.dimensionStrings,
     notes: layout.notes,

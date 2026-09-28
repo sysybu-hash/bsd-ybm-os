@@ -60,6 +60,12 @@ export const floorplanRoomSchema = z.object({
   estimatedDims: z.boolean().optional(),
   /** Area guessed the same way; a printed or entered area never carries this. */
   estimatedArea: z.boolean().optional(),
+  /**
+   * The elevation the sheet prints at this room's level mark (⊕ +9.64), in
+   * metres. A terrace at another level than the flat is the roof of the flat
+   * below or the terrace above, drawn for context, and not this flat's.
+   */
+  levelM: z.number().min(-50).max(500).optional(),
 });
 
 export const floorplanOpeningSchema = z.object({
@@ -96,6 +102,8 @@ export const floorplanLayoutSchema = z.object({
   ceilingHeightM: z.number().positive().optional(),
   north: z.string().optional(),
   grossAreaM2: z.number().positive().optional(),
+  /** The flat's own elevation, printed beside its number and gross area. */
+  unitLevelM: z.number().min(-50).max(500).optional(),
   rooms: z.array(floorplanRoomSchema).optional().default([]),
   openings: z.array(floorplanOpeningSchema).optional().default([]),
   dimensionStrings: z.array(z.string()).optional().default([]),
@@ -641,6 +649,13 @@ export function extractRoomNameHits(text: string): string[] {
   return hits;
 }
 
+/** A printed elevation — "+9.64", "-0.10", 12.79 — in metres. */
+export function parseLevelM(raw: unknown): number | undefined {
+  if (raw == null || raw === "") return undefined;
+  const n = typeof raw === "number" ? raw : Number(String(raw).replace(/[^\d.\-]/g, ""));
+  return Number.isFinite(n) && n >= -50 && n <= 500 ? n : undefined;
+}
+
 export function parseMeters(raw: unknown): number | undefined {
   if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
   if (typeof raw !== "string") return undefined;
@@ -788,6 +803,7 @@ export function parseFloorplanLayout(raw: Record<string, unknown>): FloorplanLay
           confidence: r.confidence != null ? Number(r.confidence) : undefined,
           estimatedDims: r.estimatedDims === true ? true : undefined,
           estimatedArea: r.estimatedArea === true ? true : undefined,
+          levelM: parseLevelM(r.levelM ?? r.level),
         };
       })
       .filter((r) => r.name.length > 0),
@@ -800,6 +816,7 @@ export function parseFloorplanLayout(raw: Record<string, unknown>): FloorplanLay
     ceilingHeightM: parseMeters(raw.ceilingHeightM ?? raw.ceilingHeight),
     north: raw.north != null ? String(raw.north) : undefined,
     grossAreaM2: parseMeters(raw.grossAreaM2 ?? raw.areaGrossM2 ?? raw.grossArea),
+    unitLevelM: parseLevelM(raw.unitLevelM ?? raw.unitLevel),
     rooms,
     openings: openingsRaw
       .map((row) => {
