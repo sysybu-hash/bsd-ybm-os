@@ -68,4 +68,22 @@ describe("a room the sheet draws empty", () => {
     expect(kept).toHaveLength(1);
     expect(kept[0]).toBe(inBedroom);
   });
+
+  it("clears nothing under a terrace's box, and never the sanitary ware", async () => {
+    // דירה 16 was read with an "empty" roof terrace whose rough box covered
+    // the bathroom beside it; clearing it took the pan and the bathroom.
+    const { clearFurnitureFromEmptyRooms } = await import(
+      "@/lib/projects/floorplan-programme-furniture"
+    );
+    const layout = parseFloorplanLayout({
+      rooms: [
+        { name: "מרפסת גג", kind: "balcony", bbox: { x: 0.25, y: 0.8, w: 0.2, h: 0.2 }, contents: "empty" },
+        { name: "ממ\"ד", bbox: { x: 0.35, y: 0.4, w: 0.2, h: 0.15 }, contents: "empty" },
+      ],
+    });
+    const seatUnderTerraceBox = { ...piece(0.3 * page.width, 0.85 * page.height, 60, 60), kind: "seat" as const };
+    const panInShelterBox = { ...piece(0.4 * page.width, 0.45 * page.height, 40, 55), kind: "fixture" as const };
+    const kept = clearFurnitureFromEmptyRooms([seatUnderTerraceBox, panInShelterBox], layout, page);
+    expect(kept).toEqual([seatUnderTerraceBox, panInShelterBox]);
+  });
 });
