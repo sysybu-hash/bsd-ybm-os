@@ -66,6 +66,13 @@ export function deskFurnitureInOffices(
  * and once it is on the plate the image model photographs it, whatever the
  * prompt says about ממ"ד staying empty. The sheet already says the room is
  * empty; that is enough to clear it.
+ *
+ * A room, not a terrace, and never the sanitary ware. The programme's boxes
+ * are the model's reading and they are rough: דירה 16's was read with an
+ * "empty" roof terrace whose box covered the bathroom next to it, and the
+ * pan and basin the lines measure there were cleared with it — the flat lost
+ * a bathroom and the measured route. A fixture inside a box read as empty
+ * says the box is wrong, not the fixture.
  */
 export function clearFurnitureFromEmptyRooms(
   furniture: FurniturePiece[],
@@ -76,6 +83,7 @@ export function clearFurnitureFromEmptyRooms(
   const empties = layout.rooms.filter(
     (room) =>
       room.bbox != null &&
+      room.kind !== "balcony" &&
       (room.bedCount ?? 0) === 0 &&
       typeof room.contents === "string" &&
       room.contents.trim().toLowerCase() === "empty",
@@ -83,6 +91,7 @@ export function clearFurnitureFromEmptyRooms(
   if (empties.length === 0) return furniture;
 
   return furniture.filter((piece) => {
+    if (piece.kind === "fixture" || piece.kind === "sink") return true;
     const cx = (piece.x + piece.w / 2) / page.width;
     const cy = (piece.y + piece.h / 2) / page.height;
     return !empties.some((room) => {

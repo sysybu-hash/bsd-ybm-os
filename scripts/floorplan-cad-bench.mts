@@ -16,6 +16,10 @@
  *
  * Each sheet also carries the confidence verdict the geometry-only plate would
  * get, so a change to an acceptance threshold is answered per sheet too.
+ *
+ * FLOORPLAN_BENCH_PROGRAMMES=programmes.json hands each sheet the programme it
+ * was read as in production (see floorplan-bench-programmes.mts), as the
+ * measured route is handed it there. Without it the bench is geometry only.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -25,6 +29,7 @@ import { assessFloorplanRun } from "@/lib/projects/floorplan-confidence";
 import { measureBlockFidelity } from "@/lib/projects/floorplan-fidelity";
 import { flatExtentFromSheet } from "@/lib/projects/floorplan-render-flat";
 import { segmentRooms } from "@/lib/projects/floorplan-segment";
+import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import { extractFloorplanVectorGeometry } from "@/lib/projects/floorplan-vector";
 
 const dir = process.env.FLOORPLAN_BENCH_DIR ?? "תוכניות לביצוע הדמיות";
@@ -39,6 +44,12 @@ type TruthPlan = {
   terraces?: TruthTerrace[];
 };
 const truth = JSON.parse(fs.readFileSync("e2e/fixtures/floorplan-truth.json", "utf8")) as { plans: TruthPlan[] };
+const programmes = process.env.FLOORPLAN_BENCH_PROGRAMMES
+  ? (JSON.parse(fs.readFileSync(process.env.FLOORPLAN_BENCH_PROGRAMMES, "utf8")) as Record<
+      string,
+      { layout: FloorplanLayout }
+    >)
+  : {};
 const out: Record<string, unknown> = {};
 const filter = process.env.FLOORPLAN_BENCH_FILTER;
 for (const plan of truth.plans.filter((row) => !filter || row.file.includes(filter))) {
@@ -49,10 +60,11 @@ for (const plan of truth.plans.filter((row) => !filter || row.file.includes(filt
   const terraces = onLevel.reduce((sum, t) => sum + t.m2, 0);
   try {
     const extent = await flatExtentFromSheet(pdf);
-    const flat = await buildFlatFromPdf(pdf, plan.grossM2 + terraces, { extent: extent ?? undefined });
+    const programme = programmes[plan.file]?.layout;
+    const flat = await buildFlatFromPdf(pdf, plan.grossM2 + terraces, { extent: extent ?? undefined, programme });
     if (!flat) { out[plan.file] = { flat: null }; continue; }
     const geo = await extractFloorplanVectorGeometry(pdf);
-    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways, shelterMarks: flat.shelterMarks });
+    const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways, shelterMarks: flat.shelterMarks, programme: programme?.rooms, page: geo ? { width: geo.pageWidth, height: geo.pageHeight } : undefined });
     const count = (kind: string) => rooms.filter((room) => room.kind === kind).length;
     const expectedTerraces = onLevel.length;
     const actual = {
