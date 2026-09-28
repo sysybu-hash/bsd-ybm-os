@@ -56,6 +56,7 @@ Return JSON only:
       "adjacentTo": string[],
       "bbox": { "x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0 },
       "levelM": number | null,
+      "accessibleFromUnit": boolean | null,
       "finishNotes": string | null,
       "bedCount": 0,
       "deskCount": 0,
@@ -99,7 +100,7 @@ Rules:
 - One drawn terrace = one balcony. A מ"ר number is not an extra balcony. 0.64 מ"ר is a tiny strip — do not read it as 6.4. Living terrace and a second terrace only if both are printed.
 - grossAreaM2 = printed apartment area (111.29), not balcony area.
 - unitLevelM = the elevation printed in the apartment's own box, beside its number and gross area (⊕ +9.64 → 9.64).
-- Every terrace the sheet draws is one balcony object — including one whose area figure is drawn in outline lettering or not printed at all. Each one gets a bbox drawn tight round its paved area, its printed area in areaM2 when there is one, and levelM = the elevation printed at the ⊕ mark on it (+12.79 → 12.79). A terrace whose levelM differs from unitLevelM is still returned, with its own levelM: it is a roof or a terrace on another floor, and the level says so.
+- Every terrace the sheet draws is one balcony object — including one whose area figure is drawn in outline lettering or not printed at all. Each one gets a bbox drawn tight round its paved area, its printed area in areaM2 when there is one, and levelM = the elevation printed at the ⊕ mark on it (+12.79 → 12.79). Return every terrace, whatever its level, with its own levelM. For each one set accessibleFromUnit: true when a door swing, a sliding door or a doorway drawn in this apartment's wall opens onto it; false when this apartment reaches it only through windows or not at all (an escape hatch / פתח חילוץ is not a way out). A terrace at another level with a door onto it is still this apartment's terrace.
 - levelM on any other room only when an elevation is printed inside it; otherwise null.
 - Doors only where a swing is drawn. Do not flatten a duplex that is actually drawn. Do not invent a duplex that is not.
 - OCR grounding is for numbers/labels, not a reason to skip unlabeled kitchen/bath/living.

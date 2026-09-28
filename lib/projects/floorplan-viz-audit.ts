@@ -198,7 +198,7 @@ Definitions, applied strictly:
   metallic or panel fridge cabinet is visible in the kitchen — even without a
   brand logo. Do not set true when unsure.
 - hasBurnedText: true ONLY if readable room names, dimension strings, area figures, or a title-block caption are burned into the photograph. Blank book spines, wood grain, rug patterns, and abstract shelf texture that do not resolve into readable letters do NOT count. false if the only "text-like" marks are unmarked sefarim spines.
-- hasCadMarks: true if any 2D drawing annotation survived into the render — a solid black entrance triangle, a north arrow, dimension ticks, or hatch drawn flat on a floor.
+- hasCadMarks: true if any 2D drawing annotation survived into the render — a north arrow, dimension ticks, or hatch drawn flat on a floor. The small black entrance triangle OUTSIDE the front door is wanted and does not count; a black triangle painted inside the apartment or on a terrace does.
 - emptyUnfurnishedRooms: enclosed rooms with floor and walls but no furniture at all.
 - emptyBedrooms: rooms the PLAN draws as a bedroom with a bed rectangle that in the STILL have no mattress. A wardrobe-only room where the sheet draws a bed is 1. Empty ממ"ד that the sheet draws empty is NOT counted. 0 if every drawn bed has a mattress.
 - oversizedTerraces: how many outdoor decks in the STILL are as large as a bedroom, or clearly larger than the printed terrace pocket. A 4–5 m² doorway-deep strip grown to bedroom size is 1. A roof terrace pulled onto this floor and merged with a same-level pocket counts as 1. 0 if every terrace stays a small hatched strip.

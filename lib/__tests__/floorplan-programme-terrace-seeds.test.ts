@@ -27,17 +27,21 @@ describe("programmeTerraceSeeds", () => {
 
   it("seeds no terrace the programme reads at another level than the flat", () => {
     // דירה 22 draws two terraces at +14.36 beside a flat at +11.42.
-    const room = (levelM: number) => ({
+    const room = (levelM: number, accessibleFromUnit?: boolean) => ({
       name: "מרפסת",
       kind: "balcony" as const,
       areaM2: 8,
       levelM,
+      accessibleFromUnit,
       bbox: { x: 0.2, y: 0.3, w: 0.1, h: 0.05 },
     });
-    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(14.36)] }, page, extent, [], 50)).toEqual([]);
-    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(11.42)] }, page, extent, [], 50)).toEqual([
-      { x: 250, y: 650, value: 8 },
-    ]);
+    const seeded = [{ x: 250, y: 650, value: 8 }];
+    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(14.36, false)] }, page, extent, [], 50)).toEqual([]);
+    expect(programmeTerraceSeeds({ unitLevelM: 11.42, rooms: [room(11.42, false)] }, page, extent, [], 50)).toEqual(seeded);
+    // דירה 20: "+15.94" printed beside a +12.79 flat, and a bedroom door out
+    // onto it — the flat's terrace. Unread access leaves it the flat's too.
+    expect(programmeTerraceSeeds({ unitLevelM: 12.79, rooms: [room(15.94, true)] }, page, extent, [], 50)).toEqual(seeded);
+    expect(programmeTerraceSeeds({ unitLevelM: 12.79, rooms: [room(15.94)] }, page, extent, [], 50)).toEqual(seeded);
   });
 
   it("does not duplicate a balcony already seeded by a printed area label", () => {
@@ -138,12 +142,13 @@ describe("the levels the programme reads", () => {
     const layout = parseFloorplanLayout({
       unitLevelM: "+11.42",
       rooms: [
-        { name: "מרפסת", kind: "balcony", levelM: "+14.36", bbox: { x: 0.2, y: 0.3, w: 0.1, h: 0.05 } },
+        { name: "מרפסת", kind: "balcony", levelM: "+14.36", accessibleFromUnit: false, bbox: { x: 0.2, y: 0.3, w: 0.1, h: 0.05 } },
         { name: "סלון", kind: "living", levelM: null },
       ],
     });
     expect(layout.unitLevelM).toBe(11.42);
     expect(layout.rooms[0]!.levelM).toBe(14.36);
+    expect(layout.rooms[0]!.accessibleFromUnit).toBe(false);
     expect(layout.rooms[1]!.levelM).toBeUndefined();
   });
 });

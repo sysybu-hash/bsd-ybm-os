@@ -269,7 +269,7 @@ GEOMETRY — the sales drawing is the only floor plate:
 - Furniture follows CAD symbols: one dining table if one is drawn, island stools as drawn, office = enclosed desks, empty ממ"ד stays empty.
 - Indoor rooms stay indoor. Do not convert living, kitchen, hall, entrance (מבואה / כניסה) or bedrooms into outdoor paving or a courtyard. The front door is not a terrace. Terraces exist only where the sheet hatches them with a printed area figure, and they stay that small — never a deck down the kitchen, living, or entrance wall. Never turn a hatched terrace into an indoor sitting room.
 - A terrace whose elevation mark differs from the unit's ⊕ is a roof terrace. Do not pull it into this floor as a room. Stairs up to it stay outdoor.
-- Do not 3D-print CAD annotations (entrance arrows, north marks, ticks, hatch). Closet hatch = cabinets with doors. Wet pans = toilets/basins/tubs in those rooms.
+- Do not 3D-print CAD annotations (north marks, ticks, hatch). Keep the entrance arrow: the small solid black triangle the sheet prints OUTSIDE the front door, on the landing side, in the same place — it marks where the home is entered. Never inside the apartment, never on a terrace, never as a floor pattern. Closet hatch = cabinets with doors. Wet pans = toilets/basins/tubs in those rooms.
 - ZERO numbers, letters, or color-block captions on the photograph.
 `.trim();
 
@@ -290,7 +290,7 @@ ENTRANCE (כניסה / מבואה) — non-negotiable:
 - The door LEAF must be visible in the still — ajar or closed in the opening. An unbroken outer wall where the plan draws the entrance is a failed still. A balcony slider is NOT the front door.
 - It is NOT a terrace, balcony, courtyard, or open deck. Do not put paving, planters, or open sky where the entrance is.
 - Do not replace the entrance with a terrace. Terraces exist only where the sheet hatches a pocket labelled מרפסת with its own area figure, elsewhere on the sheet.
-- A black entrance triangle is a 2D drawing mark. Do not paint it on the floor. Build a real door and an indoor hall there.
+- Build a real door and an indoor hall at the front door. The black entrance triangle stays OUTSIDE that door, where the sheet prints it — never painted on the hall floor.
 `.trim();
 
 function viewHint(
@@ -329,7 +329,7 @@ function viewHint(
         : "",
       "Kitchen sinks: copy the plan. A double-bowl sink is ONE fixture on the drawn counter. Do not add a second or third sink. No island sink unless the plan draws a basin on the island. An L-run stays L; do not weld the island into a U-kitchen.",
       "Copy furniture symbols from the plan: dining table size and the exact chair count around it, island stool count, closet blocks, bed rectangles. If the living draws only a dining table, do not add a sofa or armchair. A bedroom with a drawn bed rectangle must have a mattress — never empty floor with only a closet. Empty ממ\"ד stays empty. Style must not change fixture or furniture count.",
-      "Hatched closet rectangles become built-in cabinets with CLOSED doors. Bathrooms show the drawn toilet, basin, and tub — never empty tiled rooms. Omit the CAD entrance arrow.",
+      "Hatched closet rectangles become built-in cabinets with CLOSED doors. Bathrooms show the drawn toilet, basin, and tub — never empty tiled rooms. Keep the entrance arrow: the small solid black triangle the sheet prints OUTSIDE the front door, on the landing side, in the same place — it marks where the home is entered. Never inside the apartment, never on a terrace, never as a floor pattern.",
       "ZERO letters on the output. Do not paint Hebrew or Latin room names, numbers, or captions on floors or walls.",
     ].join(" ");
   }

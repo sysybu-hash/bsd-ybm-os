@@ -232,7 +232,7 @@ FURNITURE LOCK (cutaway / isometric — non-negotiable):
 - Stair = treads and landing only. If inventory says no internal stair, do not model a stair at all.
 - Entrance / hall = no bed and no extra bedroom. No entrance sink unless the plan draws a basin.
 - Copy closet blocks as cabinets with closed doors. Copy island stools, dining-table size, and bed rectangles from the drawing symbols. Do not pack extra beds into a narrow room.
-- Omit CAD entrance arrows. Show wet fixtures in every bathroom that has pans on the sheet.
+- Keep the entrance arrow: the small solid black triangle the sheet prints OUTSIDE the front door, on the landing side, in the same place — it marks where the home is entered. Never inside the apartment, never on a terrace, never as a floor pattern. Show wet fixtures in every bathroom that has pans on the sheet.
 `.trim();
 
 /**

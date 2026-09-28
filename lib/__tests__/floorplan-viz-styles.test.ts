@@ -260,7 +260,7 @@ describe("floorplan viz style kits", () => {
     expect(prompt).toMatch(/PRESENTATION LOCK/);
     expect(prompt).toMatch(/CLOSED doors/);
     expect(prompt).toMatch(/empty tiled/i);
-    expect(prompt).toMatch(/CAD entrance arrow/i);
+    expect(prompt).toMatch(/Keep the entrance arrow/i);
     expect(prompt).toMatch(/Do not mirror/i);
     expect(prompt).toMatch(/SAME side of the frame/i);
     expect(prompt).toMatch(/Copy the dark wall graph 1:1/);
