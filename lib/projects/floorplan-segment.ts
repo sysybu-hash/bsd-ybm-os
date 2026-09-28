@@ -772,6 +772,21 @@ function splitMergedWetRooms(
       input.unitsPerMetre,
       input.minRoomM2,
     );
+    // One side a room and the other a wet scrap too small to be one: the
+    // scrap is a WC cell the flood cut to a corner and joined across a wall,
+    // and it is left out rather than keeping a bedroom with a pan in it. On
+    // דירה 17 that bedroom was the one thing between the flat and the
+    // measured route.
+    const scrap = (half: SegmentedRoom | null, rows: SpanRow[]) =>
+      !half && spanArea(rows) / (input.unitsPerMetre * input.unitsPerMetre) < WET_CELL_MIN_M2;
+    if (first && !first.mergedKinds && scrap(second, b)) {
+      out.push(first);
+      continue;
+    }
+    if (second && !second.mergedKinds && scrap(first, a)) {
+      out.push(second);
+      continue;
+    }
     if (!first || !second || first.mergedKinds || second.mergedKinds) {
       out.push(room);
       continue;

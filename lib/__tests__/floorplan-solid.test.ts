@@ -20,10 +20,13 @@ import {
   smoothFootprint,
   splitAcrossGaps,
   stubsInsideCrossingWalls,
+  thickHatchedWalls,
+  floorWithoutLanding,
   trimToHatchAlong,
   spanArea,
   wallBodiesFromHatch,
   wallBodiesFromSegments,
+  type SpanRow,
 } from "@/lib/projects/floorplan-solid";
 import type { WallRun } from "@/lib/projects/floorplan-rooms";
 
@@ -946,5 +949,57 @@ describe("joining rows into rooms across a wall", () => {
       walls: box,
     });
     expect(components).toHaveLength(1);
+  });
+});
+
+describe("the thick shelter wall the stroke cap loses", () => {
+  // 54 units a metre; two wall-pen faces 22.7 units (42 cm) apart, hatched at
+  // 45° with strokes 24 units long — just past the 0.45 m cap, as on דירה 15.
+  const upm = 54;
+  const face = (x: number) => ({ x1: x, y1: 238, x2: x, y2: 437, lineWidth: 14 });
+  const hatch = Array.from({ length: 80 }, (_, i) => {
+    const y = 240 + i * 2.5;
+    return { x1: 545, y1: y + 17, x2: 562, y2: y, lineWidth: 2 };
+  });
+
+  it("is found between two heavy faces when its hatch runs long", () => {
+    const walls = thickHatchedWalls([face(544.6), face(567.3), ...hatch], [], upm);
+    expect(walls).toHaveLength(1);
+    expect(walls[0]!.orientation).toBe("v");
+    expect(walls[0]!.thickness).toBeCloseTo(22.7, 0);
+  });
+
+  it("is not added again where a wall is already known along it", () => {
+    const known = [{ orientation: "v" as const, centre: 556, thickness: 22, from: 238, to: 437 }];
+    expect(thickHatchedWalls([face(544.6), face(567.3), ...hatch], known, upm)).toHaveLength(0);
+  });
+
+  it("leaves a band with no hatch in it alone", () => {
+    expect(thickHatchedWalls([face(544.6), face(567.3)], [], upm)).toHaveLength(0);
+  });
+});
+
+describe("the landing outside the front door", () => {
+  // A 10 by 6 m flat (500 x 300 at 50 a metre) with a 2 by 2 m landing below
+  // its bottom wall, the front door in that wall, and the entrance arrow on
+  // the landing.
+  const upm = 50;
+  const floor: SpanRow[] = [];
+  for (let y = 0; y < 400; y += 2) floor.push({ y, spans: y < 300 ? [[0, 500]] : [[200, 300]] });
+  const wall = { orientation: "h" as const, centre: 300, thickness: 6, from: 0, to: 500 };
+  const door = { orientation: "h" as const, centre: 300, thickness: 6, from: 225, to: 275 };
+  const area = (rows: SpanRow[]) => rows.reduce((sum, row) => sum + row.spans.reduce((s, [a, b]) => s + b - a, 0) * 2, 0);
+
+  it("is taken off the floor, flooded from the arrow with the door shut", () => {
+    const trimmed = floorWithoutLanding(floor, [wall, door], [{ x: 250, y: 350 }], upm);
+    expect(area(floor) - area(trimmed)).toBeGreaterThan(90 * 90);
+    expect(area(trimmed)).toBeGreaterThan(500 * 290);
+  });
+
+  it("is left alone when the flood comes in through an opening that was not found", () => {
+    // No door body: the arrow's flood reaches the whole flat.
+    const open = { ...wall, to: 225 };
+    const rest = { ...wall, from: 275 };
+    expect(floorWithoutLanding(floor, [open, rest], [{ x: 250, y: 350 }], upm)).toBe(floor);
   });
 });

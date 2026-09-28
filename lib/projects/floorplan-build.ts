@@ -32,6 +32,8 @@ import {
   findHatchGaps,
   findOpenings,
   stubsInsideCrossingWalls,
+  floorWithoutLanding,
+  spanArea,
   wallBodiesForSheet,
   type Opening,
   type SpanRow,
@@ -208,6 +210,8 @@ export async function buildFlatFromGeometry(
         : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
+  let floorM2 = lock.floorM2;
+  let areaError = lock.areaError;
 
   const rowHeight = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
   const inside = (x: number, y: number) => {
@@ -265,7 +269,7 @@ export async function buildFlatFromGeometry(
     trimToHatchAlong(
       kept.filter((body) => body.source !== "plotted"),
       evidence,
-      { unitsPerMetre, floor: lock.floor },
+      { unitsPerMetre, floor },
     ),
     evidence,
     unitsPerMetre,
@@ -588,13 +592,13 @@ export async function buildFlatFromGeometry(
         other.to > gap.from &&
         other.from < gap.to,
     );
-  const rowPitch = lock.floor.length > 1 ? lock.floor[1]!.y - lock.floor[0]!.y : 1;
+  const rowPitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
   // A terrace is not the flat's floor. The lock's floor runs out over the
   // balconies, so the door and the windows onto דירה 14's two terraces had
   // "floor" on both sides and were taken for doorways between rooms — drawn
   // as holes in the wall, each with a mezuzah.
   const floorAt = (x: number, y: number) =>
-    lock.floor.some(
+    floor.some(
       (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
     ) && !terraces.some((rows) => spansContain(rows, x, y));
   const floorSides = (gap: Opening): number => {
@@ -647,11 +651,14 @@ export async function buildFlatFromGeometry(
   }
   // The front door is the one the sheet's entrance arrow points through. By
   // the floor test alone it is a window: the landing is not the flat's floor.
-  const openings = placeEntranceDoor(
-    detected,
-    findEntranceMarkers([...geometry.segments, ...geometry.curves]),
-    { floor: lock.floor, bodies, unitsPerMetre },
-  );
+  const entranceMarkers = findEntranceMarkers([...geometry.segments, ...geometry.curves]);
+  const openings = placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre });
+  // The landing outside the front door is not the flat's; see floorWithoutLanding.
+  const flatFloor = floorWithoutLanding(floor, [...bodies, ...openings], entranceMarkers, unitsPerMetre);
+  if (flatFloor !== floor) {
+    floorM2 = spanArea(flatFloor) / (unitsPerMetre * unitsPerMetre);
+    areaError = printedAreaM2 > 0 ? floorM2 / printedAreaM2 - 1 : areaError;
+  }
 
   // A desk is a rectangle the classifier has to call storage, because a
   // sideboard is the same rectangle. The sheet already said which room is the
@@ -674,17 +681,17 @@ export async function buildFlatFromGeometry(
   return {
     unitsPerMetre,
     bodies,
-    floor,
+    floor: flatFloor,
     furniture: furnitureOffTerrace,
     openings,
     terraces,
     printedTerraceCount: printed.length,
     bounds,
-    floorM2: lock.floorM2,
-    areaError: lock.areaError,
+    floorM2,
+    areaError,
     svg: renderFlatSvg(bodies, bounds, {
       unitsPerMetre,
-      floor,
+      floor: flatFloor,
       furniture: furnishings,
       openings,
       terraces,

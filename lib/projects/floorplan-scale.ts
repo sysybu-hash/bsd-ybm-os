@@ -7,6 +7,7 @@ import {
   lintelBands,
   smoothFootprint,
   spanArea,
+  thickHatchedWalls,
   wallBodiesForSheet,
   type SpanRow,
   type WallBody,
@@ -121,12 +122,26 @@ export function collectScaleLocks(
   for (let unitsPerMetre = from; unitsPerMetre <= to; unitsPerMetre += step) {
     // Truncated at the boundary, not dropped: the party wall straddles it and
     // is still this flat's east wall.
-    const bodies = clipBodiesToBounds(
+    const walls = clipBodiesToBounds(
       wallBodiesForSheet(segments, { unitsPerMetre }),
       bounds,
       8,
       { truncate: true },
     );
+    // With the thick walls the stroke cap loses; see thickHatchedWalls. Where
+    // a sheet is cut at a ממ"ד's outer wall, the floor without it stopped at
+    // the shelter's inner wall, the area still matched — the landing outside
+    // the front door made up for it — and דירה 15 locked at 54 units a metre
+    // where its own dimensions say 57.
+    const bodies = [
+      ...walls,
+      ...clipBodiesToBounds(
+        thickHatchedWalls(segments, walls, unitsPerMetre, { minLengthM: 1.2 }),
+        bounds,
+        8,
+        { truncate: true },
+      ),
+    ];
     // Scanline, not flood. See footprintByScanFill: a flood cannot isolate a
     // flat on a sheet that carries two, and a scanline cannot leak.
     // Closed to about a third of a metre, which fills the scanline's notches
