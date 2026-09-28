@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
+import { fillEnclosedHoles, mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
  * The measured flat, in the smallest shape a viewer needs.
@@ -164,7 +164,8 @@ export function floorplanGeometryPayload(
       kind: room.kind,
       areaM2: room.areaM2,
       bounds: room.bounds,
-      rects: toRects(mergeSpanRows(room.rows)),
+      // The room's printed name left letter-shaped holes; see fillEnclosedHoles.
+      rects: toRects(mergeSpanRows(fillEnclosedHoles(room.rows, 0.5 * flat.unitsPerMetre ** 2))),
       bedCount: room.bedCount,
     })),
   };

@@ -68,6 +68,95 @@ export function mergeSpanRows(rows: SpanRow[], pitch?: number): Rect[] {
   return out.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
+/**
+ * A room's floor with its small enclosed holes filled.
+ *
+ * The room flood stops at the sheet's heavy ink, and the room's own printed
+ * name is heavy ink: every letter of "ח. שינה" left a hole in the floor the
+ * shape of the letter, and the render showed the room's name cut out of its
+ * floorboards. A hole wholly surrounded by the room and smaller than maxHole
+ * (drawing units squared) is floor. A column or a shaft is bigger, and is
+ * drawn by its own wall body anyway.
+ */
+export function fillEnclosedHoles(rows: SpanRow[], maxHole: number, pitch?: number): SpanRow[] {
+  if (rows.length < 3 || !(maxHole > 0)) return rows;
+  const step = pitch && pitch > 0 ? pitch : rowPitch(rows);
+  const sorted = [...rows].sort((a, b) => a.y - b.y);
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  for (const row of sorted) for (const [a, b] of row.spans) { x0 = Math.min(x0, a); x1 = Math.max(x1, b); }
+  if (!(x1 > x0)) return rows;
+  const cols = Math.ceil((x1 - x0) / step) + 2;
+  const y0 = sorted[0]!.y;
+  const lines = Math.round((sorted[sorted.length - 1]!.y - y0) / step) + 1;
+  if (cols * lines > 4_000_000) return rows;
+  // 1 = floor, 0 = not; one column of margin on every side is outside.
+  const grid = new Uint8Array(cols * (lines + 2));
+  const at = (c: number, r: number) => (r + 1) * cols + c;
+  for (const row of sorted) {
+    const r = Math.round((row.y - y0) / step);
+    for (const [a, b] of row.spans) {
+      const c0 = Math.max(1, Math.round((a - x0) / step) + 1);
+      const c1 = Math.min(cols - 2, Math.round((b - x0) / step));
+      for (let c = c0; c <= c1; c++) grid[at(c, r)] = 1;
+    }
+  }
+  // Everything empty that the outside reaches is not a hole.
+  const outside = new Uint8Array(grid.length);
+  const stack: number[] = [0];
+  outside[0] = 1;
+  while (stack.length) {
+    const i = stack.pop()!;
+    const c = i % cols;
+    const neighbours = [c > 0 ? i - 1 : -1, c < cols - 1 ? i + 1 : -1, i - cols, i + cols];
+    for (const n of neighbours) {
+      if (n < 0 || n >= grid.length || outside[n] || grid[n]) continue;
+      outside[n] = 1;
+      stack.push(n);
+    }
+  }
+  // Each enclosed empty patch, filled when it is small.
+  const seen = new Uint8Array(grid.length);
+  const cellArea = step * step;
+  let filled = false;
+  for (let i = 0; i < grid.length; i++) {
+    if (grid[i] || outside[i] || seen[i]) continue;
+    const patch: number[] = [];
+    const todo = [i];
+    seen[i] = 1;
+    while (todo.length) {
+      const j = todo.pop()!;
+      patch.push(j);
+      const c = j % cols;
+      for (const n of [c > 0 ? j - 1 : -1, c < cols - 1 ? j + 1 : -1, j - cols, j + cols]) {
+        if (n < 0 || n >= grid.length || grid[n] || outside[n] || seen[n]) continue;
+        seen[n] = 1;
+        todo.push(n);
+      }
+    }
+    if (patch.length * cellArea <= maxHole) {
+      for (const j of patch) grid[j] = 1;
+      filled = true;
+    }
+  }
+  if (!filled) return rows;
+  const out: SpanRow[] = [];
+  for (let r = 0; r < lines; r++) {
+    const spans: Array<[number, number]> = [];
+    let start = -1;
+    for (let c = 0; c <= cols; c++) {
+      const on = c < cols && grid[at(c, r)] === 1;
+      if (on && start < 0) start = c;
+      if (!on && start >= 0) {
+        spans.push([x0 + (start - 1) * step, x0 + (c - 1) * step]);
+        start = -1;
+      }
+    }
+    if (spans.length) out.push({ y: y0 + r * step, spans });
+  }
+  return out;
+}
+
 /** The area those rows cover, in drawing units squared. */
 export function rectsArea(rects: Rect[]): number {
   return rects.reduce((sum, r) => sum + r.w * r.h, 0);

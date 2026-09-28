@@ -189,3 +189,27 @@ describe("where a piece may stand", () => {
     expect(pieceBelongsIn("fixture", "bedroom")).toBe(false);
   });
 });
+
+describe("a room's floor, with its printed name's holes filled", () => {
+  it("fills a small hole the room surrounds and keeps the room's edge", async () => {
+    const { fillEnclosedHoles } = await import("@/lib/projects/scene3d/floors");
+    // A 100 x 100 room with a 10 x 6 letter-shaped hole in its middle.
+    const rows = Array.from({ length: 50 }, (_, i) => {
+      const y = i * 2;
+      const spans: Array<[number, number]> = y >= 40 && y < 46 ? [[0, 44], [54, 100]] : [[0, 100]];
+      return { y, spans };
+    });
+    const filled = fillEnclosedHoles(rows, 200);
+    expect(filled.every((row) => row.spans.length === 1)).toBe(true);
+    expect(filled[0]!.spans[0]![0]).toBeCloseTo(0, 0);
+    expect(filled[0]!.spans[0]![1]).toBeCloseTo(100, 0);
+  });
+
+  it("leaves a hole larger than the limit, and a notch open to the outside", async () => {
+    const { fillEnclosedHoles } = await import("@/lib/projects/scene3d/floors");
+    const holed = Array.from({ length: 50 }, (_, i) => ({ y: i * 2, spans: (i >= 10 && i < 30 ? [[0, 30], [70, 100]] : [[0, 100]]) as Array<[number, number]> }));
+    expect(fillEnclosedHoles(holed, 200)).toBe(holed);
+    const notched = Array.from({ length: 50 }, (_, i) => ({ y: i * 2, spans: (i < 5 ? [[0, 40], [60, 100]] : [[0, 100]]) as Array<[number, number]> }));
+    expect(fillEnclosedHoles(notched, 10_000)).toBe(notched);
+  });
+});

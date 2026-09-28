@@ -1,6 +1,6 @@
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
+import { fillEnclosedHoles, mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
 import {
   DEFAULT_FURNITURE_HEIGHT_M,
   FRAME_INSET_M,
@@ -237,7 +237,7 @@ export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): Sce
       name: room.name,
       kind: room.kind,
       areaM2: room.areaM2,
-      rects: mergeSpanRows(room.rows),
+      rects: mergeSpanRows(fillEnclosedHoles(room.rows, 0.5 * flat.unitsPerMetre ** 2)),
     })),
   };
 }
