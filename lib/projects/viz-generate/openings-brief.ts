@@ -1,4 +1,4 @@
-import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
+import { atOtherLevel, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import { placedRoomsExtent } from "@/lib/projects/floorplan-plan-guide";
 
 /**
@@ -10,7 +10,20 @@ import { placedRoomsExtent } from "@/lib/projects/floorplan-plan-guide";
  * mean upper left of the picture the model is holding.
  */
 export function openingPlaces(layout: FloorplanLayout): string[] {
-  const placed = layout.openings.filter((opening) => opening.box != null);
+  // A gap onto a terrace at another level is a window, whatever the floor on
+  // its far side made the measurement call it: דירה 20's living room glazing
+  // under its +15.94 roof was measured as an open doorway, and the brief told
+  // the model every doorway is a way through.
+  const roofs = layout.rooms.filter((room) => room.bbox != null && atOtherLevel(room, layout));
+  const onRoof = (box: { x: number; y: number; w: number; h: number }) =>
+    roofs.some((room) => {
+      const b = room.bbox!;
+      const m = 0.01;
+      return box.x < b.x + b.w + m && box.x + box.w > b.x - m && box.y < b.y + b.h + m && box.y + box.h > b.y - m;
+    });
+  const placed = layout.openings
+    .filter((opening) => opening.box != null)
+    .map((opening) => (opening.kind !== "window" && onRoof(opening.box!) ? { ...opening, kind: "window" as const } : opening));
   if (placed.length === 0) return [];
   const flat = placedRoomsExtent(layout.rooms.filter((room) => room.bbox != null));
   const side = (box: { x: number; y: number; w: number; h: number }) => {

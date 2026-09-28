@@ -4,6 +4,7 @@ import {
   registerCanvasFonts,
 } from "@/lib/projects/floorplan-canvas-fonts";
 import {
+  atOtherLevel,
   inferRoomKind,
   type FloorplanLayout,
   type FloorplanRoom,
@@ -39,6 +40,9 @@ export type TintedPlan = {
 };
 
 /** Washes, not paint: every one of these sits over black ink that must read through. */
+/** Opaque, so the paving hatch under it is gone and there is nothing to copy. */
+const ROOF = "#d8d6d0";
+
 const TINT: Record<FloorplanRoomKind, string> = {
   living: "rgba(232,164,74,0.22)",
   kitchen: "rgba(90,170,200,0.20)",
@@ -70,7 +74,13 @@ export async function buildTintedPlanJpeg(
   options?: { width?: number; terraces?: TerraceBox[] },
 ): Promise<TintedPlan | null> {
   if (!layoutCanGuide(layout)) return null;
-  const rooms = layout.rooms.filter((room) => room.bbox != null);
+  // A room the programme reads at another level is not this flat's. Tinted as
+  // a terrace and labelled "מרפסת גג", דירה 20's two roofs at +15.94 were
+  // furnished as the +12.79 flat's terraces, one as a laundry, and the living
+  // room's window beside one came back as a door onto it. They are painted out
+  // as a flat roof instead: no tint of a room, no label, no paving to copy.
+  const roofs = layout.rooms.filter((room) => room.bbox != null && atOtherLevel(room, layout));
+  const rooms = layout.rooms.filter((room) => room.bbox != null && !atOtherLevel(room, layout));
   const terraces = options?.terraces ?? [];
   const extent = placedRoomsExtent([
     ...rooms,
@@ -124,6 +134,11 @@ export async function buildTintedPlanJpeg(
     for (const room of rooms) {
       const box = place(room);
       ctx.fillStyle = TINT[kindOf(room)] ?? TINT.other;
+      ctx.fillRect(box.x, box.y, box.w, box.h);
+    }
+    for (const roof of roofs) {
+      const box = place(roof);
+      ctx.fillStyle = ROOF;
       ctx.fillRect(box.x, box.y, box.w, box.h);
     }
     for (const terrace of terraces) {

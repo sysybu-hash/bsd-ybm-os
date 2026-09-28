@@ -54,12 +54,14 @@ describe("what the still is told about דירה 20", () => {
       unitLevelM: "+12.79",
       rooms: [
         { name: "סלון", kind: "living", bbox: { x: 0.3, y: 0.2, w: 0.3, h: 0.3 } },
-        { name: "מרפסת גג", kind: "balcony", areaM2: 13.2, levelM: "+15.94", bbox: { x: 0.45, y: 0, w: 0.36, h: 0.2 } },
+        { name: "מרפסת גג", kind: "balcony", areaM2: 13.2, levelM: "+15.94", accessibleFromUnit: false, bbox: { x: 0.45, y: 0, w: 0.36, h: 0.2 } },
+        { name: "מרפסת גג", kind: "balcony", areaM2: 6.45, levelM: "+15.94", accessibleFromUnit: true, bbox: { x: 0.5, y: 0.65, w: 0.19, h: 0.19 } },
       ],
     });
-    expect(roomsForVisualization(layout).map((room) => room.kind)).toEqual(["living"]);
+    // The one with a door out onto it — דירה 20's right terrace — stays the flat's.
+    expect(roomsForVisualization(layout).map((room) => room.kind)).toEqual(["living", "balcony"]);
     const prompt = buildVizPrompt(layout, { kind: "overview" });
-    expect(prompt).toMatch(/balcony 0/);
+    expect(prompt).toMatch(/balcony 1/);
     expect(prompt).toMatch(/1 paved area\(s\) at \+15\.94 \(this apartment is at \+12\.79\): a roof on another floor/);
   });
 });

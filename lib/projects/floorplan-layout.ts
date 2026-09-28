@@ -66,6 +66,13 @@ export const floorplanRoomSchema = z.object({
    * below or the terrace above, drawn for context, and not this flat's.
    */
   levelM: z.number().min(-50).max(500).optional(),
+  /**
+   * For a terrace: whether a door, a slider or a doorway from this flat opens
+   * onto it. The level alone does not say whose it is — דירה 20 prints
+   * "+15.94" on both of its terraces beside a flat at +12.79, and the middle
+   * bedroom has a door out onto one of them.
+   */
+  accessibleFromUnit: z.boolean().optional(),
 });
 
 export const floorplanOpeningSchema = z.object({
@@ -804,6 +811,8 @@ export function parseFloorplanLayout(raw: Record<string, unknown>): FloorplanLay
           estimatedDims: r.estimatedDims === true ? true : undefined,
           estimatedArea: r.estimatedArea === true ? true : undefined,
           levelM: parseLevelM(r.levelM ?? r.level),
+          accessibleFromUnit:
+            typeof r.accessibleFromUnit === "boolean" ? r.accessibleFromUnit : undefined,
         };
       })
       .filter((r) => r.name.length > 0),
@@ -1249,18 +1258,27 @@ function pickVerifiedMeasure(
 }
 
 /**
- * A room the programme reads at another level than the flat: the roof of the
- * flat below, or a terrace a floor up, drawn for context. דירה 20 draws two
- * "מרפסת גג" at +15.94 beside a flat at +11.42, and דירה 22 two at +14.36.
- * The level is printed in outline lettering the text layer cannot read, so it
- * comes from the programme or not at all.
+ * A terrace that is not this flat's: printed at another level than the flat
+ * AND read as having no way out onto it from the flat — the roof of the flat
+ * below, or a terrace above, drawn for context, as דירה 22 draws two at +14.36
+ * beside a flat at +11.42, one with an escape hatch.
+ *
+ * The level alone is not enough. דירה 20 prints "+15.94" on both of its
+ * terraces beside a flat at +12.79, and its middle bedroom has a door out onto
+ * one of them: that one is the flat's, whatever the figure says. Where the
+ * programme does not say whether a terrace can be reached, it is the flat's.
  */
 export function atOtherLevel(
-  room: { levelM?: number },
+  room: { levelM?: number; accessibleFromUnit?: boolean },
   layout: Pick<FloorplanLayout, "unitLevelM"> | undefined,
 ): boolean {
   const unit = layout?.unitLevelM;
-  return room.levelM != null && unit != null && Math.abs(room.levelM - unit) > 0.05;
+  return (
+    room.accessibleFromUnit === false &&
+    room.levelM != null &&
+    unit != null &&
+    Math.abs(room.levelM - unit) > 0.05
+  );
 }
 
 /** The terraces the sheet draws at another level than the flat; see atOtherLevel. */
