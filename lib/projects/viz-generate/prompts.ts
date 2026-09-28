@@ -11,6 +11,7 @@ import {
   isStudyRoom,
   layoutHasInternalStairs,
   canonicalizeFloorplanLayout,
+  otherLevelTerraces,
   roomsForVisualization,
   type FloorplanLayout,
   type FloorplanRoom,
@@ -190,10 +191,26 @@ function inventoryBlock(layout: FloorplanLayout, haredi = false): string {
       : "Beds: copy rectangles from the drawing. One stays one; two twins stay two twins. Empty ממ\"ד = empty. Never pack extra beds into a narrow room.",
     "Do NOT add extra bedrooms. Do NOT add a second kitchen. Do NOT add a second office.",
     terraceIndoorLock(rooms),
+    otherLevelRoofNote(layout),
     "The wall tracing is walls only and looks empty — copy furniture from the sales sheet, not from that tracing.",
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * The terraces the sheet draws a floor away, said out loud.
+ *
+ * Left out of the counts, they are still on the drawing, and a terrace on the
+ * drawing is what the model furnishes: דירה 20's still came back with both of
+ * its "מרפסת גג" at +15.94 furnished as the +12.79 flat's own terraces.
+ */
+function otherLevelRoofNote(layout: FloorplanLayout): string {
+  const roofs = otherLevelTerraces(layout);
+  if (roofs.length === 0) return "";
+  const levels = [...new Set(roofs.map((room) => `+${room.levelM!.toFixed(2)}`))].join(", ");
+  const unit = layout.unitLevelM != null ? ` (this apartment is at +${layout.unitLevelM.toFixed(2)})` : "";
+  return `The sheet also draws ${roofs.length} paved area(s) at ${levels}${unit}: a roof on another floor, not this apartment's terrace. Show each as a bare roof beyond the outer wall — plain pale roof membrane or gravel, nothing standing on it: no furniture, no planters, no people, no railing gate, and no door from this apartment onto it. The windows in that wall stay windows.`;
 }
 
 function balconyCount(rooms: FloorplanRoom[]): number {
@@ -299,6 +316,7 @@ function viewHint(
         : "No office in this unit.",
       internalStairHint(layout),
       terraceIndoorLock(rooms),
+      otherLevelRoofNote(layout),
       nBalc <= 1
         ? "At most one outdoor terrace, only where the plan shows tiled hatching. No wraparound deck along ANY façade. No glass sunroom."
         : `Exactly ${nBalc} outdoor terraces as drawn — small, in the printed locations. No wraparound deck along ANY façade (kitchen, living, or bedroom). No glass sunroom.`,
@@ -324,6 +342,7 @@ function viewHint(
       internalStairHint(layout),
       "Building מעלית / חדר מדרגות next to the entrance is a grey core OUTSIDE the unit — no apartment stair treads there.",
       nBalc <= 1 ? "Do not invent a second outdoor space or a wraparound deck along ANY façade." : `Keep exactly ${nBalc} small terraces as drawn, no wraparound deck along ANY façade.`,
+      otherLevelRoofNote(layout),
       bathrooms.some(isGuestWcRoom)
         ? "Guest WC only if drawn as a cubicle."
         : "No powder room at the entrance. Do not invent a sink or toilet by the front door unless a basin or pan is drawn.",

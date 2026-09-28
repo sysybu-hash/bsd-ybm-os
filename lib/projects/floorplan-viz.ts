@@ -3,7 +3,7 @@ import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
-import { openingGenerationBrief } from "@/lib/projects/viz-generate/openings-brief";
+import { kitchenSinkBasins, openingGenerationBrief } from "@/lib/projects/viz-generate/openings-brief";
 import { placeOpeningsOnPage, type PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
@@ -357,14 +357,17 @@ async function visualizeWithSpend(
             geometryLock: lockCad ? cadResult.geometry : undefined,
             truth: cadResult.truth,
             deadlineMs,
-            openingBrief: openingGenerationBrief({
-              ...extracted.layout,
-              openings: (cadResult.openings ?? []).map((opening) => ({
-                kind: opening.kind,
-                widthM: opening.widthM,
-                box: opening.box,
-              })),
-            }),
+            openingBrief: openingGenerationBrief(
+              {
+                ...extracted.layout,
+                openings: (cadResult.openings ?? []).map((opening) => ({
+                  kind: opening.kind,
+                  widthM: opening.widthM,
+                  box: opening.box,
+                })),
+              },
+              { sinkBasins: cadResult.sinkBasins },
+            ),
           }),
         );
         images = mergeCadPhotorealImages({ photoreal, geometry: cadResult.geometry });
@@ -492,10 +495,13 @@ async function visualizeWithSpend(
   // They are kept on the run in the page's coordinates — the frame the run's
   // room boxes are in — whether or not the reference below is cropped.
   const markedOpenings = cadResult.outcome === "skip" ? (cadResult.openings ?? []) : [];
-  const openingBrief = openingGenerationBrief({
-    ...extracted.layout,
-    openings: markedOpenings.map((opening) => ({ kind: opening.kind, widthM: opening.widthM, box: opening.box })),
-  });
+  const openingBrief = openingGenerationBrief(
+    {
+      ...extracted.layout,
+      openings: markedOpenings.map((opening) => ({ kind: opening.kind, widthM: opening.widthM, box: opening.box })),
+    },
+    { sinkBasins: cadResult.outcome === "skip" ? cadResult.sinkBasins : undefined },
+  );
   // The plate itself is left exactly as it is. Painting the openings onto it
   // was tried and measured: the same sheet, the same prompt, one run with
   // coloured bars over the thresholds and one without, and the run with the
@@ -593,11 +599,14 @@ type CadOverviewAttempt =
       terraceBoxes?: TerraceBox[];
       /** Doors and windows the sheet marks, in page fractions. */
       openings?: PlacedOpening[];
+      /** Kitchen sink basins measured off the drawing; see kitchenSinkBasins. */
+      sinkBasins?: number;
     }
   | {
       outcome: "skip";
       reason?: string;
       openings?: PlacedOpening[];
+      sinkBasins?: number;
       /** A rendered native CAD page, because DXF/DWG bytes are not images. */
       fallbackRaster?: { mimeType: "image/jpeg"; base64: string };
     }
@@ -841,6 +850,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     // and a scale locked from the printed area never looks for them — the
     // measured gaps are what the run keeps, including the doorway out to a
     // terrace that the stills kept walling over.
+    const sinkBasins = kitchenSinkBasins(rendered.flat.furniture);
     const measuredOpenings =
       openings.length > 0 || !pageSize
         ? openings
@@ -857,7 +867,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
       log.info("measured plate failed its own checks; using the raster route", {
         hard: rendered.confidence.hard,
       });
-      return { outcome: "skip", reason: qualityFailure, openings: measuredOpenings };
+      return { outcome: "skip", reason: qualityFailure, openings: measuredOpenings, sinkBasins };
     }
     if (qualityFailure) {
       log.info("measured plate does not reproduce the sheet's programme; using the drawing itself", {
@@ -868,6 +878,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
         outcome: "skip",
         reason: qualityFailure,
         openings: measuredOpenings,
+        sinkBasins,
       };
     }
     return {
@@ -891,6 +902,7 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
         page: pageSize,
       }),
       measuredTerraces: rendered.flat.terraces.length,
+      sinkBasins,
       terraceBoxes: pageSize ? terraceBoxesOnPage(rendered.flat.terraces, pageSize) : undefined,
       openings: measuredOpenings,
     };

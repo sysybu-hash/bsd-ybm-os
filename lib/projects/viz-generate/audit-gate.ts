@@ -77,12 +77,18 @@ export type ShipGrade = {
  * Hard fails that still block shipping after repair.
  *
  * A finding only the Claude second judge makes is dropped when Gemini has
- * cleared the same thing. Double bed and screen first (they burned paid
- * frames in the דירה 19 loops); then orientation and stairs, on the audit
- * bench: over 15 scans of five דירה 14 stills that all face the sheet's way,
- * Claude called every one "turned 180 degrees" and Gemini none, and the
- * "stairs" findings on those stills came from Claude too. Merged with "or",
+ * cleared the same thing. Double bed first (it burned paid frames in the
+ * דירה 19 loops, and on the audit bench Claude called a double bed in all 15
+ * scans of five דירה 14 stills that have none); then orientation and stairs:
+ * over those scans Claude called every still "turned 180 degrees" and Gemini
+ * none, and the "stairs" findings came from Claude too. Merged with "or",
  * Claude's answer blocked every correct still.
+ *
+ * A screen is not dropped. The bench has no screens to score either judge
+ * on, and the one live case went the other way: a haredi still of דירה 20
+ * shipped with screens in its rooms, which Claude reported and Gemini counted
+ * as none. A haredi still with a screen in it is unusable; a second attempt
+ * is the cheaper mistake.
  */
 export function blockingHardFailures(
   hardFailures: string[],
@@ -90,7 +96,6 @@ export function blockingHardFailures(
 ): string[] {
   return hardFailures.filter((f) => {
     if (/double bed/i.test(f) && !gemini.hasDoubleBed) return false;
-    if (/screen/i.test(f) && gemini.screenCount === 0) return false;
     if (/turned \d+ degrees/i.test(f) && gemini.rotationVsPlanDegrees === 0) return false;
     if (/mirrored/i.test(f) && !gemini.mirroredVsPlan) return false;
     if (/stair flight/i.test(f) && gemini.apartmentStairsNotInPlan === 0) return false;

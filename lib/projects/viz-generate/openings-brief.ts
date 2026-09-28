@@ -45,10 +45,42 @@ export function openingPlaces(layout: FloorplanLayout): string[] {
  * does not read becomes wall — on דירה 14 a dresser stood where the middle
  * bedroom opens onto its terrace, in every attempt.
  */
-export function openingGenerationBrief(layout: FloorplanLayout): string {
+export function openingGenerationBrief(
+  layout: FloorplanLayout,
+  measured?: { sinkBasins?: number },
+): string {
   const lines = openingPlaces(layout);
-  if (lines.length === 0) return "";
-  return `
-DOORS, DOORWAYS AND WINDOWS THE SHEET DRAWS, measured off the drawing and placed against the apartment in the frame: ${lines.join(", ")}. Every door and doorway in this list is a way through in the still — a door leaf, a glazed slider where it leads onto a terrace, or a clear opening. Never close one with wall, and never stand a bed, dresser, wardrobe, desk or sofa across it.
+  const openings =
+    lines.length === 0
+      ? ""
+      : `
+DOORS, DOORWAYS AND WINDOWS THE SHEET DRAWS, measured off the drawing and placed against the apartment in the frame: ${lines.join(", ")}. Every door and doorway in this list is a way through in the still — a door leaf, a glazed slider where it leads onto a terrace, or a clear opening. Never close one with wall, and never stand a bed, dresser, wardrobe, desk or sofa across it. Every window in this list stays a window: glass in the wall, never a door leaf and never an opening out onto empty air.
 `;
+  return openings + sinkBrief(measured?.sinkBasins);
+}
+
+/**
+ * The kitchen sink as the drawing measures it.
+ *
+ * "A double-bowl sink is one fixture" kept the model from inventing a second
+ * sink location, and it read the rule as "one bowl": דירה 20's still came back
+ * with a single basin where the sheet draws two side by side, and so did
+ * דירה 14's. The count is measured, so the model is told it.
+ */
+function sinkBrief(basins: number | undefined): string {
+  if (basins == null || basins < 1) return "";
+  if (basins === 1) return `
+KITCHEN SINK: one single-bowl sink on the drawn counter.
+`;
+  return `
+KITCHEN SINK: the drawing measures ${basins} sink basins side by side on the kitchen counter. Draw ${basins} separate bowls in that one counter — not a single bowl, and not a second sink anywhere else.
+`;
+}
+
+/**
+ * Kitchen sink basins on the measured plate. findKitchenFittings reads a
+ * double-bowl sink as its basins, each a piece of its own.
+ */
+export function kitchenSinkBasins(furniture: Array<{ kind: string }>): number {
+  return furniture.filter((piece) => piece.kind === "sink").length;
 }
