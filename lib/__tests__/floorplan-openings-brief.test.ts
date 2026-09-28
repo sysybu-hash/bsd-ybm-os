@@ -36,3 +36,30 @@ describe("the sheet's openings, said to the model", () => {
     expect(openingGenerationBrief(parseFloorplanLayout({ rooms: [{ name: "סלון" }] }))).toBe("");
   });
 });
+
+describe("what the still is told about דירה 20", () => {
+  it("tells the model the kitchen sink's measured bowls", async () => {
+    const { kitchenSinkBasins, openingGenerationBrief } = await import("@/lib/projects/viz-generate/openings-brief");
+    const empty = parseFloorplanLayout({ rooms: [] });
+    expect(kitchenSinkBasins([{ kind: "sink" }, { kind: "sink" }, { kind: "hob" }])).toBe(2);
+    expect(openingGenerationBrief(empty, { sinkBasins: 2 })).toMatch(/2 separate bowls/);
+    expect(openingGenerationBrief(empty, { sinkBasins: 1 })).toMatch(/one single-bowl sink/);
+    expect(openingGenerationBrief(empty)).toBe("");
+  });
+
+  it("draws a terrace at another level as a bare roof, not as the flat's terrace", async () => {
+    const { roomsForVisualization } = await import("@/lib/projects/floorplan-layout");
+    const { buildVizPrompt } = await import("@/lib/projects/viz-generate/prompts");
+    const layout = parseFloorplanLayout({
+      unitLevelM: "+12.79",
+      rooms: [
+        { name: "סלון", kind: "living", bbox: { x: 0.3, y: 0.2, w: 0.3, h: 0.3 } },
+        { name: "מרפסת גג", kind: "balcony", areaM2: 13.2, levelM: "+15.94", bbox: { x: 0.45, y: 0, w: 0.36, h: 0.2 } },
+      ],
+    });
+    expect(roomsForVisualization(layout).map((room) => room.kind)).toEqual(["living"]);
+    const prompt = buildVizPrompt(layout, { kind: "overview" });
+    expect(prompt).toMatch(/balcony 0/);
+    expect(prompt).toMatch(/1 paved area\(s\) at \+15\.94 \(this apartment is at \+12\.79\): a roof on another floor/);
+  });
+});

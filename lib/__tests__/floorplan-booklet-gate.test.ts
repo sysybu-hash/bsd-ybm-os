@@ -98,9 +98,11 @@ describe("the issues that count against a still", () => {
     ]);
   });
 
-  it("drops a double bed or a screen only Claude saw", () => {
+  it("drops a double bed only Claude saw, and keeps a screen only Claude saw", () => {
+    // דירה 20 shipped a haredi still with screens that Claude reported and
+    // Gemini counted as none.
     const scored = { gemini, grade: { hardFailures: ["double bed in a bedroom", "screen visible"] } };
-    expect(shipBlockingIssues(scored, null)).toEqual([]);
+    expect(shipBlockingIssues(scored, null)).toEqual(["screen visible"]);
   });
 
   it("drops orientation and stairs only Claude reported, and keeps them when Gemini agrees", () => {

@@ -86,12 +86,11 @@ describe("who found what in a ship audit", () => {
     expect(meta.at).toBe(new Date(3_500).toISOString());
   });
 
-  it("lists what the gate set aside: a screen only Claude saw", () => {
+  it("sets aside nothing for a screen only Claude saw — a screen blocks", () => {
     const meta = attributeShipAudit({
       scored: scored(true), moved: [], layout, haredi: true, startedAt: 0, finishedAt: 0,
     });
-    expect(meta.dropped).toHaveLength(1);
-    expect(meta.dropped[0]).toMatch(/screen/);
+    expect(meta.dropped).toEqual([]);
   });
 
   it("records no second judge when Claude did not answer, and no auditor when Gemini did not", () => {

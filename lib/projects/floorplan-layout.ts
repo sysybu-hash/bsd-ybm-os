@@ -1248,9 +1248,33 @@ function pickVerifiedMeasure(
   return undefined;
 }
 
+/**
+ * A room the programme reads at another level than the flat: the roof of the
+ * flat below, or a terrace a floor up, drawn for context. דירה 20 draws two
+ * "מרפסת גג" at +15.94 beside a flat at +11.42, and דירה 22 two at +14.36.
+ * The level is printed in outline lettering the text layer cannot read, so it
+ * comes from the programme or not at all.
+ */
+export function atOtherLevel(
+  room: { levelM?: number },
+  layout: Pick<FloorplanLayout, "unitLevelM"> | undefined,
+): boolean {
+  const unit = layout?.unitLevelM;
+  return room.levelM != null && unit != null && Math.abs(room.levelM - unit) > 0.05;
+}
+
+/** The terraces the sheet draws at another level than the flat; see atOtherLevel. */
+export function otherLevelTerraces(layout: FloorplanLayout): FloorplanRoom[] {
+  return layout.rooms.filter(
+    (room) => (room.kind ?? inferRoomKind(room.name)) === "balcony" && atOtherLevel(room, layout),
+  );
+}
+
 export function roomsForVisualization(layout: FloorplanLayout): FloorplanRoom[] {
   return layout.rooms.filter((room) => {
     if (isPlanAnnotation(room.name)) return false;
+    // Not this flat's: drawn a floor away, and drawn as a roof in the still.
+    if (atOtherLevel(room, layout)) return false;
     if (isBuildingCoreRoom(room)) return false;
     const kind = room.kind ?? inferRoomKind(room.name);
     if (kind === "balcony" && room.areaM2 != null && room.areaM2 < TINY_BALCONY_M2) return false;

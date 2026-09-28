@@ -5,7 +5,9 @@ import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
 } from "@/lib/projects/floorplan-programme-furniture";
-import { inferRoomKind, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
+import { atOtherLevel, inferRoomKind, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
+
+export { atOtherLevel };
 import {
   findBaths,
   findFurniture,
@@ -93,20 +95,6 @@ export type BuiltFlat = {
  * measurement. The returned area is still only a claim: callers must verify
  * it against the vector flood before accepting the region.
  */
-/**
- * A terrace the programme reads at another level than the flat: the roof of
- * the flat below, or a terrace above, drawn for context. דירה 22 draws two at
- * +14.36 beside a flat at +11.42. The level is printed in outline lettering
- * the text layer cannot read, so it comes from the programme or not at all.
- */
-export function atOtherLevel(
-  room: { levelM?: number },
-  programme: Pick<FloorplanLayout, "unitLevelM"> | undefined,
-): boolean {
-  const unit = programme?.unitLevelM;
-  return room.levelM != null && unit != null && Math.abs(room.levelM - unit) > 0.05;
-}
-
 export function programmeTerraceSeeds(
   programme: Pick<FloorplanLayout, "rooms" | "unitLevelM"> | undefined,
   page: { width: number; height: number },
